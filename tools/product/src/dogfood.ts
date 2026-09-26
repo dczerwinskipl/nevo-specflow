@@ -1,7 +1,7 @@
 // `nevo-repo-product dogfood` — build + pack the REAL distributable, install
 // THAT tarball globally with pnpm, and smoke the installed `nevo-spec`.
 //
-// It never uses `pnpm link`, never installs from `packages/specdev`, and never
+// It never uses `pnpm link`, never installs from `packages/specflow`, and never
 // a `file:` path back into the repo — the whole point is to exercise the actual
 // distribution boundary a user would hit: the pnpm-created global executable
 // shim, resolved from PATH, on the repository-pinned pnpm.

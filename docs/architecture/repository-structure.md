@@ -24,11 +24,11 @@ related:
 ## Layout
 
 ```text
-nevo-specdev/
+nevo-specflow/
   apps/                 deployable applications        (workspace glob; empty until one lands)
   packages/             product packages (@nevo/* scope)
-    specdev/            @nevo/specdev            — the `nevo-spec` CLI shell + command composition
-    specdev-dashboard/  @nevo/specdev-dashboard  — dashboard vertical: capability (.) + CLI adapter (./cli); private, bundled into specdev
+    specflow/            @nevo/specflow            — the `nevo-spec` CLI shell + command composition
+    specflow-dashboard/  @nevo/specflow-dashboard  — dashboard vertical: capability (.) + CLI adapter (./cli); private, bundled into specflow
   tools/                repository-internal tooling — never published, all TypeScript
     docs/               nevo-repo-docs    — doc discovery, index, ADR authoring
     release/            nevo-repo-release — version model, cut-release-line, promote, release
@@ -47,11 +47,11 @@ directories appear there with real code, not placeholders. Repository-internal t
 lives under `tools/` (unscoped, `private`) and is never confused with a publishable
 `@nevo/*` package ([ADR 0005](decisions/0005-repository-tooling-is-separate-from-the-product-api.md)).
 
-The first product boundary is real. `@nevo/specdev` owns the `nevo-spec` **shell** —
+The first product boundary is real. `@nevo/specflow` owns the `nevo-spec` **shell** —
 root program, `--version`, global flags/output/exit conventions — and **composes**
-top-level commands. Each capability vertical owns its own command: `@nevo/specdev-dashboard`
+top-level commands. Each capability vertical owns its own command: `@nevo/specflow-dashboard`
 (`private: true`) exposes the framework-independent capability at `.` and its Commander
-adapter at `./cli` (`createDashboardCommand`), and is bundled into `@nevo/specdev` at
+adapter at `./cli` (`createDashboardCommand`), and is bundled into `@nevo/specflow` at
 pack time, so a user installs one artifact with no registry
 ([ADR 0006](decisions/0006-product-ships-as-a-single-bundled-artifact.md),
 [product packaging](../development/product-packaging.md)). `dashboard` is a bootstrap
@@ -104,7 +104,7 @@ never left permanently pending. Inspect what a change would run with
 ## Versioning and release lines
 
 SemVer, with `semver` doing the parsing/compare. One product version concept (Nevo
-SpecDev). Each branch carries `version.json` = `{ channel, version }`, and CI enforces
+SpecFlow). Each branch carries `version.json` = `{ channel, version }`, and CI enforces
 that any change to it is a legal transition (see
 [releasing](../development/releasing.md)).
 

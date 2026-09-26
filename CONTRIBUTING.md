@@ -1,4 +1,4 @@
-# Contributing to Nevo SpecDev
+# Contributing to Nevo SpecFlow
 
 ## Ground rules
 
@@ -31,7 +31,7 @@ Prerequisites and the command reference:
 To build and try the product CLI from a real tarball (not a workspace link):
 
 ```bash
-pnpm product:pack        # -> .artifacts/nevo-specdev-<version>.tgz
+pnpm product:pack        # -> .artifacts/nevo-specflow-<version>.tgz
 pnpm dogfood:install     # pack + install globally + smoke `nevo-spec`
 ```
 

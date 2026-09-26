@@ -1,6 +1,6 @@
-# Nevo SpecDev
+# Nevo SpecFlow
 
-**Nevo SpecDev** is a spec-driven development framework for AI-assisted software
+**Nevo SpecFlow** is a spec-driven development framework for AI-assisted software
 engineering: a human-led, spec-anchored workflow delivered as a CLI (`nevo-spec`) and a
 dashboard.
 

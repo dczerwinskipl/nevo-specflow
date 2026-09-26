@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { DASHBOARD_BOOTSTRAP_MARKER } from '@nevo/specdev-dashboard';
+import { DASHBOARD_BOOTSTRAP_MARKER } from '@nevo/specflow-dashboard';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const sh = process.platform === 'win32';
@@ -88,11 +88,11 @@ function nevoSpec(args: string[]): Run {
 
 function installedManifest(): Record<string, unknown> {
   return JSON.parse(
-    readFileSync(join(prefix, 'node_modules', '@nevo', 'specdev', 'package.json'), 'utf8'),
+    readFileSync(join(prefix, 'node_modules', '@nevo', 'specflow', 'package.json'), 'utf8'),
   ) as Record<string, unknown>;
 }
 
-describe('packaged @nevo/specdev — isolated tarball install', () => {
+describe('packaged @nevo/specflow — isolated tarball install', () => {
   it('was packed with the repository-pinned pnpm', () => {
     const v = execFileSync('pnpm', ['--version'], {
       cwd: repoRoot,
@@ -105,7 +105,7 @@ describe('packaged @nevo/specdev — isolated tarball install', () => {
 
   it('installs a manifest with the packed version, correct engines, no deps, no scripts, no workspace:', () => {
     const pj = installedManifest();
-    expect(pj.name).toBe('@nevo/specdev');
+    expect(pj.name).toBe('@nevo/specflow');
     expect(pj.version).toBe(version);
     expect((pj.bin as Record<string, string>)['nevo-spec']).toBe('./dist/bin.js');
     expect((pj.engines as Record<string, string>).node).toBe('>=24.20.0 <25');

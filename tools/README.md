@@ -1,7 +1,7 @@
 # `tools/`
 
 Repository-internal tooling. **Never** published, and never the future
-`@nevo/specdev` product CLI.
+`@nevo/specflow` product CLI.
 
 | Directory    | Purpose                                                                 |
 | ------------ | ----------------------------------------------------------------------- |

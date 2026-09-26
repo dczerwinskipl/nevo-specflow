@@ -10,7 +10,7 @@ summary: >
 
 # Tailwind
 
-Tailwind CSS class conventions for Nevo SpecDev UI.
+Tailwind CSS class conventions for Nevo SpecFlow UI.
 
 | Doc                                         | Covers                                                                                                                    |
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |

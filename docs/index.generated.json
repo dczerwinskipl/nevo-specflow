@@ -97,7 +97,7 @@
       "status": "current",
       "file": "docs/product/dashboard/README.md",
       "read_when": [],
-      "summary": "The Nevo SpecDev dashboard — who uses it, how navigation and surfaces behave, and how AI sessions are presented. React/Tailwind implementation guidance is under development/ui/.",
+      "summary": "The Nevo SpecFlow dashboard — who uses it, how navigation and surfaces behave, and how AI sessions are presented. React/Tailwind implementation guidance is under development/ui/.",
       "related": []
     },
     {
@@ -107,7 +107,7 @@
       "status": "current",
       "file": "docs/product/README.md",
       "read_when": [],
-      "summary": "What Nevo SpecDev is meant to do — product overview, shared terminology and localization, and the CLI and Dashboard interaction models.",
+      "summary": "What Nevo SpecFlow is meant to do — product overview, shared terminology and localization, and the CLI and Dashboard interaction models.",
       "related": []
     },
     {
@@ -123,7 +123,7 @@
     {
       "id": "docs.readme",
       "type": "hub",
-      "title": "Nevo SpecDev documentation",
+      "title": "Nevo SpecFlow documentation",
       "status": "current",
       "file": "docs/README.md",
       "read_when": [],
@@ -206,7 +206,7 @@
       "status": "current",
       "file": "docs/architecture/decisions/0005-repository-tooling-is-separate-from-the-product-api.md",
       "read_when": [],
-      "summary": "Repository-internal developer tooling lives under `tools/*` as private, unscoped packages and never becomes a Nevo SpecDev product surface by default. Product capabilities are designed as `@nevo/*` packages and `nevo-spec` commands in their own right.",
+      "summary": "Repository-internal developer tooling lives under `tools/*` as private, unscoped packages and never becomes a Nevo SpecFlow product surface by default. Product capabilities are designed as `@nevo/*` packages and `nevo-spec` commands in their own right.",
       "related": [
         "architecture.repository-structure",
         "development.cli.node-tooling-guidelines"
@@ -219,7 +219,7 @@
       "status": "current",
       "file": "docs/architecture/decisions/0006-product-ships-as-a-single-bundled-artifact.md",
       "read_when": [],
-      "summary": "`@nevo/specdev` is distributed as one self-contained tarball. `nevo-repo-product` (esbuild) bundles the `nevo-spec` entry, the internal workspace capability packages and `commander` into `dist/bin.js`, so the artifact installs with no registry and no workspace. Source package boundaries are unchanged — only the distribution is one file.",
+      "summary": "`@nevo/specflow` is distributed as one self-contained tarball. `nevo-repo-product` (esbuild) bundles the `nevo-spec` entry, the internal workspace capability packages and `commander` into `dist/bin.js`, so the artifact installs with no registry and no workspace. Source package boundaries are unchanged — only the distribution is one file.",
       "related": [
         "adr.0002-toolchain-selection",
         "adr.0005-repository-tooling-is-separate-from-the-product-api",
@@ -379,11 +379,11 @@
       "file": "docs/development/product-packaging.md",
       "read_when": [
         "building or changing how the nevo-spec product is packed",
-        "adding a package that ships inside @nevo/specdev",
-        "reviewing @nevo/specdev package metadata",
+        "adding a package that ships inside @nevo/specflow",
+        "reviewing @nevo/specflow package metadata",
         "wiring a CI or release job that needs the product tarball"
       ],
-      "summary": "How the Nevo SpecDev product is turned into one installable artifact: nevo-repo-product bundles the nevo-spec entry, the internal workspace capability packages and commander with esbuild, then packs on the pinned pnpm to produce .artifacts/nevo-specdev-<version>.tgz (with a THIRD_PARTY_NOTICES.txt). Source package boundaries stay real — the shell composes, each vertical owns its CLI adapter — only the distribution is a single file.",
+      "summary": "How the Nevo SpecFlow product is turned into one installable artifact: nevo-repo-product bundles the nevo-spec entry, the internal workspace capability packages and commander with esbuild, then packs on the pinned pnpm to produce .artifacts/nevo-specflow-<version>.tgz (with a THIRD_PARTY_NOTICES.txt). Source package boundaries stay real — the shell composes, each vertical owns its CLI adapter — only the distribution is a single file.",
       "related": [
         "adr.0006-product-ships-as-a-single-bundled-artifact",
         "development.dogfooding",
@@ -615,10 +615,10 @@
       "status": "draft",
       "file": "docs/product/product-overview.md",
       "read_when": [
-        "orienting to what Nevo SpecDev is",
+        "orienting to what Nevo SpecFlow is",
         "deciding whether a concern belongs to the CLI or the Dashboard"
       ],
-      "summary": "Nevo SpecDev is a human-led, spec-anchored workflow for AI-assisted software engineering, delivered as a CLI (nevo-spec), a dashboard, and a shared library.",
+      "summary": "Nevo SpecFlow is a human-led, spec-anchored workflow for AI-assisted software engineering, delivered as a CLI (nevo-spec), a dashboard, and a shared library.",
       "related": [
         "product.shared.terminology",
         "product.cli.interaction-model",
@@ -654,7 +654,7 @@
         "writing user-facing copy or documentation",
         "reviewing whether two surfaces describe the same thing consistently"
       ],
-      "summary": "Canonical product nouns for Nevo SpecDev — specification, change, task, review, session, work — with their meaning. Both surfaces use these terms; the message catalog keys follow them.",
+      "summary": "Canonical product nouns for Nevo SpecFlow — specification, change, task, review, session, work — with their meaning. Both surfaces use these terms; the message catalog keys follow them.",
       "related": [
         "product.product-overview",
         "product.shared.localization"

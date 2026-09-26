@@ -37,7 +37,7 @@ export function buildThirdPartyNotices(): string {
   return [
     'THIRD-PARTY NOTICES',
     '',
-    '`@nevo/specdev` is distributed as a single bundled file (`dist/bin.js`). That',
+    '`@nevo/specflow` is distributed as a single bundled file (`dist/bin.js`). That',
     'bundle embeds the third-party software listed below. Each package is used under',
     'the terms of its own license, reproduced verbatim.',
     '',

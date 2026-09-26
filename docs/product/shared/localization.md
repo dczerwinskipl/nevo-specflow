@@ -20,7 +20,7 @@ related:
 
 # Localization
 
-Localization / i18n is a **required product concern** for Nevo SpecDev, not a
+Localization / i18n is a **required product concern** for Nevo SpecFlow, not a
 post-launch nice-to-have — even though the first release can ship in English only.
 
 ## Requirements now

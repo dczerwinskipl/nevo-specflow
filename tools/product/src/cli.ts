@@ -12,7 +12,7 @@ export interface CliIO {
 
 export function createProgram(io: CliIO): Command {
   const program = new Command('nevo-repo-product')
-    .description('Repository packaging tooling for the Nevo SpecDev product (not a product CLI)')
+    .description('Repository packaging tooling for the Nevo SpecFlow product (not a product CLI)')
     .configureOutput({
       writeOut: (s) => io.stdout(s.replace(/\n$/, '')),
       writeErr: (s) => io.stderr(s.replace(/\n$/, '')),
@@ -20,7 +20,7 @@ export function createProgram(io: CliIO): Command {
 
   program
     .command('bundle')
-    .description('esbuild the self-contained nevo-spec bundle (used by @nevo/specdev build)')
+    .description('esbuild the self-contained nevo-spec bundle (used by @nevo/specflow build)')
     .option('--entry <path>', 'entry file, relative to cwd', 'src/bin.ts')
     .option('--outfile <path>', 'output file, relative to cwd', 'dist/bin.js')
     .option('--version <version>', 'version to inject (default: this package.json version)')
@@ -37,7 +37,7 @@ export function createProgram(io: CliIO): Command {
 
   program
     .command('pack')
-    .description('build + version + esbuild + pnpm pack -> .artifacts/nevo-specdev-<version>.tgz')
+    .description('build + version + esbuild + pnpm pack -> .artifacts/nevo-specflow-<version>.tgz')
     .option('--json', 'print { name, version, tarball } as JSON', false)
     .option('--skip-build', 'assume the product graph is already built', false)
     .action(async (opts: { json: boolean; skipBuild: boolean }) => {

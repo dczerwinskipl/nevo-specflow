@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "display": "Nevo SpecDev base",
+  "display": "Nevo SpecFlow base",
   "compilerOptions": {
     "target": "ES2024",
     "lib": ["ES2024"],

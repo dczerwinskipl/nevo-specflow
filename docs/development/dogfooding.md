@@ -40,7 +40,7 @@ This is a **repository developer workflow**, not the future public
 
 ## Why a tarball and not `pnpm link`
 
-`pnpm link` / a `file:../nevo-specdev` dependency resolve through the workspace, so they
+`pnpm link` / a `file:../nevo-specflow` dependency resolve through the workspace, so they
 **hide** the exact failures a real install hits:
 
 - a missing or wrong `files` allowlist (a needed file not shipped);
@@ -64,4 +64,4 @@ nevo-spec --version
 nevo-spec dashboard      # bootstrap marker only — does not start the real dashboard yet
 ```
 
-Remove it with `pnpm remove -g @nevo/specdev`.
+Remove it with `pnpm remove -g @nevo/specflow`.

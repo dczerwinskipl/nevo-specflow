@@ -2,7 +2,7 @@
   "name": "nevo-repo-release",
   "private": true,
   "type": "module",
-  "description": "Repository-internal release tooling for Nevo SpecDev: version derivation, release-line cutting, promotion and tag/GitHub-Release orchestration. Not a product package.",
+  "description": "Repository-internal release tooling for Nevo SpecFlow: version derivation, release-line cutting, promotion and tag/GitHub-Release orchestration. Not a product package.",
   "license": "MIT",
   "bin": {
     "nevo-release": "./dist/bin.js"

@@ -6,7 +6,7 @@ status: current
 date: 2026-09-06
 summary: >
   Repository-internal developer tooling lives under `tools/*` as private, unscoped
-  packages and never becomes a Nevo SpecDev product surface by default. Product
+  packages and never becomes a Nevo SpecFlow product surface by default. Product
   capabilities are designed as `@nevo/*` packages and `nevo-spec` commands in their own
   right.
 related:
@@ -24,7 +24,7 @@ Current.
 
 The repository needs its own developer tooling — documentation discovery and ADR
 authoring (`tools/docs`), release-line and version management (`tools/release`), GitHub
-governance (`tools/github`). Some of this overlaps conceptually with things Nevo SpecDev
+governance (`tools/github`). Some of this overlaps conceptually with things Nevo SpecFlow
 may eventually offer as product features (spec/decision management, a project-knowledge
 CLI). All three are Commander CLIs built to the same architecture the product `nevo-spec`
 CLI is meant to follow — the pattern is shared, the command surface is not.

@@ -10,7 +10,7 @@ summary: >
 
 # React
 
-React implementation conventions for Nevo SpecDev UI. Visual/design rules are in
+React implementation conventions for Nevo SpecFlow UI. Visual/design rules are in
 [`../ui-ux-guidelines.md`](../ui-ux-guidelines.md); class-composition mechanics are in
 [`../tailwind/`](../tailwind/).
 

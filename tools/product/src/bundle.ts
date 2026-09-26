@@ -1,6 +1,6 @@
 // The one canonical bundler for the product. esbuild compiles the `nevo-spec`
 // entry and every INTERNAL workspace package it imports (currently
-// `@nevo/specdev-dashboard`) — plus `commander` — into a single self-contained
+// `@nevo/specflow-dashboard`) — plus `commander` — into a single self-contained
 // ESM file. That is why the packed tarball works with no registry and no
 // workspace: there is nothing left to resolve at install time.
 //

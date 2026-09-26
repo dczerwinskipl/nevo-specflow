@@ -4,7 +4,7 @@
 import { CommanderError } from 'commander';
 import { describe, expect, it } from 'vitest';
 
-import { DASHBOARD_BOOTSTRAP_MARKER } from '@nevo/specdev-dashboard';
+import { DASHBOARD_BOOTSTRAP_MARKER } from '@nevo/specflow-dashboard';
 
 import { createProgram } from '../src/program.js';
 import { NEVO_SPEC_VERSION } from '../src/version.js';

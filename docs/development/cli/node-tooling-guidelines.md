@@ -38,7 +38,7 @@ expected to follow the same shape.
 - **TypeScript**, strict, `tsc` emitting to `dist/`; the `bin` points at the built
   artifact. Tests are typechecked too. **No bundler** for repository tools. The one
   exception is the _product distributable_: `nevo-repo-product` uses esbuild to bundle
-  `@nevo/specdev` + its internal workspace capability packages into a single installable
+  `@nevo/specflow` + its internal workspace capability packages into a single installable
   artifact — a distribution concern, not a tooling one
   ([ADR 0006](../../architecture/decisions/0006-product-ships-as-a-single-bundled-artifact.md)).
 - **One executable, subcommands** (`nevo-release version`, `nevo-release create`, …) —
@@ -91,12 +91,12 @@ on a build-graph edge — the version string is a documented contract, not inter
 For the `nevo-spec` product CLI (multiple capability packages, more coming), split
 ownership:
 
-- **`@nevo/specdev` owns the shell** — the root program, `--version`, global options,
+- **`@nevo/specflow` owns the shell** — the root program, `--version`, global options,
   and the output / error / exit conventions — and **composes** top-level commands
   (`program.addCommand(createDashboardCommand(ctx))`). It does **not** define a
   command's name, options, help, or subcommands.
 - **Each capability vertical owns its command**, as a Commander adapter in its own
-  package, exported from a dedicated subpath (`@nevo/specdev-dashboard/cli` →
+  package, exported from a dedicated subpath (`@nevo/specflow-dashboard/cli` →
   `createDashboardCommand`). Commander is a dependency of that adapter subpath, **not**
   of the capability/runtime it wraps — exactly like a web framework belongs in a
   feature's `http/routes`, never in its application/domain. `runDashboard()` stays

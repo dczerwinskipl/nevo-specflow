@@ -12,6 +12,6 @@ describe('runDashboard — bootstrap capability', () => {
   });
 
   it('the marker is a stable, human-readable sentence', () => {
-    expect(DASHBOARD_BOOTSTRAP_MARKER).toBe('Nevo SpecDev dashboard command is available.');
+    expect(DASHBOARD_BOOTSTRAP_MARKER).toBe('Nevo SpecFlow dashboard command is available.');
   });
 });

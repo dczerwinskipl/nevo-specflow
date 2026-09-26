@@ -1,5 +1,5 @@
 // Version model for the release tooling. Pure — SemVer parsing/compare is the
-// `semver` package; only Nevo SpecDev's channel/branch rules live here.
+// `semver` package; only Nevo SpecFlow's channel/branch rules live here.
 //
 // `version.json` on every branch is `{ channel, version }` (version is a plain
 // X.Y.Z):

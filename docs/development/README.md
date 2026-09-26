@@ -10,7 +10,7 @@ summary: >
 
 # Development documentation
 
-Engineering rules for contributors and coding agents working **on** Nevo SpecDev.
+Engineering rules for contributors and coding agents working **on** Nevo SpecFlow.
 Product behavior, personas and UX contracts live under [`../product/`](../product/), not
 here.
 
@@ -24,7 +24,7 @@ here.
 | [Pull requests](pull-requests.md)                         | PR template, review expectations, merge gate.                      |
 | [Continuous integration](ci.md)                           | What CI runs, affected-package scoping, required checks.           |
 | [Releasing and version lines](releasing.md)               | version.json, derived builds, cutting a line, tagging, hotfixes.   |
-| [Product packaging](product-packaging.md)                 | Bundling `@nevo/specdev` into one installable tarball.             |
+| [Product packaging](product-packaging.md)                 | Bundling `@nevo/specflow` into one installable tarball.            |
 | [Dogfooding the product build](dogfooding.md)             | `pnpm dogfood:install` — install the real tarball locally.         |
 | [Dependencies and security](dependencies-and-security.md) | Dependabot, action pinning, vuln reports, enabled features.        |
 

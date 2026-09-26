@@ -4,10 +4,10 @@ type: product
 title: Product overview
 status: draft
 read_when:
-  - orienting to what Nevo SpecDev is
+  - orienting to what Nevo SpecFlow is
   - deciding whether a concern belongs to the CLI or the Dashboard
 summary: >
-  Nevo SpecDev is a human-led, spec-anchored workflow for AI-assisted software
+  Nevo SpecFlow is a human-led, spec-anchored workflow for AI-assisted software
   engineering, delivered as a CLI (nevo-spec), a dashboard, and a shared library.
 related:
   - product.shared.terminology
@@ -22,7 +22,7 @@ repository.
 
 ## What it is
 
-**Nevo SpecDev** is a framework and toolset for **spec-driven, AI-assisted
+**Nevo SpecFlow** is a framework and toolset for **spec-driven, AI-assisted
 development**:
 
 - The work is **human-led**. The repository owner makes architectural and scope
@@ -46,15 +46,15 @@ development**:
 | **Dashboard** | web UI          | View of active/archived specifications, tasks, changes/PRs, and AI sessions.                                    |
 | **Library**   | `import`        | Shared spec model and workflow logic the surfaces build on.                                                     |
 
-Published product packages use the `@nevo/*` scope (e.g. `@nevo/specdev`).
+Published product packages use the `@nevo/*` scope (e.g. `@nevo/specflow`).
 
 The end-user command is deliberately short — `nevo-spec init`, `nevo-spec status`,
-`nevo-spec dashboard`. `nevo-specdev` is the repository/product name, not the binary.
+`nevo-spec dashboard`. `nevo-specflow` is the repository/product name, not the binary.
 
 ## Names
 
-| Name           | Meaning                                           |
-| -------------- | ------------------------------------------------- |
-| Nevo SpecDev   | the product.                                      |
-| `nevo-specdev` | the repository, and the `@nevo/*` package family. |
-| `nevo-spec`    | the end-user CLI command.                         |
+| Name            | Meaning                                           |
+| --------------- | ------------------------------------------------- |
+| Nevo SpecFlow   | the product.                                      |
+| `nevo-specflow` | the repository, and the `@nevo/*` package family. |
+| `nevo-spec`     | the end-user CLI command.                         |

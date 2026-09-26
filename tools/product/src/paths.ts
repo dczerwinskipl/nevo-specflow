@@ -30,7 +30,7 @@ export interface RepoPaths {
 export function repoPaths(root: string): RepoPaths {
   return {
     root,
-    productPackage: join(root, 'packages', 'specdev'),
+    productPackage: join(root, 'packages', 'specflow'),
     artifactsDir: join(root, '.artifacts'),
     releaseBin: join(root, 'tools', 'release', 'dist', 'bin.js'),
   };

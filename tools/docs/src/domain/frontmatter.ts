@@ -1,4 +1,4 @@
-// Frontmatter contract for Nevo SpecDev documentation. Pure — parsing helpers +
+// Frontmatter contract for Nevo SpecFlow documentation. Pure — parsing helpers +
 // per-document and cross-document validation.
 
 import { parse } from 'yaml';

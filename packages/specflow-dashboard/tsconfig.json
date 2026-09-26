@@ -7,7 +7,7 @@
     "declarationMap": false,
     "sourceMap": false,
     "incremental": true,
-    "tsBuildInfoFile": "./.tsbuild/specdev-dashboard.tsbuildinfo",
+    "tsBuildInfoFile": "./.tsbuild/specflow-dashboard.tsbuildinfo",
     "types": ["node"]
   },
   "include": ["src/**/*.ts", "test/**/*.ts"]

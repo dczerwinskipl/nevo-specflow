@@ -1,0 +1,30 @@
+{
+  "name": "@nevo/specflow-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Nevo SpecFlow Runtime vertical: framework-independent runtime capability plus its Commander CLI adapter. Bootstrap only; bundled into @nevo/specflow at pack time.",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli/command.d.ts",
+      "default": "./dist/cli/command.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "commander": "15.0.0"
+  },
+  "devDependencies": {
+    "vitest": "5.0.0"
+  }
+}

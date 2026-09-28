@@ -2,7 +2,7 @@
 id: product.shared.vocabulary
 type: product
 title: Product vocabulary
-status: draft
+status: current
 read_when:
   - naming a product, surface, package, command, or domain concept
   - writing user-facing copy or documentation

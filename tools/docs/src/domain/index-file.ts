@@ -4,7 +4,7 @@
 import { asString, type DocRecord } from './frontmatter.js';
 
 const GENERATED_NOTICE = '<!-- GENERATED FILE — do not edit. Run: pnpm docs:check --write -->\n\n';
-const TYPE_ORDER = ['hub', 'architecture', 'adr', 'development', 'product'];
+const TYPE_ORDER = ['hub', 'architecture', 'adr', 'engineering', 'product', 'reference', 'instruction'];
 
 function typeRank(type: string): number {
   const i = TYPE_ORDER.indexOf(type);

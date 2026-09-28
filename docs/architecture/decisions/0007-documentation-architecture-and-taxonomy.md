@@ -28,7 +28,7 @@ different reasons to be read:
 
 - product behavior and UX contracts;
 - system architecture, boundaries, lifecycle rules, and invariants;
-- implementation guidance for shared code, CLI, server, web, AI, and workflow;
+- implementation guidance for shared code, CLI, server, ui, AI, and workflow;
 - reusable design-system knowledge that should remain independent of SpecFlow and may move with
   Nevo UI;
 - exact contracts such as APIs, events, configuration, and protocol shapes;
@@ -64,7 +64,7 @@ docs/
 │   ├── repository/
 │   ├── server/
 │   ├── cli/
-│   ├── web/
+│   ├── ui/
 │   ├── ai/
 │   └── workflow/
 ├── design-system/
@@ -75,7 +75,7 @@ docs/
 │   ├── shared/
 │   └── specflow/
 │       ├── cli/
-│       ├── web/
+│       ├── ui/
 │       └── workflow/
 ├── reference/
 │   ├── api/
@@ -224,7 +224,7 @@ workflow
 runtime
 server
 cli
-web
+ui
 figma
 testing
 docs
@@ -276,7 +276,7 @@ active copies are not maintained for convenience.
 This ADR does not define:
 
 - specification, implementation, or review process;
-- the contents of AI, workflow, server, CLI, web, or design-system architecture;
+- the contents of AI, workflow, server, CLI, ui, or design-system architecture;
 - concrete API, protocol, or configuration contracts;
 - product naming;
 - package boundaries;

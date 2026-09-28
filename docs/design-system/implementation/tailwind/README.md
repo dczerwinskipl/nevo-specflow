@@ -1,5 +1,5 @@
 ---
-id: docs.development-ui-tailwind-readme
+id: docs.design-system-tailwind-readme
 type: hub
 title: Tailwind documentation
 status: current

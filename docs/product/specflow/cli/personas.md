@@ -4,10 +4,10 @@ type: product
 title: CLI personas
 status: draft
 read_when:
-  - designing a nevo-spec command or its output
-  - deciding whether a feature belongs in the CLI or the Dashboard
+  - designing a nevo-specflow command or its output
+  - deciding whether a feature belongs in the CLI or the UI
 summary: >
-  The three consumers of nevo-spec — the repository owner/maintainer, the AI coding
+  The three consumers of nevo-specflow — the repository owner/maintainer, the AI coding
   agent, and CI — and what each needs from the command surface.
 related:
   - product.specflow.cli.interaction-model
@@ -26,7 +26,7 @@ next-action guidance; and no irreversible action without an explicit confirmatio
 
 ## 2. AI coding agent (non-interactive)
 
-Runs `nevo-spec` to discover the next task, load the declared context, start/verify a
+Runs `nevo-specflow` to discover the next task, load the declared context, start/verify a
 task, and find documentation. Depends on a **stable output contract**: clean
 machine-readable stdout (`--json`), diagnostics on stderr, meaningful exit codes, and
 deterministic ordering. Never prompts; a command that would need input fails with a
@@ -34,7 +34,7 @@ clear message instead.
 
 ## 3. CI (non-interactive, automated)
 
-Runs a narrow set of validation/verification commands (`nevo-spec ... --check`, docs
+Runs a narrow set of validation/verification commands (`nevo-specflow ... --check`, docs
 validation). Needs a fast, deterministic pass/fail and a non-zero exit on any problem.
 Must never mutate protected state.
 

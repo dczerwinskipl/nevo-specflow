@@ -1,8 +1,13 @@
-# Nevo SpecFlow
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./assets/brand/nevo-specflow-lockup-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="./assets/brand/nevo-specflow-lockup-light.svg">
+    <img alt="Nevo SpecFlow" src="./assets/brand/nevo-specflow-lockup-light.svg" width="520">
+  </picture>
+</p>
 
 **Nevo SpecFlow** is a spec-driven development framework for AI-assisted software
-engineering: a human-led, spec-anchored workflow delivered as a CLI (`nevo-spec`) and a
-dashboard.
+engineering: a human-led, spec-anchored workflow delivered as a CLI (`nevo-specflow`), a local Runtime, and an interactive UI.
 
 - **Human-led.** The repository owner makes the architectural and scope calls; AI agents
   propose options and implement approved work inside an explicitly declared context.
@@ -13,7 +18,7 @@ dashboard.
 - **Vendor-neutral.** The workflow is exposed to AI coding agents through thin adapters
   over a single source of truth.
 
-See [`docs/product/specflow/overview.md`](docs/product/product-overview.md) for the
+See [`docs/product/specflow/overview.md`](docs/product/specflow/overview.md) for the
 product overview and [`docs/`](docs/README.md) for everything else.
 
 ## Getting started
@@ -35,7 +40,7 @@ and every package's typecheck / test / build. Full setup and the command referen
 | `apps/`     | Deployable applications. Workspace glob; populated when an app lands.                                                                                                                  |
 | `packages/` | Shared / publishable libraries under the `@nevo/*` scope. Workspace glob; populated when a package lands.                                                                              |
 | `tools/`    | Repository-internal tooling, all TypeScript — [`docs`](tools/docs/README.md) (`nevo-docs`), [`release`](tools/release/README.md), [`github`](tools/github/README.md). Never published. |
-| `docs/`     | [Documentation](docs/README.md): development, product, architecture.                                                                                                                   |
+| `docs/`     | [Documentation](docs/README.md): architecture, engineering, design system, product, reference, and instructions.                                                                                                                   |
 
 ## Contributing
 

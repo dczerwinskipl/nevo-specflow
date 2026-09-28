@@ -64,8 +64,8 @@ A Turn owns:
 - optional final answer;
 - optional terminal outcome.
 
-A terminal Turn is immutable. Late provider events may be retained as diagnostics but must not
-resurrect the Turn or append new canonical work after terminalization.
+A terminal Turn is immutable. Late provider events MAY be retained as diagnostics but MUST NOT
+resurrect the Turn or append new canonical Work after terminalization.
 
 ### Work
 
@@ -78,7 +78,7 @@ Typical kinds are:
 - tool invocation;
 - user interaction/question/permission.
 
-Work items have stable ordering and do not change kind after creation.
+Work items MUST have stable ordering and MUST NOT change kind after creation.
 
 ### ToolAction
 
@@ -112,7 +112,7 @@ explicitly rather than race another Turn.
 
 ## Semantic projections are Runtime-owned
 
-The UI must not infer canonical semantics by inspecting raw Work arrays or provider events.
+The UI MUST NOT infer canonical semantics by inspecting raw Work arrays or provider events.
 
 Runtime/application code MUST compute canonical projections such as:
 
@@ -128,11 +128,12 @@ attention, or current-activity heuristics.
 
 User questions/permissions are first-class Work, with canonical interaction identity.
 
-Provider-private request IDs must not leak into UI contracts. The adapter/runtime maps provider
+Provider-private request IDs MUST NOT leak into UI contracts. The adapter/runtime maps provider
 correlation into stable canonical interaction IDs and validates responses against the active Turn.
 
-An interaction that depended on a live provider operation must not remain falsely answerable after
-that operation disappears. Restart recovery either reconstructs it honestly or interrupts it.
+An interaction that depended on a live provider operation MUST NOT remain falsely answerable after
+that operation disappears. Restart recovery MUST either reconstruct it from authoritative state or
+interrupt it.
 
 ## Persistence and replay
 
@@ -142,5 +143,5 @@ and to reconcile interrupted active work.
 Persistence is not required to clone the provider's entire authoritative conversation history.
 Provider history and SpecFlow execution state have different ownership.
 
-Replay/live transport choices are adapters. The canonical model must not depend on SSE, WebSocket,
+Replay/live transport choices are adapters. The canonical model MUST NOT depend on SSE, WebSocket,
 or a particular UI library.

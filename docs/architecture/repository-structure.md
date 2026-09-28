@@ -54,7 +54,7 @@ top-level commands. Each capability vertical owns its own command: `@nevo/specfl
 adapter at `./cli` (`createDashboardCommand`), and is bundled into `@nevo/specflow` at
 pack time, so a user installs one artifact with no registry
 ([ADR 0006](decisions/0006-product-ships-as-a-single-bundled-artifact.md),
-[product packaging](../development/product-packaging.md)). `dashboard` is a bootstrap
+[product packaging](../engineering/repository/product-packaging.md)). `dashboard` is a bootstrap
 proof only — it does not start the migrated dashboard yet.
 
 ## Task graph (Turborepo)
@@ -106,7 +106,7 @@ never left permanently pending. Inspect what a change would run with
 SemVer, with `semver` doing the parsing/compare. One product version concept (Nevo
 SpecFlow). Each branch carries `version.json` = `{ channel, version }`, and CI enforces
 that any change to it is a legal transition (see
-[releasing](../development/releasing.md)).
+[releasing](../engineering/repository/releasing.md)).
 
 - **`main`** is the _next development version_: `channel: alpha`, `version` = the next
   `X.Y.0`. CI publishes `<version>-alpha.<run-number>`; the run number is a build
@@ -126,9 +126,9 @@ that any change to it is a legal transition (see
   from the current `origin/main` with the branch's `version.json` committed, and moves
   `main` forward through a PR, never a direct write.
 
-See [releasing](../development/releasing.md), ADR
+See [releasing](../engineering/repository/releasing.md), ADR
 [`0003-branch-and-release-model`](decisions/0003-branch-and-release-model.md), and
-[git-workflow](../development/git-workflow.md).
+[git-workflow](../engineering/repository/git-workflow.md).
 
 ## 0.x policy
 

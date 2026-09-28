@@ -40,6 +40,30 @@ A task/runtime record stores the minimal canonical position needed to resume pro
 User-facing statuses and readiness are derived from canonical workflow position and the definition
 where possible rather than persisted as competing mutable truths.
 
+## Execution identity and admission
+
+Workflow mutation always has one authoritative execution identity:
+
+```text
+(change, task, step, attempt)
+```
+
+An AI session may carry wider context and a batch may coordinate multiple tasks, but that context
+does not replace the per-task identity whose state, gates, evidence, and transition are being
+mutated.
+
+Executor/session identity used for admission comes from trusted Runtime/application context. It is
+not an agent-authored command parameter and an agent cannot claim a different session identity by
+putting one in a prompt.
+
+Before mutating work begins, the application admits the execution against the current workspace and
+workflow state. Conflicting active ownership, an unsafe dirty baseline, an unsettled prior
+operation, or a stale claim that cannot be reconciled causes an explicit stop rather than concurrent
+best-effort execution.
+
+Workspace claims/locks are implementation mechanisms for this invariant, not the invariant itself.
+Recovery reconciles stale/dead ownership before admitting conflicting work.
+
 ## Start and finish have different meanings
 
 **Start** activates work.

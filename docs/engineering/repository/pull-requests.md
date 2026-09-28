@@ -1,6 +1,6 @@
 ---
-id: development.pull-requests
-type: development
+id: engineering.repository.pull-requests
+type: engineering
 title: Pull requests
 status: current
 read_when:
@@ -11,14 +11,14 @@ summary: >
   PR template, the merge gate on protected branches, and review expectations for a
   currently single-maintainer repository.
 related:
-  - development.git-workflow
-  - development.commit-conventions
+  - engineering.repository.git-workflow
+  - engineering.repository.commit-conventions
 ---
 
 # Pull requests
 
 Every change to `main` and `release/v*` is a pull request. Use
-[`.github/pull_request_template.md`](../../.github/pull_request_template.md).
+[`.github/pull_request_template.md`](../../../.github/pull_request_template.md).
 
 ## What the template asks for
 
@@ -53,7 +53,7 @@ developers is an admin operation on collaborators/teams. There is no
 `.github/CODEOWNERS`.
 
 The **durable target** (in
-[`tools/github/repository-policy.json`](../../tools/github/repository-policy.json))
+[`tools/github/repository-policy.json`](../../../tools/github/repository-policy.json))
 is **1 approving review** from an eligible reviewer (write access), stale approvals
 dismissed on a new reviewable push, latest push approved, threads resolved.
 
@@ -62,11 +62,11 @@ eligible reviewers**. With only one, it applies a **bootstrap exception** (0 req
 approvals — an author cannot approve their own PR) and prints the reason on every run.
 Adding a second Write collaborator and re-running the script converges to the target
 automatically; the policy file is not edited. See
-[`tools/github/README.md`](../../tools/github/README.md#review-policy).
+[`tools/github/README.md`](../../../tools/github/README.md#review-policy).
 
 Regardless of the approval count, the author self-reviews the full diff before merge: no
 unrelated changes, tests and docs updated, `pnpm check` green locally.
 
 For a change that touches a recorded decision
-([`architecture/decisions/`](../architecture/decisions/)), update or supersede the ADR
+([`architecture/decisions/`](../../architecture/decisions/)), update or supersede the ADR
 in the same PR.

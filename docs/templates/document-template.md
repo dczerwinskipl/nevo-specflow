@@ -1,35 +1,29 @@
-# Development / product / architecture doc template
+# Document template
 
-Copy this file to the right place under `docs/`, delete this notice, and replace the
-example frontmatter with a real `---`-delimited block. This template deliberately has
-**no** frontmatter — `docs/templates/**` is exempt from the frontmatter
-requirement `nevo-docs` enforces everywhere else.
+Copy this file to the appropriate place under `docs/`, delete this notice, and add a real
+frontmatter block. This template has no frontmatter because `docs/templates/**` is exempt from
+corpus validation.
 
-## Frontmatter to add at the top of the real doc
+## Frontmatter
 
 ```yaml
 ---
-id: <area>.<slug> # e.g. development.git-workflow — unique across docs/
-type: development # development | product | architecture (adr uses the ADR template)
+id: <stable-concept-id>
+type: engineering # hub | architecture | adr | engineering | product | reference | instruction
 title: <Title>
 status: current # current | draft | deprecated | superseded
 read_when:
-  - <a concrete trigger, phrased as an activity>
-  - <another trigger>
+  - <a concrete activity that should load this doc>
 summary: >
-  One or two sentences: what this document governs and what the reader comes here to
-  learn.
-related: # optional; each id must resolve to another indexed doc
-  - <area>.<slug>
+  One or two sentences describing what this document governs.
+related:
+  - <another-document-id>
 ---
 ```
 
 ## Body guidance
 
-- Lead with the rule or the shape, not history.
-- Prefer tables and short sections over long prose.
-- State guarantees explicitly; mark anything provisional as `draft` in `status` and say
-  so in the text.
-- Link siblings with relative Markdown links; link concepts with `related` ids.
-- Do not put React/Tailwind implementation detail in a `product/` doc, and do not put
-  personas or UX behavior contracts in a `development/` doc.
+- Lead with the rule, contract, or system shape rather than migration history.
+- Keep one authoritative home for each durable rule.
+- Link to related sources of truth instead of copying normative requirements.
+- Prefer explicit guarantees and concise structure over long prose.

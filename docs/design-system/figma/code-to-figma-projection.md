@@ -54,7 +54,7 @@ Capture support is infrastructure.
 Technical capture attributes MAY exist in a controlled capture environment, but consumers MUST NOT
 need Figma-specific props or wrappers to use a normal component.
 
-Runtime product code must not import project-specific exporter/importer registries.
+Runtime product code MUST NOT import project-specific exporter/importer registries.
 
 ## Canonical IR separates capture from Figma mutation
 
@@ -81,7 +81,7 @@ asset kind, paint/effect model, responsive representation, or layout primitive.
 Project declarations may identify the project's components, resources, slots, variants, and
 intentional projection overrides.
 
-Generic importer/exporter code must not know that a specific component is Button, AppShell,
+Generic importer/exporter code MUST NOT know that a specific component is Button, AppShell,
 SpecFlow, or another named product component.
 
 ## Stable identity is durable
@@ -89,8 +89,8 @@ SpecFlow, or another named product component.
 Stable IDs for components, variants, resources, slots, and managed nested layers are migration
 identities.
 
-Do not derive durable identity from display text, story order, or incidental child indexes when a
-semantic key exists.
+Durable identity MUST NOT be derived from display text, story order, or incidental child indexes
+when a semantic key exists.
 
 Changing an ID scheme MUST be treated as a migration decision because existing Figma
 instances/overrides MAY depend on it.
@@ -106,15 +106,16 @@ Repeated synchronization reconciles managed content by stable ID:
 - remove stale managed items when the contract says full reconciliation;
 - preserve unmanaged/manual Figma content.
 
-Never adopt or delete arbitrary manual content merely because its display name matches.
+The importer MUST NOT adopt or delete arbitrary manual content merely because its display name
+matches.
 
 ## Preserve instance intent
 
 A repeated import MUST preserve consumer instance overrides where the canonical component identity
 and property identity remain valid.
 
-Changing component definitions must not casually recreate instances and erase label/icon/property
-overrides.
+Changing component definitions MUST NOT recreate instances in a way that erases valid
+label/icon/property overrides.
 
 ## Diagnose unsupported projection
 

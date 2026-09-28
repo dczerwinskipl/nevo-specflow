@@ -63,7 +63,7 @@ export function planRelease({
     errors.push(
       `Branch is in channel '${versionFile.channel}', not '${releaseChannel}'. Promote the ` +
         `branch first — merge a PR that sets version.json to this channel ` +
-        `(see docs/development/releasing.md).`,
+        `(see docs/engineering/repository/releasing.md).`,
     );
   }
   if (errors.length) return { ok: false, errors };

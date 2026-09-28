@@ -14,7 +14,8 @@ summary: >
 related:
   - design-system.principles.ui-ux-guidelines
   - design-system.implementation.tailwind.styling-guidelines
-  - engineering.cli.architecture
+  - design-system.principles.system-boundary
+  - engineering.shared.testing
 ---
 
 # React component guidelines
@@ -79,7 +80,7 @@ at mobile and desktop widths.
 
 ## Testing
 
-Follow the [shared testing guidance](../../../engineering/cli/testing.md): pure view-model and
+Follow the [shared testing guidance](../../../engineering/shared/testing.md): pure view-model and
 hook logic in fast unit tests; component behavior and accessibility via Storybook
 interaction tests; inspect computed styles when exact visuals matter.
 

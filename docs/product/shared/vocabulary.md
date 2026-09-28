@@ -48,12 +48,12 @@ introduce a competing synonym.
   competing name for the whole backend.
 - The executable MUST be `nevo-specflow`. `nevo-spec` MUST NOT be introduced in new commands,
   examples, scripts, or documentation.
-- Product lifecycle commands operate on SpecFlow itself:
-  `nevo-specflow start`, and eventually `stop` / `status`.
+- Product lifecycle commands MUST operate on SpecFlow itself at the executable root:
+  `nevo-specflow start`, and eventually `stop` / `status` when implemented.
 - Resource-oriented commands SHOULD use `<noun> <verb>` where a resource has multiple operations,
   for example `nevo-specflow task start` or `nevo-specflow workflow status`. A deviation requires a
   clearer product-level command model.
-- The repository is `nevo-specflow`; published product packages use the
+- The repository MUST be named `nevo-specflow`; published product packages MUST use the
   `@nevo/specflow*` family.
 
 ## Workflow vocabulary

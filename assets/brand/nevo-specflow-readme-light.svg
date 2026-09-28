@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="900" height="224" viewBox="0 0 900 224" role="img" aria-labelledby="title"><title id="title">Nevo SpecFlow</title><defs>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="224" viewBox="0 0 720 224" role="img" aria-labelledby="title"><title id="title">Nevo SpecFlow</title><defs>
 <linearGradient id="light-back-left" x1="28" x2="28" y1="12" y2="176" gradientUnits="userSpaceOnUse"><stop stop-color="#2548ac"/><stop offset=".5" stop-color="#277aa5"/><stop offset="1" stop-color="#39a8b3"/></linearGradient>
 <linearGradient id="light-back-right" x1="160" x2="160" y1="0" y2="164" gradientUnits="userSpaceOnUse"><stop stop-color="#2548ac"/><stop offset=".503118" stop-color="#277aa5"/><stop offset="1" stop-color="#39a8b3"/></linearGradient>
 <linearGradient id="light-shadow-left" x1="28" x2="28" y1="12" y2="176" gradientUnits="userSpaceOnUse"><stop stop-color="#011322"/><stop offset=".5" stop-color="#011322" stop-opacity="0"/><stop offset="1" stop-color="#011322" stop-opacity="0"/></linearGradient>

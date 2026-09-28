@@ -1,50 +1,37 @@
 # `@nevo/specflow`
 
-The public **Nevo SpecFlow** product package — it ships the `nevo-spec` command-line
-interface. This package is the CLI **shell**: the root program, `--version`, global
-flags, the output / error / exit conventions, and command **composition**. It does not
-define the individual commands — each capability vertical does (e.g.
-[`@nevo/specflow-dashboard/cli`](../specflow-dashboard/README.md)).
+The public **Nevo SpecFlow** product package. It ships the `nevo-specflow`
+command-line interface and acts as the CLI composition root.
 
-|                |                  |
-| -------------- | ---------------- |
-| **Product**    | Nevo SpecFlow    |
-| **Package**    | `@nevo/specflow` |
-| **CLI**        | `nevo-spec`      |
-| **Repository** | `nevo-specflow`  |
+| | |
+| --- | --- |
+| **Product** | Nevo SpecFlow |
+| **Package** | `@nevo/specflow` |
+| **CLI** | `nevo-specflow` |
+| **Runtime** | `@nevo/specflow-runtime` |
+| **Repository** | `nevo-specflow` |
 
 ## Implemented CLI surface
 
 ```bash
-nevo-spec --help        # usage + the command list
-nevo-spec --version     # the installed product version (carried in the artifact)
-nevo-spec dashboard     # bootstrap proof — see below
+nevo-specflow --help
+nevo-specflow --version
+nevo-specflow start
 ```
 
-`nevo-spec dashboard` is defined in
-[`@nevo/specflow-dashboard/cli`](../specflow-dashboard/README.md) and composed here; it
-currently only routes into that vertical's capability and prints a deterministic marker.
-**It does not start the real dashboard yet** — the dashboard server / UI / runtime are
-not migrated. Everything else (`init`, `status`, `workflow`, `install`, `update`, …) is
-future direction and is intentionally **not** present in `--help`.
+`nevo-specflow start` is owned by
+[`@nevo/specflow-runtime/cli`](../specflow-runtime/README.md) and composed here.
+It currently proves the Runtime boundary and prints a deterministic bootstrap marker;
+the real long-lived Runtime is not migrated yet.
 
-## How it is built and shipped
+The shell owns the root program, version/global conventions, output/error/exit
+behavior, and command composition. Capability verticals own their command semantics.
 
-- `src/program.ts` is the shell / composition root; `src/bin.ts` is the executable
-  boundary (construct IO → `createProgram` → `parseAsync` → exit code). No product logic
-  lives in either, and no command is defined here — `program.addCommand(
-createDashboardCommand(ctx))`. A capability vertical's `./cli` adapter uses Commander;
-  its capability/runtime does not.
-- The distributable is a **single self-contained bundle**: `nevo-repo-product`
-  (esbuild) compiles the entry, `@nevo/specflow-dashboard` (`.` and `./cli`), and
-  `commander` into `dist/bin.js`, so the tarball installs with **no registry and no
-  workspace**. The source dependency on `@nevo/specflow-dashboard` stays a real
-  `workspace:*` edge — only the distribution is one artifact.
-- Third-party code embedded in the bundle (Commander) ships its license in
-  `THIRD_PARTY_NOTICES.txt`.
-- `nevo-spec --version` is injected at bundle time from `nevo-release version` (the
-  repository's canonical version model); the installed artifact never reads the
-  repo's `version.json`.
+## Distribution
 
-See [`docs/engineering/repository/product-packaging.md`](../../docs/engineering/repository/product-packaging.md)
-and [`docs/engineering/repository/dogfooding.md`](../../docs/engineering/repository/dogfooding.md).
+The distributable remains a **single self-contained bundle**. `nevo-repo-product`
+bundles `@nevo/specflow`, `@nevo/specflow-runtime`, and Commander into
+`dist/bin.js`; consumers install one artifact with no workspace dependency.
+
+See [product packaging](../../docs/engineering/repository/product-packaging.md) and
+[dogfooding](../../docs/engineering/repository/dogfooding.md).

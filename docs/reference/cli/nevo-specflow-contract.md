@@ -31,13 +31,13 @@ related:
 ```bash
 nevo-specflow --help        # usage and the command list; exit 0
 nevo-specflow --version     # the installed product version, carried in the artifact; exit 0
-nevo-specflow dashboard     # bootstrap proof (see below); exit 0
+nevo-specflow start         # Runtime bootstrap proof (see below); exit 0
 ```
 
 - `--version` prints the version baked into the installed build (from the repository's
   release model). It does not depend on any file outside the installed package.
 - An unknown command or bad usage exits non-zero with usage on stderr.
-- `dashboard` is defined by the Runtime vertical (`@nevo/specflow-runtime/cli`) and
+- `start` is defined by the Runtime vertical (`@nevo/specflow-runtime/cli`) and
   composed into the shell. It currently **only routes into that vertical's capability
   and prints a deterministic marker** (`Nevo SpecFlow runtime bootstrap is available.`).
   It does **not** start the real Runtime or UI — those are not migrated
@@ -54,4 +54,4 @@ Product copy and docs must not describe them as available.
 Pre-1.0: the surface above can still change, but changes are intentional, marked, and
 documented (see [pre-1.0 policy](../../architecture/repository-structure.md#0x-policy)).
 The output contract (clean stdout, diagnostics on stderr, `0` / non-zero exit) follows
-[CLI architecture §10](../../engineering/cli/architecture.md).
+[CLI architecture](../../engineering/cli/architecture.md).

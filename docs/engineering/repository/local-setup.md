@@ -12,7 +12,7 @@ summary: >
   owns the task graph.
 related:
   - engineering.repository.git-workflow
-  - engineering.cli.testing-guidelines
+  - engineering.cli.testing
   - architecture.repository-structure
 ---
 

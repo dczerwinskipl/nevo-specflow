@@ -1,6 +1,6 @@
 ---
-id: development.ui.tailwind.styling-guidelines
-type: development
+id: design-system.implementation.tailwind.styling-guidelines
+type: engineering
 title: Tailwind styling guidelines
 status: draft
 read_when:
@@ -13,8 +13,8 @@ summary: >
   domain state resolved to a semantic tone before classes, explicit conditional
   composition, and a narrow @apply policy.
 related:
-  - development.ui.react.component-guidelines
-  - development.ui.ui-ux-guidelines
+  - design-system.implementation.react.component-guidelines
+  - design-system.principles.ui-ux-guidelines
 ---
 
 # Tailwind styling guidelines

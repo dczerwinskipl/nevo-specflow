@@ -4,17 +4,17 @@ type: hub
 title: CLI product documentation
 status: current
 summary: >
-  The nevo-spec command-line product — who uses it and how it should behave. Node CLI
+  The nevo-specflow command-line product — who uses it and how it should behave. Node CLI
   implementation guidance is under engineering/cli/.
 ---
 
-# CLI product (`nevo-spec`)
+# CLI product (`nevo-specflow`)
 
-Product behavior of the `nevo-spec` command-line tool. How Node CLIs are built is in
+Product behavior of the `nevo-specflow` command-line tool. How Node CLIs are built is in
 [`../../../engineering/cli/`](../../../engineering/cli/).
 
-- [Public CLI contract](../../../reference/cli/nevo-spec-contract.md) — commands that exist today.
-- [Personas](personas.md) — who runs `nevo-spec` and what they need.
+- [Public CLI contract](../../../reference/cli/nevo-specflow-contract.md) — commands that exist today.
+- [Personas](personas.md) — who runs `nevo-specflow` and what they need.
 - [Interaction model](interaction-model.md) — command shape, output contract, and human/agent/CI use.
 
 `@nevo/specflow` is packaged and installed as a single artifact. See

@@ -38,9 +38,9 @@ describe('createFileSystemDocRepository.scan', () => {
     const repo = createFileSystemDocRepository({ repoRoot: root, docsDir });
     const { docs, missingFrontmatter } = repo.scan();
 
-    expect(docs.map((d) => d.id)).toEqual(['engineering.repository.git-workflow', 'docs.readme']);
-    expect(docs[0]?.file).toBe('docs/engineering/repository/git-workflow.md');
-    expect(docs[0]?.body).toContain('# body');
+    expect(docs.map((d) => d.id)).toEqual(['docs.readme', 'engineering.repository.git-workflow']);
+    expect(docs[1]?.file).toBe('docs/engineering/repository/git-workflow.md');
+    expect(docs[1]?.body).toContain('# body');
     expect(missingFrontmatter).toEqual(['docs/random-notes.md']);
   });
 });

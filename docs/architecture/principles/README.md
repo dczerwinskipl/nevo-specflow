@@ -10,4 +10,5 @@ summary: >
 
 # Architecture principles
 
+- [Normative language and document authority](normative-language.md)
 - [Enforceable invariants](enforceable-invariants.md)

@@ -1,7 +1,7 @@
 <!--
 PR title must follow Conventional Commits — it becomes the squash commit message.
   <type>(<scope>): <description>
-See docs/development/commit-conventions.md.
+See docs/engineering/repository/commit-conventions.md.
 -->
 
 ## Summary

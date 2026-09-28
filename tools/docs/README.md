@@ -1,7 +1,7 @@
 # `nevo-repo-docs` (`nevo-docs`)
 
 Repository-internal documentation discovery. Private, never published, not the
-`nevo-spec` product CLI (ADR 0005).
+`nevo-specflow` product CLI (ADR 0005).
 
 It reads the structured frontmatter on every `docs/**/*.md` file and answers
 "which document should I read for this task?" deterministically — no product

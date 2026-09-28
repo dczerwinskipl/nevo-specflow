@@ -29,7 +29,7 @@ const fm = (id: string, type = 'development'): string =>
 
 describe('createFileSystemDocRepository.scan', () => {
   it('parses docs, sorts by id, forward-slashes paths, reports missing frontmatter', () => {
-    writeFileSync(join(docsDir, 'development', 'git-workflow.md'), fm('development.git-workflow'));
+    writeFileSync(join(docsDir, 'development', 'git-workflow.md'), fm('engineering.repository.git-workflow'));
     writeFileSync(join(docsDir, 'README.md'), fm('docs.readme', 'hub'));
     writeFileSync(join(docsDir, 'random-notes.md'), '# prose only\n');
     writeFileSync(join(docsDir, 'templates', 'adr-template.md'), '# copy me\n');
@@ -38,8 +38,8 @@ describe('createFileSystemDocRepository.scan', () => {
     const repo = createFileSystemDocRepository({ repoRoot: root, docsDir });
     const { docs, missingFrontmatter } = repo.scan();
 
-    expect(docs.map((d) => d.id)).toEqual(['development.git-workflow', 'docs.readme']);
-    expect(docs[0]?.file).toBe('docs/development/git-workflow.md');
+    expect(docs.map((d) => d.id)).toEqual(['engineering.repository.git-workflow', 'docs.readme']);
+    expect(docs[0]?.file).toBe('docs/engineering/repository/git-workflow.md');
     expect(docs[0]?.body).toContain('# body');
     expect(missingFrontmatter).toEqual(['docs/random-notes.md']);
   });

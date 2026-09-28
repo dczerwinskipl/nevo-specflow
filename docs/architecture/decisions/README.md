@@ -25,4 +25,4 @@ to its replacement.
 | [0004](0004-mit-license.md)                                         | current | License the repository MIT.                                                                |
 | [0005](0005-repository-tooling-is-separate-from-the-product-api.md) | current | Repo tooling under `tools/*` (private, unscoped) never implicitly becomes a product API.   |
 | [0006](0006-product-ships-as-a-single-bundled-artifact.md)          | current | `@nevo/specdev` ships as one esbuild-bundled tarball; source package boundaries stay real. |
-| [0007](0007-documentation-architecture-and-taxonomy.md)              | draft   | Structure docs by knowledge kind, ownership scope, and searchable taxonomy.                 |
+| [0007](0007-documentation-architecture-and-taxonomy.md)              | draft   | Structure docs by knowledge responsibility, ownership scope, and searchable taxonomy.                 |

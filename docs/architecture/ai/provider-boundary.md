@@ -74,13 +74,14 @@ UI/workflow code MUST NOT parse human error strings to decide lifecycle semantic
 
 ## Session identity
 
-Provider session identity is opaque. Never derive semantics from its string format.
+Provider session identity is opaque. Application code MUST NOT derive semantics from its string
+format.
 
 A provider-backed session MUST be addressed by the composite
 `ProviderSessionRef = (provider, providerSessionId)`. `providerSessionId` alone MUST NOT be treated
 as globally unique.
 
-Local product correlation to specs, tasks, or worktrees is separate metadata and must survive
+Local product correlation to specs, tasks, or worktrees is separate metadata and MUST survive
 display/path changes.
 
 ## Events and ordering
@@ -104,7 +105,7 @@ When retained:
 - keep them out of ordinary UI/product contracts;
 - treat them as potentially sensitive;
 - associate them with canonical session/turn/work identity;
-- never require them to reconstruct normal application semantics.
+- MUST NOT be required to reconstruct normal application semantics.
 
 ## Interaction transports
 

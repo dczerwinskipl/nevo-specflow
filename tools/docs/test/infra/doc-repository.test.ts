@@ -17,19 +17,19 @@ let docsDir: string;
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'nevo-docs-repo-'));
   docsDir = join(root, 'docs');
-  mkdirSync(join(docsDir, 'development'), { recursive: true });
+  mkdirSync(join(docsDir, 'engineering'), { recursive: true });
   mkdirSync(join(docsDir, 'templates'), { recursive: true });
   mkdirSync(join(docsDir, 'architecture', 'decisions'), { recursive: true });
   writeFileSync(join(root, 'pnpm-workspace.yaml'), 'packages: []\n');
 });
 afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-const fm = (id: string, type = 'development'): string =>
+const fm = (id: string, type = 'engineering'): string =>
   `---\nid: ${id}\ntype: ${type}\ntitle: T\nstatus: current\nread_when:\n  - x\nsummary: s\n---\n# body\n`;
 
 describe('createFileSystemDocRepository.scan', () => {
   it('parses docs, sorts by id, forward-slashes paths, reports missing frontmatter', () => {
-    writeFileSync(join(docsDir, 'development', 'git-workflow.md'), fm('engineering.repository.git-workflow'));
+    writeFileSync(join(docsDir, 'engineering', 'git-workflow.md'), fm('engineering.repository.git-workflow'));
     writeFileSync(join(docsDir, 'README.md'), fm('docs.readme', 'hub'));
     writeFileSync(join(docsDir, 'random-notes.md'), '# prose only\n');
     writeFileSync(join(docsDir, 'templates', 'adr-template.md'), '# copy me\n');
@@ -60,7 +60,7 @@ describe('isFrontmatterExempt / findRepoRoot', () => {
   it('exempts templates + generated only, and finds the workspace root', () => {
     expect(isFrontmatterExempt('templates/adr-template.md')).toBe(true);
     expect(isFrontmatterExempt('index.generated.md')).toBe(true);
-    expect(isFrontmatterExempt('development/git-workflow.md')).toBe(false);
-    expect(findRepoRoot(join(docsDir, 'development'))).toBe(root);
+    expect(isFrontmatterExempt('engineering/repository/git-workflow.md')).toBe(false);
+    expect(findRepoRoot(join(docsDir, 'engineering'))).toBe(root);
   });
 });

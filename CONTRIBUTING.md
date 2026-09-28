@@ -5,7 +5,7 @@
 - **No direct commits to `main` or `release/v*`.** All changes go through a pull
   request. See [`docs/engineering/repository/git-workflow.md`](docs/engineering/repository/git-workflow.md).
 - **Squash merge only.** The **PR title** becomes the commit message and must follow
-  [Conventional Commits](docs/development/commit-conventions.md). Checkpoint commits on
+  [Conventional Commits](docs/engineering/repository/commit-conventions.md). Checkpoint commits on
   your branch can be informal.
 - **Keep changes reviewable.** One coherent change per PR; no unrelated diffs.
 - Review conversations must be resolved and required CI checks green before merge.
@@ -47,7 +47,7 @@ templates in [`docs/templates/`](docs/templates/), or `pnpm docs:adr new "Title"
 new ADR. Run `pnpm docs:check --write` to refresh the generated index (it carries no
 timestamp, so a no-op run produces no diff) and commit it with your change.
 
-Keep the separation: engineering how-to in `docs/development/**`, product behaviour and
+Keep the separation: engineering how-to in `docs/engineering/**`, product behaviour and
 personas in `docs/product/**`, durable decisions in `docs/architecture/**`.
 
 ## Decisions

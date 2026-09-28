@@ -47,8 +47,8 @@ Examples include:
 - a workflow step cannot finish while a required gate is blocked;
 - terminal state cannot transition back to active;
 - work cannot silently escape an allowed scope;
-- a transition result must match one declared branch;
-- a durable operation must resume rather than duplicate already-completed effects.
+- a transition result MUST match one declared branch;
+- a durable operation MUST resume rather than duplicate already-completed effects.
 
 ## Prose still matters
 

@@ -33,12 +33,12 @@ describe('parseFrontmatter', () => {
 });
 
 describe('validateDoc', () => {
-  it('accepts a well-formed development doc', () => {
+  it('accepts a well-formed engineering doc', () => {
     expect(
       validateDoc(
         doc({
-          id: 'development.x',
-          type: 'development',
+          id: 'engineering.x',
+          type: 'engineering',
           title: 'X',
           status: 'current',
           read_when: ['doing x'],

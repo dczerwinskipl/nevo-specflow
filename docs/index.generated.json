@@ -230,11 +230,11 @@
     {
       "id": "adr.0007-documentation-architecture-and-taxonomy",
       "type": "adr",
-      "title": "Structure documentation by knowledge kind, ownership scope, and searchable taxonomy",
+      "title": "Structure documentation by knowledge responsibility, ownership scope, and searchable taxonomy",
       "status": "draft",
       "file": "docs/architecture/decisions/0007-documentation-architecture-and-taxonomy.md",
       "read_when": [],
-      "summary": "Proposes a documentation architecture that separates product behavior, durable system architecture, engineering guidance, reusable design-system knowledge, exact reference contracts, and operational instructions, while adding searchable scope/area/tag metadata so discovery does not depend on folder paths alone.",
+      "summary": "Defines a documentation architecture that separates product behavior, durable system architecture, engineering guidance, reusable design-system knowledge, exact reference contracts, and operational instructions, while using searchable scope, area, and tag metadata so discovery does not depend on folder paths alone.",
       "related": [
         "docs.readme",
         "docs.architecture-readme",

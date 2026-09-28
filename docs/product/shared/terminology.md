@@ -12,7 +12,7 @@ summary: >
   session, work — with their meaning. Both surfaces use these terms; the message
   catalog keys follow them.
 related:
-  - product.product-overview
+  - product.specflow.overview
   - product.shared.localization
 ---
 

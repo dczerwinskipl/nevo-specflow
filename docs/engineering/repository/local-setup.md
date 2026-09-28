@@ -1,6 +1,6 @@
 ---
-id: development.local-setup
-type: development
+id: engineering.repository.local-setup
+type: engineering
 title: Local setup
 status: current
 read_when:
@@ -11,8 +11,8 @@ summary: >
   Prerequisites (Node, Corepack/pnpm), the standard root commands, and how Turborepo
   owns the task graph.
 related:
-  - development.git-workflow
-  - development.cli.testing-guidelines
+  - engineering.repository.git-workflow
+  - engineering.cli.testing-guidelines
   - architecture.repository-structure
 ---
 
@@ -61,9 +61,9 @@ Run from the repository root:
 
 Turborepo owns the package task graph. Key points:
 
-- Task dependencies are declared in [`turbo.json`](../../turbo.json) (`^build` means
+- Task dependencies are declared in [`turbo.json`](../../../turbo.json) (`^build` means
   "build dependencies first"). CI adds `--affected` so only changed packages and their
-  dependents run — see [ci-and-affected-packages](../architecture/repository-structure.md).
+  dependents run — see [ci-and-affected-packages](../../architecture/repository-structure.md).
 - Editing `tsconfig.base.json` (listed in `turbo.json#globalDependencies`) or
   `pnpm-lock.yaml` invalidates **every** package's build/test/typecheck cache on
   purpose. Repo-wide quality config (Prettier, EditorConfig) is deliberately not

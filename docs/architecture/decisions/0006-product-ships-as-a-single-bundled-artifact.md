@@ -13,7 +13,7 @@ related:
   - adr.0002-toolchain-selection
   - adr.0005-repository-tooling-is-separate-from-the-product-api
   - architecture.repository-structure
-  - development.product-packaging
+  - engineering.repository.product-packaging
 ---
 
 # 0006 — The product ships as a single bundled artifact

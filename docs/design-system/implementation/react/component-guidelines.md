@@ -13,15 +13,15 @@ summary: >
   ceremony, feature-local vertical ownership, hooks by behavior, and where state lives.
 related:
   - design-system.principles.ui-ux-guidelines
-  - development.ui.tailwind.styling-guidelines
-  - development.cli.node-tooling-guidelines
+  - design-system.implementation.tailwind.styling-guidelines
+  - engineering.cli.node-tooling-guidelines
 ---
 
 # React component guidelines
 
 `status: draft` — working guidance, expanded as the code it governs lands. Same
 "responsibilities, not a mandatory directory tree" spirit as the
-[Node tooling guidelines](../../../development/cli/node-tooling-guidelines.md).
+[Node tooling guidelines](../../../engineering/cli/node-tooling-guidelines.md).
 
 ## Core principles
 
@@ -79,7 +79,7 @@ at mobile and desktop widths.
 
 ## Testing
 
-Follow the [testing guidelines](../../../development/cli/testing-guidelines.md): pure view-model and
+Follow the [testing guidelines](../../../engineering/cli/testing-guidelines.md): pure view-model and
 hook logic in fast unit tests; component behavior and accessibility via Storybook
 interaction tests; inspect computed styles when exact visuals matter.
 

@@ -1,26 +1,23 @@
 ---
 id: docs.engineering-cli-readme
 type: hub
-title: CLI & Node tooling documentation
+title: CLI engineering
 status: current
 summary: >
-  Engineering guidance for Node-based command-line tools and developer tooling in this
-  repository — architecture and testing.
+  CLI-specific engineering guidance for command composition, external contracts,
+  and executable testing.
 ---
 
-# CLI & Node tooling
+# CLI engineering
 
-How Node CLIs and developer tooling are built here. This is **implementation**
-guidance; the product behavior of the `nevo-spec` CLI (personas, command surface,
-interaction model) lives under [`../../product/specflow/cli/`](../../product/specflow/cli/).
+This area owns CLI-specific implementation guidance. Cross-cutting rules for code
+organization, effects, async lifecycle, and testing live under
+[`../shared/`](../shared/).
 
-| Doc                                                   | Covers                                                                                            |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| [Node tooling guidelines](node-tooling-guidelines.md) | Commander, thin entrypoints, command-local options, pure logic vs I/O ports, DI, output contract. |
-| [Testing guidelines](testing-guidelines.md)           | Test stack (Vitest), the domain / application / CLI-smoke split, determinism, coverage.           |
+| Doc | Covers |
+| --- | --- |
+| [CLI architecture](architecture.md) | Commander, thin executable/handlers, command ownership, shell composition, stdout/stderr/exit contracts. |
+| [CLI testing](testing.md) | In-process command tests and packaged/subprocess smoke tests. |
 
-The reference implementations are the three TypeScript packages under `tools/`:
-[`tools/docs`](../../../tools/docs/README.md) (`nevo-docs`),
-[`tools/release`](../../../tools/release/README.md) (`nevo-release`) and
-[`tools/github`](../../../tools/github/README.md) (`nevo-repo-github`). The same pattern
-is intended for the future `nevo-spec` product CLI.
+Product behavior of `nevo-specflow` lives under
+[`../../product/specflow/cli/`](../../product/specflow/cli/).

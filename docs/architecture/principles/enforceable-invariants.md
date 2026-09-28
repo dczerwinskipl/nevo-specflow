@@ -8,26 +8,27 @@ read_when:
   - designing a workflow gate, lifecycle guard, or state transition
   - reviewing a rule that agents or users are expected to remember manually
 summary: >
-  Durable system invariants should be enforced deterministically by software whenever
-  the system can observe and decide them. Prose explains the rule; it must not be the
+  Durable system invariants MUST be enforced deterministically by software whenever
+  the system can observe and decide them. Prose explains the rule; it MUST NOT be the
   only mechanism protecting a machine-verifiable invariant.
 related:
   - architecture.workflow.deterministic-workflow
   - architecture.runtime.ownership-and-lifecycle
   - engineering.shared.code-organization
+  - architecture.principles.normative-language
 ---
 
 # Enforceable invariants
 
-A durable invariant that software can observe and decide should be **enforced by software**.
+A durable invariant that software can observe and decide **MUST be enforced by software**.
 
 Documentation explains why an invariant exists and how it behaves. Instructions route humans and
-agents toward the right operation. Neither should be the only protection for a condition the
+agents toward the right operation. Neither MUST be the only protection for a condition the
 product can verify deterministically.
 
 ## Rule
 
-Prefer:
+For machine-verifiable invariants, implementations MUST prefer:
 
 ```text
 authoritative state
@@ -67,6 +68,6 @@ Do not convert "unknown" into "probably safe" merely to keep a workflow moving.
 
 ## One authoritative decision point
 
-The same invariant should not be independently reimplemented by CLI, Runtime, UI, and agent
-instructions. Put the decision in one application/domain operation and let external surfaces
-consume the result.
+The same invariant MUST NOT be independently reimplemented by CLI, Runtime, UI, and agent
+instructions. One authoritative application/domain operation MUST own the decision; external
+surfaces MUST consume that result rather than reproduce the rule.

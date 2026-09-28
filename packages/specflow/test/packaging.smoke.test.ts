@@ -1,6 +1,6 @@
 // The real process boundary: build + pack the product with the repository-pinned
 // pnpm, install THAT tarball into an isolated prefix outside the workspace, and
-// run the installed `nevo-spec` **through its generated executable shim**.
+// run the installed `nevo-specflow` **through its generated executable shim**.
 //
 // Nothing here resolves through the repository's own node_modules — the prefix
 // lives in the OS temp dir and is installed with `--ignore-workspace`, and the
@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { DASHBOARD_BOOTSTRAP_MARKER } from '@nevo/specflow-dashboard';
+import { RUNTIME_BOOTSTRAP_MARKER } from '@nevo/specflow-runtime';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const sh = process.platform === 'win32';
@@ -44,10 +44,10 @@ beforeAll(() => {
   tarball = parsed.tarball;
   version = parsed.version;
 
-  prefix = mkdtempSync(join(tmpdir(), 'nevo-spec-smoke-'));
+  prefix = mkdtempSync(join(tmpdir(), 'nevo-specflowflow-smoke-'));
   writeFileSync(
     join(prefix, 'package.json'),
-    JSON.stringify({ name: 'nevo-spec-smoke-host', version: '0.0.0', private: true }),
+    JSON.stringify({ name: 'nevo-specflowflow-smoke-host', version: '0.0.0', private: true }),
   );
   // pnpm run from repoRoot (pinned), directed at the prefix with --dir.
   execFileSync('pnpm', ['--dir', prefix, '--ignore-workspace', 'add', tarball], {
@@ -68,12 +68,12 @@ interface Run {
   code: number;
   stdout: string;
 }
-/** Invoke the installed `nevo-spec` shim from the isolated prefix's .bin, via PATH. */
+/** Invoke the installed `nevo-specflow` shim from the isolated prefix's .bin, via PATH. */
 function nevoSpec(args: string[]): Run {
   try {
     return {
       code: 0,
-      stdout: execFileSync('nevo-spec', args, {
+      stdout: execFileSync('nevo-specflow', args, {
         cwd: prefix,
         env: runEnv,
         encoding: 'utf8',
@@ -107,7 +107,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     const pj = installedManifest();
     expect(pj.name).toBe('@nevo/specflow');
     expect(pj.version).toBe(version);
-    expect((pj.bin as Record<string, string>)['nevo-spec']).toBe('./dist/bin.js');
+    expect((pj.bin as Record<string, string>)['nevo-specflow']).toBe('./dist/bin.js');
     expect((pj.engines as Record<string, string>).node).toBe('>=24.20.0 <25');
     expect(pj.dependencies ?? {}).toEqual({});
     expect(pj.devDependencies ?? {}).toEqual({});
@@ -143,23 +143,23 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     expect(notices).not.toMatch(/esbuild/i);
   });
 
-  it('A. nevo-spec --help — exit 0, names the CLI and the dashboard command (via the shim)', () => {
+  it('A. nevo-specflow --help — exit 0, names the CLI and the start command (via the shim)', () => {
     const r = nevoSpec(['--help']);
     expect(r.code).toBe(0);
-    expect(r.stdout).toContain('nevo-spec');
-    expect(r.stdout).toContain('dashboard');
+    expect(r.stdout).toContain('nevo-specflow');
+    expect(r.stdout).toContain('start');
   });
 
-  it('B. nevo-spec --version — exit 0, equals the packed package version (via the shim)', () => {
+  it('B. nevo-specflow --version — exit 0, equals the packed package version (via the shim)', () => {
     const r = nevoSpec(['--version']);
     expect(r.code).toBe(0);
     expect(r.stdout.trim()).toBe(version);
   });
 
-  it('C. nevo-spec dashboard — exit 0, runs the dashboard capability (via the shim)', () => {
-    const r = nevoSpec(['dashboard']);
+  it('C. nevo-specflow dashboard — exit 0, runs the Runtime capability (via the shim)', () => {
+    const r = nevoSpec(['start']);
     expect(r.code).toBe(0);
-    expect(r.stdout).toContain(DASHBOARD_BOOTSTRAP_MARKER);
+    expect(r.stdout).toContain(RUNTIME_BOOTSTRAP_MARKER);
   });
 
   it('an unknown command still exits non-zero after install', () => {

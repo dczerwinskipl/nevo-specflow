@@ -9,7 +9,7 @@ summary: >
 
 # Shared product concerns
 
-Concerns that span the CLI, Runtime, and UI surfaces. When the two surfaces describe the same
+Concerns that span the CLI, Runtime, and UI surfaces. When multiple surfaces describe the same
 thing, they use the vocabulary defined here.
 
 | Doc                             | Covers                                                    |

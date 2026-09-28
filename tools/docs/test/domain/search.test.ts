@@ -5,22 +5,22 @@ import type { DocRecord } from '../../src/domain/frontmatter.js';
 
 const CORPUS: DocRecord[] = [
   {
-    id: 'development.git-workflow',
-    type: 'development',
+    id: 'engineering.repository.git-workflow',
+    type: 'engineering',
     title: 'Git workflow',
     status: 'current',
-    file: 'docs/development/git-workflow.md',
+    file: 'docs/engineering/repository/git-workflow.md',
     body: '',
     read_when: ['creating a branch', 'preparing a pull request'],
     summary: 'Branch naming, PR strategy, squash merge, release lines.',
-    related: ['development.commit-conventions'],
+    related: ['engineering.repository.commit-conventions'],
   },
   {
-    id: 'development.ui.react.component-guidelines',
-    type: 'development',
+    id: 'design-system.implementation.react.component-guidelines',
+    type: 'engineering',
     title: 'React component guidelines',
     status: 'current',
-    file: 'docs/development/ui/react/component-guidelines.md',
+    file: 'docs/design-system/implementation/react/component-guidelines.md',
     body: '',
     read_when: ['writing a React component'],
     summary: 'Composition, props, and Tailwind class conventions for React components.',
@@ -59,7 +59,7 @@ describe('searchDocs', () => {
     const a = searchDocs(CORPUS, { query: 'pull request branch' });
     const b = searchDocs(CORPUS, { query: 'pull request branch' });
     expect(a.map((d) => d.id)).toEqual(b.map((d) => d.id));
-    expect(a[0]?.id).toBe('development.git-workflow');
+    expect(a[0]?.id).toBe('engineering.repository.git-workflow');
     expect(searchDocs(CORPUS, { type: 'product' }).map((d) => d.id)).toEqual([
       'product.shared.localization',
     ]);
@@ -70,11 +70,11 @@ describe('searchDocs', () => {
     const withHistory: DocRecord[] = [
       ...CORPUS,
       {
-        id: 'development.git-workflow-old',
-        type: 'development',
+        id: 'engineering.repository.git-workflow-old',
+        type: 'engineering',
         title: 'Old git workflow',
         status: 'superseded',
-        superseded_by: 'development.git-workflow',
+        superseded_by: 'engineering.repository.git-workflow',
         file: 'docs/development/git-workflow-old.md',
         body: '',
         read_when: ['creating a branch'],
@@ -85,11 +85,11 @@ describe('searchDocs', () => {
       query: 'branch pull request strategy',
       excludeStatuses: ['deprecated', 'superseded'],
     });
-    expect(context.map((d) => d.id)).not.toContain('development.git-workflow-old');
-    expect(context[0]?.id).toBe('development.git-workflow');
+    expect(context.map((d) => d.id)).not.toContain('engineering.repository.git-workflow-old');
+    expect(context[0]?.id).toBe('engineering.repository.git-workflow');
     // list/find (no exclusion) still surface the historical doc.
     expect(
       searchDocs(withHistory, { query: 'branch pull request strategy' }).map((d) => d.id),
-    ).toContain('development.git-workflow-old');
+    ).toContain('engineering.repository.git-workflow-old');
   });
 });

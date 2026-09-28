@@ -9,5 +9,6 @@ summary: >
 
 # Instructions
 
-Task-oriented guidance belongs here. Instructions should route to authoritative documentation
-instead of duplicating durable rules.
+Task-oriented guidance belongs here. Instructions MUST route to authoritative documentation and
+MUST NOT duplicate or redefine durable rules. An instruction MUST NOT override a conflicting
+current architecture, product, engineering, or reference document.

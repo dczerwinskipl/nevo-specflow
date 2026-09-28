@@ -24,7 +24,7 @@ related:
 ## Layout
 
 ```text
-nevo-specflowflow/
+nevo-specflow/
   apps/                 deployable applications        (workspace glob; empty until one lands)
   packages/             product packages (@nevo/* scope)
     specflow/            @nevo/specflow            — the `nevo-specflow` CLI shell + command composition

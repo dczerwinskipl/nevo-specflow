@@ -15,7 +15,7 @@
     "lint": "eslint .",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format:check": "prettier --check . || (prettier --write tools/docs/src/domain/frontmatter.ts tools/docs/test/infra/doc-repository.test.ts && git diff -- tools/docs/src/domain/frontmatter.ts tools/docs/test/infra/doc-repository.test.ts && exit 1)",
     "quality:build-tools": "turbo run build --filter=nevo-repo-docs --filter=nevo-repo-release",
     "version:print": "node tools/release/dist/bin.js version",
     "version:check-transition": "node tools/release/dist/bin.js check-transition",

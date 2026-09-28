@@ -1,5 +1,5 @@
 ---
-id: product.dashboard.ai-session-ux
+id: product.specflow.web.ai-session-ux
 type: product
 title: AI session UX
 status: draft
@@ -12,9 +12,9 @@ summary: >
   "thinking" needs evidence, "waiting" is not "needs attention", and the four Work
   information levels.
 related:
-  - product.dashboard.interaction-model
+  - product.specflow.web.interaction-model
   - product.shared.terminology
-  - development.ui.ui-ux-guidelines
+  - design-system.principles.ui-ux-guidelines
 ---
 
 # AI session UX

@@ -4,8 +4,7 @@ type: hub
 title: Shared product concerns
 status: current
 summary: >
-  Product concerns common to every surface — terminology and localization. The CLI and
-  Dashboard must stay consistent with these.
+  Product concerns common to every surface — vocabulary and localization. The CLI, Runtime, and UI must stay consistent with these.
 ---
 
 # Shared product concerns
@@ -15,5 +14,5 @@ thing, they use the vocabulary defined here.
 
 | Doc                             | Covers                                                    |
 | ------------------------------- | --------------------------------------------------------- |
-| [Terminology](terminology.md)   | Canonical product nouns (spec, change, task, session, …). |
+| [Vocabulary](vocabulary.md)   | Canonical product/surface names and workflow nouns. |
 | [Localization](localization.md) | i18n as a product requirement, even while English-only.   |

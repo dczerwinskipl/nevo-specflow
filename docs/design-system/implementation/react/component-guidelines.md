@@ -14,14 +14,14 @@ summary: >
 related:
   - design-system.principles.ui-ux-guidelines
   - design-system.implementation.tailwind.styling-guidelines
-  - engineering.cli.node-tooling-guidelines
+  - engineering.cli.architecture
 ---
 
 # React component guidelines
 
 `status: draft` — working guidance, expanded as the code it governs lands. Same
 "responsibilities, not a mandatory directory tree" spirit as the
-[Node tooling guidelines](../../../engineering/cli/node-tooling-guidelines.md).
+[CLI architecture](../../../engineering/cli/architecture.md).
 
 ## Core principles
 
@@ -79,7 +79,7 @@ at mobile and desktop widths.
 
 ## Testing
 
-Follow the [testing guidelines](../../../engineering/cli/testing-guidelines.md): pure view-model and
+Follow the [shared testing guidance](../../../engineering/cli/testing.md): pure view-model and
 hook logic in fast unit tests; component behavior and accessibility via Storybook
 interaction tests; inspect computed styles when exact visuals matter.
 

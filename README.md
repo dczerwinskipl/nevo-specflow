@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./assets/brand/nevo-specflow-lockup-dark.svg">
     <source media="(prefers-color-scheme: light)" srcset="./assets/brand/nevo-specflow-lockup-light.svg">
-    <img alt="Nevo SpecFlow" src="./assets/brand/nevo-specflow-lockup-light.svg" width="520">
+    <img alt="Nevo SpecFlow" src="./assets/brand/nevo-specflow-lockup-light.svg" width="360">
   </picture>
 </p>
 

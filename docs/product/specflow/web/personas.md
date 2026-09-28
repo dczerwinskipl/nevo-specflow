@@ -50,4 +50,4 @@ are also the owner.
 > **Provisional:** the dashboard is intended to reflect the specification files and
 > Git/PR state directly rather than own a separate datastore. Whether it is implemented
 > exactly that way is a storage decision recorded in
-> [`architecture/`](../../architecture/), not asserted here.
+> [`architecture/`](../../../architecture/), not asserted here.

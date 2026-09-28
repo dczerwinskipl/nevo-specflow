@@ -117,7 +117,7 @@
       "status": "current",
       "file": "docs/product/shared/README.md",
       "read_when": [],
-      "summary": "Product concerns common to every surface — terminology and localization. The CLI and Dashboard must stay consistent with these.",
+      "summary": "Product concerns common to every surface — terminology and localization. The CLI and web surface must stay consistent with these.",
       "related": []
     },
     {
@@ -143,11 +143,11 @@
     {
       "id": "docs.product-specflow-web-readme",
       "type": "hub",
-      "title": "Dashboard product documentation",
+      "title": "SpecFlow web product documentation",
       "status": "current",
       "file": "docs/product/specflow/web/README.md",
       "read_when": [],
-      "summary": "The Nevo SpecFlow dashboard — who uses it, how navigation and surfaces behave, and how AI sessions are presented. React/Tailwind implementation guidance is under design-system/.",
+      "summary": "The SpecFlow web surface — who uses it, how navigation and surfaces behave, and how AI sessions are presented. Reusable UI implementation guidance is under design-system/.",
       "related": []
     },
     {

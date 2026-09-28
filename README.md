@@ -26,7 +26,7 @@ pnpm check                      # the full local quality gate
 
 `pnpm check` runs format, lint, documentation validation, the version-metadata gate,
 and every package's typecheck / test / build. Full setup and the command reference:
-[`docs/development/local-setup.md`](docs/development/local-setup.md).
+[`docs/engineering/repository/local-setup.md`](docs/engineering/repository/local-setup.md).
 
 ## Repository shape
 
@@ -42,7 +42,7 @@ and every package's typecheck / test / build. Full setup and the command referen
 Branches and pull requests only — no direct commits to `main` or `release/v*`. Squash
 merge; the PR title is the commit message and follows Conventional Commits. See
 [`CONTRIBUTING.md`](CONTRIBUTING.md) and
-[`docs/development/git-workflow.md`](docs/development/git-workflow.md).
+[`docs/engineering/repository/git-workflow.md`](docs/engineering/repository/git-workflow.md).
 
 ## License
 

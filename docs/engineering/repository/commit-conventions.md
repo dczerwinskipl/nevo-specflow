@@ -1,6 +1,6 @@
 ---
-id: development.commit-conventions
-type: development
+id: engineering.repository.commit-conventions
+type: engineering
 title: Commit conventions
 status: current
 read_when:
@@ -12,8 +12,8 @@ summary: >
   (it becomes the squash commit message). A scope is required; scopes are open-ended.
   Branch-local checkpoint commits are exempt.
 related:
-  - development.git-workflow
-  - development.pull-requests
+  - engineering.repository.git-workflow
+  - engineering.repository.pull-requests
 ---
 
 # Commit conventions
@@ -98,5 +98,5 @@ BREAKING CHANGE: `SpecDocument.version` is now required and must be SemVer.
 ```
 
 Behavior changes count as breaking even without an API signature change. Before 1.0.0,
-breaking changes are permitted per the [0.x policy](../architecture/repository-structure.md#0x-policy)
+breaking changes are permitted per the [0.x policy](../../architecture/repository-structure.md#0x-policy)
 but must still be intentional, marked, and documented.

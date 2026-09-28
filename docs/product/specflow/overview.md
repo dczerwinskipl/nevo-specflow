@@ -5,12 +5,12 @@ title: Product overview
 status: draft
 read_when:
   - orienting to what Nevo SpecFlow is
-  - deciding whether a concern belongs to the CLI or the Dashboard
+  - deciding whether a concern belongs to the CLI, Runtime, or UI
 summary: >
   Nevo SpecFlow is a human-led, spec-anchored workflow for AI-assisted software
-  engineering, delivered as a CLI (nevo-spec), a dashboard, and a shared library.
+  engineering, delivered as a CLI (`nevo-specflow`), a local Runtime, and an interactive UI.
 related:
-  - product.shared.terminology
+  - product.shared.vocabulary
   - product.specflow.cli.interaction-model
   - product.specflow.web.interaction-model
 ---
@@ -42,19 +42,21 @@ development**:
 
 | Surface       | Command / entry | Role                                                                                                            |
 | ------------- | --------------- | --------------------------------------------------------------------------------------------------------------- |
-| **CLI**       | `nevo-spec`     | Deterministic driver for the spec/task lifecycle and docs discovery, for humans and agents in a terminal or CI. |
-| **Dashboard** | web UI          | View of active/archived specifications, tasks, changes/PRs, and AI sessions.                                    |
+| **CLI**       | `nevo-specflow` | Deterministic driver for the spec/task lifecycle and docs discovery, for humans and agents in a terminal or CI. |
+| **Runtime** | local process | Owns long-lived application lifecycle, resources, providers, persistence, and transports. |
+| **UI** | interactive application | View and steering surface for specifications, tasks, changes/PRs, and AI sessions. |
 | **Library**   | `import`        | Shared spec model and workflow logic the surfaces build on.                                                     |
 
 Published product packages use the `@nevo/*` scope (e.g. `@nevo/specflow`).
 
-The end-user command is deliberately short — `nevo-spec init`, `nevo-spec status`,
-`nevo-spec dashboard`. `nevo-specflow` is the repository/product name, not the binary.
+The executable is `nevo-specflow`. Product lifecycle commands live at the root (`nevo-specflow start`, and later `stop` / `status`); resource operations use `<noun> <verb>`.
 
 ## Names
 
 | Name            | Meaning                                           |
 | --------------- | ------------------------------------------------- |
 | Nevo SpecFlow   | the product.                                      |
-| `nevo-specflow` | the repository, and the `@nevo/*` package family. |
-| `nevo-spec`     | the end-user CLI command.                         |
+| `nevo-specflow` | the repository and installed executable. |
+| Nevo SpecFlow Runtime | the long-lived local backend. |
+| Nevo SpecFlow UI | the interactive product application. |
+| Nevo UI | the reusable design system. |

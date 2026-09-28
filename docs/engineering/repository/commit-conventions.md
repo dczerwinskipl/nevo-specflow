@@ -65,8 +65,9 @@ conventional scopes:
 | Scope        | Area                                                     |
 | ------------ | -------------------------------------------------------- |
 | `workspace`  | root workspace config, monorepo plumbing, formatting     |
-| `cli`        | the future `nevo-specflow` product CLI                       |
-| `dashboard`  | the future dashboard app                                 |
+| `cli`        | Nevo SpecFlow CLI                                          |
+| `runtime`    | Nevo SpecFlow Runtime                                      |
+| `ui`         | Nevo SpecFlow UI                                           |
 | `core`       | shared product library                                   |
 | `release`    | `tools/release` — version model, cut / promote / release |
 | `docs`       | documentation under `docs/`                              |

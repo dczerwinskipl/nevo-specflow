@@ -1,6 +1,6 @@
 ---
-id: docs.product-cli-contract
-type: product
+id: reference.cli.nevo-spec-contract
+type: reference
 title: nevo-spec public CLI contract
 status: draft
 read_when:
@@ -13,8 +13,8 @@ summary: >
   (init, status, workflow, install, update) exists yet.
 related:
   - docs.product-cli-readme
-  - development.cli.node-tooling-guidelines
-  - development.product-packaging
+  - engineering.cli.node-tooling-guidelines
+  - engineering.repository.product-packaging
 ---
 
 # `nevo-spec` public CLI contract
@@ -54,4 +54,4 @@ Product copy and docs must not describe them as available.
 Pre-1.0: the surface above can still change, but changes are intentional, marked, and
 documented (see [pre-1.0 policy](../../architecture/repository-structure.md#0x-policy)).
 The output contract (clean stdout, diagnostics on stderr, `0` / non-zero exit) follows
-[Node tooling guidelines §10](../../development/cli/node-tooling-guidelines.md).
+[Node tooling guidelines §10](../../engineering/cli/node-tooling-guidelines.md).

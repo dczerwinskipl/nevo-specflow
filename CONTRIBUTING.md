@@ -32,7 +32,7 @@ To build and try the product CLI from a real tarball (not a workspace link):
 
 ```bash
 pnpm product:pack        # -> .artifacts/nevo-specflow-<version>.tgz
-pnpm dogfood:install     # pack + install globally + smoke `nevo-spec`
+pnpm dogfood:install     # pack + install globally + smoke `nevo-specflow`
 ```
 
 See [`docs/engineering/repository/product-packaging.md`](docs/engineering/repository/product-packaging.md) and

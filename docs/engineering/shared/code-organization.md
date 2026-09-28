@@ -81,3 +81,22 @@ export async function executeRelease(
 ```
 
 Do not add a DI container. Do not inject pure helpers.
+
+
+## Comments document why and invariants
+
+Comments should preserve information that cannot be recovered cheaply from reading the code.
+
+Good comments explain:
+
+- why an unusual constraint exists;
+- which invariant a non-obvious guard protects;
+- why a seemingly simpler implementation is unsafe;
+- protocol or compatibility facts that are not encoded in types/tests.
+
+Avoid comments that merely restate the next line of code.
+
+Do not leave temporary specification IDs, task IDs, line numbers, review references, or migration
+breadcrumbs in production comments unless they are a durable public identifier such as an ADR or
+authoritative documentation ID. Historical implementation context belongs in Git/PR/spec history,
+not in code comments.

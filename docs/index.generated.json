@@ -127,7 +127,7 @@
       "status": "current",
       "file": "docs/product/specflow/cli/README.md",
       "read_when": [],
-      "summary": "The nevo-spec command-line product — who uses it and how it should behave. Node CLI implementation guidance is under development/cli/.",
+      "summary": "The nevo-spec command-line product — who uses it and how it should behave. Node CLI implementation guidance is under engineering/cli/.",
       "related": []
     },
     {
@@ -147,7 +147,7 @@
       "status": "current",
       "file": "docs/product/specflow/web/README.md",
       "read_when": [],
-      "summary": "The Nevo SpecFlow dashboard — who uses it, how navigation and surfaces behave, and how AI sessions are presented. React/Tailwind implementation guidance is under development/ui/.",
+      "summary": "The Nevo SpecFlow dashboard — who uses it, how navigation and surfaces behave, and how AI sessions are presented. React/Tailwind implementation guidance is under design-system/.",
       "related": []
     },
     {
@@ -348,7 +348,7 @@
         "designing progressive disclosure or an inspector",
         "doing visual verification before marking UI work done"
       ],
-      "summary": "Portable engineering rules for building UI: validate the composed screen, semantic typography/color/spacing tokens, information hierarchy, progressive disclosure, and mandatory visual self-review. Product-specific UX (AI sessions, dashboard screens) is under product/dashboard/.",
+      "summary": "Portable engineering rules for building UI: validate the composed screen, semantic typography/color/spacing tokens, information hierarchy, progressive disclosure, and mandatory visual self-review. Product-specific UX (AI sessions, dashboard screens) is under product/specflow/web/.",
       "related": [
         "design-system.implementation.react.component-guidelines",
         "design-system.implementation.tailwind.styling-guidelines",

@@ -12,7 +12,7 @@ summary: >
   How the Nevo SpecFlow product is turned into one installable artifact:
   nevo-repo-product bundles the nevo-specflow entry, the internal workspace capability
   packages and commander with esbuild, then packs on the pinned pnpm to produce
-  .artifacts/nevo-specflowflow-<version>.tgz (with a THIRD_PARTY_NOTICES.txt). Source
+  .artifacts/nevo-specflow-<version>.tgz (with a THIRD_PARTY_NOTICES.txt). Source
   package boundaries stay real — the shell composes, each vertical owns its CLI
   adapter — only the distribution is a single file.
 related:
@@ -46,7 +46,7 @@ real `workspace:*` edge; the single-artifact form is only the _distribution_.
 ## The canonical command
 
 ```bash
-pnpm product:pack        # -> .artifacts/nevo-specflowflow-<version>.tgz
+pnpm product:pack        # -> .artifacts/nevo-specflow-<version>.tgz
 ```
 
 `pnpm product:pack` runs `nevo-repo-product pack`, which is the only implementation of
@@ -82,7 +82,7 @@ Steps:
    `dogfood` install — runs with `cwd` = the repository root (which carries
    `packageManager`) and targets other directories with `--dir`, so Corepack always uses
    the **repository-pinned pnpm**, never "latest". The tarball name is deterministic:
-   `nevo-specflowflow-<version>.tgz`.
+   `nevo-specflow-<version>.tgz`.
 
 ## Package-metadata rules for `@nevo/specflow`
 
@@ -101,10 +101,10 @@ Verify contents before trusting a change:
 
 ```bash
 pnpm product:pack
-tar -tzf .artifacts/nevo-specflowflow-*.tgz
+tar -tzf .artifacts/nevo-specflow-*.tgz
 #  package/LICENSE  package/README.md  package/THIRD_PARTY_NOTICES.txt
 #  package/dist/bin.js  package/package.json      (and nothing else)
-tar -xzOf .artifacts/nevo-specflowflow-*.tgz package/package.json
+tar -xzOf .artifacts/nevo-specflow-*.tgz package/package.json
 ```
 
 ## What is proven, and where

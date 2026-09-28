@@ -41,7 +41,7 @@ Must never mutate protected state.
 ## Design implications
 
 - Every command that produces data supports `--json`.
-- Human-facing text is localizable ([localization](../shared/localization.md)); JSON
+- Human-facing text is localizable ([localization](../../shared/localization.md)); JSON
   field names are a stable contract and are **not** localized.
 - Interactive confirmations exist only on the human path; the agent/CI paths reach the
   same operations through explicit flags, never a hidden prompt.

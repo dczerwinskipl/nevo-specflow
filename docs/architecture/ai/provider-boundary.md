@@ -17,6 +17,7 @@ related:
   - architecture.ai.canonical-session-turn-work
   - architecture.runtime.ownership-and-lifecycle
   - engineering.shared.effects-and-io
+  - architecture.principles.normative-language
 ---
 
 # AI provider boundary
@@ -40,25 +41,27 @@ The adapter translates those operations into the provider's real protocol and ma
 back into canonical events/state.
 
 Provider-specific event names, request IDs, SDK objects, JSON-RPC payloads, CLI output shapes, and
-process conventions do not become UI/workflow contracts.
+process conventions MUST NOT become UI/workflow contracts.
 
 ## Honest capabilities
 
 Capabilities describe what the currently usable transport can actually do.
 
-Do not advertise a capability because the provider product supports it in theory. If the configured
+An adapter MUST NOT advertise a capability merely because the provider product supports it in theory. If the configured
 or headless transport cannot answer interactive questions, resume sessions, stream reasoning, or
 perform another operation, the capability is false/unavailable and attempting it fails explicitly.
 
-Capability discovery may change with installation, version, or configuration and therefore must not
-be frozen forever at construction when the underlying fact can change.
+Capability discovery MAY change with installation, version, or configuration. When the underlying
+fact can change during the Runtime lifetime, capability state MUST NOT be permanently frozen at
+construction.
 
 ## Error normalization
 
 Provider failures map into a bounded canonical taxonomy useful to application logic, while
 preserving technical diagnostics separately.
 
-Application code should be able to distinguish meaningful categories such as:
+The canonical provider boundary MUST expose failures in distinguishable categories useful to
+application logic, including at least:
 
 - unavailable, not installed, or not authenticated;
 - unsupported capability;
@@ -67,14 +70,15 @@ Application code should be able to distinguish meaningful categories such as:
 - timeout, cancellation, or interruption;
 - provider-reported execution failure.
 
-Do not parse human error strings in UI/workflow code to decide lifecycle semantics.
+UI/workflow code MUST NOT parse human error strings to decide lifecycle semantics.
 
 ## Session identity
 
 Provider session identity is opaque. Never derive semantics from its string format.
 
-Where provider name and provider session ID are both needed to address a session, treat the pair as
-one identity and avoid collisions across providers.
+A provider-backed session MUST be addressed by the composite
+`ProviderSessionRef = (provider, providerSessionId)`. `providerSessionId` alone MUST NOT be treated
+as globally unique.
 
 Local product correlation to specs, tasks, or worktrees is separate metadata and must survive
 display/path changes.
@@ -83,10 +87,10 @@ display/path changes.
 
 Normalize provider output once, close to the adapter.
 
-Canonical ordering is assigned by the neutral Runtime so downstream consumers do not depend on
+Canonical ordering MUST be assigned by the neutral Runtime so downstream consumers do not depend on
 provider timestamp quirks or event naming.
 
-Adapters may emit incremental events, but terminal arbitration belongs to one neutral lifecycle
+Adapters MAY emit incremental events, but terminal arbitration MUST belong to one neutral lifecycle
 owner. Competing process exit, cancellation, timeout, protocol-terminal, and disconnect signals
 must settle to one terminal outcome.
 

@@ -11,3 +11,5 @@ summary: >
 # Reference documentation
 
 Exact contracts and factual lookup material live here.
+
+- [SpecFlow CLI contract](cli/nevo-specflow-contract.md)

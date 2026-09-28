@@ -8,13 +8,7 @@ import { DocsToolError } from '../errors.js';
 const FRONT_MATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n([\s\S]*))?$/;
 
 export type DocType =
-  | 'hub'
-  | 'architecture'
-  | 'adr'
-  | 'engineering'
-  | 'product'
-  | 'reference'
-  | 'instruction';
+  'hub' | 'architecture' | 'adr' | 'engineering' | 'product' | 'reference' | 'instruction';
 export type DocStatus = 'current' | 'draft' | 'deprecated' | 'superseded';
 
 /** Required fields per `type`. */

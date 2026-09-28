@@ -42,6 +42,23 @@ they affect behavior.
 Generated artifacts should be compared against deterministic regenerated output and
 must not embed incidental timestamps.
 
+## Characterization before behavior change
+
+When migrating, refactoring, or modifying behavior whose current semantics are not already protected,
+first add a characterization test at the narrowest meaningful boundary.
+
+Characterization is especially important around lifecycle/recovery, persistence, source-control
+effects, provider protocol mapping, and deterministic workflow transitions.
+
+The point is not to freeze accidental internals forever. It is to distinguish:
+
+1. existing observable behavior;
+2. an intentional behavior change;
+3. an accidental regression introduced during refactoring.
+
+Prefer separating the characterization commit/test from the intentional behavior change when that
+materially improves reviewability.
+
 ## Coverage
 
 Coverage is a signal for finding untested behavior, not a target to game. Add

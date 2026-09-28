@@ -1,7 +1,7 @@
 ---
 id: docs.product-specflow-web-readme
 type: hub
-title: Dashboard product documentation
+title: SpecFlow web product documentation
 status: current
 summary: >
   The Nevo SpecFlow dashboard — who uses it, how navigation and surfaces behave, and how
@@ -9,7 +9,7 @@ summary: >
   design-system/.
 ---
 
-# Dashboard product
+# SpecFlow web product
 
 Product behavior of the dashboard. How the UI is _built_ is under
 [`../../../design-system/`](../../../design-system/) — keep implementation detail out of

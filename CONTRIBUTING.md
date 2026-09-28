@@ -3,7 +3,7 @@
 ## Ground rules
 
 - **No direct commits to `main` or `release/v*`.** All changes go through a pull
-  request. See [`docs/development/git-workflow.md`](docs/development/git-workflow.md).
+  request. See [`docs/engineering/repository/git-workflow.md`](docs/engineering/repository/git-workflow.md).
 - **Squash merge only.** The **PR title** becomes the commit message and must follow
   [Conventional Commits](docs/development/commit-conventions.md). Checkpoint commits on
   your branch can be informal.
@@ -26,7 +26,7 @@ gh pr create                            # Conventional Commits title; fill the t
 `pnpm check` covers formatting, lint, documentation validation and index freshness, the
 `version.json` transition gate, and every package's typecheck / test / build.
 Prerequisites and the command reference:
-[`docs/development/local-setup.md`](docs/development/local-setup.md).
+[`docs/engineering/repository/local-setup.md`](docs/engineering/repository/local-setup.md).
 
 To build and try the product CLI from a real tarball (not a workspace link):
 
@@ -35,8 +35,8 @@ pnpm product:pack        # -> .artifacts/nevo-specflow-<version>.tgz
 pnpm dogfood:install     # pack + install globally + smoke `nevo-spec`
 ```
 
-See [`docs/development/product-packaging.md`](docs/development/product-packaging.md) and
-[`docs/development/dogfooding.md`](docs/development/dogfooding.md).
+See [`docs/engineering/repository/product-packaging.md`](docs/engineering/repository/product-packaging.md) and
+[`docs/engineering/repository/dogfooding.md`](docs/engineering/repository/dogfooding.md).
 
 ## Documentation changes
 

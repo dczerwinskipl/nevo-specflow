@@ -19,6 +19,7 @@ related:
   - architecture.ai.provider-boundary
   - engineering.shared.async-and-lifecycle
   - engineering.shared.effects-and-io
+  - architecture.principles.normative-language
 ---
 
 # Runtime ownership and lifecycle
@@ -85,29 +86,30 @@ readiness while required dependencies are unavailable.
 Shutdown is an application lifecycle operation, not a collection of unrelated process signal
 callbacks.
 
-The Runtime should:
+The Runtime MUST:
 
 - stop accepting conflicting new work;
 - signal cancellation to owned long-running operations;
-- allow bounded graceful completion where appropriate;
+- allow bounded graceful completion where the operation contract permits it;
 - persist or terminalize state that cannot safely remain active;
 - release listeners, servers, processes, streams, and timers;
 - produce diagnostics for resources that fail to stop cleanly.
 
 ## Restart recovery
 
-Persistent state may describe work whose live process disappeared during a crash or restart. On
-boot, Runtime reconciles durable state with what can actually be resumed.
+Persistent state MAY describe work whose live process disappeared during a crash or restart. On
+boot, Runtime MUST reconcile durable state with what can actually be resumed before admitting
+conflicting new work.
 
 Recovery never fabricates a live resource merely because a persisted record says "active".
 
-Each operation/session interaction is classified by its real recovery semantics:
+Each operation/session interaction MUST be classified by its real recovery semantics:
 
 - resumable from durable/provider identity;
 - reconstructable from durable state;
 - interrupted because the original live operation no longer exists.
 
-Recovery settles contradictions before new work that would conflict with them is admitted.
+Recovery MUST settle contradictions before new work that would conflict with them is admitted.
 
 ## Runtime state versus repository state
 
@@ -121,5 +123,5 @@ continue or reconcile local work.
 
 Binding a local Runtime beyond loopback changes the trust boundary.
 
-Authorization assumptions must be explicit and replaceable at the adapter boundary. "Reachable on
-the network" must never silently mean "authenticated".
+Authorization assumptions MUST be explicit and replaceable at the adapter boundary. "Reachable on
+the network" MUST NOT silently mean "authenticated".

@@ -19,10 +19,10 @@ Regenerate with `pnpm docs:check --write`. Human-authored navigation lives in [`
 | `docs.engineering-repository-readme` | [Repository engineering](engineering/repository/README.md) | current | Repository-level engineering practices: local setup, Git and pull requests, CI, releasing, packaging, dogfooding, dependencies, and security. |
 | `docs.instructions-readme` | [Instructions](instructions/README.md) | current | Task-oriented guidance for humans and agents that routes to authoritative documentation. |
 | `docs.product-readme` | [Product documentation](product/README.md) | current | What Nevo SpecFlow does: shared product concerns and the SpecFlow product surfaces. |
-| `docs.product-shared-readme` | [Shared product concerns](product/shared/README.md) | current | Product concerns common to every surface — terminology and localization. The CLI and Dashboard must stay consistent with these. |
+| `docs.product-shared-readme` | [Shared product concerns](product/shared/README.md) | current | Product concerns common to every surface — terminology and localization. The CLI and web surface must stay consistent with these. |
 | `docs.product-specflow-cli-readme` | [CLI product documentation](product/specflow/cli/README.md) | current | The nevo-spec command-line product — who uses it and how it should behave. Node CLI implementation guidance is under engineering/cli/. |
 | `docs.product-specflow-readme` | [SpecFlow product documentation](product/specflow/README.md) | current | Product overview and user-facing behavior of the SpecFlow CLI and web application. |
-| `docs.product-specflow-web-readme` | [Dashboard product documentation](product/specflow/web/README.md) | current | The Nevo SpecFlow dashboard — who uses it, how navigation and surfaces behave, and how AI sessions are presented. React/Tailwind implementation guidance is under design-system/. |
+| `docs.product-specflow-web-readme` | [SpecFlow web product documentation](product/specflow/web/README.md) | current | The SpecFlow web surface — who uses it, how navigation and surfaces behave, and how AI sessions are presented. Reusable UI implementation guidance is under design-system/. |
 | `docs.readme` | [Nevo SpecFlow documentation](README.md) | current | Top-level map of architecture, engineering, design-system, product, reference, and instruction documentation. |
 | `docs.reference-readme` | [Reference documentation](reference/README.md) | current | Exact contracts and factual lookup material such as public CLI, API, protocol, and configuration contracts. |
 

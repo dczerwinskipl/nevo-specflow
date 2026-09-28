@@ -1,5 +1,5 @@
 ---
-id: product.cli.interaction-model
+id: product.specflow.cli.interaction-model
 type: product
 title: CLI interaction model
 status: draft
@@ -12,15 +12,15 @@ summary: >
   with agents and CI, deterministic output, and how confirmations gate irreversible
   actions on the human path only.
 related:
-  - product.cli.personas
-  - development.cli.node-tooling-guidelines
+  - product.specflow.cli.personas
+  - engineering.cli.node-tooling-guidelines
   - product.shared.localization
 ---
 
 # CLI interaction model
 
 `status: draft`. Product-level rules; implementation rules are in the
-[Node tooling guidelines](../../development/cli/node-tooling-guidelines.md).
+[Node tooling guidelines](../../../engineering/cli/node-tooling-guidelines.md).
 
 ## Command shape
 

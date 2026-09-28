@@ -14,13 +14,14 @@ related:
   - adr.0008-product-naming-and-surfaces
   - product.specflow.overview
   - product.shared.localization
+  - architecture.principles.normative-language
 ---
 
 # Product vocabulary
 
 This document is the canonical vocabulary for product names and domain nouns. When a
-term has a defined meaning here, product copy, code, packages, and documentation should
-not introduce a competing synonym.
+term has a defined meaning here, product copy, code, packages, and documentation MUST NOT
+introduce a competing synonym.
 
 ## Product family
 
@@ -38,18 +39,20 @@ not introduce a competing synonym.
 
 ## Naming rules
 
-- Use **Nevo SpecFlow** for the product. Do not shorten the formal product name to
-  "SpecDev" or use "dashboard" as the name of the product.
-- Use **UI** for the whole interactive application. A **dashboard** may be a screen or
-  view inside the UI, not the surface itself.
-- Use **Runtime** for the long-lived application backend. Use **server** only for a
-  concrete server/transport adapter when that distinction matters.
-- Use `nevo-specflow` for the executable. `nevo-spec` is obsolete.
+- Product prose and branding MUST use **Nevo SpecFlow** as the formal product name. They MUST NOT
+  use "SpecDev" or "dashboard" as the product name.
+- The whole interactive application MUST be called **Nevo SpecFlow UI** (or **UI** when the product
+  context is unambiguous). **Dashboard** MAY name an individual screen/view, not the surface itself.
+- The long-lived application backend MUST be called **Nevo SpecFlow Runtime** (or **Runtime** in
+  context). **Server** MAY describe a concrete server/transport adapter and MUST NOT be used as a
+  competing name for the whole backend.
+- The executable MUST be `nevo-specflow`. `nevo-spec` MUST NOT be introduced in new commands,
+  examples, scripts, or documentation.
 - Product lifecycle commands operate on SpecFlow itself:
   `nevo-specflow start`, and eventually `stop` / `status`.
-- Resource-oriented commands use `<noun> <verb>` where a resource has multiple
-  operations, for example `nevo-specflow task start` or
-  `nevo-specflow workflow status`.
+- Resource-oriented commands SHOULD use `<noun> <verb>` where a resource has multiple operations,
+  for example `nevo-specflow task start` or `nevo-specflow workflow status`. A deviation requires a
+  clearer product-level command model.
 - The repository is `nevo-specflow`; published product packages use the
   `@nevo/specflow*` family.
 

@@ -16,6 +16,7 @@ related:
   - design-system.principles.system-boundary
   - design-system.implementation.react.component-guidelines
   - design-system.implementation.storybook.guidelines
+  - architecture.principles.normative-language
 ---
 
 # Code-to-Figma projection boundary
@@ -28,7 +29,7 @@ second independent design-system source of truth.
 React component APIs, variant recipes, semantic tokens, and computed runtime layout/paint own the
 normal visual contract.
 
-The Figma adapter captures and projects that contract. It must not require authors to duplicate
+The Figma adapter captures and projects that contract. It MUST NOT require authors to duplicate
 ordinary variant lists, default values, spacing, radii, or token bindings in a second model.
 
 ## Explicit metadata is for semantics the browser cannot infer
@@ -43,14 +44,15 @@ Author capture metadata only when DOM/CSS cannot communicate intent unambiguousl
 - an intentional simplified projection of dynamic runtime layout;
 - a genuinely additional Figma-only representation axis.
 
-Ordinary appearance and geometry should come from rendered DOM/computed CSS.
+Ordinary appearance and geometry MUST come from rendered DOM/computed CSS unless an explicit
+capture/projection contract declares the part that cannot be inferred safely.
 
 ## Capture must not infect the public component API
 
 Capture support is infrastructure.
 
-Technical capture attributes may exist in a controlled capture environment, but consumers should
-not need Figma-specific props or wrappers to use a normal component.
+Technical capture attributes MAY exist in a controlled capture environment, but consumers MUST NOT
+need Figma-specific props or wrappers to use a normal component.
 
 Runtime product code must not import project-specific exporter/importer registries.
 
@@ -68,7 +70,7 @@ generic Figma importer
 
 The importer consumes representation semantics, not product/component names.
 
-A new normal component using already-supported primitives must not require a component-specific
+A new normal component using already-supported primitives MUST NOT require a component-specific
 branch in extractor or importer code.
 
 Extend the adapter only when a genuinely new representation capability is required, such as a new
@@ -90,8 +92,8 @@ identities.
 Do not derive durable identity from display text, story order, or incidental child indexes when a
 semantic key exists.
 
-Changing an ID scheme is a migration decision because existing Figma instances/overrides may depend
-on it.
+Changing an ID scheme MUST be treated as a migration decision because existing Figma
+instances/overrides MAY depend on it.
 
 ## Reconciliation ownership
 
@@ -108,7 +110,7 @@ Never adopt or delete arbitrary manual content merely because its display name m
 
 ## Preserve instance intent
 
-A repeated import must preserve consumer instance overrides where the canonical component identity
+A repeated import MUST preserve consumer instance overrides where the canonical component identity
 and property identity remain valid.
 
 Changing component definitions must not casually recreate instances and erase label/icon/property
@@ -118,14 +120,14 @@ overrides.
 
 Browser CSS is broader than Figma Auto Layout/paint semantics.
 
-Unsupported transforms, stacking behavior, complex grid, effects, or responsive behavior should
-produce explicit projection diagnostics or an authored projection override. Do not silently claim
+Unsupported transforms, stacking behavior, complex grid, effects, or responsive behavior MUST
+produce explicit projection diagnostics or require an authored projection override. Do not silently claim
 pixel fidelity the adapter cannot represent.
 
 ## Storybook and capture have different jobs
 
 Storybook is the human documentation/review surface.
 
-Technical capture stories/fixtures may exist for deterministic extraction, but they should not
+Technical capture stories/fixtures MAY exist for deterministic extraction, but they MUST NOT
 pollute the normal Storybook navigation. Human-readable stories remain independently named and
 reviewable.

@@ -65,17 +65,17 @@ driven by an in-memory repository in tests; a temp-dir test covers the real adap
 
 ```yaml
 ---
-id: development.git-workflow # <area>.<slug>, unique across docs/
-type: development # hub | development | product | architecture | adr
+id: engineering.repository.git-workflow # stable concept id, unique across docs/
+type: engineering # hub | architecture | adr | engineering | product | reference | instruction
 title: Git workflow
 status: current # current | draft | deprecated | superseded
-read_when: # non-empty for development/product/architecture
+read_when: # non-empty for non-hub guidance/reference docs
   - creating a branch
   - preparing a pull request
 summary: >
   One or two sentences describing what the document covers.
 related: # optional; each id must resolve
-  - development.commit-conventions
+  - engineering.repository.commit-conventions
 ---
 ```
 

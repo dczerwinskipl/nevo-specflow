@@ -23,8 +23,8 @@ related:
 
 # Deterministic workflow
 
-Nevo SpecFlow owns workflow progression. An AI agent may perform work inside a step, but it does
-not decide what the canonical current step/state is by narrating or editing state directly.
+Nevo SpecFlow owns workflow progression. An AI agent MAY perform work inside a step, but it MUST
+NOT decide or mutate the canonical current step/state by narration or direct state editing.
 
 ## Authoritative model
 
@@ -92,7 +92,7 @@ A transition target is discriminated:
 Conditional transitions MUST require an explicit result matching exactly one declared branch. Missing, unknown,
 or ambiguous results fail closed.
 
-The engine does not let an agent infer the next step from prose.
+The engine MUST NOT let an agent infer the next step from prose.
 
 ## Attempts
 
@@ -148,11 +148,11 @@ verify gates
 → publish/transition bookkeeping
 ```
 
-The exact stages may evolve, but the invariant does not: a retry resumes the same logical operation
-and never duplicates a stage already proven complete.
+The exact stages MAY evolve, but the invariant does not: a retry MUST resume the same logical
+operation and MUST NOT duplicate a stage already proven complete.
 
-Runtime operation bookkeeping belongs in local execution storage, not in Git-tracked
-specification/domain documents.
+Runtime operation bookkeeping MUST live in local execution storage and MUST NOT be persisted in
+Git-tracked specification/domain documents.
 
 ## Gates and human decisions
 
@@ -176,7 +176,7 @@ Examples:
 - requested transition result is undeclared;
 - authoritative verification unavailable.
 
-Such conditions produce explicit machine-readable failures. They do not trigger a best-effort
+Such conditions MUST produce explicit machine-readable failures and MUST NOT trigger a best-effort
 transition.
 
 ## Surface neutrality

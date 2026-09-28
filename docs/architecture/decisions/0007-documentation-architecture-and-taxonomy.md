@@ -2,7 +2,7 @@
 id: adr.0007-documentation-architecture-and-taxonomy
 type: adr
 title: Documentation architecture and taxonomy
-status: draft
+status: current
 date: 2026-09-28
 summary: >
   Defines a documentation architecture that separates product behavior, durable system
@@ -19,7 +19,7 @@ related:
 
 ## Status
 
-Draft.
+Current.
 
 ## Context
 
@@ -28,7 +28,7 @@ different reasons to be read:
 
 - product behavior and UX contracts;
 - system architecture, boundaries, lifecycle rules, and invariants;
-- implementation guidance for shared code, CLI, server, ui, AI, and workflow;
+- implementation guidance for shared code, CLI, server, UI, AI, and workflow;
 - reusable design-system knowledge that should remain independent of SpecFlow and may move with
   Nevo UI;
 - exact contracts such as APIs, events, configuration, and protocol shapes;
@@ -276,7 +276,7 @@ active copies are not maintained for convenience.
 This ADR does not define:
 
 - specification, implementation, or review process;
-- the contents of AI, workflow, server, CLI, ui, or design-system architecture;
+- the contents of AI, workflow, server, CLI, UI, or design-system architecture;
 - concrete API, protocol, or configuration contracts;
 - product naming;
 - package boundaries;

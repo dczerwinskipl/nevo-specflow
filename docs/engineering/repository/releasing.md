@@ -1,6 +1,6 @@
 ---
-id: development.releasing
-type: development
+id: engineering.repository.releasing
+type: engineering
 title: Releasing and version lines
 status: current
 read_when:
@@ -17,14 +17,14 @@ summary: >
 related:
   - architecture.repository-structure
   - adr.0003-branch-and-release-model
-  - development.git-workflow
-  - development.ci
+  - engineering.repository.git-workflow
+  - engineering.repository.ci
 ---
 
 # Releasing and version lines
 
 The tooling is the private `nevo-repo-release` package under
-[`tools/release/`](../../tools/release/README.md).
+[`tools/release/`](../../../tools/release/README.md).
 
 ## The operator flow (what to click)
 
@@ -279,6 +279,6 @@ then promote (`stable→rc` or `stable→beta`) and release: optionally `v1.3.1-
 
 Before `1.0.0`, breaking changes are allowed without a major bump, but must be
 intentional, marked (`!` / `BREAKING CHANGE:`), and documented — see
-[repository-structure](../architecture/repository-structure.md#0x-policy). `main`
+[repository-structure](../../architecture/repository-structure.md#0x-policy). `main`
 carries `0.y.0-alpha.<build>`; release lines (`release/v0.y`) are cut only once there is
 something to maintain separately.

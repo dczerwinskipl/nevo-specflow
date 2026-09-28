@@ -7,8 +7,8 @@ packages:
   - "apps/*"
   - "packages/*"
   - "tools/*"
-  # packages/  -> real product packages (@nevo/*): specflow (the public `nevo-spec`
-  #              CLI) and specflow-dashboard (the dashboard capability).
+  # packages/  -> real product packages (@nevo/*): specflow (the public `nevo-specflow`
+  #              CLI) and specflow-runtime (the Runtime capability).
   # apps/      -> deployable applications; still empty until one lands.
   # tools/     -> repository-internal tooling (docs, release, github, product).
 
@@ -23,6 +23,6 @@ savePrefix: ""
 
 # The only third-party package allowed to run an install script: esbuild fetches
 # its platform binary in a postinstall. It is used solely by `nevo-repo-product`
-# to bundle the distributable `nevo-spec` artifact.
+# to bundle the distributable `nevo-specflow` artifact.
 onlyBuiltDependencies:
   - esbuild

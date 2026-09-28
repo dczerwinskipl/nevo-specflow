@@ -15,8 +15,8 @@ summary: >
   under product/specflow/web/.
 related:
   - design-system.implementation.react.component-guidelines
-  - development.ui.tailwind.styling-guidelines
-  - development.ui.storybook.guidelines
+  - design-system.implementation.tailwind.styling-guidelines
+  - design-system.implementation.storybook.guidelines
   - product.specflow.web.interaction-model
 ---
 

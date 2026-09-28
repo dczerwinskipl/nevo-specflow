@@ -10,7 +10,7 @@ summary: >
 
 # Shared product concerns
 
-Concerns that span the CLI and the Dashboard. When the two surfaces describe the same
+Concerns that span the CLI and web surface. When the two surfaces describe the same
 thing, they use the vocabulary defined here.
 
 | Doc                             | Covers                                                    |

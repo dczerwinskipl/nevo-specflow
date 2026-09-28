@@ -1,218 +1,186 @@
 ---
 id: adr.0007-documentation-architecture-and-taxonomy
 type: adr
-title: Structure documentation by knowledge kind, ownership scope, and searchable taxonomy
+title: Structure documentation by knowledge responsibility, ownership scope, and searchable taxonomy
 status: draft
 date: 2026-09-28
 summary: >
-  Proposes a documentation architecture that separates product behavior, durable system
+  Defines a documentation architecture that separates product behavior, durable system
   architecture, engineering guidance, reusable design-system knowledge, exact reference
-  contracts, and operational instructions, while adding searchable scope/area/tag metadata
-  so discovery does not depend on folder paths alone.
+  contracts, and operational instructions, while using searchable scope, area, and tag
+  metadata so discovery does not depend on folder paths alone.
 related:
   - docs.readme
   - docs.architecture-readme
   - architecture.repository-structure
 ---
 
-# ADR-0007: Structure documentation by knowledge kind, ownership scope, and searchable taxonomy
+# ADR-0007: Structure documentation by knowledge responsibility, ownership scope, and searchable taxonomy
 
 ## Status
 
-Draft. This ADR proposes the target documentation model only. It does **not** move existing
-documents, rename existing frontmatter types, or change the current product/process model.
+Draft.
 
 ## Context
 
-The repository already has structured Markdown documentation, deterministic discovery through
-`nevo-docs`, generated indexes, ADRs, and useful separation between `development/`,
-`product/`, and `architecture/`.
+The repository contains several kinds of durable knowledge that have different owners and
+different reasons to be read:
 
-That baseline is no longer sufficient for the next migration phase.
+- product behavior and UX contracts;
+- system architecture, boundaries, lifecycle rules, and invariants;
+- implementation guidance for shared code, CLI, server, web, AI, and workflow;
+- reusable design-system knowledge that should remain independent of SpecFlow and may move with
+  Nevo UI;
+- exact contracts such as APIs, events, configuration, and protocol shapes;
+- task-oriented instructions for humans and agents.
 
-The reference `nevo` repository accumulated important knowledge in several different forms:
+These concerns must not become one undifferentiated development-document hierarchy. They also
+cannot rely only on directory location for discovery: the same document can concern AI, runtime,
+server, recovery, and testing at the same time.
 
-- durable architecture and runtime invariants, especially around AI providers, turn lifecycle,
-  workflow determinism, resource ownership, recovery, and long-lived server behavior;
-- implementation guidance for CLI, server, React, testing, async I/O, and external adapters;
-- product-specific UX behavior;
-- reusable UI/design-system knowledge that may later belong to a separate Nevo UI package or
-  repository;
-- exact public or internal contracts such as HTTP endpoints, events, configuration, and canonical
-  DTOs;
-- task-oriented instructions that tell a human or agent which authoritative documents to load
-  before doing a particular kind of work.
+The documentation model therefore separates:
 
-Putting all of these into one `development/` hierarchy would make ownership unclear and would
-make future extraction of Nevo UI difficult. Encoding every distinction in directory depth would
-also make discovery depend too much on knowing the tree in advance.
+1. **physical responsibility namespaces**, used for human navigation and ownership;
+2. **semantic document type**, describing the role a document plays;
+3. **search taxonomy**, describing the scope and concerns the document applies to.
 
-The current `nevo-docs` search ranks `id`, `title`, `read_when`, `summary`, path, and
-`related`. It does not currently have first-class scope, area, or tag metadata.
+## Decision
 
-The documentation system therefore needs two independent dimensions:
+### 1. Use explicit top-level responsibility namespaces
 
-1. **knowledge kind** — what role the document plays;
-2. **ownership/search taxonomy** — what subsystem, product, or concern the document applies to.
-
-## Decision proposed
-
-### 1. Organize top-level documentation by knowledge kind
-
-The proposed target namespace is:
+The documentation root is organized as:
 
 ```text
 docs/
 ├── README.md
-│
 ├── architecture/
-│   ├── README.md
 │   ├── principles/
-│   ├── ai/
-│   ├── workflow/
-│   ├── runtime/
 │   └── decisions/
-│
 ├── engineering/
-│   ├── README.md
 │   ├── shared/
 │   ├── server/
 │   ├── cli/
 │   ├── web/
 │   ├── ai/
 │   └── workflow/
-│
 ├── design-system/
-│   ├── README.md
 │   ├── principles/
 │   ├── implementation/
 │   └── figma/
-│
 ├── product/
-│   ├── README.md
 │   ├── shared/
 │   └── specflow/
-│       ├── README.md
 │       ├── cli/
 │       ├── web/
 │       └── workflow/
-│
 ├── reference/
-│   ├── README.md
 │   ├── api/
 │   ├── cli/
 │   ├── configuration/
 │   └── protocols/
-│
 ├── instructions/
-│   ├── README.md
 │   ├── shared/
 │   ├── specflow/
 │   ├── nevo-ui/
 │   └── process/
-│
 └── templates/
 ```
 
-Directories are namespaces, not a checklist of files to create. A directory should appear when it
-owns real documentation.
+Directories are namespaces, not a checklist. A directory exists only when it owns real
+documentation.
 
-### 2. Give each knowledge kind one responsibility
+The physical path is not the semantic identity of a document.
 
-| Kind | Question it answers | Example |
-| --- | --- | --- |
-| **Product** | What should SpecFlow do for a user? | AI-session UX, AppShell behavior, CLI interaction model |
-| **Architecture** | How is the system divided and what invariants must hold? | canonical AI runtime, workflow projections, resource ownership |
-| **Engineering** | How should code in this layer be implemented? | async server rules, React state ownership, test organization |
-| **Design system** | How does reusable Nevo UI work independently of SpecFlow? | semantic tokens, component API, Figma capture/IR |
-| **Reference** | What is the exact contract? | HTTP API, event schema, config keys, canonical DTO shape |
-| **Instructions** | What should be loaded/done for a concrete kind of work? | implementing a provider adapter, changing a server capability |
-| **ADR** | Why was a durable cross-cutting choice made? | transport choice, distribution model, documentation model |
+### 2. Give each namespace one responsibility
 
-A document that substantially answers two different questions should normally be split rather than
-becoming a mixed source of truth.
+| Namespace | Responsibility |
+| --- | --- |
+| **architecture** | Durable system boundaries, ownership, lifecycle, invariants, and cross-cutting architectural decisions. |
+| **engineering** | Rules for implementing and testing code in a technical area. |
+| **design-system** | Reusable Nevo UI design and implementation knowledge that is independent of SpecFlow product behavior. |
+| **product** | User-visible behavior, terminology, interaction models, and product contracts. |
+| **reference** | Exact factual contracts: APIs, schemas, configuration keys, protocol/event shapes, and other lookup material. |
+| **instructions** | Task-oriented guidance that routes a human or agent to the authoritative documents needed for a kind of work. |
+| **templates** | Non-authoritative starting material for authoring documents. |
 
-### 3. Keep architecture separate from implementation detail
+A document that contains multiple independent responsibilities should be split instead of becoming
+a mixed source of truth.
 
-Architecture documents define boundaries, ownership, lifecycle, and invariants.
+### 3. Keep architecture and engineering distinct
 
-For example:
+Architecture defines what must remain true at system level: boundaries, ownership, state models,
+lifecycle, invariants, and dependency direction.
 
-```text
-provider protocol
-      ↓
-provider adapter
-      ↓
-canonical AI runtime
-      ↓
-application / workflow
-      ↓
-transport / UI
-```
+Engineering defines how code should be written to preserve those architectural properties:
+implementation patterns, testing strategy, async/process rules, framework conventions, and local
+code organization.
 
-An architecture document may state that terminal turn state is immutable or that browser-facing
-contracts are provider-neutral. It should not prescribe a concrete `Map`, class name, or local
-directory layout unless that detail is itself part of the durable decision.
+Architecture must not become a catalogue of implementation details. Engineering guidance must not
+silently redefine architecture.
 
-Implementation mechanics belong in `engineering/`.
+### 4. Keep product behavior separate from reusable design-system behavior
 
-### 4. Treat the design system as a separately owned body of knowledge
+`product/` owns behavior that exists because the product is SpecFlow.
 
-`design-system/` contains knowledge that should remain valid if Nevo UI is extracted from the
-SpecFlow repository.
+`design-system/` owns reusable UI knowledge that remains valid outside SpecFlow and should move
+with Nevo UI if that system is extracted.
 
-Examples include:
+A product may consume design-system primitives, but using a reusable primitive does not transfer
+ownership of product behavior into the design system.
 
-- semantic tokens and visual foundations;
-- component authoring and variant composition;
-- accessibility expectations for reusable controls;
-- Storybook rules for reusable UI;
-- code-as-source-of-truth rules for Figma;
-- design capture IR, stable identities, and import/export behavior.
+The design-system namespace is intentionally a portability boundary. It is a physical ownership
+namespace, not a semantic document type.
 
-SpecFlow-specific UI behavior does not belong there. For example, Primary/Secondary/Single
-workspace behavior or task navigation belongs under `product/specflow/web/`, even if Nevo UI
-provides primitives used to implement it.
+### 5. Keep reference separate from normative guidance
 
-### 5. Separate exact contracts into reference documentation
+Reference documentation answers "what exactly is the contract?" rather than "why is the system
+designed this way?" or "how should code be written?".
 
-Architecture should not become a catalogue of DTO fields, endpoint paths, or configuration keys.
+Normative architecture and engineering rules should link to exact reference material instead of
+embedding copies of schemas, endpoint catalogues, or protocol fields.
 
-Exact contracts belong under `reference/`. Reference documents may eventually be generated from
-code where practical.
+Reference material may be generated from code where the code is the authoritative contract.
 
-Example separation:
+### 6. Keep instructions as a routing layer
 
-```text
-architecture/ai/canonical-runtime.md
-    "the browser never consumes provider-private protocol directly"
+Instructions are operational. They describe what context to load and what workflow to follow for a
+specific kind of task.
 
-reference/protocols/canonical-turn.md
-    exact CanonicalTurn / WorkItem contract
-```
+They must not become a second source of truth for architecture, engineering, product, or
+design-system rules. When a durable rule exists elsewhere, an instruction references that
+document by stable ID instead of restating it.
 
-### 6. Make instructions a routing layer, not a second source of truth
+General instructions and product-specific instructions remain structurally separate. Process
+instructions such as specification writing, implementation, or review have their own
+`instructions/process/` namespace and are not defined by this ADR.
 
-Instructions may be human- or agent-facing, but should primarily route readers to authoritative
-architecture, engineering, product, design-system, and reference documents.
+### 7. Make semantic document type independent of path
 
-For example, an instruction for changing the product server may say to load:
+The target semantic document types are:
 
 ```text
-architecture.runtime.server
-engineering.shared.async-and-lifecycle
-engineering.server.http-boundaries
-engineering.shared.testing
+hub
+architecture
+adr
+engineering
+product
+reference
+instruction
 ```
 
-It should not restate those documents' rules.
+`engineering` replaces the older `development` name because the documents describe
+engineering policy and implementation guidance rather than the entire development lifecycle.
 
-`instructions/process/` is reserved for later process-specific material such as specification,
-implementation, or review instructions. This ADR deliberately does not define that process.
+A document under `design-system/` still uses the semantic type that matches its role. For
+example, a durable design-system boundary may be `architecture`, component-authoring guidance
+may be `engineering`, and an exact token schema may be `reference`.
 
-### 7. Add searchable taxonomy independently of paths
+The same rule applies to all physical namespaces: path and type are related but not required to
+mirror each other.
 
-The proposed frontmatter additions are:
+### 8. Add ownership and search taxonomy to frontmatter
+
+In addition to the existing metadata, indexed documents may declare:
 
 ```yaml
 scope: specflow
@@ -226,22 +194,17 @@ tags:
   - lifecycle
   - recovery
   - streaming
-
-applies_to:
-  - server
-  - ai-provider
-  - web
 ```
 
-Their responsibilities are:
+The fields have distinct responsibilities:
 
-- **`type`** — knowledge kind;
-- **`scope`** — owner / breadth of applicability;
-- **`areas`** — small controlled set of major technical or product areas;
-- **`tags`** — finer-grained search vocabulary;
-- **`applies_to`** — consumers affected by the guidance.
+- **`type`** — semantic role of the document;
+- **`scope`** — stable owner or breadth of applicability;
+- **`areas`** — controlled major concerns used for filtering and routing;
+- **`tags`** — finer-grained discovery vocabulary;
+- **`read_when`** — concrete situations in which the document should be loaded.
 
-Proposed initial `scope` values:
+The initial controlled `scope` vocabulary is:
 
 ```text
 shared
@@ -250,15 +213,15 @@ specflow
 nevo-ui
 ```
 
-Proposed initial `areas` values:
+The initial controlled `areas` vocabulary is:
 
 ```text
 ai
 workflow
+runtime
 server
 cli
 web
-design-system
 figma
 testing
 docs
@@ -267,156 +230,73 @@ security
 configuration
 ```
 
-`scope`, `areas`, and `applies_to` should use controlled values validated by
-`docs:check`. Tags may be broader, but should still be normalized to avoid parallel spellings
-such as `ai-runtime`, `ai_runtime`, and `AI runtime`.
+`scope` and `areas` are validated against one machine-readable taxonomy.
 
-The taxonomy should be defined in one machine-readable place once implementation begins.
+Tags are normalized and extensible rather than fully closed. They exist for search precision, not
+for authorization or architecture enforcement.
 
-### 8. Evolve document types
+No separate `applies_to` dimension is introduced: its intended meaning overlaps with
+`scope`, `areas`, and `read_when`.
 
-The target document types are proposed as:
+### 9. Keep document IDs stable
 
-```text
-hub
-architecture
-adr
-engineering
-product
-reference
-instruction
-```
+A document ID identifies a concept, not a path.
 
-The current `development` type would eventually become `engineering`. This ADR does not perform
-that migration.
+Moving a document between directories or repositories should not require changing its ID unless
+the concept itself changes identity.
 
-`design-system` is primarily an ownership area/scope, not a separate semantic document type:
-design-system architecture, engineering guidance, reference material, and instructions still have
-different roles.
+Stable IDs are the canonical targets for `related` links and instruction routing.
 
-### 9. Keep document IDs stable across moves
+### 10. Use metadata for discovery, paths for navigation
 
-Document IDs represent identity, not filesystem location.
+Human readers should be able to browse the directory tree, but automated discovery must not depend
+on knowing a path in advance.
 
-Prefer stable concept IDs such as:
+`nevo-docs` therefore indexes and searches the taxonomy in addition to the existing `id`,
+`title`, `read_when`, `summary`, path, and `related` fields.
 
-```text
-architecture.ai.canonical-runtime
-engineering.server.realtime
-ui.component-authoring
-product.specflow.app-shell
-```
+Filtering by semantic type, scope, and area is part of the documentation contract. Free-text tags
+improve ranking inside those boundaries.
 
-Avoid IDs that mechanically reproduce every path segment.
+### 11. Maintain one authoritative home for each rule
 
-This lets a document move between repositories or directories without forcing every `related`
-reference to change.
+A durable rule has one authoritative document.
 
-### 10. Extend discovery to use taxonomy
+Other documents may summarize enough context to be understandable, but they link to the source of
+truth rather than copying normative requirements.
 
-When the taxonomy is implemented, `nevo-docs` should search and filter on the new metadata in
-addition to the existing fields.
-
-Expected usage:
-
-```bash
-pnpm docs:find "lifecycle recovery" --area ai
-pnpm docs:find "testing" --scope nevo-ui
-pnpm docs:list --type architecture --area workflow
-pnpm docs:context "implement provider" --scope specflow --area ai
-```
-
-Folder navigation remains useful for humans, but it should not be the primary discovery mechanism.
-
-## Placement examples
-
-| Knowledge | Proposed home |
-| --- | --- |
-| Canonical Turn/Work lifecycle invariants | `architecture/ai/` |
-| Provider adapter implementation rules | `engineering/ai/` |
-| How waiting/requires-attention appears to the user | `product/specflow/web/` |
-| Exact canonical AI event shape | `reference/protocols/` |
-| Generic TypeScript and effect-boundary rules | `engineering/shared/` |
-| Long-lived server cancellation/shutdown implementation | `engineering/server/` |
-| Server resource ownership invariant | `architecture/runtime/` |
-| Reusable component/tokens/Storybook/Figma guidance | `design-system/` |
-| SpecFlow AppShell/navigation behavior | `product/specflow/web/` |
-| Exact CLI command/output contract | `reference/cli/` |
-| What to read before adding an AI provider | `instructions/specflow/ai/` |
-
-## Expected migration direction for current documents
-
-This table is illustrative. The migration itself should be a separate change.
-
-| Current area | Expected direction |
-| --- | --- |
-| `development/cli/node-tooling-guidelines.md` | split repo-wide engineering rules from CLI-specific rules |
-| `development/cli/testing-guidelines.md` | promote common testing policy to shared engineering; keep CLI smoke specifics under CLI |
-| `development/ui/react/` | SpecFlow web engineering unless the rule is truly reusable Nevo UI |
-| `development/ui/tailwind/` | primarily design-system implementation where reusable |
-| `development/ui/storybook/` | primarily design-system implementation where reusable |
-| `development/ui/ui-ux-guidelines.md` | split reusable design foundations from SpecFlow product UX |
-| `product/dashboard/` | move conceptually toward `product/specflow/web/`; "dashboard" is not the architecture boundary |
-| `product/shared/` | remain shared product knowledge where truly cross-surface |
-| future AI/workflow runtime docs | architecture first; engineering/reference split where appropriate |
-
-## Rollout proposed
-
-Adoption should be incremental:
-
-1. agree on the knowledge kinds and ownership boundaries;
-2. agree on the controlled taxonomy;
-3. extend `nevo-docs` frontmatter validation/search/indexing;
-4. create missing architecture documents needed before code migration;
-5. migrate/split existing documentation only when its target ownership is clear;
-6. add instruction documents later as routing layers over established sources of truth.
-
-Existing document IDs should remain stable where practical. Large-scale renaming should not be
-combined with AI/workflow implementation migration.
+When knowledge changes ownership, the authoritative document moves or is superseded; duplicate
+active copies are not maintained for convenience.
 
 ## Non-goals
 
 This ADR does not define:
 
-- the specification lifecycle;
-- review policy;
-- agent handoff/review instructions;
-- the final AI runtime architecture;
-- the final deterministic workflow architecture;
-- the server API or realtime transport;
-- the Nevo UI package boundary;
-- a mass move of current documents;
-- a rename from SpecDev to SpecFlow across product/package identifiers.
+- specification, implementation, or review process;
+- the contents of AI, workflow, server, CLI, web, or design-system architecture;
+- concrete API, protocol, or configuration contracts;
+- product naming;
+- package boundaries;
+- migration steps for existing documents.
 
-Those concerns may consume the documentation architecture once settled, but are not decided here.
+Those subjects use this documentation model but are decided independently.
 
-## Consequences if adopted
+## Consequences
 
 ### Positive
 
-- product behavior, architecture invariants, implementation guidance, and exact contracts have
-  distinct sources of truth;
-- AI/workflow knowledge learned in the reference repository has an obvious durable home;
-- reusable Nevo UI documentation can later move with the library;
-- instructions can stay small and compositional instead of duplicating rules;
-- agents and humans can discover context by scope/area/tag rather than guessing paths;
-- document moves do not require changing stable IDs.
+- system architecture, implementation guidance, product behavior, reusable UI knowledge, and exact
+  contracts have distinct authoritative homes;
+- Nevo UI knowledge has an explicit portability boundary;
+- product-specific and general instructions can coexist without duplicating source-of-truth rules;
+- humans can navigate by structure while agents and tooling discover context by metadata;
+- stable IDs allow documents to move without breaking conceptual links;
+- taxonomy supports cross-cutting concerns that do not fit a single directory.
 
 ### Costs
 
-- `nevo-docs` needs a small schema/search extension;
-- several existing documents will need to be split rather than simply moved;
-- controlled taxonomy needs maintenance;
-- during migration both old and new folder shapes will temporarily coexist.
-
-## Open questions for review
-
-1. Should `development` be renamed to `engineering` as proposed, or should the existing name be
-   retained while only adding the new ownership split?
-2. Should `reference/` be a first-class document type or only a top-level namespace?
-3. Should instructions live inside `docs/` and be indexed by `nevo-docs`, or eventually have a
-   separate loading mechanism while still referencing docs by stable ID?
-4. Should tags be fully controlled, or should only `scope`, `areas`, and `applies_to` be
-   controlled while tags remain normalized but extensible?
-5. Is `design-system/` the right neutral name if the subtree is expected to become Nevo UI, or
-   should the namespace be `ui/` from the beginning?
+- `nevo-docs` must validate and index the additional taxonomy fields;
+- authors must classify both semantic role and ownership scope;
+- the controlled scope/area vocabulary requires maintenance;
+- some subjects naturally cross namespaces, so links between authoritative documents remain
+  necessary.

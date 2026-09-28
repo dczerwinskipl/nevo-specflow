@@ -13,7 +13,7 @@ summary: >
   information levels.
 related:
   - product.specflow.ui.interaction-model
-  - product.shared.terminology
+  - product.shared.vocabulary
   - design-system.principles.ui-ux-guidelines
 ---
 

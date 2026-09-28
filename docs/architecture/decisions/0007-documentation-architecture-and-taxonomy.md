@@ -97,15 +97,14 @@ The physical path is not the semantic identity of a document.
 
 ### 2. Give each namespace one responsibility
 
-| Namespace | Responsibility |
-| --- | --- |
-| **architecture** | Durable system boundaries, ownership, lifecycle, invariants, and cross-cutting architectural decisions. |
-| **engineering** | Rules for implementing, testing, and operating code and repository tooling in a technical area. |
-| **design-system** | Reusable Nevo UI design and implementation knowledge that is independent of SpecFlow product behavior. |
-| **product** | User-visible behavior, terminology, interaction models, and product contracts. |
-| **reference** | Exact factual contracts: APIs, schemas, configuration keys, protocol/event shapes, and other lookup material. |
-| **instructions** | Task-oriented guidance that routes a human or agent to the authoritative documents needed for a kind of work. |
-| **templates** | Non-authoritative starting material for authoring documents. |
+- **architecture** — durable system boundaries, ownership, lifecycle, invariants, and cross-cutting
+  architectural decisions.
+- **engineering** — rules for implementing, testing, and operating code and repository tooling.
+- **design-system** — reusable Nevo UI design and implementation knowledge independent of SpecFlow.
+- **product** — user-visible behavior, terminology, interaction models, and product contracts.
+- **reference** — exact APIs, schemas, configuration keys, protocol/event shapes, and lookup material.
+- **instructions** — task-oriented guidance that routes to authoritative documents.
+- **templates** — non-authoritative starting material for authoring documents.
 
 A document that contains multiple independent responsibilities should be split instead of becoming
 a mixed source of truth.

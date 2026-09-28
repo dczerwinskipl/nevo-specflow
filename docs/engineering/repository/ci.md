@@ -1,6 +1,6 @@
 ---
-id: development.ci
-type: development
+id: engineering.repository.ci
+type: engineering
 title: Continuous integration
 status: current
 read_when:
@@ -12,14 +12,14 @@ summary: >
   What the CI workflows run, how affected-package execution is scoped on PRs, which
   checks are required to merge, and what invalidates the whole graph.
 related:
-  - development.local-setup
+  - engineering.repository.local-setup
   - architecture.repository-structure
-  - development.commit-conventions
+  - engineering.repository.commit-conventions
 ---
 
 # Continuous integration
 
-Workflows under [`.github/workflows/`](../../.github/workflows/):
+Workflows under [`.github/workflows/`](../../../.github/workflows/):
 
 | Workflow                                         | Trigger                                | Does                                                                                                                 |
 | ------------------------------------------------ | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
@@ -85,7 +85,7 @@ build
 ```
 
 They are applied by
-[`tools/github (nevo-repo-github)`](../../tools/github/README.md). A job whose
+[`tools/github (nevo-repo-github)`](../../../tools/github/README.md). A job whose
 `--affected` run selected nothing still exits 0 and reports its check green, so a PR is
 never left permanently pending.
 

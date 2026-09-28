@@ -12,7 +12,7 @@ summary: >
   the dashboard bootstrap command — and an explicit statement that no other command
   (init, status, workflow, install, update) exists yet.
 related:
-  - docs.product-cli-readme
+  - docs.product-specflow-cli-readme
   - engineering.cli.node-tooling-guidelines
   - engineering.repository.product-packaging
 ---

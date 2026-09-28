@@ -42,12 +42,12 @@ post-launch nice-to-have — even though the first release can ship in English o
 
 - The concrete **i18n library** (e.g. an ICU MessageFormat implementation) and the
   **locale-loading architecture** (bundled vs. lazy, per-surface catalogs) are selected
-  when the CLI/Dashboard reaches this concern.
+  when the CLI/UI reaches this concern.
 - **Do not add an i18n runtime dependency now** just to satisfy this document.
 
-## CLI vs Dashboard
+## CLI vs UI
 
 The CLI and UI have different presentation constraints (line-oriented terminal
 output vs. a rendered UI), so they may format differently. They **share product
-terminology** — see [terminology](terminology.md) — and should share the underlying
+terminology** — see [vocabulary](vocabulary.md) — and should share the underlying
 message catalog keys where the same concept is shown on both.

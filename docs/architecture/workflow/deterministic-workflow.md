@@ -18,6 +18,7 @@ related:
   - architecture.runtime.ownership-and-lifecycle
   - engineering.shared.effects-and-io
   - engineering.shared.testing
+  - architecture.principles.normative-language
 ---
 
 # Deterministic workflow
@@ -37,8 +38,9 @@ A workflow definition declares:
 - terminal outcomes.
 
 A task/runtime record stores the minimal canonical position needed to resume progression.
-User-facing statuses and readiness are derived from canonical workflow position and the definition
-where possible rather than persisted as competing mutable truths.
+Any status/readiness fact derivable from canonical workflow position and the workflow definition
+MUST be derived. It MUST NOT be persisted as a second mutable source of truth unless a separate
+current architecture decision explicitly makes that field authoritative.
 
 ## Execution identity and admission
 
@@ -48,21 +50,20 @@ Workflow mutation always has one authoritative execution identity:
 (change, task, step, attempt)
 ```
 
-An AI session may carry wider context and a batch may coordinate multiple tasks, but that context
-does not replace the per-task identity whose state, gates, evidence, and transition are being
+An AI session MAY carry wider context and a batch MAY coordinate multiple tasks, but that context
+MUST NOT replace the per-task identity whose state, gates, evidence, and transition are being
 mutated.
 
-Executor/session identity used for admission comes from trusted Runtime/application context. It is
-not an agent-authored command parameter and an agent cannot claim a different session identity by
-putting one in a prompt.
+Executor/session identity used for admission MUST come from trusted Runtime/application context.
+It MUST NOT be accepted from an agent-authored command parameter or prompt.
 
-Before mutating work begins, the application admits the execution against the current workspace and
-workflow state. Conflicting active ownership, an unsafe dirty baseline, an unsettled prior
+Before mutating work begins, the application MUST admit the execution against the current workspace
+and workflow state. Conflicting active ownership, an unsafe dirty baseline, an unsettled prior
 operation, or a stale claim that cannot be reconciled causes an explicit stop rather than concurrent
 best-effort execution.
 
 Workspace claims/locks are implementation mechanisms for this invariant, not the invariant itself.
-Recovery reconciles stale/dead ownership before admitting conflicting work.
+Recovery MUST reconcile stale/dead ownership before admitting conflicting work.
 
 ## Start and finish have different meanings
 
@@ -75,7 +76,7 @@ Recovery reconciles stale/dead ownership before admitting conflicting work.
 
 **Finish** completes the currently active attempt.
 
-Finish does not silently start the next step. The checkpoint between "step A completed" and "step B
+Finish MUST NOT silently start the next step. The checkpoint between "step A completed" and "step B
 started" is observable and recoverable.
 
 This separation prevents one command from hiding multiple lifecycle transitions and makes crash
@@ -88,7 +89,7 @@ A transition target is discriminated:
 - another workflow step; or
 - a terminal outcome/status.
 
-Conditional transitions require an explicit result matching one declared branch. Missing, unknown,
+Conditional transitions MUST require an explicit result matching exactly one declared branch. Missing, unknown,
 or ambiguous results fail closed.
 
 The engine does not let an agent infer the next step from prose.
@@ -104,7 +105,7 @@ Attempt identity scopes runtime evidence such as:
 - finalize operation records;
 - generated review artifacts.
 
-Evidence from attempt N must never accidentally satisfy gates for attempt N+1.
+Evidence from attempt N MUST NOT satisfy gates for attempt N+1.
 
 History preserves completed attempts and transition results without becoming a second mutable
 current-state model.
@@ -118,8 +119,8 @@ A gate/action contract separates:
 - **inspect/check** — safe fact gathering and readiness/blocker reporting;
 - **verify/execute** — authoritative verification or side effects.
 
-Compiling context for an agent/UI must not accidentally run tests, mutate Git, record a human
-sign-off, or perform finalize actions.
+Compiling context for an agent/UI MUST NOT run tests, mutate Git, record a human sign-off, or
+perform finalize actions.
 
 ## Finish planning before mutation
 
@@ -131,8 +132,8 @@ Before creating a durable mutation operation, finish computes a non-mutating pla
 - relevant source-control facts;
 - intended transition.
 
-If inputs are incomplete or a gate is authoritatively blocked, no durable finish operation is
-created.
+If inputs are incomplete or a gate is authoritatively blocked, a durable finish operation MUST NOT
+be created.
 
 ## Durable resumable mutation
 
@@ -161,8 +162,8 @@ thinks owner approved" string.
 Automated and human gates share the same deterministic progression model while keeping their
 evidence sources distinct.
 
-A surface may request or record a human decision, but only the workflow operation decides whether
-that evidence satisfies progression.
+A surface MAY request or record a human decision, but only the workflow operation MUST decide
+whether that evidence satisfies progression.
 
 ## Fail closed on contradictory state
 
@@ -182,5 +183,5 @@ transition.
 
 CLI, Runtime, UI, and agents consume the same workflow application operations.
 
-No surface owns an independent progression algorithm. UI lanes/statuses are projections; agent
+No surface MAY own an independent progression algorithm. UI lanes/statuses are projections; agent
 prompts are context; neither is authoritative state.

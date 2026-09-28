@@ -11,7 +11,7 @@ read_when:
 summary: >
   Portable engineering rules for building UI: validate the composed screen, semantic
   typography/color/spacing tokens, information hierarchy, progressive disclosure, and
-  mandatory visual self-review. Product-specific UX (AI sessions, dashboard screens) is
+  mandatory visual self-review. Product-specific UX (AI sessions, SpecFlow UI screens) is
   under product/specflow/ui/.
 related:
   - design-system.implementation.react.component-guidelines
@@ -69,7 +69,7 @@ reaching for borders and boxes.
 Deeper levels increase **specificity**, not just volume. Give each level an information
 budget and keep to it. Hidden detail must be **discoverable** — an obvious affordance to
 go deeper. Do not promote inspection-only data (raw payloads, internal ids) to a
-summary level. (The specific level model for the dashboard's AI Work view is in
+summary level. (The specific level model for SpecFlow UI's AI Work view is in
 [`product/specflow/ui/ai-session-ux.md`](../../product/specflow/ui/ai-session-ux.md).)
 
 ## Interaction hierarchy

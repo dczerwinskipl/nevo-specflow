@@ -22,7 +22,7 @@ Reports are looked at as soon as is practical. In general:
 - an acknowledgement once the report has been read;
 - an assessment of severity and affected surface, or a request for more detail;
 - for a confirmed issue in a maintained release line, a fix via the
-  [hotfix flow](docs/development/releasing.md#hotfix-on-a-released-line) — a patch on
+  [hotfix flow](docs/engineering/repository/releasing.md#hotfix-on-a-released-line) — a patch on
   the `release/vX.Y` branch, a `vX.Y.z` tag, and a forward-port to `main`;
 - credit in the advisory and release notes unless you prefer otherwise.
 

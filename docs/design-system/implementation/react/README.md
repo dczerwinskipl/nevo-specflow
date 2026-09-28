@@ -1,5 +1,5 @@
 ---
-id: docs.development-ui-react-readme
+id: docs.design-system-react-readme
 type: hub
 title: React documentation
 status: current
@@ -11,7 +11,7 @@ summary: >
 # React
 
 React implementation conventions for Nevo SpecFlow UI. Visual/design rules are in
-[`../ui-ux-guidelines.md`](../ui-ux-guidelines.md); class-composition mechanics are in
+[`../ui-ux-guidelines.md`](../../principles/ui-ux-guidelines.md); class-composition mechanics are in
 [`../tailwind/`](../tailwind/).
 
 | Doc                                             | Covers                                                                                                              |

@@ -1,4 +1,4 @@
-// Kept identical to `DASHBOARD_BOOTSTRAP_MARKER` in
-// `packages/specflow-dashboard/src/index.ts`. Duplicated (one short string) so
-// the packaging tool does not take a dependency on a product package.
-export const DASHBOARD_BOOTSTRAP_MARKER = 'Nevo SpecFlow dashboard command is available.';
+// Kept identical to `RUNTIME_BOOTSTRAP_MARKER` in
+// `packages/specflow-runtime/src/index.ts`. Duplicated so the packaging tool
+// does not depend on a product package.
+export const RUNTIME_BOOTSTRAP_MARKER = 'Nevo SpecFlow runtime bootstrap is available.';

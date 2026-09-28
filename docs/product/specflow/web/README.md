@@ -12,7 +12,7 @@ summary: >
 # Dashboard product
 
 Product behavior of the dashboard. How the UI is _built_ is under
-[`../../../design-system/`](../../development/ui/) — keep implementation detail out of
+[`../../../design-system/`](../../../design-system/) — keep implementation detail out of
 these files.
 
 | Doc                                       | Covers                                                                               |

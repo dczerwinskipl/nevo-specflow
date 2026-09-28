@@ -53,7 +53,7 @@ Current pins:
 ## CodeQL
 
 Deliberately **not** enabled yet. The repository so far is Node tooling under `tools/*`
-plus `packages/specflow` / `packages/specflow-dashboard`, and the latter are a
+plus `packages/specflow` / `packages/specflow-runtime`, and the latter are a
 deliberately minimal routing / packaging **bootstrap** (a Commander router, one
 capability function returning a marker) — not substantive application code. CodeQL would
 have almost nothing to analyse.

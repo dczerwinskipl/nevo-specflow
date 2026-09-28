@@ -67,7 +67,7 @@ so it cannot reintroduce a repo-wide pre-build.
 
 ## Product packaging (not a CI job)
 
-`pnpm product:pack` (→ `.artifacts/nevo-specflowflow-<version>.tgz`) and `pnpm dogfood:install`
+`pnpm product:pack` (→ `.artifacts/nevo-specflow-<version>.tgz`) and `pnpm dogfood:install`
 are developer commands, not CI jobs — see [product packaging](product-packaging.md) and
 [dogfooding](dogfooding.md). The packed artifact is proven in CI by
 `packages/specflow/test/packaging.smoke.test.ts`, which runs inside the normal `test` job.

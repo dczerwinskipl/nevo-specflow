@@ -93,7 +93,7 @@ provider timestamp quirks or event naming.
 
 Adapters MAY emit incremental events, but terminal arbitration MUST belong to one neutral lifecycle
 owner. Competing process exit, cancellation, timeout, protocol-terminal, and disconnect signals
-must settle to one terminal outcome.
+MUST settle to one terminal outcome.
 
 ## Raw diagnostics
 

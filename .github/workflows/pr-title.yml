@@ -23,7 +23,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # Keep in sync with docs/development/commit-conventions.md.
+          # Keep in sync with docs/engineering/repository/commit-conventions.md.
           types: |
             feat
             fix
@@ -36,7 +36,7 @@ jobs:
             perf
             revert
           # Permanent squash commits use `<type>(<scope>): <description>`.
-          # Scopes are open-ended — see docs/development/commit-conventions.md.
+          # Scopes are open-ended — see docs/engineering/repository/commit-conventions.md.
           requireScope: true
           subjectPattern: ^(?![A-Z])(?!.*\.$).+$
           subjectPatternError: |

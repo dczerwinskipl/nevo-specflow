@@ -5,11 +5,11 @@ import { buildIndex, diffIndex } from '../../src/domain/index-file.js';
 
 const DOCS: DocRecord[] = [
   {
-    id: 'development.git-workflow',
-    type: 'development',
+    id: 'engineering.repository.git-workflow',
+    type: 'engineering',
     title: 'Git workflow',
     status: 'current',
-    file: 'docs/development/git-workflow.md',
+    file: 'docs/engineering/repository/git-workflow.md',
     body: '',
     read_when: ['creating a branch'],
     summary: 'Branch and merge model.',

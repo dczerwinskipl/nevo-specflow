@@ -11,7 +11,7 @@ summary: >
   agent, and CI — and what each needs from the command surface.
 related:
   - product.specflow.cli.interaction-model
-  - product.specflow.web.personas
+  - product.specflow.ui.personas
 ---
 
 # CLI personas

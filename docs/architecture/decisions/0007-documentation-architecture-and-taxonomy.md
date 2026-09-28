@@ -159,7 +159,7 @@ instructions such as specification writing, implementation, or review have their
 
 ### 7. Make semantic document type independent of path
 
-The target semantic document types are:
+The semantic document types are:
 
 ```text
 hub
@@ -171,8 +171,8 @@ reference
 instruction
 ```
 
-`engineering` replaces the older `development` name because the documents describe
-engineering policy and implementation guidance rather than the entire development lifecycle.
+`engineering` represents engineering policy and implementation guidance rather than the entire
+software-development lifecycle.
 
 A document under `design-system/` still uses the semantic type that matches its role. For
 example, a durable design-system boundary may be `architecture`, component-authoring guidance

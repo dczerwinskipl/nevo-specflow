@@ -1,6 +1,6 @@
 ---
-id: development.cli.testing-guidelines
-type: development
+id: engineering.cli.testing-guidelines
+type: engineering
 title: Testing guidelines
 status: current
 read_when:
@@ -11,8 +11,8 @@ summary: >
   Test stack (Vitest), the domain / application / CLI-smoke split, determinism rules,
   and how tests fit the Turborepo task graph.
 related:
-  - development.cli.node-tooling-guidelines
-  - development.local-setup
+  - engineering.cli.node-tooling-guidelines
+  - engineering.repository.local-setup
 ---
 
 # Testing guidelines

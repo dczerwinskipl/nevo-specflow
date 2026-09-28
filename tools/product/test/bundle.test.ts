@@ -19,14 +19,14 @@ beforeEach(() => {
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 describe('bundleProduct', () => {
-  it('injects NEVO_SPEC_VERSION_INJECTED and emits a runnable ESM file with a shebang', async () => {
+  it('injects NEVO_SPECFLOW_VERSION_INJECTED and emits a runnable ESM file with a shebang', async () => {
     writeFileSync(join(dir, 'sibling.ts'), 'export const marker = () => "sibling-ok";\n');
     writeFileSync(
       join(dir, 'entry.ts'),
       [
         'import { marker } from "./sibling.js";',
-        'declare const NEVO_SPEC_VERSION_INJECTED: string;',
-        'process.stdout.write(`${NEVO_SPEC_VERSION_INJECTED} ${marker()}`);',
+        'declare const NEVO_SPECFLOW_VERSION_INJECTED: string;',
+        'process.stdout.write(`${NEVO_SPECFLOW_VERSION_INJECTED} ${marker()}`);',
         '',
       ].join('\n'),
     );

@@ -1,6 +1,6 @@
 ---
-id: development.cli.node-tooling-guidelines
-type: development
+id: engineering.cli.node-tooling-guidelines
+type: engineering
 title: Node tooling guidelines
 status: current
 read_when:
@@ -15,8 +15,8 @@ summary: >
   filesystem/git/gh I/O ports, TypeScript-first, and a stable stdout/stderr/exit-code
   contract for agent automation.
 related:
-  - development.cli.testing-guidelines
-  - development.local-setup
+  - engineering.cli.testing-guidelines
+  - engineering.repository.local-setup
 ---
 
 # Node tooling guidelines

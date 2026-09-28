@@ -18,6 +18,7 @@ related:
   - architecture.runtime.ownership-and-lifecycle
   - architecture.principles.enforceable-invariants
   - product.specflow.ui.ai-session-ux
+  - architecture.principles.normative-language
 ---
 
 # Canonical AI Session, Turn, and Work model
@@ -44,9 +45,10 @@ Session
 
 A Session represents a provider-backed conversation/execution context.
 
-Canonical identity is provider-neutral at the application boundary but retains enough provider
-identity to address the authoritative provider session safely. A display name, file path, task
-order, or UI route is never session identity.
+A Session is the canonical product concept. Until an application-owned session ID is introduced,
+its canonical provider-backed locator is `ProviderSessionRef = (provider, providerSessionId)`.
+`providerSessionId` alone MUST NOT be treated as globally unique identity, and display name, file
+path, task order, or UI route MUST NOT be used as session identity.
 
 ### Turn
 
@@ -105,21 +107,22 @@ not product state.
 For one canonical provider/session identity, the Runtime admits at most one active non-terminal
 Turn unless a future explicit concurrency model says otherwise.
 
-Retries of the same logical start should be idempotent. A different conflicting start fails
-explicitly rather than racing another Turn.
+Retries of the same logical start MUST be idempotent. A different conflicting start MUST fail
+explicitly rather than race another Turn.
 
 ## Semantic projections are Runtime-owned
 
 The UI must not infer canonical semantics by inspecting raw Work arrays or provider events.
 
-Runtime/application code computes projections such as:
+Runtime/application code MUST compute canonical projections such as:
 
 - current activity;
 - whether user attention is required;
 - summarized phase/status;
 - session readiness (`ready`, `busy`, `requiresAttention`, `unavailable`).
 
-All surfaces consume the same projection logic.
+All surfaces MUST consume the same projection logic and MUST NOT implement competing readiness,
+attention, or current-activity heuristics.
 
 ## Interactions
 
@@ -133,8 +136,8 @@ that operation disappears. Restart recovery either reconstructs it honestly or i
 
 ## Persistence and replay
 
-Persist enough canonical execution state to rebuild an equivalent settled view and to reconcile
-interrupted active work.
+The Runtime MUST persist enough canonical execution state to rebuild an equivalent settled view
+and to reconcile interrupted active work.
 
 Persistence is not required to clone the provider's entire authoritative conversation history.
 Provider history and SpecFlow execution state have different ownership.

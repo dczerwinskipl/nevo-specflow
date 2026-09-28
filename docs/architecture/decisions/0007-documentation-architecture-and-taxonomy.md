@@ -55,6 +55,9 @@ docs/
 ├── README.md
 ├── architecture/
 │   ├── principles/
+│   ├── ai/
+│   ├── workflow/
+│   ├── runtime/
 │   └── decisions/
 ├── engineering/
 │   ├── shared/

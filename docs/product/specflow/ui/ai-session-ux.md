@@ -15,6 +15,7 @@ related:
   - product.specflow.ui.interaction-model
   - product.shared.vocabulary
   - design-system.principles.ui-ux-guidelines
+  - architecture.ai.canonical-session-turn-work
 ---
 
 # AI session UX

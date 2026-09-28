@@ -1,5 +1,5 @@
 ---
-id: reference.cli.nevo-specflowflow-contract
+id: reference.cli.nevo-specflow-contract
 type: reference
 title: nevo-specflow public CLI contract
 status: draft
@@ -13,7 +13,7 @@ summary: >
   (init, status, workflow, install, update) exists yet.
 related:
   - docs.product-specflow-cli-readme
-  - engineering.cli.node-tooling-guidelines
+  - engineering.cli.architecture
   - engineering.repository.product-packaging
 ---
 
@@ -24,7 +24,7 @@ related:
 | **Product**    | Nevo SpecFlow    |
 | **Package**    | `@nevo/specflow` |
 | **CLI**        | `nevo-specflow`      |
-| **Repository** | `nevo-specflowflow`  |
+| **Repository** | `nevo-specflow`  |
 
 ## Implemented today
 
@@ -54,4 +54,4 @@ Product copy and docs must not describe them as available.
 Pre-1.0: the surface above can still change, but changes are intentional, marked, and
 documented (see [pre-1.0 policy](../../architecture/repository-structure.md#0x-policy)).
 The output contract (clean stdout, diagnostics on stderr, `0` / non-zero exit) follows
-[Node tooling guidelines §10](../../engineering/cli/node-tooling-guidelines.md).
+[CLI architecture §10](../../engineering/cli/architecture.md).

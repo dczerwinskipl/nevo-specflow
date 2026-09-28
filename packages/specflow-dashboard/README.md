@@ -18,7 +18,7 @@ like a web framework, lives in the adapter and never reaches the capability/runt
   without touching its signature, the `./cli` adapter, or the shell boundary.
 - **Distribution.** `private: true` — never published or installed on its own.
   `@nevo/specflow`'s packaging step bundles the built `dist/` into the product tarball
-  (see [`docs/development/product-packaging.md`](../../docs/development/product-packaging.md)),
+  (see [`docs/development/product-packaging.md`](../../docs/engineering/repository/product-packaging.md)),
   so a consumer installs exactly one artifact. The source dependency stays a real
   `workspace:*` edge; only the distribution is single-artifact.
 

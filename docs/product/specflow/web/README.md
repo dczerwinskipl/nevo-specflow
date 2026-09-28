@@ -1,18 +1,18 @@
 ---
-id: docs.product-dashboard-readme
+id: docs.product-specflow-web-readme
 type: hub
 title: Dashboard product documentation
 status: current
 summary: >
   The Nevo SpecFlow dashboard — who uses it, how navigation and surfaces behave, and how
   AI sessions are presented. React/Tailwind implementation guidance is under
-  development/ui/.
+  design-system/.
 ---
 
 # Dashboard product
 
 Product behavior of the dashboard. How the UI is _built_ is under
-[`../../development/ui/`](../../development/ui/) — keep implementation detail out of
+[`../../../design-system/`](../../development/ui/) — keep implementation detail out of
 these files.
 
 | Doc                                       | Covers                                                                               |

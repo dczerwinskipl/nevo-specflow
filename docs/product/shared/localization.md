@@ -14,8 +14,8 @@ summary: >
   that concern.
 related:
   - product.shared.terminology
-  - product.cli.interaction-model
-  - product.dashboard.interaction-model
+  - product.specflow.cli.interaction-model
+  - product.specflow.web.interaction-model
 ---
 
 # Localization

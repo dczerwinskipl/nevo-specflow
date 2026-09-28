@@ -13,7 +13,7 @@ dashboard.
 - **Vendor-neutral.** The workflow is exposed to AI coding agents through thin adapters
   over a single source of truth.
 
-See [`docs/product/product-overview.md`](docs/product/product-overview.md) for the
+See [`docs/product/specflow/overview.md`](docs/product/product-overview.md) for the
 product overview and [`docs/`](docs/README.md) for everything else.
 
 ## Getting started

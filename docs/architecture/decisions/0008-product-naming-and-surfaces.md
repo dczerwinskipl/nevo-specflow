@@ -2,7 +2,7 @@
 id: adr.0008-product-naming-and-surfaces
 type: adr
 title: Product naming and surfaces
-status: draft
+status: current
 date: 2026-09-28
 summary: >
   Names the product Nevo SpecFlow, its executable nevo-specflow, its long-lived backend
@@ -18,7 +18,7 @@ related:
 
 ## Status
 
-Draft.
+Current.
 
 ## Context
 

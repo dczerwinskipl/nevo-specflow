@@ -40,7 +40,7 @@ and every package's typecheck / test / build. Full setup and the command referen
 | `apps/`     | Deployable applications. Workspace glob; populated when an app lands.                                                                                                                  |
 | `packages/` | Shared / publishable libraries under the `@nevo/*` scope. Workspace glob; populated when a package lands.                                                                              |
 | `tools/`    | Repository-internal tooling, all TypeScript — [`docs`](tools/docs/README.md) (`nevo-docs`), [`release`](tools/release/README.md), [`github`](tools/github/README.md). Never published. |
-| `docs/`     | [Documentation](docs/README.md): architecture, engineering, design system, product, reference, and instructions.                                                                                                                   |
+| `docs/`     | [Documentation](docs/README.md): architecture, engineering, design system, product, reference, and instructions.                                                                       |
 
 ## Contributing
 

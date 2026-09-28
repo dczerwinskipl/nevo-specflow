@@ -1,5 +1,5 @@
 ---
-id: product.dashboard.personas
+id: product.specflow.web.personas
 type: product
 title: Dashboard personas
 status: draft
@@ -11,8 +11,8 @@ summary: >
   checking a change — and what each needs from it. The dashboard observes and steers;
   it does not replace the CLI/PR workflow.
 related:
-  - product.dashboard.interaction-model
-  - product.cli.personas
+  - product.specflow.web.interaction-model
+  - product.specflow.cli.personas
 ---
 
 # Dashboard personas

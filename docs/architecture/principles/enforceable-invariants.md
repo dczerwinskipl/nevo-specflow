@@ -28,7 +28,8 @@ product can verify deterministically.
 
 ## Rule
 
-For machine-verifiable invariants, implementations MUST prefer:
+For machine-verifiable invariants, the enforcement path MUST use deterministic validation or
+transition logic that produces explicit success or machine-readable failure:
 
 ```text
 authoritative state
@@ -64,7 +65,7 @@ The distinction is:
 When authoritative state is missing, contradictory, or cannot be validated safely, operations
 that would mutate durable state fail closed.
 
-Do not convert "unknown" into "probably safe" merely to keep a workflow moving.
+The system MUST NOT convert "unknown" into "probably safe" merely to keep a workflow moving.
 
 ## One authoritative decision point
 

@@ -11,7 +11,7 @@ summary: >
   right.
 related:
   - architecture.repository-structure
-  - development.cli.node-tooling-guidelines
+  - engineering.cli.node-tooling-guidelines
 ---
 
 # 0005 — Repository tooling is separate from the product API
@@ -44,7 +44,7 @@ scope, and a refactor of a repo tool turns into a breaking product change.
   or a `@nevo/*` API just because it exists. If a capability should be a product
   surface, that is its own decision, designed independently; it may reuse extracted
   code, but the product contract is defined on its own terms.
-- **Docs boundary.** `docs/development/**` may reference the internal tools freely.
+- **Docs boundary.** `docs/engineering/**` may reference the internal tools freely.
   `docs/product/**` describes the product surface only; it does not present an internal
   tool's commands as an end-user contract.
 

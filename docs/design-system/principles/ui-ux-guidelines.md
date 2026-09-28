@@ -1,6 +1,6 @@
 ---
-id: development.ui.ui-ux-guidelines
-type: development
+id: design-system.principles.ui-ux-guidelines
+type: engineering
 title: UI/UX engineering guidelines
 status: draft
 read_when:
@@ -12,19 +12,19 @@ summary: >
   Portable engineering rules for building UI: validate the composed screen, semantic
   typography/color/spacing tokens, information hierarchy, progressive disclosure, and
   mandatory visual self-review. Product-specific UX (AI sessions, dashboard screens) is
-  under product/dashboard/.
+  under product/specflow/web/.
 related:
-  - development.ui.react.component-guidelines
+  - design-system.implementation.react.component-guidelines
   - development.ui.tailwind.styling-guidelines
   - development.ui.storybook.guidelines
-  - product.dashboard.interaction-model
+  - product.specflow.web.interaction-model
 ---
 
 # UI/UX engineering guidelines
 
 `status: draft` — technology-agnostic guidance on building UI well. What a particular Nevo SpecFlow surface should _show and do_ — personas, screen contracts, AI-session behaviour
-— lives under [`../../product/dashboard/`](../../product/dashboard/) and
-[`../../product/cli/`](../../product/cli/).
+— lives under [`../../product/specflow/web/`](../../product/specflow/web/) and
+[`../../product/specflow/cli/`](../../product/specflow/cli/).
 
 ## Core design rules
 
@@ -70,7 +70,7 @@ Deeper levels increase **specificity**, not just volume. Give each level an info
 budget and keep to it. Hidden detail must be **discoverable** — an obvious affordance to
 go deeper. Do not promote inspection-only data (raw payloads, internal ids) to a
 summary level. (The specific level model for the dashboard's AI Work view is in
-[`product/dashboard/ai-session-ux.md`](../../product/dashboard/ai-session-ux.md).)
+[`product/specflow/web/ai-session-ux.md`](../../product/specflow/web/ai-session-ux.md).)
 
 ## Interaction hierarchy
 

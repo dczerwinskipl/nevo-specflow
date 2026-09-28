@@ -28,7 +28,7 @@ The **Nevo SpecFlow Runtime** is the long-lived local backend of the product. It
 synonymous with an HTTP server.
 
 A Runtime instance composes application capabilities and owns the lifetime of resources
-that must survive longer than one CLI operation.
+that survive longer than one CLI operation.
 
 ## Responsibility boundary
 

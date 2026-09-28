@@ -1,8 +1,8 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./assets/brand/nevo-specflow-readme-v2-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="./assets/brand/nevo-specflow-readme-v2-light.svg">
-    <img alt="Nevo SpecFlow" src="./assets/brand/nevo-specflow-lockup-light.svg" width="320">
+    <source media="(prefers-color-scheme: dark)" srcset="./assets/brand/nevo-specflow-repository-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="./assets/brand/nevo-specflow-repository-light.svg">
+    <img alt="Nevo SpecFlow" src="./assets/brand/nevo-specflow-repository-light.svg" width="320">
   </picture>
 </p>
 

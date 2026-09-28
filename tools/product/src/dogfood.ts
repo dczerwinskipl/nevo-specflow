@@ -1,17 +1,12 @@
-// `nevo-repo-product dogfood` — build + pack the REAL distributable, install
-// THAT tarball globally with pnpm, and smoke the installed `nevo-spec`.
-//
-// It never uses `pnpm link`, never installs from `packages/specflow`, and never
-// a `file:` path back into the repo — the whole point is to exercise the actual
-// distribution boundary a user would hit: the pnpm-created global executable
-// shim, resolved from PATH, on the repository-pinned pnpm.
+// `nevo-repo-product dogfood` — build + pack the real distributable, install
+// that tarball globally with pnpm, and smoke the installed `nevo-specflow`.
 
 import { delimiter } from 'node:path';
 
 import { run, StepFailedError } from './exec.js';
-import { findRepoRoot } from './paths.js';
+import { RUNTIME_BOOTSTRAP_MARKER } from './markers.js';
 import { packProduct, type PackResult } from './pack.js';
-import { DASHBOARD_BOOTSTRAP_MARKER } from './markers.js';
+import { findRepoRoot } from './paths.js';
 
 export interface DogfoodResult extends PackResult {
   readonly globalBinDir: string;
@@ -26,7 +21,6 @@ export async function dogfoodInstall(
 
   const packed = await packProduct({ env: opts.env, log });
 
-  // All pnpm calls run from the repo root so Corepack uses the pinned pnpm.
   log(`installing globally: pnpm add -g ${packed.tarball}`);
   run('pnpm', ['add', '-g', packed.tarball], { cwd: repoRoot, env: opts.env });
 
@@ -36,39 +30,37 @@ export async function dogfoodInstall(
     ...opts.env,
     PATH: `${globalBinDir}${delimiter}${process.env.PATH ?? ''}`,
   };
-  // Resolve `nevo-spec` from PATH and run it through the OS shim (cmd/ps1 on
-  // Windows, the shell shim on Unix) — not `node <dist/bin.js>`.
-  const nevoSpec = (args: string[]): string => run('nevo-spec', args, { env });
 
+  const nevoSpecFlow = (args: string[]): string => run('nevo-specflow', args, { env });
   const checks: string[] = [];
 
-  const version = nevoSpec(['--version']);
+  const version = nevoSpecFlow(['--version']);
   if (version !== packed.version) {
     throw new StepFailedError(
-      `installed \`nevo-spec --version\` printed ${JSON.stringify(version)}, ` +
+      `installed \`nevo-specflow --version\` printed ${JSON.stringify(version)}, ` +
         `expected the packed version ${JSON.stringify(packed.version)}`,
     );
   }
-  checks.push(`nevo-spec --version -> ${version}`);
+  checks.push(`nevo-specflow --version -> ${version}`);
 
-  const help = nevoSpec(['--help']);
-  for (const needle of ['nevo-spec', 'dashboard']) {
+  const help = nevoSpecFlow(['--help']);
+  for (const needle of ['nevo-specflow', 'start']) {
     if (!help.includes(needle)) {
       throw new StepFailedError(
-        `\`nevo-spec --help\` is missing ${JSON.stringify(needle)}:\n${help}`,
+        `\`nevo-specflow --help\` is missing ${JSON.stringify(needle)}:\n${help}`,
       );
     }
   }
-  checks.push('nevo-spec --help -> ok');
+  checks.push('nevo-specflow --help -> ok');
 
-  const dashboard = nevoSpec(['dashboard']);
-  if (!dashboard.includes(DASHBOARD_BOOTSTRAP_MARKER)) {
+  const start = nevoSpecFlow(['start']);
+  if (!start.includes(RUNTIME_BOOTSTRAP_MARKER)) {
     throw new StepFailedError(
-      `\`nevo-spec dashboard\` did not run the dashboard capability ` +
-        `(expected ${JSON.stringify(DASHBOARD_BOOTSTRAP_MARKER)}):\n${dashboard}`,
+      `\`nevo-specflow start\` did not run the Runtime capability ` +
+        `(expected ${JSON.stringify(RUNTIME_BOOTSTRAP_MARKER)}):\n${start}`,
     );
   }
-  checks.push('nevo-spec dashboard -> dashboard capability ran');
+  checks.push('nevo-specflow start -> Runtime capability ran');
 
   return { ...packed, globalBinDir, checks };
 }

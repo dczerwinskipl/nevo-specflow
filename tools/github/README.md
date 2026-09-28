@@ -96,4 +96,4 @@ private vulnerability reporting are toggled per repository/plan. Enable and veri
 `gh api -X PUT repos/{owner}/{repo}/vulnerability-alerts` /
 `gh api -X PUT repos/{owner}/{repo}/private-vulnerability-reporting`. Report actual
 observed state — see
-[`docs/development/dependencies-and-security.md`](../../docs/development/dependencies-and-security.md).
+[`docs/engineering/repository/dependencies-and-security.md`](../../docs/engineering/repository/dependencies-and-security.md).

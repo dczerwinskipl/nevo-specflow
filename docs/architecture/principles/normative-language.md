@@ -59,7 +59,7 @@ Document status affects authority:
 - **draft** — proposal or working guidance; it MUST NOT override a conflicting current document;
 - **deprecated/superseded** — historical context only; it MUST NOT be used as the current rule.
 
-A more specific current document may refine a broader current document within its declared
+A more specific current document MAY refine a broader current document within its declared
 ownership, but it MUST NOT contradict a broader invariant silently.
 
 ## Conflicts
@@ -68,7 +68,7 @@ If two authoritative current documents appear to conflict:
 
 1. STOP the operation that depends on choosing between them;
 2. report the conflicting rules and their document IDs;
-3. do not select the more convenient interpretation;
+3. MUST NOT select the more convenient interpretation;
 4. resolve the conflict in documentation/architecture before proceeding with a state-changing
    implementation that depends on it.
 
@@ -76,12 +76,12 @@ A caller MAY continue work that is provably independent of the conflict.
 
 ## No extrapolation from examples
 
-Examples illustrate an existing rule. They do not create new requirements.
+Examples illustrate an existing rule. They MUST NOT create new requirements.
 
 A human or AI agent MUST NOT infer a new architecture rule, supported capability, transition,
 permission, package boundary, or lifecycle guarantee solely because an example happens to show it.
 
-Absence of a prohibition is not permission to violate an existing invariant.
+Absence of a prohibition MUST NOT be interpreted as permission to violate an existing invariant.
 
 ## Authoritative ownership
 
@@ -94,5 +94,5 @@ consistently but MUST NOT create an alternative state machine or decision path.
 ## Imperative prose without a keyword
 
 Existing imperative statements such as "Do not..." remain requirements in their local context.
-When editing authoritative documents, prefer explicit MUST/MUST NOT for architecture and product
-invariants so machine readers do not have to infer strength from prose style.
+When editing authoritative documents, authors SHOULD use explicit MUST/MUST NOT for architecture
+and product invariants so machine readers do not have to infer strength from prose style.

@@ -53,7 +53,7 @@ single-purpose tool. The repository's own tools stay plain `tsc`; esbuild is con
 this package and only touches the product distributable. The **source** boundary is
 untouched — `@nevo/specflow` still depends on `@nevo/specflow-dashboard` as a real
 `workspace:*` package with a typed capability API; only the shipped form is one artifact.
-See [`docs/development/product-packaging.md`](../../docs/development/product-packaging.md).
+See [`docs/engineering/repository/product-packaging.md`](../../docs/engineering/repository/product-packaging.md).
 
 ## Tests
 

@@ -17,8 +17,8 @@ related:
 
 # Product overview
 
-`status: draft` — states intent and scope; the surfaces themselves are not yet in this
-repository.
+`status: draft` — states product intent and scope. The CLI and Runtime bootstrap exist;
+the full workflow and UI are still being built.
 
 ## What it is
 
@@ -40,14 +40,14 @@ development**:
 
 ## Surfaces
 
-| Surface       | Command / entry | Role                                                                                                            |
-| ------------- | --------------- | --------------------------------------------------------------------------------------------------------------- |
-| **CLI**       | `nevo-specflow` | Deterministic driver for the spec/task lifecycle and docs discovery, for humans and agents in a terminal or CI. |
+| Surface | Command / entry | Role |
+| --- | --- | --- |
+| **CLI** | `nevo-specflow` | Deterministic command surface for humans, agents, and CI. |
 | **Runtime** | local process | Owns long-lived application lifecycle, resources, providers, persistence, and transports. |
 | **UI** | interactive application | View and steering surface for specifications, tasks, changes/PRs, and AI sessions. |
-| **Library**   | `import`        | Shared spec model and workflow logic the surfaces build on.                                                     |
 
-Published product packages use the `@nevo/*` scope (e.g. `@nevo/specflow`).
+The distributable product package is `@nevo/specflow`. Internal capability packages use
+the `@nevo/specflow-*` family when a real package boundary is warranted.
 
 The executable is `nevo-specflow`. Product lifecycle commands live at the root (`nevo-specflow start`, and later `stop` / `status`); resource operations use `<noun> <verb>`.
 

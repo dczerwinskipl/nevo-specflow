@@ -25,7 +25,7 @@ CI and can auto-merge; without it they push the branch and print the exact
 `gh pr create …` command. See
 [`docs/engineering/repository/releasing.md`](../../docs/engineering/repository/releasing.md#ci_github_release_token).
 
-Full behavior: [`docs/development/ci.md`](../../docs/engineering/repository/ci.md) and
+Full behavior: [`docs/engineering/repository/ci.md`](../../docs/engineering/repository/ci.md) and
 [`docs/engineering/repository/releasing.md`](../../docs/engineering/repository/releasing.md).
 
 ## Action pinning

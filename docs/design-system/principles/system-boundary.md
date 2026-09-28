@@ -16,6 +16,7 @@ related:
   - design-system.principles.ui-ux-guidelines
   - design-system.implementation.react.component-guidelines
   - product.specflow.ui.interaction-model
+  - architecture.principles.normative-language
 ---
 
 # Nevo UI system boundary
@@ -53,8 +54,9 @@ primitive.
 
 Do not make one generic component absorb every product variation through many boolean/config props.
 
-Prefer reusable behavior plus composition. A shared component should represent a real common
-interaction/state/layout contract, not merely similar JSX.
+Reusable design-system abstractions SHOULD prefer behavior plus composition over configuration
+explosion. A shared component SHOULD represent a real common interaction/state/layout contract,
+not merely similar JSX.
 
 ## Headless behavior when representation varies
 
@@ -66,7 +68,7 @@ limitation is part of the visual component's contract, not a hidden degradation 
 
 ## No silent degradation
 
-If a visual implementation cannot faithfully represent supplied data, it must not silently flatten,
+If a visual implementation cannot faithfully represent supplied data, it MUST NOT silently flatten,
 drop, or reinterpret it.
 
 Fail or warn explicitly in development, or require the caller to choose a supported representation.

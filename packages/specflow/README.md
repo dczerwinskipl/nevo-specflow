@@ -46,5 +46,5 @@ createDashboardCommand(ctx))`. A capability vertical's `./cli` adapter uses Comm
   repository's canonical version model); the installed artifact never reads the
   repo's `version.json`.
 
-See [`docs/development/product-packaging.md`](../../docs/development/product-packaging.md)
-and [`docs/development/dogfooding.md`](../../docs/development/dogfooding.md).
+See [`docs/engineering/repository/product-packaging.md`](../../docs/engineering/repository/product-packaging.md)
+and [`docs/engineering/repository/dogfooding.md`](../../docs/engineering/repository/dogfooding.md).

@@ -28,7 +28,7 @@ nevo-repo-product pack [--json] [--skip-build]
     #      engines copied verbatim from source)
     #   -> THIRD_PARTY_NOTICES.txt (verbatim license of code EMBEDDED in the bundle
     #      — commander; not build-only tools like esbuild)
-    #   -> `pnpm pack` -> .artifacts/nevo-specflowflow-<version>.tgz
+    #   -> `pnpm pack` -> .artifacts/nevo-specflow-<version>.tgz
     # Every child `pnpm` runs with cwd = repo root and `--dir <target>`, so Corepack
     # uses the repository-pinned pnpm, never "latest". --json prints { name, version, tarball }.
 

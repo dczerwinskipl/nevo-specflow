@@ -2,7 +2,7 @@
 id: adr.0007-documentation-architecture-and-taxonomy
 type: adr
 title: Documentation architecture and taxonomy
-status: current
+status: draft
 date: 2026-09-28
 summary: >
   Defines a documentation architecture that separates product behavior, durable system
@@ -19,7 +19,7 @@ related:
 
 ## Status
 
-Current.
+Draft.
 
 ## Context
 

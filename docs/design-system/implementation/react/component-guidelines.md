@@ -1,6 +1,6 @@
 ---
-id: development.ui.react.component-guidelines
-type: development
+id: design-system.implementation.react.component-guidelines
+type: engineering
 title: React component guidelines
 status: draft
 read_when:
@@ -12,7 +12,7 @@ summary: >
   Small focused components, composition over configuration, split by responsibility not
   ceremony, feature-local vertical ownership, hooks by behavior, and where state lives.
 related:
-  - development.ui.ui-ux-guidelines
+  - design-system.principles.ui-ux-guidelines
   - development.ui.tailwind.styling-guidelines
   - development.cli.node-tooling-guidelines
 ---
@@ -21,7 +21,7 @@ related:
 
 `status: draft` — working guidance, expanded as the code it governs lands. Same
 "responsibilities, not a mandatory directory tree" spirit as the
-[Node tooling guidelines](../../cli/node-tooling-guidelines.md).
+[Node tooling guidelines](../../../development/cli/node-tooling-guidelines.md).
 
 ## Core principles
 
@@ -79,7 +79,7 @@ at mobile and desktop widths.
 
 ## Testing
 
-Follow the [testing guidelines](../../cli/testing-guidelines.md): pure view-model and
+Follow the [testing guidelines](../../../development/cli/testing-guidelines.md): pure view-model and
 hook logic in fast unit tests; component behavior and accessibility via Storybook
 interaction tests; inspect computed styles when exact visuals matter.
 

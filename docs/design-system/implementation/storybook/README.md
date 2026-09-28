@@ -1,5 +1,5 @@
 ---
-id: docs.development-ui-storybook-readme
+id: docs.design-system-storybook-readme
 type: hub
 title: Storybook documentation
 status: current

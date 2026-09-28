@@ -13,8 +13,8 @@ summary: >
   affected-package model and what invalidates everything, the SemVer / release-line
   model, and the pre-1.0 policy.
 related:
-  - development.local-setup
-  - development.git-workflow
+  - engineering.repository.local-setup
+  - engineering.repository.git-workflow
   - adr.0002-toolchain-selection
   - adr.0003-branch-and-release-model
 ---

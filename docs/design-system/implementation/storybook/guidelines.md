@@ -14,7 +14,7 @@ summary: >
 related:
   - design-system.implementation.react.component-guidelines
   - design-system.principles.ui-ux-guidelines
-  - engineering.cli.testing-guidelines
+  - engineering.cli.testing
 ---
 
 # Storybook guidelines

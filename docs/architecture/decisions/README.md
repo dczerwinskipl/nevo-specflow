@@ -20,3 +20,5 @@ an ADR. Use [`../../templates/adr-template.md`](../../templates/adr-template.md)
 - [0005 — Repository tooling is separate from the product API](0005-repository-tooling-is-separate-from-the-product-api.md)
 - [0006 — The product ships as a single bundled artifact](0006-product-ships-as-a-single-bundled-artifact.md)
 - [0007 — Documentation architecture and taxonomy](0007-documentation-architecture-and-taxonomy.md) — draft
+
+| [0008](0008-product-naming-and-surfaces.md) | draft | Name Nevo SpecFlow, CLI, Runtime, UI, and Nevo UI consistently. |

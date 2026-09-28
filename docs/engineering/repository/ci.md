@@ -58,8 +58,8 @@ Concretely, for the product graph:
 | Change                                            | Affected `build` / `test`                                                                     |
 | ------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | `tools/release/**` only                           | `nevo-repo-release` — **not** the `@nevo/*` product packages.                                 |
-| `packages/specflow/**` (the CLI)                  | `@nevo/specflow` (+ its build prerequisites `@nevo/specflow-dashboard`, `nevo-repo-product`). |
-| `packages/specflow-dashboard/**` (the capability) | `@nevo/specflow-dashboard` **and** its dependent `@nevo/specflow`.                            |
+| `packages/specflow/**` (the CLI)                  | `@nevo/specflow` (+ its build prerequisites `@nevo/specflow-runtime`, `nevo-repo-product`). |
+| `packages/specflow-runtime/**` (the capability) | `@nevo/specflow-runtime` **and** its dependent `@nevo/specflow`.                            |
 
 `quality:build-tools` stays scoped to `nevo-repo-docs` + `nevo-repo-release` (what the
 quality gate itself needs). Product packaging never runs as an install/`prepare` script,
@@ -67,7 +67,7 @@ so it cannot reintroduce a repo-wide pre-build.
 
 ## Product packaging (not a CI job)
 
-`pnpm product:pack` (→ `.artifacts/nevo-specflow-<version>.tgz`) and `pnpm dogfood:install`
+`pnpm product:pack` (→ `.artifacts/nevo-specflowflow-<version>.tgz`) and `pnpm dogfood:install`
 are developer commands, not CI jobs — see [product packaging](product-packaging.md) and
 [dogfooding](dogfooding.md). The packed artifact is proven in CI by
 `packages/specflow/test/packaging.smoke.test.ts`, which runs inside the normal `test` job.

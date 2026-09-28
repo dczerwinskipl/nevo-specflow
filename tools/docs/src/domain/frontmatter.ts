@@ -7,15 +7,24 @@ import { DocsToolError } from '../errors.js';
 
 const FRONT_MATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n([\s\S]*))?$/;
 
-export type DocType = 'hub' | 'development' | 'product' | 'architecture' | 'adr';
+export type DocType =
+  | 'hub'
+  | 'engineering'
+  | 'product'
+  | 'architecture'
+  | 'reference'
+  | 'instruction'
+  | 'adr';
 export type DocStatus = 'current' | 'draft' | 'deprecated' | 'superseded';
 
 /** Required fields per `type`. */
 export const REQUIRED_FIELDS: Record<DocType, readonly string[]> = {
   hub: ['id', 'type', 'title', 'status'],
-  development: ['id', 'type', 'title', 'status', 'read_when', 'summary'],
+  engineering: ['id', 'type', 'title', 'status', 'read_when', 'summary'],
   product: ['id', 'type', 'title', 'status', 'read_when', 'summary'],
   architecture: ['id', 'type', 'title', 'status', 'read_when', 'summary'],
+  reference: ['id', 'type', 'title', 'status', 'read_when', 'summary'],
+  instruction: ['id', 'type', 'title', 'status', 'read_when', 'summary'],
   adr: ['id', 'type', 'title', 'status', 'date'],
 };
 

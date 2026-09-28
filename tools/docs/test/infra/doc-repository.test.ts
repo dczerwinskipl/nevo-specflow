@@ -17,7 +17,7 @@ let docsDir: string;
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'nevo-docs-repo-'));
   docsDir = join(root, 'docs');
-  mkdirSync(join(docsDir, 'engineering'), { recursive: true });
+  mkdirSync(join(docsDir, 'engineering', 'repository'), { recursive: true });
   mkdirSync(join(docsDir, 'templates'), { recursive: true });
   mkdirSync(join(docsDir, 'architecture', 'decisions'), { recursive: true });
   writeFileSync(join(root, 'pnpm-workspace.yaml'), 'packages: []\n');

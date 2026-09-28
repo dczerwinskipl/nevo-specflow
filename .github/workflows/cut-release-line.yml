@@ -40,7 +40,7 @@ jobs:
           fetch-depth: 0
           # A PAT lets the main-bump PR trigger CI so auto-merge can land it.
           # Without it the branches are still created and the exact `gh pr create`
-          # command is printed for a maintainer to run. See docs/development/releasing.md.
+          # command is printed for a maintainer to run. See docs/engineering/repository/releasing.md.
           token: ${{ secrets.CI_GITHUB_RELEASE_TOKEN || github.token }}
       - uses: ./.github/actions/setup
 

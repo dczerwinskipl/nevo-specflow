@@ -1,5 +1,5 @@
 ---
-id: product.product-overview
+id: product.specflow.overview
 type: product
 title: Product overview
 status: draft
@@ -11,8 +11,8 @@ summary: >
   engineering, delivered as a CLI (nevo-spec), a dashboard, and a shared library.
 related:
   - product.shared.terminology
-  - product.cli.interaction-model
-  - product.dashboard.interaction-model
+  - product.specflow.cli.interaction-model
+  - product.specflow.web.interaction-model
 ---
 
 # Product overview

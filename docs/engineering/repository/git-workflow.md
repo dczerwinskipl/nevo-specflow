@@ -1,6 +1,6 @@
 ---
-id: development.git-workflow
-type: development
+id: engineering.repository.git-workflow
+type: engineering
 title: Git workflow
 status: current
 read_when:
@@ -12,8 +12,8 @@ summary: >
   Branch model (main, feature/, fix/, release/v*), protected-branch rules, squash-merge
   policy, and how maintained release lines and hotfixes work.
 related:
-  - development.commit-conventions
-  - development.pull-requests
+  - engineering.repository.commit-conventions
+  - engineering.repository.pull-requests
   - architecture.repository-structure
   - adr.0003-branch-and-release-model
 ---
@@ -78,7 +78,7 @@ main          ──►  1.4.0-alpha.<build>   (or 2.0.0-alpha.<build> if the ne
 The channel model (`beta` / `rc` / `stable`), the intentional prerelease tag sequence
 (`v1.3.0-beta.1`, `-beta.2`, `-rc.1`, …), and the `release` workflow are in
 [releasing](releasing.md). ADR
-[`0003-branch-and-release-model`](../architecture/decisions/0003-branch-and-release-model.md).
+[`0003-branch-and-release-model`](../../architecture/decisions/0003-branch-and-release-model.md).
 
 ## Hotfix on a released line
 

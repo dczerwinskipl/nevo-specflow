@@ -10,7 +10,7 @@ summary: >
   release/vX.Y branch. The next-version choice (minor vs major) is always an explicit
   input.
 related:
-  - development.git-workflow
+  - engineering.repository.git-workflow
   - architecture.repository-structure
 ---
 

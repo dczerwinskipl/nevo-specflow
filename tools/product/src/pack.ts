@@ -1,5 +1,5 @@
 // `nevo-repo-product pack` — the ONE canonical way to produce the installable
-// Nevo SpecDev product artifact. Local dogfooding, and any future CI / release
+// Nevo SpecFlow product artifact. Local dogfooding, and any future CI / release
 // job, call this same function; there is no second pack implementation.
 //
 //   build the pack inputs (scoped `pnpm --filter` — never a global pre-build)
@@ -7,7 +7,7 @@
 //     -> esbuild the self-contained bundle into a scratch stage
 //     -> write minimal package metadata (no deps, no scripts, real version)
 //     -> write THIRD_PARTY_NOTICES.txt for code embedded in the bundle
-//     -> `pnpm pack` -> deterministic `.artifacts/nevo-specdev-<version>.tgz`
+//     -> `pnpm pack` -> deterministic `.artifacts/nevo-specflow-<version>.tgz`
 //
 // Every child `pnpm` runs with `cwd` = the repository root (which carries
 // `packageManager`) and targets other directories with `--dir`, so Corepack
@@ -58,9 +58,9 @@ export async function packProduct(opts: PackOptions = {}): Promise<PackResult> {
     // capability (esbuild resolves its built dist) and the release tool (the
     // canonical version). `pnpm --filter` runs the package's own `tsc`, so this
     // is safe to nest inside `turbo run test` and never triggers a global build.
-    log('building pack inputs (nevo-repo-release, @nevo/specdev-dashboard)…');
+    log('building pack inputs (nevo-repo-release, @nevo/specflow-dashboard)…');
     run('pnpm', ['--filter', 'nevo-repo-release', 'build'], { cwd: paths.root, env: opts.env });
-    run('pnpm', ['--filter', '@nevo/specdev-dashboard', 'build'], {
+    run('pnpm', ['--filter', '@nevo/specflow-dashboard', 'build'], {
       cwd: paths.root,
       env: opts.env,
     });
@@ -74,7 +74,7 @@ export async function packProduct(opts: PackOptions = {}): Promise<PackResult> {
   });
   log(`product version: ${version}`);
 
-  const stage = mkdtempSync(join(tmpdir(), 'nevo-specdev-pack-'));
+  const stage = mkdtempSync(join(tmpdir(), 'nevo-specflow-pack-'));
   try {
     await bundleProduct({
       entry: 'src/bin.ts',
@@ -132,7 +132,7 @@ function copyIfPresent(from: string, to: string): void {
 }
 
 function resolveTarball(destDir: string, printed: string, version: string): string {
-  const expected = join(destDir, `nevo-specdev-${version}.tgz`);
+  const expected = join(destDir, `nevo-specflow-${version}.tgz`);
   if (existsSync(expected)) return expected;
   const named = printed
     .split(/\r?\n/)

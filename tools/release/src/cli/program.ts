@@ -10,7 +10,7 @@ import { versionCommand } from './commands/version.js';
 /** Build the `nevo-release` program. Pure wiring — no argv parsing here. */
 export function createProgram(ctx: CliContext): Command {
   const program = new Command('nevo-release')
-    .description('Repository release + version tooling for nevo-specdev (not a product CLI)')
+    .description('Repository release + version tooling for nevo-specflow (not a product CLI)')
     .configureOutput({
       writeOut: (str) => ctx.stdout(str.replace(/\n$/, '')),
       writeErr: (str) => ctx.stderr(str.replace(/\n$/, '')),

@@ -1,4 +1,4 @@
-// The Nevo SpecDev dashboard capability — application / runtime surface.
+// The Nevo SpecFlow dashboard capability — application / runtime surface.
 //
 // BOOTSTRAP ONLY. This proves the packaging / CLI-routing boundary:
 //
@@ -12,7 +12,7 @@
 // capability and returns a plain typed value.
 
 /** A deterministic marker so callers (and the packaging smoke test) can assert routing worked. */
-export const DASHBOARD_BOOTSTRAP_MARKER = 'Nevo SpecDev dashboard command is available.';
+export const DASHBOARD_BOOTSTRAP_MARKER = 'Nevo SpecFlow dashboard command is available.';
 
 export interface DashboardResult {
   /** `bootstrap` until the real dashboard runtime is migrated. */

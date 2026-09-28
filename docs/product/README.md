@@ -4,13 +4,13 @@ type: hub
 title: Product documentation
 status: current
 summary: >
-  What Nevo SpecDev is meant to do — product overview, shared terminology and
+  What Nevo SpecFlow is meant to do — product overview, shared terminology and
   localization, and the CLI and Dashboard interaction models.
 ---
 
 # Product documentation
 
-What Nevo SpecDev **does** and how it should behave. Engineering rules for building it
+What Nevo SpecFlow **does** and how it should behave. Engineering rules for building it
 are under [`../development/`](../development/) — keep React/Tailwind implementation
 detail out of these files, and keep personas and UX contracts out of the development
 files.

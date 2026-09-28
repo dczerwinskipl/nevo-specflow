@@ -19,12 +19,12 @@ related:
 
 # `nevo-spec` public CLI contract
 
-|                |                 |
-| -------------- | --------------- |
-| **Product**    | Nevo SpecDev    |
-| **Package**    | `@nevo/specdev` |
-| **CLI**        | `nevo-spec`     |
-| **Repository** | `nevo-specdev`  |
+|                |                  |
+| -------------- | ---------------- |
+| **Product**    | Nevo SpecFlow    |
+| **Package**    | `@nevo/specflow` |
+| **CLI**        | `nevo-spec`      |
+| **Repository** | `nevo-specflow`  |
 
 ## Implemented today
 
@@ -37,9 +37,9 @@ nevo-spec dashboard     # bootstrap proof (see below); exit 0
 - `--version` prints the version baked into the installed build (from the repository's
   release model). It does not depend on any file outside the installed package.
 - An unknown command or bad usage exits non-zero with usage on stderr.
-- `dashboard` is defined by the dashboard vertical (`@nevo/specdev-dashboard/cli`) and
+- `dashboard` is defined by the dashboard vertical (`@nevo/specflow-dashboard/cli`) and
   composed into the shell. It currently **only routes into that vertical's capability
-  and prints a deterministic marker** (`Nevo SpecDev dashboard command is available.`).
+  and prints a deterministic marker** (`Nevo SpecFlow dashboard command is available.`).
   It does **not** start the dashboard server, UI, or runtime — those are not migrated
   yet.
 

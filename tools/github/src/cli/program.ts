@@ -11,7 +11,7 @@ export interface GithubCliContext {
 
 export function createProgram(ctx: GithubCliContext): Command {
   const program = new Command('nevo-repo-github')
-    .description('Repository GitHub governance for nevo-specdev (not a product CLI)')
+    .description('Repository GitHub governance for nevo-specflow (not a product CLI)')
     .configureOutput({
       writeOut: (str) => ctx.stdout(str.replace(/\n$/, '')),
       writeErr: (str) => ctx.stderr(str.replace(/\n$/, '')),

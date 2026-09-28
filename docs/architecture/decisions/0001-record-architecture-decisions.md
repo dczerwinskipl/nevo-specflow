@@ -17,7 +17,7 @@ Current.
 
 ## Context
 
-Nevo SpecDev is a public repository that will grow, take contributors, and be worked on
+Nevo SpecFlow is a public repository that will grow, take contributors, and be worked on
 by coding agents. Decisions that constrain the whole repository (toolchain, license,
 branch model) need to be discoverable with their rationale, so they are not silently
 re-litigated or reversed.

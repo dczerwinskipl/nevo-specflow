@@ -1,6 +1,6 @@
 # Security policy
 
-Nevo SpecDev is maintained by a single person on a best-effort basis.
+Nevo SpecFlow is maintained by a single person on a best-effort basis.
 
 ## Reporting a vulnerability
 

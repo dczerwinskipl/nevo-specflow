@@ -22,7 +22,7 @@ related:
 
 # UI/UX engineering guidelines
 
-`status: draft` — technology-agnostic guidance on building UI well. What a particular Nevo SpecDev surface should _show and do_ — personas, screen contracts, AI-session behaviour
+`status: draft` — technology-agnostic guidance on building UI well. What a particular Nevo SpecFlow surface should _show and do_ — personas, screen contracts, AI-session behaviour
 — lives under [`../../product/dashboard/`](../../product/dashboard/) and
 [`../../product/cli/`](../../product/cli/).
 

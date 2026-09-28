@@ -19,6 +19,6 @@ Product behavior of the `nevo-spec` command-line tool. How Node CLIs are _built_
 | [Personas](personas.md)                      | Who runs `nevo-spec` and what they need from it.                                                                        |
 | [Interaction model](interaction-model.md)    | Command shape, output contract, human vs. agent vs. CI use.                                                             |
 
-`@nevo/specdev` is packaged and installed as a single artifact — see
+`@nevo/specflow` is packaged and installed as a single artifact — see
 [product packaging](../../development/product-packaging.md) and
 [dogfooding](../../development/dogfooding.md).

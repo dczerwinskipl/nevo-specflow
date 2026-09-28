@@ -1,14 +1,14 @@
 ---
 id: docs.readme
 type: hub
-title: Nevo SpecDev documentation
+title: Nevo SpecFlow documentation
 status: current
 summary: >
   Top-level, human-authored map of the documentation, split by audience:
   development (how we build), product (what we build), architecture (durable decisions).
 ---
 
-# Nevo SpecDev documentation
+# Nevo SpecFlow documentation
 
 The documentation is split by audience: **development** (how it is built), **product**
 (what it does), **architecture** (durable decisions). Docs that describe intent ahead of
@@ -23,7 +23,7 @@ not edit it by hand.
 | Area                             | You are here to learn…                                                               |
 | -------------------------------- | ------------------------------------------------------------------------------------ |
 | [`development/`](development/)   | How to build in this repository — Git workflow, tooling, testing, UI implementation. |
-| [`product/`](product/)           | What Nevo SpecDev is meant to do — personas, interaction models, terminology, i18n.  |
+| [`product/`](product/)           | What Nevo SpecFlow is meant to do — personas, interaction models, terminology, i18n. |
 | [`architecture/`](architecture/) | Durable technical boundaries and decision records (ADRs).                            |
 
 ## Separation of concerns

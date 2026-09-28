@@ -7,8 +7,8 @@ packages:
   - "apps/*"
   - "packages/*"
   - "tools/*"
-  # packages/  -> real product packages (@nevo/*): specdev (the public `nevo-spec`
-  #              CLI) and specdev-dashboard (the dashboard capability).
+  # packages/  -> real product packages (@nevo/*): specflow (the public `nevo-spec`
+  #              CLI) and specflow-dashboard (the dashboard capability).
   # apps/      -> deployable applications; still empty until one lands.
   # tools/     -> repository-internal tooling (docs, release, github, product).
 

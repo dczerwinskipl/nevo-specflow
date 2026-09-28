@@ -8,7 +8,7 @@ read_when:
   - writing user-facing copy or documentation
   - reviewing whether two surfaces describe the same thing consistently
 summary: >
-  Canonical product nouns for Nevo SpecDev — specification, change, task, review,
+  Canonical product nouns for Nevo SpecFlow — specification, change, task, review,
   session, work — with their meaning. Both surfaces use these terms; the message
   catalog keys follow them.
 related:
@@ -38,6 +38,6 @@ here has a precise meaning, do not use a synonym in the UI or copy.
 
 ## Product name vs. command
 
-- **Nevo SpecDev** — the product.
-- **`nevo-specdev`** — the repository / future product-package scope (`@nevo/specdev`).
-- **`nevo-spec`** — the end-user CLI command. Not `nevo-specdev`.
+- **Nevo SpecFlow** — the product.
+- **`nevo-specflow`** — the repository / future product-package scope (`@nevo/specflow`).
+- **`nevo-spec`** — the end-user CLI command. Not `nevo-specflow`.

@@ -1,8 +1,8 @@
 {
-  "name": "nevo-specdev",
+  "name": "nevo-specflow",
   "private": true,
   "type": "module",
-  "description": "Workspace root for Nevo SpecDev — a spec-driven development framework for AI-assisted software engineering.",
+  "description": "Workspace root for Nevo SpecFlow — a spec-driven development framework for AI-assisted software engineering.",
   "license": "MIT",
   "packageManager": "pnpm@10.34.5",
   "engines": {

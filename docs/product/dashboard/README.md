@@ -4,7 +4,7 @@ type: hub
 title: Dashboard product documentation
 status: current
 summary: >
-  The Nevo SpecDev dashboard — who uses it, how navigation and surfaces behave, and how
+  The Nevo SpecFlow dashboard — who uses it, how navigation and surfaces behave, and how
   AI sessions are presented. React/Tailwind implementation guidance is under
   development/ui/.
 ---

@@ -1,6 +1,6 @@
 ---
-id: development.dogfooding
-type: development
+id: engineering.repository.dogfooding
+type: engineering
 title: Dogfooding the product build
 status: current
 read_when:
@@ -12,7 +12,7 @@ summary: >
   tarball — not a workspace link — so it catches packaging problems a linked install
   would hide.
 related:
-  - development.product-packaging
+  - engineering.repository.product-packaging
   - adr.0006-product-ships-as-a-single-bundled-artifact
 ---
 
@@ -24,7 +24,7 @@ pnpm dogfood:install
 
 This is a **repository developer workflow**, not the future public
 `nevo-spec install` / `nevo-spec update` (those are not designed yet — see
-[repository-structure](../architecture/repository-structure.md)). It:
+[repository-structure](../../architecture/repository-structure.md)). It:
 
 1. builds the packaging tool if needed, then runs
    [`pnpm product:pack`](product-packaging.md) (self-bootstrapping — no prior

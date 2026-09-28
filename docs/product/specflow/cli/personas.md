@@ -1,5 +1,5 @@
 ---
-id: product.cli.personas
+id: product.specflow.cli.personas
 type: product
 title: CLI personas
 status: draft
@@ -10,8 +10,8 @@ summary: >
   The three consumers of nevo-spec — the repository owner/maintainer, the AI coding
   agent, and CI — and what each needs from the command surface.
 related:
-  - product.cli.interaction-model
-  - product.dashboard.personas
+  - product.specflow.cli.interaction-model
+  - product.specflow.web.personas
 ---
 
 # CLI personas

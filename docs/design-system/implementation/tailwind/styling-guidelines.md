@@ -41,7 +41,7 @@ domain state (e.g. task.status)
     → variant classes
 ```
 
-The tone vocabulary is shared with the [UI/UX guidelines](../ui-ux-guidelines.md).
+The tone vocabulary is shared with the [UI/UX guidelines](../../principles/ui-ux-guidelines.md).
 State uses color; type uses shape.
 
 ## 4. DOM and interaction state

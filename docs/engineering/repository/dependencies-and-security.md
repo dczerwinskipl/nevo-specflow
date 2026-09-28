@@ -1,6 +1,6 @@
 ---
-id: development.dependencies-and-security
-type: development
+id: engineering.repository.dependencies-and-security
+type: engineering
 title: Dependencies and security
 status: current
 read_when:
@@ -13,8 +13,8 @@ summary: >
   the vulnerability-report path, the repository security features that are enabled, and
   when CodeQL should be added.
 related:
-  - development.local-setup
-  - development.ci
+  - engineering.repository.local-setup
+  - engineering.repository.ci
 ---
 
 # Dependencies and security
@@ -24,7 +24,7 @@ related:
 - Package versions are **exact** in `package.json` — `pnpm-workspace.yaml` sets
   `savePrefix: ""` so `pnpm add` never writes a range. Every bump is a visible diff.
 - The toolchain baseline, and why pnpm and TypeScript are each held a line back, are in
-  ADR [0002](../architecture/decisions/0002-toolchain-selection.md).
+  ADR [0002](../../architecture/decisions/0002-toolchain-selection.md).
 
 ## Lockfile shape and the dependency graph
 
@@ -52,7 +52,7 @@ gh api repos/OWNER/REPO/dependency-graph/sbom --jq '.sbom.packages | length'
 
 ## Dependabot
 
-[`.github/dependabot.yml`](../../.github/dependabot.yml), weekly (Monday):
+[`.github/dependabot.yml`](../../../.github/dependabot.yml), weekly (Monday):
 
 | Ecosystem        | Grouping                                                                 | Commit prefix                     |
 | ---------------- | ------------------------------------------------------------------------ | --------------------------------- |
@@ -80,7 +80,7 @@ Dependabot PRs (`build(deps): bump the … group …`) pass the `pr-title` check
 A **single-package** bump, though, gets an upper-case subject
 (`build(deps-dev): Bump @types/node from …`), which `pr-title` rejects
 (`subjectPattern: ^(?![A-Z])…`). The
-[`dependabot-pr-title`](../../.github/workflows/dependabot-pr-title.yml) workflow fixes
+[`dependabot-pr-title`](../../../.github/workflows/dependabot-pr-title.yml) workflow fixes
 this: after a `PR title` run **fails**, a `workflow_run` follow-up re-reads the PR from
 the API, and — only when the author is `dependabot[bot]`, the PR is open, and its head
 still matches the failed run — lower-cases the first letter of the subject (leaving a
@@ -98,11 +98,11 @@ behavior changes; for a grouped PR, note anything that isn't purely mechanical.
 
 Every `uses:` is pinned to a **full commit SHA** with a trailing version comment; a tag
 is mutable, a SHA is not. Dependabot's `github-actions` updater keeps both current. The
-table of pins is in [`.github/workflows/README.md`](../../.github/workflows/README.md).
+table of pins is in [`.github/workflows/README.md`](../../../.github/workflows/README.md).
 
 ## Vulnerability reports
 
-Private reporting via the repository **Security** tab — see [`SECURITY.md`](../../SECURITY.md).
+Private reporting via the repository **Security** tab — see [`SECURITY.md`](../../../SECURITY.md).
 Do not open a public issue.
 
 ## Enabled security features
@@ -128,4 +128,4 @@ gh api "repos/$REPO/private-vulnerability-reporting"
 Not enabled yet — the repository has no product source code to analyze. Add
 `github/codeql-action` (`javascript-typescript`) and make `CodeQL` a required check in
 the same change that migrates the first product package. See
-[`.github/workflows/README.md`](../../.github/workflows/README.md#codeql).
+[`.github/workflows/README.md`](../../../.github/workflows/README.md#codeql).

@@ -1,7 +1,7 @@
 ---
 id: adr.0007-documentation-architecture-and-taxonomy
 type: adr
-title: Structure documentation by knowledge responsibility, ownership scope, and searchable taxonomy
+title: Documentation architecture and taxonomy
 status: draft
 date: 2026-09-28
 summary: >
@@ -61,6 +61,7 @@ docs/
 │   └── decisions/
 ├── engineering/
 │   ├── shared/
+│   ├── repository/
 │   ├── server/
 │   ├── cli/
 │   ├── web/
@@ -99,7 +100,7 @@ The physical path is not the semantic identity of a document.
 | Namespace | Responsibility |
 | --- | --- |
 | **architecture** | Durable system boundaries, ownership, lifecycle, invariants, and cross-cutting architectural decisions. |
-| **engineering** | Rules for implementing and testing code in a technical area. |
+| **engineering** | Rules for implementing, testing, and operating code and repository tooling in a technical area. |
 | **design-system** | Reusable Nevo UI design and implementation knowledge that is independent of SpecFlow product behavior. |
 | **product** | User-visible behavior, terminology, interaction models, and product contracts. |
 | **reference** | Exact factual contracts: APIs, schemas, configuration keys, protocol/event shapes, and other lookup material. |

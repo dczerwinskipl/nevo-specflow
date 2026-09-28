@@ -22,11 +22,7 @@ export interface ProgramIO {
 export function createProgram(io: ProgramIO): Command {
   const program = new Command('nevo-specflow')
     .description('Nevo SpecFlow — spec-driven development for AI-assisted software engineering')
-    .version(
-      NEVO_SPECFLOW_VERSION,
-      '-v, --version',
-      'print the installed nevo-specflow version',
-    )
+    .version(NEVO_SPECFLOW_VERSION, '-v, --version', 'print the installed nevo-specflow version')
     .configureOutput({
       writeOut: (s) => io.stdout(s.replace(/\n$/, '')),
       writeErr: (s) => io.stderr(s.replace(/\n$/, '')),

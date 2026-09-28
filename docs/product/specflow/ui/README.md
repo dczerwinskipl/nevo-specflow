@@ -17,6 +17,6 @@ these files.
 
 | Doc                                       | Covers                                                                               |
 | ----------------------------------------- | ------------------------------------------------------------------------------------ |
-| [Personas](personas.md)                   | Who opens the UI and what they need.                                          |
+| [Personas](personas.md)                   | Who opens the UI and what they need.                                                 |
 | [Interaction model](interaction-model.md) | Responsive shell, product hierarchy, navigation & state preservation, surface types. |
 | [AI-session UX](ai-session-ux.md)         | Turn state, Work information levels, commentary, live vs historical.                 |

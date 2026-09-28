@@ -40,11 +40,11 @@ development**:
 
 ## Surfaces
 
-| Surface | Command / entry | Role |
-| --- | --- | --- |
-| **CLI** | `nevo-specflow` | Deterministic command surface for humans, agents, and CI. |
-| **Runtime** | local process | Owns long-lived application lifecycle, resources, providers, persistence, and transports. |
-| **UI** | interactive application | View and steering surface for specifications, tasks, changes/PRs, and AI sessions. |
+| Surface     | Command / entry         | Role                                                                                      |
+| ----------- | ----------------------- | ----------------------------------------------------------------------------------------- |
+| **CLI**     | `nevo-specflow`         | Deterministic command surface for humans, agents, and CI.                                 |
+| **Runtime** | local process           | Owns long-lived application lifecycle, resources, providers, persistence, and transports. |
+| **UI**      | interactive application | View and steering surface for specifications, tasks, changes/PRs, and AI sessions.        |
 
 The distributable product package is `@nevo/specflow`. Internal capability packages use
 the `@nevo/specflow-*` family when a real package boundary is warranted.
@@ -53,10 +53,10 @@ The executable is `nevo-specflow`. Product lifecycle commands live at the root (
 
 ## Names
 
-| Name            | Meaning                                           |
-| --------------- | ------------------------------------------------- |
-| Nevo SpecFlow   | the product.                                      |
-| `nevo-specflow` | the repository and installed executable. |
-| Nevo SpecFlow Runtime | the long-lived local backend. |
-| Nevo SpecFlow UI | the interactive product application. |
-| Nevo UI | the reusable design system. |
+| Name                  | Meaning                                  |
+| --------------------- | ---------------------------------------- |
+| Nevo SpecFlow         | the product.                             |
+| `nevo-specflow`       | the repository and installed executable. |
+| Nevo SpecFlow Runtime | the long-lived local backend.            |
+| Nevo SpecFlow UI      | the interactive product application.     |
+| Nevo UI               | the reusable design system.              |

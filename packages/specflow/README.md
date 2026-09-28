@@ -3,13 +3,13 @@
 The public **Nevo SpecFlow** product package. It ships the `nevo-specflow`
 command-line interface and acts as the CLI composition root.
 
-| | |
-| --- | --- |
-| **Product** | Nevo SpecFlow |
-| **Package** | `@nevo/specflow` |
-| **CLI** | `nevo-specflow` |
-| **Runtime** | `@nevo/specflow-runtime` |
-| **Repository** | `nevo-specflow` |
+|                |                          |
+| -------------- | ------------------------ |
+| **Product**    | Nevo SpecFlow            |
+| **Package**    | `@nevo/specflow`         |
+| **CLI**        | `nevo-specflow`          |
+| **Runtime**    | `@nevo/specflow-runtime` |
+| **Repository** | `nevo-specflow`          |
 
 ## Implemented CLI surface
 

@@ -55,10 +55,10 @@ declared workspace `dependencies` — not a hard-coded matrix. The `quality` job
 
 Concretely, for the product graph:
 
-| Change                                            | Affected `build` / `test`                                                                     |
-| ------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `tools/release/**` only                           | `nevo-repo-release` — **not** the `@nevo/*` product packages.                                 |
-| `packages/specflow/**` (the CLI)                  | `@nevo/specflow` (+ its build prerequisites `@nevo/specflow-runtime`, `nevo-repo-product`). |
+| Change                                          | Affected `build` / `test`                                                                   |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `tools/release/**` only                         | `nevo-repo-release` — **not** the `@nevo/*` product packages.                               |
+| `packages/specflow/**` (the CLI)                | `@nevo/specflow` (+ its build prerequisites `@nevo/specflow-runtime`, `nevo-repo-product`). |
 | `packages/specflow-runtime/**` (the capability) | `@nevo/specflow-runtime` **and** its dependent `@nevo/specflow`.                            |
 
 `quality:build-tools` stays scoped to `nevo-repo-docs` + `nevo-repo-release` (what the

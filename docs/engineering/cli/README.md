@@ -14,10 +14,10 @@ This area owns CLI-specific implementation guidance. Cross-cutting rules for cod
 organization, effects, async lifecycle, and testing live under
 [`../shared/`](../shared/).
 
-| Doc | Covers |
-| --- | --- |
+| Doc                                 | Covers                                                                                                   |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | [CLI architecture](architecture.md) | Commander, thin executable/handlers, command ownership, shell composition, stdout/stderr/exit contracts. |
-| [CLI testing](testing.md) | In-process command tests and packaged/subprocess smoke tests. |
+| [CLI testing](testing.md)           | In-process command tests and packaged/subprocess smoke tests.                                            |
 
 Product behavior of `nevo-specflow` lives under
 [`../../product/specflow/cli/`](../../product/specflow/cli/).

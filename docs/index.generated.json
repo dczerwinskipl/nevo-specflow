@@ -63,11 +63,11 @@
     {
       "id": "docs.engineering-cli-readme",
       "type": "hub",
-      "title": "CLI & Node tooling documentation",
+      "title": "CLI engineering",
       "status": "current",
       "file": "docs/engineering/cli/README.md",
       "read_when": [],
-      "summary": "Engineering guidance for Node-based command-line tools and developer tooling in this repository — architecture and testing.",
+      "summary": "CLI-specific engineering guidance for command composition, external contracts, and executable testing.",
       "related": []
     },
     {
@@ -77,7 +77,7 @@
       "status": "current",
       "file": "docs/engineering/README.md",
       "read_when": [],
-      "summary": "Entry point for implementation guidance: repository engineering, CLI tooling, and future server, web, AI, and workflow implementation rules.",
+      "summary": "Entry point for shared implementation guidance, repository engineering, CLI, and future Runtime, UI, AI, and workflow engineering rules.",
       "related": []
     },
     {
@@ -88,6 +88,16 @@
       "file": "docs/engineering/repository/README.md",
       "read_when": [],
       "summary": "Repository-level engineering practices: local setup, Git and pull requests, CI, releasing, packaging, dogfooding, dependencies, and security.",
+      "related": []
+    },
+    {
+      "id": "docs.engineering-shared-readme",
+      "type": "hub",
+      "title": "Shared engineering guidance",
+      "status": "current",
+      "file": "docs/engineering/shared/README.md",
+      "read_when": [],
+      "summary": "Cross-cutting implementation rules shared by CLI, Runtime, UI adapters, AI, workflow, and repository tooling.",
       "related": []
     },
     {
@@ -117,7 +127,7 @@
       "status": "current",
       "file": "docs/product/shared/README.md",
       "read_when": [],
-      "summary": "Product concerns common to every surface — terminology and localization. The CLI and web surface must stay consistent with these.",
+      "summary": "Product concerns common to every surface — vocabulary and localization. The CLI, Runtime, and UI must stay consistent with these.",
       "related": []
     },
     {
@@ -127,7 +137,7 @@
       "status": "current",
       "file": "docs/product/specflow/cli/README.md",
       "read_when": [],
-      "summary": "The nevo-spec command-line product — who uses it and how it should behave. Node CLI implementation guidance is under engineering/cli/.",
+      "summary": "The nevo-specflow command-line product — who uses it and how it should behave. Node CLI implementation guidance is under engineering/cli/.",
       "related": []
     },
     {
@@ -137,17 +147,17 @@
       "status": "current",
       "file": "docs/product/specflow/README.md",
       "read_when": [],
-      "summary": "Product overview and user-facing behavior of the SpecFlow CLI and web application.",
+      "summary": "Product overview and user-facing behavior of the SpecFlow CLI and UI.",
       "related": []
     },
     {
-      "id": "docs.product-specflow-web-readme",
+      "id": "docs.product-specflow-ui-readme",
       "type": "hub",
-      "title": "SpecFlow web product documentation",
+      "title": "SpecFlow UI product documentation",
       "status": "current",
-      "file": "docs/product/specflow/web/README.md",
+      "file": "docs/product/specflow/ui/README.md",
       "read_when": [],
-      "summary": "The SpecFlow web surface — who uses it, how navigation and surfaces behave, and how AI sessions are presented. Reusable UI implementation guidance is under design-system/.",
+      "summary": "The Nevo SpecFlow UI — who uses it, how navigation and surfaces behave, and how AI sessions are presented. React/Tailwind implementation guidance is under design-system/.",
       "related": []
     },
     {
@@ -246,10 +256,10 @@
       "status": "current",
       "file": "docs/architecture/decisions/0005-repository-tooling-is-separate-from-the-product-api.md",
       "read_when": [],
-      "summary": "Repository-internal developer tooling lives under `tools/*` as private, unscoped packages and never becomes a Nevo SpecFlow product surface by default. Product capabilities are designed as `@nevo/*` packages and `nevo-spec` commands in their own right.",
+      "summary": "Repository-internal developer tooling lives under `tools/*` as private, unscoped packages and never becomes a Nevo SpecFlow product surface by default. Product capabilities are designed as `@nevo/*` packages and `nevo-specflow` commands in their own right.",
       "related": [
         "architecture.repository-structure",
-        "engineering.cli.node-tooling-guidelines"
+        "engineering.cli.architecture"
       ]
     },
     {
@@ -259,7 +269,7 @@
       "status": "current",
       "file": "docs/architecture/decisions/0006-product-ships-as-a-single-bundled-artifact.md",
       "read_when": [],
-      "summary": "`@nevo/specflow` is distributed as one self-contained tarball. `nevo-repo-product` (esbuild) bundles the `nevo-spec` entry, the internal workspace capability packages and `commander` into `dist/bin.js`, so the artifact installs with no registry and no workspace. Source package boundaries are unchanged — only the distribution is one file.",
+      "summary": "`@nevo/specflow` is distributed as one self-contained tarball. `nevo-repo-product` (esbuild) bundles the `nevo-specflow` entry, the internal workspace capability packages and `commander` into `dist/bin.js`, so the artifact installs with no registry and no workspace. Source package boundaries are unchanged — only the distribution is one file.",
       "related": [
         "adr.0002-toolchain-selection",
         "adr.0005-repository-tooling-is-separate-from-the-product-api",
@@ -282,6 +292,20 @@
       ]
     },
     {
+      "id": "adr.0008-product-naming-and-surfaces",
+      "type": "adr",
+      "title": "Product naming and surfaces",
+      "status": "current",
+      "file": "docs/architecture/decisions/0008-product-naming-and-surfaces.md",
+      "read_when": [],
+      "summary": "Names the product Nevo SpecFlow, its executable nevo-specflow, its long-lived backend Nevo SpecFlow Runtime, its interactive application Nevo SpecFlow UI, and keeps Nevo UI as the reusable design system.",
+      "related": [
+        "product.shared.vocabulary",
+        "product.specflow.overview",
+        "architecture.repository-structure"
+      ]
+    },
+    {
       "id": "design-system.implementation.react.component-guidelines",
       "type": "engineering",
       "title": "React component guidelines",
@@ -297,7 +321,7 @@
       "related": [
         "design-system.principles.ui-ux-guidelines",
         "design-system.implementation.tailwind.styling-guidelines",
-        "engineering.cli.node-tooling-guidelines"
+        "engineering.cli.architecture"
       ]
     },
     {
@@ -315,7 +339,7 @@
       "related": [
         "design-system.implementation.react.component-guidelines",
         "design-system.principles.ui-ux-guidelines",
-        "engineering.cli.testing-guidelines"
+        "engineering.cli.testing"
       ]
     },
     {
@@ -348,48 +372,48 @@
         "designing progressive disclosure or an inspector",
         "doing visual verification before marking UI work done"
       ],
-      "summary": "Portable engineering rules for building UI: validate the composed screen, semantic typography/color/spacing tokens, information hierarchy, progressive disclosure, and mandatory visual self-review. Product-specific UX (AI sessions, dashboard screens) is under product/specflow/web/.",
+      "summary": "Portable engineering rules for building UI: validate the composed screen, semantic typography/color/spacing tokens, information hierarchy, progressive disclosure, and mandatory visual self-review. Product-specific UX (AI sessions, SpecFlow UI screens) is under product/specflow/ui/.",
       "related": [
         "design-system.implementation.react.component-guidelines",
         "design-system.implementation.tailwind.styling-guidelines",
         "design-system.implementation.storybook.guidelines",
-        "product.specflow.web.interaction-model"
+        "product.specflow.ui.interaction-model"
       ]
     },
     {
-      "id": "engineering.cli.node-tooling-guidelines",
+      "id": "engineering.cli.architecture",
       "type": "engineering",
-      "title": "Node tooling guidelines",
+      "title": "CLI architecture",
       "status": "current",
-      "file": "docs/engineering/cli/node-tooling-guidelines.md",
+      "file": "docs/engineering/cli/architecture.md",
       "read_when": [
-        "creating or restructuring a Node CLI command",
-        "changing Node-based developer tooling",
-        "running git, filesystem, or child-process operations from Node",
-        "deciding how a tool should print output and set exit codes",
-        "designing the nevo-spec product CLI"
+        "creating or restructuring a CLI command",
+        "changing the Nevo SpecFlow CLI shell",
+        "deciding command ownership, output, or exit behavior"
       ],
-      "summary": "Architecture for Node CLIs and developer tooling: Commander for multi-command CLIs, a thin executable, command-local options, use cases separate from handlers, explicit filesystem/git/gh I/O ports, TypeScript-first, and a stable stdout/stderr/exit-code contract for agent automation.",
+      "summary": "CLI-specific architecture: Commander for command trees, thin bin/handlers, command-local options, shell composition, capability-owned adapters, and stable stdout/stderr/exit contracts.",
       "related": [
-        "engineering.cli.testing-guidelines",
-        "engineering.repository.local-setup"
+        "engineering.cli.testing",
+        "engineering.shared.code-organization",
+        "engineering.shared.effects-and-io",
+        "engineering.shared.async-and-lifecycle",
+        "product.specflow.cli.interaction-model"
       ]
     },
     {
-      "id": "engineering.cli.testing-guidelines",
+      "id": "engineering.cli.testing",
       "type": "engineering",
-      "title": "Testing guidelines",
+      "title": "CLI testing",
       "status": "current",
-      "file": "docs/engineering/cli/testing-guidelines.md",
+      "file": "docs/engineering/cli/testing.md",
       "read_when": [
-        "writing tests for a package or tool",
-        "choosing a test approach",
-        "adding a test task to a package"
+        "testing a CLI command or packaged executable",
+        "adding a CLI smoke test"
       ],
-      "summary": "Test stack (Vitest), the domain / application / CLI-smoke split, determinism rules, and how tests fit the Turborepo task graph.",
+      "summary": "CLI-specific testing guidance: test command adapters in-process and keep a small subprocess/packaged smoke suite for help, version, usage errors, routing, and clean machine-readable output.",
       "related": [
-        "engineering.cli.node-tooling-guidelines",
-        "engineering.repository.local-setup"
+        "engineering.cli.architecture",
+        "engineering.shared.testing"
       ]
     },
     {
@@ -453,10 +477,10 @@
       "status": "current",
       "file": "docs/engineering/repository/dogfooding.md",
       "read_when": [
-        "installing a local build of nevo-spec to use it elsewhere",
+        "installing a local build of nevo-specflow to use it elsewhere",
         "checking that a packaging change did not break the installed CLI"
       ],
-      "summary": "`pnpm dogfood:install` builds the real distributable, packs it, installs THAT tarball globally with pnpm, and smokes the installed `nevo-spec`. It deliberately uses a tarball — not a workspace link — so it catches packaging problems a linked install would hide.",
+      "summary": "`pnpm dogfood:install` builds the real distributable, packs it, installs THAT tarball globally with pnpm, and smokes the installed `nevo-specflow`. It deliberately uses a tarball — not a workspace link — so it catches packaging problems a linked install would hide.",
       "related": [
         "engineering.repository.product-packaging",
         "adr.0006-product-ships-as-a-single-bundled-artifact"
@@ -496,7 +520,7 @@
       "summary": "Prerequisites (Node, Corepack/pnpm), the standard root commands, and how Turborepo owns the task graph.",
       "related": [
         "engineering.repository.git-workflow",
-        "engineering.cli.testing-guidelines",
+        "engineering.cli.testing",
         "architecture.repository-structure"
       ]
     },
@@ -507,12 +531,12 @@
       "status": "current",
       "file": "docs/engineering/repository/product-packaging.md",
       "read_when": [
-        "building or changing how the nevo-spec product is packed",
+        "building or changing how the nevo-specflow product is packed",
         "adding a package that ships inside @nevo/specflow",
         "reviewing @nevo/specflow package metadata",
         "wiring a CI or release job that needs the product tarball"
       ],
-      "summary": "How the Nevo SpecFlow product is turned into one installable artifact: nevo-repo-product bundles the nevo-spec entry, the internal workspace capability packages and commander with esbuild, then packs on the pinned pnpm to produce .artifacts/nevo-specflow-<version>.tgz (with a THIRD_PARTY_NOTICES.txt). Source package boundaries stay real — the shell composes, each vertical owns its CLI adapter — only the distribution is a single file.",
+      "summary": "How the Nevo SpecFlow product is turned into one installable artifact: nevo-repo-product bundles the nevo-specflow entry, the internal workspace capability packages and commander with esbuild, then packs on the pinned pnpm to produce .artifacts/nevo-specflow-<version>.tgz (with a THIRD_PARTY_NOTICES.txt). Source package boundaries stay real — the shell composes, each vertical owns its CLI adapter — only the distribution is a single file.",
       "related": [
         "adr.0006-product-ships-as-a-single-bundled-artifact",
         "engineering.repository.dogfooding",
@@ -559,36 +583,110 @@
       ]
     },
     {
+      "id": "engineering.shared.async-and-lifecycle",
+      "type": "engineering",
+      "title": "Async and lifecycle",
+      "status": "current",
+      "file": "docs/engineering/shared/async-and-lifecycle.md",
+      "read_when": [
+        "implementing long-lived runtime or server code",
+        "starting child processes or streaming work",
+        "adding cancellation, shutdown, timers, or listeners"
+      ],
+      "summary": "Shared lifecycle rules for async work: long-lived code must be cancellable and non-blocking, resources have explicit owners, child processes distinguish startup from completion, and cleanup is deterministic.",
+      "related": [
+        "engineering.shared.effects-and-io",
+        "engineering.shared.code-organization",
+        "engineering.shared.testing"
+      ]
+    },
+    {
+      "id": "engineering.shared.code-organization",
+      "type": "engineering",
+      "title": "Code organization",
+      "status": "current",
+      "file": "docs/engineering/shared/code-organization.md",
+      "read_when": [
+        "structuring or refactoring application code",
+        "deciding whether to introduce another layer or module",
+        "reviewing dependency direction or module ownership"
+      ],
+      "summary": "Shared code-organization rules: thin external boundaries, application use cases, pure policy, cohesive capability ownership, explicit lightweight DI, and pragmatic extraction instead of ceremonial layers.",
+      "related": [
+        "engineering.shared.effects-and-io",
+        "engineering.shared.async-and-lifecycle",
+        "engineering.shared.testing",
+        "engineering.cli.architecture"
+      ]
+    },
+    {
+      "id": "engineering.shared.effects-and-io",
+      "type": "engineering",
+      "title": "Effects and I/O",
+      "status": "current",
+      "file": "docs/engineering/shared/effects-and-io.md",
+      "read_when": [
+        "adding filesystem, git, process, provider, or network access",
+        "separating deterministic logic from side effects",
+        "designing an adapter or port"
+      ],
+      "summary": "Shared rules for deterministic logic and external effects: keep policy pure where useful, expose narrow application-facing ports, normalize adapter output near the boundary, and keep process/global side effects out of deep modules.",
+      "related": [
+        "engineering.shared.code-organization",
+        "engineering.shared.async-and-lifecycle",
+        "engineering.shared.testing"
+      ]
+    },
+    {
+      "id": "engineering.shared.testing",
+      "type": "engineering",
+      "title": "Testing",
+      "status": "current",
+      "file": "docs/engineering/shared/testing.md",
+      "read_when": [
+        "writing tests for application or infrastructure code",
+        "choosing a test boundary",
+        "reviewing determinism or test isolation"
+      ],
+      "summary": "Shared testing strategy: pure policy tests, application tests with in-memory fakes, adapter integration tests, deterministic fixtures, and focused coverage rather than framework re-testing.",
+      "related": [
+        "engineering.shared.code-organization",
+        "engineering.shared.effects-and-io",
+        "engineering.cli.testing"
+      ]
+    },
+    {
       "id": "product.shared.localization",
       "type": "product",
       "title": "Localization",
       "status": "current",
       "file": "docs/product/shared/localization.md",
       "read_when": [
-        "adding user-facing copy to the CLI or Dashboard",
+        "adding user-facing copy to the CLI or UI",
         "designing a message, label, or notification",
         "planning the i18n runtime"
       ],
       "summary": "Localization is a standing product requirement. The first release may be English-only, but all user-facing copy must be localizable and must not be scattered as hard-coded strings. The i18n library and locale-loading design are chosen when the UI/CLI reaches that concern.",
       "related": [
-        "product.shared.terminology",
+        "product.shared.vocabulary",
         "product.specflow.cli.interaction-model",
-        "product.specflow.web.interaction-model"
+        "product.specflow.ui.interaction-model"
       ]
     },
     {
-      "id": "product.shared.terminology",
+      "id": "product.shared.vocabulary",
       "type": "product",
-      "title": "Terminology",
-      "status": "draft",
-      "file": "docs/product/shared/terminology.md",
+      "title": "Product vocabulary",
+      "status": "current",
+      "file": "docs/product/shared/vocabulary.md",
       "read_when": [
-        "naming a concept in the CLI or Dashboard",
+        "naming a product, surface, package, command, or domain concept",
         "writing user-facing copy or documentation",
-        "reviewing whether two surfaces describe the same thing consistently"
+        "reviewing whether CLI and UI terminology are consistent"
       ],
-      "summary": "Canonical product nouns for Nevo SpecFlow — specification, change, task, review, session, work — with their meaning. Both surfaces use these terms; the message catalog keys follow them.",
+      "summary": "Canonical names and product nouns for Nevo SpecFlow. Defines the product, CLI, Runtime, UI, Nevo UI design system, package naming, and shared workflow vocabulary.",
       "related": [
+        "adr.0008-product-naming-and-surfaces",
         "product.specflow.overview",
         "product.shared.localization"
       ]
@@ -600,14 +698,14 @@
       "status": "draft",
       "file": "docs/product/specflow/cli/interaction-model.md",
       "read_when": [
-        "adding or changing a nevo-spec command",
+        "adding or changing a nevo-specflow command",
         "designing command output or exit codes",
         "deciding how the CLI confirms a risky action"
       ],
-      "summary": "Command shape (nevo-spec <noun> <verb>), the stdout/stderr/exit-code contract shared with agents and CI, deterministic output, and how confirmations gate irreversible actions on the human path only.",
+      "summary": "Command shape (nevo-specflow <noun> <verb>), the stdout/stderr/exit-code contract shared with agents and CI, deterministic output, and how confirmations gate irreversible actions on the human path only.",
       "related": [
         "product.specflow.cli.personas",
-        "engineering.cli.node-tooling-guidelines",
+        "engineering.cli.architecture",
         "product.shared.localization"
       ]
     },
@@ -618,13 +716,13 @@
       "status": "draft",
       "file": "docs/product/specflow/cli/personas.md",
       "read_when": [
-        "designing a nevo-spec command or its output",
-        "deciding whether a feature belongs in the CLI or the Dashboard"
+        "designing a nevo-specflow command or its output",
+        "deciding whether a feature belongs in the CLI or the UI"
       ],
-      "summary": "The three consumers of nevo-spec — the repository owner/maintainer, the AI coding agent, and CI — and what each needs from the command surface.",
+      "summary": "The three consumers of nevo-specflow — the repository owner/maintainer, the AI coding agent, and CI — and what each needs from the command surface.",
       "related": [
         "product.specflow.cli.interaction-model",
-        "product.specflow.web.personas"
+        "product.specflow.ui.personas"
       ]
     },
     {
@@ -635,21 +733,21 @@
       "file": "docs/product/specflow/overview.md",
       "read_when": [
         "orienting to what Nevo SpecFlow is",
-        "deciding whether a concern belongs to the CLI or the Dashboard"
+        "deciding whether a concern belongs to the CLI, Runtime, or UI"
       ],
-      "summary": "Nevo SpecFlow is a human-led, spec-anchored workflow for AI-assisted software engineering, delivered as a CLI (nevo-spec), a dashboard, and a shared library.",
+      "summary": "Nevo SpecFlow is a human-led, spec-anchored workflow for AI-assisted software engineering, delivered as a CLI (`nevo-specflow`), a local Runtime, and an interactive UI.",
       "related": [
-        "product.shared.terminology",
+        "product.shared.vocabulary",
         "product.specflow.cli.interaction-model",
-        "product.specflow.web.interaction-model"
+        "product.specflow.ui.interaction-model"
       ]
     },
     {
-      "id": "product.specflow.web.ai-session-ux",
+      "id": "product.specflow.ui.ai-session-ux",
       "type": "product",
       "title": "AI session UX",
       "status": "draft",
-      "file": "docs/product/specflow/web/ai-session-ux.md",
+      "file": "docs/product/specflow/ui/ai-session-ux.md",
       "read_when": [
         "designing the chat / session workspace",
         "presenting AI turn state, tool activity, or reasoning",
@@ -657,60 +755,60 @@
       ],
       "summary": "How an AI session is presented: canonical semantics first, immediate turn feedback, \"thinking\" needs evidence, \"waiting\" is not \"needs attention\", and the four Work information levels.",
       "related": [
-        "product.specflow.web.interaction-model",
-        "product.shared.terminology",
+        "product.specflow.ui.interaction-model",
+        "product.shared.vocabulary",
         "design-system.principles.ui-ux-guidelines"
       ]
     },
     {
-      "id": "product.specflow.web.interaction-model",
+      "id": "product.specflow.ui.interaction-model",
       "type": "product",
-      "title": "Dashboard interaction model",
+      "title": "UI interaction model",
       "status": "draft",
-      "file": "docs/product/specflow/web/interaction-model.md",
+      "file": "docs/product/specflow/ui/interaction-model.md",
       "read_when": [
-        "designing a dashboard screen, its navigation, or its back behavior",
+        "designing a UI screen, its navigation, or its back behavior",
         "choosing between an inline surface, an inspector, a sheet, and a page",
         "defining what state is preserved across navigation"
       ],
       "summary": "Responsive shell (wide with contextual inspector / narrow), the product navigation hierarchy, context-preserving drill-down, and when to use a tooltip vs. inspector vs. sheet vs. full page.",
       "related": [
-        "product.specflow.web.personas",
-        "product.specflow.web.ai-session-ux",
+        "product.specflow.ui.personas",
+        "product.specflow.ui.ai-session-ux",
         "design-system.principles.ui-ux-guidelines"
       ]
     },
     {
-      "id": "product.specflow.web.personas",
+      "id": "product.specflow.ui.personas",
       "type": "product",
-      "title": "Dashboard personas",
+      "title": "UI personas",
       "status": "draft",
-      "file": "docs/product/specflow/web/personas.md",
+      "file": "docs/product/specflow/ui/personas.md",
       "read_when": [
-        "designing a dashboard screen or surface",
-        "deciding whether a capability belongs in the Dashboard or the CLI"
+        "designing a UI screen or surface",
+        "deciding whether a capability belongs in the UI or the CLI"
       ],
-      "summary": "Who uses the dashboard — the owner monitoring and steering work, and the reviewer checking a change — and what each needs from it. The dashboard observes and steers; it does not replace the CLI/PR workflow.",
+      "summary": "Who uses the UI — the owner monitoring and steering work, and the reviewer checking a change — and what each needs from it. The UI observes and steers; it does not replace the CLI/PR workflow.",
       "related": [
-        "product.specflow.web.interaction-model",
+        "product.specflow.ui.interaction-model",
         "product.specflow.cli.personas"
       ]
     },
     {
-      "id": "reference.cli.nevo-spec-contract",
+      "id": "reference.cli.nevo-specflow-contract",
       "type": "reference",
-      "title": "nevo-spec public CLI contract",
+      "title": "nevo-specflow public CLI contract",
       "status": "draft",
-      "file": "docs/reference/cli/nevo-spec-contract.md",
+      "file": "docs/reference/cli/nevo-specflow-contract.md",
       "read_when": [
-        "checking which nevo-spec commands actually exist today",
+        "checking which nevo-specflow commands actually exist today",
         "describing the product CLI to a user or in product copy",
-        "planning a new nevo-spec command"
+        "planning a new nevo-specflow command"
       ],
-      "summary": "The currently-implemented public surface of the nevo-spec CLI — --help, --version and the dashboard bootstrap command — and an explicit statement that no other command (init, status, workflow, install, update) exists yet.",
+      "summary": "The currently-implemented public surface of the nevo-specflow CLI — --help, --version and the runtime bootstrap command — and an explicit statement that no other command (init, status, workflow, install, update) exists yet.",
       "related": [
         "docs.product-specflow-cli-readme",
-        "engineering.cli.node-tooling-guidelines",
+        "engineering.cli.architecture",
         "engineering.repository.product-packaging"
       ]
     }

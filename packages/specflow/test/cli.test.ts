@@ -9,7 +9,10 @@ import { NEVO_SPECFLOW_VERSION } from '../src/version.js';
 function harness() {
   const out: string[] = [];
   const err: string[] = [];
-  const program = createProgram({ stdout: (line) => out.push(line), stderr: (line) => err.push(line) });
+  const program = createProgram({
+    stdout: (line) => out.push(line),
+    stderr: (line) => err.push(line),
+  });
   const run = (args: string[]) => program.parseAsync(['node', 'nevo-specflow', ...args]);
   return { run, out, err };
 }

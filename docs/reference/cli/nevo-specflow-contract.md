@@ -23,7 +23,7 @@ related:
 | -------------- | ---------------- |
 | **Product**    | Nevo SpecFlow    |
 | **Package**    | `@nevo/specflow` |
-| **CLI**        | `nevo-specflow`      |
+| **CLI**        | `nevo-specflow`  |
 | **Repository** | `nevo-specflow`  |
 
 ## Implemented today

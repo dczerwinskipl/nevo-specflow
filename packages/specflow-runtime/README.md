@@ -3,10 +3,10 @@
 The **Nevo SpecFlow Runtime** vertical. It owns the long-lived application backend
 boundary; today it is only a bootstrap proof.
 
-| Import | Owns | Commander? |
-| --- | --- | --- |
-| `@nevo/specflow-runtime` (`.`) | Framework-independent Runtime capability: `startRuntime()`, `RUNTIME_BOOTSTRAP_MARKER`. | no |
-| `@nevo/specflow-runtime/cli` | Root-level `start` command adapter: `createStartCommand(ctx)`. | yes |
+| Import                         | Owns                                                                                    | Commander? |
+| ------------------------------ | --------------------------------------------------------------------------------------- | ---------- |
+| `@nevo/specflow-runtime` (`.`) | Framework-independent Runtime capability: `startRuntime()`, `RUNTIME_BOOTSTRAP_MARKER`. | no         |
+| `@nevo/specflow-runtime/cli`   | Root-level `start` command adapter: `createStartCommand(ctx)`.                          | yes        |
 
 The `nevo-specflow` shell ([`@nevo/specflow`](../specflow/README.md)) composes the
 command. The shell does not implement Runtime behavior.

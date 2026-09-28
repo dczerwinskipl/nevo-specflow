@@ -12,7 +12,7 @@ summary: >
 Concerns that span the CLI, Runtime, and UI surfaces. When multiple surfaces describe the same
 thing, they use the vocabulary defined here.
 
-| Doc                             | Covers                                                    |
-| ------------------------------- | --------------------------------------------------------- |
-| [Vocabulary](vocabulary.md)    | Canonical product/surface names and workflow nouns. |
-| [Localization](localization.md) | i18n as a product requirement, even while English-only.   |
+| Doc                             | Covers                                                  |
+| ------------------------------- | ------------------------------------------------------- |
+| [Vocabulary](vocabulary.md)     | Canonical product/surface names and workflow nouns.     |
+| [Localization](localization.md) | i18n as a product requirement, even while English-only. |

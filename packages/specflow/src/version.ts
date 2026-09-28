@@ -5,6 +5,4 @@
 declare const NEVO_SPECFLOW_VERSION_INJECTED: string | undefined;
 
 export const NEVO_SPECFLOW_VERSION: string =
-  typeof NEVO_SPECFLOW_VERSION_INJECTED === 'string'
-    ? NEVO_SPECFLOW_VERSION_INJECTED
-    : '0.0.0';
+  typeof NEVO_SPECFLOW_VERSION_INJECTED === 'string' ? NEVO_SPECFLOW_VERSION_INJECTED : '0.0.0';

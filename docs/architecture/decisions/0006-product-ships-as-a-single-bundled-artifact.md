@@ -81,7 +81,7 @@ registry is a different problem.
 
 ## Consequences
 
-- A user installs **one** artifact (`nevo-specflowflow-<version>.tgz`) and `nevo-specflow` works
+- A user installs **one** artifact (`nevo-specflow-<version>.tgz`) and `nevo-specflow` works
   — no registry, no `pnpm link`, no workspace, no second package to fetch.
 - There is a build step (esbuild) between "workspace" and "artifact". It is fast,
   single-purpose, pinned, and covered by tests (`bundleProduct` + an isolated

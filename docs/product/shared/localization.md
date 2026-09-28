@@ -15,7 +15,7 @@ summary: >
 related:
   - product.shared.vocabulary
   - product.specflow.cli.interaction-model
-  - product.specflow.web.interaction-model
+  - product.specflow.ui.interaction-model
 ---
 
 # Localization

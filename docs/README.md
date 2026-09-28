@@ -12,6 +12,8 @@ summary: >
 
 Documentation is organized by responsibility.
 
+Requirements in authoritative docs use [normative language and document authority](architecture/principles/normative-language.md). Current documents are authoritative for the scope they own; drafts MUST NOT override them.
+
 - [Architecture](architecture/) — durable boundaries, invariants, repository structure, ADRs.
 - [Engineering](engineering/) — implementation and repository engineering guidance.
 - [Design system](design-system/) — reusable Nevo UI principles and implementation guidance.

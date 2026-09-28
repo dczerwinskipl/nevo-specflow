@@ -50,8 +50,8 @@ workflow state.
 
 There is one Runtime composition path for production behavior.
 
-Entrypoints may differ — CLI start, development bootstrap, tests — but production
-construction must not create subtly different dependency graphs or lifecycle semantics.
+Entrypoints MAY differ — CLI start, development bootstrap, tests — but production
+construction MUST NOT create subtly different dependency graphs or lifecycle semantics.
 
 The composition root:
 
@@ -71,14 +71,14 @@ long-lived resource has one explicit owner responsible for:
 - terminal transition;
 - cleanup after success, failure, partial startup, or shutdown.
 
-Two subsystems must not independently believe they own the same resource.
+Two subsystems MUST NOT independently own the same resource.
 
 ## Startup
 
 Startup is deterministic and fail-closed.
 
 A resource that other capabilities depend on becomes reachable only after its startup has
-succeeded. Partial startup must either be completed or unwound; the Runtime must not advertise
+succeeded. Partial startup MUST either be completed or unwound; the Runtime MUST NOT advertise
 readiness while required dependencies are unavailable.
 
 ## Shutdown
@@ -101,7 +101,7 @@ Persistent state MAY describe work whose live process disappeared during a crash
 boot, Runtime MUST reconcile durable state with what can actually be resumed before admitting
 conflicting new work.
 
-Recovery never fabricates a live resource merely because a persisted record says "active".
+Recovery MUST NOT fabricate a live resource merely because a persisted record says "active".
 
 Each operation/session interaction MUST be classified by its real recovery semantics:
 

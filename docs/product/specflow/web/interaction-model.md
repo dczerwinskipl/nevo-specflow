@@ -1,5 +1,5 @@
 ---
-id: product.dashboard.interaction-model
+id: product.specflow.web.interaction-model
 type: product
 title: Dashboard interaction model
 status: draft
@@ -12,9 +12,9 @@ summary: >
   hierarchy, context-preserving drill-down, and when to use a tooltip vs. inspector vs.
   sheet vs. full page.
 related:
-  - product.dashboard.personas
-  - product.dashboard.ai-session-ux
-  - development.ui.ui-ux-guidelines
+  - product.specflow.web.personas
+  - product.specflow.web.ai-session-ux
+  - design-system.principles.ui-ux-guidelines
 ---
 
 # Dashboard interaction model

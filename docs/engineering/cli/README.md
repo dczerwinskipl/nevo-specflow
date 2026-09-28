@@ -1,5 +1,5 @@
 ---
-id: docs.development-cli-readme
+id: docs.engineering-cli-readme
 type: hub
 title: CLI & Node tooling documentation
 status: current
@@ -12,7 +12,7 @@ summary: >
 
 How Node CLIs and developer tooling are built here. This is **implementation**
 guidance; the product behavior of the `nevo-spec` CLI (personas, command surface,
-interaction model) lives under [`../../product/cli/`](../../product/cli/).
+interaction model) lives under [`../../product/specflow/cli/`](../../product/specflow/cli/).
 
 | Doc                                                   | Covers                                                                                            |
 | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------- |

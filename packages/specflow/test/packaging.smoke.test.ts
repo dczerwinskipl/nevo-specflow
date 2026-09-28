@@ -44,10 +44,10 @@ beforeAll(() => {
   tarball = parsed.tarball;
   version = parsed.version;
 
-  prefix = mkdtempSync(join(tmpdir(), 'nevo-specflowflow-smoke-'));
+  prefix = mkdtempSync(join(tmpdir(), 'nevo-specflow-smoke-'));
   writeFileSync(
     join(prefix, 'package.json'),
-    JSON.stringify({ name: 'nevo-specflowflow-smoke-host', version: '0.0.0', private: true }),
+    JSON.stringify({ name: 'nevo-specflow-smoke-host', version: '0.0.0', private: true }),
   );
   // pnpm run from repoRoot (pinned), directed at the prefix with --dir.
   execFileSync('pnpm', ['--dir', prefix, '--ignore-workspace', 'add', tarball], {

@@ -42,7 +42,7 @@ export function checkTransitionCommand(ctx: CliContext): Command {
           `  ${outcome.from.channel} ${outcome.from.version} -> ` +
           `${outcome.to.channel} ${outcome.to.version}\n` +
           `  ${outcome.error}\n` +
-          `See docs/development/releasing.md for the legal transitions.`,
+          `See docs/engineering/repository/releasing.md for the legal transitions.`,
       );
     });
 }

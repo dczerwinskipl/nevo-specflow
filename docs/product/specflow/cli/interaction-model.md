@@ -4,11 +4,11 @@ type: product
 title: CLI interaction model
 status: draft
 read_when:
-  - adding or changing a nevo-spec command
+  - adding or changing a nevo-specflow command
   - designing command output or exit codes
   - deciding how the CLI confirms a risky action
 summary: >
-  Command shape (nevo-spec <noun> <verb>), the stdout/stderr/exit-code contract shared
+  Command shape (nevo-specflow <noun> <verb>), the stdout/stderr/exit-code contract shared
   with agents and CI, deterministic output, and how confirmations gate irreversible
   actions on the human path only.
 related:
@@ -25,13 +25,13 @@ related:
 ## Command shape
 
 ```text
-nevo-spec <area> <action> [target] [--flags]
+nevo-specflow <noun> <verb> [target] [--flags]
 
-nevo-spec init
-nevo-spec status
-nevo-spec dashboard
-nevo-spec task next
-nevo-spec task start <change> <task>
+nevo-specflow init
+nevo-specflow status
+nevo-specflow start
+nevo-specflow task next
+nevo-specflow task start <change> <task>
 ```
 
 Short, guessable, `<noun> <verb>` where there is more than one verb. The full command

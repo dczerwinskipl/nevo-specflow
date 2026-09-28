@@ -1,6 +1,6 @@
 ---
-id: development.ui.storybook.guidelines
-type: development
+id: design-system.implementation.storybook.guidelines
+type: engineering
 title: Storybook guidelines
 status: draft
 read_when:
@@ -12,8 +12,8 @@ summary: >
   co-location, typed fixture factories, args-first state, play-function interaction
   tests, and the mandatory verification workflow.
 related:
-  - development.ui.react.component-guidelines
-  - development.ui.ui-ux-guidelines
+  - design-system.implementation.react.component-guidelines
+  - design-system.principles.ui-ux-guidelines
   - development.cli.testing-guidelines
 ---
 

@@ -1,6 +1,6 @@
 ---
-id: development.product-packaging
-type: development
+id: engineering.repository.product-packaging
+type: engineering
 title: Product packaging
 status: current
 read_when:
@@ -17,24 +17,24 @@ summary: >
   adapter — only the distribution is a single file.
 related:
   - adr.0006-product-ships-as-a-single-bundled-artifact
-  - development.dogfooding
-  - development.releasing
+  - engineering.repository.dogfooding
+  - engineering.repository.releasing
   - architecture.repository-structure
 ---
 
 # Product packaging
 
 `@nevo/specflow` (the public `nevo-spec` CLI) is distributed as **one self-contained
-tarball**. See [ADR 0006](../architecture/decisions/0006-product-ships-as-a-single-bundled-artifact.md)
+tarball**. See [ADR 0006](../../architecture/decisions/0006-product-ships-as-a-single-bundled-artifact.md)
 for why.
 
 ## Layout
 
 | Package                                                                      | Role                                                                                                                                                                                                                                            |
 | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`packages/specflow`](../../packages/specflow/README.md)                     | `@nevo/specflow` — the CLI **shell**: the root `nevo-spec` program, `--version`, global flags/output/exit conventions, and command **composition**. Thin `bin.ts`.                                                                              |
-| [`packages/specflow-dashboard`](../../packages/specflow-dashboard/README.md) | `@nevo/specflow-dashboard` — the dashboard **vertical**: the framework-independent capability at `.` (`runDashboard()`, no Commander) and its command adapter at `./cli` (`createDashboardCommand`). `private: true`, bundled into the product. |
-| [`tools/product`](../../tools/product/README.md)                             | `nevo-repo-product` — the **one** packaging entrypoint (`bundle` · `pack` · `dogfood`).                                                                                                                                                         |
+| [`packages/specflow`](../../../packages/specflow/README.md)                     | `@nevo/specflow` — the CLI **shell**: the root `nevo-spec` program, `--version`, global flags/output/exit conventions, and command **composition**. Thin `bin.ts`.                                                                              |
+| [`packages/specflow-dashboard`](../../../packages/specflow-dashboard/README.md) | `@nevo/specflow-dashboard` — the dashboard **vertical**: the framework-independent capability at `.` (`runDashboard()`, no Commander) and its command adapter at `./cli` (`createDashboardCommand`). `private: true`, bundled into the product. |
+| [`tools/product`](../../../tools/product/README.md)                             | `nevo-repo-product` — the **one** packaging entrypoint (`bundle` · `pack` · `dogfood`).                                                                                                                                                         |
 
 **Ownership.** The shell composes (`program.addCommand(createDashboardCommand(ctx))`);
 it does not define a command's name, options, help or subcommands — the vertical does.

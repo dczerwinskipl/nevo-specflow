@@ -23,10 +23,10 @@ The three `workflow_dispatch` workflows take an optional `CI_GITHUB_RELEASE_TOKE
 secret (a fine-grained, repository-scoped PAT) so a PR they open triggers `pull_request`
 CI and can auto-merge; without it they push the branch and print the exact
 `gh pr create …` command. See
-[`docs/development/releasing.md`](../../docs/development/releasing.md#ci_github_release_token).
+[`docs/engineering/repository/releasing.md`](../../docs/engineering/repository/releasing.md#ci_github_release_token).
 
-Full behavior: [`docs/development/ci.md`](../../docs/development/ci.md) and
-[`docs/development/releasing.md`](../../docs/development/releasing.md).
+Full behavior: [`docs/development/ci.md`](../../docs/engineering/repository/ci.md) and
+[`docs/engineering/repository/releasing.md`](../../docs/engineering/repository/releasing.md).
 
 ## Action pinning
 

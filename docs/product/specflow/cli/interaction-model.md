@@ -13,14 +13,14 @@ summary: >
   actions on the human path only.
 related:
   - product.specflow.cli.personas
-  - engineering.cli.node-tooling-guidelines
+  - engineering.cli.architecture
   - product.shared.localization
 ---
 
 # CLI interaction model
 
 `status: draft`. Product-level rules; implementation rules are in the
-[Node tooling guidelines](../../../engineering/cli/node-tooling-guidelines.md).
+[CLI architecture](../../../engineering/cli/architecture.md).
 
 ## Command shape
 

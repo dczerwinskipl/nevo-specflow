@@ -59,6 +59,6 @@ capability function returning a marker) — not substantive application code. Co
 have almost nothing to analyse.
 
 Enable it in the change that lands the **first substantive migrated product
-implementation** (real dashboard runtime / server / providers / spec engine): add a
+implementation** (real Runtime / UI / providers / spec engine): add a
 `github/codeql-action` workflow for `javascript-typescript` and make `CodeQL` a required
 check in the branch rulesets.

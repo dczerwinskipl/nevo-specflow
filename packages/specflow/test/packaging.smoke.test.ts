@@ -156,7 +156,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     expect(r.stdout.trim()).toBe(version);
   });
 
-  it('C. nevo-specflow dashboard — exit 0, runs the Runtime capability (via the shim)', () => {
+  it('C. nevo-specflow start — exit 0, runs the Runtime capability (via the shim)', () => {
     const r = nevoSpec(['start']);
     expect(r.code).toBe(0);
     expect(r.stdout).toContain(RUNTIME_BOOTSTRAP_MARKER);

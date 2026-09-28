@@ -61,7 +61,7 @@ directory:
 ```bash
 nevo-specflow --help
 nevo-specflow --version
-nevo-specflow start      # bootstrap marker only — does not start the real dashboard yet
+nevo-specflow start      # bootstrap marker only — does not start the real Runtime or UI yet
 ```
 
 Remove it with `pnpm remove -g @nevo/specflow`.

@@ -54,7 +54,7 @@ primitive.
 
 Do not make one generic component absorb every product variation through many boolean/config props.
 
-Reusable design-system abstractions SHOULD prefer behavior plus composition over configuration
+Reusable design-system abstractions SHOULD use behavior plus composition instead of configuration
 explosion. A shared component SHOULD represent a real common interaction/state/layout contract,
 not merely similar JSX.
 

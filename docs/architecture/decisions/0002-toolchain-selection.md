@@ -11,8 +11,8 @@ summary: >
   lint ecosystem) — each with an explicit upgrade condition.
 related:
   - architecture.repository-structure
-  - development.local-setup
-  - development.dependencies-and-security
+  - engineering.repository.local-setup
+  - engineering.repository.dependencies-and-security
 ---
 
 # 0002 — Toolchain selection

@@ -9,10 +9,10 @@ summary: >
 
 # Shared product concerns
 
-Concerns that span the CLI and web surface. When the two surfaces describe the same
+Concerns that span the CLI, Runtime, and UI surfaces. When the two surfaces describe the same
 thing, they use the vocabulary defined here.
 
 | Doc                             | Covers                                                    |
 | ------------------------------- | --------------------------------------------------------- |
-| [Vocabulary](vocabulary.md)   | Canonical product/surface names and workflow nouns. |
+| [Vocabulary](vocabulary.md)    | Canonical product/surface names and workflow nouns. |
 | [Localization](localization.md) | i18n as a product requirement, even while English-only.   |

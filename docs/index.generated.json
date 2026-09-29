@@ -519,7 +519,8 @@
       "related": [
         "design-system.principles.ui-ux-guidelines",
         "design-system.implementation.tailwind.styling-guidelines",
-        "engineering.cli.architecture"
+        "design-system.principles.system-boundary",
+        "engineering.shared.testing"
       ]
     },
     {
@@ -886,7 +887,8 @@
       "related": [
         "adr.0008-product-naming-and-surfaces",
         "product.specflow.overview",
-        "product.shared.localization"
+        "product.shared.localization",
+        "architecture.principles.normative-language"
       ]
     },
     {
@@ -955,7 +957,8 @@
       "related": [
         "product.specflow.ui.interaction-model",
         "product.shared.vocabulary",
-        "design-system.principles.ui-ux-guidelines"
+        "design-system.principles.ui-ux-guidelines",
+        "architecture.ai.canonical-session-turn-work"
       ]
     },
     {

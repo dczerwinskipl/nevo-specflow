@@ -2,7 +2,7 @@
 id: reference.cli.nevo-specflow-contract
 type: reference
 title: nevo-specflow public CLI contract
-status: draft
+status: current
 read_when:
   - checking which nevo-specflow commands actually exist today
   - describing the product CLI to a user or in product copy

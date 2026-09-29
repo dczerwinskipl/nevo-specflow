@@ -3,12 +3,28 @@ import { dirname, isAbsolute, join, normalize, relative, resolve, sep } from 'no
 
 import { parse } from 'yaml';
 
-import type { AgentInstruction, Applies, Delivery, LoadedAgent } from './model.js';
+import type {
+  ActivationPolicy,
+  AgentInstruction,
+  AgentKnowledge,
+  Applies,
+  Delivery,
+  LoadedAgent,
+} from './model.js';
 
 const ID_RE = /^nevo-agents:[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ITEM_ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const FORBIDDEN_FRAGMENT_HEADING_RE = /^#{1,2}\s+/m;
-const TOP_LEVEL_KEYS = new Set(['version', 'id', 'name', 'description', 'instructions']);
+const TOP_LEVEL_KEYS = new Set([
+  'version',
+  'id',
+  'name',
+  'description',
+  'activation',
+  'knowledge',
+  'instructions',
+]);
+const KNOWLEDGE_KEYS = new Set(['required']);
 const INSTRUCTION_KEYS = new Set([
   'id',
   'title',
@@ -18,6 +34,12 @@ const INSTRUCTION_KEYS = new Set([
   'applies',
   'delivery',
 ]);
+const INACTIVE_DOC_STATUSES = new Set(['deprecated', 'superseded']);
+
+interface IndexedDocument {
+  readonly id: string;
+  readonly status: string;
+}
 
 function object(value: unknown, label: string): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -37,6 +59,16 @@ function boolean(value: unknown, label: string): boolean {
   return value;
 }
 
+function stringArray(value: unknown, label: string): string[] {
+  if (!Array.isArray(value)) throw new Error(`${label} must be an array of strings`);
+  const result = value.map((item, index) => string(item, `${label}[${index}]`));
+  const duplicates = result.filter((item, index) => result.indexOf(item) !== index);
+  if (duplicates.length) {
+    throw new Error(`${label} contains duplicate value(s): ${[...new Set(duplicates)].join(', ')}`);
+  }
+  return result;
+}
+
 function assertKnownKeys(
   record: Record<string, unknown>,
   allowed: ReadonlySet<string>,
@@ -44,6 +76,17 @@ function assertKnownKeys(
 ): void {
   const unknown = Object.keys(record).filter((key) => !allowed.has(key));
   if (unknown.length) throw new Error(`${label} has unknown field(s): ${unknown.join(', ')}`);
+}
+
+function parseActivation(value: unknown, label: string): ActivationPolicy {
+  if (value === 'explicit') return value;
+  throw new Error(`${label} must be 'explicit'`);
+}
+
+function parseKnowledge(value: unknown, label: string): AgentKnowledge {
+  const record = object(value, label);
+  assertKnownKeys(record, KNOWLEDGE_KEYS, label);
+  return { required: stringArray(record.required, `${label}.required`) };
 }
 
 function parseApplies(value: unknown, label: string): Applies {
@@ -120,6 +163,48 @@ function parseInstruction(
   };
 }
 
+function loadDocumentIndex(repoRoot: string): Map<string, IndexedDocument> {
+  const file = join(repoRoot, 'docs', 'index.generated.json');
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(readFileSync(file, 'utf8')) as unknown;
+  } catch (error) {
+    throw new Error(
+      `cannot read ${file}; run 'pnpm docs:check --write' before building agent profiles`,
+      { cause: error },
+    );
+  }
+
+  const root = object(parsed, file);
+  if (!Array.isArray(root.docs)) throw new Error(`${file}: 'docs' must be an array`);
+
+  const byId = new Map<string, IndexedDocument>();
+  for (const [index, value] of root.docs.entries()) {
+    const record = object(value, `${file}: docs[${index}]`);
+    const id = string(record.id, `${file}: docs[${index}].id`);
+    const status = string(record.status, `${file}: docs[${index}].status`);
+    byId.set(id, { id, status });
+  }
+  return byId;
+}
+
+function validateRequiredKnowledge(repoRoot: string, agents: readonly LoadedAgent[]): void {
+  const docs = loadDocumentIndex(repoRoot);
+  for (const agent of agents) {
+    for (const id of agent.knowledge.required) {
+      const doc = docs.get(id);
+      if (!doc) {
+        throw new Error(`${agent.file}: knowledge.required references unknown document id '${id}'`);
+      }
+      if (INACTIVE_DOC_STATUSES.has(doc.status)) {
+        throw new Error(
+          `${agent.file}: knowledge.required references inactive document '${id}' (${doc.status})`,
+        );
+      }
+    }
+  }
+}
+
 export function loadAgentDefinition(repoRoot: string, file: string): LoadedAgent {
   const absoluteFile = resolve(repoRoot, file);
   const parsed = parse(readFileSync(absoluteFile, 'utf8')) as unknown;
@@ -149,6 +234,8 @@ export function loadAgentDefinition(repoRoot: string, file: string): LoadedAgent
     id,
     name: string(record.name, `${file}.name`),
     description: string(record.description, `${file}.description`),
+    activation: parseActivation(record.activation, `${file}.activation`),
+    knowledge: parseKnowledge(record.knowledge, `${file}.knowledge`),
     file: normalize(file).replaceAll('\\', '/'),
     instructions,
   };
@@ -170,6 +257,8 @@ export function loadAllAgents(repoRoot: string): LoadedAgent[] {
     if (ids.has(agent.id)) throw new Error(`duplicate agent id '${agent.id}'`);
     ids.add(agent.id);
   }
+
+  validateRequiredKnowledge(repoRoot, agents);
   return agents;
 }
 

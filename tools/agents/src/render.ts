@@ -76,6 +76,26 @@ function renderReferenceTable(
   return lines.join('\n');
 }
 
+function renderRequiredKnowledge(agent: LoadedAgent): string {
+  if (agent.knowledge.required.length === 0) return '';
+  return [
+    '## Required repository knowledge',
+    '',
+    'Before starting work, load these exact stable document IDs. They are profile requirements and must not be replaced by lexical discovery:',
+    '',
+    '```bash',
+    `pnpm docs:get ${agent.knowledge.required.join(' ')}`,
+    '```',
+  ].join('\n');
+}
+
+function projectedDescription(agent: LoadedAgent): string {
+  if (agent.activation === 'explicit') {
+    return `Use only when the ${agent.id} profile is explicitly selected by the user, workflow, or orchestrator. ${agent.description}`;
+  }
+  return agent.description;
+}
+
 export function renderSkill(
   repoRoot: string,
   agent: LoadedAgent,
@@ -96,13 +116,14 @@ export function renderSkill(
   const frontmatter = [
     '---',
     `name: ${providerSkillName(agent.id)}`,
-    `description: ${yamlString(agent.description)}`,
+    `description: ${yamlString(projectedDescription(agent))}`,
     '---',
   ].join('\n');
   const sections = [
     frontmatter,
     GENERATED_MARKER,
-    `# ${agent.name}\n\nCanonical profile: \`${agent.id}\`.`,
+    `# ${agent.name}\n\nCanonical profile: \`${agent.id}\`.\n\n**Activation:** explicit only. Use this profile only when it was explicitly selected by the user, workflow, or orchestrator; do not auto-select it from task wording or similarity.`,
+    renderRequiredKnowledge(agent),
     ...inline.map(renderInline),
     renderReferenceTable('Read also', alwaysRefs, outputPath, repoRoot, false),
     renderReferenceTable('Conditional instructions', conditionalRefs, outputPath, repoRoot, true),

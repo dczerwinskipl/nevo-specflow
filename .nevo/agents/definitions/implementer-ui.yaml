@@ -1,0 +1,48 @@
+version: 1
+id: nevo-agents:implementer-ui
+name: UI Implementer
+description: Implements scoped UI and design-system changes while following repository architecture, documentation, visual, and verification rules.
+instructions:
+  - id: role
+    title: Implementer role
+    source: ../instructions/implementer.md
+    required: true
+    applies: always
+    delivery: inline
+  - id: ui-role
+    title: UI implementation
+    source: ../instructions/implementer-ui.md
+    required: true
+    applies: always
+    delivery: inline
+  - id: repository-knowledge
+    title: Repository knowledge
+    description: How to discover and load project-specific rules before and during implementation.
+    source: ../instructions/repository-knowledge.md
+    required: true
+    applies: always
+    delivery: inline
+  - id: git
+    title: Git workflow
+    description: Repository rules for branches, commits, pull requests, and related Git operations.
+    source: ../instructions/git.md
+    required: true
+    applies:
+      when: performing Git operations, creating commits, changing branches, or preparing pull requests
+    delivery: auto
+  - id: testing
+    title: Testing
+    description: Repository testing strategy and verification expectations.
+    source: ../instructions/testing.md
+    required: true
+    applies:
+      when: adding, changing, reviewing, or running tests
+    delivery: auto
+  - id: storybook
+    title: Storybook and visual verification
+    description: Story authoring and visual verification guidance for reusable UI work.
+    source: ../instructions/storybook.md
+    required: true
+    applies:
+      when: creating or changing reusable UI components, stories, or visual behavior
+    delivery: auto

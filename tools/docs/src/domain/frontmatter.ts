@@ -11,6 +11,22 @@ export type DocType =
   'hub' | 'architecture' | 'adr' | 'engineering' | 'product' | 'reference' | 'instruction';
 export type DocStatus = 'current' | 'draft' | 'deprecated' | 'superseded';
 
+export const KNOWN_SCOPES = ['shared', 'repo', 'specflow', 'nevo-ui'] as const;
+export const KNOWN_AREAS = [
+  'ai',
+  'workflow',
+  'runtime',
+  'server',
+  'cli',
+  'ui',
+  'figma',
+  'testing',
+  'docs',
+  'release',
+  'security',
+  'configuration',
+] as const;
+
 /** Required fields per `type`. */
 export const REQUIRED_FIELDS: Record<DocType, readonly string[]> = {
   hub: ['id', 'type', 'title', 'status'],
@@ -48,6 +64,9 @@ export interface DocRecord {
   readonly summary?: unknown;
   readonly read_when?: unknown;
   readonly related?: unknown;
+  readonly scope?: unknown;
+  readonly areas?: unknown;
+  readonly tags?: unknown;
   readonly superseded_by?: unknown;
   readonly supersedes?: unknown;
   readonly [key: string]: unknown;
@@ -100,6 +119,15 @@ function isKnownType(v: unknown): v is DocType {
   return typeof v === 'string' && (KNOWN_TYPES as string[]).includes(v);
 }
 
+function validateStringArray(value: unknown, field: string, loc: string): string[] {
+  if (!Array.isArray(value) || value.length === 0)
+    return [`${loc}: '${field}' must be a non-empty array of strings`];
+  if (value.some((v) => typeof v !== 'string' || !v.trim())) {
+    return [`${loc}: '${field}' entries must be non-empty strings`];
+  }
+  return [];
+}
+
 /** Validate one parsed doc against the contract. Returns human-readable problems. */
 export function validateDoc(doc: DocRecord): string[] {
   const problems: string[] = [];
@@ -128,16 +156,44 @@ export function validateDoc(doc: DocRecord): string[] {
     }
   }
 
-  if (doc.read_when !== undefined) {
-    if (!Array.isArray(doc.read_when) || doc.read_when.length === 0) {
-      problems.push(`${loc}: 'read_when' must be a non-empty array of strings`);
-    } else if (doc.read_when.some((v) => typeof v !== 'string' || !v.trim())) {
-      problems.push(`${loc}: 'read_when' entries must be non-empty strings`);
-    }
-  }
+  if (doc.read_when !== undefined)
+    problems.push(...validateStringArray(doc.read_when, 'read_when', loc));
 
   if (doc.related !== undefined && !Array.isArray(doc.related)) {
     problems.push(`${loc}: 'related' must be an array of doc ids`);
+  }
+
+  if (
+    doc.scope !== undefined &&
+    !(KNOWN_SCOPES as readonly string[]).includes(asString(doc.scope))
+  ) {
+    problems.push(
+      `${loc}: unknown scope '${asString(doc.scope)}' (expected one of: ${KNOWN_SCOPES.join(', ')})`,
+    );
+  }
+
+  if (doc.areas !== undefined) {
+    problems.push(...validateStringArray(doc.areas, 'areas', loc));
+    if (Array.isArray(doc.areas)) {
+      for (const area of doc.areas) {
+        if (typeof area === 'string' && !(KNOWN_AREAS as readonly string[]).includes(area)) {
+          problems.push(
+            `${loc}: unknown area '${area}' (expected one of: ${KNOWN_AREAS.join(', ')})`,
+          );
+        }
+      }
+    }
+  }
+
+  if (doc.tags !== undefined) {
+    problems.push(...validateStringArray(doc.tags, 'tags', loc));
+    if (Array.isArray(doc.tags)) {
+      for (const tag of doc.tags) {
+        if (typeof tag === 'string' && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(tag)) {
+          problems.push(`${loc}: tag '${tag}' must be lowercase kebab-case`);
+        }
+      }
+    }
   }
 
   return problems;

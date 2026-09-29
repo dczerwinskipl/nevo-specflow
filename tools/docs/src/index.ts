@@ -13,7 +13,7 @@ export {
   isFrontmatterExempt,
 } from './infra/doc-repository.js';
 export { loadValidatedCorpus, inspectCorpus } from './app/load-corpus.js';
-export { findDocuments, getContext } from './app/find-documents.js';
+export { findDocuments, getDocuments, getContext } from './app/find-documents.js';
 export { validateDocumentation } from './app/validate-documentation.js';
 export { createAdr } from './app/create-adr.js';
 export { createProgram } from './cli/program.js';

@@ -31,6 +31,9 @@ export function tokenize(text: string): string[] {
 const FIELD_WEIGHTS: readonly (readonly [field: string, weight: number])[] = [
   ['id', 50],
   ['title', 40],
+  ['scope', 35],
+  ['areas', 35],
+  ['tags', 35],
   ['read_when', 30],
   ['summary', 20],
   ['file', 10],
@@ -93,21 +96,32 @@ export interface SearchOptions {
   readonly query?: string;
   readonly type?: string;
   readonly status?: string;
+  readonly scope?: string;
+  readonly area?: string;
+  readonly tag?: string;
   /** drop these statuses (e.g. deprecated/superseded) */
   readonly excludeStatuses?: readonly string[];
   readonly limit?: number;
 }
 
-/** Filter + rank a corpus. */
+function includesString(value: unknown, expected: string | undefined): boolean {
+  if (!expected) return true;
+  return Array.isArray(value) && value.includes(expected);
+}
+
+/** Filter + rank a corpus. Multi-term queries are OR: any matched term keeps the document. */
 export function searchDocs(
   docs: readonly DocRecord[],
-  { query, type, status, excludeStatuses, limit }: SearchOptions = {},
+  { query, type, status, scope, area, tag, excludeStatuses, limit }: SearchOptions = {},
 ): (DocRecord | ScoredDoc)[] {
   const excluded = new Set(excludeStatuses ?? []);
   const filtered = docs.filter(
     (d) =>
       (!type || d.type === type) &&
       (!status || d.status === status) &&
+      (!scope || d.scope === scope) &&
+      includesString(d.areas, area) &&
+      includesString(d.tags, tag) &&
       !excluded.has(asString(d.status)),
   );
 

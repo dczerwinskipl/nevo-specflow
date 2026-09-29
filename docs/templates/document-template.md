@@ -12,6 +12,11 @@ id: <stable-concept-id>
 type: engineering # hub | architecture | adr | engineering | product | reference | instruction
 title: <Title>
 status: current # current | draft | deprecated | superseded
+scope: repo # optional: shared | repo | specflow | nevo-ui
+areas: # optional controlled concerns; see ADR 0007
+  - testing
+tags: # optional lowercase kebab-case discovery vocabulary
+  - example-tag
 read_when:
   - <a concrete activity that should load this doc>
 summary: >

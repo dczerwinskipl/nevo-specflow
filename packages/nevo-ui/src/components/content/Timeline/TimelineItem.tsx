@@ -22,4 +22,3 @@ export const TimelineItem = forwardRef<HTMLLIElement, TimelineItemProps>(functio
   const size = useTimelineSize('Timeline.Item');
   return <li ref={ref} className={cn(timelineItemVariants({ size }), className)} {...props} />;
 });
-

@@ -163,6 +163,3 @@ export function DateRangePicker({
     </AriaDateRangePicker>
   );
 }
-
-
-

@@ -16,4 +16,3 @@ describe('PasswordInput', () => {
     expect(markup).toContain('aria-labelledby="password-label"');
   });
 });
-

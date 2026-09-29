@@ -11,20 +11,20 @@ import {
 
 import type { AppWorkspaceSurface } from './workspaceSurface';
 
-export type WorkspaceSecondaryOptions = {
+export interface WorkspaceSecondaryOptions {
   beforeClose?: () => boolean | Promise<boolean>;
   onClose?: () => void;
-};
+}
 
-export type WorkspaceSecondaryState = {
+export interface WorkspaceSecondaryState {
   surface: AppWorkspaceSurface;
   instanceKey: number;
-};
+}
 
-export type WorkspaceTransition = {
+export interface WorkspaceTransition {
   action: 'push' | 'pop' | 'replace' | 'close';
   revision: number;
-};
+}
 
 type WorkspaceSecondaryInternalState = WorkspaceSecondaryState & {
   beforeClose?: () => boolean | Promise<boolean>;
@@ -32,16 +32,16 @@ type WorkspaceSecondaryInternalState = WorkspaceSecondaryState & {
   returnFocusTo: WorkspaceFocusTarget | null;
 };
 
-type WorkspaceFocusTarget = {
+interface WorkspaceFocusTarget {
   element: HTMLElement;
   ariaLabel: string | null;
   layerKey: string | null;
   name: string | null;
   tagName: string;
   text: string;
-};
+}
 
-export type WorkspaceContextValue = {
+export interface WorkspaceContextValue {
   secondary: WorkspaceSecondaryState | null;
   secondaryStack: readonly WorkspaceSecondaryState[];
   secondaryDepth: number;
@@ -57,7 +57,7 @@ export type WorkspaceContextValue = {
   ) => Promise<boolean>;
   popSecondary: () => Promise<boolean>;
   closeSecondary: () => Promise<boolean>;
-};
+}
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
 
@@ -207,11 +207,11 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
   );
 
   const pushSecondary = useCallback(
-    async (surface: AppWorkspaceSurface, options?: WorkspaceSecondaryOptions) => {
-      if (!mountedRef.current) return false;
+    (surface: AppWorkspaceSurface, options?: WorkspaceSecondaryOptions) => {
+      if (!mountedRef.current) return Promise.resolve(false);
       publishStack([...stackRef.current, createEntry(surface, options)]);
       publishTransition('push');
-      return true;
+      return Promise.resolve(true);
     },
     [createEntry, publishStack, publishTransition],
   );
@@ -284,4 +284,3 @@ export function useWorkspace() {
 export function useOptionalWorkspace() {
   return useContext(WorkspaceContext);
 }
-

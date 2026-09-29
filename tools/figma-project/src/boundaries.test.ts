@@ -9,7 +9,9 @@ async function sourceFiles(root: string): Promise<string[]> {
       entries.map(async (entry) => {
         const candidate = path.join(root, entry.name);
         if (entry.isDirectory()) return sourceFiles(candidate);
-        return /\.(?:ts|tsx)$/.test(entry.name) && !/\.test\./.test(entry.name) ? [candidate] : [];
+        return /\.(?:ts|tsx)$/.test(entry.name) && !entry.name.includes('.test.')
+          ? [candidate]
+          : [];
       }),
     )
   ).flat();

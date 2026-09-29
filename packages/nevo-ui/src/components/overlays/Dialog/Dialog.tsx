@@ -122,6 +122,3 @@ export const DialogFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivEle
     );
   },
 );
-
-
-

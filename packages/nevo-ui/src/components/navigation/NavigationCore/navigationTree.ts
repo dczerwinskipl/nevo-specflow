@@ -65,4 +65,3 @@ export function resolveInitialExpandedKeys<TTarget>(
 ): string[] {
   return normalizeExpandedKeys(tree, [...defaultExpandedKeys, ...tree.ancestorKeys]);
 }
-

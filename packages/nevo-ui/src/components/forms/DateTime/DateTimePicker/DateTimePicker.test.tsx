@@ -11,4 +11,3 @@ describe('DateTimePicker', () => {
     expect(markup).toContain('data-design-slot="control"');
   });
 });
-

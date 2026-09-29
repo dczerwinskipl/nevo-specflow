@@ -6,4 +6,3 @@ export {
   type WorkspaceSurfacePreviewProps,
   type WorkspaceSurfaceProps,
 } from './Environment';
-

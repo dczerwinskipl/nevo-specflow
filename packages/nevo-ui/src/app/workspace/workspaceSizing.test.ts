@@ -109,4 +109,3 @@ describe('resolveWorkspacePixelSplit', () => {
     expect(resolveWorkspacePixelSplit(1124, split, hasSecondary)).toEqual(expected);
   });
 });
-

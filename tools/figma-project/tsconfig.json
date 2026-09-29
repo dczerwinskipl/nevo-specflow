@@ -12,7 +12,7 @@
     "sourceMap": false,
     "incremental": true,
     "tsBuildInfoFile": "./.tsbuild/figma-project.tsbuildinfo",
-    "types": ["node", "vite/client"],
+    "types": ["@figma/plugin-typings", "node", "vite/client"],
     "paths": {
       "@nevo/figma-core": ["../../packages/figma-core/src/index.ts"],
       "@nevo/figma-core/*": ["../../packages/figma-core/src/*"],
@@ -23,6 +23,5 @@
       "nevo-figma-export/*": ["../figma-export/src/*"]
     }
   },
-  "include": ["src", "vite.config.ts"],
-  "exclude": ["src/importer.ts"]
+  "include": ["src", "vite.config.ts"]
 }

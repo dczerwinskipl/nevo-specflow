@@ -1,3 +1,2 @@
 export { TextArea, autoGrowMetrics } from './TextArea';
 export type { TextAreaProps } from './TextArea';
-

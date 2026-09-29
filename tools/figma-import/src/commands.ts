@@ -29,10 +29,7 @@ import { upsertAssetCatalog, upsertTextStyleCatalog } from './features/resourceC
 import { upsertScreens } from './features/screens';
 import { adoptManagedPage, ensureManagedPage, locateManagedPage } from './core/managedPage';
 import { figmaProjectConfig } from '../config';
-import {
-  resourceCatalogsOfKind,
-  type ResourceCatalogDefinition,
-} from '@nevo/figma-core/authoring';
+import { resourceCatalogsOfKind, type ResourceCatalogDefinition } from '@nevo/figma-core/authoring';
 import { existingAssetResources, upsertAssetResources } from './features/assetResources';
 import type { IRInspection, IRInspectionItem, InspectionItemKind } from '../messages';
 import { createImportProgress, type ImportProgress } from '../progress';
@@ -110,7 +107,7 @@ export async function inspectIR(
   resourceCatalogs: readonly ResourceCatalogDefinition[],
 ): Promise<IRInspection> {
   validateIR(value);
-  const ir = value as DesignSystemIR | ScreensIR;
+  const ir = value;
   const requirements =
     ir.kind === 'design-system'
       ? designMasterRequirements(ir, resourceCatalogs).map((stableId) => ({
@@ -178,7 +175,7 @@ export async function inspectIR(
       ),
     ],
   ]);
-  const expected: Array<Omit<IRInspectionItem, 'exists'>> = [
+  const expected: Omit<IRInspectionItem, 'exists'>[] = [
     ...requirements,
     ...ir.resources.colors.map((item) => ({ stableId: item.stableId, kind: 'color' as const })),
     ...ir.resources.textStyles.map((item) => ({
@@ -221,7 +218,8 @@ export async function importIR(
   const kind = (value as { kind?: unknown }).kind;
   if (kind === 'design-system') return importDesignSystemIR(value, resourceCatalogs, report);
   if (kind === 'screens') return importScreensIR(value, report);
-  throw new Error(`Unsupported IR kind: ${String(kind ?? 'unknown')}`);
+  const kindLabel = typeof kind === 'string' ? kind : 'unknown';
+  throw new Error(`Unsupported IR kind: ${kindLabel}`);
 }
 
 function warningSuffix(ir: DesignSystemIR | ScreensIR) {
@@ -266,7 +264,7 @@ export async function importDesignSystemIR(
     importStage('Asset main components', () => upsertAssetResources(ir, section, resources)),
   );
   resources = { ...resources, assets };
-  const generated: Array<ComponentSetNode | ComponentNode> = [];
+  const generated: (ComponentSetNode | ComponentNode)[] = [];
   const overviews: FrameNode[] = [];
   let y = 24;
   let overviewY = 24;
@@ -491,6 +489,3 @@ export async function importScreensIR(value: unknown, report: ImportProgress = (
   });
   return `Updated ${frames.length} screen${frames.length === 1 ? '' : 's'} without changing the Design System.${warningSuffix(value)}`;
 }
-
-
-

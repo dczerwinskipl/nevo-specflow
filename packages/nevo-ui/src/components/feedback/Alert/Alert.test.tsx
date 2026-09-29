@@ -37,4 +37,3 @@ describe('Alert', () => {
     ).not.toContain('data-design-slot="icon"');
   });
 });
-

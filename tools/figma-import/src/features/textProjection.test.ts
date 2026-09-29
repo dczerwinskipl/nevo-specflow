@@ -62,4 +62,3 @@ describe('CSS text catalog projection', () => {
     expect(node.textAutoResize).toBe('HEIGHT');
   });
 });
-

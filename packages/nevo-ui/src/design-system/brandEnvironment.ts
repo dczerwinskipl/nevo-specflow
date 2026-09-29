@@ -80,6 +80,6 @@ export function renderBrandEnvironmentCss(primary = DEFAULT_BRAND_PRIMARY): stri
   --background-image-workspace: ${environment.workspaceBackgroundImage};
   --drop-shadow-action-glow: 0 0 5px ${environment.actionGlow};
 }
+
 `;
 }
-

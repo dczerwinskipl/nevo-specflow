@@ -570,7 +570,7 @@ export async function applyNestedOverrides(
   configureComponent: ConfigureNestedComponent,
 ) {
   const overrides: Record<string, string | boolean> = {};
-  const nestedContainers: Array<{ slotName: string; value: NestedSlotIR }> = [];
+  const nestedContainers: { slotName: string; value: NestedSlotIR }[] = [];
   for (const [slotName, slotSpec] of Object.entries(childSpec?.slots ?? {})) {
     if (slotSpec.required || (slotSpec.kind !== 'container' && slotSpec.kind !== 'asset-swap'))
       continue;
@@ -662,4 +662,3 @@ export async function applyNestedOverrides(
     }
   }
 }
-

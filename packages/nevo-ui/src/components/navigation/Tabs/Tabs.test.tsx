@@ -23,9 +23,8 @@ describe('Tabs', () => {
     expect(markup).toContain('tabindex="0"');
     expect(markup).toContain('disabled=""');
     expect(markup).toContain('role="tabpanel"');
-    const selectedPanelId = markup.match(/aria-controls="([^"]+)"[^>]*aria-selected="true"/)?.[1];
+    const selectedPanelId = /aria-controls="([^"]+)"[^>]*aria-selected="true"/.exec(markup)?.[1];
     expect(selectedPanelId).toBeTruthy();
     expect(markup).toContain(`id="${selectedPanelId}"`);
   });
 });
-

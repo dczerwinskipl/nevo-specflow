@@ -5,11 +5,7 @@ import {
   type ComponentRef,
   type HTMLAttributes,
 } from 'react';
-import {
-  designLayerMetadata,
-  designSlot,
-  useDesignMetadata,
-} from '@nevo/figma-core/metadata';
+import { designLayerMetadata, designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
 import { cn } from '../../../lib';
 import { typographyTextStyleRef } from '../../../design-system/resources';
 import { IconButton } from '../../actions/IconButton';
@@ -180,6 +176,3 @@ export const DrawerFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivEle
     );
   },
 );
-
-
-

@@ -9,6 +9,3 @@ export const designSpec = defineDesignComponent({
     options: { kind: 'slot', propertyName: 'Options', required: true },
   },
 });
-
-
-

@@ -9,4 +9,3 @@ describe('Surface', () => {
     expect(surfaceVariants()).not.toContain('p-');
   });
 });
-

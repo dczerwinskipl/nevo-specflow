@@ -23,6 +23,3 @@ export const designSpec = defineDesignComponent({
     surface: { kind: 'container' },
   },
 });
-
-
-

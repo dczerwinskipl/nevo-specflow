@@ -15,6 +15,3 @@ export const designSpec = defineDesignComponent({
     },
   },
 });
-
-
-

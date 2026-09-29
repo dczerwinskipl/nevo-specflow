@@ -6,4 +6,3 @@ export {
   type ScrollAreaEdges,
   type ScrollAreaProps,
 } from './ScrollArea';
-

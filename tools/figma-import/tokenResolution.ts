@@ -10,6 +10,3 @@ export function resolveSemanticTokenId(
     return explicitStableId;
   return undefined;
 }
-
-
-

@@ -38,6 +38,3 @@ export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(function Badge(
     </span>
   );
 });
-
-
-

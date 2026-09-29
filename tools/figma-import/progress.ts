@@ -28,4 +28,3 @@ export function createImportProgress(total: number, report: ImportProgress) {
     },
   };
 }
-

@@ -9,9 +9,9 @@ import type {
 export interface FigmaComponentImportPlan {
   component: string;
   setStableId: string;
-  axes: Array<{ name: string; values: string[] }>;
-  variants: Array<{ stableId: string; properties: Record<string, string> }>;
-  slots: Array<{ name: string; kind: string; propertyName?: string }>;
+  axes: { name: string; values: string[] }[];
+  variants: { stableId: string; properties: Record<string, string> }[];
+  slots: { name: string; kind: string; propertyName?: string }[];
   tokenTargets: string[];
 }
 
@@ -53,8 +53,8 @@ export function selectCanonicalCaptures(
       // content is overridden at use sites; this stable ordering only selects a
       // structural template.
       const selected = [...group].sort((left, right) =>
-          JSON.stringify(left).localeCompare(JSON.stringify(right)),
-        )[0];
+        JSON.stringify(left).localeCompare(JSON.stringify(right)),
+      )[0];
       if (!selected) throw new Error(`${stableId} has no captures`);
       return [stableId, selected];
     }),
@@ -303,6 +303,3 @@ export function buildComponentImportPlan(
     tokenTargets: Object.keys(spec.bindings ?? {}),
   };
 }
-
-
-

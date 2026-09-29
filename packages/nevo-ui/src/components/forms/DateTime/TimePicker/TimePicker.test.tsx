@@ -21,4 +21,3 @@ describe('TimePicker', () => {
     expect(markup).not.toContain('aria-label="Choose time"');
   });
 });
-

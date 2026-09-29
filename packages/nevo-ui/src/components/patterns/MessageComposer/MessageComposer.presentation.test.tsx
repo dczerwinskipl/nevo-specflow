@@ -29,4 +29,3 @@ describe('MessageComposer presentation', () => {
     expect(html).toContain('data-presentation="integrated"');
   });
 });
-

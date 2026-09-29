@@ -76,4 +76,3 @@ export const projectResourceCatalogs = defineResourceCatalogs(
     items: typographyCatalogItems,
   }),
 );
-

@@ -79,6 +79,3 @@ export const VariantCapture: Story = {
     },
   },
 };
-
-
-

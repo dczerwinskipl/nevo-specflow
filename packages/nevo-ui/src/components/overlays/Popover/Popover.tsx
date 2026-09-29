@@ -38,6 +38,3 @@ export const PopoverContent = forwardRef<
     </PopoverPrimitive.Portal>
   );
 });
-
-
-

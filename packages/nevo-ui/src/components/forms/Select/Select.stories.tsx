@@ -319,6 +319,3 @@ export const ItemStateCapture: Story = {
     },
   },
 };
-
-
-

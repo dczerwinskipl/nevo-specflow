@@ -121,4 +121,3 @@ export function ProjectionFixtures() {
     </div>
   );
 }
-

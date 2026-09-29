@@ -5,4 +5,3 @@ describe('Spinner', () => {
   it('becomes a status when labelled', () =>
     expect(renderToStaticMarkup(<Spinner label="Loading" />)).toContain('role="status"'));
 });
-

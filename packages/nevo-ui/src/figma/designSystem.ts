@@ -97,8 +97,4 @@ export const nevoUiDesignSystem = defineDesignSystem([
   ...appDesignSpecs,
 ] as const);
 
-export const { componentRef, slot, variantProperty } =
-  createComponentAuthoring(nevoUiDesignSystem);
-
-
-
+export const { componentRef, slot, variantProperty } = createComponentAuthoring(nevoUiDesignSystem);

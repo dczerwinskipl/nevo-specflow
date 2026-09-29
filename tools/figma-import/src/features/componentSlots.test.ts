@@ -122,4 +122,3 @@ describe('public slot recovery', () => {
     ).toBe(nested);
   });
 });
-

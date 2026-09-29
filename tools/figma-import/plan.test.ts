@@ -47,7 +47,10 @@ describe('pure Figma import plan', () => {
   });
 
   it('selects explicit canonical content independent of input order', () => {
-    expect(selectCanonicalCaptures([capture('sm'), capture('sm', true)]).get('ExampleControl/sm')?.canonical).toBe(true);
+    expect(
+      selectCanonicalCaptures([capture('sm'), capture('sm', true)]).get('ExampleControl/sm')
+        ?.canonical,
+    ).toBe(true);
   });
 
   it('orders nested dependencies before their consumers', () => {
@@ -115,9 +118,7 @@ describe('pure Figma import plan', () => {
             stableId: 'ExampleScreen/',
             component: 'ExampleScreen',
             properties: {},
-            structure: [
-              { componentRef: 'ExampleControl', properties: { size: 'md' }, slots: {} },
-            ],
+            structure: [{ componentRef: 'ExampleControl', properties: { size: 'md' }, slots: {} }],
           },
         ],
       },

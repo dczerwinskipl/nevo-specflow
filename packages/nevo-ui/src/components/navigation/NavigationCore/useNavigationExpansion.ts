@@ -60,4 +60,3 @@ export function useNavigationExpansion<TTarget>({
 
   return { expandedKeys, setExpanded };
 }
-

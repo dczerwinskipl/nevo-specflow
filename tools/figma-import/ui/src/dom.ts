@@ -47,4 +47,3 @@ export function detailsRow(name: string, count: string, description?: string) {
   if (description) details.append(element('div', description, 'description'));
   return details;
 }
-

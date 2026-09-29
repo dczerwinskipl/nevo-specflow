@@ -23,4 +23,3 @@ describe('DatePicker', () => {
     expect(markup).toContain('data-design-slot="control"');
   });
 });
-

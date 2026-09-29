@@ -76,6 +76,19 @@ branch in extractor or importer code.
 Extend the adapter only when a genuinely new representation capability is required, such as a new
 asset kind, paint/effect model, responsive representation, or layout primitive.
 
+## Repository ownership and workflow
+
+- `packages/figma-core/` owns neutral authoring types, canonical IR, validation, and metadata
+  contracts.
+- Component and resource declarations stay with their owners in `packages/nevo-ui/`,
+  `apps/specflow-ui/`, and `examples/`.
+- `tools/figma-project/` composes the active project catalog and capture gallery.
+- `tools/figma-export/` captures runtime output into canonical IR.
+- `tools/figma-import/` owns generic plugin mechanics and Figma reconciliation.
+
+Use `pnpm figma:export` to create the project IR and `pnpm figma:build-plugin` to build the import
+plugin. Generated IR and plugin build output are local artifacts and are not source-of-truth files.
+
 ## Generic importer, project-owned declarations
 
 Project declarations may identify the project's components, resources, slots, variants, and
@@ -94,6 +107,11 @@ when a semantic key exists.
 
 Changing an ID scheme MUST be treated as a migration decision because existing Figma
 instances/overrides MAY depend on it.
+
+The current project namespace uses `SpecFlow/...` component identities and `specflow...` resource
+identities. This migration intentionally resets the proof-of-concept identity namespace. The first
+import therefore recreates integration-managed content; subsequent imports reconcile it by stable
+identity while preserving unmanaged manual content.
 
 ## Reconciliation ownership
 

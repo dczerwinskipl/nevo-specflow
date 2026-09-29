@@ -80,7 +80,7 @@ export function FloatingWindowHost({
   const [activeId, setActiveId] = useState<string | null>(null);
   const sequenceRef = useRef(0);
   const activityRef = useRef(0);
-  const pendingFocusRef = useRef<string | 'first-visible' | null>(null);
+  const pendingFocusRef = useRef<string | null>(null);
 
   const safeMaxVisible = Number.isFinite(maxVisible) ? Math.max(1, Math.floor(maxVisible)) : 3;
 
@@ -457,4 +457,3 @@ export const FloatingWindow = forwardRef<HTMLDivElement, FloatingWindowProps>(
     );
   },
 );
-

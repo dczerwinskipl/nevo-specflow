@@ -12,6 +12,3 @@ export const designSpec = defineDesignComponent({
     items: { kind: 'container', required: true },
   },
 });
-
-
-

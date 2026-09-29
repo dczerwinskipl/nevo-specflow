@@ -28,4 +28,3 @@ describe('Collapsible', () => {
     expect(html).not.toContain('data-expanded=""');
   });
 });
-

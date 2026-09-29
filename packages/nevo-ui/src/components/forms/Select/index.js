@@ -1,2 +1,0 @@
-export { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue, } from './Select';
-//# sourceMappingURL=index.js.map

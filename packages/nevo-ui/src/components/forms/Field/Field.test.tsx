@@ -87,4 +87,3 @@ describe('Field', () => {
     expect(markup).toContain('id="standalone-description"');
   });
 });
-

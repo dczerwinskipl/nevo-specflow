@@ -2,7 +2,7 @@ import type { DesignValue } from '../ir/types';
 
 export type VariantRecipe = ((props?: Record<string, unknown>) => unknown) & {
   variants: Record<string, Record<string, unknown>>;
-  variantKeys: Array<PropertyKey> | undefined;
+  variantKeys: PropertyKey[] | undefined;
   defaultVariants: Record<string, unknown>;
   base?: unknown;
 };
@@ -14,7 +14,7 @@ function variantValue(value: string): DesignValue {
 }
 
 export function objectKeys<const Value extends Record<string, unknown>>(value: Value) {
-  return Object.keys(value) as Array<keyof Value & string>;
+  return Object.keys(value) as (keyof Value & string)[];
 }
 
 type StringToBoolean<Value> = Value extends 'true' | 'false' ? boolean : Value;
@@ -28,9 +28,9 @@ export function getVariantValues<
 >(recipe: Recipe, key: Key) {
   const variants = recipe.variants[key];
   if (!variants) return [];
-  return objectKeys(variants).map(variantValue) as Array<
-    StringToBoolean<keyof Recipe['variants'][Key] & string>
-  >;
+  return objectKeys(variants).map(variantValue) as StringToBoolean<
+    keyof Recipe['variants'][Key] & string
+  >[];
 }
 
 export function getVariantContract(recipe: VariantRecipe) {
@@ -51,14 +51,11 @@ export function getVariantContract(recipe: VariantRecipe) {
 
 export function variantCombinations<Recipe extends VariantRecipe>(recipe: Recipe) {
   const contract = getVariantContract(recipe);
-  return contract.properties.reduce<Array<Record<string, DesignValue>>>(
+  return contract.properties.reduce<Record<string, DesignValue>[]>(
     (combinations, property) =>
       combinations.flatMap((combination) =>
         (contract.values[property] ?? []).map((value) => ({ ...combination, [property]: value })),
       ),
     [{}],
-  ) as unknown as Array<RecipeVariantSelection<Recipe>>;
+  ) as unknown as RecipeVariantSelection<Recipe>[];
 }
-
-
-

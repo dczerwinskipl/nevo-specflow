@@ -27,4 +27,3 @@ export function DateSegments({ className, standalone = false, ...props }: DateSe
     </DateInput>
   );
 }
-

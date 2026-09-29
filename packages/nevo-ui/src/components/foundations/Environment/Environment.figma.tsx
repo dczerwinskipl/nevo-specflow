@@ -22,6 +22,3 @@ export const designSpecs = [
     },
   }),
 ] as const;
-
-
-

@@ -33,7 +33,7 @@ function Demo({
   maxVisible?: number;
   notificationId?: string | null;
 }) {
-  const [windows, setWindows] = useState<Array<{ id: string; title: string }>>([...initialWindows]);
+  const [windows, setWindows] = useState<{ id: string; title: string }[]>([...initialWindows]);
 
   return (
     <AppFloatingProvider supported>
@@ -123,4 +123,3 @@ export const UnsupportedNarrowMode: Story = {
     </AppFloatingProvider>
   ),
 };
-

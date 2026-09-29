@@ -79,10 +79,10 @@ export async function upsertSemanticText(
       run.colorRef ?? baseBinding,
     );
     if (variable) {
-      const base =
-        parseColor(ir.resources.colors.find((item) => item.stableId === run.colorRef)?.value) ??
-        parseColor(richText.style.color) ??
-        ({ type: 'SOLID', color: { r: 1, g: 1, b: 1 } } as SolidPaint);
+      const base = parseColor(
+        ir.resources.colors.find((item) => item.stableId === run.colorRef)?.value,
+      ) ??
+        parseColor(richText.style.color) ?? { type: 'SOLID', color: { r: 1, g: 1, b: 1 } };
       node.setRangeFills(run.start, run.end, [
         figma.variables.setBoundVariableForPaint(base, 'color', variable),
       ]);
@@ -93,6 +93,3 @@ export async function upsertSemanticText(
   applyTextFlowPresentation(node, richText.style);
   return node;
 }
-
-
-

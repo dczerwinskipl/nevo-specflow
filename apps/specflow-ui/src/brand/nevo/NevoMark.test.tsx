@@ -68,4 +68,3 @@ describe('NevoMark', () => {
     expect(html).toContain('fill-opacity="0.16"');
   });
 });
-

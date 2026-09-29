@@ -25,7 +25,7 @@ export const KeyboardNavigationContract: Story = {
     </SegmentedControl>
   ),
   play: async ({ canvas, userEvent }) => {
-    const items = canvas.getAllByRole('radio') as HTMLButtonElement[];
+    const items = canvas.getAllByRole('radio');
     const [preview, unavailable, code] = items;
     assert(preview && unavailable && code, 'The fixture should render all segmented items.');
 
@@ -53,4 +53,3 @@ export const KeyboardNavigationContract: Story = {
     assert(document.activeElement === code, 'ArrowUp should wrap to the previous enabled item.');
   },
 };
-

@@ -11,6 +11,3 @@ export const designSpec = defineDesignComponent({
     action: { kind: 'container', exposeVisibility: true },
   },
 });
-
-
-

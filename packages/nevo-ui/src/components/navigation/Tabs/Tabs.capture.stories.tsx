@@ -12,10 +12,10 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-type TriggerCaptureProps = {
+interface TriggerCaptureProps {
   selection: 'default' | 'selected';
   state: 'default' | 'focus' | 'disabled';
-};
+}
 
 function TriggerCapture({ selection, state }: TriggerCaptureProps) {
   const selectedValue = selection === 'selected' ? 'captured' : 'other';
@@ -95,6 +95,3 @@ export const CanonicalCapture: Story = {
     },
   },
 };
-
-
-

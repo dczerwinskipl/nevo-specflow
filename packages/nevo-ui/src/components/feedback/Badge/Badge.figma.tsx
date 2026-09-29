@@ -1,4 +1,4 @@
-import { defineRecipeDesign } from '@nevo/ui/figma';
+import { defineRecipeDesign } from '@nevo/ui/figma/define';
 import { badgeVariants } from './Badge';
 
 export const designSpec = defineRecipeDesign({
@@ -10,6 +10,3 @@ export const designSpec = defineRecipeDesign({
     label: { kind: 'text', propertyName: 'Label', defaultText: 'Status', required: true },
   },
 });
-
-
-

@@ -8,4 +8,3 @@
 
 Consumers should import the public API from `src/app/index.ts`. Tests, stories, and Figma
 definitions stay next to the module they exercise; they are not separate runtime modules.
-

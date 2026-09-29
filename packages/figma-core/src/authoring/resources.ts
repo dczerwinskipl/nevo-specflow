@@ -72,51 +72,48 @@ export function createResourceAuthoring<const Definitions extends readonly AnyRe
 
   function serialize(kind: ResourceKind, id: string, properties: Record<string, DesignValue>) {
     const definition = definitionsById.get(id);
-    if (!definition || definition.kind !== kind) throw new Error(`Unknown ${kind} resource ${id}`);
+    if (definition?.kind !== kind) throw new Error(`Unknown ${kind} resource ${id}`);
     return [id, ...Object.keys(definition.variants).map((axis) => String(properties[axis]))].join(
       '/',
     );
   }
 
-  return {
-    assetRef<
-      Id extends ResourceIdForKind<Definitions, 'asset'>,
-      const Properties extends VariantSelection<ResourceDefinitionFor<Definitions, Id>['variants']>,
-    >(
-      id: Id,
-      properties: Properties &
-        Record<
-          Exclude<
-            keyof Properties,
-            keyof VariantSelection<ResourceDefinitionFor<Definitions, Id>['variants']>
-          >,
-          never
+  const assetRef = <
+    Id extends ResourceIdForKind<Definitions, 'asset'>,
+    const Properties extends VariantSelection<ResourceDefinitionFor<Definitions, Id>['variants']>,
+  >(
+    id: Id,
+    properties: Properties &
+      Record<
+        Exclude<
+          keyof Properties,
+          keyof VariantSelection<ResourceDefinitionFor<Definitions, Id>['variants']>
         >,
-    ) {
-      return serialize('asset', id, properties) as AssetRef<Id, Properties>;
-    },
-    textStyleRef<
-      Id extends ResourceIdForKind<Definitions, 'text-style'>,
-      const Properties extends VariantSelection<ResourceDefinitionFor<Definitions, Id>['variants']>,
-    >(
-      id: Id,
-      properties: Properties &
-        Record<
-          Exclude<
-            keyof Properties,
-            keyof VariantSelection<ResourceDefinitionFor<Definitions, Id>['variants']>
-          >,
-          never
-        >,
-    ) {
-      return serialize('text-style', id, properties) as TextStyleRef<Id, Properties>;
-    },
-    resourceSetRef<Id extends ResourceId<Definitions>>(id: Id) {
-      if (!definitionsById.has(id)) throw new Error(`Unknown design resource ${id}`);
-      return `${id}/set` as ResourceSetRef<Id>;
-    },
+        never
+      >,
+  ) => {
+    return serialize('asset', id, properties) as AssetRef<Id, Properties>;
   };
+  const textStyleRef = <
+    Id extends ResourceIdForKind<Definitions, 'text-style'>,
+    const Properties extends VariantSelection<ResourceDefinitionFor<Definitions, Id>['variants']>,
+  >(
+    id: Id,
+    properties: Properties &
+      Record<
+        Exclude<
+          keyof Properties,
+          keyof VariantSelection<ResourceDefinitionFor<Definitions, Id>['variants']>
+        >,
+        never
+      >,
+  ) => {
+    return serialize('text-style', id, properties) as TextStyleRef<Id, Properties>;
+  };
+  const resourceSetRef = <Id extends ResourceId<Definitions>>(id: Id): ResourceSetRef<Id> => {
+    if (!definitionsById.has(id)) throw new Error(`Unknown design resource ${id}`);
+    return `${id}/set`;
+  };
+
+  return { assetRef, textStyleRef, resourceSetRef };
 }
-
-
-

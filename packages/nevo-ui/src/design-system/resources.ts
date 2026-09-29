@@ -62,4 +62,3 @@ export function iconAssetRef(name: IconName, size: IconSize): IconAssetRef {
 export function typographyTextStyleRef(variant: TypographyVariant): TypographyTextStyleRef {
   return `Typography/${variant}`;
 }
-

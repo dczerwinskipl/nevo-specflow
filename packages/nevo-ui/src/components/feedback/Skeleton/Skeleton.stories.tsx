@@ -8,4 +8,3 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Default: Story = { render: () => <Skeleton className="h-5 w-64" /> };
-

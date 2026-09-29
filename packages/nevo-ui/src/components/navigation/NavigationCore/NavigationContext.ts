@@ -9,4 +9,3 @@ export interface NavigationContextValue {
 }
 
 export const NavigationContext = createContext<NavigationContextValue | null>(null);
-

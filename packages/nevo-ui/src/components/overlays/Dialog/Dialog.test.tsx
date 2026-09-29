@@ -12,4 +12,3 @@ describe('Dialog', () => {
     ).toContain('Open');
   });
 });
-

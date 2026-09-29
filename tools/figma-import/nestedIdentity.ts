@@ -31,6 +31,3 @@ export function nestedStableIds(parentStableId: string, layers: readonly NestedL
     return `${parentStableId}/child/${semantic}${occurrence ? `~${occurrence + 1}` : ''}`;
   });
 }
-
-
-

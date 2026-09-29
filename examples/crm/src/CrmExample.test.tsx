@@ -21,4 +21,3 @@ describe('CrmExample', () => {
     expect(crmEnvironmentPrimary).toBe(crmIdentity.coreColor);
   });
 });
-

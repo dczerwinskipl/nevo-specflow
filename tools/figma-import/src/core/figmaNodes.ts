@@ -82,7 +82,7 @@ export function splitCssArguments(value: string) {
 
 export function parseGradientStops(parts: string[]): ColorStop[] | null {
   const parsed = parts.map((part, index) => {
-    const match = part.match(/^(rgba?\([^)]*\)|#[\da-f]+|transparent)(?:\s+(-?[\d.]+)%?)?$/i);
+    const match = /^(rgba?\([^)]*\)|#[\da-f]+|transparent)(?:\s+(-?[\d.]+)%?)?$/i.exec(part);
     if (!match) return null;
     const paint =
       match[1]!.toLowerCase() === 'transparent'
@@ -175,7 +175,7 @@ export function bindPaintVariable(
   variable: Variable,
 ) {
   const current = node[field];
-  const paints = Array.isArray(current) ? [...current] : [];
+  const paints: Paint[] = current === figma.mixed ? [] : [...current];
   const solidIndex = paints.findIndex((paint) => paint.type === 'SOLID');
   const solid = solidIndex >= 0 ? (paints[solidIndex] as SolidPaint) : undefined;
   // Figma normalizes a bound semantic paint to the variable's opaque value when
@@ -387,4 +387,3 @@ export function ensureSection(stableId: string, name: string, x = 0) {
   section.name = name;
   return section;
 }
-

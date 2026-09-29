@@ -38,7 +38,7 @@ import { cn } from '@nevo/ui';
 type CustomerStatus = 'Active' | 'Lead' | 'At risk';
 type CustomerSegment = 'Enterprise' | 'Growth' | 'Startup';
 
-type Customer = {
+interface Customer {
   id: string;
   company: string;
   contact: string;
@@ -48,7 +48,7 @@ type Customer = {
   owner: string;
   annualValue: number;
   notes: string;
-};
+}
 
 const initialCustomers: Customer[] = [
   {
@@ -518,11 +518,11 @@ function CrmScreen({ initialCustomerId }: { initialCustomerId?: string }) {
   );
 }
 
-export type CrmExampleProps = {
+export interface CrmExampleProps {
   height?: CSSProperties['height'];
   initialCustomerId?: string;
   width?: CSSProperties['width'];
-};
+}
 
 export function CrmExample({
   height = '100dvh',
@@ -546,4 +546,3 @@ export function CrmExample({
     </div>
   );
 }
-

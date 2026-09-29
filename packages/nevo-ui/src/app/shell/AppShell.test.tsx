@@ -65,4 +65,3 @@ describe('AppShell', () => {
     expect(source).not.toContain('bg-workspace ');
   });
 });
-

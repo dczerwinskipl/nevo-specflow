@@ -38,6 +38,3 @@ describe('capture-only DOM instrumentation', () => {
     expect(html).toContain('data-design-text-style-ref="Typography/body-md"');
   });
 });
-
-
-

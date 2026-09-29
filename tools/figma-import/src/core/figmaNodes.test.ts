@@ -267,4 +267,3 @@ describe('radial gradient projection', () => {
     expect(transform[1][1] * -0.12 + transform[1][2]).toBeCloseTo(0.5);
   });
 });
-

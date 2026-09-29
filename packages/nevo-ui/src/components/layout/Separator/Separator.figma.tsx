@@ -1,4 +1,4 @@
-import { defineRecipeDesign } from '@nevo/ui/figma';
+import { defineRecipeDesign } from '@nevo/ui/figma/define';
 import { separatorVariants } from './Separator';
 
 export const designSpec = defineRecipeDesign({
@@ -8,6 +8,3 @@ export const designSpec = defineRecipeDesign({
   description: 'Semantic divider using the shared divider token. Context owns surrounding spacing.',
   slots: {},
 });
-
-
-

@@ -53,4 +53,3 @@ describe('TimeSelector.model', () => {
     expect(withHour(new Time(10, 15), 9, min)).toEqual(min);
   });
 });
-

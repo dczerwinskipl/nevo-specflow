@@ -380,6 +380,25 @@
       ]
     },
     {
+      "id": "design-system.implementation.ownership-and-tooling",
+      "type": "architecture",
+      "title": "UI ownership and tooling",
+      "status": "current",
+      "file": "docs/design-system/implementation/ownership-and-tooling.md",
+      "read_when": [
+        "deciding where a UI component, screen, story, or Figma declaration belongs",
+        "changing the shared Storybook or Figma integration",
+        "adding an example application"
+      ],
+      "summary": "Ownership map for reusable Nevo UI, SpecFlow product UI, independent examples, Storybook, and the code-to-Figma toolchain.",
+      "related": [
+        "design-system.principles.system-boundary",
+        "design-system.figma.code-to-figma-projection",
+        "design-system.implementation.storybook.guidelines",
+        "product.specflow.ui.application-architecture"
+      ]
+    },
+    {
       "id": "design-system.principles.system-boundary",
       "type": "architecture",
       "title": "Nevo UI system boundary",
@@ -396,6 +415,24 @@
         "design-system.implementation.react.component-guidelines",
         "product.specflow.ui.interaction-model",
         "architecture.principles.normative-language"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.application-architecture",
+      "type": "architecture",
+      "title": "SpecFlow UI application architecture",
+      "status": "current",
+      "file": "docs/product/specflow/ui/application-architecture.md",
+      "read_when": [
+        "adding a SpecFlow UI screen or route",
+        "deciding whether UI code belongs in the product app or Nevo UI",
+        "changing the product shell or brand composition"
+      ],
+      "summary": "The SpecFlow UI composition root, routing and screen ownership, reusable Nevo UI boundary, and the intentionally minimal foundation screens.",
+      "related": [
+        "design-system.principles.system-boundary",
+        "design-system.implementation.ownership-and-tooling",
+        "product.specflow.ui.interaction-model"
       ]
     },
     {
@@ -507,7 +544,7 @@
       "id": "design-system.implementation.react.component-guidelines",
       "type": "engineering",
       "title": "React component guidelines",
-      "status": "draft",
+      "status": "current",
       "file": "docs/design-system/implementation/react/component-guidelines.md",
       "read_when": [
         "creating or restructuring a React component or module",
@@ -527,14 +564,14 @@
       "id": "design-system.implementation.storybook.guidelines",
       "type": "engineering",
       "title": "Storybook guidelines",
-      "status": "draft",
+      "status": "current",
       "file": "docs/design-system/implementation/storybook/guidelines.md",
       "read_when": [
         "creating or editing a Storybook story",
         "verifying a UI component visually or with interaction tests",
         "building deterministic UI fixtures"
       ],
-      "summary": "Story hierarchy and naming (Foundations / Shared UI / Features / Screens), strict co-location, typed fixture factories, args-first state, play-function interaction tests, and the mandatory verification workflow.",
+      "summary": "The shared Storybook host, owner-based story hierarchy, co-location, deterministic fixtures, accessibility checks, and the required desktop/mobile verification workflow.",
       "related": [
         "design-system.implementation.react.component-guidelines",
         "design-system.principles.ui-ux-guidelines",
@@ -545,7 +582,7 @@
       "id": "design-system.implementation.tailwind.styling-guidelines",
       "type": "engineering",
       "title": "Tailwind styling guidelines",
-      "status": "draft",
+      "status": "current",
       "file": "docs/design-system/implementation/tailwind/styling-guidelines.md",
       "read_when": [
         "composing Tailwind classes on a component",

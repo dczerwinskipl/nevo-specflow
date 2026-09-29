@@ -91,6 +91,3 @@ export function renderDesignSystemPreview(
     parent.prepend(group);
   }
 }
-
-
-

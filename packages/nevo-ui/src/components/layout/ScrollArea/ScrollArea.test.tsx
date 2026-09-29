@@ -111,4 +111,3 @@ describe('ScrollArea', () => {
     ).toEqual({ left: false, right: true, top: false, bottom: false });
   });
 });
-

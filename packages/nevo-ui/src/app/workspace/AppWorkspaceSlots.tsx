@@ -9,15 +9,15 @@ import {
   type AppWorkspaceSplitMode,
 } from './workspaceSizing';
 
-export type AppWorkspaceSlot = {
+export interface AppWorkspaceSlot {
   content: ReactNode;
-};
+}
 
-export type AppWorkspaceSlotsProps = {
+export interface AppWorkspaceSlotsProps {
   primary: AppWorkspaceSlot;
   secondary?: AppWorkspaceSlot;
   split?: AppWorkspaceSplitMode;
-};
+}
 
 function StaticWorkspaceSlotRegion({
   divider = false,
@@ -71,7 +71,7 @@ export function AppWorkspaceSlots({
       {secondary ? (
         <StaticWorkspaceSlotRegion
           divider
-          share={resolvedSplit.secondary as AppWorkspaceShare}
+          share={resolvedSplit.secondary}
           slot={secondary}
           slotName="secondary"
         />
@@ -79,6 +79,3 @@ export function AppWorkspaceSlots({
     </div>
   );
 }
-
-
-

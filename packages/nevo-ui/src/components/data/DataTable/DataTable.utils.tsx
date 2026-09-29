@@ -40,7 +40,10 @@ export function renderDataTableValue<TData extends RowData>(
     return <span className="text-content-muted">—</span>;
   }
   if (typeof value === 'boolean') return value ? messages.booleanTrue : messages.booleanFalse;
-  return String(value);
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'bigint') {
+    return String(value);
+  }
+  return JSON.stringify(value) ?? '—';
 }
 
 export function defaultDataTableEmptyState(
@@ -84,4 +87,3 @@ export function isInteractiveTableTarget(target: EventTarget | null, row: HTMLTa
   const interactive = target.closest(interactiveTableContent);
   return interactive !== null && row.contains(interactive);
 }
-

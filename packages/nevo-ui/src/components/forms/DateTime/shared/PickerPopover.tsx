@@ -24,4 +24,3 @@ export function PickerPopover({ children, className, ...props }: PickerPopoverPr
     </AriaPopover>
   );
 }
-

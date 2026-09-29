@@ -1,4 +1,4 @@
-import { useId, type CSSProperties, type SVGAttributes } from 'react';
+import { useId, type SVGAttributes } from 'react';
 import { tv, type VariantProps } from 'tailwind-variants/lite';
 import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
 import { nevoMarkAssetRef, type NevoMarkVariant } from './resources';
@@ -205,9 +205,7 @@ export function NevoMark({
       preserveAspectRatio="xMidYMid meet"
       role={decorative ? undefined : 'img'}
       style={
-        variant === 'brand' && palette
-          ? ({ ...nevoMarkPaletteVariables(palette), ...style } as CSSProperties)
-          : style
+        variant === 'brand' && palette ? { ...nevoMarkPaletteVariables(palette), ...style } : style
       }
       viewBox="0 0 224 224"
       width="224"
@@ -219,4 +217,3 @@ export function NevoMark({
     </svg>
   );
 }
-

@@ -13,6 +13,3 @@ export const designSpec = defineDesignComponent({
     indicator: { kind: 'container', exposeVisibility: false },
   },
 });
-
-
-

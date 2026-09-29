@@ -142,9 +142,8 @@ export const ExplicitNewlineMode: Story = {
 export const MaxHeightReached: Story = {
   render: () => <ComposerExample maxRows={4} />,
   play: async ({ canvas, userEvent }) => {
-    const editor = canvas.getByRole('textbox', {
-      name: 'Reply to customer',
-    }) as HTMLTextAreaElement;
+    const editor = canvas.getByRole('textbox', { name: 'Reply to customer' });
+    if (!(editor instanceof HTMLTextAreaElement)) throw new Error('Expected a textarea.');
     Object.defineProperty(editor, 'scrollHeight', {
       configurable: true,
       get: () => Math.max(48, editor.value.split('\n').length * 20 + 28),
@@ -239,7 +238,8 @@ export const InteractionContract: Story = {
   render: () => <InteractionExample />,
   tags: ['!dev', '!autodocs'],
   play: async ({ canvas, userEvent }) => {
-    const editor = canvas.getByRole('textbox', { name: 'Contract editor' }) as HTMLTextAreaElement;
+    const editor = canvas.getByRole('textbox', { name: 'Contract editor' });
+    if (!(editor instanceof HTMLTextAreaElement)) throw new Error('Expected a textarea.');
     const host = editor.closest<HTMLElement>('[data-submissions]');
     assert(host, 'The interaction fixture should expose its submission state.');
 
@@ -260,10 +260,7 @@ export const InteractionContract: Story = {
     await userEvent.keyboard('{Enter}');
     const submissions = JSON.parse(host.getAttribute('data-submissions') ?? '[]') as string[];
     assert(submissions.length === 1, 'Plain Enter should submit once.');
-    assert(
-      submissions[0] !== submissions[0]!.trim(),
-      'Submission should preserve whitespace.',
-    );
+    assert(submissions[0] !== submissions[0]!.trim(), 'Submission should preserve whitespace.');
     assert(editor.value === submissions[0], 'Submission must not clear the editor value.');
 
     await userEvent.click(canvas.getByRole('button', { name: 'Submit' }));
@@ -334,6 +331,3 @@ export const CanonicalCapture: Story = {
     },
   },
 };
-
-
-

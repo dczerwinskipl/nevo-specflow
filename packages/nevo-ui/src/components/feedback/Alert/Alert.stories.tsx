@@ -44,4 +44,3 @@ export const AssertiveAnnouncement: Story = {
     children: 'The import stopped before any records were changed.',
   },
 };
-

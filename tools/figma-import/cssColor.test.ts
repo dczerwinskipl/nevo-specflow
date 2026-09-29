@@ -47,4 +47,3 @@ describe('CSS color parsing for Figma', () => {
     ).toBe(true);
   });
 });
-

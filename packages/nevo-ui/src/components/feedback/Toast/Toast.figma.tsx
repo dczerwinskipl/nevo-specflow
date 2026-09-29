@@ -16,6 +16,3 @@ export const designSpec = defineDesignComponent({
     close: { kind: 'container' },
   },
 });
-
-
-

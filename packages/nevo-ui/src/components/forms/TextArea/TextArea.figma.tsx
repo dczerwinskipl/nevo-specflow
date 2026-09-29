@@ -1,5 +1,5 @@
 import { tv } from 'tailwind-variants/lite';
-import { defineRecipeDesign } from '@nevo/ui/figma';
+import { defineRecipeDesign } from '@nevo/ui/figma/define';
 import { textAreaControlClassName } from './TextArea';
 
 const textAreaDesignRecipe = tv({ base: textAreaControlClassName });
@@ -42,6 +42,3 @@ export const designSpec = defineRecipeDesign({
   },
   slots: {},
 });
-
-
-

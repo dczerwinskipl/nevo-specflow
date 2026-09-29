@@ -118,6 +118,3 @@ export function Icon({
     />
   );
 }
-
-
-

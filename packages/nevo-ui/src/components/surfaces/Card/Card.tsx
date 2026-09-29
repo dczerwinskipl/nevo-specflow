@@ -69,6 +69,3 @@ export const Card = Object.assign(CardRoot, {
   Body: CardBody,
   Footer: CardFooter,
 });
-
-
-

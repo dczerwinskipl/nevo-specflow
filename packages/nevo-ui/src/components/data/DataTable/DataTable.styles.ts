@@ -30,4 +30,3 @@ export const dataTableBodyCellVariants = tv({
     density: 'default',
   },
 });
-

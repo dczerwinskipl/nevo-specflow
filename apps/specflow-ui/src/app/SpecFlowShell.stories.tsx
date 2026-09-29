@@ -29,7 +29,9 @@ export const Playground: Story = { args: { path: '/ui-playground' } };
 export const Navigation: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('link', { name: 'UI Playground' }));
-    await canvas.findByText('A neutral product-owned surface for checking Nevo UI composition inside the real app.');
+    await canvas.findByText(
+      'A neutral product-owned surface for checking Nevo UI composition inside the real app.',
+    );
   },
 };
 

@@ -22,4 +22,3 @@ export function TimeSelector(props: TimeSelectorProps) {
     <TimeListSelector {...props} />
   );
 }
-

@@ -4,4 +4,3 @@ export * from './resourceCatalogs';
 export * from './semanticBindings';
 export * from './types';
 export * from './variants';
-

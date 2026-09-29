@@ -15,7 +15,7 @@ type NevoUiResourceRegistry = ResourceCaptureRegistry<typeof nevoUiResourceRegis
 type NevoUiCaptureRegistry = NevoUiComponentRegistry & NevoUiResourceRegistry;
 type IdentityMetadata = Pick<DesignMetadataCapabilities, 'key'>;
 
-type NevoUiCaptureMetadataRegistry = {
+interface NevoUiCaptureMetadataRegistry {
   Icon: {
     assetRef: IconAssetRef;
     assetRepresentation: 'svg' | 'svg-mask';
@@ -26,7 +26,7 @@ type NevoUiCaptureMetadataRegistry = {
   };
   TabsTrigger: IdentityMetadata;
   SegmentedControlItem: IdentityMetadata;
-};
+}
 
 declare module '@nevo/figma-core/metadata' {
   interface DesignCaptureRegistry extends NevoUiCaptureRegistry {}

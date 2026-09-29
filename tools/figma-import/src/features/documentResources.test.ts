@@ -33,4 +33,3 @@ describe('semantic color binding', () => {
     expect(colorVariableFor(ir, resources, 'rgb(120, 120, 120)')).toBeUndefined();
   });
 });
-

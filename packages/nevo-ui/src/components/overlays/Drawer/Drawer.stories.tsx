@@ -168,6 +168,3 @@ export const CanonicalCapture: Story = {
     },
   },
 };
-
-
-

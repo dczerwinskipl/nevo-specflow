@@ -49,9 +49,9 @@ function linearToSrgb(channel: number) {
 function hexToOklch(value: string): OklchColor {
   const rgb = rgbFromHex(value);
   const [red, green, blue] = [rgb.r, rgb.g, rgb.b].map((channel) => srgbToLinear(channel / 255));
-  const l = 0.4122214708 * red + 0.5363325363 * green + 0.0514459929 * blue;
-  const m = 0.2119034982 * red + 0.6806995451 * green + 0.1073969566 * blue;
-  const s = 0.0883024619 * red + 0.2817188376 * green + 0.6299787005 * blue;
+  const l = 0.4122214708 * red! + 0.5363325363 * green! + 0.0514459929 * blue!;
+  const m = 0.2119034982 * red! + 0.6806995451 * green! + 0.1073969566 * blue!;
+  const s = 0.0883024619 * red! + 0.2817188376 * green! + 0.6299787005 * blue!;
   const lRoot = Math.cbrt(l);
   const mRoot = Math.cbrt(m);
   const sRoot = Math.cbrt(s);
@@ -214,4 +214,3 @@ export function nevoMarkPaletteVariables(palette: NevoMarkPalette) {
     ]),
   ) as Record<(typeof nevoMarkCssVariables)[keyof typeof nevoMarkCssVariables], string>;
 }
-

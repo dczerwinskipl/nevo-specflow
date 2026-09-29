@@ -22,4 +22,3 @@ describe('AppContentContainer', () => {
     expect(html).toContain('mx-auto');
   });
 });
-

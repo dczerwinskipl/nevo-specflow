@@ -21,17 +21,17 @@ import {
 } from '../../behaviors/rovingSelection';
 import { Typography } from '../../foundations/Typography';
 
-type ControlledTabsProps = {
+interface ControlledTabsProps {
   value: string;
   defaultValue?: never;
   onValueChange: (value: string) => void;
-};
+}
 
-type UncontrolledTabsProps = {
+interface UncontrolledTabsProps {
   value?: never;
   defaultValue: string;
   onValueChange?: (value: string) => void;
-};
+}
 
 export type TabsProps = Omit<HTMLAttributes<HTMLDivElement>, 'defaultValue'> &
   (ControlledTabsProps | UncontrolledTabsProps);
@@ -254,6 +254,3 @@ export const Tabs = Object.assign(TabsRoot, {
   Trigger: TabsTrigger,
   Content: TabsContent,
 });
-
-
-

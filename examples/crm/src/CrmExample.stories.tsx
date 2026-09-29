@@ -76,4 +76,3 @@ export const FigmaCapture: Story = {
     },
   },
 };
-

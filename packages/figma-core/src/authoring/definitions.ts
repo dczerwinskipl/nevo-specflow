@@ -21,9 +21,7 @@ export type AssetSwapSlotFor<Axes extends VariantAxes> = {
   } & (
     | {
         allowAssetValueRemap: true;
-        defaultAssetRefs: {
-          [Value in AxisProperty<Axes[Axis][number]>]: AssetRefForAxis<Axis>;
-        };
+        defaultAssetRefs: Record<AxisProperty<Axes[Axis][number]>, AssetRefForAxis<Axis>>;
       }
     | {
         allowAssetValueRemap?: false;
@@ -46,17 +44,17 @@ export interface ComponentAuthoringDefinition<
   'component' | 'variantProperties' | 'propertyValues' | 'defaultProperties' | 'slots'
 > {
   component: Id;
-  variantProperties: Array<keyof Axes & string>;
+  variantProperties: (keyof Axes & string)[];
   propertyValues: Axes;
   defaultProperties?: Partial<VariantSelection<Axes>>;
   slots: Slots;
 }
 
-export type AnyComponentAuthoringDefinition = {
+export interface AnyComponentAuthoringDefinition {
   component: string;
   propertyValues: VariantAxes;
   slots: Record<string, FigmaSlotDefinition & { allowAssetValueRemap?: boolean }>;
-};
+}
 
 /**
  * Resolves project-facing authoring metadata into the implementation-neutral
@@ -66,15 +64,19 @@ export type AnyComponentAuthoringDefinition = {
 export function compileDesignDefinition(
   definition: AnyComponentAuthoringDefinition,
 ): FigmaComponentDefinition {
+  const slots: Record<string, FigmaSlotDefinition> = {};
+  for (const [name, slot] of Object.entries(definition.slots)) {
+    if (slot.kind !== 'asset-swap') {
+      slots[name] = slot;
+      continue;
+    }
+    const { allowAssetValueRemap: _authoringOnly, ...resolvedSlot } = slot;
+    slots[name] = resolvedSlot;
+  }
+
   return {
     ...definition,
-    slots: Object.fromEntries(
-      Object.entries(definition.slots).map(([name, slot]) => {
-        if (slot.kind !== 'asset-swap') return [name, slot];
-        const { allowAssetValueRemap: _authoringOnly, ...resolvedSlot } = slot;
-        return [name, resolvedSlot];
-      }),
-    ),
+    slots,
   } as FigmaComponentDefinition;
 }
 
@@ -151,8 +153,7 @@ export function defineDesignComponent<
     slots,
     ...(bindings === undefined ? {} : { bindings }),
     ...(figma === undefined ? {} : { figma }),
-  } as ComponentAuthoringDefinition<Id, Axes, Slots> &
-    Omit<DefineDesignComponentInput<Id, Axes, Slots>, 'variants' | 'defaults'>;
+  };
 }
 
 export function defineDesignSystem<
@@ -166,44 +167,47 @@ export function createComponentAuthoring<
 >(definitions: Definitions) {
   const componentIds = new Set(definitions.map((definition) => definition.component));
 
-  return {
-    componentRef<
-      Id extends ComponentId<Definitions>,
-      const Properties extends VariantSelection<
-        ComponentAxes<ComponentDefinitionFor<Definitions, Id>>
-      >,
-    >(
-      component: Id,
-      properties: Properties &
-        Record<
-          Exclude<
-            keyof Properties,
-            keyof VariantSelection<ComponentAxes<ComponentDefinitionFor<Definitions, Id>>>
-          >,
-          never
+  const componentRef = <
+    Id extends ComponentId<Definitions>,
+    const Properties extends VariantSelection<
+      ComponentAxes<ComponentDefinitionFor<Definitions, Id>>
+    >,
+  >(
+    component: Id,
+    properties: Properties &
+      Record<
+        Exclude<
+          keyof Properties,
+          keyof VariantSelection<ComponentAxes<ComponentDefinitionFor<Definitions, Id>>>
         >,
-    ) {
-      if (!componentIds.has(component)) throw new Error(`Unknown design component ${component}`);
-      return { componentRef: component, properties };
-    },
-    slot<
-      Id extends ComponentId<Definitions>,
-      Slot extends keyof ComponentDefinitionFor<Definitions, Id>['slots'] & string,
-    >(component: Id, slot: Slot) {
-      if (!componentIds.has(component)) throw new Error(`Unknown design component ${component}`);
-      return slot;
-    },
-    variantProperty<
-      Id extends ComponentId<Definitions>,
-      Axis extends keyof ComponentAxes<ComponentDefinitionFor<Definitions, Id>> & string,
-    >(component: Id, axis: Axis) {
-      if (!componentIds.has(component)) throw new Error(`Unknown design component ${component}`);
-      return axis;
-    },
+        never
+      >,
+  ) => {
+    if (!componentIds.has(component)) throw new Error(`Unknown design component ${component}`);
+    return { componentRef: component, properties };
   };
+  const slot = <
+    Id extends ComponentId<Definitions>,
+    Slot extends keyof ComponentDefinitionFor<Definitions, Id>['slots'] & string,
+  >(
+    component: Id,
+    slotName: Slot,
+  ) => {
+    if (!componentIds.has(component)) throw new Error(`Unknown design component ${component}`);
+    return slotName;
+  };
+  const variantProperty = <
+    Id extends ComponentId<Definitions>,
+    Axis extends keyof ComponentAxes<ComponentDefinitionFor<Definitions, Id>> & string,
+  >(
+    component: Id,
+    axis: Axis,
+  ) => {
+    if (!componentIds.has(component)) throw new Error(`Unknown design component ${component}`);
+    return axis;
+  };
+
+  return { componentRef, slot, variantProperty };
 }
 
 export type EmptyComponentProperties = NoDesignValues;
-
-
-

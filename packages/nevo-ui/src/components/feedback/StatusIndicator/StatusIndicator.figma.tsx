@@ -1,4 +1,4 @@
-import { defineRecipeDesign } from '@nevo/ui/figma';
+import { defineRecipeDesign } from '@nevo/ui/figma/define';
 import { statusIndicatorVariants } from './StatusIndicator';
 
 export const designSpec = defineRecipeDesign({
@@ -8,6 +8,3 @@ export const designSpec = defineRecipeDesign({
   order: 113,
   slots: {},
 });
-
-
-

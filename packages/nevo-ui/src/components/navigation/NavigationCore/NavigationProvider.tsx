@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { NavigationContext, type NavigationContextValue } from './NavigationContext';
 import { createNavigationTreeState } from './navigationTree';
 import { useNavigationExpansion } from './useNavigationExpansion';
-import type { NavigationAdapter, NavigationProviderProps, NavigationTreeState } from './types';
+import type { NavigationAdapter, NavigationProviderProps } from './types';
 
 export function NavigationProvider<TTarget>({
   adapter,
@@ -25,11 +25,10 @@ export function NavigationProvider<TTarget>({
       adapter: adapter as NavigationAdapter<unknown>,
       expandedKeys,
       setExpanded,
-      tree: tree as NavigationTreeState<unknown>,
+      tree: tree,
     }),
     [adapter, expandedKeys, setExpanded, tree],
   );
 
   return <NavigationContext.Provider value={value}>{children}</NavigationContext.Provider>;
 }
-

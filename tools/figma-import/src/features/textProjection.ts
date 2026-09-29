@@ -77,4 +77,3 @@ export function applyTextSizing(
   node.layoutSizingVertical =
     heightSizing === 'fill' ? 'FILL' : heightSizing === 'hug' ? 'HUG' : 'FIXED';
 }
-

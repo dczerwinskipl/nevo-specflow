@@ -10,6 +10,3 @@ export const designSpec = defineDesignComponent({
     thumb: { kind: 'container', required: true },
   },
 });
-
-
-

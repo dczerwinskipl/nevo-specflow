@@ -218,6 +218,3 @@ export const CanonicalCapture: Story = {
     },
   },
 };
-
-
-

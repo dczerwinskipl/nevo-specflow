@@ -8,4 +8,3 @@ export function useTimelineSize(part: string): TimelineSize {
   if (!size) throw new Error(`${part} must be rendered inside Timeline.`);
   return size;
 }
-

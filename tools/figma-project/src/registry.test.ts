@@ -46,4 +46,3 @@ describe('design capture story registry', () => {
     ).toEqual([]);
   });
 });
-

@@ -88,4 +88,3 @@ export function DateRangeCalendarPanel(props: DateRangeCalendarPanelProps = {}) 
     </RangeCalendar>
   );
 }
-

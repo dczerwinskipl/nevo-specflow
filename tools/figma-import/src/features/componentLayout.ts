@@ -197,4 +197,3 @@ export function configureRoot(
   if (background) bindPaintVariable(component, 'fills', background);
   if (border) bindPaintVariable(component, 'strokes', border);
 }
-

@@ -36,4 +36,3 @@ describe('environment foundations', () => {
     expect(workspaceStory).toContain('<WorkspaceSurface');
   });
 });
-

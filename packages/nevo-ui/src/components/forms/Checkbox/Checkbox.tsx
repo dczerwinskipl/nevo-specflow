@@ -128,6 +128,3 @@ export function CheckboxField({
     </div>
   );
 }
-
-
-

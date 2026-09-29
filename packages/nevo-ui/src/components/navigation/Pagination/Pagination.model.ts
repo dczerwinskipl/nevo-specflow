@@ -26,4 +26,3 @@ export function paginationPageItems(
 
   return result;
 }
-

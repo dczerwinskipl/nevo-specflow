@@ -114,4 +114,3 @@ describe('DataTable', () => {
     expect(html).toContain('Nie ma rekordów.');
   });
 });
-

@@ -44,4 +44,3 @@ describe('InputGroup', () => {
     expect(markup.match(/disabled=""/g)).toHaveLength(2);
   });
 });
-

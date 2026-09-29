@@ -13,7 +13,7 @@ export interface IRInspection {
   kind: 'design-system' | 'screens';
   managedPageExists: boolean;
   items: IRInspectionItem[];
-  deletions: Array<Omit<IRInspectionItem, 'exists'>>;
+  deletions: Omit<IRInspectionItem, 'exists'>[];
 }
 
 export type ImporterRequest =
@@ -26,6 +26,3 @@ export type ImporterResponse =
   | { type: 'INSPECTION_ERROR'; requestId: number; message: string }
   | ({ type: 'PROGRESS' } & ImportProgressUpdate)
   | { type: 'DONE' | 'ERROR'; message: string };
-
-
-

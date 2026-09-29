@@ -20,15 +20,15 @@ export type AppWorkspaceSplitMode = 'primary' | 'balanced' | 'secondary';
 
 export type AppWorkspaceShare = number;
 
-export type AppWorkspaceSplit = {
+export interface AppWorkspaceSplit {
   primary: AppWorkspaceShare;
-  secondary: AppWorkspaceShare | 0;
-};
+  secondary: AppWorkspaceShare;
+}
 
-export type AppWorkspacePixelSplit = {
+export interface AppWorkspacePixelSplit {
   primary: number;
   secondary?: number;
-};
+}
 
 const WIDE_WORKSPACE_SPLITS: Record<AppWorkspaceSplitMode, AppWorkspaceSplit> = {
   primary: { primary: 75, secondary: 25 },
@@ -75,4 +75,3 @@ export function resolveWorkspacePixelSplit(
       : { secondary: resolveSlotMaxWidth(availableWidth, resolvedSplit.secondary)! }),
   };
 }
-

@@ -1,2 +1,0 @@
-export { AppBackground, WorkspaceSurface, WorkspaceSurfacePreview, type AppBackgroundProps, type WorkspaceSurfacePreviewProps, type WorkspaceSurfaceProps, } from './Environment';
-//# sourceMappingURL=index.d.ts.map

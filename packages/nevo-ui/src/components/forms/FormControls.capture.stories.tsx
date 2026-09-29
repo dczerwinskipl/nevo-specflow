@@ -119,6 +119,3 @@ export const SwitchCapture: Story = {
     },
   },
 };
-
-
-

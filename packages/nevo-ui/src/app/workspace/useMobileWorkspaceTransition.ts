@@ -9,7 +9,7 @@ import {
   type WorkspacePresentationTarget,
 } from './workspaceTransition';
 
-export type MobileWorkspaceSurfaceRuntime = {
+export interface MobileWorkspaceSurfaceRuntime {
   surface: WorkspacePresentationTarget;
   instanceKey: string;
   mounted: boolean;
@@ -17,18 +17,18 @@ export type MobileWorkspaceSurfaceRuntime = {
   active: boolean;
   interactive: boolean;
   motion: WorkspacePresentationTransition;
-};
+}
 
-export type MobileWorkspaceRuntime = {
+export interface MobileWorkspaceRuntime {
   primary: MobileWorkspaceSurfaceRuntime;
   secondary: MobileWorkspaceSurfaceRuntime;
-};
+}
 
-type ResolveMobileWorkspaceRuntimeOptions = {
+interface ResolveMobileWorkspaceRuntimeOptions {
   secondaryInstanceKey?: string;
   transition?: WorkspaceTransition;
   completedTransitionRevision?: number;
-};
+}
 
 export function resolveMobileWorkspaceRuntime({
   secondaryInstanceKey,
@@ -97,4 +97,3 @@ export function useMobileWorkspaceTransition({
 
   return { ...runtime, completeMotion };
 }
-

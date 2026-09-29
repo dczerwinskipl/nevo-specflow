@@ -76,6 +76,3 @@ export const COLOR_COLLECTION_ID = figmaProjectConfig.figma.variableCollection.s
 export const SLOT_SCHEMA_KEY = figmaProjectConfig.figma.pluginData.slotSchema;
 export const RESOURCE_KIND_KEY = figmaProjectConfig.figma.pluginData.resourceKind;
 export const SLOT_SCHEMA_VERSION = '3';
-
-
-

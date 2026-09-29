@@ -9,4 +9,3 @@ describe('Button', () => {
     expect(renderToStaticMarkup(<Button disabled>Save</Button>)).toContain('disabled=""');
   });
 });
-

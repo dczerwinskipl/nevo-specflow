@@ -32,7 +32,7 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(function T
   const field = useFieldControl({
     ariaDescribedBy,
     ariaInvalid,
-    disabled: Boolean(disabled || inputGroup?.disabled),
+    disabled: disabled === true || inputGroup?.disabled === true,
     id,
   });
   const capture = useDesignMetadata('TextInput', {
@@ -68,6 +68,3 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(function T
     />
   );
 });
-
-
-

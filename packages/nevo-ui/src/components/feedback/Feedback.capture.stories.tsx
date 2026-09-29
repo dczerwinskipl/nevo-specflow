@@ -181,6 +181,3 @@ export const ToastCapture: Story = {
     },
   },
 };
-
-
-

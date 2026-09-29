@@ -35,6 +35,3 @@ export const Timeline = Object.assign(TimelineRoot, {
   Marker: TimelineMarker,
   Content: TimelineContent,
 });
-
-
-

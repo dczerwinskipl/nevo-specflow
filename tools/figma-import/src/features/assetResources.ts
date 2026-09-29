@@ -79,4 +79,3 @@ export async function existingAssetResources(definitions: readonly AssetResource
     entries.filter((entry): entry is readonly [string, ComponentNode] => Boolean(entry)),
   );
 }
-

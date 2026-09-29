@@ -5,4 +5,3 @@ describe('Skeleton', () => {
   it('is hidden from assistive tech', () =>
     expect(renderToStaticMarkup(<Skeleton />)).toContain('aria-hidden="true"'));
 });
-

@@ -8,4 +8,3 @@ describe('EmptyState', () => {
     expect(html).toContain('Nothing yet');
   });
 });
-

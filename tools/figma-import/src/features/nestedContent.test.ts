@@ -375,4 +375,3 @@ describe('nested instance presentation', () => {
     expect(instance.opacity).toBe(0.6);
   });
 });
-

@@ -1,4 +1,4 @@
-import { defineRecipeDesign } from '@nevo/ui/figma';
+import { defineRecipeDesign } from '@nevo/ui/figma/define';
 import { linkVariants } from './Link';
 
 export const designSpec = defineRecipeDesign({
@@ -11,6 +11,3 @@ export const designSpec = defineRecipeDesign({
     label: { kind: 'text', propertyName: 'Label', defaultText: 'View customer', required: true },
   },
 });
-
-
-

@@ -1,6 +1,6 @@
 import { useContext } from 'react';
 import { NavigationContext } from './NavigationContext';
-import type { NavigationAdapter, NavigationNode, NavigationNodeHandle } from './types';
+import type { NavigationNode, NavigationNodeHandle } from './types';
 
 export function useNavigationNode<TTarget = unknown>(key: string): NavigationNodeHandle<TTarget> {
   const context = useContext(NavigationContext);
@@ -10,7 +10,7 @@ export function useNavigationNode<TTarget = unknown>(key: string): NavigationNod
 
   const isExpanded = context.expandedKeys.has(key);
   return {
-    adapter: context.adapter as NavigationAdapter<TTarget>,
+    adapter: context.adapter,
     isActive: context.tree.activeKeys.has(key),
     isAncestorOfActive: context.tree.ancestorKeys.has(key),
     isExpanded,
@@ -19,4 +19,3 @@ export function useNavigationNode<TTarget = unknown>(key: string): NavigationNod
     toggleExpanded: () => context.setExpanded(key, !isExpanded),
   };
 }
-

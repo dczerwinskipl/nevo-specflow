@@ -23,4 +23,3 @@ describe('RadioGroup', () => {
     expect(html).toContain('Default processing.');
   });
 });
-

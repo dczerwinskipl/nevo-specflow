@@ -87,7 +87,7 @@ export interface FigmaComponentDefinition<
   description?: string;
   target?: 'component' | 'fragment' | 'screen';
   order: number;
-  variantProperties: Array<keyof Properties & string>;
+  variantProperties: (keyof Properties & string)[];
   propertyValues: Partial<Record<keyof Properties & string, readonly DesignValue[]>>;
   defaultProperties?: Partial<Record<keyof Properties & string, DesignValue>>;
   slots: Record<string, FigmaSlotDefinition>;
@@ -257,4 +257,3 @@ export interface ProjectionDiagnosticIR {
   component?: string;
   layer?: string;
 }
-

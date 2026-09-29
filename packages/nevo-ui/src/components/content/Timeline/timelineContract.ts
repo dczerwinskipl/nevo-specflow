@@ -5,4 +5,3 @@ export type TimelineSize = (typeof timelineSizes)[number];
 export const timelineDefaults = {
   size: 'md',
 } as const satisfies { size: TimelineSize };
-

@@ -1,10 +1,10 @@
 import { Children, Fragment, isValidElement, useCallback, useState, type ReactNode } from 'react';
 
-type SelectableChildProps = {
+interface SelectableChildProps {
   value?: unknown;
   disabled?: boolean;
   children?: ReactNode;
-};
+}
 
 export function collectEnabledItemValues(children: ReactNode): string[] {
   const values: string[] = [];
@@ -74,7 +74,7 @@ export function useControllableSelection({
 }) {
   const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);
   const controlled = controlledValue !== undefined;
-  const selectedValue = (controlled ? controlledValue : uncontrolledValue) as string;
+  const selectedValue = (controlled ? controlledValue : uncontrolledValue)!;
 
   const select = useCallback(
     (nextValue: string) => {
@@ -87,4 +87,3 @@ export function useControllableSelection({
 
   return { selectedValue, select };
 }
-

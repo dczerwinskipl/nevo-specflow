@@ -205,6 +205,3 @@ defineDesignComponent({
     label: { kind: 'text', propertyName: 'Label', defaultText: 'Fixture' },
   },
 });
-
-
-

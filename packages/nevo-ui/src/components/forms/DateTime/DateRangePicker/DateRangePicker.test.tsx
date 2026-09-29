@@ -18,4 +18,3 @@ describe('DateRangePicker', () => {
     expect(markup).toContain('data-design-slot="control"');
   });
 });
-

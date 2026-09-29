@@ -12,4 +12,3 @@ export const dateLiteralClassName =
 
 export const embeddedActionFocusClassName =
   'focus-visible:bg-surface-selected focus-visible:text-content-primary focus-visible:outline-none';
-

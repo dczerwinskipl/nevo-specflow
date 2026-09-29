@@ -8,4 +8,3 @@ describe('StatusTone', () => {
     expect(statusTones).toEqual(tones);
   });
 });
-

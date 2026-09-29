@@ -112,4 +112,3 @@ describe('NevoBrandLogo', () => {
     expect(html).not.toContain('tracking-[-0.');
   });
 });
-

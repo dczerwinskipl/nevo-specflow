@@ -19,7 +19,7 @@ function assert(condition: unknown, message: string): asserts condition {
 export const InteractionContract: Story = {
   render: () => <TabsExample disabledActivity />,
   play: async ({ canvas, userEvent }) => {
-    const tabs = canvas.getAllByRole('tab') as HTMLButtonElement[];
+    const tabs = canvas.getAllByRole('tab');
     const [overview, activity, settings] = tabs;
     assert(overview && activity && settings, 'The fixture should render all tabs.');
 
@@ -28,6 +28,7 @@ export const InteractionContract: Story = {
       'The initial tab should be selected.',
     );
     assert(overview.tabIndex === 0, 'The selected tab should be in the tab order.');
+    assert(activity instanceof HTMLButtonElement, 'Tabs should use native button elements.');
     assert(activity.disabled, 'The disabled tab should keep native disabled semantics.');
     assert(activity.tabIndex === -1, 'The disabled tab should be removed from the tab order.');
 
@@ -172,7 +173,10 @@ export const RovingTabStopContract: Story = {
 
     const firstDisabled = tabsFor('first-disabled');
     assert(firstDisabled[0]!.tabIndex === -1, 'A disabled first trigger must not be tabbable.');
-    assert(firstDisabled[1]!.tabIndex === 0, 'The selected enabled trigger should remain tabbable.');
+    assert(
+      firstDisabled[1]!.tabIndex === 0,
+      'The selected enabled trigger should remain tabbable.',
+    );
 
     const multipleDisabled = tabsFor('multiple-disabled');
     assert(
@@ -205,4 +209,3 @@ export const RovingTabStopContract: Story = {
     );
   },
 };
-

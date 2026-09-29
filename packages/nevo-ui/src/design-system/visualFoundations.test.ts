@@ -39,4 +39,3 @@ describe('Nevo visual foundations', () => {
     });
   });
 });
-

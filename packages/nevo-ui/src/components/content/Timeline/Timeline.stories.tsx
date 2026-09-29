@@ -83,11 +83,11 @@ export const WorkflowHistory: Story = {
   args: { size: 'md' },
   render: (args) => (
     <div className="w-full max-w-xl rounded-surface border border-border-default bg-surface p-5">
-      <Timeline {...args} aria-label="Specification workflow history">
+      <Timeline {...args} aria-label="Document workflow history">
         <Timeline.Item>
           <Timeline.Marker tone="success" icon="check" />
           <Timeline.Content
-            title="Specification created"
+            title="Document created"
             description="Initial specification generated and accepted for implementation."
             meta="Spec Writer · Claude"
             time="10:42"
@@ -273,4 +273,3 @@ export const SizeComparison: Story = {
     </div>
   ),
 };
-

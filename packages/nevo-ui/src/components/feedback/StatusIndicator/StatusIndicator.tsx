@@ -73,6 +73,3 @@ export const StatusIndicator = forwardRef<HTMLSpanElement, StatusIndicatorProps>
     );
   },
 );
-
-
-

@@ -10,4 +10,3 @@ describe('IconButton', () => {
     expect(markup).toContain('aria-hidden="true"');
   });
 });
-

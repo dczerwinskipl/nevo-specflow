@@ -129,6 +129,3 @@ export const CanonicalCapture: Story = {
     },
   },
 };
-
-
-

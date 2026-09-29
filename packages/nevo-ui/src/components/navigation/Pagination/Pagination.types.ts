@@ -10,10 +10,10 @@ export interface PaginationLabels {
   cursorSummary: string;
 }
 
-export type PaginationSharedProps = {
+export interface PaginationSharedProps {
   className?: string;
   labels?: Partial<PaginationLabels>;
-};
+}
 
 export type PaginationPageVariant = 'pages' | 'simple';
 
@@ -54,4 +54,3 @@ export interface CursorPaginationProps extends PaginationSharedProps {
 }
 
 export type PaginationProps = KnownPaginationProps | UnknownPaginationProps | CursorPaginationProps;
-

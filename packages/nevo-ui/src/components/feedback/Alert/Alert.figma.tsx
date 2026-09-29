@@ -1,4 +1,4 @@
-import { defineRecipeDesign } from '@nevo/ui/figma';
+import { defineRecipeDesign } from '@nevo/ui/figma/define';
 import { alertVariants } from './Alert';
 
 export const designSpec = defineRecipeDesign({
@@ -17,6 +17,3 @@ export const designSpec = defineRecipeDesign({
     actions: { kind: 'container' },
   },
 });
-
-
-

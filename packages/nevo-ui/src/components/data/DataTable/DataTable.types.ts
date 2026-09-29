@@ -103,4 +103,3 @@ export interface DataTableProps<TData extends RowData> {
   defaultColumnSizing?: DataTableColumnSizingState;
   onColumnSizingChange?: OnChangeFn<DataTableColumnSizingState>;
 }
-

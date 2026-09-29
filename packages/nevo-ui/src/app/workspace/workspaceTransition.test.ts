@@ -33,4 +33,3 @@ describe('workspace presentation transition model', () => {
     expect(resolveWorkspaceSurfaceTransition('secondary', transition)).toEqual(transition);
   });
 });
-

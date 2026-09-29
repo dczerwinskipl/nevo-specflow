@@ -18,4 +18,3 @@ export interface DesignStoryExport {
     [key: string]: unknown;
   };
 }
-

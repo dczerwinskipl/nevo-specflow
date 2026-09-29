@@ -233,6 +233,3 @@ describe('Timeline', () => {
     );
   });
 });
-
-
-

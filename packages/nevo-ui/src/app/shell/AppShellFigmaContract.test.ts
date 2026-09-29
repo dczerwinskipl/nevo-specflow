@@ -19,4 +19,3 @@ describe('AppShell Figma contract', () => {
     );
   });
 });
-

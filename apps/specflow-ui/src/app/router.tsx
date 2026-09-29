@@ -17,7 +17,11 @@ const rootRoute = createRootRoute({
   ),
 });
 
-const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: HomeScreen });
+const homeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/',
+  component: HomeScreen,
+});
 const uiPlaygroundRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/ui-playground',

@@ -29,4 +29,3 @@ export function shouldRemoveManagedNode(
     !expectedStableIds.has(node.stableId)
   );
 }
-

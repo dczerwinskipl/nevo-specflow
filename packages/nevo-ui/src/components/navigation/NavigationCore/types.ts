@@ -29,17 +29,17 @@ export interface NavigationTreeState<TTarget = unknown> {
   parentByKey: ReadonlyMap<string, string | null>;
 }
 
-type ControlledNavigationProviderProps = {
+interface ControlledNavigationProviderProps {
   expandedKeys: readonly string[];
   defaultExpandedKeys?: never;
   onExpandedKeysChange: (keys: readonly string[]) => void;
-};
+}
 
-type UncontrolledNavigationProviderProps = {
+interface UncontrolledNavigationProviderProps {
   expandedKeys?: never;
   defaultExpandedKeys?: readonly string[];
   onExpandedKeysChange?: (keys: readonly string[]) => void;
-};
+}
 
 export type NavigationProviderProps<TTarget> = {
   adapter: NavigationAdapter<TTarget>;
@@ -56,4 +56,3 @@ export interface NavigationNodeHandle<TTarget = unknown> {
   setExpanded: (expanded: boolean) => void;
   toggleExpanded: () => void;
 }
-

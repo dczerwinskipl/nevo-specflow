@@ -68,4 +68,3 @@ describe('brand environment derivation', () => {
     expect(() => deriveBrandEnvironment('var(--unknown)')).toThrow(/hex value/);
   });
 });
-

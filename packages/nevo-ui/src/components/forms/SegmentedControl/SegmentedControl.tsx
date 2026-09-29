@@ -20,17 +20,17 @@ import {
 } from '../../behaviors/rovingSelection';
 import { Typography } from '../../foundations/Typography';
 
-type ControlledProps = {
+interface ControlledProps {
   value: string;
   defaultValue?: never;
   onValueChange: (value: string) => void;
-};
+}
 
-type UncontrolledProps = {
+interface UncontrolledProps {
   value?: never;
   defaultValue: string;
   onValueChange?: (value: string) => void;
-};
+}
 
 export type SegmentedControlProps = Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -214,6 +214,3 @@ export const SegmentedControlItem = forwardRef<HTMLButtonElement, SegmentedContr
 export const SegmentedControl = Object.assign(SegmentedControlRoot, {
   Item: SegmentedControlItem,
 });
-
-
-

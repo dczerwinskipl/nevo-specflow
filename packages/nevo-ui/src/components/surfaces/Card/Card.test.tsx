@@ -17,4 +17,3 @@ describe('Card', () => {
     expect(markup).toContain('data-design-slot="footer"');
   });
 });
-

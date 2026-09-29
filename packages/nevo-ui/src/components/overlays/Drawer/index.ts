@@ -10,4 +10,3 @@ export {
   DrawerTrigger,
 } from './Drawer';
 export type { DrawerContentProps } from './Drawer';
-

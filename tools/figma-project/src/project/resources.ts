@@ -2,12 +2,8 @@ import { createResourceAuthoring, defineResourceRegistry } from '@nevo/figma-cor
 import {
   nevoBrandResourceRegistry,
   nevoMarkAssetResource,
-} from '@nevo/specflow-ui/brand/figma';
-import {
-  iconResource,
-  nevoUiResourceRegistry,
-  typographyResource,
-} from '@nevo/ui/figma/resources';
+} from '@nevo/specflow-ui/brand/figma-resources';
+import { iconResource, nevoUiResourceRegistry, typographyResource } from '@nevo/ui/figma/resources';
 
 export { iconResource, nevoMarkAssetResource, typographyResource };
 

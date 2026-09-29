@@ -53,10 +53,10 @@ export interface AppWorkspaceRegionProps {
   children: ReactNode;
 }
 
-type CommonAppWorkspaceProps = {
+interface CommonAppWorkspaceProps {
   split?: AppWorkspaceSplitMode;
   labels?: Partial<AppWorkspaceLabels>;
-};
+}
 
 export type AppWorkspaceProps = CommonAppWorkspaceProps & {
   children: ReactNode;
@@ -68,21 +68,21 @@ const defaultAppWorkspaceLabels: AppWorkspaceLabels = {
   openNavigation: 'Open navigation',
 };
 
-type WorkspaceSecondaryPresentation = {
+interface WorkspaceSecondaryPresentation {
   surface: AppWorkspaceSurface;
   key: string;
   canStack: boolean;
   transition?: WorkspaceTransition;
   onClose?: () => void | Promise<unknown>;
   onBack?: () => void | Promise<unknown>;
-};
+}
 
-type WorkspaceLayoutState = {
+interface WorkspaceLayoutState {
   mode: 'split' | 'stacked';
   showSecondary: boolean;
   primaryMaxWidth?: number;
   secondaryMaxWidth?: number;
-};
+}
 
 function AppWorkspacePrimary(_props: AppWorkspaceRegionProps) {
   return null;
@@ -597,4 +597,3 @@ export {
   type AppWorkspaceSlot,
   type AppWorkspaceSlotsProps,
 } from './AppWorkspaceSlots';
-

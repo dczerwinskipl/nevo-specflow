@@ -99,6 +99,3 @@ export const PaginationCapture: Story = {
     },
   },
 };
-
-
-

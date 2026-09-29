@@ -13,10 +13,9 @@ import { figmaProjectConfig } from '../../config';
 export async function upsertColorVariables(ir: DesignSystemIR) {
   const collections = await figma.variables.getLocalVariableCollectionsAsync();
   let collection = collections.find((item) => item.getPluginData(DATA_KEY) === COLOR_COLLECTION_ID);
-  if (!collection)
-    collection = figma.variables.createVariableCollection(
-      figmaProjectConfig.figma.variableCollection.name,
-    );
+  collection ??= figma.variables.createVariableCollection(
+    figmaProjectConfig.figma.variableCollection.name,
+  );
   collection.name = figmaProjectConfig.figma.variableCollection.name;
   collection.setPluginData(DATA_KEY, COLOR_COLLECTION_ID);
   collection.setPluginData(MANAGED_KEY, 'true');
@@ -137,6 +136,3 @@ export function colorVariableFor(
   const direct = resolveSemanticTokenId(preferredStableId, color, ir.resources.colors);
   return direct ? resources.colors.get(direct) : undefined;
 }
-
-
-

@@ -16,4 +16,3 @@ export interface DesignTokenBindings {
   border?: DesignTokenBindingRule;
   content?: DesignTokenBindingRule;
 }
-

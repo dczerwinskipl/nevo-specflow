@@ -14,5 +14,5 @@
     "tsBuildInfoFile": "./.tsbuild/storybook.tsbuildinfo",
     "types": ["node", "vite/client"]
   },
-  "include": [".storybook", "vitest.config.ts"]
+  "include": [".storybook/**/*.ts", "vitest.config.ts"]
 }

@@ -36,6 +36,3 @@ export const Separator = forwardRef<HTMLDivElement, SeparatorProps>(function Sep
     />
   );
 });
-
-
-

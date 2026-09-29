@@ -6,4 +6,3 @@ export {
   type CollapsibleProps,
   type CollapsibleTriggerProps,
 } from './Collapsible';
-

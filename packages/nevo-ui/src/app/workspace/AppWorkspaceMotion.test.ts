@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 describe('AppWorkspace motion CSS contract', () => {
   it('uses one transform-only forward entry with workspace motion tokens', async () => {
     const css = await readFile('src/app/workspace/AppWorkspace.css', 'utf8');
-    const keyframes = css.match(/@keyframes workspace-enter-forward\s*{([\s\S]*?)\n}/)?.[1];
+    const keyframes = /@keyframes workspace-enter-forward\s*{([\s\S]*?)\n}/.exec(css)?.[1];
 
     expect(css).toContain("[data-workspace-motion='entering'][data-workspace-direction='forward']");
     expect(css).toContain('@keyframes workspace-enter-forward');
@@ -27,4 +27,3 @@ describe('AppWorkspace motion CSS contract', () => {
     expect(source).toContain('bg-canvas bg-app-base');
   });
 });
-

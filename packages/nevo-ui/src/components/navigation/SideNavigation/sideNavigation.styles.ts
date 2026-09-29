@@ -28,4 +28,3 @@ export function sideNavigationContentClassName(interactive = false) {
     interactive && 'cursor-pointer',
   );
 }
-

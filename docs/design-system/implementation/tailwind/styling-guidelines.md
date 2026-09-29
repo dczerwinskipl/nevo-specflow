@@ -2,7 +2,7 @@
 id: design-system.implementation.tailwind.styling-guidelines
 type: engineering
 title: Tailwind styling guidelines
-status: draft
+status: current
 read_when:
   - composing Tailwind classes on a component
   - adding a component variant
@@ -19,7 +19,9 @@ related:
 
 # Tailwind styling guidelines
 
-`status: draft` — working guidance. The Tailwind version and token file are confirmed with the dashboard code.
+The workspace uses Tailwind CSS 4. Semantic design tokens and the shared theme live in
+`packages/nevo-ui/src/design-system.css`. The package includes `@source './';` so Tailwind sees
+classes authored inside the reusable library when a consumer imports the stylesheet.
 
 ## 1. Local static layout
 
@@ -60,6 +62,10 @@ signal to split it (see [React guidelines](../react/component-guidelines.md)).
 Tailwind's content/source scanning must see every file that produces classes. Don't
 build class name strings by concatenation that the scanner can't follow
 (`` `text-${color}-500` ``) — enumerate the full class names.
+
+Applications and examples import the Nevo UI stylesheet from `@nevo/ui/styles.css`; they own only
+their product/example-specific additions. Shared tokens or reusable component styles MUST NOT be
+forked into an application stylesheet.
 
 ## 7. Multi-slot components
 

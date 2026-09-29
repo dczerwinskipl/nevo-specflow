@@ -32,4 +32,3 @@ export function PickerActions({ labels, onCancel, onDone, onNow }: PickerActions
     </div>
   );
 }
-

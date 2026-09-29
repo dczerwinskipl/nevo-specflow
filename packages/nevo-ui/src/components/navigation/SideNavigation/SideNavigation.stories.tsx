@@ -111,13 +111,12 @@ export const LongScrollableNavigation: Story = {
     <div className="h-80 w-64 rounded-composite border border-border-default bg-surface p-2">
       <ScrollArea aria-label="Long product navigation" className="h-full" direction="vertical">
         <SideNavigation
-          aria-label="SpecFlow navigation"
+          aria-label="Application navigation"
           adapter={noActiveAdapter}
-          label="SpecFlow workspaces"
+          label="Application workspaces"
           nodes={longNavigationNodes}
         />
       </ScrollArea>
     </div>
   ),
 };
-

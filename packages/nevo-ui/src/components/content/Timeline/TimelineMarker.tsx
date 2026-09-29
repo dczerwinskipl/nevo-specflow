@@ -88,4 +88,3 @@ export const TimelineMarker = forwardRef<HTMLSpanElement, TimelineMarkerProps>(
     );
   },
 );
-

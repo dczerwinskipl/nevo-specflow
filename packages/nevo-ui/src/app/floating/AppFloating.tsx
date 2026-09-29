@@ -64,4 +64,3 @@ export function AppFloatingRegion({ children }: AppFloatingRegionProps) {
   if (!supported || !container) return null;
   return createPortal(children, container);
 }
-

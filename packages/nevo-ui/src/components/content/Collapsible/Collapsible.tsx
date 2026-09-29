@@ -137,6 +137,3 @@ export const Collapsible = Object.assign(CollapsibleRoot, {
   Trigger: CollapsibleTrigger,
   Content: CollapsibleContent,
 });
-
-
-

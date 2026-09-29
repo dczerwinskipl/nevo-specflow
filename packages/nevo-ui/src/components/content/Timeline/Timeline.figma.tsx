@@ -1,5 +1,5 @@
 import { tv } from 'tailwind-variants/lite';
-import { defineRecipeDesign } from '@nevo/ui/figma';
+import { defineRecipeDesign } from '@nevo/ui/figma/define';
 import { timelineRootClassName } from './Timeline';
 import { timelineDefaults, timelineSizes, type TimelineSize } from './timelineContract';
 
@@ -24,6 +24,3 @@ export const designSpec = defineRecipeDesign({
   recipe: timelineDesignRecipe,
   slots: {},
 });
-
-
-

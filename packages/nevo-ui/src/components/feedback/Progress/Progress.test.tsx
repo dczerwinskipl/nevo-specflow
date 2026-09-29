@@ -43,6 +43,3 @@ describe('Progress', () => {
     expect(html).not.toContain('data-design-slot=');
   });
 });
-
-
-

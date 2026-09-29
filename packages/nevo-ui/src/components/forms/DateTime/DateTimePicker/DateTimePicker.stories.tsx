@@ -120,6 +120,3 @@ export const CanonicalCapture: Story = {
     },
   },
 };
-
-
-

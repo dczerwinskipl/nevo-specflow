@@ -46,4 +46,3 @@ export const Controlled: Story = {
 export const Disabled: Story = {
   render: () => <TabsExample disabledActivity />,
 };
-

@@ -8,11 +8,11 @@ import type {
   SlotIR,
 } from '@nevo/figma-core/ir';
 
-type StyledLayer = {
+interface StyledLayer {
   component: string;
   layer: string;
   style: ComputedStyleRecord;
-};
+}
 
 function splitCssLayers(value: string): string[] {
   const layers: string[] = [];
@@ -64,9 +64,9 @@ function numeric(value: string | undefined): number {
 
 function isTransparent(value: string | undefined): boolean {
   if (!value || value === 'transparent') return true;
-  const rgba = value.match(/^rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)$/i);
+  const rgba = /^rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)$/i.exec(value);
   if (rgba) return Number.parseFloat(rgba[1] ?? '0') <= 0;
-  const modernAlpha = value.match(/\/\s*([\d.]+)%?\s*\)$/);
+  const modernAlpha = /\/\s*([\d.]+)%?\s*\)$/.exec(value);
   if (!modernAlpha) return false;
   return Number.parseFloat(modernAlpha[1] ?? '0') <= 0;
 }
@@ -242,4 +242,3 @@ export function collectCssProjectionDiagnostics(
 
   return diagnostics;
 }
-

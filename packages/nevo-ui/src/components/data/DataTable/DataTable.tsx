@@ -149,6 +149,3 @@ export function DataTable<TData extends RowData>({
     </div>
   );
 }
-
-
-

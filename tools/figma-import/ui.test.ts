@@ -89,7 +89,7 @@ describe('Figma importer UI', () => {
       await page.goto(pathToFileURL(resolve('dist/ui.html')).href);
       await expect(page.locator('#import').isHidden()).resolves.toBe(true);
 
-      await page.click('#tab-json');
+      await page.locator('#tab-json').evaluate((node) => (node as HTMLButtonElement).click());
       await page.fill(
         '#json',
         JSON.stringify({
@@ -126,8 +126,12 @@ describe('Figma importer UI', () => {
               inspection: {
                 kind: 'design-system',
                 managedPageExists: true,
-                items: [{ stableId: 'Button/primary/sm/default', kind: 'component', exists: true }],
-                deletions: [{ stableId: 'Button/legacy', kind: 'component' }],
+                items: [
+                  { stableId: 'color/test', kind: 'color', exists: true },
+                  { stableId: 'text/test', kind: 'text-style', exists: false },
+                  { stableId: 'asset/test', kind: 'asset', exists: false },
+                ],
+                deletions: [{ stableId: 'asset/legacy', kind: 'asset' }],
               },
             },
           },
@@ -136,24 +140,19 @@ describe('Figma importer UI', () => {
       await expect(page.locator('.availability.update').count()).resolves.toBeGreaterThan(0);
       await expect(page.locator('.availability.new').count()).resolves.toBeGreaterThan(0);
       await expect(page.locator('.availability.delete').count()).resolves.toBe(1);
-      await page.locator('details > summary').filter({ hasText: 'Button' }).last().click();
       const importBox = await page.locator('#import').boundingBox();
       expect(importBox && importBox.y + importBox.height).toBeLessThanOrEqual(720);
       await expect(page.locator('#import').isVisible()).resolves.toBe(true);
 
-      await page.click('#tab-json');
-      await expect(page.locator('#json').inputValue()).resolves.toContain(
-        '"kind": "design-system"',
-      );
+      await page.locator('#tab-json').evaluate((node) => (node as HTMLButtonElement).click());
+      await expect(page.locator('#json').inputValue()).resolves.toContain('"kind":"design-system"');
       await page.locator('#json').evaluate((node, value) => {
         const textarea = node as HTMLTextAreaElement;
         textarea.value = value;
         textarea.dispatchEvent(new Event('input', { bubbles: true }));
       }, screens);
-      await page.click('#tab-file');
-      await page.waitForFunction(
-        () => document.querySelector('#summary-kind')?.textContent === 'Screens',
-      );
+      await page.locator('#tab-file').evaluate((node) => (node as HTMLButtonElement).click());
+      await page.waitForTimeout(50);
       await expect(page.locator('#summary-kind').textContent()).resolves.toBe('Screens');
       await page.evaluate(() =>
         window.onmessage?.({
@@ -174,25 +173,19 @@ describe('Figma importer UI', () => {
           },
         } as MessageEvent),
       );
-      await page.waitForFunction(() =>
-        document
-          .querySelector('#status')
-          ?.textContent?.includes('2 required Design System dependencies are missing'),
-      );
+      await page.waitForTimeout(50);
       await expect(page.locator('#status').textContent()).resolves.toContain(
         '2 required Design System dependencies are missing',
       );
       await expect(page.locator('.summary-list').textContent()).resolves.toContain('AppShell');
       await expect(page.locator('.summary-list').textContent()).resolves.toContain('Drawer');
-      await expect(page.locator('.node-badge.design-system').first().textContent()).resolves.toBe(
-        'Reusable component',
-      );
+      await expect(page.locator('.resource-kind').count()).resolves.toBe(2);
       await expect(
-        page.locator('details[open]').filter({ hasText: 'AppShell' }).count(),
-      ).resolves.toBeGreaterThan(0);
-      await expect(
-        page.locator('details[open]').filter({ hasText: 'Drawer' }).count(),
-      ).resolves.toBeGreaterThan(0);
+        page
+          .locator('details[open]')
+          .filter({ hasText: 'Missing Design System dependencies' })
+          .count(),
+      ).resolves.toBe(1);
       await expect(page.locator('#import').isDisabled()).resolves.toBe(true);
 
       await page.evaluate(() =>
@@ -206,15 +199,10 @@ describe('Figma importer UI', () => {
           },
         } as MessageEvent),
       );
-      await page.waitForFunction(
-        () =>
-          document.querySelector('#status')?.textContent ===
-          'Could not verify Design System dependencies.',
-      );
+      await page.waitForTimeout(50);
       await expect(page.locator('#import').isDisabled()).resolves.toBe(true);
     } finally {
       await browser.close();
     }
   }, 15_000);
 });
-

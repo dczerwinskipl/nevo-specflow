@@ -163,7 +163,7 @@ export const FieldError = forwardRef<HTMLParagraphElement, HTMLAttributes<HTMLPa
   },
 );
 
-function mergeIds(...values: Array<string | undefined>) {
+function mergeIds(...values: (string | undefined)[]) {
   const ids = [...new Set(values.flatMap((value) => value?.split(/\s+/).filter(Boolean) ?? []))];
   return ids.length ? ids.join(' ') : undefined;
 }
@@ -191,7 +191,7 @@ export function useFieldControl({
     ),
     ariaInvalid: field?.invalid ? true : ariaInvalid,
     ariaLabelledBy: mergeIds(ariaLabelledBy, field?.hasLabel ? field.labelId : undefined),
-    disabled: Boolean(disabled || field?.disabled),
+    disabled: disabled === true || field?.disabled === true,
     id: field?.controlId ?? id,
     insideField: Boolean(field),
   };
@@ -202,6 +202,3 @@ export const Field = Object.assign(FieldRoot, {
   Description: FieldDescription,
   Error: FieldError,
 });
-
-
-

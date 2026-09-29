@@ -36,6 +36,3 @@ export const Surface = forwardRef<HTMLDivElement, SurfaceProps>(function Surface
     <div ref={ref} className={cn(surfaceVariants({ tone }), className)} {...props} {...capture} />
   );
 });
-
-
-

@@ -75,6 +75,3 @@ export function AlertDialogFooter({ className, ...props }: HTMLAttributes<HTMLDi
     />
   );
 }
-
-
-

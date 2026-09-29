@@ -137,6 +137,3 @@ export const CompositionCapture: Story = {
     },
   },
 };
-
-
-

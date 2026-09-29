@@ -39,4 +39,3 @@ describe('AppWorkspaceSlots', () => {
     expect(markup).not.toContain('data-design-slot="secondary"');
   });
 });
-

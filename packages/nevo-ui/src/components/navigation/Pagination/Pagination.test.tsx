@@ -83,4 +83,3 @@ describe('Pagination', () => {
     expect(html).toContain('aria-label="Strona 1"');
   });
 });
-

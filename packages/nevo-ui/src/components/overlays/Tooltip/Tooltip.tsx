@@ -29,6 +29,3 @@ export const TooltipContent = forwardRef<
     </TooltipPrimitive.Portal>
   );
 });
-
-
-

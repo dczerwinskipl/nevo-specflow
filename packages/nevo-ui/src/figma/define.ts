@@ -27,7 +27,7 @@ export type RecipeDesignSpec<
   'component' | 'variantProperties' | 'propertyValues' | 'defaultProperties' | 'slots'
 > & {
   component: Id;
-  variantProperties: Array<keyof Axes & string>;
+  variantProperties: (keyof Axes & string)[];
   propertyValues: PropertyValues<Axes>;
   defaultProperties?: Partial<VariantSelection<Axes>>;
   slots: Slots;
@@ -82,4 +82,3 @@ export function defineRecipeDesign<
     ...(input.figma === undefined ? {} : { figma: input.figma }),
   } as RecipeDesignSpec<Id, MergeAxes<RecipeAxes<Recipe>, Additional>, Slots>;
 }
-

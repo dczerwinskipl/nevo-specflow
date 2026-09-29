@@ -55,4 +55,3 @@ describe('resolveFloatingWindowLayout', () => {
     expect(result.overflowIds).toEqual(['3']);
   });
 });
-

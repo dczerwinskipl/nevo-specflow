@@ -29,4 +29,3 @@ describe('NumberInput', () => {
     expect(markup).toContain('data-focus-ring="delegated"');
   });
 });
-

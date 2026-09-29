@@ -5,4 +5,3 @@ import { Icon } from './Icon';
 
 // @ts-expect-error A meaningful icon needs a contextual, human-readable name.
 <Icon decorative={false} name="branch" />;
-

@@ -53,4 +53,3 @@ export function DataTableColumnVisibility<TData extends RowData>({
     </Popover>
   );
 }
-

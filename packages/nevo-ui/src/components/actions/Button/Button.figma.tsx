@@ -1,4 +1,4 @@
-import { defineRecipeDesign } from '@nevo/ui/figma';
+import { defineRecipeDesign } from '@nevo/ui/figma/define';
 import { assetRef } from '@nevo/ui/figma/resources';
 import { buttonVariants } from './Button';
 
@@ -32,6 +32,3 @@ export const designSpec = defineRecipeDesign({
     },
   },
 });
-
-
-

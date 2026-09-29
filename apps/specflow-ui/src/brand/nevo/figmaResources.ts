@@ -13,5 +13,4 @@ export const nevoMarkAssetResource = defineDesignResource({
 });
 
 export const nevoBrandResourceRegistry = defineResourceRegistry(nevoMarkAssetResource);
-export const { assetRef: nevoBrandAssetRef } =
-  createResourceAuthoring(nevoBrandResourceRegistry);
+export const { assetRef: nevoBrandAssetRef } = createResourceAuthoring(nevoBrandResourceRegistry);

@@ -12,4 +12,3 @@ describe('asset resource resolution', () => {
     expect(assetMainComponentFor('asset/opaque-id', resources)).toBe(master);
   });
 });
-

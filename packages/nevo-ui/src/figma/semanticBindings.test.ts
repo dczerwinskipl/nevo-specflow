@@ -68,6 +68,3 @@ describe('semantic Tailwind color bindings', () => {
     ).toEqual({ property: 'tone', values: { danger: 'Color/border-error' } });
   });
 });
-
-
-

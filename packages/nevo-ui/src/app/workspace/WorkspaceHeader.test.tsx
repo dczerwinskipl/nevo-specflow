@@ -53,4 +53,3 @@ describe('WorkspaceHeader actions', () => {
     expect(markup).toContain('data-workspace-header-title="true"');
   });
 });
-

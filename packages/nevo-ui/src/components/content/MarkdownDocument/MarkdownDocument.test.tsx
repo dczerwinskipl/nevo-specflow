@@ -23,4 +23,3 @@ describe('MarkdownDocument', () => {
     expect(html).not.toContain('<script>');
   });
 });
-

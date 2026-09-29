@@ -446,9 +446,7 @@ export const OverflowContract: Story = {
   ),
   tags: ['!dev', '!autodocs'],
   play: async ({ canvas }) => {
-    const scroll = canvas
-      .getByText('Customer ID')
-      .closest('.data-table-scroll') as HTMLElement | null;
+    const scroll = canvas.getByText('Customer ID').closest('.data-table-scroll');
     const table = scroll?.querySelector('table');
     assert(scroll && table, 'The overflow fixture should expose its table viewport.');
     assert(
@@ -461,4 +459,3 @@ export const OverflowContract: Story = {
     );
   },
 };
-

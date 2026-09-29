@@ -19,6 +19,3 @@ export const designSpec = defineDesignComponent({
     incrementAction: { kind: 'container', exposeVisibility: false },
   },
 });
-
-
-

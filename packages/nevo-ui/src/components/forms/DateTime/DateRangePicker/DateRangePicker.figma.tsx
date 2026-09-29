@@ -12,6 +12,3 @@ export const designSpec = defineDesignComponent({
     trigger: { kind: 'container' },
   },
 });
-
-
-

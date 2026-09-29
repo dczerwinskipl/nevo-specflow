@@ -9,6 +9,7 @@
     ".": "./src/index.ts",
     "./styles.css": "./src/design-system.css",
     "./figma": "./src/figma/index.ts",
+    "./figma/define": "./src/figma/define.ts",
     "./figma/resources": "./src/figma/resources.ts",
     "./design-system/color": "./src/design-system/color.ts",
     "./design-system/resources": "./src/design-system/resources.ts",
@@ -40,6 +41,7 @@
     "react-dom": "19.1.1",
     "react-markdown": "10.1.0",
     "remark-gfm": "4.0.1",
+    "tailwindcss": "4.3.3",
     "tailwind-variants": "3.3.1"
   },
   "devDependencies": {

@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { tv } from 'tailwind-variants/lite';
 import { buttonVariants } from '../components';
-import { getVariantContract, getVariantValues, variantCombinations } from '@nevo/figma-core/authoring';
+import {
+  getVariantContract,
+  getVariantValues,
+  variantCombinations,
+} from '@nevo/figma-core/authoring';
 
 describe('Tailwind Variants metadata derivation', () => {
   it('derives Button axes, allowed values and defaults from the recipe', () => {
@@ -25,6 +29,3 @@ describe('Tailwind Variants metadata derivation', () => {
     expect(variantCombinations(extended)).toHaveLength(3);
   });
 });
-
-
-

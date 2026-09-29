@@ -13,7 +13,11 @@ function ProductNavigation() {
     <div className="flex h-full flex-col px-3 py-5">
       <NevoBrandLogo brand="nevo" product="SpecFlow" size="md" type="horizontal" />
       <nav aria-label="Product navigation" className="mt-8 grid gap-1">
-        <Link activeProps={{ className: `${linkClassName} bg-surface-selected` }} className={linkClassName} to="/">
+        <Link
+          activeProps={{ className: `${linkClassName} bg-surface-selected` }}
+          className={linkClassName}
+          to="/"
+        >
           Home
         </Link>
         <Link

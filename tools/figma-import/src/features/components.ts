@@ -83,7 +83,7 @@ export function bindComponentProperties(
         ensureComponentProperty(owner, `Show ${slot.propertyName.toLowerCase()}`, 'BOOLEAN', false),
       );
     } else if (slot.kind === 'container' && !slot.required && slot.exposeVisibility !== false) {
-      const firstCapture = captures.values().next().value as ComponentCaptureIR | undefined;
+      const firstCapture = captures.values().next().value;
       visibleProperties.set(
         slotName,
         ensureComponentProperty(
@@ -164,7 +164,7 @@ export async function upsertComponentSet(
   const source = canonicalCaptures(spec, ir.components[spec.component] ?? []);
   if (!source.size) throw new Error(`IR contains no ${spec.component} captures`);
   if (!spec.variantProperties.length) {
-    const capture = source.values().next().value as ComponentCaptureIR | undefined;
+    const capture = source.values().next().value;
     if (!capture) throw new Error(`IR contains no ${spec.component} capture`);
     let component = await liveComponent(capture.stableId);
     if (!component) {
@@ -327,4 +327,3 @@ export async function reconcileComponentNestedSlots(
     );
   }
 }
-

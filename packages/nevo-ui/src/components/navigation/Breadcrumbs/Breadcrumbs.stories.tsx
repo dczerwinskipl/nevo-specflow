@@ -32,4 +32,3 @@ export const LongCurrentPage: Story = {
     </div>
   ),
 };
-

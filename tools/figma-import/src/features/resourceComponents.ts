@@ -357,6 +357,3 @@ export async function upsertTextStyleCatalog(
   );
   return set;
 }
-
-
-

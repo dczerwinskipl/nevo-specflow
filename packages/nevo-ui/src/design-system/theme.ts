@@ -125,4 +125,3 @@ export const colorTokens = [
     cssVariable: '--color-scrollbar-thumb-hover',
   },
 ] as const;
-

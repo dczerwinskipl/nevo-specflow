@@ -1,10 +1,6 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import {
-  getVariantValues,
-  objectKeys,
-  variantCombinations,
-} from '@nevo/figma-core/authoring';
+import { getVariantValues, objectKeys, variantCombinations } from '@nevo/figma-core/authoring';
 import { Button, buttonDefaults, buttonVariants, type ButtonProps } from './Button';
 import { WorkspaceSurfacePreview } from '../../foundations/Environment';
 import { iconRegistry } from '../../foundations/Icon';
@@ -194,6 +190,3 @@ export const VariantCapture: Story = {
     },
   },
 };
-
-
-

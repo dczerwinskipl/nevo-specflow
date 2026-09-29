@@ -32,4 +32,3 @@ describe('Breadcrumbs', () => {
     expect(html).toContain('class="router-link"');
   });
 });
-

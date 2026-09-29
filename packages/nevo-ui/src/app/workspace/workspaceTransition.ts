@@ -44,4 +44,3 @@ export function resolveWorkspaceSurfaceTransition(
     ? transition
     : idleWorkspacePresentationTransition;
 }
-

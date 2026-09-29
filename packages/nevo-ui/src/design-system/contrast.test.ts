@@ -9,14 +9,19 @@ const css = [
 function colorToken(name: string, visited = new Set<string>()): string {
   if (visited.has(name)) throw new Error(`Circular color token reference: ${name}`);
   visited.add(name);
-  const value = css.match(new RegExp(`--color-${name}:\\s*([^;]+);`, 'i'))?.[1]?.trim();
+  const value = new RegExp(`--color-${name}:\\s*([^;]+);`, 'i').exec(css)?.[1]?.trim();
   if (/^#[0-9a-f]{6}$/i.test(value ?? '') || /^rgba?\(/i.test(value ?? '')) return value!;
   const reference = value?.match(/^var\(--color-([\w-]+)\)$/i)?.[1];
   if (reference) return colorToken(reference, visited);
   throw new Error(`Missing explicit color token: ${name}`);
 }
 
-type Rgba = { r: number; g: number; b: number; a: number };
+interface Rgba {
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+}
 
 function parseColor(value: string): Rgba {
   if (value.startsWith('#')) {
@@ -83,4 +88,3 @@ describe('WCAG 2.2 AA semantic color pairs', () => {
     expect(css).toContain('outline: 2px solid var(--color-focus-ring)');
   });
 });
-

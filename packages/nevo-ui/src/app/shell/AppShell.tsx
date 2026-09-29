@@ -25,10 +25,10 @@ import {
 
 export type AppNavigationMode = 'persistent' | 'drawer';
 
-type AppWorkspaceContextValue = {
+interface AppWorkspaceContextValue {
   availableWidth?: number;
   navigationMode: AppNavigationMode;
-};
+}
 
 const AppWorkspaceContext = createContext<AppWorkspaceContextValue>({
   navigationMode: 'drawer',
@@ -38,9 +38,9 @@ export function useAppWorkspace() {
   return useContext(AppWorkspaceContext);
 }
 
-type AppNavigationContextValue = {
+interface AppNavigationContextValue {
   closeNavigation: () => void;
-};
+}
 
 const AppNavigationContext = createContext<AppNavigationContextValue>({
   closeNavigation: () => undefined,
@@ -245,6 +245,3 @@ export function AppShell({
     </AppNavigationContext.Provider>
   );
 }
-
-
-

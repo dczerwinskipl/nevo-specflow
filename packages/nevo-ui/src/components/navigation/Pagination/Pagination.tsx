@@ -213,6 +213,3 @@ export function Pagination(props: PaginationProps) {
     </nav>
   );
 }
-
-
-

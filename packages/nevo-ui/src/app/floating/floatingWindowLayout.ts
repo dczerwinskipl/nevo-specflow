@@ -53,4 +53,3 @@ export function resolveFloatingWindowLayout({
     overflowIds: ordered.filter((entry) => !visibleSet.has(entry.id)).map((entry) => entry.id),
   };
 }
-

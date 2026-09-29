@@ -117,6 +117,3 @@ export function SideNavigation<TTarget>({
     </NavigationProvider>
   );
 }
-
-
-

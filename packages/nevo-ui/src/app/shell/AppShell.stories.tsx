@@ -133,7 +133,7 @@ function RecordList({ count = 28 }: { count?: number }) {
             Customer conversation {index + 1}
           </Typography>
           <Typography as="div" className="text-content-muted" variant="body-sm">
-            Updated recently · SpecFlow qualification in progress
+            Updated recently · Workspace qualification in progress
           </Typography>
         </div>
       ))}
@@ -416,4 +416,3 @@ export const CombinedMobileStress: Story = {
   render: () => <ShellInteractionFixture combined width={390} />,
   parameters: { viewport: { defaultViewport: 'mobile1' } },
 };
-

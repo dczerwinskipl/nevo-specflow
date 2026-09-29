@@ -28,6 +28,3 @@ export const designSpecs = [
     slots: {},
   }),
 ] as const;
-
-
-

@@ -14,4 +14,3 @@ export type {
   NavigationProviderProps,
   NavigationTreeState,
 } from './types';
-

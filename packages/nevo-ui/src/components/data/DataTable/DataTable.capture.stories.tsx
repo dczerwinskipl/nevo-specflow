@@ -88,6 +88,3 @@ export const StateCapture: Story = {
     },
   },
 };
-
-
-

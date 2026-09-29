@@ -242,4 +242,3 @@ export function useDataTable<TData extends RowData>({
 export type DataTableInstance<TData extends RowData> = ReturnType<
   typeof useDataTable<TData>
 >['table'];
-

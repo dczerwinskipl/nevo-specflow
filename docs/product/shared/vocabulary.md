@@ -40,7 +40,7 @@ product copy, code, packages, and documentation MUST NOT introduce a competing s
 ## Naming rules
 
 - Product prose and branding MUST use **Nevo SpecFlow** as the formal product name. They MUST NOT
-  use "SpecDev" or "dashboard" as the product name.
+  use pre-rebrand naming or "dashboard" as the product name.
 - The whole interactive application MUST be called **Nevo SpecFlow UI** (or **UI** when the product
   context is unambiguous). **Dashboard** MAY name an individual screen/view, not the surface itself.
 - The long-lived application backend MUST be called **Nevo SpecFlow Runtime** (or **Runtime** in

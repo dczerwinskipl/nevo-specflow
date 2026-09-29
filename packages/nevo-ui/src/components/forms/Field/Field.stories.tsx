@@ -147,6 +147,3 @@ export const StateCapture: Story = {
     },
   },
 };
-
-
-

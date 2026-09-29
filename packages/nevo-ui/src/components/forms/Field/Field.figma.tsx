@@ -14,6 +14,3 @@ export const designSpec = defineDesignComponent({
     error: { kind: 'text', propertyName: 'Error', defaultText: 'Validation message' },
   },
 });
-
-
-

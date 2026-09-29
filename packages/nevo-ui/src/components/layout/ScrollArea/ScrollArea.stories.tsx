@@ -184,4 +184,3 @@ function DynamicOverflowFixture() {
 export const DynamicContentAndResize: Story = {
   render: () => <DynamicOverflowFixture />,
 };
-

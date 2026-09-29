@@ -61,6 +61,3 @@ describe('nested semantic identity', () => {
     ]);
   });
 });
-
-
-

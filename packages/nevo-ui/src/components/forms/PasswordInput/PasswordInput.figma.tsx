@@ -12,6 +12,3 @@ export const designSpec = defineDesignComponent({
     visibilityAction: { kind: 'container' },
   },
 });
-
-
-

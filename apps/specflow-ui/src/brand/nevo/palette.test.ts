@@ -11,7 +11,9 @@ describe('logo palette', () => {
 
     expect(first).toEqual(second);
     expect(Object.values(first)).toHaveLength(7);
-    expect(Object.values(first).every((value) => /^#[\da-f]{6}$/i.test(value))).toBe(true);
+    expect((Object.values(first) as string[]).every((value) => /^#[\da-f]{6}$/i.test(value))).toBe(
+      true,
+    );
   });
 
   it('normalizes hue in both directions', () => {
@@ -22,7 +24,9 @@ describe('logo palette', () => {
   it('gamut-maps extreme light and dark primary colors deterministically', () => {
     for (const primary of ['#000000', '#ffffff']) {
       const palette = deriveNevoMarkPalette({ coreColor: primary });
-      expect(Object.values(palette).every((value) => /^#[\da-f]{6}$/i.test(value))).toBe(true);
+      expect(
+        (Object.values(palette) as string[]).every((value) => /^#[\da-f]{6}$/i.test(value)),
+      ).toBe(true);
       expect(palette).toEqual(deriveNevoMarkPalette({ coreColor: primary }));
     }
   });
@@ -70,12 +74,17 @@ describe('logo palette', () => {
   });
 
   it('keeps private mark paints out of global design-system tokens', async () => {
-    const css = await readFile('src/design-system.css', 'utf8');
-    const theme = await readFile('src/design-system/theme.ts', 'utf8');
+    const css = await readFile(
+      new URL('../../../../../packages/nevo-ui/src/design-system.css', import.meta.url),
+      'utf8',
+    );
+    const theme = await readFile(
+      new URL('../../../../../packages/nevo-ui/src/design-system/theme.ts', import.meta.url),
+      'utf8',
+    );
 
     expect(css).not.toContain('--nevo-mark-');
     expect(css).not.toContain('--color-logo-');
     expect(theme).not.toContain('Color/logo-');
   });
 });
-

@@ -1,5 +1,5 @@
 import { defineDesignComponent } from '@nevo/figma-core/authoring';
-import { defineRecipeDesign } from '@nevo/ui/figma';
+import { defineRecipeDesign } from '@nevo/ui/figma/define';
 import { menuItemVariants } from './Menu';
 
 export const designSpecs = [
@@ -27,6 +27,3 @@ export const designSpecs = [
     },
   }),
 ] as const;
-
-
-

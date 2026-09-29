@@ -9,6 +9,7 @@
     ".": "./src/App.tsx",
     "./brand": "./src/brand/index.ts",
     "./brand/figma": "./src/brand/nevo/figmaDesignSystem.ts",
+    "./brand/figma-resources": "./src/brand/nevo/figmaResources.ts",
     "./figma": "./src/app/figmaRegistry.ts"
   },
   "scripts": {

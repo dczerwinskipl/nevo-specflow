@@ -21,4 +21,3 @@ export function textControlDesignState({
   if (autoFocus) return 'focus';
   return 'default';
 }
-

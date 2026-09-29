@@ -76,13 +76,13 @@ async function extract(): Promise<DesignSystemIR> {
       const registryNode = document.querySelector<HTMLScriptElement>('#design-capture-registry');
       if (!registryNode?.textContent) throw new Error('Missing #design-capture-registry');
       const registry = JSON.parse(registryNode.textContent) as {
-        definitions: Array<{
+        definitions: {
           component: string;
           description?: string;
           target?: 'component' | 'fragment' | 'screen';
           order: number;
           variantProperties: string[];
-          propertyValues: Record<string, Array<string | number | boolean>>;
+          propertyValues: Record<string, (string | number | boolean)[]>;
           defaultProperties?: Record<string, string | number | boolean>;
           slots: Record<
             string,
@@ -97,8 +97,8 @@ async function extract(): Promise<DesignSystemIR> {
           >;
           bindings?: Record<string, { property: string; values: Record<string, string> }>;
           figma?: { root?: { layoutMode?: 'NONE' | 'HORIZONTAL' | 'VERTICAL' } };
-        }>;
-        colorTokens: Array<{ stableId: string; name: string; cssVariable: string }>;
+        }[];
+        colorTokens: { stableId: string; name: string; cssVariable: string }[];
       };
       const definitionNames = new Set(
         registry.definitions.map((definition) => definition.component),
@@ -209,7 +209,7 @@ async function extract(): Promise<DesignSystemIR> {
         };
         return typedNode.computedStyleMap?.().get(property)?.toString() ?? '';
       };
-      const diagnostics: Array<{
+      const diagnostics: {
         code:
           | 'unsupported-grid'
           | 'non-uniform-spacing'
@@ -222,7 +222,7 @@ async function extract(): Promise<DesignSystemIR> {
         message: string;
         component?: string;
         layer?: string;
-      }> = [];
+      }[] = [];
       const diagnosticKeys = new Set<string>();
       const report = (
         node: Element,
@@ -414,9 +414,7 @@ async function extract(): Promise<DesignSystemIR> {
         const rect = node.getBoundingClientRect();
         const parentRect = node.parentElement?.getBoundingClientRect();
         const parentDefinition = registry.definitions.find(
-          (definition) =>
-            definition.component ===
-            (node.parentElement as HTMLElement | null)?.dataset.designComponent,
+          (definition) => definition.component === node.parentElement?.dataset.designComponent,
         );
         const fixedCanvasChild = parentDefinition?.figma?.root?.layoutMode === 'NONE';
         const parentStyle = node.parentElement ? getComputedStyle(node.parentElement) : undefined;
@@ -595,17 +593,14 @@ async function extract(): Promise<DesignSystemIR> {
       const borderBindingMatches = (token: string, style: CSSStyleDeclaration) => {
         const edges = ['Top', 'Right', 'Bottom', 'Left'] as const;
         const visibleEdges = edges.filter((edge) => {
-          const width = style[`border${edge}Width` as keyof CSSStyleDeclaration] as string;
-          const borderStyle = style[`border${edge}Style` as keyof CSSStyleDeclaration] as string;
+          const width = style.getPropertyValue(`border-${edge.toLowerCase()}-width`);
+          const borderStyle = style.getPropertyValue(`border-${edge.toLowerCase()}-style`);
           return Number.parseFloat(width) > 0 && borderStyle !== 'none' && borderStyle !== 'hidden';
         });
         return (
           visibleEdges.length > 0 &&
           visibleEdges.every((edge) =>
-            tokenMatchesColor(
-              token,
-              style[`border${edge}Color` as keyof CSSStyleDeclaration] as string,
-            ),
+            tokenMatchesColor(token, style.getPropertyValue(`border-${edge.toLowerCase()}-color`)),
           )
         );
       };
@@ -618,9 +613,10 @@ async function extract(): Promise<DesignSystemIR> {
           border: 'border-',
           content: 'text-',
         } as const;
-        for (const [target, prefix] of Object.entries(targets) as Array<
-          [keyof typeof targets, string]
-        >) {
+        for (const [target, prefix] of Object.entries(targets) as [
+          keyof typeof targets,
+          string,
+        ][]) {
           const explicit =
             element.dataset[
               `designToken${target.charAt(0).toUpperCase()}${target.slice(1)}` as keyof DOMStringMap
@@ -652,7 +648,7 @@ async function extract(): Promise<DesignSystemIR> {
         return key || layer ? { ...(key ? { key } : {}), ...(layer ? { layer } : {}) } : undefined;
       };
 
-      type BrowserNestedComponent = {
+      interface BrowserNestedComponent {
         componentRef: string;
         identity?: { key?: string; layer?: string };
         properties: Record<string, string | number | boolean>;
@@ -668,16 +664,16 @@ async function extract(): Promise<DesignSystemIR> {
         textSlotStyles?: Record<string, Record<string, string>>;
         style?: Record<string, string>;
         bindings?: { background?: string; border?: string; content?: string };
-      };
-      type BrowserNestedElement = {
+      }
+      interface BrowserNestedElement {
         kind: 'element';
         name: string;
         identity?: { key?: string; layer?: string };
         style: Record<string, string>;
         bindings?: { background?: string; border?: string; content?: string };
         children: BrowserNestedLayer[];
-      };
-      type BrowserNestedText = {
+      }
+      interface BrowserNestedText {
         kind: 'text';
         text: string;
         identity?: { key?: string; layer?: string };
@@ -685,16 +681,19 @@ async function extract(): Promise<DesignSystemIR> {
         bindings?: { background?: string; border?: string; content?: string };
         textStyleRef?: string;
         colorRef?: string;
-        runs?: Array<{ start: number; end: number; textStyleRef?: string; colorRef?: string }>;
-      };
-      type BrowserAsset = {
+        runs?: { start: number; end: number; textStyleRef?: string; colorRef?: string }[];
+      }
+      interface BrowserAsset {
         kind: 'asset';
         assetRef: string;
         identity?: { key?: string; layer?: string };
         style: Record<string, string>;
         colorRef?: string;
-      };
-      type BrowserSlotReference = { kind: 'slot-ref'; name: string };
+      }
+      interface BrowserSlotReference {
+        kind: 'slot-ref';
+        name: string;
+      }
       type BrowserNestedLayer =
         | BrowserNestedComponent
         | BrowserNestedElement
@@ -706,7 +705,7 @@ async function extract(): Promise<DesignSystemIR> {
         if (element.dataset.designTextFlow !== 'true' && !isNativeInlineTextFlow(element))
           return undefined;
         const separator = element.dataset.designTextSeparator;
-        const fragments: Array<{ text: string; owner: HTMLElement }> = [];
+        const fragments: { text: string; owner: HTMLElement }[] = [];
         const appendText = (raw: string, owner: HTMLElement) => {
           if (raw) fragments.push({ text: raw, owner });
         };
@@ -772,7 +771,7 @@ async function extract(): Promise<DesignSystemIR> {
           if (lastRun) lastRun.end = content.length;
         }
         const semanticRuns = runs.filter(
-          (run) => run.end > run.start && (run.textStyleRef || run.colorRef),
+          (run) => run.end > run.start && (run.textStyleRef ?? run.colorRef),
         );
         return {
           kind: 'text',
@@ -837,7 +836,6 @@ async function extract(): Promise<DesignSystemIR> {
         };
       };
 
-      let nestedComponentOf: (child: HTMLElement) => BrowserNestedComponent;
       const hasTextBoxPresentation = (element: HTMLElement) => {
         const style = getComputedStyle(element);
         const numeric = (value: string) => Number.parseFloat(value) || 0;
@@ -969,7 +967,7 @@ async function extract(): Promise<DesignSystemIR> {
           ];
         });
 
-      nestedComponentOf = (child: HTMLElement): BrowserNestedComponent => {
+      function nestedComponentOf(child: HTMLElement): BrowserNestedComponent {
         const componentRef = child.dataset.designComponent!;
         const childDefinition = registry.definitions.find(
           (candidate) => candidate.component === componentRef,
@@ -1036,7 +1034,7 @@ async function extract(): Promise<DesignSystemIR> {
           },
           bindings: semanticBindingsOf(child),
         };
-      };
+      }
 
       const componentHostedSlotProjectionOf = (slot: HTMLElement) => {
         if (!definitionNames.has(slot.dataset.designComponent ?? '')) return undefined;
@@ -1230,7 +1228,7 @@ async function extract(): Promise<DesignSystemIR> {
                 },
               ];
             }),
-          );
+          ) as ComponentCaptureIR['slots'];
           const stableValues = definition.variantProperties.map((name) => String(properties[name]));
           return {
             stableId: `${definition.component}/${stableValues.join('/')}`,
@@ -1377,4 +1375,3 @@ try {
 } finally {
   vite?.kill();
 }
-

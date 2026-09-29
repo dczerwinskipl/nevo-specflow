@@ -123,6 +123,3 @@ export const TooltipCapture: Story = {
     },
   },
 };
-
-
-

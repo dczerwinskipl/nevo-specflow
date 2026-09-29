@@ -13,4 +13,3 @@ export const fastColorTransitionClassName =
   'transition-colors [transition-duration:var(--motion-duration-fast)] [transition-timing-function:var(--motion-ease-standard)] motion-reduce:transition-none';
 
 export type ActionVariant = keyof typeof actionVariantClasses;
-

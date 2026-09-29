@@ -159,4 +159,3 @@ export function formatMinute(minute: number) {
     useGrouping: false,
   }).format(minute);
 }
-

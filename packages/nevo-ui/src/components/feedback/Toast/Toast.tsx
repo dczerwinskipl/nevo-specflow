@@ -84,6 +84,3 @@ export const ToastClose = forwardRef<
     </ToastPrimitive.Close>
   );
 });
-
-
-

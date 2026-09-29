@@ -17,4 +17,3 @@ describe('Checkbox', () => {
     expect(html).toContain('Archived records are included.');
   });
 });
-

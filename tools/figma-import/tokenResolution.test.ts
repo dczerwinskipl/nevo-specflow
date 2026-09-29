@@ -8,16 +8,16 @@ describe('semantic token resolution', () => {
   ];
 
   it('binds the explicitly referenced Variable', () => {
-    expect(resolveSemanticTokenId('Color/border-subtle', tokens[0].value, tokens)).toBe(
+    expect(resolveSemanticTokenId('Color/border-subtle', tokens[0]!.value, tokens)).toBe(
       'Color/border-subtle',
     );
   });
 
   it('keeps equal-valued semantic tokens distinguishable by identity', () => {
-    expect(resolveSemanticTokenId('Color/content-muted', tokens[1].value, tokens)).toBe(
+    expect(resolveSemanticTokenId('Color/content-muted', tokens[1]!.value, tokens)).toBe(
       'Color/content-muted',
     );
-    expect(resolveSemanticTokenId('Color/border-subtle', tokens[0].value, tokens)).toBe(
+    expect(resolveSemanticTokenId('Color/border-subtle', tokens[0]!.value, tokens)).toBe(
       'Color/border-subtle',
     );
   });
@@ -26,4 +26,3 @@ describe('semantic token resolution', () => {
     expect(resolveSemanticTokenId(undefined, 'rgb(120, 120, 120)', tokens)).toBeUndefined();
   });
 });
-

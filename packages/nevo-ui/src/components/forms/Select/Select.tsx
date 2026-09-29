@@ -21,7 +21,10 @@ import { useFieldControl } from '../Field';
 import { isAriaInvalid } from '../shared/textControlState';
 import './Select.css';
 
-type SelectContextValue = { disabled: boolean; invalid: boolean };
+interface SelectContextValue {
+  disabled: boolean;
+  invalid: boolean;
+}
 const SelectContext = createContext<SelectContextValue>({ disabled: false, invalid: false });
 
 export type SelectProps = ComponentPropsWithoutRef<typeof SelectPrimitive.Root> & {
@@ -80,7 +83,7 @@ export const SelectTrigger = forwardRef<
   const field = useFieldControl({
     ariaDescribedBy,
     ariaInvalid: root.invalid ? true : ariaInvalid,
-    disabled: Boolean(disabledProp || root.disabled),
+    disabled: disabledProp === true || root.disabled,
     id,
   });
   const invalid = isAriaInvalid(field.ariaInvalid);
@@ -231,6 +234,3 @@ export const SelectSeparator = forwardRef<
     />
   );
 });
-
-
-

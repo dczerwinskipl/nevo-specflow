@@ -220,4 +220,3 @@ export const DeepTreeDevelopmentFixture: Story = {
     </div>
   ),
 };
-

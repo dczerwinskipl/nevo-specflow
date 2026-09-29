@@ -28,19 +28,20 @@ function component(id: string, stableId = '') {
 }
 
 function importFixture(stableIds: readonly string[]) {
+  const variantValues = stableIds.map((stableId) => stableId.split('/').at(-1) ?? '');
   const spec = {
     component: 'TestComponent',
     order: 1,
     target: 'component',
     variantProperties: ['state'],
-    propertyValues: { state: stableIds.map((stableId) => stableId.split('/').slice(-1)[0]) },
+    propertyValues: { state: variantValues },
     slots: {},
   } satisfies FigmaComponentDefinition;
   const captures = stableIds.map((stableId) => ({
     stableId,
     sourceId: stableId,
     component: spec.component,
-    properties: { state: stableId.split('/').slice(-1)[0] },
+    properties: { state: stableId.split('/').at(-1) ?? '' },
     root: {},
     bindings: {},
     slots: {},
@@ -185,8 +186,8 @@ describe('component-set reconstruction', () => {
       expect.anything(),
       expect.any(Function),
     );
-    expect(vi.mocked(configureComponent).mock.invocationCallOrder[0]).toBeLessThan(
-      vi.mocked(reconcileNestedSlotOverrides).mock.invocationCallOrder[0],
+    expect(vi.mocked(configureComponent).mock.invocationCallOrder[0]!).toBeLessThan(
+      vi.mocked(reconcileNestedSlotOverrides).mock.invocationCallOrder[0]!,
     );
   });
 
@@ -203,7 +204,7 @@ describe('component-set reconstruction', () => {
     expect(reconcileNestedSlotOverrides).toHaveBeenNthCalledWith(
       1,
       masters[0],
-      ir.components.TestComponent[0],
+      ir.components.TestComponent![0],
       spec,
       ir,
       resources,
@@ -213,7 +214,7 @@ describe('component-set reconstruction', () => {
     expect(reconcileNestedSlotOverrides).toHaveBeenNthCalledWith(
       2,
       masters[1],
-      ir.components.TestComponent[1],
+      ir.components.TestComponent![1],
       spec,
       ir,
       resources,
@@ -291,7 +292,7 @@ describe('component-set reconstruction', () => {
     expect(reconcileNestedSlotOverrides).toHaveBeenNthCalledWith(
       1,
       liveMasters[0],
-      ir.components.TestComponent[0],
+      ir.components.TestComponent![0],
       spec,
       ir,
       resources,
@@ -301,7 +302,7 @@ describe('component-set reconstruction', () => {
     expect(reconcileNestedSlotOverrides).toHaveBeenNthCalledWith(
       2,
       liveMasters[1],
-      ir.components.TestComponent[1],
+      ir.components.TestComponent![1],
       spec,
       ir,
       resources,
@@ -419,4 +420,3 @@ describe('component-set reconstruction', () => {
     );
   });
 });
-

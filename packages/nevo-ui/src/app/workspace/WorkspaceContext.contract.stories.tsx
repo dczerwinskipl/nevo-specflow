@@ -206,4 +206,3 @@ export const PushAndPopRemainNavigationState: Story = {
     );
   },
 };
-

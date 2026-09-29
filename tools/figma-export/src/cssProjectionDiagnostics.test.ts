@@ -72,4 +72,3 @@ describe('CSS projection diagnostics', () => {
     expect(collectCssProjectionDiagnostics({ Probe: [repeated, repeated] })).toHaveLength(1);
   });
 });
-

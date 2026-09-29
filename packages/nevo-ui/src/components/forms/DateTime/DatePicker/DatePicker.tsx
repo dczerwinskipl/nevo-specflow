@@ -157,6 +157,3 @@ export function DatePicker({
     </AriaDatePicker>
   );
 }
-
-
-

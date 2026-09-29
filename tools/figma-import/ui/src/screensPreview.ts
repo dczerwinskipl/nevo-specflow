@@ -224,7 +224,7 @@ export function renderScreensPreview(
     for (const capture of uniqueCaptures(ir.screens[definition.component])) {
       const group = detailsRow(
         definition.component,
-        String(capture.properties.viewport || 'view'),
+        String(capture.properties.viewport ?? 'view'),
         definition.description,
       );
       group.open = true;
@@ -237,6 +237,3 @@ export function renderScreensPreview(
     }
   }
 }
-
-
-

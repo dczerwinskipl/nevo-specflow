@@ -8,7 +8,7 @@ export interface ParsedCssColor {
 const clampUnit = (value: number) => Math.min(Math.max(value, 0), 1);
 
 function parseHex(value: string): ParsedCssColor | null {
-  const match = value.match(/^#([\da-f]{3,4}|[\da-f]{6}|[\da-f]{8})$/i);
+  const match = /^#([\da-f]{3,4}|[\da-f]{6}|[\da-f]{8})$/i.exec(value);
   if (!match) return null;
   const source = match[1]!;
   const expanded =
@@ -33,7 +33,7 @@ function parseAlpha(value: string | undefined) {
 }
 
 function parseRgb(value: string): ParsedCssColor | null {
-  const match = value.match(/^rgba?\((.*)\)$/i);
+  const match = /^rgba?\((.*)\)$/i.exec(value);
   if (!match) return null;
   const normalized = match[1]!.replace(/\s*\/\s*/, ',');
   const channels = normalized.includes(',')
@@ -59,9 +59,10 @@ function linearToSrgb(value: number) {
 }
 
 function parseOklch(value: string): ParsedCssColor | null {
-  const match = value.match(
-    /^oklch\(\s*([+-]?[\d.]+)(%)?\s+([+-]?[\d.]+)\s+([+-]?[\d.]+)(?:deg)?(?:\s*\/\s*([+-]?[\d.]+)(%)?)?\s*\)$/i,
-  );
+  const match =
+    /^oklch\(\s*([+-]?[\d.]+)(%)?\s+([+-]?[\d.]+)\s+([+-]?[\d.]+)(?:deg)?(?:\s*\/\s*([+-]?[\d.]+)(%)?)?\s*\)$/i.exec(
+      value,
+    );
   if (!match) return null;
   const lightness = Number.parseFloat(match[1]!) / (match[2] ? 100 : 1);
   const chroma = Number.parseFloat(match[3]!);
@@ -86,9 +87,10 @@ function parseOklch(value: string): ParsedCssColor | null {
 }
 
 function parseOklab(value: string): ParsedCssColor | null {
-  const match = value.match(
-    /^oklab\(\s*([+-]?[\d.]+)(%)?\s+([+-]?[\d.]+)\s+([+-]?[\d.]+)(?:\s*\/\s*([+-]?[\d.]+)(%)?)?\s*\)$/i,
-  );
+  const match =
+    /^oklab\(\s*([+-]?[\d.]+)(%)?\s+([+-]?[\d.]+)\s+([+-]?[\d.]+)(?:\s*\/\s*([+-]?[\d.]+)(%)?)?\s*\)$/i.exec(
+      value,
+    );
   if (!match) return null;
   const lightness = Number.parseFloat(match[1]!) / (match[2] ? 100 : 1);
   const a = Number.parseFloat(match[3]!);
@@ -117,4 +119,3 @@ export function parseCssColor(value: string | undefined): ParsedCssColor | null 
     parseHex(normalized) ?? parseRgb(normalized) ?? parseOklch(normalized) ?? parseOklab(normalized)
   );
 }
-

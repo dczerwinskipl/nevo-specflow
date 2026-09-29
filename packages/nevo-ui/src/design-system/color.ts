@@ -2,7 +2,7 @@ export type RgbColor = Readonly<{ r: number; g: number; b: number }>;
 
 export function normalizeHex(value: string): string {
   const compact = value.trim().toLowerCase();
-  const short = compact.match(/^#([\da-f])([\da-f])([\da-f])$/i);
+  const short = /^#([\da-f])([\da-f])([\da-f])$/i.exec(compact);
   if (short) return `#${short[1]}${short[1]}${short[2]}${short[2]}${short[3]}${short[3]}`;
   if (/^#[\da-f]{6}$/i.test(compact)) return compact;
   throw new Error(`Brand color must be a three- or six-digit hex value. Received: ${value}`);
@@ -37,4 +37,3 @@ export function mixRgb(source: RgbColor, target: RgbColor, amount: number): RgbC
 export function rgba(color: RgbColor, alpha: number): string {
   return `rgba(${Math.round(color.r)}, ${Math.round(color.g)}, ${Math.round(color.b)}, ${alpha})`;
 }
-

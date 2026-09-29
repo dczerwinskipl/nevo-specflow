@@ -92,6 +92,3 @@ export const TimelineCapture: Story = {
     },
   },
 };
-
-
-

@@ -143,4 +143,3 @@ export async function upsertAssetSwapSlot(
   instance.visible = Boolean(slot) || Boolean(slotSpec.required);
   return instance;
 }
-

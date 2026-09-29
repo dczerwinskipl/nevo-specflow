@@ -14,4 +14,3 @@ describe('Icon', () => {
     expect(semantic).not.toContain('aria-hidden');
   });
 });
-

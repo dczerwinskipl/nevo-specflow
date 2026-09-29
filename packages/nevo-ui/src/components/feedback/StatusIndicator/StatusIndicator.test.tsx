@@ -21,4 +21,3 @@ describe('StatusIndicator', () => {
     expect(html).not.toContain('aria-hidden');
   });
 });
-

@@ -26,4 +26,5 @@ export {
   nevoMarkPaletteVariables,
   type NevoMarkPalette,
 } from './palette';
-
+export { nevoMarkAssetRef, nevoMarkVariants as nevoMarkAssetVariants } from './resources';
+export type { NevoMarkAssetRef } from './resources';

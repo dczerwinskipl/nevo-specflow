@@ -49,7 +49,7 @@ describe('SideNavigation', () => {
     const markup = renderToStaticMarkup(
       <SideNavigation adapter={adapter('none')} label="Workspace" nodes={nodes} />,
     );
-    const labelId = markup.match(/aria-labelledby="([^"]+)"/)?.[1];
+    const labelId = /aria-labelledby="([^"]+)"/.exec(markup)?.[1];
 
     expect(labelId).toBeDefined();
     expect(markup).toContain(`id="${labelId}"`);
@@ -84,7 +84,7 @@ describe('SideNavigation', () => {
     const markup = renderToStaticMarkup(
       <SideNavigation aria-label="Product navigation" adapter={adapter('none')} nodes={nodes} />,
     );
-    expect(markup.match(/^<nav[^>]+>/)?.[0]).not.toMatch(/border|rounded|bg-surface/);
+    expect(/^<nav[^>]+>/.exec(markup)?.[0]).not.toMatch(/border|rounded|bg-surface/);
   });
 
   it('keeps controlled expansion authoritative', () => {
@@ -139,4 +139,3 @@ describe('SideNavigation', () => {
     ]);
   });
 });
-

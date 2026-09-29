@@ -88,11 +88,12 @@ function renderSummary() {
     state.ir.kind === 'design-system'
       ? Object.keys(state.ir.components).length + 3
       : Object.values(state.ir.screens).reduce((sum, items) => sum + items.length, 0);
-  ui.summaryName.textContent = state.fileName || state.ir.source.name || 'Pasted IR';
-  const itemCount = state.inspection?.items.length || 0;
-  const existingCount = state.inspection?.items.filter((item) => item.exists).length || 0;
+  ui.summaryName.textContent =
+    [state.fileName, state.ir.source.name].find((value) => value !== '') ?? 'Pasted IR';
+  const itemCount = state.inspection?.items.length ?? 0;
+  const existingCount = state.inspection?.items.filter((item) => item.exists).length ?? 0;
   const newCount = itemCount - existingCount;
-  const deletionCount = state.inspection?.deletions.length || 0;
+  const deletionCount = state.inspection?.deletions.length ?? 0;
   const inspectionMeta = state.inspection
     ? state.ir.kind === 'design-system'
       ? ` · ${newCount} new · ${existingCount} update · ${deletionCount} delete`
@@ -175,9 +176,11 @@ function selectTab(tab: ImporterState['tab']) {
 
 ui.fileTab.addEventListener('click', () => selectTab('file'));
 ui.jsonTab.addEventListener('click', () => selectTab('json'));
-ui.file.addEventListener('change', async () => {
+ui.file.addEventListener('change', () => {
   const selected = ui.file.files?.[0];
-  if (selected) parseRaw(await selected.text(), selected.name);
+  if (selected) {
+    void selected.text().then((contents) => parseRaw(contents, selected.name));
+  }
 });
 ui.changeFile.addEventListener('click', () => {
   ui.file.value = '';
@@ -221,6 +224,3 @@ window.onmessage = (event: MessageEvent<{ pluginMessage?: ImporterResponse }>) =
 };
 
 render();
-
-
-

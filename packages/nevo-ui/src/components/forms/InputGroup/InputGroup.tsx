@@ -115,6 +115,3 @@ export const InputGroup = Object.assign(InputGroupRoot, {
   Addon: InputGroupAddon,
   Action: InputGroupAction,
 });
-
-
-

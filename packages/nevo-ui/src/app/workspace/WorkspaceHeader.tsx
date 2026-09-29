@@ -15,7 +15,7 @@ import { cn } from '../../lib';
 
 export type WorkspaceHeaderActionTone = 'neutral' | 'danger';
 
-export type WorkspaceHeaderAction = {
+export interface WorkspaceHeaderAction {
   id: string;
   label: string;
   icon?: IconName;
@@ -23,7 +23,7 @@ export type WorkspaceHeaderAction = {
   disabled?: boolean;
   tone?: WorkspaceHeaderActionTone;
   onPress: () => void;
-};
+}
 
 export interface WorkspaceHeaderProps {
   actions?: readonly WorkspaceHeaderAction[];
@@ -34,10 +34,10 @@ export interface WorkspaceHeaderProps {
   title: ReactNode;
 }
 
-export type ResolvedWorkspaceHeaderActions = {
+export interface ResolvedWorkspaceHeaderActions {
   directPrimary?: WorkspaceHeaderAction;
   overflow: readonly WorkspaceHeaderAction[];
-};
+}
 
 export function resolveWorkspaceHeaderActions(
   actions: readonly WorkspaceHeaderAction[] = [],
@@ -199,4 +199,3 @@ export function CompactWorkspaceActions({
     />
   );
 }
-

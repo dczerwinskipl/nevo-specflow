@@ -10,6 +10,3 @@ export const designSpec = defineDesignComponent({
     icon: { kind: 'container', required: true },
   },
 });
-
-
-

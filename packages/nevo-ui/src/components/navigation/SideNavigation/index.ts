@@ -7,4 +7,3 @@ export type {
   NavigationMatch,
   NavigationNode,
 } from '../NavigationCore/types';
-

@@ -24,4 +24,3 @@ export const floatingItemVariants = tv({
 export const floatingLabelClassName = sectionLabelContainerClassName;
 
 export const floatingSeparatorClassName = '-mx-1 my-1 h-px bg-divider';
-

@@ -2,7 +2,7 @@
 id: design-system.implementation.react.component-guidelines
 type: engineering
 title: React component guidelines
-status: draft
+status: current
 read_when:
   - creating or restructuring a React component or module
   - deciding whether a helper component gets its own file
@@ -20,9 +20,8 @@ related:
 
 # React component guidelines
 
-`status: draft` — working guidance, expanded as the code it governs lands. Same
-"responsibilities, not a mandatory directory tree" spirit as the
-[CLI architecture](../../../engineering/cli/architecture.md).
+These rules govern reusable components in `packages/nevo-ui/` and product composition in
+`apps/specflow-ui/`. They describe responsibilities, not a mandatory directory tree.
 
 ## Core principles
 
@@ -42,6 +41,16 @@ related:
 - **Feature-local vertical ownership:** keep a feature's components, hooks, view-models
   and tests together under `features/<domain>/`. Promote code upward to a shared
   location only when reuse is real, not anticipated.
+
+## Ownership boundary
+
+- `packages/nevo-ui/` owns domain-agnostic components, design tokens, app-shell mechanics, and
+  workspace/floating behavior that can be reused by another application.
+- `apps/specflow-ui/` owns SpecFlow brand composition, routing, product screens, copy, and
+  product-specific interaction decisions.
+- `examples/` owns independent consumers. Examples MAY use Nevo UI but MUST NOT depend on
+  SpecFlow UI.
+- Routing libraries and product data models MUST NOT leak into Nevo UI component APIs.
 
 ## File size
 

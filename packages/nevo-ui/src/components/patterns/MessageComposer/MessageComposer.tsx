@@ -195,7 +195,7 @@ export const MessageComposerEditor = forwardRef<HTMLTextAreaElement, MessageComp
       onKeyDown?.(event);
       if (event.defaultPrevented) return;
 
-      const nativeEvent = event.nativeEvent as globalThis.KeyboardEvent;
+      const nativeEvent = event.nativeEvent;
       const action = resolveMessageComposerKeyAction({
         enterKeyBehavior: composer.enterKeyBehavior,
         isComposing: nativeEvent.isComposing || Reflect.get(nativeEvent, 'keyCode') === 229,
@@ -246,6 +246,3 @@ export const MessageComposer = Object.assign(MessageComposerRoot, {
   Editor: MessageComposerEditor,
   Toolbar: MessageComposerToolbar,
 });
-
-
-

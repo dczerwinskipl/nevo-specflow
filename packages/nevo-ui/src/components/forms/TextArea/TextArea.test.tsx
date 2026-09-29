@@ -19,4 +19,3 @@ describe('TextArea', () => {
     expect(autoGrowMetrics(42, 20, 12, 4, 2)).toEqual({ height: 92, overflowing: false });
   });
 });
-

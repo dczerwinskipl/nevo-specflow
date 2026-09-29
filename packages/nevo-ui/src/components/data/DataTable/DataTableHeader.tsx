@@ -137,4 +137,3 @@ export function DataTableHeader<TData extends RowData>({
     </thead>
   );
 }
-

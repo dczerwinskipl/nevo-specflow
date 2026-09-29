@@ -8,11 +8,9 @@ export async function locateManagedPage() {
   let page = figma.root.children.find(
     (candidate) => candidate.getPluginData(DATA_KEY) === config.stableId,
   );
-  if (!page) {
-    page = figma.root.children.find((candidate) =>
-      candidate.findOne((node) => node.getPluginData(DATA_KEY) === DESIGN_SECTION_ID),
-    );
-  }
+  page ??= figma.root.children.find((candidate) =>
+    candidate.findOne((node) => node.getPluginData(DATA_KEY) === DESIGN_SECTION_ID),
+  );
   return page;
 }
 
@@ -30,6 +28,3 @@ export async function ensureManagedPage() {
   const page = (await locateManagedPage()) ?? figma.createPage();
   return await adoptManagedPage(page);
 }
-
-
-

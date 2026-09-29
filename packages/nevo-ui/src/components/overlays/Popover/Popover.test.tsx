@@ -16,4 +16,3 @@ describe('Popover', () => {
     expect(markup).toContain('aria-expanded="false"');
   });
 });
-

@@ -35,4 +35,3 @@ describe('rovingSelection', () => {
     expect(resolveRovingIndex('ArrowDown', 0, 2)).toBeNull();
   });
 });
-

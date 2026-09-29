@@ -343,7 +343,7 @@ export async function configureComponent(
   configureRoot(component, capture, ir, resources);
   if ((spec.target === 'fragment' || spec.target === 'screen') && capture.structure?.length) {
     await syncNestedChildren(
-      component as FrameNode,
+      component,
       materializeStructure(capture.structure, capture.slots),
       definitions,
       `${capture.stableId}/structure`,
@@ -367,7 +367,7 @@ export async function configureComponent(
   for (const [slotName, slotSpec] of Object.entries(spec.slots)) {
     const slot = capture.slots[slotName];
     if (slotSpec.kind === 'text') {
-      if (!slot || slot.kind !== 'text') {
+      if (slot?.kind !== 'text') {
         if (slotSpec.required)
           throw new Error(`${spec.component} is missing text slot ${slotName}`);
         continue;
@@ -386,7 +386,7 @@ export async function configureComponent(
         ),
       );
     } else if (slotSpec.kind === 'container') {
-      if (!slot || slot.kind !== 'container') {
+      if (slot?.kind !== 'container') {
         if (slotSpec.required)
           throw new Error(`${spec.component} is missing container slot ${slotName}`);
         continue;
@@ -404,7 +404,7 @@ export async function configureComponent(
         ),
       );
     } else {
-      if (!slot || slot.kind !== 'slot') {
+      if (slot?.kind !== 'slot') {
         if (slotSpec.required)
           throw new Error(`${spec.component} is missing native slot ${slotName}`);
         continue;
@@ -500,4 +500,3 @@ export async function configureComponent(
   reconcilePublicSlotLayouts(component, capture, spec, ir, resources);
   configureRoot(component, capture, ir, resources);
 }
-

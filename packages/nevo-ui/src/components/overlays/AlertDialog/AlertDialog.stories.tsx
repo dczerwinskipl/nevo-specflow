@@ -68,4 +68,3 @@ export const InteractionContract: Story = {
     assert(document.activeElement === trigger, 'Cancel should restore trigger focus.');
   },
 };
-

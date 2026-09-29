@@ -11,4 +11,3 @@ describe('Toast', () => {
       ),
     ).toContain('ol'));
 });
-

@@ -16,6 +16,3 @@ export const designSpec = defineDesignComponent({
     footer: { kind: 'container', required: true },
   },
 });
-
-
-

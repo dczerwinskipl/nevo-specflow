@@ -38,4 +38,3 @@ describe('Select', () => {
     expect(markup).toContain('data-design-slot="control"');
   });
 });
-

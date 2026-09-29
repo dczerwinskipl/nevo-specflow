@@ -32,4 +32,3 @@ export function unsupportedNavigationDepthWarning(items: readonly UnsupportedNav
     .join('\n');
   return `[SideNavigation] This renderer supports exactly two visible levels. The following nodes remain in Navigation Core state but are not rendered:\n${details}`;
 }
-

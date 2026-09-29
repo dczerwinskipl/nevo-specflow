@@ -1,7 +1,4 @@
-import type {
-  ComponentCaptureRegistry,
-  ComponentSlotRegistry,
-} from '@nevo/figma-core/authoring';
+import type { ComponentCaptureRegistry, ComponentSlotRegistry } from '@nevo/figma-core/authoring';
 
 import { designSpec } from './SpecFlowShell.figma';
 

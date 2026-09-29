@@ -41,4 +41,3 @@ export function collectCaptureSections(
 }
 
 export const captureSections = collectCaptureSections(storyModules);
-

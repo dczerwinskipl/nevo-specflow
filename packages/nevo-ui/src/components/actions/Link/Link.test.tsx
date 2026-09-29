@@ -14,4 +14,3 @@ describe('Link', () => {
     expect(linkVariants({ tone: 'muted' })).toContain('text-content-secondary');
   });
 });
-

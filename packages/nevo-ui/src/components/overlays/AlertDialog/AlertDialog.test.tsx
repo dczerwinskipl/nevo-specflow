@@ -12,4 +12,3 @@ describe('AlertDialog', () => {
     ).toContain('Delete');
   });
 });
-

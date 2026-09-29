@@ -15,6 +15,3 @@ export const Skeleton = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement
     );
   },
 );
-
-
-

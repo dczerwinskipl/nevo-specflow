@@ -39,11 +39,11 @@ describe('component overview layout', () => {
     });
   });
 
-  it('normalizes generated documentation text instead of inheriting editor formatting', async () => {
+  it('normalizes generated documentation text instead of inheriting editor formatting', () => {
     const node = {} as TextNode;
     vi.stubGlobal('figma', { createText: vi.fn(() => node) });
 
-    await overviewText(
+    overviewText(
       'Popover — overview',
       { family: 'Inter', style: 'Semi Bold' },
       24,
@@ -62,4 +62,3 @@ describe('component overview layout', () => {
     vi.unstubAllGlobals();
   });
 });
-

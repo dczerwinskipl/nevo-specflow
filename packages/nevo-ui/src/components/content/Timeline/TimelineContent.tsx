@@ -198,4 +198,3 @@ export const TimelineContent = forwardRef<HTMLDivElement, TimelineContentProps>(
     );
   },
 );
-

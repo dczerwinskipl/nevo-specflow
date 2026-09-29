@@ -1,5 +1,5 @@
 import { tv } from 'tailwind-variants/lite';
-import { defineRecipeDesign } from '@nevo/ui/figma';
+import { defineRecipeDesign } from '@nevo/ui/figma/define';
 import { textInputControlClassName } from './TextInput';
 
 const textInputDesignRecipe = tv({ base: textInputControlClassName });
@@ -43,6 +43,3 @@ export const designSpec = defineRecipeDesign({
   },
   slots: {},
 });
-
-
-

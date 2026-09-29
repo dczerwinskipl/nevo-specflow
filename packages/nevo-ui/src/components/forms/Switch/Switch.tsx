@@ -109,6 +109,3 @@ export function SwitchField({
     </div>
   );
 }
-
-
-

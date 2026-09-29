@@ -1,4 +1,4 @@
-import { defineRecipeDesign } from '@nevo/ui/figma';
+import { defineRecipeDesign } from '@nevo/ui/figma/define';
 import { assetRef } from '@nevo/ui/figma/resources';
 import { iconButtonVariants } from './IconButton';
 
@@ -24,6 +24,3 @@ export const designSpec = defineRecipeDesign({
     },
   },
 });
-
-
-

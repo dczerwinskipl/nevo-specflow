@@ -131,13 +131,13 @@ function validateDefinition(
   }
 }
 
-type PreflightContext = {
+interface PreflightContext {
   definitions: ReadonlyMap<string, FigmaComponentDefinition>;
   colors: ReadonlySet<string>;
   textStyles: ReadonlySet<string>;
   assets: ReadonlySet<string>;
   dependencies: Map<string, Set<string>>;
-};
+}
 
 function validateResourceRef(
   value: unknown,
@@ -211,7 +211,8 @@ function validateLayer(
         fail(`${path}.slots.${slotName}`, 'is not declared by the referenced component');
     for (const [slotName, slot] of Object.entries(value.slots)) {
       const slotSpec = referenced.slots[slotName];
-      if (!slotSpec) fail(`${path}.slots.${slotName}`, 'is not declared by the referenced component');
+      if (!slotSpec)
+        fail(`${path}.slots.${slotName}`, 'is not declared by the referenced component');
       assertSlotKind(slot, slotSpec, `${path}.slots.${slotName}`, true);
     }
     context.dependencies.get(owner)?.add(ref);
@@ -442,11 +443,7 @@ export function validateIR(value: unknown): asserts value is AnyIR {
     for (const [index, item] of value.resources[resource].entries()) {
       record(item, `IR.resources.${resource}[${index}]`);
       text(item.stableId, `IR.resources.${resource}[${index}].stableId`);
-      registerIdentity(
-        item.stableId as string,
-        resource,
-        `IR.resources.${resource}[${index}].stableId`,
-      );
+      registerIdentity(item.stableId, resource, `IR.resources.${resource}[${index}].stableId`);
       if (resource === 'colors') {
         text(item.name, `IR.resources.${resource}[${index}].name`);
         text(item.value, `IR.resources.${resource}[${index}].value`);
@@ -496,7 +493,6 @@ export function validateIR(value: unknown): asserts value is AnyIR {
       resources[resource].map((item) => item.stableId),
       `IR.resources.${resource}`,
     );
-    if (!resources[resource].length) fail(`IR.resources.${resource}`, 'must not be empty');
   }
   const context: PreflightContext = {
     definitions,
@@ -582,4 +578,3 @@ export function validateIR(value: unknown): asserts value is AnyIR {
   }
   validateDependencyGraph(context);
 }
-

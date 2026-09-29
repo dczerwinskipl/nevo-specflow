@@ -23,10 +23,10 @@ type CaptureMetadata<Component extends CaptureComponent> =
     ? DesignCaptureMetadataRegistry[Component]
     : NoMetadata;
 
-type DesignMetadataContextValue = {
+interface DesignMetadataContextValue {
   enabled: boolean;
   captureComponents: ReadonlySet<string>;
-};
+}
 
 const DesignMetadataContext = createContext<DesignMetadataContextValue>({
   enabled: false,
@@ -97,7 +97,6 @@ export function useDesignMetadata<Component extends CaptureComponent>(
         String(value),
       ]),
     ),
-    ...serializeMetadata((metadata ?? {}) as DesignMetadataCapabilities),
+    ...serializeMetadata(metadata ?? {}),
   };
 }
-

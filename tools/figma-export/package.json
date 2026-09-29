@@ -5,7 +5,9 @@
   "type": "module",
   "description": "Source-agnostic browser capture and canonical Figma IR export tooling.",
   "license": "MIT",
-  "exports": { "./extract": "./src/extract.ts" },
+  "exports": {
+    "./extract": "./src/extract.ts"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",

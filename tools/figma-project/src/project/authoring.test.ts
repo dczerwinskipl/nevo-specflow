@@ -34,15 +34,15 @@ describe('project Figma authoring', () => {
   it('builds project catalog refs through typed resource definitions', () => {
     const [icons, nevoMark] = resourceCatalogsOfKind(projectResourceCatalogs, 'asset');
     const [typography] = resourceCatalogsOfKind(projectResourceCatalogs, 'text-style');
-    expect(icons.setStableId).toBe('Icon/set');
-    expect(icons.items.map((item) => item.resourceRef)).toContain('Icon/branch/md');
-    expect(nevoMark.setStableId).toBe('NevoMarkAsset/set');
-    expect(nevoMark.items.map((item) => item.resourceRef)).toEqual([
+    expect(icons!.setStableId).toBe('Icon/set');
+    expect(icons!.items.map((item) => item.resourceRef)).toContain('Icon/branch/md');
+    expect(nevoMark!.setStableId).toBe('NevoMarkAsset/set');
+    expect(nevoMark!.items.map((item) => item.resourceRef)).toEqual([
       'NevoMarkAsset/brand',
       'NevoMarkAsset/monochrome',
     ]);
-    expect(typography.setStableId).toBe('Typography/set');
-    expect(typography.items.map((item) => item.resourceRef)).toContain('Typography/label-md');
+    expect(typography!.setStableId).toBe('Typography/set');
+    expect(typography!.items.map((item) => item.resourceRef)).toContain('Typography/label-md');
     expect(projectResourceCatalogs.map((catalog) => catalog.kind)).toEqual([
       'asset',
       'asset',
@@ -50,4 +50,3 @@ describe('project Figma authoring', () => {
     ]);
   });
 });
-

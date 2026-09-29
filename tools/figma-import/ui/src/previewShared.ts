@@ -19,6 +19,3 @@ export function inspectionItem(
 export function actionBadge(action: 'new' | 'update' | 'delete' | 'missing') {
   return element('span', action, `availability ${action}`);
 }
-
-
-

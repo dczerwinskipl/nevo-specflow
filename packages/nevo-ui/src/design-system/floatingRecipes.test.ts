@@ -21,4 +21,3 @@ describe('floating recipes', () => {
     expect(classes).toContain('data-[disabled]:opacity-50');
   });
 });
-

@@ -10,4 +10,3 @@ describe('Separator', () => {
     expect(separatorVariants({ orientation: 'horizontal' })).not.toContain(' m-');
   });
 });
-

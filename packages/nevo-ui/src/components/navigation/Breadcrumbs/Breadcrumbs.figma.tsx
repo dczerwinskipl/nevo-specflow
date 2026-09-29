@@ -9,6 +9,3 @@ export const designSpec = defineDesignComponent({
     items: { kind: 'slot', propertyName: 'Items', required: true },
   },
 });
-
-
-

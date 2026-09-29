@@ -18,4 +18,3 @@ describe('determinate import progress', () => {
     ]);
   });
 });
-

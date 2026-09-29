@@ -22,9 +22,8 @@ Current.
 
 ## Context
 
-The project accumulated several historical names while proving individual boundaries:
-`SpecDev`, `nevo-spec`, "dashboard", "server", and package names derived from those
-terms.
+The project accumulated several pre-rebrand names while proving individual boundaries, along with
+`nevo-spec`, "dashboard", "server", and package names derived from those terms.
 
 Those names no longer describe the intended product shape. The product has one identity
 but several different surfaces and runtime responsibilities:

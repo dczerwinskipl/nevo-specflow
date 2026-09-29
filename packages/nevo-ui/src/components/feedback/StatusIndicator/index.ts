@@ -4,4 +4,3 @@ export {
   type StatusIndicatorProps,
   type StatusIndicatorSize,
 } from './StatusIndicator';
-

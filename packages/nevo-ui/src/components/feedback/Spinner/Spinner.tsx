@@ -23,6 +23,3 @@ export function Spinner({ className, label, size = 'md', ...props }: SpinnerProp
     </span>
   );
 }
-
-
-

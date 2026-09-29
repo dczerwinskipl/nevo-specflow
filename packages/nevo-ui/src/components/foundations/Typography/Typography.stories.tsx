@@ -13,7 +13,7 @@ const typography = [
   { variant: 'label-sm', name: 'Label/Small' },
   { variant: 'section-label', name: 'Section/Label' },
   { variant: 'code-md', name: 'Code/Medium' },
-] as const satisfies ReadonlyArray<{ variant: TypographyVariant; name: string }>;
+] as const satisfies readonly { variant: TypographyVariant; name: string }[];
 
 const meta = {
   title: 'Nevo UI/Foundations/Typography',
@@ -70,4 +70,3 @@ export const DesignCapture: Story = {
     },
   },
 };
-

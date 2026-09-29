@@ -95,7 +95,7 @@ export function humanize(value: string) {
 }
 
 export function axisCombinations(axes: OverviewAxis[]) {
-  return axes.reduce<Array<Record<string, string>>>(
+  return axes.reduce<Record<string, string>[]>(
     (combinations, axis) =>
       combinations.flatMap((combination) =>
         axis.values.map((value) => ({ ...combination, [axis.name]: value })),
@@ -109,7 +109,7 @@ export function matchesProperties(variant: OverviewVariant, values: Record<strin
 }
 
 export function hasOverviewMatrixHeader(row?: OverviewAxis, column?: OverviewAxis) {
-  return Boolean(row || column);
+  return row !== undefined || column !== undefined;
 }
 
 export function overviewCellDimensions(variants: readonly OverviewVariant[]) {
@@ -119,7 +119,7 @@ export function overviewCellDimensions(variants: readonly OverviewVariant[]) {
   };
 }
 
-export async function overviewText(
+export function overviewText(
   value: string,
   font: FontName,
   size: number,
@@ -152,7 +152,7 @@ export function fixedLabelWidth(node: TextNode, width: number) {
  * from transient heights while an update rebuilds their children.
  */
 export function reflowOverviewStack(
-  overviews: Array<Pick<FrameNode, 'height' | 'x' | 'y'>>,
+  overviews: Pick<FrameNode, 'height' | 'x' | 'y'>[],
   startY = 24,
   gap = 48,
 ) {
@@ -210,7 +210,7 @@ export async function upsertOverview(
   overview.clipsContent = false;
 
   overview.appendChild(
-    await overviewText(`${model.component} — overview`, strong, 18, foreground, 'strong'),
+    overviewText(`${model.component} — overview`, strong, 18, foreground, 'strong'),
   );
   const layoutSummary =
     [
@@ -229,7 +229,7 @@ export async function upsertOverview(
       .join(' · ');
     variant.component.description = details || `${model.component} standalone component`;
   }
-  overview.appendChild(await overviewText(layoutSummary, regular, 11, muted));
+  overview.appendChild(overviewText(layoutSummary, regular, 11, muted));
 
   for (const groupValues of groupCombinations) {
     const group = figma.createFrame();
@@ -246,7 +246,7 @@ export async function upsertOverview(
     group.strokes = [];
     overview.appendChild(group);
     if (groups.length)
-      group.appendChild(await overviewText(group.name, strong, 12, foreground, 'strong'));
+      group.appendChild(overviewText(group.name, strong, 12, foreground, 'strong'));
 
     if (hasOverviewMatrixHeader(row, column)) {
       const header = figma.createFrame();
@@ -259,7 +259,7 @@ export async function upsertOverview(
       header.strokes = [];
       group.appendChild(header);
       if (row) {
-        const corner = await overviewText(humanize(row.name), strong, 10, muted, 'strong');
+        const corner = overviewText(humanize(row.name), strong, 10, muted, 'strong');
         fixedLabelWidth(corner, rowLabelWidth);
         header.appendChild(corner);
       }
@@ -274,7 +274,7 @@ export async function upsertOverview(
         columnCell.resizeWithoutConstraints(cellWidth, 18);
         columnCell.fills = [];
         columnCell.strokes = [];
-        columnCell.appendChild(await overviewText(humanize(value), strong, 10, muted, 'strong'));
+        columnCell.appendChild(overviewText(humanize(value), strong, 10, muted, 'strong'));
         header.appendChild(columnCell);
       }
     }
@@ -291,7 +291,7 @@ export async function upsertOverview(
       rowFrame.strokes = [];
       group.appendChild(rowFrame);
       if (row) {
-        const label = await overviewText(humanize(rowValue), regular, 11, foreground);
+        const label = overviewText(humanize(rowValue), regular, 11, foreground);
         fixedLabelWidth(label, rowLabelWidth);
         rowFrame.appendChild(label);
       }
@@ -400,6 +400,3 @@ export function componentOverviewModel(
     }),
   };
 }
-
-
-

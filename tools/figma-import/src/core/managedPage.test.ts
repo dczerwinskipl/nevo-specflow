@@ -16,13 +16,10 @@ describe('dynamic-page document access', () => {
       (file) => file.endsWith('.ts') && !file.endsWith('.test.ts'),
     );
     const source = (
-      await Promise.all(
-        files.map((file) => readFile(`src/${file.split('\\').join('/')}`, 'utf8')),
-      )
+      await Promise.all(files.map((file) => readFile(`src/${file.split('\\').join('/')}`, 'utf8')))
     ).join('\n');
 
     expect(source).not.toMatch(/\.mainComponent\b/);
     expect(source).toContain('getMainComponentAsync');
   });
 });
-

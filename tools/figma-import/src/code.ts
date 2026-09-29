@@ -7,7 +7,15 @@ export function startFigmaImporter(resourceCatalogs: readonly ResourceCatalogDef
   figma.showUI(__html__, { width: UI_WIDTH, height: 380, themeColors: true });
   figma.skipInvisibleInstanceChildren = false;
 
-  figma.ui.onmessage = async (message: ImporterRequest) => {
+  figma.ui.onmessage = (message: ImporterRequest) => {
+    void handleImporterMessage(message, resourceCatalogs);
+  };
+}
+
+async function handleImporterMessage(
+  message: ImporterRequest,
+  resourceCatalogs: readonly ResourceCatalogDefinition[],
+) {
   if (message.type === 'RESIZE_UI') {
     const height = Number((message as { height?: unknown }).height);
     if (Number.isFinite(height)) figma.ui.resize(UI_WIDTH, Math.min(720, Math.max(340, height)));
@@ -38,6 +46,4 @@ export function startFigmaImporter(resourceCatalogs: readonly ResourceCatalogDef
     });
     if (!inspection) figma.notify(`Import failed: ${detail}`, { error: true });
   }
-  };
 }
-

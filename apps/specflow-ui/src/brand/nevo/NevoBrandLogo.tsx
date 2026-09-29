@@ -190,4 +190,3 @@ export function NevoBrandLogo(props: NevoBrandLogoProps) {
     </span>
   );
 }
-

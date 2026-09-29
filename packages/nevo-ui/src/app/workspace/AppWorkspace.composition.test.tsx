@@ -45,4 +45,3 @@ describe('AppWorkspace composition API', () => {
     expect(html).not.toContain('Secondary content');
   });
 });
-

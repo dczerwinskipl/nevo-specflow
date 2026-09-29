@@ -55,4 +55,3 @@ export function catalogItem(catalog: ResourceCatalogDefinition, resourceRef: str
 export function catalogVariantName(catalog: ResourceCatalogDefinition, item: ResourceCatalogItem) {
   return `${catalog.columnAxis.name}=${item.column}, ${catalog.rowAxis.name}=${item.row}`;
 }
-

@@ -7,6 +7,3 @@ export const designSpec = defineDesignComponent({
   variants: {},
   slots: {},
 });
-
-
-

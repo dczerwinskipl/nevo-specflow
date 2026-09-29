@@ -76,6 +76,3 @@ export const DesignCapture: Story = {
     },
   },
 };
-
-
-

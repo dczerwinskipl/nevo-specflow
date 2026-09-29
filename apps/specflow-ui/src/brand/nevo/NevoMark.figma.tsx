@@ -36,4 +36,3 @@ export const designSpec = defineRecipeDesign({
     },
   },
 });
-

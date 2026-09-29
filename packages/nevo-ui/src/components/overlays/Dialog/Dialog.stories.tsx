@@ -92,4 +92,3 @@ export const InteractionContract: Story = {
     assert(document.activeElement === trigger, 'Closing should restore trigger focus.');
   },
 };
-

@@ -67,4 +67,3 @@ describe('CSS layout projection', () => {
     });
   });
 });
-

@@ -8,4 +8,3 @@ export {
   type FloatingWindowHostLabels,
   type FloatingWindowHostProps,
 } from './FloatingWindows';
-

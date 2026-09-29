@@ -75,6 +75,3 @@ export function WorkspaceSurfacePreview({ children, className }: WorkspaceSurfac
     </AppBackground>
   );
 }
-
-
-

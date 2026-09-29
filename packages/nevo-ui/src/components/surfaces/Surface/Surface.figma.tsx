@@ -1,4 +1,4 @@
-import { defineRecipeDesign } from '@nevo/ui/figma';
+import { defineRecipeDesign } from '@nevo/ui/figma/define';
 import { surfaceVariants } from './Surface';
 
 export const designSpec = defineRecipeDesign({
@@ -9,6 +9,3 @@ export const designSpec = defineRecipeDesign({
     'Semantic content layer. Tones represent default, raised and subtle application surfaces; form-control surfaces remain separate.',
   slots: {},
 });
-
-
-

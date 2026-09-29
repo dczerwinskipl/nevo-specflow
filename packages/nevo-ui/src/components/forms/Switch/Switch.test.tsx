@@ -15,4 +15,3 @@ describe('Switch', () => {
     expect(html).toContain('Notify the account team.');
   });
 });
-

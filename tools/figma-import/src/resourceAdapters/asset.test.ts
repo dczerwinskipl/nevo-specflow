@@ -29,4 +29,3 @@ describe('asset representation materialization', () => {
     expect(dispatchAssetRepresentation('svg-mask', materializers)).toBe('mask-with-tint');
   });
 });
-

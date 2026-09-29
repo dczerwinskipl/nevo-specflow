@@ -54,6 +54,3 @@ export function Typography({
     </Component>
   );
 }
-
-
-

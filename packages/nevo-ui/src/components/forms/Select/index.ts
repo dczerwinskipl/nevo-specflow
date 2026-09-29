@@ -15,4 +15,3 @@ export type {
   SelectTriggerProps,
   SelectValueProps,
 } from './Select';
-

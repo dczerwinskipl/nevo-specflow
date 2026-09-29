@@ -273,6 +273,3 @@ describe('text-style catalog reconstruction', () => {
     expect(combineAsVariants).toHaveBeenCalledWith(masters, expect.anything());
   });
 });
-
-
-

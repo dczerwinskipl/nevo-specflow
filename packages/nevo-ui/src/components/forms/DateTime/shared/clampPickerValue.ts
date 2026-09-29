@@ -11,4 +11,3 @@ export function clampPickerValue<T extends ComparablePickerValue<T>>(
   if (maxValue && value.compare(maxValue) > 0) return maxValue;
   return value;
 }
-

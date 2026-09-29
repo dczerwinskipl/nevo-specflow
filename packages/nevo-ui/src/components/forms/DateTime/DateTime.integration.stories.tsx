@@ -265,4 +265,3 @@ export const EmptyConstrainedDateTimeImmediateDone: Story = {
     await commitImmediateDone(canvasElement, userEvent, futureZonedMin.toString());
   },
 };
-

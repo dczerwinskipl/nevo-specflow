@@ -19,9 +19,9 @@ related:
 
 # Product vocabulary
 
-This document is the canonical vocabulary for product names and domain nouns. When a
-term has a defined meaning here, product copy, code, packages, and documentation MUST NOT
-introduce a competing synonym.
+ADR 0008 owns the product-naming decision. This document is the canonical vocabulary for
+applying that decision and for shared domain nouns. When a term has a defined meaning here,
+product copy, code, packages, and documentation MUST NOT introduce a competing synonym.
 
 ## Product family
 

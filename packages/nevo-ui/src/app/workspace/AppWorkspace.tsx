@@ -556,6 +556,7 @@ function AppWorkspaceRoot({ children, labels: labelsProp, split = 'balanced' }: 
           compactNavigationAction={compactSecondaryCloseAction}
           divider={state.mode === 'split'}
           instanceKey={secondaryPresentation.key}
+          key={secondaryPresentation.key}
           leadingAction={secondaryBackAction}
           maxWidth={state.mode === 'split' ? state.secondaryMaxWidth : undefined}
           mobileRuntime={state.mode === 'stacked' ? mobileRuntime.secondary : undefined}

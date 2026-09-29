@@ -22,6 +22,15 @@ export const CustomerSelected: Story = {
     await userEvent.click(canvas.getByRole('row', { name: 'Edit Northstar Labs' }));
     await canvas.findByRole('heading', { name: 'Northstar Labs' });
     await canvas.findByRole('button', { name: 'Save changes' });
+    await canvas.findByDisplayValue('Northstar Labs');
+
+    await userEvent.click(canvas.getByRole('row', { name: 'Edit Atlas & Co.' }));
+    await canvas.findByRole('heading', { name: 'Atlas & Co.' });
+    await canvas.findByDisplayValue('Atlas & Co.');
+
+    await userEvent.click(canvas.getByRole('row', { name: 'Edit Northstar Labs' }));
+    await canvas.findByRole('heading', { name: 'Northstar Labs' });
+    await canvas.findByDisplayValue('Northstar Labs');
   },
 };
 

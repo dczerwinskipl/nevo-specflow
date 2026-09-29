@@ -1,8 +1,8 @@
 import {
   AppContent,
   AppContentContainer,
+  AppWorkspace,
   AppWorkspaceBody,
-  AppWorkspaceSlots,
   Button,
   Card,
   TextInput,
@@ -12,20 +12,17 @@ import {
 
 function Screen({ children, title }: { children: React.ReactNode; title: string }) {
   return (
-    <AppWorkspaceSlots
-      primary={{
-        content: (
-          <AppContent>
-            <WorkspaceHeader title={title} />
-            <AppWorkspaceBody>
-              <AppContentContainer className="grid gap-5" size="wide">
-                {children}
-              </AppContentContainer>
-            </AppWorkspaceBody>
-          </AppContent>
-        ),
-      }}
-    />
+    <AppWorkspace split="primary">
+      <AppWorkspace.Primary header={<WorkspaceHeader title={title} />}>
+        <AppContent>
+          <AppWorkspaceBody>
+            <AppContentContainer className="grid gap-5" size="wide">
+              {children}
+            </AppContentContainer>
+          </AppWorkspaceBody>
+        </AppContent>
+      </AppWorkspace.Primary>
+    </AppWorkspace>
   );
 }
 

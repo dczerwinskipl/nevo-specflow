@@ -29,9 +29,11 @@ mechanics from `@nevo/ui`.
 - `/` for the foundation home screen;
 - `/ui-playground` for a product-owned component/workspace integration screen.
 
-Product screens compose `AppWorkspaceSlots`, `WorkspaceHeader`, and `AppContent` from Nevo UI.
-Nevo UI owns those reusable layout mechanics but knows nothing about routes, SpecFlow navigation,
-or product data.
+Product screens compose `AppWorkspace`, `WorkspaceHeader`, and `AppContent` from Nevo UI. The
+runtime workspace connects compact screens to AppShell's drawer navigation and owns responsive
+surface behavior; `AppWorkspaceSlots` remains the static split-layout and Figma projection
+contract. Nevo UI owns those reusable layout mechanics but knows nothing about routes, SpecFlow
+navigation, or product data.
 
 The current screens are deliberately a working foundation, not a simulated legacy application.
 They provide real navigation and responsive composition without inventing domain state that the

@@ -35,6 +35,19 @@ export const Navigation: Story = {
   },
 };
 
+export const MobileNavigation: Story = {
+  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Open navigation' }));
+    const navigation = canvasElement.ownerDocument.querySelector<HTMLElement>(
+      'nav[aria-label="Product navigation"]',
+    );
+    if (!navigation?.textContent?.includes('UI Playground')) {
+      throw new Error('Opening compact navigation should expose the product links.');
+    }
+  },
+};
+
 export const FigmaCapture: Story = {
   render: () => (
     <DesignCaptureProvider captureComponents={['SpecFlowApplicationShell']}>

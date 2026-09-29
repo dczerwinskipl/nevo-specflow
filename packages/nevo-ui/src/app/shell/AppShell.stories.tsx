@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { DesignCaptureProvider } from '@nevo/figma-core/metadata';
 import { Badge, Button, ScrollArea, Typography } from '../../components';
 import { AppShell } from './AppShell';
 import { AppShellNavigationFixture, AppShellWorkspaceFixture } from './AppShell.storyFixtures';
@@ -46,6 +47,32 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Playground: Story = {};
+
+export const CanonicalCapture: Story = {
+  render: () => (
+    <DesignCaptureProvider captureComponents={['AppShell']}>
+      <AppShell
+        data-design-canonical="true"
+        data-design-source-id="desktop"
+        navigation={<AppShellNavigationFixture />}
+        style={{ height: 900, width: 1400 }}
+      >
+        <AppShellWorkspaceFixture />
+      </AppShell>
+    </DesignCaptureProvider>
+  ),
+  tags: ['!dev', '!autodocs'],
+  parameters: {
+    controls: { disable: true },
+    designCapture: {
+      component: 'AppShell',
+      title: 'Application shell',
+      description: 'Canonical desktop navigation and workspace frame',
+      kind: 'component',
+      order: 20,
+    },
+  },
+};
 
 function ResponsiveFixture() {
   const [width, setWidth] = useState(480);

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { DesignCaptureProvider } from '@nevo/figma-core/metadata';
 import { Button, Typography } from '../../components';
 import { AppShell } from '../shell/AppShell';
 import {
@@ -101,6 +102,50 @@ export const SecondaryEmphasis: Story = {
 
 export const SinglePanel: Story = {
   args: { secondary: undefined },
+};
+
+function WorkspaceCaptureFixture() {
+  const layouts = ['primary', 'balanced', 'secondary', 'single'] as const;
+
+  return (
+    <DesignCaptureProvider captureComponents={['AppWorkspaceSlots']}>
+      <div className="grid gap-8">
+        {layouts.map((layout) => (
+          <AppShell
+            key={layout}
+            navigation={<Region label="Navigation" />}
+            style={{ height: 900, width: 1400 }}
+          >
+            <AppWorkspaceSlots
+              primary={{ content: <Region label={`${layout} primary workspace`} /> }}
+              secondary={
+                layout === 'single'
+                  ? undefined
+                  : { content: <Region label={`${layout} secondary workspace`} /> }
+              }
+              split={layout === 'single' ? 'primary' : layout}
+            />
+          </AppShell>
+        ))}
+      </div>
+    </DesignCaptureProvider>
+  );
+}
+
+export const CanonicalCapture: Story = {
+  render: () => <WorkspaceCaptureFixture />,
+  tags: ['!dev', '!autodocs'],
+  parameters: {
+    a11y: { test: 'off' },
+    controls: { disable: true },
+    designCapture: {
+      component: 'AppWorkspaceSlots',
+      title: 'Application workspace',
+      description: 'Canonical desktop split-layout variants',
+      kind: 'component',
+      order: 25,
+    },
+  },
 };
 
 export const ContentAnatomy: Story = {

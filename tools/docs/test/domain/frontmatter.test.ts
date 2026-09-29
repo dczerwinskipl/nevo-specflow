@@ -54,6 +54,43 @@ describe('validateDoc', () => {
     ).toEqual([]);
   });
 
+  it('accepts valid optional taxonomy', () => {
+    expect(
+      validateDoc(
+        doc({
+          id: 'engineering.x',
+          type: 'engineering',
+          title: 'X',
+          status: 'current',
+          read_when: ['doing x'],
+          summary: 'about x',
+          scope: 'repo',
+          areas: ['ui', 'testing'],
+          tags: ['react', 'testing-library'],
+        }),
+      ),
+    ).toEqual([]);
+  });
+
+  it('rejects unknown taxonomy and malformed tags', () => {
+    const problems = validateDoc(
+      doc({
+        id: 'engineering.x',
+        type: 'engineering',
+        title: 'X',
+        status: 'current',
+        read_when: ['doing x'],
+        summary: 'about x',
+        scope: 'planet',
+        areas: ['frontend'],
+        tags: ['React UI'],
+      }),
+    ).join('\n');
+    expect(problems).toMatch(/unknown scope 'planet'/);
+    expect(problems).toMatch(/unknown area 'frontend'/);
+    expect(problems).toMatch(/tag 'React UI' must be lowercase kebab-case/);
+  });
+
   it('flags missing required fields, unknown type, and bad read_when', () => {
     const problems = validateDoc(doc({ id: 'bad', type: 'mystery', read_when: [] })).join('\n');
     expect(problems).toMatch(/unknown type 'mystery'/);

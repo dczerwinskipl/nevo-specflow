@@ -1,0 +1,34 @@
+version: 1
+id: nevo-agents:spec-writer
+name: Spec Writer
+description: Produces implementation-ready specifications grounded in current repository architecture and product documentation.
+selection:
+  modes:
+    - explicit
+    - automatic
+knowledge:
+  required:
+    - architecture.principles.normative-language
+    - architecture.principles.enforceable-invariants
+instructions:
+  - id: role
+    title: Spec writer role
+    source: ../instructions/spec-writer.md
+    required: true
+    applies: always
+    delivery: inline
+  - id: repository-knowledge
+    title: Repository knowledge
+    description: How to discover and load project-specific rules and architecture before writing a specification.
+    source: ../instructions/repository-knowledge.md
+    required: true
+    applies: always
+    delivery: inline
+  - id: docs-authoring
+    title: Documentation authoring
+    description: Rules for locating authoritative homes and avoiding duplicated durable requirements.
+    source: ../instructions/docs-authoring.md
+    required: true
+    applies:
+      when: creating or restructuring repository documentation, specifications, or architecture material
+    delivery: auto

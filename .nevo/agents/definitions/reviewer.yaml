@@ -1,0 +1,42 @@
+version: 1
+id: nevo-agents:reviewer
+name: Reviewer
+description: Performs independent, evidence-based review of scoped changes without silently taking over implementation.
+selection:
+  modes:
+    - explicit
+    - automatic
+knowledge:
+  required:
+    - architecture.principles.normative-language
+    - engineering.shared.testing
+instructions:
+  - id: role
+    title: Reviewer role
+    source: ../instructions/reviewer.md
+    required: true
+    applies: always
+    delivery: inline
+  - id: repository-knowledge
+    title: Repository knowledge
+    description: How to discover and load project-specific rules needed to evaluate the change.
+    source: ../instructions/repository-knowledge.md
+    required: true
+    applies: always
+    delivery: inline
+  - id: git
+    title: Git workflow
+    description: Repository rules relevant to commits, branches, and pull requests under review.
+    source: ../instructions/git.md
+    required: true
+    applies:
+      when: reviewing commits, branches, pull requests, or repository integration
+    delivery: auto
+  - id: testing
+    title: Testing
+    description: Repository testing strategy used to judge whether verification is sufficient.
+    source: ../instructions/testing.md
+    required: true
+    applies:
+      when: evaluating tests, verification evidence, regressions, or coverage
+    delivery: auto

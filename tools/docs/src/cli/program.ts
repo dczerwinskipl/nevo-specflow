@@ -4,6 +4,7 @@ import { adrCommand } from './commands/adr.js';
 import { checkCommand } from './commands/check.js';
 import { contextCommand } from './commands/context.js';
 import { findCommand } from './commands/find.js';
+import { getCommand } from './commands/get.js';
 import { listCommand } from './commands/list.js';
 import type { DocsCliContext } from './context.js';
 
@@ -18,6 +19,7 @@ export function createProgram(ctx: DocsCliContext): Command {
 
   program.addCommand(listCommand(ctx));
   program.addCommand(findCommand(ctx));
+  program.addCommand(getCommand(ctx));
   program.addCommand(contextCommand(ctx));
   program.addCommand(checkCommand(ctx));
   program.addCommand(adrCommand(ctx));

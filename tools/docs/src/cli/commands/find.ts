@@ -7,24 +7,41 @@ import type { DocsCliContext } from '../context.js';
 
 export function findCommand(ctx: DocsCliContext): Command {
   return new Command('find')
-    .description('Rank documents by a query')
-    .argument('<query...>', 'search terms')
+    .description('Find every document matching any query term, ranked deterministically')
+    .argument('<query...>', 'search terms (OR semantics)')
     .option('--type <type>', 'filter by doc type')
     .option('--status <status>', 'filter by status')
-    .option('--limit <n>', 'maximum results', '10')
+    .option('--scope <scope>', 'filter by taxonomy scope')
+    .option('--area <area>', 'filter by taxonomy area')
+    .option('--tag <tag>', 'filter by taxonomy tag')
+    .option('--limit <n>', 'maximum results; omitted means all matches')
     .option('--json', 'emit JSON on stdout', false)
     .action(
       (
         queryParts: string[],
-        opts: { type?: string; status?: string; limit: string; json: boolean },
+        opts: {
+          type?: string;
+          status?: string;
+          scope?: string;
+          area?: string;
+          tag?: string;
+          limit?: string;
+          json: boolean;
+        },
       ) => {
         const query = queryParts.join(' ').trim();
         if (!query) throw new UsageError('find: a query is required');
-        const limit = Number(opts.limit) || 10;
+        const limit = opts.limit === undefined ? undefined : Number(opts.limit);
+        if (opts.limit !== undefined && (!Number.isInteger(limit) || (limit ?? 0) <= 0)) {
+          throw new UsageError('find: --limit must be a positive integer');
+        }
         const results = findDocuments(ctx.repo, {
           query,
           type: opts.type,
           status: opts.status,
+          scope: opts.scope,
+          area: opts.area,
+          tag: opts.tag,
           limit,
         });
         if (opts.json) {

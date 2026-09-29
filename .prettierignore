@@ -10,6 +10,8 @@ node_modules/
 **/*.generated.*
 docs/**/*.generated.*
 tools/figma-project/generated/
+.agents/skills/nevo-agents-*/SKILL.md
+.claude/skills/nevo-agents-*/SKILL.md
 pnpm-lock.yaml
 
 # Local scratch area (git-ignored)

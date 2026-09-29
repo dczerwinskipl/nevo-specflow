@@ -13,6 +13,9 @@ const CORPUS: DocRecord[] = [
     body: '',
     read_when: ['creating a branch', 'preparing a pull request'],
     summary: 'Branch naming, PR strategy, squash merge, release lines.',
+    scope: 'repo',
+    areas: ['release'],
+    tags: ['git', 'github'],
     related: ['engineering.repository.commit-conventions'],
   },
   {
@@ -24,6 +27,20 @@ const CORPUS: DocRecord[] = [
     body: '',
     read_when: ['writing a React component'],
     summary: 'Composition, props, and Tailwind class conventions for React components.',
+    areas: ['ui'],
+    tags: ['react'],
+  },
+  {
+    id: 'engineering.shared.testing',
+    type: 'engineering',
+    title: 'Testing',
+    status: 'current',
+    file: 'docs/engineering/shared/testing.md',
+    body: '',
+    read_when: ['writing tests'],
+    summary: 'Shared testing strategy.',
+    areas: ['testing'],
+    tags: ['testing'],
   },
   {
     id: 'product.shared.localization',
@@ -55,6 +72,27 @@ describe('scoreDoc', () => {
 });
 
 describe('searchDocs', () => {
+  it('uses OR semantics for multi-term discovery and returns every matching document without a limit', () => {
+    const results = searchDocs(CORPUS, { query: 'react git testing' });
+    expect(results.map((d) => d.id).sort()).toEqual([
+      'design-system.implementation.react.component-guidelines',
+      'engineering.repository.git-workflow',
+      'engineering.shared.testing',
+    ]);
+  });
+
+  it('searches taxonomy fields and supports taxonomy filters', () => {
+    expect(searchDocs(CORPUS, { query: 'github' }).map((d) => d.id)).toEqual([
+      'engineering.repository.git-workflow',
+    ]);
+    expect(searchDocs(CORPUS, { area: 'ui' }).map((d) => d.id)).toEqual([
+      'design-system.implementation.react.component-guidelines',
+    ]);
+    expect(searchDocs(CORPUS, { tag: 'testing' }).map((d) => d.id)).toEqual([
+      'engineering.shared.testing',
+    ]);
+  });
+
   it('ranks deterministically and filters by type / limit', () => {
     const a = searchDocs(CORPUS, { query: 'pull request branch' });
     const b = searchDocs(CORPUS, { query: 'pull request branch' });

@@ -27,9 +27,12 @@ For the generated flat index, see [`index.generated.md`](index.generated.md).
 
 ```bash
 pnpm docs:list
-pnpm docs:find "git workflow"
+pnpm docs:find git react testing
+pnpm docs:get engineering.repository.git-workflow engineering.shared.testing
 pnpm docs:context "react tailwind"
 ```
+
+`docs:find` accepts multiple terms with OR semantics and returns every matching document unless `--limit` is supplied. Use it for discovery. Use `docs:get` when stable document IDs are already known.
 
 ## Authoring
 

@@ -34,7 +34,8 @@ describe('nevo-docs CLI', () => {
   it('--help lists every subcommand', async () => {
     const { code, stdout } = await cli(['--help']);
     expect(code).toBe(0);
-    for (const cmd of ['list', 'find', 'context', 'check', 'adr']) expect(stdout).toContain(cmd);
+    for (const cmd of ['list', 'find', 'get', 'context', 'check', 'adr'])
+      expect(stdout).toContain(cmd);
   });
 
   it('`adr new --help` documents its own options', async () => {
@@ -62,6 +63,21 @@ describe('nevo-docs CLI', () => {
     expect(code).toBe(0);
     const parsed: unknown = JSON.parse(stdout.trim());
     expect(Array.isArray(parsed)).toBe(true);
+  });
+
+  it('get --json resolves exact stable ids', async () => {
+    const { code, stdout } = await cli([
+      'get',
+      'engineering.repository.git-workflow',
+      'engineering.shared.testing',
+      '--json',
+    ]);
+    expect(code).toBe(0);
+    const parsed = JSON.parse(stdout.trim()) as { id: string }[];
+    expect(parsed.map((entry) => entry.id)).toEqual([
+      'engineering.repository.git-workflow',
+      'engineering.shared.testing',
+    ]);
   });
 
   it('adr new --dry-run prints a YAML-safe draft and writes nothing', async () => {

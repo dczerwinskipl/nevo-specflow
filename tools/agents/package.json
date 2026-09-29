@@ -1,0 +1,22 @@
+{
+  "name": "nevo-repo-agents",
+  "private": true,
+  "type": "module",
+  "description": "Repository-internal canonical agent profile validation and provider projection builder for Nevo SpecFlow.",
+  "license": "MIT",
+  "bin": {
+    "nevo-agents": "./dist/bin.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "commander": "15.0.0",
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "vitest": "5.0.2"
+  }
+}

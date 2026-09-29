@@ -36,6 +36,16 @@ describe('buildIndex', () => {
     expect(a.md).not.toMatch(/[0-9]{4}-[0-9]{2}-[0-9]{2}T/);
     expect(a.json).not.toMatch(/[0-9]{4}-[0-9]{2}-[0-9]{2}T/);
   });
+
+  it('emits taxonomy only when authored so existing documents do not gain empty fields', () => {
+    const built = buildIndex([
+      { ...DOCS[0]!, scope: 'repo', areas: ['release'], tags: ['git'] },
+      DOCS[1]!,
+    ]);
+    const parsed = JSON.parse(built.json) as { docs: Record<string, unknown>[] };
+    expect(parsed.docs[0]).not.toHaveProperty('scope');
+    expect(parsed.docs[1]).toMatchObject({ scope: 'repo', areas: ['release'], tags: ['git'] });
+  });
 });
 
 describe('diffIndex', () => {

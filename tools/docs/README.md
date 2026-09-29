@@ -15,7 +15,7 @@ Run from the repository root:
 pnpm docs:list                         # every indexed document (all statuses)
 pnpm docs:find git react testing       # every doc matching any term; ranked deterministically
 pnpm docs:get engineering.shared.testing # exact stable-id lookup
-pnpm docs:context "react tailwind"     # small context shortlist; deprecated/superseded excluded
+pnpm docs:context "react tailwind"     # every active match; deprecated/superseded excluded
 pnpm docs:adr new "Use X for Y"        # create the next-numbered ADR as a draft
 pnpm docs:check                        # validate the whole corpus + verify the index
 pnpm docs:check --write                # also regenerate docs/index.generated.{md,json}
@@ -27,8 +27,9 @@ useful. `get` is not search: it resolves exact stable IDs in caller-provided ord
 any ID is unknown.
 
 `context` feeds an AI agent, so it never recommends a `deprecated` or `superseded`
-document — once one is excluded its replacement ranks first naturally. `list`, `find`, and
-`get` still expose historical statuses for explicit lookup.
+document and, like `find`, returns every matching active document unless `--limit` is supplied.
+`list` and `find` can expose historical statuses for inspection. `get` resolves exact active
+stable IDs and fails closed for `deprecated` or `superseded` documents.
 
 `adr new` writes the file at `status: draft` with `TODO:` placeholders and
 regenerates the index. Fill the sections in, then set `status: current` when the

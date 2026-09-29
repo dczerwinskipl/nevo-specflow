@@ -65,6 +65,10 @@ describe('nevo-docs CLI', () => {
     expect(Array.isArray(parsed)).toBe(true);
   });
 
+  it('context rejects a non-positive explicit limit', async () => {
+    expect((await cli(['context', 'testing', '--limit', '0'])).code).not.toBe(0);
+  });
+
   it('get --json resolves exact stable ids', async () => {
     const { code, stdout } = await cli([
       'get',

@@ -80,7 +80,7 @@ export function getDocuments(repo: DocRepository, ids: readonly string[]): Conte
  */
 export function getContext(
   repo: DocRepository,
-  { query, limit = 5 }: { query: string; limit?: number },
+  { query, limit }: { query: string; limit?: number },
 ): ContextEntry[] {
   const results = searchDocs(loadValidatedCorpus(repo), {
     query,

@@ -16,7 +16,7 @@ import {
 } from './version.js';
 
 /** Checks that must be green on the release-branch HEAD before tagging. `pr-title` is PR-only. */
-export const REQUIRED_HEAD_CHECKS = ['quality', 'test', 'build'] as const;
+export const REQUIRED_HEAD_CHECKS = ['quality', 'test', 'build', 'CodeQL'] as const;
 
 export type ReleaseChannel = Extract<Channel, 'beta' | 'rc' | 'stable'>;
 

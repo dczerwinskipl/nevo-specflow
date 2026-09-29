@@ -69,7 +69,7 @@ nevo-release create --channel beta|rc|stable [--execute]
     # nothing. Checks (both modes):
     #   - after fetch, the local release-branch HEAD must equal origin/<branch> — a
     #     behind / diverged / unresolvable checkout is refused (§ stale checkout);
-    #   - the branch HEAD must have PASSED quality + test + build on GitHub (newest run
+    #   - the branch HEAD must have PASSED quality + test + build + CodeQL on GitHub (newest run
     #     per check); an unreadable check-run response is refused;
     #   - Phase A — tag + GitHub Release: orphaned last prerelease tag on HEAD is
     #     completed, not skipped to N+1; a tag at a different commit is refused; if the

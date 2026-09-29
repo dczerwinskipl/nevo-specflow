@@ -57,6 +57,7 @@ describe('executeRelease — validate-only parity + §2 local/remote HEAD', () =
       { name: 'quality', status: 'completed', conclusion: 'success', id: 1 },
       { name: 'test', status: 'completed', conclusion: 'failure', id: 2 },
       { name: 'build', status: 'completed', conclusion: 'success', id: 3 },
+      { name: 'CodeQL', status: 'completed', conclusion: 'success', id: 4 },
     ];
     await expect(run('beta', false)).rejects.toBeInstanceOf(InconsistentStateError);
     await expect(run('beta', true)).rejects.toBeInstanceOf(InconsistentStateError);

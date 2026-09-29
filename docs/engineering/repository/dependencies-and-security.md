@@ -125,7 +125,7 @@ gh api "repos/$REPO/private-vulnerability-reporting"
 
 ## CodeQL
 
-Not enabled yet — the repository has no product source code to analyze. Add
-`github/codeql-action` (`javascript-typescript`) and make `CodeQL` a required check in
-the same change that migrates the first product package. See
+Enabled for `javascript-typescript` now that substantive product UI has landed. It runs
+on pull requests, protected-branch pushes, and a weekly schedule; `CodeQL` is a required
+check in the branch rulesets. See
 [`.github/workflows/README.md`](../../../.github/workflows/README.md#codeql).

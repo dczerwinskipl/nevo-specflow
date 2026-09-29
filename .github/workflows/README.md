@@ -1,13 +1,15 @@
 # Workflows
 
-| Workflow                                             | Trigger                                  | Purpose                                                                                            | `permissions`                                             |
-| ---------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| [`ci.yml`](ci.yml)                                   | PRs; pushes to `main`, `release/v*`      | `pnpm check:quality`, then affected typecheck / test / build.                                      | `contents: read`                                          |
-| [`pr-title.yml`](pr-title.yml)                       | PR opened / edited / synced              | Conventional Commits check on the PR title (`<type>(<scope>): …`, scope required).                 | `pull-requests: read`                                     |
-| [`dependabot-pr-title.yml`](dependabot-pr-title.yml) | `workflow_run` after a failed `PR title` | Lower-case the subject of a Dependabot Conventional Commit title, then re-run that `PR title` run. | `pull-requests: write`, `actions: write`                  |
-| [`release.yml`](release.yml)                         | `workflow_dispatch` on `release/v*`      | Verify HEAD CI, then tag + GitHub Release (`beta`/`rc`/`stable`); post-stable advance PR.          | `contents: write`, `pull-requests: write`, `checks: read` |
-| [`cut-release-line.yml`](cut-release-line.yml)       | `workflow_dispatch`                      | Branch `release/vX.Y` off current `main`; open or hand off the main-bump PR.                       | `contents: write`, `pull-requests: write`                 |
-| [`promote-release.yml`](promote-release.yml)         | `workflow_dispatch` on `release/v*`      | Open the PR moving `release/vX.Y`'s channel forward (`beta→rc` / `rc→stable`).                     | `contents: write`, `pull-requests: write`                 |
+| Workflow                                             | Trigger                                  | Purpose                                                                                            | `permissions`                                               |
+| ---------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| [`ci.yml`](ci.yml)                                   | PRs; pushes to `main`, `release/v*`      | `pnpm check:quality`, then affected typecheck / test / build.                                      | `contents: read`                                            |
+| [`chromatic.yml`](chromatic.yml)                     | PRs; pushes to `main`                    | Publish the shared Storybook and run visual regression tests when its project token is available.  | `contents: read`                                            |
+| [`codeql.yml`](codeql.yml)                           | PRs; protected-branch pushes; weekly     | Analyze JavaScript and TypeScript for security vulnerabilities.                                    | `contents: read`, `actions: read`, `security-events: write` |
+| [`pr-title.yml`](pr-title.yml)                       | PR opened / edited / synced              | Conventional Commits check on the PR title (`<type>(<scope>): …`, scope required).                 | `pull-requests: read`                                       |
+| [`dependabot-pr-title.yml`](dependabot-pr-title.yml) | `workflow_run` after a failed `PR title` | Lower-case the subject of a Dependabot Conventional Commit title, then re-run that `PR title` run. | `pull-requests: write`, `actions: write`                    |
+| [`release.yml`](release.yml)                         | `workflow_dispatch` on `release/v*`      | Verify HEAD CI, then tag + GitHub Release (`beta`/`rc`/`stable`); post-stable advance PR.          | `contents: write`, `pull-requests: write`, `checks: read`   |
+| [`cut-release-line.yml`](cut-release-line.yml)       | `workflow_dispatch`                      | Branch `release/vX.Y` off current `main`; open or hand off the main-bump PR.                       | `contents: write`, `pull-requests: write`                   |
+| [`promote-release.yml`](promote-release.yml)         | `workflow_dispatch` on `release/v*`      | Open the PR moving `release/vX.Y`'s channel forward (`beta→rc` / `rc→stable`).                     | `contents: write`, `pull-requests: write`                   |
 
 Each workflow declares the **minimum** `permissions` for the GitHub APIs it actually
 calls — `release.yml` adds `checks: read` because the release tool reads the
@@ -27,6 +29,17 @@ CI and can auto-merge; without it they push the branch and print the exact
 
 Full behavior: [`docs/engineering/repository/ci.md`](../../docs/engineering/repository/ci.md) and
 [`docs/engineering/repository/releasing.md`](../../docs/engineering/repository/releasing.md).
+
+## Chromatic
+
+The workflow runs the version-pinned `chromatic` CLI from `tools/storybook/`, where the
+repository's shared Storybook is owned. Configure the repository Actions secret
+`CHROMATIC_PROJECT_TOKEN` from the Chromatic project's **Manage → Configure** page. The
+token is never stored in source. Runs without the secret (including pull requests from
+forks) report a successful skipped job instead of exposing credentials or waiting forever.
+
+`chromatic` is informational until the team intentionally adds the `chromatic` job to the
+branch ruleset after establishing and reviewing the first baseline.
 
 ## Action pinning
 
@@ -49,16 +62,10 @@ Current pins:
 | `actions/setup-node`                  | `820762786026740c76f36085b0efc47a31fe5020` | v7.0.0  |
 | `actions/cache`                       | `55cc8345863c7cc4c66a329aec7e433d2d1c52a9` | v6.1.0  |
 | `amannn/action-semantic-pull-request` | `48f256284bd46cdaab1048c3721360e808335d50` | v6.1.1  |
+| `github/codeql-action`                | `88585263c0627ee42c0e1c5143a112c8d6f4aa18` | v4.38.2 |
 
 ## CodeQL
 
-Deliberately **not** enabled yet. The repository so far is Node tooling under `tools/*`
-plus `packages/specflow` / `packages/specflow-runtime`, and the latter are a
-deliberately minimal routing / packaging **bootstrap** (a Commander router, one
-capability function returning a marker) — not substantive application code. CodeQL would
-have almost nothing to analyse.
-
-Enable it in the change that lands the **first substantive migrated product
-implementation** (real Runtime / UI / providers / spec engine): add a
-`github/codeql-action` workflow for `javascript-typescript` and make `CodeQL` a required
-check in the branch rulesets.
+CodeQL analyzes `javascript-typescript` in build mode `none` on pull requests, protected
+branch pushes, and a weekly schedule. The `CodeQL` job is a required protected-branch
+check. The action is pinned to an immutable commit like every other third-party action.

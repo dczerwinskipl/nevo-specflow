@@ -25,6 +25,8 @@ Workflows under [`.github/workflows/`](../../../.github/workflows/):
 | ------------------------------------------------ | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `pr-title`                                       | PR opened / edited / synchronized      | Validates the PR title against [Conventional Commits](commit-conventions.md) — `<type>(<scope>): …`, scope required. |
 | `ci`                                             | PRs; pushes to `main` and `release/v*` | The quality gate, then typecheck / test / build.                                                                     |
+| `chromatic`                                      | PRs; pushes to `main`                  | Publishes the shared Storybook and runs visual regression tests when its project token is available.                 |
+| `CodeQL`                                         | PRs; protected-branch pushes; weekly   | Analyzes JavaScript and TypeScript for security vulnerabilities.                                                     |
 | `cut-release-line`, `promote-release`, `release` | `workflow_dispatch`                    | See [releasing](releasing.md).                                                                                       |
 
 ## `ci` jobs
@@ -82,6 +84,7 @@ pr-title
 quality
 test
 build
+CodeQL
 ```
 
 They are applied by
@@ -90,10 +93,24 @@ They are applied by
 never left permanently pending.
 
 The `release` workflow separately re-checks that a release branch's HEAD has `quality` +
-`test` + `build` green (not `pr-title` — that only runs on PRs) before it cuts a tag.
+`test` + `build` + `CodeQL` green (not `pr-title` — that only runs on PRs) before it cuts
+a tag.
 
 Concurrency: a new commit on a PR cancels the previous PR run; `main` / `release/v*`
 runs always finish.
+
+## Visual regression with Chromatic
+
+The `chromatic` workflow publishes the single shared Storybook owned by
+`tools/storybook/`. It uses the version-pinned workspace CLI through `pnpm chromatic`
+and reads its credential only from the `CHROMATIC_PROJECT_TOKEN` repository Actions
+secret. The secret value comes from the Chromatic project's **Manage → Configure** page
+and must never be committed or added to a local environment file in the repository.
+
+The workflow skips cleanly when the secret is unavailable, including on pull requests
+from forks. The `chromatic` job is informational while the first baseline is being
+established; add it to the branch ruleset only after that baseline has been reviewed and
+the team wants visual approval to block merges.
 
 ## What invalidates everything
 

@@ -2,7 +2,10 @@ version: 1
 id: nevo-agents:implementer
 name: Implementer
 description: Implements scoped code changes while following repository architecture, documentation, and verification rules.
-activation: explicit
+selection:
+  modes:
+    - explicit
+    - automatic
 knowledge:
   required:
     - architecture.principles.normative-language

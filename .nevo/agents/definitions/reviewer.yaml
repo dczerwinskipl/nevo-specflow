@@ -2,7 +2,10 @@ version: 1
 id: nevo-agents:reviewer
 name: Reviewer
 description: Performs independent, evidence-based review of scoped changes without silently taking over implementation.
-activation: explicit
+selection:
+  modes:
+    - explicit
+    - automatic
 knowledge:
   required:
     - architecture.principles.normative-language

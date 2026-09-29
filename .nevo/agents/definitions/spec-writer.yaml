@@ -2,7 +2,10 @@ version: 1
 id: nevo-agents:spec-writer
 name: Spec Writer
 description: Produces implementation-ready specifications grounded in current repository architecture and product documentation.
-activation: explicit
+selection:
+  modes:
+    - explicit
+    - automatic
 knowledge:
   required:
     - architecture.principles.normative-language

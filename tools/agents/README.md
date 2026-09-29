@@ -4,14 +4,17 @@ Repository-internal builder for canonical Nevo agent profiles. Definitions and i
 
 ## Canonical model
 
-Each `.nevo/agents/definitions/*.yaml` file contains profile metadata, an explicit activation policy, required repository knowledge, and structured instruction references. Instruction bodies live in `.nevo/agents/instructions/*.md` fragments.
+Each `.nevo/agents/definitions/*.yaml` file contains profile metadata, supported selection modes, required repository knowledge, and structured instruction references. Instruction bodies live in `.nevo/agents/instructions/*.md` fragments.
 
 ```yaml
 version: 1
 id: nevo-agents:implementer
 name: Implementer
 description: Implements scoped changes.
-activation: explicit
+selection:
+  modes:
+    - explicit
+    - automatic
 knowledge:
   required:
     - architecture.principles.normative-language
@@ -32,9 +35,11 @@ instructions:
     delivery: auto
 ```
 
-`activation: explicit` means profile selection belongs to the user, workflow, or orchestrator. Generated skill descriptions repeat that contract so provider discovery should not treat task similarity as permission to switch profiles.
+`selection.modes` defines what the profile permits, not which mode every invocation must use. Selection policy belongs to the caller/execution context. A deterministic workflow can bind a profile explicitly; an interactive invocation can allow automatic profile selection. Automatic selection happens before profile activation and must not become mid-invocation profile switching.
 
-`knowledge.required` contains exact stable documentation IDs that must be loaded before work begins. Build/check validates those IDs against `docs/index.generated.json` and rejects missing, `deprecated`, or `superseded` documents. Run `pnpm docs:check` before agent generation when documentation changed.
+Profiles that omit `automatic` are projected as explicit-only skills. Profiles that allow `automatic` remain eligible for provider discovery where the current invocation policy permits it.
+
+`knowledge.required` contains exact stable documentation IDs that must be loaded before work begins. Build/check validates those IDs against `docs/index.generated.json` and rejects missing, `deprecated`, or `superseded` documents. `pnpm agents:build` and `pnpm agents:check` run `pnpm docs:check` first so the generated documentation catalog cannot be stale.
 
 `required` and `applies` describe instruction semantics; `delivery` describes presentation. They are intentionally independent. `auto` is resolved by the build mode.
 
@@ -43,13 +48,14 @@ Instruction Markdown files are fragments: the renderer owns H1/H2 headings, so s
 ## Build
 
 ```bash
-pnpm docs:check
 pnpm agents:build
 pnpm agents:build -- --content=reference
 pnpm agents:build -- --providers=claude
 pnpm agents:check
 pnpm agents:test
 ```
+
+The public `docs:*` commands build `nevo-repo-docs` before invoking it, so documentation discovery works on a fresh checkout after `pnpm install`. Agent build/check also verifies the docs corpus/index before validating `knowledge.required`.
 
 Default `--content=embed` copies `auto` instruction bodies into the generated skill. `--content=reference` emits links/tables for `auto` instructions instead. Explicit `delivery: inline` or `delivery: reference` is unchanged by that flag.
 

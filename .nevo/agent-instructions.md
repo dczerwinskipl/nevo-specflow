@@ -2,7 +2,12 @@
 
 Nevo agent profiles are defined under `.nevo/agents/definitions/`. Provider-specific skills under `.claude/skills/` and `.agents/skills/` are generated projections and are not sources of truth.
 
-Agent profiles are explicitly selected by a user, workflow, or orchestrator. Do not infer or switch the active Nevo profile from task wording alone.
+A profile declares which selection modes it supports. Selection policy belongs to the current invocation or execution context, not to the profile itself:
+
+- `explicit` — a user, workflow, or orchestrator names the profile;
+- `automatic` — the caller/provider may choose an eligible profile from the task context when automatic selection is enabled for that invocation.
+
+Automatic selection is a routing decision made before a profile becomes active. Once a profile is active for an invocation, do not switch profiles merely because later task wording resembles another profile. Deterministic workflow steps may always bind a profile explicitly when the profile supports `explicit`.
 
 When the selected profile declares `knowledge.required`, load those exact stable document IDs first. Generated provider projections include the corresponding `pnpm docs:get ...` command.
 

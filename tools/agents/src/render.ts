@@ -89,11 +89,30 @@ function renderRequiredKnowledge(agent: LoadedAgent): string {
   ].join('\n');
 }
 
+function allowsAutomaticSelection(agent: LoadedAgent): boolean {
+  return agent.selection.modes.includes('automatic');
+}
+
 function projectedDescription(agent: LoadedAgent): string {
-  if (agent.activation === 'explicit') {
+  if (!allowsAutomaticSelection(agent)) {
     return `Use only when the ${agent.id} profile is explicitly selected by the user, workflow, or orchestrator. ${agent.description}`;
   }
   return agent.description;
+}
+
+function renderSelection(agent: LoadedAgent): string {
+  if (!allowsAutomaticSelection(agent)) {
+    return [
+      '**Selection:** explicit only.',
+      'Use this profile only when the user, workflow, or orchestrator explicitly selects it.',
+    ].join(' ');
+  }
+
+  return [
+    '**Selection:** explicit or automatic.',
+    'Automatic selection is allowed when the current invocation or execution policy permits it.',
+    'Selection happens before the profile becomes active; once active, do not switch profiles merely because later task wording resembles another profile.',
+  ].join(' ');
 }
 
 export function renderSkill(
@@ -122,7 +141,7 @@ export function renderSkill(
   const sections = [
     frontmatter,
     GENERATED_MARKER,
-    `# ${agent.name}\n\nCanonical profile: \`${agent.id}\`.\n\n**Activation:** explicit only. Use this profile only when it was explicitly selected by the user, workflow, or orchestrator; do not auto-select it from task wording or similarity.`,
+    `# ${agent.name}\n\nCanonical profile: \`${agent.id}\`.\n\n${renderSelection(agent)}`,
     renderRequiredKnowledge(agent),
     ...inline.map(renderInline),
     renderReferenceTable('Read also', alwaysRefs, outputPath, repoRoot, false),

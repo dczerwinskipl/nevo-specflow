@@ -35,7 +35,10 @@ function fixture(): string {
       'id: nevo-agents:implementer',
       'name: Implementer',
       'description: Implements changes.',
-      'activation: explicit',
+      'selection:',
+      '  modes:',
+      '    - explicit',
+      '    - automatic',
       'knowledge:',
       '  required:',
       `    - ${REQUIRED_DOC}`,
@@ -65,7 +68,7 @@ describe('agent definition', () => {
     const root = fixture();
     const agent = loadAgentDefinition(root, '.nevo/agents/definitions/implementer.yaml');
     expect(agent.id).toBe('nevo-agents:implementer');
-    expect(agent.activation).toBe('explicit');
+    expect(agent.selection.modes).toEqual(['explicit', 'automatic']);
     expect(agent.knowledge.required).toEqual([REQUIRED_DOC]);
     expect(agent.instructions.map((instruction) => instruction.content)).toEqual([
       'Do the work.',
@@ -81,15 +84,21 @@ describe('agent definition', () => {
     );
   });
 
-  it('rejects unsupported activation policies', () => {
+  it('rejects unsupported selection modes', () => {
     const root = fixture();
     const path = join(root, '.nevo/agents/definitions/implementer.yaml');
-    writeFileSync(
-      path,
-      readFileSync(path, 'utf8').replace('activation: explicit', 'activation: auto'),
-    );
+    writeFileSync(path, readFileSync(path, 'utf8').replace('    - automatic', '    - autonomous'));
     expect(() => loadAgentDefinition(root, '.nevo/agents/definitions/implementer.yaml')).toThrow(
-      /activation.*explicit/,
+      /selection\.modes.*unsupported.*autonomous/,
+    );
+  });
+
+  it('rejects duplicate selection modes', () => {
+    const root = fixture();
+    const path = join(root, '.nevo/agents/definitions/implementer.yaml');
+    writeFileSync(path, readFileSync(path, 'utf8').replace('    - automatic', '    - explicit'));
+    expect(() => loadAgentDefinition(root, '.nevo/agents/definitions/implementer.yaml')).toThrow(
+      /selection\.modes.*duplicate/,
     );
   });
 
@@ -99,16 +108,29 @@ describe('agent definition', () => {
 });
 
 describe('rendering', () => {
-  it('projects explicit activation and required knowledge into the skill', () => {
+  it('keeps automatically eligible profiles discoverable and documents selection semantics', () => {
     const root = fixture();
+    const agent = loadAgentDefinition(root, '.nevo/agents/definitions/implementer.yaml');
+    const output = join(root, '.agents/skills/nevo-agents-implementer/SKILL.md');
+    const rendered = renderSkill(root, agent, output, 'embed').content;
+    expect(rendered).toContain('description: "Implements changes."');
+    expect(rendered).toContain('**Selection:** explicit or automatic.');
+    expect(rendered).toContain('Selection happens before the profile becomes active');
+    expect(rendered).toContain(`pnpm docs:get ${REQUIRED_DOC}`);
+    expect(rendered).not.toContain('Use only when the nevo-agents:implementer profile');
+  });
+
+  it('projects an explicit-only profile as explicit-only provider guidance', () => {
+    const root = fixture();
+    const definition = join(root, '.nevo/agents/definitions/implementer.yaml');
+    writeFileSync(definition, readFileSync(definition, 'utf8').replace('    - automatic\n', ''));
     const agent = loadAgentDefinition(root, '.nevo/agents/definitions/implementer.yaml');
     const output = join(root, '.agents/skills/nevo-agents-implementer/SKILL.md');
     const rendered = renderSkill(root, agent, output, 'embed').content;
     expect(rendered).toContain(
       'Use only when the nevo-agents:implementer profile is explicitly selected',
     );
-    expect(rendered).toContain('**Activation:** explicit only.');
-    expect(rendered).toContain(`pnpm docs:get ${REQUIRED_DOC}`);
+    expect(rendered).toContain('**Selection:** explicit only.');
   });
 
   it('embed mode materializes auto conditional content', () => {

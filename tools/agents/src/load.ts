@@ -4,12 +4,13 @@ import { dirname, isAbsolute, join, normalize, relative, resolve, sep } from 'no
 import { parse } from 'yaml';
 
 import type {
-  ActivationPolicy,
   AgentInstruction,
   AgentKnowledge,
+  AgentSelection,
   Applies,
   Delivery,
   LoadedAgent,
+  SelectionMode,
 } from './model.js';
 
 const ID_RE = /^nevo-agents:[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -20,10 +21,11 @@ const TOP_LEVEL_KEYS = new Set([
   'id',
   'name',
   'description',
-  'activation',
+  'selection',
   'knowledge',
   'instructions',
 ]);
+const SELECTION_KEYS = new Set(['modes']);
 const KNOWLEDGE_KEYS = new Set(['required']);
 const INSTRUCTION_KEYS = new Set([
   'id',
@@ -34,6 +36,7 @@ const INSTRUCTION_KEYS = new Set([
   'applies',
   'delivery',
 ]);
+const SELECTION_MODES = new Set<SelectionMode>(['explicit', 'automatic']);
 const INACTIVE_DOC_STATUSES = new Set(['deprecated', 'superseded']);
 
 interface IndexedDocument {
@@ -78,9 +81,21 @@ function assertKnownKeys(
   if (unknown.length) throw new Error(`${label} has unknown field(s): ${unknown.join(', ')}`);
 }
 
-function parseActivation(value: unknown, label: string): ActivationPolicy {
-  if (value === 'explicit') return value;
-  throw new Error(`${label} must be 'explicit'`);
+function parseSelection(value: unknown, label: string): AgentSelection {
+  const record = object(value, label);
+  assertKnownKeys(record, SELECTION_KEYS, label);
+
+  const rawModes = stringArray(record.modes, `${label}.modes`);
+  if (rawModes.length === 0) throw new Error(`${label}.modes must not be empty`);
+
+  const modes: SelectionMode[] = rawModes.map((mode) => {
+    if (!SELECTION_MODES.has(mode as SelectionMode)) {
+      throw new Error(`${label}.modes contains unsupported mode '${mode}'`);
+    }
+    return mode as SelectionMode;
+  });
+
+  return { modes };
 }
 
 function parseKnowledge(value: unknown, label: string): AgentKnowledge {
@@ -234,7 +249,7 @@ export function loadAgentDefinition(repoRoot: string, file: string): LoadedAgent
     id,
     name: string(record.name, `${file}.name`),
     description: string(record.description, `${file}.description`),
-    activation: parseActivation(record.activation, `${file}.activation`),
+    selection: parseSelection(record.selection, `${file}.selection`),
     knowledge: parseKnowledge(record.knowledge, `${file}.knowledge`),
     file: normalize(file).replaceAll('\\', '/'),
     instructions,

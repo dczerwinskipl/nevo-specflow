@@ -1,6 +1,16 @@
 {
   "docs": [
     {
+      "id": "docs.architecture-ai-readme",
+      "type": "hub",
+      "title": "AI architecture",
+      "status": "current",
+      "file": "docs/architecture/ai/README.md",
+      "read_when": [],
+      "summary": "Provider-neutral AI session, turn, work, interaction, lifecycle, capability, and adapter-boundary architecture for Nevo SpecFlow.",
+      "related": []
+    },
+    {
       "id": "docs.architecture-decisions-readme",
       "type": "hub",
       "title": "Architecture Decision Records",
@@ -11,6 +21,16 @@
       "related": []
     },
     {
+      "id": "docs.architecture-principles-readme",
+      "type": "hub",
+      "title": "Architecture principles",
+      "status": "current",
+      "file": "docs/architecture/principles/README.md",
+      "read_when": [],
+      "summary": "Cross-cutting principles that constrain Nevo SpecFlow architecture independently of one subsystem or implementation technology.",
+      "related": []
+    },
+    {
       "id": "docs.architecture-readme",
       "type": "hub",
       "title": "Architecture documentation",
@@ -18,6 +38,26 @@
       "file": "docs/architecture/README.md",
       "read_when": [],
       "summary": "Durable technical boundaries, repository structure, system invariants, and architecture decision records.",
+      "related": []
+    },
+    {
+      "id": "docs.architecture-runtime-readme",
+      "type": "hub",
+      "title": "Runtime architecture",
+      "status": "current",
+      "file": "docs/architecture/runtime/README.md",
+      "read_when": [],
+      "summary": "Entry point for Nevo SpecFlow Runtime ownership, composition, lifecycle, recovery, and transport-boundary architecture.",
+      "related": []
+    },
+    {
+      "id": "docs.architecture-workflow-readme",
+      "type": "hub",
+      "title": "Workflow architecture",
+      "status": "current",
+      "file": "docs/architecture/workflow/README.md",
+      "read_when": [],
+      "summary": "Entry point for deterministic Nevo SpecFlow workflow state, transitions, gates, attempts, and resumable mutation architecture.",
       "related": []
     },
     {
@@ -181,6 +221,83 @@
       "related": []
     },
     {
+      "id": "architecture.ai.canonical-session-turn-work",
+      "type": "architecture",
+      "title": "Canonical AI Session, Turn, and Work model",
+      "status": "current",
+      "file": "docs/architecture/ai/canonical-session-turn-work.md",
+      "read_when": [
+        "implementing AI sessions or turn lifecycle",
+        "persisting or projecting provider execution",
+        "adding AI interactions, tools, reasoning, or commentary",
+        "computing current activity, attention, or session readiness"
+      ],
+      "summary": "AI execution is represented by a provider-neutral Session -> Turn -> Work -> ToolAction hierarchy. Terminal turns are immutable, one non-terminal turn is admitted per session, ordered work is canonical, and Runtime owns semantic readiness/current-activity projections rather than UI heuristics.",
+      "related": [
+        "architecture.ai.provider-boundary",
+        "architecture.runtime.ownership-and-lifecycle",
+        "architecture.principles.enforceable-invariants",
+        "product.specflow.ui.ai-session-ux",
+        "architecture.principles.normative-language"
+      ]
+    },
+    {
+      "id": "architecture.ai.provider-boundary",
+      "type": "architecture",
+      "title": "AI provider boundary",
+      "status": "current",
+      "file": "docs/architecture/ai/provider-boundary.md",
+      "read_when": [
+        "adding or changing an AI provider",
+        "exposing provider capabilities",
+        "mapping provider events, errors, interactions, or session identity",
+        "deciding whether provider-specific data may cross into Runtime or UI contracts"
+      ],
+      "summary": "AI providers are adapters behind canonical SpecFlow contracts. They expose honest capabilities, normalize lifecycle/events/errors at the boundary, keep provider-private identifiers and payloads out of product contracts, and preserve raw diagnostics only for bounded technical inspection.",
+      "related": [
+        "architecture.ai.canonical-session-turn-work",
+        "architecture.runtime.ownership-and-lifecycle",
+        "engineering.shared.effects-and-io",
+        "architecture.principles.normative-language"
+      ]
+    },
+    {
+      "id": "architecture.principles.enforceable-invariants",
+      "type": "architecture",
+      "title": "Enforceable invariants",
+      "status": "current",
+      "file": "docs/architecture/principles/enforceable-invariants.md",
+      "read_when": [
+        "deciding whether a rule belongs in code, documentation, or an instruction",
+        "designing a workflow gate, lifecycle guard, or state transition",
+        "reviewing a rule that agents or users are expected to remember manually"
+      ],
+      "summary": "Durable system invariants MUST be enforced deterministically by software whenever the system can observe and decide them. Prose explains the rule; it MUST NOT be the only mechanism protecting a machine-verifiable invariant.",
+      "related": [
+        "architecture.workflow.deterministic-workflow",
+        "architecture.runtime.ownership-and-lifecycle",
+        "engineering.shared.code-organization",
+        "architecture.principles.normative-language"
+      ]
+    },
+    {
+      "id": "architecture.principles.normative-language",
+      "type": "architecture",
+      "title": "Normative language and document authority",
+      "status": "current",
+      "file": "docs/architecture/principles/normative-language.md",
+      "read_when": [
+        "interpreting requirements in architecture, engineering, product, or reference docs",
+        "deciding whether a documented rule is mandatory or advisory",
+        "encountering conflicting documentation",
+        "using examples to infer behavior not stated explicitly"
+      ],
+      "summary": "Defines MUST, SHOULD, MAY, document authority, conflict handling, and no-extrapolation rules for Nevo SpecFlow documentation so humans and AI agents interpret requirements consistently.",
+      "related": [
+        "architecture.principles.enforceable-invariants"
+      ]
+    },
+    {
       "id": "architecture.repository-structure",
       "type": "architecture",
       "title": "Repository structure",
@@ -198,6 +315,87 @@
         "engineering.repository.git-workflow",
         "adr.0002-toolchain-selection",
         "adr.0003-branch-and-release-model"
+      ]
+    },
+    {
+      "id": "architecture.runtime.ownership-and-lifecycle",
+      "type": "architecture",
+      "title": "Runtime ownership and lifecycle",
+      "status": "current",
+      "file": "docs/architecture/runtime/ownership-and-lifecycle.md",
+      "read_when": [
+        "adding a long-lived Runtime capability or resource",
+        "introducing HTTP, realtime, MCP, provider-process, or persistence infrastructure",
+        "changing startup, shutdown, cancellation, or restart recovery",
+        "deciding whether a concern belongs to Runtime or a transport adapter"
+      ],
+      "summary": "Nevo SpecFlow Runtime is the composition and lifecycle owner for long-lived local application resources. Transports are adapters, resources have one lifecycle owner, startup/shutdown are deterministic, and restart recovery reconciles durable state before accepting conflicting work.",
+      "related": [
+        "architecture.principles.enforceable-invariants",
+        "architecture.ai.canonical-session-turn-work",
+        "architecture.ai.provider-boundary",
+        "engineering.shared.async-and-lifecycle",
+        "engineering.shared.effects-and-io",
+        "architecture.principles.normative-language"
+      ]
+    },
+    {
+      "id": "architecture.workflow.deterministic-workflow",
+      "type": "architecture",
+      "title": "Deterministic workflow",
+      "status": "current",
+      "file": "docs/architecture/workflow/deterministic-workflow.md",
+      "read_when": [
+        "designing workflow steps, transitions, gates, or actions",
+        "implementing start, finish, retry, or recovery behavior",
+        "deciding which workflow state is authoritative versus derived",
+        "exposing workflow state to CLI, Runtime, agents, or UI"
+      ],
+      "summary": "Workflow progression is driven by authoritative declarative state and deterministic operations, not agent-authored orchestration. Step start activates, step finish completes, transitions are explicit, gates inspect separately from verify, attempts scope evidence, and durable effects resume instead of duplicating.",
+      "related": [
+        "architecture.principles.enforceable-invariants",
+        "architecture.runtime.ownership-and-lifecycle",
+        "engineering.shared.effects-and-io",
+        "engineering.shared.testing",
+        "architecture.principles.normative-language"
+      ]
+    },
+    {
+      "id": "design-system.figma.code-to-figma-projection",
+      "type": "architecture",
+      "title": "Code-to-Figma projection boundary",
+      "status": "current",
+      "file": "docs/design-system/figma/code-to-figma-projection.md",
+      "read_when": [
+        "changing how Nevo UI components are exported to Figma",
+        "deciding whether Figma or runtime code owns a design property",
+        "adding capture metadata, importer behavior, stable IDs, or a new representation capability"
+      ],
+      "summary": "Runtime React/CSS is the visual source of truth. Figma is a downstream projection through typed capture metadata and canonical IR. Import/export infrastructure stays generic, stable IDs are durable migration identities, and component-specific cases do not leak into the importer.",
+      "related": [
+        "design-system.principles.system-boundary",
+        "design-system.implementation.react.component-guidelines",
+        "design-system.implementation.storybook.guidelines",
+        "architecture.principles.normative-language"
+      ]
+    },
+    {
+      "id": "design-system.principles.system-boundary",
+      "type": "architecture",
+      "title": "Nevo UI system boundary",
+      "status": "current",
+      "file": "docs/design-system/principles/system-boundary.md",
+      "read_when": [
+        "deciding whether a component belongs to Nevo UI or Nevo SpecFlow UI",
+        "extracting shared UI behavior from a product feature",
+        "designing a reusable interaction primitive or headless behavior"
+      ],
+      "summary": "Nevo UI owns reusable visual primitives, interaction behavior, accessibility and generic layout mechanics. Product routing, domain concepts, permissions and workflow-specific behavior remain in product applications. Reuse follows shared behavior, not merely similar markup.",
+      "related": [
+        "design-system.principles.ui-ux-guidelines",
+        "design-system.implementation.react.component-guidelines",
+        "product.specflow.ui.interaction-model",
+        "architecture.principles.normative-language"
       ]
     },
     {

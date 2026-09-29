@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>/*__FIGMA_UI_STYLES__*/</style>
+  </head>
+  <body>
+    <main id="app">
+      <p class="intro">Import generated Design System or Screens IR. The file type is detected automatically.</p>
+      <div class="tabs" role="tablist" aria-label="Import source">
+        <button class="tab" id="tab-file" role="tab" aria-controls="panel-file" aria-selected="true">Choose file</button>
+        <button class="tab" id="tab-json" role="tab" aria-controls="panel-json" aria-selected="false">Paste JSON</button>
+      </div>
+
+      <section class="panel" id="panel-file" role="tabpanel" aria-labelledby="tab-file">
+        <label class="file-picker" id="picker">
+          <span><strong>Choose generated JSON</strong><span>Design System or Screens IR</span></span>
+          <input id="file" type="file" accept="application/json,.json" />
+        </label>
+        <div class="summary" id="summary" hidden>
+          <div class="summary-head">
+            <div class="summary-title"><strong id="summary-name"></strong><span id="summary-meta"></span></div>
+            <div class="summary-actions"><span class="kind" id="summary-kind"></span><button class="change-file" id="change-file">Change</button></div>
+          </div>
+          <div class="summary-list" id="summary-list"></div>
+        </div>
+        <div class="error-card" id="file-error" hidden></div>
+      </section>
+
+      <section class="panel" id="panel-json" role="tabpanel" aria-labelledby="tab-json" hidden>
+        <textarea id="json" spellcheck="false" aria-label="Intermediate representation JSON" placeholder="Paste generated IR JSON…"></textarea>
+        <div class="error-card" id="json-error" hidden></div>
+      </section>
+
+      <div class="progress" id="progress" role="progressbar" aria-label="Import progress" aria-valuemin="0" aria-valuemax="100" hidden>
+        <div class="progress-meta"><span>Import progress</span><strong id="progress-value">0% · 0/0</strong></div>
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+      </div>
+      <div class="footer">
+        <div id="status" aria-live="polite">Choose a file or paste JSON to continue.</div>
+        <button id="import" hidden>Import</button>
+      </div>
+    </main>
+    <script>/*__FIGMA_UI_SCRIPT__*/</script>
+  </body>
+</html>
+

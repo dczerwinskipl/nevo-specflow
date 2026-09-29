@@ -1,0 +1,28 @@
+{
+  "name": "nevo-figma-import",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Generic canonical IR to Figma importer and managed reconciliation plugin.",
+  "license": "MIT",
+  "exports": {
+    "./config": "./config.ts",
+    "./runtime": "./src/code.ts"
+  },
+  "scripts": {
+    "build": "node build-ui.mjs",
+    "build:ui": "node build-ui.mjs",
+    "typecheck": "tsc -p tsconfig.json && tsc -p ui/tsconfig.json",
+    "test": "pnpm build && vitest run"
+  },
+  "dependencies": {
+    "@nevo/figma-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "1.138.0",
+    "@types/node": "24.19.0",
+    "esbuild": "0.28.2",
+    "playwright": "1.55.0",
+    "vitest": "5.0.2"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2024"],
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "incremental": true,
+    "tsBuildInfoFile": "./.tsbuild/figma-import.tsbuildinfo",
+    "types": ["@figma/plugin-typings", "node"],
+    "paths": {
+      "@nevo/figma-core": ["../../packages/figma-core/src/index.ts"],
+      "@nevo/figma-core/*": ["../../packages/figma-core/src/*"]
+    }
+  },
+  "include": ["*.ts", "src/**/*.ts"],
+  "exclude": ["ui.test.ts", "**/*.test.ts"]
+}

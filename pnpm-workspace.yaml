@@ -5,11 +5,13 @@
 
 packages:
   - "apps/*"
+  - "examples/*"
   - "packages/*"
   - "tools/*"
   # packages/  -> real product packages (@nevo/*): specflow (the public `nevo-specflow`
   #              CLI) and specflow-runtime (the Runtime capability).
-  # apps/      -> deployable applications; still empty until one lands.
+  # apps/      -> deployable applications.
+  # examples/  -> non-product reference consumers proving reusable package boundaries.
   # tools/     -> repository-internal tooling (docs, release, github, product).
 
 # Resolve dependencies and check `engines` against the pinned Node, regardless

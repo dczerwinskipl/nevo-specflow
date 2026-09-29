@@ -1,0 +1,21 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "incremental": true,
+    "tsBuildInfoFile": "../.tsbuild/figma-import-ui.tsbuildinfo",
+    "types": ["node"],
+    "paths": {
+      "@nevo/figma-core": ["../../../packages/figma-core/src/index.ts"],
+      "@nevo/figma-core/*": ["../../../packages/figma-core/src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "../ui.test.ts"]
+}

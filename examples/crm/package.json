@@ -1,0 +1,31 @@
+{
+  "name": "nevo-example-crm",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Reference consumer proving Nevo UI reuse outside SpecFlow.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/CrmExample.tsx",
+    "./figma": "./src/figmaRegistry.ts"
+  },
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@nevo/figma-core": "workspace:*",
+    "@nevo/ui": "workspace:*",
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
+  },
+  "devDependencies": {
+    "@storybook/react-vite": "10.6.0",
+    "@vitejs/plugin-react": "5.0.2",
+    "@types/react": "19.1.12",
+    "@types/react-dom": "19.1.9",
+    "vite": "7.1.4",
+    "vitest": "5.0.2"
+  }
+}

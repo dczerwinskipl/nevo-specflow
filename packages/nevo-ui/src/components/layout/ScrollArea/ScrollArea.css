@@ -1,0 +1,93 @@
+.scroll-area {
+  --scroll-edge-indicator: var(--color-scroll-edge-indicator);
+  --scroll-edge-size: 1.25rem;
+
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  isolation: isolate;
+}
+
+.scroll-area-indicator {
+  position: absolute;
+  z-index: 10;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--motion-duration-fast) var(--motion-ease-standard);
+}
+
+.scroll-area-viewport:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}
+
+.scroll-area-viewport {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-scrollbar-thumb) transparent;
+}
+
+.scroll-area-viewport::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scroll-area-viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll-area-viewport::-webkit-scrollbar-thumb {
+  background: var(--color-scrollbar-thumb);
+  border-radius: 999px;
+}
+
+.scroll-area-viewport::-webkit-scrollbar-thumb:hover {
+  background: var(--color-scrollbar-thumb-hover);
+}
+
+.scroll-area-indicator-left,
+.scroll-area-indicator-right {
+  top: 0;
+  bottom: 0;
+  width: var(--scroll-edge-size);
+}
+
+.scroll-area-indicator-top,
+.scroll-area-indicator-bottom {
+  right: 0;
+  left: 0;
+  height: var(--scroll-edge-size);
+}
+
+.scroll-area-indicator-left {
+  left: 0;
+  background: linear-gradient(90deg, var(--scroll-edge-indicator), transparent);
+}
+
+.scroll-area-indicator-right {
+  right: 0;
+  background: linear-gradient(270deg, var(--scroll-edge-indicator), transparent);
+}
+
+.scroll-area-indicator-top {
+  top: 0;
+  background: linear-gradient(180deg, var(--scroll-edge-indicator), transparent);
+}
+
+.scroll-area-indicator-bottom {
+  bottom: 0;
+  background: linear-gradient(0deg, var(--scroll-edge-indicator), transparent);
+}
+
+.scroll-area[data-edge-left='true'] > .scroll-area-indicator-left,
+.scroll-area[data-edge-right='true'] > .scroll-area-indicator-right,
+.scroll-area[data-edge-top='true'] > .scroll-area-indicator-top,
+.scroll-area[data-edge-bottom='true'] > .scroll-area-indicator-bottom {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-area-indicator {
+    transition: none;
+  }
+}
+

@@ -19,6 +19,11 @@ build/
 coverage/
 *.lcov
 
+# Browser and Figma generated output
+playwright-report/
+test-results/
+tools/figma-project/generated/
+
 # Logs & diagnostics
 *.log
 npm-debug.log*

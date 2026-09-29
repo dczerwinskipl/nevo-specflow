@@ -1,0 +1,128 @@
+export const colorTokens = [
+  {
+    stableId: 'Color/brand-primary',
+    name: 'Brand/Primary',
+    cssVariable: '--color-brand-primary',
+  },
+  { stableId: 'Color/canvas', name: 'Surface/Canvas', cssVariable: '--color-canvas' },
+  { stableId: 'Color/surface', name: 'Surface/Default', cssVariable: '--color-surface' },
+  {
+    stableId: 'Color/surface-raised',
+    name: 'Surface/Raised',
+    cssVariable: '--color-surface-raised',
+  },
+  {
+    stableId: 'Color/surface-subtle',
+    name: 'Surface/Subtle',
+    cssVariable: '--color-surface-subtle',
+  },
+  {
+    stableId: 'Color/surface-control',
+    name: 'Surface/Control',
+    cssVariable: '--color-surface-control',
+  },
+  { stableId: 'Color/surface-hover', name: 'Surface/Hover', cssVariable: '--color-surface-hover' },
+  {
+    stableId: 'Color/surface-selected',
+    name: 'Surface/Selected',
+    cssVariable: '--color-surface-selected',
+  },
+  {
+    stableId: 'Color/workspace-material',
+    name: 'Surface/Workspace material',
+    cssVariable: '--color-workspace-material',
+  },
+  { stableId: 'Color/overlay', name: 'Surface/Overlay', cssVariable: '--color-overlay' },
+  {
+    stableId: 'Color/action-primary',
+    name: 'Action/Primary',
+    cssVariable: '--color-action-primary',
+  },
+  {
+    stableId: 'Color/action-primary-hover',
+    name: 'Action/Primary hover',
+    cssVariable: '--color-action-primary-hover',
+  },
+  { stableId: 'Color/action-danger', name: 'Action/Danger', cssVariable: '--color-action-danger' },
+  {
+    stableId: 'Color/action-danger-subtle',
+    name: 'Action/Danger subtle',
+    cssVariable: '--color-action-danger-subtle',
+  },
+  { stableId: 'Color/focus-ring', name: 'Action/Focus ring', cssVariable: '--color-focus-ring' },
+  {
+    stableId: 'Color/on-primary',
+    name: 'Content/On primary',
+    cssVariable: '--color-content-on-primary',
+  },
+  {
+    stableId: 'Color/action-secondary',
+    name: 'Action/Secondary',
+    cssVariable: '--color-action-secondary',
+  },
+  {
+    stableId: 'Color/action-secondary-hover',
+    name: 'Action/Secondary hover',
+    cssVariable: '--color-action-secondary-hover',
+  },
+  {
+    stableId: 'Color/content-primary',
+    name: 'Content/Primary',
+    cssVariable: '--color-content-primary',
+  },
+  {
+    stableId: 'Color/content-secondary',
+    name: 'Content/Secondary',
+    cssVariable: '--color-content-secondary',
+  },
+  { stableId: 'Color/content-muted', name: 'Content/Muted', cssVariable: '--color-content-muted' },
+  {
+    stableId: 'Color/content-placeholder',
+    name: 'Content/Placeholder',
+    cssVariable: '--color-content-placeholder',
+  },
+  { stableId: 'Color/content-link', name: 'Content/Link', cssVariable: '--color-content-link' },
+  {
+    stableId: 'Color/content-link-hover',
+    name: 'Content/Link hover',
+    cssVariable: '--color-content-link-hover',
+  },
+  { stableId: 'Color/status-info', name: 'Status/Info', cssVariable: '--color-status-info' },
+  {
+    stableId: 'Color/status-success',
+    name: 'Status/Success',
+    cssVariable: '--color-status-success',
+  },
+  {
+    stableId: 'Color/status-attention',
+    name: 'Status/Attention',
+    cssVariable: '--color-status-attention',
+  },
+  { stableId: 'Color/status-danger', name: 'Status/Danger', cssVariable: '--color-status-danger' },
+  { stableId: 'Color/error', name: 'Content/Error', cssVariable: '--color-content-error' },
+  {
+    stableId: 'Color/border-default',
+    name: 'Border/Default',
+    cssVariable: '--color-border-default',
+  },
+  { stableId: 'Color/border-strong', name: 'Border/Strong', cssVariable: '--color-border-strong' },
+  { stableId: 'Color/border-subtle', name: 'Border/Subtle', cssVariable: '--color-border-subtle' },
+  {
+    stableId: 'Color/workspace-edge',
+    name: 'Border/Workspace edge',
+    cssVariable: '--color-workspace-edge',
+  },
+  { stableId: 'Color/divider', name: 'Border/Divider', cssVariable: '--color-divider' },
+  { stableId: 'Color/border-error', name: 'Border/Error', cssVariable: '--color-border-error' },
+  {
+    stableId: 'Color/scrollbar-thumb',
+    name: 'Scrollbar/Thumb',
+    cssVariable: '--color-scrollbar-thumb',
+  },
+  {
+    stableId: 'Color/scrollbar-thumb-hover',
+    name: 'Scrollbar/Thumb hover',
+    cssVariable: '--color-scrollbar-thumb-hover',
+  },
+] as const;
+

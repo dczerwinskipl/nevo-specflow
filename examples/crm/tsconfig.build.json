@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "tsBuildInfoFile": "./.tsbuild/crm-example.build.tsbuildinfo"
+  },
+  "exclude": ["src/**/*.stories.tsx", "src/**/*.test.tsx", "src/**/*.figma.tsx"]
+}

@@ -1,0 +1,28 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "incremental": true,
+    "tsBuildInfoFile": "./.tsbuild/figma-project.tsbuildinfo",
+    "types": ["node", "vite/client"],
+    "paths": {
+      "@nevo/figma-core": ["../../packages/figma-core/src/index.ts"],
+      "@nevo/figma-core/*": ["../../packages/figma-core/src/*"],
+      "@nevo/ui": ["../../packages/nevo-ui/src/index.ts"],
+      "@nevo/ui/*": ["../../packages/nevo-ui/src/*"],
+      "@nevo/specflow-ui/*": ["../../apps/specflow-ui/src/*"],
+      "nevo-example-crm": ["../../examples/crm/src/CrmExample.tsx"],
+      "nevo-figma-export/*": ["../figma-export/src/*"]
+    }
+  },
+  "include": ["src", "vite.config.ts"],
+  "exclude": ["src/importer.ts"]
+}

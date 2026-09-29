@@ -1,0 +1,22 @@
+.data-table-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-scrollbar-thumb) transparent;
+}
+
+.data-table-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.data-table-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.data-table-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-scrollbar-thumb);
+  border-radius: 999px;
+}
+
+.data-table-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-scrollbar-thumb-hover);
+}
+

@@ -1,0 +1,28 @@
+{
+  "name": "@nevo/figma-core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Product-neutral typed authoring, capture metadata, canonical IR, and validation for code-to-Figma projection.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts",
+    "./authoring": "./src/authoring/index.ts",
+    "./ir": "./src/ir/ir.ts",
+    "./schema": "./src/ir/schema.ts",
+    "./metadata": "./src/metadata.tsx"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "react": "19.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.12",
+    "react-dom": "19.1.1",
+    "vitest": "5.0.2"
+  }
+}

@@ -38,8 +38,8 @@ for why.
 
 **Ownership.** The shell composes (`program.addCommand(createStartCommand(ctx))`);
 it does not define a command's name, options, help or subcommands — the vertical does.
-Commander is a dependency of the vertical's `./cli` subpath only, never of its
-capability/runtime — the same way a feature owns its HTTP routes while the server root
+Commander is imported only by the vertical's `./cli` adapter; its
+framework-independent capability/runtime does not import Commander — the same way a feature owns its HTTP routes while the server root
 only mounts them. The source dependency `@nevo/specflow → @nevo/specflow-runtime` is a
 real `workspace:*` edge; the single-artifact form is only the _distribution_.
 

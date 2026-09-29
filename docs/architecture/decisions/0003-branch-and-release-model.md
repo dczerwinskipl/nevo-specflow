@@ -10,7 +10,7 @@ summary: >
   release/vX.Y branch. The next-version choice (minor vs major) is always an explicit
   input.
 related:
-  - development.git-workflow
+  - engineering.repository.git-workflow
   - architecture.repository-structure
 ---
 
@@ -47,7 +47,7 @@ produced from `release/v1.3` — the branch name stays at the minor granularity.
 
 - Pull request required; squash merge only. Merge commits and rebase merges are
   disabled repository-wide. The PR title is the squash commit message and follows
-  [Conventional Commits](../development/commit-conventions.md).
+  [Conventional Commits](../../engineering/repository/commit-conventions.md).
 - Linear history; force-push and branch deletion blocked; merged head branches
   auto-deleted.
 - Strict required status checks green; review conversations resolved; no blocking
@@ -60,7 +60,7 @@ produced from `release/v1.3` — the branch name stays at the minor granularity.
   (0 approvals) and reports why on every run. Adding a second Write collaborator and
   re-running converges to the target with no policy-file edit.
 
-**Versioning** — full detail in [releasing](../development/releasing.md).
+**Versioning** — full detail in [releasing](../../engineering/repository/releasing.md).
 
 - `version.json` on each branch is `{ channel, version }`. `main` is `alpha` / next
   `X.Y.0`; `release/vX.Y` moves `beta` → `rc` → `stable`, and a `stable` tag also opens

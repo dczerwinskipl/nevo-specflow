@@ -4,7 +4,7 @@ type: product
 title: Localization
 status: current
 read_when:
-  - adding user-facing copy to the CLI or Dashboard
+  - adding user-facing copy to the CLI or UI
   - designing a message, label, or notification
   - planning the i18n runtime
 summary: >
@@ -13,9 +13,9 @@ summary: >
   strings. The i18n library and locale-loading design are chosen when the UI/CLI reaches
   that concern.
 related:
-  - product.shared.terminology
-  - product.cli.interaction-model
-  - product.dashboard.interaction-model
+  - product.shared.vocabulary
+  - product.specflow.cli.interaction-model
+  - product.specflow.ui.interaction-model
 ---
 
 # Localization
@@ -42,12 +42,12 @@ post-launch nice-to-have — even though the first release can ship in English o
 
 - The concrete **i18n library** (e.g. an ICU MessageFormat implementation) and the
   **locale-loading architecture** (bundled vs. lazy, per-surface catalogs) are selected
-  when the CLI/Dashboard reaches this concern.
+  when the CLI/UI reaches this concern.
 - **Do not add an i18n runtime dependency now** just to satisfy this document.
 
-## CLI vs Dashboard
+## CLI vs UI
 
-The CLI and Dashboard have different presentation constraints (line-oriented terminal
+The CLI and UI have different presentation constraints (line-oriented terminal
 output vs. a rendered UI), so they may format differently. They **share product
-terminology** — see [terminology](terminology.md) — and should share the underlying
+terminology** — see [vocabulary](vocabulary.md) — and should share the underlying
 message catalog keys where the same concept is shown on both.

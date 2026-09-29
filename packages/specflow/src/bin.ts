@@ -1,6 +1,5 @@
-// Executable boundary for `nevo-spec`. Construct IO, run the Commander program,
-// map a thrown error to an exit code. No product logic here. The shebang is
-// added by the packaging tool's esbuild banner, not written in source.
+// Executable boundary for `nevo-specflow`. Construct IO, run the Commander
+// program, and map a thrown error to an exit code. No product logic here.
 
 import process from 'node:process';
 
@@ -19,7 +18,6 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   } catch (err) {
     if (err instanceof CommanderError) {
-      // `--help` / `--version` are a successful exit; a parse/usage error is 2.
       if (err.code === 'commander.helpDisplayed' || err.code === 'commander.version') return 0;
       return 2;
     }

@@ -1,41 +1,36 @@
-// The `nevo-spec` composition root. `@nevo/specflow` owns the CLI SHELL — the root
-// program, global flags, version, and the output / error / exit conventions —
-// and COMPOSES top-level commands. It does not define them: each capability
-// vertical owns its own Commander adapter (`@nevo/specflow-dashboard/cli`
-// exports `createDashboardCommand`), the same way a feature owns its HTTP routes
-// while the server root just mounts them.
+// The `nevo-specflow` composition root. `@nevo/specflow` owns the CLI shell:
+// root program, global flags, version, output/error/exit conventions, and command
+// composition. Capability verticals own their own Commander adapters.
 
-import { createDashboardCommand } from '@nevo/specflow-dashboard/cli';
+import { createStartCommand } from '@nevo/specflow-runtime/cli';
 import { Command } from 'commander';
 
-import { NEVO_SPEC_VERSION } from './version.js';
+import { NEVO_SPECFLOW_VERSION } from './version.js';
 
-/** Line sinks so the program never touches `process` directly (testable). */
 export interface ProgramIO {
   readonly stdout: (line: string) => void;
   readonly stderr: (line: string) => void;
 }
 
 /**
- * Build the `nevo-spec` program. Pure wiring — argv is parsed by the caller.
- * The real command tree is intentionally minimal for this bootstrap:
- *   nevo-spec --help
- *   nevo-spec --version
- *   nevo-spec dashboard   (defined in @nevo/specflow-dashboard/cli)
+ * Build the `nevo-specflow` program. Pure wiring — argv is parsed by the caller.
+ * The bootstrap surface intentionally contains only:
+ *   nevo-specflow --help
+ *   nevo-specflow --version
+ *   nevo-specflow start
  */
 export function createProgram(io: ProgramIO): Command {
-  const program = new Command('nevo-spec')
+  const program = new Command('nevo-specflow')
     .description('Nevo SpecFlow — spec-driven development for AI-assisted software engineering')
-    .version(NEVO_SPEC_VERSION, '-v, --version', 'print the installed nevo-spec version')
+    .version(NEVO_SPECFLOW_VERSION, '-v, --version', 'print the installed nevo-specflow version')
     .configureOutput({
       writeOut: (s) => io.stdout(s.replace(/\n$/, '')),
       writeErr: (s) => io.stderr(s.replace(/\n$/, '')),
     })
     .showHelpAfterError();
 
-  program.addCommand(createDashboardCommand({ stdout: io.stdout }));
+  program.addCommand(createStartCommand({ stdout: io.stdout }));
 
-  // Route every exit (help, version, parse error) through the caller.
   program.exitOverride();
   for (const cmd of program.commands) cmd.exitOverride();
 

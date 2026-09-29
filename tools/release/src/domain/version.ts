@@ -95,7 +95,7 @@ export function versionFileText({ channel, version }: VersionFile): string {
   return `${JSON.stringify(
     {
       $comment:
-        'The version this branch is working toward, and which channel it is in. CI derives its build version from this file plus the run number. See docs/development/releasing.md.',
+        'The version this branch is working toward, and which channel it is in. CI derives its build version from this file plus the run number. See docs/engineering/repository/releasing.md.',
       channel,
       version,
     },

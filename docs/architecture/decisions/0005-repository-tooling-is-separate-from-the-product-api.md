@@ -7,11 +7,11 @@ date: 2026-09-06
 summary: >
   Repository-internal developer tooling lives under `tools/*` as private, unscoped
   packages and never becomes a Nevo SpecFlow product surface by default. Product
-  capabilities are designed as `@nevo/*` packages and `nevo-spec` commands in their own
+  capabilities are designed as `@nevo/*` packages and `nevo-specflow` commands in their own
   right.
 related:
   - architecture.repository-structure
-  - development.cli.node-tooling-guidelines
+  - engineering.cli.architecture
 ---
 
 # 0005 — Repository tooling is separate from the product API
@@ -26,7 +26,7 @@ The repository needs its own developer tooling — documentation discovery and A
 authoring (`tools/docs`), release-line and version management (`tools/release`), GitHub
 governance (`tools/github`). Some of this overlaps conceptually with things Nevo SpecFlow
 may eventually offer as product features (spec/decision management, a project-knowledge
-CLI). All three are Commander CLIs built to the same architecture the product `nevo-spec`
+CLI). All three are Commander CLIs built to the same architecture the product `nevo-specflow`
 CLI is meant to follow — the pattern is shared, the command surface is not.
 
 Without a rule, the internal tools drift into becoming a de-facto product contract:
@@ -40,11 +40,11 @@ scope, and a refactor of a repo tool turns into a breaking product change.
 - **Naming.** Internal tools are **private** (`"private": true`) and **unscoped**
   (`nevo-repo-docs`, `nevo-repo-release`, `nevo-repo-github`). The `@nevo/*` scope is
   reserved for published product packages.
-- **No implicit promotion.** An internal tool does not become a `nevo-spec` subcommand
+- **No implicit promotion.** An internal tool does not become a `nevo-specflow` subcommand
   or a `@nevo/*` API just because it exists. If a capability should be a product
   surface, that is its own decision, designed independently; it may reuse extracted
   code, but the product contract is defined on its own terms.
-- **Docs boundary.** `docs/development/**` may reference the internal tools freely.
+- **Docs boundary.** `docs/engineering/**` may reference the internal tools freely.
   `docs/product/**` describes the product surface only; it does not present an internal
   tool's commands as an end-user contract.
 

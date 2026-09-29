@@ -16,12 +16,18 @@ describe('parseFrontmatter', () => {
 
   it('parses the YAML block, trims folded-scalar newlines, and returns the body', () => {
     const parsed = parseFrontmatter(
-      ['---', 'id: development.git-workflow', 'summary: >', '  one line', '---', '', '# Body'].join(
-        '\n',
-      ),
+      [
+        '---',
+        'id: engineering.repository.git-workflow',
+        'summary: >',
+        '  one line',
+        '---',
+        '',
+        '# Body',
+      ].join('\n'),
     );
     expect(parsed?.frontmatter).toMatchObject({
-      id: 'development.git-workflow',
+      id: 'engineering.repository.git-workflow',
       summary: 'one line',
     });
     expect(parsed?.body).toBe('# Body');
@@ -33,12 +39,12 @@ describe('parseFrontmatter', () => {
 });
 
 describe('validateDoc', () => {
-  it('accepts a well-formed development doc', () => {
+  it('accepts a well-formed engineering doc', () => {
     expect(
       validateDoc(
         doc({
-          id: 'development.x',
-          type: 'development',
+          id: 'engineering.x',
+          type: 'engineering',
           title: 'X',
           status: 'current',
           read_when: ['doing x'],

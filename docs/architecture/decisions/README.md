@@ -10,18 +10,14 @@ summary: >
 
 # Architecture Decision Records
 
-An ADR records a decision that is **durable** and **cross-cutting** — it shapes how
-future work is done. Routine local choices do not get an ADR.
+An ADR records a decision that is durable and cross-cutting. Routine local choices do not get
+an ADR. Use [`../../templates/adr-template.md`](../../templates/adr-template.md).
 
-Format: [`../../templates/adr-template.md`](../../templates/adr-template.md). Files are
-numbered `NNNN-kebab-title.md`. A superseded ADR keeps `status: superseded` and points
-to its replacement.
-
-| ADR                                                                 | Status  | Decision                                                                                    |
-| ------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------- |
-| [0001](0001-record-architecture-decisions.md)                       | current | Use lightweight numbered Markdown ADRs.                                                     |
-| [0002](0002-toolchain-selection.md)                                 | current | pnpm + Turborepo + TypeScript + ESLint flat + Prettier + Vitest, on Node LTS.               |
-| [0003](0003-branch-and-release-model.md)                            | current | `main` + `feature/` + `fix/` + long-lived `release/vX.Y`; squash-only merges.               |
-| [0004](0004-mit-license.md)                                         | current | License the repository MIT.                                                                 |
-| [0005](0005-repository-tooling-is-separate-from-the-product-api.md) | current | Repo tooling under `tools/*` (private, unscoped) never implicitly becomes a product API.    |
-| [0006](0006-product-ships-as-a-single-bundled-artifact.md)          | current | `@nevo/specflow` ships as one esbuild-bundled tarball; source package boundaries stay real. |
+- [0001 — Record architecture decisions](0001-record-architecture-decisions.md)
+- [0002 — Toolchain selection](0002-toolchain-selection.md)
+- [0003 — Branch and release model](0003-branch-and-release-model.md)
+- [0004 — MIT license](0004-mit-license.md)
+- [0005 — Repository tooling is separate from the product API](0005-repository-tooling-is-separate-from-the-product-api.md)
+- [0006 — The product ships as a single bundled artifact](0006-product-ships-as-a-single-bundled-artifact.md)
+- [0007 — Documentation architecture and taxonomy](0007-documentation-architecture-and-taxonomy.md) — draft
+- [0008 — Product naming and surfaces](0008-product-naming-and-surfaces.md)

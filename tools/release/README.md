@@ -1,8 +1,8 @@
 # `nevo-repo-release`
 
 Repository-internal release + version tooling. Private, never published, and never a
-`nevo-spec` product surface (ADR 0005). The full flow is in
-[`docs/development/releasing.md`](../../docs/development/releasing.md).
+`nevo-specflow` product surface (ADR 0005). The full flow is in
+[`docs/engineering/repository/releasing.md`](../../docs/engineering/repository/releasing.md).
 
 `version.json` at the repository root is `{ channel, version }` for whichever branch it
 is on. SemVer parsing/compare is the `semver` package; only the channel/branch rules

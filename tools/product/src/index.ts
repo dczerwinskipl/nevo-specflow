@@ -8,4 +8,4 @@ export { resolveProductVersion, type ResolveVersionInput } from './version.js';
 export { findRepoRoot, repoPaths, type RepoPaths } from './paths.js';
 export { StepFailedError } from './exec.js';
 export { createProgram, type CliIO } from './cli.js';
-export { DASHBOARD_BOOTSTRAP_MARKER } from './markers.js';
+export { RUNTIME_BOOTSTRAP_MARKER } from './markers.js';

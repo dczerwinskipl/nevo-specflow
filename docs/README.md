@@ -4,49 +4,34 @@ type: hub
 title: Nevo SpecFlow documentation
 status: current
 summary: >
-  Top-level, human-authored map of the documentation, split by audience:
-  development (how we build), product (what we build), architecture (durable decisions).
+  Top-level map of architecture, engineering, design-system, product, reference, and
+  instruction documentation.
 ---
 
 # Nevo SpecFlow documentation
 
-The documentation is split by audience: **development** (how it is built), **product**
-(what it does), **architecture** (durable decisions). Docs that describe intent ahead of
-the code they govern carry `status: draft` in their frontmatter.
+Documentation is organized by responsibility.
 
-For a flat, auto-generated listing of every indexed document, see
-[`index.generated.md`](index.generated.md) — rebuilt by `pnpm docs:check --write`, do
-not edit it by hand.
+Requirements in authoritative docs use [normative language and document authority](architecture/principles/normative-language.md). Current documents are authoritative for the scope they own; drafts MUST NOT override them.
 
-## By audience
+- [Architecture](architecture/) — durable boundaries, invariants, repository structure, ADRs.
+- [Engineering](engineering/) — implementation and repository engineering guidance.
+- [Design system](design-system/) — reusable Nevo UI principles and implementation guidance.
+- [Product](product/) — SpecFlow product behavior and user-facing interaction models.
+- [Reference](reference/) — exact contracts and factual lookup material.
+- [Instructions](instructions/) — task-oriented routing to authoritative documentation.
 
-| Area                             | You are here to learn…                                                               |
-| -------------------------------- | ------------------------------------------------------------------------------------ |
-| [`development/`](development/)   | How to build in this repository — Git workflow, tooling, testing, UI implementation. |
-| [`product/`](product/)           | What Nevo SpecFlow is meant to do — personas, interaction models, terminology, i18n. |
-| [`architecture/`](architecture/) | Durable technical boundaries and decision records (ADRs).                            |
-
-## Separation of concerns
-
-- A rule about **how a React component composes classes** is a development doc
-  (`development/ui/react/`).
-- A rule about **what the user sees while an AI turn waits for a tool** is a product
-  doc (`product/dashboard/ai-session-ux.md`).
-- A **decision that constrains the whole repository** is an ADR
-  (`architecture/decisions/`).
+For the generated flat index, see [`index.generated.md`](index.generated.md).
 
 ## Finding a document
 
 ```bash
-pnpm docs:list                     # everything, by id
-pnpm docs:find "git workflow"      # rank by query
-pnpm docs:context "react tailwind" # the files to load for a task
+pnpm docs:list
+pnpm docs:find "git workflow"
+pnpm docs:context "react tailwind"
 ```
 
-## Contributing to the docs
+## Authoring
 
-Every authored file carries YAML frontmatter (`id`, `type`, `title`, `status`,
-`read_when`, `summary`, optional `related`); `docs/templates/**` and generated files
-are the only exemptions. Use [`templates/`](templates/), or `pnpm docs:adr new "Title"`
-for a new ADR. `pnpm docs:check` validates the whole corpus and the generated index,
-and runs in CI.
+Every authored document carries YAML frontmatter. Generated files and [`templates/`](templates/)
+are exempt. Run `pnpm docs:check` to validate the corpus and generated index.

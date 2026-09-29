@@ -23,10 +23,10 @@ The three `workflow_dispatch` workflows take an optional `CI_GITHUB_RELEASE_TOKE
 secret (a fine-grained, repository-scoped PAT) so a PR they open triggers `pull_request`
 CI and can auto-merge; without it they push the branch and print the exact
 `gh pr create …` command. See
-[`docs/development/releasing.md`](../../docs/development/releasing.md#ci_github_release_token).
+[`docs/engineering/repository/releasing.md`](../../docs/engineering/repository/releasing.md#ci_github_release_token).
 
-Full behavior: [`docs/development/ci.md`](../../docs/development/ci.md) and
-[`docs/development/releasing.md`](../../docs/development/releasing.md).
+Full behavior: [`docs/engineering/repository/ci.md`](../../docs/engineering/repository/ci.md) and
+[`docs/engineering/repository/releasing.md`](../../docs/engineering/repository/releasing.md).
 
 ## Action pinning
 
@@ -53,12 +53,12 @@ Current pins:
 ## CodeQL
 
 Deliberately **not** enabled yet. The repository so far is Node tooling under `tools/*`
-plus `packages/specflow` / `packages/specflow-dashboard`, and the latter are a
+plus `packages/specflow` / `packages/specflow-runtime`, and the latter are a
 deliberately minimal routing / packaging **bootstrap** (a Commander router, one
 capability function returning a marker) — not substantive application code. CodeQL would
 have almost nothing to analyse.
 
 Enable it in the change that lands the **first substantive migrated product
-implementation** (real dashboard runtime / server / providers / spec engine): add a
+implementation** (real Runtime / UI / providers / spec engine): add a
 `github/codeql-action` workflow for `javascript-typescript` and make `CodeQL` a required
 check in the branch rulesets.

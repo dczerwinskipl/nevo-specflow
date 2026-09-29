@@ -11,8 +11,8 @@ summary: >
   lint ecosystem) — each with an explicit upgrade condition.
 related:
   - architecture.repository-structure
-  - development.local-setup
-  - development.dependencies-and-security
+  - engineering.repository.local-setup
+  - engineering.repository.dependencies-and-security
 ---
 
 # 0002 — Toolchain selection
@@ -50,7 +50,7 @@ Two ecosystem realities forced a version to be held back:
 | ESLint / typescript-eslint | `10.10.0` / `8.69.0`, flat config                                    | Latest stable. Type-aware config (`recommendedTypeChecked` + `stylisticTypeChecked`, project service) applies to `**/*.{ts,mts,cts,tsx}` — every `tools/*` package's `src` **and** `test`. Config `.mjs` files use the non-type-aware rules. |
 | Prettier                   | `3.9.6` + `eslint-config-prettier` `10.1.8`                          | Formatting stays entirely in Prettier, disabled in ESLint.                                                                                                                                                                                   |
 | Vitest                     | `5.0.0`                                                              | The test runner for every `tools/*` package. `tsc` emits each tool to `dist/`; the `bin` points at the built artifact.                                                                                                                       |
-| Commander                  | `15.0.0`                                                             | The CLI framework for the `tools/*` executables and the pattern for the future `nevo-spec` product CLI — see [CLI architecture](../../development/cli/).                                                                                     |
+| Commander                  | `15.0.0`                                                             | The CLI framework for the `tools/*` executables and the pattern for the future `nevo-specflow` product CLI — see [CLI architecture](../../engineering/cli/).                                                                                 |
 
 Project pnpm settings (`engineStrict`, `savePrefix: ""` for exact pins, `nodeVersion`
 so resolution and `engines` checks use the pinned Node regardless of the running one)

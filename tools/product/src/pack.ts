@@ -54,13 +54,13 @@ export async function packProduct(opts: PackOptions = {}): Promise<PackResult> {
   const paths = repoPaths(findRepoRoot(process.cwd()));
 
   if (!opts.skipBuild) {
-    // Scoped, turbo-free builds of exactly what pack consumes: the dashboard
+    // Scoped, turbo-free builds of exactly what pack consumes: the Runtime
     // capability (esbuild resolves its built dist) and the release tool (the
     // canonical version). `pnpm --filter` runs the package's own `tsc`, so this
     // is safe to nest inside `turbo run test` and never triggers a global build.
-    log('building pack inputs (nevo-repo-release, @nevo/specflow-dashboard)…');
+    log('building pack inputs (nevo-repo-release, @nevo/specflow-runtime)…');
     run('pnpm', ['--filter', 'nevo-repo-release', 'build'], { cwd: paths.root, env: opts.env });
-    run('pnpm', ['--filter', '@nevo/specflow-dashboard', 'build'], {
+    run('pnpm', ['--filter', '@nevo/specflow-runtime', 'build'], {
       cwd: paths.root,
       env: opts.env,
     });

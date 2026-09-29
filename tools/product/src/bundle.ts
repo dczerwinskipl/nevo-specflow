@@ -1,6 +1,6 @@
-// The one canonical bundler for the product. esbuild compiles the `nevo-spec`
+// The one canonical bundler for the product. esbuild compiles the `nevo-specflow`
 // entry and every INTERNAL workspace package it imports (currently
-// `@nevo/specflow-dashboard`) — plus `commander` — into a single self-contained
+// `@nevo/specflow-runtime`) — plus `commander` — into a single self-contained
 // ESM file. That is why the packed tarball works with no registry and no
 // workspace: there is nothing left to resolve at install time.
 //
@@ -18,7 +18,7 @@ export interface BundleInput {
   readonly entry: string;
   /** absolute or cwd-relative output (`dist/bin.js`). */
   readonly outfile: string;
-  /** value baked in for `NEVO_SPEC_VERSION_INJECTED`. */
+  /** value baked in for `NEVO_SPECFLOW_VERSION_INJECTED`. */
   readonly version: string;
   readonly cwd?: string;
 }
@@ -38,7 +38,7 @@ export async function bundleProduct(input: BundleInput): Promise<{ outfile: stri
     target: 'node24',
     // Everything is compiled in — the artifact has zero runtime dependencies.
     packages: 'bundle',
-    define: { NEVO_SPEC_VERSION_INJECTED: JSON.stringify(input.version) },
+    define: { NEVO_SPECFLOW_VERSION_INJECTED: JSON.stringify(input.version) },
     banner: { js: '#!/usr/bin/env node' },
     legalComments: 'none',
     sourcemap: false,

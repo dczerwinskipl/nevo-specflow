@@ -3,9 +3,9 @@
 ## Ground rules
 
 - **No direct commits to `main` or `release/v*`.** All changes go through a pull
-  request. See [`docs/development/git-workflow.md`](docs/development/git-workflow.md).
+  request. See [`docs/engineering/repository/git-workflow.md`](docs/engineering/repository/git-workflow.md).
 - **Squash merge only.** The **PR title** becomes the commit message and must follow
-  [Conventional Commits](docs/development/commit-conventions.md). Checkpoint commits on
+  [Conventional Commits](docs/engineering/repository/commit-conventions.md). Checkpoint commits on
   your branch can be informal.
 - **Keep changes reviewable.** One coherent change per PR; no unrelated diffs.
 - Review conversations must be resolved and required CI checks green before merge.
@@ -26,17 +26,17 @@ gh pr create                            # Conventional Commits title; fill the t
 `pnpm check` covers formatting, lint, documentation validation and index freshness, the
 `version.json` transition gate, and every package's typecheck / test / build.
 Prerequisites and the command reference:
-[`docs/development/local-setup.md`](docs/development/local-setup.md).
+[`docs/engineering/repository/local-setup.md`](docs/engineering/repository/local-setup.md).
 
 To build and try the product CLI from a real tarball (not a workspace link):
 
 ```bash
 pnpm product:pack        # -> .artifacts/nevo-specflow-<version>.tgz
-pnpm dogfood:install     # pack + install globally + smoke `nevo-spec`
+pnpm dogfood:install     # pack + install globally + smoke `nevo-specflow`
 ```
 
-See [`docs/development/product-packaging.md`](docs/development/product-packaging.md) and
-[`docs/development/dogfooding.md`](docs/development/dogfooding.md).
+See [`docs/engineering/repository/product-packaging.md`](docs/engineering/repository/product-packaging.md) and
+[`docs/engineering/repository/dogfooding.md`](docs/engineering/repository/dogfooding.md).
 
 ## Documentation changes
 
@@ -47,7 +47,7 @@ templates in [`docs/templates/`](docs/templates/), or `pnpm docs:adr new "Title"
 new ADR. Run `pnpm docs:check --write` to refresh the generated index (it carries no
 timestamp, so a no-op run produces no diff) and commit it with your change.
 
-Keep the separation: engineering how-to in `docs/development/**`, product behaviour and
+Keep the separation: engineering how-to in `docs/engineering/**`, product behaviour and
 personas in `docs/product/**`, durable decisions in `docs/architecture/**`.
 
 ## Decisions

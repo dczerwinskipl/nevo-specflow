@@ -6,14 +6,14 @@ status: current
 date: 2026-09-06
 summary: >
   `@nevo/specflow` is distributed as one self-contained tarball. `nevo-repo-product`
-  (esbuild) bundles the `nevo-spec` entry, the internal workspace capability packages
+  (esbuild) bundles the `nevo-specflow` entry, the internal workspace capability packages
   and `commander` into `dist/bin.js`, so the artifact installs with no registry and no
   workspace. Source package boundaries are unchanged — only the distribution is one file.
 related:
   - adr.0002-toolchain-selection
   - adr.0005-repository-tooling-is-separate-from-the-product-api
   - architecture.repository-structure
-  - development.product-packaging
+  - engineering.repository.product-packaging
 ---
 
 # 0006 — The product ships as a single bundled artifact
@@ -24,8 +24,8 @@ Current.
 
 ## Context
 
-`@nevo/specflow` (the public `nevo-spec` CLI) is composed from sibling workspace
-packages — the first is `@nevo/specflow-dashboard`, the dashboard capability. Inside the
+`@nevo/specflow` (the public `nevo-specflow` CLI) is composed from sibling workspace
+packages — the first is `@nevo/specflow-runtime`, the Runtime capability. Inside the
 monorepo those resolve through `workspace:*`. Outside it — a `pnpm pack` tarball
 installed from a local file or a GitHub Release, with **no registry** — a
 `workspace:*` (or `file:../…`) dependency cannot resolve: the sibling package is not
@@ -43,8 +43,8 @@ registry is a different problem.
 ## Decision
 
 - **The distributable is one self-contained file.** `nevo-repo-product`
-  (`tools/product`) runs **esbuild** to compile the `nevo-spec` entry, every internal
-  workspace package it imports (`@nevo/specflow-dashboard`, both `.` and `./cli`), and
+  (`tools/product`) runs **esbuild** to compile the `nevo-specflow` entry, every internal
+  workspace package it imports (`@nevo/specflow-runtime`, both `.` and `./cli`), and
   `commander` into `packages/specflow/dist/bin.js` — an ESM file with a
   `#!/usr/bin/env node` banner and the version baked in. The packed tarball is
   `dist/bin.js` + a minimal `package.json` (real version, **no `dependencies`**, no
@@ -55,23 +55,23 @@ registry is a different problem.
   artifact. Repository tools stay plain `tsc`. `@nevo/specflow`'s `build` script is
   exactly `node ../../tools/product/dist/bin.js bundle`.
 - **Source boundaries are real and unchanged.** `@nevo/specflow` depends on
-  `@nevo/specflow-dashboard` as a genuine `workspace:*` package. Only the _distribution_
+  `@nevo/specflow-runtime` as a genuine `workspace:*` package. Only the _distribution_
   is single-artifact; the _source_ stays a real multi-package boundary, and CI
   builds/tests it as such.
 - **Vertical command ownership.** `@nevo/specflow` owns the CLI **shell** — the root
-  `nevo-spec` program, `--version`, global flags, and the output / error / exit
+  `nevo-specflow` program, `--version`, global flags, and the output / error / exit
   conventions — and **composes** top-level commands. Each capability vertical owns its
-  own Commander adapter: `@nevo/specflow-dashboard` exposes the framework-independent
-  capability at `.` (`runDashboard(): DashboardResult`, no Commander) **and** its
-  command adapter at `./cli` (`createDashboardCommand(ctx): Command` — `commander` is a
-  dependency of that subpath only, never of the capability). The shell does
-  `program.addCommand(createDashboardCommand(ctx))` — it registers the command, it does
+  own Commander adapter: `@nevo/specflow-runtime` exposes the framework-independent
+  capability at `.` (`startRuntime(): RuntimeStartResult`, no Commander) **and** its
+  command adapter at `./cli` (`createStartCommand(ctx): Command` — `commander` is imported only by
+  that adapter; the framework-independent capability does not import it). The shell does
+  `program.addCommand(createStartCommand(ctx))` — it registers the command, it does
   not define its name, options, help or subcommands. This mirrors how a feature owns its
   HTTP routes while the server root only mounts them: Commander, like a web framework,
   is confined to the adapter and never leaks into the capability / runtime.
-- **`@nevo/specflow-dashboard` is `private: true`** — never published or installed on its
+- **`@nevo/specflow-runtime` is `private: true`** — never published or installed on its
   own. It reaches users only bundled inside `@nevo/specflow`.
-- **The version comes from the release model.** The bundle's `NEVO_SPEC_VERSION_INJECTED`
+- **The version comes from the release model.** The bundle's `NEVO_SPECFLOW_VERSION_INJECTED`
   and the packed `package.json` version both come from `nevo-release version`; no
   SemVer/channel logic is duplicated, and the installed artifact never reads the
   repository's `version.json`.
@@ -81,7 +81,7 @@ registry is a different problem.
 
 ## Consequences
 
-- A user installs **one** artifact (`nevo-specflow-<version>.tgz`) and `nevo-spec` works
+- A user installs **one** artifact (`nevo-specflow-<version>.tgz`) and `nevo-specflow` works
   — no registry, no `pnpm link`, no workspace, no second package to fetch.
 - There is a build step (esbuild) between "workspace" and "artifact". It is fast,
   single-purpose, pinned, and covered by tests (`bundleProduct` + an isolated

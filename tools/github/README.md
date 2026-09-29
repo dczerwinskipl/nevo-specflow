@@ -2,7 +2,7 @@
 
 Idempotent administration of this repository's GitHub settings through the
 authenticated [`gh`](https://cli.github.com/) CLI. Private, never published, and
-never a `nevo-spec` product surface (ADR 0005).
+never a `nevo-specflow` product surface (ADR 0005).
 
 > A checked-in JSON file does not configure GitHub by itself. The source of truth is
 > GitHub's actual settings. [`repository-policy.json`](repository-policy.json) is the
@@ -96,4 +96,4 @@ private vulnerability reporting are toggled per repository/plan. Enable and veri
 `gh api -X PUT repos/{owner}/{repo}/vulnerability-alerts` /
 `gh api -X PUT repos/{owner}/{repo}/private-vulnerability-reporting`. Report actual
 observed state — see
-[`docs/development/dependencies-and-security.md`](../../docs/development/dependencies-and-security.md).
+[`docs/engineering/repository/dependencies-and-security.md`](../../docs/engineering/repository/dependencies-and-security.md).

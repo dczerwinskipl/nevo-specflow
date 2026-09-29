@@ -1,6 +1,7 @@
 export type Provider = 'claude' | 'codex' | 'antigravity';
 export type ContentMode = 'embed' | 'reference';
 export type Delivery = 'inline' | 'reference' | 'auto';
+export type ActivationPolicy = 'explicit';
 
 export interface ConditionalApplies {
   readonly when: string;
@@ -18,11 +19,17 @@ export interface AgentInstruction {
   readonly delivery: Delivery;
 }
 
+export interface AgentKnowledge {
+  readonly required: readonly string[];
+}
+
 export interface AgentDefinition {
   readonly version: 1;
   readonly id: string;
   readonly name: string;
   readonly description: string;
+  readonly activation: ActivationPolicy;
+  readonly knowledge: AgentKnowledge;
   readonly file: string;
   readonly instructions: readonly AgentInstruction[];
 }

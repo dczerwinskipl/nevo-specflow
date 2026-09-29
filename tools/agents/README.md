@@ -4,12 +4,17 @@ Repository-internal builder for canonical Nevo agent profiles. Definitions and i
 
 ## Canonical model
 
-Each `.nevo/agents/definitions/*.yaml` file contains profile metadata plus structured instruction references. Instruction bodies live in `.nevo/agents/instructions/*.md` fragments.
+Each `.nevo/agents/definitions/*.yaml` file contains profile metadata, an explicit activation policy, required repository knowledge, and structured instruction references. Instruction bodies live in `.nevo/agents/instructions/*.md` fragments.
 
 ```yaml
+version: 1
 id: nevo-agents:implementer
 name: Implementer
 description: Implements scoped changes.
+activation: explicit
+knowledge:
+  required:
+    - architecture.principles.normative-language
 instructions:
   - id: workflow
     title: Workflow
@@ -27,13 +32,18 @@ instructions:
     delivery: auto
 ```
 
-`required` and `applies` describe semantics; `delivery` describes presentation. They are intentionally independent. `auto` is resolved by the build mode.
+`activation: explicit` means profile selection belongs to the user, workflow, or orchestrator. Generated skill descriptions repeat that contract so provider discovery should not treat task similarity as permission to switch profiles.
+
+`knowledge.required` contains exact stable documentation IDs that must be loaded before work begins. Build/check validates those IDs against `docs/index.generated.json` and rejects missing, `deprecated`, or `superseded` documents. Run `pnpm docs:check` before agent generation when documentation changed.
+
+`required` and `applies` describe instruction semantics; `delivery` describes presentation. They are intentionally independent. `auto` is resolved by the build mode.
 
 Instruction Markdown files are fragments: the renderer owns H1/H2 headings, so source fragments may start at H3 or lower but must not contain H1/H2 headings.
 
 ## Build
 
 ```bash
+pnpm docs:check
 pnpm agents:build
 pnpm agents:build -- --content=reference
 pnpm agents:build -- --providers=claude

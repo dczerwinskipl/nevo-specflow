@@ -2,6 +2,12 @@ version: 1
 id: nevo-agents:implementer-ui
 name: UI Implementer
 description: Implements scoped UI and design-system changes while following repository architecture, documentation, visual, and verification rules.
+activation: explicit
+knowledge:
+  required:
+    - architecture.principles.normative-language
+    - engineering.shared.code-organization
+    - design-system.principles.system-boundary
 instructions:
   - id: role
     title: Implementer role

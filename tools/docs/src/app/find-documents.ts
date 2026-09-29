@@ -23,6 +23,7 @@ export interface ContextEntry {
   readonly id: string;
   readonly file: string;
   readonly title: string;
+  readonly status: string;
   readonly summary: string;
   readonly read_when: string[];
   readonly scope?: string;
@@ -35,6 +36,7 @@ function contextEntry(d: DocRecord): ContextEntry {
     id: asString(d.id),
     file: d.file,
     title: asString(d.title),
+    status: asString(d.status),
     summary: typeof d.summary === 'string' ? d.summary : '',
     read_when: Array.isArray(d.read_when) ? d.read_when.map((x) => asString(x)) : [],
     ...(typeof d.scope === 'string' ? { scope: d.scope } : {}),
@@ -43,12 +45,32 @@ function contextEntry(d: DocRecord): ContextEntry {
   };
 }
 
-/** Resolve exact stable ids in caller-provided order. */
+function inactiveDocumentDescription(doc: DocRecord): string {
+  const id = asString(doc.id);
+  const status = asString(doc.status);
+  const replacement =
+    typeof doc.superseded_by === 'string' && doc.superseded_by
+      ? `; use '${doc.superseded_by}' instead`
+      : '';
+  return `'${id}' (${status}${replacement})`;
+}
+
+/** Resolve exact active stable ids in caller-provided order. */
 export function getDocuments(repo: DocRepository, ids: readonly string[]): ContextEntry[] {
   const docs = loadValidatedCorpus(repo);
   const byId = new Map(docs.map((doc) => [asString(doc.id), doc]));
   const missing = ids.filter((id) => !byId.has(id));
   if (missing.length) throw new UsageError(`get: unknown document id(s): ${missing.join(', ')}`);
+
+  const inactive = ids
+    .map((id) => byId.get(id)!)
+    .filter((doc) => INACTIVE_STATUSES.includes(asString(doc.status) as never));
+  if (inactive.length) {
+    throw new UsageError(
+      `get: inactive document id(s): ${inactive.map(inactiveDocumentDescription).join(', ')}`,
+    );
+  }
+
   return ids.map((id) => contextEntry(byId.get(id)!));
 }
 

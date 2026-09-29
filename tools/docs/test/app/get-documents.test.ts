@@ -24,17 +24,43 @@ read_when:
 summary: B doc.
 ---
 `,
+  'docs/replacement.md': `---
+id: engineering.replacement
+type: engineering
+title: Replacement
+status: current
+read_when:
+  - doing replacement work
+summary: Current replacement.
+---
+`,
+  'docs/old.md': `---
+id: engineering.old
+type: engineering
+title: Old
+status: superseded
+read_when:
+  - doing old work
+summary: Superseded guidance.
+superseded_by: engineering.replacement
+---
+`,
 });
 
 describe('getDocuments', () => {
-  it('resolves exact stable ids in caller order', () => {
-    expect(getDocuments(repo, ['engineering.b', 'engineering.a']).map((d) => d.id)).toEqual([
-      'engineering.b',
-      'engineering.a',
-    ]);
+  it('resolves exact stable ids in caller order and exposes status', () => {
+    const entries = getDocuments(repo, ['engineering.b', 'engineering.a']);
+    expect(entries.map((d) => d.id)).toEqual(['engineering.b', 'engineering.a']);
+    expect(entries.map((d) => d.status)).toEqual(['current', 'current']);
   });
 
   it('fails closed for unknown ids', () => {
     expect(() => getDocuments(repo, ['engineering.missing'])).toThrow(/unknown document id/);
+  });
+
+  it('fails closed for inactive ids and points at a superseding document when available', () => {
+    expect(() => getDocuments(repo, ['engineering.old'])).toThrow(
+      /engineering\.old.*superseded.*engineering\.replacement/,
+    );
   });
 });

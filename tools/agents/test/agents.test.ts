@@ -9,12 +9,23 @@ import { buildAgents, checkAgents, parseProviders } from '../src/generate.js';
 import { loadAgentDefinition, providerSkillName } from '../src/load.js';
 import { renderSkill } from '../src/render.js';
 
+const REQUIRED_DOC = 'architecture.principles.normative-language';
+
+function writeIndex(root: string, status = 'current'): void {
+  mkdirSync(join(root, 'docs'), { recursive: true });
+  writeFileSync(
+    join(root, 'docs/index.generated.json'),
+    `${JSON.stringify({ docs: [{ id: REQUIRED_DOC, status }] }, null, 2)}\n`,
+  );
+}
+
 function fixture(): string {
   const root = mkdtempSync(join(tmpdir(), 'nevo-agents-'));
   writeFileSync(join(root, 'package.json'), '{}');
   writeFileSync(join(root, 'pnpm-workspace.yaml'), 'packages: []\n');
   mkdirSync(join(root, '.nevo/agents/definitions'), { recursive: true });
   mkdirSync(join(root, '.nevo/agents/instructions'), { recursive: true });
+  writeIndex(root);
   writeFileSync(join(root, '.nevo/agents/instructions/role.md'), 'Do the work.\n');
   writeFileSync(join(root, '.nevo/agents/instructions/git.md'), 'Follow Git rules.\n');
   writeFileSync(
@@ -24,6 +35,10 @@ function fixture(): string {
       'id: nevo-agents:implementer',
       'name: Implementer',
       'description: Implements changes.',
+      'activation: explicit',
+      'knowledge:',
+      '  required:',
+      `    - ${REQUIRED_DOC}`,
       'instructions:',
       '  - id: role',
       '    title: Role',
@@ -50,6 +65,8 @@ describe('agent definition', () => {
     const root = fixture();
     const agent = loadAgentDefinition(root, '.nevo/agents/definitions/implementer.yaml');
     expect(agent.id).toBe('nevo-agents:implementer');
+    expect(agent.activation).toBe('explicit');
+    expect(agent.knowledge.required).toEqual([REQUIRED_DOC]);
     expect(agent.instructions.map((instruction) => instruction.content)).toEqual([
       'Do the work.',
       'Follow Git rules.',
@@ -64,12 +81,36 @@ describe('agent definition', () => {
     );
   });
 
+  it('rejects unsupported activation policies', () => {
+    const root = fixture();
+    const path = join(root, '.nevo/agents/definitions/implementer.yaml');
+    writeFileSync(
+      path,
+      readFileSync(path, 'utf8').replace('activation: explicit', 'activation: auto'),
+    );
+    expect(() => loadAgentDefinition(root, '.nevo/agents/definitions/implementer.yaml')).toThrow(
+      /activation.*explicit/,
+    );
+  });
+
   it('projects canonical names to provider-safe kebab names', () => {
     expect(providerSkillName('nevo-agents:implementer-ui')).toBe('nevo-agents-implementer-ui');
   });
 });
 
 describe('rendering', () => {
+  it('projects explicit activation and required knowledge into the skill', () => {
+    const root = fixture();
+    const agent = loadAgentDefinition(root, '.nevo/agents/definitions/implementer.yaml');
+    const output = join(root, '.agents/skills/nevo-agents-implementer/SKILL.md');
+    const rendered = renderSkill(root, agent, output, 'embed').content;
+    expect(rendered).toContain(
+      'Use only when the nevo-agents:implementer profile is explicitly selected',
+    );
+    expect(rendered).toContain('**Activation:** explicit only.');
+    expect(rendered).toContain(`pnpm docs:get ${REQUIRED_DOC}`);
+  });
+
   it('embed mode materializes auto conditional content', () => {
     const root = fixture();
     const agent = loadAgentDefinition(root, '.nevo/agents/definitions/implementer.yaml');
@@ -102,6 +143,21 @@ describe('build/check', () => {
     expect(
       readFileSync(join(root, '.claude/skills/nevo-agents-implementer/SKILL.md'), 'utf8'),
     ).toBe(readFileSync(join(root, '.agents/skills/nevo-agents-implementer/SKILL.md'), 'utf8'));
+  });
+
+  it('fails when required knowledge points to an unknown document', () => {
+    const root = fixture();
+    const path = join(root, '.nevo/agents/definitions/implementer.yaml');
+    writeFileSync(path, readFileSync(path, 'utf8').replace(REQUIRED_DOC, 'engineering.missing'));
+    expect(() => buildAgents(root, ['claude'], 'embed')).toThrow(/knowledge\.required.*unknown/);
+  });
+
+  it('fails when required knowledge points to an inactive document', () => {
+    const root = fixture();
+    writeIndex(root, 'superseded');
+    expect(() => buildAgents(root, ['claude'], 'embed')).toThrow(
+      /knowledge\.required.*inactive.*superseded/,
+    );
   });
 
   it('partial provider builds do not delete generated skills from another provider root', () => {

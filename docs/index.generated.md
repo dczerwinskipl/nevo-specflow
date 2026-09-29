@@ -88,7 +88,7 @@ Regenerate with `pnpm docs:check --write`. Human-authored navigation lives in [`
 |---|---|---|---|
 | `product.shared.localization` | [Localization](product/shared/localization.md) | current | Localization is a standing product requirement. The first release may be English-only, but all user-facing copy must be localizable and must not be scattered as hard-coded strings. The i18n library and locale-loading design are chosen when the UI/CLI reaches that concern. |
 | `product.shared.vocabulary` | [Product vocabulary](product/shared/vocabulary.md) | current | Canonical names and product nouns for Nevo SpecFlow. Defines the product, CLI, Runtime, UI, Nevo UI design system, package naming, and shared workflow vocabulary. |
-| `product.specflow.cli.interaction-model` | [CLI interaction model](product/specflow/cli/interaction-model.md) | draft | Command shape (nevo-specflow <noun> <verb>), the stdout/stderr/exit-code contract shared with agents and CI, deterministic output, and how confirmations gate irreversible actions on the human path only. |
+| `product.specflow.cli.interaction-model` | [CLI interaction model](product/specflow/cli/interaction-model.md) | draft | Root-level product lifecycle commands plus <noun> <verb> resource commands, the stdout/stderr/exit-code contract shared with agents and CI, deterministic output, and how confirmations gate irreversible actions on the human path only. |
 | `product.specflow.cli.personas` | [CLI personas](product/specflow/cli/personas.md) | draft | The three consumers of nevo-specflow — the repository owner/maintainer, the AI coding agent, and CI — and what each needs from the command surface. |
 | `product.specflow.overview` | [Product overview](product/specflow/overview.md) | draft | Nevo SpecFlow is a human-led, spec-anchored workflow for AI-assisted software engineering, delivered as a CLI (`nevo-specflow`), a local Runtime, and an interactive UI. |
 | `product.specflow.ui.ai-session-ux` | [AI session UX](product/specflow/ui/ai-session-ux.md) | draft | How an AI session is presented: canonical semantics first, immediate turn feedback, "thinking" needs evidence, "waiting" is not "needs attention", and the four Work information levels. |
@@ -99,5 +99,5 @@ Regenerate with `pnpm docs:check --write`. Human-authored navigation lives in [`
 
 | ID | Title | Status | Summary |
 |---|---|---|---|
-| `reference.cli.nevo-specflow-contract` | [nevo-specflow public CLI contract](reference/cli/nevo-specflow-contract.md) | draft | The currently-implemented public surface of the nevo-specflow CLI — --help, --version and the runtime bootstrap command — and an explicit statement that no other command (init, status, workflow, install, update) exists yet. |
+| `reference.cli.nevo-specflow-contract` | [nevo-specflow public CLI contract](reference/cli/nevo-specflow-contract.md) | current | The currently-implemented public surface of the nevo-specflow CLI — --help, --version and the runtime bootstrap command — and an explicit statement that no other command (init, status, workflow, install, update) exists yet. |
 

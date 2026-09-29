@@ -246,12 +246,13 @@ pretend they were validated or indexed. The baseline discovery contract remains 
 No separate `applies_to` dimension is introduced: its intended meaning overlaps with
 `scope`, `areas`, and `read_when`.
 
-### 9. Keep document IDs stable
+### 9. Treat canonical document IDs as stable
 
-A document ID identifies a concept, not a path.
+A document ID identifies a canonical concept, not a path.
 
-Moving a document between directories or repositories should not require changing its ID unless
-the concept itself changes identity.
+Once an ID is assigned to a canonical concept, moving the document between directories or
+repositories does not by itself justify changing the ID. A new ID is warranted only when the
+concept or its authoritative ownership changes identity.
 
 Stable IDs are the canonical targets for `related` links and instruction routing.
 

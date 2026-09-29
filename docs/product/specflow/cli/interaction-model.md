@@ -8,9 +8,9 @@ read_when:
   - designing command output or exit codes
   - deciding how the CLI confirms a risky action
 summary: >
-  Command shape (nevo-specflow <noun> <verb>), the stdout/stderr/exit-code contract shared
-  with agents and CI, deterministic output, and how confirmations gate irreversible
-  actions on the human path only.
+  Root-level product lifecycle commands plus <noun> <verb> resource commands, the
+  stdout/stderr/exit-code contract shared with agents and CI, deterministic output,
+  and how confirmations gate irreversible actions on the human path only.
 related:
   - product.specflow.cli.personas
   - engineering.cli.architecture
@@ -34,8 +34,10 @@ nevo-specflow task next
 nevo-specflow task start <change> <task>
 ```
 
-Short, guessable, `<noun> <verb>` where there is more than one verb. The full command
-set is defined with the implementation; this is only the shape it must follow. Whether
+Product lifecycle commands (`start`, and later `stop` / `status`) live at the executable root.
+Resource-oriented commands use short, guessable `<noun> <verb>` forms where a resource has more
+than one operation. The full command set is defined with the implementation; this is only the
+shape it must follow. Whether
 repository documentation discovery (today's `nevo-docs`) becomes part of the product CLI
 is a separate decision, not implied here.
 

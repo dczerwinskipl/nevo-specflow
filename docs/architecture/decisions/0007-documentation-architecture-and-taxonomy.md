@@ -2,7 +2,7 @@
 id: adr.0007-documentation-architecture-and-taxonomy
 type: adr
 title: Documentation architecture and taxonomy
-status: draft
+status: current
 date: 2026-09-28
 summary: >
   Defines a documentation architecture that separates product behavior, durable system
@@ -19,7 +19,7 @@ related:
 
 ## Status
 
-Draft.
+Current.
 
 ## Context
 
@@ -181,9 +181,9 @@ may be `engineering`, and an exact token schema may be `reference`.
 The same rule applies to all physical namespaces: path and type are related but not required to
 mirror each other.
 
-### 8. Add ownership and search taxonomy to frontmatter
+### 8. Define an extensible ownership and search taxonomy
 
-In addition to the existing metadata, indexed documents may declare:
+The documentation model reserves these optional frontmatter fields for richer ownership and search:
 
 ```yaml
 scope: specflow
@@ -233,10 +233,15 @@ security
 configuration
 ```
 
-`scope` and `areas` are validated against one machine-readable taxonomy.
+`scope` and `areas` use one machine-readable taxonomy once taxonomy-aware validation is enabled.
 
 Tags are normalized and extensible rather than fully closed. They exist for search precision, not
 for authorization or architecture enforcement.
+
+The taxonomy fields are an additive extension to the existing documentation contract. They are not
+required merely because this ADR is current, and tooling that has not yet implemented them must not
+pretend they were validated or indexed. The baseline discovery contract remains `id`, `type`,
+`title`, `read_when`, `summary`, path, and `related`.
 
 No separate `applies_to` dimension is introduced: its intended meaning overlaps with
 `scope`, `areas`, and `read_when`.
@@ -255,11 +260,11 @@ Stable IDs are the canonical targets for `related` links and instruction routing
 Human readers should be able to browse the directory tree, but automated discovery must not depend
 on knowing a path in advance.
 
-`nevo-docs` therefore indexes and searches the taxonomy in addition to the existing `id`,
-`title`, `read_when`, `summary`, path, and `related` fields.
+`nevo-docs` indexes and searches the baseline metadata today. A taxonomy-aware implementation must
+add `scope`, `areas`, and `tags` without making directory paths part of semantic identity.
 
-Filtering by semantic type, scope, and area is part of the documentation contract. Free-text tags
-improve ranking inside those boundaries.
+When taxonomy support is enabled, filtering by semantic type, scope, and area is part of the
+documentation contract. Free-text tags improve ranking inside those boundaries.
 
 ### 11. Maintain one authoritative home for each rule
 
@@ -298,7 +303,7 @@ Those subjects use this documentation model but are decided independently.
 
 ### Costs
 
-- `nevo-docs` must validate and index the additional taxonomy fields;
+- `nevo-docs` requires an additive tooling change before taxonomy-aware validation and search are enabled;
 - authors must classify both semantic role and ownership scope;
 - the controlled scope/area vocabulary requires maintenance;
 - some subjects naturally cross namespaces, so links between authoritative documents remain

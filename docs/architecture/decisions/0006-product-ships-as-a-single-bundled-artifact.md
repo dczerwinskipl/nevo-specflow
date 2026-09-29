@@ -63,8 +63,8 @@ registry is a different problem.
   conventions — and **composes** top-level commands. Each capability vertical owns its
   own Commander adapter: `@nevo/specflow-runtime` exposes the framework-independent
   capability at `.` (`startRuntime(): RuntimeStartResult`, no Commander) **and** its
-  command adapter at `./cli` (`createStartCommand(ctx): Command` — `commander` is a
-  dependency of that subpath only, never of the capability). The shell does
+  command adapter at `./cli` (`createStartCommand(ctx): Command` — `commander` is imported only by
+  that adapter; the framework-independent capability does not import it). The shell does
   `program.addCommand(createStartCommand(ctx))` — it registers the command, it does
   not define its name, options, help or subcommands. This mirrors how a feature owns its
   HTTP routes while the server root only mounts them: Commander, like a web framework,

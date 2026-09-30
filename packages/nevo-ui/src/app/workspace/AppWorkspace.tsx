@@ -76,7 +76,7 @@ export type AppWorkspaceProps = CommonAppWorkspaceProps & {
 };
 
 const defaultAppWorkspaceLabels: AppWorkspaceLabels = {
-  backToPrimary: 'Back to primary content',
+  backToPrimary: 'Back',
   closeSecondary: 'Close secondary content',
   openNavigation: 'Open navigation',
 };

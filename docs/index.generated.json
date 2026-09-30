@@ -985,7 +985,10 @@
         "ideas.specflow-runtime.ai-adapters.raw-diagnostics-retention",
         "ideas.specflow-runtime.ai-adapters.error-classification",
         "ideas.specflow-runtime.ai-adapters.output-semantics",
-        "ideas.specflow-runtime.ai-adapters.protocol-examples"
+        "ideas.specflow-runtime.ai-adapters.protocol-examples",
+        "ideas.specflow-runtime.ai-adapters.provider-readiness-auth",
+        "ideas.specflow-runtime.ai-adapters.model-selection-effort",
+        "ideas.specflow-runtime.ai-adapters.provider-error-examples"
       ],
       "scope": "specflow",
       "areas": [
@@ -1015,7 +1018,9 @@
       "related": [
         "ideas.specflow-runtime.ai-adapters",
         "architecture.ai.provider-boundary",
-        "ideas.specflow-runtime.ai-adapters.protocol-examples"
+        "ideas.specflow-runtime.ai-adapters.protocol-examples",
+        "ideas.specflow-runtime.ai-adapters.provider-error-examples",
+        "ideas.specflow-runtime.ai-adapters.provider-readiness-auth"
       ],
       "scope": "specflow",
       "areas": [
@@ -1091,6 +1096,38 @@
       ]
     },
     {
+      "id": "ideas.specflow-runtime.ai-adapters.model-selection-effort",
+      "type": "engineering",
+      "title": "Model selection and reasoning effort",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/model-selection-and-effort.md",
+      "read_when": [
+        "implementing provider model discovery",
+        "building a model picker or reasoning-effort selector",
+        "migrating model and effort configuration from legacy Nevo"
+      ],
+      "summary": "Keep provider model identity separate from reasoning effort, prefer authoritative per-model metadata when available, preserve unknown traits instead of guessing, and avoid presenting a Cartesian product of model and effort combinations when the provider exposes effort separately.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "ideas.specflow-runtime.ai-adapters.provider-readiness-auth",
+        "ideas.specflow-runtime.ai-adapters.diagnostics-and-replay",
+        "architecture.ai.provider-boundary"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "ui",
+        "testing"
+      ],
+      "tags": [
+        "providers",
+        "models",
+        "reasoning",
+        "configuration"
+      ]
+    },
+    {
       "id": "ideas.specflow-runtime.ai-adapters.output-semantics",
       "type": "engineering",
       "title": "Provider output semantics",
@@ -1119,6 +1156,39 @@
         "commentary",
         "reasoning",
         "final-answer"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.ai-adapters.provider-readiness-auth",
+      "type": "engineering",
+      "title": "Provider readiness and authentication",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/provider-readiness-and-auth.md",
+      "read_when": [
+        "implementing provider availability or health",
+        "preventing a session or turn from starting when the local provider is not authenticated",
+        "designing provider connection tests or login-required UX"
+      ],
+      "summary": "Distinguish installation from execution readiness, use the existing authenticated provider-health dimension, add bounded provider-specific readiness probes, and keep startTurn as the final authoritative guard so an installed but logged-out CLI is not presented as ready.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "ideas.specflow-runtime.ai-adapters.error-classification",
+        "ideas.specflow-runtime.ai-adapters.diagnostics-and-replay",
+        "ideas.specflow-runtime.ai-adapters.protocol-examples",
+        "architecture.ai.provider-boundary"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing",
+        "security"
+      ],
+      "tags": [
+        "providers",
+        "authentication",
+        "availability",
+        "diagnostics"
       ]
     },
     {
@@ -1381,6 +1451,39 @@
         "protocol",
         "examples",
         "fixtures"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.ai-adapters.provider-error-examples",
+      "type": "reference",
+      "title": "Provider error and limit examples",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/provider-error-examples.md",
+      "read_when": [
+        "implementing provider failure classification",
+        "adding regression fixtures for provider limits, authentication, timeout, or protocol failures",
+        "deciding which error signatures are observed evidence versus compatibility heuristics"
+      ],
+      "summary": "Provider-by-provider examples of quota, rate-limit, timeout, authentication, protocol, tool, and execution failures, with explicit evidence level so synthetic mapper tests are not mistaken for captured provider protocol.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "ideas.specflow-runtime.ai-adapters.error-classification",
+        "ideas.specflow-runtime.ai-adapters.protocol-examples",
+        "ideas.specflow-runtime.ai-adapters.provider-readiness-auth",
+        "ideas.specflow-runtime.ai-adapters.liveness-watchdog"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "providers",
+        "errors",
+        "timeout",
+        "quota",
+        "rate-limit"
       ]
     },
     {

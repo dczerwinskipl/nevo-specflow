@@ -43,6 +43,31 @@ mapping problem being illustrated. Exact provider failure/limit evidence is inte
 When provider versions change, generated/current protocol schemas and fresh observations take
 precedence.
 
+## Legacy source map
+
+The examples below were minimized from these legacy evidence/test areas unless explicitly marked
+illustrative:
+
+```text
+Claude:
+  tools/dashboard/tests/fixtures/evidence/claude-evidence.json
+  tools/dashboard/tests/fixtures/claude/ask-user-question-deferred.json
+  tools/dashboard/tests/claude-provider.test.mjs
+  captured evidence version: Claude Code CLI 2.1.220
+
+Codex:
+  tools/dashboard/tests/fixtures/evidence/codex-evidence.json
+  tools/dashboard/tests/codex-provider.test.mjs
+  captured evidence version: Codex CLI 0.149.0
+
+Antigravity:
+  tools/dashboard/tests/fixtures/evidence/antigravity-evidence.json
+  tools/dashboard/tests/antigravity-provider.test.mjs
+  captured success/tool-flow fixture does not record a provider version
+```
+
+An illustrative example explains a mapping problem but is not provider-protocol evidence.
+
 ## Claude-family examples
 
 ### Reasoning block

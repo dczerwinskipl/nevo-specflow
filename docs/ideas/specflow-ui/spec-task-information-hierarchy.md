@@ -248,7 +248,7 @@ A Task summary should support scanning and selection, not become a miniature Tas
 | Information | Class | Evidence | Default visibility |
 | --- | --- | --- | --- |
 | Task title + id | Orientation | Legacy deterministic evidence | Always in Task row/item |
-| Semantic workflow status | Orientation | Legacy deterministic evidence | Always |
+| Semantic workflow status | Orientation | Legacy deterministic evidence | Always perceivable from the item or its containing grouping; do not repeat a badge when lane/grouping already communicates it |
 | Requires attention + reason | Requires attention | Product direction | Always when true |
 | Ready next action | Ready | Legacy action projection | Visible when relevant |
 | Active Session/agent work | Current activity | Current execution projection + product direction | Visible only when current execution proves this Task is in scope |
@@ -299,7 +299,7 @@ Candidate information:
 | current step | Context | Legacy deterministic workflow |
 | requires-attention reason | Requires attention | Product direction |
 | ready action | Ready | Legacy action inspection |
-| active work/current Session | Current activity | Legacy Session binding |
+| active work/current Session | Current activity | Current execution / Runtime projection |
 | blocking dependency/problem | Context | Legacy deterministic evidence |
 | deterministic primary action | Action | Workflow/application projection |
 
@@ -542,12 +542,24 @@ The UI should name the affected action/reason instead of projecting one universa
 
 ### Ready to resume / continue
 
-A prior AI Turn/operation may be settled while the Task/workflow attempt is still active and can be
-continued. This is a useful product projection, not a workflow lifecycle value.
+A prior AI Turn/execution may be settled while more legal deterministic work remains. This is not
+limited to an already-active workflow attempt: continuation can also be valid before attempt
+activation during safe remediation, or while an unfinished durable operation is safely replayable.
 
-### Settled
+A useful product rule is:
 
-No immediate work is expected.
+~~~text
+execution/Turn ended safely
++ more legal work remains
++ no ambiguous durable operation requires recovery
+=> can continue / resume
+~~~
+
+This is a useful product projection, not a workflow lifecycle value.
+
+### Quiet / no immediate action
+
+No immediate human or agent action is expected.
 
 These should be derived projections, not a second persisted state machine.
 
@@ -738,11 +750,14 @@ Useful Task-level Session summary:
 - contextual relation to this Task;
 - quick open floating Session action.
 
-Provider/model/mode/effort are usually secondary execution detail. They can become contextual start
-options when the user creates/starts an execution, but project defaults belong in Settings. Once a
-concrete execution has reserved/frozen its execution configuration, the UI should present the
-effective values for that execution rather than implying that later default changes retroactively
-change it.
+Provider/model/mode are usually secondary execution detail. They can become contextual start
+options when the user creates/starts an execution, but project defaults belong in Settings. Legacy
+batch reservation evidence freezes provider, model, mode, and context capacity for the concrete
+execution; the UI should present those effective reserved values rather than imply that later default
+changes retroactively change them.
+
+`effort` is currently a per-Turn option in the legacy contract and must not be described as part of
+that frozen execution snapshot unless the authoritative contract changes.
 
 Detailed conversation and Work stay in Session surfaces.
 
@@ -821,19 +836,21 @@ scope. A linked/historical Session alone is insufficient.
 
 Working is not ready and is not requires-attention.
 
-## 14.4 Blocked by dependency
+## 14.4 Start blocked by dependency
 
 ~~~text
 Spec A
-  Task 03: BLOCKED
+  Task 03: cannot start
   "Waiting for TASK-02"
 
 open Task 03
   dependency context
-  no misleading enabled Start action
+  Start is unavailable for this reason
+  another remediation action may still be legal
 ~~~
 
-If resolving the blocker does not require a human decision, avoid attention styling.
+If resolving the dependency does not require a human decision, avoid attention styling. Do not turn
+one blocked operation into a universal Task-level `BLOCKED` state.
 
 ## 14.5 Review has unresolved owner decision
 
@@ -898,20 +915,27 @@ TASK-03
 Opening the Session from TASK-02 may preserve TASK-02 as entry context in the floating surface, but
 Full Session must expose the whole current batch scope.
 
-## 14.9 Terminal Turn, Task still resumable
+## 14.9 Terminal Turn, more legal work remains
 
 ~~~text
-Task workflow attempt is active
-AI Turn settles / provider stops
-Task is not completed
+AI Turn/execution settles safely
+Task is not complete
+more deterministic work is legal
+no ambiguous durable operation requires recovery
+
+This may be:
+  - before workflow attempt activation during remediation
+  - during an active workflow attempt
+  - an unfinished finish-operation that is safely replayable
 
 UI:
   not "Agent working"
   not "Task done"
-  instead expose an appropriate continue/resume action if authoritative readiness allows it
+  expose continue/resume only when authoritative readiness allows it
 ~~~
 
-"Ready to resume/continue" is a projection, not a new persisted Task status.
+"Ready to resume/continue" is a projection, not a new persisted Task status and not a synonym for
+`workflow_progress.state === active`.
 
 ## 14.10 Recovery required after terminal Turn
 
@@ -1029,7 +1053,9 @@ Potential backend/read-model gaps:
 10. current active Session/work projection at Spec/Task level;
 11. "ready to resume/continue" / remediation projection after terminal Turn or interrupted execution;
 12. Activity/audit projection for last/recent meaningful actions without making Activity workflow authority;
-13. contextual runtime execution configuration (agent profile plus provider/model/mode/effort where relevant);
+13. contextual runtime execution configuration (agent profile plus the effective reserved
+    provider/model/mode/context-capacity snapshot where applicable, with per-Turn options such as
+    effort represented separately);
 14. stale/fresh review evidence expressed without parsing report prose.
 
 Some of these may already exist partially in legacy Nevo. Migration should preserve the **semantic
@@ -1051,7 +1077,8 @@ These are not blockers for the next visual pass unless that pass touches them di
 7. Which workflow action-check fields will become stable application/UI projections?
 8. Should archive remain a storage-backed source distinction or become purely product lifecycle?
 9. What stable application contract should expose current single-Task vs Task-batch ExecutionScope?
-10. Which execution options are user-selectable per Session/execution versus inherited from project defaults?
+10. Which execution options are user-selectable per Session/execution versus inherited from project
+    defaults, and which remain per-Turn options rather than part of the reserved execution snapshot?
 11. Which Activity facts should be projected directly versus kept only in deep audit/history?
 
 When one of these becomes necessary for a screen contract, inspect the deterministic implementation

@@ -1095,5 +1095,5 @@ execution, human review, Specification-level action, remediation, resume, and re
 The equivalent Full Session pass is now captured in
 [Full Session screen structure](full-session-screen-structure.md).
 
-With both Specification/Task and Full Session screen families represented, map them onto the current
-design system and identify actual component/composition gaps before polished mockups.
+That mapping is now captured in
+[Design-system and composition gaps](design-system-component-composition-gaps.md).

@@ -59,6 +59,21 @@ spawnedAt
 
 The exact storage may differ; the key is not to collapse all of these into one timestamp.
 
+## Liveness is not progress
+
+Process/output activity answers **"is something still alive or producing bytes?"**, not **"is the
+Turn making useful semantic progress?"**.
+
+Examples:
+
+- a CPU spin can keep process counters changing forever;
+- a subprocess can repeatedly write the same warning to stderr;
+- a broken provider can emit heartbeats without moving the Turn forward.
+
+Therefore process/output activity may delay an immediate "dead/hung" conclusion, but should not
+reset an unbounded semantic-progress deadline forever. The target policy should keep liveness
+evidence, progress/stall policy, and an optional hard runtime ceiling as separate concepts.
+
 ## Evidence sources
 
 ### Protocol activity
@@ -96,13 +111,16 @@ membership. This is useful evidence, not a cross-platform contract.
 
 Prefer a layered decision instead of one timer:
 
-1. **protocol silence threshold** may mark/diagnose the turn as suspicious;
-2. recent output or process activity suppresses destructive "hung" action;
-3. if protocol and all available liveness signals are stale, request timeout/cancellation;
-4. use a separate absolute maximum-runtime policy if one is desired for runaway operations.
+1. **protocol/progress silence threshold** marks the Turn as suspicious;
+2. recent output/process activity is evidence that the process tree is alive and may justify a
+   bounded grace period rather than immediate destructive termination;
+3. if protocol plus all available liveness signals are stale, request timeout/cancellation;
+4. if process/output activity continues without semantic progress, a separate stall policy may
+   still time out the Turn;
+5. an optional absolute maximum-runtime ceiling protects against CPU spin, noisy stderr loops, and
+   other indefinitely-live failures.
 
-The absolute-runtime limit answers a different question from inactivity and should not share the
-same reason code.
+These timeout reasons answer different questions and should remain distinguishable in diagnostics.
 
 ## Unknown is not inactive
 
@@ -121,9 +139,10 @@ An open tool should not automatically disable all watchdogs forever.
 Instead:
 
 - an open tool explains why provider protocol may be quiet;
-- tool/process/output activity keeps the invocation alive;
-- a tool with no protocol/output/process evidence for a sustained period can still become hung;
-- absolute max runtime can remain as a final guard if configured.
+- tool/process/output activity proves liveness, not necessarily forward progress;
+- a tool with no protocol/output/process evidence for a sustained period can become dead/hung;
+- a tool with continuing low-level activity but no semantic progress can still hit a stall policy;
+- an absolute max runtime can remain as a final guard if configured.
 
 ## Diagnostics on watchdog fire
 
@@ -175,14 +194,16 @@ sampling as unavailable unless a dedicated implementation is added.
 
 ## Verification cases
 
-1. provider silent while a child process continues CPU/IO work => no inactivity timeout;
-2. provider silent but stderr heartbeat/output continues => no inactivity timeout;
-3. provider + output + process telemetry all stale => timeout requested;
-4. process sampler unavailable => `unknown`, not false inactivity;
-5. long-running open tool still times out if all available activity is stale;
-6. protocol event resets protocol silence;
-7. watchdog request racing provider terminal completion settles once;
-8. absolute max-runtime produces a distinct diagnostic/reason from inactivity timeout.
+1. provider protocol is quiet while a child process continues useful CPU/IO work => do not
+   immediately kill solely for protocol silence;
+2. stderr/output activity proves liveness but does not reset semantic-progress timeout indefinitely;
+3. CPU spin with no semantic progress eventually hits stall or hard-runtime policy;
+4. repeated identical stderr heartbeat/noise cannot keep a Turn alive forever;
+5. provider + output + process telemetry all stale => timeout requested;
+6. process sampler unavailable => `unknown`, not false inactivity;
+7. long-running open tool still times out if all available activity is stale;
+8. watchdog request racing provider terminal completion settles once;
+9. absolute max-runtime produces a distinct diagnostic/reason from inactivity/stall timeout.
 
 ## Migration note
 

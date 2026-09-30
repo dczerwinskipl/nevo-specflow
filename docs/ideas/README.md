@@ -2,7 +2,7 @@
 id: ideas.readme
 type: hub
 title: Implementation ideas
-status: draft
+status: current
 scope: specflow
 areas:
   - docs
@@ -26,8 +26,13 @@ This namespace is a **proposal backlog**, not an additional source of truth.
 
 Documents under `docs/ideas/**` capture enough evidence and design direction that a later
 specification or implementation agent should not need to rediscover the original debugging
-conversation. They MAY contain concrete candidate contracts, provider signatures, test cases, and
-migration notes. They MUST NOT override current architecture.
+conversation. Child documents remain `status: draft` proposals. They may contain concrete candidate
+contracts, provider signatures, test cases, and migration notes, but they do not become requirements
+until the relevant conclusion is promoted into an authoritative current document.
+
+When an idea uses words such as "must", "should", "expected", or "target", read them as proposal
+language unless the sentence explicitly cites an existing authoritative rule. Current architecture,
+product, engineering, and reference documents always win on conflict.
 
 When an idea is accepted for implementation:
 

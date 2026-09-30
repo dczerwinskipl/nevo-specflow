@@ -32,7 +32,8 @@ different reasons to be read:
 - reusable design-system knowledge that should remain independent of SpecFlow and may move with
   Nevo UI;
 - exact contracts such as APIs, events, configuration, and protocol shapes;
-- task-oriented instructions for humans and agents.
+- task-oriented instructions for humans and agents;
+- non-authoritative migration/design ideas that need to preserve evidence before an authoritative decision exists.
 
 These concerns must not become one undifferentiated development-document hierarchy. They also
 cannot rely only on directory location for discovery: the same document can concern AI, runtime,
@@ -87,6 +88,8 @@ docs/
 │   ├── specflow/
 │   ├── nevo-ui/
 │   └── process/
+├── ideas/
+│   └── <scope-or-package>/
 └── templates/
 ```
 
@@ -104,10 +107,16 @@ The physical path is not the semantic identity of a document.
 - **product** — user-visible behavior, terminology, interaction models, and product contracts.
 - **reference** — exact APIs, schemas, configuration keys, protocol/event shapes, and lookup material.
 - **instructions** — task-oriented guidance that routes to authoritative documents.
+- **ideas** — non-authoritative backlog for evidence, candidate contracts, migration hardening, and design directions that are not yet approved as architecture, engineering policy, product behavior, or exact reference contracts.
 - **templates** — non-authoritative starting material for authoring documents.
 
 A document that contains multiple independent responsibilities should be split instead of becoming
 a mixed source of truth.
+
+`ideas/` is intentionally different from the authoritative namespaces above. Its documents are
+proposals/evidence packs and remain `status: draft` until their durable conclusions are promoted to
+an authoritative home. The `ideas/README.md` hub may be `status: current` because it defines the
+namespace's interpretation, not a product/runtime rule.
 
 ### 3. Keep architecture and engineering distinct
 
@@ -180,6 +189,11 @@ may be `engineering`, and an exact token schema may be `reference`.
 
 The same rule applies to all physical namespaces: path and type are related but not required to
 mirror each other.
+
+Documents under `ideas/` use the semantic type that best describes their **content shape**, but the
+path plus draft status remains the authority signal: an `ideas/` document never becomes an exact
+reference contract merely by using `type: reference`, and proposal guidance MUST NOT override a
+current authoritative document.
 
 ### 8. Define an extensible ownership and search taxonomy
 

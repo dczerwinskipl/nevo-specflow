@@ -459,7 +459,7 @@ export const DismissibleDefaultSecondaryContract: Story = {
       () => canvas.queryByText('Runtime task detail'),
       'A runtime detail should replace the default Secondary.',
     );
-    await userEvent.click(canvas.getByRole('button', { name: 'Back to primary content' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
     await waitFor(
       () => canvas.queryByText('Default context content'),
       'Back from the first runtime detail should reveal the default Secondary base.',

@@ -74,7 +74,7 @@ At minimum fence:
 - provider-private operation-handle replacement;
 - any callback that changes durable/canonical state.
 
-Late raw diagnostic capture MAY remain allowed because it is not canonical state, but it should be
+Late raw diagnostic capture can remain allowed because it is not canonical state, but it should be
 tagged as late/ignored where practical.
 
 ## Settlement interaction
@@ -97,7 +97,7 @@ Exact sequencing should be reconciled with the Runtime lifecycle owner.
 
 A new provider attempt for the same logical operation obtains a new generation.
 
-A callback from generation N MUST NOT mutate generation N+1 even if:
+The proposed fence must reject mutation from generation N into generation N+1 even if:
 
 - it carries the same provider session ID;
 - it arrives after N+1 started;

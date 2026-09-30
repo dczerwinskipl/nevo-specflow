@@ -29,8 +29,13 @@ contracts are filled in with the implementation.
 - **Drill-down increases specificity**, not just volume — each level answers a more
   precise question.
 - **Back follows the product hierarchy**, not raw browser history.
-- **Do not expose the internal model as navigation.** Users navigate product concepts
-  (specifications, tasks, sessions), not database entities or provider payloads.
+- **Do not expose the internal model as navigation.** Users navigate product concepts,
+  not database entities or provider payloads.
+- **A route is not automatically global navigation.** A Session or file can have a deep-linkable
+  route without earning a persistent sidebar item.
+- **Preserve the current work context when possible.** Use Secondary or floating interaction for
+  contextual exploration; use a main workspace route when the user explicitly promotes that context
+  into their primary task.
 
 ## Responsive shell
 
@@ -44,21 +49,53 @@ inline vs. behind a tap changes.
 
 ## Product hierarchy
 
+For the current spec-driven MVP, global product navigation stays deliberately small:
+
 ```text
-Specifications ─► Specification overview ─► Tasks (list/board) ─► Task details
-AI sessions   ─► Chat / session workspace ─► Work (summary ─► expanded ─► details ─► action details)
-Changes       ─► Pull request
-Documentation
+Project
+├── Specs
+│   ├── Active / Archive
+│   └── Specification
+│       ├── Task details                  contextual Secondary
+│       └── Session                       floating conversation
+│           └── Open full session         main workspace/route
+│
+└── Project settings
+    ├── Configuration
+    ├── AI / agents
+    ├── Workflows
+    ├── Repository / Git
+    └── Integrations
 ```
+
+A Full Session is a first-class workspace and may have its own URL, but Sessions are not a global
+sidebar area while they remain owned by/spec-driven from Specifications.
+
+Changes, pull requests, documentation, files, Work details, and similar concepts are contextual
+surfaces until a proven independent human task justifies promoting them into global navigation.
+
+Within a Full Session:
+
+```text
+Session stream
+├── Context inspector
+├── Work inspector
+└── File inspector
+```
+
+Opening a Session from Task/Specification first uses a floating conversation so the user can inspect
+or interact without abandoning current work. "Open full session" is the explicit promotion to the
+main Session workspace.
 
 ## Surface choice
 
 | Surface                    | Use for                                                                            |
 | -------------------------- | ---------------------------------------------------------------------------------- |
 | Info / tooltip / popover   | A short clarification; no navigation, no actions of substance.                     |
-| Right inspector            | Details about the current selection that support the workspace without leaving it. |
-| Sheet / full-screen detail | A focused sub-task on mobile, or a large detail that would crowd the inspector.    |
-| Main page / workspace      | A distinct product surface the user navigated to.                                  |
+| Floating surface           | Quick interaction with related context, especially a Session, without abandoning the current workspace. |
+| Right inspector / Secondary| Details about the current selection that support the workspace without leaving it. |
+| Sheet / pushed detail      | Narrow/mobile representation of contextual Secondary/detail.                       |
+| Main page / workspace      | A distinct product surface the user explicitly navigated/promoted to.              |
 
 ## State preservation
 

@@ -1092,10 +1092,8 @@ This hierarchy is now exercised by
 [Specification and Task screen structure](spec-task-screen-structure.md), covering ready, current
 execution, human review, Specification-level action, remediation, resume, and recovery states.
 
-The next product-model pass should apply the same discipline to **Full Session** before a global
-component inventory is frozen. Full Session must validate the Session stream, Commentary/current
-activity, Context/Work/File Secondary modes, floating Session, batch execution, and narrow explicit
-inspector actions.
+The equivalent Full Session pass is now captured in
+[Full Session screen structure](full-session-screen-structure.md).
 
-After both screen families are stable, map them onto the current design system and identify actual
-component/composition gaps before polished mockups.
+With both Specification/Task and Full Session screen families represented, map them onto the current
+design system and identify actual component/composition gaps before polished mockups.

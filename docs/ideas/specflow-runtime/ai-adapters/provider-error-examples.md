@@ -1,7 +1,7 @@
 ---
 id: ideas.specflow-runtime.ai-adapters.provider-error-examples
-type: reference
-title: Provider error and limit examples
+type: engineering
+title: Provider error and limit evidence
 status: draft
 scope: specflow
 areas:
@@ -30,7 +30,15 @@ related:
   - ideas.specflow-runtime.ai-adapters.liveness-watchdog
 ---
 
-# Provider error and limit examples
+# Provider error and limit evidence
+
+## Authority
+
+This is an evidence pack plus migration guidance, not an exact target error contract. Names such as
+`AI_AUTH_FAILED`, `AI_RATE_LIMITED`, and `AI_QUOTA_EXHAUSTED` below are **legacy Nevo
+normalized codes** unless explicitly described as a candidate target value. Current SpecFlow
+architecture owns the required semantic categories; an implementation-ready spec must decide the
+exact target code/schema.
 
 ## Evidence labels
 
@@ -38,12 +46,14 @@ related:
 
 Sanitized from a real provider invocation or an existing captured evidence fixture.
 
-This is strong evidence for an exact event shape, but remains provider-version-specific.
+This is strong evidence for an exact event shape, but remains provider-version-specific. A
+captured section should identify the source fixture/capture and provider version/date when that
+metadata exists.
 
 ### Contract test
 
 An existing legacy test feeds a representative provider error/message into the adapter classifier
-and asserts the expected canonical result.
+and asserts the legacy normalized result.
 
 This proves our intended compatibility behavior. It does not prove that the exact text came from a
 real provider session.
@@ -59,7 +69,14 @@ When encountered in a real SpecFlow run, minimize it into a replay fixture.
 
 ## Captured: seven-day rate-limit rejection
 
-Existing live evidence was captured from Claude Code CLI 2.1.220.
+Evidence source:
+
+```text
+legacy file: tools/dashboard/tests/fixtures/evidence/claude-evidence.json
+provider: Claude Code CLI 2.1.220
+capturedAt: 2026-09-06T10:30:00.000Z
+sourceMechanism: real live CLI invocation
+```
 
 ```json
 {
@@ -105,7 +122,7 @@ message: Request timed out waiting for upstream
 exitCode: 124
 ```
 
-Legacy expected result:
+Legacy normalized result:
 
 ```text
 AI_PROVIDER_TIMEOUT
@@ -123,7 +140,7 @@ exists.
 Unauthorized: Please run claude login or set ANTHROPIC_API_KEY
 ```
 
-Expected:
+Legacy normalized result:
 
 ```text
 AI_AUTH_FAILED
@@ -139,7 +156,7 @@ This text should only classify auth when it comes from trusted failure context.
 Sandbox policy denied operation
 ```
 
-Expected:
+Legacy normalized result:
 
 ```text
 AI_POLICY_DENIED
@@ -152,7 +169,7 @@ HTTP 403
 Monthly credit quota limit reached
 ```
 
-Expected:
+Legacy normalized result:
 
 ```text
 AI_QUOTA_EXHAUSTED
@@ -165,7 +182,7 @@ HTTP 429
 Rate limit exceeded: TPM ceiling hit
 ```
 
-Expected:
+Legacy normalized result:
 
 ```text
 AI_RATE_LIMITED
@@ -179,7 +196,7 @@ recoveryHint = retry-after-delay
 Protocol error: unexpected token in stream-json
 ```
 
-Expected:
+Legacy normalized result:
 
 ```text
 AI_PROTOCOL_ERROR
@@ -193,7 +210,7 @@ code: ENOENT
 message: spawn claude ENOENT
 ```
 
-Expected:
+Legacy normalized result:
 
 ```text
 AI_PROVIDER_UNAVAILABLE
@@ -234,6 +251,14 @@ ThrottlingException
 # Codex errors
 
 ## Captured: failed tool while Turn remains successful
+
+Evidence source:
+
+```text
+legacy file: tools/dashboard/tests/fixtures/evidence/codex-evidence.json
+provider: Codex CLI 0.149.0
+source: real protocol capture replayed by canonical-live-and-evidence-validation.test.mjs
+```
 
 Existing captured evidence includes:
 
@@ -296,7 +321,7 @@ Tool stderr/output must not be promoted into provider-level availability/auth fa
 }
 ```
 
-Expected:
+Legacy normalized result:
 
 ```text
 AI_AUTH_FAILED
@@ -312,7 +337,7 @@ HTTP 401
 }
 ```
 
-Expected:
+Legacy normalized result:
 
 ```text
 AI_POLICY_DENIED
@@ -327,7 +352,7 @@ HTTP 403
 }
 ```
 
-Expected:
+Legacy normalized result:
 
 ```text
 AI_QUOTA_EXHAUSTED
@@ -343,7 +368,7 @@ HTTP 429
 }
 ```
 
-Expected:
+Legacy normalized result:
 
 ```text
 AI_RATE_LIMITED
@@ -360,7 +385,7 @@ recoveryHint = retry-after-delay
 }
 ```
 
-Expected:
+Legacy normalized result:
 
 ```text
 AI_PROTOCOL_ERROR
@@ -409,7 +434,7 @@ late provider interruption/completion arrives
 Runtime preserves timeout outcome
 ```
 
-Expected:
+Legacy normalized result:
 
 ```text
 AI_RUNTIME_TIMEOUT
@@ -420,7 +445,12 @@ App-server death/disconnect is a separate transport/process failure.
 
 # Antigravity errors
 
-## Captured/tested protocol shape: concrete quota error step
+The legacy repository has a real Antigravity success/tool-flow evidence fixture, but the error
+examples below are currently **contract-test evidence**, not captured error sessions. Do not promote
+their exact text/event combinations to provider protocol facts until a real current-version failure
+capture confirms them.
+
+## Contract test: concrete quota error step
 
 ```json
 {
@@ -435,7 +465,7 @@ App-server death/disconnect is a separate transport/process failure.
 }
 ```
 
-Expected:
+Legacy normalized result:
 
 ```text
 AI_QUOTA_EXHAUSTED
@@ -443,7 +473,7 @@ AI_QUOTA_EXHAUSTED
 
 The important fact is provenance: the text is inside a provider error step.
 
-## Tested protocol shape: rate-limit terminal with usage
+## Contract test: rate-limit terminal with usage
 
 ```json
 {
@@ -461,7 +491,7 @@ The important fact is provenance: the text is inside a provider error step.
 }
 ```
 
-Expected:
+Legacy normalized result:
 
 ```text
 AI_RATE_LIMITED
@@ -470,7 +500,7 @@ usage preserved independently
 
 A failed Turn must not discard valid usage telemetry.
 
-## Tested transport timeout
+## Contract test: transport timeout
 
 Provider process:
 
@@ -479,7 +509,7 @@ exitCode = 124
 stderr = "Command timed out after 600 seconds"
 ```
 
-Expected:
+Legacy normalized result:
 
 ```text
 AI_PROVIDER_TIMEOUT
@@ -489,7 +519,7 @@ source = provider CLI transport
 This provider has a distinct CLI `--print-timeout`, so this must remain separate from the Runtime
 protocol-silence watchdog.
 
-## Tested empty error diagnostic
+## Contract test: empty error diagnostic
 
 ```json
 {
@@ -504,11 +534,8 @@ protocol-silence watchdog.
 One empty error step is diagnostic noise, not immediate Turn failure.
 
 A sustained sequence with no other progress can instead become liveness/stall evidence and
-eventually produce:
-
-```text
-AI_RUNTIME_TIMEOUT
-```
+eventually produce the Runtime timeout semantic category (legacy Nevo code:
+`AI_RUNTIME_TIMEOUT`).
 
 This is a concrete reason not to map event names to canonical failure classes mechanically.
 
@@ -518,7 +545,7 @@ This is a concrete reason not to map event names to canonical failure classes me
 Invalid API key / unauthorized
 ```
 
-Expected:
+Legacy normalized result:
 
 ```text
 AI_AUTH_FAILED
@@ -531,7 +558,7 @@ HTTP 401
 Rate limit exceeded: too many requests
 ```
 
-Expected:
+Legacy normalized result:
 
 ```text
 AI_RATE_LIMITED
@@ -544,7 +571,7 @@ HTTP 429
 Quota limit exceeded. Please check billing.
 ```
 
-Expected:
+Legacy normalized result:
 
 ```text
 AI_QUOTA_EXHAUSTED
@@ -570,6 +597,8 @@ Do not generalize this to every status:
 - error-only response remains fatal.
 
 # Cross-provider comparison
+
+The table compares evidence maturity and semantics, not target error-code names.
 
 | Condition | Claude | Codex | Antigravity |
 |---|---|---|---|

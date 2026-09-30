@@ -864,19 +864,12 @@ Do not guess these during visual design:
 
 ## 19. Next pass
 
-Do not jump directly to component selection.
+The Specification + Task information hierarchy and first screen-structure pass are now captured under
+this idea package.
 
-For each major context, classify information as:
+Next, apply the same information-depth and screen-structure analysis to **Full Session**, because it
+exercises the other major interaction family: conversation/Commentary, current activity, floating
+Session, Context/Work/File Secondary modes, batch execution, and deep technical inspection.
 
-- always visible / orientation;
-- requires-attention signal;
-- ready-but-optional action;
-- local context;
-- contextual Secondary;
-- floating interaction;
-- deep technical inspection;
-- artifact/evidence;
-- configuration.
-
-Start with **Specification + Task review/steering**, then **Full Session**, because those two surfaces
-exercise most of the product model.
+Do not freeze a global component inventory until both Specification/Task and Full Session structures
+have been exercised.

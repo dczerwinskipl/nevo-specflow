@@ -24,6 +24,7 @@ summary: >
 related:
   - ideas.specflow-runtime.ai-adapters
   - architecture.runtime.ownership-and-lifecycle
+  - ideas.specflow-runtime.ai-adapters.protocol-examples
 ---
 
 # Provider liveness and watchdogs

@@ -24,6 +24,7 @@ summary: >
 related:
   - ideas.specflow-runtime.ai-adapters
   - ideas.specflow-runtime.ai-adapters.invocation-ownership
+  - ideas.specflow-runtime.ai-adapters.session-resume-recovery
   - architecture.runtime.ownership-and-lifecycle
 ---
 
@@ -127,6 +128,26 @@ Example:
 
 Conversely, failure to terminate a process may require an operational diagnostic/escalation even
 after canonical interruption/cancellation.
+
+## Semantic terminal does not release process ownership
+
+A provider can emit an authoritative semantic terminal result before its CLI/process tree exits.
+Canonical Turn settlement and OS process cleanup are therefore separate responsibilities.
+
+A candidate policy can:
+
+1. settle canonical outcome from authoritative provider evidence;
+2. keep the process resource owned by the invocation scope;
+3. allow a short bounded drain/grace period;
+4. terminate the process tree if it remains alive beyond the policy;
+5. record cleanup disposition without rewriting the already-proven Turn outcome.
+
+Do **not** arm post-terminal cleanup from any event merely named `result`. Real provider protocols
+can emit non-terminal/notification result-like events during resume/startup. The terminal predicate
+must be provider-specific, fixture-backed, and semantically authoritative.
+
+The resource scope remains responsible until verified exit/termination even after canonical
+settlement.
 
 ## Partial startup test matrix
 

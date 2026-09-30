@@ -25,6 +25,7 @@ related:
   - ideas.specflow-runtime.ai-adapters
   - architecture.ai.provider-boundary
   - architecture.ai.canonical-session-turn-work
+  - ideas.specflow-runtime.ai-adapters.diagnostic-sanitization
 ---
 
 # Raw provider diagnostics retention

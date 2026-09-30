@@ -28,8 +28,9 @@ related:
 
 # Legacy adapter migration inspection map
 
-This document is observational. Legacy code is **evidence of existing behavior**, not an
-authoritative architecture source.
+This document is observational and intentionally thin. Legacy code is **evidence of existing
+behavior**, not an authoritative architecture source. It points an implementation agent to the
+places that need inspection; the linked idea documents own candidate interpretation.
 
 Target repository architecture wins when the legacy implementation conflicts with current SpecFlow
 documents.
@@ -51,16 +52,13 @@ Inspect:
 - use of `api_error_status`;
 - stderr handling on process close.
 
-What to preserve:
+Review against:
 
-- canonical error categories that still fit current architecture;
-- provider-specific status/code details.
+- [Evidence-based provider error classification](error-classification.md);
+- [Provider error and limit evidence](provider-error-examples.md).
 
-What to replace/harden:
-
-- flattening arbitrary failure text into one `message` before classification;
-- broad regex matching without evidence provenance;
-- quota/rate-limit token coverage.
+Focus on evidence provenance, provider-private status/code details, and which legacy semantic
+categories still fit the target architecture.
 
 ### Antigravity/Gemini-style adapter
 
@@ -77,13 +75,9 @@ Inspect:
 - repeated-empty-error-message stall detection;
 - terminal `ERROR` reclassification when a substantive non-echoed response exists.
 
-Important evidence:
-
-- an empty `error_message` step can be routine diagnostic noise;
-- a sustained sequence of those steps with no other progress may represent a stall;
-- `status: ERROR` has historically carried advisory/stale diagnostics beside a valid response;
-- `FAILED`, `TIMEOUT`, and bare error-only cases should not be generalized from that special
-  `ERROR` behavior.
+Review the observed special cases against
+[Provider error and limit evidence](provider-error-examples.md); do not re-derive the target mapping
+from this inspection map.
 
 ## Availability, authentication, and readiness
 
@@ -102,24 +96,15 @@ Inspect:
   `authenticated`, and `unavailableReason`;
 - each provider's `isAvailable()`;
 - executable/version probes;
-- startup failure mapping to `AI_AUTH_FAILED`.
+- legacy startup failure mapping to the authentication-failure category
+  (legacy code: `AI_AUTH_FAILED`).
 
-Known migration gap:
+Legacy evidence includes an optional `authenticated` health dimension and a registry capable of
+propagating it, while legacy `isAvailable()` implementations mostly prove executable availability.
+The target contract is not yet defined.
 
-- the neutral health contract already supports `authenticated?: boolean`;
-- the registry already propagates an adapter-provided authentication state;
-- current provider `isAvailable()` implementations primarily prove executable availability and do
-  not establish login readiness.
-
-Migration objective:
-
-- preserve a cheap installation check;
-- add an explicit bounded readiness/environment test for auth and selected configuration;
-- fail early when fresh evidence says login is required;
-- retain `startTurn()` as the final authoritative auth guard;
-- never turn quota/rate-limit into `installed: false` or `authenticated: false`.
-
-See [Provider readiness and authentication](provider-readiness-and-auth.md).
+See [Provider readiness and authentication](provider-readiness-and-auth.md) for the candidate
+migration direction.
 
 ## Model selection and reasoning effort
 
@@ -141,17 +126,11 @@ Inspect:
 - Antigravity `agy models` parsing;
 - Turn-level normalization of `effort` / legacy `reasoningEffort`.
 
-Important migration facts:
+Inspect which fields are actually evidenced by each source rather than copying the legacy
+descriptor mechanically.
 
-- Codex already has authoritative per-model `supportedReasoningEfforts` and
-  `defaultReasoningEffort`; preserve this instead of replacing it with a static Cartesian model
-  list;
-- Claude can keep curated/configured effort metadata, but installed CLI support/version should be
-  checked separately;
-- Antigravity model IDs must remain opaque because `agy models` currently proves ID/label only;
-  suffixes such as `-high` must not be stripped without provider evidence.
-
-See [Model selection and reasoning effort](model-selection-and-effort.md).
+See [Model selection and reasoning effort](model-selection-and-effort.md), especially the
+field-specific provenance rules.
 
 ## Commentary / final answer / reasoning
 
@@ -172,13 +151,8 @@ Inspect the stream parser around:
 - `content_block_delta`;
 - terminal `result`.
 
-Behavior worth preserving conceptually:
-
-- thinking is reasoning;
-- tool start proves preceding pending assistant text is commentary;
-- text during active tool orchestration is commentary;
-- remaining pending assistant text can become final on authoritative successful terminal;
-- terminal `result` is a fallback, not a second duplicate answer.
+Compare this behavior with [Provider output semantics](output-semantics.md) and
+[Provider protocol mapping examples](protocol-examples.md).
 
 ### Codex
 
@@ -198,13 +172,8 @@ Inspect:
 - `#publishTerminalUnphasedMessages`;
 - reasoning notification handlers.
 
-Behavior worth preserving:
-
-- explicit `commentary` / `final_answer` phase wins;
-- reasoning remains separate;
-- superseded unphased messages become commentary;
-- only the final remaining unphased message may become legacy final-answer fallback;
-- one agent message cannot be published under two canonical phases.
+Compare the legacy phase/buffering behavior with
+[Provider output semantics](output-semantics.md).
 
 ### Antigravity/Gemini-style adapter
 
@@ -238,15 +207,9 @@ Inspect:
 - terminal cleanup/removal;
 - provider result path that may report `providerSessionId` after asynchronous execution.
 
-Specific risky sequence to regression-test before porting behavior:
-
-1. start new Turn without native session ID;
-2. provider has not established identity yet;
-3. cancel/terminalize Turn;
-4. provider later returns/callbacks native ID;
-5. ensure no active alias is restored and no canonical mutation occurs.
-
-Do not solve only at the binding-service layer; the concern is **invocation ownership**.
+Use [Invocation ownership and late-event fencing](invocation-ownership-and-late-events.md) for the
+risky sequence, candidate fence, and regression cases. This map only identifies the legacy mutation
+points.
 
 ## Canonical/provider correlation
 
@@ -335,11 +298,8 @@ Inspect:
 - `flushRawCaptureBounded`;
 - `flushAllRawCapture`.
 
-Known migration concern:
-
-- flush waits for queues but legacy bookkeeping has no explicit per-session release path;
-- preserve path traversal, reserved-name, length, hashing, and case-collision safeguards;
-- add explicit memory release and bounded on-disk retention.
+Review these structures against [Raw provider diagnostics retention](raw-diagnostics-retention.md),
+including in-memory release and path-safety behavior.
 
 ## Process-tree termination
 
@@ -357,16 +317,9 @@ Inspect before replacing anything:
 - `waitForChildExit`;
 - `terminateChildProcess`.
 
-Behavior already worth preserving:
-
-- POSIX process-group ownership and signalling;
-- Windows tree-aware `taskkill.exe /PID ... /T /F`;
-- bounded escalation;
-- post-termination liveness verification;
-- explicit separation between OS process death and semantic provider outcome.
-
-This area is primarily a **do-not-regress** migration concern, not a request for a new abstraction
-for its own sake.
+This is primarily a **do-not-regress** inspection area. Use
+[Cross-platform provider process runtime](cross-platform-process-runtime.md) for the behavior and
+portability guidance instead of duplicating it here.
 
 ## Tests worth mining for fixtures
 

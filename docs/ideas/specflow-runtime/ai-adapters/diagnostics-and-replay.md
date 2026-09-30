@@ -27,6 +27,9 @@ related:
   - ideas.specflow-runtime.ai-adapters.error-classification
   - ideas.specflow-runtime.ai-adapters.output-semantics
   - ideas.specflow-runtime.ai-adapters.protocol-examples
+  - ideas.specflow-runtime.ai-adapters.provider-readiness-auth
+  - ideas.specflow-runtime.ai-adapters.model-selection-effort
+  - ideas.specflow-runtime.ai-adapters.provider-error-examples
 ---
 
 # Provider diagnostics and protocol replay

@@ -45,7 +45,7 @@ Navigation collapse and workspace stacking are separate responsive decisions.
 | --- | --- | --- |
 | **Wide** | Persistent navigation. | Primary + Secondary can be visible together. |
 | **Compact** | Drawer navigation. | Primary + Secondary can still be visible together. |
-| **Narrow** | Drawer navigation. | One workspace surface is visible at a time; active Secondary replaces Primary until Back/Close. |
+| **Narrow** | Drawer navigation. | One workspace surface is visible at a time; active Secondary replaces Primary until Back returns to Primary. |
 
 Do not equate "no persistent sidebar" with "mobile". Compact layouts can still support the full split
 workspace.

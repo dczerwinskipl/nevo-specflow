@@ -21,22 +21,24 @@ related:
 
 ## 1. Repository owner (monitor & steer)
 
-Opens the UI to see the state of all active specifications at a glance, drill
-into a task, watch an AI session stream, and take the one owner action that makes sense
-at the current lifecycle step (approve a draft task, accept an implemented one,
-finalize a change) after the same deterministic gate the CLI enforces.
+Opens the UI to see the state of active specifications at a glance, distinguish what
+**requires attention** from what is merely **ready to start/continue**, drill into a
+Task, inspect or interact with an AI Session, and take the deterministic owner action
+available for the current workflow context.
 
-Needs: an accurate overview without noise; live updates without manual refresh;
-worktree/branch state visible; irreversible actions (finalize) behind explicit
-confirmation.
+Needs: an accurate overview without noise; one-click access from an attention signal
+to the relevant context/evidence; live updates without manual refresh; worktree/branch
+state visible when relevant; irreversible or state-changing actions behind an explicit
+deliberate interaction.
 
 ## 2. Reviewer
 
 Opens a change to understand what it does, read the spec against the implementation,
 and inspect the attached pull request(s) and diffs. May not be the owner.
 
-Needs: spec and PR side by side; clear "what changed" summary; read-only unless they
-are also the owner.
+Needs: Specification/Task intent next to the evidence needed for review; clear
+"what changed" summary; quick access to review artifacts, Handover, diffs, and linked
+Sessions; read-only unless they are also the owner.
 
 ## Boundaries
 
@@ -45,7 +47,9 @@ are also the owner.
   actions the CLI does — it is not a place where work is authored or where a second
   copy of the state is maintained, and it does not replace the CLI or the GitHub PR
   flow.
-- Anything an agent or CI does is done through the CLI/workflow, not the UI.
+- The UI may invoke deterministic workflow/agent operations through the same
+  application contracts as other clients, but it MUST NOT bypass workflow gates,
+  admission, or authoritative runtime state by maintaining a UI-only execution path.
 
 > **Provisional:** the UI is intended to reflect the specification files and
 > Git/PR state directly rather than own a separate datastore. Whether it is implemented

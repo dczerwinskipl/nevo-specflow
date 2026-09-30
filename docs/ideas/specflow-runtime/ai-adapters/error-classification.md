@@ -24,6 +24,7 @@ summary: >
 related:
   - ideas.specflow-runtime.ai-adapters
   - architecture.ai.provider-boundary
+  - ideas.specflow-runtime.ai-adapters.protocol-examples
 ---
 
 # Evidence-based provider error classification

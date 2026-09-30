@@ -867,9 +867,10 @@ Do not guess these during visual design:
 The Specification + Task information hierarchy and first screen-structure pass are now captured under
 this idea package.
 
-Next, apply the same information-depth and screen-structure analysis to **Full Session**, because it
-exercises the other major interaction family: conversation/Commentary, current activity, floating
-Session, Context/Work/File Secondary modes, batch execution, and deep technical inspection.
+Full Session is now exercised separately in
+[Full Session screen structure](full-session-screen-structure.md), covering conversation/Commentary,
+current activity, floating Session, Context/Work/File Secondary modes, batch execution, and deep
+technical inspection.
 
-Do not freeze a global component inventory until both Specification/Task and Full Session structures
-have been exercised.
+The next pass can therefore map both major screen families onto the current design system and
+identify actual component/composition gaps.

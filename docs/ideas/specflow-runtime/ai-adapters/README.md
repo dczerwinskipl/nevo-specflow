@@ -17,9 +17,9 @@ read_when:
   - migrating AI providers into SpecFlow Runtime
   - hardening provider adapters before the MVP implementation settles
 summary: >
-  Candidate hardening work for provider adapters: evidence-based error classification,
-  output semantics, invocation fencing, resource ownership, liveness, raw diagnostics,
-  correlation identity, diagnostics, and replay tests.
+  Candidate hardening work for provider adapters: lifecycle and recovery fencing, environment and
+  diagnostic security, evidence-based errors, output semantics, model/usage/capacity handling,
+  resource ownership, liveness, raw diagnostics, and replay tests.
 related:
   - ideas.readme
   - architecture.ai.provider-boundary

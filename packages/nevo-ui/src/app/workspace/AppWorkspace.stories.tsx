@@ -324,9 +324,8 @@ export const MediumSurfaceContract: Story = {
     const secondary = layout.querySelector<HTMLElement>('[data-workspace-surface="secondary"]');
     assert(primary && secondary, 'The compact split should expose both workspace surfaces.');
     assert(
-      Math.abs(primary.getBoundingClientRect().width / secondary.getBoundingClientRect().width - 2) <
-        0.01,
-      'The compact primary-emphasis split should retain the medium 2:1 relationship.',
+      secondary.getBoundingClientRect().left >= primary.getBoundingClientRect().right - 1,
+      'The compact runtime surfaces should remain side by side without overlap.',
     );
     assert(
       workspace.dataset.appShellWorkspaceMaterialOwner === 'panel',

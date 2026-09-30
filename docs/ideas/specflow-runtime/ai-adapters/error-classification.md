@@ -27,6 +27,8 @@ related:
   - ideas.specflow-runtime.ai-adapters.protocol-examples
   - ideas.specflow-runtime.ai-adapters.provider-error-examples
   - ideas.specflow-runtime.ai-adapters.provider-readiness-auth
+  - ideas.specflow-runtime.ai-adapters.provider-capacity-admission
+  - ideas.specflow-runtime.ai-adapters.session-resume-recovery
 ---
 
 # Evidence-based provider error classification

@@ -483,14 +483,6 @@ function AppWorkspaceRoot({ children, labels: labelsProp, split = 'balanced' }: 
   const runtimeSecondary = workspace?.secondary ?? null;
   const defaultSecondary = staticSurfaces.defaultSecondary;
   const defaultSecondaryOpen = defaultSecondary?.open ?? false;
-  const closeRuntimeAndDefault =
-    workspace?.closeSecondary && defaultSecondary?.onOpenChange
-      ? async () => {
-          const closed = await workspace.closeSecondary();
-          if (closed) defaultSecondary.onOpenChange?.(false);
-          return closed;
-        }
-      : undefined;
   const secondaryPresentation: WorkspaceSecondaryPresentation | undefined = runtimeSecondary
     ? {
         surface: runtimeSecondary.surface,
@@ -498,9 +490,7 @@ function AppWorkspaceRoot({ children, labels: labelsProp, split = 'balanced' }: 
         canStack: true,
         returnsToDefault: defaultSecondaryOpen,
         transition: workspace?.transition,
-        onClose: defaultSecondaryOpen
-          ? closeRuntimeAndDefault
-          : workspace?.closeSecondary,
+        onClose: defaultSecondaryOpen ? undefined : workspace?.closeSecondary,
         onBack: workspace?.canGoBack ? workspace.popSecondary : workspace?.closeSecondary,
       }
     : defaultSecondaryOpen && defaultSecondary

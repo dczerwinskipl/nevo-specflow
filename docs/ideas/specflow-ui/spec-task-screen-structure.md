@@ -855,5 +855,5 @@ Before moving to component inventory or visual mockups, verify:
 The equivalent Full Session structure is now captured in
 [Full Session screen structure](full-session-screen-structure.md).
 
-With both major screen families represented, the next step is the broader design-system
-component/composition gap pass before polished visual mockups.
+The broader design-system/component pass is now captured in
+[Design-system and composition gaps](design-system-component-composition-gaps.md).

@@ -1,7 +1,7 @@
 ---
 id: ideas.specflow-runtime.ai-adapters.protocol-examples
-type: reference
-title: Provider protocol examples
+type: engineering
+title: Provider protocol mapping examples
 status: draft
 scope: specflow
 areas:
@@ -18,25 +18,27 @@ read_when:
   - checking how provider-native output should map to reasoning, commentary, final answer, tools, or errors
   - creating minimized replay fixtures during provider migration
 summary: >
-  Sanitized and minimized provider event examples showing the mapping evidence behind the adapter
-  hardening ideas, including output phases, reasoning, tools, quota/auth failures, advisory
-  diagnostics, session establishment, and late-event cases.
+  Sanitized and minimized provider event examples showing the mapping evidence behind output,
+  reasoning, tools, interactions, session establishment, late-event, liveness, and replay ideas;
+  provider error/limit evidence lives in the dedicated error evidence document.
 related:
   - ideas.specflow-runtime.ai-adapters
   - ideas.specflow-runtime.ai-adapters.output-semantics
   - ideas.specflow-runtime.ai-adapters.error-classification
   - ideas.specflow-runtime.ai-adapters.diagnostics-and-replay
   - ideas.specflow-runtime.ai-adapters.invocation-ownership
+  - ideas.specflow-runtime.ai-adapters.provider-error-examples
 ---
 
-# Provider protocol examples
+# Provider protocol mapping examples
 
-These examples are intentionally small. They are not complete provider transcripts and MUST NOT be
-treated as a frozen provider protocol specification.
+These examples are intentionally small. They are not complete provider transcripts and should not
+be treated as a frozen provider protocol specification or exact target contract.
 
-Most examples are minimized from legacy Nevo tests/fixtures or verified provider observations.
-Values such as IDs, paths, prompts, and answer text are sanitized or illustrative. The important
-part is the **shape and classification evidence**.
+Examples are labelled as observed/fixture-backed or illustrative where that distinction matters.
+Values such as IDs, paths, prompts, and answer text are sanitized. The important part is the
+mapping problem being illustrated. Exact provider failure/limit evidence is intentionally kept in
+[Provider error and limit evidence](provider-error-examples.md).
 
 When provider versions change, generated/current protocol schemas and fresh observations take
 precedence.
@@ -522,127 +524,11 @@ Expected classification:
 ```text
 trusted provider error field
   -> quota classifier
-  -> AI_QUOTA_EXHAUSTED (candidate canonical category)
+  -> quota-exhausted semantic category
+     (legacy Nevo code: AI_QUOTA_EXHAUSTED)
 ```
 
 The same words appearing inside normal assistant prose should not trigger this classification.
-
-## Error-classification examples
-
-The examples below intentionally show why evidence provenance matters.
-
-### False-positive auth text inside successful assistant output
-
-Assistant content:
-
-```text
-The API response "invalid bearer token" usually means the caller used an expired credential.
-```
-
-Context:
-
-```text
-assistant message
-turn terminal status = completed
-process exit = 0
-no structured provider auth error
-```
-
-Expected classification:
-
-```text
-NOT AI_AUTH_FAILED
-```
-
-A regex over all stdout would be incorrect.
-
-### Real auth failure
-
-Illustrative terminal evidence:
-
-```json
-{
-  "terminalStatus": "failed",
-  "error": {
-    "type": "authentication_error",
-    "message": "invalid bearer token"
-  },
-  "httpStatus": 401
-}
-```
-
-Expected:
-
-```text
-AI_AUTH_FAILED
-source = structured terminal/provider error
-```
-
-### Usage/quota limit with reset hint
-
-Illustrative provider failure text in a trusted terminal error field:
-
-```text
-You've hit your usage limit for this model. Try again at 7:00 PM.
-```
-
-Expected classifier result:
-
-```text
-category       = quota exhausted
-retryNotBefore = parsed timestamp only if timezone/date semantics are unambiguous
-raw diagnostic = retained separately
-```
-
-If the timestamp cannot be interpreted safely, category can still be quota while
-`retryNotBefore` remains absent.
-
-### Transient overload
-
-Trusted terminal/provider error examples:
-
-```text
-rate limit exceeded
-too many requests
-server overloaded
-temporarily unavailable
-high demand
-```
-
-or structured status:
-
-```text
-HTTP 429
-HTTP 529
-```
-
-Expected:
-
-```text
-temporary/transient provider failure
-retryable = true (subject to Runtime policy)
-```
-
-A stronger deterministic class such as unknown session or max-turns should win before generic
-transient matching.
-
-### Structural process/harness crash
-
-Observed evidence model:
-
-```text
-valid provider protocol event received
-process exits non-zero
-no provider terminal turn event received
-```
-
-Expected:
-
-```text
-process/transport failure
-```
-
-Do not require a magic stderr sentence to prove the harness disappeared.
 
 ## Late-event example
 

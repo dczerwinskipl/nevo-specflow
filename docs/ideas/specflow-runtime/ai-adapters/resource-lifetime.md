@@ -149,6 +149,30 @@ must be provider-specific, fixture-backed, and semantically authoritative.
 The resource scope remains responsible until verified exit/termination even after canonical
 settlement.
 
+## Process stream bounds and backpressure
+
+Legacy inspection found mixed protection:
+
+- Codex keeps only a bounded stderr tail;
+- Antigravity accumulates a full `stderrBuffer` for the Turn;
+- Claude, Codex and Antigravity keep residual line buffers until a newline arrives;
+- async per-line processing queues can grow if provider output arrives faster than parsing/persistence.
+
+Migration should avoid turning provider output into unbounded process memory.
+
+Candidate protections:
+
+- bound residual line/frame size and fail explicitly on an impossible/oversized protocol frame;
+- use a bounded tail/excerpt when whole stderr is needed only for diagnostics/classification;
+- stream raw capture instead of accumulating a second complete stdout copy;
+- put a bound/backpressure policy between child streams and asynchronous log/raw-capture sinks;
+- when a sink is slower than the provider, either pause/resume the readable stream or use an
+  explicitly bounded queue with a visible truncation/drop marker;
+- never silently discard a protocol-terminal frame because a diagnostic capture limit was reached.
+
+A byte cap is a safety limit, not a provider protocol assumption. Keep protocol parsing and
+diagnostic retention limits separate where necessary.
+
 ## Partial startup test matrix
 
 At least inject failures after each acquisition step:

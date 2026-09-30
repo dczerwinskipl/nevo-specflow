@@ -31,11 +31,11 @@ describe('responsive workspace thresholds', () => {
     expect([480, 900, 480].map(supportsWorkspaceSplit)).toEqual([false, true, false]);
   });
 
-  it('keeps runtime surfaces stacked for every drawer-navigation width', () => {
-    expect(supportsRuntimeWorkspaceSplit(960, 'drawer')).toBe(false);
-    expect(supportsRuntimeWorkspaceSplit(1400, 'drawer')).toBe(false);
-    expect(supportsRuntimeWorkspaceSplit(WORKSPACE_SPLIT_MIN_WIDTH - 1, 'persistent')).toBe(false);
-    expect(supportsRuntimeWorkspaceSplit(WORKSPACE_SPLIT_MIN_WIDTH, 'persistent')).toBe(true);
+  it('keeps runtime split capacity independent from navigation mode', () => {
+    expect(supportsRuntimeWorkspaceSplit(WORKSPACE_SPLIT_MIN_WIDTH - 1)).toBe(false);
+    expect(supportsRuntimeWorkspaceSplit(WORKSPACE_SPLIT_MIN_WIDTH)).toBe(true);
+    expect(supportsRuntimeWorkspaceSplit(960)).toBe(true);
+    expect(supportsRuntimeWorkspaceSplit(1400)).toBe(true);
   });
 });
 

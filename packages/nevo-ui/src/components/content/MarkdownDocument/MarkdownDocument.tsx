@@ -1,15 +1,27 @@
+import type { ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '../../../lib';
 import { Link } from '../../actions/Link';
 import { Typography } from '../../foundations/Typography';
 
+export interface MarkdownDocumentLinkProps {
+  children: ReactNode;
+  href?: string;
+  title?: string;
+}
+
 export interface MarkdownDocumentProps {
   source: string;
   className?: string;
+  /**
+   * Product-owned link/reference renderer. Use it to turn workspace-relative references into
+   * contextual navigation while leaving Markdown parsing and default styling in Nevo UI.
+   */
+  renderLink?: (props: MarkdownDocumentLinkProps) => ReactNode;
 }
 
-const components: Components = {
+const baseComponents: Components = {
   h1: ({ children }) => (
     <Typography as="h1" className="mb-3 mt-8 text-content-primary first:mt-0" variant="title-lg">
       {children}
@@ -126,7 +138,14 @@ const components: Components = {
   ),
 };
 
-export function MarkdownDocument({ className, source }: MarkdownDocumentProps) {
+export function MarkdownDocument({ className, renderLink, source }: MarkdownDocumentProps) {
+  const components: Components = renderLink
+    ? {
+        ...baseComponents,
+        a: ({ children, href, title }) => renderLink({ children, href, title }),
+      }
+    : baseComponents;
+
   return (
     <div className={cn('w-full min-w-0 max-w-full [overflow-wrap:anywhere]', className)}>
       <ReactMarkdown components={components} remarkPlugins={[remarkGfm]}>

@@ -50,6 +50,7 @@ The package deliberately distinguishes:
 - [Information and navigation inventory](information-and-navigation-inventory.md)
 - [Specification and Task information hierarchy](spec-task-information-hierarchy.md)
 - [Specification and Task screen structure](spec-task-screen-structure.md)
+- [Full Session screen structure](full-session-screen-structure.md)
 
 ## Related idea package
 

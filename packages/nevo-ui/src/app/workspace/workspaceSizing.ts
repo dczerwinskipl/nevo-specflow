@@ -9,11 +9,8 @@ export function supportsWorkspaceSplit(availableWidth: number | undefined) {
   return availableWidth !== undefined && availableWidth >= WORKSPACE_SPLIT_MIN_WIDTH;
 }
 
-export function supportsRuntimeWorkspaceSplit(
-  availableWidth: number | undefined,
-  navigationMode: 'persistent' | 'drawer',
-) {
-  return navigationMode === 'persistent' && supportsWorkspaceSplit(availableWidth);
+export function supportsRuntimeWorkspaceSplit(availableWidth: number | undefined) {
+  return supportsWorkspaceSplit(availableWidth);
 }
 
 export type AppWorkspaceSplitMode = 'primary' | 'balanced' | 'secondary';

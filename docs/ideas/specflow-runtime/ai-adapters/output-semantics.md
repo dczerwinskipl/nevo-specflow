@@ -25,6 +25,7 @@ related:
   - ideas.specflow-runtime.ai-adapters
   - architecture.ai.canonical-session-turn-work
   - architecture.ai.provider-boundary
+  - ideas.specflow-runtime.ai-adapters.protocol-examples
 ---
 
 # Provider output semantics

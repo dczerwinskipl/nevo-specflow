@@ -85,6 +85,7 @@ interface WorkspaceSecondaryPresentation {
   surface: AppWorkspaceSurface;
   key: string;
   canStack: boolean;
+  returnsToDefault?: boolean;
   transition?: WorkspaceTransition;
   onClose?: () => void | Promise<unknown>;
   onBack?: () => void | Promise<unknown>;
@@ -480,23 +481,36 @@ function AppWorkspaceRoot({ children, labels: labelsProp, split = 'balanced' }: 
   const workspace = useOptionalWorkspace();
   const { navigationMode } = useAppWorkspace();
   const runtimeSecondary = workspace?.secondary ?? null;
+  const defaultSecondary = staticSurfaces.defaultSecondary;
+  const defaultSecondaryOpen = defaultSecondary?.open ?? false;
+  const closeRuntimeAndDefault =
+    workspace?.closeSecondary && defaultSecondary?.onOpenChange
+      ? async () => {
+          const closed = await workspace.closeSecondary();
+          if (closed) defaultSecondary.onOpenChange?.(false);
+          return closed;
+        }
+      : undefined;
   const secondaryPresentation: WorkspaceSecondaryPresentation | undefined = runtimeSecondary
     ? {
         surface: runtimeSecondary.surface,
         key: `runtime-${runtimeSecondary.instanceKey}`,
         canStack: true,
+        returnsToDefault: defaultSecondaryOpen,
         transition: workspace?.transition,
-        onClose: workspace?.closeSecondary,
+        onClose: defaultSecondaryOpen
+          ? closeRuntimeAndDefault
+          : workspace?.closeSecondary,
         onBack: workspace?.canGoBack ? workspace.popSecondary : workspace?.closeSecondary,
       }
-    : staticSurfaces.defaultSecondary?.open
+    : defaultSecondaryOpen && defaultSecondary
       ? {
-          surface: staticSurfaces.defaultSecondary.surface,
+          surface: defaultSecondary.surface,
           key: 'default-secondary',
           canStack: false,
           transition: workspace?.transition,
-          onClose: staticSurfaces.defaultSecondary.onOpenChange
-            ? () => staticSurfaces.defaultSecondary?.onOpenChange?.(false)
+          onClose: defaultSecondary.onOpenChange
+            ? () => defaultSecondary.onOpenChange?.(false)
             : undefined,
         }
       : undefined;
@@ -518,7 +532,10 @@ function AppWorkspaceRoot({ children, labels: labelsProp, split = 'balanced' }: 
   const primaryNavigationAction =
     navigationMode === 'drawer' ? <NavigationAction label={labels.openNavigation} /> : undefined;
   const secondaryBackAction =
-    secondaryPresentation?.onBack && (state.mode === 'stacked' || workspace?.canGoBack) ? (
+    secondaryPresentation?.onBack &&
+    (state.mode === 'stacked' ||
+      workspace?.canGoBack ||
+      (state.mode === 'split' && secondaryPresentation.returnsToDefault)) ? (
       <BackAction label={labels.backToPrimary} onBack={secondaryPresentation.onBack} />
     ) : undefined;
   const secondaryCloseAction = secondaryPresentation?.onClose ? (

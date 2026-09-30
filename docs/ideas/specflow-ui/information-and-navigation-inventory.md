@@ -310,8 +310,16 @@ Legacy deterministic workflow action inspection exposes concepts such as:
 - human-readable summary;
 - details.
 
-A future common projection may normalize action availability while preserving the ready vs
-requires-attention distinction.
+Readiness is **operation-specific**, not one universal boolean attached to a Task. Agent admission,
+workflow-step activation, a human decision, remediation, and finalize may legitimately have different
+readiness/blocker results at the same moment.
+
+The application may expose a concise Task/Spec summary, but it must preserve the authoritative
+readiness of each concrete action. A Task must not become globally "blocked" merely because one
+operation is blocked while another valid operation can remediate or continue the work.
+
+Detailed Spec/Task action hierarchy belongs in
+[Specification and Task information hierarchy](spec-task-information-hierarchy.md).
 
 ---
 
@@ -409,12 +417,75 @@ Legacy canonical Session payloads also provide migration evidence for:
 - mode/capabilities;
 - specId;
 - taskId/taskIds;
+- execution scope;
+- agent role/profile;
 - title;
 - creation/last activity;
 - Turns;
 - current Work summary.
 
 The exact legacy DTO is not a target contract.
+
+### Session association is not current execution
+
+**Legacy deterministic evidence / migration invariant**
+
+A Session can retain contextual/history relationships with Tasks without executing any of them in
+the current Turn.
+
+~~~text
+Session association / taskIds / history
+!=
+current Turn execution identity
+~~~
+
+For deterministic execution, current Task execution must come from explicit current execution intent.
+A generic/spec-level Turn may legally happen in a Session that previously touched one or more Tasks.
+
+Consequences for UI:
+
+- do not show "Agent working on TASK-03" merely because TASK-03 is linked in Session history;
+- use a canonical live/current execution projection for "working on" language;
+- moving a Task to a human-owned workflow step does not make the whole Session unusable for generic
+  conversation or unrelated allowed work.
+
+### Multi-task execution
+
+**Legacy deterministic evidence**
+
+One Session may execute a single Task or a Task batch. The UI must not invent a representative
+"primary Task" for a batch merely to simplify presentation.
+
+A useful relationship inventory is:
+
+~~~text
+spec-level / generic Session
+contextually related to one or more Tasks
+current single-Task execution
+current Task-batch execution
+~~~
+
+If a Session is opened from Task A but its current execution scope is A+B+C, the floating surface may
+preserve A as entry context while the Full Session must clearly expose the complete execution scope.
+
+### Terminal Turn is not terminal Task
+
+**Legacy deterministic evidence / product direction**
+
+A Turn or provider operation can be terminal while the Task/workflow attempt remains resumable or
+otherwise unfinished.
+
+~~~text
+Turn settled
+!=
+Task completed
+!=
+workflow attempt completed
+~~~
+
+The UI therefore needs to distinguish "agent currently working" from "workflow still active" and may
+need a human-facing "ready to resume/continue" projection. That is a derived product projection, not
+a new persisted workflow status.
 
 ---
 
@@ -550,8 +621,14 @@ This does **not** yet define a persistent Artifact entity.
 
 ### Review artifacts
 
-**Open question:** determine whether deterministic review reports are canonically linked to Spec,
-Task, workflow step/attempt, AI Session, or multiple references.
+**Legacy deterministic evidence + open migration question**
+
+Legacy multi-task review proves that one review artifact may be relevant to multiple Tasks while
+individual Task outcomes/verdicts remain distinct. The new model must therefore not assume a strict
+one-report-to-one-Task ownership shape.
+
+Still determine the canonical new-model references: Spec, one or more Tasks, workflow step/attempt,
+AI Session, or multiple references.
 
 ### Handover
 
@@ -598,10 +675,20 @@ Candidate read-only-first sections:
 
 ### AI / agents
 
-- provider configuration;
-- model/effort/execution options;
+Project settings own **defaults and policy**, for example:
+
+- default provider/model/mode/effort;
+- provider availability/configuration;
 - agent/profile definitions;
-- capability/availability facts where meaningful.
+- execution policy/capability defaults.
+
+Runtime execution choice is separate. Starting a Session, Task execution, or batch may select/freeze
+provider/model/mode/effort for that concrete execution. Those choices belong to the contextual start
+flow (possibly under advanced options), not only to Settings.
+
+For human-facing context, prefer the agent role/profile (for example Implementer, UI Implementer,
+Reviewer, Spec Writer) over provider/model identity. Provider/model/effort are usually execution
+details unless the user is choosing or diagnosing them.
 
 ### Workflows
 
@@ -650,7 +737,33 @@ independent human task.
 
 ---
 
-## 14. Configuration, runtime state, and action are separate
+## 14. Activity / audit trail
+
+**Legacy deterministic evidence**
+
+Activity is a cross-cutting evidence/history concept rather than workflow authority.
+
+Useful Activity facts include:
+
+- actor (user, agent-session, system);
+- Spec scope;
+- optional Task scope;
+- causal/initiating context;
+- occurrence time.
+
+Potential UI uses:
+
+- last meaningful activity on Specs overview;
+- recent "who changed what" context in Specification/Task;
+- deeper audit/history;
+- causal context around resume/handover.
+
+Activity must not become a second workflow state machine or a top-level navigation area merely because
+it exists as a runtime/domain record.
+
+---
+
+## 15. Configuration, runtime state, and action are separate
 
 ~~~text
 CONFIGURATION
@@ -684,7 +797,7 @@ Run tests                      -> Action
 
 ---
 
-## 15. Candidate navigation depth
+## 16. Candidate navigation depth
 
 This is product hierarchy, not a final router definition.
 
@@ -716,7 +829,7 @@ Project
 
 ---
 
-## 16. Human-attention interaction target
+## 17. Human-attention interaction target
 
 Preferred steering loop:
 
@@ -757,7 +870,7 @@ owner.
 
 ---
 
-## 17. Open questions before screen layout
+## 18. Open questions before screen layout
 
 Do not guess these during visual design:
 
@@ -770,11 +883,15 @@ Do not guess these during visual design:
 7. **Active vs Archive** - product state, storage detail, or both after migration?
 8. **Configuration precedence** - exact project/local/default precedence for effective values?
 9. **Session independence** - keep spec-owned for MVP unless a concrete ad-hoc use case appears.
-10. **Tools/runs** - defer top-level navigation until execution history is a real product need.
+10. **Execution projections** - decide the new canonical shape for current single/batch execution
+    scope without confusing it with historical Session associations.
+11. **Resume/remediation** - define the stable application projection for "ready to resume/continue"
+    and per-action blockers without inventing lifecycle statuses.
+12. **Tools/runs** - defer top-level navigation until execution history is a real product need.
 
 ---
 
-## 18. Next pass
+## 19. Next pass
 
 Do not jump directly to component selection.
 

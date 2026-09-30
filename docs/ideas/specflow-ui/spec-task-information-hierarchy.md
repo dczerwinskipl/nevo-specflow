@@ -1088,18 +1088,14 @@ first and ask the owner only if semantics remain ambiguous.
 
 # 18. Next design pass
 
-Use this hierarchy to sketch **three states of the same product surface**, not three unrelated pages:
+This hierarchy is now exercised by
+[Specification and Task screen structure](spec-task-screen-structure.md), covering ready, current
+execution, human review, Specification-level action, remediation, resume, and recovery states.
 
-1. Specification with no required human action but work ready to start;
-2. Specification with a Task actively being worked by an agent;
-3. Specification with a Task requiring human review.
+The next product-model pass should apply the same discipline to **Full Session** before a global
+component inventory is frozen. Full Session must validate the Session stream, Commentary/current
+activity, Context/Work/File Secondary modes, floating Session, batch execution, and narrow explicit
+inspector actions.
 
-For each state, validate:
-
-- can the owner identify its category from the Specs overview;
-- is the relevant Task discoverable immediately;
-- does opening Task provide enough evidence to decide;
-- is the mutation still a separate deliberate interaction;
-- does mobile preserve the same hierarchy when Secondary becomes pushed detail.
-
-Only after those flows work should component inventory and final screen layout be frozen.
+After both screen families are stable, map them onto the current design system and identify actual
+component/composition gaps before polished mockups.

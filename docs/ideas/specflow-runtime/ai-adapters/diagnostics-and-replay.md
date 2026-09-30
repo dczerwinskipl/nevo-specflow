@@ -26,6 +26,7 @@ related:
   - ideas.specflow-runtime.ai-adapters.raw-diagnostics-retention
   - ideas.specflow-runtime.ai-adapters.error-classification
   - ideas.specflow-runtime.ai-adapters.output-semantics
+  - ideas.specflow-runtime.ai-adapters.protocol-examples
 ---
 
 # Provider diagnostics and protocol replay

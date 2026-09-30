@@ -56,13 +56,18 @@ The core steering loop remains:
 ~~~text
 Specs overview
   -> identify attention / ready / working
-  -> open Specification
-  -> select Task when Task context is needed
-  -> Task Secondary gives decision context and evidence
+  -> 1 click on the relevant signal
+  -> responsible decision context opens
+     - Task-specific signal => Specification + Task Secondary
+     - Spec-level signal => Specification context
   -> deliberate action
 ~~~
 
-Opening a Task is never itself the mutating workflow action.
+A generic Specification click may still open the Specification workspace normally, but an actionable
+summary should deep-link to the context that explains that signal instead of forcing the human to
+find the same Task again.
+
+Opening that context is never itself the mutating workflow action.
 
 ---
 
@@ -179,18 +184,24 @@ Avoid turning each Spec row into a dashboard card containing every status.
 
 ## 3.4 Interaction
 
-Main click/tap:
+There are two distinct targets:
 
 ~~~text
-Spec item
+Spec identity / neutral row target
   -> Specification workspace
+
+Task-specific attention / ready / issue target
+  -> Specification workspace with that Task context already open
 ~~~
 
-A Spec row should not contain the final approval/review mutation. The overview is for discovery and
-orientation.
+On wide/compact layouts this means Specification Primary + Task Secondary in one navigation action.
+On narrow layouts it may land directly on the pushed Task detail while preserving Back to the
+Specification.
 
-A clearly safe start/continue shortcut may become a future optimization, but the default product
-flow remains context first, mutation second.
+A Spec-level signal opens the Specification itself because that is the responsible decision context.
+
+The overview should not perform the final approval/review/start mutation. It gets the human to the
+right context in one interaction; the next deliberate interaction performs the action.
 
 ---
 
@@ -391,10 +402,11 @@ The UI should not enforce one global "Attachments" list as the only way to find 
 Ready
 
 Spec A
-  Ready to start implementation
+  TASK-03 ready to start
 ~~~
 
-This is visible and convenient, but calmer than attention.
+Selecting the ready signal opens Spec A with TASK-03 context already active. This is visible and
+convenient, but calmer than attention.
 
 ## 6.2 Specification Primary
 
@@ -449,6 +461,8 @@ In progress
 Spec A
   Reviewer working on TASK-03
 ~~~
+
+Selecting the current-work signal opens Spec A with TASK-03 context already active.
 
 This wording is allowed only when authoritative current execution scope proves TASK-03 is part of
 the current execution.
@@ -530,6 +544,9 @@ Requires attention
 Spec A
   TASK-03 requires review
 ~~~
+
+Selecting the attention signal opens Spec A with TASK-03 review context already active. This is the
+reference one-click-to-context path.
 
 Attention state should say **what requires the human**, not merely "action required."
 
@@ -663,7 +680,7 @@ The same information hierarchy must work when Task Secondary replaces Specificat
 ## Specification
 
 ~~~text
-←/☰  Spec A
+☰  Spec A
 
 Needs your attention
 TASK-03 requires review          >
@@ -730,15 +747,17 @@ scenarios and available backend projections.
 Before moving to component inventory or visual mockups, verify:
 
 1. From Specs overview, human attention is distinguishable from ready and working.
-2. Opening a Spec reveals the relevant Task without searching through unrelated status chrome.
-3. Opening Task is one interaction and does not mutate workflow.
-4. Task Secondary explains the current state before presenting a mutation.
-5. Evidence required for a human decision is reachable from Task without leaving the context.
-6. Current execution language uses authoritative execution scope, never historical Session binding.
-7. Batch execution remains visibly batch-shaped.
-8. A settled Turn can produce continue/resume or recovery state without pretending the Task is done.
-9. Narrow/mobile preserves discovery of attention/ready/current-work before Task detail is opened.
-10. Session access from Task remains floating-first, with explicit promotion to Full Session.
+2. A Task-specific signal opens the responsible Task context in one interaction; the human does not
+   have to reopen the Spec and find the same Task manually.
+3. A neutral Spec click still opens the Specification workspace without inventing a Task selection.
+4. Opening Task/context does not mutate workflow.
+5. Task Secondary explains the current state before presenting a mutation.
+6. Evidence required for a human decision is reachable from Task without leaving the context.
+7. Current execution language uses authoritative execution scope, never historical Session binding.
+8. Batch execution remains visibly batch-shaped.
+9. A settled Turn can produce continue/resume or recovery state without pretending the Task is done.
+10. Narrow/mobile preserves discovery of attention/ready/current-work before Task detail is opened.
+11. Session access from Task remains floating-first, with explicit promotion to Full Session.
 
 If these checks hold, the next step is to map this structure onto existing design-system primitives
 and identify real component/composition gaps before producing polished visual mockups.

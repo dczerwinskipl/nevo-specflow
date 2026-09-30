@@ -45,7 +45,7 @@ The package deliberately distinguishes:
 - future candidates that should not become implementation requirements yet;
 - unresolved questions that need owner clarification instead of an inferred answer.
 
-## Current working document
+## Current working documents
 
 - [Information and navigation inventory](information-and-navigation-inventory.md)
 - [Specification and Task information hierarchy](spec-task-information-hierarchy.md)

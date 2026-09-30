@@ -54,9 +54,10 @@ gpt-...-high
 
 when the provider actually accepts `model` and `effort` as separate fields.
 
-## Existing neutral contract is already suitable
+## Legacy contract worth migrating
 
-Legacy Nevo already has the useful shape:
+Current SpecFlow architecture does not yet define a target model-catalog contract. Legacy Nevo has
+a useful shape worth considering during migration:
 
 ```text
 AgentModelDescriptor
@@ -73,7 +74,7 @@ AgentModelDescriptor
     maxContextTokens?
 ```
 
-This should be preserved during migration.
+The useful semantics should be preserved or deliberately replaced; the exact legacy type/name is not yet a target contract.
 
 Important semantics:
 
@@ -98,13 +99,14 @@ supportedReasoningEfforts
 defaultReasoningEffort
 ```
 
-Therefore migration should preserve:
+Therefore the migration direction should preserve the provider's per-model metadata rather than
+flattening model × effort combinations:
 
 ```text
 native model/list
-  -> AgentModelDescriptor[]
+  -> target neutral model descriptor
   -> selected model
-  -> selected model.traits.supportedReasoningEfforts
+  -> selected model's supported efforts
   -> separate effort selector
 ```
 
@@ -154,7 +156,7 @@ If the user enters a custom model ID for which no metadata exists:
 - model is allowed through;
 - supported efforts are unknown;
 - do not claim every known effort is supported;
-- advanced UI MAY allow an explicit manual effort value/pass-through if product UX wants it;
+- advanced UI may allow an explicit manual effort value/pass-through if product UX wants it;
 - provider remains the final validator.
 
 ### Compatibility aliases
@@ -295,9 +297,9 @@ selected it. Otherwise a future provider default change cannot take effect.
 `defaultReasoningEffort` is useful for display/explanation, but omission and explicit selection
 remain distinct.
 
-## Session vs Turn overrides
+## Candidate Session vs Turn overrides
 
-Where the provider supports it, model/effort selection should have clear precedence:
+Where the provider supports both scopes, one reasonable precedence is:
 
 ```text
 explicit Turn override
@@ -305,21 +307,41 @@ explicit Turn override
   > provider default
 ```
 
-Do not duplicate `effort` and `reasoningEffort` as two independent semantic settings. Accept
-legacy aliases at the compatibility boundary if required, normalize them once, and carry one neutral
-value internally.
+The target should avoid carrying `effort` and legacy `reasoningEffort` as two independent
+semantic settings. If compatibility aliases are required, normalize them once at the migration
+boundary.
 
-## Model catalog sources
+## Evidence and provenance are per field
 
-Suggested evidence strength:
+Do not assign one global "strength" to an entire catalog source. Evidence quality depends on the
+specific property being populated.
 
-1. provider-native model protocol/API with per-model metadata;
-2. provider-native model listing with ID/label only;
-3. versioned curated metadata from provider documentation;
-4. operator configuration;
-5. manual/unlisted passthrough.
+Examples:
 
-Expose source/provenance so UI and validation know whether a trait is authoritative or advisory.
+- provider-native listing that returns only `id` + `label` is authoritative for those fields but
+  provides **no evidence** for `supportedReasoningEfforts`;
+- provider-native `model/list` that explicitly returns `supportedReasoningEfforts` is strong
+  evidence for that trait;
+- versioned provider documentation may be stronger for a capability field than an ID-only local
+  listing;
+- operator configuration can deliberately override display/selection policy without pretending to
+  be provider discovery;
+- manual/unlisted passthrough establishes only the opaque model ID unless more evidence exists.
+
+The target descriptor should either carry provenance per trait/field or avoid a single model-level
+`source` value that misleadingly implies every property came from the same evidence source.
+
+A practical candidate is conceptually:
+
+```text
+id: value + provenance
+label: value + provenance
+traits.supportedReasoningEfforts: value? + provenance?
+traits.defaultReasoningEffort: value? + provenance?
+...
+```
+
+The exact representation remains a target-contract decision.
 
 ## Refresh and caching
 

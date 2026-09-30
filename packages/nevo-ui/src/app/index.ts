@@ -34,4 +34,8 @@ export type {
 } from './workspace/workspaceSizing';
 export { APP_SHELL_GAP } from './workspace/workspaceSizing';
 export * from './floating';
-export type { AppContentContainerSize, AppWorkspaceRegionProps } from './workspace/AppWorkspace';
+export type {
+  AppContentContainerSize,
+  AppWorkspaceRegionProps,
+  AppWorkspaceSecondaryRegionProps,
+} from './workspace/AppWorkspace';

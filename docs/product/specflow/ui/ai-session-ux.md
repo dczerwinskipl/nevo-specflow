@@ -45,9 +45,37 @@ model and exact component specs are defined with the implementation.
 
 ## Chat
 
-The chat is a **work interface**, not a transcript. The agent's final answer is the
-primary content of a completed turn. Reloading the page yields an equivalent view of
-the same session (reload equivalence). The composer preserves unsent text.
+The chat is a **work interface**, not a raw transcript.
+
+The primary Session stream preserves human-readable chronology across:
+
+- user messages;
+- assistant/final answers;
+- Commentary when the provider/agent supplies it;
+- compact semantic Work summaries;
+- current activity and pending interaction state.
+
+Commentary is first-class human context because it often explains what the agent is doing and why.
+It is optional evidence, not guaranteed protocol data: never fabricate Commentary when a provider
+does not supply it.
+
+Raw tool calls/results do not dominate the normal conversation stream. They are represented by
+compact semantic Work summaries and remain available through deeper Work inspection.
+
+The final answer remains the primary outcome of a completed turn, while Commentary and Work preserve
+the path/context needed to understand ongoing or completed work.
+
+Reloading the page yields an equivalent view of the same Session (reload equivalence). The composer
+preserves unsent text.
+
+## Session association vs current execution
+
+A Session's historical/contextual Task associations do not prove what the current Turn is executing.
+
+"Working on TASK-03" requires authoritative current execution scope. A generic/spec-level Turn can
+occur in a Session that previously touched TASK-03, and one execution may legally cover a Task batch.
+
+Do not select one representative Task for a batch execution merely to simplify presentation.
 
 ## Work information levels
 
@@ -67,7 +95,22 @@ A session view distinguishes a **live** turn (streaming, updating) from a **hist
 snapshot** (settled). Live updates apply without a manual refresh; a historical view
 does not silently mutate.
 
+## Current activity vs history
+
+The user should be able to see **what is happening now** without opening full Work history.
+
+Current activity belongs in the primary Session experience. Full chronological Work, action/tool
+details, raw outputs, and diagnostics belong in contextual Secondary/deep inspection.
+
+A settled Turn does not imply a completed Task/workflow attempt. When authoritative workflow state
+allows continuation or requires recovery, the UI should expose that separately from the Turn's own
+terminal state.
+
 ## Mobile
 
-Work/inspection density is reduced on mobile; the primary answer and current-activity
-line are never dropped. Deep inspection moves behind a tap.
+Work/inspection density is reduced on mobile; the primary answer, relevant Commentary, and
+current-activity line are never dropped.
+
+Because Secondary is not visible side-by-side on narrow layouts, the primary Session surface needs
+explicit actions to open Context, Work, file preview, and other contextual inspection. Deep
+inspection moves behind those deliberate taps and returns to the Session with Back.

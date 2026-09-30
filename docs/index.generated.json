@@ -984,7 +984,8 @@
         "ideas.specflow-runtime.ai-adapters",
         "ideas.specflow-runtime.ai-adapters.raw-diagnostics-retention",
         "ideas.specflow-runtime.ai-adapters.error-classification",
-        "ideas.specflow-runtime.ai-adapters.output-semantics"
+        "ideas.specflow-runtime.ai-adapters.output-semantics",
+        "ideas.specflow-runtime.ai-adapters.protocol-examples"
       ],
       "scope": "specflow",
       "areas": [
@@ -1013,7 +1014,8 @@
       "summary": "Classify provider failures from structured evidence first, restrict text matching to trusted failure fields, distinguish quota from transient rate limiting, and expose retry metadata such as retryNotBefore without letting model prose drive lifecycle semantics.",
       "related": [
         "ideas.specflow-runtime.ai-adapters",
-        "architecture.ai.provider-boundary"
+        "architecture.ai.provider-boundary",
+        "ideas.specflow-runtime.ai-adapters.protocol-examples"
       ],
       "scope": "specflow",
       "areas": [
@@ -1072,7 +1074,8 @@
       "summary": "Separate protocol/output silence from underlying process activity and absolute runtime limits, using platform-specific process telemetry only as optional evidence so long-running tools are not killed merely because the provider protocol is quiet.",
       "related": [
         "ideas.specflow-runtime.ai-adapters",
-        "architecture.runtime.ownership-and-lifecycle"
+        "architecture.runtime.ownership-and-lifecycle",
+        "ideas.specflow-runtime.ai-adapters.protocol-examples"
       ],
       "scope": "specflow",
       "areas": [
@@ -1102,7 +1105,8 @@
       "related": [
         "ideas.specflow-runtime.ai-adapters",
         "architecture.ai.canonical-session-turn-work",
-        "architecture.ai.provider-boundary"
+        "architecture.ai.provider-boundary",
+        "ideas.specflow-runtime.ai-adapters.protocol-examples"
       ],
       "scope": "specflow",
       "areas": [
@@ -1345,6 +1349,38 @@
         "legacy",
         "providers",
         "inspection"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.ai-adapters.protocol-examples",
+      "type": "reference",
+      "title": "Provider protocol examples",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/protocol-examples.md",
+      "read_when": [
+        "implementing or reviewing provider event mapping",
+        "checking how provider-native output should map to reasoning, commentary, final answer, tools, or errors",
+        "creating minimized replay fixtures during provider migration"
+      ],
+      "summary": "Sanitized and minimized provider event examples showing the mapping evidence behind the adapter hardening ideas, including output phases, reasoning, tools, quota/auth failures, advisory diagnostics, session establishment, and late-event cases.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "ideas.specflow-runtime.ai-adapters.output-semantics",
+        "ideas.specflow-runtime.ai-adapters.error-classification",
+        "ideas.specflow-runtime.ai-adapters.diagnostics-and-replay",
+        "ideas.specflow-runtime.ai-adapters.invocation-ownership"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "providers",
+        "protocol",
+        "examples",
+        "fixtures"
       ]
     },
     {

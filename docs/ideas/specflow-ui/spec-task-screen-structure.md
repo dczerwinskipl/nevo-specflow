@@ -163,6 +163,12 @@ This is a structural example, not a requirement to render literal grouped sectio
 
 The important rule is that **attention, ready, and working remain perceptibly different**.
 
+A Specification can carry concurrent signals, for example one Task may require review while another
+Task is currently being executed. If the screen uses mutually exclusive groups, place the Spec by
+its highest-priority human-facing signal and preserve the other meaningful signals inside the item;
+do not silently discard them. Avoid duplicating the same Spec across several groups unless the UI is
+deliberately presenting independent projections rather than one canonical work queue.
+
 A flat list is still valid if the sort, labels, and hierarchy communicate those categories clearly.
 
 ## 3.3 Minimum information per Spec item
@@ -846,5 +852,9 @@ Before moving to component inventory or visual mockups, verify:
 14. Narrow/mobile preserves discovery of attention/ready/current-work before Task detail is opened.
 15. Session access from Task remains floating-first, with explicit promotion to Full Session.
 
-If these checks hold, the next step is to map this structure onto existing design-system primitives
-and identify real component/composition gaps before producing polished visual mockups.
+If these checks hold, the next product-model step is to perform the equivalent screen-structure pass
+for **Full Session**: Session stream, current activity, Context/Work/File Secondary modes, floating
+Session, batch execution, and narrow explicit inspector actions.
+
+Only after both Specification/Task and Full Session structures are stable should we run the broader
+design-system component/composition gap pass and then produce polished visual mockups.

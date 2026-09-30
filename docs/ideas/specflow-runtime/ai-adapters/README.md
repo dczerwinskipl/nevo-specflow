@@ -60,26 +60,32 @@ or parser heuristic as already approved target API.
 2. [Provider/session correlation identity](correlation-identity.md)
 3. [Evidence-based error classification](error-classification.md)
 4. [Provider readiness and authentication](provider-readiness-and-auth.md)
+5. [Provider process environment boundary](process-environment-boundary.md)
+6. [Provider diagnostic sanitization](diagnostic-sanitization.md)
+7. [Provider session resume and recovery](session-resume-and-recovery.md)
 
-These can otherwise corrupt canonical ownership, resurrect terminal aliases, make application
+These can otherwise corrupt canonical ownership, resurrect terminal aliases, leak host/server
+credentials into provider processes or logs, replay unknown provider work, make application
 semantics depend on misleading provider text, or advertise an installed-but-logged-out provider as
 ready for work.
 
 ### P1 — operational reliability
 
-5. [Resource lifetime and settlement](resource-lifetime.md)
-6. [Liveness and watchdogs](liveness-watchdog.md)
-7. [Output semantics](output-semantics.md)
-8. [Model selection and reasoning effort](model-selection-and-effort.md)
+8. [Resource lifetime and settlement](resource-lifetime.md)
+9. [Liveness and watchdogs](liveness-watchdog.md)
+10. [Output semantics](output-semantics.md)
+11. [Model selection and reasoning effort](model-selection-and-effort.md)
+12. [Provider usage accounting provenance](usage-accounting.md)
+13. [Provider capacity and admission](provider-capacity-and-admission.md)
 
 ### P2 — diagnostics and maintainability
 
-9. [Raw diagnostics retention](raw-diagnostics-retention.md)
-10. [Provider diagnostics and replay](diagnostics-and-replay.md)
-11. [Cross-platform process concerns](cross-platform-process-runtime.md)
-12. [Provider protocol examples](protocol-examples.md)
-13. [Provider error and limit examples](provider-error-examples.md)
-14. [Legacy migration inspection map](migration-inspection-map.md)
+14. [Raw diagnostics retention](raw-diagnostics-retention.md)
+15. [Provider diagnostics and replay](diagnostics-and-replay.md)
+16. [Cross-platform process concerns](cross-platform-process-runtime.md)
+17. [Provider protocol mapping examples](protocol-examples.md)
+18. [Provider error and limit evidence](provider-error-examples.md)
+19. [Legacy migration inspection map](migration-inspection-map.md)
 
 ## Principles shared by all items
 

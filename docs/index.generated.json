@@ -251,7 +251,7 @@
         "migrating AI providers into SpecFlow Runtime",
         "hardening provider adapters before the MVP implementation settles"
       ],
-      "summary": "Candidate hardening work for provider adapters: evidence-based error classification, output semantics, invocation fencing, resource ownership, liveness, raw diagnostics, correlation identity, diagnostics, and replay tests.",
+      "summary": "Candidate hardening work for provider adapters: lifecycle and recovery fencing, environment and diagnostic security, evidence-based errors, output semantics, model/usage/capacity handling, resource ownership, liveness, raw diagnostics, and replay tests.",
       "related": [
         "ideas.readme",
         "architecture.ai.provider-boundary",
@@ -952,7 +952,8 @@
         "ideas.specflow-runtime.ai-adapters",
         "ideas.specflow-runtime.ai-adapters.liveness-watchdog",
         "ideas.specflow-runtime.ai-adapters.resource-lifetime",
-        "ideas.specflow-runtime.ai-adapters.raw-diagnostics-retention"
+        "ideas.specflow-runtime.ai-adapters.raw-diagnostics-retention",
+        "ideas.specflow-runtime.ai-adapters.process-environment-boundary"
       ],
       "scope": "specflow",
       "areas": [
@@ -966,6 +967,41 @@
         "linux",
         "macos",
         "portability"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.ai-adapters.diagnostic-sanitization",
+      "type": "engineering",
+      "title": "Provider diagnostic sanitization",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/diagnostic-sanitization.md",
+      "read_when": [
+        "persisting provider diagnostics or errors",
+        "logging provider commands, stderr, environment failures, or probe output",
+        "emitting telemetry derived from provider execution",
+        "exposing technical provider details in UI or API responses"
+      ],
+      "summary": "Sanitize provider diagnostics at the boundary using actual resolved secret values plus structural token heuristics, bound retained text after redaction, remove terminal/control artifacts, and keep telemetry attributes closed and low-cardinality.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "ideas.specflow-runtime.ai-adapters.process-environment-boundary",
+        "ideas.specflow-runtime.ai-adapters.raw-diagnostics-retention",
+        "ideas.specflow-runtime.ai-adapters.diagnostics-and-replay",
+        "architecture.ai.provider-boundary"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "testing"
+      ],
+      "tags": [
+        "diagnostics",
+        "redaction",
+        "secrets",
+        "telemetry",
+        "providers"
       ]
     },
     {
@@ -988,7 +1024,8 @@
         "ideas.specflow-runtime.ai-adapters.protocol-examples",
         "ideas.specflow-runtime.ai-adapters.provider-readiness-auth",
         "ideas.specflow-runtime.ai-adapters.model-selection-effort",
-        "ideas.specflow-runtime.ai-adapters.provider-error-examples"
+        "ideas.specflow-runtime.ai-adapters.provider-error-examples",
+        "ideas.specflow-runtime.ai-adapters.diagnostic-sanitization"
       ],
       "scope": "specflow",
       "areas": [
@@ -1020,7 +1057,9 @@
         "architecture.ai.provider-boundary",
         "ideas.specflow-runtime.ai-adapters.protocol-examples",
         "ideas.specflow-runtime.ai-adapters.provider-error-examples",
-        "ideas.specflow-runtime.ai-adapters.provider-readiness-auth"
+        "ideas.specflow-runtime.ai-adapters.provider-readiness-auth",
+        "ideas.specflow-runtime.ai-adapters.provider-capacity-admission",
+        "ideas.specflow-runtime.ai-adapters.session-resume-recovery"
       ],
       "scope": "specflow",
       "areas": [
@@ -1050,7 +1089,8 @@
       "related": [
         "ideas.specflow-runtime.ai-adapters",
         "architecture.ai.canonical-session-turn-work",
-        "architecture.runtime.ownership-and-lifecycle"
+        "architecture.runtime.ownership-and-lifecycle",
+        "ideas.specflow-runtime.ai-adapters.session-resume-recovery"
       ],
       "scope": "specflow",
       "areas": [
@@ -1159,6 +1199,43 @@
       ]
     },
     {
+      "id": "ideas.specflow-runtime.ai-adapters.process-environment-boundary",
+      "type": "engineering",
+      "title": "Provider process environment boundary",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/process-environment-boundary.md",
+      "read_when": [
+        "spawning a provider CLI or app-server process",
+        "deciding which host environment variables a provider may inherit",
+        "adding provider authentication through environment variables or workload identity",
+        "injecting Nevo run/session context into a provider process"
+      ],
+      "summary": "Replace ambient process.env inheritance with an explicit provider process environment projection that preserves required OS/provider authentication inputs without leaking unrelated server secrets, and make readiness probes use the same projection as real execution.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "ideas.specflow-runtime.ai-adapters.provider-readiness-auth",
+        "ideas.specflow-runtime.ai-adapters.diagnostic-sanitization",
+        "ideas.specflow-runtime.ai-adapters.cross-platform-process-runtime",
+        "architecture.ai.provider-boundary",
+        "architecture.runtime.ownership-and-lifecycle"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "security",
+        "configuration",
+        "testing"
+      ],
+      "tags": [
+        "providers",
+        "environment",
+        "secrets",
+        "process",
+        "security"
+      ]
+    },
+    {
       "id": "ideas.specflow-runtime.ai-adapters.protocol-examples",
       "type": "engineering",
       "title": "Provider protocol mapping examples",
@@ -1188,6 +1265,41 @@
         "protocol",
         "examples",
         "fixtures"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.ai-adapters.provider-capacity-admission",
+      "type": "engineering",
+      "title": "Provider capacity and admission",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/provider-capacity-and-admission.md",
+      "read_when": [
+        "handling provider quota or usage-window limits",
+        "deciding whether to start a Turn after a known provider limit",
+        "showing provider capacity/reset information",
+        "implementing retryNotBefore"
+      ],
+      "summary": "Treat provider capacity as optional structured evidence, preserve usage/reset windows when safely available, and apply a fresh authoritative retryNotBefore at Turn admission so known exhausted providers are not repeatedly invoked before their reset.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "ideas.specflow-runtime.ai-adapters.error-classification",
+        "ideas.specflow-runtime.ai-adapters.provider-readiness-auth",
+        "ideas.specflow-runtime.ai-adapters.usage-accounting",
+        "architecture.ai.provider-boundary"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "ui",
+        "testing"
+      ],
+      "tags": [
+        "quota",
+        "rate-limit",
+        "admission",
+        "retry",
+        "providers"
       ]
     },
     {
@@ -1240,7 +1352,9 @@
         "ideas.specflow-runtime.ai-adapters.error-classification",
         "ideas.specflow-runtime.ai-adapters.diagnostics-and-replay",
         "ideas.specflow-runtime.ai-adapters.protocol-examples",
-        "architecture.ai.provider-boundary"
+        "architecture.ai.provider-boundary",
+        "ideas.specflow-runtime.ai-adapters.process-environment-boundary",
+        "ideas.specflow-runtime.ai-adapters.provider-capacity-admission"
       ],
       "scope": "specflow",
       "areas": [
@@ -1271,7 +1385,8 @@
       "related": [
         "ideas.specflow-runtime.ai-adapters",
         "architecture.ai.provider-boundary",
-        "architecture.ai.canonical-session-turn-work"
+        "architecture.ai.canonical-session-turn-work",
+        "ideas.specflow-runtime.ai-adapters.diagnostic-sanitization"
       ],
       "scope": "specflow",
       "areas": [
@@ -1301,7 +1416,8 @@
       "related": [
         "ideas.specflow-runtime.ai-adapters",
         "ideas.specflow-runtime.ai-adapters.invocation-ownership",
-        "architecture.runtime.ownership-and-lifecycle"
+        "architecture.runtime.ownership-and-lifecycle",
+        "ideas.specflow-runtime.ai-adapters.session-resume-recovery"
       ],
       "scope": "specflow",
       "areas": [
@@ -1314,6 +1430,76 @@
         "cleanup",
         "resources",
         "settlement"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.ai-adapters.session-resume-recovery",
+      "type": "engineering",
+      "title": "Provider session resume and recovery",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/session-resume-and-recovery.md",
+      "read_when": [
+        "resuming a provider-native conversation",
+        "retrying after unknown or stale provider session errors",
+        "deciding whether a failed provider attempt may be safely replayed",
+        "rotating provider sessions to control stale or irrelevant context"
+      ],
+      "summary": "Resume provider sessions only when compatibility is evidenced, recover stale native sessions without duplicating unknown work, and authorize automatic provider replay from positive recovery evidence rather than from an error string alone.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "ideas.specflow-runtime.ai-adapters.invocation-ownership",
+        "ideas.specflow-runtime.ai-adapters.correlation-identity",
+        "ideas.specflow-runtime.ai-adapters.error-classification",
+        "architecture.ai.provider-boundary",
+        "architecture.ai.canonical-session-turn-work",
+        "architecture.workflow.deterministic-workflow"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "workflow",
+        "testing"
+      ],
+      "tags": [
+        "sessions",
+        "resume",
+        "recovery",
+        "retry",
+        "providers"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.ai-adapters.usage-accounting",
+      "type": "engineering",
+      "title": "Provider usage accounting provenance",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/usage-accounting.md",
+      "read_when": [
+        "mapping provider token or cost usage into canonical Turn state",
+        "aggregating usage across resumed provider sessions",
+        "deciding whether a provider usage update is incremental or cumulative"
+      ],
+      "summary": "Carry explicit usage scope/provenance so repeated provider usage events and resumed sessions cannot be double-counted, distinguishing per-turn deltas, cumulative session totals, and unknown usage semantics before aggregation.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "ideas.specflow-runtime.ai-adapters.protocol-examples",
+        "ideas.specflow-runtime.ai-adapters.diagnostics-and-replay",
+        "architecture.ai.provider-boundary",
+        "architecture.ai.canonical-session-turn-work"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "usage",
+        "tokens",
+        "cost",
+        "providers",
+        "sessions"
       ]
     },
     {

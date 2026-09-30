@@ -85,6 +85,74 @@ Important evidence:
 - `FAILED`, `TIMEOUT`, and bare error-only cases should not be generalized from that special
   `ERROR` behavior.
 
+## Availability, authentication, and readiness
+
+Legacy files:
+
+```text
+tools/dashboard/server/ai/providers/registry.mjs
+tools/dashboard/server/ai/providers/claude/provider.mjs
+tools/dashboard/server/ai/providers/codex/provider.mjs
+tools/dashboard/server/ai/providers/antigravity/provider.mjs
+```
+
+Inspect:
+
+- `AgentProviderRegistry.descriptors()` propagation of `installed`, `status`, `version`,
+  `authenticated`, and `unavailableReason`;
+- each provider's `isAvailable()`;
+- executable/version probes;
+- startup failure mapping to `AI_AUTH_FAILED`.
+
+Known migration gap:
+
+- the neutral health contract already supports `authenticated?: boolean`;
+- the registry already propagates an adapter-provided authentication state;
+- current provider `isAvailable()` implementations primarily prove executable availability and do
+  not establish login readiness.
+
+Migration objective:
+
+- preserve a cheap installation check;
+- add an explicit bounded readiness/environment test for auth and selected configuration;
+- fail early when fresh evidence says login is required;
+- retain `startTurn()` as the final authoritative auth guard;
+- never turn quota/rate-limit into `installed: false` or `authenticated: false`.
+
+See [Provider readiness and authentication](provider-readiness-and-auth.md).
+
+## Model selection and reasoning effort
+
+Legacy files:
+
+```text
+tools/dashboard/server/ai/model/model-catalog.mjs
+tools/dashboard/server/ai/providers/claude/provider.mjs
+tools/dashboard/server/ai/providers/codex/provider.mjs
+tools/dashboard/server/ai/providers/codex/app-server-client.mjs
+tools/dashboard/server/ai/providers/antigravity/provider.mjs
+```
+
+Inspect:
+
+- `AgentModelDescriptor` / model trait validation;
+- Claude curated/configured catalog;
+- Codex native `model/list` mapping;
+- Antigravity `agy models` parsing;
+- Turn-level normalization of `effort` / legacy `reasoningEffort`.
+
+Important migration facts:
+
+- Codex already has authoritative per-model `supportedReasoningEfforts` and
+  `defaultReasoningEffort`; preserve this instead of replacing it with a static Cartesian model
+  list;
+- Claude can keep curated/configured effort metadata, but installed CLI support/version should be
+  checked separately;
+- Antigravity model IDs must remain opaque because `agy models` currently proves ID/label only;
+  suffixes such as `-high` must not be stripped without provider evidence.
+
+See [Model selection and reasoning effort](model-selection-and-effort.md).
+
 ## Commentary / final answer / reasoning
 
 ### Claude

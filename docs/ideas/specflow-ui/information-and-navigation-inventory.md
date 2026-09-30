@@ -210,7 +210,7 @@ At this broad inventory level, Task needs to expose:
 - identity and human-readable workflow meaning;
 - requires-attention vs ready-to-act vs current-work distinctions;
 - dependencies/blockers;
-- current execution only when authoritative execution scope proves the Task is active;
+- current execution only when authoritative execution scope proves the Task is part of the current execution scope;
 - contextual/historical Sessions separately from current execution;
 - evidence such as review, Handover, changes, and verification;
 - deterministic actions with their own readiness/reason.
@@ -427,8 +427,18 @@ preserve A as entry context while the Full Session must clearly expose the compl
 
 **Legacy deterministic evidence / product direction**
 
-A Turn or provider operation can be terminal while the Task/workflow attempt remains resumable or
-otherwise unfinished.
+A Turn or provider operation can be terminal while more legal deterministic work remains. This can
+happen while a workflow attempt is active, before an attempt is activated during safe remediation,
+or while an unfinished durable operation is safely replayable.
+
+~~~text
+Turn / execution settled
++ legal work remains
++ no ambiguous durable operation requires recovery
+=> can continue / resume
+~~~
+
+This is different from both Task completion and recovery-required state.
 
 ~~~text
 Turn settled
@@ -438,9 +448,8 @@ Task completed
 workflow attempt completed
 ~~~
 
-The UI therefore needs to distinguish "agent currently working" from "workflow still active" and may
-need a human-facing "ready to resume/continue" projection. That is a derived product projection, not
-a new persisted workflow status.
+The UI therefore needs to distinguish "agent currently working", "can continue/resume", and
+"recovery required". These are derived product projections, not new persisted workflow statuses.
 
 ---
 
@@ -632,18 +641,24 @@ Candidate read-only-first sections:
 
 Project settings own **defaults and policy**, for example:
 
-- default provider/model/mode/effort;
+- default provider/model/mode where the project defines them;
 - provider availability/configuration;
 - agent/profile definitions;
 - execution policy/capability defaults.
 
-Runtime execution choice is separate. Starting a Session, Task execution, or batch may select/freeze
-provider/model/mode/effort for that concrete execution. Those choices belong to the contextual start
-flow (possibly under advanced options), not only to Settings.
+Runtime execution choice is separate. Legacy batch reservation evidence freezes an effective
+execution snapshot including provider, model, mode, and context capacity for that concrete
+execution. Those choices belong to the contextual start flow (possibly under advanced options), not
+only to Settings.
+
+`effort` is currently a per-Turn option in the legacy contract and is not assumed to be part of the
+frozen execution snapshot. The UI should present the effective execution configuration that the
+authoritative runtime actually reserved, rather than generalizing all Turn options into frozen
+execution policy.
 
 For human-facing context, prefer the agent role/profile (for example Implementer, UI Implementer,
-Reviewer, Spec Writer) over provider/model identity. Provider/model/effort are usually execution
-details unless the user is choosing or diagnosing them.
+Reviewer, Spec Writer) over provider/model identity. Provider/model and per-Turn options such as
+effort are usually execution details unless the user is choosing or diagnosing them.
 
 ### Workflows
 
@@ -841,7 +856,8 @@ Do not guess these during visual design:
 10. **Execution projections** - decide the new canonical shape for current single/batch execution
     scope without confusing it with historical Session associations.
 11. **Resume/remediation** - define the stable application projection for "ready to resume/continue"
-    and per-action blockers without inventing lifecycle statuses.
+    across pre-attempt remediation, active attempts, and safely replayable unfinished operations,
+    while keeping recovery-required distinct and avoiding invented lifecycle statuses.
 12. **Tools/runs** - defer top-level navigation until execution history is a real product need.
 
 ---

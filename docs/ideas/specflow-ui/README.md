@@ -48,6 +48,7 @@ The package deliberately distinguishes:
 ## Current working document
 
 - [Information and navigation inventory](information-and-navigation-inventory.md)
+- [Specification and Task information hierarchy](spec-task-information-hierarchy.md)
 
 ## Related idea package
 

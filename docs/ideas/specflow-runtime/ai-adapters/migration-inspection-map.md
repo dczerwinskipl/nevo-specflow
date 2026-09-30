@@ -132,6 +132,72 @@ descriptor mechanically.
 See [Model selection and reasoning effort](model-selection-and-effort.md), especially the
 field-specific provenance rules.
 
+## Provider process environment and diagnostics
+
+Legacy files:
+
+```text
+tools/dashboard/server/ai/providers/claude/provider.mjs
+tools/dashboard/server/ai/providers/antigravity/provider.mjs
+tools/dashboard/server/ai/providers/codex/provider.mjs
+tools/dashboard/server/ai/providers/codex/app-server-client.mjs
+tools/dashboard/server/ai/diagnostics/**
+```
+
+Inspect:
+
+- each `...process.env` spread into provider child processes;
+- Nevo-owned `NEVO_*` variables injected into provider execution;
+- scoped `NODE_EXTRA_CA_CERTS` behavior;
+- stdout/stderr/error logging and any existing size caps.
+
+See:
+
+- [Provider process environment boundary](process-environment-boundary.md);
+- [Provider diagnostic sanitization](diagnostic-sanitization.md).
+
+## Session resume and stale-session recovery
+
+Legacy files:
+
+```text
+tools/dashboard/server/ai/providers/claude/provider.mjs
+tools/dashboard/server/ai/providers/codex/provider.mjs
+tools/dashboard/server/ai/providers/antigravity/provider.mjs
+```
+
+Inspect:
+
+- Claude `--resume` -> `--session-id` fallback for deterministic missing-session errors;
+- Codex thread start/resume behavior;
+- whether provider session reuse is constrained by canonical workspace/worktree identity;
+- which failures occur before vs after provider work may have started.
+
+See [Provider session resume and recovery](session-resume-and-recovery.md).
+
+## Usage and capacity
+
+Legacy files:
+
+```text
+tools/dashboard/server/ai/providers/claude/provider.mjs
+tools/dashboard/server/ai/providers/codex/provider.mjs
+tools/dashboard/server/ai/providers/antigravity/provider.mjs
+tools/dashboard/server/ai/sessions/turns/**
+```
+
+Inspect:
+
+- every `emitUsageUpdated` source;
+- whether provider usage events are deltas, Turn totals, or cumulative Session totals;
+- repeated usage surfaces within one Turn;
+- existing quota/rate-limit recovery hints and reset-time evidence.
+
+See:
+
+- [Provider usage accounting provenance](usage-accounting.md);
+- [Provider capacity and admission](provider-capacity-and-admission.md).
+
 ## Commentary / final answer / reasoning
 
 ### Claude

@@ -296,6 +296,9 @@ Cancelling…
 
 Use canonical Runtime currentActivity/readiness, never visual inference from the last Work item.
 
+Waiting for model/tool without required user input is calm live state, not attention. Cancelling is
+also a live transition state and should prevent conflicting actions until Runtime resolves it.
+
 ### 5.2 Execution scope wording
 
 Historical/contextual Session association is not current execution.
@@ -930,7 +933,94 @@ Technical operation records remain deeper inspection.
 
 ---
 
-## 18. Narrow / mobile validation
+## 18. State G — waiting without human action
+
+Waiting is live state, but not human attention.
+
+### Primary
+
+~~~text
+Waiting for model…
+~~~
+
+or:
+
+~~~text
+Waiting for tool result…
+~~~
+
+Keep the state visible and calm. Do not show warning/attention treatment unless authoritative
+readiness says the human is required.
+
+### Context
+
+Context can continue showing execution scope and related product work, but it should not invent a
+next human action merely because the Turn is waiting.
+
+---
+
+## 19. State H — terminal failure, cancellation, or interruption
+
+A terminal Turn may end without a normal completed final answer.
+
+### Primary
+
+~~~text
+Turn failed / cancelled / interrupted
+
+human-readable outcome or cause
+last meaningful Commentary / work summary
+
+[Retry / Continue] only when authoritative application state permits
+~~~
+
+A failed ToolAction inside an otherwise active Turn is not promoted to this Session-level terminal
+state. The Turn/runtime projection remains authoritative.
+
+Technical stack traces, raw tool outputs, provider details, and operation records stay in Work/deep
+inspection unless they are the only useful human-readable explanation.
+
+### Context
+
+Context should show the surrounding workflow consequence separately:
+
+~~~text
+Turn outcome
+  interrupted
+
+Task/workflow
+  still active / resumable / recovery required / no action
+~~~
+
+Do not infer Task completion or recovery policy from the terminal Turn outcome alone.
+
+---
+
+## 20. State I — unavailable / unknown Session state
+
+When authoritative Session state cannot be established or the provider/runtime is unavailable,
+preserve history but make the inability to act explicit.
+
+### Primary
+
+~~~text
+Session unavailable
+
+human-readable reason when known
+historical conversation remains visible
+
+composer/action availability follows authoritative readiness
+~~~
+
+Unknown/unavailable is not the same as a failed historical Turn.
+
+Transport reconnecting may be shown as connection feedback, but transport state must not overwrite
+canonical Session/Turn semantics. Once authoritative state is restored, the canonical projection
+wins.
+
+---
+
+## 21. Narrow / mobile validation
 
 ### 18.1 Primary entry
 
@@ -998,7 +1088,7 @@ exist only in these pushed details.
 
 ---
 
-## 19. Header and parent context
+## 22. Header and parent context
 
 Full Session has no permanent top-level sidebar entry, so the surface must preserve parent
 orientation.
@@ -1034,7 +1124,7 @@ accident.
 
 ---
 
-## 20. What this pass deliberately does not decide
+## 23. What this pass deliberately does not decide
 
 Still deferred:
 
@@ -1052,7 +1142,7 @@ Still deferred:
 
 ---
 
-## 21. Screen-structure acceptance checks
+## 24. Screen-structure acceptance checks
 
 Before global component/composition gap analysis, verify:
 
@@ -1079,9 +1169,16 @@ Before global component/composition gap analysis, verify:
 17. Opening floating Session from one Task does not rewrite a current batch into that Task.
 18. Settled Turn, Task/workflow completion, resumable continuation, and recovery-required remain
     distinct concepts.
-19. Returning from explicitly promoted Full Session can restore the originating Spec/Task context
+19. Waiting without human input remains calm live state and is not styled as attention.
+20. A failed ToolAction does not become a failed Turn unless authoritative Turn state says so.
+21. Terminal failed/cancelled/interrupted Turns show a human-readable outcome without inferring Task
+    completion or recovery policy.
+22. Unknown/unavailable Session state preserves history while action availability follows
+    authoritative readiness.
+23. Transport reconnecting feedback does not replace canonical Session/Turn semantics.
+24. Returning from explicitly promoted Full Session can restore the originating Spec/Task context
     where product navigation state can represent it.
-20. Direct Session entry still has deterministic parent orientation/fallback.
+25. Direct Session entry still has deterministic parent orientation/fallback.
 
 If these hold, Specification/Task and Full Session together are sufficient to start the broader
 design-system component/composition gap pass.

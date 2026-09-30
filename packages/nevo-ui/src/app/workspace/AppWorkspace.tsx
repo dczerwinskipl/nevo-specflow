@@ -150,8 +150,8 @@ function useWorkspaceLayoutState(
   hasSecondary: boolean,
   secondaryCanStack: boolean,
 ): WorkspaceLayoutState {
-  const { availableWidth, navigationMode } = useAppWorkspace();
-  const isSplitView = supportsRuntimeWorkspaceSplit(availableWidth, navigationMode);
+  const { availableWidth } = useAppWorkspace();
+  const isSplitView = supportsRuntimeWorkspaceSplit(availableWidth);
   const showSecondary = hasSecondary && (isSplitView || secondaryCanStack);
   const resolvedSplit = resolveWorkspaceSplit(split, isSplitView && showSecondary, availableWidth);
 

@@ -250,7 +250,7 @@ A Task summary should support scanning and selection, not become a miniature Tas
 | Semantic workflow status | Orientation | Legacy deterministic evidence | Always |
 | Requires attention + reason | Requires attention | Product direction | Always when true |
 | Ready next action | Ready | Legacy action projection | Visible when relevant |
-| Active Session/agent work | Current activity | Legacy Session binding + product direction | Visible when active |
+| Active Session/agent work | Current activity | Current execution projection + product direction | Visible only when current execution proves this Task is in scope |
 | Dependency/blocker summary | Context | Legacy deterministic evidence | Visible when blocking |
 | Review outcome requiring owner action | Requires attention / Evidence | Legacy review artifact | Visible when relevant |
 | Completion/progress state | Orientation | Candidate derived projection | Compact |
@@ -513,13 +513,19 @@ Examples:
 
 ### Ready
 
-Prerequisites are satisfied and the user may choose to initiate the next operation.
+Prerequisites are satisfied for a **specific operation** and the user may choose to initiate it.
 
 Examples:
 
-- Task ready to start;
-- workflow step ready to start;
-- finalize available.
+- Task workflow step ready to start;
+- agent execution can continue/remediate;
+- human action is available;
+- finalize is available.
+
+Do not derive one universal `Task.ready`. Agent admission, workflow activation, remediation,
+human action, and finalize can have different authoritative readiness/blocker results at the same
+moment. A compact Task summary may project the most relevant next action, but must not erase those
+differences.
 
 ### Working
 
@@ -529,11 +535,19 @@ The system/agent is actively progressing the object.
 
 Progress cannot continue now, but the object is not necessarily waiting for a human decision.
 
+### Ready to resume / continue
+
+A prior AI Turn/operation may be settled while the Task/workflow attempt is still active and can be
+continued. This is a useful product projection, not a workflow lifecycle value.
+
 ### Settled
 
 No immediate work is expected.
 
 These should be derived projections, not a second persisted state machine.
+
+A terminal AI Turn does **not** imply a terminal Task or completed workflow attempt. Likewise,
+`workflow_progress.state === active` does not prove that an agent is currently working.
 
 ## 9.2 Attention item shape - candidate
 
@@ -589,7 +603,11 @@ UI requirements:
 - distinguish "owner must decide" from "agent can fix";
 - distinguish blocking from informational findings;
 - indicate stale evidence;
-- link the report used to justify the next action.
+- link the report used to justify the next action;
+- support one shared multi-Task review artifact while preserving separate per-Task outcomes/verdicts.
+
+A shared report must not force the UI to invent one representative Task or collapse all reviewed
+Tasks into one status.
 
 ## 10.2 Task review UI consequence
 
@@ -671,7 +689,28 @@ Diff is **Evidence**, not the Task's primary identity.
 
 **Product direction**
 
-Task detail should show linked Sessions as Context.
+Task detail should show Sessions as Context, but it must distinguish **historical/contextual
+association** from **current execution scope**.
+
+~~~text
+Session linked to / previously touched TASK-03
+!=
+current Turn is executing TASK-03
+~~~
+
+For deterministic execution, "Agent working on TASK-03" requires authoritative current execution
+identity. Historical `taskIds`, a previous active Task, or opening the Session from TASK-03 are not
+sufficient evidence.
+
+A Session may be:
+
+- generic/spec-level;
+- contextually associated with one or more Tasks;
+- currently executing one Task;
+- currently executing a Task batch.
+
+For a batch Session, do not choose one Task as the fake "primary Task". If the current execution
+scope is A+B+C, Full Session should expose A+B+C even if the floating Session was opened from A.
 
 The primary Task interaction is not to replace Task detail with a nested Session detail.
 
@@ -686,11 +725,16 @@ Full Session workspace
 Useful Task-level Session summary:
 
 - Session identity/title;
+- agent role/profile first (for example Reviewer or Implementer);
 - active/settled status;
-- current activity when active;
+- current execution scope, if this Task is actually part of it;
+- current activity when authoritative current execution exists;
 - requires-attention marker;
-- relation to this Task;
+- contextual relation to this Task;
 - quick open floating Session action.
+
+Provider/model/mode/effort are usually secondary execution detail. They can become contextual start
+options when the user creates/starts an execution, but project defaults belong in Settings.
 
 Detailed conversation and Work stay in Session surfaces.
 
@@ -751,18 +795,21 @@ This is the reference "one click for context, second deliberate click for decisi
 ~~~text
 Specs overview
   Spec A: IN PROGRESS
-  "Agent working on TASK-03"
+  "Reviewer working on TASK-03"
 
 open Spec A
   Task 03 shows current activity
 
 open Task 03
-  current Session/activity
+  current Session/execution scope
   no fake human-attention state
 
 click Session
   Floating Session
 ~~~
+
+The "working on TASK-03" label is allowed only when current execution identity proves TASK-03 is in
+scope. A linked/historical Session alone is insufficient.
 
 Working is not ready and is not requires-attention.
 
@@ -811,7 +858,54 @@ show:
 
 This differs from OWNER_DECISION even if both came from the same review artifact.
 
-## 14.7 Spec-level workflow attention
+## 14.7 Generic Turn after Task-associated work
+
+~~~text
+Task 03
+  linked Session S
+
+Session S previously executed TASK-03
+
+user sends an ordinary generic/spec-level message
+  -> new Turn has no explicit Task execution identity
+
+UI:
+  Session remains contextually related to TASK-03
+  but does NOT show "working on TASK-03"
+~~~
+
+This prevents historical Session binding from becoming false current execution state.
+
+## 14.8 Multi-Task review Session
+
+~~~text
+TASK-01
+TASK-02
+TASK-03
+  -> one review execution/session with scope 01+02+03
+  -> possibly one shared review artifact
+  -> separate per-Task verdict/outcome
+~~~
+
+Opening the Session from TASK-02 may preserve TASK-02 as entry context in the floating surface, but
+Full Session must expose the whole current batch scope.
+
+## 14.9 Terminal Turn, Task still resumable
+
+~~~text
+Task workflow attempt is active
+AI Turn settles / provider stops
+Task is not completed
+
+UI:
+  not "Agent working"
+  not "Task done"
+  instead expose an appropriate continue/resume action if authoritative readiness allows it
+~~~
+
+"Ready to resume/continue" is a projection, not a new persisted Task status.
+
+## 14.10 Spec-level workflow attention
 
 **Future migration scenario**
 
@@ -900,14 +994,18 @@ Potential backend/read-model gaps:
 
 1. canonical Spec-level workflow projection;
 2. canonical human-attention projection for Spec and Task;
-3. ready-next-action projection distinct from attention;
-4. concise reason why an action is ready/blocked;
+3. per-action readiness projection distinct from attention and from one universal Task.ready;
+4. concise reason why each action is ready/blocked/remediation-capable;
 5. relevant evidence references for a human gate/action;
 6. canonical Handover contract;
-7. artifact ownership/reference model;
+7. artifact ownership/reference model, including one artifact referenced by multiple Tasks;
 8. change/diff provenance beyond whole current worktree;
-9. current active Session/work projection at Spec/Task level;
-10. stale/fresh review evidence expressed without parsing report prose.
+9. canonical current ExecutionScope (generic / single Task / Task batch) distinct from Session history;
+10. current active Session/work projection at Spec/Task level;
+11. "ready to resume/continue" / remediation projection after terminal Turn or interrupted execution;
+12. Activity/audit projection for last/recent meaningful actions without making Activity workflow authority;
+13. contextual runtime execution configuration (agent profile plus provider/model/mode/effort where relevant);
+14. stale/fresh review evidence expressed without parsing report prose.
 
 Some of these may already exist partially in legacy Nevo. Migration should preserve the **semantic
 capability**, not necessarily its old DTO.
@@ -927,6 +1025,9 @@ These are not blockers for the next visual pass unless that pass touches them di
 6. How precisely can current code attribute changes to Task, Session, attempt, or Handover?
 7. Which workflow action-check fields will become stable application/UI projections?
 8. Should archive remain a storage-backed source distinction or become purely product lifecycle?
+9. What stable application contract should expose current single-Task vs Task-batch ExecutionScope?
+10. Which execution options are user-selectable per Session/execution versus inherited from project defaults?
+11. Which Activity facts should be projected directly versus kept only in deep audit/history?
 
 When one of these becomes necessary for a screen contract, inspect the deterministic implementation
 first and ask the owner only if semantics remain ambiguous.

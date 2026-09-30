@@ -401,24 +401,7 @@ function DismissibleDefaultSecondaryContent() {
       <AppWorkspace split="primary">
         <AppWorkspace.Primary header="Conversation">
           <div className="grid w-[720px] gap-3 p-4">
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={() => setContextOpen(true)}>Open context</Button>
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  void workspace.pushSecondary({
-                    header: 'Task detail',
-                    content: (
-                      <div className="w-[320px] p-4">
-                        <Typography variant="body-sm">Runtime task detail</Typography>
-                      </div>
-                    ),
-                  })
-                }
-              >
-                Open task detail
-              </Button>
-            </div>
+            <Button onClick={() => setContextOpen(true)}>Open context</Button>
             <Typography variant="body-sm">Primary conversation</Typography>
           </div>
         </AppWorkspace.Primary>
@@ -427,8 +410,23 @@ function DismissibleDefaultSecondaryContent() {
           open={contextOpen}
           onOpenChange={setContextOpen}
         >
-          <div className="w-[320px] p-4">
+          <div className="grid w-[320px] gap-3 p-4">
             <Typography variant="body-sm">Default context content</Typography>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                void workspace.pushSecondary({
+                  header: 'Task detail',
+                  content: (
+                    <div className="w-[320px] p-4">
+                      <Typography variant="body-sm">Runtime task detail</Typography>
+                    </div>
+                  ),
+                })
+              }
+            >
+              Open task detail
+            </Button>
           </div>
         </AppWorkspace.Secondary>
       </AppWorkspace>
@@ -453,7 +451,8 @@ export const DismissibleDefaultSecondaryContract: Story = {
       'The default Secondary should be visible on split entry.',
     );
 
-    await userEvent.click(canvas.getByRole('button', { name: 'Open task detail' }));
+    const openTaskDetail = canvas.getByRole('button', { name: 'Open task detail' });
+    await userEvent.click(openTaskDetail);
     await waitFor(
       () => canvas.queryByText('Runtime task detail'),
       'A runtime detail should replace the default Secondary.',
@@ -462,6 +461,11 @@ export const DismissibleDefaultSecondaryContract: Story = {
     await waitFor(
       () => canvas.queryByText('Default context content'),
       'Back from the first runtime detail should reveal the default Secondary base.',
+    );
+    await waitFor(
+      () =>
+        document.activeElement === canvas.getByRole('button', { name: 'Open task detail' }),
+      'Back should restore focus to the control in the default Secondary that opened the detail.',
     );
 
     await userEvent.click(canvas.getByRole('button', { name: 'Close secondary content' }));

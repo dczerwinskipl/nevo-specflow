@@ -872,5 +872,5 @@ Full Session is now exercised separately in
 current activity, floating Session, Context/Work/File Secondary modes, batch execution, and deep
 technical inspection.
 
-The next pass can therefore map both major screen families onto the current design system and
-identify actual component/composition gaps.
+That mapping is now captured in
+[Design-system and composition gaps](design-system-component-composition-gaps.md).

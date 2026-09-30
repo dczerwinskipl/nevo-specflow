@@ -447,6 +447,13 @@ behavior beyond canonical Session semantics.
 
 ## 5.1 P0 — runtime Compact split does not match the product contract
 
+**Implementation status:** implemented on `feature/poc-to-specflow` after this analysis; repository
+quality-gate validation is still required before merge.
+
+The runtime split decision now follows workspace width independently from navigation mode. Compact
+split also assigns workspace material to the runtime split root while narrow stacked mode keeps
+material on the active panel. Story contracts cover 960px split and 839px stacked behavior.
+
 ### Desired product behavior
 
 Current UI product docs define:
@@ -503,6 +510,14 @@ Add/adjust stories/tests for:
 
 ## 5.2 P0 — default Context Secondary cannot currently be dismissed persistently
 
+**Implementation status:** implemented on `feature/poc-to-specflow` after this analysis; repository
+quality-gate validation is still required before merge.
+
+Declarative `AppWorkspace.Secondary` now supports controlled `open` / `onOpenChange`. A runtime
+detail can use the default Secondary as its inspector base: Back reveals the default Context, while
+Close can dismiss both the runtime stack and controlled default Secondary. Explicit product state can
+restore Context later.
+
 ### Desired Full Session behavior
 
 On split entry:
@@ -544,6 +559,13 @@ Secondary close contract. Do not solve it with Full-Session-specific state insid
 ---
 
 ## 5.3 P1 — MarkdownDocument needs composable link/reference handling
+
+**Implementation status:** implemented on `feature/poc-to-specflow` after this analysis; repository
+quality-gate validation is still required before merge.
+
+`MarkdownDocument` now exposes a product-supplied `renderLink` hook. A product renderer can claim
+workspace-relative references while returning null/undefined for links that should retain the shared
+default external-link rendering.
 
 ### Need
 
@@ -707,16 +729,18 @@ tabs unless real screen testing says otherwise.
 
 ## P0 — foundation alignment
 
-1. Fix runtime Compact split so navigation and workspace breakpoints are independent.
-2. Add dismissible/restorable default Secondary behavior required by default-open Full Session
-   Context.
-3. Add Storybook contract coverage for those workspace behaviors.
+1. Runtime Compact split — **implemented on the UI migration branch; validation pending**.
+2. Dismissible/restorable default Secondary — **implemented on the UI migration branch; validation
+   pending**.
+3. Storybook contract coverage for compact split, narrow stacking, default-Context Back/Close and
+   restore — **implemented; execution pending**.
 
 These affect the geometry/navigation model of both screen families.
 
 ## P1 — minimal reusable content extension
 
-4. Extend `MarkdownDocument` with product-supplied link/reference rendering.
+4. `MarkdownDocument` product-supplied link/reference rendering — **implemented; validation
+   pending**.
 
 ## P1 — product compositions
 
@@ -782,9 +806,12 @@ validate the product screen.
 
 The product is ready for polished visual mockups when:
 
-1. Compact runtime split matches the documented shell contract.
-2. Full Session default Context can be closed and remain closed.
-3. product-aware Markdown/file links can be represented without duplicating Markdown styling.
+1. Compact runtime split matches the documented shell contract. **Implementation landed; automated
+   validation pending.**
+2. Full Session default Context can be closed, used as the base of inspector drill-down, and remain
+   closed after dismissal. **Implementation landed; automated validation pending.**
+3. product-aware Markdown/file links can be represented without duplicating normal Markdown link
+   styling. **Implementation landed; automated validation pending.**
 4. Spec/Task and Full Session compositions exist as product-level Storybook fixtures.
 5. attention/ready/current-work states remain visually distinct without status-badge overload.
 6. batch execution is visibly batch-shaped.

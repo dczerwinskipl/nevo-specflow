@@ -51,6 +51,7 @@ The package deliberately distinguishes:
 - [Specification and Task information hierarchy](spec-task-information-hierarchy.md)
 - [Specification and Task screen structure](spec-task-screen-structure.md)
 - [Full Session screen structure](full-session-screen-structure.md)
+- [Design-system and composition gaps](design-system-component-composition-gaps.md)
 
 ## Related idea package
 

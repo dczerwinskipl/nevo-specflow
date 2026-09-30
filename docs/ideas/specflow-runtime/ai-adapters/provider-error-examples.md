@@ -19,9 +19,9 @@ read_when:
   - adding regression fixtures for provider limits, authentication, timeout, or protocol failures
   - deciding which error signatures are observed evidence versus compatibility heuristics
 summary: >
-  Provider-by-provider examples of quota, rate-limit, timeout, authentication, protocol, tool,
-  and execution failures, with explicit evidence level so synthetic mapper tests are not mistaken
-  for captured provider protocol.
+  Provider-by-provider evidence for quota, rate-limit, timeout, authentication, protocol, tool,
+  and execution failures, with explicit provenance so contract tests and compatibility signatures
+  are not mistaken for captured provider protocol.
 related:
   - ideas.specflow-runtime.ai-adapters
   - ideas.specflow-runtime.ai-adapters.error-classification

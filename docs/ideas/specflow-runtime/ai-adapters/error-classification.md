@@ -33,8 +33,10 @@ related:
 
 ## Problem
 
-The legacy adapters contain useful canonical error types, but several mappings begin from one
-human-readable `message` and run regexes over it. That is too weak once provider output can contain
+The legacy adapters contain useful normalized error codes, but several mappings begin from one
+human-readable `message` and run regexes over it. Current SpecFlow architecture requires bounded,
+distinguishable error **categories**, but does not yet approve the legacy `AI_*` code names as the
+target contract. That is too weak once provider output can contain
 the same words as ordinary model prose.
 
 Example failure mode:
@@ -61,8 +63,9 @@ ProviderFailureEvidence
   stdout
 ```
 
-The exact TypeScript shape is intentionally left to implementation, but source/provenance MUST NOT
-be flattened into one string before classification.
+The exact TypeScript shape is intentionally left to implementation. The candidate classifier
+should preserve source/provenance instead of flattening all evidence into one string before
+classification.
 
 ## Evidence priority
 
@@ -75,7 +78,7 @@ Suggested order:
 5. stderr lines known to be emitted by the provider runtime;
 6. raw stdout only as a narrowly-scoped last fallback.
 
-Text originating from an assistant/model message MUST NOT classify infrastructure/auth/quota
+Text originating from an assistant/model message should never classify infrastructure/auth/quota
 failure by itself.
 
 ## Claude-family signatures worth supporting
@@ -99,8 +102,9 @@ location. Matching should be case-insensitive and tolerant of hyphen/space varia
 - `usage cap reached`
 - `ServiceQuotaExceededException`
 
-These SHOULD map separately from temporary upstream throttling. Candidate canonical result:
-`AI_QUOTA_EXHAUSTED`, with a recovery hint chosen by policy rather than by regex.
+These should map separately from temporary upstream throttling. The target semantic category is
+"provider/account quota exhausted"; legacy Nevo names that category `AI_QUOTA_EXHAUSTED`.
+Preserving that exact code remains a separate target-contract decision.
 
 ### Temporary upstream / throttling
 
@@ -117,7 +121,7 @@ Observed useful tokens include:
 - `temporarily unavailable`
 - `throttled`, `throttling`, `ThrottlingException`
 
-This class is a candidate for retry/backoff behavior. It MUST NOT swallow a more specific
+This class is a candidate for retry/backoff behavior. It should not swallow a more specific
 deterministic failure.
 
 ### Authentication/token failures
@@ -166,7 +170,7 @@ A common useful shape is:
 You've hit your usage limit for <model>. Switch to another model now, or try again at <time>.
 ```
 
-The retry time SHOULD be parsed into a structured `retryNotBefore` value when unambiguous.
+The retry time should be parsed into a structured `retryNotBefore` value when unambiguous.
 
 ### Auth refresh failures
 
@@ -195,7 +199,7 @@ infrastructure/process failure rather than inferred from whatever stderr happene
 
 ## Retry metadata
 
-The canonical/internal error object should be able to carry optional metadata such as:
+A candidate normalized/internal error object could carry metadata such as:
 
 ```text
 retryable
@@ -226,7 +230,8 @@ a genuine substantive response and an advisory/stale diagnostic. Therefore no gl
 "status ERROR always wins" or "non-empty response always wins" should be applied across providers.
 
 Provider-specific classifiers may interpret evidenced protocol oddities, but the neutral Runtime
-should receive one normalized disposition plus diagnostics.
+should receive one normalized disposition plus diagnostics. The exact code/value vocabulary should
+be promoted into an authoritative target contract before implementation depends on it.
 
 ## Verification cases
 
@@ -246,5 +251,6 @@ At minimum add table-driven tests for:
 ## Migration note
 
 Do not port the legacy `mapClaudeError(message)` / `mapAntigravityError(message)` shape unchanged.
-Keep the canonical taxonomy where still appropriate, but change the input boundary so provenance is
+Keep the useful legacy semantic distinctions where they still fit current architecture, but do not
+treat the legacy code strings as target API by default. Change the input boundary so provenance is
 available before matching.

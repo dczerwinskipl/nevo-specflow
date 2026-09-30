@@ -226,6 +226,11 @@ Composer
 The exact placement of the live/current region may be sticky near the composer or integrated into
 chronology later. The requirement is that current activity remains visible/discoverable in Primary.
 
+When the canonical current-activity projection summarizes the same underlying streaming Commentary
+or tool work already visible in chronology, do not render two equally prominent copies of the same
+fact. Primary needs one clear live answer plus discoverable chronology, not duplicated "working"
+chrome.
+
 ### 4.3 Conversation chronology
 
 The normal stream preserves human-readable chronology across:
@@ -346,6 +351,11 @@ details needed to decide
 
 The interaction response is the deliberate mutation.
 
+Canonical interaction state controls whether response controls remain actionable. If the provider
+operation disappears, the interaction expires, or restart recovery marks it interrupted, the UI must
+not leave stale permission/question/confirmation controls enabled. Historical interaction evidence
+may remain visible, but it is no longer an active request.
+
 ### 6.2 Composer and interaction controls
 
 Do not assume a generic composer is the correct response mechanism for every pending interaction.
@@ -422,6 +432,10 @@ Session details
 ~~~
 
 Empty sections disappear.
+
+When a Session interaction already requires response in Primary, Context may summarize that fact for
+orientation but should not duplicate the full response controls. The authoritative interaction stays
+actionable from Primary.
 
 ### 7.3 Current execution vs related Tasks
 
@@ -588,16 +602,19 @@ Full IDE is not another nested Session pane.
 
 ## 10. Secondary navigation model
 
-### 10.1 Root modes
+### 10.1 Root inspectors and detail targets
 
-At product level, the stable root concepts are:
+At product level, the stable Secondary roots are:
 
 - Context;
-- Work;
-- File when explicitly selected.
+- Work.
 
-Task/Handover/artifact/Work-item details are contextual drill-down states inside Secondary rather
-than permanent global tabs.
+File preview is an explicit detail target that can occupy Secondary, just like Task, Handover,
+artifact/review, verification, or a selected Work item. It does not need to become a permanent
+third root/tab merely because files are common.
+
+This keeps the normal inspector model small while still allowing direct file entry from Conversation,
+Context, or Work.
 
 ### 10.2 Return behavior
 
@@ -850,7 +867,7 @@ Session interaction attention and Task workflow attention remain distinct.
 ### Primary
 
 ~~~text
-Last Turn completed / interrupted safely
+Last Turn settled
 
 Final answer / last Commentary
 
@@ -929,6 +946,7 @@ Reviewing changes…
 [Context] [Work]
 
 conversation...
+(file references open File detail when present)
 
 composer
 ~~~
@@ -1046,21 +1064,24 @@ Before global component/composition gap analysis, verify:
 4. Narrow entry stays on Conversation and exposes explicit Context/Work inspection actions.
 5. Current execution scope is distinct from historical/contextual Task association.
 6. Batch execution remains visibly batch-shaped in Primary and Context.
-7. Pending interaction is visible/respondable from Primary without opening an inspector.
+7. Pending interaction is visible/respondable from Primary without opening an inspector, and stale or
+   expired interaction controls cannot remain falsely actionable.
 8. Current activity is visible from Primary; Work is not required merely to discover live state.
-9. Commentary is preserved when supplied and never fabricated when absent.
-10. Raw tool details stay below normal conversation information level.
-11. Context separates current execution Tasks from merely related Tasks.
-12. Task/Handover/artifact/Work-item drill-down stays inside one Secondary; no third workspace pane is
-    introduced.
-13. File preview can replace Secondary and escalate separately to full IDE.
-14. Floating Session remains intentionally smaller than Full Session.
-15. Opening floating Session from one Task does not rewrite a current batch into that Task.
-16. Settled Turn, Task/workflow completion, resumable continuation, and recovery-required remain
+9. Current activity and streaming chronology do not duplicate the same fact with equal visual weight.
+10. Commentary is preserved when supplied and never fabricated when absent.
+11. Raw tool details stay below normal conversation information level.
+12. Context separates current execution Tasks from merely related Tasks.
+13. Context and Work are the stable inspector roots; File/Task/Handover/artifact/Work-item are
+    contextual detail targets rather than mandatory permanent root tabs.
+14. Detail drill-down stays inside one Secondary; no third workspace pane is introduced.
+15. File preview can replace Secondary and escalate separately to full IDE.
+16. Floating Session remains intentionally smaller than Full Session.
+17. Opening floating Session from one Task does not rewrite a current batch into that Task.
+18. Settled Turn, Task/workflow completion, resumable continuation, and recovery-required remain
     distinct concepts.
-17. Returning from explicitly promoted Full Session can restore the originating Spec/Task context
+19. Returning from explicitly promoted Full Session can restore the originating Spec/Task context
     where product navigation state can represent it.
-18. Direct Session entry still has deterministic parent orientation/fallback.
+20. Direct Session entry still has deterministic parent orientation/fallback.
 
 If these hold, Specification/Task and Full Session together are sufficient to start the broader
 design-system component/composition gap pass.

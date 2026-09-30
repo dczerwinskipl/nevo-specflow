@@ -36,7 +36,9 @@ related:
 Raw capture is valuable for diagnosing provider protocol drift and parser bugs, but it should not
 become a second permanent transcript database.
 
-Normal session reconstruction MUST rely on canonical persisted state, not raw provider files.
+Current architecture already requires raw provider payloads not to be necessary for normal
+reconstruction. This idea therefore assumes normal session reconstruction relies on canonical
+persisted state, not raw provider files.
 
 ## In-memory lifetime
 

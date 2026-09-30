@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { DesignCaptureProvider } from '@nevo/figma-core/metadata';
 import { Button, Typography } from '../../components';
@@ -315,9 +316,58 @@ export const MediumSurfaceContract: Story = {
     assert(shell, 'The medium fixture should expose its application shell.');
     const { layout, workspace } = await waitFor(() => {
       const candidate = shell.querySelector<HTMLElement>('main[data-design-slot="workspace"]');
+      const layout = candidate?.querySelector<HTMLElement>('[data-layout="split"]');
+      return candidate && layout ? { workspace: candidate, layout } : null;
+    }, 'The drawer-navigation fixture should retain a split workspace at 960px.');
+    const primary = layout.querySelector<HTMLElement>('[data-workspace-surface="primary"]');
+    const secondary = layout.querySelector<HTMLElement>('[data-workspace-surface="secondary"]');
+    assert(primary && secondary, 'The compact split should expose both workspace surfaces.');
+    assert(
+      Math.abs(primary.getBoundingClientRect().width / secondary.getBoundingClientRect().width - 2) <
+        0.01,
+      'The compact primary-emphasis split should retain the medium 2:1 relationship.',
+    );
+    assert(
+      workspace.dataset.appShellWorkspaceMaterialOwner === 'panel',
+      'The compact shell should keep navigation in drawer mode and delegate workspace material.',
+    );
+    assert(
+      !workspace.classList.contains('workspace-surface-material') &&
+        layout.classList.contains('workspace-surface-material'),
+      'The compact split root should own the workspace material.',
+    );
+  },
+};
+
+export const NarrowSurfaceContract: Story = {
+  render: () => (
+    <AppShell
+      data-narrow-surface-shell="true"
+      navigation={<Region label="Navigation" />}
+      style={{ height: 600, width: 839 }}
+    >
+      <AppWorkspace split="primary">
+        <AppWorkspace.Primary>
+          <Region label="Primary workspace" />
+        </AppWorkspace.Primary>
+        <AppWorkspace.Secondary>
+          <Region label="Secondary workspace" />
+        </AppWorkspace.Secondary>
+      </AppWorkspace>
+    </AppShell>
+  ),
+  tags: ['!dev', '!autodocs'],
+  parameters: {
+    a11y: { test: 'off' },
+  },
+  play: async ({ canvasElement }) => {
+    const shell = canvasElement.querySelector<HTMLElement>('[data-narrow-surface-shell]');
+    assert(shell, 'The narrow fixture should expose its application shell.');
+    const { layout, workspace } = await waitFor(() => {
+      const candidate = shell.querySelector<HTMLElement>('main[data-design-slot="workspace"]');
       const layout = candidate?.querySelector<HTMLElement>('[data-layout="stacked"]');
       return candidate && layout ? { workspace: candidate, layout } : null;
-    }, 'The drawer-navigation fixture should use a stacked workspace.');
+    }, 'The workspace should stack below the 840px threshold.');
     const activeSurface = layout.querySelector<HTMLElement>('[data-header-covered]:not(.hidden)');
     assert(activeSurface, 'The stacked workspace should expose one active surface.');
     assert(
@@ -327,13 +377,71 @@ export const MediumSurfaceContract: Story = {
       'The active stacked surface should occupy the full workspace width.',
     );
     assert(
-      workspace.dataset.appShellWorkspaceMaterialOwner === 'panel',
-      'The medium stacked shell should delegate workspace material to its panels.',
+      !layout.textContent?.includes('Secondary workspace'),
+      'A declarative default Secondary should not auto-stack on narrow layouts.',
     );
     assert(
       !workspace.classList.contains('workspace-surface-material') &&
         activeSurface.querySelector('.workspace-surface-material'),
-      'The active stacked panel should be the only painted workspace material owner.',
+      'The active stacked panel should own the narrow workspace material.',
+    );
+  },
+};
+
+function DismissibleDefaultSecondaryFixture() {
+  const [contextOpen, setContextOpen] = useState(true);
+
+  return (
+    <AppShell
+      data-dismissible-secondary-shell="true"
+      navigation={<Region label="Navigation" />}
+      style={{ height: 600, width: 1400 }}
+    >
+      <AppWorkspace split="primary">
+        <AppWorkspace.Primary header="Conversation">
+          <div className="grid w-[720px] gap-3 p-4">
+            <Button onClick={() => setContextOpen(true)}>Open context</Button>
+            <Typography variant="body-sm">Primary conversation</Typography>
+          </div>
+        </AppWorkspace.Primary>
+        <AppWorkspace.Secondary
+          header="Context"
+          open={contextOpen}
+          onOpenChange={setContextOpen}
+        >
+          <div className="w-[320px] p-4">
+            <Typography variant="body-sm">Default context content</Typography>
+          </div>
+        </AppWorkspace.Secondary>
+      </AppWorkspace>
+    </AppShell>
+  );
+}
+
+export const DismissibleDefaultSecondaryContract: Story = {
+  render: () => <DismissibleDefaultSecondaryFixture />,
+  tags: ['!dev', '!autodocs'],
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await waitFor(
+      () => canvas.queryByText('Default context content'),
+      'The default Secondary should be visible on split entry.',
+    );
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Close secondary content' }));
+    await waitFor(
+      () => canvas.queryByText('Default context content') === null,
+      'Closing the default Secondary should keep it dismissed.',
+    );
+
+    assert(
+      canvasElement.querySelector('[data-workspace-surface="secondary"]') === null,
+      'A dismissed default Secondary should leave a single Primary surface.',
+    );
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Open context' }));
+    await waitFor(
+      () => canvas.queryByText('Default context content'),
+      'An explicit product action should be able to restore the default Secondary.',
     );
   },
 };

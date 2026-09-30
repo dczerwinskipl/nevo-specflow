@@ -221,6 +221,35 @@
       "related": []
     },
     {
+      "id": "ideas.developer-workspace",
+      "type": "hub",
+      "title": "Developer workspace ideas",
+      "status": "draft",
+      "file": "docs/ideas/developer-workspace/README.md",
+      "read_when": [
+        "designing in-product code inspection or editing",
+        "adding remote access to the current worktree from a phone or another laptop",
+        "integrating a full IDE with Nevo without duplicating workspace ownership"
+      ],
+      "summary": "Candidate design for a lightweight in-product code surface plus a separate VS Code-based full IDE, both operating on the same current worktree owned by Nevo Local.",
+      "related": [
+        "ideas.readme",
+        "architecture.runtime.ownership-and-lifecycle"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "server",
+        "runtime"
+      ],
+      "tags": [
+        "code-editor",
+        "worktree",
+        "vscode",
+        "remote-development"
+      ]
+    },
+    {
       "id": "ideas.readme",
       "type": "hub",
       "title": "Implementation ideas",
@@ -447,6 +476,41 @@
         "design-system.implementation.react.component-guidelines",
         "product.specflow.ui.interaction-model",
         "architecture.principles.normative-language"
+      ]
+    },
+    {
+      "id": "ideas.developer-workspace.code-inspection-and-editing",
+      "type": "architecture",
+      "title": "Code inspection, editing, and full IDE integration",
+      "status": "draft",
+      "file": "docs/ideas/developer-workspace/code-inspection-and-editing.md",
+      "read_when": [
+        "implementing links from agent output or findings to source files",
+        "adding an embedded code viewer or editor to SpecFlow",
+        "integrating a browser-accessible IDE with the current worktree",
+        "designing language-support or IDE extension points"
+      ],
+      "summary": "Use the current Nevo Local worktree as the shared filesystem source of truth, expose a compact React/Monaco code surface for review and small edits, and open a separate VS Code-based full IDE for project-wide work, terminal use, source control, and extensions.",
+      "related": [
+        "ideas.developer-workspace",
+        "ideas.readme",
+        "architecture.runtime.ownership-and-lifecycle"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "server",
+        "runtime",
+        "configuration",
+        "security"
+      ],
+      "tags": [
+        "monaco",
+        "vscode",
+        "lsp",
+        "worktree",
+        "file-reference",
+        "remote-development"
       ]
     },
     {

@@ -44,3 +44,4 @@ When an idea is accepted for implementation:
 ## Current packages
 
 - [SpecFlow Runtime / AI adapter hardening](specflow-runtime/ai-adapters/README.md)
+- [Developer workspace / code inspection and IDE integration](developer-workspace/README.md)

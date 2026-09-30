@@ -15,10 +15,19 @@ export interface MarkdownDocumentProps {
   source: string;
   className?: string;
   /**
-   * Product-owned link/reference renderer. Use it to turn workspace-relative references into
-   * contextual navigation while leaving Markdown parsing and default styling in Nevo UI.
+   * Product-owned link/reference renderer. Return null/undefined to keep the shared default link.
+   * Use it to turn workspace-relative references into contextual navigation without reimplementing
+   * Markdown parsing or normal external-link styling.
    */
   renderLink?: (props: MarkdownDocumentLinkProps) => ReactNode;
+}
+
+function DefaultMarkdownLink({ children, href, title }: MarkdownDocumentLinkProps) {
+  return (
+    <Link href={href} rel="noreferrer noopener" target="_blank" title={title}>
+      {children}
+    </Link>
+  );
 }
 
 const baseComponents: Components = {
@@ -81,9 +90,9 @@ const baseComponents: Components = {
     <strong className="font-semibold text-content-primary">{children}</strong>
   ),
   a: ({ children, href, title }) => (
-    <Link href={href} rel="noreferrer noopener" target="_blank" title={title}>
+    <DefaultMarkdownLink href={href} title={title}>
       {children}
-    </Link>
+    </DefaultMarkdownLink>
   ),
   blockquote: ({ children }) => (
     <blockquote className="my-3 border-l-2 border-border-strong pl-4 text-content-muted first:mt-0 last:mb-0 [&_p]:text-body-md [&_p]:text-content-muted">
@@ -142,7 +151,12 @@ export function MarkdownDocument({ className, renderLink, source }: MarkdownDocu
   const components: Components = renderLink
     ? {
         ...baseComponents,
-        a: ({ children, href, title }) => renderLink({ children, href, title }),
+        a: ({ children, href, title }) =>
+          renderLink({ children, href, title }) ?? (
+            <DefaultMarkdownLink href={href} title={title}>
+              {children}
+            </DefaultMarkdownLink>
+          ),
       }
     : baseComponents;
 

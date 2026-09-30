@@ -200,73 +200,28 @@ automatically workspace Secondary.
 
 ## 5. Task
 
-### Legacy deterministic evidence
+**Product direction**
 
-Legacy deterministic/dashboard code currently exposes or consumes Task facts including:
+Task is the primary contextual detail opened from a Specification, normally as workspace Secondary
+on wide layouts and pushed detail on narrow layouts.
 
-- id;
-- title;
-- order;
-- task document/file reference;
-- dependsOn;
-- blockedBy;
-- lifecycle status;
-- workflow_progress;
-- linked Session identifiers.
+At this broad inventory level, Task needs to expose:
 
-Legacy workflow progress contains concepts equivalent to:
+- identity and human-readable workflow meaning;
+- requires-attention vs ready-to-act vs current-work distinctions;
+- dependencies/blockers;
+- current execution only when authoritative execution scope proves the Task is active;
+- contextual/historical Sessions separately from current execution;
+- evidence such as review, Handover, changes, and verification;
+- deterministic actions with their own readiness/reason.
 
-~~~text
-workflow_progress
-|-- current_step
-|-- current_attempt
-|-- state: active | completed
-'-- history[]
-    |-- step
-    |-- attempt
-    |-- completed_at
-    '-- transitioned_to
-~~~
+Legacy Nevo exposes useful migration evidence such as Task id/title/order, document reference,
+dependencies, workflow progress, semantic status, and Session associations, but also carries older
+lifecycle/stage fields that must not be treated as the new UI contract by default.
 
-The workflow definition separately declares a semantic status for active/completed state of every
-step.
-
-That means at least three concepts must not be flattened into one badge:
-
-- current step;
-- runtime step state;
-- semantic status.
-
-Legacy code also still references older Task lifecycle values such as draft, approved,
-in-implementation, implemented, verified, archived, and abandoned. Treat those as migration evidence
-until we decide which survive deterministic migration.
-
-### Human decision surface
-
-When a Task requires human review, approval, or another decision:
-
-~~~text
-attention indicator
-    -> 1 click
-Task context + evidence + why this action exists
-    -> 2nd deliberate interaction
-deterministic decision/action
-~~~
-
-Task detail should be able to bring together:
-
-- goal/requirements;
-- current workflow step and semantic status;
-- why human action is required;
-- gate/transition context;
-- linked Sessions;
-- relevant Handover;
-- relevant artifacts/review report;
-- relevant changes;
-- blockers/dependencies;
-- available deterministic actions.
-
-Exact action names/outcomes must come from the workflow/application contract, not from old UI code.
+The detailed property classification, review flows, per-action readiness, Session execution semantics,
+and Task evidence hierarchy are owned by
+[Specification and Task information hierarchy](spec-task-information-hierarchy.md).
 
 ---
 

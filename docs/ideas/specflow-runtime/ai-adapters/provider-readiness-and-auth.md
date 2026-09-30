@@ -19,9 +19,10 @@ read_when:
   - preventing a session or turn from starting when the local provider is not authenticated
   - designing provider connection tests or login-required UX
 summary: >
-  Distinguish installation from execution readiness, use the existing authenticated provider-health
-  dimension, add bounded provider-specific readiness probes, and keep startTurn as the final
-  authoritative guard so an installed but logged-out CLI is not presented as ready.
+  Distinguish installation from execution readiness, reuse useful legacy health evidence without
+  treating it as an approved target contract, add bounded provider-specific readiness probes, and
+  keep startTurn as the final authoritative guard so an installed but logged-out CLI is not
+  presented as ready.
 related:
   - ideas.specflow-runtime.ai-adapters
   - ideas.specflow-runtime.ai-adapters.error-classification
@@ -32,9 +33,13 @@ related:
 
 # Provider readiness and authentication
 
-## Current gap
+## Legacy evidence and target gap
 
-The neutral health model already has the right distinction:
+Current SpecFlow architecture requires provider failures such as "not installed" and "not
+authenticated" to remain distinguishable, but the target repository does **not yet define** a
+concrete `ProviderHealth` / `authenticated` contract.
+
+Legacy Nevo contains a useful health shape:
 
 ```text
 enabled
@@ -45,21 +50,16 @@ status
 unavailableReason?
 ```
 
-The provider registry also already propagates `authenticated` when a provider returns it.
+and its provider registry already propagates `authenticated` when an adapter supplies it. That is
+migration evidence, not an already-approved SpecFlow API.
 
-The gap is in the adapters:
+The legacy adapter gap is that Claude, Codex, and Antigravity `isAvailable()` implementations
+primarily prove executable/launcher availability. They do not establish reliable login readiness.
+As a result, an installed-but-logged-out provider may look available until real work starts.
 
-- Claude `isAvailable()` currently proves that the CLI can be resolved/probed;
-- Codex `isAvailable()` currently proves that the CLI/launcher can be resolved/probed;
-- Antigravity `isAvailable()` currently proves that the CLI can be resolved/probed;
-- none of the three currently returns authoritative authentication readiness.
+## Candidate state distinctions
 
-As a result, an installed-but-logged-out provider can be displayed as available and authentication
-may only be discovered when real work starts.
-
-## Required state distinctions
-
-Do not collapse these states:
+If SpecFlow adopts an explicit authentication-readiness dimension, keep these states distinct:
 
 | Installed | Authenticated | Meaning |
 |---|---|---|
@@ -68,10 +68,10 @@ Do not collapse these states:
 | true | false | Provider exists but cannot currently execute authenticated work. |
 | true | true | Authentication has been demonstrated recently. |
 
-`authenticated: undefined` means **unknown**, not true.
+`authenticated: undefined` would mean **unknown**, not true.
 
-A quota/rate-limit failure MUST NOT flip `installed` to false. A provider can be correctly
-authenticated while its account is temporarily out of capacity.
+A quota/rate-limit failure should not flip `installed` to false or authentication to false. A
+provider can be correctly authenticated while its account is temporarily out of capacity.
 
 ## Three readiness layers
 
@@ -83,7 +83,7 @@ Keep a cheap, frequently callable check for stable/local facts:
 - version available where cheap;
 - required local runtime prerequisite present.
 
-This check SHOULD avoid a paid model invocation and SHOULD be safe to cache briefly.
+This check should avoid a paid model invocation and should be safe to cache briefly.
 
 It answers:
 
@@ -97,7 +97,7 @@ It does **not** necessarily answer:
 
 Add a richer provider-owned `diagnose()` / `testEnvironment()` lane.
 
-It SHOULD verify the exact execution target that a run will use:
+For the local MVP, it should verify the same command/configuration path that a real run will use:
 
 - command;
 - cwd/workspace;
@@ -127,13 +127,15 @@ Even after a successful readiness probe:
 - credentials may expire;
 - the user may log out;
 - the provider may revoke a token;
-- a remote execution target may differ;
+- local credential/configuration state may change;
 - account state may change.
 
-A structured authentication failure during startup/first protocol exchange MUST become
-`AI_AUTH_FAILED`, not generic provider execution failure.
+A structured authentication failure during startup/first protocol exchange should map to the
+canonical authentication-failure category rather than a generic provider execution failure.
+Legacy Nevo uses `AI_AUTH_FAILED` for this category; preserving that exact code is a separate
+target-contract decision.
 
-It SHOULD also invalidate cached `authenticated: true` readiness immediately.
+The Runtime should also invalidate cached positive authentication readiness immediately.
 
 ## Session creation behavior
 
@@ -144,12 +146,13 @@ When SpecFlow creates a provider session before any real Turn:
 - return an actionable auth-required failure;
 - do not persist a provider-native session identity that was never established.
 
-When authentication is unknown, session creation MAY continue to the provider's normal start path,
-but the first authoritative provider response must still classify authentication correctly.
+When authentication is unknown, the candidate design may continue to the provider's normal start
+path, but the first authoritative provider response still needs to classify authentication
+correctly.
 
-## Provider health projection
+## Candidate provider health projection
 
-A practical projection using the existing contract is:
+If SpecFlow adopts a health contract similar to the legacy shape, one practical projection is:
 
 ### Installed and authenticated
 
@@ -168,8 +171,8 @@ status = unavailable
 unavailableReason = login/authentication required
 ```
 
-This allows UI to distinguish **not installed** from **installed, login required** even if the
-existing derived `available` boolean is false in both cases.
+This would allow UI to distinguish **not installed** from **installed, login required** even if a
+derived `available` boolean is false in both cases.
 
 ### Authentication unknown
 
@@ -191,7 +194,7 @@ authenticated = true
 ```
 
 Quota belongs to capacity/turn outcome. Depending on future health UX, status may remain healthy or
-be shown as degraded, but it must not become "not installed" or "not authenticated".
+be shown as degraded, but it should not become "not installed" or "not authenticated".
 
 ## Claude-family readiness
 
@@ -309,9 +312,9 @@ Preferred order:
 A successful `agy models` command is not automatically proof that inference auth is valid unless
 the provider contract guarantees the same authenticated path.
 
-## Stable readiness check codes
+## Candidate readiness check codes
 
-Prefer machine-readable codes so UI behavior does not depend on English text. Candidate neutral
+Prefer machine-readable codes so UI behavior does not depend on English text. Possible neutral
 codes:
 
 ```text
@@ -335,7 +338,7 @@ Authentication readiness is transient.
 
 Invalidate cached positive auth evidence when:
 
-- a Turn returns `AI_AUTH_FAILED`;
+- a Turn returns the canonical authentication-failure category (legacy code: `AI_AUTH_FAILED`);
 - login/logout/config credentials change;
 - effective execution target changes;
 - credential/config home changes;
@@ -361,6 +364,13 @@ Public diagnostics should use:
 
 Avoid returning raw probe stdout/stderr in the normal API/UI result.
 
+## MVP scope boundary
+
+This idea does **not** introduce a remote/sandbox/provider-execution-target abstraction. The MVP
+problem is local provider readiness. If remote execution is introduced later, authentication state
+will likely need to be keyed by provider plus execution environment/auth source rather than stored
+as one global provider boolean.
+
 ## Verification cases
 
 For every provider with auth probing:
@@ -373,5 +383,5 @@ For every provider with auth probing:
 6. probe timeout leaves auth unknown unless prior evidence remains valid by policy;
 7. successful assistant text containing "not logged in" does not become auth failure;
 8. startTurn auth failure invalidates previously cached auth-ready state;
-9. remote/sandbox probe tests the remote target rather than host credentials;
+9. a changed local credential/config home invalidates prior positive readiness;
 10. no secret/raw auth payload is surfaced through health metadata.

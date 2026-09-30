@@ -27,6 +27,7 @@ related:
   - ideas.specflow-runtime.ai-adapters.liveness-watchdog
   - ideas.specflow-runtime.ai-adapters.resource-lifetime
   - ideas.specflow-runtime.ai-adapters.raw-diagnostics-retention
+  - ideas.specflow-runtime.ai-adapters.process-environment-boundary
 ---
 
 # Cross-platform provider process runtime

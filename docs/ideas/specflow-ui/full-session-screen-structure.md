@@ -296,8 +296,11 @@ Cancelling…
 
 Use canonical Runtime currentActivity/readiness, never visual inference from the last Work item.
 
-Waiting for model/tool without required user input is calm live state, not attention. Cancelling is
-also a live transition state and should prevent conflicting actions until Runtime resolves it.
+Waiting for model/tool without required user input is calm live state, not attention. When the
+authoritative Session capability/runtime contract allows Turn cancellation, Primary may expose a
+Cancel action near current activity. After cancellation is requested, Cancelling is a live
+transition state and should prevent conflicting actions until Runtime resolves it. Do not render a
+fake Cancel control for providers/sessions that do not support it.
 
 ### 5.2 Execution scope wording
 
@@ -440,6 +443,11 @@ When a Session interaction already requires response in Primary, Context may sum
 orientation but should not duplicate the full response controls. The authoritative interaction stays
 actionable from Primary.
 
+Likewise, Context should not become a universal place to execute unrelated Spec/Task owner
+decisions. A Task-specific review/approval signal routes to that Task detail inside Secondary; a
+Spec-level decision routes to the Specification decision context. Session-owned controls such as a
+pending interaction or supported Turn cancellation remain Session controls.
+
 ### 7.3 Current execution vs related Tasks
 
 Keep these visually and semantically separate.
@@ -558,7 +566,7 @@ Do not make the user open Work just to know that tests are currently running.
 
 ---
 
-## 9. File Secondary
+## 9. File detail in Secondary
 
 ### 9.1 Entry points
 
@@ -635,6 +643,10 @@ Work -> File -> previous inspector context
 
 A small local inspector stack is appropriate here because it preserves one Session Primary and one
 Secondary while increasing specificity.
+
+Normal live Session updates must not reset the user's current inspector root/detail back to Context.
+The local inspector stack resets when Secondary is closed or the Full Session context itself changes,
+rather than being driven by incoming Work events.
 
 This is different from opening a Session from Task, where Session uses a floating surface instead of
 being pushed as another Task Secondary level.
@@ -1022,7 +1034,7 @@ wins.
 
 ## 21. Narrow / mobile validation
 
-### 18.1 Primary entry
+### 21.1 Primary entry
 
 ~~~text
 ☰  Session title
@@ -1043,7 +1055,7 @@ composer
 
 The compact current-scope line must not become a metadata wall.
 
-### 18.2 Context pushed detail
+### 21.2 Context pushed detail
 
 ~~~text
 ←  Context
@@ -1062,7 +1074,7 @@ Artifacts
   ...
 ~~~
 
-### 18.3 Work pushed detail
+### 21.3 Work pushed detail
 
 ~~~text
 ←  Work
@@ -1073,7 +1085,7 @@ chronological summary...
 Selecting a Work item may push deeper inside the same local inspector stack. Back eventually returns
 to Session Primary.
 
-### 18.4 File pushed detail
+### 21.4 File pushed detail
 
 ~~~text
 ←  File
@@ -1176,9 +1188,14 @@ Before global component/composition gap analysis, verify:
 22. Unknown/unavailable Session state preserves history while action availability follows
     authoritative readiness.
 23. Transport reconnecting feedback does not replace canonical Session/Turn semantics.
-24. Returning from explicitly promoted Full Session can restore the originating Spec/Task context
+24. Unsupported Session capabilities do not produce fake controls such as Cancel.
+25. Context routes Spec/Task decisions to their responsible detail instead of duplicating unrelated
+    mutation controls.
+26. Normal live updates do not reset the user's current Secondary root/detail; the local inspector
+    stack resets on Secondary close or Session-context change.
+27. Returning from explicitly promoted Full Session can restore the originating Spec/Task context
     where product navigation state can represent it.
-25. Direct Session entry still has deterministic parent orientation/fallback.
+28. Direct Session entry still has deterministic parent orientation/fallback.
 
 If these hold, Specification/Task and Full Session together are sufficient to start the broader
 design-system component/composition gap pass.

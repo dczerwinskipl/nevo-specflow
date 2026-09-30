@@ -37,6 +37,21 @@ boundary less dependent on provider text quirks, process timing, and platform-sp
 These notes are intended to be consumed **while provider functionality is migrated**, so obvious
 hardening can land with the migrated feature instead of reproducing known legacy weaknesses first.
 
+## Authority and evidence model
+
+This package mixes three kinds of information and labels them explicitly where ambiguity matters:
+
+- **Current SpecFlow rule** — an invariant already owned by a current authoritative document.
+- **Legacy evidence** — behavior, tests, or contracts observed in the legacy Nevo implementation;
+  useful migration input, but not automatically approved target design.
+- **Candidate design** — a proposed SpecFlow direction that still needs promotion into the
+  appropriate architecture, engineering, product, or reference document before it becomes
+  authoritative.
+
+When those conflict, current SpecFlow architecture wins. Do not copy a legacy contract solely
+because it existed, and do not treat a candidate `AI_*` code, model trait, health field, timeout,
+or parser heuristic as already approved target API.
+
 ## Suggested implementation order
 
 ### P0 — correctness
@@ -73,6 +88,5 @@ ready for work.
 - Raw stdout/stderr is diagnostic evidence, not application state.
 - Terminal Turns are immutable; late callbacks cannot mutate canonical state.
 - One invocation owns one set of resources and one settlement path.
-- Platform-specific telemetry may improve decisions but MUST NOT become a hidden portability
-  requirement.
-- Every production protocol bug worth fixing SHOULD become a minimized replay/regression fixture.
+- Platform-specific telemetry may improve decisions, but the candidate design should not make it a hidden portability requirement.
+- Production protocol bugs worth fixing should normally become minimized replay/regression fixtures.

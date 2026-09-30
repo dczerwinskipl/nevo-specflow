@@ -63,7 +63,8 @@ For older or reduced protocol shapes where an agent message has no phase:
 2. if a later agent message/tool activity supersedes it, publish it as commentary;
 3. at terminalization, if no explicit final answer exists, the last completed unphased agent message
    may be promoted to final answer;
-4. once published under one canonical kind, it MUST NOT later move to another kind.
+4. once published under one canonical kind, it cannot later move to another kind; this follows the
+   current canonical Work invariant that Work items do not change kind after creation.
 
 This preserves compatibility without treating every assistant delta as final.
 
@@ -115,7 +116,7 @@ duplicating it.
 
 ## Final answer is not "last stdout line"
 
-The final answer MUST NOT be determined by:
+The candidate adapter mapping should not determine final answer from:
 
 - last line written to stdout;
 - last non-empty assistant-looking string;

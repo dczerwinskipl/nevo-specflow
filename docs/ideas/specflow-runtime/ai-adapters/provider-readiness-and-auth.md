@@ -28,6 +28,8 @@ related:
   - ideas.specflow-runtime.ai-adapters.error-classification
   - ideas.specflow-runtime.ai-adapters.diagnostics-and-replay
   - ideas.specflow-runtime.ai-adapters.protocol-examples
+  - ideas.specflow-runtime.ai-adapters.process-environment-boundary
+  - ideas.specflow-runtime.ai-adapters.provider-capacity-admission
   - architecture.ai.provider-boundary
 ---
 

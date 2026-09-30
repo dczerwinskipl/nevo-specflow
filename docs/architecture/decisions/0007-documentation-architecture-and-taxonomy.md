@@ -7,8 +7,8 @@ date: 2026-09-28
 summary: >
   Defines a documentation architecture that separates product behavior, durable system
   architecture, engineering guidance, reusable design-system knowledge, exact reference
-  contracts, and operational instructions, while using searchable scope, area, and tag
-  metadata so discovery does not depend on folder paths alone.
+  contracts, operational instructions, and a non-authoritative idea backlog, while using
+  searchable scope, area, and tag metadata so discovery does not depend on folder paths alone.
 related:
   - docs.readme
   - docs.architecture-readme

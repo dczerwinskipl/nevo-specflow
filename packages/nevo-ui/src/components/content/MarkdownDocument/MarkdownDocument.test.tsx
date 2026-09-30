@@ -17,6 +17,23 @@ describe('MarkdownDocument', () => {
     expect(html).toContain('<table');
   });
 
+  it('allows product code to resolve Markdown links contextually', () => {
+    const html = renderToStaticMarkup(
+      <MarkdownDocument
+        renderLink={({ children, href }) => (
+          <button data-workspace-reference={href} type="button">
+            {children}
+          </button>
+        )}
+        source={'[Open file](workspace://src/app.ts)'}
+      />,
+    );
+
+    expect(html).toContain('data-workspace-reference="workspace://src/app.ts"');
+    expect(html).toContain('>Open file</button>');
+    expect(html).not.toContain('target="_blank"');
+  });
+
   it('does not enable raw HTML', () => {
     const html = renderToStaticMarkup(<MarkdownDocument source={'<script>alert("x")</script>'} />);
 

@@ -30,6 +30,7 @@ related:
   - ideas.specflow-runtime.ai-adapters.provider-readiness-auth
   - ideas.specflow-runtime.ai-adapters.model-selection-effort
   - ideas.specflow-runtime.ai-adapters.provider-error-examples
+  - ideas.specflow-runtime.ai-adapters.diagnostic-sanitization
 ---
 
 # Provider diagnostics and protocol replay

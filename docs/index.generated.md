@@ -111,5 +111,6 @@ Regenerate with `pnpm docs:check --write`. Human-authored navigation lives in [`
 | ID | Title | Status | Summary |
 |---|---|---|---|
 | `ideas.specflow-runtime.ai-adapters.migration-inspection-map` | [Legacy adapter migration inspection map](ideas/specflow-runtime/ai-adapters/migration-inspection-map.md) | draft | Concrete legacy Nevo files and symbols worth inspecting during provider migration, grouped by hardening concern so an implementation agent can go directly to the relevant behavior instead of rediscovering it from historical logs. |
+| `ideas.specflow-runtime.ai-adapters.protocol-examples` | [Provider protocol examples](ideas/specflow-runtime/ai-adapters/protocol-examples.md) | draft | Sanitized and minimized provider event examples showing the mapping evidence behind the adapter hardening ideas, including output phases, reasoning, tools, quota/auth failures, advisory diagnostics, session establishment, and late-event cases. |
 | `reference.cli.nevo-specflow-contract` | [nevo-specflow public CLI contract](reference/cli/nevo-specflow-contract.md) | current | The currently-implemented public surface of the nevo-specflow CLI — --help, --version and the runtime bootstrap command — and an explicit statement that no other command (init, status, workflow, install, update) exists yet. |
 

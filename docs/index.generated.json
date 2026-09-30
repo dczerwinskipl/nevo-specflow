@@ -221,6 +221,57 @@
       "related": []
     },
     {
+      "id": "ideas.readme",
+      "type": "hub",
+      "title": "Implementation ideas",
+      "status": "draft",
+      "file": "docs/ideas/README.md",
+      "read_when": [
+        "collecting implementation ideas before they become approved architecture or specifications",
+        "looking for hardening follow-ups to apply while migrating legacy capabilities"
+      ],
+      "summary": "Non-authoritative implementation backlog for ideas worth evaluating during migration. Items here are deliberately separated from current architecture and become normative only after they are promoted into the appropriate architecture, engineering, product, or specification documents.",
+      "related": [
+        "adr.0007-documentation-architecture-and-taxonomy",
+        "architecture.ai.provider-boundary",
+        "architecture.runtime.ownership-and-lifecycle"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "docs"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.ai-adapters",
+      "type": "hub",
+      "title": "AI adapter hardening ideas",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/README.md",
+      "read_when": [
+        "migrating AI providers into SpecFlow Runtime",
+        "hardening provider adapters before the MVP implementation settles"
+      ],
+      "summary": "Candidate hardening work for provider adapters: evidence-based error classification, output semantics, invocation fencing, resource ownership, liveness, raw diagnostics, correlation identity, diagnostics, and replay tests.",
+      "related": [
+        "ideas.readme",
+        "architecture.ai.provider-boundary",
+        "architecture.ai.canonical-session-turn-work",
+        "architecture.runtime.ownership-and-lifecycle"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "providers",
+        "lifecycle",
+        "streaming",
+        "recovery"
+      ]
+    },
+    {
       "id": "architecture.ai.canonical-session-turn-work",
       "type": "architecture",
       "title": "Canonical AI Session, Turn, and Work model",
@@ -855,6 +906,278 @@
       ]
     },
     {
+      "id": "ideas.specflow-runtime.ai-adapters.correlation-identity",
+      "type": "engineering",
+      "title": "Provider correlation identity",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/correlation-identity.md",
+      "read_when": [
+        "indexing active turns or interactions by provider session",
+        "implementing MCP/provider correlation",
+        "migrating legacy maps keyed by providerSessionId"
+      ],
+      "summary": "Use composite provider/session identity consistently for every provider-native lookup and keep canonical Session identity separate, preventing collisions between providers and avoiding parallel identity rules in interaction registries.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "ideas.specflow-runtime.ai-adapters.invocation-ownership",
+        "architecture.ai.provider-boundary",
+        "architecture.ai.canonical-session-turn-work"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "session-identity",
+        "interactions",
+        "mcp",
+        "correlation"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.ai-adapters.cross-platform-process-runtime",
+      "type": "engineering",
+      "title": "Cross-platform provider process runtime",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/cross-platform-process-runtime.md",
+      "read_when": [
+        "migrating provider process management",
+        "changing process-tree termination or liveness checks",
+        "adding platform-specific provider telemetry"
+      ],
+      "summary": "Preserve OS-aware process-tree ownership and termination, isolate optional platform-specific liveness telemetry behind capability boundaries, and test paths/session ids/filesystem cleanup against Windows and POSIX semantics rather than assuming Linux behavior.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "ideas.specflow-runtime.ai-adapters.liveness-watchdog",
+        "ideas.specflow-runtime.ai-adapters.resource-lifetime",
+        "ideas.specflow-runtime.ai-adapters.raw-diagnostics-retention"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "process",
+        "windows",
+        "linux",
+        "macos",
+        "portability"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.ai-adapters.diagnostics-and-replay",
+      "type": "engineering",
+      "title": "Provider diagnostics and protocol replay",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/diagnostics-and-replay.md",
+      "read_when": [
+        "adding a provider environment check",
+        "debugging provider installation/auth/version problems",
+        "adding regression coverage for provider protocol drift"
+      ],
+      "summary": "Keep cheap availability separate from an explicit provider diagnostic lane, and make provider event parsing replayable from minimized fixtures so protocol bugs become deterministic tests instead of requiring reproduction against a live CLI.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "ideas.specflow-runtime.ai-adapters.raw-diagnostics-retention",
+        "ideas.specflow-runtime.ai-adapters.error-classification",
+        "ideas.specflow-runtime.ai-adapters.output-semantics"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "diagnostics",
+        "replay",
+        "fixtures",
+        "protocol"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.ai-adapters.error-classification",
+      "type": "engineering",
+      "title": "Evidence-based provider error classification",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/error-classification.md",
+      "read_when": [
+        "implementing provider error mapping",
+        "deciding whether a provider failure is retryable",
+        "handling usage limits, authentication, model availability, or transient upstream failures"
+      ],
+      "summary": "Classify provider failures from structured evidence first, restrict text matching to trusted failure fields, distinguish quota from transient rate limiting, and expose retry metadata such as retryNotBefore without letting model prose drive lifecycle semantics.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "architecture.ai.provider-boundary"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "providers",
+        "errors",
+        "quota",
+        "retry"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.ai-adapters.invocation-ownership",
+      "type": "engineering",
+      "title": "Invocation ownership and late-event fencing",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/invocation-ownership-and-late-events.md",
+      "read_when": [
+        "implementing provider start/cancel lifecycle",
+        "binding a provider-native session id after a turn has started",
+        "handling callbacks that may arrive after cancellation or replacement"
+      ],
+      "summary": "Give each provider invocation an ownership generation/fence so callbacks from cancelled, terminal, or superseded invocations cannot mutate canonical aliases, session identity, Work, or lifecycle state.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "architecture.ai.canonical-session-turn-work",
+        "architecture.runtime.ownership-and-lifecycle"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "lifecycle",
+        "concurrency",
+        "cancellation",
+        "session-identity"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.ai-adapters.liveness-watchdog",
+      "type": "engineering",
+      "title": "Provider liveness and watchdogs",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/liveness-watchdog.md",
+      "read_when": [
+        "implementing provider idle/protocol-silence timeouts",
+        "debugging turns that hang during long-running tools or subprocesses",
+        "deciding whether silence proves an invocation is stuck"
+      ],
+      "summary": "Separate protocol/output silence from underlying process activity and absolute runtime limits, using platform-specific process telemetry only as optional evidence so long-running tools are not killed merely because the provider protocol is quiet.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "architecture.runtime.ownership-and-lifecycle"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "liveness",
+        "timeout",
+        "process",
+        "cross-platform"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.ai-adapters.output-semantics",
+      "type": "engineering",
+      "title": "Provider output semantics",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/output-semantics.md",
+      "read_when": [
+        "mapping provider streams into canonical Work",
+        "deciding whether assistant text is commentary or a final answer",
+        "adding compatibility for provider protocol versions"
+      ],
+      "summary": "Preserve provider-native structured phases when available and use a conservative buffered fallback when they are not, keeping reasoning, commentary, tools, and final answer distinct without making raw stdout the canonical transcript.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "architecture.ai.canonical-session-turn-work",
+        "architecture.ai.provider-boundary"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "streaming",
+        "commentary",
+        "reasoning",
+        "final-answer"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.ai-adapters.raw-diagnostics-retention",
+      "type": "engineering",
+      "title": "Raw provider diagnostics retention",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/raw-diagnostics-retention.md",
+      "read_when": [
+        "implementing raw provider capture",
+        "deciding how long provider stdout/protocol payloads should remain on disk",
+        "turning a production protocol bug into a replay fixture"
+      ],
+      "summary": "Treat raw provider capture as disposable diagnostic trace rather than durable session history: release in-memory state at settlement, bound disk retention/size, keep failures longer when useful, and promote only minimized regression cases into durable test fixtures.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "architecture.ai.provider-boundary",
+        "architecture.ai.canonical-session-turn-work"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "diagnostics",
+        "storage",
+        "retention",
+        "privacy"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.ai-adapters.resource-lifetime",
+      "type": "engineering",
+      "title": "Provider invocation resource lifetime",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/resource-lifetime.md",
+      "read_when": [
+        "implementing provider process/resource ownership",
+        "adding temporary files, listeners, timers, MCP registrations, or raw capture to an invocation",
+        "handling partial provider startup or cancellation cleanup"
+      ],
+      "summary": "Centralize per-invocation resource ownership and cleanup so partial startup, success, failure, cancellation, and late callbacks converge on one idempotent settlement path instead of duplicating cleanup logic across branches.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "ideas.specflow-runtime.ai-adapters.invocation-ownership",
+        "architecture.runtime.ownership-and-lifecycle"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "lifecycle",
+        "cleanup",
+        "resources",
+        "settlement"
+      ]
+    },
+    {
       "id": "product.shared.localization",
       "type": "product",
       "title": "Localization",
@@ -993,6 +1316,35 @@
       "related": [
         "product.specflow.ui.interaction-model",
         "product.specflow.cli.personas"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.ai-adapters.migration-inspection-map",
+      "type": "reference",
+      "title": "Legacy adapter migration inspection map",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/migration-inspection-map.md",
+      "read_when": [
+        "migrating legacy Nevo provider behavior into SpecFlow Runtime",
+        "deciding which legacy behavior to preserve, harden, or deliberately drop"
+      ],
+      "summary": "Concrete legacy Nevo files and symbols worth inspecting during provider migration, grouped by hardening concern so an implementation agent can go directly to the relevant behavior instead of rediscovering it from historical logs.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "architecture.ai.provider-boundary",
+        "architecture.ai.canonical-session-turn-work"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "migration",
+        "legacy",
+        "providers",
+        "inspection"
       ]
     },
     {

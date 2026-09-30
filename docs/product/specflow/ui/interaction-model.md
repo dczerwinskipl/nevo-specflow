@@ -85,10 +85,13 @@ Within a Full Session:
 
 ```text
 Session stream
-├── Context inspector
-├── Work inspector
-└── File inspector
+├── Context inspector             default Secondary root on split entry
+├── Work inspector                technical/history Secondary root
+└── contextual detail             File / Task / Handover / artifact / Work-item
 ```
+
+File preview is a common Secondary target, but it does not need to be a permanent root/tab beside
+Context and Work.
 
 Opening a Session from Task/Specification first uses a floating conversation so the user can inspect
 or interact without abandoning current work. "Open full session" is the explicit promotion to the

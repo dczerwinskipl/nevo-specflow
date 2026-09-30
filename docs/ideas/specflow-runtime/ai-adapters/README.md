@@ -44,23 +44,27 @@ hardening can land with the migrated feature instead of reproducing known legacy
 1. [Invocation ownership and late events](invocation-ownership-and-late-events.md)
 2. [Provider/session correlation identity](correlation-identity.md)
 3. [Evidence-based error classification](error-classification.md)
+4. [Provider readiness and authentication](provider-readiness-and-auth.md)
 
-These can otherwise corrupt canonical ownership, resurrect terminal aliases, or make application
-semantics depend on misleading provider text.
+These can otherwise corrupt canonical ownership, resurrect terminal aliases, make application
+semantics depend on misleading provider text, or advertise an installed-but-logged-out provider as
+ready for work.
 
 ### P1 — operational reliability
 
-4. [Resource lifetime and settlement](resource-lifetime.md)
-5. [Liveness and watchdogs](liveness-watchdog.md)
-6. [Output semantics](output-semantics.md)
+5. [Resource lifetime and settlement](resource-lifetime.md)
+6. [Liveness and watchdogs](liveness-watchdog.md)
+7. [Output semantics](output-semantics.md)
+8. [Model selection and reasoning effort](model-selection-and-effort.md)
 
 ### P2 — diagnostics and maintainability
 
-7. [Raw diagnostics retention](raw-diagnostics-retention.md)
-8. [Provider diagnostics and replay](diagnostics-and-replay.md)
-9. [Cross-platform process concerns](cross-platform-process-runtime.md)
-10. [Provider protocol examples](protocol-examples.md)
-11. [Legacy migration inspection map](migration-inspection-map.md)
+9. [Raw diagnostics retention](raw-diagnostics-retention.md)
+10. [Provider diagnostics and replay](diagnostics-and-replay.md)
+11. [Cross-platform process concerns](cross-platform-process-runtime.md)
+12. [Provider protocol examples](protocol-examples.md)
+13. [Provider error and limit examples](provider-error-examples.md)
+14. [Legacy migration inspection map](migration-inspection-map.md)
 
 ## Principles shared by all items
 

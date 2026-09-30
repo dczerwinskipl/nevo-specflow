@@ -25,6 +25,7 @@ related:
   - ideas.specflow-runtime.ai-adapters
   - architecture.ai.canonical-session-turn-work
   - architecture.runtime.ownership-and-lifecycle
+  - ideas.specflow-runtime.ai-adapters.session-resume-recovery
 ---
 
 # Invocation ownership and late-event fencing

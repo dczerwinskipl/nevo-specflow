@@ -514,9 +514,8 @@ Add/adjust stories/tests for:
 quality-gate validation is still required before merge.
 
 Declarative `AppWorkspace.Secondary` now supports controlled `open` / `onOpenChange`. A runtime
-detail can use the default Secondary as its inspector base: Back reveals the default Context, while
-Close can dismiss both the runtime stack and controlled default Secondary. Explicit product state can
-restore Context later.
+detail can use the default Secondary as its inspector base: Back reveals the default Context, and the
+default Context itself owns the Close action. Explicit product state can restore Context later.
 
 ### Desired Full Session behavior
 

@@ -59,6 +59,7 @@ semantics depend on misleading provider text.
 7. [Raw diagnostics retention](raw-diagnostics-retention.md)
 8. [Provider diagnostics and replay](diagnostics-and-replay.md)
 9. [Cross-platform process concerns](cross-platform-process-runtime.md)
+10. [Legacy migration inspection map](migration-inspection-map.md)
 
 ## Principles shared by all items
 

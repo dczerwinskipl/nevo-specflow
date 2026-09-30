@@ -115,8 +115,9 @@ The system can proceed when the human chooses to start/continue.
 IN PROGRESS
 Agent/runtime work is currently happening.
 
-BLOCKED / UNAVAILABLE
-Progress cannot continue, but this is not necessarily waiting for a human decision.
+ISSUE / REMEDIATION
+The normal next operation cannot proceed, but another remediation/continue action may still be legal.
+This is not necessarily waiting for a human decision.
 
 QUIET / DONE
 No immediate action is needed.
@@ -137,7 +138,7 @@ These are product projections, not proposed persisted status values.
 | Ready next action | Ready | Legacy deterministic action inspection + product direction | Distinguishes ready-to-start from waiting-on-human. |
 | Active/running work summary | Current activity | Current Session semantics + product direction | Shows that work is already happening and on what. |
 | Task progress summary | Context | Legacy dashboard evidence | Useful orientation without opening every Task. |
-| Blocking/error summary | Context | Deterministic fail-closed model | Explains why progress cannot continue. |
+| Issue/remediation summary | Context | Deterministic fail-closed model | Explains which intended action cannot proceed and whether another remediation path remains available. |
 | Last meaningful activity | Context | Candidate | Helps scan stale vs active Specs; not a workflow truth. |
 
 The overview should prefer a small number of meaningful projections over exposing every underlying
@@ -531,9 +532,13 @@ differences.
 
 The system/agent is actively progressing the object.
 
-### Blocked / unavailable
+### Issue / remediation
 
-Progress cannot continue now, but the object is not necessarily waiting for a human decision.
+A specific intended operation cannot continue normally, but the object is not necessarily globally
+blocked. Another operation may still be authoritative and ready, for example agent remediation while
+workflow-step activation is blocked.
+
+The UI should name the affected action/reason instead of projecting one universal `BLOCKED` state.
 
 ### Ready to resume / continue
 
@@ -734,7 +739,10 @@ Useful Task-level Session summary:
 - quick open floating Session action.
 
 Provider/model/mode/effort are usually secondary execution detail. They can become contextual start
-options when the user creates/starts an execution, but project defaults belong in Settings.
+options when the user creates/starts an execution, but project defaults belong in Settings. Once a
+concrete execution has reserved/frozen its execution configuration, the UI should present the
+effective values for that execution rather than implying that later default changes retroactively
+change it.
 
 Detailed conversation and Work stay in Session surfaces.
 
@@ -905,7 +913,24 @@ UI:
 
 "Ready to resume/continue" is a projection, not a new persisted Task status.
 
-## 14.10 Spec-level workflow attention
+## 14.10 Recovery required after terminal Turn
+
+~~~text
+AI Turn settles
+workflow attempt is not complete
+automatic continuation is not safe
+
+UI:
+  not "Task done"
+  not generic "Blocked"
+  show recovery/remediation reason
+  expose the authoritative recovery action if one exists
+~~~
+
+Recovery-required and resumable are different projections. Neither should become a new persisted
+Task lifecycle status merely for UI convenience.
+
+## 14.11 Spec-level workflow attention
 
 **Future migration scenario**
 

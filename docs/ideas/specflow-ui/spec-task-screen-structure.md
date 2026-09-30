@@ -170,8 +170,26 @@ A flat list is still valid if the sort, labels, and hierarchy communicate those 
 Primary:
 
 - Spec title / identity;
-- the one most useful current human-facing state;
+- the most important current human-facing signal;
+- count/summary when multiple same-priority items exist;
 - short reason when attention or issue exists.
+
+A Specification can have multiple simultaneous Task-level signals. The overview may lead with one
+signal for scanability, but it must not imply that the remaining attention/ready items do not exist.
+
+Examples:
+
+~~~text
+Spec A
+  3 Tasks require review
+  TASK-03 owner decision required
+
+Spec B
+  2 Tasks ready
+  next: TASK-05
+~~~
+
+The exact aggregation treatment is deferred; preserving multiplicity is not.
 
 Secondary/compact metadata:
 
@@ -199,6 +217,14 @@ On narrow layouts it may land directly on the pushed Task detail while preservin
 Specification.
 
 A Spec-level signal opens the Specification itself because that is the responsible decision context.
+
+If a summary exposes several actionable items, each item/aggregate must have a deterministic target.
+For example, "3 Tasks require review" can open the Specification with the relevant attention group
+visible, while a concrete TASK-03 signal can open TASK-03 Secondary directly.
+
+The selected decision context must be representable/restorable by product navigation state where
+reload/deep linking is expected. Do not make the one-click path depend only on ephemeral component
+state.
 
 The overview should not perform the final approval/review/start mutation. It gets the human to the
 right context in one interaction; the next deliberate interaction performs the action.
@@ -230,11 +256,11 @@ Specification header
   primary Spec-level action when relevant
 
 High-priority state
-  requires-attention item OR
-  ready-next-action OR
-  current execution summary OR
+  prioritized attention items / aggregate
+  ready-next-action summary
+  current execution summary
   issue/remediation summary
-  (only what is relevant now)
+  (render only the categories relevant now)
 
 Task collection
   Task rows / grouped lanes / another scannable structure
@@ -248,8 +274,16 @@ Supporting Specification context
 
 The "High-priority state" is a semantic slot, not a permanent card that must always exist.
 
-When nothing special is happening, it can disappear instead of displaying a decorative "all good"
-panel.
+It may contain more than one item when several human decisions are simultaneously pending. Preserve
+the distinction between:
+
+- one Spec-level decision;
+- one Task-level decision;
+- several Task-level decisions sharing the same category/artifact;
+- unrelated simultaneous attention items.
+
+When nothing special is happening, the slot can disappear instead of displaying a decorative
+"all good" panel.
 
 ## 4.3 Task collection
 
@@ -321,7 +355,7 @@ Task intent
   acceptance criteria / requirements
   constraints / dependencies
 
-Decision evidence
+Decision evidence (only when relevant/available)
   review summary
   Handover summary
   changes/diff entry
@@ -381,10 +415,10 @@ For a review state, a likely order is:
 
 ~~~text
 review outcome
-handover / what changed
-diff/change entry
-verification
-Session
+handover / what changed        when a Handover exists
+diff/change entry              when changes are available
+verification                   when decision-relevant
+Session                        when useful for context
 other artifacts
 ~~~
 
@@ -587,18 +621,18 @@ Review
   owner decisions
   required fixes vs informational findings
 
-Handover
+Handover                               (when available)
   what was completed
   what remains
   next expected actor/action
 
-Changes
+Changes                                (when available)
   relevant current change set            [Inspect]
 
-Verification
+Verification                           (when relevant)
   concise gate/check outcome              [Inspect]
 
-Session
+Session                                (when useful)
   Implementer / Reviewer conversation     [Open]
 
 [Review / decide]
@@ -611,7 +645,54 @@ Task while keeping access to the shared report.
 
 ---
 
-# 9. Issue / remediation state
+
+# 9. State D — Specification-level human action
+
+The Specification itself can progress through deterministic workflow. A human-required Spec step
+must therefore work without inventing a fake Task owner for the action.
+
+## 9.1 Specs overview
+
+~~~text
+Requires attention
+
+Spec A
+  Specification approval required
+~~~
+
+Selecting the signal opens the Specification decision context directly.
+
+## 9.2 Specification Primary
+
+~~~text
+Spec A
+Specification review
+
+Needs your attention
+  Specification approval required
+
+Why
+  current Spec workflow step completed its automated work
+  owner decision is required
+
+Decision evidence
+  Spec-level review/artifacts
+  unresolved owner decisions
+  relevant verification/change summary
+
+[Review / decide]
+~~~
+
+Task collection remains visible as supporting context but no Task is artificially selected as the
+owner of the Spec-level decision.
+
+On narrow layouts this remains a Specification surface; it does not push a Task detail unless the
+human explicitly opens one.
+
+---
+
+# 10. Issue / remediation state
+
 
 This is included because "cannot perform action X" must not become a universal Task-level
 `BLOCKED` state.
@@ -636,7 +717,7 @@ The UI should tell the user **which operation is blocked** and what legal path r
 
 ---
 
-# 10. Resume / recovery state
+# 11. Resume / recovery state
 
 A settled AI Turn is not enough to decide Task state.
 
@@ -673,7 +754,7 @@ Do not present both as generic "stopped" or "blocked."
 
 ---
 
-# 11. Mobile / narrow validation
+# 12. Mobile / narrow validation
 
 The same information hierarchy must work when Task Secondary replaces Specification Primary.
 
@@ -722,7 +803,7 @@ user needs to act.
 
 ---
 
-# 12. What this pass deliberately does not decide
+# 13. What this pass deliberately does not decide
 
 Still deferred:
 
@@ -742,22 +823,28 @@ scenarios and available backend projections.
 
 ---
 
-# 13. Screen-structure acceptance checks
+# 14. Screen-structure acceptance checks
 
 Before moving to component inventory or visual mockups, verify:
 
 1. From Specs overview, human attention is distinguishable from ready and working.
-2. A Task-specific signal opens the responsible Task context in one interaction; the human does not
+2. Multiple simultaneous attention/ready items are preserved rather than collapsed into a false
+   single state.
+3. A Task-specific signal opens the responsible Task context in one interaction; the human does not
    have to reopen the Spec and find the same Task manually.
-3. A neutral Spec click still opens the Specification workspace without inventing a Task selection.
-4. Opening Task/context does not mutate workflow.
-5. Task Secondary explains the current state before presenting a mutation.
-6. Evidence required for a human decision is reachable from Task without leaving the context.
-7. Current execution language uses authoritative execution scope, never historical Session binding.
-8. Batch execution remains visibly batch-shaped.
-9. A settled Turn can produce continue/resume or recovery state without pretending the Task is done.
-10. Narrow/mobile preserves discovery of attention/ready/current-work before Task detail is opened.
-11. Session access from Task remains floating-first, with explicit promotion to Full Session.
+4. A Spec-level signal opens the responsible Specification context without inventing a Task owner.
+5. A neutral Spec click still opens the Specification workspace without inventing a Task selection.
+6. One-click decision context is restorable/deep-linkable where product navigation promises reload
+   equivalence; it is not only ephemeral UI state.
+7. Opening Task/context does not mutate workflow.
+8. Task Secondary explains the current state before presenting a mutation.
+9. Evidence required for a human decision is reachable from Task without leaving the context.
+10. Optional evidence such as Handover, Session, or diff is not rendered as a required empty section.
+11. Current execution language uses authoritative execution scope, never historical Session binding.
+12. Batch execution remains visibly batch-shaped.
+13. A settled Turn can produce continue/resume or recovery state without pretending the Task is done.
+14. Narrow/mobile preserves discovery of attention/ready/current-work before Task detail is opened.
+15. Session access from Task remains floating-first, with explicit promotion to Full Session.
 
 If these checks hold, the next step is to map this structure onto existing design-system primitives
 and identify real component/composition gaps before producing polished visual mockups.

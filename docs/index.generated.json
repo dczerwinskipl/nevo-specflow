@@ -207,7 +207,7 @@
       "status": "current",
       "file": "docs/README.md",
       "read_when": [],
-      "summary": "Top-level map of architecture, engineering, design-system, product, reference, and instruction documentation.",
+      "summary": "Top-level map of architecture, engineering, design-system, product, reference, instruction, and non-authoritative idea backlog documentation.",
       "related": []
     },
     {
@@ -224,7 +224,7 @@
       "id": "ideas.readme",
       "type": "hub",
       "title": "Implementation ideas",
-      "status": "draft",
+      "status": "current",
       "file": "docs/ideas/README.md",
       "read_when": [
         "collecting implementation ideas before they become approved architecture or specifications",
@@ -533,7 +533,7 @@
       "status": "current",
       "file": "docs/architecture/decisions/0007-documentation-architecture-and-taxonomy.md",
       "read_when": [],
-      "summary": "Defines a documentation architecture that separates product behavior, durable system architecture, engineering guidance, reusable design-system knowledge, exact reference contracts, and operational instructions, while using searchable scope, area, and tag metadata so discovery does not depend on folder paths alone.",
+      "summary": "Defines a documentation architecture that separates product behavior, durable system architecture, engineering guidance, reusable design-system knowledge, exact reference contracts, operational instructions, and a non-authoritative idea backlog, while using searchable scope, area, and tag metadata so discovery does not depend on folder paths alone.",
       "related": [
         "docs.readme",
         "docs.architecture-readme",
@@ -1159,6 +1159,71 @@
       ]
     },
     {
+      "id": "ideas.specflow-runtime.ai-adapters.protocol-examples",
+      "type": "engineering",
+      "title": "Provider protocol mapping examples",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/protocol-examples.md",
+      "read_when": [
+        "implementing or reviewing provider event mapping",
+        "checking how provider-native output should map to reasoning, commentary, final answer, tools, or errors",
+        "creating minimized replay fixtures during provider migration"
+      ],
+      "summary": "Sanitized and minimized provider event examples showing the mapping evidence behind output, reasoning, tools, interactions, session establishment, late-event, liveness, and replay ideas; provider error/limit evidence lives in the dedicated error evidence document.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "ideas.specflow-runtime.ai-adapters.output-semantics",
+        "ideas.specflow-runtime.ai-adapters.error-classification",
+        "ideas.specflow-runtime.ai-adapters.diagnostics-and-replay",
+        "ideas.specflow-runtime.ai-adapters.invocation-ownership"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "providers",
+        "protocol",
+        "examples",
+        "fixtures"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.ai-adapters.provider-error-examples",
+      "type": "engineering",
+      "title": "Provider error and limit evidence",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/provider-error-examples.md",
+      "read_when": [
+        "implementing provider failure classification",
+        "adding regression fixtures for provider limits, authentication, timeout, or protocol failures",
+        "deciding which error signatures are observed evidence versus compatibility heuristics"
+      ],
+      "summary": "Provider-by-provider evidence for quota, rate-limit, timeout, authentication, protocol, tool, and execution failures, with explicit provenance so contract tests and compatibility signatures are not mistaken for captured provider protocol.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "ideas.specflow-runtime.ai-adapters.error-classification",
+        "ideas.specflow-runtime.ai-adapters.protocol-examples",
+        "ideas.specflow-runtime.ai-adapters.provider-readiness-auth",
+        "ideas.specflow-runtime.ai-adapters.liveness-watchdog"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "providers",
+        "errors",
+        "timeout",
+        "quota",
+        "rate-limit"
+      ]
+    },
+    {
       "id": "ideas.specflow-runtime.ai-adapters.provider-readiness-auth",
       "type": "engineering",
       "title": "Provider readiness and authentication",
@@ -1169,7 +1234,7 @@
         "preventing a session or turn from starting when the local provider is not authenticated",
         "designing provider connection tests or login-required UX"
       ],
-      "summary": "Distinguish installation from execution readiness, use the existing authenticated provider-health dimension, add bounded provider-specific readiness probes, and keep startTurn as the final authoritative guard so an installed but logged-out CLI is not presented as ready.",
+      "summary": "Distinguish installation from execution readiness, reuse useful legacy health evidence without treating it as an approved target contract, add bounded provider-specific readiness probes, and keep startTurn as the final authoritative guard so an installed but logged-out CLI is not presented as ready.",
       "related": [
         "ideas.specflow-runtime.ai-adapters",
         "ideas.specflow-runtime.ai-adapters.error-classification",
@@ -1419,71 +1484,6 @@
         "legacy",
         "providers",
         "inspection"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.ai-adapters.protocol-examples",
-      "type": "reference",
-      "title": "Provider protocol examples",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/ai-adapters/protocol-examples.md",
-      "read_when": [
-        "implementing or reviewing provider event mapping",
-        "checking how provider-native output should map to reasoning, commentary, final answer, tools, or errors",
-        "creating minimized replay fixtures during provider migration"
-      ],
-      "summary": "Sanitized and minimized provider event examples showing the mapping evidence behind the adapter hardening ideas, including output phases, reasoning, tools, quota/auth failures, advisory diagnostics, session establishment, and late-event cases.",
-      "related": [
-        "ideas.specflow-runtime.ai-adapters",
-        "ideas.specflow-runtime.ai-adapters.output-semantics",
-        "ideas.specflow-runtime.ai-adapters.error-classification",
-        "ideas.specflow-runtime.ai-adapters.diagnostics-and-replay",
-        "ideas.specflow-runtime.ai-adapters.invocation-ownership"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "testing"
-      ],
-      "tags": [
-        "providers",
-        "protocol",
-        "examples",
-        "fixtures"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.ai-adapters.provider-error-examples",
-      "type": "reference",
-      "title": "Provider error and limit examples",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/ai-adapters/provider-error-examples.md",
-      "read_when": [
-        "implementing provider failure classification",
-        "adding regression fixtures for provider limits, authentication, timeout, or protocol failures",
-        "deciding which error signatures are observed evidence versus compatibility heuristics"
-      ],
-      "summary": "Provider-by-provider examples of quota, rate-limit, timeout, authentication, protocol, tool, and execution failures, with explicit evidence level so synthetic mapper tests are not mistaken for captured provider protocol.",
-      "related": [
-        "ideas.specflow-runtime.ai-adapters",
-        "ideas.specflow-runtime.ai-adapters.error-classification",
-        "ideas.specflow-runtime.ai-adapters.protocol-examples",
-        "ideas.specflow-runtime.ai-adapters.provider-readiness-auth",
-        "ideas.specflow-runtime.ai-adapters.liveness-watchdog"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "testing"
-      ],
-      "tags": [
-        "providers",
-        "errors",
-        "timeout",
-        "quota",
-        "rate-limit"
       ]
     },
     {

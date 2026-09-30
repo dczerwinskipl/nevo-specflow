@@ -8,9 +8,9 @@ read_when:
   - choosing between an inline surface, an inspector, a sheet, and a page
   - defining what state is preserved across navigation
 summary: >
-  Responsive shell (wide with contextual inspector / narrow), the product navigation
-  hierarchy, context-preserving drill-down, and when to use a tooltip vs. inspector vs.
-  sheet vs. full page.
+  Responsive shell with independent navigation and workspace breakpoints, the product
+  navigation hierarchy, context-preserving drill-down, and when to use floating,
+  Secondary, pushed-detail, or full-workspace surfaces.
 related:
   - product.specflow.ui.personas
   - product.specflow.ui.ai-session-ux
@@ -39,13 +39,20 @@ contracts are filled in with the implementation.
 
 ## Responsive shell
 
-| Shell               | Layout                                                                                                                                         |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Wide / desktop**  | Persistent primary navigation, a main workspace, and a **contextual inspector** on the right for details that shouldn't replace the workspace. |
-| **Narrow / mobile** | Single-column. The inspector's content becomes a sheet or a pushed sub-page. Navigation collapses.                                             |
+Navigation collapse and workspace stacking are separate responsive decisions.
 
-The hierarchy is identical across breakpoints; only density and whether a level is
-inline vs. behind a tap changes.
+| Shell | Navigation | Workspace |
+| --- | --- | --- |
+| **Wide** | Persistent navigation. | Primary + Secondary can be visible together. |
+| **Compact** | Drawer navigation. | Primary + Secondary can still be visible together. |
+| **Narrow** | Drawer navigation. | One workspace surface is visible at a time; active Secondary replaces Primary until Back/Close. |
+
+Do not equate "no persistent sidebar" with "mobile". Compact layouts can still support the full split
+workspace.
+
+The product hierarchy is identical across breakpoints. On narrow layouts, any information that would
+otherwise exist only in a desktop Secondary needs an explicit affordance from the visible Primary
+surface.
 
 ## Product hierarchy
 
@@ -54,7 +61,7 @@ For the current spec-driven MVP, global product navigation stays deliberately sm
 ```text
 Project
 ├── Specs
-│   ├── Active / Archive
+│   ├── Active / Archive                  collection views, not necessarily nav items
 │   └── Specification
 │       ├── Task details                  contextual Secondary
 │       └── Session                       floating conversation
@@ -89,16 +96,17 @@ main Session workspace.
 
 ## Surface choice
 
-| Surface                    | Use for                                                                            |
-| -------------------------- | ---------------------------------------------------------------------------------- |
-| Info / tooltip / popover   | A short clarification; no navigation, no actions of substance.                     |
-| Floating surface           | Quick interaction with related context, especially a Session, without abandoning the current workspace. |
-| Right inspector / Secondary| Details about the current selection that support the workspace without leaving it. |
-| Sheet / pushed detail      | Narrow/mobile representation of contextual Secondary/detail.                       |
-| Main page / workspace      | A distinct product surface the user explicitly navigated/promoted to.              |
+| Surface | Use for |
+| --- | --- |
+| Info / tooltip / popover | A short clarification; no navigation, no actions of substance. |
+| Floating surface | Quick interaction with related context, especially a Session, without abandoning the current workspace. |
+| Secondary | Contextual detail that supports the Primary without replacing its product context on split layouts. |
+| Pushed / stacked detail | Narrow representation of Secondary: it becomes the visible workspace surface and provides an explicit way back. |
+| Main page / workspace | A distinct product surface the user explicitly navigated/promoted to. |
 
 ## State preservation
 
 Selection, expansion state, scroll position, and in-progress composer text survive
 navigation away and back, and survive a reload where the URL can express the state.
-Deep links address product concepts, never internal ids.
+Deep links address stable product resources and product intent. Raw provider/runtime identifiers
+must not define navigation semantics merely because they exist internally.

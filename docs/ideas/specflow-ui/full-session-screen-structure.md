@@ -1197,5 +1197,5 @@ Before global component/composition gap analysis, verify:
     where product navigation state can represent it.
 28. Direct Session entry still has deterministic parent orientation/fallback.
 
-If these hold, Specification/Task and Full Session together are sufficient to start the broader
-design-system component/composition gap pass.
+The resulting design-system/component mapping is captured in
+[Design-system and composition gaps](design-system-component-composition-gaps.md).

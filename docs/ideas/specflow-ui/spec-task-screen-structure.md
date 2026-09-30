@@ -852,9 +852,8 @@ Before moving to component inventory or visual mockups, verify:
 14. Narrow/mobile preserves discovery of attention/ready/current-work before Task detail is opened.
 15. Session access from Task remains floating-first, with explicit promotion to Full Session.
 
-If these checks hold, the next product-model step is to perform the equivalent screen-structure pass
-for **Full Session**: Session stream, current activity, Context/Work/File Secondary modes, floating
-Session, batch execution, and narrow explicit inspector actions.
+The equivalent Full Session structure is now captured in
+[Full Session screen structure](full-session-screen-structure.md).
 
-Only after both Specification/Task and Full Session structures are stable should we run the broader
-design-system component/composition gap pass and then produce polished visual mockups.
+With both major screen families represented, the next step is the broader design-system
+component/composition gap pass before polished visual mockups.

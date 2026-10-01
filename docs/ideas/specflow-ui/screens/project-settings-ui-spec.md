@@ -670,6 +670,9 @@ a warning Card unless the condition actually requires user action or blocks a co
 
 Purpose: inspect deterministic workflow definitions.
 
+This section configures/inspects deterministic workflows; it does **not** choose between legacy and
+deterministic product modes. Nevo SpecFlow has no legacy-flow mode to enable.
+
 List state:
 
 ~~~text

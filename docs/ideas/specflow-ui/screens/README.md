@@ -94,7 +94,7 @@ Specification/Task screens additionally inherit
 Every screen spec uses the same status vocabulary for required backend/application capabilities:
 
 - **existing-new** — already implemented as a product API/read model in current `nevo-specflow`;
-- **legacy-available** — implemented in legacy `dczerwinskipl/nevo` and useful as migration evidence;
+- **old-repo-available** — implemented in legacy `dczerwinskipl/nevo` and useful as migration evidence;
 - **missing** — the required new-product capability/read model does not exist yet and the screen spec
   must propose its minimal semantic contract.
 
@@ -102,7 +102,7 @@ A legacy endpoint may be reused conceptually or even structurally, but it does n
 product contract automatically.
 
 Important migration boundary: the old `dczerwinskipl/nevo` repository contains both legacy and
-deterministic workflows. New Nevo SpecFlow is **deterministic-only**. `legacy-available` in these
+deterministic workflows. New Nevo SpecFlow is **deterministic-only**. `old-repo-available` in these
 tables means "available in the old repository as migration evidence"; it never means the old legacy
 workflow mode should remain supported. Workflow semantics must come from the deterministic path.
 
@@ -132,7 +132,7 @@ Use this as a guide, not as ceremony. Omit sections that genuinely do not apply.
 3. Entry points, navigation, return/deep-link behavior.
 4. Data source / read-model ownership — where the screen gets its data and what the UI may derive.
 5. API availability / migration status — mark every required read/write capability as
-   `existing-new`, `legacy-available`, or `missing`; for `missing`, include a concise proposed
+   `existing-new`, `old-repo-available`, or `missing`; for `missing`, include a concise proposed
    API/read-model shape and behavior.
 6. Information hierarchy.
 7. Pseudo-layout — at least one ASCII sketch of the main composition.

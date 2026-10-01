@@ -4,7 +4,7 @@ type: product
 title: Floating Session UI spec
 status: draft
 scope: specflow
-areas: [ui, product, ai]
+areas: [ui, ai]
 tags: [session, floating, conversation, contextual]
 read_when:
   - implementing or reviewing Floating Session

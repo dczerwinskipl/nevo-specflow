@@ -648,8 +648,9 @@ Normal live Session updates must not reset the user's current inspector root/det
 The local inspector stack resets when Secondary is closed or the Full Session context itself changes,
 rather than being driven by incoming Work events.
 
-This is different from opening a Session from Task, where Session uses a floating surface instead of
-being pushed as another Task Secondary level.
+This is different from quick Session conversation opened from Task/Specification: where Floating
+Session is supported, it stays outside the Task Secondary stack. Full Session is also directly
+reachable from the Session reference and is a separate main product surface.
 
 ### 10.3 Closing Secondary
 
@@ -678,8 +679,12 @@ Conversation
 
 ### 11.1 Purpose
 
-Floating Session is the quick interaction surface opened from Task/Specification without abandoning
-that work context.
+Floating Session is the quick interaction surface used for Session conversation from
+Task/Specification where the floating presentation is supported, without abandoning that work
+context.
+
+It is not a mandatory waypoint to Full Session: the originating Session reference may expose a direct
+Open full session action.
 
 It is not a compressed copy of every Full Session inspector.
 
@@ -1117,8 +1122,16 @@ Do not overload the header with provider/model/internal ids.
 
 ### Return from Full Session
 
-When Full Session was explicitly promoted from a floating Session, returning should restore the
-product context the user came from where that context is representable:
+When Full Session was entered from a Specification/Task context, returning should restore that
+product context where representable, regardless of whether Full Session was opened directly or from
+Floating Session:
+
+~~~text
+Specification + TASK-03
+  -> Open full session
+  -> return
+Specification + TASK-03
+~~~
 
 ~~~text
 Specification + TASK-03

@@ -1,0 +1,351 @@
+---
+id: ideas.specflow-ui.screens.task-detail
+type: product
+title: Task Detail UI spec
+status: draft
+scope: specflow
+areas: [ui, product, tasks, workflow]
+tags: [task, detail, review, evidence, actions]
+read_when:
+  - implementing or reviewing Task Secondary/pushed detail
+  - defining Task evidence, decisions, or action placement
+summary: >
+  Vertical UI specification for Task detail: decision state, intent, evidence, current execution,
+  deterministic actions, API/read-model requirements, components, tokens, and responsive behavior.
+related:
+  - ideas.specflow-ui.screens
+  - ideas.specflow-ui.spec-task-information-hierarchy
+  - ideas.specflow-ui.spec-task-screen-structure
+  - product.specflow.ui.interaction-model
+---
+
+# Task Detail UI spec
+
+## 1. Purpose and ownership
+
+Task Detail answers within seconds:
+
+- What is this Task?
+- Why is it in this state?
+- Does it need me?
+- What evidence should I inspect?
+- What deterministic action is available?
+
+Task detail is normally a contextual Secondary of Specification, or pushed detail on narrow layouts.
+
+It does not own global Specification navigation, Full Session layout, or raw provider/runtime payloads.
+
+## 2. User use cases
+
+- Inspect Task intent/acceptance criteria.
+- Understand why review/approval/remediation is required.
+- Start/continue an available deterministic action.
+- Review Task-specific evidence and shared artifacts.
+- Distinguish current execution from historical/related Sessions.
+- Open a related Session without losing Task context.
+- Inspect changes/verification/Handover.
+- Recover from or inspect an execution issue.
+
+## 3. Entry and navigation
+
+Entry:
+- Task row from Specification;
+- concrete Task signal from Specs Overview;
+- Session Context -> Task detail;
+- deep link where stable product navigation supports it.
+
+Wide/Compact:
+- Specification or Session remains Primary;
+- Task occupies Secondary.
+
+Narrow:
+- Task replaces visible Primary context as pushed detail;
+- Back returns to originating Specification/Session context.
+
+The same Task detail composition should work in either parent context without changing Task semantics.
+
+## 4. Data source / read-model ownership
+
+Backend/application owns:
+
+- Task identity/title/intent reference;
+- semantic workflow state;
+- per-action readiness/reason;
+- current execution membership;
+- dependencies/blockers;
+- review/evidence/artifact references;
+- current/historical related Sessions;
+- continue/resume/recovery projection.
+
+Frontend may order evidence according to the current decision but must not invent missing verdicts,
+workflow state, or execution membership.
+
+## 5. API availability / migration status
+
+| Need | New SpecFlow | Legacy Nevo | Direction |
+| --- | --- | --- | --- |
+| Task identity/status/dependencies | **missing** | **legacy-available** in \`GET /api/dashboard\`, \`.../task-statuses\`, manifest | Preserve factual metadata; replace legacy universal lifecycle semantics. |
+| Task document/body | **missing** | **legacy-available** via \`GET /api/specs/:source/:slug/content/:docId\` | Strong migration candidate. |
+| Per-action readiness/workflow projection | **missing** | **legacy-available** via \`GET /api/specs/active/:slug/actions\` | Preserve server-owned readiness and workflow projection. |
+| Human review command | **missing** | **legacy-available** via \`POST /api/specs/:slug/tasks/:taskId/workflow/human-decision\` | Preserve explicit command behavior. |
+| Related Sessions | **missing** | **legacy-available** via \`GET /api/agent-sessions?specId=...&taskId=...\` | Keep association separate from current execution. |
+| Current execution membership / batch context | **missing** | partial legacy evidence only | Add authoritative current-execution projection. |
+| Handover/artifact/change/verification summary | **missing** | partial scattered legacy evidence | Add explicit references/read model; do not invent one generic Attachments bucket. |
+| Resume vs recovery | **missing** | deterministic legacy flow has behavior/evidence, not one clean Task detail DTO | Add stable application projection. |
+
+### Proposed Task read API
+
+Illustrative:
+
+~~~text
+GET /api/specs/:specId/tasks/:taskId
+~~~
+
+Response:
+
+~~~text
+{
+  task: {
+    id,
+    specId,
+    title,
+    intent: {
+      summary?,
+      documentRef?,
+      acceptanceCriteria?,
+      constraints?,
+      dependencies[]
+    },
+    workflow: {
+      semanticStatus,
+      currentStep?,
+      attempt?,
+      state?,
+      reason?,
+      actions: [
+        { id, label, available, reason?, confirmation? }
+      ]
+    },
+    attention?: {
+      kind,
+      label,
+      reason,
+      decisionType?
+    },
+    currentExecution?: {
+      sessionId,
+      agentRole,
+      taskIds[]
+    },
+    evidence: [
+      { id, kind, title, relevance, target }
+    ],
+    sessions: [
+      { id, title, relation: "current" | "historical" | "contextual", lastActivityAt }
+    ],
+    continuation?: {
+      kind: "none" | "continue" | "remediation" | "recovery",
+      reason,
+      actionId?
+    }
+  }
+}
+~~~
+
+Suggested commands:
+
+~~~text
+POST /api/specs/:specId/tasks/:taskId/actions/:actionId
+POST /api/specs/:specId/tasks/:taskId/decisions
+~~~
+
+Decision body example:
+
+~~~text
+{ decision: "approve" | "request-changes", feedback? }
+~~~
+
+Behavior:
+
+- server validates legal action at command time;
+- stale UI readiness does not authorize a command;
+- successful command returns operation/result identity and new projection can be fetched/streamed;
+- Task terminal status is not inferred from terminal Turn;
+- \`currentExecution.taskIds\` may contain several Tasks;
+- evidence entries may point to shared multi-Task artifacts.
+
+## 6. Information hierarchy
+
+1. Task identity/title.
+2. decision/current state + human-readable reason.
+3. available deterministic action.
+4. Task intent/acceptance criteria.
+5. decision-relevant evidence.
+6. current execution / related Sessions.
+7. deep technical/history detail.
+
+Reason + evidence + action must remain close enough to make the decision understandable.
+
+## 7. Pseudo-layout
+
+~~~text
+┌──────────────────────────────────────┬──────────────────────────────────────┐
+│ Specification Primary                │ TASK-03 — Deterministic admission    │
+│                                      │ Review required                 [×]  │
+│ Tasks                                │                                      │
+│ TASK-01  Done                        │ Why                                  │
+│ TASK-02  Working                     │ Implementation completed             │
+│ TASK-03  Review required       >     │ Owner decision required              │
+│ TASK-04  Ready                       │                                      │
+│                                      │ Task intent                           │
+│                                      │ Goal / acceptance criteria           │
+│                                      │                                      │
+│                                      │ Review                               │
+│                                      │ Verdict / owner decisions            │
+│                                      │ Required fixes / findings            │
+│                                      │                                      │
+│                                      │ Changes               [Inspect]      │
+│                                      │ Verification          [Inspect]      │
+│                                      │ Session               [Open]         │
+│                                      │                                      │
+│                                      │ [Review / decide]                    │
+└──────────────────────────────────────┴──────────────────────────────────────┘
+~~~
+
+No Card per section. Section rhythm comes from headings/spacing and occasional dividers.
+
+## 8. Screen anatomy
+
+- header: Task id/title + workflow meaning + Close/Back;
+- decision state;
+- Task intent;
+- decision evidence;
+- related execution/Sessions;
+- deep inspection;
+- action region.
+
+Optional evidence sections disappear when unavailable.
+
+## 9. Responsive contract
+
+Wide/Compact:
+- Secondary alongside parent Primary;
+- Task owns its own header/actions.
+
+Narrow:
+- pushed Task surface;
+- Back to parent;
+- same evidence/action order;
+- action may use sticky placement only if it does not obscure evidence/composer-like content.
+
+## 10. Interaction flows
+
+### Review
+Review-required -> inspect evidence -> deliberate Review/decide -> decision controls -> command.
+
+### Ready
+Ready state -> understand what Start does -> Start -> pending feedback -> authoritative refresh.
+
+### Current execution
+Current execution -> show role and batch scope -> Open Session -> Floating Session.
+
+### Evidence
+Changes/Handover/verification -> contextual detail/file/diff surface; return to same Task.
+
+### Resume
+Safe settled execution + legal work remains -> Continue.
+
+### Recovery
+Ambiguous durable operation -> Inspect recovery -> authoritative recovery action; do not label as
+ordinary Continue.
+
+## 11. States
+
+- ready;
+- current execution;
+- human review;
+- owner decision;
+- operation-specific issue/blocker;
+- quiet/no immediate action;
+- resume/continue;
+- remediation;
+- recovery required;
+- archived/read-only;
+- evidence unavailable.
+
+## 12. Component / composition map
+
+| Need | Composition |
+| --- | --- |
+| Secondary shell | AppWorkspace runtime Secondary |
+| Header | WorkspaceHeader |
+| Task prose | Typography / MarkdownDocument |
+| Decision summary | product composition; Alert only when stronger containment is justified |
+| Evidence disclosure | Collapsible / rows / links |
+| Chronological history | Timeline |
+| Status | StatusIndicator/Badge sparingly |
+| Actions | Button/Menu/AlertDialog when confirmation needed |
+| Session entry | product link/action -> Floating Session |
+| File/change detail | contextual Secondary/product capability |
+
+## 13. Visual/token contract
+
+- normal surface neutral;
+- title: \`text-content-primary\`;
+- explanatory prose: \`text-content-secondary\`;
+- metadata: \`text-content-muted\`;
+- separators subtle;
+- attention/recovery semantic tones only where meaning requires;
+- ready action uses normal action hierarchy, not warning colors;
+- review evidence stays neutral unless finding severity itself is semantic.
+
+## 14. Local containment rules
+
+- no Card per evidence type;
+- no Card around Task intent;
+- no Card around entire Task detail;
+- stronger contained state may be used for one exceptional attention/recovery block;
+- shared review/Handover artifacts can be independently contained only if they function as distinct
+  selectable objects;
+- nested containment is exceptional.
+
+## 15. Accessibility/focus
+
+- opening Task focuses Task heading or first meaningful context;
+- Back/Close restores focus to originating row/signal;
+- action reason is readable without hover;
+- collapsed evidence has clear accessible labels/state;
+- statuses never color-only;
+- confirmation dialogs name the Task/action clearly.
+
+## 16. Storybook scenarios
+
+- ready-to-start;
+- current single Task;
+- current batch;
+- review required;
+- Spec-level action absent from Task;
+- waiting dependency;
+- remediation available;
+- continue/resume;
+- recovery required;
+- shared review artifact;
+- no optional evidence;
+- narrow pushed detail.
+
+## 17. Acceptance criteria
+
+- state/reason understood before mutation;
+- evidence relevant to decision is directly reachable;
+- optional evidence does not create empty boxes;
+- current execution is authoritative and batch-aware;
+- Session association is not execution proof;
+- terminal Turn does not imply Task complete;
+- linear detail remains borderless-first.
+
+## 18. Open questions
+
+- canonical Handover/artifact references;
+- initial Diff/change inspection contract;
+- exact workflow action identifiers in new model;
+- exact review decision variants beyond approve/request changes.

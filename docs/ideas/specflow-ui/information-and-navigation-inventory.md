@@ -59,8 +59,15 @@ Use these evidence labels while this document evolves:
 - **Future candidate** - preserve the idea, do not implement yet.
 - **Open question** - ask instead of guessing.
 
-Legacy Nevo mixes old lifecycle concepts with deterministic flow. A legacy field or status is not
-automatically a new SpecFlow requirement.
+The old `dczerwinskipl/nevo` repository contains both the pre-deterministic legacy flow and the
+newer deterministic flow. Nevo SpecFlow migrates **only the deterministic workflow model**.
+
+Generic old-repository infrastructure may still be useful migration evidence, but the old legacy
+flow/lifecycle is not a product mode to preserve. The new UI must not expose a Legacy/Deterministic
+toggle or treat workflow mode as a user-selectable Specification property.
+
+A field/status from the old repository is therefore evidence only when its semantics still fit the
+deterministic target model.
 
 ---
 

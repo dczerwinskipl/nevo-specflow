@@ -548,7 +548,250 @@ Do not refresh Session/Spec runtime domains because Settings refreshed.
 - code/raw source may use one code surface;
 - unknown descriptor is a local error row, not a giant error Card.
 
-## 22. Storybook/Figma matrix
+## 22. Fixture payload matrix
+
+The following descriptors are the minimum concrete payloads for renderer fixtures. Shared catalog
+fields such as section/group ids are omitted only because the renderer under test receives one
+Setting descriptor.
+
+### string
+
+~~~json
+{
+  "key": "project.name",
+  "label": "Project name",
+  "valueKind": "string",
+  "effectiveValue": "Nevo SpecFlow",
+  "valueState": "explicit",
+  "readOnly": true
+}
+~~~
+
+### number
+
+~~~json
+{
+  "key": "ai.maxRetries",
+  "label": "Maximum retries",
+  "valueKind": "number",
+  "effectiveValue": 3,
+  "valueState": "explicit",
+  "readOnly": true
+}
+~~~
+
+### boolean
+
+~~~json
+{
+  "key": "review.auto",
+  "label": "Automatic review",
+  "valueKind": "boolean",
+  "effectiveValue": true,
+  "valueState": "explicit",
+  "readOnly": true
+}
+~~~
+
+Disabled fixture uses the same payload with `effectiveValue: false`.
+
+### multi-enum
+
+~~~json
+{
+  "key": "review.requiredRoles",
+  "label": "Required roles",
+  "valueKind": "multi-enum",
+  "effectiveValue": ["reviewer", "security"],
+  "valueState": "explicit",
+  "options": [
+    { "value": "reviewer", "label": "Reviewer" },
+    { "value": "security", "label": "Security" },
+    { "value": "owner", "label": "Owner" }
+  ],
+  "readOnly": true
+}
+~~~
+
+### url
+
+~~~json
+{
+  "key": "integration.endpoint",
+  "label": "Endpoint",
+  "valueKind": "url",
+  "effectiveValue": "https://ci.example.com",
+  "valueState": "explicit",
+  "readOnly": true
+}
+~~~
+
+### code
+
+~~~json
+{
+  "key": "workflow.condition",
+  "label": "Condition",
+  "valueKind": "code",
+  "displayFormat": "javascript",
+  "effectiveValue": "ctx.tests.passed && ctx.review.approved",
+  "valueState": "explicit",
+  "readOnly": true
+}
+~~~
+
+Long-code fixture uses a large value plus a semantic `sourceRef/detailRef` and should collapse to
+summary + Inspect.
+
+### structured
+
+~~~json
+{
+  "key": "workflow.policy",
+  "label": "Workflow policy",
+  "valueKind": "structured",
+  "effectiveValue": {
+    "requiredChecks": ["test", "review"],
+    "allowResume": true
+  },
+  "valueState": "explicit",
+  "readOnly": true
+}
+~~~
+
+Normal view shows a concise summary + Inspect, not raw JSON.
+
+### duration
+
+~~~json
+{
+  "key": "runtime.timeoutMs",
+  "label": "Runtime timeout",
+  "valueKind": "duration",
+  "effectiveValue": 120000,
+  "displayFormat": "milliseconds",
+  "valueState": "explicit",
+  "readOnly": true
+}
+~~~
+
+### size
+
+~~~json
+{
+  "key": "ai.contextCapacity",
+  "label": "Context capacity",
+  "valueKind": "size",
+  "effectiveValue": 200000,
+  "displayFormat": "tokens",
+  "valueState": "explicit",
+  "readOnly": true
+}
+~~~
+
+### status
+
+~~~json
+{
+  "key": "provider.claude.status",
+  "label": "Claude",
+  "valueKind": "status",
+  "effectiveValue": "available",
+  "availability": { "status": "available" },
+  "readOnly": true
+}
+~~~
+
+### reference
+
+~~~json
+{
+  "key": "workflow.default",
+  "label": "Default workflow",
+  "valueKind": "reference",
+  "effectiveValue": {
+    "id": "workflow-implementation",
+    "label": "Implementation"
+  },
+  "capabilities": { "canInspectSource": true },
+  "readOnly": true
+}
+~~~
+
+### list
+
+~~~json
+{
+  "key": "repository.ignoredPaths",
+  "label": "Ignored paths",
+  "valueKind": "list",
+  "effectiveValue": ["node_modules", "dist", ".cache"],
+  "valueState": "explicit",
+  "readOnly": true
+}
+~~~
+
+### inherited/default/unset
+
+Inherited:
+
+~~~json
+{
+  "key": "ai.model",
+  "label": "Model",
+  "valueKind": "string",
+  "configuredValue": null,
+  "effectiveValue": "Claude Sonnet 4.5",
+  "defaultValue": "Claude Sonnet 4.5",
+  "valueState": "inherited",
+  "sourceOfValue": { "kind": "project-default" },
+  "readOnly": true
+}
+~~~
+
+Default uses `valueState: "default"`; unset uses `valueState: "unset"` with no effective value and
+an optional explanation/provenance supplied by the server.
+
+### unavailable optional
+
+~~~json
+{
+  "key": "provider.antigravity",
+  "label": "Antigravity",
+  "valueKind": "status",
+  "effectiveValue": "unavailable",
+  "availability": {
+    "status": "unavailable",
+    "reason": "Sign in required"
+  },
+  "required": false,
+  "readOnly": true
+}
+~~~
+
+### required issue
+
+~~~json
+{
+  "key": "ai.provider",
+  "label": "AI provider",
+  "valueKind": "status",
+  "effectiveValue": "not-configured",
+  "availability": {
+    "status": "not-configured",
+    "reason": "No enabled provider can start a Session."
+  },
+  "required": true,
+  "capabilities": {
+    "canEdit": true
+  },
+  "readOnly": false
+}
+~~~
+
+Plugin and unknown-kind fixture payloads are defined in sections 13–15.
+
+## 23. Storybook/Figma matrix
 
 Required:
 
@@ -582,7 +825,7 @@ settings-renderer/unknown-value-kind
 
 Every fixture uses a concrete descriptor payload.
 
-## 23. Acceptance criteria
+## 24. Acceptance criteria
 
 1. Ordinary new settings using known valueKinds render without screen-specific code.
 2. Unknown valueKind fails locally and visibly.

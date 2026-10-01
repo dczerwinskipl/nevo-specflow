@@ -1,16 +1,16 @@
 ---
 id: ideas.specflow-ui.screens.specification-workspace
 type: product
-title: Specification Workspace UI spec
+title: Specification UI spec
 status: draft
 scope: specflow
 areas: [ui, product, specifications, workflow]
 tags: [specification, workspace, tasks, workflow, evidence]
 read_when:
-  - implementing or reviewing a Specification workspace
+  - implementing or reviewing a Specification surface
   - designing Spec-level steering and Task collection behavior
 summary: >
-  Vertical UI specification for one Specification workspace: workflow meaning, high-priority
+  Vertical UI specification for one Specification surface: workflow meaning, high-priority
   signals, Task collection, evidence, navigation, API/read-model requirements and responsive behavior.
 related:
   - ideas.specflow-ui.screens
@@ -19,11 +19,11 @@ related:
   - product.specflow.ui.interaction-model
 ---
 
-# Specification Workspace UI spec
+# Specification UI spec
 
 ## 1. Purpose and ownership
 
-The Specification workspace is the main context for one Specification.
+The Specification surface is the main context for one Specification.
 
 It owns:
 

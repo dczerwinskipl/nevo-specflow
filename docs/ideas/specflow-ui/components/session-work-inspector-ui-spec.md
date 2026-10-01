@@ -494,6 +494,73 @@ Each row is selectable -> L4/detail.
 | interrupted | neutral/warning marker | Not automatically user fault. |
 | unknown | explicit unknown state | Never pretend completed. |
 
+### Status fixture payloads
+
+Use one canonical command fixture and vary only canonical status fields so visual review isolates the
+status treatment.
+
+Queued:
+
+~~~json
+{
+  "type": "tool",
+  "kind": "command",
+  "title": "Run command",
+  "subject": "pnpm test",
+  "status": "queued",
+  "startedAt": null,
+  "completedAt": null
+}
+~~~
+
+Active:
+
+~~~json
+{
+  "type": "tool",
+  "kind": "command",
+  "title": "Run command",
+  "subject": "pnpm test",
+  "status": "active",
+  "startedAt": "2026-10-01T10:00:00Z",
+  "completedAt": null
+}
+~~~
+
+Completed:
+
+~~~json
+{
+  "type": "tool",
+  "kind": "command",
+  "title": "Run command",
+  "subject": "pnpm test",
+  "status": "completed",
+  "exitCode": 0,
+  "startedAt": "2026-10-01T10:00:00Z",
+  "completedAt": "2026-10-01T10:00:05Z"
+}
+~~~
+
+Failed:
+
+~~~json
+{
+  "type": "tool",
+  "kind": "command",
+  "title": "Run command",
+  "subject": "pnpm test",
+  "status": "failed",
+  "exitCode": 1,
+  "closureReason": "process_exit",
+  "startedAt": "2026-10-01T10:00:00Z",
+  "completedAt": "2026-10-01T10:00:05Z"
+}
+~~~
+
+Cancelled/interrupted/unknown use the same identity with their respective canonical status and
+closureReason when available. Do not manufacture exit codes for states that do not provide one.
+
 ## 9. L4 common ToolInvocation detail
 
 All tool kinds share a common metadata header:

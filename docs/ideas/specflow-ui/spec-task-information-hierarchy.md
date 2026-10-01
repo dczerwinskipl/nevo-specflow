@@ -115,16 +115,17 @@ The system can proceed when the human chooses to start/continue.
 IN PROGRESS
 Agent/runtime work is currently happening.
 
-ISSUE / REMEDIATION
-The normal next operation cannot proceed, but another remediation/continue action may still be legal.
-This is not necessarily waiting for a human decision.
-
-QUIET / DONE
-No immediate action is needed.
+OTHER ACTIVE / QUIET
+No immediate human action is required.
 ~~~
 
-These are product projections, not proposed persisted status values.
+Issue/remediation is **not** a fifth top-level category by itself.
 
+- if an issue requires human intervention, project it as Requires attention with the concrete reason;
+- if a legal agent/system remediation path exists without human input, keep it under Working/Other
+  active and expose the remediation reason/path as supporting context.
+
+These are product projections, not persisted status values.
 ## 4.2 Minimum Specification summary
 
 | Information | Class | Evidence | Why it matters |

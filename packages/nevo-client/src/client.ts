@@ -9,6 +9,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
     baseURL: options.baseURL,
     timeout: options.timeoutMs ?? 10_000,
     headers: options.headers,
+    allowAbsoluteUrls: options.allowAbsoluteUrls ?? options.baseURL === undefined,
   });
 
   const credentials = options.credentials ?? anonymousCredentials();
@@ -38,33 +39,34 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
     return config;
   });
 
-  instance.interceptors.response.use(
-    (response) => response,
-    (error: unknown) => Promise.reject(normalizeHttpError(error)),
-  );
-
   return {
     axios: instance,
 
     async request<TResponse, TBody>(config: HttpRequestConfig<TBody>): Promise<TResponse> {
-      const response = await instance.request<TResponse, unknown, TBody>(config);
-      return response.data;
+      return execute(async () => {
+        const response = await instance.request<TResponse, unknown, TBody>(config);
+        return response.data;
+      });
     },
 
     async get<TResponse>(
       url: string,
       config?: HttpRequestConfig<never>,
     ): Promise<TResponse> {
-      const response = await instance.get<TResponse>(url, config);
-      return response.data;
+      return execute(async () => {
+        const response = await instance.get<TResponse>(url, config);
+        return response.data;
+      });
     },
 
     async delete<TResponse>(
       url: string,
       config?: HttpRequestConfig<never>,
     ): Promise<TResponse> {
-      const response = await instance.delete<TResponse>(url, config);
-      return response.data;
+      return execute(async () => {
+        const response = await instance.delete<TResponse>(url, config);
+        return response.data;
+      });
     },
 
     async post<TResponse, TBody>(
@@ -72,8 +74,10 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
       body?: TBody,
       config?: HttpRequestConfig<TBody>,
     ): Promise<TResponse> {
-      const response = await instance.post<TResponse, unknown, TBody>(url, body, config);
-      return response.data;
+      return execute(async () => {
+        const response = await instance.post<TResponse, unknown, TBody>(url, body, config);
+        return response.data;
+      });
     },
 
     async put<TResponse, TBody>(
@@ -81,8 +85,10 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
       body?: TBody,
       config?: HttpRequestConfig<TBody>,
     ): Promise<TResponse> {
-      const response = await instance.put<TResponse, unknown, TBody>(url, body, config);
-      return response.data;
+      return execute(async () => {
+        const response = await instance.put<TResponse, unknown, TBody>(url, body, config);
+        return response.data;
+      });
     },
 
     async patch<TResponse, TBody>(
@@ -90,8 +96,18 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
       body?: TBody,
       config?: HttpRequestConfig<TBody>,
     ): Promise<TResponse> {
-      const response = await instance.patch<TResponse, unknown, TBody>(url, body, config);
-      return response.data;
+      return execute(async () => {
+        const response = await instance.patch<TResponse, unknown, TBody>(url, body, config);
+        return response.data;
+      });
     },
   };
+}
+
+async function execute<T>(request: () => Promise<T>): Promise<T> {
+  try {
+    return await request();
+  } catch (error) {
+    throw normalizeHttpError(error);
+  }
 }

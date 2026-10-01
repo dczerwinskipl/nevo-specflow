@@ -101,6 +101,8 @@ Response:
 
 ~~~text
 {
+  revision,
+  updatedAt,
   specification: {
     id,
     slug,
@@ -108,34 +110,69 @@ Response:
     summary,
     collection,
     workflow: {
+      definitionId?,
       phase,
       currentStep?,
       semanticStatus,
-      attention?,
-      readyActions[]
+      reason?,
+      actions: [
+        { id, label, available, reason?, confirmation? }
+      ]
     },
-    highPrioritySignals[],
+    highPrioritySignals: [
+      {
+        id,
+        kind,
+        scope: "spec" | "task",
+        taskId?,
+        label,
+        reason?,
+        priority,
+        target
+      }
+    ],
     tasks: [
       {
         id,
         title,
         order,
         semanticStatus,
-        attention?,
-        readyActions[],
-        dependencies,
-        currentExecution?
+        signals[],
+        actions[],
+        dependencies: {
+          dependsOn[],
+          blockedBy[]
+        },
+        currentExecutions[]
       }
     ],
-    documents: [{ id, title, kind, available, reference }],
-    evidence: [...references],
-    sessions: [...summary references],
+    documents: [
+      { id, title, kind, available, lastModified?, reference }
+    ],
+    evidence: [
+      { id, kind, title, summary?, target, updatedAt? }
+    ],
+    sessions: [
+      { id, title?, relation, taskIds[], lastActivityAt? }
+    ],
     currentExecutions: [
-      { sessionId, agentRole, taskIds[] }
+      { sessionId, agentRole, taskIds[], currentActivity?, startedAt? }
     ]
   }
 }
 ~~~
+
+Field coverage notes:
+
+- top-level `revision/updatedAt` make the projection refreshable and protect against stale
+  out-of-order responses.
+- `workflow.actions[]` and Task `actions[]` carry server-owned availability/reasons; the UI never
+  translates raw lifecycle status into legal commands.
+- Task `signals[]` preserves simultaneous attention/ready/issue/work signals without requiring a
+  miniature Task-detail fetch for every row.
+- `currentExecutions[]` is plural both at Spec and Task summary level.
+- document entries remain metadata/references only; bodies stay independently cacheable.
+- evidence/session entries are lightweight references and summaries, not embedded large artifacts.
 
 Behavior:
 
@@ -166,7 +203,8 @@ validation/readiness and a refreshed authoritative projection afterward.
 
 1. Spec identity/title.
 2. concise workflow meaning.
-3. high-priority attention/ready/current-work/issues.
+3. high-priority attention/ready/current-work/issues, capped to the few items that genuinely need
+   immediate prominence; additional signals remain discoverable in the Task collection.
 4. Task collection.
 5. supporting Spec context/evidence/history.
 
@@ -202,7 +240,7 @@ Task Secondary is shown only when selected. Primary remains scannable without it
 ## 8. Screen anatomy
 
 - Specification header.
-- High-priority state slot.
+- High-priority state slot; avoid letting this grow into a second Task list.
 - Task collection.
 - Supporting Specification context.
 - Contextual Session references.
@@ -251,7 +289,56 @@ Task/Spec Session reference -> Floating Session; explicit Open full session prom
 - partial evidence unavailable;
 - archived/read-only Spec.
 
-## 12. Component / composition map
+
+## 12. Data loading, events, and Refresh
+
+This screen inherits
+[Data loading, refresh, batching, and eventing](../data-loading-refresh-and-eventing.md).
+
+### Projection boundaries
+
+Load one coherent Specification steering projection containing:
+
+- Spec workflow/actions;
+- Task semantic summaries/actions;
+- high-priority signals;
+- current execution summaries;
+- lightweight document/evidence/Session references.
+
+Do not bundle all document bodies, Session histories, diffs, or raw artifact bodies into that request.
+
+Documents/details load lazily when opened. If several homogeneous documents are intentionally needed
+together, use the shared bounded batch-read pattern rather than N uncontrolled requests.
+
+### Event updates
+
+A Task/workflow change that affects both Task detail and Spec steering should update/invalidate those
+two projections together from one semantic event/operation completion.
+
+Do not invalidate every document or Session because one Task status changed.
+
+### Refresh
+
+Expose one Specification-level **Refresh** in the header/overflow.
+
+It refreshes:
+
+- the Specification steering projection;
+- Spec/Task action readiness contained in that projection.
+
+It does not automatically refetch:
+
+- every document body;
+- historical Session transcripts;
+- unopened Handover/artifact bodies;
+- file/diff details.
+
+If an open detail has its own revision/stale signal, refresh that detail independently.
+
+Keep visible data during refresh. Async actions should normally wait for their terminal operation/event
+before forcing a final refresh; do not refetch repeatedly for every progress event.
+
+## 13. Component / composition map
 
 | Need | Composition |
 | --- | --- |
@@ -266,7 +353,7 @@ Task/Spec Session reference -> Floating Session; explicit Open full session prom
 | Actions | Button/Menu |
 | Task detail | product Secondary composition |
 
-## 13. Visual/token contract
+## 14. Visual/token contract
 
 - workspace surface: existing AppWorkspace material;
 - primary title: \`text-content-primary\`;
@@ -279,7 +366,7 @@ Task/Spec Session reference -> Floating Session; explicit Open full session prom
 - current execution: running/activity treatment, not warning;
 - issue/recovery: semantic warning/error according to actual condition.
 
-## 14. Local containment rules
+## 15. Local containment rules
 
 - no Card per Task;
 - no permanent Card around Task collection;
@@ -288,7 +375,7 @@ Task/Spec Session reference -> Floating Session; explicit Open full session prom
 - use headings/spacing/dividers for Specification context;
 - never Card-inside-Card between Primary and Secondary content.
 
-## 15. Accessibility/focus
+## 16. Accessibility/focus
 
 - Task rows keyboard-operable;
 - selected Task semantically indicated;
@@ -296,7 +383,7 @@ Task/Spec Session reference -> Floating Session; explicit Open full session prom
 - statuses not color-only;
 - actions expose reason when disabled/unavailable through accessible supporting text, not tooltip-only.
 
-## 16. Storybook scenarios
+## 17. Storybook scenarios
 
 - no selected Task;
 - selected Task review;
@@ -311,9 +398,10 @@ Task/Spec Session reference -> Floating Session; explicit Open full session prom
 - archived/read-only;
 - narrow pushed Task.
 
-## 17. Acceptance criteria
+## 18. Acceptance criteria
 
 - user understands Spec state before opening a Task;
+- the high-priority region stays concise and does not duplicate the Task collection;
 - several simultaneous signals are preserved;
 - Task-specific context is one click;
 - Spec-level decision stays Spec-owned;
@@ -321,7 +409,7 @@ Task/Spec Session reference -> Floating Session; explicit Open full session prom
 - batch is not collapsed to one Task;
 - Task collection is list/row-based, not Card soup.
 
-## 18. Open questions
+## 19. Open questions
 
 - final Spec workflow read-model shape;
 - artifact/Handover references;

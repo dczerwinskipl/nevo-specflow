@@ -172,8 +172,13 @@ This internal two-column composition is not AppWorkspace Secondary.
 
 ### Default section
 
-The default entry selects General unless the route/product navigation expresses another stable
-Settings section.
+The default entry selects General when that section is present and available, unless the
+route/product navigation expresses another stable Settings section.
+
+Because the Settings catalog is dynamic, General must not be assumed to exist forever. If the
+requested/default section is absent after a version/plugin change, select the first available section
+in backend-provided order, update the local route state, and keep the user oriented with the actual
+selected section rather than rendering a broken empty page.
 
 ### Stable section intent
 

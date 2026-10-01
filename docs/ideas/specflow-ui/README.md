@@ -54,6 +54,7 @@ The package deliberately distinguishes:
 - [Design-system and composition gaps](design-system-component-composition-gaps.md)
 - [Data loading, refresh, batching, and eventing](data-loading-refresh-and-eventing.md)
 - [Screen specifications index](screens/README.md)
+- [Large UI component specifications](components/README.md)
 
 ## Related idea package
 

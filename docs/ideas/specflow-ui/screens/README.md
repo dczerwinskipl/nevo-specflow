@@ -101,6 +101,11 @@ Every screen spec uses the same status vocabulary for required backend/applicati
 A legacy endpoint may be reused conceptually or even structurally, but it does not become the new
 product contract automatically.
 
+Important migration boundary: the old `dczerwinskipl/nevo` repository contains both legacy and
+deterministic workflows. New Nevo SpecFlow is **deterministic-only**. `legacy-available` in these
+tables means "available in the old repository as migration evidence"; it never means the old legacy
+workflow mode should remain supported. Workflow semantics must come from the deterministic path.
+
 The current `@nevo/specflow-runtime` is still a bootstrap proof, so current screen specs may
 legitimately have no `existing-new` API yet.
 

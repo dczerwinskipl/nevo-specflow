@@ -27,7 +27,9 @@ useful. `get` is not search: it resolves exact stable IDs in caller-provided ord
 any ID is unknown.
 
 `context` feeds an AI agent, so it never recommends a `deprecated` or `superseded`
-document and, like `find`, returns every matching active document unless `--limit` is supplied.
+document and excludes the non-authoritative `docs/ideas/**` backlog by default. Ideas remain
+available through explicit `find` discovery or exact `get` IDs. Within the eligible corpus,
+`context` returns every matching document unless `--limit` is supplied.
 `list` and `find` can expose historical statuses for inspection. `get` resolves exact active
 stable IDs and fails closed for `deprecated` or `superseded` documents.
 

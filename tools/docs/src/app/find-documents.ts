@@ -75,14 +75,18 @@ export function getDocuments(repo: DocRepository, ids: readonly string[]): Conte
 }
 
 /**
- * `context` — the files an agent should load for a task. Deprecated/superseded
- * documents are never recommended; once excluded, a replacement ranks first.
+ * `context` — authoritative/current working context an agent should load for a task.
+ * Deprecated/superseded documents and the non-authoritative `docs/ideas/**` backlog
+ * are never recommended. Ideas remain available through explicit `find` / `get`.
  */
 export function getContext(
   repo: DocRepository,
   { query, limit }: { query: string; limit?: number },
 ): ContextEntry[] {
-  const results = searchDocs(loadValidatedCorpus(repo), {
+  const contextCorpus = loadValidatedCorpus(repo).filter(
+    (doc) => !/^docs[\\/]ideas[\\/]/.test(doc.file),
+  );
+  const results = searchDocs(contextCorpus, {
     query,
     limit,
     excludeStatuses: INACTIVE_STATUSES,

@@ -25,6 +25,7 @@ const repo = createMemoryRepo({
   'docs/context-6.md': doc(6),
   'docs/context-7.md': doc(7),
   'docs/context-old.md': doc(8, 'deprecated'),
+  'docs/ideas/context-idea.md': doc(9, 'draft'),
 });
 
 describe('getContext', () => {
@@ -37,5 +38,9 @@ describe('getContext', () => {
 
   it('applies an explicit limit when requested', () => {
     expect(getContext(repo, { query: 'testing', limit: 3 })).toHaveLength(3);
+  });
+
+  it('does not recommend non-authoritative idea backlog documents', () => {
+    expect(getContext(repo, { query: '9' })).toEqual([]);
   });
 });

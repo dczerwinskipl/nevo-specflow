@@ -4,7 +4,7 @@ type: product
 title: Specification UI spec
 status: draft
 scope: specflow
-areas: [ui, product, specifications, workflow]
+areas: [ui, workflow]
 tags: [specification, workspace, tasks, workflow, evidence]
 read_when:
   - implementing or reviewing a Specification surface

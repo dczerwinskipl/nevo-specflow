@@ -109,10 +109,11 @@ POST /api/sessions/:sessionId/turns
 POST /api/sessions/:sessionId/interactions/:interactionId/respond
 ~~~
 
-The UI may select only recent/render-relevant content from the snapshot.
+The UI selects only recent/render-relevant content from the shared Session snapshot/cache.
 
-If Session history eventually becomes paginated, the primary Session response should still provide
-enough current/recent material for Floating Session without requiring a special duplicate endpoint.
+Full Session history is bounded/paginated. Floating Session consumes the current Turn + recent
+conversation window already present in that cache and MUST NOT trigger older-history hydration merely
+because the floating window opened.
 
 The entry context is product navigation state:
 
@@ -224,7 +225,32 @@ Close/minimize -> underlying product context remains unchanged.
 - disconnected/reconnecting transport;
 - entry Task differs from current batch execution.
 
-## 12. Component / composition map
+
+## 12. Data loading, events, and Refresh
+
+Floating Session inherits the same Session snapshot/query/event stream as Full Session.
+
+There is no independent Floating-Session cache, polling loop, or Refresh endpoint.
+
+### Event updates
+
+- use the shared ordered Session reducer;
+- use the same event coalescing rules as Full Session;
+- do not create duplicate subscriptions when Full Session/Floating Session observe the same Session
+  in one application lifetime if a shared subscription/cache layer can serve both;
+- pending interaction and terminal/readiness changes remain immediate semantic updates.
+
+### Refresh
+
+Floating Session has **no independent Refresh** action.
+
+If the Session becomes unavailable/desynchronized, expose the same scoped Retry/Reconnect semantics
+as the shared Session data layer.
+
+Opening/closing/minimizing the floating window does not refetch the Session merely because
+presentation changed.
+
+## 13. Component / composition map
 
 | Need | Composition |
 | --- | --- |
@@ -237,7 +263,7 @@ Close/minimize -> underlying product context remains unchanged.
 | Interaction | product composition from form/action primitives |
 | Promote | Button/Link action to Full Session |
 
-## 13. Visual/token contract
+## 14. Visual/token contract
 
 - host uses existing floating surface/material;
 - no nested Card around transcript;
@@ -247,7 +273,7 @@ Close/minimize -> underlying product context remains unchanged.
 - entry-context metadata uses muted text;
 - Open full session is clear but secondary to active required response.
 
-## 14. Local containment rules
+## 15. Local containment rules
 
 - FloatingWindow already supplies containment;
 - no Card per message/tool/commentary;
@@ -255,7 +281,7 @@ Close/minimize -> underlying product context remains unchanged.
 - pending interaction may use a distinct contained region when response controls need one boundary;
 - avoid multiple boxed panels inside the floating window.
 
-## 15. Accessibility/focus
+## 16. Accessibility/focus
 
 - opening floating surface establishes predictable focus without losing return target;
 - closing restores focus to originating Session link where practical;
@@ -263,7 +289,7 @@ Close/minimize -> underlying product context remains unchanged.
 - current activity updates do not steal focus;
 - Open full session has explicit accessible intent.
 
-## 16. Storybook scenarios
+## 17. Storybook scenarios
 
 - opened from Task;
 - current execution same Task;
@@ -276,16 +302,17 @@ Close/minimize -> underlying product context remains unchanged.
 - wide floating bounds;
 - future compact/narrow behavior once decided.
 
-## 17. Acceptance criteria
+## 18. Acceptance criteria
 
 - user can converse without abandoning parent context;
 - entry context is not confused with execution scope;
 - compact surface shows current attention/activity without Work inspector;
 - promotion to Full Session is explicit;
-- no duplicate backend Session model/API;
+- no duplicate backend Session model/API or duplicate live subscription;
+- opening the floating presentation does not hydrate old Session history;
 - floating host does not become nested Card soup.
 
-## 18. Open questions
+## 19. Open questions
 
 - non-wide presentation;
 - exact recent-history budget;

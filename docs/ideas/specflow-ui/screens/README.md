@@ -101,18 +101,20 @@ Use this as a guide, not as ceremony. Omit sections that genuinely do not apply.
 1. Purpose and ownership.
 2. User use cases.
 3. Entry points, navigation, return/deep-link behavior.
-4. Information hierarchy.
-5. Screen anatomy.
-6. Responsive contract.
-7. Interaction flows.
-8. States.
-9. Component/composition map.
-10. Visual/token contract.
-11. Local containment rules.
-12. Accessibility/focus/keyboard behavior.
-13. Data/read-model requirements.
-14. Storybook scenarios and acceptance criteria.
-15. Open questions/deferred decisions.
+4. Data source / read-model ownership — where the screen gets its data and what the UI may derive.
+5. Information hierarchy.
+6. Pseudo-layout — at least one ASCII sketch of the main composition.
+7. Screen anatomy.
+8. Responsive contract.
+9. Interaction flows.
+10. States.
+11. Component/composition map.
+12. Visual/token contract.
+13. Local containment rules.
+14. Accessibility/focus/keyboard behavior.
+15. Data/read-model requirements.
+16. Storybook scenarios and acceptance criteria.
+17. Open questions/deferred decisions.
 
 The spec should be concrete enough that implementation does not need to rediscover the UX in
 Storybook, while still avoiding invented backend contracts or premature reusable components.
@@ -120,6 +122,12 @@ Storybook, while still avoiding invented backend contracts or premature reusable
 ## Screen-spec design rules
 
 - Describe behavior from concrete user use cases, not from backend entities.
+- State explicitly where screen data comes from: backend/application read model, route data, runtime
+  projection, local UI state, or another authoritative source.
+- Do not let the frontend invent a parallel registry of domain data that belongs to the
+  backend/application contract.
+- Include at least one ASCII pseudo-layout so the intended information hierarchy can be reviewed
+  before visual implementation.
 - Say what changes after a click and which context remains visible.
 - Distinguish navigation from mutation. Opening context must not accidentally perform a workflow action.
 - Name the existing Nevo UI primitive when a screen intentionally uses one.

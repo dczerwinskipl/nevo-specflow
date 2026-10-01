@@ -23,7 +23,7 @@ read_when:
   - planning real SpecFlow UI screens after the design-system migration
   - deciding whether a concept is a route, workspace secondary, floating surface, inline detail, or action
   - deciding which workflow facts are primary information for a human
-  - migrating deterministic task/session/workflow data from legacy Nevo
+  - migrating deterministic task/session/workflow data from the old `dczerwinskipl/nevo` repository
 summary: >
   Working inventory of SpecFlow UI concepts, ownership, deterministic properties, human-attention
   semantics, artifacts, and candidate navigation depth. It intentionally precedes screen layout.
@@ -234,7 +234,7 @@ At this broad inventory level, Task needs to expose:
 - evidence such as review, Handover, changes, and verification;
 - deterministic actions with their own readiness/reason.
 
-Legacy Nevo exposes useful migration evidence such as Task id/title/order, document reference,
+The old `dczerwinskipl/nevo` repository exposes useful migration evidence such as Task id/title/order, document reference,
 dependencies, workflow progress, semantic status, and Session associations, but also carries older
 lifecycle/stage fields that must not be treated as the new UI contract by default.
 

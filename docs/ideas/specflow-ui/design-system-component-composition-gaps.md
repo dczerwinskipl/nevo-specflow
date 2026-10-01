@@ -643,8 +643,9 @@ The existing Developer Workspace idea already defines the intended direction:
 Treat this as a product/platform capability track, not a reason to add a generic Card or Drawer
 variant.
 
-It does not block structure/mockups; use a clearly identified File-detail placeholder until the
-developer-workspace implementation lands.
+It does not block information-architecture planning, but current product fixtures should not render a
+fake File-detail surface or Open-in-IDE control. Keep file references as future-capability targets
+until the developer-workspace implementation actually lands.
 
 ## 7.2 Diff / changes inspection
 

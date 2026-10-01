@@ -94,11 +94,11 @@ Specification/Task screens additionally inherit
 Every screen spec uses the same status vocabulary for required backend/application capabilities:
 
 - **existing-new** — already implemented as a product API/read model in current `nevo-specflow`;
-- **old-repo-available** — implemented in legacy `dczerwinskipl/nevo` and useful as migration evidence;
+- **old-repo-available** — implemented in the old `dczerwinskipl/nevo` repository and useful as migration evidence;
 - **missing** — the required new-product capability/read model does not exist yet and the screen spec
   must propose its minimal semantic contract.
 
-A legacy endpoint may be reused conceptually or even structurally, but it does not become the new
+An old-repo endpoint may be reused conceptually or even structurally, but it does not become the new
 product contract automatically.
 
 Important migration boundary: the old `dczerwinskipl/nevo` repository contains both legacy and
@@ -157,8 +157,8 @@ Storybook, while still avoiding invented backend contracts or premature reusable
 - State explicitly where screen data comes from: backend/application read model, route data, runtime
   projection, local UI state, or another authoritative source.
 - For every required model/capability, state whether the current new product API already exists,
-  whether legacy Nevo has an equivalent/partial API, or whether a new API must be added.
-- A legacy endpoint is migration evidence, not automatically the new product contract. When the new
+  whether the old repository has an equivalent/partial API, or whether a new API must be added.
+- An old-repo endpoint is migration evidence, not automatically the new product contract. When the new
   screen needs a different projection, say what should be preserved and propose the new read model.
 - Proposed product HTTP/realtime routes are adapters over Runtime/application capabilities; do not
   make the transport the owner of workflow/session/configuration semantics.

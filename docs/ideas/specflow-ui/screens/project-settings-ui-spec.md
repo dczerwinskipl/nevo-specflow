@@ -6,7 +6,6 @@ status: draft
 scope: specflow
 areas:
   - ui
-  - product
   - configuration
 tags:
   - settings
@@ -68,6 +67,14 @@ What can I do now?
 
 This spec is read-only-first. It defines inspection/navigation now and reserves clear places for
 future edits without inventing mutation contracts that do not exist yet.
+
+### MVP scope boundary
+
+The first implementation does not depend on the extensible Settings catalog proposed later in this
+document. MVP may expose read-only project/local configuration and the small set of summaries already
+supported by application contracts. Treat catalog-driven sections, plugin contributions, provenance,
+and generic value renderers as future extensibility unless an implementation spec explicitly pulls
+them into scope.
 
 ## 2. User use cases
 
@@ -552,8 +559,8 @@ Header content:
 - no global Save button while the screen is read-only-first;
 - future section-specific mutation actions may appear only when an actual editable contract exists.
 
-The project selector remains global navigation responsibility and should not be duplicated in the
-Settings header merely to fill space.
+Project switching is outside the current MVP Settings surface and must not be introduced here merely
+to fill header space.
 
 ### 7.3 Local Settings navigation
 

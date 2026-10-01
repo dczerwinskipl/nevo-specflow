@@ -14,6 +14,7 @@ summary: >
   mandatory visual self-review. Product-specific UX (AI sessions, SpecFlow UI screens) is
   under product/specflow/ui/.
 related:
+  - design-system.principles.layout-and-containment
   - design-system.implementation.react.component-guidelines
   - design-system.implementation.tailwind.styling-guidelines
   - design-system.implementation.storybook.guidelines
@@ -63,6 +64,9 @@ different treatments.
 
 Use a small semantic spacing scale. Prefer grouping by whitespace and hierarchy before
 reaching for borders and boxes.
+
+Detailed Card, surface, nesting, row/list, and borderless-first rules live in
+[Layout and containment guidelines](layout-and-containment.md).
 
 ## Progressive disclosure
 

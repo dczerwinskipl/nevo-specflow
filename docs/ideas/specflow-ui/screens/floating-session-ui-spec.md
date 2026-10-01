@@ -246,7 +246,7 @@ Composer -> Session Turn command -> current activity/live updates.
 Pending interaction -> response -> canonical Session state updates.
 
 ### Promote
-Header Open full session/expand -> Full Session workspace -> return restores original Task/Spec
+Header Open full session/expand -> Full Session surface -> return restores original Task/Spec
 context where representable.
 
 ### Minimize

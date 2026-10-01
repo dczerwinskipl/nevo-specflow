@@ -102,7 +102,7 @@ Frontend selects a compact subset of the canonical projection:
 | Entry context (where floating was opened) | UI navigation state | not a backend Session fact | Keep product-local; do not persist as Session execution identity. |
 
 
-### Legacy field evidence
+### Old-repo field evidence
 
 Floating Session does not need a separate field contract.
 

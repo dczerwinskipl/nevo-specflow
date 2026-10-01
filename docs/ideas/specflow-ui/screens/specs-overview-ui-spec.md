@@ -356,6 +356,9 @@ relevant change events already invalidate the collection.
 
 During refresh, retain the current list and show lightweight refreshing feedback.
 
+The detailed row/group/aggregation contract is defined in
+[Spec steering UI spec](../components/spec-steering-ui-spec.md).
+
 ## 13. Component / composition map
 
 | Need | Component/composition |

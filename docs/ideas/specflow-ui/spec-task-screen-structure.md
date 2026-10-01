@@ -16,7 +16,7 @@ tags:
   - human-attention
   - responsive
 read_when:
-  - sketching the Specs overview, Specification workspace, or Task Secondary
+  - sketching the Specs overview, Specification surface, or Task Secondary
   - validating ready, working, and human-review states before visual design
   - deciding which information stays in Specification Primary versus Task Secondary
 summary: >
@@ -63,7 +63,7 @@ Specs overview
   -> deliberate action
 ~~~
 
-A generic Specification click may still open the Specification workspace normally, but an actionable
+A generic Specification click may still open the Specification normally, but an actionable
 summary should deep-link to the context that explains that signal instead of forcing the human to
 find the same Task again.
 
@@ -212,10 +212,10 @@ There are two distinct targets:
 
 ~~~text
 Spec identity / neutral row target
-  -> Specification workspace
+  -> Specification
 
 Task-specific attention / ready / issue target
-  -> Specification workspace with that Task context already open
+  -> Specification with that Task context already open
 ~~~
 
 On wide/compact layouts this means Specification Primary + Task Secondary in one navigation action.
@@ -845,7 +845,7 @@ Before moving to component inventory or visual mockups, verify:
 3. A Task-specific signal opens the responsible Task context in one interaction; the human does not
    have to reopen the Spec and find the same Task manually.
 4. A Spec-level signal opens the responsible Specification context without inventing a Task owner.
-5. A neutral Spec click still opens the Specification workspace without inventing a Task selection.
+5. A neutral Spec click still opens the Specification without inventing a Task selection.
 6. One-click decision context is restorable/deep-linkable where product navigation promises reload
    equivalence; it is not only ephemeral UI state.
 7. Opening Task/context does not mutate workflow.

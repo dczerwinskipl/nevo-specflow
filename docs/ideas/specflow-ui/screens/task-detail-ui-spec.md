@@ -272,7 +272,10 @@ Behavior:
 - successful command returns operation/result identity and new projection can be fetched/streamed;
 - Task terminal status is not inferred from terminal Turn;
 - each \`currentExecutions[].taskIds\` may contain several Tasks;
-- evidence entries may point to shared multi-Task artifacts.
+- evidence entries may point to shared multi-Task artifacts;
+- `kind: changes` is not assumed to be singular: a Task may expose several change-set references
+  (for example worktree, base-branch diff, PR/MR) or one application-owned aggregate that preserves
+  those sources; the UI must not hard-code GitHub/GitLab semantics.
 
 ## 6. Information hierarchy
 

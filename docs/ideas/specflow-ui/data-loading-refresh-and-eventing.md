@@ -7,7 +7,6 @@ scope: specflow
 areas:
   - ui
   - runtime
-  - data
 tags:
   - queries
   - caching

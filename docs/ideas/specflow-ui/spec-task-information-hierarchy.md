@@ -731,12 +731,15 @@ scope is A+B+C, Full Session should expose A+B+C even if the floating Session wa
 
 The primary Task interaction is not to replace Task detail with a nested Session detail.
 
+A Session reference should expose the quick conversation target and direct Full Session access as
+separate intents:
+
 ~~~text
 Task detail
-    -> click Session
-Floating Session
+    -> conversation target
+       -> Floating Session where supported
     -> Open full session
-Full Session workspace
+       -> Full Session
 ~~~
 
 Useful Task-level Session summary:
@@ -748,7 +751,8 @@ Useful Task-level Session summary:
 - current activity when authoritative current execution exists;
 - requires-attention marker;
 - contextual relation to this Task;
-- quick open floating Session action.
+- quick conversation action where supported;
+- direct Open full session action.
 
 Provider/model/mode are usually secondary execution detail. They can become contextual start
 options when the user creates/starts an execution, but project defaults belong in Settings. Legacy
@@ -827,8 +831,11 @@ open Task 03
   current Session/execution scope
   no fake human-attention state
 
-click Session
-  Floating Session
+open Session conversation
+  Floating Session where supported
+
+or Open full session
+  Full Session directly
 ~~~
 
 The "working on TASK-03" label is allowed only when current execution identity proves TASK-03 is in

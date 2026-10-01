@@ -50,9 +50,10 @@ It does not own global Specification navigation, Full Session layout, or raw pro
 
 Entry:
 - Task row from Specification;
-- concrete Task signal from Specs Overview;
-- Session Context -> Task detail;
-- deep link where stable product navigation supports it.
+- concrete Task signal from Specs Overview after routing to the owning Specification;
+- Session Context -> Task detail.
+
+Task Detail is local Secondary/pushed-detail state. It is not a standalone URL/deep-link contract.
 
 Wide/Compact:
 - Specification or Session remains Primary;

@@ -289,7 +289,7 @@ without semantic compromise.
 Implement the first product rows locally. If two or more features converge on the same selection,
 metadata, action, keyboard, and density behavior, extract the shared behavior later.
 
-## 3.2 Specification workspace composition
+## 3.2 Specification composition
 
 Candidate feature-local concepts:
 

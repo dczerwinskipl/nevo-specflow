@@ -21,7 +21,7 @@ read_when:
   - designing the Specs overview, Specification surface, or Task detail
   - deciding which workflow facts deserve immediate human visibility
   - designing review, approval, start, or finalize steering flows
-  - migrating Task and workflow projections from legacy Nevo into SpecFlow
+  - migrating Task and workflow projections from the old `dczerwinskipl/nevo` repository into SpecFlow
 summary: >
   Working information hierarchy for Specification and Task. Classifies deterministic facts,
   human-attention signals, evidence, and actions before final screen layout is designed.
@@ -649,7 +649,7 @@ A useful Handover presentation should eventually answer:
 
 ## Open contract
 
-Legacy Nevo contains handoff/review concepts, but the new deterministic Handover identity and
+The old `dczerwinskipl/nevo` repository contains handoff/review concepts, but the new deterministic Handover identity and
 ownership are not yet sufficiently clear to freeze properties here.
 
 Do not invent a persistent Handover entity from the UI.
@@ -1052,7 +1052,7 @@ Potential backend/read-model gaps:
     effort represented separately);
 14. stale/fresh review evidence expressed without parsing report prose.
 
-Some of these may already exist partially in legacy Nevo. Migration should preserve the **semantic
+Some of these may already exist partially in the old `dczerwinskipl/nevo` repository. Migration should preserve the **semantic
 capability**, not necessarily its old DTO.
 
 ---

@@ -247,7 +247,7 @@ security
 configuration
 ```
 
-`scope` and `areas` use one machine-readable taxonomy once taxonomy-aware validation is enabled.
+`scope` and `areas` use one machine-readable taxonomy enforced by `nevo-docs` validation.
 
 Tags are normalized and extensible rather than fully closed. They exist for search precision, not
 for authorization or architecture enforcement.

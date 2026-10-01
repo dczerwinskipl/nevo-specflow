@@ -75,6 +75,8 @@ Read the relevant subset rather than duplicating it:
   legacy/internal tooling is evidence, not an implicit product contract.
 - [Design-system and composition gaps](../design-system-component-composition-gaps.md) — currently
   available primitives and known capability gaps.
+- [Data loading, refresh, batching, and eventing](../data-loading-refresh-and-eventing.md) —
+  query boundaries, revisions, event coalescing, batch reads/commands, invalidation and Refresh semantics.
 
 Session screens additionally inherit
 [AI Session UX](../../../product/specflow/ui/ai-session-ux.md) and
@@ -168,3 +170,11 @@ Storybook, while still avoiding invented backend contracts or premature reusable
 - Never introduce Card nesting merely to make the layout look more structured.
 - Storybook scenarios should exercise the screen-level states and interaction flows, not just
   isolated primitives.
+- Every proposed read model must document enough fields to render all states described by the screen.
+  Mark fields that already exist in legacy projections, fields that need semantic reinterpretation,
+  and fields that are genuinely new.
+- Prefer extensible semantic descriptors over hard-coded frontend registries, but adding a new
+  semantic discriminator/value kind may still require a frontend renderer; extensibility must not be
+  confused with arbitrary backend-driven UI.
+- Every screen must define Refresh scope and live/invalidation behavior by reference to the shared
+  data-loading contract.

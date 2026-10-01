@@ -125,5 +125,11 @@ Work/inspection density is reduced on mobile; the primary answer, relevant Comme
 current-activity line are never dropped.
 
 Because Secondary is not visible side-by-side on narrow layouts, the primary Session surface needs
-explicit actions to open Context, Work, file preview, and other contextual inspection. Deep
-inspection moves behind those deliberate taps and returns to the Session with Back.
+explicit actions to open Context and user-selected inspection detail. Clicking a compact Work burst
+may push expanded Work detail; a future file reference may push File preview once that capability
+exists. Deep inspection moves behind deliberate taps and returns to the Session with Back.
+
+Floating Session is Wide-only. Compact/Narrow existing-Session access opens Full Session directly.
+
+Pending human interaction remains visible/actionable in the primary conversation on every
+breakpoint. It does not auto-switch the user's Secondary/detail state.

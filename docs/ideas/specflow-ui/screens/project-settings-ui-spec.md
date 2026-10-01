@@ -339,6 +339,97 @@ exist.
 
 ---
 
+
+### 4.7 API availability and migration status
+
+Status vocabulary used by all screen specs:
+
+- **existing-new** — implemented as a product API/read model in the current \`nevo-specflow\` repository;
+- **legacy-available** — implemented in legacy \`dczerwinskipl/nevo\` and useful as migration evidence;
+- **missing** — not available as the required new-product contract; add it deliberately.
+
+For Project Settings:
+
+| Need | New SpecFlow | Legacy Nevo | Direction |
+| --- | --- | --- | --- |
+| Dynamic Settings catalog | **missing** | **missing** | Add new project-scoped catalog/read model. |
+| Provider availability/capabilities | **missing** | **legacy-available** via \`GET /api/agent-providers\` | Fold semantic provider configuration/availability into Settings read model or link to a shared provider capability. |
+| Workflow definitions | **missing** | **legacy-available** internally in workflow definitions/registry, but not as a Settings catalog API | Expose human-readable workflow-definition projection through Settings/backend capability. |
+| Project/local/effective config provenance | **missing** | partial filesystem/config evidence only | Add authoritative provenance/effective-value projection. |
+| Repository/Git configuration summary | **missing** | partial runtime/source-control APIs, not a Settings contract | Add project-configuration projection; keep current worktree state out of Settings ownership. |
+| Integration configuration | **missing** | no generic plugin-driven Settings catalog | Add through extensible Settings catalog contributions. |
+
+The current \`@nevo/specflow-runtime\` package explicitly describes its backend as a bootstrap proof;
+there is no current HTTP product contract to treat as \`existing-new\` for this screen.
+
+#### Proposed read API
+
+Illustrative transport:
+
+~~~text
+GET /api/project/settings
+~~~
+
+Response shape:
+
+~~~text
+{
+  revision,
+  sections: [
+    {
+      id,
+      title,
+      description?,
+      order,
+      source: { kind: "core" | "plugin", id? },
+      groups: [
+        {
+          id,
+          title?,
+          description?,
+          settings: [
+            {
+              key,
+              label,
+              description?,
+              valueKind,
+              value,
+              effectiveValue?,
+              defaultValue?,
+              sourceOfValue?,
+              options?,
+              readOnly,
+              required?,
+              availability?,
+              capabilities?
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+~~~
+
+Behavior:
+
+- server/application composes core + enabled plugin contributions;
+- ordering and stable setting identity are server-owned;
+- effective values/provenance are resolved server-side;
+- unsupported/disabled capabilities are represented semantically rather than silently omitted when
+  the distinction matters to the user;
+- ordinary catalog expansion does not require a frontend release;
+- UI maps known semantic \`valueKind\` values to existing renderers;
+- backend never returns component names, Tailwind classes, arbitrary HTML, or visual Card/layout
+  instructions.
+
+For raw source inspection, the catalog may expose a stable source reference. The actual source body
+should be retrieved through the future shared file/config inspection capability rather than embedding
+large YAML bodies into every Settings catalog response.
+
+No write API is proposed yet because this screen is read-only-first. Editing gets its own contract
+once field ownership, validation, authorization, dirty state, and concurrency semantics are decided.
+
 ## 5. Information hierarchy
 
 On first scan the user should perceive:

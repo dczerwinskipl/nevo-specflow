@@ -649,21 +649,29 @@ until the developer-workspace implementation actually lands.
 
 ## 7.2 Diff / changes inspection
 
-No dedicated migrated Diff viewer is present.
+No dedicated migrated Diff/Changes viewer is present.
 
-For first screen composition, product code can expose:
+`Changes` must be source-neutral and plural. A Task/Session/Specification may eventually expose
+several relevant change sources at once, for example:
 
 ~~~text
 Changes
-  summary
-  [Inspect]
+
+Worktree changes
+Diff to main
+Pull request #123
+Pull request #124
+Merge request / another integration source
 ~~~
 
-The actual inspection surface is a product capability to design alongside file/code inspection and
-available Git provenance.
+The exact sources are application data, not design-system semantics. GitHub/GitLab/provider-specific
+behavior must not leak into a generic Nevo UI primitive.
+
+For initial product composition, it is enough to expose a concise count/summary and explicit source
+references when the backend supplies them. The actual diff/file inspection surface is a future product
+capability to design alongside file/code inspection and available Git provenance.
 
 Do not invent a generic `DiffCard` in Nevo UI yet.
-
 ## 7.3 Handover / artifact details
 
 The canonical new-model contracts are still open.

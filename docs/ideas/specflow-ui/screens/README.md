@@ -102,19 +102,22 @@ Use this as a guide, not as ceremony. Omit sections that genuinely do not apply.
 2. User use cases.
 3. Entry points, navigation, return/deep-link behavior.
 4. Data source / read-model ownership — where the screen gets its data and what the UI may derive.
-5. Information hierarchy.
-6. Pseudo-layout — at least one ASCII sketch of the main composition.
-7. Screen anatomy.
-8. Responsive contract.
-9. Interaction flows.
-10. States.
-11. Component/composition map.
-12. Visual/token contract.
-13. Local containment rules.
-14. Accessibility/focus/keyboard behavior.
-15. Data/read-model requirements.
-16. Storybook scenarios and acceptance criteria.
-17. Open questions/deferred decisions.
+5. API availability / migration status — mark every required read/write capability as
+   `existing-new`, `legacy-available`, or `missing`; for `missing`, include a concise proposed
+   API/read-model shape and behavior.
+6. Information hierarchy.
+7. Pseudo-layout — at least one ASCII sketch of the main composition.
+8. Screen anatomy.
+9. Responsive contract.
+10. Interaction flows.
+11. States.
+12. Component/composition map.
+13. Visual/token contract.
+14. Local containment rules.
+15. Accessibility/focus/keyboard behavior.
+16. Data/read-model requirements.
+17. Storybook scenarios and acceptance criteria.
+18. Open questions/deferred decisions.
 
 The spec should be concrete enough that implementation does not need to rediscover the UX in
 Storybook, while still avoiding invented backend contracts or premature reusable components.
@@ -124,6 +127,10 @@ Storybook, while still avoiding invented backend contracts or premature reusable
 - Describe behavior from concrete user use cases, not from backend entities.
 - State explicitly where screen data comes from: backend/application read model, route data, runtime
   projection, local UI state, or another authoritative source.
+- For every required model/capability, state whether the current new product API already exists,
+  whether legacy Nevo has an equivalent/partial API, or whether a new API must be added.
+- A legacy endpoint is migration evidence, not automatically the new product contract. When the new
+  screen needs a different projection, say what should be preserved and propose the new read model.
 - Do not let the frontend invent a parallel registry of domain data that belongs to the
   backend/application contract.
 - Include at least one ASCII pseudo-layout so the intended information hierarchy can be reviewed

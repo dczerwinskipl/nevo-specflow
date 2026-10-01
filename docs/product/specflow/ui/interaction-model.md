@@ -58,8 +58,8 @@ surface.
 
 ## Product terminology
 
-When a collective product name is useful, **Nevo SpecFlow Workbench** refers to the application
-experience as a whole. Workbench is not a separate Home/dashboard route.
+Use **Nevo SpecFlow** for the product as a whole. The UI does not introduce a separate collective
+brand or a separate Home/dashboard route.
 
 Use **Workspace** for the Nevo UI layout model (`AppWorkspace`, Primary/Secondary, local workspace
 stack) or for explicitly qualified repository/filesystem concepts such as workspace root. Product
@@ -69,7 +69,7 @@ Detail, Full Session, Project Settings.
 ## Product hierarchy
 
 For the current spec-driven MVP, global product navigation stays deliberately small. The default
-Workbench entry is Specs Overview:
+product entry is Specs Overview:
 
 ```text
 Project

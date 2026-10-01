@@ -42,11 +42,10 @@ Sessions; read-only unless they are also the owner.
 
 ## Boundaries
 
-- The UI is **observational and steering, not authoritative**. It shows the
-  state of specifications, tasks, changes and PRs and offers the same gated owner
-  actions the CLI does — it is not a place where work is authored or where a second
-  copy of the state is maintained, and it does not replace the CLI or the GitHub PR
-  flow.
+- The UI is **not an authoritative owner of workflow/runtime state**. It may initiate supported
+  actions and edit project files through shared application/filesystem contracts, but it must not
+  maintain a second copy of authoritative state, bypass workflow gates, or replace the Git/PR
+  source-of-truth flow.
 - The UI may invoke deterministic workflow/agent operations through the same
   application contracts as other clients, but it MUST NOT bypass workflow gates,
   admission, or authoritative runtime state by maintaining a UI-only execution path.

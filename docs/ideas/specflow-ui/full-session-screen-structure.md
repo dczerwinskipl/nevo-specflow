@@ -6,7 +6,6 @@ status: draft
 scope: specflow
 areas:
   - ui
-  - product
   - ai
   - runtime
 tags:

@@ -98,6 +98,7 @@ Response:
 ~~~text
 {
   revision,
+  generatedAt,
   collection,
   specs: [
     {
@@ -106,8 +107,18 @@ Response:
       title,
       summary?,
       updatedAt,
-      workflow: { phase, label? },
-      progress: { completed, total },
+      lastMeaningfulActivityAt?,
+      workflow: {
+        definitionId?,
+        phase,
+        semanticStatus,
+        label?
+      },
+      progress: {
+        completed,
+        actionable,
+        total
+      },
       signals: [
         {
           id,
@@ -117,27 +128,48 @@ Response:
           label,
           reason?,
           priority,
+          count?,
           target: { specId, taskId? }
         }
       ],
-      currentExecution?: {
-        agentRole,
-        taskIds[],
-        sessionId?
-      }
+      currentExecutions: [
+        {
+          sessionId,
+          agentRole,
+          taskIds[],
+          currentActivity?: { kind, label },
+          startedAt?
+        }
+      ]
     }
   ]
 }
 ~~~
 
+Field coverage notes:
+
+- `revision/generatedAt` support cache validation and explicit refresh without inventing freshness in
+  the client.
+- `lastMeaningfulActivityAt` is optional supporting metadata; it must not outrank human attention.
+- `signals[]` is the semantic steering source. The UI does not reconstruct attention/ready/issue
+  from lifecycle strings.
+- `count` allows the server to represent a meaningful aggregate when the backend already knows the
+  grouping; the UI may also count homogeneous returned signals when that is purely presentational.
+- `currentExecutions[]` is plural deliberately. Do not assume a Specification can have only one
+  concurrently relevant execution/read-only reviewer. Each execution remains batch-shaped through
+  `taskIds[]`.
+
 Behavior:
 
 - one Spec may expose several simultaneous signals;
 - server preserves semantic signal multiplicity;
-- UI may group a Spec by highest-priority human-facing signal but must not discard other meaningful
-  signals;
+- UI places a Spec in at most one primary steering group based on its highest-priority human-facing
+  signal, then preserves additional meaningful signals inside the same row; do not duplicate one Spec
+  across several groups merely because it has several signals;
 - target identity is stable enough for one-click context/deep link;
-- current execution is authoritative and batch-shaped.
+- current execution is authoritative and batch-shaped;
+- Archive is primarily a historical collection: default presentation should favor recency/identity
+  rather than forcing archived Specs back into active attention/ready group semantics.
 
 No write endpoint belongs to the collection screen except future create/archive operations, which
 should be specified separately when their interaction is designed.
@@ -225,7 +257,39 @@ Active/Archive changes collection state, not workflow state.
 - stale/reconnecting live transport: show subtle connection feedback without rewriting canonical
   Spec semantics.
 
-## 12. Component / composition map
+
+## 12. Data loading, events, and Refresh
+
+This screen inherits
+[Data loading, refresh, batching, and eventing](../data-loading-refresh-and-eventing.md).
+
+### Initial/live behavior
+
+- fetch only the selected Active or Archive collection;
+- relevant Spec change events invalidate/update affected collection items;
+- do not fetch every Task document or every Session merely to render the overview;
+- when many Spec-change events arrive in one filesystem/runtime burst, coalesce the resulting
+  collection cache update rather than rendering once per raw event.
+
+### Refresh
+
+Expose one screen-level **Refresh** in the Specs header/overflow.
+
+It refreshes only the currently displayed collection projection.
+
+It does not automatically refresh:
+
+- Task document bodies;
+- Full Session histories;
+- Settings;
+- file/diff content.
+
+Window-focus refetch and a slow safety refresh may be used as backstops. Avoid short polling when
+relevant change events already invalidate the collection.
+
+During refresh, retain the current list and show lightweight refreshing feedback.
+
+## 13. Component / composition map
 
 | Need | Component/composition |
 | --- | --- |
@@ -241,7 +305,7 @@ Active/Archive changes collection state, not workflow state.
 
 Do not force the work queue into DataTable unless final content proves genuinely tabular.
 
-## 13. Visual/token contract
+## 14. Visual/token contract
 
 - workspace: existing workspace surface;
 - titles: \`text-content-primary\`;
@@ -253,7 +317,7 @@ Do not force the work queue into DataTable unless final content proves genuinely
 - ready: visible but calmer than requires-attention;
 - working: running/activity tone without warning treatment.
 
-## 14. Local containment rules
+## 15. Local containment rules
 
 - no Card per Spec row by default;
 - no Card per group;
@@ -262,14 +326,14 @@ Do not force the work queue into DataTable unless final content proves genuinely
 - a top-level exceptional outage/attention block may earn stronger containment;
 - concurrent signals live inside the row hierarchy, not separate boxes for each signal.
 
-## 15. Accessibility / focus
+## 16. Accessibility / focus
 
 - row and nested signal targets must have distinct accessible names;
 - keyboard user can open neutral Spec or concrete actionable signal;
 - group semantics cannot rely on color alone;
 - focus after navigation follows product route/surface ownership.
 
-## 16. Storybook scenarios
+## 17. Storybook scenarios
 
 - multiple concurrent attention signals on one Spec;
 - Spec-level attention;
@@ -282,16 +346,18 @@ Do not force the work queue into DataTable unless final content proves genuinely
 - Archive populated;
 - narrow direct Task signal.
 
-## 17. Acceptance criteria
+## 18. Acceptance criteria
 
 - attention vs ready vs working is immediately distinguishable;
+- one Spec is not visually duplicated across several steering groups;
+- Archive reads as historical browsing rather than an active-work dashboard;
 - one click reaches responsible context;
 - neutral row does not invent Task selection;
 - batch remains batch-shaped;
 - no current-work language derived from historical Session association;
 - repeated Specs are rows, not Card soup.
 
-## 18. Open questions
+## 19. Open questions
 
 - exact Active/Archive control;
 - final signal aggregation/sorting policy;

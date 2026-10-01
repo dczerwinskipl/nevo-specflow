@@ -264,7 +264,8 @@ Do not infer current activity from the last historical Work item.
 ### 5.7 Pending interaction
 
 A pending interaction is one of the few places where stronger containment is justified because it is
-an independent required user action.
+an independent required user action. Keep it visible/actionable in Conversation Primary on every
+breakpoint; arrival of the interaction must not automatically replace the user's current Secondary.
 
 ~~~text
 ┌────────────────────────────────────────────────────────────┐
@@ -1093,8 +1094,9 @@ Hide:
 
 ### Full Session
 
-Show the same conversation semantics with bounded recent history, older-history loading,
-Context/Work inspector roots, and detail navigation.
+Show the same conversation semantics with bounded recent history, older-history loading, default
+Context on split-capable entry, and user-driven detail navigation. Expanded Work is opened from
+conversation activity when the user asks to inspect it; it is not a required permanent sibling root.
 
 Do not create separate visual semantics for the same Turn just because it is floating.
 

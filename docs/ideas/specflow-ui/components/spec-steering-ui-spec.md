@@ -105,68 +105,55 @@ Signals:
 
 ## 4. Primary grouping policy
 
-One Spec appears in **one primary group** in Active view.
+One Spec appears in **one canonical Active queue position**.
 
-Recommended human-facing priority:
+Conceptual presentation order:
 
 ~~~text
 requires attention
-issue requiring intervention
 ready
 working
 quiet / other active
 ~~~
 
-This is presentation priority, not workflow authority.
+An "issue" is not automatically its own human-attention category. If the issue requires owner
+intervention, it contributes an attention signal. If the agent/system can remediate it without the
+human, keep it as working/other active with a reason.
 
-If the same Spec has:
+Within Requires attention, an active Session interaction waiting for the human is normally the
+strongest signal. Beyond that, the application/read model should provide semantic priority rather
+than the frontend reverse-engineering urgency from raw statuses.
 
-- TASK-03 requires review;
-- TASK-05 ready;
-- Reviewer working on TASK-02/03;
+Concurrent lower-priority signals remain concise metadata inside the same Spec row.
 
-then the Spec appears once under Requires attention and preserves the other meaningful signals inside
-that row.
-
-Do not duplicate the Spec into Attention + Ready + Working groups.
-
+Do not duplicate the Spec into Attention + Ready + Working lists. Separate summary counters may
+overlap because they are aggregate analytics, not duplicated navigation rows.
 ## 5. Signal target model
 
-Two target types must remain visibly/semantically distinct.
-
-### Neutral identity target
+The **whole Spec row / identity** has one stable meaning:
 
 ~~~text
 Spec A
+  -> Specification
 ~~~
 
-opens Specification without selecting a Task.
-
-### Concrete signal target
+Specific signals may expose explicit nested actions/targets:
 
 ~~~text
-TASK-03 requires review
+TASK-03 requires review [open]
+  -> local TASK-03 detail
+
+Agent asks for input [open]
+  -> responsible Session/context
+
+3 Tasks require review [open]
+  -> Specification attention context
 ~~~
 
-opens Specification + TASK-03 context.
+The aggregate target never invents one representative Task.
 
-A Spec-level signal:
-
-~~~text
-Specification approval required
-~~~
-
-opens Specification-level decision context.
-
-Aggregate signal:
-
-~~~text
-3 Tasks require review
-~~~
-
-opens the Specification with the relevant attention group/filter visible, not one arbitrarily chosen
-Task.
-
+Nested targets supplement the stable row destination; they do not make blank areas of the row
+redirect unpredictably based on current priority.
 ## 6. Row anatomy
 
 Preferred shape:
@@ -596,25 +583,22 @@ Completed Sep 24
 
 ## 10. Interaction behavior
 
-### Nested targets
+### Row and nested targets
 
-Do not make the whole row one ambiguous click target if a concrete nested signal must deep-link to a
-Task.
+- whole row/title = Specification;
+- explicit concrete signal action = its concrete target;
+- aggregate signal = Specification-level attention/task context;
+- non-action metadata remains non-actionable.
 
-A safe pattern:
+A user clicking the Spec row because they want general context must never be forced into whichever
+issue happens to rank highest.
 
-- title/identity = Spec target;
-- primary signal = concrete target;
-- secondary signal with concrete Task = own target if still readable;
-- whitespace/non-interactive metadata is not accidentally clickable.
-
-Keyboard ordering must remain predictable.
+Keyboard ordering remains predictable: row/identity first, then explicit nested targets.
 
 ### Hover/focus
 
-Hover treatment belongs to the actual target, not the entire page-width group if only one small
-nested target is actionable.
-
+Hover/focus treatment must make the stable row target and explicit nested signal targets visually
+distinguishable without turning every metadata fragment into a button.
 ## 11. Data loading / events
 
 Use one collection projection for the selected Active/Archive collection.
@@ -678,11 +662,13 @@ spec-steering/empty-active
 
 ## 16. Acceptance criteria
 
-1. A Spec appears in one primary Active group.
+1. A Spec appears once in the canonical Active queue.
 2. Concurrent signals are preserved without row duplication.
-3. Neutral identity and concrete Task signal have distinct navigation semantics.
-4. Aggregate signals never invent a representative Task.
-5. Batch execution remains batch-shaped.
-6. Archive reads historically, not like stale Active steering.
-7. Rows remain compact and cardless.
-8. A large collection remains scannable.
+3. Requires attention means human intervention is actually needed.
+4. Ready work remains separate from attention.
+5. The whole row/identity always opens Specification.
+6. Concrete signal actions have explicit, separate navigation semantics.
+7. Aggregate signals never invent a representative Task.
+8. Batch execution remains batch-shaped.
+9. Archive reads historically, not like stale Active steering.
+10. Rows remain compact, cardless, and scannable.

@@ -102,6 +102,73 @@ Legacy Session API is the strongest migration candidate among current UI surface
 | Current single/batch execution scope | **missing** | partial legacy session/task fields; historical association is insufficient | Add explicit current execution projection. |
 | Context evidence/Handover/artifacts | **missing** | partial scattered evidence | Add product context references without bloating provider Work model. |
 
+
+### Legacy field evidence
+
+Legacy already defines a rich canonical Session/Turn/Work wire model.
+
+Useful Session fields include:
+
+~~~text
+AgentSession / AgentSessionSnapshot
+  provider
+  providerSessionId?
+  sessionId
+  specId
+  taskId?
+  taskIds[]
+  purpose?
+  mode?
+  title?
+  status
+  readiness?
+  capabilities
+  createdAt
+  lastActivityAt?
+  completedAt?
+  activeTurn?
+  pendingInteraction?
+  turns?
+  lastEventSeq
+  updatedAt
+~~~
+
+Legacy chat payload also includes:
+
+~~~text
+session { provider, providerSessionId?, sessionId, status, readiness, mode, capabilities,
+          specId, taskId?, taskIds[], title?, createdAt, lastActivityAt?, lastEventSeq? }
+turns[]
+workSummary
+readiness
+~~~
+
+Canonical Turn already exposes:
+
+~~~text
+turnId / sessionId / provider / providerSessionId
+mode
+status
+work[]
+historicalWork[]
+activityCount
+currentActivity
+finalAnswer
+userMessage
+terminalOutcome
+usage
+createdAt / updatedAt / completedAt
+~~~
+
+This means Full Session should **migrate rather than redesign** most canonical Turn/Work fields.
+
+Genuinely new/changed product requirements are:
+
+- authoritative current execution scope distinct from \`taskId/taskIds\` association;
+- bounded history cursor;
+- stronger snapshot revision/reconciliation;
+- product Context evidence/Handover references.
+
 ### Proposed Session read API
 
 Prefer canonical application Session identity only.

@@ -81,7 +81,7 @@ Frontend must not infer:
 | Need | New SpecFlow | Legacy Nevo | Direction |
 | --- | --- | --- | --- |
 | Active/archive Spec collection | **missing** | **legacy-available** via `GET /api/dashboard` | Preserve list identity/summary, replace legacy lifecycle ranking with new semantic steering projection. |
-| Create Specification | **missing** | **legacy-available** via `POST /api/specs` | Preserve scaffolding capability; target UX requires title only, optional initial description/goal, and may continue into the shared Session-start interaction. |
+| Create Specification | **missing** | **legacy-available** via `POST /api/specs` | Preserve scaffolding capability, not the old request shape: target UX requires title only, derives slug internally, uses deterministic workflow unconditionally, allows optional initial description/goal, and may continue into the shared Session-start interaction. |
 | Task summary/progress | **missing** | **legacy-available** in `/api/dashboard` and `GET /api/specs/:source/:slug/task-statuses` | Preserve useful task metadata, but do not treat legacy `ready`/status as complete new readiness model. |
 | Human-attention projection | **missing** | partial/legacy workflow-action evidence | Add explicit server-owned attention signals. |
 | Current single/batch execution | **missing** | partial Session/task association exists, but association is not authoritative execution | Add explicit current execution projection. |
@@ -173,13 +173,18 @@ New specification
   title *                    required
   initial description       optional / collapsed by default
 
+  slug / workflow mode      not user fields
+
 [Create]
 [Create and start with agent]
 ~~~
 
-Create produces the Specification scaffold. Create-and-start continues into the shared Session-start
-interaction (agent/provider selection as needed, then normal composer/session experience). Do not
-maintain a separate rich prompt editor inside the create dialog.
+Create produces the deterministic Specification scaffold. The application derives slug/technical
+defaults; there is no Legacy/Deterministic choice.
+
+Create-and-start continues into the shared Session-start interaction (agent/provider selection as
+needed, then normal composer/session experience). Do not maintain a separate rich prompt editor
+inside the create dialog.
 
 ### Collection switch
 Active/Archive changes collection state, not workflow state.
@@ -282,7 +287,7 @@ Do not force the work queue into DataTable unless final content proves genuinely
 - Task-ready;
 - active single Task;
 - active batch;
-- issue/remediation;
+- agent-remediable issue / other-active signal;
 - quiet;
 - Active empty;
 - Archive populated;

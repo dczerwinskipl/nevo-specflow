@@ -63,7 +63,9 @@ SessionConversation
 ├── UserMessage
 ├── AgentMessage / FinalAnswer
 ├── CommentaryEntry
-├── WorkBurstSummary
+├── WorkActivityDisclosure
+│   ├── WorkActivitySummaryLine
+│   └── WorkActivityExpanded
 ├── SessionCurrentActivity
 ├── SessionInteraction
 ├── TurnOutcomeNotice
@@ -77,7 +79,9 @@ where useful, MessageComposer, and Alert only for exceptional error/attention st
 Do **not** use generic Timeline as the conversation root. Conversation is a message/work stream, not
 an audit timeline.
 
-Timeline is appropriate in the Work inspector where chronology itself is the dominant structure.
+The compact/expanded Work activity embedded in conversation is not a generic Timeline. It uses
+prose Commentary plus compact grouped tool rows. Generic Timeline is reserved for exact L3 Work
+history where chronology itself is the dominant structure.
 
 ## 3. Canonical input
 
@@ -205,7 +209,43 @@ Adjacent happy-path work is summarized as one compact semantic line/burst.
 
 The trailing affordance opens Work at the corresponding history location.
 
-### 5.5 Current activity
+### 5.5 Compact Work activity disclosure
+
+The normal Session stream should not permanently display a large Work log.
+
+Collapsed form is one line:
+
+~~~text
+Working · 1 read · 2 searches · 4 commands                    [Expand]
+~~~
+
+or, when current activity is more useful:
+
+~~~text
+Running tests · specflow-runtime                              [Expand]
+~~~
+
+Expanded form stays bounded to roughly **5–7 compact lines/rows** and uses Nevo UI `ScrollArea`
+with edge indicators:
+
+~~~text
+Checking the admission path…
+  1 read · 2 searches · 4 commands
+
+Verifying the recovery path…
+  2 reads · tests passed
+
+⟳ Executing command · pnpm check
+~~~
+
+The expanded block follows chat direction: oldest at the top, newest/current at the bottom.
+
+It is a quick inspection surface, not full Work history. An **Open Work** action promotes to the L2
+Work inspector.
+
+Commentary inside this block is rendered as prose, not as an icon-heavy timeline row.
+
+### 5.6 Current activity
 
 Current activity is canonical Runtime state.
 
@@ -221,7 +261,7 @@ Examples:
 
 Do not infer current activity from the last historical Work item.
 
-### 5.6 Pending interaction
+### 5.7 Pending interaction
 
 A pending interaction is one of the few places where stronger containment is justified because it is
 an independent required user action.
@@ -239,7 +279,7 @@ an independent required user action.
 
 Resolved/expired interactions lose their controls and become quiet history.
 
-### 5.7 Terminal outcome
+### 5.8 Terminal outcome
 
 Completed Turn:
 - no celebratory success Card;
@@ -260,10 +300,10 @@ Earlier historical failures are quieter than the latest actionable failure.
 
 ~~~text
 Conversation / L1
-  human conversation + compact Work bursts + current activity
+  human conversation + collapsed/expanded compact Work activity + current activity
 
 Work / L2
-  chronology-preserving grouped Work rows
+  chronology-preserving grouped Work chapters/log
 
 Work item / L3
   one canonical Work item
@@ -370,10 +410,10 @@ Conversation may render once:
 Waiting for the test result…
 ~~~
 
-Work/L2 may show:
+Work/L2 may show the prose once with a quiet repeat count:
 
 ~~~text
-Commentary · Waiting for the test result… ×3
+Waiting for the test result… ×3
 ~~~
 
 Work/L3 preserves all three canonical items.
@@ -382,14 +422,18 @@ Never dedupe merely similar text with different meaning.
 
 ## 9. Reasoning presentation
 
-Canonical Reasoning is not automatically conversation content.
+Canonical Reasoning and Commentary are **different Work kinds**.
+
+- Commentary = user-facing progress narration supplied by the agent/provider.
+- Reasoning = separate reasoning/thinking Work and is not automatically safe/useful conversation
+  prose.
 
 Default:
 
-- active reasoning -> current activity such as "Thinking…";
-- historical reasoning -> Work inspector;
-- provider-supplied reasoning summary MAY be inspectable in Work;
-- raw/provider-defined reasoning does not become an ordinary assistant message.
+- active reasoning -> compact current activity such as `Thinking…`;
+- historical reasoning -> Work inspector/deeper inspection;
+- provider-supplied user-safe reasoning summary MAY be inspectable in Work;
+- raw/provider-defined reasoning does not become an ordinary assistant message or Commentary.
 
 Reasoning boundaries still prevent Work-burst grouping across them.
 
@@ -664,9 +708,53 @@ The recovery path is consistent with the current workflow contract.
 
 This fixture is mandatory because it validates the exact mixed-data grouping rule.
 
-### S05 — multiple active tools
+### S05 — collapsed and expanded Work activity
 
-Fixture: session-conversation/multiple-active-tools
+Fixture: session-conversation/work-activity-disclosure
+
+Payload excerpt:
+
+~~~json
+{
+  "historicalWork": [
+    { "id": "c1", "seq": 1, "type": "commentary", "text": "Checking the admission path…", "status": "completed" },
+    { "id": "r1", "seq": 2, "type": "tool", "kind": "read", "title": "Read file", "status": "completed", "actions": [] },
+    { "id": "s1", "seq": 3, "type": "tool", "kind": "search", "title": "Search code", "status": "completed", "actions": [] },
+    { "id": "s2", "seq": 4, "type": "tool", "kind": "search", "title": "Search code", "status": "completed", "actions": [] },
+    { "id": "cmd1", "seq": 5, "type": "tool", "kind": "command", "title": "Run command", "status": "completed", "actions": [] }
+  ],
+  "currentActivity": {
+    "kind": "tool",
+    "subjectId": "cmd2",
+    "title": "Run command",
+    "subject": "pnpm check",
+    "status": "active",
+    "startedAt": "2026-10-01T10:10:00Z"
+  }
+}
+~~~
+
+Collapsed:
+
+~~~text
+Working · 1 read · 2 searches · 1 command                    [Expand]
+~~~
+
+Expanded:
+
+~~~text
+Checking the admission path…
+  1 read · 2 searches · 1 command
+
+⟳ Run command · pnpm check
+~~~
+
+Expanded content is bounded by ScrollArea; it does not grow without limit.
+
+### S06 — multiple active tools
+
+Fixture: session-conversation/work-activity-disclosure
+session-conversation/multiple-active-tools
 
 ~~~json
 {
@@ -687,7 +775,7 @@ Fixture: session-conversation/multiple-active-tools
 
 Do not list three spinners in the conversation.
 
-### S06 — pending permission
+### S07 — pending permission
 
 Fixture: session-conversation/permission
 
@@ -722,7 +810,7 @@ Fixture: session-conversation/permission
 
 Composer follows authoritative readiness. Do not let a normal Send path bypass a required response.
 
-### S07 — pending question
+### S08 — pending question
 
 Fixture: session-conversation/question
 
@@ -762,7 +850,7 @@ Fixture: session-conversation/question
 └────────────────────────────────────────────────────────────┘
 ~~~
 
-### S08 — pending confirmation
+### S09 — pending confirmation
 
 Fixture: session-conversation/confirmation
 
@@ -791,7 +879,7 @@ Fixture: session-conversation/confirmation
 
 Destructive confirmation uses semantic danger action treatment.
 
-### S09 — failed tool, Turn still active
+### S10 — failed tool, Turn still active
 
 Fixture: session-conversation/tool-failed-turn-active
 
@@ -837,7 +925,7 @@ The test failed. Inspecting the failure before retrying…▍
 
 A failed Tool is not a failed Turn.
 
-### S10 — terminal failed Turn
+### S11 — terminal failed Turn
 
 Fixture: session-conversation/turn-failed
 
@@ -875,7 +963,7 @@ Fixture: session-conversation/turn-failed
 
 Do not infer Task failure/completion/recovery policy from this alone.
 
-### S11 — cancelled / interrupted
+### S12 — cancelled / interrupted
 
 Fixture: session-conversation/interrupted
 
@@ -903,7 +991,7 @@ Turn interrupted
 Provider process ended before the Turn completed.             [Inspect]
 ~~~
 
-### S12 — completed Turn
+### S13 — completed Turn
 
 Fixture: session-conversation/completed
 
@@ -934,7 +1022,7 @@ Review completed. The implementation matches the current specification.
 
 No redundant Completed success Card.
 
-### S13 — reconnecting
+### S14 — reconnecting
 
 Fixture: session-conversation/reconnecting
 
@@ -958,7 +1046,7 @@ Reconnecting…                                                [Retry]
 
 Do not rewrite canonical Turn as unknown solely because transport reconnects.
 
-### S14 — scrolled away from latest
+### S15 — scrolled away from latest
 
 Fixture: session-conversation/new-activity-while-scrolled
 
@@ -989,7 +1077,8 @@ Show:
 
 - recent user/assistant content;
 - meaningful recent Commentary;
-- latest compact Work burst if useful;
+- one-line collapsed Work activity by default;
+- bounded expanded Work activity on demand;
 - current activity;
 - pending interaction;
 - composer;
@@ -1084,13 +1173,14 @@ rendering without guessing.
 
 1. Conversation remains readable when Commentary and tools alternate many times.
 2. Tool spam is compressed without hiding exceptional failures.
-3. Distinct Commentary is preserved.
-4. Active tool is not duplicated as historical work.
-5. Failed Tool is not presented as failed Turn.
-6. Pending interaction is unmistakably actionable.
-7. Waiting state remains calm.
-8. Completed Turn does not produce redundant success chrome.
-9. Scroll does not jump when the user is reading older history.
-10. Full and Floating Session use the same semantic rendering rules.
-11. Every Storybook/Figma state has a canonical payload fixture.
-12. Conversation does not become a Timeline or a stack of Cards.
+3. Distinct Commentary is preserved and visually reads as prose, not as a technical event row.
+4. Normal Work activity can collapse to one line and expand into a bounded 5–7-line ScrollArea.
+5. Active tool is not duplicated as historical work.
+6. Failed Tool is not presented as failed Turn.
+7. Pending interaction is unmistakably actionable.
+8. Waiting state remains calm.
+9. Completed Turn does not produce redundant success chrome.
+10. Scroll does not jump when the user is reading older history.
+11. Full and Floating Session use the same semantic rendering rules.
+12. Every Storybook/Figma state has a canonical payload fixture.
+13. Conversation/inline Work does not become an icon-heavy Timeline or a stack of Cards.

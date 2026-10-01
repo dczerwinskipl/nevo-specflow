@@ -54,7 +54,8 @@ The UI is a tool for a human owner/reviewer. It should optimize for:
 Use these evidence labels while this document evolves:
 
 - **Current contract** - already authoritative in the new SpecFlow repository.
-- **Legacy deterministic evidence** - implemented in legacy Nevo deterministic flow and worth evaluating during migration.
+- **Old-repo deterministic evidence** - implemented in the deterministic flow of the old
+  `dczerwinskipl/nevo` repository and worth evaluating during migration.
 - **Product direction** - agreed direction for the new UI.
 - **Future candidate** - preserve the idea, do not implement yet.
 - **Open question** - ask instead of guessing.
@@ -147,7 +148,8 @@ Creation is a required product flow, not merely a future placeholder.
 
 Minimum flow:
 
-- **title is the only required user field** and supplies the human identity/slug input;
+- **title is the only required user field**; the application derives the slug/technical identity
+  input rather than asking the user to type it;
 - optional initial description/goal may be available through progressive disclosure and can stay
   collapsed by default;
 - creating without AI produces the empty/scaffolded Specification and opens/returns to normal Spec
@@ -599,7 +601,7 @@ capability becomes a real independent human task.
 ---
 ## 14. Activity / audit trail
 
-**Legacy deterministic evidence**
+**Old-repo deterministic evidence**
 
 Activity is a cross-cutting evidence/history concept rather than workflow authority.
 

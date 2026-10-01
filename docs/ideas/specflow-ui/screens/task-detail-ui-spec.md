@@ -291,7 +291,7 @@ Reason + evidence + action must remain close enough to make the decision underst
 │                                      │                                      │
 │                                      │ Changes               [Inspect]      │
 │                                      │ Verification          [Inspect]      │
-│                                      │ Session               [Open]         │
+│                                      │ Session          [Open] [Full]        │
 │                                      │                                      │
 │                                      │ [Review / decide]                    │
 └──────────────────────────────────────┴──────────────────────────────────────┘

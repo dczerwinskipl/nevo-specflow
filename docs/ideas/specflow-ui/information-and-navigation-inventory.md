@@ -336,17 +336,22 @@ top-level Sessions navigation.
 
 Session is reachable from Spec/Task context and may have a full route/full-screen workspace.
 
-Clicking a Session from a Task should open a floating conversation:
+A Session reference from Task/Specification should expose the conversation target and an explicit
+**Open full session** action as sibling intents:
 
 ~~~text
-Task
-  -> Floating Session
-      -> Open full session
-          -> Full Session workspace
+Task / Specification
+  -> conversation target
+      -> Floating Session where supported
+  -> Open full session
+      -> Full Session
 ~~~
 
-Do not make the same Session a nested Task Secondary and then again the same layout as a full
-primary screen.
+Full Session must not require opening Floating Session first. Do not make the same Session a nested
+Task Secondary and then again the same layout as the full product surface.
+
+The quick-conversation presentation outside Floating Session's supported geometry remains a separate
+product decision.
 
 Independent/ad-hoc Sessions remain a future candidate.
 
@@ -465,7 +470,10 @@ Candidate content:
 - current activity;
 - pending human interaction;
 - composer when allowed;
-- explicit Open full session action.
+- explicit Open full session action in the floating header.
+
+The originating Session reference should also be able to expose Open full session directly; opening
+the floating presentation is not a prerequisite.
 
 Do not fit complete Work history, every task action, raw tool detail, or file browser into the
 floating surface.

@@ -400,6 +400,9 @@ An opened evidence detail refreshes separately if that resource has its own revi
 
 Do not make Task Refresh refetch every related Session, document, and diff.
 
+The detailed decision/evidence composition is defined in
+[Task decision and evidence UI spec](../components/task-decision-evidence-ui-spec.md).
+
 ## 13. Component / composition map
 
 | Need | Composition |

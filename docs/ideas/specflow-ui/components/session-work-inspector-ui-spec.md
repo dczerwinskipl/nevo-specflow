@@ -599,7 +599,7 @@ Output                    collapsible/raw
 
 | Kind | Compact Conversation | L2 row | L3 subject | L4 primary detail |
 | --- | --- | --- | --- | --- |
-| read | Read file(s) | Read file (N) | file/path | path, range if normalized, input/output, Open file |
+| read | Read file(s) | Read file (N) | file/path | path, range if normalized, input/output; future file-open target when capability exists |
 | edit | Edited file(s) | Edit file | file/path | target, ToolActions, diff/reference, raw payload |
 | write | Wrote/created file(s) | Write file | file/path | target, creation/write details, raw payload |
 | list | Listed directory | List directory | directory/path | target path, options, returned items/raw output |
@@ -656,7 +656,7 @@ L4:
 Read file
 view_file · read · completed
 
-packages/specflow/src/program.ts                         [Open file]
+packages/specflow/src/program.ts
 
 Duration    182 ms
 
@@ -667,8 +667,9 @@ Output
 import { Command } from 'commander'; ...
 ~~~
 
-If a product file reference can be resolved, Open file uses File Secondary. Do not expose absolute
-host paths as the preferred human target.
+Preserve a resolvable product file reference when available, but do not render an Open file action
+until the file-preview capability exists. Once implemented, that action uses the same local
+Secondary/detail slot. Do not expose absolute host paths as the preferred human target.
 
 ### T02 — edit
 

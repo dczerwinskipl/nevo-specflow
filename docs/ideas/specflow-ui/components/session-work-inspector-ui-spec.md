@@ -98,7 +98,7 @@ Tool/domain semantics stay in SpecFlow code.
 
 ## 3. Canonical tool payload
 
-Current canonical legacy evidence:
+Current canonical old-repo evidence:
 
 ~~~text
 ToolInvocationWorkItem
@@ -159,7 +159,7 @@ The UI must not infer tool kind from toolName strings.
 
 New SpecFlow Runtime product API: **missing**.
 
-Legacy Session payload: **legacy-available**, including ToolInvocation/ToolAction fields above.
+Old-repo Session payload: **old-repo-available**, including ToolInvocation/ToolAction fields above.
 
 Important field gaps for a production inspector:
 
@@ -423,10 +423,10 @@ Therefore:
 Desired L2 behavior may compact **exact normalized repeated Commentary** and show ×N while L3 remains
 complete.
 
-Important legacy discrepancy:
+Important old-repo discrepancy:
 
-- legacy comments/documentation describe conservative repeated-Commentary dedupe;
-- the inspected legacy `buildTimelineRows` implementation currently pushes every Commentary row and
+- old-repo comments/documentation describe conservative repeated-Commentary dedupe;
+- the inspected old-repo `buildTimelineRows` implementation currently pushes every Commentary row and
   does not actually implement that cross-tool dedupe.
 
 Do not copy the stale comment as behavior. If repeated Commentary compaction is implemented in the new
@@ -1272,4 +1272,4 @@ Each fixture includes canonical payload.
 11. Active tool appears as current activity at the bottom, not duplicate history.
 12. L2 avoids an icon-heavy generic Timeline; L3 may use Timeline for exact chronology.
 13. Work uses list/log semantics rather than Card-per-item.
-14. Legacy repeated-Commentary implementation discrepancy is not accidentally copied.
+14. Old-repo repeated-Commentary implementation discrepancy is not accidentally copied.

@@ -322,8 +322,9 @@ Specification may expose:
 - recent/relevant Sessions;
 - a Session connected to a selected Task.
 
-Clicking a Session opens the floating conversation first. It does not replace Task Secondary with a
-nested copy of the Full Session workspace.
+A Session reference exposes the conversation target and a direct **Open full session** action.
+Where Floating Session is supported, the conversation target opens that compact surface without
+replacing Task Secondary. Full Session does not require opening the floating presentation first.
 
 ---
 
@@ -562,15 +563,19 @@ Other relevant evidence
   current change summary
 ~~~
 
-Click Session:
+Session access:
 
 ~~~text
+Session
+  conversation target -> Floating Session where supported
+  [Open full session]  -> Full Session directly
+
 Floating Session
   conversation/current activity
   [Open full session]
 ~~~
 
-The Task surface does not embed a second full Session workspace.
+The Task surface does not embed a second full Session surface.
 
 ---
 
@@ -801,8 +806,9 @@ Related Session is an explicit action:
 Session                         [Open]
 ~~~
 
-which opens the floating conversation. Full Session is then explicitly promoted from the floating
-surface.
+The conversation target uses Floating Session where supported. A separate full-screen action opens
+Full Session directly, so the floating presentation is optional rather than a mandatory navigation
+step.
 
 No desktop-only Secondary may contain the sole copy of information necessary to understand why the
 user needs to act.
@@ -850,7 +856,8 @@ Before moving to component inventory or visual mockups, verify:
 12. Batch execution remains visibly batch-shaped.
 13. A settled Turn can produce continue/resume or recovery state without pretending the Task is done.
 14. Narrow/mobile preserves discovery of attention/ready/current-work before Task detail is opened.
-15. Session access from Task remains floating-first, with explicit promotion to Full Session.
+15. Session access from Task preserves quick conversation where supported and exposes direct Full
+    Session access without requiring Floating Session first.
 
 The equivalent Full Session structure is now captured in
 [Full Session screen structure](full-session-screen-structure.md).

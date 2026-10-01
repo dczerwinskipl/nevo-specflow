@@ -199,7 +199,147 @@ Project Settings
 
 Do not open a third global workspace pane merely because a definition has detail.
 
-## 4. Information hierarchy
+## 4. Data source and ownership contract
+
+### 4.1 Product direction
+
+The Settings UI should **not own a hard-coded complete list of settings**.
+
+The application/backend should expose a project-scoped Settings read model describing the settings
+available for the current product version and installed/enabled extensions.
+
+Why:
+
+- Settings will grow over time;
+- different product versions may expose different capabilities;
+- providers/integrations/extensions may contribute configuration;
+- a setting may be unavailable, read-only, hidden, or unsupported depending on environment;
+- the UI should not need a release merely to learn that a new ordinary setting exists.
+
+This is a **proposed product/API contract**. The current repository does not yet define this canonical
+Settings catalog/read model.
+
+### 4.2 Backend/application responsibility
+
+The backend/application layer should return an ordered semantic catalog roughly equivalent to:
+
+~~~text
+ProjectSettingsCatalog
+  sections[]
+    id
+    title
+    description?
+    order
+    source                  core | extension/plugin
+    groups[]
+      id
+      title?
+      description?
+      settings[]
+        key
+        label
+        description?
+        valueKind
+        value
+        effectiveValue?
+        defaultValue?
+        sourceOfValue?
+        options?
+        readOnly
+        required?
+        availability/status?
+        capability flags?
+~~~
+
+Names above are illustrative, not frozen DTO field names.
+
+The important contract is that the application owns:
+
+- which settings exist;
+- their stable identity;
+- grouping/order;
+- value semantics;
+- current/effective/default value where meaningful;
+- provenance/source-of-value where meaningful;
+- editability/availability/capabilities;
+- extension/plugin contribution.
+
+The UI must not infer those facts by reading YAML files directly or by maintaining its own parallel
+registry of all settings.
+
+### 4.3 UI responsibility
+
+The frontend owns presentation, not the settings inventory.
+
+It should map semantic setting kinds to established renderers, for example:
+
+~~~text
+string / number        -> label + value / future field
+boolean                -> boolean presentation / future switch
+enum                    -> selected value / future Select
+path / file reference  -> path presentation + contextual open action
+secret                  -> masked/safe presentation
+structured/code value  -> read-only code/config inspection
+status                  -> semantic status treatment
+~~~
+
+The backend must **not** return React component names, Tailwind classes, colour tokens, Card
+instructions, or arbitrary layout markup.
+
+This keeps the API semantic rather than turning it into a remote UI DSL.
+
+### 4.4 Sections and extensions
+
+The initial product navigation still has expected core areas:
+
+- General;
+- Configuration;
+- AI / Agents;
+- Workflows;
+- Repository / Git;
+- Integrations.
+
+However, the rendered Settings catalog must tolerate:
+
+- a core section being absent because a capability is unavailable;
+- additional groups/settings appearing in a core section;
+- a plugin/extension contributing a new group;
+- a plugin/extension contributing a new section when it has a real independent configuration use
+  case.
+
+Unknown ordinary setting descriptors should not crash the whole screen. Unsupported value kinds
+should fail visibly at the smallest responsible scope rather than being silently dropped.
+
+### 4.5 Complex settings
+
+The catalog model is intended for ordinary configuration.
+
+If an extension needs a complex, bespoke interaction that cannot be expressed through established
+semantic setting kinds, do not solve it by sending arbitrary UI markup from the backend.
+
+That case needs an explicit product/plugin UI extension contract later.
+
+### 4.6 Raw configuration files
+
+Project/local YAML remain useful evidence and debugging/configuration sources, but they are **not the
+primary source of the Settings navigation model**.
+
+The normal flow is:
+
+~~~text
+backend/application Settings catalog
+        -> Settings sections/groups/items
+
+raw project/local config
+        -> deeper source inspection / provenance
+~~~
+
+The UI may offer View source / View configuration without parsing raw files to discover what settings
+exist.
+
+---
+
+## 6. Information hierarchy
 
 On first scan the user should perceive:
 
@@ -215,9 +355,9 @@ a human-readable summary exists.
 
 Do not create a dashboard of counts merely because there is free space.
 
-## 5. Screen anatomy
+## 6. Screen anatomy
 
-### 5.1 Shared workspace
+### 7.1 Shared workspace
 
 ~~~text
 Project Settings header
@@ -236,7 +376,7 @@ Both columns belong to one Project Settings Primary surface.
 
 The workspace itself supplies the page surface. There is no enclosing Settings Card.
 
-### 5.2 Header
+### 7.2 Header
 
 Header content:
 
@@ -248,7 +388,7 @@ Header content:
 The project selector remains global navigation responsibility and should not be duplicated in the
 Settings header merely to fill space.
 
-### 5.3 Local Settings navigation
+### 7.3 Local Settings navigation
 
 Use a compact local navigation/list treatment.
 
@@ -257,7 +397,7 @@ make every row look richer.
 
 Do not render each category as a Card/tile.
 
-### 5.4 Section content
+### 7.4 Section content
 
 Default section structure:
 
@@ -276,9 +416,9 @@ Separate substantial groups primarily through heading hierarchy and section-scal
 
 Use a subtle divider only when whitespace is insufficient.
 
-## 6. Section-specific structure
+## 7. Section-specific structure
 
-### 6.1 General
+### 7.1 General
 
 Purpose: stable project facts.
 
@@ -302,7 +442,7 @@ Do not create one Card per fact.
 
 Do not create separate Name / Repository / Root Cards.
 
-### 6.2 Configuration
+### 7.2 Configuration
 
 Purpose: inspect authored and effective configuration.
 
@@ -328,7 +468,7 @@ Until that capability exists, a restrained read-only code treatment is acceptabl
 
 Do not place each source in a heavy Card merely to distinguish the files.
 
-### 6.3 AI / Agents
+### 7.3 AI / Agents
 
 Purpose: inspect project policy/defaults and available definitions.
 
@@ -359,7 +499,7 @@ Provider and profile collections are homogeneous lists/rows by default, not Card
 A provider unavailable state may use a compact semantic status and explanation. It should not become
 a warning Card unless the condition actually requires user action or blocks a configuration task.
 
-### 6.4 Workflows
+### 7.4 Workflows
 
 Purpose: inspect deterministic workflow definitions.
 
@@ -402,7 +542,7 @@ disclosure over Cards per step.
 
 A gate type is technical detail unless it helps explain the configuration.
 
-### 6.5 Repository / Git
+### 7.5 Repository / Git
 
 Purpose: inspect repository-level configuration.
 
@@ -421,7 +561,7 @@ Source-control settings
 Current dirty state/current diff is runtime/current-work information and should not be presented here
 as if it were project configuration.
 
-### 6.6 Integrations
+### 7.6 Integrations
 
 Purpose: inspect configured external integrations.
 
@@ -442,7 +582,51 @@ Use rows or sections, not one decorative integration Card per provider by defaul
 If an integration has a real setup/reconnect flow later, the whole row may become a stronger
 interactive object; that change should be justified by the actual interaction.
 
-## 7. Responsive contract
+## 8. Pseudo-layout
+
+This is an information/layout sketch, not a pixel-perfect visual design.
+
+Wide example:
+
+~~~text
+┌──────────────────┬──────────────────────────────────────────────────────────────┐
+│ Nevo SpecFlow    │ Project Settings                                             │
+│                  │                                                              │
+│ [Project Alpha ▾]│  General                 Project                             │
+│                  │  Configuration           Name            Project Alpha       │
+│ Specs            │  AI / Agents             Workspace root  /repo/nevo-specflow │
+│                  │  Workflows               Repository      origin              │
+│ Project Settings │  Repository / Git                                            │
+│                  │  Integrations            ─────────────────────────────────   │
+│                  │                                                              │
+│                  │                         Configuration sources                 │
+│                  │                         Project config   nevo.yaml   [View]   │
+│                  │                         Local config     local.yaml  [View]   │
+│                  │                                                              │
+│                  │                         Effective values                     │
+│                  │                         Provider        Claude                │
+│                  │                         Model           Sonnet                │
+│                  │                         Source          project config        │
+│                  │                                                              │
+└──────────────────┴──────────────────────────────────────────────────────────────┘
+~~~
+
+Important visual intent:
+
+- AppWorkspace is already the containing surface;
+- the local Settings navigation is a simple column/list, not a stack of Cards;
+- content groups are separated by heading hierarchy and whitespace;
+- one light divider may separate major groups when needed;
+- facts and settings are rows/label-value pairs;
+- no Card around Project, Configuration sources, or Effective values;
+- a strong attention surface appears only for an exceptional state that genuinely needs emphasis.
+
+The actual section content is driven by the Settings catalog/read model. The sketch illustrates the
+default composition, not a hard-coded field inventory.
+
+---
+
+## 10. Responsive contract
 
 ### Wide
 
@@ -500,7 +684,7 @@ Back returns to the parent Settings collection/detail level, not to arbitrary br
 The exact selector primitive may be Menu/Select/another established Nevo UI navigation composition;
 the behavior is fixed here, not the primitive.
 
-## 8. Interaction flows
+## 10. Interaction flows
 
 ### Flow A — enter Settings
 
@@ -568,7 +752,7 @@ relevant action.
 
 Do not style every unavailable optional provider as a page-level warning.
 
-## 9. States
+## 11. States
 
 ### Loading
 
@@ -620,7 +804,7 @@ Future editing must define:
 
 Do not infer those from the inspection UI.
 
-## 10. Component / composition map
+## 12. Component / composition map
 
 This map names responsibilities, not a mandatory file tree.
 
@@ -648,7 +832,7 @@ This map names responsibilities, not a mandatory file tree.
 Do not create generic Nevo UI components named SettingsCard, ProviderCard, WorkflowCard, ConfigCard,
 or similar merely for this screen.
 
-## 11. Visual and token contract
+## 13. Visual and token contract
 
 This screen inherits semantic typography/colour rules from the shared design-system docs.
 
@@ -672,7 +856,7 @@ Do not use colour merely to make every Settings category visually different.
 
 Do not use alternating Card backgrounds to create hierarchy.
 
-## 12. Local containment rules
+## 14. Local containment rules
 
 This screen deliberately uses stricter containment than many dashboard-style surfaces.
 
@@ -697,7 +881,7 @@ Therefore:
 Any implementation that introduces a new Card on this screen should be able to state the semantic
 reason that content needs an independent boundary.
 
-## 13. Accessibility, focus, and keyboard behavior
+## 15. Accessibility, focus, and keyboard behavior
 
 - Local Settings navigation must be keyboard operable and expose the selected section semantically.
 - Switching sections moves/announces context in a way that makes the new section identity clear; do
@@ -710,10 +894,11 @@ reason that content needs an independent boundary.
   forms an independently scrollable region.
 - Icon-only actions use accessible labels and comfortable hit targets.
 
-## 14. Data / read-model requirements
+## 16. Data / read-model requirements
 
-The screen needs application-level projections; it must not derive effective configuration or
-availability by parsing unrelated runtime state in the UI.
+The screen consumes the project Settings catalog/read model described earlier. It must not maintain
+a second hard-coded inventory of settings and must not derive effective configuration or availability
+by parsing raw YAML or unrelated runtime state in the UI.
 
 ### General
 
@@ -757,7 +942,7 @@ unless the authoritative configuration actually defines them.
 - availability/configuration state;
 - supported setup/reconnect actions only when authoritative.
 
-## 15. Storybook scenarios
+## 17. Storybook scenarios
 
 The first composed Project Settings stories should use typed product view-model fixtures.
 
@@ -777,10 +962,13 @@ Minimum scenarios:
 12. Compact — Drawer global navigation + local Settings nav still visible beside content.
 13. Narrow — explicit section selector + one-column section content.
 14. Narrow workflow detail — Back returns to Workflows definitions.
+15. Catalog variation — a new backend-provided ordinary setting appears without a screen-code change.
+16. Extension contribution — an additional Settings group/section is rendered from the catalog.
+17. Unsupported descriptor — one unknown value kind fails visibly without breaking other Settings.
 
 Visual review must explicitly check that repeated rows do not drift into Card-per-item treatment.
 
-## 16. Acceptance criteria
+## 18. Acceptance criteria
 
 A composed implementation is acceptable when:
 
@@ -798,8 +986,11 @@ A composed implementation is acceptable when:
 11. Keyboard/focus behavior preserves orientation across section and nested-detail navigation.
 12. The screen does not invent configuration precedence, provider actions, workflow mutations, or
     edit semantics that the application contract does not supply.
+13. The frontend does not own a hard-coded complete Settings inventory.
+14. Ordinary backend-provided settings/groups can appear without bespoke screen implementation.
+15. Extension/plugin-contributed Settings remain semantic data, not backend-provided UI markup.
 
-## 17. Open questions / deferred
+## 19. Open questions / deferred
 
 Do not guess these during initial composition:
 

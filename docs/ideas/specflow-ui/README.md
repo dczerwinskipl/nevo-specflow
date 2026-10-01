@@ -48,13 +48,13 @@ The package deliberately distinguishes:
 ## Current working documents
 
 - [Information and navigation inventory](information-and-navigation-inventory.md)
+- [Navigation and route model](navigation-and-route-model.md)
 - [Specification and Task information hierarchy](spec-task-information-hierarchy.md)
 - [Specification and Task screen structure](spec-task-screen-structure.md)
 - [Full Session screen structure](full-session-screen-structure.md)
 - [Design-system and composition gaps](design-system-component-composition-gaps.md)
 - [Data loading, refresh, batching, and eventing](data-loading-refresh-and-eventing.md)
 - [Screen specifications index](screens/README.md)
-- [Large component specifications](components/README.md)
 - [Large UI component specifications](components/README.md)
 
 ## Related idea package

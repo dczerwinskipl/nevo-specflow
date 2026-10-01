@@ -95,7 +95,7 @@ workflow state, or execution membership.
 | Resume vs recovery | **missing** | deterministic legacy flow has behavior/evidence, not one clean Task detail DTO | Add stable application projection. |
 
 
-### Legacy field evidence
+### Old-repo field evidence
 
 Legacy Task/list projections already expose:
 

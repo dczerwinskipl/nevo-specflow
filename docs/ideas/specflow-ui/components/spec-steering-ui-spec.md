@@ -498,9 +498,9 @@ Fixture: \`spec-steering/issue\`
       "kind": "issue",
       "scope": "task",
       "taskId": "TASK-03",
-      "label": "TASK-03 needs remediation",
-      "reason": "Workspace state must be resolved",
-      "priority": 80,
+      "label": "TASK-03 remediation available",
+      "reason": "Normal start is blocked; agent remediation can continue",
+      "priority": 30,
       "target": { "specId": "spec-e", "taskId": "TASK-03" }
     }
   ]
@@ -510,15 +510,16 @@ Fixture: \`spec-steering/issue\`
 Mock:
 
 ~~~text
-Needs attention
+Other active
 
 Spec E
-TASK-03 needs remediation                               >
-Workspace state must be resolved
+TASK-03 remediation available                           >
+Normal start is blocked; agent remediation can continue
 ~~~
 
-If product chooses to group issues separately from required owner decisions, visual weight still must
-make both easy to distinguish.
+`kind: issue` is reserved here for a non-human issue/remediation signal. If owner intervention is
+required, the backend projection should emit `kind: attention` with the concrete issue as its
+reason rather than asking the frontend to guess whether an issue needs the human.
 
 ---
 

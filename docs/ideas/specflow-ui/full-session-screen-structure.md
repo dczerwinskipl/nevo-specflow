@@ -604,7 +604,7 @@ Normal live Session updates never change the current Secondary target automatica
 
 On split layouts, closing Secondary leaves Conversation Primary.
 
-On narrow, the same local detail becomes the visible pushed surface. The Workbench Back pops deeper
+On narrow, the same local detail becomes the visible pushed surface. The product UI Back pops deeper
 detail first, then closes Secondary and returns to Conversation.
 
 Browser/system Back on Narrow should be integrated so an active local pushed-detail stack gets the

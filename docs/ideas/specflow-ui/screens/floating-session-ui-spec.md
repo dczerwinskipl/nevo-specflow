@@ -92,13 +92,13 @@ Frontend selects a compact subset of the canonical projection:
 
 ## 5. API availability / migration status
 
-| Need | New SpecFlow | Legacy Nevo | Direction |
+| Need | New SpecFlow | Old repo evidence | Direction |
 | --- | --- | --- | --- |
-| Session snapshot/chat | **missing** | **legacy-available** via \`GET /api/agent-sessions/:sessionId/chat\` | Reuse Full Session migration contract. |
-| Live current activity/events | **missing** | **legacy-available** via Session SSE events | Reuse one Session event stream. |
-| Start Turn | **missing** | **legacy-available** via \`POST /api/agent-sessions/:sessionId/turns\` | Reuse Full Session command. |
-| Respond to interaction | **missing** | **legacy-available** via interaction respond route | Reuse Full Session command. |
-| Cancel Turn | **missing** | **legacy-available** and capability-driven | Expose only if compact surface has room and product decides it is useful. |
+| Session snapshot/chat | **missing** | **old-repo-available** via \`GET /api/agent-sessions/:sessionId/chat\` | Reuse Full Session migration contract. |
+| Live current activity/events | **missing** | **old-repo-available** via Session SSE events | Reuse one Session event stream. |
+| Start Turn | **missing** | **old-repo-available** via \`POST /api/agent-sessions/:sessionId/turns\` | Reuse Full Session command. |
+| Respond to interaction | **missing** | **old-repo-available** via interaction respond route | Reuse Full Session command. |
+| Cancel Turn | **missing** | **old-repo-available** and capability-driven | Expose only if compact surface has room and product decides it is useful. |
 | Entry context (where floating was opened) | UI navigation state | not a backend Session fact | Keep product-local; do not persist as Session execution identity. |
 
 

@@ -52,26 +52,20 @@ It is not a provider transcript and not a raw tool console.
 ## 3. Entry and navigation
 
 Entry:
-- explicit Open full session from a related/current Session reference;
-- explicit Open full session from Floating Session;
-- stable Session deep link.
+- existing Session conversation target;
+- explicit Open full session on Wide;
+- Floating Session header promotion on Wide;
+- stable Session route.
 
-Opening Full Session from a Spec/Task context does not require opening Floating Session first.
+Wide:
+- conversation target may open Floating Session;
+- Full Session opens as routed Primary, with Context default-open when split-capable.
 
-Wide/Compact split entry:
+Compact/Narrow:
+- conversation target opens Full Session directly;
+- there is no floating/modal/sheet substitute.
 
-~~~text
-Conversation | Context
-~~~
-
-Context is default-open only on entry when no more specific Secondary target was requested.
-
-Narrow entry:
-- Conversation only;
-- Context/Work/detail opened explicitly as pushed Secondary.
-
-Closing default Context remains respected until user explicitly reopens it.
-
+Secondary/detail state is local Workspace state, not URL state.
 ## 4. Data source / read-model ownership
 
 Canonical Session/Turn/Work state comes from Runtime/application.
@@ -302,17 +296,17 @@ Primary:
 1. user/assistant conversation;
 2. meaningful Commentary;
 3. current activity;
-4. pending interaction;
+4. pending human interaction;
 5. compact semantic Work summaries;
-6. composer;
-7. when the user has scrolled away from the bottom, a clear "new activity / jump to latest" affordance
-   rather than forced auto-scroll.
+6. composer/response controls;
+7. jump-to-latest feedback when the user has scrolled away.
 
 Secondary:
-1. Context by default;
-2. Work as technical/history root;
-3. contextual detail such as Task/File/Handover/Work item.
+1. Context by default on split-capable entry;
+2. user-selected detail such as Task, Handover, artifact/review/verification, expanded Work/ToolAction,
+   or future File preview.
 
+Normal live activity never auto-switches Secondary.
 ## 7. Pseudo-layout
 
 ~~~text
@@ -346,56 +340,63 @@ Context is a normal inspector surface, not a stack of cards.
 - Session header/orientation;
 - conversation stream;
 - current/live region;
-- pending interaction;
-- composer.
+- pending human interaction;
+- compact Work bursts;
+- composer/response controls.
 
-### Secondary roots
-- Context;
-- Work.
+### Secondary
+- Context is the default split-capable content.
+- Explicit user clicks replace it with more specific inspection detail.
 
 ### Detail targets
 - Task;
-- File;
-- Handover/artifact;
-- Work item/ToolAction.
+- Handover/artifact/review/verification;
+- expanded Work item/ToolAction;
+- future File preview.
 
-One Secondary only; detail replaces its root and Back returns within local inspector navigation.
-
+One Secondary only. There is no required permanent Context/Work root switcher.
 ## 9. Responsive contract
 
 Wide:
-- persistent nav + Conversation | Context.
+- persistent nav;
+- Full Session can show Conversation | Context;
+- existing-Session quick conversation may use Floating Session.
 
 Compact:
-- Drawer nav + Conversation | Context if workspace >= split threshold.
+- Drawer nav;
+- Full Session may still show Conversation | Context when workspace geometry supports split;
+- existing Session opens Full Session, not Floating Session.
 
 Narrow:
-- Conversation only;
-- explicit Context/Work actions;
-- pushed inspector/detail;
-- current activity and pending interaction cannot exist only in Secondary.
-
+- Conversation first;
+- Context/detail is pushed locally on explicit user action;
+- browser/system Back should pop local pushed detail before router navigation where technically
+  integrated;
+- current activity and pending human interaction cannot exist only in Secondary.
 ## 10. Interaction flows
 
-### Context drill-down
-Context -> Task -> Back -> Context.
+### Context/detail drill-down
+Context -> Task/Handover/artifact/etc. -> Back through local stack -> Context.
 
 ### Work drill-down
-Work -> Work item -> ToolAction -> Back -> Work.
+Click compact Work burst in Conversation -> expanded Work detail in Secondary -> ToolAction -> Back.
 
-### File
-Conversation/Context/Work reference -> File detail -> Back to previous inspector context.
+### Future File
+When file preview exists: click file reference -> File detail -> Back. Until then, do not render fake
+preview/Open-in-IDE controls.
 
 ### Pending interaction
-Interaction appears in Primary -> deliberate response -> control becomes non-actionable after
-resolution/expiration -> Runtime update reconciles.
+Question/permission/confirmation appears in Primary with strong inline affordance and appropriate
+composer-adjacent cue. The user responds deliberately.
+
+Do **not** auto-open or replace Secondary merely because the interaction arrived. If a complex
+interaction needs additional detail, an explicit action may open it.
 
 ### Send message
-Composer -> start Turn command -> busy/live state -> ordered updates -> final/terminal outcome.
+Composer -> start Turn -> busy/live state -> ordered updates -> final/terminal outcome.
 
 ### Cancel
-Only when capability permits -> Cancel -> cancelling state -> terminal projection.
-
+Only when capability permits.
 ## 11. Runtime states
 
 - generic/spec-level execution;
@@ -565,37 +566,37 @@ Do not create one generic design-system Chat component around Session domain sem
 - Commentary absent;
 - active tool;
 - waiting without attention;
-- permission/question/confirmation;
+- question/permission/confirmation inline in Primary;
 - completed;
 - failed/interrupted;
 - continue/resume;
 - recovery;
 - unavailable;
-- Context -> Task;
-- Work -> ToolAction;
-- File detail placeholder;
+- Context -> Task/Handover;
+- compact Work burst -> ToolAction detail;
 - default Context closed/restored;
-- narrow inspector push.
-
+- Compact direct Full Session entry;
+- Narrow detail push and local Back.
 ## 18. Acceptance criteria
 
-- user sees what is happening now without opening Work;
-- initial history is bounded and older history is loadable without losing the current Turn;
-- event bursts do not produce one UI/cache commit per raw event;
+- user sees what is happening now without opening inspection;
+- initial history is bounded and older history is loadable;
+- event bursts do not create UI/cache churn per raw event;
 - scrolling old history is not interrupted by forced auto-scroll;
-- interaction requiring user is actionable in Primary;
-- current execution is distinct from related Tasks;
-- batch is batch-shaped;
-- current activity does not duplicate chronology with equal weight;
+- interaction requiring user is visible/actionable in Primary on every breakpoint;
+- incoming activity does not steal Secondary focus;
+- current execution is distinct from related Tasks and batch remains batch-shaped;
 - Context close is respected;
 - raw tool spam stays below normal conversation level;
+- compact Work is user-opened into detail;
 - one Secondary only;
+- Compact/Narrow never use Floating Session;
 - no message/tool Card soup.
-
 ## 19. Open questions
 
 - exact current execution-intent API in new deterministic Runtime;
 - history pagination;
-- artifact/Handover context model;
+- canonical artifact/Handover context references;
 - reasoning presentation policy;
-- non-wide Floating Session behavior.
+- exact cost/usage/limit presentation (future, low-emphasis/extensible);
+- exact complex Human Interaction detail composition when simple inline controls are insufficient.

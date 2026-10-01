@@ -570,7 +570,9 @@ Fixture: session-conversation/mixed-work
       "title": "Read file",
       "subject": "admission.mjs",
       "status": "completed",
-      "actions": []
+      "actions": [],
+      "createdAt": "2026-10-01T10:00:03Z",
+      "updatedAt": "2026-10-01T10:00:04Z"
     },
     {
       "id": "r2",
@@ -581,7 +583,9 @@ Fixture: session-conversation/mixed-work
       "title": "Read file",
       "subject": "finish-operation.mjs",
       "status": "completed",
-      "actions": []
+      "actions": [],
+      "createdAt": "2026-10-01T10:00:05Z",
+      "updatedAt": "2026-10-01T10:00:06Z"
     },
     {
       "id": "s1",
@@ -592,14 +596,18 @@ Fixture: session-conversation/mixed-work
       "title": "Search code",
       "subject": "WORKSPACE_WRITER_BLOCKED_BY_RECOVERY",
       "status": "completed",
-      "actions": []
+      "actions": [],
+      "createdAt": "2026-10-01T10:00:07Z",
+      "updatedAt": "2026-10-01T10:00:08Z"
     },
     {
       "id": "c2",
       "seq": 5,
       "type": "commentary",
       "text": "The guard is in the admission path. Verifying the recovery transition…",
-      "status": "completed"
+      "status": "completed",
+      "createdAt": "2026-10-01T10:00:09Z",
+      "updatedAt": "2026-10-01T10:00:10Z"
     },
     {
       "id": "cmd1",
@@ -611,7 +619,9 @@ Fixture: session-conversation/mixed-work
       "subject": "pnpm test",
       "status": "completed",
       "actions": [],
-      "exitCode": 0
+      "exitCode": 0,
+      "createdAt": "2026-10-01T10:00:11Z",
+      "updatedAt": "2026-10-01T10:00:20Z"
     },
     {
       "id": "t1",
@@ -623,7 +633,9 @@ Fixture: session-conversation/mixed-work
       "subject": "workflow tests",
       "status": "completed",
       "actions": [],
-      "exitCode": 0
+      "exitCode": 0,
+      "createdAt": "2026-10-01T10:00:21Z",
+      "updatedAt": "2026-10-01T10:00:29Z"
     }
   ],
   "currentActivity": null,
@@ -802,7 +814,9 @@ Fixture: session-conversation/tool-failed-turn-active
       "subject": "pnpm test",
       "status": "failed",
       "actions": [],
-      "exitCode": 1
+      "exitCode": 1,
+      "createdAt": "2026-10-01T10:19:00Z",
+      "updatedAt": "2026-10-01T10:19:10Z"
     }
   ],
   "currentActivity": {

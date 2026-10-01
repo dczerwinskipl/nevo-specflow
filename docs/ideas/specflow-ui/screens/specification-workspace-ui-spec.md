@@ -44,7 +44,7 @@ It does not flatten Task detail, Session transcript, or raw workflow internals i
 - Open a Task without abandoning the Specification.
 - Start/approve/finalize only through authoritative available actions.
 - Inspect supporting documents/evidence.
-- Open a related Session as floating context, then explicitly promote to Full Session.
+- Open a related Session as quick conversation context where supported, or open Full Session directly.
 
 ## 3. Entry and navigation
 
@@ -328,7 +328,10 @@ Action enabled only from authoritative action/readiness projection; command -> p
 refresh/read model update.
 
 ### Open Session
-Task/Spec Session reference -> Floating Session; explicit Open full session promotes workspace.
+A Task/Spec Session reference exposes a conversation target plus an explicit full-screen action.
+Where Floating Session is supported, the conversation target opens it without abandoning the
+Specification. Open full session navigates directly to Full Session and does not require the floating
+presentation first.
 
 ## 11. States
 

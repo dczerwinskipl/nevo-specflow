@@ -115,9 +115,9 @@ Current `AppWorkspace` provides:
 This already fits most of:
 
 - Specification Primary -> Task Secondary;
-- Full Session Primary -> Context/Work/detail Secondary;
+- Full Session Primary -> default Context / user-selected detail Secondary;
 - Context -> Task/Handover/artifact detail;
-- Work -> Work item -> ToolAction detail;
+- compact Work burst -> expanded Work -> ToolAction detail;
 - one Secondary only, never a third workspace pane.
 
 There are two important foundation gaps in section 5.
@@ -187,7 +187,7 @@ Both `Tabs` and `SegmentedControl` exist.
 Potential consumers:
 
 - Active / Archive if the final screen chooses tabs;
-- Context / Work root switching in Full Session;
+- local view/filter modes where semantics fit;
 - local view/filter modes where semantics fit.
 
 Do not add a new mode-switch primitive before choosing the actual composition.
@@ -593,31 +593,18 @@ composition/override point; SpecFlow supplies the product-aware resolver.
 
 # 6. Product/foundation decisions exposed by the current components
 
-## 6.1 P1 — Floating Session responsive fallback
+## 6.1 Resolved — Floating Session is Wide-only
 
-Current `AppShell` enables `AppFloatingProvider` only in `wide` shell mode, and the Floating
-Windows stories explicitly treat narrow/mobile mode as unsupported.
+Current `AppShell` enables `AppFloatingProvider` only in `wide` shell mode.
 
-The product model now separates two intents on a Session reference:
+That now matches the product contract:
 
-- quick conversation, using Floating Session where that presentation is supported;
-- direct Open full session, which does not depend on Floating Session.
+- Wide conversation access may open Floating Session;
+- Compact/Narrow conversation access opens Full Session directly;
+- no alternate compact floating/modal/sheet presentation is required.
 
-Only the **quick-conversation presentation** remains unresolved outside the widths supported by the
-current floating host.
-
-Before implementing quick Session conversation on compact/narrow, choose one product behavior:
-
-- floating windows become supported at additional widths; or
-- Floating Session is a wide-only presentation and compact/narrow gets a different context-preserving
-  representation; or
-- compact/narrow promotes directly to Full Session with deterministic return context.
-
-Do not silently make the desktop floating component render off-contract on mobile.
-
-This is first a product interaction decision; only then decide whether Nevo UI needs another generic
-overlay/surface behavior.
-
+This is no longer a design-system gap. Do not broaden generic floating-window support merely for
+SpecFlow parity.
 ## 6.2 P2 — Secondary presentation/sizing by detail kind
 
 Current `AppWorkspace` supports root-level split modes:
@@ -752,16 +739,12 @@ These affect the geometry/navigation model of both screen families.
 
 These fixtures should use product-owned mock view models, not backend/provider payloads.
 
-## P1/P2 — responsive Session decision
-
-8. Resolve Floating Session behavior outside wide shell and encode it in product docs before
-   implementing compact/narrow Session entry.
-
 ## P2 — capability tracks
 
-9. Continue compact file/code surface work.
-10. Define initial change/diff inspection.
-11. Wire Handover/artifact UI only when their product contracts are concrete.
+8. Continue future file/code surface work without faking preview before it exists.
+9. Define initial multi-source change/diff inspection.
+10. Wire canonical Handover/artifact references when the Runtime contract is concrete.
+11. Validate Narrow browser/system Back integration with the local Secondary stack.
 
 ---
 
@@ -797,7 +780,7 @@ Minimum Full Session fixtures:
 - Work -> ToolAction drill-down;
 - File detail placeholder;
 - default Context closed by user;
-- narrow Conversation -> Context/Work pushed detail.
+- narrow Conversation -> Context / user-selected detail pushed stack.
 
 These stories are the point where visual hierarchy should be judged. Primitive stories alone cannot
 validate the product screen.
@@ -818,7 +801,7 @@ The product is ready for polished visual mockups when:
 5. attention/ready/current-work states remain visually distinct without status-badge overload.
 6. batch execution is visibly batch-shaped.
 7. narrow fixtures preserve the same information hierarchy.
-8. Quick Session conversation outside Floating Session's supported geometry is explicitly decided.
+8. Compact/Narrow Session entry goes directly to Full Session; Floating remains Wide-only.
 9. known File/Diff/Handover capability gaps are represented as such rather than hidden behind fake
    finished components.
 

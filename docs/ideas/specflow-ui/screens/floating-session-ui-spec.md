@@ -33,7 +33,8 @@ It owns only the compact interaction surface:
 - current activity;
 - pending interaction;
 - composer/response controls;
-- Open full session promotion.
+- header-level promotion to Full Session;
+- integration with the bottom floating-session dock/minimized-session tabs.
 
 It intentionally does not host the full Context inspector, Work history, file browser, or large
 artifact/review surfaces.
@@ -154,52 +155,64 @@ It must never be interpreted by Runtime as current deterministic execution inten
 
 ## 6. Information hierarchy
 
-1. Session identity/agent role.
+1. Session identity/agent role in the header.
 2. current activity or requires-attention state.
 3. recent conversation.
 4. pending interaction when present.
-5. composer.
-6. Open full session.
+5. composer as the **last element inside the active floating window**.
+
+Open Full Session is a header action, not content below the composer.
 
 Avoid technical metadata unless it explains availability/state.
 
 ## 7. Pseudo-layout
 
-~~~text
-Specification / Task remains visible behind
+Wide desktop concept:
 
-                                   ┌─────────────────────────────────────┐
-                                   │ Reviewer · Review batch #23   [↗][×]│
-                                   │ TASK-03 context                    │
-                                   │                                     │
-                                   │ Agent                               │
-                                   │ Reviewing the latest changes…      │
-                                   │                                     │
-                                   │ Ran tests · inspected 4 files      │
-                                   │                                     │
-                                   │ Current                             │
-                                   │ Reviewer · 3 Tasks                 │
-                                   │ Reviewing TASK-02/03/04            │
-                                   │                                     │
-                                   │ ┌─────────────────────────────────┐ │
-                                   │ │ Message…                    Send│ │
-                                   │ └─────────────────────────────────┘ │
-                                   │                                     │
-                                   │ Open full session →                 │
-                                   └─────────────────────────────────────┘
+~~~text
+underlying Specification / Task remains visible
+
+                                      ┌───────────────────────────────┐
+                                      │ Review batch #23       [↗][×]│
+                                      │ Reviewer · TASK-03 context   │
+                                      ├───────────────────────────────┤
+                                      │                               │
+                                      │ recent conversation           │
+                                      │ Commentary / compact Work     │
+                                      │ current activity              │
+                                      │                               │
+                                      │                               │
+                                      ├───────────────────────────────┤
+                                      │ Message…                 Send │
+                                      └───────────────────────────────┘
+                                      [Session 2] [Session 3] [More…]
+──────────────────────────────────────────────────────────────────────── bottom
 ~~~
 
-The window itself is already a contained host; do not place conversation content into nested Cards.
+The important contract is:
+
+- the active floating Session is bottom-aligned;
+- its composer is pinned to the bottom of that window;
+- **nothing belonging to the active Session is rendered under the composer**;
+- Open full session/expand belongs in the floating header;
+- other minimized Sessions live in a separate bottom dock as compact tabs/chips;
+- when there are too many minimized Sessions, the dock collapses overflow behind \`More…\`;
+- selecting a minimized Session activates/restores that Session window;
+- a truly closed Session is removed from the dock. Reopenable entries are therefore **minimized**, not
+  semantically closed.
+
+The active window itself is already a contained host; do not place transcript sections into nested
+Cards.
 
 ## 8. Screen anatomy
 
-- floating window header;
+- floating window header with Full Session/expand + minimize/close actions;
 - compact orientation/entry-context hint;
 - recent conversation;
 - current activity;
 - pending interaction;
-- composer/response controls;
-- Open full session.
+- composer/response controls pinned as the last row;
+- external bottom dock with minimized Session tabs + More overflow.
 
 ## 9. Responsive contract
 
@@ -229,11 +242,20 @@ Composer -> Session Turn command -> current activity/live updates.
 Pending interaction -> response -> canonical Session state updates.
 
 ### Promote
-Open full session -> Full Session workspace -> return restores original Task/Spec context where
-representable.
+Header Open full session/expand -> Full Session workspace -> return restores original Task/Spec
+context where representable.
+
+### Minimize
+Minimize -> active window collapses into its bottom-dock Session tab -> underlying product context
+remains unchanged.
+
+### Restore
+Select minimized Session tab -> restore/activate that floating Session.
 
 ### Close
-Close/minimize -> underlying product context remains unchanged.
+Close -> remove that floating presentation/dock entry -> underlying product context remains unchanged.
+
+Close and Minimize are distinct semantics.
 
 ## 11. States
 
@@ -281,13 +303,14 @@ second compact-chat renderer.
 | Need | Composition |
 | --- | --- |
 | Host | FloatingWindow / FloatingWindowHost on supported wide layout |
-| Header/actions | floating host actions + product title |
+| Header/actions | floating host actions + product title + Full Session/expand |
+| Bottom dock | product composition over floating host/session window state |
 | Conversation | compact SpecFlow Session composition |
 | Markdown | MarkdownDocument |
 | Current activity | product composition |
 | Composer | MessageComposer |
 | Interaction | product composition from form/action primitives |
-| Promote | Button/Link action to Full Session |
+| Promote | IconButton/Button action in header to Full Session |
 
 ## 14. Visual/token contract
 
@@ -297,7 +320,8 @@ second compact-chat renderer.
 - current activity is restrained;
 - requires-attention interaction gets stronger semantic treatment;
 - entry-context metadata uses muted text;
-- Open full session is clear but secondary to active required response.
+- Full Session/expand is a compact header action, never a footer below the composer;
+- minimized Session tabs are lower-weight dock controls, not content cards.
 
 ## 15. Local containment rules
 
@@ -305,6 +329,7 @@ second compact-chat renderer.
 - no Card per message/tool/commentary;
 - no inner "Session Card";
 - pending interaction may use a distinct contained region when response controls need one boundary;
+- minimized Session tabs are compact dock controls, not Cards;
 - avoid multiple boxed panels inside the floating window.
 
 ## 16. Accessibility/focus
@@ -325,6 +350,11 @@ second compact-chat renderer.
 - completed/idle;
 - unavailable;
 - long recent response;
+- composer pinned to window bottom;
+- one active + two minimized Sessions;
+- minimized overflow -> More;
+- restore minimized Session;
+- close vs minimize;
 - wide floating bounds;
 - future compact/narrow behavior once decided.
 
@@ -333,7 +363,10 @@ second compact-chat renderer.
 - user can converse without abandoning parent context;
 - entry context is not confused with execution scope;
 - compact surface shows current attention/activity without Work inspector;
-- promotion to Full Session is explicit;
+- composer is the last element of the active window;
+- Full Session promotion is explicit and lives in the header;
+- minimized Sessions use a separate bottom dock with More overflow;
+- Close and Minimize remain distinct;
 - no duplicate backend Session model/API or duplicate live subscription;
 - opening the floating presentation does not hydrate old Session history;
 - floating host does not become nested Card soup.
@@ -343,4 +376,5 @@ second compact-chat renderer.
 - non-wide presentation;
 - exact recent-history budget;
 - whether Cancel belongs in compact floating UI;
-- multiple simultaneous floating Sessions behavior in product, despite generic host support.
+- exact maximum visible minimized Session tabs before More overflow;
+- whether only one floating Session may be expanded at a time (recommended initial behavior).

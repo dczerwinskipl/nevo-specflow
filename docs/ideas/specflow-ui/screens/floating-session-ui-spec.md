@@ -272,6 +272,10 @@ as the shared Session data layer.
 Opening/closing/minimizing the floating window does not refetch the Session merely because
 presentation changed.
 
+Floating Session reuses the same conversation semantics defined in
+[Session conversation UI spec](../components/session-conversation-ui-spec.md). It does not invent a
+second compact-chat renderer.
+
 ## 13. Component / composition map
 
 | Need | Composition |

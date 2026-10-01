@@ -1,0 +1,134 @@
+---
+id: ideas.specflow-ui.screens
+type: hub
+title: SpecFlow UI screen specifications
+status: draft
+scope: specflow
+areas:
+  - ui
+  - product
+tags:
+  - screens
+  - ui-spec
+  - interaction
+  - implementation-contract
+read_when:
+  - implementing or reviewing a large SpecFlow UI screen
+  - locating the owner document for a concrete user interaction
+  - deciding which shared UI/product rules a screen inherits
+summary: >
+  Index of vertical SpecFlow UI screen specifications. Screen specs translate shared
+  product and design-system rules into concrete use cases, anatomy, interactions,
+  responsive behavior, component usage, token roles, states, and acceptance scenarios.
+related:
+  - ideas.specflow-ui
+  - product.specflow.ui.interaction-model
+  - design-system.principles.ui-ux-guidelines
+  - design-system.principles.layout-and-containment
+---
+
+# SpecFlow UI screen specifications
+
+## Purpose
+
+The documents in this directory are vertical UI specs.
+
+Shared documents answer questions such as:
+
+- what Primary/Secondary means;
+- how navigation behaves responsively;
+- what Session/Turn/Work means;
+- how human attention differs from readiness;
+- how containment, typography, colour, and component ownership work.
+
+A screen spec answers:
+
+> Given those shared rules, exactly how does this product screen behave?
+
+Screen specs should reference shared rules instead of copying them. If a shared rule changes, update
+the shared document and only update screen specs whose local behavior actually changes.
+
+These documents are still under docs/ideas, so they are working product proposals until promoted
+into authoritative product documentation.
+
+## Shared contracts every screen inherits
+
+Read the relevant subset rather than duplicating it:
+
+- [UI interaction model](../../../product/specflow/ui/interaction-model.md) — global hierarchy,
+  Primary/Secondary, responsive shell, Back, context preservation.
+- [UI/UX engineering guidelines](../../../design-system/principles/ui-ux-guidelines.md) —
+  information hierarchy, semantic typography/colour, progressive disclosure, responsive hierarchy.
+- [Layout and containment guidelines](../../../design-system/principles/layout-and-containment.md) —
+  borderless-first composition, Card rules, list/row treatment, host/nesting rules.
+- [Nevo UI system boundary](../../../design-system/principles/system-boundary.md) — reusable
+  design-system behavior versus product-owned composition.
+- [React component guidelines](../../../design-system/implementation/react/component-guidelines.md) —
+  feature-local composition, view models, state ownership.
+- [Tailwind styling guidelines](../../../design-system/implementation/tailwind/styling-guidelines.md) —
+  semantic tone and styling ownership.
+- [SpecFlow information/navigation inventory](../information-and-navigation-inventory.md) — product
+  concepts, ownership, configuration/runtime/action separation.
+- [Design-system and composition gaps](../design-system-component-composition-gaps.md) — currently
+  available primitives and known capability gaps.
+
+Session screens additionally inherit
+[AI Session UX](../../../product/specflow/ui/ai-session-ux.md) and
+[Full Session screen structure](../full-session-screen-structure.md).
+
+Specification/Task screens additionally inherit
+[Specification and Task information hierarchy](../spec-task-information-hierarchy.md) and
+[Specification and Task screen structure](../spec-task-screen-structure.md).
+
+## Screen ownership index
+
+| Screen / large surface | Responsibility | Spec |
+| --- | --- | --- |
+| Specs overview | Cross-Spec steering: attention, ready work, current work, archive entry. | Planned: specs-overview-ui-spec.md |
+| Specification workspace | One Specification: workflow meaning, high-priority state, Task collection, supporting evidence. | Planned: specification-workspace-ui-spec.md |
+| Task detail | One Task: decision state, intent, evidence, deterministic actions, related Session entry. | Planned: task-detail-ui-spec.md |
+| Full Session | Conversation/current work Primary with Context/Work/detail Secondary. | Planned: full-session-ui-spec.md |
+| Floating Session | Quick Session interaction without abandoning current Spec/Task context. | Planned: floating-session-ui-spec.md |
+| Project Settings | Project configuration, AI/agent policy, workflows, repository/Git, integrations. | [Project Settings UI spec](project-settings-ui-spec.md) |
+
+Do not create a separate screen spec merely because a backend entity exists. A screen earns a spec
+when it is a meaningful user surface with its own interaction and information hierarchy.
+
+## Expected screen-spec structure
+
+Use this as a guide, not as ceremony. Omit sections that genuinely do not apply.
+
+1. Purpose and ownership.
+2. User use cases.
+3. Entry points, navigation, return/deep-link behavior.
+4. Information hierarchy.
+5. Screen anatomy.
+6. Responsive contract.
+7. Interaction flows.
+8. States.
+9. Component/composition map.
+10. Visual/token contract.
+11. Local containment rules.
+12. Accessibility/focus/keyboard behavior.
+13. Data/read-model requirements.
+14. Storybook scenarios and acceptance criteria.
+15. Open questions/deferred decisions.
+
+The spec should be concrete enough that implementation does not need to rediscover the UX in
+Storybook, while still avoiding invented backend contracts or premature reusable components.
+
+## Screen-spec design rules
+
+- Describe behavior from concrete user use cases, not from backend entities.
+- Say what changes after a click and which context remains visible.
+- Distinguish navigation from mutation. Opening context must not accidentally perform a workflow action.
+- Name the existing Nevo UI primitive when a screen intentionally uses one.
+- Name product-owned compositions as product concepts, not as proposed generic design-system components.
+- Use semantic token roles; never freeze raw hex values in a screen spec.
+- Do not repeat global Primary/Secondary, Card, colour, or component-boundary rules unless the screen
+  has a stricter local constraint or a deliberate exception.
+- Prefer list/row, typography, spacing, and separators over Card surfaces.
+- If a Card/surface is explicitly required, state why it earns containment.
+- Never introduce Card nesting merely to make the layout look more structured.
+- Storybook scenarios should exercise the screen-level states and interaction flows, not just
+  isolated primitives.

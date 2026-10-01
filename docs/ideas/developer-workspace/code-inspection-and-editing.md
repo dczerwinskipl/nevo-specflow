@@ -100,7 +100,9 @@ decision.
 
 ## Workspace ownership
 
-local SpecFlow runtime owns the current workspace root.
+For this proposal, the local SpecFlow Runtime resolves and exposes the current workspace root to
+file/editor capabilities. This does not make filesystem path text the durable identity of a
+workspace or worktree.
 
 For the initial model this is simply:
 
@@ -111,7 +113,7 @@ currentWorkspaceRoot = root of the currently active worktree
 Every compact file operation and every full-IDE launch is resolved against that same root.
 
 The browser does not receive or choose arbitrary host filesystem roots. Absolute host paths should
-remain an implementation detail of local SpecFlow runtime.
+remain an implementation detail of the local Runtime boundary.
 
 Multi-worktree selection is a later capability. The current design should not prevent introducing a
 stable workspace/worktree identity later, but it does not require that identity in the initial UI

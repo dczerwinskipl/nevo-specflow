@@ -96,6 +96,28 @@ Frontend selects a compact subset of the canonical projection:
 | Cancel Turn | **missing** | **legacy-available** and capability-driven | Expose only if compact surface has room and product decides it is useful. |
 | Entry context (where floating was opened) | UI navigation state | not a backend Session fact | Keep product-local; do not persist as Session execution identity. |
 
+
+### Legacy field evidence
+
+Floating Session does not need a separate field contract.
+
+It reuses the Full Session canonical fields:
+
+~~~text
+Session identity/title/status/readiness/capabilities
+activeTurn
+pendingInteraction
+recent Turns
+currentActivity
+finalAnswer
+workSummary
+lastEventSeq
+authoritative current execution scope
+~~~
+
+Its only presentation-local data is \`openedFrom\` navigation context. That field must stay outside
+canonical Runtime execution identity.
+
 ### Proposed API direction
 
 No Floating-Session-specific backend API is needed.

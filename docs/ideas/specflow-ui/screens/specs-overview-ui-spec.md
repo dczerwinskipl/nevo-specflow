@@ -78,14 +78,14 @@ Frontend must not infer:
 
 ## 5. API availability / migration status
 
-| Need | New SpecFlow | Legacy Nevo | Direction |
+| Need | New SpecFlow | Old repo evidence | Direction |
 | --- | --- | --- | --- |
-| Active/archive Spec collection | **missing** | **legacy-available** via `GET /api/dashboard` | Preserve list identity/summary, replace legacy lifecycle ranking with new semantic steering projection. |
-| Create Specification | **missing** | **legacy-available** via `POST /api/specs` | Preserve scaffolding capability, not the old request shape: target UX requires title only, derives slug internally, uses deterministic workflow unconditionally, allows optional initial description/goal, and may continue into the shared Session-start interaction. |
-| Task summary/progress | **missing** | **legacy-available** in `/api/dashboard` and `GET /api/specs/:source/:slug/task-statuses` | Preserve useful task metadata, but do not treat legacy `ready`/status as complete new readiness model. |
+| Active/archive Spec collection | **missing** | **old-repo-available** via `GET /api/dashboard` | Preserve list identity/summary, replace legacy lifecycle ranking with new semantic steering projection. |
+| Create Specification | **missing** | **old-repo-available** via `POST /api/specs` | Preserve scaffolding capability, not the old request shape: target UX requires title only, derives slug internally, uses deterministic workflow unconditionally, allows optional initial description/goal, and may continue into the shared Session-start interaction. |
+| Task summary/progress | **missing** | **old-repo-available** in `/api/dashboard` and `GET /api/specs/:source/:slug/task-statuses` | Preserve useful task metadata, but do not treat legacy `ready`/status as complete new readiness model. |
 | Human-attention projection | **missing** | partial/legacy workflow-action evidence | Add explicit server-owned attention signals. |
 | Current single/batch execution | **missing** | partial Session/task association exists, but association is not authoritative execution | Add explicit current execution projection. |
-| Live invalidation | **missing** | **legacy-available** via `GET /api/events` specs-changed SSE | Reuse event-driven invalidation concept; exact new transport may differ. |
+| Live invalidation | **missing** | **old-repo-available** via `GET /api/events` specs-changed SSE | Reuse event-driven invalidation concept; exact new transport may differ. |
 
 Creation and collection reads are separate application capabilities. Creating a Specification does not
 require starting an agent Session; create-and-start composes Specification creation with the common

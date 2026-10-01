@@ -41,7 +41,7 @@ that the items are separate.
 
 Prefer:
 
-~~~text
+```text
 Item title
 metadata
 ────────────────
@@ -52,15 +52,15 @@ metadata
 
 Item title
 metadata
-~~~
+```
 
 over:
 
-~~~text
+```text
 [ Card: item title + metadata ]
 [ Card: item title + metadata ]
 [ Card: item title + metadata ]
-~~~
+```
 
 Use semantic lists, rows, whitespace, and dividers when needed. A grid does not automatically justify
 Cards.
@@ -75,7 +75,7 @@ Purely informational fragments normally do not need their own container.
 
 Examples that normally stay borderless:
 
-~~~text
+```text
 Name
 Jan Kowalski
 
@@ -84,7 +84,7 @@ jan@example.com
 
 Phone
 +48 123 123 123
-~~~
+```
 
 Use typography and spacing to express the relationship.
 
@@ -103,7 +103,7 @@ Linear reading surfaces should remain visually linear.
 
 Detail pages, Settings, review screens, forms, documentation, and Task details should normally be:
 
-~~~text
+```text
 Heading
 supporting text
 
@@ -115,15 +115,15 @@ content
 
 Section
 content
-~~~
+```
 
 not:
 
-~~~text
+```text
 [ Card: Section ]
 [ Card: Section ]
 [ Card: Section ]
-~~~
+```
 
 Cards interrupt vertical reading flow and add repeated visual boundaries.
 
@@ -134,11 +134,11 @@ must still be earned by the object rather than by the grid itself.
 
 Do not create a Card merely to bind a small cluster such as:
 
-~~~text
+```text
 icon
 title
 description
-~~~
+```
 
 Typography, alignment, and gap are enough to communicate that those elements belong together.
 
@@ -149,7 +149,7 @@ benefit from containment, but every part must still earn its visual weight.
 
 Before adding stronger containment, escalate through the lightest grouping mechanism that works:
 
-~~~text
+```text
 1. typography hierarchy
 2. whitespace / semantic spacing
 3. alignment
@@ -157,7 +157,7 @@ Before adding stronger containment, escalate through the lightest grouping mecha
 5. subtle alternate surface
 6. border / contained surface
 7. shadow
-~~~
+```
 
 Stop as soon as the grouping is clear.
 
@@ -173,18 +173,18 @@ Do not wrap a page in another Card when its host already provides the page surfa
 
 Normal:
 
-~~~text
+```text
 AppWorkspace
 └── Project Settings content
-~~~
+```
 
 Avoid:
 
-~~~text
+```text
 AppWorkspace
 └── Card
     └── Project Settings content
-~~~
+```
 
 The same rule applies to dialogs, inspectors, drawers, and floating windows: their host surface
 already provides containment.
@@ -195,15 +195,15 @@ A contained surface should not normally contain another visually contained surfa
 
 Avoid:
 
-~~~text
+```text
 Settings Card
 └── Provider Card
     └── Model Card
-~~~
+```
 
 Prefer:
 
-~~~text
+```text
 Settings
 
 Providers
@@ -213,7 +213,7 @@ Provider row
 Models
 Model row
 Model row
-~~~
+```
 
 Nested containment is allowed only when the child remains an independently meaningful object whose
 boundary is important even inside the parent.
@@ -260,11 +260,11 @@ Do not make an ordinary section a coloured Card merely because it has a status.
 
 Resolve:
 
-~~~text
+```text
 domain state
 -> semantic tone
 -> component treatment
-~~~
+```
 
 and keep the rest of the surface neutral.
 

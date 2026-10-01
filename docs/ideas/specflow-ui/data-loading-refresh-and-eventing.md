@@ -78,25 +78,25 @@ Every mutable screen/read-model response SHOULD expose a stable revision or equi
 
 Illustrative:
 
-~~~text
+```text
 {
   revision: "...",
   updatedAt: "...",
   ...
 }
-~~~
+```
 
 A revision changes only when the semantic response changes. It must not be random per request.
 
 Query/cache identity must include every dimension that changes meaning, for example:
 
-~~~text
+```text
 ["spec", specId]
 ["task", specId, taskId]
 ["session", sessionId]
 ["document", specId, documentId, contentRevision?]
 ["file-diff", provider, repository, prNumber, headSha, path]
-~~~
+```
 
 When route/resource scope changes, stale in-flight work must not update the new scope.
 
@@ -109,13 +109,13 @@ active scope.
 
 For live resources, prefer:
 
-~~~text
+```text
 1. fetch authoritative snapshot
 2. obtain snapshot revision/event cursor
 3. subscribe from that cursor
 4. apply newer events in order
 6. use slow safety refresh only as a backstop where justified
-~~~
+```
 
 Do not subscribe from event 0 after loading a current snapshot.
 
@@ -132,13 +132,13 @@ But events also must not be "debounced" by dropping intermediate semantic transi
 
 Required model:
 
-~~~text
+```text
 transport event stream
   -> ordered event buffer
   -> semantic reducer/process in sequence
   -> one batched cache/store transaction
   -> one coalesced UI notification/render
-~~~
+```
 
 When one semantic event changes several cached projections that the user sees together (for example
 Task detail + parent Specification steering summary), apply those cache changes inside one framework
@@ -183,7 +183,6 @@ coalesce the UI/cache write.
 
 ---
 
-
 ## 6. Interactive query debounce
 
 Debounce applies to user-driven remote lookup/search, not to canonical event processing.
@@ -211,7 +210,7 @@ For complex canonical entities such as Turn, a full normalized entity snapshot i
 
 For lightweight invalidation domains, a granular invalidation event is enough:
 
-~~~text
+```text
 {
   type: "spec.changed",
   specId,
@@ -222,7 +221,7 @@ For lightweight invalidation domains, a granular invalidation event is enough:
     steering?: true
   }
 }
-~~~
+```
 
 Do not send giant full-Spec payloads for every file watcher event.
 
@@ -269,24 +268,24 @@ Examples:
 
 Illustrative API:
 
-~~~text
+```text
 POST /api/specs/:specId/documents:batch
 
 {
   ids: ["task:TASK-02", "task:TASK-03", "review:latest"]
 }
-~~~
+```
 
 Response:
 
-~~~text
+```text
 {
   items: [
     { id, ok: true, revision, document },
     { id, ok: false, error }
   ]
 }
-~~~
+```
 
 Partial item failure must not fail unrelated successful items unless the domain requires atomicity.
 
@@ -296,10 +295,10 @@ Independent item requests issued nearly together may be merged through a short b
 
 Legacy evidence already contains a generic pattern using:
 
-~~~text
+```text
 window ~= 20 ms
 max batch size ~= 15
-~~~
+```
 
 Those values are useful evidence, not frozen new-product constants.
 
@@ -321,7 +320,7 @@ instead of firing N unrelated mutation requests from the browser.
 
 Example:
 
-~~~text
+```text
 POST /api/specs/:specId/tasks/actions:batch
 
 {
@@ -329,7 +328,7 @@ POST /api/specs/:specId/tasks/actions:batch
   taskIds: ["TASK-02", "TASK-03", "TASK-04"],
   idempotencyKey
 }
-~~~
+```
 
 The response must define its atomicity:
 
@@ -347,7 +346,7 @@ Conversely, do not batch unrelated mutations just to reduce HTTP request count.
 
 Use lightweight-first loading:
 
-~~~text
+```text
 collection/screen projection
   -> lightweight references/manifest
 
@@ -356,7 +355,7 @@ user opens or viewport predicts likely need
 
 deep/raw detail
   -> on demand only
-~~~
+```
 
 ### Documents
 
@@ -447,13 +446,16 @@ On failure, preserve last known data and show that refresh failed/staleness may 
 Refresh: **yes**, header/overflow.
 
 Refreshes:
+
 - current Active/Archive collection projection currently displayed.
 
 May also refetch on:
+
 - window focus;
 - relevant Spec change event.
 
 Does not:
+
 - fetch all Task documents;
 - fetch all Sessions.
 
@@ -462,10 +464,12 @@ Does not:
 Refresh: **yes**, header/overflow when live invalidation is unavailable or user explicitly requests.
 
 Refreshes together:
+
 - Specification steering projection;
 - Task semantic summaries/actions included in that projection.
 
 Does not blindly refresh:
+
 - every document body;
 - every historical Session;
 - every file/diff.
@@ -477,6 +481,7 @@ An open document/detail may have its own refresh/invalidation if its source chan
 Refresh: **usually implicit through parent/live invalidation**.
 
 If exposed in overflow:
+
 - refresh Task projection only;
 - refresh currently open evidence only when that evidence has its own stale signal or user explicitly
   asks.
@@ -486,6 +491,7 @@ If exposed in overflow:
 Refresh: **yes**, header/overflow.
 
 Refreshes:
+
 - Settings catalog/effective values;
 - plugin/config contribution list.
 
@@ -497,9 +503,11 @@ changed.
 Generic Refresh: **normally no** while live connection is healthy.
 
 Use:
+
 - Reconnect / Retry snapshot when transport/session is unavailable or desynchronized.
 
 Reconnect flow:
+
 1. fetch authoritative snapshot;
 2. resume events from returned cursor.
 
@@ -539,13 +547,13 @@ After a mutation:
 
 For long-running operations:
 
-~~~text
+```text
 command accepted
   -> operationId
   -> progress/event updates
   -> terminal operation event
   -> targeted authoritative refresh if final event did not already carry final projection
-~~~
+```
 
 Do not repeatedly invalidate on every progress event.
 

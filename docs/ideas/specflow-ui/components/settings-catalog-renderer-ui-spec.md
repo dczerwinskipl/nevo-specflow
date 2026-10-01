@@ -43,7 +43,7 @@ arbitrary plugin-supplied UI markup.
 
 Product-owned:
 
-~~~text
+```text
 SettingsCatalog
 ├── SettingsSectionNavigation
 ├── SettingsSection
@@ -55,7 +55,7 @@ SettingsCatalog
 │           ├── SettingAvailability
 │           └── SettingAction
 └── UnsupportedSettingNotice
-~~~
+```
 
 Use Nevo UI Typography, SideNavigation/Menu/Select, Button/Link, StatusIndicator, Collapsible,
 Separator, code surface, and form controls only when editing actually exists.
@@ -64,7 +64,7 @@ No generic SettingsCard/ProviderCard/ConfigCard.
 
 ## 3. Input descriptor
 
-~~~text
+```text
 {
   key,
   label,
@@ -85,7 +85,7 @@ No generic SettingsCard/ProviderCard/ConfigCard.
   availability?,
   capabilities?
 }
-~~~
+```
 
 The UI must distinguish configured value, effective value, default value, source/provenance,
 availability, editability, and sensitivity.
@@ -94,52 +94,52 @@ availability, editability, and sensitivity.
 
 Read-only default:
 
-~~~text
+```text
 Model
 Claude Sonnet 4.5
 Inherited from project default                              [source]
-~~~
+```
 
 With description:
 
-~~~text
+```text
 Context capacity
 Maximum context used for new Turns.
 
 200k
 Project configuration                                     [source]
-~~~
+```
 
 Unavailable:
 
-~~~text
+```text
 Provider
 Antigravity
 Unavailable · Sign in to use this provider
-~~~
+```
 
 Do not render label/value pairs inside Cards.
 
 ## 5. Value-kind renderer matrix
 
-| valueKind | Read-only rendering | Future editable control | Notes |
-| --- | --- | --- | --- |
-| string | text | TextField | displayFormat may change code/path/url treatment |
-| number | numeric text | Number/TextField | units belong in descriptor/display format |
-| boolean | Enabled/Disabled or Yes/No | Switch/Checkbox | disabled control is wrong for read-only |
-| enum | option label | Select/RadioGroup | options supplied by backend |
-| multi-enum | concise list | multi-select/Checkbox group | avoid chip soup |
-| path | monospace/path + Open | path picker later | workspace-relative preferred |
-| url | sanitized link | TextField later | no secret query leakage |
-| secret | configured/value-hidden state | secret input later | backend redaction mandatory |
-| code | compact code/source | code editor later | long values inspect deeper |
-| structured | readable summary + Inspect | structured editor later | no huge JSON dump |
-| duration | humanized duration | duration field later | canonical machine value retained |
-| size | humanized bytes/count | numeric + unit later | unit supplied semantically |
-| status | semantic text/status | usually read-only | no freeform color |
-| reference | label + target action | picker later | explicit target semantics |
-| list | concise list/summary | list editor later | long lists collapse/inspect |
-| unknown | unsupported notice | none | never silently stringify arbitrary object |
+| valueKind  | Read-only rendering           | Future editable control     | Notes                                            |
+| ---------- | ----------------------------- | --------------------------- | ------------------------------------------------ |
+| string     | text                          | TextField                   | displayFormat may change code/path/url treatment |
+| number     | numeric text                  | Number/TextField            | units belong in descriptor/display format        |
+| boolean    | Enabled/Disabled or Yes/No    | Switch/Checkbox             | disabled control is wrong for read-only          |
+| enum       | option label                  | Select/RadioGroup           | options supplied by backend                      |
+| multi-enum | concise list                  | multi-select/Checkbox group | avoid chip soup                                  |
+| path       | monospace/path + Open         | path picker later           | workspace-relative preferred                     |
+| url        | sanitized link                | TextField later             | no secret query leakage                          |
+| secret     | configured/value-hidden state | secret input later          | backend redaction mandatory                      |
+| code       | compact code/source           | code editor later           | long values inspect deeper                       |
+| structured | readable summary + Inspect    | structured editor later     | no huge JSON dump                                |
+| duration   | humanized duration            | duration field later        | canonical machine value retained                 |
+| size       | humanized bytes/count         | numeric + unit later        | unit supplied semantically                       |
+| status     | semantic text/status          | usually read-only           | no freeform color                                |
+| reference  | label + target action         | picker later                | explicit target semantics                        |
+| list       | concise list/summary          | list editor later           | long lists collapse/inspect                      |
+| unknown    | unsupported notice            | none                        | never silently stringify arbitrary object        |
 
 A new backend setting using an existing valueKind should not require screen-specific code.
 
@@ -150,34 +150,34 @@ renderer.
 
 Candidate semantics:
 
-~~~text
+```text
 explicit
 inherited
 default
 unset
 unavailable
 invalid
-~~~
+```
 
 Examples:
 
-~~~text
+```text
 Model
 Claude Sonnet 4.5
 Inherited · project default
-~~~
+```
 
-~~~text
+```text
 Model
 GPT-5.6
 Local override                                             [source]
-~~~
+```
 
-~~~text
+```text
 Default reviewer
 Not configured
 Uses workflow/runtime fallback
-~~~
+```
 
 The UI must not invent inherited/default from missing values. The server supplies valueState and
 sourceOfValue.
@@ -186,7 +186,7 @@ sourceOfValue.
 
 Payload:
 
-~~~json
+```json
 {
   "key": "github.token",
   "label": "GitHub token",
@@ -198,14 +198,14 @@ Payload:
   "readOnly": true,
   "availability": { "status": "configured" }
 }
-~~~
+```
 
 Mock:
 
-~~~text
+```text
 GitHub token
 Configured · value hidden
-~~~
+```
 
 Never show plaintext, raw serialized secrets, partial secret unless a separate security contract
 permits it, or a Copy action for a hidden secret by default.
@@ -216,17 +216,17 @@ Redaction happens before UI delivery.
 
 Read-only:
 
-~~~text
+```text
 Auto review
 Enabled
-~~~
+```
 
 or:
 
-~~~text
+```text
 Auto review
 Disabled
-~~~
+```
 
 Do not show read-only booleans as disabled Switches. A disabled interactive control looks editable
 but blocked and adds visual noise.
@@ -237,7 +237,7 @@ Use Switch only in an actual edit flow.
 
 Payload:
 
-~~~json
+```json
 {
   "key": "ai.defaultProvider",
   "label": "Default provider",
@@ -255,21 +255,21 @@ Payload:
   ],
   "readOnly": true
 }
-~~~
+```
 
 Read-only:
 
-~~~text
+```text
 Default provider
 Claude
-~~~
+```
 
 Deeper option inspection may show:
 
-~~~text
+```text
 Claude
 Antigravity · unavailable — Provider is not signed in
-~~~
+```
 
 The UI does not maintain its own provider label/availability registry.
 
@@ -277,7 +277,7 @@ The UI does not maintain its own provider label/availability registry.
 
 Payload:
 
-~~~json
+```json
 {
   "key": "project.config",
   "label": "Project configuration",
@@ -292,14 +292,14 @@ Payload:
   },
   "readOnly": true
 }
-~~~
+```
 
 Mock:
 
-~~~text
+```text
 Project configuration
 nevo.yaml                                                   [View]
-~~~
+```
 
 Use contextual File/source inspection.
 
@@ -307,19 +307,19 @@ Use contextual File/source inspection.
 
 Short:
 
-~~~text
+```text
 Ignored paths
 node_modules
 dist
 .cache
-~~~
+```
 
 Long:
 
-~~~text
+```text
 Ignored paths
 12 entries                                                  [Inspect]
-~~~
+```
 
 Do not render a 200-line JSON/YAML payload inline in normal Settings content.
 
@@ -329,43 +329,43 @@ The descriptor may carry a summary/count plus sourceRef/detailRef.
 
 Candidate statuses:
 
-~~~text
+```text
 available
 configured
 not-configured
 unavailable
 unsupported
 error
-~~~
+```
 
 Optional not configured:
 
-~~~text
+```text
 GitLab
 Not configured
-~~~
+```
 
 Optional unavailable:
 
-~~~text
+```text
 Antigravity
 Unavailable · Sign in required
-~~~
+```
 
 Required issue:
 
-~~~text
+```text
 AI provider
 Configuration required
 No enabled provider can start a Session.                    [Resolve]
-~~~
+```
 
 Unsupported:
 
-~~~text
+```text
 Feature X
 Not supported by this runtime version
-~~~
+```
 
 Only a required/actionable issue should normally get stronger attention treatment.
 
@@ -373,7 +373,7 @@ Only a required/actionable issue should normally get stronger attention treatmen
 
 Payload:
 
-~~~json
+```json
 {
   "id": "acme-ci",
   "title": "ACME CI",
@@ -394,7 +394,7 @@ Payload:
     }
   ]
 }
-~~~
+```
 
 Render through the same section/group/setting language. No plugin-specific Card styling by default.
 
@@ -404,7 +404,7 @@ A bespoke plugin screen requires a separate explicit UI extension contract.
 
 Payload:
 
-~~~json
+```json
 {
   "key": "future.setting",
   "label": "Future setting",
@@ -412,15 +412,15 @@ Payload:
   "effectiveValue": { "opaque": true },
   "readOnly": true
 }
-~~~
+```
 
 Mock:
 
-~~~text
+```text
 Future setting
 Unsupported setting format
 This UI version cannot render graph-expression.              [Details]
-~~~
+```
 
 Rules:
 
@@ -434,7 +434,7 @@ Rules:
 
 Payload:
 
-~~~json
+```json
 {
   "id": "plugin-x",
   "title": "Plugin X",
@@ -445,21 +445,21 @@ Payload:
   },
   "groups": []
 }
-~~~
+```
 
 Mock:
 
-~~~text
+```text
 Plugin X
 Settings unavailable
 Plugin failed to provide settings.                           [Retry]
-~~~
+```
 
 Core Settings remain usable.
 
 ## 16. Group layout
 
-~~~text
+```text
 AI / Agents
 
 Defaults
@@ -474,7 +474,7 @@ Antigravity            Unavailable · sign in required
 Agent profiles
 Implementer            UI / general
 Reviewer               Read-only review
-~~~
+```
 
 Use aligned rows when it improves scanning.
 
@@ -491,7 +491,7 @@ Do not expose disabled edit controls now as placeholders.
 
 A future mutation should likely include an expected revision:
 
-~~~text
+```text
 PATCH /api/project/settings
 
 {
@@ -500,7 +500,7 @@ PATCH /api/project/settings
     { key, value }
   ]
 }
-~~~
+```
 
 Server returns a new authoritative catalog/revision or conflict.
 
@@ -555,7 +555,7 @@ Setting descriptor.
 
 ### string
 
-~~~json
+```json
 {
   "key": "project.name",
   "label": "Project name",
@@ -564,11 +564,11 @@ Setting descriptor.
   "valueState": "explicit",
   "readOnly": true
 }
-~~~
+```
 
 ### number
 
-~~~json
+```json
 {
   "key": "ai.maxRetries",
   "label": "Maximum retries",
@@ -577,11 +577,11 @@ Setting descriptor.
   "valueState": "explicit",
   "readOnly": true
 }
-~~~
+```
 
 ### boolean
 
-~~~json
+```json
 {
   "key": "review.auto",
   "label": "Automatic review",
@@ -590,13 +590,13 @@ Setting descriptor.
   "valueState": "explicit",
   "readOnly": true
 }
-~~~
+```
 
 Disabled fixture uses the same payload with `effectiveValue: false`.
 
 ### multi-enum
 
-~~~json
+```json
 {
   "key": "review.requiredRoles",
   "label": "Required roles",
@@ -610,11 +610,11 @@ Disabled fixture uses the same payload with `effectiveValue: false`.
   ],
   "readOnly": true
 }
-~~~
+```
 
 ### url
 
-~~~json
+```json
 {
   "key": "integration.endpoint",
   "label": "Endpoint",
@@ -623,11 +623,11 @@ Disabled fixture uses the same payload with `effectiveValue: false`.
   "valueState": "explicit",
   "readOnly": true
 }
-~~~
+```
 
 ### code
 
-~~~json
+```json
 {
   "key": "workflow.condition",
   "label": "Condition",
@@ -637,14 +637,14 @@ Disabled fixture uses the same payload with `effectiveValue: false`.
   "valueState": "explicit",
   "readOnly": true
 }
-~~~
+```
 
 Long-code fixture uses a large value plus a semantic `sourceRef/detailRef` and should collapse to
 summary + Inspect.
 
 ### structured
 
-~~~json
+```json
 {
   "key": "workflow.policy",
   "label": "Workflow policy",
@@ -656,13 +656,13 @@ summary + Inspect.
   "valueState": "explicit",
   "readOnly": true
 }
-~~~
+```
 
 Normal view shows a concise summary + Inspect, not raw JSON.
 
 ### duration
 
-~~~json
+```json
 {
   "key": "runtime.timeoutMs",
   "label": "Runtime timeout",
@@ -672,11 +672,11 @@ Normal view shows a concise summary + Inspect, not raw JSON.
   "valueState": "explicit",
   "readOnly": true
 }
-~~~
+```
 
 ### size
 
-~~~json
+```json
 {
   "key": "ai.contextCapacity",
   "label": "Context capacity",
@@ -686,11 +686,11 @@ Normal view shows a concise summary + Inspect, not raw JSON.
   "valueState": "explicit",
   "readOnly": true
 }
-~~~
+```
 
 ### status
 
-~~~json
+```json
 {
   "key": "provider.claude.status",
   "label": "Claude",
@@ -699,11 +699,11 @@ Normal view shows a concise summary + Inspect, not raw JSON.
   "availability": { "status": "available" },
   "readOnly": true
 }
-~~~
+```
 
 ### reference
 
-~~~json
+```json
 {
   "key": "workflow.default",
   "label": "Default workflow",
@@ -715,11 +715,11 @@ Normal view shows a concise summary + Inspect, not raw JSON.
   "capabilities": { "canInspectSource": true },
   "readOnly": true
 }
-~~~
+```
 
 ### list
 
-~~~json
+```json
 {
   "key": "repository.ignoredPaths",
   "label": "Ignored paths",
@@ -728,13 +728,13 @@ Normal view shows a concise summary + Inspect, not raw JSON.
   "valueState": "explicit",
   "readOnly": true
 }
-~~~
+```
 
 ### inherited/default/unset
 
 Inherited:
 
-~~~json
+```json
 {
   "key": "ai.model",
   "label": "Model",
@@ -746,14 +746,14 @@ Inherited:
   "sourceOfValue": { "kind": "project-default" },
   "readOnly": true
 }
-~~~
+```
 
 Default uses `valueState: "default"`; unset uses `valueState: "unset"` with no effective value and
 an optional explanation/provenance supplied by the server.
 
 ### unavailable optional
 
-~~~json
+```json
 {
   "key": "provider.antigravity",
   "label": "Antigravity",
@@ -766,11 +766,11 @@ an optional explanation/provenance supplied by the server.
   "required": false,
   "readOnly": true
 }
-~~~
+```
 
 ### required issue
 
-~~~json
+```json
 {
   "key": "ai.provider",
   "label": "AI provider",
@@ -786,7 +786,7 @@ an optional explanation/provenance supplied by the server.
   },
   "readOnly": false
 }
-~~~
+```
 
 Plugin and unknown-kind fixture payloads are defined in sections 13–15.
 
@@ -794,7 +794,7 @@ Plugin and unknown-kind fixture payloads are defined in sections 13–15.
 
 Required:
 
-~~~text
+```text
 settings-renderer/string
 settings-renderer/number
 settings-renderer/boolean-enabled
@@ -820,7 +820,7 @@ settings-renderer/required-issue
 settings-renderer/plugin-section
 settings-renderer/plugin-failed
 settings-renderer/unknown-value-kind
-~~~
+```
 
 Every fixture uses a concrete descriptor payload.
 

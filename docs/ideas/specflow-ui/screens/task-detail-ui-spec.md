@@ -49,6 +49,7 @@ It does not own global Specification navigation, Full Session layout, or raw pro
 ## 3. Entry and navigation
 
 Entry:
+
 - Task row from Specification;
 - concrete Task signal from Specs Overview after routing to the owning Specification;
 - Session Context -> Task detail.
@@ -56,10 +57,12 @@ Entry:
 Task Detail is local Secondary/pushed-detail state. It is not a standalone URL/deep-link contract.
 
 Wide/Compact:
+
 - Specification or Session remains Primary;
 - Task occupies Secondary.
 
 Narrow:
+
 - Task replaces visible Primary context as pushed detail;
 - Back returns to originating Specification/Session context.
 
@@ -83,23 +86,22 @@ workflow state, or execution membership.
 
 ## 5. API availability / migration status
 
-| Need | New SpecFlow | Old repo evidence | Direction |
-| --- | --- | --- | --- |
-| Task identity/status/dependencies | **missing** | **old-repo-available** in \`GET /api/dashboard\`, \`.../task-statuses\`, manifest | Preserve factual metadata; replace legacy universal lifecycle semantics. |
-| Task document/body | **missing** | **old-repo-available** via \`GET /api/specs/:source/:slug/content/:docId\` | Strong migration candidate. |
-| Per-action readiness/workflow projection | **missing** | **old-repo-available** via \`GET /api/specs/active/:slug/actions\` | Preserve server-owned readiness and workflow projection. |
-| Human review command | **missing** | **old-repo-available** via \`POST /api/specs/:slug/tasks/:taskId/workflow/human-decision\` | Preserve explicit command behavior. |
-| Related Sessions | **missing** | **old-repo-available** via \`GET /api/agent-sessions?specId=...&taskId=...\` | Keep association separate from current execution. |
-| Current execution membership / batch context | **missing** | partial legacy evidence only | Add authoritative current-execution projection. |
-| Handover/artifact/change/verification summary | **missing** | partial scattered legacy evidence | Add explicit references/read model; do not invent one generic Attachments bucket. |
-| Resume vs recovery | **missing** | deterministic legacy flow has behavior/evidence, not one clean Task detail DTO | Add stable application projection. |
-
+| Need                                          | New SpecFlow | Old repo evidence                                                                          | Direction                                                                         |
+| --------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| Task identity/status/dependencies             | **missing**  | **old-repo-available** in \`GET /api/dashboard\`, \`.../task-statuses\`, manifest          | Preserve factual metadata; replace legacy universal lifecycle semantics.          |
+| Task document/body                            | **missing**  | **old-repo-available** via \`GET /api/specs/:source/:slug/content/:docId\`                 | Strong migration candidate.                                                       |
+| Per-action readiness/workflow projection      | **missing**  | **old-repo-available** via \`GET /api/specs/active/:slug/actions\`                         | Preserve server-owned readiness and workflow projection.                          |
+| Human review command                          | **missing**  | **old-repo-available** via \`POST /api/specs/:slug/tasks/:taskId/workflow/human-decision\` | Preserve explicit command behavior.                                               |
+| Related Sessions                              | **missing**  | **old-repo-available** via \`GET /api/agent-sessions?specId=...&taskId=...\`               | Keep association separate from current execution.                                 |
+| Current execution membership / batch context  | **missing**  | partial legacy evidence only                                                               | Add authoritative current-execution projection.                                   |
+| Handover/artifact/change/verification summary | **missing**  | partial scattered legacy evidence                                                          | Add explicit references/read model; do not invent one generic Attachments bucket. |
+| Resume vs recovery                            | **missing**  | deterministic legacy flow has behavior/evidence, not one clean Task detail DTO             | Add stable application projection.                                                |
 
 ### Old-repo field evidence
 
 Legacy Task/list projections already expose:
 
-~~~text
+```text
 SpecificationTask
   id
   title
@@ -121,11 +123,11 @@ SpecificationTaskActionGate
   currentStep?
   attempt?
   workflowState?
-~~~
+```
 
 Legacy Task document reads also provide:
 
-~~~text
+```text
 id
 docId
 kind
@@ -136,7 +138,7 @@ markdown
 status
 order
 dependsOn[]
-~~~
+```
 
 Migrate factual identity/order/dependency/document fields and server-owned action facts.
 
@@ -147,13 +149,13 @@ Do not preserve \`ready\`, \`terminal\`, or legacy \`stage\` as sufficient new-U
 
 Illustrative:
 
-~~~text
+```text
 GET /api/specs/:specId/tasks/:taskId
-~~~
+```
 
 Response:
 
-~~~text
+```text
 {
   revision,
   updatedAt,
@@ -233,20 +235,20 @@ Response:
     }
   }
 }
-~~~
+```
 
 Suggested commands:
 
-~~~text
+```text
 POST /api/specs/:specId/tasks/:taskId/actions/:actionId
 POST /api/specs/:specId/tasks/:taskId/decisions
-~~~
+```
 
 Decision body example:
 
-~~~text
+```text
 { decision: "approve" | "request-changes", feedback? }
-~~~
+```
 
 Field coverage notes:
 
@@ -290,9 +292,10 @@ Behavior:
 Active/current Session is visually distinguishable from historical/contextual Sessions. Session
 labels use facts such as provider, archetype/role, batch/scope, step/attempt when available; they do
 not infer that an archetype alone proves completion of a review/implementation stage.
+
 ## 7. Pseudo-layout
 
-~~~text
+```text
 ┌──────────────────────────────────────┬──────────────────────────────────────┐
 │ Specification Primary                │ TASK-03 — Deterministic admission    │
 │                                      │ Review required                 [×]  │
@@ -313,9 +316,10 @@ not infer that an archetype alone proves completion of a review/implementation s
 │                                      │                                      │
 │                                      │ [Review / decide]                    │
 └──────────────────────────────────────┴──────────────────────────────────────┘
-~~~
+```
 
 No Card per section.
+
 ## 8. Screen anatomy
 
 - header: Task id/title + workflow meaning + Close/Back;
@@ -328,13 +332,16 @@ No Card per section.
 - deep inspection.
 
 Optional sections disappear when unavailable.
+
 ## 9. Responsive contract
 
 Wide/Compact:
+
 - Secondary alongside parent Primary;
 - Task owns its own header/actions.
 
 Narrow:
+
 - pushed Task surface;
 - Back to parent;
 - same evidence/action order;
@@ -343,15 +350,19 @@ Narrow:
 ## 10. Interaction flows
 
 ### Review
+
 Review-required -> inspect evidence -> deliberate Review/decide -> workflow-owned decision controls.
 
 ### Ready
+
 Ready -> understand what Start does -> Start -> authoritative validation/dispatch.
 
 ### Current execution / Session history
+
 Show authoritative current execution separately from related history.
 
 Opening a Session:
+
 - Wide -> Floating Session for conversation access, with Full Session available;
 - Compact/Narrow -> Full Session directly.
 
@@ -359,15 +370,19 @@ A workflow/history entry that references a Session opens that Session. Do not in
 "proof details" page. A future Turn anchor may scroll/open the exact completion Turn.
 
 ### Evidence
+
 Handover/verification/artifact/change reference -> same Secondary local stack -> Back returns to Task.
 Artifacts are read targets; workflow Human Step owns any approve/reject mutation.
 
 ### Resume
+
 Safe settled execution + legal work remains -> Continue.
 
 ### Recovery
+
 Ambiguous durable operation -> Inspect recovery -> authoritative recovery action. Do not label it
 ordinary Continue.
+
 ## 11. States
 
 - ready;
@@ -381,7 +396,6 @@ ordinary Continue.
 - recovery required;
 - archived/read-only;
 - evidence unavailable.
-
 
 ## 12. Data loading, events, and Refresh
 
@@ -429,18 +443,18 @@ The detailed decision/evidence composition is defined in
 
 ## 13. Component / composition map
 
-| Need | Composition |
-| --- | --- |
-| Secondary shell | AppWorkspace runtime Secondary |
-| Header | WorkspaceHeader |
-| Task prose | Typography / MarkdownDocument |
-| Decision summary | product composition; Alert only when stronger containment is justified |
-| Evidence disclosure | Collapsible / rows / links |
-| Chronological history | Timeline |
-| Status | StatusIndicator/Badge sparingly |
-| Actions | Button/Menu/AlertDialog when confirmation needed |
-| Session entry | product conversation target + direct Full Session action |
-| File/change/evidence detail | replace current Task Secondary via local detail stack |
+| Need                        | Composition                                                            |
+| --------------------------- | ---------------------------------------------------------------------- |
+| Secondary shell             | AppWorkspace runtime Secondary                                         |
+| Header                      | WorkspaceHeader                                                        |
+| Task prose                  | Typography / MarkdownDocument                                          |
+| Decision summary            | product composition; Alert only when stronger containment is justified |
+| Evidence disclosure         | Collapsible / rows / links                                             |
+| Chronological history       | Timeline                                                               |
+| Status                      | StatusIndicator/Badge sparingly                                        |
+| Actions                     | Button/Menu/AlertDialog when confirmation needed                       |
+| Session entry               | product conversation target + direct Full Session action               |
+| File/change/evidence detail | replace current Task Secondary via local detail stack                  |
 
 ## 14. Visual/token contract
 
@@ -488,6 +502,7 @@ The detailed decision/evidence composition is defined in
 - Session metadata without inferred role completion;
 - no optional evidence;
 - narrow pushed detail.
+
 ## 18. Acceptance criteria
 
 - state/reason understood before mutation;
@@ -500,6 +515,7 @@ The detailed decision/evidence composition is defined in
 - clicking a referenced Session opens that Session directly;
 - terminal Turn does not imply Task complete;
 - linear detail remains borderless-first.
+
 ## 19. Open questions
 
 - canonical Handover/artifact references;

@@ -58,7 +58,7 @@ This is a **SpecFlow product composition**, not a generic design-system Chat com
 
 Recommended product composition:
 
-~~~text
+```text
 SessionConversation
 ├── UserMessage
 ├── AgentMessage / FinalAnswer
@@ -71,7 +71,7 @@ SessionConversation
 ├── TurnOutcomeNotice
 ├── NewActivityIndicator
 └── MessageComposer
-~~~
+```
 
 Use Nevo UI primitives for Typography, MarkdownDocument, Button/IconButton, semantic status/Spinner
 where useful, MessageComposer, and Alert only for exceptional error/attention states.
@@ -94,7 +94,7 @@ The conversation consumes canonical Session/Turn/Work projections.
 
 Relevant payload fields:
 
-~~~text
+```text
 Session
   id
   status
@@ -121,7 +121,7 @@ Work
   reasoning
   tool
   interaction
-~~~
+```
 
 Conversation presentation MUST NOT reclassify raw provider events.
 
@@ -129,7 +129,7 @@ Conversation presentation MUST NOT reclassify raw provider events.
 
 From strongest normal content to weakest supporting content:
 
-~~~text
+```text
 User request
 Agent final answer / meaningful agent response
 Pending human interaction                     when actionable
@@ -138,7 +138,7 @@ Current activity                              live/status line
 Compact Work summary
 Terminal diagnostic                           only when relevant
 Technical metadata                            normally not in conversation
-~~~
+```
 
 Current activity may be visually persistent near the composer, but it must not duplicate the same
 streaming text with equal weight inside the conversation.
@@ -161,12 +161,12 @@ Rules:
 
 Example:
 
-~~~text
+```text
                                       ┌─────────────────────────────────────┐
                                       │ Review the implementation and run  │
                                       │ the relevant tests.                │
                                       └─────────────────────────────────────┘
-~~~
+```
 
 ### 5.2 Agent final answer
 
@@ -174,11 +174,11 @@ Final answer is borderless-first Markdown content.
 
 Do not wrap every assistant answer in a Card.
 
-~~~text
+```text
 Review completed.
 
 I found one issue in the recovery path...
-~~~
+```
 
 ### 5.3 Commentary
 
@@ -196,9 +196,9 @@ Rules:
 
 Example:
 
-~~~text
+```text
 Checking the admission path and the persisted finish-operation state…
-~~~
+```
 
 Commentary is not a status badge.
 
@@ -208,9 +208,9 @@ Tools do not appear as chat bubbles.
 
 Adjacent happy-path work is summarized as one compact semantic line/burst.
 
-~~~text
+```text
   Read 4 files · searched repository · ran tests          >
-~~~
+```
 
 The trailing affordance opens Work at the corresponding history location.
 
@@ -220,20 +220,20 @@ The normal Session stream should not permanently display a large Work log.
 
 Collapsed form is one line:
 
-~~~text
+```text
 Working · 1 read · 2 searches · 4 commands                    [Expand]
-~~~
+```
 
 or, when current activity is more useful:
 
-~~~text
+```text
 Running tests · specflow-runtime                              [Expand]
-~~~
+```
 
 Expanded form stays bounded to roughly **5–7 compact lines/rows** and uses Nevo UI `ScrollArea`
 with edge indicators:
 
-~~~text
+```text
 Checking the admission path…
   1 read · 2 searches · 4 commands
 
@@ -241,7 +241,7 @@ Verifying the recovery path…
   2 reads · tests passed
 
 ⟳ Executing command · pnpm check
-~~~
+```
 
 The expanded block follows chat direction: oldest at the top, newest/current at the bottom.
 
@@ -256,13 +256,13 @@ Current activity is canonical Runtime state.
 
 Examples:
 
-~~~text
+```text
 ○ Waiting for model response…
 ◌ Thinking…
 ⟳ Running tests · tools/dashboard
 ⟳ 3 tools running
 ! Agent needs your input
-~~~
+```
 
 Do not infer current activity from the last historical Work item.
 
@@ -272,7 +272,7 @@ A pending interaction is one of the few places where stronger containment is jus
 an independent required user action. Keep it visible/actionable in Conversation Primary on every
 breakpoint; arrival of the interaction must not automatically replace the user's current Secondary.
 
-~~~text
+```text
 ┌────────────────────────────────────────────────────────────┐
 │ Permission required                                        │
 │                                                            │
@@ -281,30 +281,32 @@ breakpoint; arrival of the interaction must not automatically replace the user's
 │                                                            │
 │ [Deny]                                      [Allow]         │
 └────────────────────────────────────────────────────────────┘
-~~~
+```
 
 Resolved/expired interactions lose their controls and become quiet history.
 
 ### 5.8 Terminal outcome
 
 Completed Turn:
+
 - no celebratory success Card;
 - final answer/history is enough.
 
 Failed/interrupted Turn:
+
 - one concise human-readable outcome after the relevant work;
 - raw stack/provider output is deeper detail.
 
-~~~text
+```text
 ! Turn failed
   Build command exited with code 1.                         [Inspect work]
-~~~
+```
 
 Earlier historical failures are quieter than the latest actionable failure.
 
 ## 6. Conversation grouping model
 
-~~~text
+```text
 Conversation / L1
   human conversation + collapsed/expanded compact Work activity + current activity
 
@@ -316,7 +318,7 @@ Work item / L3
 
 ToolAction / raw detail / L4
   deepest technical inspection
-~~~
+```
 
 Conversation grouping is deliberately more semantic and compact than Work/L2.
 
@@ -340,7 +342,7 @@ Do not group across a boundary merely because the hidden UI would look cleaner.
 
 Canonical sequence:
 
-~~~text
+```text
 commentary A
 read file 1
 read file 2
@@ -350,11 +352,11 @@ command
 test
 commentary C
 final answer
-~~~
+```
 
 Compact conversation:
 
-~~~text
+```text
 Checking the current implementation…
 
   Read 2 files · searched code                              >
@@ -366,7 +368,7 @@ The admission guard is in the workflow service. Verifying behavior…
 The implementation is consistent with the current contract.
 
 Final answer...
-~~~
+```
 
 The two tool bursts remain separate because Commentary B is a semantic boundary.
 
@@ -374,9 +376,9 @@ The two tool bursts remain separate because Commentary B is a semantic boundary.
 
 A Work burst SHOULD show at most about three semantic clauses.
 
-~~~text
+```text
 Read 8 files · searched code · ran tests · +4 more          >
-~~~
+```
 
 Do not generate a long sentence containing every tool invocation.
 
@@ -384,11 +386,11 @@ Do not generate a long sentence containing every tool invocation.
 
 Never hide a failed/cancelled/interrupted tool inside a successful aggregate.
 
-~~~text
+```text
   Read 4 files · searched code                              >
 ! Command failed · pnpm test                                >
   Edited 2 files                                            >
-~~~
+```
 
 If the Turn later recovers, the failed item remains part of history but does not need a page-level
 error once no longer actionable.
@@ -402,25 +404,25 @@ loop noise.
 
 Canonical:
 
-~~~text
+```text
 "Waiting for the test result…"
 tool
 "Waiting for the test result…"
 tool
 "Waiting for the test result…"
-~~~
+```
 
 Conversation may render once:
 
-~~~text
+```text
 Waiting for the test result…
-~~~
+```
 
 Work/L2 may show the prose once with a quiet repeat count:
 
-~~~text
+```text
 Waiting for the test result… ×3
-~~~
+```
 
 Work/L3 preserves all three canonical items.
 
@@ -450,11 +452,9 @@ prominent historical row.
 
 Payload:
 
-~~~json
+```json
 {
-  "historicalWork": [
-    { "id": "read-1", "type": "tool", "kind": "read", "status": "completed" }
-  ],
+  "historicalWork": [{ "id": "read-1", "type": "tool", "kind": "read", "status": "completed" }],
   "currentActivity": {
     "kind": "tool",
     "subjectId": "test-2",
@@ -462,15 +462,15 @@ Payload:
     "startedAt": "2026-10-01T10:00:00Z"
   }
 }
-~~~
+```
 
 Compact UI:
 
-~~~text
+```text
   Read file                                                >
 
 ⟳ Run tests
-~~~
+```
 
 Do not additionally render Run tests in the historical Work burst until it settles into history.
 
@@ -480,7 +480,7 @@ Do not additionally render Run tests in the historical Work burst until it settl
 
 Fixture: session-conversation/waiting-for-model
 
-~~~json
+```json
 {
   "turnId": "turn-01",
   "status": {
@@ -497,16 +497,16 @@ Fixture: session-conversation/waiting-for-model
   },
   "finalAnswer": null
 }
-~~~
+```
 
-~~~text
+```text
 You
 Review TASK-03 and run the tests.
 
 ○ Waiting for model response…
 
 [ Message…                                      ]
-~~~
+```
 
 Tone: calm, not attention/warning.
 
@@ -514,7 +514,7 @@ Tone: calm, not attention/warning.
 
 Fixture: session-conversation/streaming-commentary
 
-~~~json
+```json
 {
   "status": {
     "status": "active",
@@ -543,13 +543,13 @@ Fixture: session-conversation/streaming-commentary
     "startedAt": "2026-10-01T10:01:00Z"
   }
 }
-~~~
+```
 
-~~~text
+```text
 Checking the workflow admission path and recovery state…▍
 
 Generating response…
-~~~
+```
 
 Do not repeat the full Commentary text again in the live-status line. The status line reduces to a
 generic live cue while the streaming text itself is visible.
@@ -558,7 +558,7 @@ generic live cue while the streaming text itself is visible.
 
 Fixture: session-conversation/active-tool
 
-~~~json
+```json
 {
   "historicalWork": [
     {
@@ -587,19 +587,19 @@ Fixture: session-conversation/active-tool
     "startedAt": "2026-10-01T10:02:00Z"
   }
 }
-~~~
+```
 
-~~~text
+```text
   Read file · service.mjs                                  >
 
 ⟳ Run tests · specflow-runtime
-~~~
+```
 
 ### S04 — mixed Commentary and tools
 
 Fixture: session-conversation/mixed-work
 
-~~~json
+```json
 {
   "historicalWork": [
     {
@@ -698,9 +698,9 @@ Fixture: session-conversation/mixed-work
     "completedAt": "2026-10-01T10:00:31Z"
   }
 }
-~~~
+```
 
-~~~text
+```text
 Checking the current implementation…
 
   Read 2 files · searched code                              >
@@ -710,7 +710,7 @@ The guard is in the admission path. Verifying the recovery transition…
   Ran command · tests passed                                >
 
 The recovery path is consistent with the current workflow contract.
-~~~
+```
 
 This fixture is mandatory because it validates the exact mixed-data grouping rule.
 
@@ -720,14 +720,52 @@ Fixture: session-conversation/work-activity-disclosure
 
 Payload excerpt:
 
-~~~json
+```json
 {
   "historicalWork": [
-    { "id": "c1", "seq": 1, "type": "commentary", "text": "Checking the admission path…", "status": "completed" },
-    { "id": "r1", "seq": 2, "type": "tool", "kind": "read", "title": "Read file", "status": "completed", "actions": [] },
-    { "id": "s1", "seq": 3, "type": "tool", "kind": "search", "title": "Search code", "status": "completed", "actions": [] },
-    { "id": "s2", "seq": 4, "type": "tool", "kind": "search", "title": "Search code", "status": "completed", "actions": [] },
-    { "id": "cmd1", "seq": 5, "type": "tool", "kind": "command", "title": "Run command", "status": "completed", "actions": [] }
+    {
+      "id": "c1",
+      "seq": 1,
+      "type": "commentary",
+      "text": "Checking the admission path…",
+      "status": "completed"
+    },
+    {
+      "id": "r1",
+      "seq": 2,
+      "type": "tool",
+      "kind": "read",
+      "title": "Read file",
+      "status": "completed",
+      "actions": []
+    },
+    {
+      "id": "s1",
+      "seq": 3,
+      "type": "tool",
+      "kind": "search",
+      "title": "Search code",
+      "status": "completed",
+      "actions": []
+    },
+    {
+      "id": "s2",
+      "seq": 4,
+      "type": "tool",
+      "kind": "search",
+      "title": "Search code",
+      "status": "completed",
+      "actions": []
+    },
+    {
+      "id": "cmd1",
+      "seq": 5,
+      "type": "tool",
+      "kind": "command",
+      "title": "Run command",
+      "status": "completed",
+      "actions": []
+    }
   ],
   "currentActivity": {
     "kind": "tool",
@@ -738,22 +776,22 @@ Payload excerpt:
     "startedAt": "2026-10-01T10:10:00Z"
   }
 }
-~~~
+```
 
 Collapsed:
 
-~~~text
+```text
 Working · 1 read · 2 searches · 1 command                    [Expand]
-~~~
+```
 
 Expanded:
 
-~~~text
+```text
 Checking the admission path…
   1 read · 2 searches · 1 command
 
 ⟳ Run command · pnpm check
-~~~
+```
 
 Expanded content is bounded by ScrollArea; it does not grow without limit.
 
@@ -762,7 +800,7 @@ Expanded content is bounded by ScrollArea; it does not grow without limit.
 Fixture: session-conversation/work-activity-disclosure
 session-conversation/multiple-active-tools
 
-~~~json
+```json
 {
   "currentActivity": {
     "kind": "tool",
@@ -773,11 +811,11 @@ session-conversation/multiple-active-tools
     "startedAt": "2026-10-01T10:10:00Z"
   }
 }
-~~~
+```
 
-~~~text
+```text
 ⟳ 3 tools running                                      [Work]
-~~~
+```
 
 Do not list three spinners in the conversation.
 
@@ -785,7 +823,7 @@ Do not list three spinners in the conversation.
 
 Fixture: session-conversation/permission
 
-~~~json
+```json
 {
   "pendingInteraction": {
     "id": "interaction-1",
@@ -802,9 +840,9 @@ Fixture: session-conversation/permission
     "reason": "Permission response required"
   }
 }
-~~~
+```
 
-~~~text
+```text
 ┌────────────────────────────────────────────────────────────┐
 │ Permission required                                        │
 │ Run command · pnpm test                                    │
@@ -812,7 +850,7 @@ Fixture: session-conversation/permission
 │                                                            │
 │ [Deny]                                      [Allow]         │
 └────────────────────────────────────────────────────────────┘
-~~~
+```
 
 Composer follows authoritative readiness. Do not let a normal Send path bypass a required response.
 
@@ -820,7 +858,7 @@ Composer follows authoritative readiness. Do not let a normal Send path bypass a
 
 Fixture: session-conversation/question
 
-~~~json
+```json
 {
   "pendingInteraction": {
     "id": "interaction-2",
@@ -840,9 +878,9 @@ Fixture: session-conversation/question
     ]
   }
 }
-~~~
+```
 
-~~~text
+```text
 ┌────────────────────────────────────────────────────────────┐
 │ Migration strategy                                         │
 │ Which compatibility strategy should be used?               │
@@ -854,13 +892,13 @@ Fixture: session-conversation/question
 │                                                            │
 │                                             [Submit]        │
 └────────────────────────────────────────────────────────────┘
-~~~
+```
 
 ### S09 — pending confirmation
 
 Fixture: session-conversation/confirmation
 
-~~~json
+```json
 {
   "pendingInteraction": {
     "id": "interaction-3",
@@ -871,9 +909,9 @@ Fixture: session-conversation/confirmation
     "details": "3 modified files"
   }
 }
-~~~
+```
 
-~~~text
+```text
 ┌────────────────────────────────────────────────────────────┐
 │ Discard local changes?                                     │
 │ This will discard the uncommitted workspace changes.       │
@@ -881,7 +919,7 @@ Fixture: session-conversation/confirmation
 │                                                            │
 │ [Cancel]                                   [Discard]        │
 └────────────────────────────────────────────────────────────┘
-~~~
+```
 
 Destructive confirmation uses semantic danger action treatment.
 
@@ -889,7 +927,7 @@ Destructive confirmation uses semantic danger action treatment.
 
 Fixture: session-conversation/tool-failed-turn-active
 
-~~~json
+```json
 {
   "status": {
     "status": "active",
@@ -921,13 +959,13 @@ Fixture: session-conversation/tool-failed-turn-active
     "startedAt": "2026-10-01T10:20:00Z"
   }
 }
-~~~
+```
 
-~~~text
+```text
 ! Command failed · pnpm test                                >
 
 The test failed. Inspecting the failure before retrying…▍
-~~~
+```
 
 A failed Tool is not a failed Turn.
 
@@ -935,7 +973,7 @@ A failed Tool is not a failed Turn.
 
 Fixture: session-conversation/turn-failed
 
-~~~json
+```json
 {
   "status": {
     "status": "terminal",
@@ -960,12 +998,12 @@ Fixture: session-conversation/turn-failed
     "completedAt": "2026-10-01T10:30:00Z"
   }
 }
-~~~
+```
 
-~~~text
+```text
 ! Turn failed
   Build command failed with exit code 1.                    [Inspect work]
-~~~
+```
 
 Do not infer Task failure/completion/recovery policy from this alone.
 
@@ -973,7 +1011,7 @@ Do not infer Task failure/completion/recovery policy from this alone.
 
 Fixture: session-conversation/interrupted
 
-~~~json
+```json
 {
   "status": {
     "status": "terminal",
@@ -990,18 +1028,18 @@ Fixture: session-conversation/interrupted
     "completedAt": "2026-10-01T10:40:00Z"
   }
 }
-~~~
+```
 
-~~~text
+```text
 Turn interrupted
 Provider process ended before the Turn completed.             [Inspect]
-~~~
+```
 
 ### S13 — completed Turn
 
 Fixture: session-conversation/completed
 
-~~~json
+```json
 {
   "status": {
     "status": "terminal",
@@ -1020,11 +1058,11 @@ Fixture: session-conversation/completed
     "completedAt": "2026-10-01T10:50:00Z"
   }
 }
-~~~
+```
 
-~~~text
+```text
 Review completed. The implementation matches the current specification.
-~~~
+```
 
 No redundant Completed success Card.
 
@@ -1034,21 +1072,21 @@ Fixture: session-conversation/reconnecting
 
 Canonical Session payload remains last-known data; transport state is separate:
 
-~~~json
+```json
 {
   "transport": {
     "status": "reconnecting",
     "lastAppliedSeq": 418
   }
 }
-~~~
+```
 
-~~~text
+```text
 Review completed...
 
 ────────────────────────────────────────────────────────────
 Reconnecting…                                                [Retry]
-~~~
+```
 
 Do not rewrite canonical Turn as unknown solely because transport reconnects.
 
@@ -1056,20 +1094,20 @@ Do not rewrite canonical Turn as unknown solely because transport reconnects.
 
 Fixture: session-conversation/new-activity-while-scrolled
 
-~~~json
+```json
 {
   "scroll": {
     "followingLatest": false,
     "unseenMeaningfulItems": 4
   }
 }
-~~~
+```
 
-~~~text
+```text
 [older conversation currently visible]
 
                          [4 new updates · Jump to latest ↓]
-~~~
+```
 
 No forced jump.
 
@@ -1156,7 +1194,7 @@ Avoid provider-specific colors.
 
 Required fixtures:
 
-~~~text
+```text
 session-conversation/waiting-for-model
 session-conversation/streaming-commentary
 session-conversation/active-tool
@@ -1171,7 +1209,7 @@ session-conversation/interrupted
 session-conversation/completed
 session-conversation/reconnecting
 session-conversation/new-activity-while-scrolled
-~~~
+```
 
 Each story should display or document the exact input payload so Figma/review can compare state to
 rendering without guessing.

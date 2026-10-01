@@ -51,19 +51,23 @@ It does not flatten Task detail, Session transcript, or raw workflow internals i
 - Start a new Session when needed using the shared Session-start interaction.
 - Follow relevant links to project-level changes/PRs/deployment/release facts when those capabilities
   exist.
+
 ## 3. Entry and navigation
 
 Entry:
+
 - Specs Overview neutral Spec target;
 - direct/deep link to Specification;
 - normal router Back from Full Session may return to this Specification; previously open Task
   Secondary is local state and is not reconstructed from the URL.
 
 Wide/Compact:
+
 - Specification = Primary;
 - selected Task = Secondary.
 
 Narrow:
+
 - Specification = visible surface;
 - selecting Task pushes Task detail;
 - Back returns to Specification preserving selection/scroll where possible.
@@ -85,21 +89,22 @@ repository files or Session history.
 
 ## 5. API availability / migration status
 
-| Need | New SpecFlow | Old repo evidence | Direction |
-| --- | --- | --- | --- |
-| Specification summary/tasks | **missing** | **old-repo-available** in `GET /api/dashboard` | Preserve identity/task metadata, replace old lifecycle assumptions with new read model. |
-| Document manifest/body | **missing** | **old-repo-available** via `GET /api/specs/:source/:slug/content` and `.../content/:docId` | Strong migration candidate; use stable Spec identity in new contract. |
-| Task status/dependencies | **missing** | **old-repo-available** via `.../task-statuses` | Preserve dependency facts, replace universal ready/block semantics with per-action semantic projection. |
-| Spec/Task actions | **missing** | **old-repo-available** via `GET/POST /api/specs/active/:slug/actions` | Preserve server-owned readiness/reasons; redesign around canonical new workflow identity. |
-| Bulk Task selection validation/start | **missing** | partial: single-Task workflow actions plus Session `taskIds[]`/batch evidence | Add application-owned validation for the whole selected set, returning legal action, warnings and blockers before dispatch; preserve the full selected Task set as execution scope. |
-| Create/start Session | **missing** | **old-repo-available** via `POST /api/agent-sessions` and workflow start actions | Preserve Nevo-owned canonical `sessionId`, provider selection/reuse semantics and backend-owned workflow bootstrap; expose one shared Session-start interaction. |
-| Task human decision | **missing** | **old-repo-available** via `POST /api/specs/:slug/tasks/:taskId/workflow/human-decision` | Preserve explicit decision command pattern. |
-| Related Sessions | **missing** | **old-repo-available** via `GET /api/agent-sessions?specId=...&taskId=...` | Preserve contextual association but keep it separate from current execution. |
-| Spec-level current execution + multi-signal summary | **missing** | partial only | Add explicit projection. |
+| Need                                                | New SpecFlow | Old repo evidence                                                                          | Direction                                                                                                                                                                           |
+| --------------------------------------------------- | ------------ | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Specification summary/tasks                         | **missing**  | **old-repo-available** in `GET /api/dashboard`                                             | Preserve identity/task metadata, replace old lifecycle assumptions with new read model.                                                                                             |
+| Document manifest/body                              | **missing**  | **old-repo-available** via `GET /api/specs/:source/:slug/content` and `.../content/:docId` | Strong migration candidate; use stable Spec identity in new contract.                                                                                                               |
+| Task status/dependencies                            | **missing**  | **old-repo-available** via `.../task-statuses`                                             | Preserve dependency facts, replace universal ready/block semantics with per-action semantic projection.                                                                             |
+| Spec/Task actions                                   | **missing**  | **old-repo-available** via `GET/POST /api/specs/active/:slug/actions`                      | Preserve server-owned readiness/reasons; redesign around canonical new workflow identity.                                                                                           |
+| Bulk Task selection validation/start                | **missing**  | partial: single-Task workflow actions plus Session `taskIds[]`/batch evidence              | Add application-owned validation for the whole selected set, returning legal action, warnings and blockers before dispatch; preserve the full selected Task set as execution scope. |
+| Create/start Session                                | **missing**  | **old-repo-available** via `POST /api/agent-sessions` and workflow start actions           | Preserve Nevo-owned canonical `sessionId`, provider selection/reuse semantics and backend-owned workflow bootstrap; expose one shared Session-start interaction.                    |
+| Task human decision                                 | **missing**  | **old-repo-available** via `POST /api/specs/:slug/tasks/:taskId/workflow/human-decision`   | Preserve explicit decision command pattern.                                                                                                                                         |
+| Related Sessions                                    | **missing**  | **old-repo-available** via `GET /api/agent-sessions?specId=...&taskId=...`                 | Preserve contextual association but keep it separate from current execution.                                                                                                        |
+| Spec-level current execution + multi-signal summary | **missing**  | partial only                                                                               | Add explicit projection.                                                                                                                                                            |
 
 Bulk validation is a semantic application contract, not a frontend loop over individual Task
 `ready` flags. A selected set can have selection-level warnings or blockers that do not exist on
 one Task in isolation.
+
 ## 6. Information hierarchy
 
 1. Spec identity/title.
@@ -118,9 +123,10 @@ is shown.
 
 The high-priority region appears only when something genuinely deserves priority; Ready alone does
 not become an alert.
+
 ## 7. Pseudo-layout
 
-~~~text
+```text
 ┌──────────────┬──────────────────────────────────────┬─────────────────────────┐
 │ Navigation   │ Spec A                               │ TASK-03                 │
 │              │ Deterministic admission hardening    │ Review required         │
@@ -141,7 +147,7 @@ not become an alert.
 │              │ Specification context                │                         │
 │              │ workflow · evidence · recent activity│                         │
 └──────────────┴──────────────────────────────────────┴─────────────────────────┘
-~~~
+```
 
 Task Secondary is shown only when selected. Primary remains scannable without it.
 
@@ -156,13 +162,16 @@ Task Secondary is shown only when selected. Primary remains scannable without it
 - supporting documents/evidence.
 - optional references to project-level changes/PRs/deployments/releases/pipelines.
 - Task Secondary when selected.
+
 ## 9. Responsive contract
 
 Wide/Compact:
+
 - split Specification + Task detail;
 - navigation breakpoint independent from workspace split.
 
 Narrow:
+
 - Specification first;
 - direct Task signal or Task row pushes Task detail;
 - critical attention/ready/current-work remains visible before opening Task.
@@ -170,47 +179,56 @@ Narrow:
 ## 10. Interaction flows
 
 ### Select Task
+
 Task row -> local Task Secondary; no workflow mutation.
 
 ### Multi-select Tasks
+
 Checkboxes select Tasks without opening them. Once selection is non-empty, show selection actions
 that the application says are applicable.
 
 For Start:
 
-~~~text
+```text
 select Tasks
   -> backend validates selection/action
   -> show warnings and blockers
   -> if legal, shared Session-start interaction chooses agent/provider as needed
   -> preserve the selected set as batch scope
-~~~
+```
 
 Unmet dependencies or other readiness facts remain visible. Warning != blocker: a warning can leave
 the action available; a blocker prevents it and explains why. Frontend does not calculate this from
 status strings.
 
 ### Filter Tasks
+
 Local filter narrows already-loaded summaries by id/title/semantic steering category when useful.
 
 ### Spec-level decision
+
 High-priority Spec signal -> evidence/decision context owned by Specification.
 
 ### Start/continue/review
+
 Action availability comes only from authoritative readiness. Command -> pending feedback ->
 authoritative projection update.
 
 ### Existing Session
+
 On Wide, conversation target opens Floating Session; Compact/Narrow opens Full Session. An explicit
 Open full session action may coexist on Wide.
 
 ### New Session
+
 New session -> shared Session-start interaction -> choose agent/provider and optional execution
 details -> normal Session/composer. Do not embed another standalone prompt editor here.
 
 ### Documents
+
 Document/artifact click -> read/inspect. Any approve/reject action comes from the owning workflow
 Human Step, not the document viewer itself.
+
 ## 11. States
 
 - normal/quiet;
@@ -224,7 +242,6 @@ Human Step, not the document viewer itself.
 - recovery required;
 - partial evidence unavailable;
 - archived/read-only Spec.
-
 
 ## 12. Data loading, events, and Refresh
 
@@ -276,18 +293,18 @@ before forcing a final refresh; do not refetch repeatedly for every progress eve
 
 ## 13. Component / composition map
 
-| Need | Composition |
-| --- | --- |
-| Main layout | AppWorkspace |
-| Header | WorkspaceHeader |
-| Task rows | SpecFlow product composition |
+| Need                  | Composition                                                    |
+| --------------------- | -------------------------------------------------------------- |
+| Main layout           | AppWorkspace                                                   |
+| Header                | WorkspaceHeader                                                |
+| Task rows             | SpecFlow product composition                                   |
 | High-priority summary | product composition using Typography/Alert only when justified |
-| Status metadata | StatusIndicator/Badge sparingly |
-| Evidence prose | Typography/MarkdownDocument |
-| History | Timeline when genuinely chronological |
-| Disclosure | Collapsible |
-| Actions | Button/Menu |
-| Task detail | product Secondary composition |
+| Status metadata       | StatusIndicator/Badge sparingly                                |
+| Evidence prose        | Typography/MarkdownDocument                                    |
+| History               | Timeline when genuinely chronological                          |
+| Disclosure            | Collapsible                                                    |
+| Actions               | Button/Menu                                                    |
+| Task detail           | product Secondary composition                                  |
 
 ## 14. Visual/token contract
 
@@ -349,6 +366,7 @@ before forcing a final refresh; do not refetch repeatedly for every progress eve
 - several relevant Sessions can be inspected without making Session a top-level nav area;
 - unavailable future edit/file/IDE/deployment controls are not faked;
 - Task collection is list/row-based, not Card soup.
+
 ## 19. Open questions
 
 - final Spec workflow read-model shape;

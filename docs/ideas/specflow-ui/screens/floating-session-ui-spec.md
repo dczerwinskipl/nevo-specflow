@@ -51,6 +51,7 @@ artifact/review surfaces.
 ## 3. Entry and navigation
 
 Entry points:
+
 - conversation target from a Session reference on Task;
 - conversation target from a Session reference on Specification;
 - potentially a current-execution conversation shortcut.
@@ -62,10 +63,10 @@ The underlying product context remains visible.
 
 If opened from TASK-03 while current execution is TASK-02/03/04:
 
-~~~text
+```text
 Entry context: TASK-03
 Current execution: 3 Tasks
-~~~
+```
 
 Do not relabel execution as TASK-03.
 
@@ -92,15 +93,14 @@ Frontend selects a compact subset of the canonical projection:
 
 ## 5. API availability / migration status
 
-| Need | New SpecFlow | Old repo evidence | Direction |
-| --- | --- | --- | --- |
-| Session snapshot/chat | **missing** | **old-repo-available** via \`GET /api/agent-sessions/:sessionId/chat\` | Reuse Full Session migration contract. |
-| Live current activity/events | **missing** | **old-repo-available** via Session SSE events | Reuse one Session event stream. |
-| Start Turn | **missing** | **old-repo-available** via \`POST /api/agent-sessions/:sessionId/turns\` | Reuse Full Session command. |
-| Respond to interaction | **missing** | **old-repo-available** via interaction respond route | Reuse Full Session command. |
-| Cancel Turn | **missing** | **old-repo-available** and capability-driven | Expose only if compact surface has room and product decides it is useful. |
-| Entry context (where floating was opened) | UI navigation state | not a backend Session fact | Keep product-local; do not persist as Session execution identity. |
-
+| Need                                      | New SpecFlow        | Old repo evidence                                                        | Direction                                                                 |
+| ----------------------------------------- | ------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| Session snapshot/chat                     | **missing**         | **old-repo-available** via \`GET /api/agent-sessions/:sessionId/chat\`   | Reuse Full Session migration contract.                                    |
+| Live current activity/events              | **missing**         | **old-repo-available** via Session SSE events                            | Reuse one Session event stream.                                           |
+| Start Turn                                | **missing**         | **old-repo-available** via \`POST /api/agent-sessions/:sessionId/turns\` | Reuse Full Session command.                                               |
+| Respond to interaction                    | **missing**         | **old-repo-available** via interaction respond route                     | Reuse Full Session command.                                               |
+| Cancel Turn                               | **missing**         | **old-repo-available** and capability-driven                             | Expose only if compact surface has room and product decides it is useful. |
+| Entry context (where floating was opened) | UI navigation state | not a backend Session fact                                               | Keep product-local; do not persist as Session execution identity.         |
 
 ### Old-repo field evidence
 
@@ -108,7 +108,7 @@ Floating Session does not need a separate field contract.
 
 It reuses the Full Session canonical fields:
 
-~~~text
+```text
 Session identity/title/status/readiness/capabilities
 activeTurn
 pendingInteraction
@@ -118,7 +118,7 @@ finalAnswer
 workSummary
 lastEventSeq
 authoritative current execution scope
-~~~
+```
 
 Its only presentation-local data is \`openedFrom\` navigation context. That field must stay outside
 canonical Runtime execution identity.
@@ -129,12 +129,12 @@ No Floating-Session-specific backend API is needed.
 
 Use the Full Session contracts:
 
-~~~text
+```text
 GET  /api/sessions/:sessionId
 GET  /api/sessions/:sessionId/events?after=:sequence
 POST /api/sessions/:sessionId/turns
 POST /api/sessions/:sessionId/interactions/:interactionId/respond
-~~~
+```
 
 The UI selects only recent/render-relevant content from the shared Session snapshot/cache.
 
@@ -144,7 +144,7 @@ because the floating window opened.
 
 The entry context is product navigation state:
 
-~~~text
+```text
 {
   sessionId,
   openedFrom: {
@@ -153,7 +153,7 @@ The entry context is product navigation state:
     taskId?
   }
 }
-~~~
+```
 
 It must never be interpreted by Runtime as current deterministic execution intent.
 
@@ -173,7 +173,7 @@ Avoid technical metadata unless it explains availability/state.
 
 Wide desktop concept:
 
-~~~text
+```text
 underlying Specification / Task remains visible
 
                                       ┌───────────────────────────────┐
@@ -190,7 +190,7 @@ underlying Specification / Task remains visible
                                       │ Message…                 Send │ [Session 2] [Session 3] [More…]
                                       └───────────────────────────────┘
 ──────────────────────────────────────────────────────────────────────── bottom
-~~~
+```
 
 The important contract is:
 
@@ -221,31 +221,40 @@ Cards.
 ## 9. Responsive contract
 
 ### Wide
+
 Floating Session exists only on Wide and uses the floating-window foundation.
 
 ### Compact / Narrow
+
 Floating Session is not offered.
 
 Opening an existing Session conversation navigates directly to Full Session. Do not invent a modal,
 bottom sheet, or smaller floating equivalent merely to preserve feature symmetry.
+
 ## 10. Interaction flows
 
 ### Open from Task/Specification
+
 Wide conversation target -> Floating Session; underlying context remains visible.
 
 ### Send
+
 Composer -> Session Turn command -> current activity/live updates.
 
 ### Interaction
+
 Pending interaction is visible/respondable in the compact conversation when capabilities permit.
 
 ### Promote
+
 Header Open full session -> routed Full Session. Router Back later returns to the previous routed
 surface; restoring a Task Secondary is not a routing guarantee.
 
 ### Minimize / Restore / Close
+
 These remain Wide-only floating-window interactions. Close removes only the presentation, not the
 Session resource.
+
 ## 11. States
 
 - idle/ready;
@@ -257,7 +266,6 @@ Session resource.
 - unavailable/read-only;
 - disconnected/reconnecting transport;
 - entry Task differs from current batch execution.
-
 
 ## 12. Data loading, events, and Refresh
 
@@ -289,17 +297,17 @@ second compact-chat renderer.
 
 ## 13. Component / composition map
 
-| Need | Composition |
-| --- | --- |
-| Host | FloatingWindow / FloatingWindowHost on supported wide layout |
-| Header/actions | floating host actions + product title + Full Session/expand |
-| Bottom dock | product composition over floating host/session window state |
-| Conversation | compact SpecFlow Session composition |
-| Markdown | MarkdownDocument |
-| Current activity | product composition |
-| Composer | MessageComposer |
-| Interaction | product composition from form/action primitives |
-| Promote | IconButton/Button action in header to Full Session |
+| Need             | Composition                                                  |
+| ---------------- | ------------------------------------------------------------ |
+| Host             | FloatingWindow / FloatingWindowHost on supported wide layout |
+| Header/actions   | floating host actions + product title + Full Session/expand  |
+| Bottom dock      | product composition over floating host/session window state  |
+| Conversation     | compact SpecFlow Session composition                         |
+| Markdown         | MarkdownDocument                                             |
+| Current activity | product composition                                          |
+| Composer         | MessageComposer                                              |
+| Interaction      | product composition from form/action primitives              |
+| Promote          | IconButton/Button action in header to Full Session           |
 
 ## 14. Visual/token contract
 
@@ -360,6 +368,7 @@ second compact-chat renderer.
 - Close and Minimize remain distinct;
 - no duplicate backend Session model/API or live subscription;
 - floating host does not become nested Card soup.
+
 ## 19. Open questions
 
 - exact recent-history budget;

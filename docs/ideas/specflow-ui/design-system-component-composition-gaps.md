@@ -47,9 +47,9 @@ Product behavior is taken from the current UI idea/product documents on
 
 Implementation evidence was inspected from the current UI migration branch:
 
-~~~text
+```text
 feature/poc-to-specflow
-~~~
+```
 
 That branch currently contains `apps/specflow-ui` and `packages/nevo-ui`; the documentation branch
 does not yet contain those migrated UI sources. Treat file/API observations below as migration-branch
@@ -88,11 +88,11 @@ Current migrated UI already provides:
 
 This is enough for the agreed top-level IA:
 
-~~~text
+```text
 Project
 ├── Specs
 └── Project settings
-~~~
+```
 
 No new SpecFlow-specific shell component is justified.
 
@@ -261,13 +261,13 @@ These should initially live under the SpecFlow feature boundary.
 
 Candidate feature-local concepts:
 
-~~~text
+```text
 SpecsOverview
 SpecQueue
 SpecSummaryItem
 SpecSignalSummary
 SpecAttentionAggregate
-~~~
+```
 
 Responsibilities:
 
@@ -291,7 +291,7 @@ metadata, action, keyboard, and density behavior, extract the shared behavior la
 
 Candidate feature-local concepts:
 
-~~~text
+```text
 SpecificationWorkspace
 SpecificationSummary
 SpecificationAttention
@@ -299,7 +299,7 @@ TaskCollection
 TaskSummaryItem
 SpecificationWorkflowSummary
 SpecificationEvidenceSummary
-~~~
+```
 
 The high-priority state is product semantics, not a generic Alert variant.
 
@@ -309,7 +309,7 @@ The high-priority state is product semantics, not a generic Alert variant.
 
 Candidate feature-local concepts:
 
-~~~text
+```text
 TaskDetail
 TaskDecisionState
 TaskIntent
@@ -319,7 +319,7 @@ HandoverSummary
 ChangeSummary
 VerificationSummary
 RelatedSessionSummary
-~~~
+```
 
 Use:
 
@@ -341,7 +341,7 @@ application contracts.
 
 Candidate feature-local structure:
 
-~~~text
+```text
 FullSessionWorkspace
 ├── SessionStream
 ├── SessionCurrentActivity
@@ -350,7 +350,7 @@ FullSessionWorkspace
 └── SessionInspector
     ├── SessionContext
     └── SessionWork
-~~~
+```
 
 Do not create a generic Nevo UI `Chat` component yet.
 
@@ -361,14 +361,14 @@ are product/runtime concepts.
 
 Candidate feature-local presentation pieces:
 
-~~~text
+```text
 UserMessage
 AgentFinalAnswer
 CommentaryEntry
 WorkSummaryEntry
 InteractionEntry
 TurnOutcome
-~~~
+```
 
 These may share internal presentation helpers, but that is feature-local reuse first.
 
@@ -390,7 +390,7 @@ It must not derive state from rendered Work items.
 
 Candidate feature-local concepts:
 
-~~~text
+```text
 SessionContext
 ExecutionScopeSummary
 CurrentExecutionTasks
@@ -398,7 +398,7 @@ RelatedTasks
 SessionAttentionSummary
 SessionEvidenceSummary
 ExecutionConfigurationSummary
-~~~
+```
 
 Current execution and related historical Tasks must remain distinct.
 
@@ -409,14 +409,14 @@ mutation surface.
 
 Candidate feature-local concepts:
 
-~~~text
+```text
 WorkInspector
 WorkTimeline
 WorkItemSummary
 ToolGroupSummary
 ToolDetail
 ToolActionDetail
-~~~
+```
 
 The generic `Timeline` can provide the visual chronological skeleton.
 
@@ -427,12 +427,12 @@ and tool/action semantics remain product-owned.
 
 Candidate feature-local:
 
-~~~text
+```text
 SessionInteraction
 ├── PermissionInteraction
 ├── QuestionInteraction
 └── ConfirmationInteraction
-~~~
+```
 
 Use existing form/action primitives.
 
@@ -456,11 +456,11 @@ material on the active panel. Story contracts cover 960px split and 839px stacke
 
 Current UI product docs define:
 
-~~~text
+```text
 Wide      persistent navigation + split workspace
 Compact   Drawer navigation     + split workspace
 Narrow    Drawer navigation     + stacked workspace
-~~~
+```
 
 The intended workspace split threshold is independent from navigation collapse.
 
@@ -468,17 +468,17 @@ The intended workspace split threshold is independent from navigation collapse.
 
 `workspaceSizing.ts` defines:
 
-~~~text
+```text
 WORKSPACE_SPLIT_MIN_WIDTH = 840
 WIDE_SHELL_MIN_WIDTH = 1116
-~~~
+```
 
 but runtime `AppWorkspace` calls `supportsRuntimeWorkspaceSplit`, which currently requires:
 
-~~~text
+```text
 navigationMode === 'persistent'
 && availableWidth >= WORKSPACE_SPLIT_MIN_WIDTH
-~~~
+```
 
 Because persistent navigation starts only at `WIDE_SHELL_MIN_WIDTH`, a runtime workspace under
 Drawer navigation is always stacked.
@@ -519,9 +519,9 @@ default Context itself owns the Close action. Explicit product state can restore
 
 On split entry:
 
-~~~text
+```text
 Conversation | Context
-~~~
+```
 
 Context is default-open, but after the user closes Secondary it must remain closed until explicitly
 reopened.
@@ -603,6 +603,7 @@ That now matches the product contract:
 
 This is no longer a design-system gap. Do not broaden generic floating-window support merely for
 SpecFlow parity.
+
 ## 6.2 P2 — Secondary presentation/sizing by detail kind
 
 Current `AppWorkspace` supports root-level split modes:
@@ -652,7 +653,7 @@ No dedicated migrated Diff/Changes viewer is present.
 `Changes` must be source-neutral and plural. A Task/Session/Specification may eventually expose
 several relevant change sources at once, for example:
 
-~~~text
+```text
 Changes
 
 Worktree changes
@@ -660,7 +661,7 @@ Diff to main
 Pull request #123
 Pull request #124
 Merge request / another integration source
-~~~
+```
 
 The exact sources are application data, not design-system semantics. GitHub/GitLab/provider-specific
 behavior must not leak into a generic Nevo UI primitive.
@@ -670,6 +671,7 @@ references when the backend supplies them. The actual diff/file inspection surfa
 capability to design alongside file/code inspection and available Git provenance.
 
 Do not invent a generic `DiffCard` in Nevo UI yet.
+
 ## 7.3 Handover / artifact details
 
 The canonical new-model contracts are still open.

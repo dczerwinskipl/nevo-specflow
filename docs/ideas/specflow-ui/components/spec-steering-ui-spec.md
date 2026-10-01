@@ -48,7 +48,7 @@ Each visible item must make these questions cheap:
 
 Product-owned:
 
-~~~text
+```text
 SpecSteeringCollection
 ├── SteeringGroup
 └── SpecSteeringItem
@@ -57,7 +57,7 @@ SpecSteeringCollection
     ├── SecondarySignals
     ├── ProgressMetadata
     └── CurrentExecutionMetadata
-~~~
+```
 
 Use Nevo UI Typography, Link/Button primitives, StatusIndicator/Badge sparingly, Separator, Tabs or
 SegmentedControl for Active/Archive, EmptyState, Skeleton.
@@ -70,7 +70,7 @@ The collection consumes the Specs overview projection.
 
 Relevant item shape:
 
-~~~text
+```text
 {
   id,
   slug,
@@ -83,11 +83,11 @@ Relevant item shape:
   signals[],
   currentExecutions[]
 }
-~~~
+```
 
 Signals:
 
-~~~text
+```text
 {
   id,
   kind: attention | ready | working | issue | quiet,
@@ -99,7 +99,7 @@ Signals:
   count?,
   target
 }
-~~~
+```
 
 ## 4. Primary queue ordering / optional grouping
 
@@ -107,12 +107,12 @@ One Spec appears in **one canonical Active queue position**.
 
 The semantic ordering classes are:
 
-~~~text
+```text
 requires attention
 ready
 working
 quiet / other active
-~~~
+```
 
 This does **not** require four literal stacked sections. Two valid presentation families remain open:
 
@@ -131,18 +131,19 @@ Concurrent lower-priority signals remain concise metadata inside the same Spec r
 
 Do not duplicate the Spec into separate Attention + Ready + Working rows. Separate summary counters
 may overlap because they are aggregates, not duplicated navigation rows.
+
 ## 5. Signal target model
 
 The **whole Spec row / identity** has one stable meaning:
 
-~~~text
+```text
 Spec A
   -> Specification
-~~~
+```
 
 Specific signals may expose explicit nested actions/targets:
 
-~~~text
+```text
 TASK-03 requires review [open]
   -> local TASK-03 detail
 
@@ -151,23 +152,24 @@ Agent asks for input [open]
 
 3 Tasks require review [open]
   -> Specification attention context
-~~~
+```
 
 The aggregate target never invents one representative Task.
 
 Nested targets supplement the stable row destination; they do not make blank areas of the row
 redirect unpredictably based on current priority.
+
 ## 6. Row anatomy
 
 Preferred shape:
 
-~~~text
+```text
 Spec A
 3 Tasks require review                                  >
 TASK-03 owner decision · Reviewer working on 2 Tasks
 6 / 9 Tasks · Implementation
 ──────────────────────────────────────────────────────────
-~~~
+```
 
 Hierarchy:
 
@@ -180,9 +182,9 @@ Do not display every raw signal when there are many.
 
 For overflow:
 
-~~~text
+```text
 TASK-03 owner decision · TASK-05 ready · +2 more
-~~~
+```
 
 Clicking +N more opens the Spec context, not a floating mega-tooltip.
 
@@ -204,6 +206,7 @@ If a flat queue is used:
 - rows do not accumulate repetitive badges merely to replace group headings.
 
 Both forms keep one Spec in one canonical queue position.
+
 ## 8. Active versus Archive
 
 ### Active
@@ -218,7 +221,7 @@ Historical browsing dominates.
 
 Default:
 
-~~~text
+```text
 Archive
 
 Search specs…
@@ -230,7 +233,7 @@ Completed Sep 24
 Spec Y
 Completed Sep 18
 ...
-~~~
+```
 
 Do not force archived Specs into Requires attention / Ready / Working groups based on stale
 historical signals.
@@ -243,7 +246,7 @@ Search/filter becomes more important in Archive because the collection grows mon
 
 Fixture: \`spec-steering/attention-task\`
 
-~~~json
+```json
 {
   "id": "spec-a",
   "title": "Deterministic admission",
@@ -262,16 +265,16 @@ Fixture: \`spec-steering/attention-task\`
   ],
   "currentExecutions": []
 }
-~~~
+```
 
 Mock:
 
-~~~text
+```text
 Spec A
 TASK-03 requires review                                  >
 Owner decision required
 5 / 8 Tasks
-~~~
+```
 
 ---
 
@@ -279,7 +282,7 @@ Owner decision required
 
 Fixture: \`spec-steering/concurrent-signals\`
 
-~~~json
+```json
 {
   "id": "spec-a",
   "title": "Deterministic admission",
@@ -321,18 +324,18 @@ Fixture: \`spec-steering/concurrent-signals\`
     }
   ]
 }
-~~~
+```
 
 Mock:
 
-~~~text
+```text
 Requires attention
 
 Spec A
 TASK-03 requires review                                  >
 TASK-05 ready · Reviewer working on 2 Tasks
 5 / 9 Tasks
-~~~
+```
 
 One row, one canonical queue position.
 
@@ -342,7 +345,7 @@ One row, one canonical queue position.
 
 Fixture: \`spec-steering/aggregate-attention\`
 
-~~~json
+```json
 {
   "id": "spec-a",
   "signals": [
@@ -357,14 +360,14 @@ Fixture: \`spec-steering/aggregate-attention\`
     }
   ]
 }
-~~~
+```
 
 Mock:
 
-~~~text
+```text
 Spec A
 3 Tasks require review                                   >
-~~~
+```
 
 The aggregate target must not pretend one Task is the destination.
 
@@ -374,7 +377,7 @@ The aggregate target must not pretend one Task is the destination.
 
 Fixture: \`spec-steering/spec-attention\`
 
-~~~json
+```json
 {
   "id": "spec-b",
   "signals": [
@@ -389,15 +392,15 @@ Fixture: \`spec-steering/spec-attention\`
     }
   ]
 }
-~~~
+```
 
 Mock:
 
-~~~text
+```text
 Spec B
 Specification approval required                          >
 Owner decision required
-~~~
+```
 
 No Task is selected.
 
@@ -407,7 +410,7 @@ No Task is selected.
 
 Fixture: \`spec-steering/ready\`
 
-~~~json
+```json
 {
   "id": "spec-c",
   "signals": [
@@ -422,16 +425,16 @@ Fixture: \`spec-steering/ready\`
     }
   ]
 }
-~~~
+```
 
 Mock:
 
-~~~text
+```text
 Ready
 
 Spec C
 TASK-05 ready to start                                  >
-~~~
+```
 
 Ready is visible but calmer than required attention.
 
@@ -441,7 +444,7 @@ Ready is visible but calmer than required attention.
 
 Fixture: \`spec-steering/batch-working\`
 
-~~~json
+```json
 {
   "id": "spec-d",
   "signals": [
@@ -466,17 +469,17 @@ Fixture: \`spec-steering/batch-working\`
     }
   ]
 }
-~~~
+```
 
 Mock:
 
-~~~text
+```text
 In progress
 
 Spec D
 Reviewer · 3 Tasks
 Reviewing changes…
-~~~
+```
 
 Do not choose TASK-03 as representative.
 
@@ -486,7 +489,7 @@ Do not choose TASK-03 as representative.
 
 Fixture: \`spec-steering/issue\`
 
-~~~json
+```json
 {
   "id": "spec-e",
   "signals": [
@@ -502,17 +505,17 @@ Fixture: \`spec-steering/issue\`
     }
   ]
 }
-~~~
+```
 
 Mock:
 
-~~~text
+```text
 Other active
 
 Spec E
 TASK-03 remediation available                           >
 Normal start is blocked; agent remediation can continue
-~~~
+```
 
 `kind: issue` is reserved here for a non-human issue/remediation signal. If owner intervention is
 required, the backend projection should emit `kind: attention` with the concrete issue as its
@@ -524,7 +527,7 @@ reason rather than asking the frontend to guess whether an issue needs the human
 
 Fixture: \`spec-steering/quiet\`
 
-~~~json
+```json
 {
   "id": "spec-f",
   "signals": [
@@ -539,17 +542,17 @@ Fixture: \`spec-steering/quiet\`
   ],
   "progress": { "completed": 4, "actionable": 0, "total": 7 }
 }
-~~~
+```
 
 Mock:
 
-~~~text
+```text
 Other active
 
 Spec F
 No immediate action
 4 / 7 Tasks
-~~~
+```
 
 ---
 
@@ -557,7 +560,7 @@ No immediate action
 
 Fixture: \`spec-steering/archive-row\`
 
-~~~json
+```json
 {
   "id": "spec-z",
   "title": "Previous workflow hardening",
@@ -569,15 +572,15 @@ Fixture: \`spec-steering/archive-row\`
   },
   "signals": []
 }
-~~~
+```
 
 Mock:
 
-~~~text
+```text
 Spec Z
 Completed Sep 24
 12 / 12 Tasks · last activity Sep 24
-~~~
+```
 
 ## 10. Interaction behavior
 
@@ -597,6 +600,7 @@ Keyboard ordering remains predictable: row/identity first, then explicit nested 
 
 Hover/focus treatment must make the stable row target and explicit nested signal targets visually
 distinguishable without turning every metadata fragment into a button.
+
 ## 11. Data loading / events
 
 Use one collection projection for the selected Active/Archive collection.
@@ -643,7 +647,7 @@ Keep visible rows while refreshing.
 
 Required:
 
-~~~text
+```text
 spec-steering/attention-task
 spec-steering/concurrent-signals
 spec-steering/aggregate-attention
@@ -656,7 +660,7 @@ spec-steering/archive-row
 spec-steering/many-secondary-signals
 spec-steering/loading
 spec-steering/empty-active
-~~~
+```
 
 ## 16. Acceptance criteria
 

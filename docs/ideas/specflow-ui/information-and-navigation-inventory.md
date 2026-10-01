@@ -81,7 +81,7 @@ Project is the scope above normal product screens.
 
 Candidate persistent navigation:
 
-~~~text
+```text
 Nevo SpecFlow
 
 [ Current project v ]
@@ -91,7 +91,7 @@ Specs
 ----------------
 
 Project settings
-~~~
+```
 
 Changing project should reload all project-scoped product context. Selected spec/task, floating
 session, contextual inspector, action state, and file preview should not silently leak across
@@ -163,6 +163,7 @@ The UI should consume canonical Runtime/application projections for readiness an
 than infer them independently.
 
 ---
+
 ## 4. Specification
 
 **Product direction**
@@ -201,13 +202,13 @@ Do not assume spec workflow persistence must copy legacy Task workflow_progress 
 
 Candidate:
 
-~~~text
+```text
 PRIMARY
 Specification
 
 SECONDARY
 Task details
-~~~
+```
 
 A Task is normally inspected without abandoning the Specification context.
 
@@ -289,6 +290,7 @@ Detailed Spec/Task action hierarchy belongs in
 [Specification and Task information hierarchy](spec-task-information-hierarchy.md).
 
 ---
+
 ## 7. Workflow configuration vs runtime
 
 ### Configuration
@@ -310,7 +312,7 @@ Workflows navigation.
 
 Candidate:
 
-~~~text
+```text
 Project settings
 '-- Workflows
     |-- definitions
@@ -319,7 +321,7 @@ Project settings
     |-- gates
     |-- actions
     '-- transitions/source-control behavior
-~~~
+```
 
 Initial UI may be read-only.
 
@@ -345,14 +347,14 @@ Sessions remain contextual to product work rather than earning top-level navigat
 
 Opening an existing Session:
 
-~~~text
+```text
 Wide
   conversation target -> Floating Session
   Open full session    -> Full Session
 
 Compact / Narrow
   conversation target -> Full Session
-~~~
+```
 
 There is no floating/mobile substitute on Compact/Narrow.
 
@@ -367,12 +369,12 @@ Specification initialization, or a deterministic workflow action:
 
 ### Current canonical model
 
-~~~text
+```text
 Session
 '-- Turn
     '-- ordered Work
         '-- ToolAction
-~~~
+```
 
 Runtime owns semantic projections such as current activity, requires-attention, summarized status,
 and readiness. UI consumes those projections instead of deriving them from provider events.
@@ -428,6 +430,7 @@ Project-wide usage/history may later earn its own operational/settings surface; 
 empty top-level screen now.
 
 ---
+
 ## 9. Floating Session and Full Session
 
 ### Floating Session
@@ -456,6 +459,7 @@ Secondary.
 On Narrow the same inspector/detail model becomes a pushed local stack.
 
 ---
+
 ## 10. Work information levels
 
 Existing Session UX already defines:
@@ -467,7 +471,7 @@ Existing Session UX already defines:
 
 Candidate mapping:
 
-~~~text
+```text
 Primary Session stream
 |-- L1 current activity
 |-- Commentary
@@ -478,7 +482,7 @@ Secondary: Work
 |-- L2 expanded history
 |-- L3 work details
 '-- L4 action/tool details
-~~~
+```
 
 Raw tool input/output, command details, internal ids, and low-level diagnostics remain deep
 inspection.
@@ -499,6 +503,7 @@ When file inspection lands:
 Until then, omit unavailable actions rather than rendering dead affordances.
 
 ---
+
 ## 12. Artifacts and evidence
 
 Artifacts/documents are primarily **readable evidence/resources**, not generic action-owning widgets.
@@ -548,17 +553,21 @@ change sets while the underlying source remains explicit metadata.
 Initial inspection may show all relevant current changes when precise attribution is unavailable.
 
 ---
+
 ## 13. Project settings
 
 Candidate read-only-first sections:
 
 ### General
+
 Project identity, workspace/repository root facts, future project-switch metadata.
 
 ### Configuration
+
 Project/local/effective configuration and source-of-value where useful.
 
 ### AI / agents
+
 Defaults/policy such as provider/model/mode, provider availability, archetypes/profiles and execution
 policy. User customizations such as default prompts belong here when exposed; normal flows consume
 backend-owned defaults rather than embedding editable prompt fields everywhere.
@@ -566,14 +575,17 @@ backend-owned defaults rather than embedding editable prompt fields everywhere.
 Provider/model/effort details remain secondary unless the user is choosing or diagnosing them.
 
 ### Workflows
+
 Definitions, steps, semantic statuses, gates, actions, transitions, source-control behavior.
 
 ### Repository / Git
+
 Repository/remotes/path/default branch and source-control configuration.
 
 Operational branch/worktree/PR/change state is project/work context, not Settings-only data.
 
 ### Integrations
+
 GitHub, GitLab, and future integrations.
 
 ### Tools / operations - future
@@ -589,15 +601,16 @@ pipeline result, merge to a branch, or another custom action.
 
 The extension pattern is:
 
-~~~text
+```text
 contextual link/action from Spec/Task/Session
   -> project-level operational surface when deeper exploration is needed
-~~~
+```
 
 Do not reserve empty top-level nav entries now. Promote a Runs/Deployments/Tools area only when the
 capability becomes a real independent human task.
 
 ---
+
 ## 14. Activity / audit trail
 
 **Old-repo deterministic evidence**
@@ -626,7 +639,7 @@ it exists as a runtime/domain record.
 
 ## 15. Configuration, runtime state, and action are separate
 
-~~~text
+```text
 CONFIGURATION
 How should it work?
 -> Project settings
@@ -638,11 +651,11 @@ What is happening / where are we now?
 ACTION
 What can I do now?
 -> contextual button/menu/command
-~~~
+```
 
 Examples:
 
-~~~text
+```text
 Workflow definition            -> Settings
 Current workflow step          -> Spec/Task
 Start / approve / finish       -> Action
@@ -654,7 +667,7 @@ Commit/push                    -> Action
 Test command configuration     -> Settings
 Tests currently running        -> Work/current activity
 Run tests                      -> Action
-~~~
+```
 
 ---
 
@@ -662,7 +675,7 @@ Run tests                      -> Action
 
 This is product hierarchy, not a final router definition.
 
-~~~text
+```text
 Project
 |
 |-- Specs collection
@@ -687,21 +700,22 @@ Project
     |-- Workflows
     |-- Repository / Git
     '-- Integrations
-~~~
+```
 
 ---
+
 ## 17. Human-attention interaction target
 
 Preferred steering loop:
 
-~~~text
+```text
 Specs Overview
   -> scan one canonical Spec row per Spec
   -> row click opens Specification
   -> optional explicit issue/Task target can jump deeper
   -> inspect context/evidence
   -> deliberate workflow action
-~~~
+```
 
 Do not silently redirect the neutral Spec row to a changing "most important" issue.
 
@@ -713,6 +727,7 @@ Session conversation itself because it is time-sensitive and must work on Narrow
 may open from an explicit action, but the UI should not automatically steal Secondary focus.
 
 ---
+
 ## 18. Open questions before screen layout
 
 Do not guess these during implementation:
@@ -734,6 +749,7 @@ Do not guess these during implementation:
     become implemented capabilities.
 
 ---
+
 ## 19. Next pass
 
 The Specification + Task information hierarchy and first screen-structure pass are now captured under

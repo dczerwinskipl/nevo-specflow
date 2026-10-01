@@ -58,7 +58,7 @@ It does not own:
 
 Product-owned composition:
 
-~~~text
+```text
 TaskDecisionEvidence
 ├── TaskDecisionSummary
 ├── TaskIntentSummary
@@ -71,7 +71,7 @@ TaskDecisionEvidence
 ├── CurrentExecutionSummary
 ├── ContinuationSummary
 └── TaskActionRegion
-~~~
+```
 
 Use Nevo UI primitives for Typography, MarkdownDocument, Button/Menu, StatusIndicator,
 Collapsible, Separator, AlertDialog, and Alert only when an exceptional state actually needs
@@ -85,7 +85,7 @@ The screen-level Task projection is the input.
 
 Relevant fields:
 
-~~~text
+```text
 task
   id
   specId
@@ -102,11 +102,11 @@ task
   continuation?
   revision
   updatedAt
-~~~
+```
 
 Evidence item:
 
-~~~text
+```text
 {
   id,
   kind,
@@ -118,7 +118,7 @@ Evidence item:
   sharedTaskIds?,
   updatedAt?
 }
-~~~
+```
 
 The composition must not infer legal actions from evidence or status text.
 
@@ -126,7 +126,7 @@ The composition must not infer legal actions from evidence or status text.
 
 The top of Task detail should answer in this order:
 
-~~~text
+```text
 Task identity
 Decision/current state
 Why
@@ -134,7 +134,7 @@ Primary legal action, if one exists
 Task intent relevant to the decision
 Evidence needed for the decision
 Secondary/deeper context
-~~~
+```
 
 Do not put a large evidence section above the reason the user is there.
 
@@ -144,11 +144,11 @@ Do not put a large evidence section above the reason the user is there.
 
 No heavy status block.
 
-~~~text
+```text
 TASK-03 — Deterministic admission
 
 No immediate action
-~~~
+```
 
 Quiet state may be represented by normal typography plus muted supporting text.
 
@@ -156,7 +156,7 @@ Quiet state may be represented by normal typography plus muted supporting text.
 
 Use stronger hierarchy because user action is required.
 
-~~~text
+```text
 TASK-03 — Deterministic admission
 
 Review required
@@ -164,7 +164,7 @@ Implementation work completed.
 Owner decision is required.
 
 [Review / decide]
-~~~
+```
 
 The action may be near the summary or repeated/sticky at the bottom if long evidence requires it, but
 do not duplicate multiple identical primary buttons within one viewport without reason.
@@ -173,26 +173,26 @@ do not duplicate multiple identical primary buttons within one viewport without 
 
 Ready is actionable but calmer than required attention.
 
-~~~text
+```text
 Ready to start
 
 Dependencies complete.
 Relevant entry gates satisfied.
 
 [Start]
-~~~
+```
 
 Do not style Ready as warning.
 
 ### Current execution
 
-~~~text
+```text
 Currently in execution
 Reviewer · 3 Tasks
 
 Reviewing changes…
 [Open Session]
-~~~
+```
 
 If current execution covers a batch, preserve batch scope.
 
@@ -200,22 +200,22 @@ If current execution covers a batch, preserve batch scope.
 
 Remediation and recovery are different.
 
-~~~text
+```text
 Needs remediation
 Workspace state must be resolved before the normal step can start.
 
 [Open remediation]
-~~~
+```
 
 versus:
 
-~~~text
+```text
 Recovery required
 A durable operation is in an ambiguous state.
 Automatic continuation is unsafe.
 
 [Inspect recovery]
-~~~
+```
 
 Recovery may justify stronger contained emphasis.
 
@@ -227,14 +227,14 @@ Evidence order is decision-dependent, not fixed alphabetically by artifact kind.
 
 Preferred order:
 
-~~~text
+```text
 Review outcome
 Handover / what changed                    when available
 Changes / diff entry                       when available
 Verification                               when decision-relevant
 Session                                    when context helps
 Other artifacts
-~~~
+```
 
 ### Ready-to-start
 
@@ -251,14 +251,14 @@ Show:
 
 Preferred order:
 
-~~~text
+```text
 Recovery reason
 Affected durable operation
 Last known operation state
 Why automatic continuation is unsafe
 Authoritative recovery action
 Supporting logs/artifacts
-~~~
+```
 
 ### Shared multi-Task evidence
 
@@ -266,9 +266,9 @@ If one review report supports several Tasks, preserve one shared artifact identi
 
 Task detail shows the Task-specific outcome plus:
 
-~~~text
+```text
 Shared review report · 3 Tasks                         [Inspect]
-~~~
+```
 
 Do not clone the report into three fake Task-local artifacts.
 
@@ -285,7 +285,7 @@ Do not assume one GitHub pull request is the canonical change object.
 
 Evidence rows are homogeneous and borderless by default.
 
-~~~text
+```text
 Review
 Ready for owner decision
 2 required fixes · 1 informational finding                 >
@@ -298,7 +298,7 @@ Changes
 
 Verification
 241/241 tests passed                                        >
-~~~
+```
 
 Rules:
 
@@ -315,7 +315,7 @@ Rules:
 
 Fixture: \`task-decision/ready\`
 
-~~~json
+```json
 {
   "task": {
     "id": "TASK-03",
@@ -337,11 +337,11 @@ Fixture: \`task-decision/ready\`
     "continuation": { "kind": "none", "reason": "" }
   }
 }
-~~~
+```
 
 Mock:
 
-~~~text
+```text
 TASK-03 — Implement deterministic admission
 
 Ready to start
@@ -351,7 +351,7 @@ Task intent
 Prevent ambiguous workspace admission before execution.
 
 [Start]
-~~~
+```
 
 No Card needed.
 
@@ -361,7 +361,7 @@ No Card needed.
 
 Fixture: \`task-decision/review-required\`
 
-~~~json
+```json
 {
   "task": {
     "id": "TASK-03",
@@ -421,11 +421,11 @@ Fixture: \`task-decision/review-required\`
     ]
   }
 }
-~~~
+```
 
 Mock:
 
-~~~text
+```text
 Review required
 Implementation work is complete.
 Owner decision is required.
@@ -443,7 +443,7 @@ Verification
 241/241 tests passed                                          >
 
 [Review / decide]
-~~~
+```
 
 ---
 
@@ -451,7 +451,7 @@ Verification
 
 Fixture: \`task-decision/current-batch\`
 
-~~~json
+```json
 {
   "task": {
     "id": "TASK-03",
@@ -472,11 +472,11 @@ Fixture: \`task-decision/current-batch\`
     ]
   }
 }
-~~~
+```
 
 Mock:
 
-~~~text
+```text
 Currently in execution
 Reviewer · 3 Tasks
 
@@ -484,7 +484,7 @@ Reviewing changes…
 TASK-02 · TASK-03 · TASK-04
 
 [Open Session]
-~~~
+```
 
 Do not rewrite this as "Reviewer working on TASK-03".
 
@@ -494,7 +494,7 @@ Do not rewrite this as "Reviewer working on TASK-03".
 
 Fixture: \`task-decision/dependency-block\`
 
-~~~json
+```json
 {
   "task": {
     "id": "TASK-03",
@@ -515,11 +515,11 @@ Fixture: \`task-decision/dependency-block\`
     }
   }
 }
-~~~
+```
 
 Mock:
 
-~~~text
+```text
 Cannot start normal workflow step
 Waiting for TASK-02.
 
@@ -528,7 +528,7 @@ TASK-02                                                     >
 
 Start unavailable
 Waiting for TASK-02.
-~~~
+```
 
 Do not label the entire Task universally BLOCKED if another remediation/action is legal.
 
@@ -538,7 +538,7 @@ Do not label the entire Task universally BLOCKED if another remediation/action i
 
 Fixture: \`task-decision/remediation\`
 
-~~~json
+```json
 {
   "task": {
     "id": "TASK-03",
@@ -560,18 +560,18 @@ Fixture: \`task-decision/remediation\`
     }
   }
 }
-~~~
+```
 
 Mock:
 
-~~~text
+```text
 Needs remediation
 Workspace admission cannot continue.
 
 Dirty worktree state can be resolved before attempt activation.
 
 [Open remediation]
-~~~
+```
 
 ---
 
@@ -579,7 +579,7 @@ Dirty worktree state can be resolved before attempt activation.
 
 Fixture: \`task-decision/continue\`
 
-~~~json
+```json
 {
   "task": {
     "id": "TASK-03",
@@ -600,16 +600,16 @@ Fixture: \`task-decision/continue\`
     }
   }
 }
-~~~
+```
 
 Mock:
 
-~~~text
+```text
 Ready to continue
 The previous Turn ended safely and legal work remains.
 
 [Continue]
-~~~
+```
 
 Do not require an active workflow attempt for this state.
 
@@ -619,7 +619,7 @@ Do not require an active workflow attempt for this state.
 
 Fixture: \`task-decision/recovery-required\`
 
-~~~json
+```json
 {
   "task": {
     "id": "TASK-03",
@@ -652,11 +652,11 @@ Fixture: \`task-decision/recovery-required\`
     ]
   }
 }
-~~~
+```
 
 Mock:
 
-~~~text
+```text
 ┌────────────────────────────────────────────────────────────┐
 │ Recovery required                                          │
 │ A durable finish operation is unresolved.                  │
@@ -666,7 +666,7 @@ Mock:
 │                                                            │
 │ [Inspect recovery]                                         │
 └────────────────────────────────────────────────────────────┘
-~~~
+```
 
 This is a justified stronger surface because normal continuation is unsafe.
 
@@ -676,7 +676,7 @@ This is a justified stronger surface because normal continuation is unsafe.
 
 Fixture: \`task-decision/shared-review\`
 
-~~~json
+```json
 {
   "task": {
     "id": "TASK-03",
@@ -698,16 +698,16 @@ Fixture: \`task-decision/shared-review\`
     ]
   }
 }
-~~~
+```
 
 Mock:
 
-~~~text
+```text
 Review
 TASK-03 · 1 required fix
 
 Shared report · 3 Tasks                                      >
-~~~
+```
 
 The Task-specific result remains visible without cloning the report.
 
@@ -717,14 +717,14 @@ Actions are commands, not optimistic local status changes.
 
 On action:
 
-~~~text
+```text
 click
 -> disable duplicate submission
 -> command with idempotency key
 -> show pending operation state
 -> consume operation/event result
 -> refresh/update coherent Task + parent Specification projections
-~~~
+```
 
 If the command is rejected because readiness changed, show the authoritative reason and refresh the
 Task projection.
@@ -785,7 +785,7 @@ If user explicitly refreshes Task detail from overflow:
 
 Required fixtures:
 
-~~~text
+```text
 task-decision/ready
 task-decision/review-required
 task-decision/current-batch
@@ -796,7 +796,7 @@ task-decision/recovery-required
 task-decision/shared-review
 task-decision/evidence-missing
 task-decision/action-became-stale
-~~~
+```
 
 Every fixture includes the exact Task projection payload.
 

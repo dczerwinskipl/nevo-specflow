@@ -102,15 +102,17 @@ Provider stream:
     "id": "tool-provider-1",
     "name": "AskUserQuestion",
     "input": {
-      "questions": [{
-        "question": "Which database provider should be used?",
-        "header": "Database",
-        "options": [
-          {"label": "PostgreSQL", "description": "Relational database"},
-          {"label": "SQLite", "description": "Embedded database"}
-        ],
-        "multiSelect": false
-      }]
+      "questions": [
+        {
+          "question": "Which database provider should be used?",
+          "header": "Database",
+          "options": [
+            { "label": "PostgreSQL", "description": "Relational database" },
+            { "label": "SQLite", "description": "Embedded database" }
+          ],
+          "multiSelect": false
+        }
+      ]
     }
   }
 }
@@ -158,12 +160,12 @@ Observed fixture shape:
 ```json
 {
   "type": "message_delta",
-  "delta": {"stop_reason": "tool_deferred"},
-  "usage": {"output_tokens": 145},
+  "delta": { "stop_reason": "tool_deferred" },
+  "usage": { "output_tokens": 145 },
   "deferred_tool_use": {
     "id": "tool-provider-1",
     "name": "AskUserQuestion",
-    "input": {"questions": [{"question": "Which option?", "multiSelect": false}]}
+    "input": { "questions": [{ "question": "Which option?", "multiSelect": false }] }
   }
 }
 ```
@@ -241,7 +243,7 @@ The delta does not need to repeat the phase if its `itemId` is correlated to the
   "params": {
     "threadId": "thread-1",
     "turnId": "turn-1",
-    "item": {"id":"reasoning-1","type":"reasoning","summary":[],"content":[]}
+    "item": { "id": "reasoning-1", "type": "reasoning", "summary": [], "content": [] }
   }
 }
 ```
@@ -288,7 +290,7 @@ Neither representation becomes final answer.
   "params": {
     "threadId": "thread-1",
     "turnId": "turn-1",
-    "item": {"id":"final-1","type":"agentMessage","text":"","phase":"final_answer"}
+    "item": { "id": "final-1", "type": "agentMessage", "text": "", "phase": "final_answer" }
   }
 }
 ```
@@ -311,7 +313,7 @@ Neither representation becomes final answer.
   "params": {
     "threadId": "thread-1",
     "turnId": "turn-1",
-    "item": {"id":"final-1","type":"agentMessage","text":"Done.","phase":"final_answer"}
+    "item": { "id": "final-1", "type": "agentMessage", "text": "Done.", "phase": "final_answer" }
   }
 }
 ```
@@ -400,8 +402,8 @@ A single provider command may contain structured nested actions:
   "type": "commandExecution",
   "command": "node tools/check.mjs",
   "commandActions": [
-    {"type":"list","path":"changes/active","title":"List active changes"},
-    {"type":"read","path":"changes/active/example/change.yaml","title":"Read manifest"}
+    { "type": "list", "path": "changes/active", "title": "List active changes" },
+    { "type": "read", "path": "changes/active/example/change.yaml", "title": "Read manifest" }
   ],
   "status": "inProgress"
 }
@@ -446,7 +448,7 @@ Expected interpretation:
     "tool_name": "ask_question",
     "tool_info": {
       "name": "ask_question",
-      "parameters": {"prompt": "Which option?"}
+      "parameters": { "prompt": "Which option?" }
     }
   }
 }

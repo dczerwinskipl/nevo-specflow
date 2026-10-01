@@ -78,32 +78,33 @@ Persistent product navigation remains deliberately small:
 
 Project switching is a future capability and is not part of the current MVP global navigation.
 
-~~~text
+```text
 Specs
 
 Project Settings
-~~~
+```
 
 Sessions, Tasks, Work, Files, Changes, workflow definitions, and artifacts may have routable/detail
 surfaces without becoming global navigation items.
 
 ## 4. Reachability matrix
 
-| Surface | Normal entry | Representation |
-| --- | --- | --- |
-| Specs Overview | global Specs / default product entry | Primary |
-| Specification | Specification row/identity or stable route | Primary |
-| Task Detail | Task row or explicit Task-specific signal | Secondary on split layouts; pushed local detail on narrow |
-| Floating Session | existing-Session conversation target on Wide only | floating presentation outside AppWorkspace stack |
-| Full Session | existing Session target on Compact/Narrow; explicit full-session action; Floating Session header; stable route | main Primary + optional Secondary |
-| Session Context | Full Session Context action/default split entry | Secondary or pushed local detail |
-| Session inspection detail | explicit user click on Work summary, Task, File, Handover, artifact, verification, etc. | replaces current Secondary; never creates a third pane |
-| Project Settings | global Project Settings / stable section intent | Primary |
+| Surface                   | Normal entry                                                                                                   | Representation                                            |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Specs Overview            | global Specs / default product entry                                                                           | Primary                                                   |
+| Specification             | Specification row/identity or stable route                                                                     | Primary                                                   |
+| Task Detail               | Task row or explicit Task-specific signal                                                                      | Secondary on split layouts; pushed local detail on narrow |
+| Floating Session          | existing-Session conversation target on Wide only                                                              | floating presentation outside AppWorkspace stack          |
+| Full Session              | existing Session target on Compact/Narrow; explicit full-session action; Floating Session header; stable route | main Primary + optional Secondary                         |
+| Session Context           | Full Session Context action/default split entry                                                                | Secondary or pushed local detail                          |
+| Session inspection detail | explicit user click on Work summary, Task, File, Handover, artifact, verification, etc.                        | replaces current Secondary; never creates a third pane    |
+| Project Settings          | global Project Settings / stable section intent                                                                | Primary                                                   |
 
 The table defines reachability, not exact route strings.
 
 A product row/identity keeps a stable neutral destination. Dynamic state must not silently change the
 meaning of the row itself. More specific destinations are exposed through explicit signal/actions.
+
 ## 5. Specification and Task navigation
 
 A Specification row/identity always opens the Specification Primary. It must not redirect the user
@@ -115,20 +116,21 @@ issue the user intended to resolve.
 
 On a split-capable layout:
 
-~~~text
+```text
 Specification Primary
 + Task Detail Secondary
-~~~
+```
 
 On a narrow layout, Task Detail becomes the visible pushed local surface.
 
 Opening Task Detail is navigation/inspection only. It must not perform the workflow action that the
 Task may later offer.
+
 ## 6. Task evidence drill-down
 
 Task evidence uses the same Secondary slot as Task Detail. It does not create a nested third pane.
 
-~~~text
+```text
 Task Detail root
   -> Diff / Changes
   -> Handover
@@ -137,7 +139,7 @@ Task Detail root
   -> File
       -> Back
 Task Detail root
-~~~
+```
 
 On split layouts, an evidence/detail target temporarily replaces Task Detail in Secondary while the
 Specification or Session remains Primary.
@@ -179,15 +181,16 @@ implementations in multiple dialogs:
   textarea embedded in every start modal.
 
 Exact visual composition and optional advanced fields remain product-design details.
+
 ## 8. Full Session navigation
 
 Full Session is a first-class routable product surface but not a global sidebar destination.
 
 On split-capable entry with no user-selected inspection detail:
 
-~~~text
+```text
 Conversation Primary | Context Secondary
-~~~
+```
 
 Context may be closed and should remain closed until explicitly reopened.
 
@@ -201,6 +204,7 @@ user's current inspector.
 
 On narrow layouts, Conversation is the Full Session entry. Context and inspection details are pushed
 local surfaces opened by explicit user actions.
+
 ## 9. Full Session return context
 
 Router history owns main product navigation only.
@@ -214,6 +218,7 @@ fine, but this is not a routing contract and must not require Secondary state in
 
 A direct Full Session route has normal product parent orientation (for example the owning
 Specification when available) without inventing a transient Secondary selection.
+
 ## 10. Route state versus local state
 
 The router/URL describes **main navigation**. Secondary/pushed-detail state belongs to the local
@@ -239,6 +244,7 @@ Reload/direct URL entry reconstructs the routable surface, not the previous Seco
 On Narrow, the implementation may bridge the local pushed-detail stack into browser/system Back
 handling without changing the URL. Such history-state integration is an implementation mechanism,
 not a deep-link contract.
+
 ## 11. Back and Close semantics
 
 Product Back inside Secondary follows the local inspection stack.
@@ -256,6 +262,7 @@ leaving the current routed surface. The URL still represents only the Primary ro
 
 Implement this with router/history integration that preserves normal browser semantics; do not infer
 that Secondary therefore becomes a URL-addressable route.
+
 ## 12. Deliberately unresolved
 
 This navigation model does not decide:

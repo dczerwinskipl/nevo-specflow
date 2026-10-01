@@ -43,11 +43,11 @@ contracts are filled in with the implementation.
 
 Navigation collapse and workspace stacking are separate responsive decisions.
 
-| Shell | Navigation | Workspace |
-| --- | --- | --- |
-| **Wide** | Persistent navigation. | Primary + Secondary can be visible together. |
-| **Compact** | Drawer navigation. | Primary + Secondary can still be visible together. |
-| **Narrow** | Drawer navigation. | One workspace surface is visible at a time; active Secondary replaces Primary until Back returns to Primary. |
+| Shell       | Navigation             | Workspace                                                                                                    |
+| ----------- | ---------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **Wide**    | Persistent navigation. | Primary + Secondary can be visible together.                                                                 |
+| **Compact** | Drawer navigation.     | Primary + Secondary can still be visible together.                                                           |
+| **Narrow**  | Drawer navigation.     | One workspace surface is visible at a time; active Secondary replaces Primary until Back returns to Primary. |
 
 Do not equate "no persistent sidebar" with "mobile". Compact layouts can still support the full split
 workspace.
@@ -114,13 +114,13 @@ replacement.
 
 ## Surface choice
 
-| Surface | Use for |
-| --- | --- |
-| Info / tooltip / popover | A short clarification; no navigation, no actions of substance. |
-| Floating surface | Quick interaction with related context, especially a Session, without abandoning the current workspace. |
-| Secondary | Contextual detail that supports the Primary without replacing its product context on split layouts. |
-| Pushed / stacked detail | Narrow representation of Secondary: it becomes the visible workspace surface and provides an explicit way back. |
-| Main page / workspace | A distinct product surface the user explicitly navigated/promoted to. |
+| Surface                  | Use for                                                                                                         |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| Info / tooltip / popover | A short clarification; no navigation, no actions of substance.                                                  |
+| Floating surface         | Quick interaction with related context, especially a Session, without abandoning the current workspace.         |
+| Secondary                | Contextual detail that supports the Primary without replacing its product context on split layouts.             |
+| Pushed / stacked detail  | Narrow representation of Secondary: it becomes the visible workspace surface and provides an explicit way back. |
+| Main page / workspace    | A distinct product surface the user explicitly navigated/promoted to.                                           |
 
 ## State preservation
 

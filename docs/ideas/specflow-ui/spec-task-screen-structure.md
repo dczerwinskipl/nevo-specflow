@@ -53,7 +53,7 @@ validate the product flow before visual design.
 
 The core steering loop remains:
 
-~~~text
+```text
 Specs overview
   -> identify attention / ready / working
   -> 1 click on the relevant signal
@@ -61,7 +61,7 @@ Specs overview
      - Task-specific signal => Specification + Task Secondary
      - Spec-level signal => Specification context
   -> deliberate action
-~~~
+```
 
 A generic Specification click may still open the Specification normally, but an actionable
 summary should deep-link to the context that explains that signal instead of forcing the human to
@@ -75,7 +75,7 @@ Opening that context is never itself the mutating workflow action.
 
 ### Wide
 
-~~~text
+```text
 ┌──────────────┬──────────────────────────────────┬──────────────────────────┐
 │ Navigation   │ Specification Primary            │ Task Secondary           │
 │              │                                  │                          │
@@ -83,7 +83,7 @@ Opening that context is never itself the mutating workflow action.
 │ Specs        │ workflow + tasks                 │ evidence + actions       │
 │ Settings     │                                  │                          │
 └──────────────┴──────────────────────────────────┴──────────────────────────┘
-~~~
+```
 
 Task Secondary is contextual to the selected Specification. It should not make the user feel that
 they navigated away from the Spec.
@@ -92,13 +92,13 @@ they navigated away from the Spec.
 
 Navigation becomes a Drawer, but Specification + Task may still stay split:
 
-~~~text
+```text
 ┌──────────────────────────────────┬──────────────────────────┐
 │ ☰ Specification Primary          │ Task Secondary           │
 │                                  │                          │
 │ workflow + tasks                 │ selected Task context    │
 └──────────────────────────────────┴──────────────────────────┘
-~~~
+```
 
 Compact is not mobile.
 
@@ -106,13 +106,13 @@ Compact is not mobile.
 
 Only one workspace surface is visible:
 
-~~~text
+```text
 Specification
     -> tap Task
 
 Task detail
     <- Back to Specification
-~~~
+```
 
 Anything essential for discovering that a Task needs attention must therefore exist in
 Specification Primary before the Task is opened.
@@ -127,20 +127,21 @@ The Specs overview is the project-level human steering queue.
 
 The first scan should answer:
 
-~~~text
+```text
 What needs me?
 What is ready if I want to continue?
 What is currently being worked?
 What else is active but does not need me?
-~~~
+```
 
 Issue/remediation details are supporting signals inside those categories, not a mandatory separate
 lane.
 
 It should not expose deep workflow mechanics.
+
 ## 3.2 Proposed structure
 
-~~~text
+```text
 Specs
 
 [ Active ] [ Archive ]
@@ -158,7 +159,7 @@ In progress
 Other active
   Spec E        No immediate action
   Spec F        Waiting on normal workflow progression
-~~~
+```
 
 This is a structural example, not a requirement to render literal grouped sections.
 
@@ -186,7 +187,7 @@ signal for scanability, but it must not imply that the remaining attention/ready
 
 Examples:
 
-~~~text
+```text
 Spec A
   3 Tasks require review
   TASK-03 owner decision required
@@ -194,7 +195,7 @@ Spec A
 Spec B
   2 Tasks ready
   next: TASK-05
-~~~
+```
 
 The exact aggregation treatment is deferred; preserving multiplicity is not.
 
@@ -213,7 +214,7 @@ The neutral Spec row/identity always opens the Specification.
 
 More specific signals are separate explicit targets:
 
-~~~text
+```text
 Spec row / title
   -> Specification
 
@@ -222,7 +223,7 @@ TASK-03 requires review [open]
 
 3 Tasks require review [open]
   -> Specification attention context; user chooses Task
-~~~
+```
 
 Do not change the destination of the whole row based on dynamic priority.
 
@@ -230,6 +231,7 @@ On narrow, an explicit Task target may push Task detail immediately; this is sti
 state and is not encoded as part of the Specification URL.
 
 The overview never performs the final workflow mutation.
+
 # 4. Specification Primary
 
 ## 4.1 Job of the surface
@@ -248,7 +250,7 @@ status widgets.
 
 ## 4.2 Proposed structural order
 
-~~~text
+```text
 Specification header
   Spec identity
   concise workflow meaning
@@ -270,12 +272,13 @@ Supporting Specification context
   important Spec-level artifact/review summary
   source-control/change summary when relevant
   recent meaningful activity
-~~~
+```
 
 The High-priority state slot is reserved for genuine human-required attention. Ready work and
 agent-remediable issues do not get promoted into it merely because they are actionable.
 
 When nothing needs the human, the slot disappears.
+
 ## 4.3 Task collection
 
 A Task item communicates identity/title, semantic workflow meaning, attention reason, ready action,
@@ -302,6 +305,7 @@ agent/provider using the shared Session-start model.
 Do not repeat the same status badge on every Task if grouping already communicates it.
 
 Task row click still opens Task Secondary and never performs the bulk action.
+
 ## 4.4 Sessions in Specification
 
 Sessions are contextual history/work, not the primary Task hierarchy.
@@ -316,25 +320,26 @@ Existing Session access:
 
 Starting a new Session is a separate explicit action using the shared Session-start interaction. Do
 not place a one-off prompt textarea inside Specification solely to avoid opening the common composer.
+
 # 5. Task Secondary
 
 ## 5.1 Job of the surface
 
 Task Secondary should answer within seconds:
 
-~~~text
+```text
 What is this Task?
 Why is it in this state?
 Does it need me?
 What evidence should I inspect?
 What deterministic action is available?
-~~~
+```
 
 It is a decision/context surface, not a miniature dashboard.
 
 ## 5.2 Proposed structural order
 
-~~~text
+```text
 Task header
   TASK-03 — title
   concise workflow meaning
@@ -367,26 +372,27 @@ Deeper inspection
   raw report
   Work/tool details
   operation/recovery details
-~~~
+```
 
 Optional sections disappear when unavailable.
+
 ## 5.3 Action placement principle
 
 The primary Task action should stay close to the reason/evidence that justifies it.
 
 Bad:
 
-~~~text
+```text
 [Approve]
 
 ... several screens of unrelated metadata ...
 
 why approval is allowed
-~~~
+```
 
 Better:
 
-~~~text
+```text
 Review required
 2 owner decisions remain
 
@@ -395,7 +401,7 @@ changes
 handover
 
 [Review / decide]
-~~~
+```
 
 The exact visual placement can be header, local action area, or sticky action region later. The
 semantic requirement is proximity between **reason, evidence, and action**.
@@ -412,23 +418,24 @@ directly. Do not invent an intermediate proof-details page merely to restate the
 A future turn anchor may make that navigation more precise.
 
 The UI must not enforce one global Attachments list as the only way to find evidence.
+
 # 6. State A — ready to start
 
 ## 6.1 Specs overview
 
-~~~text
+```text
 Ready
 
 Spec A
   TASK-03 ready to start
-~~~
+```
 
 Selecting the ready signal opens Spec A with TASK-03 context already active. This is visible and
 convenient, but calmer than attention.
 
 ## 6.2 Specification Primary
 
-~~~text
+```text
 Spec A
 Implementation
 
@@ -439,13 +446,13 @@ Tasks
   TASK-01   done
   TASK-02   done
   TASK-03   ready
-~~~
+```
 
 The screen should make TASK-03 discoverable without making the whole Spec look like an alert.
 
 ## 6.3 Task Secondary
 
-~~~text
+```text
 TASK-03 — Implement deterministic admission
 
 Ready to start
@@ -463,7 +470,7 @@ What starting does
   activates the authoritative execution/workflow path
 
 [Start]
-~~~
+```
 
 The user learns the context before performing Start.
 
@@ -473,12 +480,12 @@ The user learns the context before performing Start.
 
 ## 7.1 Specs overview
 
-~~~text
+```text
 In progress
 
 Spec A
   Reviewer working on TASK-03
-~~~
+```
 
 Selecting the current-work signal opens Spec A with TASK-03 context already active.
 
@@ -489,15 +496,15 @@ Historical Session association is insufficient.
 
 For a batch:
 
-~~~text
+```text
 Reviewer working on 3 Tasks
-~~~
+```
 
 Do not invent one representative Task.
 
 ## 7.2 Specification Primary
 
-~~~text
+```text
 Spec A
 Implementation
 
@@ -512,7 +519,7 @@ Tasks
   TASK-03   current execution
   TASK-04   current execution
   TASK-05   waiting
-~~~
+```
 
 Task-level execution markers are projections of the current execution scope, not aliases for
 workflow `active`.
@@ -521,7 +528,7 @@ workflow `active`.
 
 For TASK-03:
 
-~~~text
+```text
 TASK-03 — ...
 
 Currently in execution
@@ -538,11 +545,11 @@ Session
 
 Other relevant evidence
   current change summary
-~~~
+```
 
 Session access:
 
-~~~text
+```text
 Session
   conversation target -> Floating Session where supported
   [Open full session]  -> Full Session directly
@@ -550,7 +557,7 @@ Session
 Floating Session
   conversation/current activity
   [Open full session]
-~~~
+```
 
 The Task surface does not embed a second full Session surface.
 
@@ -560,12 +567,12 @@ The Task surface does not embed a second full Session surface.
 
 ## 8.1 Specs overview
 
-~~~text
+```text
 Requires attention
 
 Spec A
   TASK-03 requires review
-~~~
+```
 
 Selecting the attention signal opens Spec A with TASK-03 review context already active. This is the
 reference one-click-to-context path.
@@ -574,7 +581,7 @@ Attention state should say **what requires the human**, not merely "action requi
 
 ## 8.2 Specification Primary
 
-~~~text
+```text
 Spec A
 Review
 
@@ -585,13 +592,13 @@ Tasks
   TASK-01   reviewed
   TASK-02   reviewed
   TASK-03   owner review required
-~~~
+```
 
 TASK-03 should be the obvious next context to inspect.
 
 ## 8.3 Task Secondary
 
-~~~text
+```text
 TASK-03 — ...
 
 Review required
@@ -624,7 +631,7 @@ Session                                (when useful)
   Implementer / Reviewer conversation     [Open] [Full session]
 
 [Review / decide]
-~~~
+```
 
 The raw review Markdown, full diff, tool output, and operation history remain deeper inspection.
 
@@ -633,7 +640,6 @@ Task while keeping access to the shared report.
 
 ---
 
-
 # 9. State D — Specification-level human action
 
 The Specification itself can progress through deterministic workflow. A human-required Spec step
@@ -641,18 +647,18 @@ must therefore work without inventing a fake Task owner for the action.
 
 ## 9.1 Specs overview
 
-~~~text
+```text
 Requires attention
 
 Spec A
   Specification approval required
-~~~
+```
 
 Selecting the signal opens the Specification decision context directly.
 
 ## 9.2 Specification Primary
 
-~~~text
+```text
 Spec A
 Specification review
 
@@ -669,7 +675,7 @@ Decision evidence
   relevant verification/change summary
 
 [Review / decide]
-~~~
+```
 
 Task collection remains visible as supporting context but no Task is artificially selected as the
 owner of the Spec-level decision.
@@ -681,13 +687,12 @@ human explicitly opens one.
 
 # 10. Issue / remediation state
 
-
 This is included because "cannot perform action X" must not become a universal Task-level
 `BLOCKED` state.
 
 Example:
 
-~~~text
+```text
 TASK-03
 
 Cannot start normal workflow step
@@ -697,7 +702,7 @@ Available remediation
   Agent may inspect/fix dirty worktree state
 
 [Open remediation / continue]
-~~~
+```
 
 The exact available operation comes from authoritative application/workflow projection.
 
@@ -711,13 +716,13 @@ A settled AI Turn is not enough to decide Task state.
 
 ## Continue / resume
 
-~~~text
+```text
 Execution ended safely
 More legal work remains
 No ambiguous durable operation requires recovery
 
 [Continue]
-~~~
+```
 
 This may occur:
 
@@ -727,7 +732,7 @@ This may occur:
 
 ## Recovery required
 
-~~~text
+```text
 Execution stopped
 Durable operation state requires reconciliation
 
@@ -736,7 +741,7 @@ Recovery required
   authoritative recovery action
 
 [Recover / inspect]
-~~~
+```
 
 Do not present both as generic "stopped" or "blocked."
 
@@ -748,7 +753,7 @@ The same information hierarchy must work when Task Secondary replaces Specificat
 
 ## Specification
 
-~~~text
+```text
 ☰  Spec A
 
 Needs your attention
@@ -756,13 +761,13 @@ TASK-03 requires review          >
 
 Tasks
 ...
-~~~
+```
 
 The attention/ready/current-work signal must be visible before opening Task.
 
 ## Task
 
-~~~text
+```text
 ←  TASK-03
 
 Review required
@@ -780,7 +785,7 @@ Related Sessions
   [Show all]
 
 [Review / decide]
-~~~
+```
 
 On Wide, normal Session conversation access may use Floating Session and can also expose Full Session.
 On Compact/Narrow, opening the Session goes directly to Full Session.
@@ -789,6 +794,7 @@ No desktop-only Secondary may contain the sole copy of information necessary to 
 user needs to act.
 
 ---
+
 # 13. What this pass deliberately does not decide
 
 Still deferred:

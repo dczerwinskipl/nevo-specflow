@@ -57,11 +57,11 @@ or parser heuristic as already approved target API.
 Priority answers **when to pick the idea up during migration**, not whether the idea is already an
 approved target contract.
 
-| Priority | Meaning |
-|---|---|
-| **P0 — migrate hardened** | Apply while the corresponding provider/runtime feature is being migrated. Porting the legacy behavior first and fixing it later creates correctness, security, persisted-data, or compatibility debt. |
-| **P1 — MVP hardening** | Land before considering the provider layer MVP-stable, but it can follow initial feature parity if necessary. |
-| **P2 — supporting / later** | Useful diagnostics, maintainability, richer telemetry, or evidence material. Preserve the direction now; implementation does not need to block MVP provider parity. |
+| Priority                    | Meaning                                                                                                                                                                                               |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **P0 — migrate hardened**   | Apply while the corresponding provider/runtime feature is being migrated. Porting the legacy behavior first and fixing it later creates correctness, security, persisted-data, or compatibility debt. |
+| **P1 — MVP hardening**      | Land before considering the provider layer MVP-stable, but it can follow initial feature parity if necessary.                                                                                         |
+| **P2 — supporting / later** | Useful diagnostics, maintainability, richer telemetry, or evidence material. Preserve the direction now; implementation does not need to block MVP provider parity.                                   |
 
 ### P0 — migrate hardened
 

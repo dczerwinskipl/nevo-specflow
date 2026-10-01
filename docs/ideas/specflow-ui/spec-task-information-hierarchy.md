@@ -44,14 +44,14 @@ This document answers a product question before wireframes are drawn:
 
 The target steering loop is:
 
-~~~text
+```text
 overview
   -> see that something requires attention or is ready
   -> 1 click
 context + evidence + why the action exists
   -> 2nd deliberate interaction
 deterministic action / human decision
-~~~
+```
 
 The first click is for understanding. The second click may mutate workflow state.
 
@@ -81,16 +81,16 @@ new implementation.
 
 Every UI fact should fit one primary class.
 
-| Class | Human question it answers | Visibility goal |
-| --- | --- | --- |
-| **Orientation** | What am I looking at? | Always available. |
-| **Requires attention** | Is the product waiting for me? Why? | Prominent before drill-down. |
-| **Ready** | Is there a safe next action available if I choose to continue? | Visible but calmer than attention. |
-| **Current activity** | Is work happening now, and on what? | Visible without opening technical detail. |
-| **Context** | What do I need to understand this state? | One interaction away at most. |
-| **Evidence / artifact** | What supports the decision I am being asked to make? | Directly reachable from the decision context. |
-| **Deep inspection** | What happened technically? | Progressive disclosure. |
-| **Action** | What deterministic operation can I perform? | Shown only with its reason/readiness. |
+| Class                   | Human question it answers                                      | Visibility goal                               |
+| ----------------------- | -------------------------------------------------------------- | --------------------------------------------- |
+| **Orientation**         | What am I looking at?                                          | Always available.                             |
+| **Requires attention**  | Is the product waiting for me? Why?                            | Prominent before drill-down.                  |
+| **Ready**               | Is there a safe next action available if I choose to continue? | Visible but calmer than attention.            |
+| **Current activity**    | Is work happening now, and on what?                            | Visible without opening technical detail.     |
+| **Context**             | What do I need to understand this state?                       | One interaction away at most.                 |
+| **Evidence / artifact** | What supports the decision I am being asked to make?           | Directly reachable from the decision context. |
+| **Deep inspection**     | What happened technically?                                     | Progressive disclosure.                       |
+| **Action**              | What deterministic operation can I perform?                    | Shown only with its reason/readiness.         |
 
 A single backend field can contribute to more than one projection, but the UI should avoid showing
 the same fact repeatedly without adding meaning.
@@ -105,7 +105,7 @@ The Specs overview is not merely a list of specifications. It is the owner's wor
 
 Before opening a Specification, the screen should make these categories distinguishable:
 
-~~~text
+```text
 REQUIRES ATTENTION
 Something is waiting on the human.
 
@@ -117,7 +117,7 @@ Agent/runtime work is currently happening.
 
 OTHER ACTIVE / QUIET
 No immediate human action is required.
-~~~
+```
 
 Issue/remediation is **not** a fifth top-level category by itself.
 
@@ -126,21 +126,22 @@ Issue/remediation is **not** a fifth top-level category by itself.
   active and expose the remediation reason/path as supporting context.
 
 These are product projections, not persisted status values.
+
 ## 4.2 Minimum Specification summary
 
-| Information | Class | Evidence | Why it matters |
-| --- | --- | --- | --- |
-| Specification title / identity | Orientation | Product direction | User must know which change is being discussed. |
-| Active vs Archive | Orientation | Old-repo deterministic evidence + product direction | Determines whether this belongs to current work or history. |
-| Current workflow step | Orientation / Context | Product direction; Task equivalent exists in legacy deterministic flow | Shows where the Spec is in its process. |
-| Semantic workflow status | Orientation | Current deterministic architecture concept; legacy implementation evidence for Tasks | More human-readable than raw step/state. |
-| Requires-human-attention projection | Requires attention | Product direction | Lets the overview act as a work queue. |
-| Reason attention is required | Requires attention | Product direction | "Review TASK-03" is useful; a red dot alone is not. |
-| Ready next action | Ready | Legacy deterministic action inspection + product direction | Distinguishes ready-to-start from waiting-on-human. |
-| Active/running work summary | Current activity | Current Session semantics + product direction | Shows that work is already happening and on what. |
-| Task progress summary | Context | Legacy dashboard evidence | Useful orientation without opening every Task. |
-| Issue/remediation summary | Context | Deterministic fail-closed model | Explains which intended action cannot proceed and whether another remediation path remains available. |
-| Last meaningful activity | Context | Candidate | Helps scan stale vs active Specs; not a workflow truth. |
+| Information                         | Class                 | Evidence                                                                             | Why it matters                                                                                        |
+| ----------------------------------- | --------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| Specification title / identity      | Orientation           | Product direction                                                                    | User must know which change is being discussed.                                                       |
+| Active vs Archive                   | Orientation           | Old-repo deterministic evidence + product direction                                  | Determines whether this belongs to current work or history.                                           |
+| Current workflow step               | Orientation / Context | Product direction; Task equivalent exists in legacy deterministic flow               | Shows where the Spec is in its process.                                                               |
+| Semantic workflow status            | Orientation           | Current deterministic architecture concept; legacy implementation evidence for Tasks | More human-readable than raw step/state.                                                              |
+| Requires-human-attention projection | Requires attention    | Product direction                                                                    | Lets the overview act as a work queue.                                                                |
+| Reason attention is required        | Requires attention    | Product direction                                                                    | "Review TASK-03" is useful; a red dot alone is not.                                                   |
+| Ready next action                   | Ready                 | Legacy deterministic action inspection + product direction                           | Distinguishes ready-to-start from waiting-on-human.                                                   |
+| Active/running work summary         | Current activity      | Current Session semantics + product direction                                        | Shows that work is already happening and on what.                                                     |
+| Task progress summary               | Context               | Legacy dashboard evidence                                                            | Useful orientation without opening every Task.                                                        |
+| Issue/remediation summary           | Context               | Deterministic fail-closed model                                                      | Explains which intended action cannot proceed and whether another remediation path remains available. |
+| Last meaningful activity            | Context               | Candidate                                                                            | Helps scan stale vs active Specs; not a workflow truth.                                               |
 
 The overview should prefer a small number of meaningful projections over exposing every underlying
 status.
@@ -153,13 +154,13 @@ Default ordering should make human work discoverable.
 
 A candidate priority is:
 
-~~~text
+```text
 1. requires attention
 2. active work with a problem / blocked state
 3. ready to start or continue
 4. normal in-progress work
 5. quiet/completed active Specs
-~~~
+```
 
 This is not yet a final sort algorithm. It records the product priority that "I need to do something"
 must not be buried below passive status.
@@ -188,15 +189,15 @@ It should not force the user to understand how these facts are persisted.
 
 Candidate baseline:
 
-| Information | Class | Evidence |
-| --- | --- | --- |
-| title / stable Spec identity | Orientation | Product direction |
-| active/archive context | Orientation | Legacy evidence |
-| current Spec workflow step | Orientation | Product direction |
-| semantic Spec workflow status | Orientation | Product direction |
-| requires-attention summary | Requires attention | Product direction |
-| active work summary | Current activity | Product direction |
-| primary available next action, if any | Ready / Action | Product direction |
+| Information                           | Class              | Evidence          |
+| ------------------------------------- | ------------------ | ----------------- |
+| title / stable Spec identity          | Orientation        | Product direction |
+| active/archive context                | Orientation        | Legacy evidence   |
+| current Spec workflow step            | Orientation        | Product direction |
+| semantic Spec workflow status         | Orientation        | Product direction |
+| requires-attention summary            | Requires attention | Product direction |
+| active work summary                   | Current activity   | Product direction |
+| primary available next action, if any | Ready / Action     | Product direction |
 
 The exact layout is deferred. "Always visible" means available in the main Spec surface without
 opening a nested detail, not necessarily that every item belongs in the header.
@@ -225,7 +226,7 @@ Specification will itself move through deterministic workflow similarly to Task.
 
 The human-facing projection should be generic enough to show:
 
-~~~text
+```text
 current step
 runtime state
 semantic status
@@ -233,7 +234,7 @@ readiness
 human gate / required decision
 available action
 transition result/history when useful
-~~~
+```
 
 **Open question:** new SpecFlow has not yet frozen the persistence model for Spec workflow. Do not
 design UI around a copied Task-specific storage shape.
@@ -246,17 +247,17 @@ A Task summary should support scanning and selection, not become a miniature Tas
 
 ## 6.1 High-value Task facts
 
-| Information | Class | Evidence | Default visibility |
-| --- | --- | --- | --- |
-| Task title + id | Orientation | Old-repo deterministic evidence | Always in Task row/item |
-| Semantic workflow status | Orientation | Old-repo deterministic evidence | Always perceivable from the item or its containing grouping; do not repeat a badge when lane/grouping already communicates it |
-| Requires attention + reason | Requires attention | Product direction | Always when true |
-| Ready next action | Ready | Legacy action projection | Visible when relevant |
-| Active Session/agent work | Current activity | Current execution projection + product direction | Visible only when current execution proves this Task is in scope |
-| Dependency/blocker summary | Context | Old-repo deterministic evidence | Visible when blocking |
-| Review outcome requiring owner action | Requires attention / Evidence | Legacy review artifact | Visible when relevant |
-| Completion/progress state | Orientation | Candidate derived projection | Compact |
-| linked Sessions count/list | Context | Legacy Session binding | Usually secondary information |
+| Information                           | Class                         | Evidence                                         | Default visibility                                                                                                            |
+| ------------------------------------- | ----------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| Task title + id                       | Orientation                   | Old-repo deterministic evidence                  | Always in Task row/item                                                                                                       |
+| Semantic workflow status              | Orientation                   | Old-repo deterministic evidence                  | Always perceivable from the item or its containing grouping; do not repeat a badge when lane/grouping already communicates it |
+| Requires attention + reason           | Requires attention            | Product direction                                | Always when true                                                                                                              |
+| Ready next action                     | Ready                         | Legacy action projection                         | Visible when relevant                                                                                                         |
+| Active Session/agent work             | Current activity              | Current execution projection + product direction | Visible only when current execution proves this Task is in scope                                                              |
+| Dependency/blocker summary            | Context                       | Old-repo deterministic evidence                  | Visible when blocking                                                                                                         |
+| Review outcome requiring owner action | Requires attention / Evidence | Legacy review artifact                           | Visible when relevant                                                                                                         |
+| Completion/progress state             | Orientation                   | Candidate derived projection                     | Compact                                                                                                                       |
+| linked Sessions count/list            | Context                       | Legacy Session binding                           | Usually secondary information                                                                                                 |
 
 Lower-value facts such as attempt number, raw gate type, file path, timestamps, and workflow history
 should not compete with the main Task state in the list.
@@ -268,11 +269,11 @@ should not compete with the main Task state in the list.
 Selecting a Task opens Task detail as the Specification's contextual Secondary on wide layouts and as
 focused/pushed detail on narrow layouts.
 
-~~~text
+```text
 Specification
     -> click Task
 Specification | Task detail
-~~~
+```
 
 Opening Task is the context step. It should not itself approve, start, review, or finish anything.
 
@@ -284,25 +285,25 @@ Opening Task is the context step. It should not itself approve, start, review, o
 
 The top of Task detail should let the user answer within seconds:
 
-~~~text
+```text
 What is this?
 Where is it in workflow?
 Is something waiting for me?
 What happens if I act?
-~~~
+```
 
 Candidate information:
 
-| Information | Class | Evidence |
-| --- | --- | --- |
-| Task id/title | Orientation | Old-repo deterministic evidence |
-| human-readable semantic status | Orientation | Legacy deterministic workflow |
-| current step | Context | Legacy deterministic workflow |
-| requires-attention reason | Requires attention | Product direction |
-| ready action | Ready | Legacy action inspection |
-| active work/current Session | Current activity | Current execution / Runtime projection |
-| blocking dependency/problem | Context | Old-repo deterministic evidence |
-| deterministic primary action | Action | Workflow/application projection |
+| Information                    | Class              | Evidence                               |
+| ------------------------------ | ------------------ | -------------------------------------- |
+| Task id/title                  | Orientation        | Old-repo deterministic evidence        |
+| human-readable semantic status | Orientation        | Legacy deterministic workflow          |
+| current step                   | Context            | Legacy deterministic workflow          |
+| requires-attention reason      | Requires attention | Product direction                      |
+| ready action                   | Ready              | Legacy action inspection               |
+| active work/current Session    | Current activity   | Current execution / Runtime projection |
+| blocking dependency/problem    | Context            | Old-repo deterministic evidence        |
+| deterministic primary action   | Action             | Workflow/application projection        |
 
 Do not present old lifecycle status, runtime step state, semantic status, and stage as four equal
 badges. They are implementation facts with overlapping human meaning.
@@ -344,7 +345,7 @@ Legacy deterministic action/gate checks already demonstrate useful concepts:
 
 The new UI does not need to expose these field names literally. It needs a human projection such as:
 
-~~~text
+```text
 Ready for review
 
 Why:
@@ -355,16 +356,16 @@ Why:
 
 Action:
 Review / approve / continue
-~~~
+```
 
 or:
 
-~~~text
+```text
 Cannot continue
 
 Blocked by:
 - TASK-02 is not complete
-~~~
+```
 
 The action must not be a mysterious enabled/disabled button.
 
@@ -410,7 +411,7 @@ concepts from legacy representation.
 
 **Old-repo deterministic evidence**
 
-~~~text
+```text
 id
 title
 order
@@ -421,7 +422,7 @@ blockedBy[]
 ready
 terminal
 file
-~~~
+```
 
 The dashboard also derives Spec-level metrics from Tasks.
 
@@ -438,7 +439,7 @@ Migration note:
 
 **Old-repo deterministic evidence**
 
-~~~text
+```text
 workflow_progress
 |-- current_step
 |-- current_attempt
@@ -448,7 +449,7 @@ workflow_progress
     |-- attempt
     |-- completed_at
     '-- transitioned_to
-~~~
+```
 
 A workflow definition also declares per-step semantic status identifiers for active/completed states.
 
@@ -479,7 +480,7 @@ supposed to do in this phase?" They should not automatically become primary UI c
 
 Legacy Task lifecycle values include:
 
-~~~text
+```text
 draft
 approved
 in-implementation
@@ -487,7 +488,7 @@ implemented
 verified
 archived
 abandoned
-~~~
+```
 
 This vocabulary predates or coexists with richer deterministic workflow semantics.
 
@@ -548,20 +549,21 @@ No immediate human or agent action is expected.
 
 These are derived projections. A terminal Turn does not imply a terminal Task, and an active workflow
 attempt does not prove an agent is currently working.
+
 ## 9.2 Attention item shape - candidate
 
 **Future candidate**
 
 A normalized UI/application projection could conceptually carry:
 
-~~~text
+```text
 subject            Spec or Task
 severity/priority  only if meaningful
 reason             human-readable
 requiredAction     what kind of owner action is needed
 evidenceRefs       what should be read first
 availableAction    deterministic operation
-~~~
+```
 
 This is not an API proposal yet. It records the information needed to implement the human steering
 loop consistently.
@@ -587,13 +589,13 @@ files. Reviews include:
 
 Actor classifications include concepts such as:
 
-~~~text
+```text
 AUTO_FIX
 OWNER_DECISION
 NEEDS_CLARIFICATION
 NON_BLOCKING
 INFORMATIONAL
-~~~
+```
 
 The exact legacy review schema is not automatically the new contract, but it demonstrates important
 UI requirements:
@@ -612,13 +614,13 @@ Tasks into one status.
 
 For a Task waiting on human review, Task detail should make this sequence possible:
 
-~~~text
+```text
 Task requires review
     -> open Task
     -> see current review outcome + relevant findings
     -> inspect changes / handover / session if needed
     -> choose deterministic decision
-~~~
+```
 
 The user should not have to open a raw Markdown review report first just to discover the verdict.
 
@@ -669,13 +671,13 @@ or Handover.
 
 Candidate progression:
 
-~~~text
+```text
 MVP
 Task -> relevant current change set
 
 Later
 Task review/handover -> change set scoped to the evidence boundary handed to the human
-~~~
+```
 
 The later model is preferable when provenance becomes trustworthy, because the human should review
 the work being handed over rather than unrelated worktree drift.
@@ -691,11 +693,11 @@ Diff is **Evidence**, not the Task's primary identity.
 Task detail should show Sessions as Context, but it must distinguish **historical/contextual
 association** from **current execution scope**.
 
-~~~text
+```text
 Session linked to / previously touched TASK-03
 !=
 current Turn is executing TASK-03
-~~~
+```
 
 For deterministic execution, "Agent working on TASK-03" requires authoritative current execution
 identity. Historical `taskIds`, a previous active Task, or opening the Session from TASK-03 are not
@@ -716,13 +718,13 @@ The primary Task interaction is not to replace Task detail with a nested Session
 A Session reference should expose the quick conversation target and direct Full Session access as
 separate intents:
 
-~~~text
+```text
 Task detail
     -> conversation target
        -> Floating Session where supported
     -> Open full session
        -> Full Session
-~~~
+```
 
 Useful Task-level Session summary:
 
@@ -755,7 +757,7 @@ These scenarios should be used later to validate screen structure.
 
 ## 14.1 Ready to start
 
-~~~text
+```text
 Specs overview
   Spec A: READY
 
@@ -771,14 +773,14 @@ open Task 03
 
 click Start
   deterministic operation
-~~~
+```
 
 Important distinction: this is convenient but not an alert. Nothing is waiting for an owner decision
 yet.
 
 ## 14.2 Task requires review
 
-~~~text
+```text
 Specs overview
   Spec A: REQUIRES ATTENTION
   "TASK-03 requires review"
@@ -795,13 +797,13 @@ open Task 03
   - linked Session
   - verification evidence
   [Review / decision action]
-~~~
+```
 
 This is the reference "one click for context, second deliberate click for decision" flow.
 
 ## 14.3 Agent is working
 
-~~~text
+```text
 Specs overview
   Spec A: IN PROGRESS
   "Reviewer working on TASK-03"
@@ -818,7 +820,7 @@ open Session conversation
 
 or Open full session
   Full Session directly
-~~~
+```
 
 The "working on TASK-03" label is allowed only when current execution identity proves TASK-03 is in
 scope. A linked/historical Session alone is insufficient.
@@ -827,7 +829,7 @@ Working is not ready and is not requires-attention.
 
 ## 14.4 Start blocked by dependency
 
-~~~text
+```text
 Spec A
   Task 03: cannot start
   "Waiting for TASK-02"
@@ -836,14 +838,14 @@ open Task 03
   dependency context
   Start is unavailable for this reason
   another remediation action may still be legal
-~~~
+```
 
 If resolving the dependency does not require a human decision, avoid attention styling. Do not turn
 one blocked operation into a universal Task-level `BLOCKED` state.
 
 ## 14.5 Review has unresolved owner decision
 
-~~~text
+```text
 Specs overview
   REQUIRES ATTENTION
   "Owner decision required"
@@ -853,13 +855,13 @@ open Task
   exact unresolved decision
   relevant evidence
   [decision]
-~~~
+```
 
 Do not summarize this merely as "changes required"; the human actor is part of the meaning.
 
 ## 14.6 Review has agent-fixable findings
 
-~~~text
+```text
 Task detail
   Review: changes required
   AUTO_FIX findings exist
@@ -868,13 +870,13 @@ show:
   what will be changed
   evidence/report
   explicit batch apply action if supported
-~~~
+```
 
 This differs from OWNER_DECISION even if both came from the same review artifact.
 
 ## 14.7 Generic Turn after Task-associated work
 
-~~~text
+```text
 Task 03
   linked Session S
 
@@ -886,27 +888,27 @@ user sends an ordinary generic/spec-level message
 UI:
   Session remains contextually related to TASK-03
   but does NOT show "working on TASK-03"
-~~~
+```
 
 This prevents historical Session binding from becoming false current execution state.
 
 ## 14.8 Multi-Task review Session
 
-~~~text
+```text
 TASK-01
 TASK-02
 TASK-03
   -> one review execution/session with scope 01+02+03
   -> possibly one shared review artifact
   -> separate per-Task verdict/outcome
-~~~
+```
 
 Opening the Session from TASK-02 may preserve TASK-02 as entry context in the floating surface, but
 Full Session must expose the whole current batch scope.
 
 ## 14.9 Terminal Turn, more legal work remains
 
-~~~text
+```text
 AI Turn/execution settles safely
 Task is not complete
 more deterministic work is legal
@@ -921,14 +923,14 @@ UI:
   not "Agent working"
   not "Task done"
   expose continue/resume only when authoritative readiness allows it
-~~~
+```
 
 "Ready to resume/continue" is a projection, not a new persisted Task status and not a synonym for
 `workflow_progress.state === active`.
 
 ## 14.10 Recovery required after terminal Turn
 
-~~~text
+```text
 AI Turn settles
 workflow attempt is not complete
 automatic continuation is not safe
@@ -938,7 +940,7 @@ UI:
   not generic "Blocked"
   show recovery/remediation reason
   expose the authoritative recovery action if one exists
-~~~
+```
 
 Recovery-required and resumable are different projections. Neither should become a new persisted
 Task lifecycle status merely for UI convenience.
@@ -947,7 +949,7 @@ Task lifecycle status merely for UI convenience.
 
 **Future migration scenario**
 
-~~~text
+```text
 Specs overview
   Spec A: REQUIRES ATTENTION
   "Specification approval required"
@@ -957,7 +959,7 @@ open Spec A
   spec review/artifacts
   unresolved findings/decisions
   [approve / workflow-specific action]
-~~~
+```
 
 The product model should support this without inventing a second special-purpose status system for
 Specifications.
@@ -983,6 +985,7 @@ Concrete signal controls may explicitly open a Task or issue target; aggregate s
 representative Task.
 
 Do not expose raw gates, attempt history, full findings, tool details, or raw diffs.
+
 ## Specification
 
 Keep:
@@ -999,6 +1002,7 @@ Keep:
 
 Specification may reference project-level operational facts without owning deployment/release
 semantics.
+
 ## Task detail
 
 Keep:
@@ -1015,6 +1019,7 @@ Keep:
 
 A workflow/history entry that has a Session reference opens that Session. A future turn anchor may
 refine the target to the exact Turn without introducing another intermediate "proof" screen.
+
 ## Deep inspection
 
 Put behind explicit navigation:
@@ -1028,6 +1033,7 @@ Put behind explicit navigation:
 
 Artifacts remain readable evidence. Approve/reject/edit actions belong to the workflow/Human Step
 that consumes the artifact, not to a generic document viewer.
+
 # 16. Data/projection gaps exposed by this hierarchy
 
 The UI should not compensate with heuristics if the application layer cannot answer these questions.

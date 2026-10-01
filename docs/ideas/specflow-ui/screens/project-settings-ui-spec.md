@@ -51,7 +51,7 @@ actions remain on Specification, Task, Session, or another current-work surface.
 
 The shared distinction remains:
 
-~~~text
+```text
 CONFIGURATION
 How should it work?
 -> Project Settings
@@ -63,7 +63,7 @@ What is happening?
 ACTION
 What can I do now?
 -> contextual action
-~~~
+```
 
 This spec is read-only-first. It defines inspection/navigation now and reserves clear places for
 future edits without inventing mutation contracts that do not exist yet.
@@ -157,13 +157,13 @@ Do not invent authentication/setup actions until the integration contract suppor
 
 Global product navigation contains:
 
-~~~text
+```text
 Specs
 
 ────────
 
 Project Settings
-~~~
+```
 
 Selecting Project Settings opens this workspace. It does not mutate project configuration.
 
@@ -201,13 +201,13 @@ A section such as Workflows may contain a collection of definitions.
 Selecting one definition changes the Settings content to that definition detail while retaining
 Project Settings and the selected Settings section as parent context.
 
-~~~text
+```text
 Project Settings
   Workflows
     Workflow definitions
       -> Definition detail
       <- Workflows
-~~~
+```
 
 Do not open a third global workspace pane merely because a definition has detail.
 
@@ -235,7 +235,7 @@ Settings catalog/read model.
 
 The backend/application layer should return an ordered semantic catalog roughly equivalent to:
 
-~~~text
+```text
 ProjectSettingsCatalog
   sections[]
     id
@@ -261,7 +261,7 @@ ProjectSettingsCatalog
         required?
         availability/status?
         capability flags?
-~~~
+```
 
 Names above are illustrative, not frozen DTO field names.
 
@@ -285,7 +285,7 @@ The frontend owns presentation, not the settings inventory.
 
 It should map semantic setting kinds to established renderers, for example:
 
-~~~text
+```text
 string / number        -> label + value / future field
 boolean                -> boolean presentation / future switch
 enum                    -> selected value / future Select
@@ -293,7 +293,7 @@ path / file reference  -> path presentation + contextual open action
 secret                  -> masked/safe presentation
 structured/code value  -> read-only code/config inspection
 status                  -> semantic status treatment
-~~~
+```
 
 The backend must **not** return React component names, Tailwind classes, colour tokens, Card
 instructions, or arbitrary layout markup.
@@ -338,19 +338,18 @@ primary source of the Settings navigation model**.
 
 The normal flow is:
 
-~~~text
+```text
 backend/application Settings catalog
         -> Settings sections/groups/items
 
 raw project/local config
         -> deeper source inspection / provenance
-~~~
+```
 
 The UI may offer View source / View configuration without parsing raw files to discover what settings
 exist.
 
 ---
-
 
 ## 5. API availability / migration status
 
@@ -362,18 +361,17 @@ Status vocabulary used by all screen specs:
 
 For Project Settings:
 
-| Need | New SpecFlow | Old repo evidence | Direction |
-| --- | --- | --- | --- |
-| Dynamic Settings catalog | **missing** | **missing** | Add new project-scoped catalog/read model. |
-| Provider availability/capabilities | **missing** | **old-repo-available** via \`GET /api/agent-providers\` | Fold semantic provider configuration/availability into Settings read model or link to a shared provider capability. |
-| Workflow definitions | **missing** | **old-repo-available** internally in workflow definitions/registry, but not as a Settings catalog API | Expose human-readable workflow-definition projection through Settings/backend capability. |
-| Project/local/effective config provenance | **missing** | partial filesystem/config evidence only | Add authoritative provenance/effective-value projection. |
-| Repository/Git configuration summary | **missing** | partial runtime/source-control APIs, not a Settings contract | Add project-configuration projection; keep current worktree state out of Settings ownership. |
-| Integration configuration | **missing** | no generic plugin-driven Settings catalog | Add through extensible Settings catalog contributions. |
+| Need                                      | New SpecFlow | Old repo evidence                                                                                     | Direction                                                                                                           |
+| ----------------------------------------- | ------------ | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Dynamic Settings catalog                  | **missing**  | **missing**                                                                                           | Add new project-scoped catalog/read model.                                                                          |
+| Provider availability/capabilities        | **missing**  | **old-repo-available** via \`GET /api/agent-providers\`                                               | Fold semantic provider configuration/availability into Settings read model or link to a shared provider capability. |
+| Workflow definitions                      | **missing**  | **old-repo-available** internally in workflow definitions/registry, but not as a Settings catalog API | Expose human-readable workflow-definition projection through Settings/backend capability.                           |
+| Project/local/effective config provenance | **missing**  | partial filesystem/config evidence only                                                               | Add authoritative provenance/effective-value projection.                                                            |
+| Repository/Git configuration summary      | **missing**  | partial runtime/source-control APIs, not a Settings contract                                          | Add project-configuration projection; keep current worktree state out of Settings ownership.                        |
+| Integration configuration                 | **missing**  | no generic plugin-driven Settings catalog                                                             | Add through extensible Settings catalog contributions.                                                              |
 
 The current \`@nevo/specflow-runtime\` package explicitly describes its backend as a bootstrap proof;
 there is no current HTTP product contract to treat as \`existing-new\` for this screen.
-
 
 ### Legacy field evidence
 
@@ -382,7 +380,7 @@ There is no legacy Settings catalog to copy.
 The closest reusable legacy provider descriptor already proves these provider fields exist as useful
 semantic data:
 
-~~~text
+```text
 AgentProviderDescriptor
   id
   label
@@ -392,7 +390,7 @@ AgentProviderDescriptor
   capabilities
   supportedModes?
   defaultMode?
-~~~
+```
 
 Workflow-definition data also exists in legacy workflow definitions/registry, but not as one
 human-facing Settings read model.
@@ -405,13 +403,13 @@ metadata can be added without breaking older clients.
 
 Illustrative transport:
 
-~~~text
+```text
 GET /api/project/settings
-~~~
+```
 
 Response shape:
 
-~~~text
+```text
 {
   schemaVersion,
   revision,
@@ -472,7 +470,7 @@ Response shape:
     }
   ]
 }
-~~~
+```
 
 Field coverage notes:
 
@@ -533,7 +531,7 @@ Do not create a dashboard of counts merely because there is free space.
 
 ### 7.1 Shared workspace
 
-~~~text
+```text
 Project Settings header
 
 Local Settings navigation     Section content
@@ -544,7 +542,7 @@ AI / Agents
 Workflows                     content
 Repository / Git
 Integrations
-~~~
+```
 
 Both columns belong to one Project Settings Primary surface.
 
@@ -575,7 +573,7 @@ Do not render each category as a Card/tile.
 
 Default section structure:
 
-~~~text
+```text
 Section title
 optional one-sentence explanation
 
@@ -584,7 +582,7 @@ content group
 content group
 
 content group
-~~~
+```
 
 Separate substantial groups primarily through heading hierarchy and section-scale whitespace.
 
@@ -598,7 +596,7 @@ Purpose: stable project facts.
 
 Candidate structure:
 
-~~~text
+```text
 General
 
 Project
@@ -608,7 +606,7 @@ Project
 
 Additional project facts
   ...
-~~~
+```
 
 Use definition-style label/value rows or aligned text.
 
@@ -620,7 +618,7 @@ Do not create separate Name / Repository / Root Cards.
 
 Purpose: inspect authored and effective configuration.
 
-~~~text
+```text
 Configuration
 
 Project configuration
@@ -633,7 +631,7 @@ Local configuration
 
 Effective configuration                when available
   resolved values / provenance
-~~~
+```
 
 Raw YAML/code is deeper detail, not the primary visual hierarchy.
 
@@ -648,7 +646,7 @@ Purpose: inspect project policy/defaults and available definitions.
 
 Suggested order:
 
-~~~text
+```text
 AI / Agents
 
 Defaults / policy
@@ -664,7 +662,7 @@ Agent profiles
 
 Advanced execution policy
   collapsed/deeper when needed
-~~~
+```
 
 Provider/model is implementation context; role/profile is normally more important to the human.
 
@@ -682,7 +680,7 @@ deterministic product modes. Nevo SpecFlow has no legacy-flow mode to enable.
 
 List state:
 
-~~~text
+```text
 Workflows
 
 Definitions
@@ -690,11 +688,11 @@ Definitions
 Implementation
 Review
 ...
-~~~
+```
 
 Selecting a definition:
 
-~~~text
+```text
 Workflows
 ← Definitions
 
@@ -712,7 +710,7 @@ Actions / transitions
 
 Source-control behavior
 ...
-~~~
+```
 
 Steps and gates are linear configuration. Prefer headings, rows, ordered lists, and progressive
 disclosure over Cards per step.
@@ -723,7 +721,7 @@ A gate type is technical detail unless it helps explain the configuration.
 
 Purpose: inspect repository-level configuration.
 
-~~~text
+```text
 Repository / Git
 
 Repository
@@ -733,7 +731,7 @@ Repository
 
 Source-control settings
   ...
-~~~
+```
 
 Current dirty state/current diff is runtime/current-work information and should not be presented here
 as if it were project configuration.
@@ -742,7 +740,7 @@ as if it were project configuration.
 
 Purpose: inspect configured external integrations.
 
-~~~text
+```text
 Integrations
 
 GitHub
@@ -752,7 +750,7 @@ GitHub
 
 GitLab
   ...
-~~~
+```
 
 Use rows or sections, not one decorative integration Card per provider by default.
 
@@ -765,7 +763,7 @@ This is an information/layout sketch, not a pixel-perfect visual design.
 
 Wide example with **Configuration** selected:
 
-~~~text
+```text
 ┌──────────────────┬──────────────────────────────────────────────────────────────┐
 │ Nevo SpecFlow    │ Project Settings                                             │
 │                  │                                                              │
@@ -785,7 +783,7 @@ Wide example with **Configuration** selected:
 │                  │                         source          project config        │
 │                  │                                                              │
 └──────────────────┴──────────────────────────────────────────────────────────────┘
-~~~
+```
 
 Important visual intent:
 
@@ -811,10 +809,10 @@ Global navigation is persistent.
 
 Inside Project Settings:
 
-~~~text
+```text
 Navigation | Project Settings workspace
              local section nav | section content
-~~~
+```
 
 Local Settings navigation remains visually subordinate to global product navigation.
 
@@ -834,14 +832,14 @@ Show one Settings content column.
 Replace the persistent local section column with a compact, explicit section selector near the top
 of Project Settings content.
 
-~~~text
+```text
 ☰  Project Settings
 
 [ General ▾ ]
 
 General
 ...
-~~~
+```
 
 Selecting another section replaces section content in the same workspace.
 
@@ -849,14 +847,14 @@ This is section switching, not a workflow mutation and not AppWorkspace Secondar
 
 If a user is in a nested definition detail:
 
-~~~text
+```text
 Project Settings
 Workflows
 ← Definitions
 
 Implementation
 ...
-~~~
+```
 
 Back returns to the parent Settings collection/detail level, not to arbitrary browser history.
 
@@ -867,32 +865,32 @@ the behavior is fixed here, not the primitive.
 
 ### Flow A — enter Settings
 
-~~~text
+```text
 Global navigation
   -> Project Settings
 
 Project Settings
   General selected
   General content visible
-~~~
+```
 
 No modal, no welcome Card, no intermediate dashboard.
 
 ### Flow B — switch section
 
-~~~text
+```text
 User selects AI / Agents
   -> local selection changes
   -> content changes to AI / Agents
   -> workspace header remains Project Settings
   -> no backend mutation
-~~~
+```
 
 If section intent is URL-addressable, the product navigation state updates accordingly.
 
 ### Flow C — inspect workflow definition
 
-~~~text
+```text
 Workflows
   user selects Implementation
     -> definition detail replaces Workflows list content
@@ -900,18 +898,18 @@ Workflows
 
 Back / Definitions
     -> Workflows definition list
-~~~
+```
 
 Opening a definition must not start, modify, or validate a runtime workflow.
 
 ### Flow D — inspect raw configuration
 
-~~~text
+```text
 Configuration
   user selects View configuration
     -> open read-only configuration detail
     -> preserve Settings context
-~~~
+```
 
 When compact file/code inspection exists, use it rather than inventing a second bespoke code viewer.
 
@@ -919,10 +917,10 @@ When compact file/code inspection exists, use it rather than inventing a second 
 
 Example:
 
-~~~text
+```text
 AI / Agents
   Provider unavailable
-~~~
+```
 
 The row/status explains the condition.
 
@@ -983,7 +981,6 @@ Future editing must define:
 
 Do not infer those from the inspection UI.
 
-
 ## 13. Data loading, invalidation, and Refresh
 
 This screen inherits the shared
@@ -1032,26 +1029,26 @@ The descriptor/value-kind rendering contract is defined in
 
 This map names responsibilities, not a mandatory file tree.
 
-| Region / behavior | Use | Ownership |
-| --- | --- | --- |
-| Product shell | AppShell | Nevo UI |
-| Settings workspace | AppWorkspace with Primary only by default | Nevo UI |
-| Workspace title/actions | WorkspaceHeader | Nevo UI |
-| Scroll/content width | AppContent, AppWorkspaceBody, AppContentContainer | Nevo UI |
-| Wide/compact local settings navigation | SideNavigation or equivalent generic nav primitive | Nevo UI primitive, SpecFlow composition |
-| Narrow section selector | existing Menu/Select/navigation primitive chosen during composition | Nevo UI primitive, SpecFlow composition |
-| Section headings/body | Typography | Nevo UI |
-| Light section separation | whitespace first; Separator only when needed | Nevo UI |
-| Status / availability | StatusIndicator and semantic feedback primitives | Nevo UI |
-| Exceptional action-required message | Alert when it truly needs emphasis | Nevo UI |
-| Advanced disclosure | Collapsible | Nevo UI |
-| Actions | Button, IconButton, Menu, Link | Nevo UI |
-| Raw authored prose/config docs | MarkdownDocument where Markdown is the source format | Nevo UI |
-| Project Settings sections/view models | feature-local compositions | SpecFlow UI |
-| Workflow definition detail | feature-local composition | SpecFlow UI |
-| Provider/profile rows | feature-local composition over list/row primitives | SpecFlow UI |
-| Effective-config provenance | product composition/read model | SpecFlow UI/runtime |
-| Compact code/file inspection | existing Developer Workspace capability track | Product/platform |
+| Region / behavior                      | Use                                                                 | Ownership                               |
+| -------------------------------------- | ------------------------------------------------------------------- | --------------------------------------- |
+| Product shell                          | AppShell                                                            | Nevo UI                                 |
+| Settings workspace                     | AppWorkspace with Primary only by default                           | Nevo UI                                 |
+| Workspace title/actions                | WorkspaceHeader                                                     | Nevo UI                                 |
+| Scroll/content width                   | AppContent, AppWorkspaceBody, AppContentContainer                   | Nevo UI                                 |
+| Wide/compact local settings navigation | SideNavigation or equivalent generic nav primitive                  | Nevo UI primitive, SpecFlow composition |
+| Narrow section selector                | existing Menu/Select/navigation primitive chosen during composition | Nevo UI primitive, SpecFlow composition |
+| Section headings/body                  | Typography                                                          | Nevo UI                                 |
+| Light section separation               | whitespace first; Separator only when needed                        | Nevo UI                                 |
+| Status / availability                  | StatusIndicator and semantic feedback primitives                    | Nevo UI                                 |
+| Exceptional action-required message    | Alert when it truly needs emphasis                                  | Nevo UI                                 |
+| Advanced disclosure                    | Collapsible                                                         | Nevo UI                                 |
+| Actions                                | Button, IconButton, Menu, Link                                      | Nevo UI                                 |
+| Raw authored prose/config docs         | MarkdownDocument where Markdown is the source format                | Nevo UI                                 |
+| Project Settings sections/view models  | feature-local compositions                                          | SpecFlow UI                             |
+| Workflow definition detail             | feature-local composition                                           | SpecFlow UI                             |
+| Provider/profile rows                  | feature-local composition over list/row primitives                  | SpecFlow UI                             |
+| Effective-config provenance            | product composition/read model                                      | SpecFlow UI/runtime                     |
+| Compact code/file inspection           | existing Developer Workspace capability track                       | Product/platform                        |
 
 Do not create generic Nevo UI components named SettingsCard, ProviderCard, WorkflowCard, ConfigCard,
 or similar merely for this screen.
@@ -1062,19 +1059,19 @@ This screen inherits semantic typography/colour rules from the shared design-sys
 
 Use the current Nevo UI semantic roles; concrete token values remain design-system-owned.
 
-| Purpose | Semantic treatment |
-| --- | --- |
-| Workspace/page surface | existing AppWorkspace/workspace material; no extra enclosing background Card |
-| Primary title/value | text-content-primary |
-| Supporting explanation | text-content-secondary |
-| Low-priority metadata/path/source hint | text-content-muted |
-| Section separation | whitespace first; then border-divider / border-border-subtle only when needed |
-| Interactive row hover | shared interactive treatment such as bg-surface-hover through the owning primitive |
-| Form/control surface | shared control treatment such as bg-surface-control through the owning primitive |
-| Selected local navigation | use SideNavigation/navigation primitive selected treatment; do not invent a Settings-only colour |
-| Action colour | use Button/Link semantic action variants; do not hard-code brand/action colours in screen code |
-| Warning/error/info | resolve product state to semantic tone, then use shared feedback primitives/tokens |
-| Code/raw config | neutral code surface; syntax/state colour only when semantically meaningful |
+| Purpose                                | Semantic treatment                                                                               |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Workspace/page surface                 | existing AppWorkspace/workspace material; no extra enclosing background Card                     |
+| Primary title/value                    | text-content-primary                                                                             |
+| Supporting explanation                 | text-content-secondary                                                                           |
+| Low-priority metadata/path/source hint | text-content-muted                                                                               |
+| Section separation                     | whitespace first; then border-divider / border-border-subtle only when needed                    |
+| Interactive row hover                  | shared interactive treatment such as bg-surface-hover through the owning primitive               |
+| Form/control surface                   | shared control treatment such as bg-surface-control through the owning primitive                 |
+| Selected local navigation              | use SideNavigation/navigation primitive selected treatment; do not invent a Settings-only colour |
+| Action colour                          | use Button/Link semantic action variants; do not hard-code brand/action colours in screen code   |
+| Warning/error/info                     | resolve product state to semantic tone, then use shared feedback primitives/tokens               |
+| Code/raw config                        | neutral code surface; syntax/state colour only when semantically meaningful                      |
 
 Do not use colour merely to make every Settings category visually different.
 

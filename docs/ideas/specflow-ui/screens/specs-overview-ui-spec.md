@@ -37,6 +37,7 @@ It should answer:
 The screen also owns the entry point for creating a new Specification.
 
 It does not own Task evidence, Session transcript, or detailed workflow inspection.
+
 ## 2. User use cases
 
 - Find a Specification with a human-required decision/interaction.
@@ -48,6 +49,7 @@ It does not own Task evidence, Session transcript, or detailed workflow inspecti
 - Switch between Active and Archive collection views.
 - Create a Specification with only a title, optionally add initial description, and optionally
   continue directly into agent initialization.
+
 ## 3. Entry and navigation
 
 Global navigation -> Specs.
@@ -59,6 +61,7 @@ A concrete signal may expose a separate explicit Task/issue target. An aggregate
 Specification attention context rather than guessing one Task.
 
 Opening context is navigation only; no workflow mutation occurs.
+
 ## 4. Data source / read-model ownership
 
 The overview should consume a backend/application projection designed for human steering.
@@ -78,18 +81,19 @@ Frontend must not infer:
 
 ## 5. API availability / migration status
 
-| Need | New SpecFlow | Old repo evidence | Direction |
-| --- | --- | --- | --- |
-| Active/archive Spec collection | **missing** | **old-repo-available** via `GET /api/dashboard` | Preserve list identity/summary, replace legacy lifecycle ranking with new semantic steering projection. |
-| Create Specification | **missing** | **old-repo-available** via `POST /api/specs` | Preserve scaffolding capability, not the old request shape: target UX requires title only, derives slug internally, uses deterministic workflow unconditionally, allows optional initial description/goal, and may continue into the shared Session-start interaction. |
-| Task summary/progress | **missing** | **old-repo-available** in `/api/dashboard` and `GET /api/specs/:source/:slug/task-statuses` | Preserve useful task metadata, but do not treat legacy `ready`/status as complete new readiness model. |
-| Human-attention projection | **missing** | partial/legacy workflow-action evidence | Add explicit server-owned attention signals. |
-| Current single/batch execution | **missing** | partial Session/task association exists, but association is not authoritative execution | Add explicit current execution projection. |
-| Live invalidation | **missing** | **old-repo-available** via `GET /api/events` specs-changed SSE | Reuse event-driven invalidation concept; exact new transport may differ. |
+| Need                           | New SpecFlow | Old repo evidence                                                                           | Direction                                                                                                                                                                                                                                                              |
+| ------------------------------ | ------------ | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Active/archive Spec collection | **missing**  | **old-repo-available** via `GET /api/dashboard`                                             | Preserve list identity/summary, replace legacy lifecycle ranking with new semantic steering projection.                                                                                                                                                                |
+| Create Specification           | **missing**  | **old-repo-available** via `POST /api/specs`                                                | Preserve scaffolding capability, not the old request shape: target UX requires title only, derives slug internally, uses deterministic workflow unconditionally, allows optional initial description/goal, and may continue into the shared Session-start interaction. |
+| Task summary/progress          | **missing**  | **old-repo-available** in `/api/dashboard` and `GET /api/specs/:source/:slug/task-statuses` | Preserve useful task metadata, but do not treat legacy `ready`/status as complete new readiness model.                                                                                                                                                                 |
+| Human-attention projection     | **missing**  | partial/legacy workflow-action evidence                                                     | Add explicit server-owned attention signals.                                                                                                                                                                                                                           |
+| Current single/batch execution | **missing**  | partial Session/task association exists, but association is not authoritative execution     | Add explicit current execution projection.                                                                                                                                                                                                                             |
+| Live invalidation              | **missing**  | **old-repo-available** via `GET /api/events` specs-changed SSE                              | Reuse event-driven invalidation concept; exact new transport may differ.                                                                                                                                                                                               |
 
 Creation and collection reads are separate application capabilities. Creating a Specification does not
 require starting an agent Session; create-and-start composes Specification creation with the common
 Session-start capability rather than inventing a separate AI transport.
+
 ## 6. Information hierarchy
 
 Per Spec item:
@@ -107,9 +111,10 @@ Do not duplicate one Spec across several stacked list groups. Summary counters m
 they are aggregates, not the canonical work queue.
 
 Avoid miniature detail screens inside rows.
+
 ## 7. Pseudo-layout
 
-~~~text
+```text
 ┌───────────────┬────────────────────────────────────────────────────────────┐
 │ Nevo SpecFlow │ Specs                                      [+ New spec]    │
 │               │ [ Active ] [ Archive ]                                     │
@@ -126,9 +131,10 @@ Avoid miniature detail screens inside rows.
 │               │ In progress / other active                                 │
 │               │ Spec D                 Reviewer · 3 Tasks            >      │
 └───────────────┴────────────────────────────────────────────────────────────┘
-~~~
+```
 
 The same Spec appears once in the canonical list. Rows are borderless/list-first.
+
 ## 8. Screen anatomy
 
 - Workspace header: Specs.
@@ -142,11 +148,13 @@ The same Spec appears once in the canonical list. Rows are borderless/list-first
 ## 9. Responsive contract
 
 Wide/Compact:
+
 - same information hierarchy;
 - global nav may be persistent or Drawer;
 - overview remains one Primary surface.
 
 Narrow:
+
 - same groups/signals;
 - compact row text may reduce tertiary metadata;
 - concrete Task signal remains directly tappable;
@@ -155,20 +163,23 @@ Narrow:
 ## 10. Interaction flows
 
 ### Neutral Spec
+
 Click row/title -> Specification.
 
 ### Explicit Task/issue signal
+
 Click explicit TASK-03 signal/action -> Specification with local TASK-03 detail opened when useful.
 This does not change the neutral row destination.
 
 ### Aggregate signal
+
 "3 Tasks require review" -> Specification attention/task context; user chooses the concrete Task.
 
 ### Create Specification
 
 Baseline:
 
-~~~text
+```text
 New specification
   title *                    required
   initial description       optional / collapsed by default
@@ -177,7 +188,7 @@ New specification
 
 [Create]
 [Create and start with agent]
-~~~
+```
 
 Create produces the deterministic Specification scaffold. The application derives slug/technical
 defaults; there is no Legacy/Deterministic choice.
@@ -187,11 +198,14 @@ needed, then normal composer/session experience). Do not maintain a separate ric
 inside the create dialog.
 
 ### Collection switch
+
 Active/Archive changes collection state, not workflow state.
 
 ### Search
+
 Search narrows the selected collection. Local filtering is fine for a bounded loaded set; server
 search follows shared debounce/cancellation rules when needed.
+
 ## 11. States
 
 - loading: preserve header/filter geometry, restrained row skeletons;
@@ -202,6 +216,7 @@ search follows shared debounce/cancellation rules when needed.
 - working: active progress without stealing attention;
 - partial signal failure: keep Spec identity/list usable and mark unavailable projection locally;
 - stale/reconnecting transport: subtle connection feedback without rewriting canonical semantics.
+
 ## 12. Data loading, events, and Refresh
 
 This screen inherits
@@ -238,17 +253,17 @@ The detailed row/group/aggregation contract is defined in
 
 ## 13. Component / composition map
 
-| Need | Component/composition |
-| --- | --- |
-| Shell/workspace | AppShell + AppWorkspace |
-| Header | WorkspaceHeader |
-| Active/Archive | Tabs or SegmentedControl after visual composition review |
-| Groups | product composition + Typography |
-| Rows | product-owned SpecSummaryItem using semantic list/button/link primitives |
-| Status cue | StatusIndicator/Badge sparingly |
-| Exceptional page error | Alert |
-| Loading | Skeleton |
-| Empty | EmptyState |
+| Need                   | Component/composition                                                    |
+| ---------------------- | ------------------------------------------------------------------------ |
+| Shell/workspace        | AppShell + AppWorkspace                                                  |
+| Header                 | WorkspaceHeader                                                          |
+| Active/Archive         | Tabs or SegmentedControl after visual composition review                 |
+| Groups                 | product composition + Typography                                         |
+| Rows                   | product-owned SpecSummaryItem using semantic list/button/link primitives |
+| Status cue             | StatusIndicator/Badge sparingly                                          |
+| Exceptional page error | Alert                                                                    |
+| Loading                | Skeleton                                                                 |
+| Empty                  | EmptyState                                                               |
 
 Do not force the work queue into DataTable unless final content proves genuinely tabular.
 
@@ -307,6 +322,7 @@ Do not force the work queue into DataTable unless final content proves genuinely
 - New specification works with title only and does not require an initial prompt;
 - create-and-start reuses the shared Session/composer path;
 - repeated Specs are rows, not Card soup.
+
 ## 19. Open questions
 
 - exact Active/Archive control;

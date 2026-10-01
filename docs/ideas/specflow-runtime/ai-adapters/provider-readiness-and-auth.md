@@ -63,12 +63,12 @@ As a result, an installed-but-logged-out provider may look available until real 
 
 If SpecFlow adopts an explicit authentication-readiness dimension, keep these states distinct:
 
-| Installed | Authenticated | Meaning |
-|---|---|---|
-| false | unknown | Provider runtime is not installed/resolvable. |
-| true | unknown | Provider exists, but auth readiness has not been established. |
-| true | false | Provider exists but cannot currently execute authenticated work. |
-| true | true | Authentication has been demonstrated recently. |
+| Installed | Authenticated | Meaning                                                          |
+| --------- | ------------- | ---------------------------------------------------------------- |
+| false     | unknown       | Provider runtime is not installed/resolvable.                    |
+| true      | unknown       | Provider exists, but auth readiness has not been established.    |
+| true      | false         | Provider exists but cannot currently execute authenticated work. |
+| true      | true          | Authentication has been demonstrated recently.                   |
 
 `authenticated: undefined` would mean **unknown**, not true.
 

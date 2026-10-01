@@ -600,15 +600,15 @@ Do not generalize this to every status:
 
 The table compares evidence maturity and semantics, not target error-code names.
 
-| Condition | Claude | Codex | Antigravity |
-|---|---|---|---|
-| Not logged in | CLI/probe failure markers; should become readiness state | CLI/app-server probe failure markers; should become readiness state | Needs provider-specific readiness evidence; startTurn classifier remains fallback |
-| Rate limit | captured structured 429/window evidence exists | classifier/error-envelope support; capture more real fixtures | tested ERROR/result and mapper shapes |
-| Long-window quota | captured seven-day window evidence; more signatures worth fixtures | classifier support; capture more real fixtures | quota error step/mapper support |
-| Provider timeout | mapper support; exact native shape needs version evidence | normally Runtime-owned per-Turn timeout | explicit CLI print-timeout / exit 124 |
-| Runtime silence | Runtime-owned | Runtime-owned | Runtime-owned, separate from print-timeout |
-| Protocol error | stream/protocol classifier | structured JSON-RPC codes | malformed/unknown stream shapes need provider-specific evidence |
-| Tool failure | tool result, not automatically Turn failure | captured failed command with successful Turn | tool step failure distinct from terminal result |
+| Condition         | Claude                                                             | Codex                                                               | Antigravity                                                                       |
+| ----------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Not logged in     | CLI/probe failure markers; should become readiness state           | CLI/app-server probe failure markers; should become readiness state | Needs provider-specific readiness evidence; startTurn classifier remains fallback |
+| Rate limit        | captured structured 429/window evidence exists                     | classifier/error-envelope support; capture more real fixtures       | tested ERROR/result and mapper shapes                                             |
+| Long-window quota | captured seven-day window evidence; more signatures worth fixtures | classifier support; capture more real fixtures                      | quota error step/mapper support                                                   |
+| Provider timeout  | mapper support; exact native shape needs version evidence          | normally Runtime-owned per-Turn timeout                             | explicit CLI print-timeout / exit 124                                             |
+| Runtime silence   | Runtime-owned                                                      | Runtime-owned                                                       | Runtime-owned, separate from print-timeout                                        |
+| Protocol error    | stream/protocol classifier                                         | structured JSON-RPC codes                                           | malformed/unknown stream shapes need provider-specific evidence                   |
+| Tool failure      | tool result, not automatically Turn failure                        | captured failed command with successful Turn                        | tool step failure distinct from terminal result                                   |
 
 ## Fixture backlog
 

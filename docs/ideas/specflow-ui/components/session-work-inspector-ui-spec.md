@@ -43,7 +43,7 @@ It is intentionally more technical than the conversation.
 
 The levels are:
 
-~~~text
+```text
 L1 Conversation
   compact semantic Work bursts
 
@@ -55,7 +55,7 @@ L3 Work item
 
 L4 ToolAction / raw payload
   deepest action/input/output inspection
-~~~
+```
 
 Do not collapse these into one giant timeline with every detail always visible.
 
@@ -63,7 +63,7 @@ Do not collapse these into one giant timeline with every detail always visible.
 
 ### Product-owned
 
-~~~text
+```text
 SessionWorkInspector
 ├── WorkActivityDisclosure          compact collapsed/expanded block
 ├── WorkLogProjection               L2 grouped chapters
@@ -76,7 +76,7 @@ SessionWorkInspector
 ├── WorkItemDetail
 └── ToolInvocationDetail
     └── ToolActionList
-~~~
+```
 
 ### Nevo UI primitives
 
@@ -100,7 +100,7 @@ Tool/domain semantics stay in SpecFlow code.
 
 Current canonical old-repo evidence:
 
-~~~text
+```text
 ToolInvocationWorkItem
   id
   seq
@@ -123,11 +123,11 @@ ToolInvocationWorkItem
   confidence?
   createdAt
   updatedAt
-~~~
+```
 
 Canonical tool kinds:
 
-~~~text
+```text
 read
 edit
 write
@@ -137,11 +137,11 @@ command
 test
 web
 other
-~~~
+```
 
 Canonical ToolAction:
 
-~~~text
+```text
 id
 seq
 kind: read | write | edit | search | list | execute | fetch | other
@@ -151,7 +151,7 @@ target?
 status?: active | completed | failed
 startedAt?
 completedAt?
-~~~
+```
 
 The UI must not infer tool kind from toolName strings.
 
@@ -175,7 +175,7 @@ technical payloads without changing tool semantics.
 
 Illustrative additive shape:
 
-~~~text
+```text
 tool.detail {
   input: {
     inline?,
@@ -190,7 +190,7 @@ tool.detail {
     truncated?
   }
 }
-~~~
+```
 
 Existing small `input`/`output` may remain inline for compatibility.
 
@@ -204,11 +204,11 @@ them as facts.
 
 All Work presentations follow the same reading direction as chat:
 
-~~~text
+```text
 oldest
   ↓
 newest / current
-~~~
+```
 
 The newest/current activity is at the bottom.
 
@@ -222,21 +222,21 @@ The normal Session view needs a one-line compact state.
 
 Example:
 
-~~~text
+```text
 Working · 1 read · 2 searches · 4 commands                     [Expand]
-~~~
+```
 
 When there is a single useful current action:
 
-~~~text
+```text
 Running tests · specflow-runtime                               [Expand]
-~~~
+```
 
 When exceptional work exists:
 
-~~~text
+```text
 Working · 6 actions · 1 failed                                 [Expand]
-~~~
+```
 
 Rules:
 
@@ -260,7 +260,7 @@ Do not expand the page by dozens of tool rows.
 
 Example:
 
-~~~text
+```text
 ┌──────────────────────────────────────────────────────────────┐
 │ Checking the admission path…                                │
 │   1 read · 2 searches · 4 commands                          │
@@ -271,7 +271,7 @@ Example:
 │ ⟳ Executing command · pnpm test                             │
 └──────────────────────────────────────────────────────────────┘
                           scrolls when history exceeds the cap
-~~~
+```
 
 The block may expose an explicit **Open Work** action to move to the full L2 inspector.
 
@@ -281,7 +281,7 @@ L2 is a grouped, chronology-preserving **work log**, not an icon-heavy timeline.
 
 Visual model:
 
-~~~text
+```text
 Work
 
 Checking the implementation and locating the admission path…
@@ -295,7 +295,7 @@ One test failed; checking the assertion before retrying…
   1 edit · tests passed                                       >
 
 ⟳ Executing command · pnpm check
-~~~
+```
 
 Commentary is visually the narrative separator.
 
@@ -313,7 +313,7 @@ L2 remains bounded/paged.
 
 Older content loads at the **top**:
 
-~~~text
+```text
 [Load older Work]
 
 older commentary...
@@ -323,7 +323,7 @@ newer commentary...
   newer tool burst...
 
 ⟳ current activity
-~~~
+```
 
 Loading older content must preserve the user's current viewport anchor.
 
@@ -341,7 +341,7 @@ of the first occurrence of each kind.
 
 Example:
 
-~~~text
+```text
 commentary
 read
 search
@@ -350,22 +350,22 @@ command
 command
 command
 command
-~~~
+```
 
 renders:
 
-~~~text
+```text
 Commentary text…
   1 read · 2 searches · 4 commands
-~~~
+```
 
 If the sequence is long, L2 may use one compact aggregate row. L3 retains every item.
 
 For a homogeneous same-kind group, a more specific row is allowed:
 
-~~~text
+```text
 Read 3 files
-~~~
+```
 
 Do not display one arbitrary subject such as `service.mjs` as the group subject when the grouped
 items target different resources.
@@ -392,9 +392,9 @@ order is not decision-relevant.
 
 Preferred compact form:
 
-~~~text
+```text
 1 read · 2 searches · 4 commands
-~~~
+```
 
 Use separate rows when:
 
@@ -457,7 +457,7 @@ density as a tool.
 
 Example:
 
-~~~text
+```text
 Work details
 
 10:31:02
@@ -473,7 +473,7 @@ Inspecting the failed assertion before retrying…
 
            Edit file · readiness-policy.mjs             90 ms   ✓
            Run tests · workflow tests                   5.1 s   ✓
-~~~
+```
 
 L3 may use Timeline for the technical rows/rail, but Commentary should visually span/read as prose
 between tool groups instead of becoming another tiny icon row.
@@ -484,15 +484,15 @@ Each row is selectable -> L4/detail.
 
 ## 8. Tool status presentation
 
-| Status | L2/L3 treatment | Notes |
-| --- | --- | --- |
-| queued | current/Now only, quiet spinner/queued label | Normally not historical. |
-| active | current/Now, running indicator | Do not duplicate in history. |
-| completed | neutral/success check only if useful | Avoid green success boxes. |
-| failed | semantic error marker + separate row | Never aggregate into successful group. |
-| cancelled | neutral interrupted/cancelled marker | Cause in detail. |
-| interrupted | neutral/warning marker | Not automatically user fault. |
-| unknown | explicit unknown state | Never pretend completed. |
+| Status      | L2/L3 treatment                              | Notes                                  |
+| ----------- | -------------------------------------------- | -------------------------------------- |
+| queued      | current/Now only, quiet spinner/queued label | Normally not historical.               |
+| active      | current/Now, running indicator               | Do not duplicate in history.           |
+| completed   | neutral/success check only if useful         | Avoid green success boxes.             |
+| failed      | semantic error marker + separate row         | Never aggregate into successful group. |
+| cancelled   | neutral interrupted/cancelled marker         | Cause in detail.                       |
+| interrupted | neutral/warning marker                       | Not automatically user fault.          |
+| unknown     | explicit unknown state                       | Never pretend completed.               |
 
 ### Status fixture payloads
 
@@ -501,7 +501,7 @@ status treatment.
 
 Queued:
 
-~~~json
+```json
 {
   "type": "tool",
   "kind": "command",
@@ -511,11 +511,11 @@ Queued:
   "startedAt": null,
   "completedAt": null
 }
-~~~
+```
 
 Active:
 
-~~~json
+```json
 {
   "type": "tool",
   "kind": "command",
@@ -525,11 +525,11 @@ Active:
   "startedAt": "2026-10-01T10:00:00Z",
   "completedAt": null
 }
-~~~
+```
 
 Completed:
 
-~~~json
+```json
 {
   "type": "tool",
   "kind": "command",
@@ -540,11 +540,11 @@ Completed:
   "startedAt": "2026-10-01T10:00:00Z",
   "completedAt": "2026-10-01T10:00:05Z"
 }
-~~~
+```
 
 Failed:
 
-~~~json
+```json
 {
   "type": "tool",
   "kind": "command",
@@ -556,7 +556,7 @@ Failed:
   "startedAt": "2026-10-01T10:00:00Z",
   "completedAt": "2026-10-01T10:00:05Z"
 }
-~~~
+```
 
 Cancelled/interrupted/unknown use the same identity with their respective canonical status and
 closureReason when available. Do not manufacture exit codes for states that do not provide one.
@@ -565,7 +565,7 @@ closureReason when available. Do not manufacture exit codes for states that do n
 
 All tool kinds share a common metadata header:
 
-~~~text
+```text
 Tool title
 toolName · kind · status
 
@@ -581,7 +581,7 @@ Provider/tool technical id only in deeper metadata
 ToolActions               when present
 Input                     collapsible/raw
 Output                    collapsible/raw
-~~~
+```
 
 ### Raw input/output rules
 
@@ -597,17 +597,17 @@ Output                    collapsible/raw
 
 ## 10. Per-tool formatting matrix
 
-| Kind | Compact Conversation | L2 row | L3 subject | L4 primary detail |
-| --- | --- | --- | --- | --- |
-| read | Read file(s) | Read file (N) | file/path | path, range if normalized, input/output; future file-open target when capability exists |
-| edit | Edited file(s) | Edit file | file/path | target, ToolActions, diff/reference, raw payload |
-| write | Wrote/created file(s) | Write file | file/path | target, creation/write details, raw payload |
-| list | Listed directory | List directory | directory/path | target path, options, returned items/raw output |
-| search | Searched code/web/etc. | Search | query/subject | query, scope, normalized matches if available |
-| command | Ran command | Run command | concise command subject | full command, cwd, exit code, output |
-| test | Ran tests / tests passed | Run tests | suite/target | command/suite, exit code, normalized results if available |
-| web | Fetched web content | Web | sanitized host/path | URL/method/target, response metadata/output |
-| other | Used tool | tool title | subject if supplied | canonical metadata + raw input/output |
+| Kind    | Compact Conversation     | L2 row         | L3 subject              | L4 primary detail                                                                       |
+| ------- | ------------------------ | -------------- | ----------------------- | --------------------------------------------------------------------------------------- |
+| read    | Read file(s)             | Read file (N)  | file/path               | path, range if normalized, input/output; future file-open target when capability exists |
+| edit    | Edited file(s)           | Edit file      | file/path               | target, ToolActions, diff/reference, raw payload                                        |
+| write   | Wrote/created file(s)    | Write file     | file/path               | target, creation/write details, raw payload                                             |
+| list    | Listed directory         | List directory | directory/path          | target path, options, returned items/raw output                                         |
+| search  | Searched code/web/etc.   | Search         | query/subject           | query, scope, normalized matches if available                                           |
+| command | Ran command              | Run command    | concise command subject | full command, cwd, exit code, output                                                    |
+| test    | Ran tests / tests passed | Run tests      | suite/target            | command/suite, exit code, normalized results if available                               |
+| web     | Fetched web content      | Web            | sanitized host/path     | URL/method/target, response metadata/output                                             |
+| other   | Used tool                | tool title     | subject if supplied     | canonical metadata + raw input/output                                                   |
 
 The labels above are presentation defaults. Canonical `title` supplied by Runtime may be more
 specific and should normally win when truthful/human-readable.
@@ -620,7 +620,7 @@ Every kind needs at least completed + failure/exception coverage where the statu
 
 Fixture: session-work/read-file
 
-~~~json
+```json
 {
   "id": "read-1",
   "seq": 10,
@@ -642,17 +642,17 @@ Fixture: session-work/read-file
   "createdAt": "2026-10-01T10:00:00Z",
   "updatedAt": "2026-10-01T10:00:00.182Z"
 }
-~~~
+```
 
 L2:
 
-~~~text
+```text
 ▣ Read file · packages/specflow/src/program.ts
-~~~
+```
 
 L4:
 
-~~~text
+```text
 Read file
 view_file · read · completed
 
@@ -665,7 +665,7 @@ Input
 
 Output
 import { Command } from 'commander'; ...
-~~~
+```
 
 Preserve a resolvable product file reference when available, but do not render an Open file action
 until the file-preview capability exists. Once implemented, that action uses the same local
@@ -675,7 +675,7 @@ Secondary/detail slot. Do not expose absolute host paths as the preferred human 
 
 Fixture: session-work/edit-file
 
-~~~json
+```json
 {
   "id": "edit-1",
   "seq": 11,
@@ -703,14 +703,14 @@ Fixture: session-work/edit-file
   "createdAt": "2026-10-01T10:01:00Z",
   "updatedAt": "2026-10-01T10:01:00.096Z"
 }
-~~~
+```
 
 L2:
 
-~~~text
+```text
 ✎ Edit file · App.tsx
     Replace content · packages/nevo-ui/src/App.tsx
-~~~
+```
 
 Tool with actions stays its own row; do not merge into neighboring edit groups.
 
@@ -720,7 +720,7 @@ L4 should prefer an Inspect change/diff reference when available; raw tool outpu
 
 Fixture: session-work/write-file
 
-~~~json
+```json
 {
   "id": "write-1",
   "seq": 12,
@@ -738,13 +738,13 @@ Fixture: session-work/write-file
   "createdAt": "2026-10-01T10:02:00Z",
   "updatedAt": "2026-10-01T10:02:01Z"
 }
-~~~
+```
 
 L2:
 
-~~~text
+```text
 ＋ Write file · docs/ideas/new-doc.md
-~~~
+```
 
 Distinguish edit/write semantically when Runtime knows the difference. UI must not infer "create" by
 checking whether a path existed.
@@ -753,7 +753,7 @@ checking whether a path existed.
 
 Fixture: session-work/list-directory
 
-~~~json
+```json
 {
   "id": "list-1",
   "seq": 13,
@@ -771,13 +771,13 @@ Fixture: session-work/list-directory
   "createdAt": "2026-10-01T10:03:00Z",
   "updatedAt": "2026-10-01T10:03:00.120Z"
 }
-~~~
+```
 
 L2:
 
-~~~text
+```text
 ☷ List directory · docs/ideas/specflow-ui
-~~~
+```
 
 Do not show "3 items" unless Runtime provides a normalized count or the output is a safely typed
 canonical list. Do not parse arbitrary provider text to obtain the count.
@@ -786,7 +786,7 @@ canonical list. Do not parse arbitrary provider text to obtain the count.
 
 Fixture: session-work/search
 
-~~~json
+```json
 {
   "id": "search-1",
   "seq": 14,
@@ -806,16 +806,17 @@ Fixture: session-work/search
   "createdAt": "2026-10-01T10:04:00Z",
   "updatedAt": "2026-10-01T10:04:00.220Z"
 }
-~~~
+```
 
 L2:
 
-~~~text
+```text
 ⌕ Search code · WORKSPACE_WRITER_BLOCKED_BY_RECOVERY
   tools/specs
-~~~
+```
 
 L4:
+
 - query prominent/monospace where useful;
 - scope/path secondary;
 - normalized result count only if supplied semantically;
@@ -825,7 +826,7 @@ L4:
 
 Fixture: session-work/command-success
 
-~~~json
+```json
 {
   "id": "cmd-1",
   "seq": 15,
@@ -847,17 +848,17 @@ Fixture: session-work/command-success
   "createdAt": "2026-10-01T10:05:00Z",
   "updatedAt": "2026-10-01T10:05:08.420Z"
 }
-~~~
+```
 
 L2:
 
-~~~text
+```text
 > Run command · pnpm check                                  8.4 s
-~~~
+```
 
 L4:
 
-~~~text
+```text
 Run command
 run_command · command · completed
 
@@ -871,7 +872,7 @@ Duration    8.4 s
 
 Output
 Checks passed.
-~~~
+```
 
 Full command/cwd use code treatment.
 
@@ -881,7 +882,7 @@ If command contains secrets, redaction must happen before presentation.
 
 Fixture: session-work/command-failed
 
-~~~json
+```json
 {
   "id": "cmd-2",
   "seq": 16,
@@ -898,13 +899,13 @@ Fixture: session-work/command-failed
   "createdAt": "2026-10-01T10:06:00Z",
   "updatedAt": "2026-10-01T10:06:04Z"
 }
-~~~
+```
 
 L2:
 
-~~~text
+```text
 ! Run command · pnpm test                                   failed
-~~~
+```
 
 Failure remains one independent row and breaks grouping.
 
@@ -912,7 +913,7 @@ Failure remains one independent row and breaks grouping.
 
 Fixture: session-work/tests
 
-~~~json
+```json
 {
   "id": "test-1",
   "seq": 17,
@@ -932,13 +933,13 @@ Fixture: session-work/tests
   "createdAt": "2026-10-01T10:07:00Z",
   "updatedAt": "2026-10-01T10:07:05.120Z"
 }
-~~~
+```
 
 L2:
 
-~~~text
+```text
 ✓ Run tests · specflow-runtime                              5.1 s
-~~~
+```
 
 Do not infer structured "42 passed" from arbitrary output unless the adapter normalizes it. Raw text
 may still appear in detail.
@@ -947,7 +948,7 @@ may still appear in detail.
 
 Fixture: session-work/web
 
-~~~json
+```json
 {
   "id": "web-1",
   "seq": 18,
@@ -974,14 +975,14 @@ Fixture: session-work/web
   "createdAt": "2026-10-01T10:08:00Z",
   "updatedAt": "2026-10-01T10:08:00.440Z"
 }
-~~~
+```
 
 L2:
 
-~~~text
+```text
 ◎ Web · docs.example.com/api
     Fetch page · docs.example.com/api
-~~~
+```
 
 URLs shown to the user must be sanitized; credentials/query secrets must never leak through a
 display target.
@@ -990,7 +991,7 @@ display target.
 
 Fixture: session-work/other-tool
 
-~~~json
+```json
 {
   "id": "other-1",
   "seq": 19,
@@ -1010,13 +1011,13 @@ Fixture: session-work/other-tool
   "createdAt": "2026-10-01T10:09:00Z",
   "updatedAt": "2026-10-01T10:09:01Z"
 }
-~~~
+```
 
 L2:
 
-~~~text
+```text
 ◇ Provider operation · Operation 17
-~~~
+```
 
 Never invent a more specific semantic kind from provider-specific names.
 
@@ -1026,13 +1027,13 @@ ToolActions remain nested under their ToolInvocation.
 
 L2:
 
-~~~text
+```text
 ✎ Edit workspace
     Edit · file-a.ts
     Edit · file-b.ts
     Write · file-c.ts
     +4 more
-~~~
+```
 
 Rules:
 
@@ -1046,12 +1047,12 @@ L3 shows the parent invocation as one canonical item.
 
 L4 lists every action in seq order:
 
-~~~text
+```text
 ToolActions
 1. completed  Edit     file-a.ts
 2. completed  Edit     file-b.ts
 3. failed     Execute  pnpm test
-~~~
+```
 
 ## 13. Commentary / Reasoning / Interaction in Work
 
@@ -1059,15 +1060,16 @@ ToolActions
 
 Commentary is a prose block that visually separates tool bursts.
 
-~~~text
+```text
 Checking the recovery path and the persisted operation state…
 
   2 reads · 1 search · 3 commands
-~~~
+```
 
 It does not need a bullet/icon/rail marker in L2.
 
 L3:
+
 - prose-first row/block;
 - timestamp may sit above/aside in muted metadata;
 - full preview up to a few lines;
@@ -1079,9 +1081,9 @@ Reasoning and Commentary are **not the same canonical Work kind**.
 
 Default L2 treatment:
 
-~~~text
+```text
 Thinking…
-~~~
+```
 
 or omit historical Reasoning from the main L2 prose flow while preserving the grouping boundary and
 offering it through technical inspection.
@@ -1095,15 +1097,15 @@ Do not render raw reasoning as normal conversation.
 
 Pending:
 
-~~~text
+```text
 ! Permission · pending
-~~~
+```
 
 Resolved:
 
-~~~text
+```text
 • Permission · resolved
-~~~
+```
 
 Pending interaction remains actionable in Conversation Primary. Work inspector is historical/technical
 context and should not duplicate the full response form.
@@ -1112,7 +1114,7 @@ context and should not duplicate the full response form.
 
 Canonical:
 
-~~~text
+```text
 Commentary
 Read
 Read
@@ -1125,11 +1127,11 @@ Commentary
 Edit with ToolActions
 Test completed
 Interaction resolved
-~~~
+```
 
 L2:
 
-~~~text
+```text
 Checking current implementation…
   2 reads · 1 search
 
@@ -1143,7 +1145,7 @@ Fixing the assertion and retrying…
   1 edit · tests passed                                     >
 
 Permission resolved
-~~~
+```
 
 Note that:
 
@@ -1173,9 +1175,9 @@ If input/output are inline and already cached, opening detail is local.
 
 If new Runtime externalizes large payloads:
 
-~~~text
+```text
 GET /api/sessions/:sessionId/work/:workId/detail
-~~~
+```
 
 or an equivalent detail reference may load only the selected payload.
 
@@ -1187,6 +1189,7 @@ for a Session.
 Active tool progress updates current activity.
 
 When the tool settles:
+
 - canonical Turn event moves it into historical Work;
 - L2 grouping recomputes for affected tail only where practical;
 - do not rebuild/render thousands of old rows per progress tick.
@@ -1227,7 +1230,7 @@ Do not make Retry on one tool refetch every Turn.
 
 Required:
 
-~~~text
+```text
 session-work/activity-collapsed
 session-work/activity-expanded-bounded
 session-work/work-log-commentary-chapters
@@ -1252,7 +1255,7 @@ session-work/mixed-history
 session-work/long-history
 session-work/large-output
 session-work/active-now-plus-history
-~~~
+```
 
 Each fixture includes canonical payload.
 

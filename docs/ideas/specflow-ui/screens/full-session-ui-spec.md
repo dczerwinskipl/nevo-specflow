@@ -52,20 +52,24 @@ It is not a provider transcript and not a raw tool console.
 ## 3. Entry and navigation
 
 Entry:
+
 - existing Session conversation target;
 - explicit Open full session on Wide;
 - Floating Session header promotion on Wide;
 - stable Session route.
 
 Wide:
+
 - conversation target may open Floating Session;
 - Full Session opens as routed Primary, with Context default-open when split-capable.
 
 Compact/Narrow:
+
 - conversation target opens Full Session directly;
 - there is no floating/modal/sheet substitute.
 
 Secondary/detail state is local Workspace state, not URL state.
+
 ## 4. Data source / read-model ownership
 
 Canonical Session/Turn/Work state comes from Runtime/application.
@@ -88,17 +92,16 @@ semantics.
 
 Legacy Session API is the strongest migration candidate among current UI surfaces.
 
-| Need | New SpecFlow | Old repo evidence | Direction |
-| --- | --- | --- | --- |
-| Session snapshot/chat/Turns | **missing** | **old-repo-available** via \`GET /api/agent-sessions/:sessionId/chat\` and \`GET /api/agent-sessions/:sessionId\` | Preserve canonical Session/Turn/Work wire semantics where still valid. |
-| Live updates/replay cursor | **missing** | **old-repo-available** via \`GET /api/agent-sessions/:sessionId/events\` SSE | Preserve replayable ordered event model. |
-| Start next Turn | **missing** | **old-repo-available** via \`POST /api/agent-sessions/:sessionId/turns\` | Preserve idempotent command semantics. |
-| Cancel/recover Turn | **missing** | **old-repo-available** via Turn cancel/recover routes | Preserve capability-driven cancellation/recovery, redesign exact new command path if needed. |
-| Respond to interaction | **missing** | **old-repo-available** via \`POST /api/agent-sessions/:sessionId/interactions/:interactionId/respond\` | Strong migration candidate. |
-| Provider capabilities | **missing** | **old-repo-available** via \`GET /api/agent-providers\` and Session capabilities | Preserve semantic capabilities; new Runtime owns provider boundary. |
-| Current single/batch execution scope | **missing** | partial legacy session/task fields; historical association is insufficient | Add explicit current execution projection. |
-| Context evidence/Handover/artifacts | **missing** | partial scattered evidence | Add product context references without bloating provider Work model. |
-
+| Need                                 | New SpecFlow | Old repo evidence                                                                                                 | Direction                                                                                    |
+| ------------------------------------ | ------------ | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Session snapshot/chat/Turns          | **missing**  | **old-repo-available** via \`GET /api/agent-sessions/:sessionId/chat\` and \`GET /api/agent-sessions/:sessionId\` | Preserve canonical Session/Turn/Work wire semantics where still valid.                       |
+| Live updates/replay cursor           | **missing**  | **old-repo-available** via \`GET /api/agent-sessions/:sessionId/events\` SSE                                      | Preserve replayable ordered event model.                                                     |
+| Start next Turn                      | **missing**  | **old-repo-available** via \`POST /api/agent-sessions/:sessionId/turns\`                                          | Preserve idempotent command semantics.                                                       |
+| Cancel/recover Turn                  | **missing**  | **old-repo-available** via Turn cancel/recover routes                                                             | Preserve capability-driven cancellation/recovery, redesign exact new command path if needed. |
+| Respond to interaction               | **missing**  | **old-repo-available** via \`POST /api/agent-sessions/:sessionId/interactions/:interactionId/respond\`            | Strong migration candidate.                                                                  |
+| Provider capabilities                | **missing**  | **old-repo-available** via \`GET /api/agent-providers\` and Session capabilities                                  | Preserve semantic capabilities; new Runtime owns provider boundary.                          |
+| Current single/batch execution scope | **missing**  | partial legacy session/task fields; historical association is insufficient                                        | Add explicit current execution projection.                                                   |
+| Context evidence/Handover/artifacts  | **missing**  | partial scattered evidence                                                                                        | Add product context references without bloating provider Work model.                         |
 
 ### Old-repo field evidence
 
@@ -106,7 +109,7 @@ Legacy already defines a rich canonical Session/Turn/Work wire model.
 
 Useful Session fields include:
 
-~~~text
+```text
 AgentSession / AgentSessionSnapshot
   provider
   providerSessionId?
@@ -128,21 +131,21 @@ AgentSession / AgentSessionSnapshot
   turns?
   lastEventSeq
   updatedAt
-~~~
+```
 
 Legacy chat payload also includes:
 
-~~~text
+```text
 session { provider, providerSessionId?, sessionId, status, readiness, mode, capabilities,
           specId, taskId?, taskIds[], title?, createdAt, lastActivityAt?, lastEventSeq? }
 turns[]
 workSummary
 readiness
-~~~
+```
 
 Canonical Turn already exposes:
 
-~~~text
+```text
 turnId / sessionId / provider / providerSessionId
 mode
 status
@@ -155,7 +158,7 @@ userMessage
 terminalOutcome
 usage
 createdAt / updatedAt / completedAt
-~~~
+```
 
 This means Full Session should **migrate rather than redesign** most canonical Turn/Work fields.
 
@@ -172,13 +175,13 @@ Prefer canonical application Session identity only.
 
 Illustrative:
 
-~~~text
+```text
 GET /api/sessions/:sessionId
-~~~
+```
 
 Response:
 
-~~~text
+```text
 {
   revision,
   session: {
@@ -235,7 +238,7 @@ Response:
     evidence[]
   }
 }
-~~~
+```
 
 The first implementation may preserve much of legacy \`AgentSessionChatPayload\`, but must add an
 authoritative current-execution projection rather than treating \`taskId/taskIds\` historical binding
@@ -247,9 +250,9 @@ large Sessions already cause oversized first loads.
 
 ### Proposed live API
 
-~~~text
+```text
 GET /api/sessions/:sessionId/events?after=:sequence
-~~~
+```
 
 Events should carry canonical application changes such as:
 
@@ -263,15 +266,15 @@ Ordering/replay semantics belong to Runtime/transport adapter, not UI heuristics
 
 ### Proposed commands
 
-~~~text
+```text
 POST /api/sessions/:sessionId/turns
 POST /api/sessions/:sessionId/turns/:turnId/cancel
 POST /api/sessions/:sessionId/interactions/:interactionId/respond
-~~~
+```
 
 Start-Turn body may include:
 
-~~~text
+```text
 {
   message,
   executionIntent?,    // requested generic/spec-level/single-Task/batch work scope; exact contract TBD
@@ -280,7 +283,7 @@ Start-Turn body may include:
   effort?,
   idempotencyKey
 }
-~~~
+```
 
 Important behavior:
 
@@ -293,6 +296,7 @@ Important behavior:
 ## 6. Information hierarchy
 
 Primary:
+
 1. user/assistant conversation;
 2. meaningful Commentary;
 3. current activity;
@@ -302,14 +306,16 @@ Primary:
 7. jump-to-latest feedback when the user has scrolled away.
 
 Secondary:
+
 1. Context by default on split-capable entry;
 2. user-selected detail such as Task, Handover, artifact/review/verification, expanded Work/ToolAction,
    or future File preview.
 
 Normal live activity never auto-switches Secondary.
+
 ## 7. Pseudo-layout
 
-~~~text
+```text
 ┌──────────────┬────────────────────────────────────────────┬───────────────────────────┐
 │ Navigation   │ Session: Review batch #23                  │ Context                   │
 │              │ Reviewer · 3 Tasks                         │                           │
@@ -330,13 +336,14 @@ Normal live activity never auto-switches Secondary.
 │              │ │ Message…                         Send│   │ Handover             >    │
 │              │ └──────────────────────────────────────┘   │                           │
 └──────────────┴────────────────────────────────────────────┴───────────────────────────┘
-~~~
+```
 
 Context is a normal inspector surface, not a stack of cards.
 
 ## 8. Screen anatomy
 
 ### Primary
+
 - Session header/orientation;
 - conversation stream;
 - current/live region;
@@ -345,47 +352,58 @@ Context is a normal inspector surface, not a stack of cards.
 - composer/response controls.
 
 ### Secondary
+
 - Context is the default split-capable content.
 - Explicit user clicks replace it with more specific inspection detail.
 
 ### Detail targets
+
 - Task;
 - Handover/artifact/review/verification;
 - expanded Work item/ToolAction;
 - future File preview.
 
 One Secondary only. There is no required permanent Context/Work root switcher.
+
 ## 9. Responsive contract
 
 Wide:
+
 - persistent nav;
 - Full Session can show Conversation | Context;
 - existing-Session quick conversation may use Floating Session.
 
 Compact:
+
 - Drawer nav;
 - Full Session may still show Conversation | Context when workspace geometry supports split;
 - existing Session opens Full Session, not Floating Session.
 
 Narrow:
+
 - Conversation first;
 - Context/detail is pushed locally on explicit user action;
 - browser/system Back should pop local pushed detail before router navigation where technically
   integrated;
 - current activity and pending human interaction cannot exist only in Secondary.
+
 ## 10. Interaction flows
 
 ### Context/detail drill-down
+
 Context -> Task/Handover/artifact/etc. -> Back through local stack -> Context.
 
 ### Work drill-down
+
 Click compact Work burst in Conversation -> expanded Work detail in Secondary -> ToolAction -> Back.
 
 ### Future File
+
 When file preview exists: click file reference -> File detail -> Back. Until then, do not render fake
 preview/Open-in-IDE controls.
 
 ### Pending interaction
+
 Question/permission/confirmation appears in Primary with strong inline affordance and appropriate
 composer-adjacent cue. The user responds deliberately.
 
@@ -393,10 +411,13 @@ Do **not** auto-open or replace Secondary merely because the interaction arrived
 interaction needs additional detail, an explicit action may open it.
 
 ### Send message
+
 Composer -> start Turn -> busy/live state -> ordered updates -> final/terminal outcome.
 
 ### Cancel
+
 Only when capability permits.
+
 ## 11. Runtime states
 
 - generic/spec-level execution;
@@ -415,7 +436,6 @@ Only when capability permits.
 
 These states must remain semantically distinct.
 
-
 ## 12. Data loading, events, batching, and reconnect
 
 This screen inherits
@@ -425,12 +445,12 @@ This screen inherits
 
 Required load flow:
 
-~~~text
+```text
 GET current Session snapshot
   -> receive revision + lastEventSeq
   -> subscribe from lastEventSeq
   -> reduce newer events in order
-~~~
+```
 
 Never load a current snapshot and then reconnect from event 0.
 
@@ -442,12 +462,12 @@ Do not apply one React-query/store write per raw event.
 
 Use:
 
-~~~text
+```text
 ordered raw events
   -> event buffer
   -> canonical reducer
   -> coalesced projection commit
-~~~
+```
 
 Ordinary Commentary/tool-progress events may commit in a small 16–50 ms window.
 
@@ -507,21 +527,21 @@ The detailed large-composition contracts are defined separately in:
 
 ## 13. Component / composition map
 
-| Need | Composition |
-| --- | --- |
-| Workspace | AppWorkspace |
-| Header | WorkspaceHeader |
-| Conversation | SpecFlow product composition |
-| Markdown final/commentary | MarkdownDocument |
-| Composer | MessageComposer |
-| Current activity | product composition + StatusIndicator/Spinner as needed |
-| Interaction | product composition using RadioGroup/Checkbox/Button/etc. |
-| Context entry | product composition using AppWorkspace Secondary |
-| Work chronology/detail | product Work log opened from compact Work activity; generic Timeline reserved primarily for exact L3 history |
-| Disclosure | Collapsible |
-| Detail navigation | AppWorkspace Secondary stack |
-| File | product file capability |
-| Floating promotion/return | product router; local Secondary is not a route contract |
+| Need                      | Composition                                                                                                  |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Workspace                 | AppWorkspace                                                                                                 |
+| Header                    | WorkspaceHeader                                                                                              |
+| Conversation              | SpecFlow product composition                                                                                 |
+| Markdown final/commentary | MarkdownDocument                                                                                             |
+| Composer                  | MessageComposer                                                                                              |
+| Current activity          | product composition + StatusIndicator/Spinner as needed                                                      |
+| Interaction               | product composition using RadioGroup/Checkbox/Button/etc.                                                    |
+| Context entry             | product composition using AppWorkspace Secondary                                                             |
+| Work chronology/detail    | product Work log opened from compact Work activity; generic Timeline reserved primarily for exact L3 history |
+| Disclosure                | Collapsible                                                                                                  |
+| Detail navigation         | AppWorkspace Secondary stack                                                                                 |
+| File                      | product file capability                                                                                      |
+| Floating promotion/return | product router; local Secondary is not a route contract                                                      |
 
 Do not create one generic design-system Chat component around Session domain semantics yet.
 
@@ -577,6 +597,7 @@ Do not create one generic design-system Chat component around Session domain sem
 - default Context closed/restored;
 - Compact direct Full Session entry;
 - Narrow detail push and local Back.
+
 ## 18. Acceptance criteria
 
 - user sees what is happening now without opening inspection;
@@ -592,6 +613,7 @@ Do not create one generic design-system Chat component around Session domain sem
 - one Secondary only;
 - Compact/Narrow never use Floating Session;
 - no message/tool Card soup.
+
 ## 19. Open questions
 
 - exact current execution-intent API in new deterministic Runtime;

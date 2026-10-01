@@ -362,6 +362,33 @@ For Project Settings:
 The current \`@nevo/specflow-runtime\` package explicitly describes its backend as a bootstrap proof;
 there is no current HTTP product contract to treat as \`existing-new\` for this screen.
 
+
+### Legacy field evidence
+
+There is no legacy Settings catalog to copy.
+
+The closest reusable legacy provider descriptor already proves these provider fields exist as useful
+semantic data:
+
+~~~text
+AgentProviderDescriptor
+  id
+  label
+  enabled
+  available?
+  unavailableReason?
+  capabilities
+  supportedModes?
+  defaultMode?
+~~~
+
+Workflow-definition data also exists in legacy workflow definitions/registry, but not as one
+human-facing Settings read model.
+
+Therefore most Settings-catalog descriptor fields above are **new product contract fields**, not
+renamed legacy fields. The contract should stay additive/versioned so later ordinary setting
+metadata can be added without breaking older clients.
+
 ### Proposed read API
 
 Illustrative transport:

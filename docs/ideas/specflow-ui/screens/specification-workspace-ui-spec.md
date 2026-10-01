@@ -39,13 +39,18 @@ It does not flatten Task detail, Session transcript, or raw workflow internals i
 ## 2. User use cases
 
 - Understand what change the Specification represents.
+- Expand/read the Specification description/documents without forcing the full body into the initial
+  layout.
 - See whether the Spec itself requires a human decision.
-- See which Tasks require attention, are ready, are executing, or are blocked/remediable.
+- See which Tasks require attention, are ready, are executing, or have issues.
+- Select one or several Tasks and invoke legal bulk actions such as Start.
+- Preserve dependency/readiness warnings for the selected Task set.
 - Open a Task without abandoning the Specification.
-- Start/approve/finalize only through authoritative available actions.
-- Inspect supporting documents/evidence.
-- Open a related Session as quick conversation context where supported, or open Full Session directly.
-
+- Inspect readable supporting documents/evidence.
+- Inspect several relevant Sessions and open one.
+- Start a new Session when needed using the shared Session-start interaction.
+- Follow relevant links to project-level changes/PRs/deployment/release facts when those capabilities
+  exist.
 ## 3. Entry and navigation
 
 Entry:
@@ -248,14 +253,17 @@ validation/readiness and a refreshed authoritative projection afterward.
 ## 6. Information hierarchy
 
 1. Spec identity/title.
-2. concise workflow meaning.
-3. high-priority attention/ready/current-work/issues, capped to the few items that genuinely need
-   immediate prominence; additional signals remain discoverable in the Task collection.
-4. Task collection.
-5. supporting Spec context/evidence/history.
+2. concise Specification description/summary with progressive disclosure.
+3. workflow meaning and high-priority human-required state.
+4. Task collection, including multi-selection when batch actions are available.
+5. contextual Session history/current execution.
+6. supporting Specification documents/evidence and relevant project-operation links.
 
-The high-priority region appears only when something deserves priority; it is not a permanent Card.
+Future inline editing: when a capable Markdown editor exists, expanded Specification content may
+expose a small Edit affordance and edit in place. Until then, do not render a dead Edit icon.
 
+The high-priority region appears only when something genuinely deserves priority; Ready alone does
+not become an alert.
 ## 7. Pseudo-layout
 
 ~~~text
@@ -286,14 +294,14 @@ Task Secondary is shown only when selected. Primary remains scannable without it
 ## 8. Screen anatomy
 
 - Specification header.
-- High-priority state slot; avoid letting this grow into a second Task list.
-- Task collection.
-- lightweight Task search/filter only when the collection becomes too large to scan comfortably;
-  this filters the already-loaded lightweight Task summaries and does not fetch every Task detail.
-- Supporting Specification context.
-- Contextual Session references.
-- Optional Task Secondary.
-
+- Summary/description disclosure.
+- High-priority state slot.
+- Task collection with optional checkbox selection and bulk-action region.
+- Task search/filter only when needed.
+- contextual Session list/history.
+- supporting documents/evidence.
+- optional references to project-level changes/PRs/deployments/releases/pipelines.
+- Task Secondary when selected.
 ## 9. Responsive contract
 
 Wide/Compact:
@@ -308,31 +316,47 @@ Narrow:
 ## 10. Interaction flows
 
 ### Select Task
-Task row -> Task Secondary; no workflow mutation.
+Task row -> local Task Secondary; no workflow mutation.
+
+### Multi-select Tasks
+Checkboxes select Tasks without opening them. Once selection is non-empty, show selection actions
+that the application says are applicable.
+
+For Start:
+
+~~~text
+select Tasks
+  -> backend validates selection/action
+  -> show warnings and blockers
+  -> if legal, shared Session-start interaction chooses agent/provider as needed
+  -> preserve the selected set as batch scope
+~~~
+
+Unmet dependencies or other readiness facts remain visible. Warning != blocker: a warning can leave
+the action available; a blocker prevents it and explains why. Frontend does not calculate this from
+status strings.
 
 ### Filter Tasks
-When needed, local Task search/filter narrows the visible summary rows by id/title and semantic
-steering category such as attention/ready/working. It does not change workflow state and does not
-issue per-Task detail requests.
-
-The default unfiltered view remains optimized for human attention rather than alphabetical browsing.
-
-### Open Task signal from overview
-Deep-linked selected Task -> Specification Primary + Task Secondary (or pushed detail narrow).
+Local filter narrows already-loaded summaries by id/title/semantic steering category when useful.
 
 ### Spec-level decision
-High-priority Spec signal -> evidence/decision context owned by Specification; no fake Task owner.
+High-priority Spec signal -> evidence/decision context owned by Specification.
 
 ### Start/continue/review
-Action enabled only from authoritative action/readiness projection; command -> pending feedback ->
-refresh/read model update.
+Action availability comes only from authoritative readiness. Command -> pending feedback ->
+authoritative projection update.
 
-### Open Session
-A Task/Spec Session reference exposes a conversation target plus an explicit full-screen action.
-Where Floating Session is supported, the conversation target opens it without abandoning the
-Specification. Open full session navigates directly to Full Session and does not require the floating
-presentation first.
+### Existing Session
+On Wide, conversation target opens Floating Session; Compact/Narrow opens Full Session. An explicit
+Open full session action may coexist on Wide.
 
+### New Session
+New session -> shared Session-start interaction -> choose agent/provider and optional execution
+details -> normal Session/composer. Do not embed another standalone prompt editor here.
+
+### Documents
+Document/artifact click -> read/inspect. Any approve/reject action comes from the owning workflow
+Human Step, not the document viewer itself.
 ## 11. States
 
 - normal/quiet;
@@ -460,17 +484,21 @@ before forcing a final refresh; do not refetch repeatedly for every progress eve
 ## 18. Acceptance criteria
 
 - user understands Spec state before opening a Task;
-- the high-priority region stays concise and does not duplicate the Task collection;
-- several simultaneous signals are preserved;
-- Task-specific context is one click;
+- Ready alone is not promoted to human attention;
+- Task-specific context remains one deliberate click;
+- bulk Task selection preserves batch scope;
+- dependency/readiness warnings come from authoritative selection/action validation;
+- warning and blocker are visually/semantically distinct;
 - Spec-level decision stays Spec-owned;
 - action readiness is server-owned;
 - batch is not collapsed to one Task;
+- several relevant Sessions can be inspected without making Session a top-level nav area;
+- unavailable future edit/file/IDE/deployment controls are not faked;
 - Task collection is list/row-based, not Card soup.
-
 ## 19. Open questions
 
 - final Spec workflow read-model shape;
-- artifact/Handover references;
-- exact action command envelope and async operation reporting;
-- exact document reference/file inspection integration.
+- canonical artifact/Handover references;
+- exact bulk-action command envelope and selection-validation projection;
+- exact document editing implementation once Markdown editing is introduced;
+- exact project-level operations surface once deployment/command/pipeline capabilities exist.

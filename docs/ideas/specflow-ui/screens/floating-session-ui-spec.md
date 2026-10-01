@@ -183,9 +183,8 @@ underlying Specification / Task remains visible
                                       │                               │
                                       │                               │
                                       ├───────────────────────────────┤
-                                      │ Message…                 Send │
+                                      │ Message…                 Send │ [Session 2] [Session 3] [More…]
                                       └───────────────────────────────┘
-                                      [Session 2] [Session 3] [More…]
 ──────────────────────────────────────────────────────────────────────── bottom
 ~~~
 
@@ -195,7 +194,8 @@ The important contract is:
 - its composer is pinned to the bottom of that window;
 - **nothing belonging to the active Session is rendered under the composer**;
 - Open full session/expand belongs in the floating header;
-- other minimized Sessions live in a separate bottom dock as compact tabs/chips;
+- other minimized Sessions live in the bottom dock as compact tabs/chips **on the same bottom
+  baseline as the active window composer row**, outside the active Session content;
 - when there are too many minimized Sessions, the dock collapses overflow behind \`More…\`;
 - selecting a minimized Session activates/restores that Session window;
 - a truly closed Session is removed from the dock. Reopenable entries are therefore **minimized**, not

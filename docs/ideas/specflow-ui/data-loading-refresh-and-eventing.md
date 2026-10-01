@@ -115,7 +115,7 @@ For live resources, prefer:
 2. obtain snapshot revision/event cursor
 3. subscribe from that cursor
 4. apply newer events in order
-5. use slow safety refresh only as a backstop where justified
+6. use slow safety refresh only as a backstop where justified
 ~~~
 
 Do not subscribe from event 0 after loading a current snapshot.
@@ -137,8 +137,13 @@ Required model:
 transport event stream
   -> ordered event buffer
   -> semantic reducer/process in sequence
-  -> coalesced cache/UI commit
+  -> one batched cache/store transaction
+  -> one coalesced UI notification/render
 ~~~
+
+When one semantic event changes several cached projections that the user sees together (for example
+Task detail + parent Specification steering summary), apply those cache changes inside one framework
+batch/transaction so observers do not render an impossible intermediate combination.
 
 ### 5.1 Coalescing window
 
@@ -150,6 +155,9 @@ Default recommendation for high-frequency Session/Work updates:
 - commit the resulting canonical projection to the query/store once per window.
 
 The exact window is an implementation tuning value, not an API contract.
+
+This is **coalescing/throttled commit**, not classic trailing debounce. A continuous stream must still
+produce periodic visible progress; it must not wait forever for the stream to become quiet.
 
 ### 5.2 Events that flush immediately
 
@@ -176,7 +184,26 @@ coalesce the UI/cache write.
 
 ---
 
-## 6. Event payloads: snapshot vs delta
+
+## 7. Interactive query debounce
+
+Debounce applies to user-driven remote lookup/search, not to canonical event processing.
+
+For a server-backed search/filter:
+
+- update the local input immediately;
+- debounce the network query roughly 150–300 ms by default;
+- cancel/ignore the previous request when the search term/scope changes;
+- do not debounce an explicit Submit/Search action;
+- do not send a request for every keystroke;
+- keep the prior result visible while the new query is fetching when that does not mislead.
+
+If filtering is entirely local over an already-loaded bounded collection, no network debounce is
+needed.
+
+The debounce interval is a UI tuning value, not part of the backend API.
+
+## 8. Event payloads: snapshot vs delta
 
 Prefer an event contract that is easy to reconcile.
 
@@ -205,7 +232,7 @@ resource.
 
 ---
 
-## 7. Query invalidation rules
+## 9. Query invalidation rules
 
 Invalidate the smallest authoritative query that can now be stale.
 
@@ -224,7 +251,7 @@ then invalidate only as a consistency backstop if required.
 
 ---
 
-## 8. Batch reads
+## 9. Batch reads
 
 ### 8.1 When batching is appropriate
 
@@ -288,7 +315,7 @@ Batch transport optimization must not destroy independent cache/invalidation bou
 
 ---
 
-## 9. Domain batch commands
+## 10. Domain batch commands
 
 If one user action semantically operates on many domain objects, expose one domain batch operation
 instead of firing N unrelated mutation requests from the browser.
@@ -317,7 +344,7 @@ Conversely, do not batch unrelated mutations just to reduce HTTP request count.
 
 ---
 
-## 10. Documents and heavy detail
+## 11. Documents and heavy detail
 
 Use lightweight-first loading:
 
@@ -354,7 +381,7 @@ deep/raw detail
 
 ---
 
-## 11. Prefetch rules
+## 12. Prefetch rules
 
 Prefetch only when likelihood and cost justify it.
 
@@ -375,7 +402,7 @@ Prefetch must be cancellable/low priority and never block explicit user requests
 
 ---
 
-## 12. Refresh behavior
+## 13. Refresh behavior
 
 A Refresh action is not a generic "invalidate everything" button.
 
@@ -414,7 +441,7 @@ On failure, preserve last known data and show that refresh failed/staleness may 
 
 ---
 
-## 13. Suggested refresh policy per current screen
+## 14. Suggested refresh policy per current screen
 
 ### Specs Overview
 
@@ -487,7 +514,7 @@ It uses the same Session cache/live subscription as Full Session.
 
 ---
 
-## 14. Polling policy
+## 15. Polling policy
 
 Short polling is a fallback, not a default.
 
@@ -502,7 +529,7 @@ Never poll large document/history/diff payloads every few seconds.
 
 ---
 
-## 15. Mutations and refresh
+## 16. Mutations and refresh
 
 After a mutation:
 
@@ -525,7 +552,7 @@ Do not repeatedly invalidate on every progress event.
 
 ---
 
-## 16. Error isolation
+## 17. Error isolation
 
 An independently loaded resource should fail independently.
 
@@ -541,7 +568,7 @@ an impossible mixed state.
 
 ---
 
-## 17. Observability requirements
+## 18. Observability requirements
 
 Development diagnostics SHOULD make it possible to see:
 
@@ -558,17 +585,19 @@ These diagnostics belong in development tooling/logging, not ordinary end-user U
 
 ---
 
-## 18. Acceptance criteria
+## 110. Acceptance criteria
 
 1. A burst of realtime events does not create one React render/cache write per raw event.
 2. Ordered events are never dropped merely because rendering is coalesced.
-3. User-attention/terminal events become visible without an arbitrary debounce delay.
-4. One heavy resource is not polled when granular invalidation is available.
+3. A continuous event stream still produces periodic progress updates; trailing debounce cannot
+   starve the UI indefinitely.
+4. User-attention/terminal events become visible without an arbitrary debounce delay.
+5. One heavy resource is not polled when granular invalidation is available.
 5. Query invalidation is resource-scoped.
 6. Several homogeneous reads can use a bounded configurable batch.
 7. Unrelated domains are not forced into one giant bootstrap response.
 8. Domain multi-object mutations use an explicit batch operation when coordination matters.
 9. Refresh scope is visible/documented and does not invalidate the entire app.
-10. Existing usable data remains visible during background refresh.
-11. Stale in-flight responses cannot overwrite a newly selected route/resource.
-12. Heavy history/document/file data is loaded progressively.
+11. Existing usable data remains visible during background refresh.
+12. Stale in-flight responses cannot overwrite a newly selected route/resource.
+13. Heavy history/document/file data is loaded progressively.

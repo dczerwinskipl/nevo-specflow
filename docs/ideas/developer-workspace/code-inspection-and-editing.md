@@ -23,7 +23,7 @@ read_when:
   - integrating a browser-accessible IDE with the current worktree
   - designing language-support or IDE extension points
 summary: >
-  Use the current Nevo Local worktree as the shared filesystem source of truth, expose a compact
+  Use the current SpecFlow worktree as the shared filesystem source of truth, expose a compact
   React/Monaco code surface for review and small edits, and open a separate VS Code-based full IDE
   for project-wide work, terminal use, source control, and extensions.
 related:
@@ -37,7 +37,7 @@ related:
 ## Goal
 
 A user may be following a SpecFlow session from the same machine, another laptop, or a phone while
-an agent works on code hosted by the machine running Nevo Local.
+an agent works on code hosted by the machine running SpecFlow.
 
 The candidate experience should support:
 
@@ -48,7 +48,7 @@ The candidate experience should support:
 - escalating to a full browser IDE for project-wide navigation, source control, extensions, or a
   terminal.
 
-The code remains on the Nevo Local host. A remote browser is a client, not a second checkout or a
+The code remains on the host running SpecFlow. A remote browser is a client, not a second checkout or a
 file-sync mechanism.
 
 ## Two interaction modes
@@ -100,7 +100,7 @@ decision.
 
 ## Workspace ownership
 
-Nevo Local owns the current workspace root.
+local SpecFlow runtime owns the current workspace root.
 
 For the initial model this is simply:
 
@@ -111,7 +111,7 @@ currentWorkspaceRoot = root of the currently active worktree
 Every compact file operation and every full-IDE launch is resolved against that same root.
 
 The browser does not receive or choose arbitrary host filesystem roots. Absolute host paths should
-remain an implementation detail of Nevo Local.
+remain an implementation detail of local SpecFlow runtime.
 
 Multi-worktree selection is a later capability. The current design should not prevent introducing a
 stable workspace/worktree identity later, but it does not require that identity in the initial UI
@@ -189,7 +189,7 @@ and should not construct code-server, OpenVSCode, or VS Code Server URLs itself.
 
 Monaco alone is not enough for project-aware behavior.
 
-The compact editor should connect to a language service that runs on the Nevo Local host and sees
+The compact editor should connect to a language service that runs on the host running SpecFlow and sees
 the current worktree, project files, package references, generated configuration, and other inputs
 that the normal developer environment requires.
 
@@ -231,14 +231,14 @@ Fold browser
 MacBook browser
     |
     v
-Windows PC running Nevo Local + current worktree
+Windows PC running local SpecFlow runtime + current worktree
     |
     +-- VS Code server
     +-- terminal / PowerShell
     +-- dotnet / node / git installed on that PC
 ```
 
-If Nevo Local later owns workspaces inside containers or another execution environment, the IDE,
+If local SpecFlow runtime later owns workspaces inside containers or another execution environment, the IDE,
 terminal, agent execution, and manual verification commands should target that same environment
 where practical. A browser-only Docker IDE mounted over host files is not sufficient evidence that
 commands behave like the host.
@@ -352,5 +352,5 @@ The main unresolved questions are:
 6. **Worktree identity:** when multiple worktrees become addressable at once, what stable identity
    should file references and IDE launches use?
 
-These should be resolved from a working PoC and the actual Nevo Local/worktree implementation rather
+These should be resolved from a working PoC and the actual local runtime/worktree implementation rather
 than by expanding the compact surface into a custom IDE.

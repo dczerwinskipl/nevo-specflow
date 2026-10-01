@@ -274,7 +274,7 @@ SpecAttentionAggregate
 Responsibilities:
 
 - show attention vs ready vs current work without collapsing concurrent signals;
-- deep-link a concrete Task signal to Specification + Task Secondary;
+- open a concrete Task signal into Specification + local Task Secondary in one user action;
 - route Spec-level decisions to Specification context;
 - preserve neutral Spec navigation separately from actionable signals.
 
@@ -708,9 +708,10 @@ communicates the same status.
 
 ## Tabs
 
-Available, but do not turn every information category into a tab. Full Session's Context/Work may
-use Tabs or SegmentedControl; Task evidence should remain decision-ordered rather than artifact-type
-tabs unless real screen testing says otherwise.
+Available, but do not turn every information category into a tab. Full Session no longer requires a
+permanent Context/Work switcher: Context is the default inspector and Work/details open from explicit
+user actions. Task evidence should remain decision-ordered rather than artifact-type tabs unless real
+screen testing says otherwise.
 
 ---
 

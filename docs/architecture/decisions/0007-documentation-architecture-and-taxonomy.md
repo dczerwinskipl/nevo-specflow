@@ -253,9 +253,9 @@ Tags are normalized and extensible rather than fully closed. They exist for sear
 for authorization or architecture enforcement.
 
 The taxonomy fields are an additive extension to the existing documentation contract. They are not
-required merely because this ADR is current, and tooling that has not yet implemented them must not
-pretend they were validated or indexed. The baseline discovery contract remains `id`, `type`,
-`title`, `read_when`, `summary`, path, and `related`.
+required merely because this ADR is current. When present, `nevo-docs` validates and indexes
+`scope`, `areas`, and `tags` together with the baseline discovery fields `id`, `type`, `title`,
+`read_when`, `summary`, path, and `related`.
 
 No separate `applies_to` dimension is introduced: its intended meaning overlaps with
 `scope`, `areas`, and `read_when`.
@@ -275,11 +275,11 @@ Stable IDs are the canonical targets for `related` links and instruction routing
 Human readers should be able to browse the directory tree, but automated discovery must not depend
 on knowing a path in advance.
 
-`nevo-docs` indexes and searches the baseline metadata today. A taxonomy-aware implementation must
-add `scope`, `areas`, and `tags` without making directory paths part of semantic identity.
+`nevo-docs` indexes and searches the baseline metadata plus optional `scope`, `areas`, and `tags`
+today, without making directory paths part of semantic identity.
 
-When taxonomy support is enabled, filtering by semantic type, scope, and area is part of the
-documentation contract. Free-text tags improve ranking inside those boundaries.
+Filtering by semantic type, scope, and area is part of the documentation contract. Free-text tags
+improve ranking inside those boundaries.
 
 ### 11. Maintain one authoritative home for each rule
 
@@ -318,7 +318,7 @@ Those subjects use this documentation model but are decided independently.
 
 ### Costs
 
-- `nevo-docs` requires an additive tooling change before taxonomy-aware validation and search are enabled;
+- the controlled taxonomy is enforced by repository tooling, so adding a genuinely new scope or area requires an intentional taxonomy change;
 - authors must classify both semantic role and ownership scope;
 - the controlled scope/area vocabulary requires maintenance;
 - some subjects naturally cross namespaces, so links between authoritative documents remain

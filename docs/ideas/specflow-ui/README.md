@@ -40,10 +40,30 @@ exact layouts and components.
 The package deliberately distinguishes:
 
 - current authoritative contracts already present in Nevo SpecFlow;
-- deterministic behavior observed in legacy Nevo and worth evaluating during migration;
+- deterministic behavior observed in the old `dczerwinskipl/nevo` repository and worth evaluating
+  during migration;
 - product direction agreed during UI design;
 - future candidates that should not become implementation requirements yet;
 - unresolved questions that need owner clarification instead of an inferred answer.
+
+## Workflow migration boundary
+
+The old `dczerwinskipl/nevo` product contains **two workflow paths**: the older legacy flow and the
+newer deterministic flow.
+
+Nevo SpecFlow does **not** migrate that dual-mode product model. The target product has one workflow
+model: **deterministic workflow**.
+
+Therefore:
+
+- old-repository APIs/infrastructure may be migration evidence where they are generic and still
+  useful;
+- workflow semantics are taken only from the old repository's deterministic flow;
+- old legacy lifecycle/status behavior is not a compatibility target;
+- do not add a Legacy/Deterministic selector, `workflowMode` product preference, or per-Spec mode
+  switch to the new UI;
+- when an old endpoint contains a mode field for compatibility, the new contract should normally
+  remove that choice or resolve it internally to deterministic behavior.
 
 ## Current working documents
 

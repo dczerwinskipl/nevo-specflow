@@ -1190,7 +1190,8 @@ Before global component/composition gap analysis, verify:
     contextual detail targets rather than mandatory permanent root tabs.
 14. Detail drill-down stays inside one Secondary; no third workspace pane is introduced.
 15. File preview can replace Secondary and escalate separately to full IDE.
-16. Floating Session remains intentionally smaller than Full Session.
+16. Floating Session remains intentionally smaller than Full Session and is not required before
+    entering Full Session.
 17. Opening floating Session from one Task does not rewrite a current batch into that Task.
 18. Settled Turn, Task/workflow completion, resumable continuation, and recovery-required remain
     distinct concepts.

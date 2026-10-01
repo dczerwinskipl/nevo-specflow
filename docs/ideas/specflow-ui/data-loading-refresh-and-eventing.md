@@ -185,7 +185,7 @@ coalesce the UI/cache write.
 ---
 
 
-## 7. Interactive query debounce
+## 6. Interactive query debounce
 
 Debounce applies to user-driven remote lookup/search, not to canonical event processing.
 
@@ -203,7 +203,7 @@ needed.
 
 The debounce interval is a UI tuning value, not part of the backend API.
 
-## 8. Event payloads: snapshot vs delta
+## 7. Event payloads: snapshot vs delta
 
 Prefer an event contract that is easy to reconcile.
 
@@ -232,7 +232,7 @@ resource.
 
 ---
 
-## 9. Query invalidation rules
+## 8. Query invalidation rules
 
 Invalidate the smallest authoritative query that can now be stale.
 
@@ -585,7 +585,7 @@ These diagnostics belong in development tooling/logging, not ordinary end-user U
 
 ---
 
-## 110. Acceptance criteria
+## 19. Acceptance criteria
 
 1. A burst of realtime events does not create one React render/cache write per raw event.
 2. Ordered events are never dropped merely because rendering is coalesced.
@@ -593,11 +593,13 @@ These diagnostics belong in development tooling/logging, not ordinary end-user U
    starve the UI indefinitely.
 4. User-attention/terminal events become visible without an arbitrary debounce delay.
 5. One heavy resource is not polled when granular invalidation is available.
-5. Query invalidation is resource-scoped.
-6. Several homogeneous reads can use a bounded configurable batch.
-7. Unrelated domains are not forced into one giant bootstrap response.
-8. Domain multi-object mutations use an explicit batch operation when coordination matters.
-9. Refresh scope is visible/documented and does not invalidate the entire app.
+6. Query invalidation is resource-scoped.
+7. Several homogeneous reads can use a bounded configurable batch.
+8. Unrelated domains are not forced into one giant bootstrap response.
+9. Domain multi-object mutations use an explicit batch operation when coordination matters.
+10. Refresh scope is visible/documented and does not invalidate the entire app.
 11. Existing usable data remains visible during background refresh.
 12. Stale in-flight responses cannot overwrite a newly selected route/resource.
 13. Heavy history/document/file data is loaded progressively.
+14. Remote text search/filter queries are debounced and stale requests cannot overwrite the current
+    search scope.

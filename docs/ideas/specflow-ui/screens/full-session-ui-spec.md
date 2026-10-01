@@ -52,8 +52,11 @@ It is not a provider transcript and not a raw tool console.
 ## 3. Entry and navigation
 
 Entry:
+- explicit Open full session from a related/current Session reference;
 - explicit Open full session from Floating Session;
 - stable Session deep link.
+
+Opening Full Session from a Spec/Task context does not require opening Floating Session first.
 
 Wide/Compact split entry:
 

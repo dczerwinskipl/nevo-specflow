@@ -20,7 +20,7 @@ read_when:
   - creating Storybook/Figma fixtures for Spec signals
   - deciding how concurrent Spec/Task signals aggregate
 summary: >
-  Detailed product presentation contract for cross-Spec steering rows: group priority,
+  Detailed product presentation contract for cross-Spec steering rows: queue priority / optional grouping,
   concurrent signals, direct context targets, active/archive behavior, payload-backed fixtures,
   data loading, and cardless list composition.
 related:
@@ -103,11 +103,11 @@ Signals:
 }
 ~~~
 
-## 4. Primary grouping policy
+## 4. Primary queue ordering / optional grouping
 
 One Spec appears in **one canonical Active queue position**.
 
-Conceptual presentation order:
+The semantic ordering classes are:
 
 ~~~text
 requires attention
@@ -115,6 +115,11 @@ ready
 working
 quiet / other active
 ~~~
+
+This does **not** require four literal stacked sections. Two valid presentation families remain open:
+
+- grouped sections using those semantic classes;
+- one flat ordered queue where row labels/hierarchy make the same distinctions obvious.
 
 An "issue" is not automatically its own human-attention category. If the issue requires owner
 intervention, it contributes an attention signal. If the agent/system can remediate it without the
@@ -126,8 +131,8 @@ than the frontend reverse-engineering urgency from raw statuses.
 
 Concurrent lower-priority signals remain concise metadata inside the same Spec row.
 
-Do not duplicate the Spec into Attention + Ready + Working lists. Separate summary counters may
-overlap because they are aggregate analytics, not duplicated navigation rows.
+Do not duplicate the Spec into separate Attention + Ready + Working rows. Separate summary counters
+may overlap because they are aggregates, not duplicated navigation rows.
 ## 5. Signal target model
 
 The **whole Spec row / identity** has one stable meaning:
@@ -183,30 +188,24 @@ TASK-03 owner decision · TASK-05 ready · +2 more
 
 Clicking +N more opens the Spec context, not a floating mega-tooltip.
 
-## 7. Group formatting
+## 7. Queue / optional group formatting
 
-Groups are typography + spacing, not Cards.
+The exact grouped-vs-flat presentation is still a product-design decision.
 
-~~~text
-Requires attention
-Spec A ...
-────────────────
-Spec B ...
+If grouped sections are used:
 
-Ready
-Spec C ...
+- groups are typography + spacing, not Cards;
+- use clear section spacing and optional subtle dividers;
+- group by attention / ready / working / other;
+- do not use decorative different backgrounds for every group.
 
-In progress
-Spec D ...
+If a flat queue is used:
 
-Other active
-Spec E ...
-~~~
+- semantic class remains perceivable in each row;
+- sorting preserves human-attention priority;
+- rows do not accumulate repetitive badges merely to replace group headings.
 
-Use clear section spacing and optional subtle dividers between rows.
-
-Do not put a background box around every group.
-
+Both forms keep one Spec in one canonical queue position.
 ## 8. Active versus Archive
 
 ### Active
@@ -337,7 +336,7 @@ TASK-05 ready · Reviewer working on 2 Tasks
 5 / 9 Tasks
 ~~~
 
-One row, one primary group.
+One row, one canonical queue position.
 
 ---
 

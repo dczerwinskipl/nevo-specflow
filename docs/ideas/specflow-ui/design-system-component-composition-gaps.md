@@ -598,12 +598,15 @@ composition/override point; SpecFlow supplies the product-aware resolver.
 Current `AppShell` enables `AppFloatingProvider` only in `wide` shell mode, and the Floating
 Windows stories explicitly treat narrow/mobile mode as unsupported.
 
-The product model currently says a Session opened from Task/Specification uses Floating Session
-before explicit promotion to Full Session.
+The product model now separates two intents on a Session reference:
 
-These contracts are fully aligned only on wide screens.
+- quick conversation, using Floating Session where that presentation is supported;
+- direct Open full session, which does not depend on Floating Session.
 
-Before compact/narrow implementation, choose one product behavior:
+Only the **quick-conversation presentation** remains unresolved outside the widths supported by the
+current floating host.
+
+Before implementing quick Session conversation on compact/narrow, choose one product behavior:
 
 - floating windows become supported at additional widths; or
 - Floating Session is a wide-only presentation and compact/narrow gets a different context-preserving
@@ -815,7 +818,7 @@ The product is ready for polished visual mockups when:
 5. attention/ready/current-work states remain visually distinct without status-badge overload.
 6. batch execution is visibly batch-shaped.
 7. narrow fixtures preserve the same information hierarchy.
-8. Floating Session's non-wide behavior is explicitly decided.
+8. Quick Session conversation outside Floating Session's supported geometry is explicitly decided.
 9. known File/Diff/Handover capability gaps are represented as such rather than hidden behind fake
    finished components.
 

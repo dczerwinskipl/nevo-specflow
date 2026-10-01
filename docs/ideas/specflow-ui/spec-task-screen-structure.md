@@ -131,12 +131,13 @@ The first scan should answer:
 What needs me?
 What is ready if I want to continue?
 What is currently being worked?
-What has an issue/remediation path?
-What is quiet?
+What else is active but does not need me?
 ~~~
 
-It should not expose deep workflow mechanics.
+Issue/remediation details are supporting signals inside those categories, not a mandatory separate
+lane.
 
+It should not expose deep workflow mechanics.
 ## 3.2 Proposed structure
 
 ~~~text
@@ -254,35 +255,27 @@ Specification header
   primary Spec-level action when relevant
 
 High-priority state
-  prioritized attention items / aggregate
-  ready-next-action summary
-  current execution summary
-  issue/remediation summary
-  (render only the categories relevant now)
+  prioritized human-attention items / aggregate
+  (only when the human is genuinely required)
 
 Task collection
   Task rows / grouped lanes / another scannable structure
+  ready/current-work/remediation reasons stay with their Tasks
 
 Supporting Specification context
+  ready-next-action summary when useful
+  current execution summary
+  non-human issue/remediation summary when useful
   workflow progress/history summary
   important Spec-level artifact/review summary
   source-control/change summary when relevant
   recent meaningful activity
 ~~~
 
-The "High-priority state" is a semantic slot, not a permanent card that must always exist.
+The High-priority state slot is reserved for genuine human-required attention. Ready work and
+agent-remediable issues do not get promoted into it merely because they are actionable.
 
-It may contain more than one item when several human decisions are simultaneously pending. Preserve
-the distinction between:
-
-- one Spec-level decision;
-- one Task-level decision;
-- several Task-level decisions sharing the same category/artifact;
-- unrelated simultaneous attention items.
-
-When nothing special is happening, the slot can disappear instead of displaying a decorative
-"all good" panel.
-
+When nothing needs the human, the slot disappears.
 ## 4.3 Task collection
 
 A Task item communicates identity/title, semantic workflow meaning, attention reason, ready action,
@@ -821,27 +814,27 @@ scenarios and available backend projections.
 Before moving to component inventory or visual mockups, verify:
 
 1. From Specs overview, human attention is distinguishable from ready and working.
-2. Multiple simultaneous attention/ready items are preserved rather than collapsed into a false
-   single state.
-3. A Task-specific signal opens the responsible Task context in one interaction; the human does not
-   have to reopen the Spec and find the same Task manually.
-4. A Spec-level signal opens the responsible Specification context without inventing a Task owner.
-5. A neutral Spec click still opens the Specification without inventing a Task selection.
-6. One-click decision context is restorable/deep-linkable where product navigation promises reload
-   equivalence; it is not only ephemeral UI state.
-7. Opening Task/context does not mutate workflow.
-8. Task Secondary explains the current state before presenting a mutation.
-9. Evidence required for a human decision is reachable from Task without leaving the context.
-10. Optional evidence such as Handover, Session, or diff is not rendered as a required empty section.
-11. Current execution language uses authoritative execution scope, never historical Session binding.
-12. Batch execution remains visibly batch-shaped.
-13. A settled Turn can produce continue/resume or recovery state without pretending the Task is done.
-14. Narrow/mobile preserves discovery of attention/ready/current-work before Task detail is opened.
-15. Session access from Task preserves quick conversation where supported and exposes direct Full
-    Session access without requiring Floating Session first.
+2. Issue/remediation becomes attention only when the human is actually required.
+3. Multiple simultaneous attention/ready/current-work signals are preserved rather than collapsed
+   into a false single state.
+4. A Task-specific explicit signal can open the responsible Task context in one interaction.
+5. That one-click interaction may route to the owning Specification and then initialize local Task
+   Secondary; the Task selection itself is not a URL/deep-link contract.
+6. A Spec-level signal opens the responsible Specification context without inventing a Task owner.
+7. A neutral Spec click still opens the Specification without inventing a Task selection.
+8. Opening Task/context does not mutate workflow.
+9. Task Secondary explains the current state before presenting a mutation.
+10. Evidence required for a human decision is reachable from Task without leaving the context.
+11. Optional evidence such as Handover, Session, or diff is not rendered as a required empty section.
+12. Current execution language uses authoritative execution scope, never historical Session binding.
+13. Batch execution remains visibly batch-shaped.
+14. A settled Turn can produce continue/resume or recovery state without pretending the Task is done.
+15. Narrow/mobile preserves discovery of attention/ready/current-work before Task detail is opened.
+16. Session access from Task uses Floating Session only on Wide and opens Full Session directly on
+    Compact/Narrow.
 
-The equivalent Full Session structure is now captured in
+The equivalent Full Session structure is captured in
 [Full Session screen structure](full-session-screen-structure.md).
 
-The broader design-system/component pass is now captured in
+The broader design-system/component pass is captured in
 [Design-system and composition gaps](design-system-component-composition-gaps.md).

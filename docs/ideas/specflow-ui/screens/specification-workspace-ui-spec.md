@@ -56,7 +56,8 @@ It does not flatten Task detail, Session transcript, or raw workflow internals i
 Entry:
 - Specs Overview neutral Spec target;
 - direct/deep link to Specification;
-- return from Full Session where originating context is representable.
+- normal router Back from Full Session may return to this Specification; previously open Task
+  Secondary is local state and is not reconstructed from the URL.
 
 Wide/Compact:
 - Specification = Primary;
@@ -102,14 +103,18 @@ one Task in isolation.
 ## 6. Information hierarchy
 
 1. Spec identity/title.
-2. concise Specification description/summary with progressive disclosure.
+2. concise Specification description/summary with a deliberate full-content reading action.
 3. workflow meaning and high-priority human-required state.
 4. Task collection, including multi-selection when batch actions are available.
 5. contextual Session history/current execution.
 6. supporting Specification documents/evidence and relevant project-operation links.
 
-Future inline editing: when a capable Markdown editor exists, expanded Specification content may
-expose a small Edit affordance and edit in place. Until then, do not render a dead Edit icon.
+Opening the full Specification description/document should provide a comfortable reading mode that
+uses the main available workspace surface rather than expanding a tiny inline accordion indefinitely.
+
+Future editing: when a capable Markdown editor exists, that full reading mode may expose a small Edit
+affordance and edit Markdown in place. Until then the full content is read-only and no dead Edit icon
+is shown.
 
 The high-priority region appears only when something genuinely deserves priority; Ready alone does
 not become an alert.
@@ -143,7 +148,7 @@ Task Secondary is shown only when selected. Primary remains scannable without it
 ## 8. Screen anatomy
 
 - Specification header.
-- Summary/description disclosure.
+- concise summary/description + full-content reading action.
 - High-priority state slot.
 - Task collection with optional checkbox selection and bulk-action region.
 - Task search/filter only when needed.

@@ -77,6 +77,19 @@ occur in a Session that previously touched TASK-03, and one execution may legall
 
 Do not select one representative Task for a batch execution merely to simplify presentation.
 
+## Commentary vs reasoning
+
+Commentary and reasoning are different canonical Work kinds.
+
+- **Commentary** is user-facing progress/narration supplied by the agent/provider. It may appear as
+  readable prose in the Session conversation and grouped Work log.
+- **Reasoning** is separate thinking/reasoning Work. Active reasoning may justify a compact
+  `Thinking…` current-activity projection, but historical reasoning is not automatically rendered
+  as ordinary conversation text.
+- A provider-supplied user-safe reasoning summary may be inspectable in Work, but the UI MUST NOT
+  relabel raw reasoning as Commentary merely to make the transcript fuller.
+- Both kinds remain canonical grouping boundaries in ordered Work.
+
 ## Work information levels
 
 | Level  | Name           | Prioritizes                                                      |

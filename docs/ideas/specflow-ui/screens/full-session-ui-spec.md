@@ -88,14 +88,14 @@ semantics.
 
 Legacy Session API is the strongest migration candidate among current UI surfaces.
 
-| Need | New SpecFlow | Legacy Nevo | Direction |
+| Need | New SpecFlow | Old repo evidence | Direction |
 | --- | --- | --- | --- |
-| Session snapshot/chat/Turns | **missing** | **legacy-available** via \`GET /api/agent-sessions/:sessionId/chat\` and \`GET /api/agent-sessions/:sessionId\` | Preserve canonical Session/Turn/Work wire semantics where still valid. |
-| Live updates/replay cursor | **missing** | **legacy-available** via \`GET /api/agent-sessions/:sessionId/events\` SSE | Preserve replayable ordered event model. |
-| Start next Turn | **missing** | **legacy-available** via \`POST /api/agent-sessions/:sessionId/turns\` | Preserve idempotent command semantics. |
-| Cancel/recover Turn | **missing** | **legacy-available** via Turn cancel/recover routes | Preserve capability-driven cancellation/recovery, redesign exact new command path if needed. |
-| Respond to interaction | **missing** | **legacy-available** via \`POST /api/agent-sessions/:sessionId/interactions/:interactionId/respond\` | Strong migration candidate. |
-| Provider capabilities | **missing** | **legacy-available** via \`GET /api/agent-providers\` and Session capabilities | Preserve semantic capabilities; new Runtime owns provider boundary. |
+| Session snapshot/chat/Turns | **missing** | **old-repo-available** via \`GET /api/agent-sessions/:sessionId/chat\` and \`GET /api/agent-sessions/:sessionId\` | Preserve canonical Session/Turn/Work wire semantics where still valid. |
+| Live updates/replay cursor | **missing** | **old-repo-available** via \`GET /api/agent-sessions/:sessionId/events\` SSE | Preserve replayable ordered event model. |
+| Start next Turn | **missing** | **old-repo-available** via \`POST /api/agent-sessions/:sessionId/turns\` | Preserve idempotent command semantics. |
+| Cancel/recover Turn | **missing** | **old-repo-available** via Turn cancel/recover routes | Preserve capability-driven cancellation/recovery, redesign exact new command path if needed. |
+| Respond to interaction | **missing** | **old-repo-available** via \`POST /api/agent-sessions/:sessionId/interactions/:interactionId/respond\` | Strong migration candidate. |
+| Provider capabilities | **missing** | **old-repo-available** via \`GET /api/agent-providers\` and Session capabilities | Preserve semantic capabilities; new Runtime owns provider boundary. |
 | Current single/batch execution scope | **missing** | partial legacy session/task fields; historical association is insufficient | Add explicit current execution projection. |
 | Context evidence/Handover/artifacts | **missing** | partial scattered evidence | Add product context references without bloating provider Work model. |
 

@@ -273,6 +273,15 @@ Shared review report · 3 Tasks                         [Inspect]
 
 Do not clone the report into three fake Task-local artifacts.
 
+### Multiple change sources
+
+`Changes` is not necessarily one diff. The Task projection may contain several change evidence
+entries or an aggregate change-set reference that preserves multiple sources such as current
+worktree, base-branch diff, and linked PR/MR references.
+
+Present a concise source label/count first and keep provider-specific inspection behind the target.
+Do not assume one GitHub pull request is the canonical change object.
+
 ## 7. Evidence-row formatting
 
 Evidence rows are homogeneous and borderless by default.

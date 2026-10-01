@@ -99,7 +99,7 @@ Runtime/application code owns semantic projections such as:
 
 UI must not rebuild those semantics from raw provider events or by scanning Work arrays.
 
-### 2.2 Legacy deterministic evidence
+### 2.2 Old-repo deterministic evidence
 
 The legacy canonical Session UI/runtime also demonstrates useful migration concepts:
 

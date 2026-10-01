@@ -116,18 +116,28 @@ Response:
 
 ~~~text
 {
+  revision,
   session: {
     id,
     title?,
+    status,
     agentRole?,
     provider?,
     mode?,
+    model?,
     capabilities,
     readiness,
     createdAt,
-    lastActivityAt,
+    updatedAt,
+    lastActivityAt?,
     lastEventSeq
   },
+  activeTurn?: {
+    turnId,
+    status,
+    startedAt
+  },
+  pendingInteraction?,
   turns: [
     {
       id,
@@ -137,11 +147,17 @@ Response:
       currentActivity?,
       finalAnswer?,
       terminalOutcome?,
+      usage?,
       createdAt,
-      updatedAt
+      updatedAt,
+      completedAt?
     }
   ],
   workSummary,
+  history: {
+    hasOlder,
+    beforeCursor?
+  },
   context: {
     specification: { id, title },
     currentExecution?: {
@@ -161,8 +177,9 @@ The first implementation may preserve much of legacy \`AgentSessionChatPayload\`
 authoritative current-execution projection rather than treating \`taskId/taskIds\` historical binding
 as execution proof.
 
-For large histories, later split/paginate historical Turns/Work instead of making the initial
-snapshot unbounded.
+Initial history MUST be bounded. The first implementation should return the active/current Turn and a
+reasonable recent-history window, with an older-history cursor. Do not defer pagination until after
+large Sessions already cause oversized first loads.
 
 ### Proposed live API
 
@@ -217,7 +234,9 @@ Primary:
 3. current activity;
 4. pending interaction;
 5. compact semantic Work summaries;
-6. composer.
+6. composer;
+7. when the user has scrolled away from the bottom, a clear "new activity / jump to latest" affordance
+   rather than forced auto-scroll.
 
 Secondary:
 1. Context by default;
@@ -325,7 +344,90 @@ Only when capability permits -> Cancel -> cancelling state -> terminal projectio
 
 These states must remain semantically distinct.
 
-## 12. Component / composition map
+
+## 12. Data loading, events, batching, and reconnect
+
+This screen inherits
+[Data loading, refresh, batching, and eventing](../data-loading-refresh-and-eventing.md).
+
+### Snapshot + event sequence
+
+Required load flow:
+
+~~~text
+GET current Session snapshot
+  -> receive revision + lastEventSeq
+  -> subscribe from lastEventSeq
+  -> reduce newer events in order
+~~~
+
+Never load a current snapshot and then reconnect from event 0.
+
+### Realtime event bursts
+
+Session/provider streams can generate many small updates.
+
+Do not apply one React-query/store write per raw event.
+
+Use:
+
+~~~text
+ordered raw events
+  -> event buffer
+  -> canonical reducer
+  -> coalesced projection commit
+~~~
+
+Ordinary Commentary/tool-progress events may commit in a small 16–50 ms window.
+
+Pending-interaction, terminal, unavailable/recovery, cancellation, or execution-scope changes flush
+immediately after earlier queued events are reduced.
+
+This is render/update coalescing, **not event dropping**.
+
+### History loading
+
+Initial snapshot contains:
+
+- current/active Turn;
+- enough recent Turns for conversational continuity;
+- current readiness/interaction/activity;
+- older-history cursor.
+
+Older Turns load on explicit scroll/action. Large Work details/raw outputs remain below Work inspector
+drill-down and load lazily where possible.
+
+Floating Session shares this cache and must not trigger complete history hydration.
+
+### Refresh / reconnect
+
+Do **not** show a generic Refresh button while the live connection is healthy.
+
+When transport/session synchronization fails, show a scoped Reconnect/Retry action.
+
+Reconnect:
+
+1. cancels/abandons stale transport work;
+2. fetches one authoritative Session snapshot;
+3. replaces/reconciles canonical Session cache;
+4. resumes event stream from the returned cursor.
+
+It must not blindly clear and refetch all historical Work pages.
+
+### Scroll stability
+
+If the user is at/near the bottom, new conversational content may follow automatically.
+
+If the user scrolled upward:
+
+- do not yank scroll to latest;
+- accumulate a compact new-activity indicator;
+- Jump to latest returns to the current stream.
+
+Current required interaction may still surface a persistent attention indicator without forcibly
+changing scroll position.
+
+## 13. Component / composition map
 
 | Need | Composition |
 | --- | --- |
@@ -345,7 +447,7 @@ These states must remain semantically distinct.
 
 Do not create one generic design-system Chat component around Session domain semantics yet.
 
-## 13. Visual/token contract
+## 14. Visual/token contract
 
 - Primary/Secondary use existing workspace material;
 - conversation text hierarchy uses semantic Typography/Markdown styles;
@@ -357,7 +459,7 @@ Do not create one generic design-system Chat component around Session domain sem
 - raw technical detail uses muted/code treatments;
 - separators subtle; no arbitrary provider colors.
 
-## 14. Local containment rules
+## 15. Local containment rules
 
 - no Card per message;
 - no Card per Commentary;
@@ -368,7 +470,7 @@ Do not create one generic design-system Chat component around Session domain sem
 - Work detail/raw output may use code/surface containment when needed for technical readability;
 - avoid nested rounded boxes inside inspector surfaces.
 
-## 15. Accessibility/focus
+## 16. Accessibility/focus
 
 - stream updates do not steal focus;
 - pending interaction is announced appropriately without repeated noisy announcements;
@@ -378,7 +480,7 @@ Do not create one generic design-system Chat component around Session domain sem
 - live regions are used sparingly;
 - composer text survives contextual navigation where expected.
 
-## 16. Storybook scenarios
+## 17. Storybook scenarios
 
 - generic/spec-level live Turn;
 - single Task execution;
@@ -398,9 +500,12 @@ Do not create one generic design-system Chat component around Session domain sem
 - default Context closed/restored;
 - narrow inspector push.
 
-## 17. Acceptance criteria
+## 18. Acceptance criteria
 
 - user sees what is happening now without opening Work;
+- initial history is bounded and older history is loadable without losing the current Turn;
+- event bursts do not produce one UI/cache commit per raw event;
+- scrolling old history is not interrupted by forced auto-scroll;
 - interaction requiring user is actionable in Primary;
 - current execution is distinct from related Tasks;
 - batch is batch-shaped;
@@ -410,7 +515,7 @@ Do not create one generic design-system Chat component around Session domain sem
 - one Secondary only;
 - no message/tool Card soup.
 
-## 18. Open questions
+## 19. Open questions
 
 - exact current execution-intent API in new deterministic Runtime;
 - history pagination;

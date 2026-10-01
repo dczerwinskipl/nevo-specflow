@@ -144,6 +144,9 @@ Illustrative:
 ~~~text
 GET /api/specs?collection=active
 GET /api/specs?collection=archive
+
+optional later/server-backed filtering:
+GET /api/specs?collection=archive&q=recovery
 ~~~
 
 Response:
@@ -269,6 +272,8 @@ Rows are borderless/list-first. Group headings + whitespace create hierarchy.
 
 - Workspace header: Specs.
 - Collection control: Active / Archive.
+- compact Search Specs control when the collection is large enough that scanning/grouping alone is
+  insufficient; Archive should expect this earlier than Active because it grows monotonically.
 - Human-steering groups or equivalent flat list with equally clear semantics.
 - Spec summary rows.
 - Optional create-spec action only when product contract exists.
@@ -300,6 +305,15 @@ the concrete Task.
 
 ### Collection switch
 Active/Archive changes collection state, not workflow state.
+
+### Search
+Search narrows the currently selected collection by Spec identity/title/summary and, where the backend
+supports it, Task/signal labels.
+
+For a bounded already-loaded collection, filter locally.
+
+If search becomes server-backed, use the shared 150–300 ms network debounce/cancellation rules.
+Clearing search restores the same collection/grouping without workflow mutation.
 
 ## 11. States
 
@@ -397,6 +411,7 @@ Do not force the work queue into DataTable unless final content proves genuinely
 - quiet;
 - Active empty;
 - Archive populated;
+- Archive with many Specs + search;
 - narrow direct Task signal.
 
 ## 18. Acceptance criteria

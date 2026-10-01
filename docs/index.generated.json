@@ -301,6 +301,94 @@
       ]
     },
     {
+      "id": "ideas.specflow-ui",
+      "type": "hub",
+      "title": "SpecFlow UI product ideas",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/README.md",
+      "read_when": [
+        "designing SpecFlow product screens and navigation",
+        "deciding which deterministic workflow facts should be visible to a human",
+        "mapping specifications, tasks, sessions, artifacts, and human actions into UI surfaces"
+      ],
+      "summary": "Non-authoritative UI/product inventory for turning deterministic SpecFlow state into a human steering surface without exposing legacy concepts or backend structure as navigation.",
+      "related": [
+        "ideas.readme",
+        "product.specflow.ui.interaction-model",
+        "product.specflow.ui.ai-session-ux",
+        "architecture.workflow.deterministic-workflow",
+        "architecture.ai.canonical-session-turn-work",
+        "ideas.developer-workspace"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
+      ],
+      "tags": [
+        "information-architecture",
+        "human-steering",
+        "deterministic-workflow",
+        "artifacts"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.components",
+      "type": "hub",
+      "title": "SpecFlow UI large component specifications",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/components/README.md",
+      "read_when": [
+        "implementing or visually reviewing a large SpecFlow product composition",
+        "creating Storybook/Figma state fixtures for Session, Task, or steering UI"
+      ],
+      "summary": "Index of large product-owned UI compositions whose internal states need more precision than a screen-level spec. These docs define canonical input payloads, grouping/presentation rules, state mocks, component ownership, data loading, and visual behavior.",
+      "related": [
+        "ideas.specflow-ui.screens",
+        "ideas.specflow-ui.data-loading-refresh-and-eventing",
+        "design-system.principles.layout-and-containment"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "components",
+        "compositions",
+        "storybook",
+        "figma"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.screens",
+      "type": "hub",
+      "title": "SpecFlow UI screen specifications",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/screens/README.md",
+      "read_when": [
+        "implementing or reviewing a large SpecFlow UI screen",
+        "locating the owner document for a concrete user interaction",
+        "deciding which shared UI/product rules a screen inherits"
+      ],
+      "summary": "Index of vertical SpecFlow UI screen specifications. Screen specs translate shared product and design-system rules into concrete use cases, anatomy, interactions, responsive behavior, component usage, token roles, states, and acceptance scenarios.",
+      "related": [
+        "ideas.specflow-ui",
+        "product.specflow.ui.interaction-model",
+        "design-system.principles.ui-ux-guidelines",
+        "design-system.principles.layout-and-containment"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "screens",
+        "ui-spec",
+        "interaction",
+        "implementation-contract"
+      ]
+    },
+    {
       "id": "architecture.ai.canonical-session-turn-work",
       "type": "architecture",
       "title": "Canonical AI Session, Turn, and Work model",
@@ -490,7 +578,7 @@
         "integrating a browser-accessible IDE with the current worktree",
         "designing language-support or IDE extension points"
       ],
-      "summary": "Use the current Nevo Local worktree as the shared filesystem source of truth, expose a compact React/Monaco code surface for review and small edits, and open a separate VS Code-based full IDE for project-wide work, terminal use, source control, and extensions.",
+      "summary": "Use the current SpecFlow worktree as the shared filesystem source of truth, expose a compact React/Monaco code surface for review and small edits, and open a separate VS Code-based full IDE for project-wide work, terminal use, source control, and extensions.",
       "related": [
         "ideas.developer-workspace",
         "ideas.readme",
@@ -675,6 +763,25 @@
       ]
     },
     {
+      "id": "design-system.principles.layout-and-containment",
+      "type": "engineering",
+      "title": "Layout and containment guidelines",
+      "status": "draft",
+      "file": "docs/design-system/principles/layout-and-containment.md",
+      "read_when": [
+        "deciding whether content needs a Card, border, alternate surface, or divider",
+        "composing a list, detail page, settings page, inspector, or dashboard",
+        "reviewing nested surfaces or visually heavy UI"
+      ],
+      "summary": "Borderless-first rules for grouping and containment. Start with typography, spacing, alignment and separators; use Cards and stronger surfaces only when an independently meaningful object or exceptional interaction genuinely needs containment.",
+      "related": [
+        "design-system.principles.ui-ux-guidelines",
+        "design-system.principles.system-boundary",
+        "design-system.implementation.react.component-guidelines",
+        "design-system.implementation.tailwind.styling-guidelines"
+      ]
+    },
+    {
       "id": "design-system.principles.ui-ux-guidelines",
       "type": "engineering",
       "title": "UI/UX engineering guidelines",
@@ -688,6 +795,7 @@
       ],
       "summary": "Portable engineering rules for building UI: validate the composed screen, semantic typography/color/spacing tokens, information hierarchy, progressive disclosure, and mandatory visual self-review. Product-specific UX (AI sessions, SpecFlow UI screens) is under product/specflow/ui/.",
       "related": [
+        "design-system.principles.layout-and-containment",
         "design-system.implementation.react.component-guidelines",
         "design-system.implementation.tailwind.styling-guidelines",
         "design-system.implementation.storybook.guidelines",
@@ -1316,7 +1424,8 @@
         "ideas.specflow-runtime.ai-adapters.output-semantics",
         "ideas.specflow-runtime.ai-adapters.error-classification",
         "ideas.specflow-runtime.ai-adapters.diagnostics-and-replay",
-        "ideas.specflow-runtime.ai-adapters.invocation-ownership"
+        "ideas.specflow-runtime.ai-adapters.invocation-ownership",
+        "ideas.specflow-runtime.ai-adapters.provider-error-examples"
       ],
       "scope": "specflow",
       "areas": [
@@ -1416,9 +1525,9 @@
         "ideas.specflow-runtime.ai-adapters.error-classification",
         "ideas.specflow-runtime.ai-adapters.diagnostics-and-replay",
         "ideas.specflow-runtime.ai-adapters.protocol-examples",
-        "architecture.ai.provider-boundary",
         "ideas.specflow-runtime.ai-adapters.process-environment-boundary",
-        "ideas.specflow-runtime.ai-adapters.provider-capacity-admission"
+        "ideas.specflow-runtime.ai-adapters.provider-capacity-admission",
+        "architecture.ai.provider-boundary"
       ],
       "scope": "specflow",
       "areas": [
@@ -1480,8 +1589,8 @@
       "related": [
         "ideas.specflow-runtime.ai-adapters",
         "ideas.specflow-runtime.ai-adapters.invocation-ownership",
-        "architecture.runtime.ownership-and-lifecycle",
-        "ideas.specflow-runtime.ai-adapters.session-resume-recovery"
+        "ideas.specflow-runtime.ai-adapters.session-resume-recovery",
+        "architecture.runtime.ownership-and-lifecycle"
       ],
       "scope": "specflow",
       "areas": [
@@ -1564,6 +1673,605 @@
         "cost",
         "providers",
         "sessions"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.components.session-conversation",
+      "type": "product",
+      "title": "Session conversation UI spec",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/components/session-conversation-ui-spec.md",
+      "read_when": [
+        "implementing Full Session or Floating Session conversation",
+        "creating Storybook/Figma fixtures for Session states",
+        "deciding how Commentary and tool work mix in chat"
+      ],
+      "summary": "Detailed product presentation contract for Session conversation: user/assistant messages, Commentary, compact Work bursts, current activity, interactions, terminal outcomes, grouping rules, payload-backed state mocks, loading/realtime behavior, and component ownership.",
+      "related": [
+        "ideas.specflow-ui.components",
+        "ideas.specflow-ui.screens.full-session",
+        "ideas.specflow-ui.screens.floating-session",
+        "ideas.specflow-ui.data-loading-refresh-and-eventing",
+        "product.specflow.ui.ai-session-ux",
+        "architecture.ai.canonical-session-turn-work"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "ai",
+        "runtime"
+      ],
+      "tags": [
+        "session",
+        "chat",
+        "commentary",
+        "work-summary",
+        "interaction",
+        "composer"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.components.session-work-inspector",
+      "type": "product",
+      "title": "Session Work inspector UI spec",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/components/session-work-inspector-ui-spec.md",
+      "read_when": [
+        "implementing Work L2/L3/L4",
+        "formatting canonical ToolInvocation and ToolAction payloads",
+        "creating Storybook/Figma fixtures for tool execution"
+      ],
+      "summary": "Detailed presentation contract for Session Work inspection: grouped chronology, ungrouped Work, ToolAction drill-down, every canonical tool kind, statuses, payload-backed fixtures, grouping, large payload behavior, and component ownership.",
+      "related": [
+        "ideas.specflow-ui.components",
+        "ideas.specflow-ui.components.session-conversation",
+        "ideas.specflow-ui.screens.full-session",
+        "ideas.specflow-ui.data-loading-refresh-and-eventing",
+        "architecture.ai.canonical-session-turn-work"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "ai",
+        "runtime"
+      ],
+      "tags": [
+        "session",
+        "work",
+        "timeline",
+        "tools",
+        "tool-action",
+        "inspection"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.components.settings-catalog-renderer",
+      "type": "product",
+      "title": "Settings catalog renderer UI spec",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/components/settings-catalog-renderer-ui-spec.md",
+      "read_when": [
+        "implementing dynamic Project Settings rendering",
+        "adding a new Settings value kind",
+        "creating Storybook/Figma fixtures for Settings descriptors"
+      ],
+      "summary": "Detailed renderer contract for backend-owned Settings descriptors: supported value kinds, provenance/default/effective state, availability/read-only/sensitive handling, plugin contributions, unknown descriptor behavior, payload-backed fixtures, data loading and visual rules.",
+      "related": [
+        "ideas.specflow-ui.components",
+        "ideas.specflow-ui.screens.project-settings",
+        "ideas.specflow-ui.data-loading-refresh-and-eventing",
+        "design-system.principles.layout-and-containment"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "configuration"
+      ],
+      "tags": [
+        "settings",
+        "catalog",
+        "renderer",
+        "plugins",
+        "fields"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.components.spec-steering",
+      "type": "product",
+      "title": "Spec steering collection and item UI spec",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/components/spec-steering-ui-spec.md",
+      "read_when": [
+        "implementing Specs Overview steering groups/items",
+        "creating Storybook/Figma fixtures for Spec signals",
+        "deciding how concurrent Spec/Task signals aggregate"
+      ],
+      "summary": "Detailed product presentation contract for cross-Spec steering rows: queue priority / optional grouping, concurrent signals, direct context targets, active/archive behavior, payload-backed fixtures, data loading, and cardless list composition.",
+      "related": [
+        "ideas.specflow-ui.components",
+        "ideas.specflow-ui.screens.specs-overview",
+        "ideas.specflow-ui.data-loading-refresh-and-eventing"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "specs",
+        "steering",
+        "attention",
+        "ready",
+        "working",
+        "issue"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.components.task-decision-evidence",
+      "type": "product",
+      "title": "Task decision and evidence UI spec",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/components/task-decision-evidence-ui-spec.md",
+      "read_when": [
+        "implementing Task decision/evidence composition",
+        "creating Storybook/Figma fixtures for Task states",
+        "deciding how review, handover, verification, changes, resume, or recovery are presented"
+      ],
+      "summary": "Detailed product presentation contract for Task decision state, action readiness, evidence ordering, review/handover/change/verification references, continuation/remediation/recovery, payload-backed state fixtures, data loading, and visual containment.",
+      "related": [
+        "ideas.specflow-ui.components",
+        "ideas.specflow-ui.screens.task-detail",
+        "ideas.specflow-ui.data-loading-refresh-and-eventing",
+        "design-system.principles.layout-and-containment"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
+      ],
+      "tags": [
+        "task",
+        "decision",
+        "evidence",
+        "review",
+        "remediation",
+        "recovery"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.data-loading-refresh-and-eventing",
+      "type": "product",
+      "title": "SpecFlow UI data loading, refresh, batching, and eventing",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/data-loading-refresh-and-eventing.md",
+      "read_when": [
+        "implementing a SpecFlow UI read model or query",
+        "adding realtime events, polling, batching, refresh, or prefetch",
+        "deciding whether multiple fields belong in one response/query"
+      ],
+      "summary": "Shared UI data contract for coherent read models, targeted caching/invalidation, ordered event application, render coalescing, batch reads, refresh semantics, and avoiding both over-fetching and hundreds of tiny realtime UI updates.",
+      "related": [
+        "ideas.specflow-ui.screens",
+        "architecture.runtime.ownership-and-lifecycle",
+        "architecture.ai.canonical-session-turn-work"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "runtime"
+      ],
+      "tags": [
+        "queries",
+        "caching",
+        "batching",
+        "sse",
+        "refresh",
+        "invalidation",
+        "performance"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.design-system-component-composition-gaps",
+      "type": "product",
+      "title": "SpecFlow UI design-system and composition gaps",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/design-system-component-composition-gaps.md",
+      "read_when": [
+        "planning implementation after the Spec/Task and Full Session screen-structure passes",
+        "deciding whether a missing UI concept belongs in Nevo UI or SpecFlow feature code",
+        "prioritizing reusable component work before visual mockups"
+      ],
+      "summary": "Maps the current Specification/Task and Full Session screen structures onto the migrated Nevo UI foundation, distinguishing existing primitives, product-owned compositions, reusable design-system gaps, and product capability gaps.",
+      "related": [
+        "ideas.specflow-ui",
+        "ideas.specflow-ui.spec-task-screen-structure",
+        "ideas.specflow-ui.full-session-screen-structure",
+        "design-system.principles.system-boundary",
+        "design-system.implementation.react.component-guidelines",
+        "product.specflow.ui.interaction-model",
+        "product.specflow.ui.ai-session-ux",
+        "ideas.developer-workspace.code-inspection-and-editing"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "components",
+        "compositions",
+        "design-system",
+        "specification",
+        "task",
+        "session",
+        "migration"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.full-session-screen-structure",
+      "type": "product",
+      "title": "Full Session screen structure",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/full-session-screen-structure.md",
+      "read_when": [
+        "designing Full Session or floating Session",
+        "deciding what belongs in Session Primary versus contextual Secondary",
+        "presenting current activity, Work history, pending interactions, Tasks, or files",
+        "validating single-Task, batch, generic, resumable, and attention Session states"
+      ],
+      "summary": "Screen-structure pass for Full Session and floating Session. Defines Conversation as Primary, Context as the default split Secondary, Work/File contextual inspection, current-activity and attention placement, batch scope, and narrow behavior without freezing final components.",
+      "related": [
+        "ideas.specflow-ui",
+        "ideas.specflow-ui.information-navigation-inventory",
+        "ideas.specflow-ui.spec-task-information-hierarchy",
+        "ideas.specflow-ui.spec-task-screen-structure",
+        "product.specflow.ui.interaction-model",
+        "product.specflow.ui.ai-session-ux",
+        "architecture.ai.canonical-session-turn-work",
+        "ideas.developer-workspace.code-inspection-and-editing"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "ai",
+        "runtime"
+      ],
+      "tags": [
+        "session",
+        "conversation",
+        "commentary",
+        "work",
+        "context",
+        "primary-secondary",
+        "human-attention",
+        "responsive"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.information-navigation-inventory",
+      "type": "product",
+      "title": "SpecFlow UI information and navigation inventory",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/information-and-navigation-inventory.md",
+      "read_when": [
+        "planning real SpecFlow UI screens after the design-system migration",
+        "deciding whether a concept is a route, workspace secondary, floating surface, inline detail, or action",
+        "deciding which workflow facts are primary information for a human",
+        "migrating deterministic task/session/workflow data from the old `dczerwinskipl/nevo` repository"
+      ],
+      "summary": "Working inventory of SpecFlow UI concepts, ownership, deterministic properties, human-attention semantics, artifacts, and candidate navigation depth. It intentionally precedes screen layout.",
+      "related": [
+        "ideas.specflow-ui",
+        "product.specflow.ui.interaction-model",
+        "product.specflow.ui.ai-session-ux",
+        "product.specflow.ui.personas",
+        "architecture.workflow.deterministic-workflow",
+        "architecture.ai.canonical-session-turn-work",
+        "ideas.developer-workspace.code-inspection-and-editing"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow",
+        "runtime",
+        "configuration"
+      ],
+      "tags": [
+        "information-architecture",
+        "specifications",
+        "tasks",
+        "sessions",
+        "workflow",
+        "human-attention",
+        "artifacts",
+        "handover"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.navigation-route-model",
+      "type": "product",
+      "title": "SpecFlow UI navigation and route model",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/navigation-and-route-model.md",
+      "read_when": [
+        "implementing SpecFlow product routing or Back behavior",
+        "validating that every product surface is reachable",
+        "deciding which interaction state belongs in the URL versus local UI state",
+        "designing cross-screen navigation between Specs, Specification, Task, Session, and Settings"
+      ],
+      "summary": "Cross-screen navigation contract for SpecFlow UI. Defines the default product entry point, routable product surfaces, Primary/Secondary drill-down, direct Full Session access, local inspector stacks, responsive representation, and Back behavior without freezing exact URL syntax or Session-creation flow.",
+      "related": [
+        "ideas.specflow-ui",
+        "ideas.specflow-ui.information-navigation-inventory",
+        "ideas.specflow-ui.spec-task-screen-structure",
+        "ideas.specflow-ui.full-session-screen-structure",
+        "product.specflow.ui.interaction-model",
+        "design-system.principles.system-boundary"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "information-architecture",
+        "routing",
+        "primary-secondary",
+        "session",
+        "responsive"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.screens.floating-session",
+      "type": "product",
+      "title": "Floating Session UI spec",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/screens/floating-session-ui-spec.md",
+      "read_when": [
+        "implementing or reviewing Floating Session",
+        "deciding how quick Session interaction preserves Spec/Task context"
+      ],
+      "summary": "Vertical UI specification for Floating Session: contextual conversation, current activity, pending interaction, promotion to Full Session, API reuse, responsive constraints, components and tokens.",
+      "related": [
+        "ideas.specflow-ui.screens",
+        "ideas.specflow-ui.full-session-screen-structure",
+        "product.specflow.ui.ai-session-ux",
+        "product.specflow.ui.interaction-model"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "ai"
+      ],
+      "tags": [
+        "session",
+        "floating",
+        "conversation",
+        "contextual"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.screens.full-session",
+      "type": "product",
+      "title": "Full Session UI spec",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/screens/full-session-ui-spec.md",
+      "read_when": [
+        "implementing or reviewing Full Session",
+        "defining Session Primary/Secondary, current activity, Work, or interactions"
+      ],
+      "summary": "Vertical UI specification for Full Session: Conversation Primary, default Context Secondary, Work/detail inspection, runtime states, canonical Session API migration, components and tokens.",
+      "related": [
+        "ideas.specflow-ui.screens",
+        "ideas.specflow-ui.full-session-screen-structure",
+        "product.specflow.ui.ai-session-ux",
+        "architecture.ai.canonical-session-turn-work"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "ai",
+        "runtime"
+      ],
+      "tags": [
+        "session",
+        "conversation",
+        "work",
+        "context",
+        "interaction",
+        "execution"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.screens.project-settings",
+      "type": "product",
+      "title": "Project Settings UI spec",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/screens/project-settings-ui-spec.md",
+      "read_when": [
+        "implementing or reviewing the Project Settings screen",
+        "deciding how project configuration should be navigated or grouped",
+        "designing Settings responsive behavior or Storybook fixtures"
+      ],
+      "summary": "Vertical UI specification for Project Settings: user use cases, local section navigation, screen anatomy, responsive behavior, interactions, component usage, semantic token roles, borderless containment rules, states, and acceptance scenarios.",
+      "related": [
+        "ideas.specflow-ui.screens",
+        "ideas.specflow-ui.information-navigation-inventory",
+        "product.specflow.ui.interaction-model",
+        "design-system.principles.ui-ux-guidelines",
+        "design-system.principles.layout-and-containment",
+        "design-system.principles.system-boundary"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "configuration"
+      ],
+      "tags": [
+        "settings",
+        "project",
+        "configuration",
+        "workflows",
+        "agents",
+        "repository",
+        "integrations"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.screens.specification-workspace",
+      "type": "product",
+      "title": "Specification UI spec",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/screens/specification-workspace-ui-spec.md",
+      "read_when": [
+        "implementing or reviewing a Specification surface",
+        "designing Spec-level steering and Task collection behavior"
+      ],
+      "summary": "Vertical UI specification for one Specification surface: workflow meaning, high-priority signals, Task collection, evidence, navigation, API/read-model requirements and responsive behavior.",
+      "related": [
+        "ideas.specflow-ui.screens",
+        "ideas.specflow-ui.spec-task-information-hierarchy",
+        "ideas.specflow-ui.spec-task-screen-structure",
+        "product.specflow.ui.interaction-model"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
+      ],
+      "tags": [
+        "specification",
+        "workspace",
+        "tasks",
+        "workflow",
+        "evidence"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.screens.specs-overview",
+      "type": "product",
+      "title": "Specs Overview UI spec",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/screens/specs-overview-ui-spec.md",
+      "read_when": [
+        "implementing or reviewing the Specs overview",
+        "defining cross-Spec human steering"
+      ],
+      "summary": "Vertical UI specification for the Specs collection: attention, readiness, current work, navigation, data/API requirements, component usage, visual rules, and responsive behavior.",
+      "related": [
+        "ideas.specflow-ui.screens",
+        "ideas.specflow-ui.spec-task-screen-structure",
+        "ideas.specflow-ui.information-navigation-inventory",
+        "product.specflow.ui.interaction-model"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "specs",
+        "overview",
+        "attention",
+        "readiness",
+        "execution"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.screens.task-detail",
+      "type": "product",
+      "title": "Task Detail UI spec",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/screens/task-detail-ui-spec.md",
+      "read_when": [
+        "implementing or reviewing Task Secondary/pushed detail",
+        "defining Task evidence, decisions, or action placement"
+      ],
+      "summary": "Vertical UI specification for Task detail: decision state, intent, evidence, current execution, deterministic actions, API/read-model requirements, components, tokens, and responsive behavior.",
+      "related": [
+        "ideas.specflow-ui.screens",
+        "ideas.specflow-ui.spec-task-information-hierarchy",
+        "ideas.specflow-ui.spec-task-screen-structure",
+        "product.specflow.ui.interaction-model"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
+      ],
+      "tags": [
+        "task",
+        "detail",
+        "review",
+        "evidence",
+        "actions"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.spec-task-information-hierarchy",
+      "type": "product",
+      "title": "Specification and Task information hierarchy",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/spec-task-information-hierarchy.md",
+      "read_when": [
+        "designing the Specs overview, Specification surface, or Task detail",
+        "deciding which workflow facts deserve immediate human visibility",
+        "designing review, approval, start, or finalize steering flows",
+        "migrating Task and workflow projections from the old `dczerwinskipl/nevo` repository into SpecFlow"
+      ],
+      "summary": "Working information hierarchy for Specification and Task. Classifies deterministic facts, human-attention signals, evidence, and actions before final screen layout is designed.",
+      "related": [
+        "ideas.specflow-ui",
+        "ideas.specflow-ui.information-navigation-inventory",
+        "product.specflow.ui.personas",
+        "product.specflow.ui.interaction-model",
+        "architecture.workflow.deterministic-workflow",
+        "architecture.ai.canonical-session-turn-work"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow",
+        "runtime"
+      ],
+      "tags": [
+        "specification",
+        "task",
+        "human-attention",
+        "deterministic-workflow",
+        "review",
+        "artifacts",
+        "handover"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.spec-task-screen-structure",
+      "type": "product",
+      "title": "Specification and Task screen structure",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/spec-task-screen-structure.md",
+      "read_when": [
+        "sketching the Specs overview, Specification surface, or Task Secondary",
+        "validating ready, working, and human-review states before visual design",
+        "deciding which information stays in Specification Primary versus Task Secondary"
+      ],
+      "summary": "First screen-structure pass for Specs overview, Specification Primary, and Task Secondary. Validates the same structure against ready, agent-working, and human-review states without freezing final visual components or styling.",
+      "related": [
+        "ideas.specflow-ui",
+        "ideas.specflow-ui.information-navigation-inventory",
+        "ideas.specflow-ui.spec-task-information-hierarchy",
+        "product.specflow.ui.interaction-model",
+        "product.specflow.ui.ai-session-ux",
+        "design-system.principles.ui-ux-guidelines"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
+      ],
+      "tags": [
+        "specification",
+        "task",
+        "screen-structure",
+        "primary-secondary",
+        "human-attention",
+        "responsive"
       ]
     },
     {
@@ -1684,7 +2392,7 @@
         "choosing between an inline surface, an inspector, a sheet, and a page",
         "defining what state is preserved across navigation"
       ],
-      "summary": "Responsive shell (wide with contextual inspector / narrow), the product navigation hierarchy, context-preserving drill-down, and when to use a tooltip vs. inspector vs. sheet vs. full page.",
+      "summary": "Responsive shell with independent navigation and workspace breakpoints, the product navigation hierarchy, context-preserving drill-down, and when to use floating, Secondary, pushed-detail, or full-workspace surfaces.",
       "related": [
         "product.specflow.ui.personas",
         "product.specflow.ui.ai-session-ux",

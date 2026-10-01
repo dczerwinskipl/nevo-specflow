@@ -33,6 +33,7 @@ describe('createHttpClient', () => {
     await expect(client.get<{ ok: boolean }>('/health')).resolves.toEqual({ ok: true });
     expect(client.axios.defaults.baseURL).toBe('/api');
     expect(client.axios.defaults.timeout).toBe(10_000);
+    expect(client.axios.defaults.allowAbsoluteUrls).toBe(false);
   });
 
   it('supports cookie-backed sessions without owning the session flow', async () => {
@@ -79,13 +80,18 @@ describe('createHttpClient', () => {
     await client.get('/resource');
   });
 
-  it('normalizes axios failures without implementing recovery policy', async () => {
-    const axiosError = new AxiosError('offline', AxiosError.ERR_NETWORK);
+  it('normalizes wrapper failures without taking over raw Axios recovery', async () => {
+    const client = createHttpClient();
+    client.axios.defaults.adapter = async (config) => {
+      throw new AxiosError('offline', AxiosError.ERR_NETWORK, config);
+    };
 
-    const normalized = normalizeHttpError(axiosError);
+    await expect(client.get('/offline')).rejects.toMatchObject({
+      kind: 'network',
+      code: AxiosError.ERR_NETWORK,
+    });
 
+    const normalized = normalizeHttpError(new AxiosError('offline', AxiosError.ERR_NETWORK));
     expect(normalized).toBeInstanceOf(HttpClientError);
-    expect(normalized.kind).toBe('network');
-    expect(normalized.code).toBe(AxiosError.ERR_NETWORK);
   });
 });

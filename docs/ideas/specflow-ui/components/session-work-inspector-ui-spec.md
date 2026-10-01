@@ -65,12 +65,14 @@ Do not collapse these into one giant timeline with every detail always visible.
 
 ~~~text
 SessionWorkInspector
-├── WorkTimelineProjection
-├── WorkTimelineRow
-│   ├── CommentaryRow
-│   ├── ReasoningRow
-│   ├── InteractionRow
-│   └── ToolGroupRow
+├── WorkActivityDisclosure          compact collapsed/expanded block
+├── WorkLogProjection               L2 grouped chapters
+│   ├── CommentaryBlock
+│   ├── ToolBurstRow
+│   ├── ExceptionalToolRow
+│   ├── ReasoningSummaryRow
+│   └── InteractionHistoryRow
+├── WorkHistory                     L3 exact chronology
 ├── WorkItemDetail
 └── ToolInvocationDetail
     └── ToolActionList
@@ -78,14 +80,19 @@ SessionWorkInspector
 
 ### Nevo UI primitives
 
-Use generic Timeline only as a structural chronology primitive if its API fits.
-
-Use Typography, MarkdownDocument, Collapsible, Button/IconButton, StatusIndicator, code/preformatted
-surface, ScrollArea, and semantic tokens.
+Use Typography, MarkdownDocument, Collapsible, Button/IconButton, StatusIndicator,
+code/preformatted surface, ScrollArea, and semantic tokens.
 
 ### Strong rule
 
-**Conversation is not Timeline. Work inspector may use Timeline.**
+**Conversation is not Timeline. L2 Work log is also not a generic Timeline by default.**
+
+L2 must preserve Commentary as readable prose and visually group the tool burst that follows it.
+A permanent rail + icon on every row makes Commentary look like another technical event and adds too
+much chrome.
+
+Generic Timeline is appropriate at L3, where the user explicitly asks for the exact chronological
+inspection list.
 
 Tool/domain semantics stay in SpecFlow code.
 
@@ -191,65 +198,177 @@ The UI must never parse arbitrary output text to invent semantic facts such as t
 match counts. Those need normalized fields from the adapter/application if the product wants to show
 them as facts.
 
-## 5. L2 Work inspector layout
+## 5. Compact Work activity and L2 Work log
 
-Default root:
+### 5.1 Chronology direction
+
+All Work presentations follow the same reading direction as chat:
 
 ~~~text
-Work
-
-Now
-  ⟳ Run tests · workflow tests                    00:08
-
-History
-  • Checking the implementation…
-  ▣ Read file (3)
-  ⌕ Search code · WORKSPACE_WRITER_BLOCKED...
-  ▣ Edit file · admission.mjs
-  ! Run command · pnpm test                       failed
-  • Retrying after the failed check…
-  ✓ Run tests · workflow tests
-  Interaction · resolved
-
-(+18 older)                                      [Load older]
+oldest
+  ↓
+newest / current
 ~~~
 
-Now/current activity is separate from historical rows.
+The newest/current activity is at the bottom.
 
-Do not put an active item into the grouped historical list with equal weight.
+Loading older history prepends content at the top while preserving scroll position.
 
-## 6. L2 grouping algorithm
+Never reverse Work chronology merely because "latest first" is convenient for data arrays.
 
-### 6.1 Happy-path tool grouping
+### 5.2 Collapsed Work activity
 
-Group only when all are true:
-
-- items are adjacent in canonical chronology;
-- `type === "tool"`;
-- `status === "completed"`;
-- no ToolActions that need individual presentation;
-- same canonical `kind`;
-- same semantic `title`.
-
-If subjects are equal, preserve subject.
-
-If subjects differ, group but omit one misleading subject.
+The normal Session view needs a one-line compact state.
 
 Example:
 
 ~~~text
-Read file · service.mjs
-Read file · routes.mjs
-Read file · actions.mjs
+Working · 1 read · 2 searches · 4 commands                     [Expand]
 ~~~
 
-becomes:
+When there is a single useful current action:
 
 ~~~text
-Read file (3)
+Running tests · specflow-runtime                               [Expand]
 ~~~
 
-Do not display `service.mjs` as the group subject.
+When exceptional work exists:
+
+~~~text
+Working · 6 actions · 1 failed                                 [Expand]
+~~~
+
+Rules:
+
+- one line whenever practical;
+- describe the current/recent semantic work, not raw provider state;
+- no per-tool icons;
+- one running/attention marker at most;
+- clicking expands the bounded Work activity view;
+- collapsed text is product-owned projection from canonical Work/currentActivity.
+
+### 5.3 Expanded bounded Work activity
+
+Expanded Work inside the Session should stay compact.
+
+Target visible height: approximately **5–7 compact rows/lines** before scrolling.
+
+Use Nevo UI \`ScrollArea\` with its edge indicators so the user can perceive that more Work exists
+above/below.
+
+Do not expand the page by dozens of tool rows.
+
+Example:
+
+~~~text
+┌──────────────────────────────────────────────────────────────┐
+│ Checking the admission path…                                │
+│   1 read · 2 searches · 4 commands                          │
+│                                                              │
+│ Verifying the recovery behavior…                            │
+│   2 reads · tests passed                                    │
+│                                                              │
+│ ⟳ Executing command · pnpm test                             │
+└──────────────────────────────────────────────────────────────┘
+                          scrolls when history exceeds the cap
+~~~
+
+The block may expose an explicit **Open Work** action to move to the full L2 inspector.
+
+### 5.4 Full L2 Work log
+
+L2 is a grouped, chronology-preserving **work log**, not an icon-heavy timeline.
+
+Visual model:
+
+~~~text
+Work
+
+Checking the implementation and locating the admission path…
+  1 read · 2 searches · 4 commands                            >
+
+The persisted recovery state is handled elsewhere. Verifying that branch…
+  2 reads · 1 command · tests passed                          >
+
+One test failed; checking the assertion before retrying…
+  ! Command failed · pnpm test                                >
+  1 edit · tests passed                                       >
+
+⟳ Executing command · pnpm check
+~~~
+
+Commentary is visually the narrative separator.
+
+Tool activity belonging to the interval after a Commentary item appears beneath that Commentary as
+one or more compact grouped rows.
+
+A Turn that starts with tools before any Commentary may begin with a tool burst directly.
+
+Reasoning that is not user-facing still acts as a semantic grouping boundary but does not become a
+large prose block.
+
+### 5.5 Older history
+
+L2 remains bounded/paged.
+
+Older content loads at the **top**:
+
+~~~text
+[Load older Work]
+
+older commentary...
+  older tool burst...
+
+newer commentary...
+  newer tool burst...
+
+⟳ current activity
+~~~
+
+Loading older content must preserve the user's current viewport anchor.
+
+## 6. L2 grouping algorithm
+
+### 6.1 Tool bursts and chapter grouping
+
+First partition ordered Work into semantic chapters.
+
+A Commentary item starts a narrative chapter. The adjacent tool sequence after it belongs visually
+under that Commentary until another semantic boundary appears.
+
+Inside one adjacent happy-path tool sequence, summarize by canonical kind while preserving the order
+of the first occurrence of each kind.
+
+Example:
+
+~~~text
+commentary
+read
+search
+search
+command
+command
+command
+command
+~~~
+
+renders:
+
+~~~text
+Commentary text…
+  1 read · 2 searches · 4 commands
+~~~
+
+If the sequence is long, L2 may use one compact aggregate row. L3 retains every item.
+
+For a homogeneous same-kind group, a more specific row is allowed:
+
+~~~text
+Read 3 files
+~~~
+
+Do not display one arbitrary subject such as `service.mjs` as the group subject when the grouped
+items target different resources.
 
 ### 6.2 Boundaries
 
@@ -265,21 +384,23 @@ Grouping breaks on:
 
 ### 6.3 Mixed kind tools
 
-Unlike Conversation/L1, L2 does not merge read + search + command into one row.
+L2 **may merge adjacent happy-path mixed kinds into one compact burst row** when their individual
+order is not decision-relevant.
 
-L2 preserves semantic chronology:
-
-~~~text
-Read file (2)
-Search code
-Run command
-~~~
-
-Conversation may summarize the same burst as:
+Preferred compact form:
 
 ~~~text
-Read 2 files · searched code · ran command
+1 read · 2 searches · 4 commands
 ~~~
+
+Use separate rows when:
+
+- one tool is failed/cancelled/interrupted/unknown;
+- a tool has important ToolActions;
+- a tool subject/result is independently useful;
+- preserving relative order is important to understand what happened.
+
+L3 always preserves exact item order.
 
 ### 6.4 Repeated Commentary
 
@@ -297,47 +418,49 @@ product, add explicit tests for it.
 
 ### 6.5 Visible row cap
 
-L2 should be bounded.
+Inline expanded Work activity should show roughly **5–7 compact lines/rows** before ScrollArea
+scrolling.
 
-Legacy uses 8 visible rows as a useful precedent.
+The dedicated L2 Work inspector may show roughly **8–12 grouped rows/chapters** in its initial
+window, then load older content above.
 
-New product recommendation:
+These are presentation defaults, not API constants.
 
-- default roughly 8–12 grouped rows;
-- configurable, not API contract;
-- newest rows visible;
-- older hidden count/load affordance at top;
-- never hide a current exceptional failure behind the cap.
+Always keep current activity/newest history at the bottom. Never hide a current exceptional failure
+behind the cap.
 
 ## 7. L3 ungrouped Work history
 
-L3 shows every canonical Work item in exact order.
+L3 shows every canonical Work item in exact order, oldest at the top and newest at the bottom.
+
+This is the first level where generic Timeline is a strong default because exact event chronology is
+the point of the surface.
+
+Commentary still uses a wider/text-first row so it does not visually collapse into the same icon/text
+density as a tool.
 
 Example:
 
 ~~~text
 Work details
 
-10:31:02  Commentary
-           Checking admission...
+10:31:02
+Checking admission and recovery state…
 
-10:31:04  Read file
-           admission.mjs                         180 ms  ✓
+           Read file · admission.mjs                    180 ms  ✓
+           Read file · finish-operation.mjs             170 ms  ✓
+           Search code · WORKSPACE_WRITER_BLOCKED...    210 ms  ✓
+           Run command · pnpm test                      8.1 s   ✕
 
-10:31:05  Read file
-           finish-operation.mjs                  170 ms  ✓
+10:31:18
+Inspecting the failed assertion before retrying…
 
-10:31:06  Search code
-           WORKSPACE_WRITER_BLOCKED...           210 ms  ✓
-
-10:31:09  Run command
-           pnpm test                              8.1 s  ✕
-
-10:31:18  Commentary
-           Inspecting the failed assertion...
+           Edit file · readiness-policy.mjs             90 ms   ✓
+           Run tests · workflow tests                   5.1 s   ✓
 ~~~
 
-L3 rows may use Timeline.
+L3 may use Timeline for the technical rows/rail, but Commentary should visually span/read as prose
+between tool groups instead of becoming another tiny icon row.
 
 Do not use a Card per Work item.
 
@@ -850,23 +973,37 @@ ToolActions
 
 ### Commentary L2
 
+Commentary is a prose block that visually separates tool bursts.
+
 ~~~text
-• Checking the recovery path…
+Checking the recovery path and the persisted operation state…
+
+  2 reads · 1 search · 3 commands
 ~~~
 
-Text-first, one-line preview.
+It does not need a bullet/icon/rail marker in L2.
 
 L3:
+- prose-first row/block;
+- timestamp may sit above/aside in muted metadata;
 - full preview up to a few lines;
 - select -> full Markdown/text detail.
 
 ### Reasoning L2
 
+Reasoning and Commentary are **not the same canonical Work kind**.
+
+Default L2 treatment:
+
 ~~~text
-◌ Thinking · Evaluating architecture boundaries…
+Thinking…
 ~~~
 
-Visually quieter/italic or otherwise secondary.
+or omit historical Reasoning from the main L2 prose flow while preserving the grouping boundary and
+offering it through technical inspection.
+
+If a provider supplies a user-safe reasoning summary, it may appear as quiet supporting text, but
+must remain visually distinct from Commentary.
 
 Do not render raw reasoning as normal conversation.
 
@@ -909,18 +1046,19 @@ Interaction resolved
 L2:
 
 ~~~text
-• Checking current implementation…
-▣ Read file (2)
-⌕ Search code · admission
-◌ Thinking · Comparing workflow states…
-▣ Read file · finish-operation.mjs
-• The recovery branch is different…
-! Run command · pnpm test                         failed
-• Fixing the assertion and retrying…
-✎ Edit file · readiness-policy.mjs
-    Edit · readiness-policy.mjs
-✓ Run tests · workflow tests
-• Permission · resolved
+Checking current implementation…
+  2 reads · 1 search
+
+Thinking…
+
+The recovery branch is different…
+  1 read
+  ! Command failed · pnpm test                              >
+
+Fixing the assertion and retrying…
+  1 edit · tests passed                                     >
+
+Permission resolved
 ~~~
 
 Note that:
@@ -1032,14 +1170,18 @@ Each fixture includes canonical payload.
 
 ## 20. Acceptance criteria
 
-1. L2 preserves chronology while reducing repetitive happy-path tools.
-2. L3 can show every canonical item in original order.
-3. L4 exposes every relevant ToolInvocation field without polluting L1/L2.
-4. Every canonical tool kind has explicit formatting.
-5. Failed/cancelled/interrupted tools never disappear into a success group.
-6. Tools with ToolActions preserve parent/child semantics.
-7. UI does not parse arbitrary raw output to invent semantic facts.
-8. Large input/output does not force huge initial Session payload forever.
-9. Active tool appears as Now/current activity, not duplicate history.
-10. Work uses timeline/list semantics rather than Card-per-item.
-11. Legacy repeated-Commentary implementation discrepancy is not accidentally copied.
+1. L2 preserves chat-direction chronology: oldest at top, newest/current at bottom.
+2. Commentary remains visually prose-first and separates tool bursts.
+3. Collapsed Work can be represented in one line; inline expanded Work is bounded to roughly 5–7
+   rows with ScrollArea/edge indicators.
+4. L3 can show every canonical item in original order.
+5. L4 exposes every relevant ToolInvocation field without polluting L1/L2.
+6. Every canonical tool kind has explicit formatting.
+7. Failed/cancelled/interrupted tools never disappear into a success group.
+8. Tools with ToolActions preserve parent/child semantics.
+9. UI does not parse arbitrary raw output to invent semantic facts.
+10. Large input/output does not force huge initial Session payload forever.
+11. Active tool appears as current activity at the bottom, not duplicate history.
+12. L2 avoids an icon-heavy generic Timeline; L3 may use Timeline for exact chronology.
+13. Work uses list/log semantics rather than Card-per-item.
+14. Legacy repeated-Commentary implementation discrepancy is not accidentally copied.

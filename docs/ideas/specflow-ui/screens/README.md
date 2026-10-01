@@ -45,6 +45,9 @@ A screen spec answers:
 
 > Given those shared rules, exactly how does this product screen behave?
 
+For complex product-owned compositions whose internal states need deeper payload-level detail, see
+[Large UI component specifications](../components/README.md).
+
 Screen specs should reference shared rules instead of copying them. If a shared rule changes, update
 the shared document and only update screen specs whose local behavior actually changes.
 

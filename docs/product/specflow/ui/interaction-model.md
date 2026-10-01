@@ -54,9 +54,20 @@ The product hierarchy is identical across breakpoints. On narrow layouts, any in
 otherwise exist only in a desktop Secondary needs an explicit affordance from the visible Primary
 surface.
 
+## Product terminology
+
+When a collective product name is useful, **Nevo SpecFlow Workbench** refers to the application
+experience as a whole. Workbench is not a separate Home/dashboard route.
+
+Use **Workspace** for the Nevo UI layout model (`AppWorkspace`, Primary/Secondary, local workspace
+stack) or for explicitly qualified repository/filesystem concepts such as workspace root. Product
+surfaces should normally be named by their product concept: Specs Overview, Specification, Task
+Detail, Full Session, Project Settings.
+
 ## Product hierarchy
 
-For the current spec-driven MVP, global product navigation stays deliberately small:
+For the current spec-driven MVP, global product navigation stays deliberately small. The default
+Workbench entry is Specs Overview:
 
 ```text
 Project
@@ -64,8 +75,9 @@ Project
 │   ├── Active / Archive                  collection views, not necessarily nav items
 │   └── Specification
 │       ├── Task details                  contextual Secondary
-│       └── Session                       floating conversation
-│           └── Open full session         main workspace/route
+│       └── Session
+│           ├── quick conversation        floating presentation where supported
+│           └── Open full session         main product surface/route
 │
 └── Project settings
     ├── Configuration
@@ -93,9 +105,10 @@ Session stream
 File preview is a common Secondary target, but it does not need to be a permanent root/tab beside
 Context and Work.
 
-Opening a Session from Task/Specification first uses a floating conversation so the user can inspect
-or interact without abandoning current work. "Open full session" is the explicit promotion to the
-main Session workspace.
+A Session reference may expose both a quick conversation target and an explicit **Open full session**
+action. Full Session must not require opening the floating presentation first. Where Floating Session
+is supported, it preserves the current Spec/Task context for quick interaction; the responsive
+presentation outside supported geometry is a separate product decision.
 
 ## Surface choice
 

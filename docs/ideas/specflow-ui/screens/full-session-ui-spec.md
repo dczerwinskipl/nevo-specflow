@@ -4,7 +4,7 @@ type: product
 title: Full Session UI spec
 status: draft
 scope: specflow
-areas: [ui, product, ai, runtime]
+areas: [ui, ai, runtime]
 tags: [session, conversation, work, context, interaction, execution]
 read_when:
   - implementing or reviewing Full Session

@@ -231,7 +231,7 @@
         "adding remote access to the current worktree from a phone or another laptop",
         "integrating a full IDE with Nevo without duplicating workspace ownership"
       ],
-      "summary": "Candidate design for a lightweight in-product code surface plus a separate VS Code-based full IDE, both operating on the same current worktree owned by Nevo Local.",
+      "summary": "Candidate design for a lightweight in-product code surface plus a separate VS Code-based full IDE, both operating on the same current worktree on the host running SpecFlow.",
       "related": [
         "ideas.readme",
         "architecture.runtime.ownership-and-lifecycle"

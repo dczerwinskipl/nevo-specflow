@@ -25,38 +25,40 @@ related:
 
 Specs Overview is the human steering surface across Specifications.
 
-It should answer, before drill-down:
+It should answer:
 
-1. What requires me?
-2. What is ready if I want to continue?
+1. What actually requires my intervention now?
+2. What is ready if I choose to start/continue it?
 3. What is currently being worked?
-4. What has an issue/remediation path?
-5. What is quiet?
+4. What else is active but calm?
+
+"Requires attention" means progress is waiting on a human, not merely that an action exists.
+
+The screen also owns the entry point for creating a new Specification.
 
 It does not own Task evidence, Session transcript, or detailed workflow inspection.
-
 ## 2. User use cases
 
-- Find a Specification or Task requiring owner review/decision.
+- Find a Specification with a human-required decision/interaction.
+- Notice an active Session question/permission/confirmation that is waiting on me.
 - Find ready work without confusing it with required attention.
 - See current agent work, including batch execution, without inventing one representative Task.
-- Open a neutral Specification.
-- Open the responsible Task/Spec context directly from a concrete signal.
+- Open a Specification through a stable neutral row target.
+- Use an explicit signal target when I intentionally want to jump to a concrete Task/issue.
 - Switch between Active and Archive collection views.
-- Recover orientation after reload/deep link.
-
+- Create a Specification with only a title, optionally add initial description, and optionally
+  continue directly into agent initialization.
 ## 3. Entry and navigation
 
 Global navigation -> Specs.
 
-Neutral Spec identity opens the Specification.
+The Specification row/identity always opens the Specification. Its destination does not change
+because a different issue becomes highest priority.
 
-A Task-specific signal opens the Specification with that Task context already selected/open.
-
-A Spec-level signal opens the Specification itself.
+A concrete signal may expose a separate explicit Task/issue target. An aggregate signal opens the
+Specification attention context rather than guessing one Task.
 
 Opening context is navigation only; no workflow mutation occurs.
-
 ## 4. Data source / read-model ownership
 
 The overview should consume a backend/application projection designed for human steering.
@@ -234,40 +236,41 @@ should be specified separately when their interaction is designed.
 
 Per Spec item:
 
-1. identity/title;
+1. identity/title — neutral Specification target;
 2. strongest human-facing signal;
 3. count/aggregate when several same-category signals exist;
-4. concise secondary progress/workflow/current-work metadata;
-5. last meaningful activity only if useful.
+4. at most one concise line of additional meaningful signals;
+5. compact progress/current-work metadata.
+
+Attention priority should favor facts that prove the human is blocking useful progress. A live
+Session interaction waiting for response is normally stronger than a passive ready-to-start action.
+
+Do not duplicate one Spec across several stacked list groups. Summary counters may overlap because
+they are aggregates, not the canonical work queue.
 
 Avoid miniature detail screens inside rows.
-
 ## 7. Pseudo-layout
 
 ~~~text
 ┌───────────────┬────────────────────────────────────────────────────────────┐
-│ Nevo SpecFlow │ Specs                                                      │
+│ Nevo SpecFlow │ Specs                                      [+ New spec]    │
 │               │ [ Active ] [ Archive ]                                     │
 │ Specs         │                                                            │
 │               │ Requires attention                                         │
-│ Settings      │ Spec A                 3 Tasks require review        >      │
-│               │   TASK-03 owner decision · Reviewer working on 2 Tasks     │
+│ Settings      │ Spec A                 Agent asks for input          >      │
+│               │   TASK-03 review · +1 other signal                         │
 │               │ ───────────────────────────────────────────────────────     │
-│               │ Spec B                 Specification approval required >    │
+│               │ Spec B                 Owner decision required       >      │
 │               │                                                            │
 │               │ Ready                                                      │
-│               │ Spec C                 TASK-05 ready to start        >      │
+│               │ Spec C                 2 Tasks ready to start        >      │
 │               │                                                            │
-│               │ In progress                                                │
+│               │ In progress / other active                                 │
 │               │ Spec D                 Reviewer · 3 Tasks            >      │
-│               │                                                            │
-│               │ Other active                                               │
-│               │ Spec E                 No immediate action           >      │
 └───────────────┴────────────────────────────────────────────────────────────┘
 ~~~
 
-Rows are borderless/list-first. Group headings + whitespace create hierarchy.
-
+The same Spec appears once in the canonical list. Rows are borderless/list-first.
 ## 8. Screen anatomy
 
 - Workspace header: Specs.
@@ -294,37 +297,48 @@ Narrow:
 ## 10. Interaction flows
 
 ### Neutral Spec
-Spec title/neutral row target -> Specification.
+Click row/title -> Specification.
 
-### Task signal
-TASK-03 requires review -> Specification + TASK-03 detail in one navigation action.
+### Explicit Task/issue signal
+Click explicit TASK-03 signal/action -> Specification with local TASK-03 detail opened when useful.
+This does not change the neutral row destination.
 
 ### Aggregate signal
-3 Tasks require review -> Specification with relevant attention group visible; user can then choose
-the concrete Task.
+"3 Tasks require review" -> Specification attention/task context; user chooses the concrete Task.
+
+### Create Specification
+
+Baseline:
+
+~~~text
+New specification
+  title *                    required
+  initial description       optional / collapsed by default
+
+[Create]
+[Create and start with agent]
+~~~
+
+Create produces the Specification scaffold. Create-and-start continues into the shared Session-start
+interaction (agent/provider selection as needed, then normal composer/session experience). Do not
+maintain a separate rich prompt editor inside the create dialog.
 
 ### Collection switch
 Active/Archive changes collection state, not workflow state.
 
 ### Search
-Search narrows the currently selected collection by Spec identity/title/summary and, where the backend
-supports it, Task/signal labels.
-
-For a bounded already-loaded collection, filter locally.
-
-If search becomes server-backed, use the shared 150–300 ms network debounce/cancellation rules.
-Clearing search restores the same collection/grouping without workflow mutation.
-
+Search narrows the selected collection. Local filtering is fine for a bounded loaded set; server
+search follows shared debounce/cancellation rules when needed.
 ## 11. States
 
 - loading: preserve header/filter geometry, restrained row skeletons;
-- empty active: concise empty state, not a large Card;
+- empty active: concise empty state with New specification action;
 - archive empty: concise local empty state;
+- requires attention: human intervention is actually required;
+- ready: actionable but calm; do not style as alert;
+- working: active progress without stealing attention;
 - partial signal failure: keep Spec identity/list usable and mark unavailable projection locally;
-- stale/reconnecting live transport: show subtle connection feedback without rewriting canonical
-  Spec semantics.
-
-
+- stale/reconnecting transport: subtle connection feedback without rewriting canonical semantics.
 ## 12. Data loading, events, and Refresh
 
 This screen inherits
@@ -419,18 +433,21 @@ Do not force the work queue into DataTable unless final content proves genuinely
 
 ## 18. Acceptance criteria
 
-- attention vs ready vs working is immediately distinguishable;
-- one Spec is not visually duplicated across several steering groups;
-- Archive reads as historical browsing rather than an active-work dashboard;
-- one click reaches responsible context;
-- neutral row does not invent Task selection;
+- requires-attention is reserved for human-blocking situations;
+- ready remains visually calmer and does not imply urgency;
+- a Spec appears once in the canonical Active queue;
+- row/identity always opens Specification;
+- explicit signal targets may jump deeper without changing row semantics;
+- aggregate signals never invent a representative Task;
 - batch remains batch-shaped;
-- no current-work language derived from historical Session association;
+- no current-work language is derived from historical Session association;
+- New specification works with title only and does not require an initial prompt;
+- create-and-start reuses the shared Session/composer path;
 - repeated Specs are rows, not Card soup.
-
 ## 19. Open questions
 
 - exact Active/Archive control;
-- final signal aggregation/sorting policy;
-- create/archive interactions;
+- exact ordering/tie-break inside multiple simultaneous **attention** signals beyond the known rule
+  that an active Session waiting on a human is high urgency;
+- exact archive interaction;
 - exact realtime transport in new Runtime.

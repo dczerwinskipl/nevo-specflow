@@ -96,19 +96,19 @@ surfaces until a proven independent human task justifies promoting them into glo
 Within a Full Session:
 
 ```text
-Session stream
-├── Context inspector             default Secondary root on split entry
-├── Work inspector                technical/history Secondary root
-└── contextual detail             File / Task / Handover / artifact / Work-item
+Session conversation Primary
+└── Secondary local inspector
+    ├── Context                     default on split-capable entry
+    └── user-selected detail        Task / Handover / artifact / Work / future File preview / ...
 ```
 
-File preview is a common Secondary target, but it does not need to be a permanent root/tab beside
-Context and Work.
+Secondary changes because the user explicitly opens something. Normal agent activity must not
+replace what the user is currently inspecting.
 
-A Session reference may expose both a quick conversation target and an explicit **Open full session**
-action. Full Session must not require opening the floating presentation first. Where Floating Session
-is supported, it preserves the current Spec/Task context for quick interaction; the responsive
-presentation outside supported geometry is a separate product decision.
+A Session reference may expose both conversation access and an explicit **Open full session** action.
+On Wide, conversation access may use Floating Session to preserve the current Spec/Task context. On
+Compact/Narrow, conversation access opens Full Session directly; there is no miniature floating
+replacement.
 
 ## Surface choice
 
@@ -122,7 +122,15 @@ presentation outside supported geometry is a separate product decision.
 
 ## State preservation
 
-Selection, expansion state, scroll position, and in-progress composer text survive
-navigation away and back, and survive a reload where the URL can express the state.
-Deep links address stable product resources and product intent. Raw provider/runtime identifiers
-must not define navigation semantics merely because they exist internally.
+The router/URL owns main product navigation. Local Workspace Secondary state is intentionally not part
+of the URL contract.
+
+Preserve local selection, scroll, disclosure, and in-progress composer text while the relevant
+component state remains alive where practical, but do not require browser navigation to serialize a
+Task/detail inspector stack.
+
+On Narrow, browser/system Back may first pop the active local pushed-detail stack before delegating
+to router history. This keeps physical Back natural without turning Secondary into a route.
+
+Deep links address stable main product resources. Raw provider/runtime identifiers must not define
+navigation semantics merely because they exist internally.

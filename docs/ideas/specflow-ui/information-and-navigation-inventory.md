@@ -112,39 +112,49 @@ A full Session may have a route without having a sidebar entry.
 
 Specs are the primary work inventory.
 
-The collection should answer, before drill-down:
+The first distinction is semantic:
 
-1. **What requires my attention?**
-2. **What is ready for me to start or continue, but does not currently require me?**
+1. **Requires attention** — intended progress is waiting for human input/decision/intervention.
+2. **Ready** — an operation is available if the human chooses to start it, but nothing is waiting on
+   the human yet.
+3. **Working / other active** — useful progress/state without demanding a decision.
 
-These are separate categories.
+A Specification should appear once in the canonical work queue. If it has concurrent signals, the row
+shows the strongest human-facing signal plus concise additional signals rather than duplicating the
+same Spec across many stacked groups. Summary counters/tiles may count the same Spec in several
+categories because they are aggregates, not navigation lists.
 
-Candidate collection views:
+The Specification row/identity always opens the Specification. A concrete Task/issue signal may have
+its own explicit target. An aggregate such as "3 Tasks require review" must not guess which Task the
+user wants.
 
-- Active
-- Archive
+Candidate collection views remain Active and Archive.
 
-Whether those are tabs, filters, or route segments is a later screen decision.
+Useful projections include identity/title, workflow meaning, attention, ready actions, current work,
+progress, errors requiring intervention, last meaningful activity, and relevant external
+change/release references.
 
-Useful human-facing projections may include:
+### Create Specification
 
-- spec identity/title;
-- active/archive collection;
-- workflow position and semantic phase;
-- requires-attention state;
-- ready action;
-- running AI work;
-- task progress;
-- blocker/error;
-- review/approval state;
-- last activity;
-- relevant change/source-control summary.
+Creation is a required product flow, not merely a future placeholder.
+
+Minimum flow:
+
+- **title is the only required user field** and supplies the human identity/slug input;
+- optional initial description/goal may be available through progressive disclosure and can stay
+  collapsed by default;
+- creating without AI produces the empty/scaffolded Specification and opens/returns to normal Spec
+  context;
+- the user may instead choose to create and immediately start an agent Session to initialize the
+  Specification.
+
+The "create + start agent" path must reuse the common Session-start interaction rather than own a
+second prompt/composer implementation.
 
 The UI should consume canonical Runtime/application projections for readiness and attention rather
 than infer them independently.
 
 ---
-
 ## 4. Specification
 
 **Product direction**
@@ -229,55 +239,48 @@ and Task evidence hierarchy are owned by
 
 ### Requires attention
 
-The product is waiting for a human input/decision or there is a condition the human must resolve.
+Use this only when intended progress is waiting for a human intervention.
 
-Examples:
+High-value examples:
 
-- spec/task waiting for review or approval;
-- AI interaction/question waiting for response;
-- workflow human gate;
-- deterministic operation blocked until owner resolution.
+- a provider/agent question, permission, or confirmation waiting for response;
+- review/approval/human workflow step waiting for a decision;
+- a stopped/failed execution where authoritative state says the human must choose how to proceed;
+- a deterministic condition that cannot make intended progress until owner resolution.
 
-This deserves strong visibility in overview/navigation summaries.
+A live provider question is normally among the most urgent signals because an active Session is
+waiting directly on the human.
+
+A provider error/limit may qualify when authoritative runtime state can say that progress requires a
+human choice. Do not invent a specific "switch agent" remedy unless the runtime actually supports and
+classifies it.
 
 ### Ready
 
-An action is available and prerequisites are satisfied, but the system is not blocked waiting for
-the human.
+A specific operation is available and prerequisites are satisfied, but the system is **not** waiting
+for the human.
 
 Examples:
 
 - workflow step ready to start;
-- task ready for execution;
-- finalize/start action available after checks pass.
+- Task ready for execution;
+- explicit continue action available.
 
-Ready should be convenient and visible, but should not look like an alert.
+The user may intentionally leave Ready work untouched. Ready is convenient/actionable, not an alert.
 
 ### Deterministic evidence
 
-Current Session architecture already requires Runtime-owned readiness/attention projections.
+Readiness remains operation-specific. Agent admission, workflow activation, remediation, human
+decision, continuation, and finalize can have different authoritative results at the same time.
 
-Legacy deterministic workflow action inspection exposes concepts such as:
-
-- ready;
-- requiredInputs;
-- factual context;
-- human-readable summary;
-- details.
-
-Readiness is **operation-specific**, not one universal boolean attached to a Task. Agent admission,
-workflow-step activation, a human decision, remediation, and finalize may legitimately have different
-readiness/blocker results at the same moment.
-
-The application may expose a concise Task/Spec summary, but it must preserve the authoritative
-readiness of each concrete action. A Task must not become globally "blocked" merely because one
-operation is blocked while another valid operation can remediate or continue the work.
+The application may expose a concise Spec/Task summary, but it must preserve the authoritative
+readiness/reason for each concrete action. A Task must not become globally "blocked" because one
+operation is blocked while another legal operation can remediate or continue it.
 
 Detailed Spec/Task action hierarchy belongs in
 [Specification and Task information hierarchy](spec-task-information-hierarchy.md).
 
 ---
-
 ## 7. Workflow configuration vs runtime
 
 ### Configuration
@@ -329,35 +332,32 @@ implementation type unless they inspect configuration/technical detail.
 
 ### Ownership and navigation
 
-**Product direction**
+Sessions remain contextual to product work rather than earning top-level navigation by default, but
+**New session** is a supported human-initiated action.
 
-Today Sessions are spec-driven and attached to a Specification. There is no proven MVP use case for
-top-level Sessions navigation.
-
-Session is reachable from Spec/Task context and may have a full route/full-screen workspace.
-
-A Session reference from Task/Specification should expose the conversation target and an explicit
-**Open full session** action as sibling intents:
+Opening an existing Session:
 
 ~~~text
-Task / Specification
-  -> conversation target
-      -> Floating Session where supported
-  -> Open full session
-      -> Full Session
+Wide
+  conversation target -> Floating Session
+  Open full session    -> Full Session
+
+Compact / Narrow
+  conversation target -> Full Session
 ~~~
 
-Full Session must not require opening Floating Session first. Do not make the same Session a nested
-Task Secondary and then again the same layout as the full product surface.
+There is no floating/mobile substitute on Compact/Narrow.
 
-The quick-conversation presentation outside Floating Session's supported geometry remains a separate
-product decision.
+Starting a Session uses one shared interaction regardless of whether the entry is generic New session,
+Specification initialization, or a deterministic workflow action:
 
-Independent/ad-hoc Sessions remain a future candidate.
+- choose agent/provider when choice is required;
+- optionally expose additional execution choices without duplicating the composer;
+- allocate canonical Nevo Session identity independently of provider-native identity;
+- use backend/workflow-owned bootstrap/default prompts when the action defines them;
+- use the normal Session composer for user-authored conversation.
 
 ### Current canonical model
-
-Current SpecFlow architecture defines:
 
 ~~~text
 Session
@@ -367,152 +367,68 @@ Session
 ~~~
 
 Runtime owns semantic projections such as current activity, requires-attention, summarized status,
-and readiness. UI should consume those projections, not derive them from raw provider events.
+and readiness. UI consumes those projections instead of deriving them from provider events.
 
-Legacy canonical Session payloads also provide migration evidence for:
-
-- application Session identity;
-- provider/provider Session identity;
-- status/readiness;
-- mode/capabilities;
-- specId;
-- taskId/taskIds;
-- execution scope;
-- agent role/profile;
-- title;
-- creation/last activity;
-- Turns;
-- current Work summary.
-
-The exact legacy DTO is not a target contract.
+Session summaries may expose provider, provider-native identity, role/archetype, batch/scope,
+creation/last activity, status/readiness, and related Tasks when those facts exist. Role/archetype is
+useful metadata, not proof that a particular workflow transition was completed.
 
 ### Session association is not current execution
 
-**Legacy deterministic evidence / migration invariant**
-
-A Session can retain contextual/history relationships with Tasks without executing any of them in
-the current Turn.
-
-~~~text
-Session association / taskIds / history
-!=
-current Turn execution identity
-~~~
-
-For deterministic execution, current Task execution must come from explicit current execution intent.
-A generic/spec-level Turn may legally happen in a Session that previously touched one or more Tasks.
-
-Consequences for UI:
-
-- do not show "Agent working on TASK-03" merely because TASK-03 is linked in Session history;
-- use a canonical live/current execution projection for "working on" language;
-- moving a Task to a human-owned workflow step does not make the whole Session unusable for generic
-  conversation or unrelated allowed work.
+Historical/contextual Task association must never be treated as current Turn execution identity.
+Current work language comes only from authoritative execution scope.
 
 ### Multi-task execution
 
-**Legacy deterministic evidence**
+One Session may execute a single Task or a Task batch. Never invent one representative "primary
+Task" for a batch.
 
-One Session may execute a single Task or a Task batch. The UI must not invent a representative
-"primary Task" for a batch merely to simplify presentation.
+### Task history
 
-A useful relationship inventory is:
+A Task can expose several related Sessions directly. Normal cases are expected to be small enough to
+show multiple entries; the UI should show a useful bounded set (for example several recent/relevant
+Sessions) and provide **Show all** when history becomes pathological.
 
-~~~text
-spec-level / generic Session
-contextually related to one or more Tasks
-current single-Task execution
-current Task-batch execution
-~~~
+Highlight an active/current Session independently of chronological ordering.
 
-If a Session is opened from Task A but its current execution scope is A+B+C, the floating surface may
-preserve A as entry context while the Full Session must clearly expose the complete execution scope.
+Where workflow/history evidence references the Session that performed a step/attempt, clicking that
+Session reference opens the Session. A future additive turn anchor may open the exact Turn without
+changing the surrounding UX.
 
 ### Terminal Turn is not terminal Task
 
-**Legacy deterministic evidence / product direction**
-
-A Turn or provider operation can be terminal while more legal deterministic work remains. This can
-happen while a workflow attempt is active, before an attempt is activated during safe remediation,
-or while an unfinished durable operation is safely replayable.
-
-~~~text
-Turn / execution settled
-+ legal work remains
-+ no ambiguous durable operation requires recovery
-=> can continue / resume
-~~~
-
-This is different from both Task completion and recovery-required state.
-
-~~~text
-Turn settled
-!=
-Task completed
-!=
-workflow attempt completed
-~~~
-
-The UI therefore needs to distinguish "agent currently working", "can continue/resume", and
-"recovery required". These are derived product projections, not new persisted workflow statuses.
+A Turn/provider operation can be terminal while more legal deterministic work remains. Keep
+"working", "continue/resume", Task completion, and recovery-required separate.
 
 ---
-
 ## 9. Floating Session and Full Session
 
 ### Floating Session
 
-Purpose: quick conversation access without abandoning current work.
+Floating Session is **Wide-only** quick conversation access. It contains recent conversation, current
+activity, pending interaction, composer/response controls, and Open full session.
 
-Candidate content:
-
-- recent conversation;
-- current activity;
-- pending human interaction;
-- composer when allowed;
-- explicit Open full session action in the floating header.
-
-The originating Session reference should also be able to expose Open full session directly; opening
-the floating presentation is not a prerequisite.
-
-Do not fit complete Work history, every task action, raw tool detail, or file browser into the
-floating surface.
+Do not fit complete Work history, Task detail, file tooling, or large evidence surfaces inside it.
 
 ### Full Session primary
 
-The main Session surface is a human-readable work stream:
+The main Session surface is the human-readable work stream: user/assistant content, Commentary,
+compact Work summaries, current activity, pending interaction, and composer.
 
-- user messages;
-- assistant/final answers;
-- Commentary;
-- compact semantic Work summaries in chronology;
-- current activity;
-- pending interactions;
-- composer.
-
-Commentary is especially useful because it gives the human narrative. It cannot be assumed to exist
-for every provider/agent, so the fallback is canonical current-activity/Work summaries, never
-fabricated Commentary.
+Pending human interaction belongs in Primary so it works on every breakpoint. Prefer a clear inline
+interaction plus persistent cue near the active conversation/composer over auto-switching Secondary.
 
 ### Full Session Secondary
 
-Secondary is a contextual inspector, not a permanently hard-wired Work panel.
+Context is the default split-capable inspector. Explicit user clicks may replace it with Task,
+Handover, artifact/review/verification, expanded Work/ToolAction, or future File preview.
 
-Candidate modes:
+There is no required permanent Context/Work tab pair. Normal agent activity never auto-navigates
+Secondary.
 
-- **Context** - spec/task relationships, current/related tasks, human actions, handovers, artifacts;
-- **Work** - chronological Work history and technical inspection;
-- **File** - code/file preview;
-- another selected product detail that directly supports the Session.
-
-Current activity belongs in the primary experience. Full historical/technical Work is inspection.
-
-On narrow/mobile Secondary is not visible side-by-side, so important inspector capabilities require
-explicit actions from Primary. Critical "what do I need to do?" information must never exist only in
-a desktop default Secondary.
+On Narrow the same inspector/detail model becomes a pushed local stack.
 
 ---
-
 ## 10. Work information levels
 
 Existing Session UX already defines:
@@ -544,177 +460,117 @@ inspection.
 
 ## 11. Files
 
-Clicking a file reference from Session, Work, Task, review, or artifact should open the compact file
-surface already described by the Developer Workspace idea.
+File preview and Open in IDE are future capabilities. They are useful enough that references should
+preserve stable file identity now, but the current product must not pretend the preview/editor exists.
 
-A file inspector can require different geometry from a normal Context inspector:
+When file inspection lands:
 
-- Context may be primary-dominant;
-- File may be balanced or file-dominant;
-- Full IDE is a separate page/tab/tool.
+- clicking a file reference opens preview/detail in the same Secondary/local inspector slot;
+- a separate Open in IDE action may escalate from preview;
+- no third simultaneous pane is introduced.
 
-This is evidence that Secondary may eventually need a presentation/sizing hint instead of one fixed
-split for every inspector kind.
-
-On mobile the file surface becomes focused/pushed detail.
+Until then, omit unavailable actions rather than rendering dead affordances.
 
 ---
-
 ## 12. Artifacts and evidence
 
-Human decisions can depend on evidence produced at different scopes:
+Artifacts/documents are primarily **readable evidence/resources**, not generic action-owning widgets.
 
-- specification-authored artifacts;
-- task artifacts;
-- session/turn artifacts;
-- workflow step/attempt artifacts;
-- review reports;
-- handovers;
-- verification/gate evidence;
-- source changes/diffs;
-- future build/test/deploy artifacts.
+The backend may return different document/artifact kinds without requiring a hard-coded frontend
+registry for every business meaning. The UI needs stable identity, title/kind when meaningful,
+producer/source, owning context/references, time/status/relevance, and a readable target.
 
-Do not immediately flatten all of these into one generic Attachments bucket.
+If a document requires approval, rejection, or another decision, that mutation belongs to the
+relevant Human Step/workflow action. The document is input/evidence for that action; it does not gain
+generic Approve/Reject/Edit buttons merely because of its type.
 
-Candidate artifact presentation may eventually need:
-
-- stable identity;
-- kind/type;
-- title;
-- producer/source;
-- owning context: spec/task/session/step/attempt where applicable;
-- created time;
-- current relevance;
-- file/reference target;
-- relation to a human decision/gate/transition;
-- durable evidence vs transient runtime output.
-
-This does **not** yet define a persistent Artifact entity.
+Do not flatten every resource into one unstructured Attachments bucket.
 
 ### Review artifacts
 
-**Legacy deterministic evidence + open migration question**
-
-Legacy multi-task review proves that one review artifact may be relevant to multiple Tasks while
-individual Task outcomes/verdicts remain distinct. The new model must therefore not assume a strict
-one-report-to-one-Task ownership shape.
-
-Still determine the canonical new-model references: Spec, one or more Tasks, workflow step/attempt,
-AI Session, or multiple references.
+One review artifact may relate to several Tasks while Task outcomes remain distinct. Preserve shared
+references rather than cloning reports into fake one-to-one ownership.
 
 ### Handover
 
-**Open question / product direction:** Handover is useful human context, not merely a low-level Work
-event.
+For normal deterministic workflow transitions, legacy behavior provides a concrete migration model:
 
-The product should eventually answer:
+- completing an agent-owned step transitions workflow state and the agent stops;
+- no autonomous agent-to-agent continuation occurs;
+- UI exposes the next ready operator action such as Start review / Start implementation;
+- the operator may choose a new provider/Session or reuse a suitable existing conversation;
+- previous transition data such as result/feedback/artifacts is supplied deterministically to the
+  next StepContext.
 
-- who/what is handing work over;
-- what was completed;
-- what remains;
-- what evidence/context was passed;
-- what the recipient is expected to do.
+UI handover/evidence therefore needs to make the transition context readable and make the next
+workflow-owned action discoverable. It does not need to synthesize a full conversation handoff.
 
-Canonical handover storage/properties still need explicit inventory.
+**Deferred:** ad-hoc handover after provider limit/error. Current failure classification and context
+summarization are not sufficient to define a trustworthy "continue with another agent" UX, so do not
+design that action yet.
 
 ### Changes/diffs
 
-For initial Task review, showing all relevant current changes is acceptable when precise attribution
-does not exist.
+"Changes" is a product concept that may aggregate multiple sources: unstaged/uncommitted worktree
+changes, diff to a base branch, and one or more linked pull/merge requests from GitHub/GitLab or other
+integrations.
 
-Future refinement can scope the default diff to the handover/review boundary presented to the human.
+The UI should not bake the provider/source into the concept. A Task/Session/Spec can link to relevant
+change sets while the underlying source remains explicit metadata.
 
-Do not block first UI on perfect provenance, but preserve enough identity to improve it later.
+Initial inspection may show all relevant current changes when precise attribution is unavailable.
 
 ---
-
 ## 13. Project settings
 
 Candidate read-only-first sections:
 
 ### General
-
-- project identity;
-- workspace/repository root facts;
-- future project-switch metadata.
+Project identity, workspace/repository root facts, future project-switch metadata.
 
 ### Configuration
-
-- project configuration YAML;
-- local configuration YAML;
-- resolved/effective configuration when available;
-- future source-of-effective-value indication.
+Project/local/effective configuration and source-of-value where useful.
 
 ### AI / agents
+Defaults/policy such as provider/model/mode, provider availability, archetypes/profiles and execution
+policy. User customizations such as default prompts belong here when exposed; normal flows consume
+backend-owned defaults rather than embedding editable prompt fields everywhere.
 
-Project settings own **defaults and policy**, for example:
-
-- default provider/model/mode where the project defines them;
-- provider availability/configuration;
-- agent/profile definitions;
-- execution policy/capability defaults.
-
-Runtime execution choice is separate. Legacy batch reservation evidence freezes an effective
-execution snapshot including provider, model, mode, and context capacity for that concrete
-execution. Those choices belong to the contextual start flow (possibly under advanced options), not
-only to Settings.
-
-`effort` is currently a per-Turn option in the legacy contract and is not assumed to be part of the
-frozen execution snapshot. The UI should present the effective execution configuration that the
-authoritative runtime actually reserved, rather than generalizing all Turn options into frozen
-execution policy.
-
-For human-facing context, prefer the agent role/profile (for example Implementer, UI Implementer,
-Reviewer, Spec Writer) over provider/model identity. Provider/model and per-Turn options such as
-effort are usually execution details unless the user is choosing or diagnosing them.
+Provider/model/effort details remain secondary unless the user is choosing or diagnosing them.
 
 ### Workflows
-
-- definitions;
-- steps;
-- semantic statuses;
-- gates;
-- actions;
-- transitions;
-- source-control behavior.
+Definitions, steps, semantic statuses, gates, actions, transitions, source-control behavior.
 
 ### Repository / Git
+Repository/remotes/path/default branch and source-control configuration.
 
-Configuration:
-
-- repository URL/remotes;
-- local path/worktree root;
-- default branch;
-- source-control settings.
-
-Operational state such as current branch, dirty state, changes, or active PR belongs in the current
-work context too, not only Settings.
+Operational branch/worktree/PR/change state is project/work context, not Settings-only data.
 
 ### Integrations
+GitHub, GitLab, and future integrations.
 
-- GitHub;
-- GitLab;
-- future integrations.
+### Tools / operations - future
 
-### Tools - future
+Commands, tests/builds, terminal, deployments/releases, pipeline history, worktrees, and similar
+capabilities are **project-level operational capabilities**, not owned by one Specification.
 
-Possible future tools:
+A Specification may still show relationships to those facts — for example linked PRs, merge/release
+evidence, deployment status, or pipeline links — when they are relevant to that Spec.
 
-- run tests;
-- run build;
-- start/stop server;
-- lint/format;
-- deployment;
-- custom actions.
+Do not hard-code what "release" means. A project's workflow/integration may define it as a deployment,
+pipeline result, merge to a branch, or another custom action.
 
-Tool **configuration** may belong in Settings. Tool **execution** is an action from relevant work
-context.
+The extension pattern is:
 
-A top-level Runs/Deployments area should appear only if execution history/logs/artifacts become an
-independent human task.
+~~~text
+contextual link/action from Spec/Task/Session
+  -> project-level operational surface when deeper exploration is needed
+~~~
+
+Do not reserve empty top-level nav entries now. Promote a Runs/Deployments/Tools area only when the
+capability becomes a real independent human task.
 
 ---
-
 ## 14. Activity / audit trail
 
 **Legacy deterministic evidence**
@@ -784,18 +640,19 @@ Project
 |
 |-- Specs collection
 |   '-- Specification
-|       |-- Task                         workspace Secondary
-|       |   '-- Session                  floating conversation
-|       |       '-- Open full session    main Session workspace
-|       |
-|       |-- Sessions                     inline/local list; not top-level nav
-|       |-- workflow runtime             inline/local spec state
+|       |-- Task                         local Secondary / pushed detail
+|       |-- Sessions                     contextual references
+|       |   '-- existing conversation    Floating only on Wide; otherwise Full Session
+|       |-- workflow runtime             inline/local Spec state
 |       '-- artifacts/evidence           context-dependent
 |
-|-- Full Session
-|   |-- Context                          Secondary/inspector
-|   |-- Work                             Secondary/inspector
-|   '-- File                             Secondary/inspector, file-dominant
+|-- Full Session                         routable Primary
+|   '-- local inspector
+|       |-- Context                      default on split-capable entry
+|       '-- Task / Handover / Work / future File / other detail
+|
+|-- future project operations            only when independently useful
+|   '-- commands / deployments / pipelines / worktrees / terminal / ...
 |
 '-- Project settings
     |-- Configuration
@@ -806,70 +663,50 @@ Project
 ~~~
 
 ---
-
 ## 17. Human-attention interaction target
 
 Preferred steering loop:
 
 ~~~text
-Project / Specs overview
-    |
-    v
-I can immediately distinguish:
-  A. requires my attention
-  B. ready to start/continue
-    |
-    v
-1 click on the item
-    |
-    v
-context + evidence + why this action exists
-    |
-    v
-2nd deliberate interaction
-    |
-    v
-deterministic decision/action
+Specs Overview
+  -> scan one canonical Spec row per Spec
+  -> row click opens Specification
+  -> optional explicit issue/Task target can jump deeper
+  -> inspect context/evidence
+  -> deliberate workflow action
 ~~~
 
-A Task waiting for review should let the user open Task detail and immediately see:
+Do not silently redirect the neutral Spec row to a changing "most important" issue.
 
-- goal/requirements;
-- current workflow step;
-- transition/gate reason;
-- relevant review/handover artifact;
-- linked Session access;
-- relevant changes;
-- blockers/verification;
-- deterministic review action.
+A Task waiting for review should expose goal/requirements, reason, relevant evidence, related Session
+access, and deterministic review action once the user opens that Task context.
 
-The overview must not require multiple screens just to discover which object is waiting for the
-owner.
+A live Session interaction is different: the question/permission/confirmation must be visible in the
+Session conversation itself because it is time-sensitive and must work on Narrow. Additional detail
+may open from an explicit action, but the UI should not automatically steal Secondary focus.
 
 ---
-
 ## 18. Open questions before screen layout
 
-Do not guess these during visual design:
+Do not guess these during implementation:
 
-1. **Specification workflow persistence** - generic workflow subject shared with Task, or separate shape?
-2. **Task lifecycle migration** - which legacy Task status values remain meaningful?
-3. **Artifact ownership** - canonical links for review reports and generated artifacts?
-4. **Handover contract** - identity, ownership, properties, relation to workflow/session/task?
-5. **Human actions/outcomes** - exact decisions each human gate can request?
-6. **Diff provenance** - what can currently be attributed to Task/Session/Handover vs only worktree/change?
-7. **Active vs Archive** - product state, storage detail, or both after migration?
-8. **Configuration precedence** - exact project/local/default precedence for effective values?
-9. **Session independence** - keep spec-owned for MVP unless a concrete ad-hoc use case appears.
-10. **Execution projections** - decide the new canonical shape for current single/batch execution
-    scope without confusing it with historical Session associations.
-11. **Resume/remediation** - define the stable application projection for "ready to resume/continue"
-    across pre-attempt remediation, active attempts, and safely replayable unfinished operations,
-    while keeping recovery-required distinct and avoiding invented lifecycle statuses.
-12. **Tools/runs** - defer top-level navigation until execution history is a real product need.
+1. Specification workflow persistence shape.
+2. Which legacy Task lifecycle values remain meaningful after migration.
+3. Canonical new Runtime references for artifacts/review reports.
+4. Exact new Runtime handover reference shape; normal transition behavior is known, ad-hoc
+   provider-failure transfer remains deferred.
+5. Exact human decisions each configured Human Step can request.
+6. Diff/change provenance across worktree/base branch/PR/MR sources.
+7. Active vs Archive persistence semantics.
+8. Configuration precedence/source-of-effective-value.
+9. Canonical current single/batch execution projection.
+10. Stable application projection for continue/remediation/recovery.
+11. Exact cost/usage/provider-limit presentation. Reserve extensible low-emphasis Session metadata /
+    Context capacity so adding it later does not require redesigning the shell.
+12. Exact future project-level Operations information architecture after commands/deployments/pipelines
+    become implemented capabilities.
 
 ---
-
 ## 19. Next pass
 
 The Specification + Task information hierarchy and first screen-structure pass are now captured under

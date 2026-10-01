@@ -86,170 +86,19 @@ repository files or Session history.
 
 | Need | New SpecFlow | Legacy Nevo | Direction |
 | --- | --- | --- | --- |
-| Specification summary/tasks | **missing** | **legacy-available** in \`GET /api/dashboard\` | Preserve identity/task metadata, replace old lifecycle assumptions with new read model. |
-| Document manifest/body | **missing** | **legacy-available** via \`GET /api/specs/:source/:slug/content\` and \`.../content/:docId\` | Strong migration candidate; use stable Spec identity in new contract. |
-| Task status/dependencies | **missing** | **legacy-available** via \`.../task-statuses\` | Preserve dependency facts, replace universal ready/block semantics with per-action semantic projection. |
-| Spec/Task actions | **missing** | **legacy-available** via \`GET/POST /api/specs/active/:slug/actions\` | Preserve server-owned readiness/reasons; redesign around canonical new workflow identity. |
-| Task human decision | **missing** | **legacy-available** via \`POST /api/specs/:slug/tasks/:taskId/workflow/human-decision\` | Preserve explicit decision command pattern. |
-| Related Sessions | **missing** | **legacy-available** via \`GET /api/agent-sessions?specId=...&taskId=...\` | Preserve contextual association but keep it separate from current execution. |
+| Specification summary/tasks | **missing** | **legacy-available** in `GET /api/dashboard` | Preserve identity/task metadata, replace old lifecycle assumptions with new read model. |
+| Document manifest/body | **missing** | **legacy-available** via `GET /api/specs/:source/:slug/content` and `.../content/:docId` | Strong migration candidate; use stable Spec identity in new contract. |
+| Task status/dependencies | **missing** | **legacy-available** via `.../task-statuses` | Preserve dependency facts, replace universal ready/block semantics with per-action semantic projection. |
+| Spec/Task actions | **missing** | **legacy-available** via `GET/POST /api/specs/active/:slug/actions` | Preserve server-owned readiness/reasons; redesign around canonical new workflow identity. |
+| Bulk Task selection validation/start | **missing** | partial: single-Task workflow actions plus Session `taskIds[]`/batch evidence | Add application-owned validation for the whole selected set, returning legal action, warnings and blockers before dispatch; preserve the full selected Task set as execution scope. |
+| Create/start Session | **missing** | **legacy-available** via `POST /api/agent-sessions` and workflow start actions | Preserve Nevo-owned canonical `sessionId`, provider selection/reuse semantics and backend-owned workflow bootstrap; expose one shared Session-start interaction. |
+| Task human decision | **missing** | **legacy-available** via `POST /api/specs/:slug/tasks/:taskId/workflow/human-decision` | Preserve explicit decision command pattern. |
+| Related Sessions | **missing** | **legacy-available** via `GET /api/agent-sessions?specId=...&taskId=...` | Preserve contextual association but keep it separate from current execution. |
 | Spec-level current execution + multi-signal summary | **missing** | partial only | Add explicit projection. |
 
-
-### Legacy field evidence
-
-Useful legacy coverage:
-
-~~~text
-SpecificationSummary
-  id / specId / slug / title / summary / source / updatedAt
-  tasks[]
-  metrics
-
-SpecificationManifest
-  id / specId / slug / title / source / path
-  overview
-  areas[]
-  tasks[]
-  sections[]
-
-SpecificationManifestDocument
-  id / docId / kind / title / path / available / lastModified
-
-SpecificationActionsPayload
-  workflowMode
-  workflowDefinition
-  worktree
-  tasks[taskId] {
-    action
-    enabled
-    reason
-    availableActions?
-    status?
-    currentStep?
-    attempt?
-    workflowState?
-  }
-  finalize { enabled, reason, checks, pullRequest }
-~~~
-
-The new projection can reuse document metadata and workflow/action facts, but should not copy the
-legacy payload boundary wholesale. In particular:
-
-- \`worktree\` is contextual evidence, not mandatory top-level Specification chrome;
-- \`enabled/reason/currentStep/attempt/workflowState\` are useful action/read-model facts;
-- new \`signals[]\` and \`currentExecutions[]\` are required because legacy payloads do not express
-  the new steering/execution semantics cleanly.
-
-### Proposed Specification read API
-
-Illustrative:
-
-~~~text
-GET /api/specs/:specId
-~~~
-
-Response:
-
-~~~text
-{
-  revision,
-  updatedAt,
-  specification: {
-    id,
-    slug,
-    title,
-    summary,
-    collection,
-    workflow: {
-      definitionId?,
-      phase,
-      currentStep?,
-      semanticStatus,
-      reason?,
-      actions: [
-        { id, label, available, reason?, confirmation? }
-      ]
-    },
-    highPrioritySignals: [
-      {
-        id,
-        kind,
-        scope: "spec" | "task",
-        taskId?,
-        label,
-        reason?,
-        priority,
-        target
-      }
-    ],
-    tasks: [
-      {
-        id,
-        title,
-        order,
-        semanticStatus,
-        signals[],
-        actions[],
-        dependencies: {
-          dependsOn[],
-          blockedBy[]
-        },
-        currentExecutions[]
-      }
-    ],
-    documents: [
-      { id, title, kind, available, lastModified?, reference }
-    ],
-    evidence: [
-      { id, kind, title, summary?, target, updatedAt? }
-    ],
-    sessions: [
-      { id, title?, relation, taskIds[], lastActivityAt? }
-    ],
-    currentExecutions: [
-      { sessionId, agentRole, taskIds[], currentActivity?, startedAt? }
-    ]
-  }
-}
-~~~
-
-Field coverage notes:
-
-- top-level `revision/updatedAt` make the projection refreshable and protect against stale
-  out-of-order responses.
-- `workflow.actions[]` and Task `actions[]` carry server-owned availability/reasons; the UI never
-  translates raw lifecycle status into legal commands.
-- Task `signals[]` preserves simultaneous attention/ready/issue/work signals without requiring a
-  miniature Task-detail fetch for every row.
-- `currentExecutions[]` is plural both at Spec and Task summary level.
-- document entries remain metadata/references only; bodies stay independently cacheable.
-- evidence/session entries are lightweight references and summaries, not embedded large artifacts.
-
-Behavior:
-
-- stable Spec id is authoritative route/resource identity;
-- Task rows return semantic UI-ready projections, not raw persisted statuses only;
-- current execution is independent from historical Session association;
-- several signals may coexist;
-- document bodies remain lazy-loaded rather than bloating the main projection.
-
-Suggested supporting reads:
-
-~~~text
-GET /api/specs/:specId/documents/:documentId
-GET /api/specs/:specId/actions
-~~~
-
-Suggested commands:
-
-~~~text
-POST /api/specs/:specId/actions/:actionId
-POST /api/specs/:specId/tasks/:taskId/actions/:actionId
-~~~
-
-Exact paths are not frozen. The important behavior is command-style mutation with server-owned
-validation/readiness and a refreshed authoritative projection afterward.
-
+Bulk validation is a semantic application contract, not a frontend loop over individual Task
+`ready` flags. A selected set can have selection-level warnings or blockers that do not exist on
+one Task in isolation.
 ## 6. Information hierarchy
 
 1. Spec identity/title.

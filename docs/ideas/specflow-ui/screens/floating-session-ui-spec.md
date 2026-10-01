@@ -221,46 +221,31 @@ Cards.
 ## 9. Responsive contract
 
 ### Wide
-Use existing floating-window foundation.
+Floating Session exists only on Wide and uses the floating-window foundation.
 
 ### Compact / Narrow
-Current Nevo UI floating-window implementation is wide-only.
+Floating Session is not offered.
 
-Product behavior remains unresolved and must be decided explicitly before implementation:
-
-- extend generic floating support to compact widths;
-- use another context-preserving overlay/surface;
-- or promote directly to Full Session while preserving deterministic return context.
-
-Do not silently reuse a desktop floating window on unsupported narrow geometry.
-
+Opening an existing Session conversation navigates directly to Full Session. Do not invent a modal,
+bottom sheet, or smaller floating equivalent merely to preserve feature symmetry.
 ## 10. Interaction flows
 
-### Open from Task
-Task -> Floating Session; Task remains visible/selected.
+### Open from Task/Specification
+Wide conversation target -> Floating Session; underlying context remains visible.
 
 ### Send
 Composer -> Session Turn command -> current activity/live updates.
 
 ### Interaction
-Pending interaction -> response -> canonical Session state updates.
+Pending interaction is visible/respondable in the compact conversation when capabilities permit.
 
 ### Promote
-Header Open full session/expand -> Full Session surface -> return restores original Task/Spec
-context where representable.
+Header Open full session -> routed Full Session. Router Back later returns to the previous routed
+surface; restoring a Task Secondary is not a routing guarantee.
 
-### Minimize
-Minimize -> active window collapses into its bottom-dock Session tab -> underlying product context
-remains unchanged.
-
-### Restore
-Select minimized Session tab -> restore/activate that floating Session.
-
-### Close
-Close -> remove that floating presentation/dock entry -> underlying product context remains unchanged.
-
-Close and Minimize are distinct semantics.
-
+### Minimize / Restore / Close
+These remain Wide-only floating-window interactions. Close removes only the presentation, not the
+Session resource.
 ## 11. States
 
 - idle/ready;
@@ -364,21 +349,20 @@ second compact-chat renderer.
 
 ## 18. Acceptance criteria
 
-- user can converse without abandoning parent context;
+- Floating Session is Wide-only;
+- Compact/Narrow existing-Session access goes directly to Full Session;
+- user can converse on Wide without abandoning parent context;
 - entry context is not confused with execution scope;
-- compact surface shows current attention/activity without Work inspector;
+- compact surface shows current attention/activity without full inspection UI;
 - composer is the last element of the active window;
-- Full Session promotion is explicit and lives in the header;
+- Full Session promotion is explicit in the header;
 - minimized Sessions use a separate bottom dock with More overflow;
 - Close and Minimize remain distinct;
-- no duplicate backend Session model/API or duplicate live subscription;
-- opening the floating presentation does not hydrate old Session history;
+- no duplicate backend Session model/API or live subscription;
 - floating host does not become nested Card soup.
-
 ## 19. Open questions
 
-- non-wide presentation;
 - exact recent-history budget;
 - whether Cancel belongs in compact floating UI;
 - exact maximum visible minimized Session tabs before More overflow;
-- whether only one floating Session may be expanded at a time (recommended initial behavior).
+- whether only one floating Session may be expanded at a time.

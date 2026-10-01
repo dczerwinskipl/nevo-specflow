@@ -498,15 +498,16 @@ navigation shape, not persisted fields.
 
 ---
 
-## 8. Work Secondary
+## 8. Work inspection in Secondary
 
-### 8.1 Job of Work
+### 8.1 Job of Work inspection
 
-Work answers the technical/history question:
+Work inspection answers:
 
 > What did the agent/runtime actually do?
 
-It is not the default way to understand the Session.
+It is a technical/history detail opened deliberately by the user, not a permanent sibling mode that
+the product must keep visible beside Context.
 
 ### 8.2 Information levels
 
@@ -514,167 +515,100 @@ Use the existing product levels:
 
 ~~~text
 L1 Summary / Now       Primary
-L2 Expanded Work       Work Secondary overview
+L2 Expanded Work       opened inspection detail
 L3 Work details        selected Work detail
 L4 Action details      selected ToolAction/detail
 ~~~
 
-### 8.3 Work root
+### 8.3 Entry
 
-Candidate structure:
-
-~~~text
-Work
-
-Current / latest Turn
-  chronological semantic rows
-  completed commentary
-  grouped happy-path tools
-  exceptional tools
-  interactions
-
-Older Turns
-  bounded summaries / expand as needed
-~~~
-
-The precise grouping behavior remains implementation-owned, but product semantics are:
-
-- preserve chronology;
-- compress repetitive happy-path activity;
-- keep exceptional/error/interaction boundaries visible;
-- keep raw payload/output below summary levels.
-
-### 8.4 Work item drill-down
-
-Selecting a Work item replaces the Work root in Secondary:
+Compact Work bursts remain in conversation chronology. Clicking one opens the corresponding expanded
+Work/history view in Secondary.
 
 ~~~text
-Conversation | Work
-                 -> Tool group
-                    -> ToolAction / output
-                 <- Work
+Conversation
+  "1 task | 2 search | 4 commands"
+        -> click
+Conversation | expanded Work detail
 ~~~
 
-Again: one Secondary, no third pane.
+Commentary remains readable prose in the main chronology and is not converted into a technical event
+card merely to fit Work inspection.
 
-### 8.5 Live Work
+### 8.4 Drill-down
 
-Current activity can be represented in Work too, but Primary remains the canonical always-visible
-human summary.
+Within Secondary:
 
-Do not make the user open Work just to know that tests are currently running.
+~~~text
+Work detail
+  -> Tool group
+  -> ToolAction / output
+  <- Back
+~~~
 
----
+One Secondary is reused; no third pane is created.
 
+### 8.5 Live updates
+
+Current activity remains visible in Primary. Incoming Work may update counts/statuses, but it must
+not auto-open Work inspection or reset/replace the detail the user is currently viewing.
 ## 9. File detail in Secondary
 
-### 9.1 Entry points
+File preview is a **future capability**, not part of the current UI implementation contract.
 
-A file can be opened from:
+When that capability lands, a file reference from Commentary, Work, Task/context evidence, or an
+artifact should open file inspection in the same Secondary slot. A future **Open in IDE** action may
+then escalate from that preview.
 
-- Commentary link/reference;
-- compact Work summary;
-- Work detail/action;
-- Task/context evidence;
-- artifact/review reference.
+Until file inspection exists:
 
-Clicking it replaces the current Secondary content.
+- do not render a fake file preview;
+- do not render an Open in IDE affordance that cannot work;
+- preserve file/reference identity so the interaction can be added later without changing the
+  surrounding Session/Task information hierarchy.
 
-~~~text
-Conversation | File preview
-~~~
-
-### 9.2 Geometry
-
-File preview may need more width than normal Context.
-
-The workspace may eventually use a presentation/sizing hint:
-
-- Context: Primary-dominant;
-- Work: balanced or Primary-dominant;
-- File: balanced or file-dominant.
-
-This document does not freeze exact ratios.
-
-### 9.3 IDE escalation
-
-File preview is compact inspection.
-
-A separate action opens the full developer workspace/IDE when needed.
-
-~~~text
-File preview
-  [Open in IDE]
-~~~
-
-Full IDE is not another nested Session pane.
-
----
-
+No future file capability may introduce a third simultaneous pane.
 ## 10. Secondary navigation model
 
-### 10.1 Root inspectors and detail targets
+### 10.1 Base and detail targets
 
-At product level, the stable Secondary roots are:
+On split-capable Full Session entry, **Context** is the default Secondary content.
 
-- Context;
-- Work.
+Explicit user actions may replace it with a more specific detail:
 
-File preview is an explicit detail target that can occupy Secondary, just like Task, Handover,
-artifact/review, verification, or a selected Work item. It does not need to become a permanent
-third root/tab merely because files are common.
+- Task;
+- Handover;
+- artifact/review/verification;
+- expanded Work / ToolAction;
+- future File preview;
+- another product detail that supports the current Session.
 
-This keeps the normal inspector model small while still allowing direct file entry from Conversation,
-Context, or Work.
+There is no required permanent Context/Work tab pair.
 
 ### 10.2 Return behavior
 
 Examples:
 
 ~~~text
-Context -> Task -> Context
-Context -> Handover -> Context
-
-Work -> Tool group -> ToolAction -> Work
-
-Context -> File -> previous inspector context
-Work -> File -> previous inspector context
+Context -> Task -> Handover -> Back -> Task -> Back -> Context
+Context -> Work detail -> ToolAction -> Back -> Work detail -> Back -> Context
+Context -> future File preview -> Back -> Context
 ~~~
 
-A small local inspector stack is appropriate here because it preserves one Session Primary and one
-Secondary while increasing specificity.
+A local inspector stack preserves one Session Primary and one Secondary while increasing
+specificity.
 
-Normal live Session updates must not reset the user's current inspector root/detail back to Context.
-The local inspector stack resets when Secondary is closed or the Full Session context itself changes,
-rather than being driven by incoming Work events.
-
-This is different from quick Session conversation opened from Task/Specification: where Floating
-Session is supported, it stays outside the Task Secondary stack. Full Session is also directly
-reachable from the Session reference and is a separate main product surface.
+Normal live Session updates never change the current Secondary target automatically.
 
 ### 10.3 Closing Secondary
 
-On split layouts:
+On split layouts, closing Secondary leaves Conversation Primary.
 
-~~~text
-Conversation | Context
-        -> Close Secondary
-Conversation
-~~~
+On narrow, the same local detail becomes the visible pushed surface. The Workbench Back pops deeper
+detail first, then closes Secondary and returns to Conversation.
 
-Opening Context/Work/File later reopens Secondary.
-
-On narrow:
-
-~~~text
-Conversation
-  -> Context
-  <- Back
-Conversation
-~~~
-
----
-
+Browser/system Back on Narrow should be integrated so an active local pushed-detail stack gets the
+first opportunity to pop before router navigation. This must not make Secondary part of the URL.
 ## 11. Floating Session
 
 ### 11.1 Purpose
@@ -1041,6 +975,8 @@ wins.
 
 ### 21.1 Primary entry
 
+Full Session opens directly to Conversation. Floating Session does not exist on Narrow.
+
 ~~~text
 ☰  Session title
 
@@ -1050,15 +986,13 @@ Reviewer · 3 Tasks
 Current activity
 Reviewing changes…
 
-[Context] [Work]
+[Context]
 
 conversation...
-(file references open File detail when present)
+compact Work bursts are clickable
 
-composer
+composer / interaction controls
 ~~~
-
-The compact current-scope line must not become a metadata wall.
 
 ### 21.2 Context pushed detail
 
@@ -1075,45 +1009,28 @@ Needs attention
 Related Tasks
   ...
 
-Artifacts
+Evidence
   ...
 ~~~
 
-### 21.3 Work pushed detail
+### 21.3 Work/detail pushed inspection
 
-~~~text
-←  Work
+Clicking a compact Work burst, Task, Handover, artifact, or future File reference pushes that detail
+using the same local Secondary stack.
 
-chronological summary...
-~~~
+Back walks the local detail stack and eventually returns to Conversation.
 
-Selecting a Work item may push deeper inside the same local inspector stack. Back eventually returns
-to Session Primary.
-
-### 21.4 File pushed detail
-
-~~~text
-←  File
-
-code preview...
-
-[Open in IDE]
-~~~
-
-No information necessary to know "what is happening now" or "the Session needs my response" may
-exist only in these pushed details.
-
----
-
+No information necessary to know what is happening now or that the Session needs a response may
+exist only in pushed detail.
 ## 22. Header and parent context
 
-Full Session has no permanent top-level sidebar entry, so the surface must preserve parent
-orientation.
+Full Session has no permanent top-level sidebar entry, so the surface should preserve lightweight
+parent orientation.
 
 Candidate header information:
 
 - Session title;
-- agent role/profile when useful;
+- agent role/archetype when useful;
 - parent Specification identity;
 - concise current execution scope;
 - contextual surface actions.
@@ -1122,94 +1039,59 @@ Do not overload the header with provider/model/internal ids.
 
 ### Return from Full Session
 
-When Full Session was entered from a Specification/Task context, returning should restore that
-product context where representable, regardless of whether Full Session was opened directly or from
-Floating Session:
+Full Session is a normal routed product surface. Back returns through router history to the previous
+routed surface.
 
-~~~text
-Specification + TASK-03
-  -> Open full session
-  -> return
-Specification + TASK-03
-~~~
+If that surface is a Specification, the product does not promise to reconstruct a Task or other
+Secondary selection from the URL. Secondary is local Workspace state.
 
-~~~text
-Specification + TASK-03
-  -> Floating Session
-  -> Open full session
-  -> return
-Specification + TASK-03
-~~~
-
-A direct Session deep link has no previous transient context to restore; its deterministic parent
-fallback is the owning Specification when available.
-
-This should be represented by product navigation state rather than depending only on browser-history
-accident.
-
----
-
+A direct Session route still exposes parent orientation (for example owning Specification when
+available), but does not invent a previous Secondary state.
 ## 23. What this pass deliberately does not decide
 
 Still deferred:
 
 - exact Conversation rendering primitives;
-- whether Context/Work root switching uses tabs, segmented controls, header actions, or another
-  composition;
-- exact inspector local-stack API;
+- exact local inspector stack API;
 - exact split ratios and resizing;
 - exact Session URL;
-- exact Task/Handover/artifact data contracts;
+- exact canonical Handover/artifact references in the new Runtime;
 - exact composer behavior for every provider capability combination;
 - exact reasoning presentation policy;
-- exact file-preview implementation;
-- visual styling/tokens.
-
----
-
+- exact future file-preview / IDE integration implementation;
+- provider-error/limit transfer to another agent;
+- exact cost/usage/limit presentation (reserve low-emphasis Session metadata/Context space without
+  implementing it yet).
 ## 24. Screen-structure acceptance checks
 
 Before global component/composition gap analysis, verify:
 
 1. Full Session Primary answers what was asked, what the agent is saying, what is happening now, and
    whether the Session needs the human.
-2. Context opens by default on split-capable Full Session entry when no more specific Secondary
-   target is requested.
-3. Closing Secondary is respected; default Context is not forcibly reopened by normal Session updates.
-4. Narrow entry stays on Conversation and exposes explicit Context/Work inspection actions.
+2. Context opens by default on split-capable entry and can be closed/reopened explicitly.
+3. Secondary changes only because of explicit user inspection/navigation; live Work does not steal
+   the inspector.
+4. Narrow entry stays on Conversation and has no Floating Session substitute.
 5. Current execution scope is distinct from historical/contextual Task association.
-6. Batch execution remains visibly batch-shaped in Primary and Context.
-7. Pending interaction is visible/respondable from Primary without opening an inspector, and stale or
-   expired interaction controls cannot remain falsely actionable.
-8. Current activity is visible from Primary; Work is not required merely to discover live state.
-9. Current activity and streaming chronology do not duplicate the same fact with equal visual weight.
-10. Commentary is preserved when supplied and never fabricated when absent.
-11. Raw tool details stay below normal conversation information level.
+6. Batch execution remains visibly batch-shaped.
+7. Pending interaction is visible/respondable from Primary; a complex interaction may explicitly
+   open detail but does not auto-navigate the user.
+8. Current activity is visible from Primary.
+9. Commentary is preserved as prose when supplied and never fabricated.
+10. Compact Work summaries preserve chronology; clicking them can open deeper Work inspection.
+11. Raw tool details stay below the normal conversation level.
 12. Context separates current execution Tasks from merely related Tasks.
-13. Context and Work are the stable inspector roots; File/Task/Handover/artifact/Work-item are
-    contextual detail targets rather than mandatory permanent root tabs.
-14. Detail drill-down stays inside one Secondary; no third workspace pane is introduced.
-15. File preview can replace Secondary and escalate separately to full IDE.
-16. Floating Session remains intentionally smaller than Full Session and is not required before
-    entering Full Session.
-17. Opening floating Session from one Task does not rewrite a current batch into that Task.
-18. Settled Turn, Task/workflow completion, resumable continuation, and recovery-required remain
+13. Task/Handover/artifact/Work/future File details reuse one Secondary/local stack; no third pane.
+14. File preview and Open in IDE remain absent until their capability exists.
+15. Floating Session is Wide-only and never required before Full Session.
+16. Settled Turn, Task/workflow completion, resumable continuation, and recovery-required remain
     distinct concepts.
-19. Waiting without human input remains calm live state and is not styled as attention.
-20. A failed ToolAction does not become a failed Turn unless authoritative Turn state says so.
-21. Terminal failed/cancelled/interrupted Turns show a human-readable outcome without inferring Task
-    completion or recovery policy.
-22. Unknown/unavailable Session state preserves history while action availability follows
+17. Waiting without human input remains calm live state and is not styled as attention.
+18. Unknown/unavailable Session state preserves history while action availability follows
     authoritative readiness.
-23. Transport reconnecting feedback does not replace canonical Session/Turn semantics.
-24. Unsupported Session capabilities do not produce fake controls such as Cancel.
-25. Context routes Spec/Task decisions to their responsible detail instead of duplicating unrelated
-    mutation controls.
-26. Normal live updates do not reset the user's current Secondary root/detail; the local inspector
-    stack resets on Secondary close or Session-context change.
-27. Returning from explicitly promoted Full Session can restore the originating Spec/Task context
-    where product navigation state can represent it.
-28. Direct Session entry still has deterministic parent orientation/fallback.
+19. Unsupported Session capabilities do not produce fake controls.
+20. Browser/system Back on Narrow can pop local pushed detail before leaving the routed surface,
+    without encoding Secondary in the URL.
 
 The resulting design-system/component mapping is captured in
 [Design-system and composition gaps](design-system-component-composition-gaps.md).

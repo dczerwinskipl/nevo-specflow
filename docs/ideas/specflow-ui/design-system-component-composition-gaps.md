@@ -779,7 +779,7 @@ Minimum Full Session fixtures:
 - unavailable/unknown;
 - Context -> Task drill-down;
 - Work -> ToolAction drill-down;
-- File detail placeholder;
+- file reference without fake preview controls; add File detail fixture only when the capability lands;
 - default Context closed by user;
 - narrow Conversation -> Context / user-selected detail pushed stack.
 

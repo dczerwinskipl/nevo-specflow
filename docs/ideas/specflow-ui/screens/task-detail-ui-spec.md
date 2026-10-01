@@ -93,6 +93,55 @@ workflow state, or execution membership.
 | Handover/artifact/change/verification summary | **missing** | partial scattered legacy evidence | Add explicit references/read model; do not invent one generic Attachments bucket. |
 | Resume vs recovery | **missing** | deterministic legacy flow has behavior/evidence, not one clean Task detail DTO | Add stable application projection. |
 
+
+### Legacy field evidence
+
+Legacy Task/list projections already expose:
+
+~~~text
+SpecificationTask
+  id
+  title
+  status
+  stage
+  order
+  dependsOn[]
+  blockedBy[]
+  ready
+  terminal
+  file
+
+SpecificationTaskActionGate
+  action
+  enabled
+  reason
+  availableActions?
+  status?
+  currentStep?
+  attempt?
+  workflowState?
+~~~
+
+Legacy Task document reads also provide:
+
+~~~text
+id
+docId
+kind
+title
+path
+available
+markdown
+status
+order
+dependsOn[]
+~~~
+
+Migrate factual identity/order/dependency/document fields and server-owned action facts.
+
+Do not preserve \`ready\`, \`terminal\`, or legacy \`stage\` as sufficient new-UI semantics.
+\`attention\`, \`currentExecutions[]\`, typed \`evidence[]\`, and \`continuation\` are new projections.
+
 ### Proposed Task read API
 
 Illustrative:

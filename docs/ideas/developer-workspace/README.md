@@ -19,7 +19,7 @@ read_when:
   - integrating a full IDE with Nevo without duplicating workspace ownership
 summary: >
   Candidate design for a lightweight in-product code surface plus a separate VS Code-based full IDE,
-  both operating on the same current worktree owned by Nevo Local.
+  both operating on the same current worktree on the host running SpecFlow.
 related:
   - ideas.readme
   - architecture.runtime.ownership-and-lifecycle
@@ -38,7 +38,7 @@ The package deliberately separates two interaction modes:
 1. a compact code surface embedded in the SpecFlow UI;
 2. a full VS Code-based IDE opened as a separate page or route.
 
-Both modes target the same current worktree on the host running Nevo Local. The proposal does not
+Both modes target the same current worktree on the host running SpecFlow. The proposal does not
 make either UI the owner of workspace identity or filesystem state.
 
 ## Current proposal

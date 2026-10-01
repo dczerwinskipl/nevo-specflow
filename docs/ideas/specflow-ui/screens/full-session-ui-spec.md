@@ -100,7 +100,7 @@ Legacy Session API is the strongest migration candidate among current UI surface
 | Context evidence/Handover/artifacts | **missing** | partial scattered evidence | Add product context references without bloating provider Work model. |
 
 
-### Legacy field evidence
+### Old-repo field evidence
 
 Legacy already defines a rich canonical Session/Turn/Work wire model.
 

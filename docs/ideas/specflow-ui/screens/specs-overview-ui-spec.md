@@ -312,5 +312,7 @@ Do not force the work queue into DataTable unless final content proves genuinely
 - exact Active/Archive control;
 - exact ordering/tie-break inside multiple simultaneous **attention** signals beyond the known rule
   that an active Session waiting on a human is high urgency;
+- grouped semantic sections versus one flat ordered Active queue; both remain valid if they preserve
+  attention/ready/working semantics without duplicating Specs;
 - exact archive interaction;
 - exact realtime transport in new Runtime.

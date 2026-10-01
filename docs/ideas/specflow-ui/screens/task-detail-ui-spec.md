@@ -332,10 +332,14 @@ Review-required -> inspect evidence -> deliberate Review/decide -> decision cont
 Ready state -> understand what Start does -> Start -> pending feedback -> authoritative refresh.
 
 ### Current execution
-Current execution -> show role and batch scope -> Open Session -> Floating Session.
+Current execution -> show role and batch scope -> expose conversation target plus direct Open full
+session action. Where Floating Session is supported, the conversation target may open it without
+losing Task context.
 
 ### Evidence
-Changes/Handover/verification -> contextual detail/file/diff surface; return to same Task.
+Changes/Handover/verification/artifact/file -> replace Task Detail in the same Secondary slot (or push
+on narrow) -> Back returns to Task Detail. Evidence inspection does not create a third pane or nest
+another AppWorkspace.
 
 ### Resume
 Safe settled execution + legal work remains -> Continue.
@@ -415,8 +419,8 @@ The detailed decision/evidence composition is defined in
 | Chronological history | Timeline |
 | Status | StatusIndicator/Badge sparingly |
 | Actions | Button/Menu/AlertDialog when confirmation needed |
-| Session entry | product link/action -> Floating Session |
-| File/change detail | contextual Secondary/product capability |
+| Session entry | product conversation target + direct Full Session action |
+| File/change/evidence detail | replace current Task Secondary via local detail stack |
 
 ## 14. Visual/token contract
 
@@ -466,7 +470,8 @@ The detailed decision/evidence composition is defined in
 ## 18. Acceptance criteria
 
 - state/reason understood before mutation;
-- evidence relevant to decision is directly reachable;
+- evidence relevant to decision is directly reachable and returns to the same Task through the local
+  Secondary/detail stack;
 - optional evidence does not create empty boxes;
 - current execution is authoritative and batch-aware;
 - Session association is not execution proof;

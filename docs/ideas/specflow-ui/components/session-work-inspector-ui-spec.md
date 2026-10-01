@@ -1144,6 +1144,10 @@ Do not make Retry on one tool refetch every Turn.
 Required:
 
 ~~~text
+session-work/activity-collapsed
+session-work/activity-expanded-bounded
+session-work/work-log-commentary-chapters
+session-work/l3-exact-timeline
 session-work/read-file
 session-work/read-files-grouped
 session-work/edit-file

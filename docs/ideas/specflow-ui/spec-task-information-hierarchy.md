@@ -499,18 +499,21 @@ values until the deterministic migration decides which remain authoritative.
 
 ## 9.1 Attention is not the same as readiness
 
-The UI should expose at least these semantic differences:
+The UI should expose these semantic differences:
 
 ### Requires attention
 
-The product cannot make the intended progress without human input/decision.
+The intended flow cannot make useful progress without human intervention.
 
 Examples:
 
-- human workflow gate;
-- review waiting for owner decision;
-- AI Session interaction requiring response;
-- recovery/problem requiring owner intervention.
+- provider/agent question, permission, or confirmation waiting for response;
+- human workflow gate or review waiting for owner decision;
+- authoritative execution failure/interruption that requires owner choice.
+
+Provider questions are high urgency because an active Session is directly waiting. A provider
+error/limit belongs here only when authoritative runtime state can prove human intervention is needed;
+do not invent a switch-agent action from an ambiguous failure.
 
 ### Ready
 
@@ -519,14 +522,10 @@ Prerequisites are satisfied for a **specific operation** and the user may choose
 Examples:
 
 - Task workflow step ready to start;
-- agent execution can continue/remediate;
-- human action is available;
-- finalize is available.
+- safe continue action available;
+- another explicit workflow action available.
 
-Do not derive one universal `Task.ready`. Agent admission, workflow activation, remediation,
-human action, and finalize can have different authoritative readiness/blocker results at the same
-moment. A compact Task summary may project the most relevant next action, but must not erase those
-differences.
+Ready is not attention. The user may intentionally leave it idle.
 
 ### Working
 
@@ -534,38 +533,20 @@ The system/agent is actively progressing the object.
 
 ### Issue / remediation
 
-A specific intended operation cannot continue normally, but the object is not necessarily globally
-blocked. Another operation may still be authoritative and ready, for example agent remediation while
-workflow-step activation is blocked.
-
-The UI should name the affected action/reason instead of projecting one universal `BLOCKED` state.
+An issue is only part of Requires attention when the human must intervene. Agent-remediable or
+self-recoverable conditions may instead remain an active/current-work signal with their own reason.
 
 ### Ready to resume / continue
 
-A prior AI Turn/execution may be settled while more legal deterministic work remains. This is not
-limited to an already-active workflow attempt: continuation can also be valid before attempt
-activation during safe remediation, or while an unfinished durable operation is safely replayable.
-
-A useful product rule is:
-
-~~~text
-execution/Turn ended safely
-+ more legal work remains
-+ no ambiguous durable operation requires recovery
-=> can continue / resume
-~~~
-
-This is a useful product projection, not a workflow lifecycle value.
+A prior AI Turn/execution may be settled while legal work remains. This is a product projection, not
+a persisted Task lifecycle value.
 
 ### Quiet / no immediate action
 
 No immediate human or agent action is expected.
 
-These should be derived projections, not a second persisted state machine.
-
-A terminal AI Turn does **not** imply a terminal Task or completed workflow attempt. Likewise,
-`workflow_progress.state === active` does not prove that an agent is currently working.
-
+These are derived projections. A terminal Turn does not imply a terminal Task, and an active workflow
+attempt does not prove an agent is currently working.
 ## 9.2 Attention item shape - candidate
 
 **Future candidate**
@@ -990,32 +971,33 @@ This is an information-depth proposal, not a pixel layout.
 
 Keep:
 
-- identity;
-- attention vs ready vs working;
-- short reason;
-- compact progress;
-- obvious blocker;
-- last/high-value activity.
+- Spec identity;
+- one strongest human-facing signal plus concise concurrent signals;
+- clear distinction between attention, ready, and working;
+- compact progress/current execution;
+- last/high-value activity where useful.
 
-Do not expose:
+One canonical queue row per Specification. The whole row/identity always opens the Specification.
+Concrete signal controls may explicitly open a Task or issue target; aggregate signals never invent a
+representative Task.
 
-- raw gates;
-- attempt history;
-- full review findings;
-- tool details;
-- raw diffs.
-
+Do not expose raw gates, attempt history, full findings, tool details, or raw diffs.
 ## Specification
 
 Keep:
 
 - Spec orientation and workflow state;
-- Tasks;
-- high-value attention/ready state;
-- current Sessions/work;
+- Specification documents with compact/expandable reading;
+- Task collection;
+- bulk Task selection/actions when the backend supplies legal selection actions;
+- high-value attention/ready/current-work signals;
+- related Session history;
 - important Spec-level evidence;
-- source-control summary when relevant.
+- relevant links to external/project-level changes, PRs/MRs, deployments/releases, or pipeline facts
+  when available.
 
+Specification may reference project-level operational facts without owning deployment/release
+semantics.
 ## Task detail
 
 Keep:
@@ -1023,25 +1005,28 @@ Keep:
 - decision orientation;
 - task intent;
 - current workflow context;
-- why action is available/blocked;
-- evidence needed for current decision;
-- linked Sessions;
-- changes;
-- Handover/review summary.
+- why an action is available/blocked;
+- evidence needed for the current decision;
+- several related Sessions when useful, with active/current Session visually distinct;
+- Session metadata that is factual (provider/agent/archetype, batch/scope, workflow association) and
+  does not infer a completed role from the Session alone;
+- changes/Handover/review summary.
 
+A workflow/history entry that has a Session reference opens that Session. A future turn anchor may
+refine the target to the exact Turn without introducing another intermediate "proof" screen.
 ## Deep inspection
 
 Put behind explicit navigation:
 
-- full review artifact;
-- full diff/file preview;
+- full review/document artifact;
+- future diff/file preview;
 - attempt/history;
 - Work/tool details;
 - raw verification output;
 - low-level source-control/runtime diagnostics.
 
----
-
+Artifacts remain readable evidence. Approve/reject/edit actions belong to the workflow/Human Step
+that consumes the artifact, not to a generic document viewer.
 # 16. Data/projection gaps exposed by this hierarchy
 
 The UI should not compensate with heuristics if the application layer cannot answer these questions.

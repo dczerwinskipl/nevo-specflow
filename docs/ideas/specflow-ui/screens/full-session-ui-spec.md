@@ -516,12 +516,12 @@ The detailed large-composition contracts are defined separately in:
 | Composer | MessageComposer |
 | Current activity | product composition + StatusIndicator/Spinner as needed |
 | Interaction | product composition using RadioGroup/Checkbox/Button/etc. |
-| Context/Work roots | Tabs/SegmentedControl/header composition after visual review |
-| Work chronology | product Work log; generic Timeline reserved primarily for exact L3 history |
+| Context entry | product composition using AppWorkspace Secondary |
+| Work chronology/detail | product Work log opened from compact Work activity; generic Timeline reserved primarily for exact L3 history |
 | Disclosure | Collapsible |
 | Detail navigation | AppWorkspace Secondary stack |
 | File | product file capability |
-| Floating promotion/return | product router/workspace state |
+| Floating promotion/return | product router; local Secondary is not a route contract |
 
 Do not create one generic design-system Chat component around Session domain semantics yet.
 

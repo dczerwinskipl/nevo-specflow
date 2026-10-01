@@ -644,7 +644,7 @@ Verification                           (when relevant)
   concise gate/check outcome              [Inspect]
 
 Session                                (when useful)
-  Implementer / Reviewer conversation     [Open]
+  Implementer / Reviewer conversation     [Open] [Full session]
 
 [Review / decide]
 ~~~
@@ -823,10 +823,10 @@ Still deferred:
 - exact Active/Archive control;
 - exact Spec workflow visualization;
 - exact Task Secondary width;
-- whether evidence sections use disclosure, tabs, or local stack;
+- exact in-Task disclosure treatment for evidence summaries before deeper inspection;
 - exact sticky/header action behavior;
 - exact treatment of shared multi-Task artifacts;
-- file/diff preview transition from Task Secondary;
+- exact file/diff preview composition inside the agreed Secondary detail stack;
 - visual tokens, cards, shadows, borders, and spacing;
 - exact API/read-model shapes.
 

@@ -89,6 +89,52 @@ repository files or Session history.
 | Related Sessions | **missing** | **legacy-available** via \`GET /api/agent-sessions?specId=...&taskId=...\` | Preserve contextual association but keep it separate from current execution. |
 | Spec-level current execution + multi-signal summary | **missing** | partial only | Add explicit projection. |
 
+
+### Legacy field evidence
+
+Useful legacy coverage:
+
+~~~text
+SpecificationSummary
+  id / specId / slug / title / summary / source / updatedAt
+  tasks[]
+  metrics
+
+SpecificationManifest
+  id / specId / slug / title / source / path
+  overview
+  areas[]
+  tasks[]
+  sections[]
+
+SpecificationManifestDocument
+  id / docId / kind / title / path / available / lastModified
+
+SpecificationActionsPayload
+  workflowMode
+  workflowDefinition
+  worktree
+  tasks[taskId] {
+    action
+    enabled
+    reason
+    availableActions?
+    status?
+    currentStep?
+    attempt?
+    workflowState?
+  }
+  finalize { enabled, reason, checks, pullRequest }
+~~~
+
+The new projection can reuse document metadata and workflow/action facts, but should not copy the
+legacy payload boundary wholesale. In particular:
+
+- \`worktree\` is contextual evidence, not mandatory top-level Specification chrome;
+- \`enabled/reason/currentStep/attempt/workflowState\` are useful action/read-model facts;
+- new \`signals[]\` and \`currentExecutions[]\` are required because legacy payloads do not express
+  the new steering/execution semantics cleanly.
+
 ### Proposed Specification read API
 
 Illustrative:

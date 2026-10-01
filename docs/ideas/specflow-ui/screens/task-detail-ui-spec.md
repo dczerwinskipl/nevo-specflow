@@ -256,7 +256,7 @@ Behavior:
 - stale UI readiness does not authorize a command;
 - successful command returns operation/result identity and new projection can be fetched/streamed;
 - Task terminal status is not inferred from terminal Turn;
-- \`currentExecution.taskIds\` may contain several Tasks;
+- each \`currentExecutions[].taskIds\` may contain several Tasks;
 - evidence entries may point to shared multi-Task artifacts.
 
 ## 6. Information hierarchy

@@ -340,7 +340,7 @@ exist.
 ---
 
 
-### 4.7 API availability and migration status
+## 5. API availability / migration status
 
 Status vocabulary used by all screen specs:
 
@@ -362,7 +362,7 @@ For Project Settings:
 The current \`@nevo/specflow-runtime\` package explicitly describes its backend as a bootstrap proof;
 there is no current HTTP product contract to treat as \`existing-new\` for this screen.
 
-#### Proposed read API
+### Proposed read API
 
 Illustrative transport:
 
@@ -430,7 +430,7 @@ large YAML bodies into every Settings catalog response.
 No write API is proposed yet because this screen is read-only-first. Editing gets its own contract
 once field ownership, validation, authorization, dirty state, and concurrency semantics are decided.
 
-## 5. Information hierarchy
+## 6. Information hierarchy
 
 On first scan the user should perceive:
 
@@ -446,9 +446,9 @@ a human-readable summary exists.
 
 Do not create a dashboard of counts merely because there is free space.
 
-## 6. Screen anatomy
+## 7. Screen anatomy
 
-### 6.1 Shared workspace
+### 7.1 Shared workspace
 
 ~~~text
 Project Settings header
@@ -467,7 +467,7 @@ Both columns belong to one Project Settings Primary surface.
 
 The workspace itself supplies the page surface. There is no enclosing Settings Card.
 
-### 6.2 Header
+### 7.2 Header
 
 Header content:
 
@@ -479,7 +479,7 @@ Header content:
 The project selector remains global navigation responsibility and should not be duplicated in the
 Settings header merely to fill space.
 
-### 6.3 Local Settings navigation
+### 7.3 Local Settings navigation
 
 Use a compact local navigation/list treatment.
 
@@ -488,7 +488,7 @@ make every row look richer.
 
 Do not render each category as a Card/tile.
 
-### 6.4 Section content
+### 7.4 Section content
 
 Default section structure:
 
@@ -507,9 +507,9 @@ Separate substantial groups primarily through heading hierarchy and section-scal
 
 Use a subtle divider only when whitespace is insufficient.
 
-## 7. Section-specific structure
+## 8. Section-specific structure
 
-### 7.1 General
+### 8.1 General
 
 Purpose: stable project facts.
 
@@ -533,7 +533,7 @@ Do not create one Card per fact.
 
 Do not create separate Name / Repository / Root Cards.
 
-### 7.2 Configuration
+### 8.2 Configuration
 
 Purpose: inspect authored and effective configuration.
 
@@ -559,7 +559,7 @@ Until that capability exists, a restrained read-only code treatment is acceptabl
 
 Do not place each source in a heavy Card merely to distinguish the files.
 
-### 7.3 AI / Agents
+### 8.3 AI / Agents
 
 Purpose: inspect project policy/defaults and available definitions.
 
@@ -590,7 +590,7 @@ Provider and profile collections are homogeneous lists/rows by default, not Card
 A provider unavailable state may use a compact semantic status and explanation. It should not become
 a warning Card unless the condition actually requires user action or blocks a configuration task.
 
-### 7.4 Workflows
+### 8.4 Workflows
 
 Purpose: inspect deterministic workflow definitions.
 
@@ -633,7 +633,7 @@ disclosure over Cards per step.
 
 A gate type is technical detail unless it helps explain the configuration.
 
-### 7.5 Repository / Git
+### 8.5 Repository / Git
 
 Purpose: inspect repository-level configuration.
 
@@ -652,7 +652,7 @@ Source-control settings
 Current dirty state/current diff is runtime/current-work information and should not be presented here
 as if it were project configuration.
 
-### 7.6 Integrations
+### 8.6 Integrations
 
 Purpose: inspect configured external integrations.
 
@@ -673,7 +673,7 @@ Use rows or sections, not one decorative integration Card per provider by defaul
 If an integration has a real setup/reconnect flow later, the whole row may become a stronger
 interactive object; that change should be justified by the actual interaction.
 
-## 8. Pseudo-layout
+## 9. Pseudo-layout
 
 This is an information/layout sketch, not a pixel-perfect visual design.
 
@@ -717,7 +717,7 @@ default composition, not a hard-coded field inventory.
 
 ---
 
-## 9. Responsive contract
+## 10. Responsive contract
 
 ### Wide
 
@@ -775,7 +775,7 @@ Back returns to the parent Settings collection/detail level, not to arbitrary br
 The exact selector primitive may be Menu/Select/another established Nevo UI navigation composition;
 the behavior is fixed here, not the primitive.
 
-## 10. Interaction flows
+## 11. Interaction flows
 
 ### Flow A — enter Settings
 
@@ -843,7 +843,7 @@ relevant action.
 
 Do not style every unavailable optional provider as a page-level warning.
 
-## 11. States
+## 12. States
 
 ### Loading
 
@@ -895,7 +895,7 @@ Future editing must define:
 
 Do not infer those from the inspection UI.
 
-## 12. Component / composition map
+## 13. Component / composition map
 
 This map names responsibilities, not a mandatory file tree.
 
@@ -923,7 +923,7 @@ This map names responsibilities, not a mandatory file tree.
 Do not create generic Nevo UI components named SettingsCard, ProviderCard, WorkflowCard, ConfigCard,
 or similar merely for this screen.
 
-## 13. Visual and token contract
+## 14. Visual and token contract
 
 This screen inherits semantic typography/colour rules from the shared design-system docs.
 
@@ -947,7 +947,7 @@ Do not use colour merely to make every Settings category visually different.
 
 Do not use alternating Card backgrounds to create hierarchy.
 
-## 14. Local containment rules
+## 15. Local containment rules
 
 This screen deliberately uses stricter containment than many dashboard-style surfaces.
 
@@ -972,7 +972,7 @@ Therefore:
 Any implementation that introduces a new Card on this screen should be able to state the semantic
 reason that content needs an independent boundary.
 
-## 15. Accessibility, focus, and keyboard behavior
+## 16. Accessibility, focus, and keyboard behavior
 
 - Local Settings navigation must be keyboard operable and expose the selected section semantically.
 - Switching sections moves/announces context in a way that makes the new section identity clear; do
@@ -985,7 +985,7 @@ reason that content needs an independent boundary.
   forms an independently scrollable region.
 - Icon-only actions use accessible labels and comfortable hit targets.
 
-## 16. Data / read-model requirements
+## 17. Data / read-model requirements
 
 The screen consumes the project Settings catalog/read model described earlier. It must not maintain
 a second hard-coded inventory of settings and must not derive effective configuration or availability
@@ -1033,7 +1033,7 @@ unless the authoritative configuration actually defines them.
 - availability/configuration state;
 - supported setup/reconnect actions only when authoritative.
 
-## 17. Storybook scenarios
+## 18. Storybook scenarios
 
 The first composed Project Settings stories should use typed product view-model fixtures.
 
@@ -1059,7 +1059,7 @@ Minimum scenarios:
 
 Visual review must explicitly check that repeated rows do not drift into Card-per-item treatment.
 
-## 18. Acceptance criteria
+## 19. Acceptance criteria
 
 A composed implementation is acceptable when:
 
@@ -1081,7 +1081,7 @@ A composed implementation is acceptable when:
 14. Ordinary backend-provided settings/groups can appear without bespoke screen implementation.
 15. Extension/plugin-contributed Settings remain semantic data, not backend-provided UI markup.
 
-## 19. Open questions / deferred
+## 20. Open questions / deferred
 
 Do not guess these during initial composition:
 

@@ -24,6 +24,9 @@ related:
 
 This namespace is a **proposal backlog**, not an additional source of truth.
 
+Default `pnpm docs:context` discovery excludes this namespace. Use `pnpm docs:find` or exact
+`pnpm docs:get` IDs when an agent is intentionally evaluating or migrating an idea.
+
 Documents under `docs/ideas/**` capture enough evidence and design direction that a later
 specification or implementation agent should not need to rediscover the original debugging
 conversation. Child documents remain `status: draft` proposals. They may contain concrete candidate

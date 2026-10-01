@@ -1015,6 +1015,9 @@ visible data may be stale rather than replacing the entire page with an empty er
 Short polling is not justified for Settings. Prefer config/plugin change invalidation when available,
 window-focus refetch, and explicit Refresh.
 
+The descriptor/value-kind rendering contract is defined in
+[Settings catalog renderer UI spec](../components/settings-catalog-renderer-ui-spec.md).
+
 ## 14. Component / composition map
 
 This map names responsibilities, not a mandatory file tree.

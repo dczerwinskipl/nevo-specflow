@@ -105,10 +105,13 @@ Response:
 
 ~~~text
 {
+  revision,
+  updatedAt,
   task: {
     id,
     specId,
     title,
+    order?,
     intent: {
       summary?,
       documentRef?,
@@ -132,16 +135,37 @@ Response:
       reason,
       decisionType?
     },
-    currentExecution?: {
-      sessionId,
-      agentRole,
-      taskIds[]
-    },
+    currentExecutions: [
+      {
+        sessionId,
+        agentRole,
+        taskIds[],
+        currentActivity?,
+        startedAt?
+      }
+    ],
     evidence: [
-      { id, kind, title, relevance, target }
+      {
+        id,
+        kind,
+        title,
+        summary?,
+        relevance,
+        status?,
+        target,
+        sharedTaskIds?,
+        updatedAt?
+      }
     ],
     sessions: [
-      { id, title, relation: "current" | "historical" | "contextual", lastActivityAt }
+      {
+        id,
+        title?,
+        relation: "current" | "historical" | "contextual",
+        agentRole?,
+        taskIds[],
+        lastActivityAt?
+      }
     ],
     continuation?: {
       kind: "none" | "continue" | "remediation" | "recovery",
@@ -164,6 +188,18 @@ Decision body example:
 ~~~text
 { decision: "approve" | "request-changes", feedback? }
 ~~~
+
+Field coverage notes:
+
+- `revision/updatedAt` protect Task detail from stale out-of-order refreshes.
+- `workflow.actions[]` is the legal-action source; `semanticStatus` is descriptive, not command
+  authorization.
+- `currentExecutions[]` is plural deliberately so read-only review/other concurrent execution
+  contexts are not silently lost.
+- `evidence.sharedTaskIds[]` preserves multi-Task artifacts without cloning them as fake
+  Task-specific reports.
+- `sessions[].relation` distinguishes contextual/history from actual current execution.
+- `continuation.kind` makes continue/remediation/recovery mutually explicit in the projection.
 
 Behavior:
 
@@ -273,7 +309,49 @@ ordinary Continue.
 - archived/read-only;
 - evidence unavailable.
 
-## 12. Component / composition map
+
+## 12. Data loading, events, and Refresh
+
+This screen inherits
+[Data loading, refresh, batching, and eventing](../data-loading-refresh-and-eventing.md).
+
+Task state, legal actions, attention, continuation/recovery, and current execution must come from one
+coherent Task projection/revision because the user interprets them together.
+
+Large evidence bodies remain lazy:
+
+- Task document body;
+- review report;
+- Handover;
+- diff/change detail;
+- verification/raw logs;
+- historical Session detail.
+
+### Event updates
+
+When a workflow operation changes Task state, update/invalidate:
+
+- this Task projection;
+- the parent Specification steering projection.
+
+Do not invalidate unrelated Tasks' heavy evidence.
+
+A burst of progress events may update a lightweight current-execution summary, but should be
+coalesced according to the shared event rules.
+
+### Refresh
+
+Task Detail does not need a prominent standalone Refresh button when parent/live invalidation is
+healthy.
+
+If exposed in the Task overflow for diagnostics/manual recovery, it refreshes **only the Task
+projection**.
+
+An opened evidence detail refreshes separately if that resource has its own revision/stale state.
+
+Do not make Task Refresh refetch every related Session, document, and diff.
+
+## 13. Component / composition map
 
 | Need | Composition |
 | --- | --- |
@@ -288,7 +366,7 @@ ordinary Continue.
 | Session entry | product link/action -> Floating Session |
 | File/change detail | contextual Secondary/product capability |
 
-## 13. Visual/token contract
+## 14. Visual/token contract
 
 - normal surface neutral;
 - title: \`text-content-primary\`;
@@ -299,7 +377,7 @@ ordinary Continue.
 - ready action uses normal action hierarchy, not warning colors;
 - review evidence stays neutral unless finding severity itself is semantic.
 
-## 14. Local containment rules
+## 15. Local containment rules
 
 - no Card per evidence type;
 - no Card around Task intent;
@@ -309,7 +387,7 @@ ordinary Continue.
   selectable objects;
 - nested containment is exceptional.
 
-## 15. Accessibility/focus
+## 16. Accessibility/focus
 
 - opening Task focuses Task heading or first meaningful context;
 - Back/Close restores focus to originating row/signal;
@@ -318,7 +396,7 @@ ordinary Continue.
 - statuses never color-only;
 - confirmation dialogs name the Task/action clearly.
 
-## 16. Storybook scenarios
+## 17. Storybook scenarios
 
 - ready-to-start;
 - current single Task;
@@ -333,7 +411,7 @@ ordinary Continue.
 - no optional evidence;
 - narrow pushed detail.
 
-## 17. Acceptance criteria
+## 18. Acceptance criteria
 
 - state/reason understood before mutation;
 - evidence relevant to decision is directly reachable;
@@ -343,7 +421,7 @@ ordinary Continue.
 - terminal Turn does not imply Task complete;
 - linear detail remains borderless-first.
 
-## 18. Open questions
+## 19. Open questions
 
 - canonical Handover/artifact references;
 - initial Diff/change inspection contract;

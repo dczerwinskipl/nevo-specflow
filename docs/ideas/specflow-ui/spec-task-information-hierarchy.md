@@ -18,7 +18,7 @@ tags:
   - artifacts
   - handover
 read_when:
-  - designing the Specs overview, Specification workspace, or Task detail
+  - designing the Specs overview, Specification surface, or Task detail
   - deciding which workflow facts deserve immediate human visibility
   - designing review, approval, start, or finalize steering flows
   - migrating Task and workflow projections from legacy Nevo into SpecFlow
@@ -165,7 +165,7 @@ must not be buried below passive status.
 
 ---
 
-# 5. Specification workspace
+# 5. Specification
 
 ## 5.1 Role
 
@@ -1005,7 +1005,7 @@ Do not expose:
 - tool details;
 - raw diffs.
 
-## Specification workspace
+## Specification
 
 Keep:
 

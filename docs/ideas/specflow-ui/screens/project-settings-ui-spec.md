@@ -677,27 +677,26 @@ interactive object; that change should be justified by the actual interaction.
 
 This is an information/layout sketch, not a pixel-perfect visual design.
 
-Wide example:
+Wide example with **Configuration** selected:
 
 ~~~text
 ┌──────────────────┬──────────────────────────────────────────────────────────────┐
 │ Nevo SpecFlow    │ Project Settings                                             │
 │                  │                                                              │
-│ [Project Alpha ▾]│  General                 Project                             │
-│                  │  Configuration           Name            Project Alpha       │
-│ Specs            │  AI / Agents             Workspace root  /repo/nevo-specflow │
-│                  │  Workflows               Repository      origin              │
-│ Project Settings │  Repository / Git                                            │
-│                  │  Integrations            ─────────────────────────────────   │
+│ [Project Alpha ▾]│  General                 Configuration                       │
+│                  │ >Configuration                                                │
+│ Specs            │  AI / Agents             Project configuration               │
+│                  │  Workflows               nevo.yaml                  [View]   │
+│ Project Settings │  Repository / Git        source: project                    │
+│                  │  Integrations                                                │
+│                  │                         Local configuration                   │
+│                  │                         local.yaml                 [View]    │
+│                  │                         source: local override                │
 │                  │                                                              │
-│                  │                         Configuration sources                 │
-│                  │                         Project config   nevo.yaml   [View]   │
-│                  │                         Local config     local.yaml  [View]   │
-│                  │                                                              │
-│                  │                         Effective values                     │
+│                  │                         Effective configuration               │
 │                  │                         Provider        Claude                │
 │                  │                         Model           Sonnet                │
-│                  │                         Source          project config        │
+│                  │                         source          project config        │
 │                  │                                                              │
 └──────────────────┴──────────────────────────────────────────────────────────────┘
 ~~~
@@ -705,15 +704,16 @@ Wide example:
 Important visual intent:
 
 - AppWorkspace is already the containing surface;
+- one Settings section is selected at a time;
 - the local Settings navigation is a simple column/list, not a stack of Cards;
 - content groups are separated by heading hierarchy and whitespace;
 - one light divider may separate major groups when needed;
 - facts and settings are rows/label-value pairs;
-- no Card around Project, Configuration sources, or Effective values;
+- no Card around configuration sources or effective values;
 - a strong attention surface appears only for an exceptional state that genuinely needs emphasis.
 
-The actual section content is driven by the Settings catalog/read model. The sketch illustrates the
-default composition, not a hard-coded field inventory.
+The actual sections/groups/items are driven by the Settings catalog/read model. The sketch
+illustrates the default composition, not a hard-coded field inventory.
 
 ---
 

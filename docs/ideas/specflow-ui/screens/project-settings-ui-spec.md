@@ -1196,6 +1196,9 @@ Visual review must explicitly check that repeated rows do not drift into Card-pe
 
 A composed implementation is acceptable when:
 
+Criteria 13-17 are **future catalog capability criteria**, not MVP prerequisites. They apply only
+when the extensible Settings catalog described in section 4 is deliberately implemented.
+
 1. Project Settings clearly reads as one product workspace, not a dashboard of unrelated Cards.
 2. Configuration/runtime/action ownership remains distinct.
 3. A user can switch Settings sections without leaving Project Settings or triggering a mutation.

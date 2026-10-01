@@ -1,0 +1,419 @@
+---
+id: ideas.specflow-ui.screens.full-session
+type: product
+title: Full Session UI spec
+status: draft
+scope: specflow
+areas: [ui, product, ai, runtime]
+tags: [session, conversation, work, context, interaction, execution]
+read_when:
+  - implementing or reviewing Full Session
+  - defining Session Primary/Secondary, current activity, Work, or interactions
+summary: >
+  Vertical UI specification for Full Session: Conversation Primary, default Context Secondary,
+  Work/detail inspection, runtime states, canonical Session API migration, components and tokens.
+related:
+  - ideas.specflow-ui.screens
+  - ideas.specflow-ui.full-session-screen-structure
+  - product.specflow.ui.ai-session-ux
+  - architecture.ai.canonical-session-turn-work
+---
+
+# Full Session UI spec
+
+## 1. Purpose and ownership
+
+Full Session is the primary work surface for one AI Session.
+
+It owns:
+
+- human-readable conversation chronology;
+- current activity;
+- pending human interaction;
+- composer/Turn start;
+- Session-owned cancellation;
+- Context and Work inspection;
+- contextual File/Task/Handover/artifact detail.
+
+It is not a provider transcript and not a raw tool console.
+
+## 2. User use cases
+
+- Continue a Session conversation.
+- Understand what the agent is doing now.
+- Respond to permission/question/confirmation.
+- Inspect current execution scope and related Tasks.
+- Inspect Work history and one ToolAction in depth.
+- Open a file/reference without leaving the Session.
+- Understand completed/failed/cancelled/interrupted Turn outcome.
+- Continue/resume legal work or inspect recovery.
+- Navigate from Session context to Task detail and back.
+
+## 3. Entry and navigation
+
+Entry:
+- explicit Open full session from Floating Session;
+- stable Session deep link.
+
+Wide/Compact split entry:
+
+~~~text
+Conversation | Context
+~~~
+
+Context is default-open only on entry when no more specific Secondary target was requested.
+
+Narrow entry:
+- Conversation only;
+- Context/Work/detail opened explicitly as pushed Secondary.
+
+Closing default Context remains respected until user explicitly reopens it.
+
+## 4. Data source / read-model ownership
+
+Canonical Session/Turn/Work state comes from Runtime/application.
+
+UI consumes, not derives:
+
+- Session readiness;
+- current activity;
+- pending interaction;
+- Turn status/outcome;
+- Work chronology;
+- provider capabilities;
+- current execution scope;
+- distinction between current and merely related Tasks.
+
+Transport connection/reconnect state is UI/adapter state and must not overwrite canonical Session
+semantics.
+
+## 5. API availability / migration status
+
+Legacy Session API is the strongest migration candidate among current UI surfaces.
+
+| Need | New SpecFlow | Legacy Nevo | Direction |
+| --- | --- | --- | --- |
+| Session snapshot/chat/Turns | **missing** | **legacy-available** via \`GET /api/agent-sessions/:sessionId/chat\` and \`GET /api/agent-sessions/:sessionId\` | Preserve canonical Session/Turn/Work wire semantics where still valid. |
+| Live updates/replay cursor | **missing** | **legacy-available** via \`GET /api/agent-sessions/:sessionId/events\` SSE | Preserve replayable ordered event model. |
+| Start next Turn | **missing** | **legacy-available** via \`POST /api/agent-sessions/:sessionId/turns\` | Preserve idempotent command semantics. |
+| Cancel/recover Turn | **missing** | **legacy-available** via Turn cancel/recover routes | Preserve capability-driven cancellation/recovery, redesign exact new command path if needed. |
+| Respond to interaction | **missing** | **legacy-available** via \`POST /api/agent-sessions/:sessionId/interactions/:interactionId/respond\` | Strong migration candidate. |
+| Provider capabilities | **missing** | **legacy-available** via \`GET /api/agent-providers\` and Session capabilities | Preserve semantic capabilities; new Runtime owns provider boundary. |
+| Current single/batch execution scope | **missing** | partial legacy session/task fields; historical association is insufficient | Add explicit current execution projection. |
+| Context evidence/Handover/artifacts | **missing** | partial scattered evidence | Add product context references without bloating provider Work model. |
+
+### Proposed Session read API
+
+Prefer canonical application Session identity only.
+
+Illustrative:
+
+~~~text
+GET /api/sessions/:sessionId
+~~~
+
+Response:
+
+~~~text
+{
+  session: {
+    id,
+    title?,
+    agentRole?,
+    provider?,
+    mode?,
+    capabilities,
+    readiness,
+    createdAt,
+    lastActivityAt,
+    lastEventSeq
+  },
+  turns: [
+    {
+      id,
+      status,
+      userMessage?,
+      historicalWork[],
+      currentActivity?,
+      finalAnswer?,
+      terminalOutcome?,
+      createdAt,
+      updatedAt
+    }
+  ],
+  workSummary,
+  context: {
+    specification: { id, title },
+    currentExecution?: {
+      kind: "generic" | "task" | "task-batch",
+      taskIds[],
+      agentRole?,
+      workflowRef?
+    },
+    relatedTasks[],
+    attention[],
+    evidence[]
+  }
+}
+~~~
+
+The first implementation may preserve much of legacy \`AgentSessionChatPayload\`, but must add an
+authoritative current-execution projection rather than treating \`taskId/taskIds\` historical binding
+as execution proof.
+
+For large histories, later split/paginate historical Turns/Work instead of making the initial
+snapshot unbounded.
+
+### Proposed live API
+
+~~~text
+GET /api/sessions/:sessionId/events?after=:sequence
+~~~
+
+Events should carry canonical application changes such as:
+
+- Turn updated;
+- readiness changed;
+- interaction changed;
+- Session metadata changed;
+- context projection invalidated/changed.
+
+Ordering/replay semantics belong to Runtime/transport adapter, not UI heuristics.
+
+### Proposed commands
+
+~~~text
+POST /api/sessions/:sessionId/turns
+POST /api/sessions/:sessionId/turns/:turnId/cancel
+POST /api/sessions/:sessionId/interactions/:interactionId/respond
+~~~
+
+Start-Turn body may include:
+
+~~~text
+{
+  message,
+  executionIntent?,    // generic/spec-level/single Task/batch Task; exact contract TBD
+  model?,
+  mode?,
+  effort?,
+  idempotencyKey
+}
+~~~
+
+Important behavior:
+
+- explicit per-Turn execution intent defines deterministic Task execution;
+- historical Session associations do not silently become execution intent;
+- capabilities decide whether Cancel/interaction controls exist;
+- command-time validation is authoritative;
+- SSE/live update reconciles UI after mutation.
+
+## 6. Information hierarchy
+
+Primary:
+1. user/assistant conversation;
+2. meaningful Commentary;
+3. current activity;
+4. pending interaction;
+5. compact semantic Work summaries;
+6. composer.
+
+Secondary:
+1. Context by default;
+2. Work as technical/history root;
+3. contextual detail such as Task/File/Handover/Work item.
+
+## 7. Pseudo-layout
+
+~~~text
+┌──────────────┬────────────────────────────────────────────┬───────────────────────────┐
+│ Navigation   │ Session: Review batch #23                  │ Context                   │
+│              │ Reviewer · 3 Tasks                         │                           │
+│ Specs        │                                            │ Current execution         │
+│ Settings     │ You                                        │ Reviewer · 3 Tasks        │
+│              │ Review completed implementation.           │ TASK-02                   │
+│              │                                            │ TASK-03                   │
+│              │ Agent                                      │ TASK-04                   │
+│              │ I’ll inspect the changes and tests.        │                           │
+│              │                                            │ Attention                 │
+│              │ Read 4 files · searched repository    >    │ TASK-03 owner decision >  │
+│              │ Ran tests                             >    │                           │
+│              │                                            │ Related Tasks             │
+│              │ Current activity                           │ TASK-01 historical         │
+│              │ Reviewing change summary…                  │                           │
+│              │                                            │ Evidence                  │
+│              │ ┌──────────────────────────────────────┐   │ Review report        >    │
+│              │ │ Message…                         Send│   │ Handover             >    │
+│              │ └──────────────────────────────────────┘   │                           │
+└──────────────┴────────────────────────────────────────────┴───────────────────────────┘
+~~~
+
+Context is a normal inspector surface, not a stack of cards.
+
+## 8. Screen anatomy
+
+### Primary
+- Session header/orientation;
+- conversation stream;
+- current/live region;
+- pending interaction;
+- composer.
+
+### Secondary roots
+- Context;
+- Work.
+
+### Detail targets
+- Task;
+- File;
+- Handover/artifact;
+- Work item/ToolAction.
+
+One Secondary only; detail replaces its root and Back returns within local inspector navigation.
+
+## 9. Responsive contract
+
+Wide:
+- persistent nav + Conversation | Context.
+
+Compact:
+- Drawer nav + Conversation | Context if workspace >= split threshold.
+
+Narrow:
+- Conversation only;
+- explicit Context/Work actions;
+- pushed inspector/detail;
+- current activity and pending interaction cannot exist only in Secondary.
+
+## 10. Interaction flows
+
+### Context drill-down
+Context -> Task -> Back -> Context.
+
+### Work drill-down
+Work -> Work item -> ToolAction -> Back -> Work.
+
+### File
+Conversation/Context/Work reference -> File detail -> Back to previous inspector context.
+
+### Pending interaction
+Interaction appears in Primary -> deliberate response -> control becomes non-actionable after
+resolution/expiration -> Runtime update reconciles.
+
+### Send message
+Composer -> start Turn command -> busy/live state -> ordered updates -> final/terminal outcome.
+
+### Cancel
+Only when capability permits -> Cancel -> cancelling state -> terminal projection.
+
+## 11. Runtime states
+
+- generic/spec-level execution;
+- single Task execution;
+- Task batch execution;
+- active Commentary/tool work;
+- waiting for model/tool without attention;
+- requires human interaction;
+- cancelling;
+- completed Turn;
+- failed/cancelled/interrupted Turn;
+- continue/resume;
+- recovery required;
+- unavailable/unknown;
+- transport reconnecting.
+
+These states must remain semantically distinct.
+
+## 12. Component / composition map
+
+| Need | Composition |
+| --- | --- |
+| Workspace | AppWorkspace |
+| Header | WorkspaceHeader |
+| Conversation | SpecFlow product composition |
+| Markdown final/commentary | MarkdownDocument |
+| Composer | MessageComposer |
+| Current activity | product composition + StatusIndicator/Spinner as needed |
+| Interaction | product composition using RadioGroup/Checkbox/Button/etc. |
+| Context/Work roots | Tabs/SegmentedControl/header composition after visual review |
+| Work chronology | product composition, Timeline where useful |
+| Disclosure | Collapsible |
+| Detail navigation | AppWorkspace Secondary stack |
+| File | product file capability |
+| Floating promotion/return | product router/workspace state |
+
+Do not create one generic design-system Chat component around Session domain semantics yet.
+
+## 13. Visual/token contract
+
+- Primary/Secondary use existing workspace material;
+- conversation text hierarchy uses semantic Typography/Markdown styles;
+- Commentary is supporting narrative, not a warning surface;
+- current activity uses restrained running state;
+- waiting is calm;
+- interaction requiring user response receives stronger semantic attention;
+- tool summaries remain neutral unless failure/exception changes meaning;
+- raw technical detail uses muted/code treatments;
+- separators subtle; no arbitrary provider colors.
+
+## 14. Local containment rules
+
+- no Card per message;
+- no Card per Commentary;
+- no Card per tool summary;
+- no Card per Context section;
+- interaction may earn a contained attention surface because it is one independent required action;
+- composer is an interaction control surface and may have its own boundary;
+- Work detail/raw output may use code/surface containment when needed for technical readability;
+- avoid nested rounded boxes inside inspector surfaces.
+
+## 15. Accessibility/focus
+
+- stream updates do not steal focus;
+- pending interaction is announced appropriately without repeated noisy announcements;
+- sending/Cancel controls expose busy/disabled semantics;
+- inspector Back/Close restores meaningful focus;
+- current activity not color-only;
+- live regions are used sparingly;
+- composer text survives contextual navigation where expected.
+
+## 16. Storybook scenarios
+
+- generic/spec-level live Turn;
+- single Task execution;
+- Task batch;
+- Commentary absent;
+- active tool;
+- waiting without attention;
+- permission/question/confirmation;
+- completed;
+- failed/interrupted;
+- continue/resume;
+- recovery;
+- unavailable;
+- Context -> Task;
+- Work -> ToolAction;
+- File detail placeholder;
+- default Context closed/restored;
+- narrow inspector push.
+
+## 17. Acceptance criteria
+
+- user sees what is happening now without opening Work;
+- interaction requiring user is actionable in Primary;
+- current execution is distinct from related Tasks;
+- batch is batch-shaped;
+- current activity does not duplicate chronology with equal weight;
+- Context close is respected;
+- raw tool spam stays below normal conversation level;
+- one Secondary only;
+- no message/tool Card soup.
+
+## 18. Open questions
+
+- exact current execution-intent API in new deterministic Runtime;
+- history pagination;
+- artifact/Handover context model;
+- reasoning presentation policy;
+- non-wide Floating Session behavior.

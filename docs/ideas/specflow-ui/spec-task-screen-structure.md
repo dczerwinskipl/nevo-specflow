@@ -208,35 +208,27 @@ Avoid turning each Spec row into a dashboard card containing every status.
 
 ## 3.4 Interaction
 
-There are two distinct targets:
+The neutral Spec row/identity always opens the Specification.
+
+More specific signals are separate explicit targets:
 
 ~~~text
-Spec identity / neutral row target
+Spec row / title
   -> Specification
 
-Task-specific attention / ready / issue target
-  -> Specification with that Task context already open
+TASK-03 requires review [open]
+  -> Specification + local TASK-03 detail
+
+3 Tasks require review [open]
+  -> Specification attention context; user chooses Task
 ~~~
 
-On wide/compact layouts this means Specification Primary + Task Secondary in one navigation action.
-On narrow layouts it may land directly on the pushed Task detail while preserving Back to the
-Specification.
+Do not change the destination of the whole row based on dynamic priority.
 
-A Spec-level signal opens the Specification itself because that is the responsible decision context.
+On narrow, an explicit Task target may push Task detail immediately; this is still local Secondary
+state and is not encoded as part of the Specification URL.
 
-If a summary exposes several actionable items, each item/aggregate must have a deterministic target.
-For example, "3 Tasks require review" can open the Specification with the relevant attention group
-visible, while a concrete TASK-03 signal can open TASK-03 Secondary directly.
-
-The selected decision context must be representable/restorable by product navigation state where
-reload/deep linking is expected. Do not make the one-click path depend only on ephemeral component
-state.
-
-The overview should not perform the final approval/review/start mutation. It gets the human to the
-right context in one interaction; the next deliberate interaction performs the action.
-
----
-
+The overview never performs the final workflow mutation.
 # 4. Specification Primary
 
 ## 4.1 Job of the surface
@@ -293,41 +285,44 @@ When nothing special is happening, the slot can disappear instead of displaying 
 
 ## 4.3 Task collection
 
-A Task item should primarily communicate:
+A Task item communicates identity/title, semantic workflow meaning, attention reason, ready action,
+authoritative current execution, and dependency/blocker reason when relevant.
 
-- id/title;
-- semantic workflow meaning, either on the item or through its containing grouping;
-- attention reason when human action is required;
-- ready next action when useful;
-- authoritative current execution indicator when the Task is in current execution scope;
-- blocker/dependency reason when relevant.
+### Selection and bulk actions
 
-Do not repeat the same status badge on every Task if a lane/group already provides the same
-information.
+Task rows support multi-selection when batch actions are available.
 
-Task item click:
+A straightforward baseline interaction is checkbox selection. Once at least one Task is selected, a
+selection action region appears with the actions the backend says are meaningful for that selection,
+for example Start plus future selection-safe actions.
 
-~~~text
-Task
-  -> Task Secondary
-~~~
+Selection validation is server/application-owned:
 
+- warnings such as unmet dependencies remain visible;
+- a warning may allow the action when the backend says it is legal;
+- a blocker disables/prevents the operation and explains why;
+- frontend must not infer batch executability from Task status strings.
+
+Starting selected Tasks preserves batch scope. The start interaction can then choose the required
+agent/provider using the shared Session-start model.
+
+Do not repeat the same status badge on every Task if grouping already communicates it.
+
+Task row click still opens Task Secondary and never performs the bulk action.
 ## 4.4 Sessions in Specification
 
-Sessions are contextual information, not the primary task hierarchy.
+Sessions are contextual history/work, not the primary Task hierarchy.
 
-Specification may expose:
+Specification may expose current/running Session summary and several recent/relevant Sessions.
 
-- current/running Session summary;
-- recent/relevant Sessions;
-- a Session connected to a selected Task.
+Existing Session access:
 
-A Session reference exposes the conversation target and a direct **Open full session** action.
-Where Floating Session is supported, the conversation target opens that compact surface without
-replacing Task Secondary. Full Session does not require opening the floating presentation first.
+- Wide conversation target -> Floating Session;
+- Compact/Narrow conversation target -> Full Session;
+- explicit Open full session may be shown where it adds clarity.
 
----
-
+Starting a new Session is a separate explicit action using the shared Session-start interaction. Do
+not place a one-off prompt textarea inside Specification solely to avoid opening the common composer.
 # 5. Task Secondary
 
 ## 5.1 Job of the surface
@@ -362,28 +357,26 @@ Task intent
   acceptance criteria / requirements
   constraints / dependencies
 
-Decision evidence (only when relevant/available)
+Decision evidence
   review summary
-  Handover summary
-  changes/diff entry
+  Handover / transition context
+  changes reference
   verification/gate summary
-  artifacts
+  readable artifacts/documents
 
-Related execution
-  current execution only when authoritative
-  contextual/historical Sessions
-  agent role/profile
+Related Sessions
+  active/current highlighted when authoritative
+  several recent/relevant historical/contextual Sessions
+  [Show all] when needed
 
 Deeper inspection
   workflow attempt/history
   raw report
-  raw verification
+  Work/tool details
   operation/recovery details
 ~~~
 
-Not every section is visible in every state. Empty structural placeholders should not be rendered
-just to keep the shape symmetrical.
-
+Optional sections disappear when unavailable.
 ## 5.3 Action placement principle
 
 The primary Task action should stay close to the reason/evidence that justifies it.
@@ -416,25 +409,16 @@ semantic requirement is proximity between **reason, evidence, and action**.
 
 ## 5.4 Evidence ordering
 
-Evidence should be ordered by relevance to the current human decision, not by artifact type.
+Evidence is ordered by relevance to the current human decision, not alphabetically by artifact kind.
 
-For a review state, a likely order is:
+Artifacts/documents are read targets. Mutation controls come from the owning workflow/Human Step.
 
-~~~text
-review outcome
-handover / what changed        when a Handover exists
-diff/change entry              when changes are available
-verification                   when decision-relevant
-Session                        when useful for context
-other artifacts
-~~~
+When a workflow/history/evidence item references a Session, clicking that Session opens the Session
+directly. Do not invent an intermediate proof-details page merely to restate the same reference.
 
-For another workflow step, that order can differ.
+A future turn anchor may make that navigation more precise.
 
-The UI should not enforce one global "Attachments" list as the only way to find evidence.
-
----
-
+The UI must not enforce one global Attachments list as the only way to find evidence.
 # 6. State A — ready to start
 
 ## 6.1 Specs overview
@@ -797,24 +781,21 @@ Review...
 Handover...
 Changes...
 
+Related Sessions
+  Reviewer · batch #23            [Open]
+  Implementer · earlier           [Open]
+  [Show all]
+
 [Review / decide]
 ~~~
 
-Related Session is an explicit action:
-
-~~~text
-Session                         [Open]
-~~~
-
-The conversation target uses Floating Session where supported. A separate full-screen action opens
-Full Session directly, so the floating presentation is optional rather than a mandatory navigation
-step.
+On Wide, normal Session conversation access may use Floating Session and can also expose Full Session.
+On Compact/Narrow, opening the Session goes directly to Full Session.
 
 No desktop-only Secondary may contain the sole copy of information necessary to understand why the
 user needs to act.
 
 ---
-
 # 13. What this pass deliberately does not decide
 
 Still deferred:

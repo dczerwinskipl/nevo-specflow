@@ -69,6 +69,10 @@ Read the relevant subset rather than duplicating it:
   semantic tone and styling ownership.
 - [SpecFlow information/navigation inventory](../information-and-navigation-inventory.md) — product
   concepts, ownership, configuration/runtime/action separation.
+- [Runtime ownership and lifecycle](../../../architecture/runtime/ownership-and-lifecycle.md) —
+  application/backend ownership and transport-adapter boundary.
+- [Repository tooling is separate from the product API](../../../architecture/decisions/0005-repository-tooling-is-separate-from-the-product-api.md) —
+  legacy/internal tooling is evidence, not an implicit product contract.
 - [Design-system and composition gaps](../design-system-component-composition-gaps.md) — currently
   available primitives and known capability gaps.
 
@@ -131,6 +135,8 @@ Storybook, while still avoiding invented backend contracts or premature reusable
   whether legacy Nevo has an equivalent/partial API, or whether a new API must be added.
 - A legacy endpoint is migration evidence, not automatically the new product contract. When the new
   screen needs a different projection, say what should be preserved and propose the new read model.
+- Proposed product HTTP/realtime routes are adapters over Runtime/application capabilities; do not
+  make the transport the owner of workflow/session/configuration semantics.
 - Do not let the frontend invent a parallel registry of domain data that belongs to the
   backend/application contract.
 - Include at least one ASCII pseudo-layout so the intended information hierarchy can be reviewed

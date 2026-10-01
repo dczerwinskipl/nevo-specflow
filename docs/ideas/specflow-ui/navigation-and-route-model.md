@@ -6,8 +6,6 @@ status: draft
 scope: specflow
 areas:
   - ui
-  - product
-  - navigation
 tags:
   - information-architecture
   - routing
@@ -20,7 +18,7 @@ read_when:
   - deciding which interaction state belongs in the URL versus local UI state
   - designing cross-screen navigation between Specs, Specification, Task, Session, and Settings
 summary: >
-  Cross-screen navigation contract for SpecFlow UI. Defines the Workbench entry point,
+  Cross-screen navigation contract for SpecFlow UI. Defines the default product entry point,
   routable product surfaces, Primary/Secondary drill-down, direct Full Session access,
   local inspector stacks, responsive representation, and Back behavior without freezing
   exact URL syntax or Session-creation flow.
@@ -51,9 +49,8 @@ It intentionally does **not** freeze:
 
 ## 2. Product terminology
 
-When a collective name for the whole product UI is useful, use **Nevo SpecFlow Workbench**.
-
-Workbench is the application experience, not another product route or dashboard screen.
+Use **Nevo SpecFlow** for the product as a whole. This document defines its UI interaction model;
+it does not introduce a second collective UI brand or another Home/dashboard route.
 
 Reserve **Workspace** primarily for:
 
@@ -73,15 +70,15 @@ user-facing copy and navigation should avoid using Workspace as a competing prod
 
 ## 3. Global entry and navigation
 
-The Workbench default product entry is **Specs Overview**.
+The default product UI entry is **Specs Overview**.
 
 There is no separate product Home area in the current information architecture.
 
 Persistent product navigation remains deliberately small:
 
-~~~text
-Project selector
+Project switching is a future capability and is not part of the current MVP global navigation.
 
+~~~text
 Specs
 
 Project Settings
@@ -94,7 +91,7 @@ surfaces without becoming global navigation items.
 
 | Surface | Normal entry | Representation |
 | --- | --- | --- |
-| Specs Overview | global Specs / default Workbench entry | Primary |
+| Specs Overview | global Specs / default product entry | Primary |
 | Specification | Specification row/identity or stable route | Primary |
 | Task Detail | Task row or explicit Task-specific signal | Secondary on split layouts; pushed local detail on narrow |
 | Floating Session | existing-Session conversation target on Wide only | floating presentation outside AppWorkspace stack |
@@ -244,7 +241,7 @@ handling without changing the URL. Such history-state integration is an implemen
 not a deep-link contract.
 ## 11. Back and Close semantics
 
-The Workbench's own Back inside Secondary follows the local inspection stack.
+Product Back inside Secondary follows the local inspection stack.
 
 Examples:
 

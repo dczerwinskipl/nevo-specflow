@@ -21,6 +21,7 @@ export interface HttpClientOptions {
   readonly timeoutMs?: number;
   readonly headers?: Readonly<Record<string, string>>;
   readonly credentials?: CredentialProvider;
+  readonly allowAbsoluteUrls?: boolean;
 }
 
 export type HttpRequestConfig<TBody = unknown> = AxiosRequestConfig<TBody>;

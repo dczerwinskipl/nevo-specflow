@@ -288,6 +288,8 @@ Task Secondary is shown only when selected. Primary remains scannable without it
 - Specification header.
 - High-priority state slot; avoid letting this grow into a second Task list.
 - Task collection.
+- lightweight Task search/filter only when the collection becomes too large to scan comfortably;
+  this filters the already-loaded lightweight Task summaries and does not fetch every Task detail.
 - Supporting Specification context.
 - Contextual Session references.
 - Optional Task Secondary.
@@ -307,6 +309,13 @@ Narrow:
 
 ### Select Task
 Task row -> Task Secondary; no workflow mutation.
+
+### Filter Tasks
+When needed, local Task search/filter narrows the visible summary rows by id/title and semantic
+steering category such as attention/ready/working. It does not change workflow state and does not
+issue per-Task detail requests.
+
+The default unfiltered view remains optimized for human attention rather than alphabetical browsing.
 
 ### Open Task signal from overview
 Deep-linked selected Task -> Specification Primary + Task Secondary (or pushed detail narrow).
@@ -435,6 +444,7 @@ before forcing a final refresh; do not refetch repeatedly for every progress eve
 - selected Task review;
 - Spec-level approval;
 - mixed simultaneous signals;
+- large Task collection with local search/filter;
 - single Task execution;
 - batch execution;
 - ready Task;

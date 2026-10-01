@@ -85,16 +85,16 @@ repository files or Session history.
 
 ## 5. API availability / migration status
 
-| Need | New SpecFlow | Legacy Nevo | Direction |
+| Need | New SpecFlow | Old repo evidence | Direction |
 | --- | --- | --- | --- |
-| Specification summary/tasks | **missing** | **legacy-available** in `GET /api/dashboard` | Preserve identity/task metadata, replace old lifecycle assumptions with new read model. |
-| Document manifest/body | **missing** | **legacy-available** via `GET /api/specs/:source/:slug/content` and `.../content/:docId` | Strong migration candidate; use stable Spec identity in new contract. |
-| Task status/dependencies | **missing** | **legacy-available** via `.../task-statuses` | Preserve dependency facts, replace universal ready/block semantics with per-action semantic projection. |
-| Spec/Task actions | **missing** | **legacy-available** via `GET/POST /api/specs/active/:slug/actions` | Preserve server-owned readiness/reasons; redesign around canonical new workflow identity. |
+| Specification summary/tasks | **missing** | **old-repo-available** in `GET /api/dashboard` | Preserve identity/task metadata, replace old lifecycle assumptions with new read model. |
+| Document manifest/body | **missing** | **old-repo-available** via `GET /api/specs/:source/:slug/content` and `.../content/:docId` | Strong migration candidate; use stable Spec identity in new contract. |
+| Task status/dependencies | **missing** | **old-repo-available** via `.../task-statuses` | Preserve dependency facts, replace universal ready/block semantics with per-action semantic projection. |
+| Spec/Task actions | **missing** | **old-repo-available** via `GET/POST /api/specs/active/:slug/actions` | Preserve server-owned readiness/reasons; redesign around canonical new workflow identity. |
 | Bulk Task selection validation/start | **missing** | partial: single-Task workflow actions plus Session `taskIds[]`/batch evidence | Add application-owned validation for the whole selected set, returning legal action, warnings and blockers before dispatch; preserve the full selected Task set as execution scope. |
-| Create/start Session | **missing** | **legacy-available** via `POST /api/agent-sessions` and workflow start actions | Preserve Nevo-owned canonical `sessionId`, provider selection/reuse semantics and backend-owned workflow bootstrap; expose one shared Session-start interaction. |
-| Task human decision | **missing** | **legacy-available** via `POST /api/specs/:slug/tasks/:taskId/workflow/human-decision` | Preserve explicit decision command pattern. |
-| Related Sessions | **missing** | **legacy-available** via `GET /api/agent-sessions?specId=...&taskId=...` | Preserve contextual association but keep it separate from current execution. |
+| Create/start Session | **missing** | **old-repo-available** via `POST /api/agent-sessions` and workflow start actions | Preserve Nevo-owned canonical `sessionId`, provider selection/reuse semantics and backend-owned workflow bootstrap; expose one shared Session-start interaction. |
+| Task human decision | **missing** | **old-repo-available** via `POST /api/specs/:slug/tasks/:taskId/workflow/human-decision` | Preserve explicit decision command pattern. |
+| Related Sessions | **missing** | **old-repo-available** via `GET /api/agent-sessions?specId=...&taskId=...` | Preserve contextual association but keep it separate from current execution. |
 | Spec-level current execution + multi-signal summary | **missing** | partial only | Add explicit projection. |
 
 Bulk validation is a semantic application contract, not a frontend loop over individual Task

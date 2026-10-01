@@ -4,7 +4,7 @@ type: product
 title: Task Detail UI spec
 status: draft
 scope: specflow
-areas: [ui, product, tasks, workflow]
+areas: [ui, workflow]
 tags: [task, detail, review, evidence, actions]
 read_when:
   - implementing or reviewing Task Secondary/pushed detail

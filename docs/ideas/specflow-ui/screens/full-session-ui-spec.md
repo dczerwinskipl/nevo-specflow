@@ -494,10 +494,12 @@ If the user scrolled upward:
 Current required interaction may still surface a persistent attention indicator without forcibly
 changing scroll position.
 
-The detailed conversation and Work rendering contracts are defined separately in:
+The detailed large-composition contracts are defined separately in:
 
 - [Session conversation UI spec](../components/session-conversation-ui-spec.md);
-- [Session Work inspector UI spec](../components/session-work-inspector-ui-spec.md).
+- [Session Work inspector UI spec](../components/session-work-inspector-ui-spec.md);
+- [Task decision and evidence UI spec](../components/task-decision-evidence-ui-spec.md) for Task detail
+  opened from Context.
 
 ## 13. Component / composition map
 
@@ -511,7 +513,7 @@ The detailed conversation and Work rendering contracts are defined separately in
 | Current activity | product composition + StatusIndicator/Spinner as needed |
 | Interaction | product composition using RadioGroup/Checkbox/Button/etc. |
 | Context/Work roots | Tabs/SegmentedControl/header composition after visual review |
-| Work chronology | product composition, Timeline where useful |
+| Work chronology | product Work log; generic Timeline reserved primarily for exact L3 history |
 | Disclosure | Collapsible |
 | Detail navigation | AppWorkspace Secondary stack |
 | File | product file capability |

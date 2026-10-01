@@ -80,158 +80,16 @@ Frontend must not infer:
 
 | Need | New SpecFlow | Legacy Nevo | Direction |
 | --- | --- | --- | --- |
-| Active/archive Spec collection | **missing** | **legacy-available** via \`GET /api/dashboard\` | Preserve list identity/summary, replace legacy lifecycle ranking with new semantic steering projection. |
-| Task summary/progress | **missing** | **legacy-available** in \`/api/dashboard\` and \`GET /api/specs/:source/:slug/task-statuses\` | Preserve useful task metadata, but do not treat legacy \`ready\`/status as complete new readiness model. |
+| Active/archive Spec collection | **missing** | **legacy-available** via `GET /api/dashboard` | Preserve list identity/summary, replace legacy lifecycle ranking with new semantic steering projection. |
+| Create Specification | **missing** | **legacy-available** via `POST /api/specs` | Preserve scaffolding capability; target UX requires title only, optional initial description/goal, and may continue into the shared Session-start interaction. |
+| Task summary/progress | **missing** | **legacy-available** in `/api/dashboard` and `GET /api/specs/:source/:slug/task-statuses` | Preserve useful task metadata, but do not treat legacy `ready`/status as complete new readiness model. |
 | Human-attention projection | **missing** | partial/legacy workflow-action evidence | Add explicit server-owned attention signals. |
 | Current single/batch execution | **missing** | partial Session/task association exists, but association is not authoritative execution | Add explicit current execution projection. |
-| Live invalidation | **missing** | **legacy-available** via \`GET /api/events\` specs-changed SSE | Reuse event-driven invalidation concept; exact new transport may differ. |
+| Live invalidation | **missing** | **legacy-available** via `GET /api/events` specs-changed SSE | Reuse event-driven invalidation concept; exact new transport may differ. |
 
-
-### Legacy field evidence
-
-Legacy \`SpecificationSummary\` already exposes:
-
-~~~text
-id
-specId
-slug
-title
-status
-source
-priority
-created
-updatedAt
-path
-overviewFile
-summary
-tasks[]
-lanes[]
-nextTask
-metrics {
-  total
-  actionable
-  completed
-  abandoned
-  inImplementation
-  inReview
-  ready
-  stageCounts
-  progress
-}
-~~~
-
-Legacy Task summary fields include:
-
-~~~text
-id
-title
-status
-stage
-order
-dependsOn[]
-blockedBy[]
-ready
-terminal
-file
-~~~
-
-The new overview can migrate identity/title/summary/timestamps/progress inputs, but **must not carry
-forward** legacy \`ready\`, \`nextTask\`, \`stage\`, or status ranking as the new steering truth.
-\`signals[]\` and \`currentExecutions[]\` are genuinely new semantic projections.
-
-### Proposed read API
-
-Illustrative:
-
-~~~text
-GET /api/specs?collection=active
-GET /api/specs?collection=archive
-
-optional later/server-backed filtering:
-GET /api/specs?collection=archive&q=recovery
-~~~
-
-Response:
-
-~~~text
-{
-  revision,
-  generatedAt,
-  collection,
-  specs: [
-    {
-      id,
-      slug,
-      title,
-      summary?,
-      updatedAt,
-      lastMeaningfulActivityAt?,
-      workflow: {
-        definitionId?,
-        phase,
-        semanticStatus,
-        label?
-      },
-      progress: {
-        completed,
-        actionable,
-        total
-      },
-      signals: [
-        {
-          id,
-          kind: "attention" | "ready" | "working" | "issue" | "quiet",
-          scope: "spec" | "task",
-          taskId?,
-          label,
-          reason?,
-          priority,
-          count?,
-          target: { specId, taskId? }
-        }
-      ],
-      currentExecutions: [
-        {
-          sessionId,
-          agentRole,
-          taskIds[],
-          currentActivity?: { kind, label },
-          startedAt?
-        }
-      ]
-    }
-  ]
-}
-~~~
-
-Field coverage notes:
-
-- `revision/generatedAt` support cache validation and explicit refresh without inventing freshness in
-  the client.
-- `lastMeaningfulActivityAt` is optional supporting metadata; it must not outrank human attention.
-- `signals[]` is the semantic steering source. The UI does not reconstruct attention/ready/issue
-  from lifecycle strings.
-- `count` allows the server to represent a meaningful aggregate when the backend already knows the
-  grouping; the UI may also count homogeneous returned signals when that is purely presentational.
-- `currentExecutions[]` is plural deliberately. Do not assume a Specification can have only one
-  concurrently relevant execution/read-only reviewer. Each execution remains batch-shaped through
-  `taskIds[]`.
-
-Behavior:
-
-- one Spec may expose several simultaneous signals;
-- server preserves semantic signal multiplicity;
-- UI places a Spec in at most one primary steering group based on its highest-priority human-facing
-  signal, then preserves additional meaningful signals inside the same row; do not duplicate one Spec
-  across several groups merely because it has several signals;
-- target identity is stable enough for one-click context/deep link;
-- current execution is authoritative and batch-shaped;
-- Archive is primarily a historical collection: default presentation should favor recency/identity
-  rather than forcing archived Specs back into active attention/ready group semantics.
-
-No write endpoint belongs to the collection screen except future create/archive operations, which
-should be specified separately when their interaction is designed.
-
+Creation and collection reads are separate application capabilities. Creating a Specification does not
+require starting an agent Session; create-and-start composes Specification creation with the common
+Session-start capability rather than inventing a separate AI transport.
 ## 6. Information hierarchy
 
 Per Spec item:

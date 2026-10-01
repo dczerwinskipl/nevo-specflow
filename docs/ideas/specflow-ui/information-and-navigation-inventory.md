@@ -400,6 +400,25 @@ changing the surrounding UX.
 A Turn/provider operation can be terminal while more legal deterministic work remains. Keep
 "working", "continue/resume", Task completion, and recovery-required separate.
 
+### Usage, cost, capacity, and limits — future candidate
+
+Do not implement this in the first UI pass, but leave the Session information model extensible enough
+to add it without redesigning the shell.
+
+Possible future facts include:
+
+- token/context usage and remaining capacity;
+- provider/model usage or monetary cost when authoritative data exists;
+- provider quota/limit state and reset information;
+- per-Turn versus Session/project aggregate usage.
+
+Default presentation should be low-emphasis Session metadata, most naturally in Context or a compact
+header/detail disclosure. It becomes a Primary attention signal only when authoritative state says a
+human decision is required to continue.
+
+Project-wide usage/history may later earn its own operational/settings surface; do not reserve an
+empty top-level screen now.
+
 ---
 ## 9. Floating Session and Full Session
 

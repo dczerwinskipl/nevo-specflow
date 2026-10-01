@@ -84,6 +84,59 @@ Frontend must not infer:
 | Current single/batch execution | **missing** | partial Session/task association exists, but association is not authoritative execution | Add explicit current execution projection. |
 | Live invalidation | **missing** | **legacy-available** via \`GET /api/events\` specs-changed SSE | Reuse event-driven invalidation concept; exact new transport may differ. |
 
+
+### Legacy field evidence
+
+Legacy \`SpecificationSummary\` already exposes:
+
+~~~text
+id
+specId
+slug
+title
+status
+source
+priority
+created
+updatedAt
+path
+overviewFile
+summary
+tasks[]
+lanes[]
+nextTask
+metrics {
+  total
+  actionable
+  completed
+  abandoned
+  inImplementation
+  inReview
+  ready
+  stageCounts
+  progress
+}
+~~~
+
+Legacy Task summary fields include:
+
+~~~text
+id
+title
+status
+stage
+order
+dependsOn[]
+blockedBy[]
+ready
+terminal
+file
+~~~
+
+The new overview can migrate identity/title/summary/timestamps/progress inputs, but **must not carry
+forward** legacy \`ready\`, \`nextTask\`, \`stage\`, or status ranking as the new steering truth.
+\`signals[]\` and \`currentExecutions[]\` are genuinely new semantic projections.
+
 ### Proposed read API
 
 Illustrative:

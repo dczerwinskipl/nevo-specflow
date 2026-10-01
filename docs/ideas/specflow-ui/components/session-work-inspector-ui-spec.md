@@ -372,15 +372,18 @@ items target different resources.
 
 ### 6.2 Boundaries
 
-Grouping breaks on:
+Grouping/chapter boundaries break on:
 
 - Commentary;
 - Reasoning;
 - Interaction;
 - any failed/cancelled/interrupted/unknown tool;
 - active/queued tool;
-- tool with compound actions;
-- different kind/title.
+- tool with compound actions that needs its own presentation.
+
+Different happy-path tool kinds/titles do **not** automatically break one compact L2 burst; section
+6.3 defines when mixed kinds may collapse into one aggregate. L3 preserves the exact item order and
+individual title.
 
 ### 6.3 Mixed kind tools
 
@@ -402,7 +405,20 @@ Use separate rows when:
 
 L3 always preserves exact item order.
 
-### 6.4 Repeated Commentary
+### 6.4 Info/warning semantics
+
+Canonical Tool status currently has no generic `info` or `warning` status.
+
+Therefore:
+
+- do not parse output text to invent warning/info counts;
+- failed/cancelled/interrupted remain explicit canonical exceptional states;
+- a future normalized diagnostic severity may be shown in a burst only after Runtime/application
+  provides it semantically;
+- provider-specific strings such as "warning" inside raw stdout remain technical detail unless an
+  adapter normalizes them.
+
+### 6.5 Repeated Commentary
 
 Desired L2 behavior may compact **exact normalized repeated Commentary** and show ×N while L3 remains
 complete.
@@ -416,7 +432,7 @@ Important legacy discrepancy:
 Do not copy the stale comment as behavior. If repeated Commentary compaction is implemented in the new
 product, add explicit tests for it.
 
-### 6.5 Visible row cap
+### 6.6 Visible row cap
 
 Inline expanded Work activity should show roughly **5–7 compact lines/rows** before ScrollArea
 scrolling.

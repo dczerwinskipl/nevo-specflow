@@ -49,7 +49,7 @@ It does not own Task evidence, Session transcript, or detailed workflow inspecti
 
 Global navigation -> Specs.
 
-Neutral Spec identity opens the Specification workspace.
+Neutral Spec identity opens the Specification.
 
 A Task-specific signal opens the Specification with that Task context already selected/open.
 
@@ -294,7 +294,7 @@ Narrow:
 ## 10. Interaction flows
 
 ### Neutral Spec
-Spec title/neutral row target -> Specification workspace.
+Spec title/neutral row target -> Specification.
 
 ### Task signal
 TASK-03 requires review -> Specification + TASK-03 detail in one navigation action.

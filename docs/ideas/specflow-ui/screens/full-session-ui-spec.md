@@ -274,7 +274,7 @@ Start-Turn body may include:
 ~~~text
 {
   message,
-  executionIntent?,    // generic/spec-level/single Task/batch Task; exact contract TBD
+  executionIntent?,    // requested generic/spec-level/single-Task/batch work scope; exact contract TBD
   model?,
   mode?,
   effort?,
@@ -284,7 +284,7 @@ Start-Turn body may include:
 
 Important behavior:
 
-- explicit per-Turn execution intent defines deterministic Task execution;
+- explicit per-Turn execution intent scopes the work requested from the Session; workflow mutation still resolves and admits the authoritative per-Task `(change, task, step, attempt)` identities;
 - historical Session associations do not silently become execution intent;
 - capabilities decide whether Cancel/interaction controls exist;
 - command-time validation is authoritative;

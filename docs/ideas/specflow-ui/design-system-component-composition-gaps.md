@@ -6,8 +6,6 @@ status: draft
 scope: specflow
 areas:
   - ui
-  - product
-  - design-system
 tags:
   - components
   - compositions

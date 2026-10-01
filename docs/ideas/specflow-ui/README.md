@@ -6,7 +6,6 @@ status: draft
 scope: specflow
 areas:
   - ui
-  - product
   - workflow
 tags:
   - information-architecture
@@ -32,6 +31,10 @@ related:
 # SpecFlow UI product ideas
 
 This package is the working area for the product information architecture of Nevo SpecFlow UI.
+
+Like the rest of `docs/ideas/**`, this package is opt-in context. Default agent context discovery
+must not treat it as authoritative implementation guidance; load it deliberately when evaluating or
+migrating the proposals captured here.
 
 The immediate goal is not to design final screens. It is to inventory product concepts,
 relationships, human decisions, runtime state, artifacts, and navigation depth before selecting

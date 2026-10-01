@@ -4,7 +4,7 @@ type: product
 title: Specs Overview UI spec
 status: draft
 scope: specflow
-areas: [ui, product, specifications]
+areas: [ui]
 tags: [specs, overview, attention, readiness, execution]
 read_when:
   - implementing or reviewing the Specs overview

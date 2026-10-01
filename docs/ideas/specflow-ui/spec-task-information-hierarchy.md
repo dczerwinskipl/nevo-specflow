@@ -66,8 +66,9 @@ legacy lifecycle statuses.
 The inventory below uses these labels:
 
 - **Current contract** - authoritative in the new SpecFlow repository.
-- **Legacy deterministic evidence** - implemented in legacy Nevo deterministic flow and useful for
-  migration analysis, but not automatically part of the new contract.
+- **Old-repo deterministic evidence** - implemented in the deterministic flow of the old
+  `dczerwinskipl/nevo` repository and useful for migration analysis, but not automatically part of
+  the new contract.
 - **Product direction** - agreed direction for the new UI.
 - **Future candidate** - useful direction that should not block MVP.
 - **Open question** - semantics are not clear enough to infer safely.
@@ -131,7 +132,7 @@ These are product projections, not persisted status values.
 | Information | Class | Evidence | Why it matters |
 | --- | --- | --- | --- |
 | Specification title / identity | Orientation | Product direction | User must know which change is being discussed. |
-| Active vs Archive | Orientation | Legacy deterministic evidence + product direction | Determines whether this belongs to current work or history. |
+| Active vs Archive | Orientation | Old-repo deterministic evidence + product direction | Determines whether this belongs to current work or history. |
 | Current workflow step | Orientation / Context | Product direction; Task equivalent exists in legacy deterministic flow | Shows where the Spec is in its process. |
 | Semantic workflow status | Orientation | Current deterministic architecture concept; legacy implementation evidence for Tasks | More human-readable than raw step/state. |
 | Requires-human-attention projection | Requires attention | Product direction | Lets the overview act as a work queue. |
@@ -248,12 +249,12 @@ A Task summary should support scanning and selection, not become a miniature Tas
 
 | Information | Class | Evidence | Default visibility |
 | --- | --- | --- | --- |
-| Task title + id | Orientation | Legacy deterministic evidence | Always in Task row/item |
-| Semantic workflow status | Orientation | Legacy deterministic evidence | Always perceivable from the item or its containing grouping; do not repeat a badge when lane/grouping already communicates it |
+| Task title + id | Orientation | Old-repo deterministic evidence | Always in Task row/item |
+| Semantic workflow status | Orientation | Old-repo deterministic evidence | Always perceivable from the item or its containing grouping; do not repeat a badge when lane/grouping already communicates it |
 | Requires attention + reason | Requires attention | Product direction | Always when true |
 | Ready next action | Ready | Legacy action projection | Visible when relevant |
 | Active Session/agent work | Current activity | Current execution projection + product direction | Visible only when current execution proves this Task is in scope |
-| Dependency/blocker summary | Context | Legacy deterministic evidence | Visible when blocking |
+| Dependency/blocker summary | Context | Old-repo deterministic evidence | Visible when blocking |
 | Review outcome requiring owner action | Requires attention / Evidence | Legacy review artifact | Visible when relevant |
 | Completion/progress state | Orientation | Candidate derived projection | Compact |
 | linked Sessions count/list | Context | Legacy Session binding | Usually secondary information |
@@ -295,13 +296,13 @@ Candidate information:
 
 | Information | Class | Evidence |
 | --- | --- | --- |
-| Task id/title | Orientation | Legacy deterministic evidence |
+| Task id/title | Orientation | Old-repo deterministic evidence |
 | human-readable semantic status | Orientation | Legacy deterministic workflow |
 | current step | Context | Legacy deterministic workflow |
 | requires-attention reason | Requires attention | Product direction |
 | ready action | Ready | Legacy action inspection |
 | active work/current Session | Current activity | Current execution / Runtime projection |
-| blocking dependency/problem | Context | Legacy deterministic evidence |
+| blocking dependency/problem | Context | Old-repo deterministic evidence |
 | deterministic primary action | Action | Workflow/application projection |
 
 Do not present old lifecycle status, runtime step state, semantic status, and stage as four equal
@@ -321,7 +322,7 @@ Candidate:
 - relevant semantic references;
 - task document.
 
-**Legacy deterministic evidence:** Task document/file references, dependencies, and semantic-reference
+**Old-repo deterministic evidence:** Task document/file references, dependencies, and semantic-reference
 scope exist in legacy workflow.
 
 This information is **Context**, not Deep inspection.
@@ -408,7 +409,7 @@ concepts from legacy representation.
 
 ## 8.1 Basic Task properties seen by the legacy dashboard
 
-**Legacy deterministic evidence**
+**Old-repo deterministic evidence**
 
 ~~~text
 id
@@ -436,7 +437,7 @@ Migration note:
 
 ## 8.2 Workflow progress
 
-**Legacy deterministic evidence**
+**Old-repo deterministic evidence**
 
 ~~~text
 workflow_progress
@@ -464,7 +465,7 @@ The UI should generally lead with semantic meaning, not the storage representati
 
 ## 8.3 Step behavior contract
 
-**Legacy deterministic evidence**
+**Old-repo deterministic evidence**
 
 Workflow steps can declare:
 
@@ -572,7 +573,7 @@ loop consistently.
 
 ## 10.1 What legacy review artifacts prove
 
-**Legacy deterministic evidence**
+**Old-repo deterministic evidence**
 
 Legacy review flow persists current review reports under the Specification, with Task-specific review
 files. Reviews include:

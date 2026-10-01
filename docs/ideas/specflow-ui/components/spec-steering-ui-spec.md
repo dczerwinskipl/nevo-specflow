@@ -6,8 +6,6 @@ status: draft
 scope: specflow
 areas:
   - ui
-  - product
-  - specifications
 tags:
   - specs
   - steering

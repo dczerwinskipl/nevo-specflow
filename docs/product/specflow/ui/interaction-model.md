@@ -31,8 +31,10 @@ contracts are filled in with the implementation.
 - **Back follows the product hierarchy**, not raw browser history.
 - **Do not expose the internal model as navigation.** Users navigate product concepts,
   not database entities or provider payloads.
-- **A route is not automatically global navigation.** A Session or file can have a deep-linkable
-  route without earning a persistent sidebar item.
+- **A route is not automatically global navigation.** Full Session can have a stable product route
+  without earning a persistent sidebar item. Contextual inspector targets such as Task detail or
+  future file preview remain local unless a future capability explicitly promotes them to a main
+  routed surface.
 - **Preserve the current work context when possible.** Use Secondary or floating interaction for
   contextual exploration; use a main workspace route when the user explicitly promotes that context
   into their primary task.

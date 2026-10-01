@@ -84,11 +84,11 @@ Specification/Task screens additionally inherit
 
 | Screen / large surface | Responsibility | Spec |
 | --- | --- | --- |
-| Specs overview | Cross-Spec steering: attention, ready work, current work, archive entry. | Planned: specs-overview-ui-spec.md |
-| Specification workspace | One Specification: workflow meaning, high-priority state, Task collection, supporting evidence. | Planned: specification-workspace-ui-spec.md |
-| Task detail | One Task: decision state, intent, evidence, deterministic actions, related Session entry. | Planned: task-detail-ui-spec.md |
-| Full Session | Conversation/current work Primary with Context/Work/detail Secondary. | Planned: full-session-ui-spec.md |
-| Floating Session | Quick Session interaction without abandoning current Spec/Task context. | Planned: floating-session-ui-spec.md |
+| Specs overview | Cross-Spec steering: attention, ready work, current work, archive entry. | [Specs Overview UI spec](specs-overview-ui-spec.md) |
+| Specification workspace | One Specification: workflow meaning, high-priority state, Task collection, supporting evidence. | [Specification Workspace UI spec](specification-workspace-ui-spec.md) |
+| Task detail | One Task: decision state, intent, evidence, deterministic actions, related Session entry. | [Task Detail UI spec](task-detail-ui-spec.md) |
+| Full Session | Conversation/current work Primary with Context/Work/detail Secondary. | [Full Session UI spec](full-session-ui-spec.md) |
+| Floating Session | Quick Session interaction without abandoning current Spec/Task context. | [Floating Session UI spec](floating-session-ui-spec.md) |
 | Project Settings | Project configuration, AI/agent policy, workflows, repository/Git, integrations. | [Project Settings UI spec](project-settings-ui-spec.md) |
 
 Do not create a separate screen spec merely because a backend entity exists. A screen earns a spec

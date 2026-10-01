@@ -374,7 +374,13 @@ Response shape:
 
 ~~~text
 {
+  schemaVersion,
   revision,
+  generatedAt,
+  project: {
+    id,
+    name?
+  },
   sections: [
     {
       id,
@@ -387,21 +393,39 @@ Response shape:
           id,
           title?,
           description?,
+          order?,
           settings: [
             {
               key,
               label,
               description?,
+              helpRef?,
+
               valueKind,
-              value,
+              displayFormat?,
+              configuredValue?,
               effectiveValue?,
               defaultValue?,
+              valueState?,
               sourceOfValue?,
-              options?,
+              sourceRef?,
+
+              options?: [
+                { value, label, description?, disabled?, disabledReason? }
+              ],
+
+              sensitive?,
               readOnly,
               required?,
-              availability?,
-              capabilities?
+              availability?: {
+                status,
+                reason?
+              },
+              capabilities?: {
+                canInspectSource?,
+                canReset?,
+                canEdit?
+              }
             }
           ]
         }
@@ -410,6 +434,26 @@ Response shape:
   ]
 }
 ~~~
+
+Field coverage notes:
+
+- `schemaVersion` is a compatibility discriminator for the descriptor contract; it is not a visual
+  version.
+- `revision` identifies semantic catalog/effective-value state and supports targeted refresh/cache
+  validation.
+- `configuredValue`, `effectiveValue`, `defaultValue`, `valueState`, and `sourceOfValue`
+  are distinct so the UI can explain inheritance/defaulting without guessing precedence.
+- `sourceRef` points to deeper source inspection without embedding whole YAML bodies.
+- `sensitive` prevents accidental plaintext rendering; masking/redaction is application-owned, not
+  a CSS convention.
+- `availability` explains unsupported/unavailable settings without removing all evidence that a
+  capability exists.
+- `capabilities` expresses semantic operations, not component names.
+- option descriptors carry labels/reasons so the frontend does not need a second registry for
+  provider/model/plugin choices.
+- ordinary new settings using an already-supported `valueKind` should require no screen-code
+  change; a genuinely new semantic `valueKind` may require a new frontend renderer and therefore
+  is a versioned contract extension, not arbitrary backend-driven UI.
 
 Behavior:
 
@@ -735,9 +779,11 @@ Local Settings navigation remains visually subordinate to global product navigat
 ### Compact
 
 Global navigation becomes a Drawer, but Project Settings can still use its internal two-column
-section-nav + content composition while the available width remains comfortable.
+section-nav + content composition while the **Settings content container itself** remains comfortable.
 
-Do not collapse local Settings navigation merely because global navigation collapsed.
+The local Settings-navigation collapse decision must be based on its available/container width, not
+blindly coupled to the global navigation breakpoint. A compact shell can still have enough room for
+two Settings columns; a constrained embedded workspace may not.
 
 ### Narrow
 
@@ -895,7 +941,49 @@ Future editing must define:
 
 Do not infer those from the inspection UI.
 
-## 13. Component / composition map
+
+## 13. Data loading, invalidation, and Refresh
+
+This screen inherits the shared
+[Data loading, refresh, batching, and eventing](../data-loading-refresh-and-eventing.md) contract.
+
+### Loading strategy
+
+- initial request loads one coherent Settings catalog/effective-value projection;
+- raw project/local source bodies are lazy/deeper resources;
+- plugin-contributed ordinary settings arrive through the same catalog composition rather than one
+  frontend request per plugin;
+- if one plugin contribution fails and the backend can isolate it, core Settings remain usable and
+  the failed contribution is represented locally.
+
+### Refresh
+
+Project Settings has one screen-level **Refresh** action in the workspace header overflow unless
+future testing shows it deserves a visible button.
+
+Refresh invalidates/refetches:
+
+- the Settings catalog;
+- effective values/provenance;
+- current plugin/extension contribution inventory.
+
+It does **not** blindly refetch:
+
+- raw YAML/code bodies that are not open;
+- Sessions;
+- Specification runtime state;
+- unrelated repository diffs.
+
+If an open raw source has its own revision/change signal, that local detail may expose its own
+Refresh/reload behavior.
+
+Keep existing Settings visible while refresh is in flight. A refresh error should report that the
+visible data may be stale rather than replacing the entire page with an empty error state.
+
+Short polling is not justified for Settings. Prefer config/plugin change invalidation when available,
+window-focus refetch, and explicit Refresh.
+
+## 14. Component / composition map
 
 This map names responsibilities, not a mandatory file tree.
 
@@ -923,7 +1011,7 @@ This map names responsibilities, not a mandatory file tree.
 Do not create generic Nevo UI components named SettingsCard, ProviderCard, WorkflowCard, ConfigCard,
 or similar merely for this screen.
 
-## 14. Visual and token contract
+## 15. Visual and token contract
 
 This screen inherits semantic typography/colour rules from the shared design-system docs.
 
@@ -947,7 +1035,7 @@ Do not use colour merely to make every Settings category visually different.
 
 Do not use alternating Card backgrounds to create hierarchy.
 
-## 15. Local containment rules
+## 16. Local containment rules
 
 This screen deliberately uses stricter containment than many dashboard-style surfaces.
 
@@ -972,7 +1060,7 @@ Therefore:
 Any implementation that introduces a new Card on this screen should be able to state the semantic
 reason that content needs an independent boundary.
 
-## 16. Accessibility, focus, and keyboard behavior
+## 17. Accessibility, focus, and keyboard behavior
 
 - Local Settings navigation must be keyboard operable and expose the selected section semantically.
 - Switching sections moves/announces context in a way that makes the new section identity clear; do
@@ -985,7 +1073,7 @@ reason that content needs an independent boundary.
   forms an independently scrollable region.
 - Icon-only actions use accessible labels and comfortable hit targets.
 
-## 17. Data / read-model requirements
+## 18. Data / read-model requirements
 
 The screen consumes the project Settings catalog/read model described earlier. It must not maintain
 a second hard-coded inventory of settings and must not derive effective configuration or availability
@@ -1033,7 +1121,7 @@ unless the authoritative configuration actually defines them.
 - availability/configuration state;
 - supported setup/reconnect actions only when authoritative.
 
-## 18. Storybook scenarios
+## 19. Storybook scenarios
 
 The first composed Project Settings stories should use typed product view-model fixtures.
 
@@ -1059,7 +1147,7 @@ Minimum scenarios:
 
 Visual review must explicitly check that repeated rows do not drift into Card-per-item treatment.
 
-## 19. Acceptance criteria
+## 20. Acceptance criteria
 
 A composed implementation is acceptable when:
 
@@ -1078,10 +1166,14 @@ A composed implementation is acceptable when:
 12. The screen does not invent configuration precedence, provider actions, workflow mutations, or
     edit semantics that the application contract does not supply.
 13. The frontend does not own a hard-coded complete Settings inventory.
-14. Ordinary backend-provided settings/groups can appear without bespoke screen implementation.
+14. Ordinary backend-provided settings/groups using known semantic value kinds can appear without
+    bespoke screen implementation.
 15. Extension/plugin-contributed Settings remain semantic data, not backend-provided UI markup.
+16. Effective/default/configured values can be distinguished and their provenance explained.
+17. Sensitive values cannot accidentally fall through to an ordinary plaintext renderer.
+18. Refresh has one documented scope and does not invalidate unrelated product domains.
 
-## 20. Open questions / deferred
+## 21. Open questions / deferred
 
 Do not guess these during initial composition:
 

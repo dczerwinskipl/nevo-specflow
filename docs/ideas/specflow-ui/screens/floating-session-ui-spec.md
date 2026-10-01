@@ -72,8 +72,8 @@ Do not relabel execution as TASK-03.
 Open full session in the floating header navigates to Full Session. The same full-screen intent may
 also be available directly on the originating Session reference.
 
-Returning from Full Session should restore the originating Spec/Task context when navigation state can
-represent it.
+Router Back from Full Session returns to the previous routed surface. A previously open Task
+Secondary is local Workspace state and is not guaranteed to be reconstructed by the route.
 
 ## 4. Data source / read-model ownership
 
@@ -345,7 +345,7 @@ second compact-chat renderer.
 - restore minimized Session;
 - close vs minimize;
 - wide floating bounds;
-- future compact/narrow behavior once decided.
+- verify the Floating Session affordance is absent on Compact/Narrow and Session access uses Full Session.
 
 ## 18. Acceptance criteria
 

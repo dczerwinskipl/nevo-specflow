@@ -159,30 +159,31 @@ Do not auto-push Context when entering the Session.
 ~~~text
 Full Session
   Conversation
-  [Context] [Work] ...
+  [Context]
 
-tap Context
-  -> pushed Secondary
+  compact Work burst >
+  Task / Handover / artifact references >
+
+tap Context or a detail target
+  -> pushed local Secondary
   <- Back to Session
 ~~~
 
-The primary surface must therefore expose enough current state to understand what is happening
-without opening Context.
-
+The Primary must expose enough current state to understand what is happening without opening detail.
+Floating Session does not exist on Narrow.
 ### 3.4 Default does not mean permanent
 
-Context is the default Secondary entry state, not a panel the product continually forces open.
+Context is the default Secondary content on split-capable Full Session entry, not a panel the product
+continually forces open.
 
-If the user closes Secondary on a split layout:
+If the user closes Secondary:
 
-- keep it closed until the user explicitly opens Context/Work/File/detail again;
-- do not reopen Context on every new message or current-activity update.
+- keep it closed until an explicit user action reopens Context or another detail;
+- do not reopen it on new messages/current activity;
+- do not auto-switch it because Work or a human interaction arrived.
 
-If the user enters via an explicit deep link/intent for Work, File, Task detail, or another inspector
-target, that target overrides default Context.
-
----
-
+Task/Handover/Work/future File details are local inspector state created by user actions, not stable
+deep-link URL state.
 ## 4. Session Primary — human-readable work stream
 
 ### 4.1 Job of the surface

@@ -339,7 +339,7 @@ exist.
 
 ---
 
-## 6. Information hierarchy
+## 5. Information hierarchy
 
 On first scan the user should perceive:
 
@@ -357,7 +357,7 @@ Do not create a dashboard of counts merely because there is free space.
 
 ## 6. Screen anatomy
 
-### 7.1 Shared workspace
+### 6.1 Shared workspace
 
 ~~~text
 Project Settings header
@@ -376,7 +376,7 @@ Both columns belong to one Project Settings Primary surface.
 
 The workspace itself supplies the page surface. There is no enclosing Settings Card.
 
-### 7.2 Header
+### 6.2 Header
 
 Header content:
 
@@ -388,7 +388,7 @@ Header content:
 The project selector remains global navigation responsibility and should not be duplicated in the
 Settings header merely to fill space.
 
-### 7.3 Local Settings navigation
+### 6.3 Local Settings navigation
 
 Use a compact local navigation/list treatment.
 
@@ -397,7 +397,7 @@ make every row look richer.
 
 Do not render each category as a Card/tile.
 
-### 7.4 Section content
+### 6.4 Section content
 
 Default section structure:
 
@@ -626,7 +626,7 @@ default composition, not a hard-coded field inventory.
 
 ---
 
-## 10. Responsive contract
+## 9. Responsive contract
 
 ### Wide
 

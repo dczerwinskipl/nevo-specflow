@@ -84,6 +84,21 @@ Specification/Task screens additionally inherit
 [Specification and Task information hierarchy](../spec-task-information-hierarchy.md) and
 [Specification and Task screen structure](../spec-task-screen-structure.md).
 
+## API status vocabulary
+
+Every screen spec uses the same status vocabulary for required backend/application capabilities:
+
+- **existing-new** — already implemented as a product API/read model in current `nevo-specflow`;
+- **legacy-available** — implemented in legacy `dczerwinskipl/nevo` and useful as migration evidence;
+- **missing** — the required new-product capability/read model does not exist yet and the screen spec
+  must propose its minimal semantic contract.
+
+A legacy endpoint may be reused conceptually or even structurally, but it does not become the new
+product contract automatically.
+
+The current `@nevo/specflow-runtime` is still a bootstrap proof, so current screen specs may
+legitimately have no `existing-new` API yet.
+
 ## Screen ownership index
 
 | Screen / large surface | Responsibility | Spec |

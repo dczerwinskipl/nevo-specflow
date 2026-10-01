@@ -51,9 +51,12 @@ artifact/review surfaces.
 ## 3. Entry and navigation
 
 Entry points:
-- Session link from Task;
-- Session link from Specification;
-- potentially a current-execution Session shortcut.
+- conversation target from a Session reference on Task;
+- conversation target from a Session reference on Specification;
+- potentially a current-execution conversation shortcut.
+
+The same originating Session reference may expose a direct Open full session action. Floating Session
+is therefore a quick presentation, not a required navigation step before Full Session.
 
 The underlying product context remains visible.
 
@@ -66,7 +69,8 @@ Current execution: 3 Tasks
 
 Do not relabel execution as TASK-03.
 
-Open full session explicitly promotes the Session to its full workspace.
+Open full session in the floating header navigates to Full Session. The same full-screen intent may
+also be available directly on the originating Session reference.
 
 Returning from Full Session should restore the originating Spec/Task context when navigation state can
 represent it.

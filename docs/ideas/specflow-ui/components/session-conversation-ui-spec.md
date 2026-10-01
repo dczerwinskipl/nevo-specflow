@@ -76,6 +76,11 @@ SessionConversation
 Use Nevo UI primitives for Typography, MarkdownDocument, Button/IconButton, semantic status/Spinner
 where useful, MessageComposer, and Alert only for exceptional error/attention states.
 
+`MessageComposer` is the shared authoring extension point across normal Session conversation,
+Specification create-and-start, and workflow-owned Session starts. Do not fork separate prompt
+editors for those entry flows. Future authored-Markdown or richer authoring capability should land in
+the shared composer path so all Session entry points gain it consistently.
+
 Do **not** use generic Timeline as the conversation root. Conversation is a message/work stream, not
 an audit timeline.
 

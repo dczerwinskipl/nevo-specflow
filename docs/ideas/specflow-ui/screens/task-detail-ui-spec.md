@@ -211,11 +211,20 @@ Response:
         id,
         title?,
         relation: "current" | "historical" | "contextual",
+        provider?,
+        archetype?,
         agentRole?,
+        batchId?,
         taskIds[],
+        workflowStep?,
+        attempt?,
         lastActivityAt?
       }
     ],
+    sessionHistory: {
+      hasMore,
+      total?
+    },
     continuation?: {
       kind: "none" | "continue" | "remediation" | "recovery",
       reason,
@@ -248,6 +257,11 @@ Field coverage notes:
 - `evidence.sharedTaskIds[]` preserves multi-Task artifacts without cloning them as fake
   Task-specific reports.
 - `sessions[].relation` distinguishes contextual/history from actual current execution.
+- provider/archetype/batch/workflow metadata is factual orientation only; it does not prove which
+  Session completed a transition unless workflow/history evidence references that Session.
+- `sessionHistory.hasMore` supports a bounded useful list plus Show all without assuming Session
+  history is always small.
+- a future evidence/session reference may add a Turn anchor without changing Session identity.
 - `continuation.kind` makes continue/remediation/recovery mutually explicit in the projection.
 
 Behavior:
@@ -265,12 +279,13 @@ Behavior:
 2. decision/current state + human-readable reason.
 3. available deterministic action.
 4. Task intent/acceptance criteria.
-5. decision-relevant evidence.
-6. current execution / related Sessions.
+5. decision-relevant readable evidence.
+6. current execution plus several relevant Sessions/history.
 7. deep technical/history detail.
 
-Reason + evidence + action must remain close enough to make the decision understandable.
-
+Active/current Session is visually distinguishable from historical/contextual Sessions. Session
+labels use facts such as provider, archetype/role, batch/scope, step/attempt when available; they do
+not infer that an archetype alone proves completion of a review/implementation stage.
 ## 7. Pseudo-layout
 
 ~~~text
@@ -279,38 +294,36 @@ Reason + evidence + action must remain close enough to make the decision underst
 │                                      │ Review required                 [×]  │
 │ Tasks                                │                                      │
 │ TASK-01  Done                        │ Why                                  │
-│ TASK-02  Working                     │ Implementation completed             │
-│ TASK-03  Review required       >     │ Owner decision required              │
-│ TASK-04  Ready                       │                                      │
-│                                      │ Task intent                           │
-│                                      │ Goal / acceptance criteria           │
+│ TASK-02  Working                     │ Owner decision required              │
+│ TASK-03  Review required       >     │                                      │
+│ TASK-04  Ready                       │ Task intent                           │
+│                                      │ ...                                  │
 │                                      │                                      │
-│                                      │ Review                               │
-│                                      │ Verdict / owner decisions            │
-│                                      │ Required fixes / findings            │
+│                                      │ Review / Handover / Changes          │
+│                                      │ readable evidence                    │
 │                                      │                                      │
-│                                      │ Changes               [Inspect]      │
-│                                      │ Verification          [Inspect]      │
-│                                      │ Session          [Open] [Full]        │
+│                                      │ Sessions                             │
+│                                      │ ● Reviewer · batch #23       [Open]  │
+│                                      │   Implementer · earlier      [Open]  │
+│                                      │   [Show all]                          │
 │                                      │                                      │
 │                                      │ [Review / decide]                    │
 └──────────────────────────────────────┴──────────────────────────────────────┘
 ~~~
 
-No Card per section. Section rhythm comes from headings/spacing and occasional dividers.
-
+No Card per section.
 ## 8. Screen anatomy
 
 - header: Task id/title + workflow meaning + Close/Back;
-- decision state;
+- decision state and action;
 - Task intent;
-- decision evidence;
-- related execution/Sessions;
-- deep inspection;
-- action region.
+- readable decision evidence;
+- current execution;
+- related Session list with active/current emphasis and bounded history;
+- Show all when Session history exceeds the normal visible budget;
+- deep inspection.
 
-Optional evidence sections disappear when unavailable.
-
+Optional sections disappear when unavailable.
 ## 9. Responsive contract
 
 Wide/Compact:
@@ -326,28 +339,31 @@ Narrow:
 ## 10. Interaction flows
 
 ### Review
-Review-required -> inspect evidence -> deliberate Review/decide -> decision controls -> command.
+Review-required -> inspect evidence -> deliberate Review/decide -> workflow-owned decision controls.
 
 ### Ready
-Ready state -> understand what Start does -> Start -> pending feedback -> authoritative refresh.
+Ready -> understand what Start does -> Start -> authoritative validation/dispatch.
 
-### Current execution
-Current execution -> show role and batch scope -> expose conversation target plus direct Open full
-session action. Where Floating Session is supported, the conversation target may open it without
-losing Task context.
+### Current execution / Session history
+Show authoritative current execution separately from related history.
+
+Opening a Session:
+- Wide -> Floating Session for conversation access, with Full Session available;
+- Compact/Narrow -> Full Session directly.
+
+A workflow/history entry that references a Session opens that Session. Do not insert a synthetic
+"proof details" page. A future Turn anchor may scroll/open the exact completion Turn.
 
 ### Evidence
-Changes/Handover/verification/artifact/file -> replace Task Detail in the same Secondary slot (or push
-on narrow) -> Back returns to Task Detail. Evidence inspection does not create a third pane or nest
-another AppWorkspace.
+Handover/verification/artifact/change reference -> same Secondary local stack -> Back returns to Task.
+Artifacts are read targets; workflow Human Step owns any approve/reject mutation.
 
 ### Resume
 Safe settled execution + legal work remains -> Continue.
 
 ### Recovery
-Ambiguous durable operation -> Inspect recovery -> authoritative recovery action; do not label as
+Ambiguous durable operation -> Inspect recovery -> authoritative recovery action. Do not label it
 ordinary Continue.
-
 ## 11. States
 
 - ready;
@@ -458,29 +474,33 @@ The detailed decision/evidence composition is defined in
 - current single Task;
 - current batch;
 - review required;
-- Spec-level action absent from Task;
 - waiting dependency;
 - remediation available;
 - continue/resume;
 - recovery required;
 - shared review artifact;
+- several related Sessions with one active;
+- long Session history with Show all;
+- Session metadata without inferred role completion;
 - no optional evidence;
 - narrow pushed detail.
-
 ## 18. Acceptance criteria
 
 - state/reason understood before mutation;
-- evidence relevant to decision is directly reachable and returns to the same Task through the local
-  Secondary/detail stack;
-- optional evidence does not create empty boxes;
+- evidence is directly reachable and returns through the local Secondary stack;
+- artifacts/documents are readable without acquiring generic mutation buttons;
 - current execution is authoritative and batch-aware;
 - Session association is not execution proof;
+- multiple useful Session history entries are visible without flooding pathological history;
+- active/current Session is easy to find;
+- clicking a referenced Session opens that Session directly;
 - terminal Turn does not imply Task complete;
 - linear detail remains borderless-first.
-
 ## 19. Open questions
 
 - canonical Handover/artifact references;
-- initial Diff/change inspection contract;
+- exact initial change/diff inspection contract;
 - exact workflow action identifiers in new model;
-- exact review decision variants beyond approve/request changes.
+- exact review decision variants defined by configured Human Steps;
+- exact default visible Session-history count (design around a small handful, not a hard domain cap);
+- future Turn-anchor shape for workflow/history -> Session navigation.

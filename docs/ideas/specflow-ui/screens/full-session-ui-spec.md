@@ -494,6 +494,11 @@ If the user scrolled upward:
 Current required interaction may still surface a persistent attention indicator without forcibly
 changing scroll position.
 
+The detailed conversation and Work rendering contracts are defined separately in:
+
+- [Session conversation UI spec](../components/session-conversation-ui-spec.md);
+- [Session Work inspector UI spec](../components/session-work-inspector-ui-spec.md).
+
 ## 13. Component / composition map
 
 | Need | Composition |

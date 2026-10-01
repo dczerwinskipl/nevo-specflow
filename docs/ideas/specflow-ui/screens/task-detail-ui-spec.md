@@ -83,13 +83,13 @@ workflow state, or execution membership.
 
 ## 5. API availability / migration status
 
-| Need | New SpecFlow | Legacy Nevo | Direction |
+| Need | New SpecFlow | Old repo evidence | Direction |
 | --- | --- | --- | --- |
-| Task identity/status/dependencies | **missing** | **legacy-available** in \`GET /api/dashboard\`, \`.../task-statuses\`, manifest | Preserve factual metadata; replace legacy universal lifecycle semantics. |
-| Task document/body | **missing** | **legacy-available** via \`GET /api/specs/:source/:slug/content/:docId\` | Strong migration candidate. |
-| Per-action readiness/workflow projection | **missing** | **legacy-available** via \`GET /api/specs/active/:slug/actions\` | Preserve server-owned readiness and workflow projection. |
-| Human review command | **missing** | **legacy-available** via \`POST /api/specs/:slug/tasks/:taskId/workflow/human-decision\` | Preserve explicit command behavior. |
-| Related Sessions | **missing** | **legacy-available** via \`GET /api/agent-sessions?specId=...&taskId=...\` | Keep association separate from current execution. |
+| Task identity/status/dependencies | **missing** | **old-repo-available** in \`GET /api/dashboard\`, \`.../task-statuses\`, manifest | Preserve factual metadata; replace legacy universal lifecycle semantics. |
+| Task document/body | **missing** | **old-repo-available** via \`GET /api/specs/:source/:slug/content/:docId\` | Strong migration candidate. |
+| Per-action readiness/workflow projection | **missing** | **old-repo-available** via \`GET /api/specs/active/:slug/actions\` | Preserve server-owned readiness and workflow projection. |
+| Human review command | **missing** | **old-repo-available** via \`POST /api/specs/:slug/tasks/:taskId/workflow/human-decision\` | Preserve explicit command behavior. |
+| Related Sessions | **missing** | **old-repo-available** via \`GET /api/agent-sessions?specId=...&taskId=...\` | Keep association separate from current execution. |
 | Current execution membership / batch context | **missing** | partial legacy evidence only | Add authoritative current-execution projection. |
 | Handover/artifact/change/verification summary | **missing** | partial scattered legacy evidence | Add explicit references/read model; do not invent one generic Attachments bucket. |
 | Resume vs recovery | **missing** | deterministic legacy flow has behavior/evidence, not one clean Task detail DTO | Add stable application projection. |

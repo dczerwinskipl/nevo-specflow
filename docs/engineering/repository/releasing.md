@@ -41,7 +41,7 @@ Everything is a **Run workflow** in the Actions tab. To ship `stable 0.1.0`:
 - **Promotion** changes `version.json` on the protected branch **only through a normal
   PR** — it never edits `release/vX.Y` directly and never tags anything.
 - **Release** creates the Git tag + GitHub Release, and only after the branch HEAD has
-  passed `quality` + `test` + `build`.
+  passed `quality` + `verify tests` + `build`.
 - A `stable` Release also opens the PR that advances the branch to the next patch's
   `beta`, so later builds never keep reporting the shipped version.
 - Every workflow has a **validate-only** mode (leave `execute` unchecked): it runs all
@@ -156,7 +156,7 @@ calls (push a branch by plumbing, list/open a PR, request auto-merge, and — on
 | ------------- | ------------ | --------------------------------------------------------------------------- |
 | Contents      | Read & write | push the promotion / bump / advance branch; create the tag + GitHub Release |
 | Pull requests | Read & write | list the open PR, open it, request auto-merge                               |
-| Checks        | Read         | `Release` only — read the release-branch HEAD `quality`/`test`/`build` runs |
+| Checks        | Read         | `Release` only — read the release-branch HEAD `quality`/`verify tests`/`build` runs |
 | Workflows     | Read         | only if a PR ever changes a file under `.github/workflows/`                 |
 | Metadata      | Read         | mandatory for every fine-grained PAT                                        |
 
@@ -238,7 +238,7 @@ The checks, in order (all performed in both modes):
    (`git pull --ff-only` and retry); an unresolvable `origin/<branch>` fails closed.
    The release always tags the current remote protected-branch commit.
 2. branch / version-in-line / channel (**promote first** if the channel does not match);
-3. **the release-branch HEAD passed CI** — `quality`, `test` and `build` check-runs
+3. **the release-branch HEAD passed CI** — `quality`, `verify tests` and `build` check-runs
    must all be `success` on that commit (not `pr-title`, which is PR-only). A
    freshly-cut branch, a red commit, or an unreadable check-run response is refused;
 4. tag selection: `beta` / `rc` → the next number in that channel's sequence from the

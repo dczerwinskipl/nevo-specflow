@@ -82,7 +82,11 @@ export function parseRuntimeConfig(value: unknown): RuntimeConfig {
   }
 
   for (const [username, account] of Object.entries(password.accounts)) {
-    assertUserExists(users, account.userId, `auth.providers.password.accounts.${username}.userId`);
+    assertUserExists(
+      users,
+      account.userId,
+      `auth.providers.password.accounts.${username}.userId`,
+    );
   }
 
   for (const [email, userId] of Object.entries(google.allowedEmails)) {
@@ -169,8 +173,7 @@ function parsePasswordProvider(value: unknown): RuntimePasswordProviderConfig {
   onlyKeys(config, PASSWORD_KEYS, path);
 
   const accountsValue = config.accounts;
-  const accounts =
-    accountsValue === undefined ? {} : record(accountsValue, `${path}.accounts`);
+  const accounts = accountsValue === undefined ? {} : record(accountsValue, `${path}.accounts`);
   const result: Record<string, { userId: string; passwordHash: string }> = {};
 
   for (const [username, rawAccount] of Object.entries(accounts)) {
@@ -197,9 +200,7 @@ function parseGoogleProvider(value: unknown): RuntimeGoogleProviderConfig {
 
   const allowedEmailsValue = config.allowedEmails;
   const allowedEmails =
-    allowedEmailsValue === undefined
-      ? {}
-      : record(allowedEmailsValue, `${path}.allowedEmails`);
+    allowedEmailsValue === undefined ? {} : record(allowedEmailsValue, `${path}.allowedEmails`);
   const mappings: Record<string, string> = {};
 
   for (const [email, rawUserId] of Object.entries(allowedEmails)) {
@@ -209,10 +210,7 @@ function parseGoogleProvider(value: unknown): RuntimeGoogleProviderConfig {
         `${path}.allowedEmails contains an invalid email key '${email}'.`,
       );
     }
-    mappings[normalizedEmail] = nonEmptyString(
-      rawUserId,
-      `${path}.allowedEmails.${email}`,
-    );
+    mappings[normalizedEmail] = nonEmptyString(rawUserId, `${path}.allowedEmails.${email}`);
   }
 
   return {

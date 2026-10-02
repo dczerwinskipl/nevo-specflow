@@ -14,7 +14,7 @@ describe('password hashing', () => {
 
     expect(hash).toBe(
       '$scrypt$16384$8$1$MDEyMzQ1Njc4OWFiY2RlZg$' +
-        'pISlLF5dTqgEyD9vA3iN5v6iX1dpXg2wqUJWI14ckJQ',
+        'tjK03tRvEjqCcPwmgtddMkgjlXrk8U_b9rIvfeBMKCc',
     );
     await expect(verifyPassword('correct horse battery staple', hash)).resolves.toBe(true);
     await expect(verifyPassword('wrong password', hash)).resolves.toBe(false);

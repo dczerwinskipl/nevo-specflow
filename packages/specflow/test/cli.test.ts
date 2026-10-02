@@ -34,7 +34,9 @@ describe('createProgram — nevo-specflow router', () => {
 
   it('init exposes the project bootstrap command', async () => {
     const { run, out } = harness();
-    await expect(run(['init', '--help'])).rejects.toMatchObject({ code: 'commander.helpDisplayed' });
+    await expect(run(['init', '--help'])).rejects.toMatchObject({
+      code: 'commander.helpDisplayed',
+    });
     expect(out.join('\n')).toMatch(/Initialize Nevo SpecFlow configuration/i);
   });
 

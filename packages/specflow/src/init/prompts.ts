@@ -6,10 +6,7 @@ export interface PromptChoice<T extends string> {
 }
 
 export interface ProjectInitPrompter {
-  select<T extends string>(
-    message: string,
-    choices: readonly PromptChoice<T>[],
-  ): Promise<T>;
+  select<T extends string>(message: string, choices: readonly PromptChoice<T>[]): Promise<T>;
   input(message: string, defaultValue?: string): Promise<string>;
   secret(message: string): Promise<string>;
 }

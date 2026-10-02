@@ -34,12 +34,18 @@ export async function loadRuntimeConfig(
   const projectSource = runtimeSection(projectDocument, projectPath, true);
   assertProjectRuntimeConfigOwnership(projectSource);
 
-  const localExists = localPath ? await fileExists(localPath) : false;
-  const localDocument = localExists && localPath ? await readRequiredConfig(localPath) : undefined;
-  const localSource =
-    localDocument === undefined ? undefined : runtimeSection(localDocument, localPath, false);
-  if (localSource) {
-    assertLocalRuntimeConfigOwnership(localSource);
+  let localExists = false;
+  let localSource: Record<string, unknown> | undefined;
+
+  if (localPath) {
+    localExists = await fileExists(localPath);
+    if (localExists) {
+      const localDocument = await readRequiredConfig(localPath);
+      localSource = runtimeSection(localDocument, localPath, false);
+      if (localSource) {
+        assertLocalRuntimeConfigOwnership(localSource);
+      }
+    }
   }
 
   const merged = localSource ? mergeRuntimeConfigValues(projectSource, localSource) : projectSource;

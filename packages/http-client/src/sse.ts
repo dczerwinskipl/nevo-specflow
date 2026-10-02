@@ -138,54 +138,60 @@ export function createSseStream<TEvent, TParams>(
 
         options.config?.onConnected?.();
 
+        const parsedStream = response.body
+          .pipeThrough(new TextDecoderStream())
+          .pipeThrough(
+            new EventSourceParserStream({
+              maxBufferSize: MAX_BUFFER_SIZE,
+              onId: (id) => {
+                lastEventId = id;
+              },
+              onRetry: (nextRetryMs) => {
+                retryMs = nextRetryMs;
+              },
+            }),
+          );
+
+        const reader = parsedStream.getReader();
         let streamError: unknown;
         try {
-          const parsedStream = response.body
-            .pipeThrough(new TextDecoderStream())
-            .pipeThrough(
-              new EventSourceParserStream({
-                maxBufferSize: MAX_BUFFER_SIZE,
-                onId: (id) => {
-                  lastEventId = id;
-                },
-                onRetry: (nextRetryMs) => {
-                  retryMs = nextRetryMs;
-                },
-              }),
-            );
+          while (!controller.signal.aborted) {
+            const next = await readNext(reader);
 
-          const reader = parsedStream.getReader();
-          try {
-            while (!controller.signal.aborted) {
-              const { value, done } = await reader.read();
-              if (done) {
-                break;
+            if ('error' in next) {
+              if (controller.signal.aborted) {
+                return;
               }
 
-              const event: SseEvent = {
-                type: value.event || 'message',
-                data: value.data,
-                ...(value.id === undefined ? {} : { id: value.id }),
-              };
+              if (isFatalParserError(next.error)) {
+                throw new HttpClientError('SSE parser exceeded its safe buffer limit.', {
+                  kind: 'unexpected',
+                  cause: next.error,
+                });
+              }
 
-              yield options.config?.decode ? options.config.decode(event) : (event as TEvent);
+              streamError = next.error;
+              break;
             }
-          } finally {
-            reader.releaseLock();
-          }
-        } catch (error) {
-          if (controller.signal.aborted) {
-            return;
-          }
 
-          if (isFatalParserError(error)) {
-            throw new HttpClientError('SSE parser exceeded its safe buffer limit.', {
-              kind: 'unexpected',
-              cause: error,
-            });
-          }
+            if (next.result.done) {
+              break;
+            }
 
-          streamError = error;
+            const value = next.result.value;
+            const event: SseEvent = {
+              type: value.event || 'message',
+              data: value.data,
+              ...(value.id === undefined ? {} : { id: value.id }),
+            };
+
+            const decoded = options.config?.decode
+              ? options.config.decode(event)
+              : (event as TEvent);
+            yield decoded;
+          }
+        } finally {
+          reader.releaseLock();
         }
 
         if (controller.signal.aborted) {
@@ -208,6 +214,16 @@ export function createSseStream<TEvent, TParams>(
     });
 
     return waitForDelay(retryMs, controller.signal);
+  }
+}
+
+async function readNext<T>(
+  reader: ReadableStreamDefaultReader<T>,
+): Promise<{ result: ReadableStreamReadResult<T> } | { error: unknown }> {
+  try {
+    return { result: await reader.read() };
+  } catch (error) {
+    return { error };
   }
 }
 

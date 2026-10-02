@@ -32,6 +32,13 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup
 
+      - name: Temporary formatter diagnostic
+        shell: bash
+        run: |
+          pnpm exec prettier --write packages/specflow-runtime/test/config/runtime-config.test.ts
+          git diff -- packages/specflow-runtime/test/config/runtime-config.test.ts
+          exit 1
+
       # The same canonical script contributors run locally: format:check, lint,
       # docs validation/index freshness, and the version.json transition gate.
       - name: Quality gate

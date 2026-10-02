@@ -1,9 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type RawServerBase } from 'fastify';
 
 import { loadRuntimeConfig, type LoadRuntimeConfigOptions } from './config/index.js';
+import type { RuntimeConfig } from './config/types.js';
 import {
   configureRuntimeApp,
   RUNTIME_FASTIFY_OPTIONS,
@@ -21,10 +22,13 @@ export interface RuntimeHandle {
 
 export async function startRuntime(options: RuntimeStartOptions = {}): Promise<RuntimeHandle> {
   const loaded = await loadRuntimeConfig(options);
-  const app = await createListeningApp(loaded.config, options.cwd ?? process.cwd());
+  const app = await createListeningApp(
+    loaded.config,
+    options.cwd ?? process.cwd(),
+    options.dependencies,
+  );
 
   try {
-    await configureRuntimeApp(app, loaded.config, options.dependencies);
     const address = await app.listen({
       host: loaded.config.server.host,
       port: loaded.config.server.port,
@@ -40,11 +44,12 @@ export async function startRuntime(options: RuntimeStartOptions = {}): Promise<R
 }
 
 async function createListeningApp(
-  config: Awaited<ReturnType<typeof loadRuntimeConfig>>['config'],
+  config: RuntimeConfig,
   cwd: string,
-): Promise<FastifyInstance> {
+  dependencies: RuntimeAppDependencies | undefined,
+) {
   if (!config.server.tls.enabled) {
-    return Fastify(RUNTIME_FASTIFY_OPTIONS);
+    return configureOrClose(Fastify(RUNTIME_FASTIFY_OPTIONS), config, dependencies);
   }
 
   const certFile = config.server.tls.certFile;
@@ -58,9 +63,27 @@ async function createListeningApp(
     readFile(resolve(cwd, keyFile)),
   ]);
 
-  return Fastify({
-    ...RUNTIME_FASTIFY_OPTIONS,
-    http2: true,
-    https: { cert, key, allowHTTP1: true },
-  }) as unknown as FastifyInstance;
+  return configureOrClose(
+    Fastify({
+      ...RUNTIME_FASTIFY_OPTIONS,
+      http2: true,
+      https: { cert, key, allowHTTP1: true },
+    }),
+    config,
+    dependencies,
+  );
+}
+
+async function configureOrClose<RawServer extends RawServerBase>(
+  app: FastifyInstance<RawServer>,
+  config: RuntimeConfig,
+  dependencies: RuntimeAppDependencies | undefined,
+): Promise<FastifyInstance<RawServer>> {
+  try {
+    await configureRuntimeApp(app, config, dependencies);
+    return app;
+  } catch (error) {
+    await app.close();
+    throw error;
+  }
 }

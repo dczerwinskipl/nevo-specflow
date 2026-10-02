@@ -6,10 +6,9 @@ import {
   randomNonce,
   randomPKCECodeVerifier,
   randomState,
-  type Configuration,
 } from 'openid-client';
 
-import type { RuntimeOidcProviderConfig } from '../config/types.js';
+import type { RuntimeOidcProviderConfig } from './config.js';
 import type { StoredOidcTransaction } from './session-store.js';
 
 export interface OidcIdentity {
@@ -35,11 +34,9 @@ export function createOidcClient(provider: RuntimeOidcProviderConfig): OidcClien
     throw new Error('OIDC is not fully configured.');
   }
 
-  let configuration: Promise<Configuration> | undefined;
-  const getConfiguration = (): Promise<Configuration> => {
-    configuration ??= discovery(new URL(issuer), clientId, clientSecret);
-    return configuration;
-  };
+  const getConfiguration = createRetryableOidcDiscovery(() =>
+    discovery(new URL(issuer), clientId, clientSecret),
+  );
 
   return {
     async start(redirectUri) {
@@ -80,6 +77,31 @@ export function createOidcClient(provider: RuntimeOidcProviderConfig): OidcClien
 
       return { subject, email };
     },
+  };
+}
+
+export function createRetryableOidcDiscovery<T>(discover: () => Promise<T>): () => Promise<T> {
+  let resolved: { readonly value: T } | undefined;
+  let pending: Promise<T> | undefined;
+
+  return async () => {
+    if (resolved) {
+      return resolved.value;
+    }
+    if (pending) {
+      return pending;
+    }
+
+    pending = discover()
+      .then((value) => {
+        resolved = { value };
+        return value;
+      })
+      .finally(() => {
+        pending = undefined;
+      });
+
+    return pending;
   };
 }
 

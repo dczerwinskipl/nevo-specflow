@@ -1,36 +1,42 @@
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import type { FastifyInstance, FastifyReply } from 'fastify';
+import type { FastifyInstance, RawServerBase } from 'fastify';
 
-import type { RuntimeConfig } from '../config/types.js';
+import type { RuntimeAuthConfig } from './config.js';
 import {
-  type AuthErrorCode,
   type AuthErrorResponse,
   AuthErrorSchema,
   AuthSessionSchema,
   PasswordLoginBodySchema,
 } from './contracts.js';
-import { createOidcClient, type OidcClient, normalizeEmail } from './oidc.js';
-import { authenticatePassword } from './password-auth.js';
+import { createOidcClient, type OidcClient } from './oidc.js';
+import { completeOidcLogin, startOidcLogin } from './oidc-login.js';
+import { loginWithPassword } from './password-login.js';
+import { getAuthSession, logoutAuthSession } from './session-access.js';
 import {
   AUTH_SESSION_TTL_MS,
   OIDC_TRANSACTION_TTL_MS,
   InMemoryAuthStore,
 } from './session-store.js';
-import { authenticatedSession, unauthenticatedSession } from './session.js';
 
 const SESSION_COOKIE = 'nevo_session';
 const OIDC_COOKIE = 'nevo_oidc';
 const OIDC_CALLBACK_PATH = '/api/auth/oidc/callback';
 const PASSWORD_LOGIN_BODY_LIMIT = 4_096;
 
+export interface AuthFeatureConfig {
+  readonly auth: RuntimeAuthConfig;
+  readonly publicOrigin?: string;
+  readonly secureCookies: boolean;
+}
+
 export interface AuthFeatureDependencies {
   readonly store?: InMemoryAuthStore;
   readonly oidc?: OidcClient;
 }
 
-export function registerAuthFeature(
-  app: FastifyInstance,
-  config: RuntimeConfig,
+export function registerAuthFeature<RawServer extends RawServerBase>(
+  app: FastifyInstance<RawServer>,
+  config: AuthFeatureConfig,
   dependencies: AuthFeatureDependencies = {},
 ): void {
   const routes = app.withTypeProvider<TypeBoxTypeProvider>();
@@ -38,7 +44,7 @@ export function registerAuthFeature(
   const oidc =
     dependencies.oidc ??
     (config.auth.providers.oidc.enabled ? createOidcClient(config.auth.providers.oidc) : undefined);
-  const cookieOptions = authCookieOptions(config);
+  const cookieOptions = authCookieOptions(config.secureCookies);
 
   routes.get(
     '/api/auth/session',
@@ -49,11 +55,7 @@ export function registerAuthFeature(
         },
       },
     },
-    (request) => {
-      const stored = store.getSession(request.cookies[SESSION_COOKIE]);
-      if (!stored) return unauthenticatedSession(config.auth);
-      return authenticatedSession(config.auth, stored.userId, stored.provider);
-    },
+    (request) => getAuthSession(config.auth, store, request.cookies[SESSION_COOKIE]),
   );
 
   routes.post(
@@ -70,24 +72,24 @@ export function registerAuthFeature(
       },
     },
     async (request, reply) => {
-      if (!config.auth.providers.password.enabled) {
-        return authError(reply, 404, 'provider_unavailable');
-      }
-
-      const user = await authenticatePassword(
+      const result = await loginWithPassword(
         config.auth,
+        store,
+        request.cookies[SESSION_COOKIE],
         request.body.username,
         request.body.password,
       );
-      if (!user) return authError(reply, 401, 'invalid_credentials');
 
-      store.deleteSession(request.cookies[SESSION_COOKIE]);
-      const sessionId = store.createSession({ userId: user.id, provider: 'password' });
-      reply.setCookie(SESSION_COOKIE, sessionId, {
+      if (!result.ok) {
+        reply.code(result.error === 'invalid_credentials' ? 401 : 404);
+        return authError(result.error);
+      }
+
+      reply.setCookie(SESSION_COOKIE, result.sessionId, {
         ...cookieOptions,
         maxAge: Math.floor(AUTH_SESSION_TTL_MS / 1000),
       });
-      return authenticatedSession(config.auth, user.id, 'password');
+      return result.session;
     },
   );
 
@@ -101,18 +103,17 @@ export function registerAuthFeature(
       },
     },
     async (_request, reply) => {
-      if (!config.auth.providers.oidc.enabled || !oidc) {
-        return authError(reply, 404, 'provider_unavailable');
+      const result = await startOidcLogin(config.auth, store, oidc, oidcCallbackUrl(config));
+      if (!result.ok) {
+        reply.code(404);
+        return authError(result.error);
       }
 
-      const redirectUri = oidcCallbackUrl(config);
-      const started = await oidc.start(redirectUri);
-      const transactionId = store.createOidcTransaction(started.transaction);
-      reply.setCookie(OIDC_COOKIE, transactionId, {
+      reply.setCookie(OIDC_COOKIE, result.transactionId, {
         ...cookieOptions,
         maxAge: Math.floor(OIDC_TRANSACTION_TTL_MS / 1000),
       });
-      return reply.redirect(started.authorizationUrl.toString());
+      return reply.redirect(result.authorizationUrl.toString());
     },
   );
 
@@ -129,52 +130,66 @@ export function registerAuthFeature(
       },
     },
     async (request, reply) => {
-      if (!config.auth.providers.oidc.enabled || !oidc) {
-        return authError(reply, 404, 'provider_unavailable');
+      const callbackUrl = new URL(request.url, requirePublicOrigin(config));
+      const result = await completeOidcLogin(
+        config.auth,
+        store,
+        oidc,
+        request.cookies[OIDC_COOKIE],
+        request.cookies[SESSION_COOKIE],
+        callbackUrl,
+      );
+
+      if (!result.ok) {
+        if (result.error === 'provider_unavailable') {
+          reply.code(404);
+          return authError(result.error);
+        }
+
+        reply.clearCookie(OIDC_COOKIE, cookieOptions);
+        reply.code(oidcErrorStatus(result.error));
+        return authError(result.error);
       }
 
-      const transaction = store.consumeOidcTransaction(request.cookies[OIDC_COOKIE]);
       reply.clearCookie(OIDC_COOKIE, cookieOptions);
-      if (!transaction) return authError(reply, 400, 'invalid_oidc_transaction');
-
-      let identity;
-      try {
-        const callbackUrl = new URL(request.url, config.server.publicOrigin);
-        identity = await oidc.complete(callbackUrl, transaction);
-      } catch {
-        return authError(reply, 401, 'oidc_authentication_failed');
-      }
-
-      const userId = config.auth.providers.oidc.allowedEmails[normalizeEmail(identity.email)];
-      if (!userId) return authError(reply, 403, 'identity_not_allowed');
-
-      store.deleteSession(request.cookies[SESSION_COOKIE]);
-      const sessionId = store.createSession({
-        userId,
-        provider: 'oidc',
-        providerSubject: identity.subject,
-      });
-      reply.setCookie(SESSION_COOKIE, sessionId, {
+      reply.setCookie(SESSION_COOKIE, result.sessionId, {
         ...cookieOptions,
         maxAge: Math.floor(AUTH_SESSION_TTL_MS / 1000),
       });
-      return reply.redirect(new URL('/', config.server.publicOrigin).toString());
+      return reply.redirect(new URL('/', requirePublicOrigin(config)).toString());
     },
   );
 
   routes.post('/api/auth/logout', (request, reply) => {
-    store.deleteSession(request.cookies[SESSION_COOKIE]);
+    logoutAuthSession(store, request.cookies[SESSION_COOKIE]);
     reply.clearCookie(SESSION_COOKIE, cookieOptions);
     reply.clearCookie(OIDC_COOKIE, cookieOptions);
     return reply.code(204).send();
   });
 }
 
-function oidcCallbackUrl(config: RuntimeConfig): string {
-  if (!config.server.publicOrigin) {
+function oidcCallbackUrl(config: AuthFeatureConfig): string {
+  return new URL(OIDC_CALLBACK_PATH, `${requirePublicOrigin(config)}/`).toString();
+}
+
+function requirePublicOrigin(config: AuthFeatureConfig): string {
+  if (!config.publicOrigin) {
     throw new Error('OIDC requires server.publicOrigin.');
   }
-  return new URL(OIDC_CALLBACK_PATH, `${config.server.publicOrigin}/`).toString();
+  return config.publicOrigin;
+}
+
+function oidcErrorStatus(
+  error: 'invalid_oidc_transaction' | 'oidc_authentication_failed' | 'identity_not_allowed',
+): 400 | 401 | 403 {
+  switch (error) {
+    case 'invalid_oidc_transaction':
+      return 400;
+    case 'oidc_authentication_failed':
+      return 401;
+    case 'identity_not_allowed':
+      return 403;
+  }
 }
 
 interface AuthCookieOptions {
@@ -184,12 +199,7 @@ interface AuthCookieOptions {
   readonly secure: boolean;
 }
 
-function authCookieOptions(config: RuntimeConfig): AuthCookieOptions {
-  const secure =
-    config.server.tls.enabled ||
-    (config.server.publicOrigin !== undefined &&
-      new URL(config.server.publicOrigin).protocol === 'https:');
-
+function authCookieOptions(secure: boolean): AuthCookieOptions {
   return {
     path: '/',
     httpOnly: true,
@@ -198,11 +208,6 @@ function authCookieOptions(config: RuntimeConfig): AuthCookieOptions {
   };
 }
 
-function authError(
-  reply: FastifyReply,
-  statusCode: 400 | 401 | 403 | 404,
-  code: AuthErrorCode,
-): AuthErrorResponse {
-  reply.code(statusCode);
-  return { error: code };
+function authError(error: AuthErrorResponse['error']): AuthErrorResponse {
+  return { error };
 }

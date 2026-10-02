@@ -230,7 +230,9 @@ describe('authentication HTTP API', () => {
       },
     };
 
-    const app = await createRuntimeApp(oidcConfig({ 'demo@example.com': 'demo-user' }), { oidc });
+    const app = await createRuntimeApp(oidcConfig({ 'demo@example.com': 'demo-user' }), {
+      auth: { oidc },
+    });
     try {
       const login = await app.inject({ method: 'GET', url: '/api/auth/oidc/login' });
       expect(login.statusCode).toBe(302);
@@ -263,7 +265,7 @@ describe('authentication HTTP API', () => {
     }
   });
 
-  it('rejects a OIDC identity that is not allow-listed', async () => {
+  it('rejects an OIDC identity that is not allow-listed', async () => {
     const oidc: OidcClient = {
       start() {
         return Promise.resolve({
@@ -276,7 +278,7 @@ describe('authentication HTTP API', () => {
       },
     };
     const app = await createRuntimeApp(oidcConfig({ 'demo@example.com': 'demo-user' }), {
-      oidc,
+      auth: { oidc },
     });
     try {
       const login = await app.inject({ method: 'GET', url: '/api/auth/oidc/login' });

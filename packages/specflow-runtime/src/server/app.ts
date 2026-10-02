@@ -1,10 +1,16 @@
 import cookie from '@fastify/cookie';
-import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
+import Fastify, {
+  type FastifyInstance,
+  type FastifyServerOptions,
+  type RawServerBase,
+} from 'fastify';
 
-import { registerAuthFeature, type AuthFeatureDependencies } from '../auth/routes.js';
+import { registerAuthFeature, type AuthFeatureDependencies } from '../auth/index.js';
 import type { RuntimeConfig } from '../config/types.js';
 
-export type RuntimeAppDependencies = AuthFeatureDependencies;
+export interface RuntimeAppDependencies {
+  readonly auth?: AuthFeatureDependencies;
+}
 
 export const RUNTIME_FASTIFY_OPTIONS = {
   logger: false,
@@ -25,11 +31,22 @@ export async function createRuntimeApp(
   return app;
 }
 
-export async function configureRuntimeApp(
-  app: FastifyInstance,
+export async function configureRuntimeApp<RawServer extends RawServerBase>(
+  app: FastifyInstance<RawServer>,
   config: RuntimeConfig,
   dependencies: RuntimeAppDependencies = {},
 ): Promise<void> {
   await app.register(cookie);
-  registerAuthFeature(app, config, dependencies);
+  registerAuthFeature(
+    app,
+    {
+      auth: config.auth,
+      ...(config.server.publicOrigin ? { publicOrigin: config.server.publicOrigin } : {}),
+      secureCookies:
+        config.server.tls.enabled ||
+        (config.server.publicOrigin !== undefined &&
+          new URL(config.server.publicOrigin).protocol === 'https:'),
+    },
+    dependencies.auth,
+  );
 }

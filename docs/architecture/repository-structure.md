@@ -55,8 +55,8 @@ top-level commands. Each capability vertical owns its own command: `@nevo/specfl
 adapter at `./cli` (`createStartCommand`), and is bundled into `@nevo/specflow` at
 pack time, so a user installs one artifact with no registry
 ([ADR 0006](decisions/0006-product-ships-as-a-single-bundled-artifact.md),
-[product packaging](../engineering/repository/product-packaging.md)). `start` is a Runtime bootstrap
-proof only — it does not start the real Runtime or UI yet.
+[product packaging](../engineering/repository/product-packaging.md)). `start` starts the real Runtime HTTP server. UI hosting and most product capabilities are still
+migrated separately and are not implied by the Runtime server foundation.
 
 ## Task graph (Turborepo)
 

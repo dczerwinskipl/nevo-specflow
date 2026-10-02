@@ -24,15 +24,29 @@ export const AuthUserSchema = Type.Object(
 
 export type AuthUserContract = Static<typeof AuthUserSchema>;
 
-export const AuthSessionSchema = Type.Object(
+const AuthenticatedSessionSchema = Type.Object(
   {
-    authenticated: Type.Boolean(),
-    user: Type.Optional(AuthUserSchema),
-    provider: Type.Optional(AuthProviderSchema),
+    authenticated: Type.Literal(true),
+    user: AuthUserSchema,
+    provider: AuthProviderSchema,
     availableProviders: Type.Array(AuthProviderSchema),
   },
   { additionalProperties: false },
 );
+
+const UnauthenticatedSessionSchema = Type.Object(
+  {
+    authenticated: Type.Literal(false),
+    user: Type.Optional(AuthUserSchema),
+    availableProviders: Type.Array(AuthProviderSchema),
+  },
+  { additionalProperties: false },
+);
+
+export const AuthSessionSchema = Type.Union([
+  AuthenticatedSessionSchema,
+  UnauthenticatedSessionSchema,
+]);
 
 export type AuthSessionResponse = Static<typeof AuthSessionSchema>;
 

@@ -6,7 +6,7 @@ import {
   configuredAuthProviders,
   unauthenticatedSession,
 } from '../../src/auth/session.js';
-import type { RuntimeAuthConfig } from '../../src/config/types.js';
+import type { RuntimeAuthConfig } from '../../src/auth/config.js';
 
 const auth: RuntimeAuthConfig = {
   mode: 'required',

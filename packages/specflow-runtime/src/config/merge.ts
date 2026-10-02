@@ -1,7 +1,6 @@
-const REPLACE_PATHS = new Set([
-  'auth.providers.password.accounts',
-  'auth.providers.oidc.allowedEmails',
-]);
+import { AUTH_CONFIG_REPLACE_PATHS } from '../auth/config.js';
+
+const REPLACE_PATHS = new Set<string>(AUTH_CONFIG_REPLACE_PATHS);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -10,8 +9,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /**
  * Applies workstation-local overrides to project configuration.
  *
- * Objects merge recursively and scalar values replace the project value. Security-sensitive
- * credential/access maps are replaced in full so removing a local entry also revokes it.
+ * Objects merge recursively and scalar values replace the project value. Feature-owned
+ * security-sensitive maps are composed here as replacement paths so removing a local
+ * entry also revokes it.
  */
 export function mergeRuntimeConfigValues(projectValue: unknown, localValue: unknown): unknown {
   return mergeValue(projectValue, localValue, []);

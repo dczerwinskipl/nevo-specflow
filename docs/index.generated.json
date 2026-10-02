@@ -2455,7 +2455,7 @@
         "describing the product CLI to a user or in product copy",
         "planning a new nevo-specflow command"
       ],
-      "summary": "The currently-implemented public surface of the nevo-specflow CLI — --help, --version and the runtime bootstrap command — and an explicit statement that no other command (init, status, workflow, install, update) exists yet.",
+      "summary": "The currently-implemented public surface of the nevo-specflow CLI — --help, --version and the Runtime server command — and an explicit statement that no other command (init, status, workflow, install, update) exists yet.",
       "related": [
         "docs.product-specflow-cli-readme",
         "engineering.cli.architecture",

@@ -4,9 +4,12 @@ import { resolve } from 'node:path';
 
 import { parse } from 'yaml';
 
+import { assertNoProjectAuthSecrets } from '../auth/config.js';
+import { RuntimeConfigError } from './error.js';
 import { mergeRuntimeConfigValues } from './merge.js';
-import { parseRuntimeConfig, RuntimeConfigError } from './parse.js';
+import { parseRuntimeConfig } from './parse.js';
 import type { LoadedRuntimeConfig } from './types.js';
+import { childRecord, isRecord } from './value.js';
 
 export const DEFAULT_PROJECT_CONFIG_PATH = 'nevo-specflow.yaml';
 export const DEFAULT_LOCAL_CONFIG_PATH = '.nevo-local/nevo-specflow.yaml';
@@ -65,45 +68,7 @@ function assertNoProjectSecrets(value: unknown): void {
     return;
   }
 
-  const auth = childRecord(value, 'auth');
-  const providers = childRecord(auth, 'providers');
-  const oidc = childRecord(providers, 'oidc');
-
-  if (oidc && Object.hasOwn(oidc, 'clientSecret')) {
-    throw new RuntimeConfigError(
-      'auth.providers.oidc.clientSecret must be configured only in the local SpecFlow config.',
-    );
-  }
-
-  const password = childRecord(providers, 'password');
-  const accounts = childRecord(password, 'accounts');
-  if (!accounts) {
-    return;
-  }
-
-  for (const [username, rawAccount] of Object.entries(accounts)) {
-    if (isRecord(rawAccount) && Object.hasOwn(rawAccount, 'passwordHash')) {
-      throw new RuntimeConfigError(
-        `auth.providers.password.accounts.${username}.passwordHash must be configured only in the local SpecFlow config.`,
-      );
-    }
-  }
-}
-
-function childRecord(
-  value: Record<string, unknown> | undefined,
-  key: string,
-): Record<string, unknown> | undefined {
-  if (!value) {
-    return undefined;
-  }
-
-  const child = value[key];
-  return isRecord(child) ? child : undefined;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  assertNoProjectAuthSecrets(childRecord(value, 'auth'));
 }
 
 async function fileExists(path: string): Promise<boolean> {

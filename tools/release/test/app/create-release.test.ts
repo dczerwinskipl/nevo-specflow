@@ -55,7 +55,7 @@ describe('executeRelease — validate-only parity + §2 local/remote HEAD', () =
   it('CI not green on HEAD is refused in validate-only AND execute', async () => {
     github.state.checkRuns = [
       { name: 'quality', status: 'completed', conclusion: 'success', id: 1 },
-      { name: 'test', status: 'completed', conclusion: 'failure', id: 2 },
+      { name: 'verify tests', status: 'completed', conclusion: 'failure', id: 2 },
       { name: 'build', status: 'completed', conclusion: 'success', id: 3 },
     ];
     await expect(run('beta', false)).rejects.toBeInstanceOf(InconsistentStateError);

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { hashPassword, isSupportedPasswordHash, verifyPassword } from '../../src/auth/password.js';
+import {
+  hashPassword,
+  isSupportedPasswordHash,
+  verifyPassword,
+} from '../../src/auth/password.js';
 
 const SUPPORTED_HASH =
   '$scrypt$16384$8$1$MDEyMzQ1Njc4OWFiY2RlZg$' +
@@ -19,10 +23,10 @@ describe('password hashing', () => {
   });
 
   it.each([
-    ['$scrypt$32768$8$1', 'cost'],
-    ['$scrypt$16384$16$1', 'block size'],
-    ['$scrypt$16384$8$2', 'parallelization'],
-  ])('rejects a hash with changed scrypt %s parameters', (prefix) => {
+    '$scrypt$32768$8$1',
+    '$scrypt$16384$16$1',
+    '$scrypt$16384$8$2',
+  ])('rejects changed scrypt parameters: %s', (prefix) => {
     expect(isSupportedPasswordHash(SUPPORTED_HASH.replace('$scrypt$16384$8$1', prefix))).toBe(
       false,
     );

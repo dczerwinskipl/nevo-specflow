@@ -1,6 +1,6 @@
 ---
 id: ideas.authorization.foundation
-type: idea
+type: architecture
 title: Authorization capabilities foundation
 status: current
 scope: shared

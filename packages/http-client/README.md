@@ -2,180 +2,243 @@
 
 Product-neutral HTTP client infrastructure for Nevo applications.
 
-The package intentionally keeps the request/response API familiar to Axios users. Axios is the request/response transport underneath, so common calls keep the expected shape:
+The package is built on **Axios** for ordinary request/response HTTP. Its public request API is intentionally Axios-like: `get`, `post`, `put`, `patch`, `delete`, familiar generic response typing, per-request headers/params/signals, and a raw `axios` escape hatch.
+
+That similarity is deliberate. Developers who already know Axios should not need to learn a new HTTP abstraction just to use Nevo libraries. `@nevo/http-client` keeps the familiar request model and adds the pieces we need consistently across Nevo applications:
+
+- shared credential providers for cookies, bearer tokens, anonymous access, and custom application-owned auth;
+- safe client defaults such as bounded request timeouts and absolute-URL protection when a `baseURL` is configured;
+- normalized transport errors;
+- Server-Sent Events (SSE) with the same base URL, headers, credentials, params, and cancellation model;
+- SSE reconnect, `Last-Event-ID`, server-provided `retry:`, and domain-event decoding.
+
+The package does **not** try to replace Axios with a new general-purpose request library, and it does not implement authentication protocols, token storage, refresh coordination, OIDC/PKCE, password login, React state, or UI.
+
+Axios owns request/response transport. SSE uses browser `fetch` plus `eventsource-parser` for protocol framing because Axios is not the right abstraction for a long-lived browser event stream.
+
+## Basic usage
+
+Create one client and reuse it for ordinary HTTP requests:
 
 ```ts
-await client.get('/sessions', { params: { status: 'active' } });
-await client.post('/sessions', { name: 'New session' });
-await client.patch('/sessions/123', { name: 'Renamed session' });
-```
+import { createHttpClient } from '@nevo/http-client';
 
-This is not a replacement implementation of Axios and it is not meant to invent another HTTP vocabulary. The package adds the Nevo-level behavior we want to share across applications:
-
-- one configuration for request/response HTTP and Server-Sent Events (SSE);
-- transport-neutral credential providers;
-- normalized request/response transport errors;
-- safer `baseURL` handling for credential-bearing clients;
-- SSE streaming with the same URL, headers, query params, credentials, and cancellation model;
-- an explicit `client.axios` escape hatch when an application needs Axios-specific behavior.
-
-Axios owns ordinary request/response transport. SSE uses browser `fetch` plus `eventsource-parser` for protocol framing because a long-lived event stream has different lifecycle semantics from an Axios request. The public API hides that transport difference where the semantics can be shared.
-
-## Quick start
-
-```ts
-import { createHttpClient, cookieCredentials } from '@nevo/http-client';
-
-const client = createHttpClient({
+const api = createHttpClient({
   baseURL: '/api',
-  credentials: cookieCredentials(),
+  timeoutMs: 10_000,
 });
 
-const session = await client.get<Session>('/sessions/123');
+interface SpecSummary {
+  id: string;
+  title: string;
+}
 
-const created = await client.post<Session, CreateSessionRequest>('/sessions', {
-  name: 'Implementation batch',
-});
+const specs = await api.get<SpecSummary[]>('/specs');
 ```
 
-A configured `baseURL` disables absolute request URLs by default so credentials cannot accidentally escape the intended API boundary. Consumers can opt in explicitly with `allowAbsoluteUrls` when mixed origins are genuinely required.
-
-## Request configuration
-
-Request helpers expose a small transport-neutral configuration surface instead of leaking `AxiosRequestConfig` into application code:
+The common helpers follow the shape developers expect from Axios:
 
 ```ts
-const sessions = await client.get<Session[], SessionQuery>('/sessions', {
+interface CreateSpecRequest {
+  title: string;
+}
+
+interface Spec {
+  id: string;
+  title: string;
+}
+
+const created = await api.post<Spec, CreateSpecRequest>(
+  '/specs',
+  { title: 'SSE transport' },
+  {
+    headers: {
+      'X-Request-Source': 'specflow-ui',
+    },
+  },
+);
+
+const filtered = await api.get<Spec[], { status: string }>('/specs', {
   params: {
     status: 'active',
   },
-  headers: {
-    'X-Correlation-Id': correlationId,
-  },
-  signal: controller.signal,
-  timeoutMs: 5_000,
 });
 ```
 
-The familiar Axios-style method signatures are deliberate, but `@nevo/http-client` is not drop-in compatible with every Axios option. The shared API stays limited to options we want to support consistently. Advanced Axios integrations can use the underlying instance explicitly:
+For less common cases, `request()` exposes the same package-owned request model:
 
 ```ts
-client.axios.interceptors.response.use(...);
+const spec = await api.request<Spec, CreateSpecRequest>({
+  method: 'post',
+  url: '/specs',
+  body: {
+    title: 'HTTP client',
+  },
+});
 ```
+
+The public config is intentionally small and transport-neutral rather than exposing all of `AxiosRequestConfig`. If an application genuinely needs an Axios-specific feature, the configured instance remains available explicitly:
+
+```ts
+const response = await api.axios.request({
+  method: 'HEAD',
+  url: '/health',
+  validateStatus: (status) => status < 500,
+});
+```
+
+Use that escape hatch for exceptional Axios-specific behavior rather than making every Nevo consumer depend on Axios configuration details.
 
 ## Credentials
 
-Authentication protocol and authentication state remain application-owned. The client only asks for credentials when it is about to make a request or open/reopen an SSE connection.
+Applications compose authentication outside this package and supply only the credentials needed by the transport.
 
-Available helpers:
-
-- `anonymousCredentials()` for unauthenticated or trusted-local access;
-- `cookieCredentials()` for browser sessions backed by cookies;
-- `bearerTokenCredentials(getAccessToken)` for application-owned bearer-token flows;
-- `customCredentials(resolve)` for provider-specific or future mechanisms.
-
-Cookie-backed client:
+### Cookie-backed browser session
 
 ```ts
-const client = createHttpClient({
+import { cookieCredentials, createHttpClient } from '@nevo/http-client';
+
+const api = createHttpClient({
   baseURL: '/api',
   credentials: cookieCredentials(),
 });
+
+const me = await api.get<{ id: string; name: string }>('/me');
 ```
 
-Bearer-token client:
+For request/response calls this maps to Axios cookie credentials. For SSE it maps to the corresponding browser `fetch` credentials mode.
+
+### Bearer token owned by the application
 
 ```ts
-const client = createHttpClient({
+import { bearerTokenCredentials, createHttpClient } from '@nevo/http-client';
+
+const api = createHttpClient({
   baseURL: 'https://api.example.com',
-  credentials: bearerTokenCredentials(() => auth.getAccessToken()),
+  credentials: bearerTokenCredentials(async () => {
+    return authSession.getAccessToken();
+  }),
 });
 ```
 
-The bearer helper resolves the token for every request and every SSE reconnect and never persists it. Refresh or re-authentication remains the responsibility of the authentication library or application that owns the flow. Errors thrown by those application-owned flows are preserved rather than converted into transport errors.
+The token callback is evaluated for **every request and every SSE reconnect**. The client does not persist the token. Refresh or re-authentication remains the responsibility of the authentication library or application that owns the flow.
 
-The package deliberately does **not** implement authentication protocols, token storage, refresh coordination, OIDC/PKCE, password login, React state, or UI.
+Errors thrown by those application-owned flows are preserved rather than converted into transport errors.
+
+### Anonymous or custom credentials
+
+```ts
+import {
+  anonymousCredentials,
+  createHttpClient,
+  customCredentials,
+} from '@nevo/http-client';
+
+const localApi = createHttpClient({
+  baseURL: '/api',
+  credentials: anonymousCredentials(),
+});
+
+const providerApi = createHttpClient({
+  baseURL: '/api',
+  credentials: customCredentials(({ method, url }) => ({
+    headers: {
+      'X-Client-Context': `${method} ${url}`,
+    },
+  })),
+});
+```
 
 ## SSE
 
-SSE is a capability of the same HTTP client rather than a separately configured client:
+`client.sse()` returns a single-consumer async iterable.
+
+Transport heartbeat comments are consumed by the SSE parser and are not emitted as application events. Named and unnamed SSE events are exposed uniformly as `SseEvent` values.
 
 ```ts
-const events = client.sse('/agent-sessions/123/events', {
+const stream = api.sse('/events');
+
+for await (const event of stream) {
+  console.log(event.type, event.data, event.id);
+}
+```
+
+SSE uses the same client-level base URL, default headers, credentials, params, and cancellation conventions as ordinary requests:
+
+```ts
+const controller = new AbortController();
+
+const stream = api.sse('/events', {
   params: {
-    after: lastEventId,
+    sessionId: 'session-42',
+  },
+  headers: {
+    'X-Request-Source': 'specflow-ui',
   },
   signal: controller.signal,
-  onConnected() {
-    setConnectionStatus('connected');
+  onConnected: () => {
+    console.log('connected');
   },
-  onReconnecting({ retryInMs }) {
-    setConnectionStatus('reconnecting');
-    console.log(`Retrying in ${retryInMs} ms`);
-  },
-});
-
-for await (const event of events) {
-  console.log(event.type, event.id, event.data);
-}
-```
-
-The raw stream yields:
-
-```ts
-interface SseEvent {
-  readonly type: string;
-  readonly data: string;
-  readonly id?: string;
-}
-```
-
-Applications can decode raw SSE frames into domain events without teaching the transport about their schema:
-
-```ts
-const events = client.sse<AgentEvent>('/agent-sessions/123/events', {
-  decode(event) {
-    return JSON.parse(event.data) as AgentEvent;
+  onReconnecting: ({ retryInMs, error }) => {
+    console.log('reconnecting', retryInMs, error);
   },
 });
 
-for await (const event of events) {
-  applyAgentEvent(event);
+for await (const event of stream) {
+  // Process events until the consumer stops, the signal is aborted,
+  // the server returns 204, or a terminal protocol/HTTP error occurs.
 }
 ```
 
-Transport heartbeat comments are consumed by the SSE parser and are not emitted as application events. Named and unnamed SSE events are exposed uniformly, so consumers do not need to pre-register every possible event name.
+Applications can decode wire events into domain events without putting domain knowledge in the transport package:
 
-The stream reconnects after network loss or a clean unexpected EOF, uses server-provided `retry:` values, sends `Last-Event-ID` on reconnect, and resolves credentials again before every connection attempt. HTTP/protocol failures and application-owned `decode` failures are terminal. A `204 No Content` response closes the stream without reconnecting.
+```ts
+interface SessionEvent {
+  sessionId: string;
+  status: string;
+}
+
+const stream = api.sse<SessionEvent>('/events', {
+  decode: (event) => JSON.parse(event.data) as SessionEvent,
+});
+
+for await (const event of stream) {
+  console.log(event.sessionId, event.status);
+}
+```
+
+If application-owned decoding throws, that error is terminal and is propagated to the consumer rather than treated as a network failure.
+
+The stream reconnects after network loss or a clean unexpected EOF, uses server-provided `retry:` values, sends `Last-Event-ID` on reconnect, and resolves credentials again before every connection attempt. HTTP/protocol failures are terminal. A `204 No Content` response closes the stream without reconnecting.
 
 Breaking out of `for await`, calling `close()`, or aborting the supplied `AbortSignal` closes the underlying fetch:
 
 ```ts
-for await (const event of client.sse('/operations/123/events')) {
-  if (isTerminal(event)) {
+const stream = api.sse('/events');
+
+for await (const event of stream) {
+  if (event.type === 'completed') {
     break;
   }
 }
+
+// Equivalent explicit cancellation when needed:
+// stream.close();
 ```
 
-Connection lifecycle callbacks are intentionally limited to `onConnected` and `onReconnecting`. Snapshot recovery, domain retry decisions, and other application policy stay in the consuming feature.
+Connection lifecycle callbacks are intentionally limited to `onConnected` and `onReconnecting`. Snapshot recovery, application retries, cache invalidation, and other domain policy stay in the consuming application.
 
-## Errors
+## URL boundary
 
-Request/response transport failures are normalized to `HttpClientError`:
+When a `baseURL` is configured, absolute request URLs are disabled by default so request credentials cannot accidentally escape that API boundary.
+
+A consumer may opt in explicitly when it truly needs mixed origins:
 
 ```ts
-import { HttpClientError } from '@nevo/http-client';
-
-try {
-  await client.get('/sessions/123');
-} catch (error) {
-  if (error instanceof HttpClientError) {
-    console.log(error.kind, error.status, error.data);
-  }
-
-  throw error;
-}
+const api = createHttpClient({
+  baseURL: '/api',
+  allowAbsoluteUrls: true,
+});
 ```
 
-The normalized kinds are `cancelled`, `http`, `network`, and `unexpected`. Errors owned by external credential/authentication flows are intentionally re-thrown unchanged.
+Prefer one client per API boundary instead of enabling mixed origins globally.

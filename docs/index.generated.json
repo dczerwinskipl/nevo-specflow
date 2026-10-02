@@ -486,6 +486,24 @@
       ]
     },
     {
+      "id": "architecture.runtime.configuration",
+      "type": "architecture",
+      "title": "Project configuration and local state",
+      "status": "current",
+      "file": "docs/architecture/runtime/configuration.md",
+      "read_when": [
+        "adding or moving SpecFlow configuration",
+        "deciding whether a setting is committed or workstation-local",
+        "adding Runtime-owned local persistence"
+      ],
+      "summary": "Nevo SpecFlow uses one .nevo namespace: committed project configuration and definitions, ignored workstation-local configuration, and application-owned local Runtime state.",
+      "related": [
+        "docs.architecture-runtime-readme",
+        "architecture.runtime.ownership-and-lifecycle",
+        "reference.cli.nevo-specflow-contract"
+      ]
+    },
+    {
       "id": "architecture.runtime.ownership-and-lifecycle",
       "type": "architecture",
       "title": "Runtime ownership and lifecycle",

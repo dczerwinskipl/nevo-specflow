@@ -100,31 +100,63 @@ UI -> consume effective capabilities
 
 Authentication answers:
 
-> Who is the current user?
+> Who is the effective current user, if this Runtime mode has one?
 
 Authorization answers:
 
-> What can this user do with this resource in this scope?
+> What can this subject do with this resource in this scope?
 
 The existing auth slice should remain responsible only for identity/session concerns.
 
-Authorization should consume the authenticated user id but should not be embedded into the auth user
-contract itself.
+Authorization must not be embedded into the auth user contract itself. Runtime derives an
+**effective subject** from the auth mode and passes that subject to authorization.
 
-For example, the current session identity can stay conceptually equivalent to:
+The initial Runtime rule is:
+
+```text
+auth.mode=required
+  -> effective subject = authenticated session user
+
+auth.mode=none + localUserId
+  -> effective subject = configured localUserId
+
+auth.mode=none + no localUserId
+  -> no effective subject; Runtime access control is disabled
+```
+
+The third case preserves the existing trusted/no-login Runtime behavior. It must not accidentally
+turn into "anonymous user has zero permissions" when authorization enforcement is introduced.
+
+When access control is disabled, Runtime bypasses authorization enforcement and exposes all
+registered capabilities for the requested resource to the UI. This bypass is a Runtime integration
+rule, not behavior built into the generic `@nevo/authorization` resolver.
+
+When an effective user exists, its id is the canonical key from `auth.users`. Provider identifiers
+are only authentication inputs:
+
+```text
+password account username -> auth.users user id
+OIDC email                -> auth.users user id
+localUserId               -> auth.users user id
+```
+
+A password username, OIDC email, or display name must never be used as the authorization subject id.
+
+The generic subject shape should be explicit even though only users are supported initially:
 
 ```ts
 {
+  kind: "user",
   id: "user-1",
-  name: "Dominik"
 }
 ```
 
-Roles and capabilities are resolved separately.
+Keeping `kind` in the core model avoids future identifier collisions if service or agent subjects
+are added later.
 
-## Package boundary
+## Package boundaries
 
-Create a framework-independent product package:
+Create a framework-independent generic package:
 
 ```text
 packages/authorization/
@@ -137,13 +169,42 @@ The package should not depend on:
 - React;
 - SpecFlow Runtime;
 - SpecFlow UI;
+- SpecFlow resource names;
 - OIDC;
 - HTTP;
 - persistence.
 
-It should contain only the authorization model, validation/composition helpers, and resolver logic.
+It should contain only the authorization model, validation/composition helpers, resource-definition
+helper, and resolver logic.
 
-SpecFlow Runtime owns the server integration and enforcement.
+SpecFlow-specific resource/capability definitions need a separate shared product boundary so Runtime
+and UI can import the same constants without either depending on the other:
+
+```text
+packages/specflow-contracts/
+  @nevo/specflow-contracts
+    src/spec/authorization.ts
+    src/session/authorization.ts
+    src/settings/authorization.ts
+```
+
+The initial package may contain only authorization declarations. It does not need to become a broad
+API-contract package in the same change.
+
+Dependency direction:
+
+```text
+@nevo/authorization
+        ↑
+@nevo/specflow-contracts
+      ↑             ↑
+specflow-runtime  specflow-ui
+```
+
+SpecFlow Runtime additionally depends directly on `@nevo/authorization` for resolution and
+enforcement.
+
+SpecFlow Runtime owns role composition, assignment loading, server integration, and enforcement.
 
 SpecFlow UI owns React integration and presentation helpers.
 
@@ -154,9 +215,22 @@ needed.
 
 A vertical slice defines its own resource and capabilities.
 
+When a definition must be shared between Runtime and UI, its physical home is the corresponding
+feature folder inside `@nevo/specflow-contracts`. This keeps ownership with the feature while
+avoiding both backend-to-frontend dependencies and duplicated string constants.
+
+For example:
+
+```text
+packages/specflow-contracts/src/spec/authorization.ts
+packages/specflow-contracts/src/session/authorization.ts
+packages/specflow-contracts/src/settings/authorization.ts
+```
+
 For example, the spec feature owns something equivalent to:
 
 ```ts
+// @nevo/specflow-contracts/spec
 export const SpecAuthorization = defineResource({
   name: "spec",
   capabilities: [
@@ -231,6 +305,7 @@ Example:
 ```ts
 resolveCapabilities({
   subject: {
+    kind: "user",
     id: "user-1",
   },
   resource: {
@@ -373,11 +448,14 @@ A role assignment connects:
 - an application-defined role;
 - a scope.
 
-Example:
+At the generic package level:
 
 ```ts
 {
-  subjectId: "user-1",
+  subject: {
+    kind: "user",
+    id: "user-1",
+  },
   role: "developer",
   scope: {
     projectId: "P1",
@@ -385,24 +463,50 @@ Example:
 }
 ```
 
-Another example:
-
-```ts
-{
-  subjectId: "user-1",
-  role: "viewer",
-  scope: {
-    projectId: "P2",
-  },
-}
-```
+For SpecFlow, the user id is always the canonical `auth.users` key.
 
 A user may have multiple assignments.
 
 The effective result is the union of capabilities from all matching assignments.
 
-For the first SpecFlow implementation, assignments may come from hardcoded/static configuration.
-The authorization package must not own their persistence.
+### Initial SpecFlow assignment source
+
+Assignments should have one concrete initial source: the project configuration
+`nevo-specflow.yaml`, under a top-level `authorization` section.
+
+The initial shape should support scope even if the first real assignments are global:
+
+```yaml
+authorization:
+  assignments:
+    - userId: demo-user
+      role: admin
+      scope: {}
+```
+
+A scoped example:
+
+```yaml
+authorization:
+  assignments:
+    - userId: demo-user
+      role: developer
+      scope:
+        projectId: P1
+```
+
+`userId` must reference an existing `auth.users.<userId>`. Runtime validates this at startup and
+converts it to the generic subject `{ kind: "user", id: userId }`.
+
+Role definitions themselves remain application code, not configuration. The initial SpecFlow role
+composition should live under the Runtime authorization composition boundary, for example
+`packages/specflow-runtime/src/authorization/roles.ts`.
+
+Authorization assignments are not secrets and should not be mixed into password/OIDC provider
+mappings. If local override semantics are needed later, they should be specified explicitly rather
+than inherited accidentally from generic config merge behavior.
+
+The generic authorization package must not own persistence or the SpecFlow config file format.
 
 ## Scope matching rule
 
@@ -446,6 +550,64 @@ For example, when resolving a session, the Runtime already knows:
 
 The authorization package does not need to discover that `SE1` belongs to `S1`.
 
+## Trusted canonical scope
+
+The generic resolver deliberately does not discover domain relationships. It assumes the supplied
+scope is already canonical.
+
+That makes scope construction a backend trust boundary.
+
+For enforcement on an existing resource, the feature must load the real domain resource and build
+scope from trusted server-side data.
+
+For example, this is unsafe:
+
+```ts
+// Client claims S1 belongs to P1.
+can({
+  subject,
+  capability: SpecAuthorization.capabilities.Manage,
+  resource: {
+    name: "spec",
+    scope: request.body.scope,
+  },
+});
+```
+
+If `S1` really belongs to `P2`, a user with developer rights on `P1` could otherwise obtain a
+false positive.
+
+The enforcement path must instead be equivalent to:
+
+```ts
+const spec = await specRepository.get(specId);
+
+const canonicalScope = {
+  projectId: spec.projectId,
+  specId: spec.id,
+};
+
+can({
+  subject,
+  capability: SpecAuthorization.capabilities.Manage,
+  resource: {
+    name: SpecAuthorization.name,
+    scope: canonicalScope,
+  },
+});
+```
+
+For collection/create operations, the backend likewise constructs scope from trusted container
+context after validating the referenced container, for example the real project selected by the
+request.
+
+The generic resolver may accept any structurally valid scope because it is a pure library. The
+caller owns canonicalization.
+
+The HTTP capability endpoint is advisory data for UI rendering. A client-provided scope from that
+endpoint must never be reused as the canonical scope for a later mutation or other backend
+enforcement decision.
+
 ## Core resolver API
 
 Prefer one object-shaped request.
@@ -461,6 +623,7 @@ The target shape is conceptually:
 ```ts
 resolveCapabilities({
   subject: {
+    kind: "user",
     id: "user-1",
   },
   resource: {
@@ -505,6 +668,7 @@ The same core should support a direct check built on the same resolution semanti
 ```ts
 can({
   subject: {
+    kind: "user",
     id: "user-1",
   },
   capability: SpecAuthorization.capabilities.Manage,
@@ -519,6 +683,10 @@ can({
 ```
 
 The backend remains the security boundary.
+
+`can()` should fail fast on a structurally inconsistent request. For example,
+`capability: "session.manage"` together with `resource.name: "spec"` is a caller/configuration
+error, not an ordinary authorization denial.
 
 UI visibility is never a substitute for server enforcement.
 
@@ -545,7 +713,11 @@ Request:
 }
 ```
 
-The subject must come from the authenticated server session, not from user-controlled request data.
+The subject is never accepted from request data. Runtime derives the effective subject according to
+the auth-mode rules above.
+
+The scope supplied by this UI-oriented endpoint is not a trusted enforcement scope. Existing-resource
+enforcement must rebuild canonical scope from domain data.
 
 Response:
 
@@ -575,6 +747,10 @@ The exact response envelope can be adjusted during implementation, but these sem
 
 If a page needs capabilities for another resource such as `settings`, it resolves that resource
 separately. Do not return every capability for every resource in one undifferentiated list.
+
+When `auth.mode=none` has no `localUserId`, Runtime access control is disabled and this endpoint
+returns all registered capabilities for the requested resource. The generic resolver is not invoked
+with a fabricated anonymous subject.
 
 ## Page-level usage
 
@@ -678,6 +854,7 @@ Creating a session inside spec `S1`:
 ```ts
 resolveCapabilities({
   subject: {
+    kind: "user",
     id: "user-1",
   },
   resource: {
@@ -701,6 +878,7 @@ For an existing session:
 ```ts
 resolveCapabilities({
   subject: {
+    kind: "user",
     id: "user-1",
   },
   resource: {
@@ -770,20 +948,15 @@ These role names and meanings belong to SpecFlow, not to `@nevo/authorization`.
 
 The first version does not need permission management.
 
-Role definitions and role assignments may be static/hardcoded or loaded from simple local
-configuration.
+The initial sources are intentionally concrete:
 
-The important boundary is that the package consumes them through its configuration/provider surface
-rather than owning their storage format.
+- resource/capability definitions: `@nevo/specflow-contracts`, organized by feature;
+- SpecFlow role definitions: Runtime application composition code;
+- role assignments: top-level `authorization.assignments` in `nevo-specflow.yaml`;
+- user identity referenced by an assignment: canonical `auth.users` user id.
 
-This keeps the migration path open to:
-
-- JSON/YAML configuration;
-- database-backed assignments;
-- an admin UI;
-- tenant-aware assignments.
-
-None of those are required now.
+This keeps the migration path open to database-backed assignments or an admin UI later without
+changing feature capability definitions or the core resolver contract.
 
 ## Validation expectations
 
@@ -795,7 +968,9 @@ At minimum, validate:
 - duplicate capability ids;
 - roles referencing unknown capabilities;
 - assignments referencing unknown roles;
-- malformed scope values.
+- SpecFlow assignments referencing unknown `auth.users` ids;
+- malformed scope values;
+- capability/resource mismatches passed to `can()`.
 
 A typo in `spec.manage` should be caught during application startup/composition rather than silently
 becoming a permission that never matches.
@@ -821,7 +996,7 @@ const authorization = createAuthorization({
 });
 
 authorization.resolveCapabilities({
-  subject: { id: "user-1" },
+  subject: { kind: "user", id: "user-1" },
   resource: {
     name: Spec.name,
     scope: {
@@ -832,7 +1007,7 @@ authorization.resolveCapabilities({
 });
 
 authorization.can({
-  subject: { id: "user-1" },
+  subject: { kind: "user", id: "user-1" },
   capability: Spec.capabilities.Manage,
   resource: {
     name: Spec.name,
@@ -849,20 +1024,27 @@ making resource/capability identifiers library-owned enums.
 
 ## Suggested implementation order
 
-1. Add `@nevo/authorization` with resource definition, role definition/composition validation,
-   scoped assignments, `resolveCapabilities`, and `can`.
+1. Add `@nevo/authorization` with resource definition, role validation, scoped assignments,
+   `resolveCapabilities`, and `can`.
 2. Add unit tests for global scope, project scope, more-specific resource scope, multiple assignments,
-   role union, resource filtering, and invalid configuration.
-3. Define SpecFlow resources/capabilities in their owning vertical slices.
-4. Add central SpecFlow role composition for `viewer`, `developer`, and `admin`.
-5. Add the initial static assignment source.
-6. Integrate the resolver into SpecFlow Runtime request handling.
-7. Add `POST /api/authorization/capabilities`.
-8. Add backend enforcement for the first protected operations.
-9. Add effective capabilities to spec/session DTOs where row-level actions are needed.
-10. Filter resources that the current user cannot view.
-11. Add thin SpecFlow UI helpers/hooks for consuming returned capabilities.
-12. Add integration tests proving backend denial and UI capability contracts use the same definitions.
+   role union, resource filtering, mismatch failures, and invalid configuration.
+3. Add `@nevo/specflow-contracts` and define SpecFlow resources/capabilities there in feature
+   folders.
+4. Add central Runtime role composition for `viewer`, `developer`, and `admin`.
+5. Extend Runtime config with top-level `authorization.assignments`; validate role names and
+   canonical `auth.users` ids.
+6. Add effective-subject resolution for `auth.mode=required`, `auth.mode=none + localUserId`,
+   and explicit no-access-control behavior for `auth.mode=none` without `localUserId`.
+7. Integrate the resolver into SpecFlow Runtime request handling with canonical scope built by each
+   feature from trusted domain data.
+8. Add `POST /api/authorization/capabilities` as an advisory UI capability endpoint.
+9. Add backend enforcement for the first protected operations.
+10. Add effective capabilities to spec/session DTOs where row-level actions are needed.
+11. Filter resources that the current user cannot view.
+12. Add thin SpecFlow UI helpers/hooks for consuming returned capabilities from
+    `@nevo/specflow-contracts`.
+13. Add integration tests proving backend denial, auth-mode behavior, canonical-scope enforcement,
+    and UI capability contracts use the same definitions.
 
 ## Required tests
 
@@ -904,9 +1086,15 @@ spec.manage
 ### Backend contract
 
 - request subject cannot be supplied/spoofed by the client;
-- unauthenticated requests follow the Runtime auth policy;
+- `auth.mode=required` uses the authenticated canonical user id;
+- `auth.mode=none + localUserId` uses that canonical configured user id;
+- `auth.mode=none` without `localUserId` explicitly bypasses access control and exposes all
+  capabilities for the requested resource;
+- a client-forged scope cannot authorize an existing resource because enforcement rebuilds canonical
+  scope from domain data;
 - capability endpoint returns only the requested resource's capabilities;
-- protected endpoints return forbidden when capability is absent.
+- protected endpoints return forbidden when capability is absent;
+- capability/resource mismatches fail as caller/configuration errors rather than normal denials.
 
 ### List behavior
 
@@ -931,8 +1119,11 @@ Also preserve these decisions:
 - resource name is explicit in resolution requests;
 - scope is a multi-dimensional object;
 - empty scope is global;
-- features own resource/capability definitions;
+- features own resource/capability definitions in the SpecFlow shared contracts boundary;
 - the application owns roles and assignments;
+- SpecFlow assignments reference canonical `auth.users` ids;
+- Runtime owns effective-subject resolution for each auth mode;
+- enforcement scope is rebuilt from trusted domain data;
 - role inheritance is not part of the model;
 - wildcard capabilities are not part of the model;
 - the backend resolves effective capabilities;

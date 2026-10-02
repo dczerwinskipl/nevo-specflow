@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { initRuntime, type RuntimeInitPrompter, type RuntimeInitPromptChoice } from '../src/index.js';
+import {
+  initRuntime,
+  type RuntimeInitPrompter,
+  type RuntimeInitPromptChoice,
+} from '../src/index.js';
 
 const PASSWORD_HASH =
   '$scrypt$16384$8$5$MDEyMzQ1Njc4OWFiY2RlZg$yMHgG_FDESRF0j5gjhGLotSMPdnfefUcNNFPyNoQtJE';

@@ -4,6 +4,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { RuntimeConfig } from '../config/types.js';
 import {
   type AuthErrorCode,
+  type AuthErrorResponse,
   AuthErrorSchema,
   AuthSessionSchema,
   PasswordLoginBodySchema,
@@ -199,6 +200,11 @@ function authCookieOptions(config: RuntimeConfig): AuthCookieOptions {
   };
 }
 
-function authError(reply: FastifyReply, statusCode: number, code: AuthErrorCode) {
-  return reply.code(statusCode).send({ error: code });
+function authError(
+  reply: FastifyReply,
+  statusCode: 400 | 401 | 403 | 404,
+  code: AuthErrorCode,
+): AuthErrorResponse {
+  reply.code(statusCode);
+  return { error: code };
 }

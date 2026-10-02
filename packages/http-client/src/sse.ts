@@ -138,19 +138,17 @@ export function createSseStream<TEvent, TParams>(
 
         options.config?.onConnected?.();
 
-        const parsedStream = response.body
-          .pipeThrough(new TextDecoderStream())
-          .pipeThrough(
-            new EventSourceParserStream({
-              maxBufferSize: MAX_BUFFER_SIZE,
-              onId: (id) => {
-                lastEventId = id;
-              },
-              onRetry: (nextRetryMs) => {
-                retryMs = nextRetryMs;
-              },
-            }),
-          );
+        const parsedStream = response.body.pipeThrough(new TextDecoderStream()).pipeThrough(
+          new EventSourceParserStream({
+            maxBufferSize: MAX_BUFFER_SIZE,
+            onId: (id) => {
+              lastEventId = id;
+            },
+            onRetry: (nextRetryMs) => {
+              retryMs = nextRetryMs;
+            },
+          }),
+        );
 
         const reader = parsedStream.getReader();
         let streamError: unknown;
@@ -180,7 +178,8 @@ export function createSseStream<TEvent, TParams>(
 
             const value = next.result.value;
             const event: SseEvent = {
-              type: value.event || 'message',
+              type:
+                value.event === undefined || value.event === '' ? 'message' : value.event,
               data: value.data,
               ...(value.id === undefined ? {} : { id: value.id }),
             };
@@ -227,10 +226,7 @@ async function readNext<T>(
   }
 }
 
-function applyHeaders(
-  target: Headers,
-  source: Readonly<Record<string, string>> | undefined,
-): void {
+function applyHeaders(target: Headers, source: Readonly<Record<string, string>> | undefined): void {
   if (!source) {
     return;
   }
@@ -264,10 +260,13 @@ function waitForDelay(delayMs: number, signal: AbortSignal): Promise<boolean> {
   }
 
   return new Promise((resolve) => {
-    const timeout = setTimeout(() => {
-      signal.removeEventListener('abort', onAbort);
-      resolve(true);
-    }, Math.max(0, delayMs));
+    const timeout = setTimeout(
+      () => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(true);
+      },
+      Math.max(0, delayMs),
+    );
 
     const onAbort = () => {
       clearTimeout(timeout);

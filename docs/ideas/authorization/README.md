@@ -1112,6 +1112,7 @@ resource != scope
 authentication != authorization
 UI visibility != backend enforcement
 feature capability definition != application role composition
+client-provided scope != canonical enforcement scope
 ```
 
 Also preserve these decisions:

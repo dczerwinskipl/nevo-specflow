@@ -20,7 +20,7 @@ export interface AuthorizationCapabilitiesRequest {
 
 export interface AuthorizationCapabilitiesResponse {
   readonly resource: AuthorizationResourceQuery;
-  readonly capabilities: readonly CapabilityId[];
+  readonly capabilities: CapabilityId[];
 }
 
 export interface AuthorizationErrorResponse {

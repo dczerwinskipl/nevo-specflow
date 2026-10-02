@@ -6,7 +6,12 @@ import type {
   RoleAssignment,
   RoleId,
 } from './types.js';
-import { validateScope, validateSubject, assertNonEmpty } from './validation.js';
+import {
+  assertIdentifierSegment,
+  assertNonEmpty,
+  validateScope,
+  validateSubject,
+} from './validation.js';
 
 export interface AuthorizationRegistry {
   readonly assignments: readonly RoleAssignment[];
@@ -23,6 +28,8 @@ export function createAuthorizationRegistry(
   const capabilityOwners = new Map<CapabilityId, ResourceName>();
 
   for (const resource of resources) {
+    validateResourceDefinition(resource);
+
     if (resourcesByName.has(resource.name)) {
       throw new AuthorizationConfigurationError(
         `Duplicate authorization resource '${resource.name}'.`,
@@ -92,4 +99,32 @@ export function createAuthorizationRegistry(
       return capabilities;
     },
   };
+}
+
+function validateResourceDefinition(resource: ResourceDefinition): void {
+  assertIdentifierSegment(resource.name, 'Resource name');
+
+  const mappedCapabilities = Object.values(resource.capabilities);
+  const capabilityIds = [...resource.capabilityIds];
+
+  if (
+    mappedCapabilities.length !== capabilityIds.length ||
+    new Set(mappedCapabilities).size !== mappedCapabilities.length ||
+    new Set(capabilityIds).size !== capabilityIds.length ||
+    mappedCapabilities.some((capability) => !capabilityIds.includes(capability)) ||
+    capabilityIds.some((capability) => !mappedCapabilities.includes(capability))
+  ) {
+    throw new AuthorizationConfigurationError(
+      `Resource '${resource.name}' capabilities and capabilityIds must contain the same unique capability ids.`,
+    );
+  }
+
+  const prefix = `${resource.name}.`;
+  for (const capability of capabilityIds) {
+    if (!capability.startsWith(prefix) || capability.length === prefix.length) {
+      throw new AuthorizationConfigurationError(
+        `Capability '${capability}' does not belong to resource '${resource.name}'.`,
+      );
+    }
+  }
 }

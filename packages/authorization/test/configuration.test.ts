@@ -49,4 +49,36 @@ describe('authorization configuration', () => {
       }),
     ).toThrowError(/Duplicate authorization resource 'spec'/);
   });
+
+  it('rejects manually constructed resource definitions with foreign capabilities', () => {
+    expect(() =>
+      createAuthorization({
+        resources: [
+          {
+            name: 'spec',
+            capabilities: { Manage: 'session.manage' },
+            capabilityIds: ['session.manage'],
+          },
+        ],
+        roles: {},
+        assignments: [],
+      }),
+    ).toThrowError(/Capability 'session.manage' does not belong to resource 'spec'/);
+  });
+
+  it('rejects manually constructed resource definitions whose capability views drift', () => {
+    expect(() =>
+      createAuthorization({
+        resources: [
+          {
+            name: 'spec',
+            capabilities: { View: 'spec.view' },
+            capabilityIds: ['spec.manage'],
+          },
+        ],
+        roles: {},
+        assignments: [],
+      }),
+    ).toThrowError(/capabilities and capabilityIds must contain the same unique capability ids/);
+  });
 });

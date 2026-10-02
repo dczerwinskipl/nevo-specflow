@@ -5,7 +5,6 @@ import { SessionAuthorization, SettingsAuthorization, SpecAuthorization } from '
 describe('SpecFlow authorization contracts', () => {
   it('defines stable feature-owned resource and capability ids', () => {
     expect(SpecAuthorization.capabilities).toEqual({
-      List: 'spec.list',
       View: 'spec.view',
       Create: 'spec.create',
       Manage: 'spec.manage',

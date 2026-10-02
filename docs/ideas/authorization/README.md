@@ -2,7 +2,7 @@
 id: ideas.authorization.foundation
 type: idea
 title: Authorization capabilities foundation
-status: draft
+status: current
 scope: shared
 areas:
   - runtime
@@ -19,9 +19,9 @@ read_when:
   - exposing effective permissions to the UI
   - adding scoped access to specs or sessions
 summary: >
-  Proposed lightweight authorization foundation for SpecFlow: feature-owned resource/capability
+  Implemented lightweight authorization foundation for SpecFlow: feature-owned resource/capability
   definitions, application-owned roles, scoped role assignments, backend capability resolution,
-  per-resource enforcement, and UI consumption of effective capabilities without a policy engine.
+  and shared UI-facing capability contracts without a policy engine.
 related:
   - ideas.readme
   - architecture.runtime.ownership-and-lifecycle
@@ -29,9 +29,27 @@ related:
 
 # Authorization capabilities foundation
 
-## Status
+## Implementation status
 
-This document captures the agreed implementation direction before code is written.
+The authorization foundation described here is implemented in this feature branch.
+
+Implemented now:
+
+- framework-independent `@nevo/authorization` resource/capability resolver;
+- shared SpecFlow resource/capability definitions and HTTP types in `@nevo/specflow-contracts`;
+- Runtime-owned `viewer`, `developer`, and `admin` role composition;
+- project-owned scoped role assignments with canonical project user ids;
+- canonical assignment-scope validation and project-only authorization configuration;
+- effective-subject resolution across required auth and trusted local mode;
+- `POST /api/authorization/capabilities` for UI capability discovery;
+- compile-time checks keeping Runtime TypeBox schemas aligned with shared HTTP types.
+
+Still intentionally follow-up work:
+
+- enforce capabilities in concrete SpecFlow domain operations as those endpoints are migrated;
+- filter actual spec/session list endpoints by per-row `view` capability;
+- attach per-row effective capabilities where UI actions need them;
+- add thin SpecFlow UI query/helpers around the shared contracts.
 
 It is deliberately a small authorization model. The goal is to support the current SpecFlow
 dashboard cleanly while keeping the core reusable for larger applications with many resource types,
@@ -237,7 +255,6 @@ For example, the spec feature owns something equivalent to:
 export const SpecAuthorization = defineResource({
   name: 'spec',
   capabilities: {
-    List: 'list',
     View: 'view',
     Create: 'create',
     Manage: 'manage',
@@ -248,7 +265,6 @@ export const SpecAuthorization = defineResource({
 The helper may expose fully-qualified capability ids:
 
 ```ts
-SpecAuthorization.capabilities.List; // "spec.list"
 SpecAuthorization.capabilities.View; // "spec.view"
 SpecAuthorization.capabilities.Create; // "spec.create"
 SpecAuthorization.capabilities.Manage; // "spec.manage"
@@ -336,19 +352,16 @@ SpecFlow defines those centrally and imports capabilities from its features.
 Conceptually:
 
 ```ts
-const specReadCapabilities = [
-  SpecAuthorization.capabilities.List,
+const viewerCapabilities = [
   SpecAuthorization.capabilities.View,
+  SessionAuthorization.capabilities.View,
 ];
 
-const viewerCapabilities = [...specReadCapabilities];
-
 const developerCapabilities = [
-  ...specReadCapabilities,
+  ...viewerCapabilities,
   SpecAuthorization.capabilities.Create,
   SpecAuthorization.capabilities.Manage,
   SessionAuthorization.capabilities.Create,
-  SessionAuthorization.capabilities.View,
   SessionAuthorization.capabilities.Manage,
 ];
 
@@ -797,7 +810,7 @@ Response:
       "projectId": "P1"
     }
   },
-  "capabilities": ["spec.list", "spec.view", "spec.create", "spec.manage"]
+  "capabilities": ["spec.view", "spec.create", "spec.manage"]
 }
 ```
 
@@ -830,10 +843,13 @@ For the Specs page in project `P1`, the UI may request:
 }
 ```
 
-That result can drive page-level actions such as:
+That result can drive project-level actions such as whether a new spec can be created.
 
-- whether specs can be listed;
-- whether a new spec can be created.
+There is intentionally no `spec.list` capability. A collection endpoint is not gated by a
+collection-level list permission because that would make a user with only
+`viewer @ { projectId, specId }` unable to reach a list containing the spec they are allowed to
+see. Instead, list endpoints return only rows for which `spec.view` resolves at that row's
+canonical scope.
 
 Global navigation permissions such as settings belong to their own resource, for example
 `settings`, and should be resolved independently or included in an application bootstrap endpoint
@@ -1022,6 +1038,8 @@ At minimum, validate:
 
 - duplicate resource names;
 - duplicate capability ids;
+- manually constructed resource definitions whose capability ids do not match their capability map;
+- capabilities whose resource prefix does not match the owning resource;
 - roles referencing unknown capabilities;
 - assignments referencing unknown roles;
 - SpecFlow assignments referencing unknown project `auth.users` ids;
@@ -1042,7 +1060,6 @@ This is illustrative rather than a locked TypeScript signature:
 const Spec = defineResource({
   name: 'spec',
   capabilities: {
-    List: 'list',
     View: 'view',
     Create: 'create',
     Manage: 'manage',
@@ -1082,30 +1099,31 @@ authorization.can({
 The implementation should optimize for readable call sites and strong TypeScript inference without
 making resource/capability identifiers library-owned enums.
 
-## Suggested implementation order
+## Implemented foundation and remaining work
 
-1. Add `@nevo/authorization` with resource definition, role validation, scoped assignments,
+Implemented in this feature:
+
+1. `@nevo/authorization` with resource definitions, role validation, scoped assignments,
    `resolveCapabilities`, and `can`.
-2. Add unit tests for global scope, project scope, more-specific resource scope, multiple assignments,
-   role union, resource filtering, mismatch failures, and invalid configuration.
-3. Add `@nevo/specflow-contracts` and define SpecFlow resources/capabilities there in feature
-   folders.
-4. Add central Runtime role composition for `viewer`, `developer`, and `admin`.
-5. Extend project Runtime config with top-level `authorization.assignments`; validate role names,
-   canonical `auth.users` ids, and canonical assignment-scope shapes. Reject `authorization`
-   from `.nevo-local/nevo-specflow.yaml`.
-6. Add effective-subject resolution for `auth.mode=required`, `auth.mode=none + localUserId`,
-   and explicit no-access-control behavior for `auth.mode=none` without `localUserId`.
-7. Integrate the resolver into SpecFlow Runtime request handling with canonical scope built by each
-   feature from trusted domain data.
-8. Add `POST /api/authorization/capabilities` as an advisory UI capability endpoint.
-9. Add backend enforcement for the first protected operations.
-10. Add effective capabilities to spec/session DTOs where row-level actions are needed.
-11. Filter resources that the current user cannot view.
-12. Add thin SpecFlow UI helpers/hooks for consuming returned capabilities from
-    `@nevo/specflow-contracts`.
-13. Add integration tests proving backend denial, auth-mode behavior, canonical-scope enforcement,
-    and UI capability contracts use the same definitions.
+2. Unit tests for scope matching, role union, resource filtering, invalid configuration, and
+   resource/capability invariants.
+3. `@nevo/specflow-contracts` with shared SpecFlow resources/capabilities and authorization HTTP
+   types.
+4. Central Runtime role composition for `viewer`, `developer`, and `admin`.
+5. Project Runtime `authorization.assignments` with canonical project-user and assignment-scope
+   validation, while rejecting local authorization overrides.
+6. Effective-subject resolution for required auth, local user mode, and disabled access control.
+7. Runtime capability discovery endpoint using the shared authorization model.
+8. Compile-time bidirectional compatibility checks between Runtime TypeBox schemas and shared HTTP
+   contract types.
+
+Remaining follow-ups:
+
+1. Enforce capabilities in concrete migrated domain operations using canonical server-built scopes.
+2. Filter spec/session collection endpoints by per-row `view` capability.
+3. Add effective capabilities to row DTOs where the UI needs row actions.
+4. Add thin SpecFlow UI hooks/helpers consuming `@nevo/specflow-contracts`.
+5. Add domain-level integration tests when those protected endpoints land.
 
 ## Required tests
 
@@ -1163,7 +1181,9 @@ spec.manage
 
 ### List behavior
 
-- invisible resources are omitted;
+- there is no collection-level `spec.list` permission gate;
+- a user assigned `viewer` at one spec scope can still receive that spec from a project list;
+- invisible resources are omitted by checking `spec.view` at each canonical row scope;
 - visible rows contain only capabilities for their own resource;
 - a row with `view` but without `manage` remains visible and read-only.
 

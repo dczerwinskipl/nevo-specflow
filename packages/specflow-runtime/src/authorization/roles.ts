@@ -5,7 +5,6 @@ import {
 } from '@nevo/specflow-contracts';
 
 const viewerCapabilities = [
-  SpecAuthorization.capabilities.List,
   SpecAuthorization.capabilities.View,
   SessionAuthorization.capabilities.View,
 ] as const;

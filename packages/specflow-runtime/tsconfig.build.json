@@ -10,7 +10,5 @@
     "tsBuildInfoFile": "./.tsbuild/specflow-runtime.build.tsbuildinfo",
     "paths": {}
   },
-  "include": [
-    "src/**/*.ts"
-  ]
+  "include": ["src/**/*.ts"]
 }

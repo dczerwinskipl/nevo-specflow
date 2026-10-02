@@ -12,6 +12,7 @@ function baseConfig(): RuntimeConfig {
       users: {
         viewer: { name: 'Viewer' },
         developer: { name: 'Developer' },
+        scopedViewer: { name: 'Scoped Viewer' },
       },
       providers: {
         password: { enabled: false, accounts: {} },
@@ -22,6 +23,11 @@ function baseConfig(): RuntimeConfig {
       assignments: [
         { userId: 'viewer', role: 'viewer', scope: { projectId: 'P1' } },
         { userId: 'developer', role: 'developer', scope: { projectId: 'P1' } },
+        {
+          userId: 'scopedViewer',
+          role: 'viewer',
+          scope: { projectId: 'P1', specId: 'S1' },
+        },
       ],
     },
   };
@@ -57,12 +63,7 @@ describe('authorization HTTP API', () => {
           resource: { name: 'spec', scope: { projectId: 'P1', specId: 'S1' } },
         },
       });
-      expect(spec.json().capabilities).toEqual([
-        'spec.list',
-        'spec.view',
-        'spec.create',
-        'spec.manage',
-      ]);
+      expect(spec.json().capabilities).toEqual(['spec.view', 'spec.create', 'spec.manage']);
 
       const sessions = await app.inject({
         method: 'POST',
@@ -92,6 +93,36 @@ describe('authorization HTTP API', () => {
     }
   });
 
+  it('keeps item-scoped view access without requiring a collection-level list capability', async () => {
+    const store = new InMemoryAuthStore({ idFactory: () => 'scoped-session-id' });
+    const session = store.createSession({ userId: 'scopedViewer', provider: 'password' });
+    const app = await createRuntimeApp(baseConfig(), { auth: { store } });
+
+    try {
+      const item = await app.inject({
+        method: 'POST',
+        url: '/api/authorization/capabilities',
+        headers: { cookie: `nevo_session=${session}` },
+        payload: {
+          resource: { name: 'spec', scope: { projectId: 'P1', specId: 'S1' } },
+        },
+      });
+      expect(item.json().capabilities).toEqual(['spec.view']);
+
+      const project = await app.inject({
+        method: 'POST',
+        url: '/api/authorization/capabilities',
+        headers: { cookie: `nevo_session=${session}` },
+        payload: {
+          resource: { name: 'spec', scope: { projectId: 'P1' } },
+        },
+      });
+      expect(project.json().capabilities).toEqual([]);
+    } finally {
+      await app.close();
+    }
+  });
+
   it('uses localUserId as effective subject in none mode', async () => {
     const config = baseConfig();
     const app = await createRuntimeApp({
@@ -104,7 +135,7 @@ describe('authorization HTTP API', () => {
         url: '/api/authorization/capabilities',
         payload: { resource: { name: 'spec', scope: { projectId: 'P1' } } },
       });
-      expect(response.json().capabilities).toEqual(['spec.list', 'spec.view']);
+      expect(response.json().capabilities).toEqual(['spec.view']);
     } finally {
       await app.close();
     }
@@ -123,12 +154,7 @@ describe('authorization HTTP API', () => {
         url: '/api/authorization/capabilities',
         payload: { resource: { name: 'spec', scope: { projectId: 'P1' } } },
       });
-      expect(response.json().capabilities).toEqual([
-        'spec.list',
-        'spec.view',
-        'spec.create',
-        'spec.manage',
-      ]);
+      expect(response.json().capabilities).toEqual(['spec.view', 'spec.create', 'spec.manage']);
     } finally {
       await app.close();
     }

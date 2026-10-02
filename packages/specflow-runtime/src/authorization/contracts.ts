@@ -1,10 +1,15 @@
-import { Type } from 'typebox';
+import { Type, type Static } from 'typebox';
 
 import {
   SessionAuthorization,
   SettingsAuthorization,
   SpecAuthorization,
 } from '@nevo/specflow-contracts';
+import type {
+  AuthorizationCapabilitiesRequest,
+  AuthorizationCapabilitiesResponse,
+  AuthorizationErrorResponse,
+} from '@nevo/specflow-contracts/authorization';
 export type {
   AuthorizationCapabilitiesRequest,
   AuthorizationCapabilitiesResponse,
@@ -51,3 +56,29 @@ export const AuthorizationErrorSchema = Type.Object(
   { error: Type.Literal('authentication_required') },
   { additionalProperties: false },
 );
+
+type IsAssignable<From, To> = [From] extends [To] ? true : false;
+type Assert<Condition extends true> = Condition;
+
+export type AuthorizationSchemaContractAssertions = [
+  Assert<
+    IsAssignable<Static<typeof AuthorizationCapabilitiesBodySchema>, AuthorizationCapabilitiesRequest>
+  >,
+  Assert<
+    IsAssignable<AuthorizationCapabilitiesRequest, Static<typeof AuthorizationCapabilitiesBodySchema>>
+  >,
+  Assert<
+    IsAssignable<
+      Static<typeof AuthorizationCapabilitiesResponseSchema>,
+      AuthorizationCapabilitiesResponse
+    >
+  >,
+  Assert<
+    IsAssignable<
+      AuthorizationCapabilitiesResponse,
+      Static<typeof AuthorizationCapabilitiesResponseSchema>
+    >
+  >,
+  Assert<IsAssignable<Static<typeof AuthorizationErrorSchema>, AuthorizationErrorResponse>>,
+  Assert<IsAssignable<AuthorizationErrorResponse, Static<typeof AuthorizationErrorSchema>>>,
+];

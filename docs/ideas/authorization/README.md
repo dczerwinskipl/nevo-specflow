@@ -232,35 +232,35 @@ For example, the spec feature owns something equivalent to:
 ```ts
 // @nevo/specflow-contracts/spec
 export const SpecAuthorization = defineResource({
-  name: "spec",
-  capabilities: [
-    "list",
-    "view",
-    "create",
-    "manage",
-  ],
+  name: 'spec',
+  capabilities: {
+    List: 'list',
+    View: 'view',
+    Create: 'create',
+    Manage: 'manage',
+  },
 });
 ```
 
 The helper may expose fully-qualified capability ids:
 
 ```ts
-SpecAuthorization.capabilities.List   // "spec.list"
-SpecAuthorization.capabilities.View   // "spec.view"
-SpecAuthorization.capabilities.Create // "spec.create"
-SpecAuthorization.capabilities.Manage // "spec.manage"
+SpecAuthorization.capabilities.List; // "spec.list"
+SpecAuthorization.capabilities.View; // "spec.view"
+SpecAuthorization.capabilities.Create; // "spec.create"
+SpecAuthorization.capabilities.Manage; // "spec.manage"
 ```
 
 Likewise, the session feature can define:
 
 ```ts
 export const SessionAuthorization = defineResource({
-  name: "session",
-  capabilities: [
-    "create",
-    "view",
-    "manage",
-  ],
+  name: 'session',
+  capabilities: {
+    Create: 'create',
+    View: 'view',
+    Manage: 'manage',
+  },
 });
 ```
 
@@ -305,14 +305,14 @@ Example:
 ```ts
 resolveCapabilities({
   subject: {
-    kind: "user",
-    id: "user-1",
+    kind: 'user',
+    id: 'user-1',
   },
   resource: {
-    name: "spec",
+    name: 'spec',
     scope: {
-      projectId: "P1",
-      specId: "S1",
+      projectId: 'P1',
+      specId: 'S1',
     },
   },
 });
@@ -338,9 +338,7 @@ const specReadCapabilities = [
   SpecAuthorization.capabilities.View,
 ];
 
-const viewerCapabilities = [
-  ...specReadCapabilities,
-];
+const viewerCapabilities = [...specReadCapabilities];
 
 const developerCapabilities = [
   ...specReadCapabilities,
@@ -405,7 +403,7 @@ Instead:
 
 ```ts
 {
-  projectId: "P1"
+  projectId: 'P1';
 }
 ```
 
@@ -434,7 +432,8 @@ Do not introduce arrays, predicates, or complex values until a real requirement 
 An empty scope means global:
 
 ```ts
-{}
+{
+}
 ```
 
 Scope should be required on assignments so that global access is explicit rather than represented
@@ -453,8 +452,8 @@ At the generic package level:
 ```ts
 {
   subject: {
-    kind: "user",
-    id: "user-1",
+    kind: 'user',
+    id: 'user-1',
   },
   role: "developer",
   scope: {
@@ -681,7 +680,7 @@ Prefer one object-shaped request.
 Do not use positional APIs such as:
 
 ```ts
-resolveCapabilities(user, "spec", scope)
+resolveCapabilities(user, 'spec', scope);
 ```
 
 The target shape is conceptually:
@@ -689,14 +688,14 @@ The target shape is conceptually:
 ```ts
 resolveCapabilities({
   subject: {
-    kind: "user",
-    id: "user-1",
+    kind: 'user',
+    id: 'user-1',
   },
   resource: {
-    name: "spec",
+    name: 'spec',
     scope: {
-      projectId: "P1",
-      specId: "S1",
+      projectId: 'P1',
+      specId: 'S1',
     },
   },
 });
@@ -734,15 +733,15 @@ The same core should support a direct check built on the same resolution semanti
 ```ts
 can({
   subject: {
-    kind: "user",
-    id: "user-1",
+    kind: 'user',
+    id: 'user-1',
   },
   capability: SpecAuthorization.capabilities.Manage,
   resource: {
-    name: "spec",
+    name: 'spec',
     scope: {
-      projectId: "P1",
-      specId: "S1",
+      projectId: 'P1',
+      specId: 'S1',
     },
   },
 });
@@ -795,12 +794,7 @@ Response:
       "projectId": "P1"
     }
   },
-  "capabilities": [
-    "spec.list",
-    "spec.view",
-    "spec.create",
-    "spec.manage"
-  ]
+  "capabilities": ["spec.list", "spec.view", "spec.create", "spec.manage"]
 }
 ```
 
@@ -856,17 +850,12 @@ For example:
     {
       "id": "S1",
       "name": "Auth foundation",
-      "capabilities": [
-        "spec.view",
-        "spec.manage"
-      ]
+      "capabilities": ["spec.view", "spec.manage"]
     },
     {
       "id": "S2",
       "name": "Other spec",
-      "capabilities": [
-        "spec.view"
-      ]
+      "capabilities": ["spec.view"]
     }
   ]
 }
@@ -920,14 +909,14 @@ Creating a session inside spec `S1`:
 ```ts
 resolveCapabilities({
   subject: {
-    kind: "user",
-    id: "user-1",
+    kind: 'user',
+    id: 'user-1',
   },
   resource: {
-    name: "session",
+    name: 'session',
     scope: {
-      projectId: "P1",
-      specId: "S1",
+      projectId: 'P1',
+      specId: 'S1',
     },
   },
 });
@@ -944,15 +933,15 @@ For an existing session:
 ```ts
 resolveCapabilities({
   subject: {
-    kind: "user",
-    id: "user-1",
+    kind: 'user',
+    id: 'user-1',
   },
   resource: {
-    name: "session",
+    name: 'session',
     scope: {
-      projectId: "P1",
-      specId: "S1",
-      sessionId: "SE1",
+      projectId: 'P1',
+      specId: 'S1',
+      sessionId: 'SE1',
     },
   },
 });
@@ -974,15 +963,13 @@ It must not:
 Typical usage should stay simple:
 
 ```ts
-const canCreate = capabilities.includes(
-  SpecAuthorization.capabilities.Create,
-);
+const canCreate = capabilities.includes(SpecAuthorization.capabilities.Create);
 ```
 
 or a local UI helper:
 
 ```ts
-can(capabilities, SpecAuthorization.capabilities.Create)
+can(capabilities, SpecAuthorization.capabilities.Create);
 ```
 
 A React hook/component may be added inside SpecFlow UI if it improves ergonomics, but it should
@@ -1050,39 +1037,40 @@ This is illustrative rather than a locked TypeScript signature:
 
 ```ts
 const Spec = defineResource({
-  name: "spec",
-  capabilities: ["list", "view", "create", "manage"],
+  name: 'spec',
+  capabilities: {
+    List: 'list',
+    View: 'view',
+    Create: 'create',
+    Manage: 'manage',
+  },
 });
 
 const authorization = createAuthorization({
-  resources: [
-    Spec,
-    Session,
-    Settings,
-  ],
+  resources: [Spec, Session, Settings],
   roles: SpecFlowRoles,
   assignments: assignmentProvider,
 });
 
 authorization.resolveCapabilities({
-  subject: { kind: "user", id: "user-1" },
+  subject: { kind: 'user', id: 'user-1' },
   resource: {
     name: Spec.name,
     scope: {
-      projectId: "P1",
-      specId: "S1",
+      projectId: 'P1',
+      specId: 'S1',
     },
   },
 });
 
 authorization.can({
-  subject: { kind: "user", id: "user-1" },
+  subject: { kind: 'user', id: 'user-1' },
   capability: Spec.capabilities.Manage,
   resource: {
     name: Spec.name,
     scope: {
-      projectId: "P1",
-      specId: "S1",
+      projectId: 'P1',
+      specId: 'S1',
     },
   },
 });

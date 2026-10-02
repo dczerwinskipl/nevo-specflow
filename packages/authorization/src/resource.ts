@@ -8,8 +8,10 @@ type QualifiedCapabilities<Name extends string, Capabilities extends CapabilityM
   [Key in keyof Capabilities]: `${Name}.${Extract<Capabilities[Key], string>}`;
 }>;
 
-export interface DefinedResource<Name extends string, Capabilities extends CapabilityMap>
-  extends ResourceDefinition {
+export interface DefinedResource<
+  Name extends string,
+  Capabilities extends CapabilityMap,
+> extends ResourceDefinition {
   readonly name: Name;
   readonly capabilities: QualifiedCapabilities<Name, Capabilities>;
 }

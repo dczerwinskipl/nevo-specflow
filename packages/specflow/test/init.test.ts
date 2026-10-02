@@ -172,9 +172,9 @@ describe('project initialization', () => {
       }),
     ).rejects.toThrowError(/simulated project write failure/);
 
-    await expect(readFile(join(root, '.nevo', 'local', 'config.yaml'), 'utf8')).rejects.toMatchObject(
-      { code: 'ENOENT' },
-    );
+    await expect(
+      readFile(join(root, '.nevo', 'local', 'config.yaml'), 'utf8'),
+    ).rejects.toMatchObject({ code: 'ENOENT' });
     await expect(readFile(join(root, '.nevo', 'config.yaml'), 'utf8')).rejects.toMatchObject({
       code: 'ENOENT',
     });

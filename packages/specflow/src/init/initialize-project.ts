@@ -116,8 +116,9 @@ async function defaultWriteConfigFile(
       ...(options.local ? { mode: 0o600 } : {}),
     });
     await rename(stagedPath, path);
-  } finally {
+  } catch (error) {
     await rm(stagedPath, { force: true });
+    throw error;
   }
 }
 

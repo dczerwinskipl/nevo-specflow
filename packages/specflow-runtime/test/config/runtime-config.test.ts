@@ -558,7 +558,14 @@ describe('runtime configuration', () => {
     ],
     [
       'oidc.issuer',
-      'runtime:\n  auth:\n    providers:\n      oidc:\n        issuer: https://issuer.example.test\n',
+      [
+        'runtime:',
+        '  auth:',
+        '    providers:',
+        '      oidc:',
+        '        issuer: https://issuer.example.test',
+        '',
+      ].join('\n'),
     ],
     ['server.port', 'runtime:\n  server:\n    port: 9999\n'],
     [

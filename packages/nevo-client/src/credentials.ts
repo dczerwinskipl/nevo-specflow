@@ -3,7 +3,7 @@ import type {
   CredentialContext,
   CredentialProvider,
   ResolvedCredentials,
-} from './types.js';
+} from './types';
 
 export function anonymousCredentials(): CredentialProvider {
   return {

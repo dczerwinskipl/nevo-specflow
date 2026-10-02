@@ -1,28 +1,19 @@
-# Example workstation-local override.
-# Copy to .nevo-local/nevo-specflow.yaml. This example contains only fake values.
-
-server:
-  publicOrigin: https://specflow.example.test:4318
-  tls:
-    enabled: true
-    certFile: .nevo-local/tls/cert.pem
-    keyFile: .nevo-local/tls/key.pem
+# Example workstation-local configuration.
+# nevo-specflow init writes .nevo/local/config.yaml and ensures .nevo/local/ is ignored.
+# This example contains only fake values. Project policy/provider enablement stays committed.
 
 auth:
-  mode: required
+  # For auth.mode=none, select the workstation attribution identity here.
+  # localUserId: local-user
+
   providers:
     password:
-      enabled: true
       accounts:
-        demo:
-          userId: demo-user
-          # Generate with: printf '%s\n' "$PASSWORD" | nevo-specflow auth hash-password --password-stdin
+        dominik:
+          userId: dominik
+          # Generated automatically by `nevo-specflow init` for password auth.
           passwordHash: "<replace-with-a-local-password-hash>"
-    # Google example. Current profile: confidential client using client_secret_post and a verified email claim in the ID token.
+
     oidc:
-      enabled: true
-      issuer: https://accounts.google.com
-      clientId: example.apps.googleusercontent.com
+      # OIDC issuer/clientId/allowedEmails belong in .nevo/config.yaml.
       clientSecret: "<replace-with-a-local-client-secret>"
-      allowedEmails:
-        demo@example.com: demo-user

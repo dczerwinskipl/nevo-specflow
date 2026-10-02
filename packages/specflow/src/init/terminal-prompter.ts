@@ -1,27 +1,18 @@
-import type { ReadStream, WriteStream } from 'node:tty';
-import { Writable } from 'node:stream';
 import { createInterface, type Interface } from 'node:readline/promises';
+import { Writable } from 'node:stream';
+import type { ReadStream, WriteStream } from 'node:tty';
 
 import type { ProjectInitPrompter, PromptChoice } from './prompts.js';
 
 export class TerminalProjectInitPrompter implements ProjectInitPrompter {
+  readonly #input: ReadStream;
   readonly #output: WriteStream;
-  readonly #readline: Interface;
+  #readline?: Interface;
   #muted = false;
 
   constructor(input: ReadStream, output: WriteStream) {
+    this.#input = input;
     this.#output = output;
-    const proxy = new Writable({
-      write: (chunk, _encoding, callback) => {
-        if (!this.#muted) output.write(chunk);
-        callback();
-      },
-    });
-    this.#readline = createInterface({
-      input,
-      output: proxy,
-      terminal: input.isTTY,
-    });
   }
 
   async select<T extends string>(
@@ -34,7 +25,7 @@ export class TerminalProjectInitPrompter implements ProjectInitPrompter {
     });
 
     while (true) {
-      const raw = (await this.#readline.question('Choose: ')).trim();
+      const raw = (await this.#interface().question('Choose: ')).trim();
       const index = Number(raw) - 1;
       const choice = choices[index];
       if (choice) return choice.value;
@@ -43,7 +34,7 @@ export class TerminalProjectInitPrompter implements ProjectInitPrompter {
 
   async input(message: string, defaultValue?: string): Promise<string> {
     const suffix = defaultValue ? ` [${defaultValue}]` : '';
-    const value = await this.#readline.question(`${message}${suffix}: `);
+    const value = await this.#interface().question(`${message}${suffix}: `);
     return value.length === 0 && defaultValue !== undefined ? defaultValue : value;
   }
 
@@ -51,7 +42,7 @@ export class TerminalProjectInitPrompter implements ProjectInitPrompter {
     this.#output.write(`${message}: `);
     this.#muted = true;
     try {
-      return await this.#readline.question('');
+      return await this.#interface().question('');
     } finally {
       this.#muted = false;
       this.#output.write('\n');
@@ -59,6 +50,25 @@ export class TerminalProjectInitPrompter implements ProjectInitPrompter {
   }
 
   close(): void {
-    this.#readline.close();
+    this.#readline?.close();
+    this.#readline = undefined;
+  }
+
+  #interface(): Interface {
+    if (this.#readline) return this.#readline;
+
+    const proxy = new Writable({
+      write: (chunk, _encoding, callback) => {
+        if (!this.#muted) this.#output.write(chunk);
+        callback();
+      },
+    });
+
+    this.#readline = createInterface({
+      input: this.#input,
+      output: proxy,
+      terminal: this.#input.isTTY,
+    });
+    return this.#readline;
   }
 }

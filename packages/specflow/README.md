@@ -8,11 +8,12 @@ The public **Nevo SpecFlow** product package. It ships the single installable
 ```bash
 nevo-specflow --help
 nevo-specflow --version
+nevo-specflow init
 nevo-specflow start
 nevo-specflow auth hash-password --password-stdin
 ```
 
-`start` starts the configured long-running Runtime HTTP server and remains active until
+`init` bootstraps `.nevo/config.yaml`, ignored `.nevo/local/config.yaml`, and authentication setup for a Git repository. `start` starts the configured long-running Runtime HTTP server and remains active until
 shutdown. The auth utility generates the supported password hash from one password line
 read from stdin, keeping the plaintext password out of command arguments.
 

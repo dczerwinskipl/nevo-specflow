@@ -1,6 +1,6 @@
 import { constants } from 'node:fs';
-import { access, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { dirname, join, parse, resolve } from 'node:path';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
 
 import {
   hashPassword as hashRuntimePassword,
@@ -224,7 +224,7 @@ async function findRepositoryRoot(cwd: string): Promise<string> {
   while (true) {
     if (await fileExists(join(current, '.git'))) return current;
     const parent = dirname(current);
-    if (parent === current || current === parse(current).root) break;
+    if (parent === current) break;
     current = parent;
   }
 

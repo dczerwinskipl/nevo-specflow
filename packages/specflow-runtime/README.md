@@ -33,10 +33,10 @@ delegates auth-specific parsing and security policy to the auth feature.
 
 Runtime loads:
 
-- `nevo-specflow.yaml` from the project root;
-- optional workstation-local `.nevo-local/nevo-specflow.yaml`.
+- committed `.nevo/config.yaml`;
+- optional workstation-local `.nevo/local/config.yaml`.
 
-Authentication secrets, including password hashes and OIDC client secrets, are local-only.
+The entire `.nevo/local/` directory is Git-ignored and is also reserved for future Runtime-owned local state. Authentication secrets, including password hashes and OIDC client secrets, are local-only.
 Security-sensitive auth maps use replacement rather than additive merge semantics.
 
 `auth.mode` supports:
@@ -101,6 +101,6 @@ Sessions are server-side, bounded, and expiring. `GET /api/auth/session` respons
 `Cache-Control: no-store`. Cookies are `HttpOnly`, `SameSite=Lax`, and `Secure`
 whenever Runtime TLS is enabled.
 
-See [`nevo-specflow.example.yaml`](../../nevo-specflow.example.yaml) and
+See [project configuration and local state](../../docs/architecture/runtime/configuration.md), [`nevo-specflow.example.yaml`](../../nevo-specflow.example.yaml), and
 [`nevo-specflow.local.example.yaml`](../../nevo-specflow.local.example.yaml) for the
 configuration shape.

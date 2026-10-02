@@ -8,8 +8,6 @@ import {
   type AuthCommandContext,
   type RuntimeCommandContext,
 } from '@nevo/specflow-runtime/cli';
-import process from 'node:process';
-
 import { Command } from 'commander';
 
 import { createProjectInitCommand, type ProjectInitCommandContext } from './init/cli.js';
@@ -40,7 +38,7 @@ export function createProgram(io: ProgramIO): Command {
 
   program.addCommand(
     createProjectInitCommand({
-      cwd: io.cwd ?? process.cwd(),
+      cwd: io.cwd ?? '.',
       stdout: io.stdout,
       ...(io.initPrompter ? { prompter: io.initPrompter } : {}),
       ...(io.initializeProject ? { initialize: io.initializeProject } : {}),

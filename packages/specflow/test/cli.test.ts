@@ -27,8 +27,15 @@ describe('createProgram — nevo-specflow router', () => {
     await expect(run(['--help'])).rejects.toMatchObject({ code: 'commander.helpDisplayed' });
     const text = out.join('\n');
     expect(text).toContain('nevo-specflow');
+    expect(text).toContain('init');
     expect(text).toContain('start');
     expect(text).toContain('auth');
+  });
+
+  it('init exposes the project bootstrap command', async () => {
+    const { run, out } = harness();
+    await expect(run(['init', '--help'])).rejects.toMatchObject({ code: 'commander.helpDisplayed' });
+    expect(out.join('\n')).toMatch(/Initialize Nevo SpecFlow configuration/i);
   });
 
   it('--version prints the injected version constant', async () => {

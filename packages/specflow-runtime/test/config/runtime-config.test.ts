@@ -42,8 +42,8 @@ function requiredAuthConfig() {
       publicOrigin: 'https://specflow.example.test:4318',
       tls: {
         enabled: true,
-        certFile: '.nevo-local/tls/cert.pem',
-        keyFile: '.nevo-local/tls/key.pem',
+        certFile: '.nevo/local/tls/cert.pem',
+        keyFile: '.nevo/local/tls/key.pem',
       },
     },
     auth: {
@@ -270,8 +270,8 @@ describe('runtime configuration', () => {
           publicOrigin: 'http://localhost:4318',
           tls: {
             enabled: true,
-            certFile: '.nevo-local/tls/cert.pem',
-            keyFile: '.nevo-local/tls/key.pem',
+            certFile: '.nevo/local/tls/cert.pem',
+            keyFile: '.nevo/local/tls/key.pem',
           },
         },
         auth: {
@@ -291,7 +291,7 @@ describe('runtime configuration', () => {
         server: {
           host: '127.0.0.1',
           port: 4318,
-          tls: { enabled: true, certFile: '.nevo-local/tls/cert.pem' },
+          tls: { enabled: true, certFile: '.nevo/local/tls/cert.pem' },
         },
         auth: {
           mode: 'none',
@@ -467,21 +467,22 @@ describe('runtime configuration', () => {
 
   it('loads required project YAML and applies the optional local override', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'specflow-config-'));
-    await writeFile(join(cwd, 'nevo-specflow.yaml'), PROJECT_CONFIG, 'utf8');
-    await mkdir(join(cwd, '.nevo-local'));
-    await writeFile(join(cwd, '.nevo-local/nevo-specflow.yaml'), 'server:\n  port: 9443\n', 'utf8');
+    await mkdir(join(cwd, '.nevo/local'), { recursive: true });
+    await writeFile(join(cwd, '.nevo/config.yaml'), PROJECT_CONFIG, 'utf8');
+    await writeFile(join(cwd, '.nevo/local/config.yaml'), 'server:\n  port: 9443\n', 'utf8');
 
     const loaded = await loadRuntimeConfig({ cwd });
 
     expect(loaded.config.server.port).toBe(9443);
-    expect(loaded.sources.project).toBe(join(cwd, 'nevo-specflow.yaml'));
-    expect(loaded.sources.local).toBe(join(cwd, '.nevo-local/nevo-specflow.yaml'));
+    expect(loaded.sources.project).toBe(join(cwd, '.nevo/config.yaml'));
+    expect(loaded.sources.local).toBe(join(cwd, '.nevo/local/config.yaml'));
   });
 
   it('rejects OIDC client secrets from the project config', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'specflow-project-secret-'));
+    await mkdir(join(cwd, '.nevo'), { recursive: true });
     await writeFile(
-      join(cwd, 'nevo-specflow.yaml'),
+      join(cwd, '.nevo/config.yaml'),
       PROJECT_CONFIG.replace(
         'oidc:\n      enabled: false',
         'oidc:\n      enabled: false\n      clientSecret: committed-secret',
@@ -496,8 +497,9 @@ describe('runtime configuration', () => {
 
   it('rejects password hashes from the project config', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'specflow-password-secret-'));
+    await mkdir(join(cwd, '.nevo'), { recursive: true });
     await writeFile(
-      join(cwd, 'nevo-specflow.yaml'),
+      join(cwd, '.nevo/config.yaml'),
       PROJECT_CONFIG.replace(
         'password:\n      enabled: false',
         `password:

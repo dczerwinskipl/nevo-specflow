@@ -62,14 +62,10 @@ describe('HttpClient.sse', () => {
   });
 
   it('keeps absolute SSE URLs inside a configured base URL by default', async () => {
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(sseResponse('data: protected\n\n'));
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(sseResponse('data: protected\n\n'));
     vi.stubGlobal('fetch', fetchMock);
 
-    const client = createHttpClient({
-      baseURL: 'https://api.example.test',
-    });
+    const client = createHttpClient({ baseURL: 'https://api.example.test' });
     const stream = client.sse('https://other.example.test/events');
     const iterator = stream[Symbol.asyncIterator]();
 

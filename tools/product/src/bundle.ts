@@ -1,6 +1,6 @@
 // The one canonical bundler for the product. esbuild compiles the `nevo-specflow`
 // entry and every INTERNAL workspace package it imports (currently
-// `@nevo/specflow-runtime`) — plus `commander` — into a single self-contained
+// `@nevo/specflow-runtime`) — plus bundled third-party runtime dependencies — into a single self-contained
 // ESM file. That is why the packed tarball works with no registry and no
 // workspace: there is nothing left to resolve at install time.
 //
@@ -39,7 +39,13 @@ export async function bundleProduct(input: BundleInput): Promise<{ outfile: stri
     // Everything is compiled in — the artifact has zero runtime dependencies.
     packages: 'bundle',
     define: { NEVO_SPECFLOW_VERSION_INJECTED: JSON.stringify(input.version) },
-    banner: { js: '#!/usr/bin/env node' },
+    banner: {
+      js: [
+        '#!/usr/bin/env node',
+        "import { createRequire as __nevoCreateRequire } from 'node:module';",
+        'const require = __nevoCreateRequire(import.meta.url);',
+      ].join('\n'),
+    },
     legalComments: 'none',
     sourcemap: false,
     logLevel: 'silent',

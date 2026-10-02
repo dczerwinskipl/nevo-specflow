@@ -7,13 +7,13 @@ import { createRequire } from 'node:module';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-// `nevo-repo-product` depends on the same `commander` (exact pinned version) that
+// `nevo-repo-product` depends on the same exact third-party package versions that
 // esbuild compiles into the product bundle, so resolving from here gives the
-// identical license file.
+// authoritative license files for the embedded code.
 const require = createRequire(import.meta.url);
 
 /** Packages whose source is compiled into dist/bin.js and needs its license carried. */
-const BUNDLED = ['commander'] as const;
+const BUNDLED = ['commander', 'yaml'] as const;
 
 export function buildThirdPartyNotices(): string {
   const blocks = BUNDLED.map((name) => {

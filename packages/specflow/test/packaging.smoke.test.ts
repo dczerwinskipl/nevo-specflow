@@ -134,11 +134,13 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     ]);
   });
 
-  it('THIRD_PARTY_NOTICES.txt carries the Commander license that is embedded in the bundle', () => {
+  it('THIRD_PARTY_NOTICES.txt carries licenses for third-party code embedded in the bundle', () => {
     const notices = tarArgs('-xzOf', 'package/THIRD_PARTY_NOTICES.txt');
     expect(notices).toMatch(/commander 15\.0\.0/);
     expect(notices).toMatch(/MIT License/i);
     expect(notices).toMatch(/Copyright \(c\) 2011 TJ Holowaychuk/);
+    expect(notices).toMatch(/yaml 2\.9\.1 \(ISC\)/);
+    expect(notices).toMatch(/Copyright Eemeli Aro <eemeli@gmail\.com>/);
     // esbuild is build-only — its code is not in the bundle, so it is not listed.
     expect(notices).not.toMatch(/esbuild/i);
   });

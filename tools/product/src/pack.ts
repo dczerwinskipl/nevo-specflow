@@ -86,7 +86,7 @@ export async function packProduct(opts: PackOptions = {}): Promise<PackResult> {
     writeStageManifest(stage, paths, version);
     copyIfPresent(join(paths.productPackage, 'README.md'), join(stage, 'README.md'));
     copyIfPresent(join(paths.root, 'LICENSE'), join(stage, 'LICENSE'));
-    // Attribution for third-party code EMBEDDED in dist/bin.js (commander).
+    // Attribution for third-party code EMBEDDED in dist/bin.js.
     writeFileSync(join(stage, 'THIRD_PARTY_NOTICES.txt'), buildThirdPartyNotices());
 
     mkdirSync(paths.artifactsDir, { recursive: true });

@@ -56,7 +56,7 @@ export class TerminalProjectInitPrompter implements ProjectInitPrompter {
 
     const proxy = new Writable({
       write: (chunk, _encoding, callback) => {
-        if (!this.#muted) this.#output.write(chunk);
+        if (!this.#muted) this.#output.write(String(chunk));
         callback();
       },
     });

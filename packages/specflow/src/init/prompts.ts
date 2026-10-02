@@ -38,7 +38,7 @@ export async function collectProjectInitInput(
   const clientId = await requiredInput(prompt, 'Client ID');
   const clientSecret = await requiredSecret(prompt, 'Client secret');
   const allowedEmail = await requiredInput(prompt, 'Allowed email');
-  const suggestedUserId = allowedEmail.split('@')[0]?.trim() || 'user';
+  const suggestedUserId = allowedEmail.split('@')[0]?.trim() ?? 'user';
   const userId = await requiredInput(prompt, 'User id', suggestedUserId);
   const displayName = await requiredInput(prompt, 'Display name', userId);
 

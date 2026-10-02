@@ -5,31 +5,122 @@ import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import { describe, expect, it } from 'vitest';
 
-import { createStartCommand } from '../src/cli/command.js';
-import { RUNTIME_BOOTSTRAP_MARKER } from '../src/index.js';
+import { createAuthCommand, createStartCommand } from '../src/cli/command.js';
+import { isSupportedPasswordHash, verifyPassword } from '../src/auth/password.js';
+import { PASSWORD_MAX_LENGTH } from '../src/auth/password-policy.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-describe('createStartCommand — Runtime CLI adapter', () => {
+describe('Runtime CLI adapters', () => {
   it('returns a Commander command named "start"', () => {
     const cmd = createStartCommand({ stdout: () => undefined });
     expect(cmd).toBeInstanceOf(Command);
     expect(cmd.name()).toBe('start');
-    expect(cmd.description()).toMatch(/SpecFlow/i);
+    expect(cmd.description()).toMatch(/Runtime server/i);
   });
 
-  it('runs the Runtime capability and writes the marker', async () => {
+  it('starts the Runtime and reports its listening address', async () => {
     const out: string[] = [];
-    const cmd = createStartCommand({ stdout: (line) => out.push(line) });
+    let closed = false;
+    const cmd = createStartCommand({
+      stdout: (line) => out.push(line),
+      start: () =>
+        Promise.resolve({
+          address: 'http://127.0.0.1:4318',
+          close: () =>
+            Promise.resolve().then(() => {
+              closed = true;
+            }),
+        }),
+    });
     cmd.exitOverride();
     await cmd.parseAsync(['node', 'start']);
-    expect(out).toEqual([RUNTIME_BOOTSTRAP_MARKER]);
+    expect(out).toEqual(['Nevo SpecFlow Runtime listening at http://127.0.0.1:4318']);
+    expect(closed).toBe(false);
+  });
+
+  it('owns graceful shutdown when an abort signal is supplied', async () => {
+    const controller = new AbortController();
+    let closed = false;
+    const cmd = createStartCommand({
+      stdout: () => undefined,
+      signal: controller.signal,
+      start: () =>
+        Promise.resolve({
+          address: 'http://127.0.0.1:4318',
+          close: () =>
+            Promise.resolve().then(() => {
+              closed = true;
+            }),
+        }),
+    });
+    cmd.exitOverride();
+    const running = cmd.parseAsync(['node', 'start']);
+    controller.abort();
+    await running;
+    expect(closed).toBe(true);
+  });
+
+  it('generates a supported password hash from stdin through the auth feature command', async () => {
+    const out: string[] = [];
+    const cmd = createAuthCommand({
+      stdout: (line) => out.push(line),
+      readPasswordFromStdin: () => Promise.resolve('correct horse battery staple\n'),
+    });
+    cmd.exitOverride();
+
+    await cmd.parseAsync(['node', 'auth', 'hash-password', '--password-stdin']);
+
+    expect(out).toHaveLength(1);
+    expect(isSupportedPasswordHash(out[0] ?? '')).toBe(true);
+    await expect(verifyPassword('correct horse battery staple', out[0] ?? '')).resolves.toBe(true);
+  });
+
+  it('accepts the maximum password length supported by the login API', async () => {
+    const password = 'p'.repeat(PASSWORD_MAX_LENGTH);
+    const out: string[] = [];
+    const cmd = createAuthCommand({
+      stdout: (line) => out.push(line),
+      readPasswordFromStdin: () => Promise.resolve(`${password}\n`),
+    });
+    cmd.exitOverride();
+
+    await cmd.parseAsync(['node', 'auth', 'hash-password', '--password-stdin']);
+
+    expect(out).toHaveLength(1);
+    await expect(verifyPassword(password, out[0] ?? '')).resolves.toBe(true);
+  });
+
+  it('rejects password provisioning above the login API limit', async () => {
+    const cmd = createAuthCommand({
+      stdout: () => undefined,
+      readPasswordFromStdin: () => Promise.resolve(`${'p'.repeat(PASSWORD_MAX_LENGTH + 1)}\n`),
+    });
+    cmd.exitOverride();
+
+    await expect(
+      cmd.parseAsync(['node', 'auth', 'hash-password', '--password-stdin']),
+    ).rejects.toThrowError(new RegExp(`at most ${String(PASSWORD_MAX_LENGTH)} characters`));
+  });
+
+  it('rejects multi-line password stdin', async () => {
+    const cmd = createAuthCommand({
+      stdout: () => undefined,
+      readPasswordFromStdin: () => Promise.resolve('first\nsecond\n'),
+    });
+    cmd.exitOverride();
+
+    await expect(
+      cmd.parseAsync(['node', 'auth', 'hash-password', '--password-stdin']),
+    ).rejects.toThrowError(/exactly one line/);
   });
 
   it('keeps Commander out of the Runtime capability module', () => {
     const core = readFileSync(join(here, '..', 'src', 'index.ts'), 'utf8');
     expect(core).not.toMatch(/['"]commander['"]/);
     const adapter = readFileSync(join(here, '..', 'src', 'cli', 'command.ts'), 'utf8');
+    const authAdapter = readFileSync(join(here, '..', 'src', 'auth', 'cli.ts'), 'utf8');
     expect(adapter).toMatch(/from 'commander'/);
+    expect(authAdapter).toMatch(/from 'commander'/);
   });
 });

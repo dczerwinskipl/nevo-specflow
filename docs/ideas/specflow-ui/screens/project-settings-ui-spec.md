@@ -370,8 +370,9 @@ For Project Settings:
 | Repository/Git configuration summary      | **missing**  | partial runtime/source-control APIs, not a Settings contract                                          | Add project-configuration projection; keep current worktree state out of Settings ownership.                        |
 | Integration configuration                 | **missing**  | no generic plugin-driven Settings catalog                                                             | Add through extensible Settings catalog contributions.                                                              |
 
-The current \`@nevo/specflow-runtime\` package explicitly describes its backend as a bootstrap proof;
-there is no current HTTP product contract to treat as \`existing-new\` for this screen.
+The current \`@nevo/specflow-runtime\` package now has a real HTTP/authentication foundation.
+It still does not expose a Project Settings catalog/read-model API, so there is no existing
+Settings HTTP contract to treat as \`existing-new\` for this screen.
 
 ### Legacy field evidence
 

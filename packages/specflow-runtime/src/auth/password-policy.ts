@@ -1,0 +1,2 @@
+export const PASSWORD_USERNAME_MAX_LENGTH = 256;
+export const PASSWORD_MAX_LENGTH = 1_024;

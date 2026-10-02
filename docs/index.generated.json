@@ -884,9 +884,9 @@
         "reviewing a Dependabot pull request",
         "reporting or triaging a vulnerability",
         "deciding how to pin a GitHub Action",
-        "wondering when CodeQL gets turned on"
+        "checking the current CodeQL status"
       ],
-      "summary": "How dependency updates arrive (Dependabot, grouped, weekly), how versions are pinned, the vulnerability-report path, the repository security features that are enabled, and when CodeQL should be added.",
+      "summary": "How dependency updates arrive (Dependabot, grouped, weekly), how versions are pinned, the vulnerability-report path, the repository security features that are enabled, and the current CodeQL status.",
       "related": [
         "engineering.repository.local-setup",
         "engineering.repository.ci"
@@ -2455,7 +2455,7 @@
         "describing the product CLI to a user or in product copy",
         "planning a new nevo-specflow command"
       ],
-      "summary": "The currently-implemented public surface of the nevo-specflow CLI — --help, --version and the runtime bootstrap command — and an explicit statement that no other command (init, status, workflow, install, update) exists yet.",
+      "summary": "The currently-implemented public surface of the nevo-specflow CLI — --help, --version, the Runtime server command, and the password-hash auth utility — plus the commands that do not exist yet.",
       "related": [
         "docs.product-specflow-cli-readme",
         "engineering.cli.architecture",

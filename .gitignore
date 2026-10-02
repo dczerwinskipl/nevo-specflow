@@ -39,3 +39,6 @@ Thumbs.db
 
 # Local scratch area — never tracked. Prompts, notes, throwaway experiments.
 .local/
+
+# SpecFlow workstation-local configuration and secrets
+.nevo-local/

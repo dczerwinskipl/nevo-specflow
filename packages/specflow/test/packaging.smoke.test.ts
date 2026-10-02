@@ -7,15 +7,15 @@
 // bundle itself has no dependencies to resolve. Every `pnpm` runs from the repo
 // root (which carries `packageManager`) so Corepack never downloads "latest".
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
+import { once } from 'node:events';
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { basename, delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-
-import { RUNTIME_BOOTSTRAP_MARKER } from '@nevo/specflow-runtime';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const sh = process.platform === 'win32';
@@ -69,7 +69,7 @@ interface Run {
   stdout: string;
 }
 /** Invoke the installed `nevo-specflow` shim from the isolated prefix's .bin, via PATH. */
-function nevoSpec(args: string[]): Run {
+function nevoSpec(args: string[], input?: string): Run {
   try {
     return {
       code: 0,
@@ -78,12 +78,29 @@ function nevoSpec(args: string[]): Run {
         env: runEnv,
         encoding: 'utf8',
         shell: sh,
+        ...(input === undefined ? {} : { input }),
       }),
     };
   } catch (err) {
     const e = err as { status?: number; stdout?: string; stderr?: string };
     return { code: e.status ?? 1, stdout: `${e.stdout ?? ''}${e.stderr ?? ''}` };
   }
+}
+
+async function freePort(): Promise<number> {
+  const server = createServer();
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  const address = server.address();
+  if (!address || typeof address === 'string') {
+    throw new Error('Could not allocate a test port.');
+  }
+  await new Promise<void>((resolve, reject) =>
+    server.close((error) => (error ? reject(error) : resolve())),
+  );
+  return address.port;
 }
 
 function installedManifest(): Record<string, unknown> {
@@ -134,11 +151,15 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     ]);
   });
 
-  it('THIRD_PARTY_NOTICES.txt carries the Commander license that is embedded in the bundle', () => {
+  it('THIRD_PARTY_NOTICES.txt carries licenses for third-party code embedded in the bundle', () => {
     const notices = tarArgs('-xzOf', 'package/THIRD_PARTY_NOTICES.txt');
     expect(notices).toMatch(/commander 15\.0\.0/);
     expect(notices).toMatch(/MIT License/i);
     expect(notices).toMatch(/Copyright \(c\) 2011 TJ Holowaychuk/);
+    expect(notices).toMatch(/yaml 2\.9\.1 \(ISC\)/);
+    expect(notices).toMatch(/Copyright Eemeli Aro <eemeli@gmail\.com>/);
+    expect(notices).toMatch(/fastify 5\.12\.5/);
+    expect(notices).toMatch(/openid-client 6\.8\.8/);
     // esbuild is build-only — its code is not in the bundle, so it is not listed.
     expect(notices).not.toMatch(/esbuild/i);
   });
@@ -156,11 +177,102 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     expect(r.stdout.trim()).toBe(version);
   });
 
-  it('C. nevo-specflow start — exit 0, runs the Runtime capability (via the shim)', () => {
-    const r = nevoSpec(['start']);
+  it('C. nevo-specflow start --help — exposes the real Runtime server command (via the shim)', () => {
+    const r = nevoSpec(['start', '--help']);
     expect(r.code).toBe(0);
-    expect(r.stdout).toContain(RUNTIME_BOOTSTRAP_MARKER);
+    expect(r.stdout).toMatch(/Runtime server/i);
   });
+
+  it('D. generates a password hash through the installed auth utility', () => {
+    const r = nevoSpec(
+      ['auth', 'hash-password', '--password-stdin'],
+      'correct horse battery staple\n',
+    );
+    expect(r.code).toBe(0);
+    expect(r.stdout.trim()).toMatch(/^\$scrypt\$16384\$8\$5\$/u);
+  });
+
+  it('E. starts the packaged Runtime, serves HTTP, and shuts down cleanly', async () => {
+    const port = await freePort();
+    writeFileSync(
+      join(prefix, 'nevo-specflow.yaml'),
+      [
+        'server:',
+        '  host: 127.0.0.1',
+        `  port: ${port}`,
+        '  tls:',
+        '    enabled: false',
+        'auth:',
+        '  mode: none',
+        '  providers:',
+        '    password:',
+        '      enabled: false',
+        '    oidc:',
+        '      enabled: false',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+
+    const child = spawn('nevo-specflow', ['start'], {
+      cwd: prefix,
+      env: runEnv,
+      shell: sh,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (chunk: string) => {
+      stdout += chunk;
+    });
+    child.stderr.on('data', (chunk: string) => {
+      stderr += chunk;
+    });
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error(`Packaged Runtime did not start. stdout=${stdout} stderr=${stderr}`));
+        }, 10_000);
+
+        const onData = () => {
+          if (stdout.includes(`Runtime listening at http://127.0.0.1:${port}`)) {
+            clearTimeout(timeout);
+            child.stdout.off('data', onData);
+            resolve();
+          }
+        };
+        child.stdout.on('data', onData);
+        child.once('exit', (code, signal) => {
+          clearTimeout(timeout);
+          reject(
+            new Error(
+              `Packaged Runtime exited before startup: code=${String(code)} signal=${String(signal)} stderr=${stderr}`,
+            ),
+          );
+        });
+      });
+
+      const response = await fetch(`http://127.0.0.1:${port}/api/auth/session`);
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual({
+        authenticated: false,
+        availableProviders: [],
+      });
+
+      child.kill('SIGTERM');
+      const [code, signal] = (await once(child, 'exit')) as [number | null, NodeJS.Signals | null];
+      expect(signal).toBeNull();
+      expect(code).toBe(0);
+    } finally {
+      if (child.exitCode === null && child.signalCode === null) {
+        child.kill('SIGTERM');
+      }
+    }
+  }, 30_000);
 
   it('an unknown command still exits non-zero after install', () => {
     expect(nevoSpec(['definitely-not-a-command']).code).not.toBe(0);

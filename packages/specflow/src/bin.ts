@@ -1,5 +1,5 @@
-// Executable boundary for `nevo-specflow`. Construct IO, run the Commander
-// program, and map a thrown error to an exit code. No product logic here.
+// Executable boundary for `nevo-specflow`. Construct IO and process lifecycle,
+// run the Commander program, and map a thrown error to an exit code.
 
 import process from 'node:process';
 
@@ -8,9 +8,16 @@ import { CommanderError } from 'commander';
 import { createProgram } from './program.js';
 
 async function main(argv: string[]): Promise<number> {
+  const shutdown = new AbortController();
+  const abort = () => shutdown.abort();
+  process.once('SIGINT', abort);
+  process.once('SIGTERM', abort);
+
   const program = createProgram({
     stdout: (line) => process.stdout.write(`${line}\n`),
     stderr: (line) => process.stderr.write(`${line}\n`),
+    readPasswordFromStdin: readStdin,
+    signal: shutdown.signal,
   });
 
   try {
@@ -23,7 +30,19 @@ async function main(argv: string[]): Promise<number> {
     }
     process.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`);
     return 1;
+  } finally {
+    process.off('SIGINT', abort);
+    process.off('SIGTERM', abort);
   }
+}
+
+async function readStdin(): Promise<string> {
+  process.stdin.setEncoding('utf8');
+  let input = '';
+  for await (const chunk of process.stdin) {
+    input += String(chunk);
+  }
+  return input;
 }
 
 process.exitCode = await main(process.argv);

@@ -36,7 +36,7 @@ Every change to `main` and `release/v*` is a pull request. Use
 A PR into `main` or `release/v*` can merge only when:
 
 - the **PR title** follows [Conventional Commits](commit-conventions.md) (`pr-title` check);
-- all **required status checks** pass — `pr-title`, `quality`, `test`, `build` — with the
+- all **required status checks** pass — `pr-title`, `quality`, `verify tests`, `build` — with the
   **strict / up-to-date** policy, so the branch must also be current with its base;
 - there are **no unresolved review conversations**;
 - there is **no pending `Request changes` review**;

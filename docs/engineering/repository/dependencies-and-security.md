@@ -7,11 +7,11 @@ read_when:
   - reviewing a Dependabot pull request
   - reporting or triaging a vulnerability
   - deciding how to pin a GitHub Action
-  - wondering when CodeQL gets turned on
+  - checking the current CodeQL status
 summary: >
   How dependency updates arrive (Dependabot, grouped, weekly), how versions are pinned,
   the vulnerability-report path, the repository security features that are enabled, and
-  when CodeQL should be added.
+  the current CodeQL status.
 related:
   - engineering.repository.local-setup
   - engineering.repository.ci
@@ -125,7 +125,9 @@ gh api "repos/$REPO/private-vulnerability-reporting"
 
 ## CodeQL
 
-Not enabled yet — the repository has no product source code to analyze. Add
-`github/codeql-action` (`javascript-typescript`) and make `CodeQL` a required check in
-the same change that migrates the first product package. See
+CodeQL is not enabled yet. The repository now contains substantive Runtime and
+authentication code, so the earlier "no product code yet" rationale is obsolete.
+Adding `github/codeql-action` for `javascript-typescript` should be a dedicated
+repository-governance change that also decides whether `CodeQL` becomes a required
+branch check. See
 [`.github/workflows/README.md`](../../../.github/workflows/README.md#codeql).

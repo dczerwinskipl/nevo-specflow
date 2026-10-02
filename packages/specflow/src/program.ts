@@ -2,7 +2,12 @@
 // root program, global flags, version, output/error/exit conventions, and command
 // composition. Capability verticals own their own Commander adapters.
 
-import { createStartCommand } from '@nevo/specflow-runtime/cli';
+import {
+  createAuthCommand,
+  createStartCommand,
+  type AuthCommandContext,
+  type RuntimeCommandContext,
+} from '@nevo/specflow-runtime/cli';
 import { Command } from 'commander';
 
 import { NEVO_SPECFLOW_VERSION } from './version.js';
@@ -10,15 +15,12 @@ import { NEVO_SPECFLOW_VERSION } from './version.js';
 export interface ProgramIO {
   readonly stdout: (line: string) => void;
   readonly stderr: (line: string) => void;
+  readonly signal?: AbortSignal;
+  readonly startRuntime?: RuntimeCommandContext['start'];
+  readonly readPasswordFromStdin?: AuthCommandContext['readPasswordFromStdin'];
 }
 
-/**
- * Build the `nevo-specflow` program. Pure wiring — argv is parsed by the caller.
- * The bootstrap surface intentionally contains only:
- *   nevo-specflow --help
- *   nevo-specflow --version
- *   nevo-specflow start
- */
+/** Build the `nevo-specflow` program. Pure wiring; argv is parsed by the caller. */
 export function createProgram(io: ProgramIO): Command {
   const program = new Command('nevo-specflow')
     .description('Nevo SpecFlow — spec-driven development for AI-assisted software engineering')
@@ -29,7 +31,20 @@ export function createProgram(io: ProgramIO): Command {
     })
     .showHelpAfterError();
 
-  program.addCommand(createStartCommand({ stdout: io.stdout }));
+  program.addCommand(
+    createAuthCommand({
+      stdout: io.stdout,
+      ...(io.readPasswordFromStdin ? { readPasswordFromStdin: io.readPasswordFromStdin } : {}),
+    }),
+  );
+
+  program.addCommand(
+    createStartCommand({
+      stdout: io.stdout,
+      ...(io.signal ? { signal: io.signal } : {}),
+      ...(io.startRuntime ? { start: io.startRuntime } : {}),
+    }),
+  );
 
   program.exitOverride();
   for (const cmd of program.commands) cmd.exitOverride();

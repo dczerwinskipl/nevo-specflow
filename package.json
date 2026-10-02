@@ -20,7 +20,7 @@
     "version:print": "node tools/release/dist/bin.js version",
     "version:check-transition": "node tools/release/dist/bin.js check-transition",
     "check:quality": "pnpm quality:build-tools && pnpm format:check && pnpm lint && node tools/docs/dist/bin.js check && node tools/agents/dist/bin.js check && pnpm version:check-transition",
-    "check": "pnpm check:quality && turbo run typecheck test build",
+    "check": "pnpm check:quality && turbo run typecheck && turbo run build && turbo run test",
     "product:pack": "pnpm --filter nevo-repo-product build && node tools/product/dist/bin.js pack",
     "dogfood:install": "pnpm --filter nevo-repo-product build && node tools/product/dist/bin.js dogfood",
     "agents:build": "pnpm docs:check && pnpm --filter nevo-repo-agents build && node tools/agents/dist/bin.js build",

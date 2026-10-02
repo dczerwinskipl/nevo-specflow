@@ -47,10 +47,10 @@ jobs:
         run: pnpm exec turbo run typecheck ${{ env.AFFECTED }}
 
   test-plan:
-    name: test plan
+    name: plan tests
     runs-on: ubuntu-latest
     outputs:
-      packages: ${{ steps.plan.outputs.packages }}
+      matrix: ${{ steps.plan.outputs.matrix }}
       has_tests: ${{ steps.plan.outputs.has_tests }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -59,8 +59,9 @@ jobs:
       - uses: ./.github/actions/setup
 
       # Resolve the same Turbo task graph used for execution, then fan only package
-      # test tasks out into independent GitHub jobs. PRs keep task-level affected
-      # detection; main / release exercise every package test task.
+      # test tasks out into independent GitHub jobs. On PRs, --affected selects changed
+      # workspaces plus downstream dependents from the declared workspace graph; main /
+      # release exercise every package test task.
       - name: Resolve package tests
         id: plan
         shell: bash
@@ -83,21 +84,27 @@ jobs:
             ),
           ].sort();
 
+          const tests = packages.map((packageName) => ({
+            package: packageName,
+            label: packageName.startsWith('nevo-repo-')
+              ? `tool/${packageName.slice('nevo-repo-'.length)}`
+              : packageName,
+          }));
+
           fs.appendFileSync(
             process.env.GITHUB_OUTPUT,
-            `packages=${JSON.stringify(packages)}\nhas_tests=${packages.length > 0}\n`,
+            `matrix=${JSON.stringify({ include: tests })}\nhas_tests=${tests.length > 0}\n`,
           );
           NODE
 
   package-test:
-    name: test (${{ matrix.package }})
+    name: test (${{ matrix.label }})
     needs: test-plan
     if: needs.test-plan.outputs.has_tests == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        package: ${{ fromJSON(needs.test-plan.outputs.packages) }}
+      matrix: ${{ fromJSON(needs.test-plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -108,16 +115,16 @@ jobs:
           PACKAGE: ${{ matrix.package }}
         run: pnpm exec turbo run test --filter="$PACKAGE"
 
-  # Keep the stable required-status context while package tests run independently.
-  test:
-    name: test
+  # Aggregate the independently-running package tests into one stable required check.
+  verify-tests:
+    name: verify tests
     needs:
       - test-plan
       - package-test
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Verify package test results
+      - name: Verify tests
         env:
           PLAN_RESULT: ${{ needs.test-plan.result }}
           PACKAGE_RESULT: ${{ needs.package-test.result }}

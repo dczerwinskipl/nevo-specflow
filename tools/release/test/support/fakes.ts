@@ -221,7 +221,7 @@ export function createFakeGitHub(overrides: Partial<FakeGitHubState> = {}): Fake
 export function greenChecks(): NormalizedCheckRun[] {
   return [
     { name: 'quality', status: 'completed', conclusion: 'success', id: 1 },
-    { name: 'test', status: 'completed', conclusion: 'success', id: 2 },
+    { name: 'verify tests', status: 'completed', conclusion: 'success', id: 2 },
     { name: 'build', status: 'completed', conclusion: 'success', id: 3 },
   ];
 }

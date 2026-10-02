@@ -9,7 +9,7 @@
 **Nevo SpecFlow** is a spec-driven development framework for AI-assisted software
 engineering: a human-led, spec-anchored workflow designed around a CLI (`nevo-specflow`), a local Runtime, and an interactive UI.
 
-The repository currently contains the CLI/Runtime bootstrap foundation; the full workflow and UI are still being built. The exact implemented CLI surface is documented in [`docs/reference/cli/nevo-specflow-contract.md`](docs/reference/cli/nevo-specflow-contract.md).
+The repository currently contains the public CLI, a real local Runtime server, and the authentication foundation. The deterministic SpecFlow workflow and product UI are still being migrated. The exact implemented CLI surface is documented in [`docs/reference/cli/nevo-specflow-contract.md`](docs/reference/cli/nevo-specflow-contract.md).
 
 - **Human-led.** The repository owner makes the architectural and scope calls; AI agents
   propose options and implement approved work inside an explicitly declared context.
@@ -37,12 +37,12 @@ and every package's typecheck / test / build. Full setup and the command referen
 
 ## Repository shape
 
-| Path        | Contents                                                                                                                                                                               |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/`     | Deployable applications. Workspace glob; populated when an app lands.                                                                                                                  |
-| `packages/` | Product packages under the `@nevo/*` scope; individual packages may be public or internal/private. Workspace glob; populated when a package lands.                                     |
-| `tools/`    | Repository-internal tooling, all TypeScript — [`docs`](tools/docs/README.md) (`nevo-docs`), [`release`](tools/release/README.md), [`github`](tools/github/README.md). Never published. |
-| `docs/`     | [Documentation](docs/README.md): architecture, engineering, design system, product, reference, and instructions.                                                                       |
+| Path        | Contents                                                                                                                                                                                                  |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/`     | Deployable applications. Workspace glob; populated when an app lands.                                                                                                                                     |
+| `packages/` | Product packages under the `@nevo/*` scope; individual packages may be public or internal/private. Workspace glob; populated when a package lands.                                                        |
+| `tools/`    | Repository-internal TypeScript tooling — [`docs`](tools/docs/README.md), [`product`](tools/product/README.md), [`release`](tools/release/README.md), [`github`](tools/github/README.md). Never published. |
+| `docs/`     | [Documentation](docs/README.md): architecture, engineering, design system, product, reference, and instructions.                                                                                          |
 
 ## Contributing
 

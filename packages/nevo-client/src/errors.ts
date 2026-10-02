@@ -65,8 +65,22 @@ function normalizeAxiosError(error: AxiosError): HttpClientError {
     });
   }
 
-  return new HttpClientError(error.message || 'Network request failed.', {
-    kind: 'network',
+  if (
+    error.request ||
+    error.code === AxiosError.ERR_NETWORK ||
+    error.code === AxiosError.ECONNABORTED ||
+    error.code === AxiosError.ECONNREFUSED ||
+    error.code === AxiosError.ETIMEDOUT
+  ) {
+    return new HttpClientError(error.message || 'Network request failed.', {
+      kind: 'network',
+      code: error.code,
+      cause: error,
+    });
+  }
+
+  return new HttpClientError(error.message || 'Unexpected HTTP client error.', {
+    kind: 'unexpected',
     code: error.code,
     cause: error,
   });

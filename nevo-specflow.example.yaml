@@ -1,0 +1,20 @@
+# Copy this file to nevo-specflow.yaml and adjust it for the project.
+# Workstation-local secrets and overrides belong in .nevo-local/nevo-specflow.yaml.
+
+server:
+  host: 127.0.0.1
+  port: 4318
+  # Required once an OIDC provider is enabled. Do not derive this from a wildcard bind address.
+  # publicOrigin: https://specflow.example.test:4318
+  tls:
+    enabled: false
+    # certFile: .nevo-local/tls/cert.pem
+    # keyFile: .nevo-local/tls/key.pem
+
+auth:
+  mode: none
+  providers:
+    password:
+      enabled: false
+    google:
+      enabled: false

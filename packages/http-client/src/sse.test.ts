@@ -20,16 +20,18 @@ afterEach(() => {
 
 describe('HttpClient.sse', () => {
   it('uses the shared base URL and exposes named, unnamed, and multiline events', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
-      sseResponse(
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        sseResponse(
           ': heartbeat\n\n' +
             'event: turn.updated\n' +
             'id: 7\n' +
             'data: first\n' +
             'data: second\n\n' +
             'data: plain\n\n',
-      ),
-    );
+        ),
+      );
     vi.stubGlobal('fetch', fetchMock);
 
     const client = createHttpClient({ baseURL: '/api' });
@@ -62,9 +64,9 @@ describe('HttpClient.sse', () => {
   it('decodes domain events without treating heartbeat comments as messages', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn<typeof fetch>().mockResolvedValue(
-        sseResponse(': keep-alive\n\nevent: update\ndata: {"value":42}\n\n'),
-      ),
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(sseResponse(': keep-alive\n\nevent: update\ndata: {"value":42}\n\n')),
     );
 
     const client = createHttpClient();

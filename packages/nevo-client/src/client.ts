@@ -48,7 +48,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
       return execute(async () => {
         const response = await instance.request<
           TResponse,
-          AxiosResponse<TResponse, TBody, {}, TParams>,
+          AxiosResponse<TResponse, TBody, unknown, TParams>,
           TBody,
           TParams
         >(config);
@@ -63,7 +63,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
       return execute(async () => {
         const response = await instance.get<
           TResponse,
-          AxiosResponse<TResponse, unknown, {}, TParams>,
+          AxiosResponse<TResponse, unknown, unknown, TParams>,
           unknown,
           TParams
         >(url, config);
@@ -78,7 +78,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
       return execute(async () => {
         const response = await instance.delete<
           TResponse,
-          AxiosResponse<TResponse, unknown, {}, TParams>,
+          AxiosResponse<TResponse, unknown, unknown, TParams>,
           unknown,
           TParams
         >(url, config);
@@ -94,7 +94,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
       return execute(async () => {
         const response = await instance.post<
           TResponse,
-          AxiosResponse<TResponse, TBody, {}, TParams>,
+          AxiosResponse<TResponse, TBody, unknown, TParams>,
           TBody,
           TParams
         >(url, body, config);
@@ -110,7 +110,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
       return execute(async () => {
         const response = await instance.put<
           TResponse,
-          AxiosResponse<TResponse, TBody, {}, TParams>,
+          AxiosResponse<TResponse, TBody, unknown, TParams>,
           TBody,
           TParams
         >(url, body, config);
@@ -126,7 +126,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
       return execute(async () => {
         const response = await instance.patch<
           TResponse,
-          AxiosResponse<TResponse, TBody, {}, TParams>,
+          AxiosResponse<TResponse, TBody, unknown, TParams>,
           TBody,
           TParams
         >(url, body, config);

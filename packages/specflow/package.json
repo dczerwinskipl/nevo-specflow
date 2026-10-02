@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "commander": "15.0.0",
-    "vitest": "5.0.2"
+    "vitest": "5.0.2",
+    "nevo-repo-product": "workspace:*"
   }
 }

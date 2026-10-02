@@ -773,9 +773,9 @@ UI visibility is never a substitute for server enforcement.
 
 ## HTTP capability endpoint
 
-SpecFlow Runtime should expose a small endpoint backed by the same resolver.
+SpecFlow Runtime exposes a small endpoint backed by the same resolver.
 
-Candidate contract:
+Contract:
 
 ```http
 POST /api/authorization/capabilities
@@ -814,7 +814,7 @@ Response:
 }
 ```
 
-The exact response envelope can be adjusted during implementation, but these semantics should stay:
+The endpoint preserves these semantics:
 
 - subject is server-derived;
 - resource name is explicit;
@@ -1006,9 +1006,9 @@ developer
 admin
 ```
 
-The exact capability sets should be assembled from feature definitions during implementation.
+The capability sets are assembled from feature definitions in Runtime application composition.
 
-Expected intent:
+Current intent:
 
 - `viewer`: read-only access;
 - `developer`: normal SpecFlow work such as creating/managing specs and sessions;

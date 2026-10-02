@@ -62,5 +62,6 @@ integration (define + shebang + self-containment), a subprocess CLI smoke, and
 `fresh-state.test.ts` — deletes `dist` / `.tsbuild` / `.artifacts` and proves
 `pnpm product:pack` still works and runs on the pinned pnpm. The full
 pack → isolated install → run-installed-`nevo-specflow`-**shim** proof lives with the
-product package (`packages/specflow/test/packaging.smoke.test.ts`), sequenced after this
-suite via a `nevo-repo-product#test` turbo edge.
+product package (`packages/specflow/test/packaging.smoke.test.ts`). Its Turbo task depends
+on `nevo-repo-product#build`, so the smoke has the executable it consumes without running
+the product-tool test suite a second time.

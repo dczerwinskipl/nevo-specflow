@@ -9,11 +9,15 @@ import {
 
 describe('credential providers', () => {
   it('supports anonymous access without request credentials', async () => {
-    await expect(anonymousCredentials().resolve({})).resolves.toBeUndefined();
+    const resolved = await Promise.resolve(anonymousCredentials().resolve({}));
+
+    expect(resolved).toBeUndefined();
   });
 
   it('enables browser cookie credentials', async () => {
-    await expect(cookieCredentials().resolve({})).resolves.toEqual({
+    const resolved = await Promise.resolve(cookieCredentials().resolve({}));
+
+    expect(resolved).toEqual({
       withCredentials: true,
     });
   });
@@ -44,7 +48,11 @@ describe('credential providers', () => {
       headers: { 'X-Test-Context': `${method} ${url}` },
     }));
 
-    await expect(credentials.resolve({ method: 'post', url: '/resource' })).resolves.toEqual({
+    const resolved = await Promise.resolve(
+      credentials.resolve({ method: 'post', url: '/resource' }),
+    );
+
+    expect(resolved).toEqual({
       headers: { 'X-Test-Context': 'post /resource' },
     });
   });

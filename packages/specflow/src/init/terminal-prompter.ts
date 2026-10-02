@@ -2,10 +2,7 @@ import { createInterface, type Interface } from 'node:readline/promises';
 import { Writable } from 'node:stream';
 import type { ReadStream, WriteStream } from 'node:tty';
 
-import type {
-  RuntimeInitPrompter,
-  RuntimeInitPromptChoice,
-} from '@nevo/specflow-runtime';
+import type { RuntimeInitPrompter, RuntimeInitPromptChoice } from '@nevo/specflow-runtime';
 
 export class TerminalProjectInitPrompter implements RuntimeInitPrompter {
   readonly #input: ReadStream;

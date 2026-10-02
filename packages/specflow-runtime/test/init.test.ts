@@ -66,9 +66,7 @@ describe('Runtime project initialization', () => {
         },
       },
     });
-    expect(contribution.projectConfig).not.toHaveProperty(
-      'auth.providers.password.accounts',
-    );
+    expect(contribution.projectConfig).not.toHaveProperty('auth.providers.password.accounts');
     expect(contribution.localConfig).toEqual({
       auth: {
         providers: {
@@ -87,10 +85,7 @@ describe('Runtime project initialization', () => {
 
   it('owns no-auth attribution semantics', async () => {
     const contribution = await initRuntime({
-      prompter: new ScriptedPrompter(
-        ['none'],
-        ['demo-user', 'Demo User'],
-      ),
+      prompter: new ScriptedPrompter(['none'], ['demo-user', 'Demo User']),
     });
 
     expect(contribution.projectConfig).toMatchObject({

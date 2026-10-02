@@ -75,11 +75,7 @@ export async function initAuth(options: AuthInitOptions): Promise<AuthInitResult
     };
   }
 
-  const issuer = await requiredInput(
-    options.prompter,
-    'Issuer URL',
-    'https://accounts.google.com',
-  );
+  const issuer = await requiredInput(options.prompter, 'Issuer URL', 'https://accounts.google.com');
   const clientId = await requiredInput(options.prompter, 'Client ID');
   const clientSecret = await requiredSecret(options.prompter, 'Client secret');
   const allowedEmail = await requiredInput(options.prompter, 'Allowed email');

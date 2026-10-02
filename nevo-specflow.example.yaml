@@ -1,23 +1,24 @@
 # Example committed project configuration.
 # nevo-specflow init writes this shape to .nevo/config.yaml.
-# Workstation-local secrets and overrides belong in .nevo/local/config.yaml.
+# Top-level sections are product composition namespaces owned by their capabilities.
 
-server:
-  host: 127.0.0.1
-  port: 4318
-  # OIDC init uses http://localhost:4318 for a loopback callback by default.
-  # A non-loopback required-auth Runtime must terminate TLS itself.
-  # publicOrigin: http://localhost:4318
-  tls:
-    enabled: false
+runtime:
+  server:
+    host: 127.0.0.1
+    port: 4318
+    # OIDC init uses http://localhost:4318 for a loopback callback by default.
+    # A non-loopback required-auth Runtime must terminate TLS itself.
+    # publicOrigin: http://localhost:4318
+    tls:
+      enabled: false
 
-auth:
-  mode: none
-  users:
-    local-user:
-      name: Local User
-  providers:
-    password:
-      enabled: false
-    oidc:
-      enabled: false
+  auth:
+    mode: none
+    users:
+      demo:
+        name: Demo User
+    providers:
+      password:
+        enabled: false
+      oidc:
+        enabled: false

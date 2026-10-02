@@ -4,8 +4,6 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { serializeRuntimeConfig } from '@nevo/specflow-runtime';
-
 import { initializeProject } from '../src/init/initialize-project.js';
 
 const dirs: string[] = [];
@@ -23,29 +21,16 @@ async function repository(): Promise<string> {
 }
 
 describe('project initialization', () => {
-  it('writes Runtime-owned project/local contributions into the product .nevo layout', async () => {
+  it('writes Runtime-owned contributions under the product-owned runtime namespace', async () => {
     const root = await repository();
 
     const result = await initializeProject({
       cwd: root,
       initRuntime: () =>
         Promise.resolve({
-          projectConfig: {
-            server: { host: '127.0.0.1', port: 4318, tls: { enabled: false } },
-            auth: {
-              mode: 'none',
-              users: { 'demo-user': { name: 'Demo User' } },
-              providers: {
-                password: { enabled: false },
-                oidc: { enabled: false },
-              },
-            },
-          },
-          localConfig: {
-            auth: { localUserId: 'demo-user' },
-          },
+          projectConfig: { marker: 'runtime-project' },
+          localConfig: { marker: 'runtime-local' },
         }),
-      serializeConfig: serializeRuntimeConfig,
     });
 
     expect(result.projectConfigPath).toBe(join(root, '.nevo', 'config.yaml'));
@@ -55,8 +40,10 @@ describe('project initialization', () => {
     const local = await readFile(result.localConfigPath, 'utf8');
     const gitignore = await readFile(join(root, '.gitignore'), 'utf8');
 
-    expect(project).toContain('demo-user:');
-    expect(local).toContain('localUserId: demo-user');
+    expect(project).toContain('runtime:');
+    expect(project).toContain('marker: runtime-project');
+    expect(local).toContain('runtime:');
+    expect(local).toContain('marker: runtime-local');
     expect(gitignore).toContain('.nevo/local/');
   });
 
@@ -68,10 +55,9 @@ describe('project initialization', () => {
         cwd: root,
         initRuntime: () =>
           Promise.resolve({
-            projectConfig: { demo: true },
-            localConfig: { demo: true },
+            projectConfig: { marker: 'project' },
+            localConfig: { marker: 'local' },
           }),
-        serializeConfig: serializeRuntimeConfig,
       }),
     ).resolves.toMatchObject({
       projectConfigPath: join(root, '.nevo', 'config.yaml'),
@@ -90,7 +76,6 @@ describe('project initialization', () => {
           runtimeInitCalls += 1;
           return Promise.resolve({ projectConfig: {}, localConfig: {} });
         },
-        serializeConfig: serializeRuntimeConfig,
       }),
     ).rejects.toThrowError(/already initialized/);
 

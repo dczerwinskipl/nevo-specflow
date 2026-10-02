@@ -22,13 +22,13 @@ Nevo SpecFlow uses one repository namespace:
 
 ```text
 .nevo/
-├── config.yaml                 # committed project configuration
+├── config.yaml                 # committed product configuration container
 ├── agent-instructions.md       # committed
 ├── agents/                     # committed definitions/instructions
 ├── workflows/                  # committed deterministic workflow definitions when migrated
 └── local/                      # entirely Git-ignored
     ├── config.yaml             # workstation/operator configuration + secrets
-    └── state/                  # Runtime-owned local persistence as capabilities migrate
+    └── state/                  # application-owned local persistence as capabilities migrate
 ```
 
 The canonical ignore entry is:
@@ -37,37 +37,41 @@ The canonical ignore entry is:
 .nevo/local/
 ```
 
-Do not introduce a sibling `.nevo-local/` namespace. The old repository's
-`.nevo-ai-local/` convention mixed local provider configuration and runtime data; the
-new layout keeps the useful committed/local boundary while placing both under one product namespace.
+Do not introduce a sibling `.nevo-local/` namespace.
 
 ## Ownership
 
-The **product initializer owns repository bootstrap**, not the meaning of capability settings. It
-owns Git-root discovery, the `.nevo/` namespace, the committed/local file locations, ignore rules,
-and composition of capability initializers.
+The product owns the **configuration containers and composition**, not the meaning of capability
+settings. It owns Git-root discovery, the `.nevo/` namespace, file locations, ignore rules,
+serialization, and the top-level namespaces contributed by capabilities.
 
-Each capability owns the settings it understands. Today Runtime owns the root Runtime
-configuration it parses; within Runtime, the auth feature owns the `auth` subtree and Runtime
-server composition owns `server`. The product-level `init` command calls Runtime's initializer
-and writes the returned project/local contribution without reconstructing auth or server fields.
+Current shape:
 
-`.nevo/config.yaml` contains values that describe **how this project is intended to work**
-for every checkout. Current examples include:
+```yaml
+runtime:
+  server: ...
+  auth: ...
+```
 
-- Runtime-safe server defaults;
-- `auth.mode`;
-- canonical users;
-- enabled authentication providers;
-- OIDC issuer/client id and email-to-user mapping.
+Runtime owns everything inside the `runtime` subtree. Within Runtime, auth owns `auth` and Runtime
+server composition owns `server`. Runtime initialization (`initRuntime`) owns their prompts,
+defaults, project/local split, password hashing, secret policy, merge rules, and validation.
 
-Authentication secrets MUST NOT be committed. Password hashes and OIDC client secrets live in
-`.nevo/local/config.yaml`.
+The product initializer calls `initRuntime`, wraps its contribution under `runtime`, and writes
+the aggregate documents without reconstructing Runtime settings.
 
-The local config is also the future home for workstation choices such as enabled/available AI
-providers, local executable paths, certificates, IDE integration, and machine-specific overrides.
-A local value is not automatically allowed to override every project policy: each capability owns
-its merge/security rules.
+This namespace boundary is deliberate. Future AI, workflow, repository, or integration
+configuration can add their own top-level capability namespace without becoming an unknown Runtime
+key. Runtime config loading extracts only `runtime` before applying Runtime validation.
+
+## Project versus local
+
+`.nevo/config.yaml` contains source-controlled configuration that should follow the project.
+
+`.nevo/local/config.yaml` mirrors the same capability namespaces for workstation-specific values
+and secrets. Under `runtime`, password hashes and OIDC client secrets are local-only. A local value
+is not automatically allowed to override every project policy: the owning capability defines merge
+and security rules.
 
 `.nevo/local/state/` is reserved for application-owned data such as Session bindings,
 transcript/read-model caches, workflow operation records, human-verification records, provider
@@ -77,26 +81,19 @@ aliases, and bounded diagnostics. Users should not treat that state as editable 
 
 Large declarative definitions keep their own committed files. Agent definitions already live under
 `.nevo/agents/`; deterministic workflow definitions will live under `.nevo/workflows/` when
-that capability is migrated. `.nevo/config.yaml` may select/default such definitions, but should
-not absorb their full bodies.
+that capability is migrated. Aggregate config may select/default such definitions, but should not
+absorb their full bodies.
 
 ## Initialization
 
-`nevo-specflow init` discovers the Git repository root, creates project and local config, and
-ensures `.nevo/local/` is ignored. It does not overwrite an existing `.nevo/config.yaml`.
+`nevo-specflow init` owns repository bootstrap only:
 
-The product shell does not know Runtime's config shape. It delegates Runtime setup to
-`initRuntime`, which owns server/auth defaults, prompts, secret placement, password hashing, and
-validation of the effective Runtime configuration. Future capability initializers follow the same
-ownership rule instead of teaching the root installer their internal fields.
+- discover the Git repository root;
+- create `.nevo/config.yaml` and `.nevo/local/config.yaml`;
+- ensure `.nevo/local/` is ignored;
+- compose and serialize capability-owned contributions.
 
-The initial Runtime authentication choices are:
-
-- no authentication;
-- password login;
-- OIDC.
-
-Password setup hashes the secret internally. OIDC setup commits provider metadata/identity mapping
-and stores only the client secret locally. The canonical user is distinct from provider credentials;
-the password wizard defaults `username == userId` so the distinction does not create needless
-complexity for the common case.
+The initial Runtime authentication choices are no authentication, password login, and OIDC.
+Password setup hashes the secret inside Runtime. OIDC setup keeps the client secret local.
+Canonical users remain distinct from provider credentials; the password wizard defaults
+`username == userId` for the common case.

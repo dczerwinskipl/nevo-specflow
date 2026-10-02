@@ -27,11 +27,14 @@ export async function loadRuntimeConfig(
   const projectPath = resolve(cwd, options.projectPath ?? DEFAULT_PROJECT_CONFIG_PATH);
   const localPath = resolve(cwd, options.localPath ?? DEFAULT_LOCAL_CONFIG_PATH);
 
-  const projectSource = await readRequiredConfig(projectPath);
+  const projectDocument = await readRequiredConfig(projectPath);
+  const projectSource = runtimeSection(projectDocument, projectPath, true);
   assertNoProjectSecrets(projectSource);
 
   const localExists = await fileExists(localPath);
-  const localSource = localExists ? await readRequiredConfig(localPath) : undefined;
+  const localDocument = localExists ? await readRequiredConfig(localPath) : undefined;
+  const localSource =
+    localDocument === undefined ? undefined : runtimeSection(localDocument, localPath, false);
 
   const merged = localSource ? mergeRuntimeConfigValues(projectSource, localSource) : projectSource;
 
@@ -61,6 +64,34 @@ async function readRequiredConfig(path: string): Promise<unknown> {
     const message = error instanceof Error ? error.message : String(error);
     throw new RuntimeConfigError(`Invalid YAML in ${path}: ${message}`);
   }
+}
+
+function runtimeSection(
+  value: unknown,
+  path: string,
+  required: true,
+): Record<string, unknown>;
+function runtimeSection(
+  value: unknown,
+  path: string,
+  required: false,
+): Record<string, unknown> | undefined;
+function runtimeSection(
+  value: unknown,
+  path: string,
+  required: boolean,
+): Record<string, unknown> | undefined {
+  if (!isRecord(value)) {
+    throw new RuntimeConfigError(`SpecFlow config root must be an object: ${path}`);
+  }
+
+  const runtime = value.runtime;
+  if (runtime === undefined && !required) return undefined;
+  if (!isRecord(runtime)) {
+    throw new RuntimeConfigError(`SpecFlow config must define an object at 'runtime': ${path}`);
+  }
+
+  return runtime;
 }
 
 function assertNoProjectSecrets(value: unknown): void {

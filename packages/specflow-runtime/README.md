@@ -26,8 +26,7 @@ Authentication therefore lives under `src/auth/` and is registered by
 request-validation boundary: TypeBox supplies JSON Schema and inferred TypeScript types,
 and AJV rejects malformed input before a handler executes.
 
-The root `src/config/` layer owns loading and composing project/local configuration. It
-delegates auth-specific parsing and security policy to the auth feature.
+The root `src/config/` layer owns loading the `runtime` subtree from project/local product configuration and composing Runtime values. It delegates auth-specific parsing and security policy to the auth feature.
 
 ## Configuration
 
@@ -35,8 +34,8 @@ Runtime owns the `server` configuration it consumes and composes feature-owned c
 
 Runtime loads:
 
-- committed `.nevo/config.yaml`;
-- optional workstation-local `.nevo/local/config.yaml`.
+- committed `.nevo/config.yaml` → `runtime` subtree;
+- optional workstation-local `.nevo/local/config.yaml` → `runtime` subtree.
 
 The entire `.nevo/local/` directory is Git-ignored and is also reserved for future Runtime-owned local state. Authentication secrets, including password hashes and OIDC client secrets, are local-only.
 Security-sensitive auth maps use replacement rather than additive merge semantics.

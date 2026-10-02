@@ -15,7 +15,6 @@ export {
 } from './load.js';
 export { mergeRuntimeConfigValues } from './merge.js';
 export { parseRuntimeConfig } from './parse.js';
-export { serializeRuntimeConfig } from './serialize.js';
 export type {
   LoadedRuntimeConfig,
   RuntimeConfig,

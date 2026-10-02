@@ -1,10 +1,6 @@
 import { relative } from 'node:path';
 
-import {
-  initRuntime,
-  serializeRuntimeConfig,
-  type RuntimeInitPrompter,
-} from '@nevo/specflow-runtime';
+import { initRuntime, type RuntimeInitPrompter } from '@nevo/specflow-runtime';
 import { Command } from 'commander';
 
 import {
@@ -31,7 +27,6 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
       const result = await (context.initialize ?? initializeProject)({
         cwd: context.cwd,
         initRuntime: () => initRuntime({ prompter: context.prompter as RuntimeInitPrompter }),
-        serializeConfig: serializeRuntimeConfig,
       });
 
       context.stdout('Initialized Nevo SpecFlow.');

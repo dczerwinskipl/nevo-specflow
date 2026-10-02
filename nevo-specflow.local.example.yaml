@@ -1,19 +1,20 @@
 # Example workstation-local configuration.
 # nevo-specflow init writes .nevo/local/config.yaml and ensures .nevo/local/ is ignored.
-# This example contains only fake values. Project policy/provider enablement stays committed.
+# Local sections mirror the same capability namespaces as committed configuration.
 
-auth:
-  # For auth.mode=none, select the workstation attribution identity here.
-  # localUserId: local-user
+runtime:
+  auth:
+    # For auth.mode=none, select the workstation attribution identity here.
+    # localUserId: demo
 
-  providers:
-    password:
-      accounts:
-        demo:
-          userId: demo
-          # Generated automatically by `nevo-specflow init` for password auth.
-          passwordHash: "<replace-with-a-local-password-hash>"
+    providers:
+      password:
+        accounts:
+          demo:
+            userId: demo
+            # Generated automatically by `nevo-specflow init` for password auth.
+            passwordHash: "<replace-with-a-local-password-hash>"
 
-    oidc:
-      # OIDC issuer/clientId/allowedEmails belong in .nevo/config.yaml.
-      clientSecret: "<replace-with-a-local-client-secret>"
+      oidc:
+        # OIDC issuer/clientId/allowedEmails belong in runtime.auth in .nevo/config.yaml.
+        clientSecret: "<replace-with-a-local-client-secret>"

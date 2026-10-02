@@ -15,19 +15,20 @@ const SUPPORTED_PASSWORD_HASH =
   '$scrypt$16384$8$5$MDEyMzQ1Njc4OWFiY2RlZg$' + 'yMHgG_FDESRF0j5gjhGLotSMPdnfefUcNNFPyNoQtJE';
 
 const PROJECT_CONFIG = `
-server:
-  host: 127.0.0.1
-  port: 4318
-  tls:
-    enabled: false
+runtime:
+  server:
+    host: 127.0.0.1
+    port: 4318
+    tls:
+      enabled: false
 
-auth:
-  mode: none
-  providers:
-    password:
-      enabled: false
-    oidc:
-      enabled: false
+  auth:
+    mode: none
+    providers:
+      password:
+        enabled: false
+      oidc:
+        enabled: false
 `;
 
 function requiredAuthConfig() {
@@ -469,7 +470,7 @@ describe('runtime configuration', () => {
     const cwd = await mkdtemp(join(tmpdir(), 'specflow-config-'));
     await mkdir(join(cwd, '.nevo/local'), { recursive: true });
     await writeFile(join(cwd, '.nevo/config.yaml'), PROJECT_CONFIG, 'utf8');
-    await writeFile(join(cwd, '.nevo/local/config.yaml'), 'server:\n  port: 9443\n', 'utf8');
+    await writeFile(join(cwd, '.nevo/local/config.yaml'), 'runtime:\n  server:\n    port: 9443\n', 'utf8');
 
     const loaded = await loadRuntimeConfig({ cwd });
 
@@ -478,14 +479,28 @@ describe('runtime configuration', () => {
     expect(loaded.sources.local).toBe(join(cwd, '.nevo/local/config.yaml'));
   });
 
+  it('ignores unrelated product-owned top-level sections while loading Runtime config', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'specflow-other-capability-'));
+    await mkdir(join(cwd, '.nevo'), { recursive: true });
+    await writeFile(
+      join(cwd, '.nevo/config.yaml'),
+      `${PROJECT_CONFIG}\nworkflow:\n  default: standard\n`,
+      'utf8',
+    );
+
+    const loaded = await loadRuntimeConfig({ cwd });
+
+    expect(loaded.config.server.port).toBe(4318);
+  });
+
   it('rejects OIDC client secrets from the project config', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'specflow-project-secret-'));
     await mkdir(join(cwd, '.nevo'), { recursive: true });
     await writeFile(
       join(cwd, '.nevo/config.yaml'),
       PROJECT_CONFIG.replace(
-        'oidc:\n      enabled: false',
-        'oidc:\n      enabled: false\n      clientSecret: committed-secret',
+        'oidc:\n        enabled: false',
+        'oidc:\n        enabled: false\n        clientSecret: committed-secret',
       ),
       'utf8',
     );
@@ -501,13 +516,13 @@ describe('runtime configuration', () => {
     await writeFile(
       join(cwd, '.nevo/config.yaml'),
       PROJECT_CONFIG.replace(
-        'password:\n      enabled: false',
+        'password:\n        enabled: false',
         `password:
-      enabled: false
-      accounts:
-        demo:
-          userId: demo-user
-          passwordHash: ${SUPPORTED_PASSWORD_HASH}`,
+        enabled: false
+        accounts:
+          demo:
+            userId: demo-user
+            passwordHash: ${SUPPORTED_PASSWORD_HASH}`,
       ),
       'utf8',
     );

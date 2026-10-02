@@ -2,6 +2,8 @@ import { constants } from 'node:fs';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 
+import { stringify } from 'yaml';
+
 export interface ProjectConfigContribution {
   readonly projectConfig: Record<string, unknown>;
   readonly localConfig: Record<string, unknown>;
@@ -10,7 +12,6 @@ export interface ProjectConfigContribution {
 export interface InitializeProjectOptions {
   readonly cwd: string;
   readonly initRuntime: () => Promise<ProjectConfigContribution>;
-  readonly serializeConfig: (value: unknown) => string;
 }
 
 export interface InitializeProjectResult {
@@ -39,15 +40,15 @@ export async function initializeProject(
     );
   }
 
-  // The product initializer owns repository bootstrap only. Runtime owns the
-  // server/auth settings it contributes and validates before returning them.
   const runtime = await options.initRuntime();
+  const projectConfig = { runtime: runtime.projectConfig };
+  const localConfig = { runtime: runtime.localConfig };
 
   await ensureLocalIgnore(root);
   await mkdir(dirname(projectConfigPath), { recursive: true });
   await mkdir(dirname(localConfigPath), { recursive: true });
-  await writeFile(projectConfigPath, options.serializeConfig(runtime.projectConfig), 'utf8');
-  await writeFile(localConfigPath, options.serializeConfig(runtime.localConfig), {
+  await writeFile(projectConfigPath, serializeConfig(projectConfig), 'utf8');
+  await writeFile(localConfigPath, serializeConfig(localConfig), {
     encoding: 'utf8',
     mode: 0o600,
   });
@@ -57,6 +58,10 @@ export async function initializeProject(
     projectConfigPath,
     localConfigPath,
   };
+}
+
+function serializeConfig(value: unknown): string {
+  return `${stringify(value, { lineWidth: 0 }).trimEnd()}\n`;
 }
 
 async function ensureLocalIgnore(root: string): Promise<void> {

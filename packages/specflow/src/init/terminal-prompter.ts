@@ -15,10 +15,7 @@ export class TerminalProjectInitPrompter implements ProjectInitPrompter {
     this.#output = output;
   }
 
-  async select<T extends string>(
-    message: string,
-    choices: readonly PromptChoice<T>[],
-  ): Promise<T> {
+  async select<T extends string>(message: string, choices: readonly PromptChoice<T>[]): Promise<T> {
     this.#output.write(`${message}:\n`);
     choices.forEach((choice, index) => {
       this.#output.write(`  ${String(index + 1)}. ${choice.label}\n`);

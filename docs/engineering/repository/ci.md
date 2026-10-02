@@ -29,13 +29,13 @@ Workflows under [`.github/workflows/`](../../../.github/workflows/):
 
 ## `ci` jobs
 
-| Job          | Steps                                                                                                                                                                                         |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `quality`    | `pnpm check:quality` (builds `tools/*`, then format, lint, `docs:check`, `version:check-transition`), `pnpm version:print`, an affected-graph dry-run, then `turbo run typecheck --affected`. |
-| `plan tests` | Resolves `turbo run test --affected --dry=json` into one independent test job per selected workspace.                                                                                         |
-| `test (...)` | Runs the selected workspace's `test` task. Product packages keep their package name; repository tools render as `tool/<name>` for readability.                                                |
-| `verify tests` | Required aggregate status. It fails when test planning or any selected workspace test fails.                                                                      |
-| `build`      | `turbo run build --affected`.                                                                                                                                                                 |
+| Job            | Steps                                                                                                                                                                                         |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `quality`      | `pnpm check:quality` (builds `tools/*`, then format, lint, `docs:check`, `version:check-transition`), `pnpm version:print`, an affected-graph dry-run, then `turbo run typecheck --affected`. |
+| `plan tests`   | Resolves `turbo run test --affected --dry=json` into one independent test job per selected workspace.                                                                                         |
+| `test (...)`   | Runs the selected workspace's `test` task. Product packages keep their package name; repository tools render as `tool/<name>` for readability.                                                |
+| `verify tests` | Required aggregate status. It fails when test planning or any selected workspace test fails.                                                                                                  |
+| `build`        | `turbo run build --affected`.                                                                                                                                                                 |
 
 `check:quality` is the **same script contributors run** (`pnpm check` = `check:quality`
 

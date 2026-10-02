@@ -4,12 +4,15 @@ import { resolve } from 'node:path';
 
 import { parse } from 'yaml';
 
-import { assertNoProjectAuthSecrets } from '../auth/config.js';
 import { RuntimeConfigError } from './error.js';
+import {
+  assertLocalRuntimeConfigOwnership,
+  assertProjectRuntimeConfigOwnership,
+} from './ownership.js';
 import { mergeRuntimeConfigValues } from './merge.js';
 import { parseRuntimeConfig } from './parse.js';
 import type { LoadedRuntimeConfig } from './types.js';
-import { childRecord, isRecord } from './value.js';
+import { isRecord } from './value.js';
 
 export const DEFAULT_PROJECT_CONFIG_PATH = '.nevo/config.yaml';
 export const DEFAULT_LOCAL_CONFIG_PATH = '.nevo/local/config.yaml';
@@ -29,12 +32,15 @@ export async function loadRuntimeConfig(
 
   const projectDocument = await readRequiredConfig(projectPath);
   const projectSource = runtimeSection(projectDocument, projectPath, true);
-  assertNoProjectSecrets(projectSource);
+  assertProjectRuntimeConfigOwnership(projectSource);
 
   const localExists = await fileExists(localPath);
   const localDocument = localExists ? await readRequiredConfig(localPath) : undefined;
   const localSource =
     localDocument === undefined ? undefined : runtimeSection(localDocument, localPath, false);
+  if (localSource) {
+    assertLocalRuntimeConfigOwnership(localSource);
+  }
 
   const merged = localSource ? mergeRuntimeConfigValues(projectSource, localSource) : projectSource;
 
@@ -88,14 +94,6 @@ function runtimeSection(
   }
 
   return runtime;
-}
-
-function assertNoProjectSecrets(value: unknown): void {
-  if (!isRecord(value)) {
-    return;
-  }
-
-  assertNoProjectAuthSecrets(childRecord(value, 'auth'));
 }
 
 async function fileExists(path: string): Promise<boolean> {

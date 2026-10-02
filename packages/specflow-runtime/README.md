@@ -31,6 +31,8 @@ delegates auth-specific parsing and security policy to the auth feature.
 
 ## Configuration
 
+Runtime owns the `server` configuration it consumes and composes feature-owned configuration such as `auth`. Its `initRuntime` operation owns the corresponding setup prompts/defaults, secret split, hashing, and effective-config validation; the public product initializer only owns repository/file bootstrap.
+
 Runtime loads:
 
 - committed `.nevo/config.yaml`;

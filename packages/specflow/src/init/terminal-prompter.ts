@@ -2,9 +2,12 @@ import { createInterface, type Interface } from 'node:readline/promises';
 import { Writable } from 'node:stream';
 import type { ReadStream, WriteStream } from 'node:tty';
 
-import type { ProjectInitPrompter, PromptChoice } from './prompts.js';
+import type {
+  RuntimeInitPrompter,
+  RuntimeInitPromptChoice,
+} from '@nevo/specflow-runtime';
 
-export class TerminalProjectInitPrompter implements ProjectInitPrompter {
+export class TerminalProjectInitPrompter implements RuntimeInitPrompter {
   readonly #input: ReadStream;
   readonly #output: WriteStream;
   #readline?: Interface;
@@ -15,7 +18,10 @@ export class TerminalProjectInitPrompter implements ProjectInitPrompter {
     this.#output = output;
   }
 
-  async select<T extends string>(message: string, choices: readonly PromptChoice<T>[]): Promise<T> {
+  async select<T extends string>(
+    message: string,
+    choices: readonly RuntimeInitPromptChoice<T>[],
+  ): Promise<T> {
     this.#output.write(`${message}:\n`);
     choices.forEach((choice, index) => {
       this.#output.write(`  ${String(index + 1)}. ${choice.label}\n`);

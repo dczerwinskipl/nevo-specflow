@@ -1,5 +1,10 @@
 import { relative } from 'node:path';
 
+import {
+  initRuntime,
+  serializeRuntimeConfig,
+  type RuntimeInitPrompter,
+} from '@nevo/specflow-runtime';
 import { Command } from 'commander';
 
 import {
@@ -7,12 +12,11 @@ import {
   type InitializeProjectOptions,
   type InitializeProjectResult,
 } from './initialize-project.js';
-import { collectProjectInitInput, type ProjectInitPrompter } from './prompts.js';
 
 export interface ProjectInitCommandContext {
   readonly cwd: string;
   readonly stdout: (line: string) => void;
-  readonly prompter?: ProjectInitPrompter;
+  readonly prompter?: RuntimeInitPrompter;
   readonly initialize?: (options: InitializeProjectOptions) => Promise<InitializeProjectResult>;
 }
 
@@ -24,15 +28,14 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
         throw new Error('Interactive project initialization is not available in this CLI context.');
       }
 
-      const input = await collectProjectInitInput(context.prompter);
       const result = await (context.initialize ?? initializeProject)({
         cwd: context.cwd,
-        input,
+        initRuntime: () => initRuntime({ prompter: context.prompter as RuntimeInitPrompter }),
+        serializeConfig: serializeRuntimeConfig,
       });
 
       context.stdout('Initialized Nevo SpecFlow.');
       context.stdout(`Project config: ${relative(result.root, result.projectConfigPath)}`);
       context.stdout(`Local config: ${relative(result.root, result.localConfigPath)}`);
-      context.stdout(`Authentication: ${result.authMode}`);
     });
 }

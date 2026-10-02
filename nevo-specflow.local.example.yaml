@@ -9,8 +9,8 @@ auth:
   providers:
     password:
       accounts:
-        dominik:
-          userId: dominik
+        demo:
+          userId: demo
           # Generated automatically by `nevo-specflow init` for password auth.
           passwordHash: "<replace-with-a-local-password-hash>"
 

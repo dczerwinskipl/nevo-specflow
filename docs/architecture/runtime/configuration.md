@@ -43,6 +43,15 @@ new layout keeps the useful committed/local boundary while placing both under on
 
 ## Ownership
 
+The **product initializer owns repository bootstrap**, not the meaning of capability settings. It
+owns Git-root discovery, the `.nevo/` namespace, the committed/local file locations, ignore rules,
+and composition of capability initializers.
+
+Each capability owns the settings it understands. Today Runtime owns the root Runtime
+configuration it parses; within Runtime, the auth feature owns the `auth` subtree and Runtime
+server composition owns `server`. The product-level `init` command calls Runtime's initializer
+and writes the returned project/local contribution without reconstructing auth or server fields.
+
 `.nevo/config.yaml` contains values that describe **how this project is intended to work**
 for every checkout. Current examples include:
 
@@ -76,7 +85,12 @@ not absorb their full bodies.
 `nevo-specflow init` discovers the Git repository root, creates project and local config, and
 ensures `.nevo/local/` is ignored. It does not overwrite an existing `.nevo/config.yaml`.
 
-The initial interactive authentication choices are:
+The product shell does not know Runtime's config shape. It delegates Runtime setup to
+`initRuntime`, which owns server/auth defaults, prompts, secret placement, password hashing, and
+validation of the effective Runtime configuration. Future capability initializers follow the same
+ownership rule instead of teaching the root installer their internal fields.
+
+The initial Runtime authentication choices are:
 
 - no authentication;
 - password login;

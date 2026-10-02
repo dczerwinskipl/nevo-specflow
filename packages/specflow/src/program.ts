@@ -8,10 +8,10 @@ import {
   type AuthCommandContext,
   type RuntimeCommandContext,
 } from '@nevo/specflow-runtime/cli';
+import type { RuntimeInitPrompter } from '@nevo/specflow-runtime';
 import { Command } from 'commander';
 
 import { createProjectInitCommand, type ProjectInitCommandContext } from './init/cli.js';
-import type { ProjectInitPrompter } from './init/prompts.js';
 import { NEVO_SPECFLOW_VERSION } from './version.js';
 
 export interface ProgramIO {
@@ -21,7 +21,7 @@ export interface ProgramIO {
   readonly startRuntime?: RuntimeCommandContext['start'];
   readonly readPasswordFromStdin?: AuthCommandContext['readPasswordFromStdin'];
   readonly cwd?: string;
-  readonly initPrompter?: ProjectInitPrompter;
+  readonly initPrompter?: RuntimeInitPrompter;
   readonly initializeProject?: ProjectInitCommandContext['initialize'];
 }
 

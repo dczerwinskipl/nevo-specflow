@@ -2,52 +2,21 @@ import { constants } from 'node:fs';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 
-import {
-  hashPassword as hashRuntimePassword,
-  mergeRuntimeConfigValues,
-  parseRuntimeConfig,
-  serializeRuntimeConfig,
-} from '@nevo/specflow-runtime';
-
-export type ProjectInitInput =
-  | {
-      readonly authMode: 'none';
-      readonly userId: string;
-      readonly displayName: string;
-    }
-  | {
-      readonly authMode: 'password';
-      readonly userId: string;
-      readonly displayName: string;
-      readonly username: string;
-      readonly password: string;
-    }
-  | {
-      readonly authMode: 'oidc';
-      readonly userId: string;
-      readonly displayName: string;
-      readonly issuer: string;
-      readonly clientId: string;
-      readonly clientSecret: string;
-      readonly allowedEmail: string;
-    };
+export interface ProjectConfigContribution {
+  readonly projectConfig: Record<string, unknown>;
+  readonly localConfig: Record<string, unknown>;
+}
 
 export interface InitializeProjectOptions {
   readonly cwd: string;
-  readonly input: ProjectInitInput;
-  readonly hashPassword?: (password: string) => Promise<string>;
+  readonly initRuntime: () => Promise<ProjectConfigContribution>;
+  readonly serializeConfig: (value: unknown) => string;
 }
 
 export interface InitializeProjectResult {
   readonly root: string;
   readonly projectConfigPath: string;
   readonly localConfigPath: string;
-  readonly authMode: ProjectInitInput['authMode'];
-}
-
-interface InitPlan {
-  readonly projectConfig: Record<string, unknown>;
-  readonly localConfig: Record<string, unknown>;
 }
 
 const PROJECT_CONFIG_PATH = join('.nevo', 'config.yaml');
@@ -70,16 +39,15 @@ export async function initializeProject(
     );
   }
 
-  const plan = await createInitPlan(options.input, options.hashPassword ?? hashRuntimePassword);
-
-  // Validate the exact effective configuration before touching the repository.
-  parseRuntimeConfig(mergeRuntimeConfigValues(plan.projectConfig, plan.localConfig));
+  // The product initializer owns repository bootstrap only. Runtime owns the
+  // server/auth settings it contributes and validates before returning them.
+  const runtime = await options.initRuntime();
 
   await ensureLocalIgnore(root);
   await mkdir(dirname(projectConfigPath), { recursive: true });
   await mkdir(dirname(localConfigPath), { recursive: true });
-  await writeFile(projectConfigPath, serializeRuntimeConfig(plan.projectConfig), 'utf8');
-  await writeFile(localConfigPath, serializeRuntimeConfig(plan.localConfig), {
+  await writeFile(projectConfigPath, options.serializeConfig(runtime.projectConfig), 'utf8');
+  await writeFile(localConfigPath, options.serializeConfig(runtime.localConfig), {
     encoding: 'utf8',
     mode: 0o600,
   });
@@ -88,109 +56,6 @@ export async function initializeProject(
     root,
     projectConfigPath,
     localConfigPath,
-    authMode: options.input.authMode,
-  };
-}
-
-async function createInitPlan(
-  input: ProjectInitInput,
-  hashPassword: (password: string) => Promise<string>,
-): Promise<InitPlan> {
-  const user = {
-    [input.userId]: {
-      name: input.displayName,
-    },
-  };
-
-  const server: Record<string, unknown> = {
-    host: '127.0.0.1',
-    port: 4318,
-    tls: { enabled: false },
-  };
-
-  if (input.authMode === 'none') {
-    return {
-      projectConfig: {
-        server,
-        auth: {
-          mode: 'none',
-          users: user,
-          providers: {
-            password: { enabled: false },
-            oidc: { enabled: false },
-          },
-        },
-      },
-      localConfig: {
-        auth: {
-          localUserId: input.userId,
-        },
-      },
-    };
-  }
-
-  if (input.authMode === 'password') {
-    const passwordHash = await hashPassword(input.password);
-    return {
-      projectConfig: {
-        server,
-        auth: {
-          mode: 'required',
-          users: user,
-          providers: {
-            password: { enabled: true },
-            oidc: { enabled: false },
-          },
-        },
-      },
-      localConfig: {
-        auth: {
-          providers: {
-            password: {
-              accounts: {
-                [input.username]: {
-                  userId: input.userId,
-                  passwordHash,
-                },
-              },
-            },
-          },
-        },
-      },
-    };
-  }
-
-  return {
-    projectConfig: {
-      server: {
-        ...server,
-        publicOrigin: 'http://localhost:4318',
-      },
-      auth: {
-        mode: 'required',
-        users: user,
-        providers: {
-          password: { enabled: false },
-          oidc: {
-            enabled: true,
-            issuer: input.issuer,
-            clientId: input.clientId,
-            allowedEmails: {
-              [input.allowedEmail]: input.userId,
-            },
-          },
-        },
-      },
-    },
-    localConfig: {
-      auth: {
-        providers: {
-          oidc: {
-            clientSecret: input.clientSecret,
-          },
-        },
-      },
-    },
   };
 }
 

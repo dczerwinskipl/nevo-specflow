@@ -1,3 +1,5 @@
+import { isSupportedPasswordHash } from '../auth/password.js';
+
 import type {
   RuntimeConfig,
   RuntimeGoogleProviderConfig,
@@ -117,6 +119,18 @@ export function parseRuntimeConfig(value: unknown): RuntimeConfig {
     }
   }
 
+  if (mode === 'none' && (password.enabled || google.enabled)) {
+    throw new RuntimeConfigError(
+      'auth.mode=none cannot enable authentication providers.',
+    );
+  }
+
+  if (mode === 'required' && localUserId) {
+    throw new RuntimeConfigError(
+      'auth.localUserId is only valid when auth.mode=none.',
+    );
+  }
+
   if (mode === 'required' && !password.enabled && !google.enabled) {
     throw new RuntimeConfigError(
       'auth.mode=required requires at least one enabled authentication provider.',
@@ -172,6 +186,7 @@ function parsePasswordProvider(value: unknown): RuntimePasswordProviderConfig {
   const config = record(value, path);
   onlyKeys(config, PASSWORD_KEYS, path);
 
+  const enabled = boolean(config.enabled, `${path}.enabled`);
   const accountsValue = config.accounts;
   const accounts = accountsValue === undefined ? {} : record(accountsValue, `${path}.accounts`);
   const result: Record<string, { userId: string; passwordHash: string }> = {};
@@ -181,14 +196,22 @@ function parsePasswordProvider(value: unknown): RuntimePasswordProviderConfig {
     const accountPath = `${path}.accounts.${username}`;
     const account = record(rawAccount, accountPath);
     onlyKeys(account, PASSWORD_ACCOUNT_KEYS, accountPath);
+
+    const passwordHash = nonEmptyString(account.passwordHash, `${accountPath}.passwordHash`);
+    if (enabled && !isSupportedPasswordHash(passwordHash)) {
+      throw new RuntimeConfigError(
+        `${accountPath}.passwordHash must use the supported SpecFlow password hash format.`,
+      );
+    }
+
     result[username] = {
       userId: nonEmptyString(account.userId, `${accountPath}.userId`),
-      passwordHash: nonEmptyString(account.passwordHash, `${accountPath}.passwordHash`),
+      passwordHash,
     };
   }
 
   return {
-    enabled: boolean(config.enabled, `${path}.enabled`),
+    enabled,
     accounts: result,
   };
 }
@@ -208,6 +231,11 @@ function parseGoogleProvider(value: unknown): RuntimeGoogleProviderConfig {
     if (!normalizedEmail || !normalizedEmail.includes('@')) {
       throw new RuntimeConfigError(
         `${path}.allowedEmails contains an invalid email key '${email}'.`,
+      );
+    }
+    if (Object.hasOwn(mappings, normalizedEmail)) {
+      throw new RuntimeConfigError(
+        `${path}.allowedEmails contains a duplicate email after normalization: '${email}'.`,
       );
     }
     mappings[normalizedEmail] = nonEmptyString(rawUserId, `${path}.allowedEmails.${email}`);

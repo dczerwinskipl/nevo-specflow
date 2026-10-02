@@ -32,12 +32,14 @@ The root `src/config/` layer owns loading the `runtime` subtree from project/loc
 
 Runtime owns the `server` configuration it consumes and composes feature-owned configuration such as `auth`. Its `initRuntime` operation owns the corresponding setup prompts/defaults, secret split, hashing, and effective-config validation; the public product initializer only owns repository/file bootstrap.
 
-Runtime loads:
+Runtime receives explicit absolute project/local config paths from the product shell and loads only
+its `runtime` subtree. Runtime does not discover the repository root or assume config paths
+relative to `process.cwd()`.
 
-- committed `.nevo/config.yaml` → `runtime` subtree;
-- optional workstation-local `.nevo/local/config.yaml` → `runtime` subtree.
-
-The entire `.nevo/local/` directory is Git-ignored and is also reserved for future Runtime-owned local state. Authentication secrets, including password hashes and OIDC client secrets, are local-only.
+The entire `.nevo/local/` directory is Git-ignored and is also reserved for future Runtime-owned
+local state. Authentication secrets, including password hashes and OIDC client secrets, are
+local-only. Project/local provenance is validated before merge; local config cannot change canonical
+users, auth mode, provider policy, OIDC mapping, server bind/origin, or TLS enablement.
 Security-sensitive auth maps use replacement rather than additive merge semantics.
 
 `auth.mode` supports:

@@ -74,9 +74,15 @@ key. Runtime config loading extracts only `runtime` before applying Runtime vali
 `.nevo/config.yaml` contains source-controlled configuration that should follow the project.
 
 `.nevo/local/config.yaml` mirrors the same capability namespaces for workstation-specific values
-and secrets. Under `runtime`, password hashes and OIDC client secrets are local-only. A local value
-is not automatically allowed to override every project policy: the owning capability defines merge
-and security rules.
+and secrets. It is **not** a general override layer. Provenance is validated before merge.
+
+| Runtime area | Project-owned | Local-owned |
+| --- | --- | --- |
+| `server` | `host`, `port`, `publicOrigin`, `tls.enabled` | `tls.certFile`, `tls.keyFile` |
+| `auth` | `mode`, `users`, provider `enabled`, OIDC `issuer`, `clientId`, `allowedEmails` | `localUserId`, password `accounts`, OIDC `clientSecret` |
+
+A local file that attempts to set project-owned policy is rejected before composition. Likewise,
+project config cannot contain local-owned credentials or workstation-specific TLS paths.
 
 `.nevo/local/state/` is reserved for application-owned data such as Session bindings,
 transcript/read-model caches, workflow operation records, human-verification records, provider
@@ -95,8 +101,13 @@ absorb their full bodies.
 
 - discover the Git repository root;
 - create `.nevo/config.yaml` and `.nevo/local/config.yaml`;
-- ensure `.nevo/local/` is ignored;
-- compose and serialize capability-owned contributions.
+- ensure `.nevo/local/` is ignored and verify the concrete local config path with Git;
+- compose and serialize capability-owned contributions;
+- write local config first and committed config last as the success marker, rolling back on failure.
+
+The product shell resolves the Git repository root for both `init` and `start`, then passes
+absolute config paths and the project root into Runtime. Runtime does not discover product file
+locations from `process.cwd()`.
 
 The initial Runtime authentication choices are no authentication, password login, and OIDC.
 Password setup hashes the secret inside Runtime. OIDC setup keeps the client secret local.

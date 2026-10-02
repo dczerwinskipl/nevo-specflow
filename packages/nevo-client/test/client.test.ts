@@ -8,7 +8,7 @@ import {
   customCredentials,
   HttpClientError,
   normalizeHttpError,
-} from '../src/index.js';
+} from '../src';
 
 function jsonAdapter(
   assertConfig?: (config: Parameters<AxiosAdapter>[0]) => void,
@@ -91,7 +91,9 @@ describe('createHttpClient', () => {
       code: AxiosError.ERR_NETWORK,
     });
 
-    const normalized = normalizeHttpError(new AxiosError('offline', AxiosError.ERR_NETWORK));
+    const normalized = normalizeHttpError(
+      new AxiosError('offline', AxiosError.ERR_NETWORK),
+    );
     expect(normalized).toBeInstanceOf(HttpClientError);
   });
 });

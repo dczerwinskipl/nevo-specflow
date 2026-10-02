@@ -22,11 +22,7 @@ function authorization() {
     resources: [Spec, Session],
     roles: {
       viewer: [Spec.capabilities.View],
-      developer: [
-        Spec.capabilities.View,
-        Spec.capabilities.Manage,
-        Session.capabilities.Create,
-      ],
+      developer: [Spec.capabilities.View, Spec.capabilities.Manage, Session.capabilities.Create],
     },
     assignments: [
       {

@@ -6,10 +6,7 @@ export {
   type RuntimeAuthorizationAssignmentConfig,
   type RuntimeAuthorizationConfig,
 } from './config.js';
-export {
-  assertNoLocalAuthorization,
-  validateProjectAuthorizationSource,
-} from './config-source.js';
+export { assertNoLocalAuthorization, validateProjectAuthorizationSource } from './config-source.js';
 export {
   AuthorizationCapabilitiesBodySchema,
   AuthorizationCapabilitiesResponseSchema,

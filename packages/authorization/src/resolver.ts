@@ -18,9 +18,7 @@ export function createAuthorization(definition: AuthorizationDefinition): Author
     definition.assignments,
   );
 
-  const resolveCapabilities = (
-    input: ResolveCapabilitiesInput,
-  ): ResolveCapabilitiesResult => {
+  const resolveCapabilities = (input: ResolveCapabilitiesInput): ResolveCapabilitiesResult => {
     validateSubject(input.subject, 'subject');
     validateScope(input.resource.scope, 'resource.scope');
 

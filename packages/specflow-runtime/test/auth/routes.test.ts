@@ -140,6 +140,45 @@ describe('authentication HTTP API', () => {
     }
   });
 
+  it('validates password login input before the handler runs', async () => {
+    const config = passwordConfig();
+    const providerDisabledConfig: RuntimeConfig = {
+      ...config,
+      auth: {
+        ...config.auth,
+        providers: {
+          password: { enabled: false, accounts: {} },
+          google: { enabled: false, allowedEmails: {} },
+        },
+      },
+    };
+    const app = await createRuntimeApp(providerDisabledConfig);
+    try {
+      const malformed = await app.inject({
+        method: 'POST',
+        url: '/api/auth/password/login',
+        payload: { username: 'demo' },
+      });
+
+      expect(malformed.statusCode).toBe(400);
+      expect(malformed.json()).toMatchObject({
+        statusCode: 400,
+        error: 'Bad Request',
+      });
+
+      const validShape = await app.inject({
+        method: 'POST',
+        url: '/api/auth/password/login',
+        payload: { username: 'demo', password: 'irrelevant' },
+      });
+
+      expect(validShape.statusCode).toBe(404);
+      expect(validShape.json()).toEqual({ error: 'provider_unavailable' });
+    } finally {
+      await app.close();
+    }
+  });
+
   it('keeps configured local identity explicitly unauthenticated in none mode', async () => {
     const config = passwordConfig();
     const noneConfig: RuntimeConfig = {

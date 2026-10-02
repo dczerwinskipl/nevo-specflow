@@ -51,8 +51,8 @@ lives under `tools/` (unscoped, `private`) and is never confused with a publisha
 The first product boundary is real. `@nevo/specflow` owns the `nevo-specflow` **shell** —
 root program, `--version`, global flags/output/exit conventions — and **composes**
 top-level commands. Each capability vertical owns its own command: `@nevo/specflow-runtime`
-(`private: true`) exposes the framework-independent capability at `.` and its Commander
-adapter at `./cli` (`createStartCommand`), and is bundled into `@nevo/specflow` at
+(`private: true`) exposes the Runtime capability at `.` and its capability-owned Commander
+adapters at `./cli` (`start` plus auth utilities), and is bundled into `@nevo/specflow` at
 pack time, so a user installs one artifact with no registry
 ([ADR 0006](decisions/0006-product-ships-as-a-single-bundled-artifact.md),
 [product packaging](../engineering/repository/product-packaging.md)). `start` starts the real Runtime HTTP server. UI hosting and most product capabilities are still

@@ -2,7 +2,12 @@
 // root program, global flags, version, output/error/exit conventions, and command
 // composition. Capability verticals own their own Commander adapters.
 
-import { createStartCommand, type RuntimeCommandContext } from '@nevo/specflow-runtime/cli';
+import {
+  createAuthCommand,
+  createStartCommand,
+  type AuthCommandContext,
+  type RuntimeCommandContext,
+} from '@nevo/specflow-runtime/cli';
 import { Command } from 'commander';
 
 import { NEVO_SPECFLOW_VERSION } from './version.js';
@@ -12,6 +17,7 @@ export interface ProgramIO {
   readonly stderr: (line: string) => void;
   readonly signal?: AbortSignal;
   readonly startRuntime?: RuntimeCommandContext['start'];
+  readonly readPasswordFromStdin?: AuthCommandContext['readPasswordFromStdin'];
 }
 
 /** Build the `nevo-specflow` program. Pure wiring; argv is parsed by the caller. */
@@ -24,6 +30,13 @@ export function createProgram(io: ProgramIO): Command {
       writeErr: (s) => io.stderr(s.replace(/\n$/, '')),
     })
     .showHelpAfterError();
+
+  program.addCommand(
+    createAuthCommand({
+      stdout: io.stdout,
+      ...(io.readPasswordFromStdin ? { readPasswordFromStdin: io.readPasswordFromStdin } : {}),
+    }),
+  );
 
   program.addCommand(
     createStartCommand({

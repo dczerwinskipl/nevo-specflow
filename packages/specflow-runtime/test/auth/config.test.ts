@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { assertNoProjectAuthSecrets, parseAuthConfig } from '../../src/auth/config.js';
 
 const PASSWORD_HASH =
-  '$scrypt$16384$8$1$MDEyMzQ1Njc4OWFiY2RlZg$tjK03tRvEjqCcPwmgtddMkgjlXrk8U_b9rIvfeBMKCc';
+  '$scrypt$16384$8$5$MDEyMzQ1Njc4OWFiY2RlZg$yMHgG_FDESRF0j5gjhGLotSMPdnfefUcNNFPyNoQtJE';
 
 function requiredAuthConfig() {
   const allowedEmails: Record<string, string> = {

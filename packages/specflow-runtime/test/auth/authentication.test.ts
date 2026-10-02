@@ -20,7 +20,7 @@ const auth: RuntimeAuthConfig = {
         demo: {
           userId: 'demo-user',
           passwordHash:
-            '$scrypt$16384$8$1$MDEyMzQ1Njc4OWFiY2RlZg$tjK03tRvEjqCcPwmgtddMkgjlXrk8U_b9rIvfeBMKCc',
+            '$scrypt$16384$8$5$MDEyMzQ1Njc4OWFiY2RlZg$yMHgG_FDESRF0j5gjhGLotSMPdnfefUcNNFPyNoQtJE',
         },
       },
     },

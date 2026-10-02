@@ -34,8 +34,10 @@ This is a **repository developer workflow**, not the future public
 3. puts pnpm's global bin dir on `PATH` and runs the **real installed `nevo-specflow`
    executable shim** (the `.cmd` shim on Windows, the shell shim on Unix — not
    `node dist/bin.js`): `nevo-specflow --version` (must equal the packed version),
-   `nevo-specflow --help` (must list `start`), `nevo-specflow start` (must print the
-   Runtime bootstrap marker);
+   `nevo-specflow --help` (must list the composed commands), and
+   `nevo-specflow start --help` (must expose the real Runtime server command). The
+   dogfood command deliberately does not start a long-running server. The packed-product
+   smoke test owns the stronger start → HTTP probe → SIGTERM check;
 4. fails with a diagnostic and a non-zero exit if pack or any smoke step fails.
 
 ## Why a tarball and not `pnpm link`
@@ -61,7 +63,7 @@ directory:
 ```bash
 nevo-specflow --help
 nevo-specflow --version
-nevo-specflow start      # bootstrap marker only — does not start the real Runtime or UI yet
+nevo-specflow start      # starts the configured long-running Runtime server
 ```
 
 Remove it with `pnpm remove -g @nevo/specflow`.

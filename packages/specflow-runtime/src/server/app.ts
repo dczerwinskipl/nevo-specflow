@@ -40,10 +40,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   await app.register(authFeature, {
     auth: config.auth,
     ...(config.server.publicOrigin ? { publicOrigin: config.server.publicOrigin } : {}),
-    secureCookies:
-      config.server.tls.enabled ||
-      (config.server.publicOrigin !== undefined &&
-        new URL(config.server.publicOrigin).protocol === 'https:'),
+    secureCookies: config.server.tls.enabled,
     ...(dependencies.auth ? { dependencies: dependencies.auth } : {}),
   });
 }

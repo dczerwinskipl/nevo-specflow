@@ -12,7 +12,7 @@ import {
 } from '../../src/config/index.js';
 
 const SUPPORTED_PASSWORD_HASH =
-  '$scrypt$16384$8$1$MDEyMzQ1Njc4OWFiY2RlZg$' + 'tjK03tRvEjqCcPwmgtddMkgjlXrk8U_b9rIvfeBMKCc';
+  '$scrypt$16384$8$5$MDEyMzQ1Njc4OWFiY2RlZg$' + 'yMHgG_FDESRF0j5gjhGLotSMPdnfefUcNNFPyNoQtJE';
 
 const PROJECT_CONFIG = `
 server:
@@ -40,7 +40,11 @@ function requiredAuthConfig() {
       host: '127.0.0.1',
       port: 4318,
       publicOrigin: 'https://specflow.example.test:4318',
-      tls: { enabled: false },
+      tls: {
+        enabled: true,
+        certFile: '.nevo-local/tls/cert.pem',
+        keyFile: '.nevo-local/tls/key.pem',
+      },
     },
     auth: {
       mode: 'required',
@@ -163,12 +167,13 @@ describe('runtime configuration', () => {
     );
   });
 
-  it('rejects required auth on a non-loopback bind without an HTTPS public origin', () => {
+  it('rejects required auth on a non-loopback bind when Runtime TLS is disabled', () => {
     expect(() =>
       parseRuntimeConfig({
         server: {
           host: '0.0.0.0',
           port: 4318,
+          publicOrigin: 'http://specflow.example.test:4318',
           tls: { enabled: false },
         },
         auth: {
@@ -188,7 +193,7 @@ describe('runtime configuration', () => {
           },
         },
       }),
-    ).toThrowError(/requires an HTTPS server\.publicOrigin/);
+    ).toThrowError(/without Runtime TLS is allowed only when server\.host is loopback/);
   });
 
   it('allows required password auth without publicOrigin only on loopback', () => {
@@ -222,22 +227,38 @@ describe('runtime configuration', () => {
     });
   });
 
-  it('rejects a remote HTTP public origin for required auth', () => {
+  it('rejects reverse-proxy HTTPS publicOrigin when Runtime TLS is disabled', () => {
     const config = requiredAuthConfig();
-    config.server.publicOrigin = 'http://specflow.example.test:4318';
+    config.server.tls.enabled = false;
 
-    expect(() => parseRuntimeConfig(config)).toThrowError(/requires an HTTPS server\.publicOrigin/);
+    expect(() => parseRuntimeConfig(config)).toThrowError(
+      /publicOrigin must use HTTP when server\.tls\.enabled=false/,
+    );
   });
 
-  it('allows HTTP publicOrigin for local development only when bind and origin are loopback', () => {
+  it('allows plaintext required auth only when bind and public origin are loopback', () => {
     const config = requiredAuthConfig();
+    config.server.tls.enabled = false;
     config.server.publicOrigin = 'http://localhost:4318';
-    config.auth.providers.oidc.enabled = false;
 
     expect(parseRuntimeConfig(config)).toMatchObject({
-      server: { publicOrigin: 'http://localhost:4318' },
+      server: {
+        host: '127.0.0.1',
+        publicOrigin: 'http://localhost:4318',
+        tls: { enabled: false },
+      },
       auth: { mode: 'required' },
     });
+  });
+
+  it('rejects a non-loopback public origin when required auth uses loopback plaintext', () => {
+    const config = requiredAuthConfig();
+    config.server.tls.enabled = false;
+    config.server.publicOrigin = 'http://specflow.example.test:4318';
+
+    expect(() => parseRuntimeConfig(config)).toThrowError(
+      /without Runtime TLS requires server\.publicOrigin to be loopback/,
+    );
   });
 
   it('rejects an HTTP publicOrigin when Runtime TLS is enabled', () => {

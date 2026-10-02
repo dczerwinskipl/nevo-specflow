@@ -1,55 +1,91 @@
 # `@nevo/specflow-runtime`
 
-The **Nevo SpecFlow Runtime** vertical. It owns the long-lived application backend,
-including configuration loading, the Fastify HTTP boundary, authentication, server
-sessions, TLS/listen lifecycle, and explicit shutdown.
+The private Runtime package behind the public `nevo-specflow` product. It owns the
+long-lived local backend boundary: Runtime configuration, Fastify application composition,
+authentication, server-side sessions, listen/TLS lifecycle, and graceful shutdown.
 
-| Import                         | Owns                                                                 | Commander? |
-| ------------------------------ | -------------------------------------------------------------------- | ---------- |
-| `@nevo/specflow-runtime` (`.`) | Runtime application API: `startRuntime()`, app construction, config. | no         |
-| `@nevo/specflow-runtime/cli`   | Root-level `start` command adapter: `createStartCommand(ctx)`.       | yes        |
+The package is not published independently. It is bundled into `@nevo/specflow`.
 
-The `nevo-specflow` shell ([`@nevo/specflow`](../specflow/README.md)) composes the
-command. The shell does not implement Runtime behavior.
+## Package boundaries
 
-## Structure
+| Import                                  | Purpose                                                                                         |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `@nevo/specflow-runtime`                | Runtime application/configuration API used by product composition and tests.                    |
+| `@nevo/specflow-runtime/cli`            | Commander adapters owned by Runtime capabilities, currently `start` and auth utilities.         |
+| `@nevo/specflow-runtime/auth-contracts` | TypeBox HTTP contracts that UI/client code may consume without importing the server entrypoint. |
 
-Runtime code is organized by capability rather than by transport layer. Authentication
-is one vertical slice under `src/auth/`: it owns its configuration model and validation,
-application operations, route adapter, session lifecycle, password authentication,
-generic OIDC adapter, and in-memory stores. The root `src/config/` code owns project/local
-file loading and composition, but delegates auth-specific parsing, secret policy, and
-merge policy to the auth feature. `src/server/` is the composition root for application-wide
-Fastify construction. Auth is registered as an encapsulated Fastify feature plugin.
+## Architecture conventions
 
-HTTP request validation belongs in Fastify route schemas. Fastify/AJV rejects malformed
-`body`, `query`, and `params` before a handler runs; handlers should not repeat
-primitive type checks or cast unvalidated request bodies.
+Runtime is organized by capability. A feature owns its configuration model and invariants,
+application operations, transport contracts, HTTP adapter, provider integrations, and
+feature-local state. Cross-feature/server code composes those boundaries rather than
+reimplementing their policy.
+
+Authentication therefore lives under `src/auth/` and is registered by
+`src/server/app.ts` as an encapsulated Fastify plugin. Fastify route schemas are the
+request-validation boundary: TypeBox supplies JSON Schema and inferred TypeScript types,
+and AJV rejects malformed input before a handler executes.
+
+The root `src/config/` layer owns loading and composing project/local configuration. It
+delegates auth-specific parsing and security policy to the auth feature.
 
 ## Configuration
 
-The Runtime requires `nevo-specflow.yaml` in the project root and optionally loads the
-git-ignored `.nevo-local/nevo-specflow.yaml` override. See
-[`nevo-specflow.example.yaml`](../../nevo-specflow.example.yaml) and
-[`nevo-specflow.local.example.yaml`](../../nevo-specflow.local.example.yaml).
+Runtime loads:
 
-Project configuration may define non-secret auth structure and user identities. Secrets,
-including password hashes and OIDC client secrets, are local-only. Security-sensitive
-maps such as password accounts and OIDC allowed emails use replacement semantics in
-the local override rather than additive merging.
+- `nevo-specflow.yaml` from the project root;
+- optional workstation-local `.nevo-local/nevo-specflow.yaml`.
 
-Supported auth modes:
+Authentication secrets, including password hashes and OIDC client secrets, are local-only.
+Security-sensitive auth maps use replacement rather than additive merge semantics.
 
-- `none`: no login providers may be enabled; `localUserId` may provide attribution.
-- `required`: at least one provider must be enabled; `localUserId` is forbidden. The
-  externally visible `server.publicOrigin` must use HTTPS. Plain HTTP is accepted only
-  for local development when both the Runtime bind host and public origin are loopback;
-  password-only loopback development may omit `publicOrigin`. A reverse-proxy deployment
-  may keep Runtime TLS disabled when its configured public origin is HTTPS.
+`auth.mode` supports:
+
+- `none`: no login provider is enabled; optional `localUserId` may provide attribution;
+- `required`: at least one login provider is enabled and `localUserId` is forbidden.
+
+For `required` auth, a remotely reachable Runtime must terminate TLS itself. When Runtime
+TLS is disabled, both the bind host and any `publicOrigin` must be loopback. Reverse-proxy
+TLS termination and forwarded-client-IP trust are intentionally not supported yet. This
+keeps password transport and source-based throttling unambiguous.
+
+If `publicOrigin` is configured, its protocol must match Runtime TLS: HTTPS with TLS,
+HTTP without TLS.
+
+## Password authentication
+
+Password login is throttled before scrypt work, both per normalized account and per direct
+network source. Throttled requests return HTTP 429 with `Retry-After`.
+
+The supported password hash format uses scrypt `N=2^14, r=8, p=5`. We intentionally do
+not accept the earlier weaker `p=1` profile.
+
+Generate a configuration hash through the installed product:
+
+```bash
+printf '%s\n' "$PASSWORD" | nevo-specflow auth hash-password --password-stdin
+```
+
+The command reads exactly one password line from stdin and prints only the encoded hash.
+Store that hash in the local configuration, not in the committed project configuration.
+
+## OIDC profile
+
+OIDC uses authorization code flow with PKCE, state, and nonce. Provider tokens are not
+stored in the application session. The provider is generic and configured by issuer;
+Google appears only as an example configuration.
+
+The currently supported profile is deliberately narrow:
+
+- HTTPS issuer;
+- confidential client using `client_secret_post`;
+- verified standard `email` claim in the ID token;
+- allow-list mapping from normalized email to the internal user id.
+
+UserInfo fallback and additional client-authentication profiles are not part of this
+foundation yet.
 
 ## HTTP authentication API
-
-The current Runtime exposes:
 
 - `GET /api/auth/session`
 - `POST /api/auth/password/login`
@@ -57,39 +93,9 @@ The current Runtime exposes:
 - `GET /api/auth/oidc/callback`
 - `POST /api/auth/logout`
 
-Password login request bodies are validated by Fastify/AJV before entering the handler.
-Password attempts are throttled before scrypt work both per normalized account and per
-direct network source; successful authentication clears the account counter but does not
-reset the source limit. Newly generated password hashes use scrypt `N=2^14, r=8, p=5`;
-the previous `N=2^14, r=8, p=1` format remains verify-only for compatibility.
-Authentication sessions are server-side, bounded, and expiring. Cookies are
-`HttpOnly`, `SameSite=Lax`, and `Secure` when TLS/HTTPS is used. OIDC uses
-authorization code flow with PKCE, state, and nonce and keeps provider tokens out of the
-application session. The issuer is configured under `auth.providers.oidc`; the local example
-shows Google, but the Runtime itself is provider-agnostic. The current supported profile is a
-confidential OIDC client using `client_secret_post`, which is the `openid-client` default used
-by this adapter. Issuers must use HTTPS. Identity mapping expects a verified standard `email`
-claim in the ID token. UserInfo fallback is not part of the current profile. Broader
-client-authentication profiles are not implied by the generic provider name.
+Sessions are server-side, bounded, and expiring. Cookies are `HttpOnly`,
+`SameSite=Lax`, and `Secure` whenever Runtime TLS is enabled.
 
-When TLS is enabled the Runtime uses HTTP/2 with HTTP/1.1 fallback on the same configured
-port.
-
-This package is private and bundled into the single `@nevo/specflow` distributable.
-
-## HTTP route contracts
-
-Runtime routes use Fastify's native AJV validation with TypeBox schemas and the
-`@fastify/type-provider-typebox` provider. A route schema is the single definition for
-both runtime validation and TypeScript inference: handlers receive already validated,
-typed `body`, `query`, and `params` values instead of casting or reparsing `unknown`.
-
-The Runtime keeps coercion and additional-property removal disabled. Invalid request
-payloads fail with Fastify's `400 Bad Request` before the handler runs. Domain and
-configuration invariants still belong to the feature/domain layer rather than AJV.
-
-Feature contracts live with the feature (for auth, `src/auth/contracts.ts`). Other
-workspace consumers such as the SpecFlow UI can import the schemas and inferred types from
-`@nevo/specflow-runtime/auth-contracts` without depending on the Runtime server entrypoint.
-Fastify/AJV remains the backend validator; TypeBox supplies JSON Schema plus static type
-inference.
+See [`nevo-specflow.example.yaml`](../../nevo-specflow.example.yaml) and
+[`nevo-specflow.local.example.yaml`](../../nevo-specflow.local.example.yaml) for the
+configuration shape.

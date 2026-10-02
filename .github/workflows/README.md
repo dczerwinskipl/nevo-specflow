@@ -52,13 +52,9 @@ Current pins:
 
 ## CodeQL
 
-Deliberately **not** enabled yet. The repository so far is Node tooling under `tools/*`
-plus `packages/specflow` / `packages/specflow-runtime`, and the latter are a
-deliberately minimal routing / packaging **bootstrap** (a Commander router, one
-capability function returning a marker) — not substantive application code. CodeQL would
-have almost nothing to analyse.
-
-Enable it in the change that lands the **first substantive migrated product
-implementation** (real Runtime / UI / providers / spec engine): add a
-`github/codeql-action` workflow for `javascript-typescript` and make `CodeQL` a required
-check in the branch rulesets.
+CodeQL is not enabled in the repository yet. The earlier bootstrap-only rationale no
+longer applies now that the Runtime contains substantive application/authentication code.
+Adding CodeQL should be handled as a dedicated repository-governance change so its
+workflow, permissions, branch-rules requirement, and CI cost are reviewed explicitly.
+Do not describe CodeQL as waiting for the first real Runtime implementation; that point
+has already been reached.

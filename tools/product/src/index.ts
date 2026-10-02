@@ -3,9 +3,8 @@
 
 export { bundleProduct, type BundleInput } from './bundle.js';
 export { packProduct, type PackOptions, type PackResult } from './pack.js';
-export { dogfoodInstall, type DogfoodResult } from './dogfood.js';
+export { dogfoodInstall, type DogfoodInstallOptions, type DogfoodResult } from './dogfood.js';
 export { resolveProductVersion, type ResolveVersionInput } from './version.js';
 export { findRepoRoot, repoPaths, type RepoPaths } from './paths.js';
 export { StepFailedError } from './exec.js';
 export { createProgram, type CliIO } from './cli.js';
-export { RUNTIME_BOOTSTRAP_MARKER } from './markers.js';

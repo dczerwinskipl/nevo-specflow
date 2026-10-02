@@ -52,9 +52,9 @@ Use `.exitOverride()` so help/version/usage exits are testable without
 `@nevo/specflow` owns the **Nevo SpecFlow CLI shell**: root program, version/global
 conventions, output/error/exit behavior, and command composition.
 
-A capability owns the semantics of its command and exposes a Commander adapter from a
-dedicated boundary. For example, `@nevo/specflow-runtime/cli` owns
-`createStartCommand()`; the shell only registers it.
+A capability owns the semantics of its command and exposes Commander adapters from a
+dedicated boundary. For example, `@nevo/specflow-runtime/cli` owns the Runtime
+`start` adapter and the auth utility command; the shell only registers them.
 
 Do not invent a plugin/descriptor framework for this. Plain Commander composition and
 ordinary functions are sufficient.

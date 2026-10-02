@@ -8,7 +8,7 @@ import { loginWithPassword } from '../../src/auth/password-login.js';
 import { InMemoryAuthStore } from '../../src/auth/session-store.js';
 
 const PASSWORD_HASH =
-  '$scrypt$16384$8$1$MDEyMzQ1Njc4OWFiY2RlZg$tjK03tRvEjqCcPwmgtddMkgjlXrk8U_b9rIvfeBMKCc';
+  '$scrypt$16384$8$5$MDEyMzQ1Njc4OWFiY2RlZg$yMHgG_FDESRF0j5gjhGLotSMPdnfefUcNNFPyNoQtJE';
 
 const auth: RuntimeAuthConfig = {
   mode: 'required',

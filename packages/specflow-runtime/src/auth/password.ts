@@ -1,25 +1,12 @@
 import { randomBytes, scrypt as nodeScrypt, timingSafeEqual } from 'node:crypto';
 
 const FORMAT = 'scrypt';
-const CURRENT_COST = 16_384;
-const CURRENT_BLOCK_SIZE = 8;
-const CURRENT_PARALLELIZATION = 5;
-const LEGACY_PARALLELIZATION = 1;
+const COST = 16_384;
+const BLOCK_SIZE = 8;
+const PARALLELIZATION = 5;
 const KEY_LENGTH = 32;
 const SALT_LENGTH = 16;
 const MAX_MEMORY = 64 * 1024 * 1024;
-
-interface PasswordHashParameters {
-  readonly cost: number;
-  readonly blockSize: number;
-  readonly parallelization: number;
-}
-
-const CURRENT_PARAMETERS: PasswordHashParameters = {
-  cost: CURRENT_COST,
-  blockSize: CURRENT_BLOCK_SIZE,
-  parallelization: CURRENT_PARALLELIZATION,
-};
 
 export interface PasswordHashOptions {
   readonly salt?: Uint8Array;
@@ -36,14 +23,14 @@ export async function hashPassword(
     throw new Error(`Password hash salt must be exactly ${SALT_LENGTH} bytes.`);
   }
 
-  const derived = await derive(password, salt, CURRENT_PARAMETERS);
+  const derived = await derive(password, salt);
 
   return [
     '',
     FORMAT,
-    String(CURRENT_PARAMETERS.cost),
-    String(CURRENT_PARAMETERS.blockSize),
-    String(CURRENT_PARAMETERS.parallelization),
+    String(COST),
+    String(BLOCK_SIZE),
+    String(PARALLELIZATION),
     salt.toString('base64url'),
     derived.toString('base64url'),
   ].join('$');
@@ -59,7 +46,7 @@ export async function verifyPassword(password: string, encodedHash: string): Pro
     return false;
   }
 
-  const actual = await derive(password, parsed.salt, parsed.parameters);
+  const actual = await derive(password, parsed.salt);
   return timingSafeEqual(actual, parsed.expected);
 }
 
@@ -68,25 +55,19 @@ export function isSupportedPasswordHash(value: string): boolean {
 }
 
 interface ParsedPasswordHash {
-  readonly parameters: PasswordHashParameters;
   readonly salt: Buffer;
   readonly expected: Buffer;
 }
 
 function parsePasswordHash(value: string): ParsedPasswordHash | null {
   const parts = value.split('$');
-  if (parts.length !== 7 || parts[0] !== '' || parts[1] !== FORMAT) {
-    return null;
-  }
-
-  const cost = parseInteger(parts[2]);
-  const blockSize = parseInteger(parts[3]);
-  const parallelization = parseInteger(parts[4]);
   if (
-    cost === null ||
-    blockSize === null ||
-    parallelization === null ||
-    !isSupportedParameters({ cost, blockSize, parallelization })
+    parts.length !== 7 ||
+    parts[0] !== '' ||
+    parts[1] !== FORMAT ||
+    parts[2] !== String(COST) ||
+    parts[3] !== String(BLOCK_SIZE) ||
+    parts[4] !== String(PARALLELIZATION)
   ) {
     return null;
   }
@@ -97,28 +78,7 @@ function parsePasswordHash(value: string): ParsedPasswordHash | null {
     return null;
   }
 
-  return {
-    parameters: { cost, blockSize, parallelization },
-    salt,
-    expected,
-  };
-}
-
-function isSupportedParameters(parameters: PasswordHashParameters): boolean {
-  return (
-    parameters.cost === CURRENT_COST &&
-    parameters.blockSize === CURRENT_BLOCK_SIZE &&
-    (parameters.parallelization === CURRENT_PARALLELIZATION ||
-      parameters.parallelization === LEGACY_PARALLELIZATION)
-  );
-}
-
-function parseInteger(value: string | undefined): number | null {
-  if (!value || !/^[1-9][0-9]*$/u.test(value)) {
-    return null;
-  }
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) ? parsed : null;
+  return { salt, expected };
 }
 
 function decodeBase64Url(value: string | undefined, expectedLength: number): Buffer | null {
@@ -134,20 +94,16 @@ function decodeBase64Url(value: string | undefined, expectedLength: number): Buf
   return decoded;
 }
 
-function derive(
-  password: string,
-  salt: Uint8Array,
-  parameters: PasswordHashParameters,
-): Promise<Buffer> {
+function derive(password: string, salt: Uint8Array): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     nodeScrypt(
       password,
       salt,
       KEY_LENGTH,
       {
-        cost: parameters.cost,
-        blockSize: parameters.blockSize,
-        parallelization: parameters.parallelization,
+        cost: COST,
+        blockSize: BLOCK_SIZE,
+        parallelization: PARALLELIZATION,
         maxmem: MAX_MEMORY,
       },
       (error, derivedKey) => {

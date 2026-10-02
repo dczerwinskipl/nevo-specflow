@@ -29,3 +29,5 @@ function aborted(signal: AbortSignal): Promise<void> {
     signal.addEventListener('abort', () => resolve(), { once: true }),
   );
 }
+
+export { createAuthCommand, type AuthCommandContext } from '../auth/cli.js';

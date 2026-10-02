@@ -4,7 +4,8 @@
 server:
   host: 127.0.0.1
   port: 4318
-  # Required for non-loopback required-auth deployments and for OIDC. Use the external HTTPS origin.
+  # Required for OIDC callbacks. Its protocol must match Runtime TLS.
+  # Reverse-proxy TLS termination is not supported by this foundation.
   # publicOrigin: https://specflow.example.test:4318
   tls:
     enabled: false

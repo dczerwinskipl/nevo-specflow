@@ -147,36 +147,21 @@ export function validateAuthRuntimeContext(
     );
   }
 
-  if (auth.mode !== 'required') {
+  if (auth.mode !== 'required' || context.tlsEnabled) {
     return;
   }
 
-  if (!context.publicOrigin) {
-    if (!context.tlsEnabled && isLoopbackHost(context.bindHost)) {
-      return;
-    }
+  if (!isLoopbackHost(context.bindHost)) {
     throw new RuntimeConfigError(
-      'auth.mode=required requires an HTTPS server.publicOrigin unless Runtime binds only to loopback for local development.',
+      'auth.mode=required without Runtime TLS is allowed only when server.host is loopback.',
     );
   }
 
-  const origin = new URL(context.publicOrigin);
-  if (origin.protocol === 'https:') {
-    return;
+  if (context.publicOrigin && !isLoopbackHost(new URL(context.publicOrigin).hostname)) {
+    throw new RuntimeConfigError(
+      'auth.mode=required without Runtime TLS requires server.publicOrigin to be loopback.',
+    );
   }
-
-  if (
-    !context.tlsEnabled &&
-    origin.protocol === 'http:' &&
-    isLoopbackHost(context.bindHost) &&
-    isLoopbackHost(origin.hostname)
-  ) {
-    return;
-  }
-
-  throw new RuntimeConfigError(
-    'auth.mode=required requires an HTTPS server.publicOrigin; HTTP is allowed only when both bind host and public origin are loopback.',
-  );
 }
 
 export function assertNoProjectAuthSecrets(value: unknown): void {

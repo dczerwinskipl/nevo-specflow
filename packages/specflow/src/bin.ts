@@ -16,6 +16,7 @@ async function main(argv: string[]): Promise<number> {
   const program = createProgram({
     stdout: (line) => process.stdout.write(`${line}\n`),
     stderr: (line) => process.stderr.write(`${line}\n`),
+    readPasswordFromStdin: readStdin,
     signal: shutdown.signal,
   });
 
@@ -33,6 +34,15 @@ async function main(argv: string[]): Promise<number> {
     process.off('SIGINT', abort);
     process.off('SIGTERM', abort);
   }
+}
+
+async function readStdin(): Promise<string> {
+  process.stdin.setEncoding('utf8');
+  let input = '';
+  for await (const chunk of process.stdin) {
+    input += String(chunk);
+  }
+  return input;
 }
 
 process.exitCode = await main(process.argv);

@@ -4,11 +4,11 @@ import { hashPassword, isSupportedPasswordHash, verifyPassword } from '../../src
 
 const CURRENT_HASH =
   '$scrypt$16384$8$5$MDEyMzQ1Njc4OWFiY2RlZg$' + 'yMHgG_FDESRF0j5gjhGLotSMPdnfefUcNNFPyNoQtJE';
-const LEGACY_HASH =
+const WEAKER_HASH =
   '$scrypt$16384$8$1$MDEyMzQ1Njc4OWFiY2RlZg$' + 'tjK03tRvEjqCcPwmgtddMkgjlXrk8U_b9rIvfeBMKCc';
 
 describe('password hashing', () => {
-  it('generates new hashes with the current scrypt parameters', async () => {
+  it('generates and verifies hashes with the current scrypt parameters', async () => {
     const hash = await hashPassword('correct horse battery staple', {
       salt: Buffer.from('0123456789abcdef', 'utf8'),
     });
@@ -19,10 +19,9 @@ describe('password hashing', () => {
     await expect(verifyPassword('wrong password', hash)).resolves.toBe(false);
   });
 
-  it('continues to verify the previous scrypt work factor', async () => {
-    expect(isSupportedPasswordHash(LEGACY_HASH)).toBe(true);
-    await expect(verifyPassword('correct horse battery staple', LEGACY_HASH)).resolves.toBe(true);
-    await expect(verifyPassword('wrong password', LEGACY_HASH)).resolves.toBe(false);
+  it('rejects the previous weaker work factor instead of creating a timing class', async () => {
+    expect(isSupportedPasswordHash(WEAKER_HASH)).toBe(false);
+    await expect(verifyPassword('correct horse battery staple', WEAKER_HASH)).resolves.toBe(false);
   });
 
   it.each(['$scrypt$32768$8$5', '$scrypt$16384$16$5', '$scrypt$16384$8$2'])(

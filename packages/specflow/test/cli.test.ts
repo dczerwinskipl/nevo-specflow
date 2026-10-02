@@ -10,6 +10,7 @@ function harness() {
   const program = createProgram({
     stdout: (line) => out.push(line),
     stderr: (line) => err.push(line),
+    readPasswordFromStdin: () => Promise.resolve('correct horse battery staple\n'),
     startRuntime: () =>
       Promise.resolve({
         address: 'http://127.0.0.1:4318',
@@ -27,12 +28,20 @@ describe('createProgram — nevo-specflow router', () => {
     const text = out.join('\n');
     expect(text).toContain('nevo-specflow');
     expect(text).toContain('start');
+    expect(text).toContain('auth');
   });
 
   it('--version prints the injected version constant', async () => {
     const { run, out } = harness();
     await expect(run(['--version'])).rejects.toMatchObject({ code: 'commander.version' });
     expect(out.join('\n')).toContain(NEVO_SPECFLOW_VERSION);
+  });
+
+  it('auth hash-password is composed from the Runtime auth feature', async () => {
+    const { run, out } = harness();
+    await run(['auth', 'hash-password', '--password-stdin']);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatch(/^\$scrypt\$16384\$8\$5\$/u);
   });
 
   it('start routes into the Runtime capability and reports its listening address', async () => {

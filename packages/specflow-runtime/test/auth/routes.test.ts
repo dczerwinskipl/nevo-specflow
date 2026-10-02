@@ -6,7 +6,7 @@ import type { RuntimeConfig } from '../../src/config/types.js';
 import { createRuntimeApp } from '../../src/server/app.js';
 
 const PASSWORD_HASH =
-  '$scrypt$16384$8$1$MDEyMzQ1Njc4OWFiY2RlZg$tjK03tRvEjqCcPwmgtddMkgjlXrk8U_b9rIvfeBMKCc';
+  '$scrypt$16384$8$5$MDEyMzQ1Njc4OWFiY2RlZg$yMHgG_FDESRF0j5gjhGLotSMPdnfefUcNNFPyNoQtJE';
 
 function passwordConfig(): RuntimeConfig {
   return {

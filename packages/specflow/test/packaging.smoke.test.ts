@@ -69,7 +69,7 @@ interface Run {
   stdout: string;
 }
 /** Invoke the installed `nevo-specflow` shim from the isolated prefix's .bin, via PATH. */
-function nevoSpec(args: string[]): Run {
+function nevoSpec(args: string[], input?: string): Run {
   try {
     return {
       code: 0,
@@ -78,6 +78,7 @@ function nevoSpec(args: string[]): Run {
         env: runEnv,
         encoding: 'utf8',
         shell: sh,
+        ...(input === undefined ? {} : { input }),
       }),
     };
   } catch (err) {
@@ -182,7 +183,16 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     expect(r.stdout).toMatch(/Runtime server/i);
   });
 
-  it('D. starts the packaged Runtime, serves HTTP, and shuts down cleanly', async () => {
+  it('D. generates a password hash through the installed auth utility', () => {
+    const r = nevoSpec(
+      ['auth', 'hash-password', '--password-stdin'],
+      'correct horse battery staple\n',
+    );
+    expect(r.code).toBe(0);
+    expect(r.stdout.trim()).toMatch(/^\$scrypt\$16384\$8\$5\$/u);
+  });
+
+  it('E. starts the packaged Runtime, serves HTTP, and shuts down cleanly', async () => {
     const port = await freePort();
     writeFileSync(
       join(prefix, 'nevo-specflow.yaml'),

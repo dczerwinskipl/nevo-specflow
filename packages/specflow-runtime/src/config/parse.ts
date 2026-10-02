@@ -51,10 +51,18 @@ export function parseRuntimeConfig(value: unknown): RuntimeConfig {
     );
   }
 
-  if (tlsEnabled && publicOrigin && new URL(publicOrigin).protocol !== 'https:') {
-    throw new RuntimeConfigError(
-      'server.publicOrigin must use HTTPS when server.tls.enabled=true.',
-    );
+  if (publicOrigin) {
+    const publicProtocol = new URL(publicOrigin).protocol;
+    if (tlsEnabled && publicProtocol !== 'https:') {
+      throw new RuntimeConfigError(
+        'server.publicOrigin must use HTTPS when server.tls.enabled=true.',
+      );
+    }
+    if (!tlsEnabled && publicProtocol !== 'http:') {
+      throw new RuntimeConfigError(
+        'server.publicOrigin must use HTTP when server.tls.enabled=false; reverse-proxy TLS termination is not supported.',
+      );
+    }
   }
 
   const auth = parseAuthConfig(root.auth);

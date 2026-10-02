@@ -8,10 +8,7 @@ export const PasswordLoginBodySchema = Type.Object(
   { additionalProperties: false },
 );
 
-export const AuthProviderSchema = Type.Union([
-  Type.Literal('password'),
-  Type.Literal('google'),
-]);
+export const AuthProviderSchema = Type.Union([Type.Literal('password'), Type.Literal('google')]);
 
 export const AuthUserSchema = Type.Object(
   {

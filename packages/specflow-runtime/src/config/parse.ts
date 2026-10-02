@@ -84,11 +84,7 @@ export function parseRuntimeConfig(value: unknown): RuntimeConfig {
   }
 
   for (const [username, account] of Object.entries(password.accounts)) {
-    assertUserExists(
-      users,
-      account.userId,
-      `auth.providers.password.accounts.${username}.userId`,
-    );
+    assertUserExists(users, account.userId, `auth.providers.password.accounts.${username}.userId`);
   }
 
   for (const [email, userId] of Object.entries(google.allowedEmails)) {
@@ -120,15 +116,11 @@ export function parseRuntimeConfig(value: unknown): RuntimeConfig {
   }
 
   if (mode === 'none' && (password.enabled || google.enabled)) {
-    throw new RuntimeConfigError(
-      'auth.mode=none cannot enable authentication providers.',
-    );
+    throw new RuntimeConfigError('auth.mode=none cannot enable authentication providers.');
   }
 
   if (mode === 'required' && localUserId) {
-    throw new RuntimeConfigError(
-      'auth.localUserId is only valid when auth.mode=none.',
-    );
+    throw new RuntimeConfigError('auth.localUserId is only valid when auth.mode=none.');
   }
 
   if (mode === 'required' && !password.enabled && !google.enabled) {
@@ -188,8 +180,7 @@ function parsePasswordProvider(value: unknown): RuntimePasswordProviderConfig {
 
   const enabled = boolean(config.enabled, `${path}.enabled`);
   const accountsValue = config.accounts;
-  const accounts =
-    accountsValue === undefined ? {} : record(accountsValue, `${path}.accounts`);
+  const accounts = accountsValue === undefined ? {} : record(accountsValue, `${path}.accounts`);
   const result: Record<string, { userId: string; passwordHash: string }> = {};
 
   for (const [username, rawAccount] of Object.entries(accounts)) {
@@ -239,10 +230,7 @@ function parseGoogleProvider(value: unknown): RuntimeGoogleProviderConfig {
         `${path}.allowedEmails contains a duplicate email after normalization: '${email}'.`,
       );
     }
-    mappings[normalizedEmail] = nonEmptyString(
-      rawUserId,
-      `${path}.allowedEmails.${email}`,
-    );
+    mappings[normalizedEmail] = nonEmptyString(rawUserId, `${path}.allowedEmails.${email}`);
   }
 
   return {

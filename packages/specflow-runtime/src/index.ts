@@ -17,6 +17,7 @@ export {
 } from './auth/session.js';
 
 export {
+  AuthErrorCodeSchema,
   AuthErrorSchema,
   AuthProviderSchema,
   AuthSessionSchema,

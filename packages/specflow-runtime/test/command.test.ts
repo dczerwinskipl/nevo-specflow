@@ -6,7 +6,6 @@ import { Command } from 'commander';
 import { describe, expect, it } from 'vitest';
 
 import { createStartCommand } from '../src/cli/command.js';
-import { RUNTIME_BOOTSTRAP_MARKER } from '../src/index.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -15,15 +14,49 @@ describe('createStartCommand — Runtime CLI adapter', () => {
     const cmd = createStartCommand({ stdout: () => undefined });
     expect(cmd).toBeInstanceOf(Command);
     expect(cmd.name()).toBe('start');
-    expect(cmd.description()).toMatch(/SpecFlow/i);
+    expect(cmd.description()).toMatch(/Runtime server/i);
   });
 
-  it('runs the Runtime capability and writes the marker', async () => {
+  it('starts the Runtime and reports its listening address', async () => {
     const out: string[] = [];
-    const cmd = createStartCommand({ stdout: (line) => out.push(line) });
+    let closed = false;
+    const cmd = createStartCommand({
+      stdout: (line) => out.push(line),
+      start: () =>
+        Promise.resolve({
+          address: 'http://127.0.0.1:4318',
+          close: () =>
+            Promise.resolve().then(() => {
+              closed = true;
+            }),
+        }),
+    });
     cmd.exitOverride();
     await cmd.parseAsync(['node', 'start']);
-    expect(out).toEqual([RUNTIME_BOOTSTRAP_MARKER]);
+    expect(out).toEqual(['Nevo SpecFlow Runtime listening at http://127.0.0.1:4318']);
+    expect(closed).toBe(false);
+  });
+
+  it('owns graceful shutdown when an abort signal is supplied', async () => {
+    const controller = new AbortController();
+    let closed = false;
+    const cmd = createStartCommand({
+      stdout: () => undefined,
+      signal: controller.signal,
+      start: () =>
+        Promise.resolve({
+          address: 'http://127.0.0.1:4318',
+          close: () =>
+            Promise.resolve().then(() => {
+              closed = true;
+            }),
+        }),
+    });
+    cmd.exitOverride();
+    const running = cmd.parseAsync(['node', 'start']);
+    controller.abort();
+    await running;
+    expect(closed).toBe(true);
   });
 
   it('keeps Commander out of the Runtime capability module', () => {

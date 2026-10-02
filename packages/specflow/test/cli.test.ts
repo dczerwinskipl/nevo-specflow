@@ -1,8 +1,6 @@
 import { CommanderError } from 'commander';
 import { describe, expect, it } from 'vitest';
 
-import { RUNTIME_BOOTSTRAP_MARKER } from '@nevo/specflow-runtime';
-
 import { createProgram } from '../src/program.js';
 import { NEVO_SPECFLOW_VERSION } from '../src/version.js';
 
@@ -12,6 +10,11 @@ function harness() {
   const program = createProgram({
     stdout: (line) => out.push(line),
     stderr: (line) => err.push(line),
+    startRuntime: () =>
+      Promise.resolve({
+        address: 'http://127.0.0.1:4318',
+        close: () => Promise.resolve(),
+      }),
   });
   const run = (args: string[]) => program.parseAsync(['node', 'nevo-specflow', ...args]);
   return { run, out, err };
@@ -32,10 +35,10 @@ describe('createProgram — nevo-specflow router', () => {
     expect(out.join('\n')).toContain(NEVO_SPECFLOW_VERSION);
   });
 
-  it('start routes into the Runtime capability and prints its marker', async () => {
+  it('start routes into the Runtime capability and reports its listening address', async () => {
     const { run, out } = harness();
     await run(['start']);
-    expect(out).toEqual([RUNTIME_BOOTSTRAP_MARKER]);
+    expect(out).toEqual(['Nevo SpecFlow Runtime listening at http://127.0.0.1:4318']);
   });
 
   it('an unknown command is a usage error', async () => {

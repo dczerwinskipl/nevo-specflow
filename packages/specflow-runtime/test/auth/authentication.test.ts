@@ -42,15 +42,19 @@ describe('authentication model', () => {
 
   it('keeps trusted local identity explicitly unauthenticated', () => {
     const localAuth: RuntimeAuthConfig = {
-      ...auth,
       mode: 'none',
       localUserId: 'demo-user',
+      users: auth.users,
+      providers: {
+        password: { enabled: false, accounts: {} },
+        google: { enabled: false, allowedEmails: {} },
+      },
     };
 
     expect(unauthenticatedSession(localAuth)).toEqual({
       authenticated: false,
       user: { id: 'demo-user', name: 'Demo User' },
-      availableProviders: ['password', 'google'],
+      availableProviders: [],
     });
   });
 

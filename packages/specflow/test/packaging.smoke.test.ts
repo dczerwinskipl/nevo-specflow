@@ -15,8 +15,6 @@ import { fileURLToPath } from 'node:url';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { RUNTIME_BOOTSTRAP_MARKER } from '@nevo/specflow-runtime';
-
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const sh = process.platform === 'win32';
 
@@ -141,6 +139,8 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     expect(notices).toMatch(/Copyright \(c\) 2011 TJ Holowaychuk/);
     expect(notices).toMatch(/yaml 2\.9\.1 \(ISC\)/);
     expect(notices).toMatch(/Copyright Eemeli Aro <eemeli@gmail\.com>/);
+    expect(notices).toMatch(/fastify 5\.12\.5/);
+    expect(notices).toMatch(/openid-client 6\.8\.8/);
     // esbuild is build-only — its code is not in the bundle, so it is not listed.
     expect(notices).not.toMatch(/esbuild/i);
   });
@@ -158,10 +158,10 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     expect(r.stdout.trim()).toBe(version);
   });
 
-  it('C. nevo-specflow start — exit 0, runs the Runtime capability (via the shim)', () => {
-    const r = nevoSpec(['start']);
+  it('C. nevo-specflow start --help — exposes the real Runtime server command (via the shim)', () => {
+    const r = nevoSpec(['start', '--help']);
     expect(r.code).toBe(0);
-    expect(r.stdout).toContain(RUNTIME_BOOTSTRAP_MARKER);
+    expect(r.stdout).toMatch(/Runtime server/i);
   });
 
   it('an unknown command still exits non-zero after install', () => {

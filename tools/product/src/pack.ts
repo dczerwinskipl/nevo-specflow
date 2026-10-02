@@ -1,17 +1,6 @@
 // `nevo-repo-product pack` — the ONE canonical way to produce the installable
 // Nevo SpecFlow product artifact. Local dogfooding, and any future CI / release
 // job, call this same function; there is no second pack implementation.
-//
-//   build the pack inputs (scoped `pnpm --filter` — never a global pre-build)
-//     -> resolve the canonical version from `nevo-release version`
-//     -> esbuild the self-contained bundle into a scratch stage
-//     -> write minimal package metadata (no deps, no scripts, real version)
-//     -> write THIRD_PARTY_NOTICES.txt for code embedded in the bundle
-//     -> `pnpm pack` -> deterministic `.artifacts/nevo-specflow-<version>.tgz`
-//
-// Every child `pnpm` runs with `cwd` = the repository root (which carries
-// `packageManager`) and targets other directories with `--dir`, so Corepack
-// always uses the repository-pinned pnpm, never "latest".
 
 import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -54,10 +43,6 @@ export async function packProduct(opts: PackOptions = {}): Promise<PackResult> {
   const paths = repoPaths(findRepoRoot(process.cwd()));
 
   if (!opts.skipBuild) {
-    // Scoped, turbo-free builds of exactly what pack consumes: the Runtime
-    // capability (esbuild resolves its built dist) and the release tool (the
-    // canonical version). `pnpm --filter` runs the package's own `tsc`, so this
-    // is safe to nest inside `turbo run test` and never triggers a global build.
     log('building pack inputs (nevo-repo-release, @nevo/specflow-runtime)…');
     run('pnpm', ['--filter', 'nevo-repo-release', 'build'], { cwd: paths.root, env: opts.env });
     run('pnpm', ['--filter', '@nevo/specflow-runtime', 'build'], {
@@ -76,7 +61,7 @@ export async function packProduct(opts: PackOptions = {}): Promise<PackResult> {
 
   const stage = mkdtempSync(join(tmpdir(), 'nevo-specflow-pack-'));
   try {
-    await bundleProduct({
+    const bundle = await bundleProduct({
       entry: 'src/bin.ts',
       outfile: join(stage, 'dist', 'bin.js'),
       version,
@@ -86,12 +71,12 @@ export async function packProduct(opts: PackOptions = {}): Promise<PackResult> {
     writeStageManifest(stage, paths, version);
     copyIfPresent(join(paths.productPackage, 'README.md'), join(stage, 'README.md'));
     copyIfPresent(join(paths.root, 'LICENSE'), join(stage, 'LICENSE'));
-    // Attribution for third-party code EMBEDDED in dist/bin.js.
-    writeFileSync(join(stage, 'THIRD_PARTY_NOTICES.txt'), buildThirdPartyNotices());
+    writeFileSync(
+      join(stage, 'THIRD_PARTY_NOTICES.txt'),
+      buildThirdPartyNotices(bundle.thirdPartyPackages),
+    );
 
     mkdirSync(paths.artifactsDir, { recursive: true });
-    // Run pnpm from the repo root (which carries `packageManager`) and point it
-    // at the stage with `--dir`, so Corepack uses the pinned pnpm, not "latest".
     const printed = run(
       'pnpm',
       ['--dir', stage, 'pack', '--pack-destination', paths.artifactsDir],
@@ -112,8 +97,6 @@ export async function packProduct(opts: PackOptions = {}): Promise<PackResult> {
 
 function writeStageManifest(stage: string, paths: RepoPaths, version: string): void {
   const src = readJson<SourceManifest>(join(paths.productPackage, 'package.json'));
-  // Deliberately minimal: the bundle has NO runtime dependencies, so the packed
-  // manifest declares none, carries no scripts, and pins the real version.
   const out = {
     name: src.name,
     version,

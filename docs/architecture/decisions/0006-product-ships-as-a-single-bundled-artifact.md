@@ -48,9 +48,10 @@ registry is a different problem.
   `commander` into `packages/specflow/dist/bin.js` — an ESM file with a
   `#!/usr/bin/env node` banner and the version baked in. The packed tarball is
   `dist/bin.js` + a minimal `package.json` (real version, **no `dependencies`**, no
-  scripts) + `README` + `LICENSE` + `THIRD_PARTY_NOTICES.txt` (the verbatim license of
-  the third-party code embedded in the bundle — `commander` — since a self-contained
-  bundle carries that code rather than resolving it at install time).
+  scripts) + `README` + `LICENSE` + `THIRD_PARTY_NOTICES.txt`. The notices are derived from
+  the third-party packages actually embedded in the bundle. An installed upstream
+  license text is copied verbatim; if upstream ships only `package.json` license
+  metadata, that declaration plus available author/source metadata is preserved instead.
 - **esbuild is confined to `tools/product`** and only ever produces the product
   artifact. Repository tools stay plain `tsc`. `@nevo/specflow`'s `build` script is
   exactly `node ../../tools/product/dist/bin.js bundle`.
@@ -93,7 +94,9 @@ registry is a different problem.
   something with its own `bin`), this ADR is revisited: such a dependency goes in the
   packed `dependencies` and the "no `dependencies`" rule above is relaxed for it.
 - Because the bundle carries third-party code rather than resolving it at install time,
-  every embedded package's license travels with it in `THIRD_PARTY_NOTICES.txt`
-  (generated at pack time from that package's own `LICENSE`). Build-only tools whose
-  code is not in the bundle are not listed.
+  every embedded package's available license information travels with it in
+  `THIRD_PARTY_NOTICES.txt`. The generator prefers the package's installed license text;
+  when upstream does not ship one, it records the manifest's license declaration and
+  available attribution/source metadata. A package with neither form fails packaging.
+  Build-only tools whose code is not in the bundle are not listed.
 - No npm publish, no registry auth, no publish workflow is added by this decision.

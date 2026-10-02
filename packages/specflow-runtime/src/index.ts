@@ -1,24 +1,17 @@
 // Nevo SpecFlow Runtime application capability.
 //
-// BOOTSTRAP ONLY. This proves the product boundary:
-//
-//   installed nevo-specflow -> CLI shell -> Runtime CLI adapter
-//     -> THIS capability -> deterministic marker
-//
-// The real long-lived Runtime (HTTP/realtime transports, provider processes,
-// persistence, recovery, UI hosting, etc.) is not migrated yet. This module is
-// framework-independent and knows nothing about Commander, argv, stdout, or exit codes.
+// The package owns the long-lived backend boundary. Commander and process lifecycle
+// stay in adapters; the capability exposes explicit server construction and shutdown.
 
-export const RUNTIME_BOOTSTRAP_MARKER = 'Nevo SpecFlow runtime bootstrap is available.';
-
-export interface RuntimeStartResult {
-  readonly kind: 'bootstrap';
-  readonly message: string;
-}
-
-/** Start the Runtime capability. Bootstrap-only until the real Runtime is migrated. */
-export function startRuntime(): RuntimeStartResult {
-  return { kind: 'bootstrap', message: RUNTIME_BOOTSTRAP_MARKER };
-}
-
+export { startRuntime, type RuntimeHandle, type RuntimeStartOptions } from './runtime.js';
+export { createRuntimeApp, type RuntimeAppDependencies } from './server/app.js';
 export * from './config/index.js';
+export {
+  authenticatedSession,
+  configuredAuthProviders,
+  configuredUser,
+  unauthenticatedSession,
+  type AuthProvider,
+  type AuthSession,
+  type AuthUser,
+} from './auth/session.js';

@@ -1,6 +1,8 @@
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 
 import type { RuntimeConfig } from '../config/types.js';
+import { PasswordLoginBodySchema } from './contracts.js';
 import { createGoogleOidcClient, type GoogleOidcClient, normalizeEmail } from './google-oidc.js';
 import { authenticatePassword } from './password-auth.js';
 import {
@@ -15,21 +17,6 @@ const OIDC_COOKIE = 'nevo_oidc';
 const GOOGLE_CALLBACK_PATH = '/api/auth/oidc/google/callback';
 const PASSWORD_LOGIN_BODY_LIMIT = 4_096;
 
-interface PasswordLoginBody {
-  readonly username: string;
-  readonly password: string;
-}
-
-const passwordLoginBodySchema = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['username', 'password'],
-  properties: {
-    username: { type: 'string', minLength: 1, maxLength: 256 },
-    password: { type: 'string', minLength: 1, maxLength: 1_024 },
-  },
-} as const;
-
 export interface AuthFeatureDependencies {
   readonly store?: InMemoryAuthStore;
   readonly googleOidc?: GoogleOidcClient;
@@ -40,6 +27,7 @@ export function registerAuthFeature(
   config: RuntimeConfig,
   dependencies: AuthFeatureDependencies = {},
 ): void {
+  const routes = app.withTypeProvider<TypeBoxTypeProvider>();
   const store = dependencies.store ?? new InMemoryAuthStore();
   const googleOidc =
     dependencies.googleOidc ??
@@ -48,17 +36,17 @@ export function registerAuthFeature(
       : undefined);
   const cookieOptions = authCookieOptions(config);
 
-  app.get('/api/auth/session', (request) => {
+  routes.get('/api/auth/session', (request) => {
     const stored = store.getSession(request.cookies[SESSION_COOKIE]);
     if (!stored) return unauthenticatedSession(config.auth);
     return authenticatedSession(config.auth, stored.userId, stored.provider);
   });
 
-  app.post<{ Body: PasswordLoginBody }>(
+  routes.post(
     '/api/auth/password/login',
     {
       bodyLimit: PASSWORD_LOGIN_BODY_LIMIT,
-      schema: { body: passwordLoginBodySchema },
+      schema: { body: PasswordLoginBodySchema },
     },
     async (request, reply) => {
       if (!config.auth.providers.password.enabled) {
@@ -82,7 +70,7 @@ export function registerAuthFeature(
     },
   );
 
-  app.get('/api/auth/oidc/google/login', async (_request, reply) => {
+  routes.get('/api/auth/oidc/google/login', async (_request, reply) => {
     if (!config.auth.providers.google.enabled || !googleOidc) {
       return authError(reply, 404, 'provider_unavailable');
     }
@@ -97,7 +85,7 @@ export function registerAuthFeature(
     return reply.redirect(started.authorizationUrl.toString());
   });
 
-  app.get(GOOGLE_CALLBACK_PATH, async (request, reply) => {
+  routes.get(GOOGLE_CALLBACK_PATH, async (request, reply) => {
     if (!config.auth.providers.google.enabled || !googleOidc) {
       return authError(reply, 404, 'provider_unavailable');
     }
@@ -130,7 +118,7 @@ export function registerAuthFeature(
     return reply.redirect(new URL('/', config.server.publicOrigin).toString());
   });
 
-  app.post('/api/auth/logout', (request, reply) => {
+  routes.post('/api/auth/logout', (request, reply) => {
     store.deleteSession(request.cookies[SESSION_COOKIE]);
     reply.clearCookie(SESSION_COOKIE, cookieOptions);
     reply.clearCookie(OIDC_COOKIE, cookieOptions);
@@ -145,7 +133,14 @@ function googleCallbackUrl(config: RuntimeConfig): string {
   return new URL(GOOGLE_CALLBACK_PATH, `${config.server.publicOrigin}/`).toString();
 }
 
-function authCookieOptions(config: RuntimeConfig) {
+interface AuthCookieOptions {
+  readonly path: '/';
+  readonly httpOnly: true;
+  readonly sameSite: 'lax';
+  readonly secure: boolean;
+}
+
+function authCookieOptions(config: RuntimeConfig): AuthCookieOptions {
   const secure =
     config.server.tls.enabled ||
     (config.server.publicOrigin !== undefined &&
@@ -154,7 +149,7 @@ function authCookieOptions(config: RuntimeConfig) {
   return {
     path: '/',
     httpOnly: true,
-    sameSite: 'lax' as const,
+    sameSite: 'lax',
     secure,
   };
 }

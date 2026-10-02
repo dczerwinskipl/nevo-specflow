@@ -41,6 +41,40 @@ function loadFrom(cwd: string) {
   });
 }
 
+const LOCAL_PROJECT_POLICY_OVERRIDES = [
+  `runtime:
+  auth:
+    mode: required
+`,
+  `runtime:
+  auth:
+    users:
+      injected:
+        name: Injected
+`,
+  `runtime:
+  auth:
+    providers:
+      password:
+        enabled: true
+`,
+  `runtime:
+  auth:
+    providers:
+      oidc:
+        issuer: https://issuer.example.test
+`,
+  `runtime:
+  server:
+    port: 9999
+`,
+  `runtime:
+  server:
+    tls:
+      enabled: true
+`,
+] as const;
+
 function requiredAuthConfig() {
   const allowedEmails: Record<string, string> = {
     'demo@example.com': 'demo-user',
@@ -549,36 +583,15 @@ describe('runtime configuration', () => {
     );
   });
 
-  it.each([
-    ['auth.mode', 'runtime:\n  auth:\n    mode: required\n'],
-    ['auth.users', 'runtime:\n  auth:\n    users:\n      injected:\n        name: Injected\n'],
-    [
-      'password.enabled',
-      'runtime:\n  auth:\n    providers:\n      password:\n        enabled: true\n',
-    ],
-    [
-      'oidc.issuer',
-      [
-        'runtime:',
-        '  auth:',
-        '    providers:',
-        '      oidc:',
-        '        issuer: https://issuer.example.test',
-        '',
-      ].join('\n'),
-    ],
-    ['server.port', 'runtime:\n  server:\n    port: 9999\n'],
-    [
-      'server.tls.enabled',
-      'runtime:\n  server:\n    tls:\n      enabled: true\n',
-    ],
-  ])('rejects local override of project-owned %s', async (_field, localConfig) => {
-    const cwd = await mkdtemp(join(tmpdir(), 'specflow-local-ownership-'));
-    await mkdir(join(cwd, '.nevo/local'), { recursive: true });
-    await writeFile(join(cwd, '.nevo/config.yaml'), PROJECT_CONFIG, 'utf8');
-    await writeFile(join(cwd, '.nevo/local/config.yaml'), localConfig, 'utf8');
+  it('rejects local overrides of project-owned settings', async () => {
+    for (const localConfig of LOCAL_PROJECT_POLICY_OVERRIDES) {
+      const cwd = await mkdtemp(join(tmpdir(), 'specflow-local-ownership-'));
+      await mkdir(join(cwd, '.nevo/local'), { recursive: true });
+      await writeFile(join(cwd, '.nevo/config.yaml'), PROJECT_CONFIG, 'utf8');
+      await writeFile(join(cwd, '.nevo/local/config.yaml'), localConfig, 'utf8');
 
-    await expect(loadFrom(cwd)).rejects.toBeInstanceOf(RuntimeConfigError);
+      await expect(loadFrom(cwd)).rejects.toBeInstanceOf(RuntimeConfigError);
+    }
   });
 
   it('accepts local password credentials for a committed canonical user', async () => {

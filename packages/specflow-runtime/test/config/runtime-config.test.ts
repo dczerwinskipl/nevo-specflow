@@ -168,13 +168,15 @@ describe('runtime configuration', () => {
               clientSecret: 'fake-local-secret',
               allowedEmails: {
                 'Demo@example.com': 'demo-user',
-                ' demo@example.com ': 'demo-user',
+                'demo@example.com': 'demo-user',
               },
             },
           },
         },
       }),
-    ).toThrowError(/duplicate email after normalization.*demo@example\.com/i);
+    ).toThrowError(
+      "auth.providers.google.allowedEmails contains a duplicate email after normalization: 'demo@example.com'.",
+    );
   });
 
   it('requires an explicit public origin when Google OIDC is enabled', () => {

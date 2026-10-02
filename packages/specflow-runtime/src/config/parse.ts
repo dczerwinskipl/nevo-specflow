@@ -90,7 +90,7 @@ export function parseRuntimeConfig(value: unknown): RuntimeConfig {
       },
     },
     auth,
-    authorization,
+    ...(root.authorization === undefined ? {} : { authorization }),
   };
 }
 

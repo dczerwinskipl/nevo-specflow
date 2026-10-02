@@ -168,31 +168,35 @@ export function createAuthorization(definition: AuthorizationDefinition): Author
     return capabilities;
   }
 
-  return {
-    resolveCapabilities(input) {
-      validateSubject(input.subject, 'subject');
-      validateScope(input.resource.scope, 'resource.scope');
+  const resolveCapabilities = (
+    input: ResolveCapabilitiesInput,
+  ): ResolveCapabilitiesResult => {
+    validateSubject(input.subject, 'subject');
+    validateScope(input.resource.scope, 'resource.scope');
 
-      const resourceCapabilities = new Set(requireResource(input.resource.name));
-      const effective = new Set<CapabilityId>();
+    const resourceCapabilities = new Set(requireResource(input.resource.name));
+    const effective = new Set<CapabilityId>();
 
-      for (const assignment of assignments) {
-        if (!sameSubject(assignment.subject, input.subject)) {
-          continue;
-        }
-        if (!scopeMatches(assignment.scope, input.resource.scope)) {
-          continue;
-        }
-
-        for (const capability of roles.get(assignment.role) ?? []) {
-          if (resourceCapabilities.has(capability)) {
-            effective.add(capability);
-          }
-        }
+    for (const assignment of assignments) {
+      if (!sameSubject(assignment.subject, input.subject)) {
+        continue;
+      }
+      if (!scopeMatches(assignment.scope, input.resource.scope)) {
+        continue;
       }
 
-      return { capabilities: [...effective] };
-    },
+      for (const capability of roles.get(assignment.role) ?? []) {
+        if (resourceCapabilities.has(capability)) {
+          effective.add(capability);
+        }
+      }
+    }
+
+    return { capabilities: [...effective] };
+  };
+
+  return {
+    resolveCapabilities,
 
     can(input) {
       const resourceCapabilities = requireResource(input.resource.name);
@@ -201,7 +205,7 @@ export function createAuthorization(definition: AuthorizationDefinition): Author
           `Capability '${input.capability}' does not belong to resource '${input.resource.name}'.`,
         );
       }
-      return this.resolveCapabilities(input).capabilities.includes(input.capability);
+      return resolveCapabilities(input).capabilities.includes(input.capability);
     },
 
     resourceCapabilities(resourceName) {

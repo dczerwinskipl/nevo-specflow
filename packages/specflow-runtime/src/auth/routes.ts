@@ -14,7 +14,7 @@ import { InMemoryOidcStartThrottle, type OidcStartThrottle } from './oidc-start-
 import { completeOidcLogin, startOidcLogin } from './oidc-login.js';
 import { loginWithPassword } from './password-login.js';
 import {
-  AUTH_AUTH_SESSION_COOKIE,
+  AUTH_SESSION_COOKIE,
   getAuthSession,
   logoutAuthSession,
 } from './session-access.js';

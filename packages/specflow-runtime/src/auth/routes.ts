@@ -10,6 +10,7 @@ import {
 } from './contracts.js';
 import { InMemoryPasswordLoginThrottle, type PasswordLoginThrottle } from './login-throttle.js';
 import { createOidcClient, type OidcClient } from './oidc.js';
+import { InMemoryOidcStartThrottle, type OidcStartThrottle } from './oidc-start-throttle.js';
 import { completeOidcLogin, startOidcLogin } from './oidc-login.js';
 import { loginWithPassword } from './password-login.js';
 import { getAuthSession, logoutAuthSession } from './session-access.js';
@@ -28,6 +29,7 @@ export interface AuthFeatureDependencies {
   readonly store?: InMemoryAuthStore;
   readonly oidc?: OidcClient;
   readonly passwordLoginThrottle?: PasswordLoginThrottle;
+  readonly oidcStartThrottle?: OidcStartThrottle;
 }
 
 export interface AuthFeatureOptions {
@@ -42,6 +44,8 @@ export const authFeature: FastifyPluginCallback<AuthFeatureOptions> = (app, opti
   const store = options.dependencies?.store ?? new InMemoryAuthStore();
   const passwordLoginThrottle =
     options.dependencies?.passwordLoginThrottle ?? new InMemoryPasswordLoginThrottle();
+  const oidcStartThrottle =
+    options.dependencies?.oidcStartThrottle ?? new InMemoryOidcStartThrottle();
   const oidc =
     options.dependencies?.oidc ??
     (options.auth.providers.oidc.enabled
@@ -58,7 +62,10 @@ export const authFeature: FastifyPluginCallback<AuthFeatureOptions> = (app, opti
         },
       },
     },
-    (request) => getAuthSession(options.auth, store, request.cookies[SESSION_COOKIE]),
+    (request, reply) => {
+      reply.header('Cache-Control', 'no-store');
+      return getAuthSession(options.auth, store, request.cookies[SESSION_COOKIE]);
+    },
   );
 
   routes.post(
@@ -110,13 +117,26 @@ export const authFeature: FastifyPluginCallback<AuthFeatureOptions> = (app, opti
       schema: {
         response: {
           404: AuthErrorSchema,
+          429: AuthErrorSchema,
         },
       },
     },
-    async (_request, reply) => {
-      const result = await startOidcLogin(options.auth, store, oidc, oidcCallbackUrl(options));
+    async (request, reply) => {
+      const result = await startOidcLogin(
+        options.auth,
+        store,
+        oidc,
+        oidcStartThrottle,
+        request.ip,
+        oidcCallbackUrl(options),
+      );
       if (!result.ok) {
-        reply.code(404);
+        if (result.error === 'rate_limited') {
+          reply.header('Retry-After', String(result.retryAfterSeconds));
+          reply.code(429);
+        } else {
+          reply.code(404);
+        }
         return authError(result.error);
       }
 

@@ -85,7 +85,9 @@ The currently supported profile is deliberately narrow:
 - allow-list mapping from normalized email to the internal user id.
 
 UserInfo fallback and additional client-authentication profiles are not part of this
-foundation yet.
+foundation yet. OIDC authorization starts are throttled per direct network source before
+provider work and transaction allocation, while the transaction store remains bounded and
+expiring.
 
 ## HTTP authentication API
 
@@ -95,8 +97,9 @@ foundation yet.
 - `GET /api/auth/oidc/callback`
 - `POST /api/auth/logout`
 
-Sessions are server-side, bounded, and expiring. Cookies are `HttpOnly`,
-`SameSite=Lax`, and `Secure` whenever Runtime TLS is enabled.
+Sessions are server-side, bounded, and expiring. `GET /api/auth/session` responses use
+`Cache-Control: no-store`. Cookies are `HttpOnly`, `SameSite=Lax`, and `Secure`
+whenever Runtime TLS is enabled.
 
 See [`nevo-specflow.example.yaml`](../../nevo-specflow.example.yaml) and
 [`nevo-specflow.local.example.yaml`](../../nevo-specflow.local.example.yaml) for the

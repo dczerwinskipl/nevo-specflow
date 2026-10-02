@@ -1,10 +1,16 @@
 import type { RuntimeAuthConfig } from './config.js';
 import type { OidcClient } from './oidc.js';
+import type { OidcStartThrottle } from './oidc-start-throttle.js';
 import { normalizeEmail } from './oidc.js';
 import type { InMemoryAuthStore } from './session-store.js';
 
 export type OidcStartResult =
   | { readonly ok: false; readonly error: 'provider_unavailable' }
+  | {
+      readonly ok: false;
+      readonly error: 'rate_limited';
+      readonly retryAfterSeconds: number;
+    }
   | {
       readonly ok: true;
       readonly authorizationUrl: URL;
@@ -15,10 +21,21 @@ export async function startOidcLogin(
   auth: RuntimeAuthConfig,
   store: InMemoryAuthStore,
   oidc: OidcClient | undefined,
+  throttle: OidcStartThrottle,
+  source: string,
   redirectUri: string,
 ): Promise<OidcStartResult> {
   if (!auth.providers.oidc.enabled || !oidc) {
     return { ok: false, error: 'provider_unavailable' };
+  }
+
+  const throttleDecision = throttle.consume(source);
+  if (!throttleDecision.allowed) {
+    return {
+      ok: false,
+      error: 'rate_limited',
+      retryAfterSeconds: throttleDecision.retryAfterSeconds,
+    };
   }
 
   const started = await oidc.start(redirectUri);

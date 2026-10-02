@@ -66,6 +66,7 @@ describe('authentication HTTP API', () => {
     try {
       const anonymous = await app.inject({ method: 'GET', url: '/api/auth/session' });
       expect(anonymous.statusCode).toBe(200);
+      expect(anonymous.headers['cache-control']).toBe('no-store');
       expect(anonymous.json()).toEqual({
         authenticated: false,
         availableProviders: ['password'],
@@ -117,6 +118,7 @@ describe('authentication HTTP API', () => {
         url: '/api/auth/session',
         headers: { cookie: `nevo_session=${session}` },
       });
+      expect(current.headers['cache-control']).toBe('no-store');
       expect(current.json()).toMatchObject({
         authenticated: true,
         user: { id: 'demo-user' },
@@ -226,6 +228,39 @@ describe('authentication HTTP API', () => {
         user: { id: 'demo-user', name: 'Demo User' },
         availableProviders: [],
       });
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('throttles OIDC transaction starts before calling the provider', async () => {
+    let startCalls = 0;
+    const oidc: OidcClient = {
+      start() {
+        startCalls += 1;
+        throw new Error('OIDC provider must not be called after throttling.');
+      },
+      complete() {
+        throw new Error('OIDC callback is not part of this test.');
+      },
+    };
+    const app = await createRuntimeApp(oidcConfig({ 'demo@example.com': 'demo-user' }), {
+      auth: {
+        oidc,
+        oidcStartThrottle: {
+          consume: () => ({ allowed: false, retryAfterSeconds: 60 }),
+        },
+      },
+    });
+
+    try {
+      const response = await app.inject({ method: 'GET', url: '/api/auth/oidc/login' });
+
+      expect(response.statusCode).toBe(429);
+      expect(response.headers['retry-after']).toBe('60');
+      expect(response.json()).toEqual({ error: 'rate_limited' });
+      expect(startCalls).toBe(0);
+      expect(response.headers['set-cookie']).toBeUndefined();
     } finally {
       await app.close();
     }

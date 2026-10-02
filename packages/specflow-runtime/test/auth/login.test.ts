@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { RuntimeAuthConfig } from '../../src/auth/config.js';
 import { InMemoryPasswordLoginThrottle } from '../../src/auth/login-throttle.js';
 import type { OidcClient } from '../../src/auth/oidc.js';
+import { InMemoryOidcStartThrottle } from '../../src/auth/oidc-start-throttle.js';
 import { completeOidcLogin, startOidcLogin } from '../../src/auth/oidc-login.js';
 import { loginWithPassword } from '../../src/auth/password-login.js';
 import { InMemoryAuthStore } from '../../src/auth/session-store.js';
@@ -123,6 +124,8 @@ describe('auth login operations', () => {
       auth,
       sessions,
       oidc,
+      new InMemoryOidcStartThrottle(),
+      '127.0.0.1',
       'https://specflow.example.test/api/auth/oidc/callback',
     );
     expect(started).toMatchObject({

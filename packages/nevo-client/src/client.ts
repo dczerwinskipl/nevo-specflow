@@ -1,7 +1,7 @@
 import axios, { AxiosHeaders, type AxiosResponse } from 'axios';
 
 import { anonymousCredentials } from './credentials';
-import { normalizeHttpError } from './errors';
+import { isHttpClientError, normalizeHttpError } from './errors';
 import type { HttpClient, HttpClientOptions, HttpRequestConfig } from './types';
 
 export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
@@ -140,6 +140,10 @@ async function execute<T>(request: () => Promise<T>): Promise<T> {
   try {
     return await request();
   } catch (error) {
-    throw normalizeHttpError(error);
+    if (isHttpClientError(error) || axios.isAxiosError(error)) {
+      throw normalizeHttpError(error);
+    }
+
+    throw error;
   }
 }

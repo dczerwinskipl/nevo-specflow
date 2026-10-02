@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { bearerTokenCredentials, createHttpClient, HttpClientError } from './index';
+import { bearerTokenCredentials, createHttpClient } from './index';
 
 function sseResponse(body: string, init: ResponseInit = {}): Response {
   const headers = new Headers(init.headers);
@@ -158,11 +158,11 @@ describe('HttpClient.sse', () => {
   });
 
   it('aborts the underlying fetch when iteration is stopped early', async () => {
-    let requestSignal: AbortSignal | null = null;
+    const request = { signal: undefined as AbortSignal | undefined };
     vi.stubGlobal(
       'fetch',
       vi.fn<typeof fetch>().mockImplementation((_input, init) => {
-        requestSignal = init?.signal ?? null;
+        request.signal = init?.signal ?? undefined;
         return Promise.resolve(sseResponse('data: one\n\n'));
       }),
     );
@@ -175,7 +175,7 @@ describe('HttpClient.sse', () => {
       break;
     }
 
-    expect(requestSignal?.aborted).toBe(true);
+    expect(request.signal?.aborted).toBe(true);
   });
 
   it('closes cleanly on 204 and rejects terminal HTTP failures', async () => {
@@ -199,7 +199,7 @@ describe('HttpClient.sse', () => {
     });
 
     const failedIterator = client.sse('/unauthorized')[Symbol.asyncIterator]();
-    await expect(failedIterator.next()).rejects.toMatchObject<HttpClientError>({
+    await expect(failedIterator.next()).rejects.toMatchObject({
       kind: 'http',
       status: 401,
       data: 'nope',

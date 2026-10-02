@@ -220,7 +220,7 @@ function parseGoogleProvider(value: unknown): RuntimeGoogleProviderConfig {
 
   for (const [email, rawUserId] of Object.entries(allowedEmails)) {
     const normalizedEmail = email.trim().toLowerCase();
-    if (!normalizedEmail || !normalizedEmail.includes('@')) {
+    if (!normalizedEmail?.includes('@')) {
       throw new RuntimeConfigError(
         `${path}.allowedEmails contains an invalid email key '${email}'.`,
       );

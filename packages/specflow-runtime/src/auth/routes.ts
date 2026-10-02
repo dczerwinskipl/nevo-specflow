@@ -2,8 +2,16 @@ import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 
 import type { RuntimeConfig } from '../config/types.js';
-import { AuthErrorSchema, AuthSessionSchema, PasswordLoginBodySchema } from './contracts.js';
-import { createGoogleOidcClient, type GoogleOidcClient, normalizeEmail } from './google-oidc.js';
+import {
+  AuthErrorSchema,
+  AuthSessionSchema,
+  PasswordLoginBodySchema,
+} from './contracts.js';
+import {
+  createGoogleOidcClient,
+  type GoogleOidcClient,
+  normalizeEmail,
+} from './google-oidc.js';
 import { authenticatePassword } from './password-auth.js';
 import {
   AUTH_SESSION_TTL_MS,
@@ -46,8 +54,8 @@ export function registerAuthFeature(
       },
     },
     (request) => {
-    const stored = store.getSession(request.cookies[SESSION_COOKIE]);
-    if (!stored) return unauthenticatedSession(config.auth);
+      const stored = store.getSession(request.cookies[SESSION_COOKIE]);
+      if (!stored) return unauthenticatedSession(config.auth);
       return authenticatedSession(config.auth, stored.userId, stored.provider);
     },
   );
@@ -97,17 +105,17 @@ export function registerAuthFeature(
       },
     },
     async (_request, reply) => {
-    if (!config.auth.providers.google.enabled || !googleOidc) {
-      return authError(reply, 404, 'provider_unavailable');
-    }
+      if (!config.auth.providers.google.enabled || !googleOidc) {
+        return authError(reply, 404, 'provider_unavailable');
+      }
 
-    const redirectUri = googleCallbackUrl(config);
-    const started = await googleOidc.start(redirectUri);
-    const transactionId = store.createOidcTransaction(started.transaction);
-    reply.setCookie(OIDC_COOKIE, transactionId, {
-      ...cookieOptions,
-      maxAge: Math.floor(OIDC_TRANSACTION_TTL_MS / 1000),
-    });
+      const redirectUri = googleCallbackUrl(config);
+      const started = await googleOidc.start(redirectUri);
+      const transactionId = store.createOidcTransaction(started.transaction);
+      reply.setCookie(OIDC_COOKIE, transactionId, {
+        ...cookieOptions,
+        maxAge: Math.floor(OIDC_TRANSACTION_TTL_MS / 1000),
+      });
       return reply.redirect(started.authorizationUrl.toString());
     },
   );
@@ -125,35 +133,35 @@ export function registerAuthFeature(
       },
     },
     async (request, reply) => {
-    if (!config.auth.providers.google.enabled || !googleOidc) {
-      return authError(reply, 404, 'provider_unavailable');
-    }
+      if (!config.auth.providers.google.enabled || !googleOidc) {
+        return authError(reply, 404, 'provider_unavailable');
+      }
 
-    const transaction = store.consumeOidcTransaction(request.cookies[OIDC_COOKIE]);
-    reply.clearCookie(OIDC_COOKIE, cookieOptions);
-    if (!transaction) return authError(reply, 400, 'invalid_oidc_transaction');
+      const transaction = store.consumeOidcTransaction(request.cookies[OIDC_COOKIE]);
+      reply.clearCookie(OIDC_COOKIE, cookieOptions);
+      if (!transaction) return authError(reply, 400, 'invalid_oidc_transaction');
 
-    let identity;
-    try {
-      const callbackUrl = new URL(request.url, config.server.publicOrigin);
-      identity = await googleOidc.complete(callbackUrl, transaction);
-    } catch {
-      return authError(reply, 401, 'oidc_authentication_failed');
-    }
+      let identity;
+      try {
+        const callbackUrl = new URL(request.url, config.server.publicOrigin);
+        identity = await googleOidc.complete(callbackUrl, transaction);
+      } catch {
+        return authError(reply, 401, 'oidc_authentication_failed');
+      }
 
-    const userId = config.auth.providers.google.allowedEmails[normalizeEmail(identity.email)];
-    if (!userId) return authError(reply, 403, 'identity_not_allowed');
+      const userId = config.auth.providers.google.allowedEmails[normalizeEmail(identity.email)];
+      if (!userId) return authError(reply, 403, 'identity_not_allowed');
 
-    store.deleteSession(request.cookies[SESSION_COOKIE]);
-    const sessionId = store.createSession({
-      userId,
-      provider: 'google',
-      providerSubject: identity.subject,
-    });
-    reply.setCookie(SESSION_COOKIE, sessionId, {
-      ...cookieOptions,
-      maxAge: Math.floor(AUTH_SESSION_TTL_MS / 1000),
-    });
+      store.deleteSession(request.cookies[SESSION_COOKIE]);
+      const sessionId = store.createSession({
+        userId,
+        provider: 'google',
+        providerSubject: identity.subject,
+      });
+      reply.setCookie(SESSION_COOKIE, sessionId, {
+        ...cookieOptions,
+        maxAge: Math.floor(AUTH_SESSION_TTL_MS / 1000),
+      });
       return reply.redirect(new URL('/', config.server.publicOrigin).toString());
     },
   );

@@ -1,4 +1,5 @@
 import type { RuntimeAuthConfig } from '../auth/config.js';
+import type { RuntimeAuthorizationConfig } from '../authorization/config.js';
 
 export interface RuntimeServerTlsConfig {
   readonly enabled: boolean;
@@ -16,6 +17,7 @@ export interface RuntimeServerConfig {
 export interface RuntimeConfig {
   readonly server: RuntimeServerConfig;
   readonly auth: RuntimeAuthConfig;
+  readonly authorization?: RuntimeAuthorizationConfig;
 }
 
 export interface LoadedRuntimeConfig {

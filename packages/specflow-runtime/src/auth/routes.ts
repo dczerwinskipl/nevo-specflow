@@ -13,14 +13,17 @@ import { createOidcClient, type OidcClient } from './oidc.js';
 import { InMemoryOidcStartThrottle, type OidcStartThrottle } from './oidc-start-throttle.js';
 import { completeOidcLogin, startOidcLogin } from './oidc-login.js';
 import { loginWithPassword } from './password-login.js';
-import { getAuthSession, logoutAuthSession } from './session-access.js';
+import {
+  AUTH_AUTH_SESSION_COOKIE,
+  getAuthSession,
+  logoutAuthSession,
+} from './session-access.js';
 import {
   AUTH_SESSION_TTL_MS,
   OIDC_TRANSACTION_TTL_MS,
   InMemoryAuthStore,
 } from './session-store.js';
 
-const SESSION_COOKIE = 'nevo_session';
 const OIDC_COOKIE = 'nevo_oidc';
 const OIDC_CALLBACK_PATH = '/api/auth/oidc/callback';
 const PASSWORD_LOGIN_BODY_LIMIT = 4_096;
@@ -64,7 +67,7 @@ export const authFeature: FastifyPluginCallback<AuthFeatureOptions> = (app, opti
     },
     (request, reply) => {
       reply.header('Cache-Control', 'no-store');
-      return getAuthSession(options.auth, store, request.cookies[SESSION_COOKIE]);
+      return getAuthSession(options.auth, store, request.cookies[AUTH_SESSION_COOKIE]);
     },
   );
 
@@ -88,7 +91,7 @@ export const authFeature: FastifyPluginCallback<AuthFeatureOptions> = (app, opti
         store,
         passwordLoginThrottle,
         request.ip,
-        request.cookies[SESSION_COOKIE],
+        request.cookies[AUTH_SESSION_COOKIE],
         request.body.username,
         request.body.password,
       );
@@ -103,7 +106,7 @@ export const authFeature: FastifyPluginCallback<AuthFeatureOptions> = (app, opti
         return authError(result.error);
       }
 
-      reply.setCookie(SESSION_COOKIE, result.sessionId, {
+      reply.setCookie(AUTH_SESSION_COOKIE, result.sessionId, {
         ...cookieOptions,
         maxAge: Math.floor(AUTH_SESSION_TTL_MS / 1000),
       });
@@ -167,7 +170,7 @@ export const authFeature: FastifyPluginCallback<AuthFeatureOptions> = (app, opti
         store,
         oidc,
         request.cookies[OIDC_COOKIE],
-        request.cookies[SESSION_COOKIE],
+        request.cookies[AUTH_SESSION_COOKIE],
         callbackUrl,
       );
 
@@ -183,7 +186,7 @@ export const authFeature: FastifyPluginCallback<AuthFeatureOptions> = (app, opti
       }
 
       reply.clearCookie(OIDC_COOKIE, cookieOptions);
-      reply.setCookie(SESSION_COOKIE, result.sessionId, {
+      reply.setCookie(AUTH_SESSION_COOKIE, result.sessionId, {
         ...cookieOptions,
         maxAge: Math.floor(AUTH_SESSION_TTL_MS / 1000),
       });
@@ -192,8 +195,8 @@ export const authFeature: FastifyPluginCallback<AuthFeatureOptions> = (app, opti
   );
 
   routes.post('/api/auth/logout', (request, reply) => {
-    logoutAuthSession(store, request.cookies[SESSION_COOKIE]);
-    reply.clearCookie(SESSION_COOKIE, cookieOptions);
+    logoutAuthSession(store, request.cookies[AUTH_SESSION_COOKIE]);
+    reply.clearCookie(AUTH_SESSION_COOKIE, cookieOptions);
     reply.clearCookie(OIDC_COOKIE, cookieOptions);
     return reply.code(204).send();
   });

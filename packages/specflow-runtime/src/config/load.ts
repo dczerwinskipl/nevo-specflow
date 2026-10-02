@@ -5,6 +5,10 @@ import { resolve } from 'node:path';
 import { parse } from 'yaml';
 
 import { assertNoProjectAuthSecrets } from '../auth/config.js';
+import {
+  assertNoLocalAuthorization,
+  validateProjectAuthorizationSource,
+} from '../authorization/config.js';
 import { RuntimeConfigError } from './error.js';
 import { mergeRuntimeConfigValues } from './merge.js';
 import { parseRuntimeConfig } from './parse.js';
@@ -29,9 +33,13 @@ export async function loadRuntimeConfig(
 
   const projectSource = await readRequiredConfig(projectPath);
   assertNoProjectSecrets(projectSource);
+  validateProjectAuthorizationSource(projectSource);
 
   const localExists = await fileExists(localPath);
   const localSource = localExists ? await readRequiredConfig(localPath) : undefined;
+  if (localSource) {
+    assertNoLocalAuthorization(localSource);
+  }
 
   const merged = localSource ? mergeRuntimeConfigValues(projectSource, localSource) : projectSource;
 

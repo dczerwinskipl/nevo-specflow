@@ -28,6 +28,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@nevo/authorization": "workspace:*",
+    "@nevo/specflow-contracts": "workspace:*",
     "@fastify/cookie": "11.1.2",
     "@fastify/type-provider-typebox": "6.1.0",
     "commander": "15.0.0",

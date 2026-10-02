@@ -1,0 +1,136 @@
+import { describe, expect, it } from 'vitest';
+
+import { InMemoryAuthStore } from '../../src/auth/session-store.js';
+import type { RuntimeConfig } from '../../src/config/types.js';
+import { createRuntimeApp } from '../../src/server/app.js';
+
+function baseConfig(): RuntimeConfig {
+  return {
+    server: { host: '127.0.0.1', port: 4318, tls: { enabled: false } },
+    auth: {
+      mode: 'required',
+      users: {
+        viewer: { name: 'Viewer' },
+        developer: { name: 'Developer' },
+      },
+      providers: {
+        password: { enabled: false, accounts: {} },
+        oidc: { enabled: false, allowedEmails: {} },
+      },
+    },
+    authorization: {
+      assignments: [
+        { userId: 'viewer', role: 'viewer', scope: { projectId: 'P1' } },
+        { userId: 'developer', role: 'developer', scope: { projectId: 'P1' } },
+      ],
+    },
+  };
+}
+
+describe('authorization HTTP API', () => {
+  it('requires a subject when auth is required', async () => {
+    const app = await createRuntimeApp(baseConfig());
+    try {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/authorization/capabilities',
+        payload: { resource: { name: 'spec', scope: { projectId: 'P1' } } },
+      });
+      expect(response.statusCode).toBe(401);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.json()).toEqual({ error: 'authentication_required' });
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('resolves only capabilities for the requested resource and matching scope', async () => {
+    const store = new InMemoryAuthStore({ idFactory: () => 'session-id' });
+    const session = store.createSession({ userId: 'developer', provider: 'password' });
+    const app = await createRuntimeApp(baseConfig(), { auth: { store } });
+    try {
+      const spec = await app.inject({
+        method: 'POST',
+        url: '/api/authorization/capabilities',
+        headers: { cookie: `nevo_session=${session}` },
+        payload: {
+          resource: { name: 'spec', scope: { projectId: 'P1', specId: 'S1' } },
+        },
+      });
+      expect(spec.json().capabilities).toEqual([
+        'spec.list',
+        'spec.view',
+        'spec.create',
+        'spec.manage',
+      ]);
+
+      const sessions = await app.inject({
+        method: 'POST',
+        url: '/api/authorization/capabilities',
+        headers: { cookie: `nevo_session=${session}` },
+        payload: {
+          resource: { name: 'session', scope: { projectId: 'P1', specId: 'S1' } },
+        },
+      });
+      expect(sessions.json().capabilities).toEqual([
+        'session.view',
+        'session.create',
+        'session.manage',
+      ]);
+
+      const otherProject = await app.inject({
+        method: 'POST',
+        url: '/api/authorization/capabilities',
+        headers: { cookie: `nevo_session=${session}` },
+        payload: {
+          resource: { name: 'spec', scope: { projectId: 'P2', specId: 'S1' } },
+        },
+      });
+      expect(otherProject.json().capabilities).toEqual([]);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('uses localUserId as effective subject in none mode', async () => {
+    const config = baseConfig();
+    const app = await createRuntimeApp({
+      ...config,
+      auth: { ...config.auth, mode: 'none', localUserId: 'viewer' },
+    });
+    try {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/authorization/capabilities',
+        payload: { resource: { name: 'spec', scope: { projectId: 'P1' } } },
+      });
+      expect(response.json().capabilities).toEqual(['spec.list', 'spec.view']);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('returns all resource capabilities when access control is disabled', async () => {
+    const config = baseConfig();
+    const app = await createRuntimeApp({
+      ...config,
+      auth: { ...config.auth, mode: 'none' },
+      authorization: { assignments: [] },
+    });
+    try {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/authorization/capabilities',
+        payload: { resource: { name: 'spec', scope: { projectId: 'P1' } } },
+      });
+      expect(response.json().capabilities).toEqual([
+        'spec.list',
+        'spec.view',
+        'spec.create',
+        'spec.manage',
+      ]);
+    } finally {
+      await app.close();
+    }
+  });
+});

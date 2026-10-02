@@ -6,6 +6,8 @@ import Fastify, {
 } from 'fastify';
 
 import { authFeature, type AuthFeatureDependencies } from '../auth/index.js';
+import { InMemoryAuthStore } from '../auth/session-store.js';
+import { authorizationFeature } from '../authorization/routes.js';
 import type { RuntimeConfig } from '../config/types.js';
 
 export interface RuntimeAppDependencies {
@@ -36,11 +38,21 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   config: RuntimeConfig,
   dependencies: RuntimeAppDependencies = {},
 ): Promise<void> {
+  const authStore = dependencies.auth?.store ?? new InMemoryAuthStore();
+
   await app.register(cookie);
   await app.register(authFeature, {
     auth: config.auth,
     ...(config.server.publicOrigin ? { publicOrigin: config.server.publicOrigin } : {}),
     secureCookies: config.server.tls.enabled,
-    ...(dependencies.auth ? { dependencies: dependencies.auth } : {}),
+    dependencies: {
+      ...(dependencies.auth ?? {}),
+      store: authStore,
+    },
+  });
+  await app.register(authorizationFeature, {
+    auth: config.auth,
+    authorization: config.authorization ?? { assignments: [] },
+    store: authStore,
   });
 }

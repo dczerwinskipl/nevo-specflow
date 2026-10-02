@@ -1,5 +1,5 @@
 import { constants } from 'node:fs';
-import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 import { stringify } from 'yaml';
@@ -106,11 +106,19 @@ async function defaultWriteConfigFile(
   content: string,
   options: ConfigWriteOptions,
 ): Promise<void> {
-  await writeFile(path, content, {
-    encoding: 'utf8',
-    flag: 'wx',
-    ...(options.local ? { mode: 0o600 } : {}),
-  });
+  const stagedPath = `${path}.init.tmp`;
+  await rm(stagedPath, { force: true });
+
+  try {
+    await writeFile(stagedPath, content, {
+      encoding: 'utf8',
+      flag: 'wx',
+      ...(options.local ? { mode: 0o600 } : {}),
+    });
+    await rename(stagedPath, path);
+  } finally {
+    await rm(stagedPath, { force: true });
+  }
 }
 
 async function ensureLocalIgnore(

@@ -23,11 +23,7 @@ export interface RuntimeHandle {
 
 export async function startRuntime(options: RuntimeStartOptions): Promise<RuntimeHandle> {
   const loaded = await loadRuntimeConfig(options);
-  const app = await createListeningApp(
-    loaded.config,
-    options.projectRoot,
-    options.dependencies,
-  );
+  const app = await createListeningApp(loaded.config, options.projectRoot, options.dependencies);
 
   try {
     const address = await app.listen({

@@ -62,6 +62,23 @@ describe('project initialization', () => {
     expect(gitignore).toContain('.nevo/local/');
   });
 
+  it('does not leave staging files after successful initialization', async () => {
+    const root = await repository();
+
+    await initializeProject({
+      layout: layout(root),
+      initRuntime: runtimeContribution,
+      isIgnored: () => Promise.resolve(true),
+    });
+
+    await expect(
+      readFile(join(root, '.nevo', 'config.yaml.init.tmp'), 'utf8'),
+    ).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(
+      readFile(join(root, '.nevo', 'local', 'config.yaml.init.tmp'), 'utf8'),
+    ).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
   it('does not treat existing committed .nevo definitions as an initialized config', async () => {
     const root = await repository();
 

@@ -1,8 +1,4 @@
-import {
-  startRuntime,
-  type RuntimeHandle,
-  type RuntimeStartOptions,
-} from '@nevo/specflow-runtime';
+import { startRuntime, type RuntimeHandle, type RuntimeStartOptions } from '@nevo/specflow-runtime';
 
 import { resolveProjectLayout, type ProjectLayout } from '../project/layout.js';
 

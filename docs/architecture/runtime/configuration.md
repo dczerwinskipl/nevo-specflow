@@ -60,6 +60,11 @@ defaults, project/local split, password hashing, secret policy, merge rules, and
 The product initializer calls `initRuntime`, wraps its contribution under `runtime`, and writes
 the aggregate documents without reconstructing Runtime settings.
 
+Server provenance is explicit too: `host`, `port`, `publicOrigin`, and `tls.enabled` are
+project-owned policy. Workstation-local Runtime config may supply only TLS certificate/key paths.
+The merged Runtime config is validated after composition, so local credentials cannot weaken
+project-owned auth or server policy.
+
 This namespace boundary is deliberate. Future AI, workflow, repository, or integration
 configuration can add their own top-level capability namespace without becoming an unknown Runtime
 key. Runtime config loading extracts only `runtime` before applying Runtime validation.

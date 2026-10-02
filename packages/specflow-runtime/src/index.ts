@@ -11,6 +11,7 @@ export {
   AuthUserSchema,
   PasswordLoginBodySchema,
 } from './auth/contracts.js';
+export { hashPassword } from './auth/password.js';
 export * from './config/index.js';
 export { startRuntime, type RuntimeHandle, type RuntimeStartOptions } from './runtime.js';
 export { createRuntimeApp, type RuntimeAppDependencies } from './server/app.js';

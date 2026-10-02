@@ -5,6 +5,7 @@ import process from 'node:process';
 
 import { CommanderError } from 'commander';
 
+import { TerminalProjectInitPrompter } from './init/terminal-prompter.js';
 import { createProgram } from './program.js';
 
 async function main(argv: string[]): Promise<number> {
@@ -13,11 +14,14 @@ async function main(argv: string[]): Promise<number> {
   process.once('SIGINT', abort);
   process.once('SIGTERM', abort);
 
+  const initPrompter = new TerminalProjectInitPrompter(process.stdin, process.stdout);
   const program = createProgram({
     stdout: (line) => process.stdout.write(`${line}\n`),
     stderr: (line) => process.stderr.write(`${line}\n`),
     readPasswordFromStdin: readStdin,
     signal: shutdown.signal,
+    cwd: process.cwd(),
+    initPrompter,
   });
 
   try {
@@ -31,6 +35,7 @@ async function main(argv: string[]): Promise<number> {
     process.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`);
     return 1;
   } finally {
+    initPrompter.close();
     process.off('SIGINT', abort);
     process.off('SIGTERM', abort);
   }

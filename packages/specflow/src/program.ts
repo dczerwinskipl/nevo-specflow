@@ -8,8 +8,12 @@ import {
   type AuthCommandContext,
   type RuntimeCommandContext,
 } from '@nevo/specflow-runtime/cli';
+import process from 'node:process';
+
 import { Command } from 'commander';
 
+import { createProjectInitCommand, type ProjectInitCommandContext } from './init/cli.js';
+import type { ProjectInitPrompter } from './init/prompts.js';
 import { NEVO_SPECFLOW_VERSION } from './version.js';
 
 export interface ProgramIO {
@@ -18,6 +22,9 @@ export interface ProgramIO {
   readonly signal?: AbortSignal;
   readonly startRuntime?: RuntimeCommandContext['start'];
   readonly readPasswordFromStdin?: AuthCommandContext['readPasswordFromStdin'];
+  readonly cwd?: string;
+  readonly initPrompter?: ProjectInitPrompter;
+  readonly initializeProject?: ProjectInitCommandContext['initialize'];
 }
 
 /** Build the `nevo-specflow` program. Pure wiring; argv is parsed by the caller. */
@@ -30,6 +37,15 @@ export function createProgram(io: ProgramIO): Command {
       writeErr: (s) => io.stderr(s.replace(/\n$/, '')),
     })
     .showHelpAfterError();
+
+  program.addCommand(
+    createProjectInitCommand({
+      cwd: io.cwd ?? process.cwd(),
+      stdout: io.stdout,
+      ...(io.initPrompter ? { prompter: io.initPrompter } : {}),
+      ...(io.initializeProject ? { initialize: io.initializeProject } : {}),
+    }),
+  );
 
   program.addCommand(
     createAuthCommand({

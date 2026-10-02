@@ -11,8 +11,8 @@ import { parseRuntimeConfig } from './parse.js';
 import type { LoadedRuntimeConfig } from './types.js';
 import { childRecord, isRecord } from './value.js';
 
-export const DEFAULT_PROJECT_CONFIG_PATH = 'nevo-specflow.yaml';
-export const DEFAULT_LOCAL_CONFIG_PATH = '.nevo-local/nevo-specflow.yaml';
+export const DEFAULT_PROJECT_CONFIG_PATH = '.nevo/config.yaml';
+export const DEFAULT_LOCAL_CONFIG_PATH = '.nevo/local/config.yaml';
 
 export interface LoadRuntimeConfigOptions {
   readonly cwd?: string;

@@ -1,3 +1,4 @@
+import type { AuthorizationCapabilitiesResponse } from '@nevo/specflow-contracts/authorization';
 import { describe, expect, it } from 'vitest';
 
 import { InMemoryAuthStore } from '../../src/auth/session-store.js';
@@ -63,7 +64,7 @@ describe('authorization HTTP API', () => {
           resource: { name: 'spec', scope: { projectId: 'P1', specId: 'S1' } },
         },
       });
-      expect(spec.json().capabilities).toEqual(['spec.view', 'spec.create', 'spec.manage']);
+      expect(spec.json<AuthorizationCapabilitiesResponse>().capabilities).toEqual(['spec.view', 'spec.create', 'spec.manage']);
 
       const sessions = await app.inject({
         method: 'POST',
@@ -73,7 +74,7 @@ describe('authorization HTTP API', () => {
           resource: { name: 'session', scope: { projectId: 'P1', specId: 'S1' } },
         },
       });
-      expect(sessions.json().capabilities).toEqual([
+      expect(sessions.json<AuthorizationCapabilitiesResponse>().capabilities).toEqual([
         'session.view',
         'session.create',
         'session.manage',
@@ -87,7 +88,7 @@ describe('authorization HTTP API', () => {
           resource: { name: 'spec', scope: { projectId: 'P2', specId: 'S1' } },
         },
       });
-      expect(otherProject.json().capabilities).toEqual([]);
+      expect(otherProject.json<AuthorizationCapabilitiesResponse>().capabilities).toEqual([]);
     } finally {
       await app.close();
     }
@@ -107,7 +108,7 @@ describe('authorization HTTP API', () => {
           resource: { name: 'spec', scope: { projectId: 'P1', specId: 'S1' } },
         },
       });
-      expect(item.json().capabilities).toEqual(['spec.view']);
+      expect(item.json<AuthorizationCapabilitiesResponse>().capabilities).toEqual(['spec.view']);
 
       const project = await app.inject({
         method: 'POST',
@@ -117,7 +118,7 @@ describe('authorization HTTP API', () => {
           resource: { name: 'spec', scope: { projectId: 'P1' } },
         },
       });
-      expect(project.json().capabilities).toEqual([]);
+      expect(project.json<AuthorizationCapabilitiesResponse>().capabilities).toEqual([]);
     } finally {
       await app.close();
     }
@@ -135,7 +136,7 @@ describe('authorization HTTP API', () => {
         url: '/api/authorization/capabilities',
         payload: { resource: { name: 'spec', scope: { projectId: 'P1' } } },
       });
-      expect(response.json().capabilities).toEqual(['spec.view']);
+      expect(response.json<AuthorizationCapabilitiesResponse>().capabilities).toEqual(['spec.view']);
     } finally {
       await app.close();
     }
@@ -154,7 +155,7 @@ describe('authorization HTTP API', () => {
         url: '/api/authorization/capabilities',
         payload: { resource: { name: 'spec', scope: { projectId: 'P1' } } },
       });
-      expect(response.json().capabilities).toEqual(['spec.view', 'spec.create', 'spec.manage']);
+      expect(response.json<AuthorizationCapabilitiesResponse>().capabilities).toEqual(['spec.view', 'spec.create', 'spec.manage']);
     } finally {
       await app.close();
     }

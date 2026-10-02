@@ -66,11 +66,7 @@ async function readRequiredConfig(path: string): Promise<unknown> {
   }
 }
 
-function runtimeSection(
-  value: unknown,
-  path: string,
-  required: true,
-): Record<string, unknown>;
+function runtimeSection(value: unknown, path: string, required: true): Record<string, unknown>;
 function runtimeSection(
   value: unknown,
   path: string,

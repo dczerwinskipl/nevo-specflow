@@ -470,7 +470,11 @@ describe('runtime configuration', () => {
     const cwd = await mkdtemp(join(tmpdir(), 'specflow-config-'));
     await mkdir(join(cwd, '.nevo/local'), { recursive: true });
     await writeFile(join(cwd, '.nevo/config.yaml'), PROJECT_CONFIG, 'utf8');
-    await writeFile(join(cwd, '.nevo/local/config.yaml'), 'runtime:\n  server:\n    port: 9443\n', 'utf8');
+    await writeFile(
+      join(cwd, '.nevo/local/config.yaml'),
+      'runtime:\n  server:\n    port: 9443\n',
+      'utf8',
+    );
 
     const loaded = await loadRuntimeConfig({ cwd });
 

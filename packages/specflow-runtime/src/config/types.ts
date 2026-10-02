@@ -13,15 +13,34 @@ export interface RuntimeServerConfig {
   readonly tls: RuntimeServerTlsConfig;
 }
 
-export interface RuntimeAuthProviderConfig {
+export interface RuntimeUserConfig {
+  readonly name: string;
+}
+
+export interface RuntimePasswordAccountConfig {
+  readonly userId: string;
+  readonly passwordHash: string;
+}
+
+export interface RuntimePasswordProviderConfig {
   readonly enabled: boolean;
+  readonly accounts: Readonly<Record<string, RuntimePasswordAccountConfig>>;
+}
+
+export interface RuntimeGoogleProviderConfig {
+  readonly enabled: boolean;
+  readonly clientId?: string;
+  readonly clientSecret?: string;
+  readonly allowedEmails: Readonly<Record<string, string>>;
 }
 
 export interface RuntimeAuthConfig {
   readonly mode: AuthMode;
+  readonly localUserId?: string;
+  readonly users: Readonly<Record<string, RuntimeUserConfig>>;
   readonly providers: {
-    readonly password: RuntimeAuthProviderConfig;
-    readonly google: RuntimeAuthProviderConfig;
+    readonly password: RuntimePasswordProviderConfig;
+    readonly google: RuntimeGoogleProviderConfig;
   };
 }
 

@@ -10,8 +10,11 @@ export type {
   AuthMode,
   LoadedRuntimeConfig,
   RuntimeAuthConfig,
-  RuntimeAuthProviderConfig,
   RuntimeConfig,
+  RuntimeGoogleProviderConfig,
+  RuntimePasswordAccountConfig,
+  RuntimePasswordProviderConfig,
   RuntimeServerConfig,
   RuntimeServerTlsConfig,
+  RuntimeUserConfig,
 } from './types.js';

@@ -20,3 +20,5 @@ export interface RuntimeStartResult {
 export function startRuntime(): RuntimeStartResult {
   return { kind: 'bootstrap', message: RUNTIME_BOOTSTRAP_MARKER };
 }
+
+export * from './config/index.js';

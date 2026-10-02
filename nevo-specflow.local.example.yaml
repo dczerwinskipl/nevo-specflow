@@ -1,0 +1,25 @@
+# Example workstation-local override.
+# Copy to .nevo-local/nevo-specflow.yaml. This example contains only fake values.
+
+server:
+  publicOrigin: https://specflow.example.test:4318
+  tls:
+    enabled: true
+    certFile: .nevo-local/tls/cert.pem
+    keyFile: .nevo-local/tls/key.pem
+
+auth:
+  mode: required
+  providers:
+    password:
+      enabled: true
+      accounts:
+        demo:
+          userId: demo-user
+          passwordHash: "<replace-with-a-local-password-hash>"
+    google:
+      enabled: true
+      clientId: example.apps.googleusercontent.com
+      clientSecret: "<replace-with-a-local-client-secret>"
+      allowedEmails:
+        demo@example.com: demo-user

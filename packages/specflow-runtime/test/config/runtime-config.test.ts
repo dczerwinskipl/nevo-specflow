@@ -52,9 +52,59 @@ describe('runtime configuration', () => {
       },
       auth: {
         mode: 'none',
+        users: {},
         providers: {
-          password: { enabled: false },
-          google: { enabled: false },
+          password: { enabled: false, accounts: {} },
+          google: { enabled: false, allowedEmails: {} },
+        },
+      },
+    });
+  });
+
+  it('validates a fully configured required-auth setup', () => {
+    expect(
+      parseRuntimeConfig({
+        server: {
+          host: '0.0.0.0',
+          port: 4318,
+          publicOrigin: 'https://specflow.example.test:4318',
+          tls: {
+            enabled: true,
+            certFile: '.nevo-local/tls/cert.pem',
+            keyFile: '.nevo-local/tls/key.pem',
+          },
+        },
+        auth: {
+          mode: 'required',
+          users: {
+            'demo-user': { name: 'Demo User' },
+          },
+          providers: {
+            password: {
+              enabled: true,
+              accounts: {
+                demo: {
+                  userId: 'demo-user',
+                  passwordHash: 'fake-hash-for-schema-test',
+                },
+              },
+            },
+            google: {
+              enabled: true,
+              clientId: 'example.apps.googleusercontent.com',
+              clientSecret: 'fake-local-secret',
+              allowedEmails: {
+                'demo@example.com': 'demo-user',
+              },
+            },
+          },
+        },
+      }),
+    ).toMatchObject({
+      auth: {
+        mode: 'required',
+        users: {
+          'demo-user': { name: 'Demo User' },
         },
       },
     });
@@ -70,9 +120,19 @@ describe('runtime configuration', () => {
         },
         auth: {
           mode: 'required',
+          users: {
+            'demo-user': { name: 'Demo User' },
+          },
           providers: {
             password: { enabled: false },
-            google: { enabled: true },
+            google: {
+              enabled: true,
+              clientId: 'example.apps.googleusercontent.com',
+              clientSecret: 'fake-local-secret',
+              allowedEmails: {
+                'demo@example.com': 'demo-user',
+              },
+            },
           },
         },
       }),
@@ -96,6 +156,52 @@ describe('runtime configuration', () => {
         },
       }),
     ).toThrowError(/certFile and server\.tls\.keyFile are required/);
+  });
+
+  it('requires at least one provider for required auth', () => {
+    expect(() =>
+      parseRuntimeConfig({
+        server: {
+          host: '127.0.0.1',
+          port: 4318,
+          tls: { enabled: false },
+        },
+        auth: {
+          mode: 'required',
+          providers: {
+            password: { enabled: false },
+            google: { enabled: false },
+          },
+        },
+      }),
+    ).toThrowError(/requires at least one enabled authentication provider/);
+  });
+
+  it('rejects provider mappings to unknown users', () => {
+    expect(() =>
+      parseRuntimeConfig({
+        server: {
+          host: '127.0.0.1',
+          port: 4318,
+          tls: { enabled: false },
+        },
+        auth: {
+          mode: 'none',
+          providers: {
+            password: {
+              enabled: false,
+              accounts: {
+                demo: {
+                  userId: 'missing-user',
+                  passwordHash: 'fake',
+                },
+              },
+            },
+            google: { enabled: false },
+          },
+        },
+      }),
+    ).toThrowError(/references unknown user 'missing-user'/);
   });
 
   it('rejects unknown keys instead of silently ignoring configuration typos', () => {

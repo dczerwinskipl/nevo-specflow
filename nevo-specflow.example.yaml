@@ -13,6 +13,11 @@ server:
 
 auth:
   mode: none
+  # Optional attribution identity for trusted/no-login mode.
+  # localUserId: demo-user
+  users:
+    demo-user:
+      name: Demo User
   providers:
     password:
       enabled: false

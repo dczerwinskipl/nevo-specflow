@@ -29,11 +29,13 @@ Workflows under [`.github/workflows/`](../../../.github/workflows/):
 
 ## `ci` jobs
 
-| Job       | Steps                                                                                                                                                                                         |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `quality` | `pnpm check:quality` (builds `tools/*`, then format, lint, `docs:check`, `version:check-transition`), `pnpm version:print`, an affected-graph dry-run, then `turbo run typecheck --affected`. |
-| `test`    | `turbo run test --affected`.                                                                                                                                                                  |
-| `build`   | `turbo run build --affected`.                                                                                                                                                                 |
+| Job         | Steps                                                                                                                                                                                         |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `quality`   | `pnpm check:quality` (builds `tools/*`, then format, lint, `docs:check`, `version:check-transition`), `pnpm version:print`, an affected-graph dry-run, then `turbo run typecheck --affected`. |
+| `plan tests` | Resolves `turbo run test --affected --dry=json` into one independent test job per selected workspace.                                                                                        |
+| `test (...)` | Runs the selected workspace's `test` task. Product packages keep their package name; repository tools render as `tool/<name>` for readability.                                            |
+| `test`      | Required aggregate status. Its single `Verify tests` step fails when test planning or any selected workspace test fails.                                                                     |
+| `build`     | `turbo run build --affected`.                                                                                                                                                                 |
 
 `check:quality` is the **same script contributors run** (`pnpm check` = `check:quality`
 
@@ -49,9 +51,16 @@ Typecheck, test and build are **package-scoped**:
 - On **`main` and `release/v*` pushes** they run over **all** packages (no `--affected`).
   Post-merge validation is deliberately more conservative than PR validation.
 
-Affected execution includes a changed package's **dependents**, because that comes from
-declared workspace `dependencies` — not a hard-coded matrix. The `quality` job prints
-`turbo run … --dry=text` so you can see exactly which packages were selected and why.
+Affected execution includes a changed package and its **dependents**, because that comes
+from declared workspace `dependencies` — not a hard-coded matrix. It does **not** select
+a dependency's tests merely because one of its consumers changed. Task prerequisites may
+still build through Turbo's `^build` edges.
+
+For example, if `@nevo/specflow-runtime` declares a dependency on
+`@nevo/http-client`, changing the HTTP client selects the client, Runtime, and any
+further dependents for testing; changing Runtime does not select the HTTP client's tests.
+The `quality` job prints `turbo run … --dry=text` so you can see exactly which
+workspaces were selected and why.
 
 Concretely, for the product graph:
 

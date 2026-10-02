@@ -508,6 +508,67 @@ than inherited accidentally from generic config merge behavior.
 
 The generic authorization package must not own persistence or the SpecFlow config file format.
 
+### Project-only authorization configuration
+
+The initial `authorization` section is project configuration only.
+
+`.nevo-local/nevo-specflow.yaml` must not define or override `authorization`. Runtime config
+loading should reject a local `authorization` section rather than silently applying the normal
+local merge rules.
+
+This is intentional even though the existing config loader replaces arrays during local overrides.
+Role assignments define access control and should remain reviewable project state, not workstation-
+local privilege overrides.
+
+Local auth secrets and provider settings remain separate concerns under the existing auth rules.
+
+## Assignment-scope canonicalization
+
+Canonicalization applies to assignment scopes as well as resource scopes.
+
+The generic resolver still treats scope as an opaque set of dimensions and only applies the subset
+matching rule. It does not know which dimension combinations are meaningful.
+
+The application must validate every configured assignment scope against its own canonical scope
+shapes before creating the resolver.
+
+For the initial SpecFlow model, allowed assignment shapes are:
+
+```text
+{}
+{ projectId }
+{ projectId, specId }
+{ projectId, specId, sessionId }
+```
+
+Invalid examples include:
+
+```text
+{ specId }
+{ sessionId }
+{ projectId, sessionId }
+```
+
+In other words, a more-specific scope must include the full canonical parent chain.
+
+This matters even if current SpecFlow ids happen to be globally unique. The authorization model must
+not rely on that accidental property because future applications may use scopes such as
+`{ tenantId, projectId }` where child ids are only unique within a parent.
+
+If SpecFlow later introduces another parent dimension such as `tenantId`, the allowed shapes and
+canonicalization rules must be extended explicitly, for example:
+
+```text
+{}
+{ tenantId }
+{ tenantId, projectId }
+{ tenantId, projectId, specId }
+...
+```
+
+The generic package should expose enough validation/composition hooks for the application to reject
+invalid assignment scopes at startup, but it must not embed the SpecFlow hierarchy itself.
+
 ## Scope matching rule
 
 An assignment applies to a requested resource scope when every dimension in the assignment scope is
@@ -970,6 +1031,8 @@ At minimum, validate:
 - assignments referencing unknown roles;
 - SpecFlow assignments referencing unknown `auth.users` ids;
 - malformed scope values;
+- non-canonical SpecFlow assignment scopes, including missing parent dimensions;
+- any `authorization` section present in local config;
 - capability/resource mismatches passed to `can()`.
 
 A typo in `spec.manage` should be caught during application startup/composition rather than silently
@@ -1031,8 +1094,9 @@ making resource/capability identifiers library-owned enums.
 3. Add `@nevo/specflow-contracts` and define SpecFlow resources/capabilities there in feature
    folders.
 4. Add central Runtime role composition for `viewer`, `developer`, and `admin`.
-5. Extend Runtime config with top-level `authorization.assignments`; validate role names and
-   canonical `auth.users` ids.
+5. Extend project Runtime config with top-level `authorization.assignments`; validate role names,
+   canonical `auth.users` ids, and canonical assignment-scope shapes. Reject `authorization`
+   from `.nevo-local/nevo-specflow.yaml`.
 6. Add effective-subject resolution for `auth.mode=required`, `auth.mode=none + localUserId`,
    and explicit no-access-control behavior for `auth.mode=none` without `localUserId`.
 7. Integrate the resolver into SpecFlow Runtime request handling with canonical scope built by each
@@ -1056,7 +1120,10 @@ The initial package should explicitly prove:
 - project assignment applies to resources below that project;
 - project assignment does not apply to another project;
 - spec assignment applies to the matching spec/session scope;
-- more-specific assignment does not leak into sibling resources.
+- more-specific assignment does not leak into sibling resources;
+- assignment scopes with missing parents such as `{ specId }` are rejected;
+- assignment scopes such as `{ projectId, sessionId }` are rejected;
+- canonical parent-chain scopes are accepted.
 
 ### Resource filtering
 
@@ -1085,6 +1152,7 @@ spec.manage
 
 ### Backend contract
 
+- local config cannot define or replace `authorization.assignments`;
 - request subject cannot be supplied/spoofed by the client;
 - `auth.mode=required` uses the authenticated canonical user id;
 - `auth.mode=none + localUserId` uses that canonical configured user id;
@@ -1122,7 +1190,9 @@ Also preserve these decisions:
 - empty scope is global;
 - features own resource/capability definitions in the SpecFlow shared contracts boundary;
 - the application owns roles and assignments;
+- SpecFlow authorization configuration is project-only;
 - SpecFlow assignments reference canonical `auth.users` ids;
+- SpecFlow assignment scopes are validated as canonical parent-chain shapes;
 - Runtime owns effective-subject resolution for each auth mode;
 - enforcement scope is rebuilt from trusted domain data;
 - role inheritance is not part of the model;

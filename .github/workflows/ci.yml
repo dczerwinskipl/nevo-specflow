@@ -32,11 +32,6 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup
 
-      - name: Preview HTTP client formatting
-        run: |
-          pnpm exec prettier --write packages/http-client/src/sse.ts packages/http-client/src/sse.test.ts packages/http-client/src/types.ts
-          git diff -- packages/http-client/src/sse.ts packages/http-client/src/sse.test.ts packages/http-client/src/types.ts
-
       # The same canonical script contributors run locally: format:check, lint,
       # docs validation/index freshness, and the version.json transition gate.
       - name: Quality gate

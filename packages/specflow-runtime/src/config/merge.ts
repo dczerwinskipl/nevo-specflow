@@ -1,3 +1,8 @@
+const REPLACE_PATHS = new Set([
+  'auth.providers.password.accounts',
+  'auth.providers.google.allowedEmails',
+]);
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -5,18 +10,29 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /**
  * Applies workstation-local overrides to project configuration.
  *
- * Objects merge recursively. Arrays and scalar values replace the project value in full.
- * The rule is deliberately small and deterministic so configuration precedence is inspectable.
+ * Objects merge recursively and scalar values replace the project value. Security-sensitive
+ * credential/access maps are replaced in full so removing a local entry also revokes it.
  */
 export function mergeRuntimeConfigValues(projectValue: unknown, localValue: unknown): unknown {
-  if (!isRecord(projectValue) || !isRecord(localValue)) {
+  return mergeValue(projectValue, localValue, []);
+}
+
+function mergeValue(
+  projectValue: unknown,
+  localValue: unknown,
+  path: readonly string[],
+): unknown {
+  if (!isRecord(projectValue) || !isRecord(localValue) || REPLACE_PATHS.has(path.join('.'))) {
     return localValue;
   }
 
   const result: Record<string, unknown> = { ...projectValue };
 
   for (const [key, localChild] of Object.entries(localValue)) {
-    result[key] = key in result ? mergeRuntimeConfigValues(result[key], localChild) : localChild;
+    result[key] =
+      key in result
+        ? mergeValue(result[key], localChild, [...path, key])
+        : localChild;
   }
 
   return result;

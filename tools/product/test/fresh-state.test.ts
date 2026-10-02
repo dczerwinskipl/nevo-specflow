@@ -16,6 +16,11 @@ const toolDir = join(repoRoot, 'tools', 'product');
 const toolDist = join(toolDir, 'dist');
 const toolTsBuild = join(toolDir, '.tsbuild');
 const artifacts = join(repoRoot, '.artifacts');
+const productPackages = [
+  join(repoRoot, 'packages', 'authorization'),
+  join(repoRoot, 'packages', 'specflow-contracts'),
+  join(repoRoot, 'packages', 'specflow-runtime'),
+] as const;
 
 const pinnedPnpm = (
   JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as { packageManager: string }
@@ -50,9 +55,16 @@ describe('pnpm product:pack — self-bootstrapping from a fresh install', () => 
       rmSync(p, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
     rm(toolDist);
     rm(toolTsBuild);
+    for (const packageDir of productPackages) {
+      rm(join(packageDir, 'dist'));
+      rm(join(packageDir, '.tsbuild'));
+    }
     mkdirSync(artifacts, { recursive: true });
     for (const f of readdirSync(artifacts)) rm(join(artifacts, f)); // clear, keep the dir (Windows EBUSY on rmdir)
     expect(existsSync(join(toolDist, 'bin.js'))).toBe(false);
+    for (const packageDir of productPackages) {
+      expect(existsSync(join(packageDir, 'dist'))).toBe(false);
+    }
     expect(readdirSync(artifacts)).toEqual([]);
 
     execFileSync('pnpm', ['product:pack'], {
@@ -62,8 +74,11 @@ describe('pnpm product:pack — self-bootstrapping from a fresh install', () => 
       timeout: 180_000,
     });
 
-    // the root script rebuilt the tool, then packed
+    // the root script rebuilt the tool and all Runtime workspace dependencies, then packed
     expect(existsSync(join(toolDist, 'bin.js'))).toBe(true);
+    for (const packageDir of productPackages) {
+      expect(existsSync(join(packageDir, 'dist'))).toBe(true);
+    }
     const tgz = readdirSync(artifacts).filter((f) => f.endsWith('.tgz'));
     expect(tgz.length).toBeGreaterThan(0);
   }, 200_000);

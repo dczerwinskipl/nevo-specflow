@@ -36,8 +36,10 @@ export interface HttpRequestOptions<TParams = unknown> extends HttpTransportConf
   readonly timeoutMs?: number;
 }
 
-export interface HttpRequestConfig<TBody = unknown, TParams = unknown>
-  extends HttpRequestOptions<TParams> {
+export interface HttpRequestConfig<
+  TBody = unknown,
+  TParams = unknown,
+> extends HttpRequestOptions<TParams> {
   readonly method: HttpMethod;
   readonly url: string;
   readonly body?: TBody;
@@ -54,8 +56,10 @@ export interface SseReconnectContext {
   readonly retryInMs: number;
 }
 
-export interface SseRequestConfig<TEvent = SseEvent, TParams = unknown>
-  extends HttpTransportConfig<TParams> {
+export interface SseRequestConfig<
+  TEvent = SseEvent,
+  TParams = unknown,
+> extends HttpTransportConfig<TParams> {
   readonly decode?: (event: SseEvent) => TEvent;
   readonly onConnected?: () => void;
   readonly onReconnecting?: (context: SseReconnectContext) => void;

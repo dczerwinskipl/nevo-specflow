@@ -527,22 +527,19 @@ describe('runtime configuration', () => {
     expect(loaded.sources.local).toBe(join(cwd, '.nevo/local/config.yaml'));
   });
 
-  it(
-    'ignores unrelated product-owned top-level sections while loading Runtime config',
-    async () => {
-      const cwd = await mkdtemp(join(tmpdir(), 'specflow-other-capability-'));
-      await mkdir(join(cwd, '.nevo'), { recursive: true });
-      await writeFile(
-        join(cwd, '.nevo/config.yaml'),
-        `${PROJECT_CONFIG}\nworkflow:\n  default: standard\n`,
-        'utf8',
-      );
+  it('ignores unrelated product-owned top-level sections while loading Runtime config', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'specflow-other-capability-'));
+    await mkdir(join(cwd, '.nevo'), { recursive: true });
+    await writeFile(
+      join(cwd, '.nevo/config.yaml'),
+      `${PROJECT_CONFIG}\nworkflow:\n  default: standard\n`,
+      'utf8',
+    );
 
-      const loaded = await loadFrom(cwd);
+    const loaded = await loadFrom(cwd);
 
-      expect(loaded.config.server.port).toBe(4318);
-    },
-  );
+    expect(loaded.config.server.port).toBe(4318);
+  });
 
   it('rejects OIDC client secrets from the project config', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'specflow-project-secret-'));

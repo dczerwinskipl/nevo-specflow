@@ -62,10 +62,16 @@ type Assert<Condition extends true> = Condition;
 
 export type AuthorizationSchemaContractAssertions = [
   Assert<
-    IsAssignable<Static<typeof AuthorizationCapabilitiesBodySchema>, AuthorizationCapabilitiesRequest>
+    IsAssignable<
+      Static<typeof AuthorizationCapabilitiesBodySchema>,
+      AuthorizationCapabilitiesRequest
+    >
   >,
   Assert<
-    IsAssignable<AuthorizationCapabilitiesRequest, Static<typeof AuthorizationCapabilitiesBodySchema>>
+    IsAssignable<
+      AuthorizationCapabilitiesRequest,
+      Static<typeof AuthorizationCapabilitiesBodySchema>
+    >
   >,
   Assert<
     IsAssignable<

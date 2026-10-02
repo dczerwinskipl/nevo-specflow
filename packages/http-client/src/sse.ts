@@ -73,11 +73,14 @@ export function createSseStream<TEvent, TParams>(
         }
 
         const headers = new Headers();
-        headers.set('Accept', 'text/event-stream');
 
         applyHeaders(headers, options.defaultHeaders);
         applyHeaders(headers, options.config?.headers);
         applyHeaders(headers, resolvedCredentials?.headers);
+
+        // SSE framing requires this media type; generic/request/credential headers
+        // must not be able to override the transport requirement.
+        headers.set('Accept', 'text/event-stream');
 
         if (lastEventId) {
           headers.set('Last-Event-ID', lastEventId);

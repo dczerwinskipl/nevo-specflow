@@ -89,6 +89,8 @@ const response = await api.axios.request({
 
 Use that escape hatch for exceptional Axios-specific behavior rather than making every Nevo consumer depend on Axios configuration details.
 
+Requests made directly through `api.axios` still use the configured Axios instance and its interceptors, but they bypass the package-level request helpers. Axios transport failures from that path are therefore **not** normalized into `HttpClientError` by `@nevo/http-client`.
+
 ## Credentials
 
 Applications compose authentication outside this package and supply only the credentials needed by the transport.
@@ -144,6 +146,8 @@ const providerApi = createHttpClient({
   })),
 });
 ```
+
+`anonymousCredentials()` means that `@nevo/http-client` does not add authorization headers or explicitly opt into cross-origin cookie credentials. It does **not** force the browser to omit ambient same-origin cookies: Axios/XHR and the SSE `fetch` may still send same-origin cookies according to normal browser rules. Use it when no package-managed credentials should be attached, not as a browser-level cookie suppression mechanism.
 
 ## SSE
 

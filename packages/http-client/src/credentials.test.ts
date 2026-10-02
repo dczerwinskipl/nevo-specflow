@@ -8,7 +8,7 @@ import {
 } from './credentials';
 
 describe('credential providers', () => {
-  it('supports anonymous access without request credentials', async () => {
+  it('does not add package-level request credentials', async () => {
     const resolved = await Promise.resolve(
       anonymousCredentials().resolve({ method: 'get', url: '/resource' }),
     );

@@ -1,8 +1,4 @@
-import axios, {
-  AxiosHeaders,
-  type AxiosRequestConfig,
-  type AxiosResponse,
-} from 'axios';
+import axios, { AxiosHeaders, type AxiosRequestConfig, type AxiosResponse } from 'axios';
 
 import { anonymousCredentials } from './credentials';
 import { isHttpClientError, normalizeHttpError } from './errors';
@@ -68,7 +64,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           method: config.method,
           url: config.url,
           data: config.body,
-          ...toAxiosConfig(config),
+          ...toAxiosConfig<TBody, TParams>(config),
         });
         return response.data;
       });
@@ -84,7 +80,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           AxiosResponse<TResponse, unknown, unknown, TParams>,
           unknown,
           TParams
-        >(url, toAxiosConfig(config));
+        >(url, toAxiosConfig<unknown, TParams>(config));
         return response.data;
       });
     },
@@ -99,7 +95,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           AxiosResponse<TResponse, unknown, unknown, TParams>,
           unknown,
           TParams
-        >(url, toAxiosConfig(config));
+        >(url, toAxiosConfig<unknown, TParams>(config));
         return response.data;
       });
     },
@@ -115,7 +111,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           AxiosResponse<TResponse, TBody, unknown, TParams>,
           TBody,
           TParams
-        >(url, body, toAxiosConfig(config));
+        >(url, body, toAxiosConfig<TBody, TParams>(config));
         return response.data;
       });
     },
@@ -131,7 +127,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           AxiosResponse<TResponse, TBody, unknown, TParams>,
           TBody,
           TParams
-        >(url, body, toAxiosConfig(config));
+        >(url, body, toAxiosConfig<TBody, TParams>(config));
         return response.data;
       });
     },
@@ -147,7 +143,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           AxiosResponse<TResponse, TBody, unknown, TParams>,
           TBody,
           TParams
-        >(url, body, toAxiosConfig(config));
+        >(url, body, toAxiosConfig<TBody, TParams>(config));
         return response.data;
       });
     },
@@ -172,9 +168,9 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
   };
 }
 
-function toAxiosConfig<TParams>(
+function toAxiosConfig<TBody, TParams>(
   config: HttpRequestOptions<TParams> | undefined,
-): AxiosRequestConfig<unknown, TParams> {
+): AxiosRequestConfig<TBody, TParams> {
   if (!config) {
     return {};
   }

@@ -1,8 +1,8 @@
-import axios, { AxiosHeaders } from 'axios';
+import axios, { AxiosHeaders, type AxiosResponse } from 'axios';
 
-import { normalizeHttpError } from './errors.js';
-import { anonymousCredentials } from './credentials.js';
-import type { HttpClient, HttpClientOptions, HttpRequestConfig } from './types.js';
+import { anonymousCredentials } from './credentials';
+import { normalizeHttpError } from './errors';
+import type { HttpClient, HttpClientOptions, HttpRequestConfig } from './types';
 
 export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
   const instance = axios.create({
@@ -42,62 +42,94 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
   return {
     axios: instance,
 
-    async request<TResponse, TBody>(config: HttpRequestConfig<TBody>): Promise<TResponse> {
-      return execute(async () => {
-        const response = await instance.request<TResponse, unknown, TBody>(config);
-        return response.data;
-      });
-    },
-
-    async get<TResponse>(
-      url: string,
-      config?: HttpRequestConfig<never>,
+    async request<TResponse, TBody, TParams>(
+      config: HttpRequestConfig<TBody, TParams>,
     ): Promise<TResponse> {
       return execute(async () => {
-        const response = await instance.get<TResponse>(url, config);
+        const response = await instance.request<
+          TResponse,
+          AxiosResponse<TResponse, TBody, {}, TParams>,
+          TBody,
+          TParams
+        >(config);
         return response.data;
       });
     },
 
-    async delete<TResponse>(
+    async get<TResponse, TParams>(
       url: string,
-      config?: HttpRequestConfig<never>,
+      config?: HttpRequestConfig<unknown, TParams>,
     ): Promise<TResponse> {
       return execute(async () => {
-        const response = await instance.delete<TResponse>(url, config);
+        const response = await instance.get<
+          TResponse,
+          AxiosResponse<TResponse, unknown, {}, TParams>,
+          unknown,
+          TParams
+        >(url, config);
         return response.data;
       });
     },
 
-    async post<TResponse, TBody>(
+    async delete<TResponse, TParams>(
       url: string,
-      body?: TBody,
-      config?: HttpRequestConfig<TBody>,
+      config?: HttpRequestConfig<unknown, TParams>,
     ): Promise<TResponse> {
       return execute(async () => {
-        const response = await instance.post<TResponse, unknown, TBody>(url, body, config);
+        const response = await instance.delete<
+          TResponse,
+          AxiosResponse<TResponse, unknown, {}, TParams>,
+          unknown,
+          TParams
+        >(url, config);
         return response.data;
       });
     },
 
-    async put<TResponse, TBody>(
-      url: string,
-      body?: TBody,
-      config?: HttpRequestConfig<TBody>,
-    ): Promise<TResponse> {
-      return execute(async () => {
-        const response = await instance.put<TResponse, unknown, TBody>(url, body, config);
-        return response.data;
-      });
-    },
-
-    async patch<TResponse, TBody>(
+    async post<TResponse, TBody, TParams>(
       url: string,
       body?: TBody,
-      config?: HttpRequestConfig<TBody>,
+      config?: HttpRequestConfig<TBody, TParams>,
     ): Promise<TResponse> {
       return execute(async () => {
-        const response = await instance.patch<TResponse, unknown, TBody>(url, body, config);
+        const response = await instance.post<
+          TResponse,
+          AxiosResponse<TResponse, TBody, {}, TParams>,
+          TBody,
+          TParams
+        >(url, body, config);
+        return response.data;
+      });
+    },
+
+    async put<TResponse, TBody, TParams>(
+      url: string,
+      body?: TBody,
+      config?: HttpRequestConfig<TBody, TParams>,
+    ): Promise<TResponse> {
+      return execute(async () => {
+        const response = await instance.put<
+          TResponse,
+          AxiosResponse<TResponse, TBody, {}, TParams>,
+          TBody,
+          TParams
+        >(url, body, config);
+        return response.data;
+      });
+    },
+
+    async patch<TResponse, TBody, TParams>(
+      url: string,
+      body?: TBody,
+      config?: HttpRequestConfig<TBody, TParams>,
+    ): Promise<TResponse> {
+      return execute(async () => {
+        const response = await instance.patch<
+          TResponse,
+          AxiosResponse<TResponse, TBody, {}, TParams>,
+          TBody,
+          TParams
+        >(url, body, config);
         return response.data;
       });
     },

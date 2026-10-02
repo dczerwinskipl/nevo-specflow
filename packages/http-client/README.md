@@ -128,11 +128,7 @@ Errors thrown by those application-owned flows are preserved rather than convert
 ### Anonymous or custom credentials
 
 ```ts
-import {
-  anonymousCredentials,
-  createHttpClient,
-  customCredentials,
-} from '@nevo/http-client';
+import { anonymousCredentials, createHttpClient, customCredentials } from '@nevo/http-client';
 
 const localApi = createHttpClient({
   baseURL: '/api',

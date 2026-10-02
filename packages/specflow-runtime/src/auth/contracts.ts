@@ -36,9 +36,19 @@ export const AuthSessionSchema = Type.Object(
 
 export type AuthSessionResponse = Static<typeof AuthSessionSchema>;
 
+export const AuthErrorCodeSchema = Type.Union([
+  Type.Literal('provider_unavailable'),
+  Type.Literal('invalid_credentials'),
+  Type.Literal('invalid_oidc_transaction'),
+  Type.Literal('oidc_authentication_failed'),
+  Type.Literal('identity_not_allowed'),
+]);
+
+export type AuthErrorCode = Static<typeof AuthErrorCodeSchema>;
+
 export const AuthErrorSchema = Type.Object(
   {
-    error: Type.String({ minLength: 1 }),
+    error: AuthErrorCodeSchema,
   },
   { additionalProperties: false },
 );

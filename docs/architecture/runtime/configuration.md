@@ -76,10 +76,13 @@ key. Runtime config loading extracts only `runtime` before applying Runtime vali
 `.nevo/local/config.yaml` mirrors the same capability namespaces for workstation-specific values
 and secrets. It is **not** a general override layer. Provenance is validated before merge.
 
-| Runtime area | Project-owned | Local-owned |
-| --- | --- | --- |
-| `server` | `host`, `port`, `publicOrigin`, `tls.enabled` | `tls.certFile`, `tls.keyFile` |
-| `auth` | `mode`, `users`, provider `enabled`, OIDC `issuer`, `clientId`, `allowedEmails` | `localUserId`, password `accounts`, OIDC `clientSecret` |
+Current ownership is explicit:
+
+- `server`: project owns `host`, `port`, `publicOrigin`, and `tls.enabled`; local owns
+  `tls.certFile` and `tls.keyFile`.
+- `auth`: project owns `mode`, `users`, provider `enabled`, and OIDC
+  `issuer`/`clientId`/`allowedEmails`; local owns `localUserId`, password `accounts`, and
+  OIDC `clientSecret`.
 
 A local file that attempts to set project-owned policy is rejected before composition. Likewise,
 project config cannot contain local-owned credentials or workstation-specific TLS paths.

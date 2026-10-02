@@ -13,7 +13,7 @@ export function anonymousCredentials(): CredentialProvider {
 
 export function cookieCredentials(): CredentialProvider {
   return {
-    resolve: () => ({ withCredentials: true }),
+    resolve: () => ({ includeCookies: true }),
   };
 }
 

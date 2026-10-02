@@ -3,13 +3,13 @@ import type { AxiosInstance, AxiosRequestConfig } from 'axios';
 export type Awaitable<T> = T | Promise<T>;
 
 export interface CredentialContext {
-  readonly method?: string;
-  readonly url?: string;
+  readonly method: string;
+  readonly url: string;
 }
 
 export interface ResolvedCredentials {
   readonly headers?: Readonly<Record<string, string>>;
-  readonly withCredentials?: boolean;
+  readonly includeCookies?: boolean;
 }
 
 export interface CredentialProvider {
@@ -28,6 +28,31 @@ export type HttpRequestConfig<TBody = unknown, TParams = unknown> = AxiosRequest
   TBody,
   TParams
 >;
+
+export interface SseEvent {
+  readonly type: string;
+  readonly data: string;
+  readonly id?: string;
+}
+
+export interface SseReconnectContext {
+  readonly error?: unknown;
+  readonly retryInMs: number;
+}
+
+export interface SseRequestConfig<TEvent = SseEvent, TParams = unknown> {
+  readonly headers?: Readonly<Record<string, string>>;
+  readonly params?: TParams;
+  readonly signal?: AbortSignal;
+  readonly decode?: (event: SseEvent) => TEvent;
+  readonly onConnected?: () => void;
+  readonly onReconnecting?: (context: SseReconnectContext) => void;
+}
+
+export interface SseStream<TEvent> extends AsyncIterable<TEvent> {
+  readonly lastEventId?: string;
+  close(): void;
+}
 
 export interface HttpClient {
   readonly axios: AxiosInstance;
@@ -63,4 +88,9 @@ export interface HttpClient {
     body?: TBody,
     config?: HttpRequestConfig<TBody, TParams>,
   ): Promise<TResponse>;
+
+  sse<TEvent = SseEvent, TParams = unknown>(
+    url: string,
+    config?: SseRequestConfig<TEvent, TParams>,
+  ): SseStream<TEvent>;
 }

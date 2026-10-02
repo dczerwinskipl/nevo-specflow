@@ -31,10 +31,10 @@ describe('createHttpClient', () => {
     const client = createHttpClient({
       credentials: customCredentials(({ method, url }) => ({
         headers: {
-          'X-Test-Method': method ?? 'missing',
-          'X-Test-Url': url ?? 'missing',
+          'X-Test-Method': method,
+          'X-Test-Url': url,
         },
-        withCredentials: true,
+        includeCookies: true,
       })),
     });
 

@@ -2,7 +2,15 @@ import axios, { AxiosHeaders, type AxiosResponse } from 'axios';
 
 import { anonymousCredentials } from './credentials';
 import { isHttpClientError, normalizeHttpError } from './errors';
-import type { HttpClient, HttpClientOptions, HttpRequestConfig } from './types';
+import { createSseStream } from './sse';
+import type {
+  HttpClient,
+  HttpClientOptions,
+  HttpRequestConfig,
+  SseEvent,
+  SseRequestConfig,
+  SseStream,
+} from './types';
 
 export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
   const instance = axios.create({
@@ -16,16 +24,16 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
 
   instance.interceptors.request.use(async (config) => {
     const resolved = await credentials.resolve({
-      method: config.method,
-      url: config.url,
+      method: config.method ?? 'get',
+      url: config.url ?? '',
     });
 
     if (!resolved) {
       return config;
     }
 
-    if (resolved.withCredentials !== undefined) {
-      config.withCredentials = resolved.withCredentials;
+    if (resolved.includeCookies !== undefined) {
+      config.withCredentials = resolved.includeCookies;
     }
 
     if (resolved.headers) {
@@ -131,6 +139,24 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           TParams
         >(url, body, config);
         return response.data;
+      });
+    },
+
+    sse<TEvent = SseEvent, TParams = unknown>(
+      url: string,
+      config?: SseRequestConfig<TEvent, TParams>,
+    ): SseStream<TEvent> {
+      const resolvedUrl = instance.getUri({
+        url,
+        params: config?.params,
+      });
+
+      return createSseStream({
+        url: resolvedUrl,
+        credentialUrl: url,
+        defaultHeaders: options.headers,
+        credentials,
+        config,
       });
     },
   };

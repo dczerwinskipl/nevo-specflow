@@ -9,16 +9,20 @@ import {
 
 describe('credential providers', () => {
   it('supports anonymous access without request credentials', async () => {
-    const resolved = await Promise.resolve(anonymousCredentials().resolve({}));
+    const resolved = await Promise.resolve(
+      anonymousCredentials().resolve({ method: 'get', url: '/resource' }),
+    );
 
     expect(resolved).toBeUndefined();
   });
 
   it('enables browser cookie credentials', async () => {
-    const resolved = await Promise.resolve(cookieCredentials().resolve({}));
+    const resolved = await Promise.resolve(
+      cookieCredentials().resolve({ method: 'get', url: '/resource' }),
+    );
 
     expect(resolved).toEqual({
-      withCredentials: true,
+      includeCookies: true,
     });
   });
 
@@ -26,13 +30,13 @@ describe('credential providers', () => {
     let token = 'first';
     const credentials = bearerTokenCredentials(() => token);
 
-    await expect(credentials.resolve({ url: '/one' })).resolves.toEqual({
+    await expect(credentials.resolve({ method: 'get', url: '/one' })).resolves.toEqual({
       headers: { Authorization: 'Bearer first' },
     });
 
     token = 'second';
 
-    await expect(credentials.resolve({ url: '/two' })).resolves.toEqual({
+    await expect(credentials.resolve({ method: 'get', url: '/two' })).resolves.toEqual({
       headers: { Authorization: 'Bearer second' },
     });
   });
@@ -40,7 +44,9 @@ describe('credential providers', () => {
   it('omits bearer credentials when the application has no token', async () => {
     const credentials = bearerTokenCredentials(() => undefined);
 
-    await expect(credentials.resolve({ url: '/resource' })).resolves.toBeUndefined();
+    await expect(
+      credentials.resolve({ method: 'get', url: '/resource' }),
+    ).resolves.toBeUndefined();
   });
 
   it('passes request context to application-owned credential flows', async () => {

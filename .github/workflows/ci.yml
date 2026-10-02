@@ -32,6 +32,12 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup
 
+      - name: Preview auth route formatting
+        run: |
+          pnpm exec prettier --write packages/specflow-runtime/src/auth/routes.ts
+          git diff -- packages/specflow-runtime/src/auth/routes.ts
+          git checkout -- packages/specflow-runtime/src/auth/routes.ts
+
       # The same canonical script contributors run locally: format:check, lint,
       # docs validation/index freshness, and the version.json transition gate.
       - name: Quality gate

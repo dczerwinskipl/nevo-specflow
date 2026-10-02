@@ -1,12 +1,7 @@
 import { EventSourceParserStream } from 'eventsource-parser/stream';
 
 import { HttpClientError } from './errors';
-import type {
-  CredentialProvider,
-  SseEvent,
-  SseRequestConfig,
-  SseStream,
-} from './types';
+import type { CredentialProvider, SseEvent, SseRequestConfig, SseStream } from './types';
 
 const DEFAULT_RETRY_MS = 3_000;
 const MAX_BUFFER_SIZE = 16 * 1024 * 1024;
@@ -173,9 +168,7 @@ export function createSseStream<TEvent, TParams>(
                 ...(value.id === undefined ? {} : { id: value.id }),
               };
 
-              yield options.config?.decode
-                ? options.config.decode(event)
-                : (event as TEvent);
+              yield options.config?.decode ? options.config.decode(event) : (event as TEvent);
             }
           } finally {
             reader.releaseLock();
@@ -211,7 +204,7 @@ export function createSseStream<TEvent, TParams>(
   async function waitBeforeReconnect(error?: unknown): Promise<boolean> {
     options.config?.onReconnecting?.({
       error,
-      retryInMs,
+      retryInMs: retryMs,
     });
 
     return waitForDelay(retryMs, controller.signal);

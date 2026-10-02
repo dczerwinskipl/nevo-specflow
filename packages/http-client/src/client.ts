@@ -1,4 +1,8 @@
-import axios, { AxiosHeaders, type AxiosResponse } from 'axios';
+import axios, {
+  AxiosHeaders,
+  type AxiosRequestConfig,
+  type AxiosResponse,
+} from 'axios';
 
 import { anonymousCredentials } from './credentials';
 import { isHttpClientError, normalizeHttpError } from './errors';
@@ -7,6 +11,7 @@ import type {
   HttpClient,
   HttpClientOptions,
   HttpRequestConfig,
+  HttpRequestOptions,
   SseEvent,
   SseRequestConfig,
   SseStream,
@@ -59,14 +64,19 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           AxiosResponse<TResponse, TBody, unknown, TParams>,
           TBody,
           TParams
-        >(config);
+        >({
+          method: config.method,
+          url: config.url,
+          data: config.body,
+          ...toAxiosConfig(config),
+        });
         return response.data;
       });
     },
 
     async get<TResponse, TParams>(
       url: string,
-      config?: HttpRequestConfig<unknown, TParams>,
+      config?: HttpRequestOptions<TParams>,
     ): Promise<TResponse> {
       return execute(async () => {
         const response = await instance.get<
@@ -74,14 +84,14 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           AxiosResponse<TResponse, unknown, unknown, TParams>,
           unknown,
           TParams
-        >(url, config);
+        >(url, toAxiosConfig(config));
         return response.data;
       });
     },
 
     async delete<TResponse, TParams>(
       url: string,
-      config?: HttpRequestConfig<unknown, TParams>,
+      config?: HttpRequestOptions<TParams>,
     ): Promise<TResponse> {
       return execute(async () => {
         const response = await instance.delete<
@@ -89,7 +99,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           AxiosResponse<TResponse, unknown, unknown, TParams>,
           unknown,
           TParams
-        >(url, config);
+        >(url, toAxiosConfig(config));
         return response.data;
       });
     },
@@ -97,7 +107,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
     async post<TResponse, TBody, TParams>(
       url: string,
       body?: TBody,
-      config?: HttpRequestConfig<TBody, TParams>,
+      config?: HttpRequestOptions<TParams>,
     ): Promise<TResponse> {
       return execute(async () => {
         const response = await instance.post<
@@ -105,7 +115,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           AxiosResponse<TResponse, TBody, unknown, TParams>,
           TBody,
           TParams
-        >(url, body, config);
+        >(url, body, toAxiosConfig(config));
         return response.data;
       });
     },
@@ -113,7 +123,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
     async put<TResponse, TBody, TParams>(
       url: string,
       body?: TBody,
-      config?: HttpRequestConfig<TBody, TParams>,
+      config?: HttpRequestOptions<TParams>,
     ): Promise<TResponse> {
       return execute(async () => {
         const response = await instance.put<
@@ -121,7 +131,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           AxiosResponse<TResponse, TBody, unknown, TParams>,
           TBody,
           TParams
-        >(url, body, config);
+        >(url, body, toAxiosConfig(config));
         return response.data;
       });
     },
@@ -129,7 +139,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
     async patch<TResponse, TBody, TParams>(
       url: string,
       body?: TBody,
-      config?: HttpRequestConfig<TBody, TParams>,
+      config?: HttpRequestOptions<TParams>,
     ): Promise<TResponse> {
       return execute(async () => {
         const response = await instance.patch<
@@ -137,7 +147,7 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
           AxiosResponse<TResponse, TBody, unknown, TParams>,
           TBody,
           TParams
-        >(url, body, config);
+        >(url, body, toAxiosConfig(config));
         return response.data;
       });
     },
@@ -159,6 +169,21 @@ export function createHttpClient(options: HttpClientOptions = {}): HttpClient {
         config,
       });
     },
+  };
+}
+
+function toAxiosConfig<TParams>(
+  config: HttpRequestOptions<TParams> | undefined,
+): AxiosRequestConfig<unknown, TParams> {
+  if (!config) {
+    return {};
+  }
+
+  return {
+    headers: config.headers,
+    params: config.params,
+    signal: config.signal,
+    timeout: config.timeoutMs,
   };
 }
 

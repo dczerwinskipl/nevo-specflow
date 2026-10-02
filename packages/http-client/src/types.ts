@@ -1,6 +1,8 @@
-import type { AxiosInstance, AxiosRequestConfig } from 'axios';
+import type { AxiosInstance } from 'axios';
 
 export type Awaitable<T> = T | Promise<T>;
+
+export type HttpMethod = 'delete' | 'get' | 'head' | 'options' | 'patch' | 'post' | 'put';
 
 export interface CredentialContext {
   readonly method: string;
@@ -24,10 +26,22 @@ export interface HttpClientOptions {
   readonly allowAbsoluteUrls?: boolean;
 }
 
-export type HttpRequestConfig<TBody = unknown, TParams = unknown> = AxiosRequestConfig<
-  TBody,
-  TParams
->;
+export interface HttpTransportConfig<TParams = unknown> {
+  readonly headers?: Readonly<Record<string, string>>;
+  readonly params?: TParams;
+  readonly signal?: AbortSignal;
+}
+
+export interface HttpRequestOptions<TParams = unknown> extends HttpTransportConfig<TParams> {
+  readonly timeoutMs?: number;
+}
+
+export interface HttpRequestConfig<TBody = unknown, TParams = unknown>
+  extends HttpRequestOptions<TParams> {
+  readonly method: HttpMethod;
+  readonly url: string;
+  readonly body?: TBody;
+}
 
 export interface SseEvent {
   readonly type: string;
@@ -40,10 +54,8 @@ export interface SseReconnectContext {
   readonly retryInMs: number;
 }
 
-export interface SseRequestConfig<TEvent = SseEvent, TParams = unknown> {
-  readonly headers?: Readonly<Record<string, string>>;
-  readonly params?: TParams;
-  readonly signal?: AbortSignal;
+export interface SseRequestConfig<TEvent = SseEvent, TParams = unknown>
+  extends HttpTransportConfig<TParams> {
   readonly decode?: (event: SseEvent) => TEvent;
   readonly onConnected?: () => void;
   readonly onReconnecting?: (context: SseReconnectContext) => void;
@@ -63,30 +75,30 @@ export interface HttpClient {
 
   get<TResponse = unknown, TParams = unknown>(
     url: string,
-    config?: HttpRequestConfig<unknown, TParams>,
+    config?: HttpRequestOptions<TParams>,
   ): Promise<TResponse>;
 
   delete<TResponse = unknown, TParams = unknown>(
     url: string,
-    config?: HttpRequestConfig<unknown, TParams>,
+    config?: HttpRequestOptions<TParams>,
   ): Promise<TResponse>;
 
   post<TResponse = unknown, TBody = unknown, TParams = unknown>(
     url: string,
     body?: TBody,
-    config?: HttpRequestConfig<TBody, TParams>,
+    config?: HttpRequestOptions<TParams>,
   ): Promise<TResponse>;
 
   put<TResponse = unknown, TBody = unknown, TParams = unknown>(
     url: string,
     body?: TBody,
-    config?: HttpRequestConfig<TBody, TParams>,
+    config?: HttpRequestOptions<TParams>,
   ): Promise<TResponse>;
 
   patch<TResponse = unknown, TBody = unknown, TParams = unknown>(
     url: string,
     body?: TBody,
-    config?: HttpRequestConfig<TBody, TParams>,
+    config?: HttpRequestOptions<TParams>,
   ): Promise<TResponse>;
 
   sse<TEvent = SseEvent, TParams = unknown>(

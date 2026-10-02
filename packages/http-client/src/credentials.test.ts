@@ -44,9 +44,7 @@ describe('credential providers', () => {
   it('omits bearer credentials when the application has no token', async () => {
     const credentials = bearerTokenCredentials(() => undefined);
 
-    await expect(
-      credentials.resolve({ method: 'get', url: '/resource' }),
-    ).resolves.toBeUndefined();
+    await expect(credentials.resolve({ method: 'get', url: '/resource' })).resolves.toBeUndefined();
   });
 
   it('passes request context to application-owned credential flows', async () => {

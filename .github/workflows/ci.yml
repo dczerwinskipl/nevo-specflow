@@ -32,6 +32,21 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup
 
+      - name: Preview CI docs formatting
+        run: |
+          pnpm exec prettier --write \
+            docs/engineering/repository/ci.md \
+            docs/engineering/repository/releasing.md \
+            tools/github/README.md
+          git diff -- \
+            docs/engineering/repository/ci.md \
+            docs/engineering/repository/releasing.md \
+            tools/github/README.md
+          git checkout -- \
+            docs/engineering/repository/ci.md \
+            docs/engineering/repository/releasing.md \
+            tools/github/README.md
+
       # The same canonical script contributors run locally: format:check, lint,
       # docs validation/index freshness, and the version.json transition gate.
       - name: Quality gate

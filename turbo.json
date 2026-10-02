@@ -22,16 +22,6 @@
     "dev": {
       "cache": false,
       "persistent": true
-    },
-    "@nevo/specflow#build": {
-      "dependsOn": ["nevo-repo-product#build", "^build"],
-      "inputs": ["$TURBO_DEFAULT$", "!**/*.md", "!**/*.stories.*", "!**/*.test.*"],
-      "outputs": ["dist/**"]
-    },
-    "@nevo/specflow#test": {
-      "dependsOn": ["nevo-repo-product#build", "^build"],
-      "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
-      "outputs": ["coverage/**"]
     }
   }
 }

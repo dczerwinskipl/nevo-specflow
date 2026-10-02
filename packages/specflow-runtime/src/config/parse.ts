@@ -188,7 +188,8 @@ function parsePasswordProvider(value: unknown): RuntimePasswordProviderConfig {
 
   const enabled = boolean(config.enabled, `${path}.enabled`);
   const accountsValue = config.accounts;
-  const accounts = accountsValue === undefined ? {} : record(accountsValue, `${path}.accounts`);
+  const accounts =
+    accountsValue === undefined ? {} : record(accountsValue, `${path}.accounts`);
   const result: Record<string, { userId: string; passwordHash: string }> = {};
 
   for (const [username, rawAccount] of Object.entries(accounts)) {
@@ -238,7 +239,10 @@ function parseGoogleProvider(value: unknown): RuntimeGoogleProviderConfig {
         `${path}.allowedEmails contains a duplicate email after normalization: '${email}'.`,
       );
     }
-    mappings[normalizedEmail] = nonEmptyString(rawUserId, `${path}.allowedEmails.${email}`);
+    mappings[normalizedEmail] = nonEmptyString(
+      rawUserId,
+      `${path}.allowedEmails.${email}`,
+    );
   }
 
   return {

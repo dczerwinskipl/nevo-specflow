@@ -84,7 +84,7 @@ describe('HttpClient.sse', () => {
   it('does not reconnect when application-owned decoding fails', async () => {
     const decodeError = new Error('invalid domain event');
     const reconnecting = vi.fn();
-    const fetchMock = vi.fn(async () => sseResponse('data: invalid\\n\\n'));
+    const fetchMock = vi.fn(async () => sseResponse('data: invalid\n\n'));
     vi.stubGlobal('fetch', fetchMock);
 
     const client = createHttpClient();

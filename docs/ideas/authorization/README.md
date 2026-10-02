@@ -633,7 +633,7 @@ can({
   subject,
   capability: SpecAuthorization.capabilities.Manage,
   resource: {
-    name: "spec",
+    name: 'spec',
     scope: request.body.scope,
   },
 });

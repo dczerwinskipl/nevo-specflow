@@ -27,7 +27,7 @@ related:
 nevo-specflow/
   apps/                 deployable applications        (workspace glob; empty until one lands)
   packages/             product packages (@nevo/* scope)
-    nevo-client/         @nevo/client              — product-neutral HTTP client and credential transport boundary
+    http-client/         @nevo/http-client              — product-neutral HTTP client and credential transport boundary
     specflow/            @nevo/specflow            — the `nevo-specflow` CLI shell + command composition
     specflow-runtime/  @nevo/specflow-runtime  — Runtime vertical: capability (.) + CLI adapter (./cli); private, bundled into specflow
   tools/                repository-internal tooling — never published, all TypeScript

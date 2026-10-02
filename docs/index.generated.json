@@ -2473,7 +2473,7 @@
         "describing the product CLI to a user or in product copy",
         "planning a new nevo-specflow command"
       ],
-      "summary": "The currently-implemented public surface of the nevo-specflow CLI — --help, --version, the Runtime server command, and the password-hash auth utility — plus the commands that do not exist yet.",
+      "summary": "The currently-implemented public surface of the nevo-specflow CLI — --help, --version, project initialization, the Runtime server command, and the password-hash auth utility — plus the commands that do not exist yet.",
       "related": [
         "docs.product-specflow-cli-readme",
         "engineering.cli.architecture",

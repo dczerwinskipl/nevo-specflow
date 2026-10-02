@@ -2,7 +2,12 @@ import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 
 import type { RuntimeConfig } from '../config/types.js';
-import { AuthErrorSchema, AuthSessionSchema, PasswordLoginBodySchema } from './contracts.js';
+import {
+  type AuthErrorCode,
+  AuthErrorSchema,
+  AuthSessionSchema,
+  PasswordLoginBodySchema,
+} from './contracts.js';
 import { createGoogleOidcClient, type GoogleOidcClient, normalizeEmail } from './google-oidc.js';
 import { authenticatePassword } from './password-auth.js';
 import {
@@ -194,6 +199,6 @@ function authCookieOptions(config: RuntimeConfig): AuthCookieOptions {
   };
 }
 
-function authError(reply: FastifyReply, statusCode: number, code: string) {
+function authError(reply: FastifyReply, statusCode: number, code: AuthErrorCode) {
   return reply.code(statusCode).send({ error: code });
 }

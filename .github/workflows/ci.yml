@@ -32,12 +32,6 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup
 
-      - name: Preview runtime config test formatting
-        run: |
-          pnpm exec prettier --write packages/specflow-runtime/test/config/runtime-config.test.ts
-          git diff -- packages/specflow-runtime/test/config/runtime-config.test.ts
-          git checkout -- packages/specflow-runtime/test/config/runtime-config.test.ts
-
       # The same canonical script contributors run locally: format:check, lint,
       # docs validation/index freshness, and the version.json transition gate.
       - name: Quality gate

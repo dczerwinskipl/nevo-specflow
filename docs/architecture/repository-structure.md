@@ -97,7 +97,7 @@ package's build/test/typecheck output. Repo-wide quality config (Prettier,
 EditorConfig, ESLint) is not global — it only affects `pnpm format` / `pnpm lint`,
 which run over the whole repo outside Turbo.
 
-Required CI checks are the stably-named jobs `pr-title`, `quality`, `test` and `build`.
+Required CI checks are the stably-named jobs `pr-title`, `quality`, `verify tests` and `build`.
 A check still reports success when affected filtering skipped its inner work, so a PR is
 never left permanently pending. Inspect what a change would run with
 `pnpm exec turbo run build test typecheck --affected --dry`.

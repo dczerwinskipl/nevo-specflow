@@ -17,11 +17,7 @@ export function mergeRuntimeConfigValues(projectValue: unknown, localValue: unkn
   return mergeValue(projectValue, localValue, []);
 }
 
-function mergeValue(
-  projectValue: unknown,
-  localValue: unknown,
-  path: readonly string[],
-): unknown {
+function mergeValue(projectValue: unknown, localValue: unknown, path: readonly string[]): unknown {
   if (!isRecord(projectValue) || !isRecord(localValue) || REPLACE_PATHS.has(path.join('.'))) {
     return localValue;
   }
@@ -29,10 +25,7 @@ function mergeValue(
   const result: Record<string, unknown> = { ...projectValue };
 
   for (const [key, localChild] of Object.entries(localValue)) {
-    result[key] =
-      key in result
-        ? mergeValue(result[key], localChild, [...path, key])
-        : localChild;
+    result[key] = key in result ? mergeValue(result[key], localChild, [...path, key]) : localChild;
   }
 
   return result;

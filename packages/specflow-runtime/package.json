@@ -13,6 +13,10 @@
     "./cli": {
       "types": "./dist/cli/command.d.ts",
       "default": "./dist/cli/command.js"
+    },
+    "./auth-contracts": {
+      "types": "./dist/auth/contracts.d.ts",
+      "default": "./dist/auth/contracts.js"
     }
   },
   "files": [

@@ -2,16 +2,8 @@ import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 
 import type { RuntimeConfig } from '../config/types.js';
-import {
-  AuthErrorSchema,
-  AuthSessionSchema,
-  PasswordLoginBodySchema,
-} from './contracts.js';
-import {
-  createGoogleOidcClient,
-  type GoogleOidcClient,
-  normalizeEmail,
-} from './google-oidc.js';
+import { AuthErrorSchema, AuthSessionSchema, PasswordLoginBodySchema } from './contracts.js';
+import { createGoogleOidcClient, type GoogleOidcClient, normalizeEmail } from './google-oidc.js';
 import { authenticatePassword } from './password-auth.js';
 import {
   AUTH_SESSION_TTL_MS,

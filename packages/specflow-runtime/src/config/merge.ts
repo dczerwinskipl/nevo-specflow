@@ -8,10 +8,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * Objects merge recursively. Arrays and scalar values replace the project value in full.
  * The rule is deliberately small and deterministic so configuration precedence is inspectable.
  */
-export function mergeRuntimeConfigValues(
-  projectValue: unknown,
-  localValue: unknown,
-): unknown {
+export function mergeRuntimeConfigValues(projectValue: unknown, localValue: unknown): unknown {
   if (!isRecord(projectValue) || !isRecord(localValue)) {
     return localValue;
   }
@@ -19,10 +16,7 @@ export function mergeRuntimeConfigValues(
   const result: Record<string, unknown> = { ...projectValue };
 
   for (const [key, localChild] of Object.entries(localValue)) {
-    result[key] =
-      key in result
-        ? mergeRuntimeConfigValues(result[key], localChild)
-        : localChild;
+    result[key] = key in result ? mergeRuntimeConfigValues(result[key], localChild) : localChild;
   }
 
   return result;

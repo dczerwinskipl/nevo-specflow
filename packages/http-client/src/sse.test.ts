@@ -61,6 +61,73 @@ describe('HttpClient.sse', () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/events?after=3');
   });
 
+  it('keeps absolute SSE URLs inside a configured base URL by default', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(sseResponse('data: protected\n\n'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createHttpClient({
+      baseURL: 'https://api.example.test',
+    });
+    const stream = client.sse('https://other.example.test/events');
+    const iterator = stream[Symbol.asyncIterator]();
+
+    await expect(iterator.next()).resolves.toMatchObject({
+      done: false,
+      value: { data: 'protected' },
+    });
+
+    stream.close();
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      'https://api.example.test/https://other.example.test/events',
+    );
+  });
+
+  it('clears Last-Event-ID after an empty id field', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockImplementationOnce((_input, init) => {
+        const headers = new Headers(init?.headers);
+        expect(headers.get('Last-Event-ID')).toBeNull();
+
+        return Promise.resolve(sseResponse('retry: 1\nid: 7\ndata: first\n\n'));
+      })
+      .mockImplementationOnce((_input, init) => {
+        const headers = new Headers(init?.headers);
+        expect(headers.get('Last-Event-ID')).toBe('7');
+
+        return Promise.resolve(sseResponse('id:\ndata: second\n\n'));
+      })
+      .mockImplementationOnce((_input, init) => {
+        const headers = new Headers(init?.headers);
+        expect(headers.get('Last-Event-ID')).toBeNull();
+
+        return Promise.resolve(sseResponse('data: third\n\n'));
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createHttpClient();
+    const stream = client.sse('/events');
+    const iterator = stream[Symbol.asyncIterator]();
+
+    await expect(iterator.next()).resolves.toMatchObject({
+      value: { data: 'first', id: '7' },
+    });
+    await expect(iterator.next()).resolves.toMatchObject({
+      value: { data: 'second', id: '' },
+    });
+    await expect(iterator.next()).resolves.toMatchObject({
+      value: { data: 'third' },
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(stream.lastEventId).toBe('');
+
+    stream.close();
+  });
+
   it('decodes domain events without treating heartbeat comments as messages', async () => {
     vi.stubGlobal(
       'fetch',

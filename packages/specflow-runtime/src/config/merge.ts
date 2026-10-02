@@ -18,11 +18,7 @@ export function mergeRuntimeConfigValues(projectValue: unknown, localValue: unkn
 }
 
 function mergeValue(projectValue: unknown, localValue: unknown, path: readonly string[]): unknown {
-  if (
-    !isRecord(projectValue) ||
-    !isRecord(localValue) ||
-    REPLACE_PATHS.has(path.join('.'))
-  ) {
+  if (!isRecord(projectValue) || !isRecord(localValue) || REPLACE_PATHS.has(path.join('.'))) {
     return localValue;
   }
 

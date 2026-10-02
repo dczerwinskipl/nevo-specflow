@@ -87,9 +87,7 @@ export function createAuthorizationRegistry(
     capabilitiesForRole(role) {
       const capabilities = roles.get(role);
       if (!capabilities) {
-        throw new AuthorizationConfigurationError(
-          `Unknown authorization role '${role}'.`,
-        );
+        throw new AuthorizationConfigurationError(`Unknown authorization role '${role}'.`);
       }
       return capabilities;
     },

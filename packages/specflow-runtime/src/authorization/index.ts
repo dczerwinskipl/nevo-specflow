@@ -1,12 +1,6 @@
-export {
-  type AuthorizationAccess,
-  resolveAuthorizationAccess,
-} from './access.js';
+export { type AuthorizationAccess, resolveAuthorizationAccess } from './access.js';
 export { parseCanonicalAssignmentScope } from './assignment-scope.js';
-export {
-  createSpecFlowAuthorization,
-  SPEC_FLOW_RESOURCES,
-} from './composition.js';
+export { createSpecFlowAuthorization, SPEC_FLOW_RESOURCES } from './composition.js';
 export {
   parseAuthorizationConfig,
   type RuntimeAuthorizationAssignmentConfig,

@@ -61,7 +61,7 @@ export const authorizationFeature: FastifyPluginCallback<AuthorizationFeatureOpt
               resource: request.body.resource,
             }).capabilities;
 
-      return { resource: request.body.resource, capabilities };
+      return { resource: request.body.resource, capabilities: [...capabilities] };
     },
   );
 

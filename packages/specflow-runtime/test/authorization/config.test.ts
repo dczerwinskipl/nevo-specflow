@@ -54,9 +54,7 @@ describe('SpecFlow authorization configuration', () => {
     expect(() =>
       parseAuthorizationConfig(
         {
-          assignments: [
-            { userId: 'u1', role: 'developer', scope: { specId: 'S1' } },
-          ],
+          assignments: [{ userId: 'u1', role: 'developer', scope: { specId: 'S1' } }],
         },
         knownUsers,
       ),
@@ -103,9 +101,7 @@ describe('SpecFlow authorization configuration', () => {
       'authorization:\n  assignments: []\n',
       'utf8',
     );
-    await expect(loadRuntimeConfig({ cwd })).rejects.toThrowError(
-      /authorization is project-only/,
-    );
+    await expect(loadRuntimeConfig({ cwd })).rejects.toThrowError(/authorization is project-only/);
   });
 
   it('does not allow project assignments to depend on local-only users', async () => {

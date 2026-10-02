@@ -5,10 +5,7 @@ import { nonEmptyString, onlyKeys, record } from '../config/value.js';
 
 const SCOPE_KEYS = new Set(['projectId', 'specId', 'sessionId']);
 
-export function parseCanonicalAssignmentScope(
-  value: unknown,
-  path: string,
-): Scope {
+export function parseCanonicalAssignmentScope(value: unknown, path: string): Scope {
   const scope = record(value, path);
   onlyKeys(scope, SCOPE_KEYS, path);
 

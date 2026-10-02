@@ -14,9 +14,7 @@ export const SPEC_FLOW_RESOURCES = [
   SettingsAuthorization,
 ] as const;
 
-export function createSpecFlowAuthorization(
-  config: RuntimeAuthorizationConfig,
-): Authorization {
+export function createSpecFlowAuthorization(config: RuntimeAuthorizationConfig): Authorization {
   return createAuthorization({
     resources: SPEC_FLOW_RESOURCES,
     roles: SPEC_FLOW_ROLES,

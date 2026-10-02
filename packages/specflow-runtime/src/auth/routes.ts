@@ -13,11 +13,7 @@ import { createOidcClient, type OidcClient } from './oidc.js';
 import { InMemoryOidcStartThrottle, type OidcStartThrottle } from './oidc-start-throttle.js';
 import { completeOidcLogin, startOidcLogin } from './oidc-login.js';
 import { loginWithPassword } from './password-login.js';
-import {
-  AUTH_SESSION_COOKIE,
-  getAuthSession,
-  logoutAuthSession,
-} from './session-access.js';
+import { AUTH_SESSION_COOKIE, getAuthSession, logoutAuthSession } from './session-access.js';
 import {
   AUTH_SESSION_TTL_MS,
   OIDC_TRANSACTION_TTL_MS,

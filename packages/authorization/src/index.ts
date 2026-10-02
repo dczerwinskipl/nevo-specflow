@@ -1,9 +1,5 @@
 export { AuthorizationConfigurationError } from './errors.js';
-export {
-  defineResource,
-  type DefinedResource,
-  type DefineResourceInput,
-} from './resource.js';
+export { defineResource, type DefinedResource, type DefineResourceInput } from './resource.js';
 export { createAuthorization } from './resolver.js';
 export type {
   Authorization,

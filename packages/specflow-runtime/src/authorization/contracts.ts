@@ -45,9 +45,7 @@ export const AuthorizationErrorSchema = Type.Object(
   { additionalProperties: false },
 );
 
-export type AuthorizationCapabilitiesRequest = Static<
-  typeof AuthorizationCapabilitiesBodySchema
->;
+export type AuthorizationCapabilitiesRequest = Static<typeof AuthorizationCapabilitiesBodySchema>;
 export type AuthorizationCapabilitiesResponse = Static<
   typeof AuthorizationCapabilitiesResponseSchema
 >;

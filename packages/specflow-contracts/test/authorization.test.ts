@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  SessionAuthorization,
-  SettingsAuthorization,
-  SpecAuthorization,
-} from '../src/index.js';
+import { SessionAuthorization, SettingsAuthorization, SpecAuthorization } from '../src/index.js';
 
 describe('SpecFlow authorization contracts', () => {
   it('defines stable feature-owned resource and capability ids', () => {

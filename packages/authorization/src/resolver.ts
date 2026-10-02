@@ -11,9 +11,7 @@ import type {
 } from './types.js';
 import { validateScope, validateSubject } from './validation.js';
 
-export function createAuthorization(
-  definition: AuthorizationDefinition,
-): Authorization {
+export function createAuthorization(definition: AuthorizationDefinition): Authorization {
   const registry = createAuthorizationRegistry(
     definition.resources,
     definition.roles,
@@ -26,9 +24,7 @@ export function createAuthorization(
     validateSubject(input.subject, 'subject');
     validateScope(input.resource.scope, 'resource.scope');
 
-    const allowedForResource = new Set(
-      registry.capabilitiesForResource(input.resource.name),
-    );
+    const allowedForResource = new Set(registry.capabilitiesForResource(input.resource.name));
     const effective = new Set<CapabilityId>();
 
     for (const assignment of registry.assignments) {
@@ -54,9 +50,7 @@ export function createAuthorization(
     resolveCapabilities,
 
     can(input) {
-      const resourceCapabilities = registry.capabilitiesForResource(
-        input.resource.name,
-      );
+      const resourceCapabilities = registry.capabilitiesForResource(input.resource.name);
 
       if (!resourceCapabilities.includes(input.capability)) {
         throw new AuthorizationConfigurationError(

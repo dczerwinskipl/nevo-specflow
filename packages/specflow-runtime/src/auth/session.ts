@@ -11,10 +11,10 @@ export interface AuthSession {
   readonly authenticated: boolean;
   readonly user?: AuthUser;
   readonly provider?: AuthProvider;
-  readonly availableProviders: readonly AuthProvider[];
+  readonly availableProviders: AuthProvider[];
 }
 
-export function configuredAuthProviders(auth: RuntimeAuthConfig): readonly AuthProvider[] {
+export function configuredAuthProviders(auth: RuntimeAuthConfig): AuthProvider[] {
   const providers: AuthProvider[] = [];
 
   if (auth.providers.password.enabled) {

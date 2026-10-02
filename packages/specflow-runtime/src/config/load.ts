@@ -8,7 +8,7 @@ import { assertNoProjectAuthSecrets } from '../auth/config.js';
 import {
   assertNoLocalAuthorization,
   validateProjectAuthorizationSource,
-} from '../authorization/config.js';
+} from '../authorization/config-source.js';
 import { RuntimeConfigError } from './error.js';
 import { mergeRuntimeConfigValues } from './merge.js';
 import { parseRuntimeConfig } from './parse.js';

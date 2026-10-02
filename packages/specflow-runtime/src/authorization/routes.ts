@@ -11,10 +11,8 @@ import {
   AuthorizationErrorSchema,
   type AuthorizationErrorResponse,
 } from './contracts.js';
-import {
-  createSpecFlowAuthorization,
-  resolveAuthorizationAccess,
-} from './service.js';
+import { resolveAuthorizationAccess } from './access.js';
+import { createSpecFlowAuthorization } from './composition.js';
 
 export interface AuthorizationFeatureOptions {
   readonly auth: RuntimeAuthConfig;

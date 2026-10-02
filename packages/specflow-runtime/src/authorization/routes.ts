@@ -1,10 +1,11 @@
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyPluginCallback } from 'fastify';
 
+import type { Authorization } from '@nevo/authorization';
+
 import type { RuntimeAuthConfig } from '../auth/config.js';
 import { AUTH_SESSION_COOKIE } from '../auth/session-access.js';
 import type { InMemoryAuthStore } from '../auth/session-store.js';
-import type { RuntimeAuthorizationConfig } from './config.js';
 import {
   AuthorizationCapabilitiesBodySchema,
   AuthorizationCapabilitiesResponseSchema,
@@ -12,11 +13,10 @@ import {
   type AuthorizationErrorResponse,
 } from './contracts.js';
 import { resolveAuthorizationAccess } from './access.js';
-import { createSpecFlowAuthorization } from './composition.js';
 
 export interface AuthorizationFeatureOptions {
   readonly auth: RuntimeAuthConfig;
-  readonly authorization: RuntimeAuthorizationConfig;
+  readonly authorization: Authorization;
   readonly store: InMemoryAuthStore;
 }
 
@@ -26,7 +26,6 @@ export const authorizationFeature: FastifyPluginCallback<AuthorizationFeatureOpt
   done,
 ) => {
   const routes = app.withTypeProvider<TypeBoxTypeProvider>();
-  const authorization = createSpecFlowAuthorization(options.authorization);
 
   routes.post(
     '/api/authorization/capabilities',
@@ -55,8 +54,8 @@ export const authorizationFeature: FastifyPluginCallback<AuthorizationFeatureOpt
 
       const capabilities =
         access.mode === 'disabled'
-          ? authorization.resourceCapabilities(request.body.resource.name)
-          : authorization.resolveCapabilities({
+          ? options.authorization.resourceCapabilities(request.body.resource.name)
+          : options.authorization.resolveCapabilities({
               subject: access.subject,
               resource: request.body.resource,
             }).capabilities;

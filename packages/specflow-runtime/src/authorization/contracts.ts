@@ -1,10 +1,17 @@
-import { Type, type Static } from 'typebox';
+import { Type } from 'typebox';
 
 import {
   SessionAuthorization,
   SettingsAuthorization,
   SpecAuthorization,
 } from '@nevo/specflow-contracts';
+export type {
+  AuthorizationCapabilitiesRequest,
+  AuthorizationCapabilitiesResponse,
+  AuthorizationErrorResponse,
+  AuthorizationResourceQuery,
+  SpecFlowAuthorizationResourceName,
+} from '@nevo/specflow-contracts/authorization';
 
 export const AuthorizationResourceNameSchema = Type.Union([
   Type.Literal(SpecAuthorization.name),
@@ -44,9 +51,3 @@ export const AuthorizationErrorSchema = Type.Object(
   { error: Type.Literal('authentication_required') },
   { additionalProperties: false },
 );
-
-export type AuthorizationCapabilitiesRequest = Static<typeof AuthorizationCapabilitiesBodySchema>;
-export type AuthorizationCapabilitiesResponse = Static<
-  typeof AuthorizationCapabilitiesResponseSchema
->;
-export type AuthorizationErrorResponse = Static<typeof AuthorizationErrorSchema>;

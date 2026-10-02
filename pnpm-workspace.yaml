@@ -7,8 +7,8 @@ packages:
   - "apps/*"
   - "packages/*"
   - "tools/*"
-  # packages/  -> real product packages (@nevo/*): specflow (the public `nevo-specflow`
-  #              CLI) and specflow-runtime (the Runtime capability).
+  # packages/  -> real product packages (@nevo/*): shared authorization/contracts
+  #              foundations plus the specflow CLI and Runtime capability.
   # apps/      -> deployable applications; still empty until one lands.
   # tools/     -> repository-internal tooling (docs, release, github, product).
 

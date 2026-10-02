@@ -7,6 +7,7 @@ import Fastify, {
 
 import { authFeature, type AuthFeatureDependencies } from '../auth/index.js';
 import { InMemoryAuthStore } from '../auth/session-store.js';
+import { createSpecFlowAuthorization } from '../authorization/composition.js';
 import { authorizationFeature } from '../authorization/routes.js';
 import type { RuntimeConfig } from '../config/types.js';
 
@@ -39,6 +40,9 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   dependencies: RuntimeAppDependencies = {},
 ): Promise<void> {
   const authStore = dependencies.auth?.store ?? new InMemoryAuthStore();
+  const authorization = createSpecFlowAuthorization(
+    config.authorization ?? { assignments: [] },
+  );
 
   await app.register(cookie);
   await app.register(authFeature, {
@@ -52,7 +56,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   });
   await app.register(authorizationFeature, {
     auth: config.auth,
-    authorization: config.authorization ?? { assignments: [] },
+    authorization,
     store: authStore,
   });
 }

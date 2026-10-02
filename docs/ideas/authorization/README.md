@@ -177,8 +177,9 @@ The package should not depend on:
 It should contain only the authorization model, validation/composition helpers, resource-definition
 helper, and resolver logic.
 
-SpecFlow-specific resource/capability definitions need a separate shared product boundary so Runtime
-and UI can import the same constants without either depending on the other:
+SpecFlow-specific resource/capability definitions and UI-facing authorization API types need a
+separate shared product boundary so Runtime and UI can import the same contracts without either
+depending on the other:
 
 ```text
 packages/specflow-contracts/
@@ -186,10 +187,12 @@ packages/specflow-contracts/
     src/spec/authorization.ts
     src/session/authorization.ts
     src/settings/authorization.ts
+    src/authorization.ts
 ```
 
-The initial package may contain only authorization declarations. It does not need to become a broad
-API-contract package in the same change.
+The initial package remains narrow: feature-owned resource/capability declarations plus the plain
+TypeScript request/response types for the authorization endpoint. Runtime-owned TypeBox/Fastify
+schemas stay in Runtime; UI does not depend on Runtime for shared authorization types.
 
 Dependency direction:
 

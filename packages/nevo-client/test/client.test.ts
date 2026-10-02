@@ -11,15 +11,15 @@ import {
 } from '../src';
 
 function jsonAdapter(assertConfig?: (config: Parameters<AxiosAdapter>[0]) => void): AxiosAdapter {
-  return async (config) => {
+  return (config) => {
     assertConfig?.(config);
-    return {
+    return Promise.resolve({
       data: { ok: true },
       status: 200,
       statusText: 'OK',
       headers: {},
       config,
-    };
+    });
   };
 }
 
@@ -91,9 +91,8 @@ describe('createHttpClient', () => {
 
   it('normalizes wrapper failures without taking over raw Axios recovery', async () => {
     const client = createHttpClient();
-    client.axios.defaults.adapter = async (config) => {
-      throw new AxiosError('offline', AxiosError.ERR_NETWORK, config);
-    };
+    client.axios.defaults.adapter = (config) =>
+      Promise.reject(new AxiosError('offline', AxiosError.ERR_NETWORK, config));
 
     await expect(client.get('/offline')).rejects.toMatchObject({
       kind: 'network',

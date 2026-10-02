@@ -7,7 +7,10 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "tsBuildInfoFile": "./.tsbuild/specflow-contracts.build.tsbuildinfo"
+    "tsBuildInfoFile": "./.tsbuild/specflow-contracts.build.tsbuildinfo",
+    "paths": {}
   },
-  "include": ["src/**/*.ts"]
+  "include": [
+    "src/**/*.ts"
+  ]
 }

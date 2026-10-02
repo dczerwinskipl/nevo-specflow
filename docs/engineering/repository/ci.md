@@ -34,7 +34,7 @@ Workflows under [`.github/workflows/`](../../../.github/workflows/):
 | `quality`    | `pnpm check:quality` (builds `tools/*`, then format, lint, `docs:check`, `version:check-transition`), `pnpm version:print`, an affected-graph dry-run, then `turbo run typecheck --affected`. |
 | `plan tests` | Resolves `turbo run test --affected --dry=json` into one independent test job per selected workspace.                                                                                         |
 | `test (...)` | Runs the selected workspace's `test` task. Product packages keep their package name; repository tools render as `tool/<name>` for readability.                                                |
-| `test`       | Required aggregate status. Its single `Verify tests` step fails when test planning or any selected workspace test fails.                                                                      |
+| `verify tests` | Required aggregate status. It fails when test planning or any selected workspace test fails.                                                                      |
 | `build`      | `turbo run build --affected`.                                                                                                                                                                 |
 
 `check:quality` is the **same script contributors run** (`pnpm check` = `check:quality`
@@ -94,7 +94,7 @@ check names — kept stable even if the steps inside them change:
 ```text
 pr-title
 quality
-test
+verify tests
 build
 ```
 
@@ -104,7 +104,7 @@ They are applied by
 never left permanently pending.
 
 The `release` workflow separately re-checks that a release branch's HEAD has `quality` +
-`test` + `build` green (not `pr-title` — that only runs on PRs) before it cuts a tag.
+`verify tests` + `build` green (not `pr-title` — that only runs on PRs) before it cuts a tag.
 
 Concurrency: a new commit on a PR cancels the previous PR run; `main` / `release/v*`
 runs always finish.

@@ -152,13 +152,13 @@ Minimum fine-grained PAT permissions, derived from the GitHub APIs the tool actu
 calls (push a branch by plumbing, list/open a PR, request auto-merge, and — on the
 `Release` workflow only — read the HEAD check-runs and create a tag + GitHub Release):
 
-| Permission    | Level        | Why                                                                         |
-| ------------- | ------------ | --------------------------------------------------------------------------- |
-| Contents      | Read & write | push the promotion / bump / advance branch; create the tag + GitHub Release |
-| Pull requests | Read & write | list the open PR, open it, request auto-merge                               |
+| Permission    | Level        | Why                                                                                 |
+| ------------- | ------------ | ----------------------------------------------------------------------------------- |
+| Contents      | Read & write | push the promotion / bump / advance branch; create the tag + GitHub Release         |
+| Pull requests | Read & write | list the open PR, open it, request auto-merge                                       |
 | Checks        | Read         | `Release` only — read the release-branch HEAD `quality`/`verify tests`/`build` runs |
-| Workflows     | Read         | only if a PR ever changes a file under `.github/workflows/`                 |
-| Metadata      | Read         | mandatory for every fine-grained PAT                                        |
+| Workflows     | Read         | only if a PR ever changes a file under `.github/workflows/`                         |
+| Metadata      | Read         | mandatory for every fine-grained PAT                                                |
 
 The workflow `permissions:` blocks mirror this exactly — `release.yml` is the only one
 with `checks: read`, because it is the only one that reads check-runs. No token value is

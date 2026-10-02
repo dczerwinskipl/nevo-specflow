@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createAuthCommand, createStartCommand } from '../src/cli/command.js';
 import { isSupportedPasswordHash, verifyPassword } from '../src/auth/password.js';
+import { PASSWORD_MAX_LENGTH } from '../src/auth/password-policy.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -73,6 +74,33 @@ describe('Runtime CLI adapters', () => {
     expect(out).toHaveLength(1);
     expect(isSupportedPasswordHash(out[0] ?? '')).toBe(true);
     await expect(verifyPassword('correct horse battery staple', out[0] ?? '')).resolves.toBe(true);
+  });
+
+  it('accepts the maximum password length supported by the login API', async () => {
+    const password = 'p'.repeat(PASSWORD_MAX_LENGTH);
+    const out: string[] = [];
+    const cmd = createAuthCommand({
+      stdout: (line) => out.push(line),
+      readPasswordFromStdin: () => Promise.resolve(`${password}\n`),
+    });
+    cmd.exitOverride();
+
+    await cmd.parseAsync(['node', 'auth', 'hash-password', '--password-stdin']);
+
+    expect(out).toHaveLength(1);
+    await expect(verifyPassword(password, out[0] ?? '')).resolves.toBe(true);
+  });
+
+  it('rejects password provisioning above the login API limit', async () => {
+    const cmd = createAuthCommand({
+      stdout: () => undefined,
+      readPasswordFromStdin: () => Promise.resolve(`${'p'.repeat(PASSWORD_MAX_LENGTH + 1)}\n`),
+    });
+    cmd.exitOverride();
+
+    await expect(
+      cmd.parseAsync(['node', 'auth', 'hash-password', '--password-stdin']),
+    ).rejects.toThrowError(new RegExp(`at most ${String(PASSWORD_MAX_LENGTH)} characters`));
   });
 
   it('rejects multi-line password stdin', async () => {

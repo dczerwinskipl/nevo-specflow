@@ -11,6 +11,7 @@ import {
   record,
 } from '../config/value.js';
 import { isSupportedPasswordHash } from './password.js';
+import { PASSWORD_USERNAME_MAX_LENGTH } from './password-policy.js';
 
 export type AuthMode = 'none' | 'required';
 
@@ -226,6 +227,11 @@ function parsePasswordProvider(value: unknown): RuntimePasswordProviderConfig {
 
   for (const [username, rawAccount] of Object.entries(accounts)) {
     nonEmptyKey(username, `${path}.accounts`);
+    if (username.length > PASSWORD_USERNAME_MAX_LENGTH) {
+      throw new RuntimeConfigError(
+        `${path}.accounts usernames must be at most ${PASSWORD_USERNAME_MAX_LENGTH} characters.`,
+      );
+    }
     const accountPath = `${path}.accounts.${username}`;
     const account = record(rawAccount, accountPath);
     onlyKeys(account, PASSWORD_ACCOUNT_KEYS, accountPath);

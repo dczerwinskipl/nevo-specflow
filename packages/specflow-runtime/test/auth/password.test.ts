@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { hashPassword, isSupportedPasswordHash, verifyPassword } from '../../src/auth/password.js';
+import { PASSWORD_MAX_LENGTH } from '../../src/auth/password-policy.js';
 
 const CURRENT_HASH =
   '$scrypt$16384$8$5$MDEyMzQ1Njc4OWFiY2RlZg$' + 'yMHgG_FDESRF0j5gjhGLotSMPdnfefUcNNFPyNoQtJE';
@@ -68,6 +69,12 @@ describe('password hashing', () => {
   it('requires the generated salt to match the supported format', async () => {
     await expect(hashPassword('password', { salt: Buffer.alloc(15) })).rejects.toThrowError(
       /exactly 16 bytes/,
+    );
+  });
+
+  it('rejects password hashes that could not be submitted through the login API', async () => {
+    await expect(hashPassword('p'.repeat(PASSWORD_MAX_LENGTH + 1))).rejects.toThrowError(
+      new RegExp(`at most ${String(PASSWORD_MAX_LENGTH)} characters`),
     );
   });
 

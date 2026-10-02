@@ -55,7 +55,9 @@ HTTP without TLS.
 ## Password authentication
 
 Password login is throttled before scrypt work, both per normalized account and per direct
-network source. Throttled requests return HTTP 429 with `Retry-After`.
+network source. Throttled requests return HTTP 429 with `Retry-After`. Password account
+names are limited to 256 characters and passwords to 1024 characters across configuration,
+HTTP validation, and password provisioning.
 
 The supported password hash format uses scrypt `N=2^14, r=8, p=5`. We intentionally do
 not accept the earlier weaker `p=1` profile.

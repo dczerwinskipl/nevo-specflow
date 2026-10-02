@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { assertNoProjectAuthSecrets, parseAuthConfig } from '../../src/auth/config.js';
+import { PASSWORD_USERNAME_MAX_LENGTH } from '../../src/auth/password-policy.js';
 
 const PASSWORD_HASH =
   '$scrypt$16384$8$5$MDEyMzQ1Njc4OWFiY2RlZg$yMHgG_FDESRF0j5gjhGLotSMPdnfefUcNNFPyNoQtJE';
@@ -8,6 +9,12 @@ const PASSWORD_HASH =
 function requiredAuthConfig() {
   const allowedEmails: Record<string, string> = {
     'demo@example.com': 'demo-user',
+  };
+  const accounts: Record<string, { userId: string; passwordHash: string }> = {
+    demo: {
+      userId: 'demo-user',
+      passwordHash: PASSWORD_HASH,
+    },
   };
 
   return {
@@ -18,12 +25,7 @@ function requiredAuthConfig() {
     providers: {
       password: {
         enabled: true,
-        accounts: {
-          demo: {
-            userId: 'demo-user',
-            passwordHash: PASSWORD_HASH,
-          },
-        },
+        accounts,
       },
       oidc: {
         enabled: true,
@@ -49,6 +51,31 @@ describe('auth configuration', () => {
         },
       },
     });
+  });
+
+  it('keeps configured password usernames within the HTTP login boundary', () => {
+    const maxUsername = 'u'.repeat(PASSWORD_USERNAME_MAX_LENGTH);
+    const accepted = requiredAuthConfig();
+    accepted.providers.password.accounts = {
+      [maxUsername]: {
+        userId: 'demo-user',
+        passwordHash: PASSWORD_HASH,
+      },
+    };
+
+    expect(() => parseAuthConfig(accepted)).not.toThrow();
+
+    const rejected = requiredAuthConfig();
+    rejected.providers.password.accounts = {
+      [`${maxUsername}x`]: {
+        userId: 'demo-user',
+        passwordHash: PASSWORD_HASH,
+      },
+    };
+
+    expect(() => parseAuthConfig(rejected)).toThrowError(
+      new RegExp(`usernames must be at most ${String(PASSWORD_USERNAME_MAX_LENGTH)} characters`),
+    );
   });
 
   it('requires HTTPS OIDC issuers', () => {

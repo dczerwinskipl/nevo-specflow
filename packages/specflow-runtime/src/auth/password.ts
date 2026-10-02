@@ -1,5 +1,7 @@
 import { randomBytes, scrypt as nodeScrypt, timingSafeEqual } from 'node:crypto';
 
+import { PASSWORD_MAX_LENGTH } from './password-policy.js';
+
 const FORMAT = 'scrypt';
 const COST = 16_384;
 const BLOCK_SIZE = 8;
@@ -121,5 +123,8 @@ function derive(password: string, salt: Uint8Array): Promise<Buffer> {
 function assertPassword(password: string): void {
   if (password.length === 0) {
     throw new Error('Password must not be empty.');
+  }
+  if (password.length > PASSWORD_MAX_LENGTH) {
+    throw new Error(`Password must be at most ${PASSWORD_MAX_LENGTH} characters.`);
   }
 }

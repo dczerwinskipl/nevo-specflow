@@ -1,9 +1,11 @@
 import { Type, type Static } from 'typebox';
 
+import { PASSWORD_MAX_LENGTH, PASSWORD_USERNAME_MAX_LENGTH } from './password-policy.js';
+
 export const PasswordLoginBodySchema = Type.Object(
   {
-    username: Type.String({ minLength: 1, maxLength: 256 }),
-    password: Type.String({ minLength: 1, maxLength: 1_024 }),
+    username: Type.String({ minLength: 1, maxLength: PASSWORD_USERNAME_MAX_LENGTH }),
+    password: Type.String({ minLength: 1, maxLength: PASSWORD_MAX_LENGTH }),
   },
   { additionalProperties: false },
 );

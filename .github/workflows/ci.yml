@@ -59,8 +59,9 @@ jobs:
       - uses: ./.github/actions/setup
 
       # Resolve the same Turbo task graph used for execution, then fan only package
-      # test tasks out into independent GitHub jobs. PRs keep task-level affected
-      # detection; main / release exercise every package test task.
+      # test tasks out into independent GitHub jobs. On PRs, --affected selects changed
+      # workspaces plus downstream dependents from the declared workspace graph; main /
+      # release exercise every package test task.
       - name: Resolve package tests
         id: plan
         shell: bash
@@ -114,10 +115,9 @@ jobs:
           PACKAGE: ${{ matrix.package }}
         run: pnpm exec turbo run test --filter="$PACKAGE"
 
-  # Keep the exact required-status context "test" stable while package tests run
-  # independently. The human-readable step makes the aggregate role explicit.
-  test:
-    name: test
+  # Aggregate the independently-running package tests into one stable required check.
+  verify-tests:
+    name: verify tests
     needs:
       - test-plan
       - package-test

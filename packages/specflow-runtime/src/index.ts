@@ -15,3 +15,11 @@ export {
   type AuthSession,
   type AuthUser,
 } from './auth/session.js';
+
+export {
+  AuthErrorSchema,
+  AuthProviderSchema,
+  AuthSessionSchema,
+  AuthUserSchema,
+  PasswordLoginBodySchema,
+} from './auth/contracts.js';

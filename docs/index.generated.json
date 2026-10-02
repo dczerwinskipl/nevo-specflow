@@ -567,6 +567,36 @@
       ]
     },
     {
+      "id": "ideas.authorization.foundation",
+      "type": "architecture",
+      "title": "Authorization capabilities foundation",
+      "status": "current",
+      "file": "docs/ideas/authorization/README.md",
+      "read_when": [
+        "implementing authorization in SpecFlow",
+        "adding role-based capabilities",
+        "exposing effective permissions to the UI",
+        "adding scoped access to specs or sessions"
+      ],
+      "summary": "Implemented lightweight authorization foundation for SpecFlow: feature-owned resource/capability definitions, application-owned roles, scoped role assignments, backend capability resolution, and shared UI-facing capability contracts without a policy engine.",
+      "related": [
+        "ideas.readme",
+        "architecture.runtime.ownership-and-lifecycle"
+      ],
+      "scope": "shared",
+      "areas": [
+        "runtime",
+        "server",
+        "ui"
+      ],
+      "tags": [
+        "authorization",
+        "capabilities",
+        "roles",
+        "scope"
+      ]
+    },
+    {
       "id": "ideas.developer-workspace.code-inspection-and-editing",
       "type": "architecture",
       "title": "Code inspection, editing, and full IDE integration",

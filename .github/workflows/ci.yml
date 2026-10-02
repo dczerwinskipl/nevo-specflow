@@ -46,16 +46,95 @@ jobs:
       - name: Typecheck
         run: pnpm exec turbo run typecheck ${{ env.AFFECTED }}
 
-  test:
-    name: test
+  test-plan:
+    name: test plan
     runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.plan.outputs.packages }}
+      has_tests: ${{ steps.plan.outputs.has_tests }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
-      - name: Test
-        run: pnpm exec turbo run test ${{ env.AFFECTED }}
+
+      # Resolve the same Turbo task graph used for execution, then fan only package
+      # test tasks out into independent GitHub jobs. PRs keep task-level affected
+      # detection; main / release exercise every package test task.
+      - name: Resolve package tests
+        id: plan
+        shell: bash
+        run: |
+          pnpm exec turbo run test ${{ env.AFFECTED }} --dry=json > .turbo-test-plan.json
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+
+          const plan = JSON.parse(fs.readFileSync('.turbo-test-plan.json', 'utf8'));
+          const packages = [
+            ...new Set(
+              plan.tasks
+                .filter(
+                  (task) =>
+                    task.task === 'test' &&
+                    typeof task.taskId === 'string' &&
+                    !task.taskId.startsWith('//#'),
+                )
+                .map((task) => task.taskId.slice(0, task.taskId.lastIndexOf('#'))),
+            ),
+          ].sort();
+
+          fs.appendFileSync(
+            process.env.GITHUB_OUTPUT,
+            `packages=${JSON.stringify(packages)}\nhas_tests=${packages.length > 0}\n`,
+          );
+          NODE
+
+  package-test:
+    name: test (${{ matrix.package }})
+    needs: test-plan
+    if: needs.test-plan.outputs.has_tests == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJSON(needs.test-plan.outputs.packages) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Test ${{ matrix.package }}
+        env:
+          PACKAGE: ${{ matrix.package }}
+        run: pnpm exec turbo run test --filter="$PACKAGE"
+
+  # Keep the stable required-status context while package tests run independently.
+  test:
+    name: test
+    needs:
+      - test-plan
+      - package-test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify package test results
+        env:
+          PLAN_RESULT: ${{ needs.test-plan.result }}
+          PACKAGE_RESULT: ${{ needs.package-test.result }}
+          HAS_TESTS: ${{ needs.test-plan.outputs.has_tests }}
+        shell: bash
+        run: |
+          if [ "$PLAN_RESULT" != "success" ]; then
+            echo "Test planning failed: $PLAN_RESULT"
+            exit 1
+          fi
+
+          if [ "$HAS_TESTS" = "true" ] && [ "$PACKAGE_RESULT" != "success" ]; then
+            echo "At least one package test job failed: $PACKAGE_RESULT"
+            exit 1
+          fi
+
+          echo "Package tests passed (or no package test task was affected)."
 
   build:
     name: build

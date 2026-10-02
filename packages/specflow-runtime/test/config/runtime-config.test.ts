@@ -31,6 +31,10 @@ auth:
 `;
 
 function requiredAuthConfig() {
+  const allowedEmails: Record<string, string> = {
+    'demo@example.com': 'demo-user',
+  };
+
   return {
     server: {
       host: '127.0.0.1',
@@ -57,9 +61,7 @@ function requiredAuthConfig() {
           enabled: true,
           clientId: 'example.apps.googleusercontent.com',
           clientSecret: 'fake-local-secret',
-          allowedEmails: {
-            'demo@example.com': 'demo-user',
-          },
+          allowedEmails,
         },
       },
     },

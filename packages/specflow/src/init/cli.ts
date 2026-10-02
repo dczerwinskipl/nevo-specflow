@@ -3,6 +3,8 @@ import { relative } from 'node:path';
 import { initRuntime, type RuntimeInitPrompter } from '@nevo/specflow-runtime';
 import { Command } from 'commander';
 
+import { resolveProjectLayout, type ProjectLayout } from '../project/layout.js';
+
 import {
   initializeProject,
   type InitializeProjectOptions,
@@ -13,6 +15,7 @@ export interface ProjectInitCommandContext {
   readonly cwd: string;
   readonly stdout: (line: string) => void;
   readonly prompter?: RuntimeInitPrompter;
+  readonly resolveLayout?: (cwd: string) => Promise<ProjectLayout>;
   readonly initialize?: (options: InitializeProjectOptions) => Promise<InitializeProjectResult>;
 }
 
@@ -25,8 +28,9 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
         throw new Error('Interactive project initialization is not available in this CLI context.');
       }
 
+      const layout = await (context.resolveLayout ?? resolveProjectLayout)(context.cwd);
       const result = await (context.initialize ?? initializeProject)({
-        cwd: context.cwd,
+        layout,
         initRuntime: () => initRuntime({ prompter }),
       });
 

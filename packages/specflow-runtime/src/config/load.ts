@@ -1,6 +1,6 @@
 import { constants } from 'node:fs';
 import { access, readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { isAbsolute } from 'node:path';
 
 import { parse } from 'yaml';
 
@@ -14,28 +14,28 @@ import { parseRuntimeConfig } from './parse.js';
 import type { LoadedRuntimeConfig } from './types.js';
 import { isRecord } from './value.js';
 
-export const DEFAULT_PROJECT_CONFIG_PATH = '.nevo/config.yaml';
-export const DEFAULT_LOCAL_CONFIG_PATH = '.nevo/local/config.yaml';
-
 export interface LoadRuntimeConfigOptions {
-  readonly cwd?: string;
-  readonly projectPath?: string;
-  readonly localPath?: string;
+  readonly projectConfigPath: string;
+  readonly localConfigPath?: string;
 }
 
 export async function loadRuntimeConfig(
-  options: LoadRuntimeConfigOptions = {},
+  options: LoadRuntimeConfigOptions,
 ): Promise<LoadedRuntimeConfig> {
-  const cwd = resolve(options.cwd ?? process.cwd());
-  const projectPath = resolve(cwd, options.projectPath ?? DEFAULT_PROJECT_CONFIG_PATH);
-  const localPath = resolve(cwd, options.localPath ?? DEFAULT_LOCAL_CONFIG_PATH);
+  assertAbsolutePath(options.projectConfigPath, 'projectConfigPath');
+  if (options.localConfigPath) {
+    assertAbsolutePath(options.localConfigPath, 'localConfigPath');
+  }
+
+  const projectPath = options.projectConfigPath;
+  const localPath = options.localConfigPath;
 
   const projectDocument = await readRequiredConfig(projectPath);
   const projectSource = runtimeSection(projectDocument, projectPath, true);
   assertProjectRuntimeConfigOwnership(projectSource);
 
-  const localExists = await fileExists(localPath);
-  const localDocument = localExists ? await readRequiredConfig(localPath) : undefined;
+  const localExists = localPath ? await fileExists(localPath) : false;
+  const localDocument = localExists && localPath ? await readRequiredConfig(localPath) : undefined;
   const localSource =
     localDocument === undefined ? undefined : runtimeSection(localDocument, localPath, false);
   if (localSource) {
@@ -48,9 +48,15 @@ export async function loadRuntimeConfig(
     config: parseRuntimeConfig(merged),
     sources: {
       project: projectPath,
-      ...(localExists ? { local: localPath } : {}),
+      ...(localExists && localPath ? { local: localPath } : {}),
     },
   };
+}
+
+function assertAbsolutePath(path: string, name: string): void {
+  if (!isAbsolute(path)) {
+    throw new RuntimeConfigError(`${name} must be an absolute path supplied by the product shell.`);
+  }
 }
 
 async function readRequiredConfig(path: string): Promise<unknown> {

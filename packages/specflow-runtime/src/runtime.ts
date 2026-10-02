@@ -12,6 +12,7 @@ import {
 } from './server/app.js';
 
 export interface RuntimeStartOptions extends LoadRuntimeConfigOptions {
+  readonly projectRoot: string;
   readonly dependencies?: RuntimeAppDependencies;
 }
 
@@ -20,11 +21,11 @@ export interface RuntimeHandle {
   close(): Promise<void>;
 }
 
-export async function startRuntime(options: RuntimeStartOptions = {}): Promise<RuntimeHandle> {
+export async function startRuntime(options: RuntimeStartOptions): Promise<RuntimeHandle> {
   const loaded = await loadRuntimeConfig(options);
   const app = await createListeningApp(
     loaded.config,
-    options.cwd ?? process.cwd(),
+    options.projectRoot,
     options.dependencies,
   );
 

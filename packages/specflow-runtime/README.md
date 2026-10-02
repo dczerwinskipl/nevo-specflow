@@ -72,6 +72,8 @@ The Runtime keeps coercion and additional-property removal disabled. Invalid req
 payloads fail with Fastify's `400 Bad Request` before the handler runs. Domain and
 configuration invariants still belong to the feature/domain layer rather than AJV.
 
-Feature contracts live with the feature (for auth, `src/auth/contracts.ts`) and exported
-schemas may be reused by other workspace consumers such as the SpecFlow UI. Fastify/AJV
-remains the backend validator; TypeBox supplies JSON Schema plus static type inference.
+Feature contracts live with the feature (for auth, `src/auth/contracts.ts`). Other
+workspace consumers such as the SpecFlow UI can import the schemas and inferred types from
+`@nevo/specflow-runtime/auth-contracts` without depending on the Runtime server entrypoint.
+Fastify/AJV remains the backend validator; TypeBox supplies JSON Schema plus static type
+inference.

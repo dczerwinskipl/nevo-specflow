@@ -495,8 +495,13 @@ authorization:
         projectId: P1
 ```
 
-`userId` must reference an existing `auth.users.<userId>`. Runtime validates this at startup and
-converts it to the generic subject `{ kind: "user", id: userId }`.
+`userId` must reference an existing project-defined `auth.users.<userId>`. Runtime validates this
+against the project auth configuration before local overrides are merged, then converts it to the
+generic subject `{ kind: "user", id: userId }`.
+
+A project authorization assignment must not depend on a user that exists only in
+`.nevo-local/nevo-specflow.yaml`. This keeps committed authorization policy self-contained and
+prevents a project from gaining machine-specific identities through private local configuration.
 
 Role definitions themselves remain application code, not configuration. The initial SpecFlow role
 composition should live under the Runtime authorization composition boundary, for example
@@ -1029,7 +1034,8 @@ At minimum, validate:
 - duplicate capability ids;
 - roles referencing unknown capabilities;
 - assignments referencing unknown roles;
-- SpecFlow assignments referencing unknown `auth.users` ids;
+- SpecFlow assignments referencing unknown project `auth.users` ids;
+- SpecFlow assignments referencing users introduced only by local config;
 - malformed scope values;
 - non-canonical SpecFlow assignment scopes, including missing parent dimensions;
 - any `authorization` section present in local config;
@@ -1191,7 +1197,7 @@ Also preserve these decisions:
 - features own resource/capability definitions in the SpecFlow shared contracts boundary;
 - the application owns roles and assignments;
 - SpecFlow authorization configuration is project-only;
-- SpecFlow assignments reference canonical `auth.users` ids;
+- SpecFlow assignments reference canonical project-defined `auth.users` ids;
 - SpecFlow assignment scopes are validated as canonical parent-chain shapes;
 - Runtime owns effective-subject resolution for each auth mode;
 - enforcement scope is rebuilt from trusted domain data;

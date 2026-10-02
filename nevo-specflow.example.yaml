@@ -4,7 +4,7 @@
 server:
   host: 127.0.0.1
   port: 4318
-  # Required once an OIDC provider is enabled. Do not derive this from a wildcard bind address.
+  # Required for non-loopback required-auth deployments and for OIDC. Use the external HTTPS origin.
   # publicOrigin: https://specflow.example.test:4318
   tls:
     enabled: false

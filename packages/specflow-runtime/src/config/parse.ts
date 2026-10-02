@@ -51,8 +51,18 @@ export function parseRuntimeConfig(value: unknown): RuntimeConfig {
     );
   }
 
+  if (tlsEnabled && publicOrigin && new URL(publicOrigin).protocol !== 'https:') {
+    throw new RuntimeConfigError(
+      'server.publicOrigin must use HTTPS when server.tls.enabled=true.',
+    );
+  }
+
   const auth = parseAuthConfig(root.auth);
-  validateAuthRuntimeContext(auth, { ...(publicOrigin ? { publicOrigin } : {}) });
+  validateAuthRuntimeContext(auth, {
+    bindHost: host,
+    tlsEnabled,
+    ...(publicOrigin ? { publicOrigin } : {}),
+  });
 
   return {
     server: {

@@ -1,5 +1,5 @@
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import type { FastifyInstance, RawServerBase } from 'fastify';
+import type { FastifyPluginCallback } from 'fastify';
 
 import type { RuntimeAuthConfig } from './config.js';
 import {
@@ -8,6 +8,7 @@ import {
   AuthSessionSchema,
   PasswordLoginBodySchema,
 } from './contracts.js';
+import { InMemoryPasswordLoginThrottle, type PasswordLoginThrottle } from './login-throttle.js';
 import { createOidcClient, type OidcClient } from './oidc.js';
 import { completeOidcLogin, startOidcLogin } from './oidc-login.js';
 import { loginWithPassword } from './password-login.js';
@@ -23,28 +24,30 @@ const OIDC_COOKIE = 'nevo_oidc';
 const OIDC_CALLBACK_PATH = '/api/auth/oidc/callback';
 const PASSWORD_LOGIN_BODY_LIMIT = 4_096;
 
-export interface AuthFeatureConfig {
-  readonly auth: RuntimeAuthConfig;
-  readonly publicOrigin?: string;
-  readonly secureCookies: boolean;
-}
-
 export interface AuthFeatureDependencies {
   readonly store?: InMemoryAuthStore;
   readonly oidc?: OidcClient;
+  readonly passwordLoginThrottle?: PasswordLoginThrottle;
 }
 
-export function registerAuthFeature<RawServer extends RawServerBase>(
-  app: FastifyInstance<RawServer>,
-  config: AuthFeatureConfig,
-  dependencies: AuthFeatureDependencies = {},
-): void {
+export interface AuthFeatureOptions {
+  readonly auth: RuntimeAuthConfig;
+  readonly publicOrigin?: string;
+  readonly secureCookies: boolean;
+  readonly dependencies?: AuthFeatureDependencies;
+}
+
+export const authFeature: FastifyPluginCallback<AuthFeatureOptions> = (app, options, done) => {
   const routes = app.withTypeProvider<TypeBoxTypeProvider>();
-  const store = dependencies.store ?? new InMemoryAuthStore();
+  const store = options.dependencies?.store ?? new InMemoryAuthStore();
+  const passwordLoginThrottle =
+    options.dependencies?.passwordLoginThrottle ?? new InMemoryPasswordLoginThrottle();
   const oidc =
-    dependencies.oidc ??
-    (config.auth.providers.oidc.enabled ? createOidcClient(config.auth.providers.oidc) : undefined);
-  const cookieOptions = authCookieOptions(config.secureCookies);
+    options.dependencies?.oidc ??
+    (options.auth.providers.oidc.enabled
+      ? createOidcClient(options.auth.providers.oidc)
+      : undefined);
+  const cookieOptions = authCookieOptions(options.secureCookies);
 
   routes.get(
     '/api/auth/session',
@@ -55,7 +58,7 @@ export function registerAuthFeature<RawServer extends RawServerBase>(
         },
       },
     },
-    (request) => getAuthSession(config.auth, store, request.cookies[SESSION_COOKIE]),
+    (request) => getAuthSession(options.auth, store, request.cookies[SESSION_COOKIE]),
   );
 
   routes.post(
@@ -68,20 +71,28 @@ export function registerAuthFeature<RawServer extends RawServerBase>(
           200: AuthSessionSchema,
           401: AuthErrorSchema,
           404: AuthErrorSchema,
+          429: AuthErrorSchema,
         },
       },
     },
     async (request, reply) => {
       const result = await loginWithPassword(
-        config.auth,
+        options.auth,
         store,
+        passwordLoginThrottle,
+        request.ip,
         request.cookies[SESSION_COOKIE],
         request.body.username,
         request.body.password,
       );
 
       if (!result.ok) {
-        reply.code(result.error === 'invalid_credentials' ? 401 : 404);
+        if (result.error === 'rate_limited') {
+          reply.header('Retry-After', String(result.retryAfterSeconds));
+          reply.code(429);
+        } else {
+          reply.code(result.error === 'invalid_credentials' ? 401 : 404);
+        }
         return authError(result.error);
       }
 
@@ -103,7 +114,7 @@ export function registerAuthFeature<RawServer extends RawServerBase>(
       },
     },
     async (_request, reply) => {
-      const result = await startOidcLogin(config.auth, store, oidc, oidcCallbackUrl(config));
+      const result = await startOidcLogin(options.auth, store, oidc, oidcCallbackUrl(options));
       if (!result.ok) {
         reply.code(404);
         return authError(result.error);
@@ -130,9 +141,9 @@ export function registerAuthFeature<RawServer extends RawServerBase>(
       },
     },
     async (request, reply) => {
-      const callbackUrl = new URL(request.url, requirePublicOrigin(config));
+      const callbackUrl = new URL(request.url, requirePublicOrigin(options));
       const result = await completeOidcLogin(
-        config.auth,
+        options.auth,
         store,
         oidc,
         request.cookies[OIDC_COOKIE],
@@ -156,7 +167,7 @@ export function registerAuthFeature<RawServer extends RawServerBase>(
         ...cookieOptions,
         maxAge: Math.floor(AUTH_SESSION_TTL_MS / 1000),
       });
-      return reply.redirect(new URL('/', requirePublicOrigin(config)).toString());
+      return reply.redirect(new URL('/', requirePublicOrigin(options)).toString());
     },
   );
 
@@ -166,17 +177,19 @@ export function registerAuthFeature<RawServer extends RawServerBase>(
     reply.clearCookie(OIDC_COOKIE, cookieOptions);
     return reply.code(204).send();
   });
+
+  done();
+};
+
+function oidcCallbackUrl(options: AuthFeatureOptions): string {
+  return new URL(OIDC_CALLBACK_PATH, `${requirePublicOrigin(options)}/`).toString();
 }
 
-function oidcCallbackUrl(config: AuthFeatureConfig): string {
-  return new URL(OIDC_CALLBACK_PATH, `${requirePublicOrigin(config)}/`).toString();
-}
-
-function requirePublicOrigin(config: AuthFeatureConfig): string {
-  if (!config.publicOrigin) {
+function requirePublicOrigin(options: AuthFeatureOptions): string {
+  if (!options.publicOrigin) {
     throw new Error('OIDC requires server.publicOrigin.');
   }
-  return config.publicOrigin;
+  return options.publicOrigin;
 }
 
 function oidcErrorStatus(

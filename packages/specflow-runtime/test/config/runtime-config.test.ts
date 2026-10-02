@@ -119,7 +119,7 @@ describe('runtime configuration', () => {
     config.auth.providers.password.accounts.demo.passwordHash = '$scrypt$32768$8$1$invalid$invalid';
 
     expect(() => parseRuntimeConfig(config)).toThrowError(
-      'auth.providers.password.accounts.demo.passwordHash must use the supported SpecFlow password hash format.',
+      'auth.providers.password.accounts.demo.passwordHash must use a supported SpecFlow password hash format.',
     );
   });
 
@@ -161,6 +161,107 @@ describe('runtime configuration', () => {
     expect(() => parseRuntimeConfig({ ...config, server })).toThrowError(
       /publicOrigin is required/,
     );
+  });
+
+  it('rejects required auth on a non-loopback bind without an HTTPS public origin', () => {
+    expect(() =>
+      parseRuntimeConfig({
+        server: {
+          host: '0.0.0.0',
+          port: 4318,
+          tls: { enabled: false },
+        },
+        auth: {
+          mode: 'required',
+          users: { 'demo-user': { name: 'Demo User' } },
+          providers: {
+            password: {
+              enabled: true,
+              accounts: {
+                demo: {
+                  userId: 'demo-user',
+                  passwordHash: SUPPORTED_PASSWORD_HASH,
+                },
+              },
+            },
+            oidc: { enabled: false },
+          },
+        },
+      }),
+    ).toThrowError(/requires an HTTPS server\.publicOrigin/);
+  });
+
+  it('allows required password auth without publicOrigin only on loopback', () => {
+    expect(
+      parseRuntimeConfig({
+        server: {
+          host: '127.0.0.1',
+          port: 4318,
+          tls: { enabled: false },
+        },
+        auth: {
+          mode: 'required',
+          users: { 'demo-user': { name: 'Demo User' } },
+          providers: {
+            password: {
+              enabled: true,
+              accounts: {
+                demo: {
+                  userId: 'demo-user',
+                  passwordHash: SUPPORTED_PASSWORD_HASH,
+                },
+              },
+            },
+            oidc: { enabled: false },
+          },
+        },
+      }),
+    ).toMatchObject({
+      server: { host: '127.0.0.1' },
+      auth: { mode: 'required' },
+    });
+  });
+
+  it('rejects a remote HTTP public origin for required auth', () => {
+    const config = requiredAuthConfig();
+    config.server.publicOrigin = 'http://specflow.example.test:4318';
+
+    expect(() => parseRuntimeConfig(config)).toThrowError(/requires an HTTPS server\.publicOrigin/);
+  });
+
+  it('allows HTTP publicOrigin for local development only when bind and origin are loopback', () => {
+    const config = requiredAuthConfig();
+    config.server.publicOrigin = 'http://localhost:4318';
+    config.auth.providers.oidc.enabled = false;
+
+    expect(parseRuntimeConfig(config)).toMatchObject({
+      server: { publicOrigin: 'http://localhost:4318' },
+      auth: { mode: 'required' },
+    });
+  });
+
+  it('rejects an HTTP publicOrigin when Runtime TLS is enabled', () => {
+    expect(() =>
+      parseRuntimeConfig({
+        server: {
+          host: '127.0.0.1',
+          port: 4318,
+          publicOrigin: 'http://localhost:4318',
+          tls: {
+            enabled: true,
+            certFile: '.nevo-local/tls/cert.pem',
+            keyFile: '.nevo-local/tls/key.pem',
+          },
+        },
+        auth: {
+          mode: 'none',
+          providers: {
+            password: { enabled: false },
+            oidc: { enabled: false },
+          },
+        },
+      }),
+    ).toThrowError(/publicOrigin must use HTTPS when server\.tls\.enabled=true/);
   });
 
   it('requires both TLS files when TLS is enabled', () => {

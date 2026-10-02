@@ -131,15 +131,52 @@ export function parseAuthConfig(value: unknown): RuntimeAuthConfig {
   };
 }
 
+export interface AuthRuntimeContext {
+  readonly bindHost: string;
+  readonly publicOrigin?: string;
+  readonly tlsEnabled: boolean;
+}
+
 export function validateAuthRuntimeContext(
   auth: RuntimeAuthConfig,
-  context: { readonly publicOrigin?: string },
+  context: AuthRuntimeContext,
 ): void {
   if (auth.providers.oidc.enabled && !context.publicOrigin) {
     throw new RuntimeConfigError(
       'server.publicOrigin is required when the OIDC provider is enabled.',
     );
   }
+
+  if (auth.mode !== 'required') {
+    return;
+  }
+
+  if (!context.publicOrigin) {
+    if (!context.tlsEnabled && isLoopbackHost(context.bindHost)) {
+      return;
+    }
+    throw new RuntimeConfigError(
+      'auth.mode=required requires an HTTPS server.publicOrigin unless Runtime binds only to loopback for local development.',
+    );
+  }
+
+  const origin = new URL(context.publicOrigin);
+  if (origin.protocol === 'https:') {
+    return;
+  }
+
+  if (
+    !context.tlsEnabled &&
+    origin.protocol === 'http:' &&
+    isLoopbackHost(context.bindHost) &&
+    isLoopbackHost(origin.hostname)
+  ) {
+    return;
+  }
+
+  throw new RuntimeConfigError(
+    'auth.mode=required requires an HTTPS server.publicOrigin; HTTP is allowed only when both bind host and public origin are loopback.',
+  );
 }
 
 export function assertNoProjectAuthSecrets(value: unknown): void {
@@ -211,7 +248,7 @@ function parsePasswordProvider(value: unknown): RuntimePasswordProviderConfig {
     const passwordHash = nonEmptyString(account.passwordHash, `${accountPath}.passwordHash`);
     if (enabled && !isSupportedPasswordHash(passwordHash)) {
       throw new RuntimeConfigError(
-        `${accountPath}.passwordHash must use the supported SpecFlow password hash format.`,
+        `${accountPath}.passwordHash must use a supported SpecFlow password hash format.`,
       );
     }
 
@@ -275,4 +312,24 @@ function assertUserExists(
   if (!(userId in users)) {
     throw new RuntimeConfigError(`${path} references unknown user '${userId}'.`);
   }
+}
+
+function isLoopbackHost(host: string): boolean {
+  const normalized = host
+    .trim()
+    .toLowerCase()
+    .replace(/^\[(.*)\]$/u, '$1');
+  if (normalized === 'localhost' || normalized.endsWith('.localhost')) {
+    return true;
+  }
+  if (normalized === '::1' || normalized === '0:0:0:0:0:0:0:1') {
+    return true;
+  }
+
+  const parts = normalized.split('.');
+  return (
+    parts.length === 4 &&
+    parts[0] === '127' &&
+    parts.every((part) => /^(0|[1-9][0-9]{0,2})$/u.test(part) && Number(part) <= 255)
+  );
 }

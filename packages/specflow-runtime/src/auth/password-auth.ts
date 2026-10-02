@@ -3,7 +3,7 @@ import { verifyPassword } from './password.js';
 import { configuredUser, type AuthUser } from './session.js';
 
 const DUMMY_PASSWORD_HASH =
-  '$scrypt$16384$8$1$MDEyMzQ1Njc4OWFiY2RlZg$tjK03tRvEjqCcPwmgtddMkgjlXrk8U_b9rIvfeBMKCc';
+  '$scrypt$16384$8$5$MDEyMzQ1Njc4OWFiY2RlZg$yMHgG_FDESRF0j5gjhGLotSMPdnfefUcNNFPyNoQtJE';
 
 export async function authenticatePassword(
   auth: RuntimeAuthConfig,

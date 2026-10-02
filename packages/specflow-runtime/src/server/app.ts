@@ -5,7 +5,7 @@ import Fastify, {
   type RawServerBase,
 } from 'fastify';
 
-import { registerAuthFeature, type AuthFeatureDependencies } from '../auth/index.js';
+import { authFeature, type AuthFeatureDependencies } from '../auth/index.js';
 import type { RuntimeConfig } from '../config/types.js';
 
 export interface RuntimeAppDependencies {
@@ -37,16 +37,13 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   dependencies: RuntimeAppDependencies = {},
 ): Promise<void> {
   await app.register(cookie);
-  registerAuthFeature(
-    app,
-    {
-      auth: config.auth,
-      ...(config.server.publicOrigin ? { publicOrigin: config.server.publicOrigin } : {}),
-      secureCookies:
-        config.server.tls.enabled ||
-        (config.server.publicOrigin !== undefined &&
-          new URL(config.server.publicOrigin).protocol === 'https:'),
-    },
-    dependencies.auth,
-  );
+  await app.register(authFeature, {
+    auth: config.auth,
+    ...(config.server.publicOrigin ? { publicOrigin: config.server.publicOrigin } : {}),
+    secureCookies:
+      config.server.tls.enabled ||
+      (config.server.publicOrigin !== undefined &&
+        new URL(config.server.publicOrigin).protocol === 'https:'),
+    ...(dependencies.auth ? { dependencies: dependencies.auth } : {}),
+  });
 }

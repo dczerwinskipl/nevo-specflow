@@ -180,6 +180,30 @@ describe('authentication HTTP API', () => {
     }
   });
 
+  it('returns 429 with Retry-After when password login is throttled', async () => {
+    const app = await createRuntimeApp(passwordConfig(), {
+      auth: {
+        passwordLoginThrottle: {
+          consume: () => ({ allowed: false, retryAfterSeconds: 60 }),
+          resetAccount: () => undefined,
+        },
+      },
+    });
+    try {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/auth/password/login',
+        payload: { username: 'demo', password: 'irrelevant' },
+      });
+
+      expect(response.statusCode).toBe(429);
+      expect(response.headers['retry-after']).toBe('60');
+      expect(response.json()).toEqual({ error: 'rate_limited' });
+    } finally {
+      await app.close();
+    }
+  });
+
   it('keeps configured local identity explicitly unauthenticated in none mode', async () => {
     const config = passwordConfig();
     const noneConfig: RuntimeConfig = {

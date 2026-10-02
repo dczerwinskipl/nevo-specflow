@@ -1,5 +1,1 @@
-export {
-  registerAuthFeature,
-  type AuthFeatureConfig,
-  type AuthFeatureDependencies,
-} from './routes.js';
+export { authFeature, type AuthFeatureDependencies, type AuthFeatureOptions } from './routes.js';

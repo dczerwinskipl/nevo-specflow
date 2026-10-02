@@ -2,25 +2,33 @@ import { describe, expect, it } from 'vitest';
 
 import { hashPassword, isSupportedPasswordHash, verifyPassword } from '../../src/auth/password.js';
 
-const SUPPORTED_HASH =
+const CURRENT_HASH =
+  '$scrypt$16384$8$5$MDEyMzQ1Njc4OWFiY2RlZg$' + 'yMHgG_FDESRF0j5gjhGLotSMPdnfefUcNNFPyNoQtJE';
+const LEGACY_HASH =
   '$scrypt$16384$8$1$MDEyMzQ1Njc4OWFiY2RlZg$' + 'tjK03tRvEjqCcPwmgtddMkgjlXrk8U_b9rIvfeBMKCc';
 
 describe('password hashing', () => {
-  it('hashes and verifies a password with the supported scrypt format', async () => {
+  it('generates new hashes with the current scrypt parameters', async () => {
     const hash = await hashPassword('correct horse battery staple', {
       salt: Buffer.from('0123456789abcdef', 'utf8'),
     });
 
-    expect(hash).toBe(SUPPORTED_HASH);
+    expect(hash).toBe(CURRENT_HASH);
     expect(isSupportedPasswordHash(hash)).toBe(true);
     await expect(verifyPassword('correct horse battery staple', hash)).resolves.toBe(true);
     await expect(verifyPassword('wrong password', hash)).resolves.toBe(false);
   });
 
-  it.each(['$scrypt$32768$8$1', '$scrypt$16384$16$1', '$scrypt$16384$8$2'])(
-    'rejects changed scrypt parameters: %s',
+  it('continues to verify the previous scrypt work factor', async () => {
+    expect(isSupportedPasswordHash(LEGACY_HASH)).toBe(true);
+    await expect(verifyPassword('correct horse battery staple', LEGACY_HASH)).resolves.toBe(true);
+    await expect(verifyPassword('wrong password', LEGACY_HASH)).resolves.toBe(false);
+  });
+
+  it.each(['$scrypt$32768$8$5', '$scrypt$16384$16$5', '$scrypt$16384$8$2'])(
+    'rejects unsupported scrypt parameters: %s',
     (prefix) => {
-      expect(isSupportedPasswordHash(SUPPORTED_HASH.replace('$scrypt$16384$8$1', prefix))).toBe(
+      expect(isSupportedPasswordHash(CURRENT_HASH.replace('$scrypt$16384$8$5', prefix))).toBe(
         false,
       );
     },
@@ -28,14 +36,14 @@ describe('password hashing', () => {
 
   it('rejects a hash with the wrong salt length', () => {
     const shortSalt = Buffer.alloc(15, 1).toString('base64url');
-    const hash = SUPPORTED_HASH.replace('MDEyMzQ1Njc4OWFiY2RlZg', shortSalt);
+    const hash = CURRENT_HASH.replace('MDEyMzQ1Njc4OWFiY2RlZg', shortSalt);
 
     expect(isSupportedPasswordHash(hash)).toBe(false);
   });
 
   it('rejects a hash with the wrong derived key length', () => {
     const shortKey = Buffer.alloc(31, 2).toString('base64url');
-    const hash = SUPPORTED_HASH.replace('tjK03tRvEjqCcPwmgtddMkgjlXrk8U_b9rIvfeBMKCc', shortKey);
+    const hash = CURRENT_HASH.replace('yMHgG_FDESRF0j5gjhGLotSMPdnfefUcNNFPyNoQtJE', shortKey);
 
     expect(isSupportedPasswordHash(hash)).toBe(false);
   });
@@ -43,12 +51,12 @@ describe('password hashing', () => {
   it('rejects malformed or non-canonical base64url', () => {
     expect(
       isSupportedPasswordHash(
-        SUPPORTED_HASH.replace('MDEyMzQ1Njc4OWFiY2RlZg', 'MDEyMzQ1Njc4OWFiY2RlZg='),
+        CURRENT_HASH.replace('MDEyMzQ1Njc4OWFiY2RlZg', 'MDEyMzQ1Njc4OWFiY2RlZg='),
       ),
     ).toBe(false);
     expect(
       isSupportedPasswordHash(
-        SUPPORTED_HASH.replace('MDEyMzQ1Njc4OWFiY2RlZg', 'MDEyMzQ1Njc4OWFiY2RlZ*'),
+        CURRENT_HASH.replace('MDEyMzQ1Njc4OWFiY2RlZg', 'MDEyMzQ1Njc4OWFiY2RlZ*'),
       ),
     ).toBe(false);
   });

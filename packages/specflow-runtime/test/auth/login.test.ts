@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { RuntimeAuthConfig } from '../../src/auth/config.js';
+import { InMemoryPasswordLoginThrottle } from '../../src/auth/login-throttle.js';
 import type { OidcClient } from '../../src/auth/oidc.js';
 import { completeOidcLogin, startOidcLogin } from '../../src/auth/oidc-login.js';
 import { loginWithPassword } from '../../src/auth/password-login.js';
@@ -44,11 +45,14 @@ function store(): InMemoryAuthStore {
 describe('auth login operations', () => {
   it('replaces the current session after successful password login', async () => {
     const sessions = store();
+    const throttle = new InMemoryPasswordLoginThrottle();
     const previous = sessions.createSession({ userId: 'demo-user', provider: 'oidc' });
 
     const result = await loginWithPassword(
       auth,
       sessions,
+      throttle,
+      '127.0.0.1',
       previous,
       'demo',
       'correct horse battery staple',
@@ -69,6 +73,32 @@ describe('auth login operations', () => {
         provider: 'password',
       });
     }
+  });
+
+  it('does not run password verification after the throttle rejects an attempt', async () => {
+    const sessions = store();
+    const throttle = new InMemoryPasswordLoginThrottle({
+      accountLimit: 1,
+      sourceLimit: 10,
+      accountWindowMs: 60_000,
+      sourceWindowMs: 60_000,
+    });
+
+    await expect(
+      loginWithPassword(auth, sessions, throttle, '127.0.0.1', undefined, 'demo', 'wrong'),
+    ).resolves.toMatchObject({ ok: false, error: 'invalid_credentials' });
+
+    await expect(
+      loginWithPassword(
+        auth,
+        sessions,
+        throttle,
+        '127.0.0.1',
+        undefined,
+        'demo',
+        'correct horse battery staple',
+      ),
+    ).resolves.toMatchObject({ ok: false, error: 'rate_limited' });
   });
 
   it('owns OIDC transaction and identity-to-session orchestration', async () => {

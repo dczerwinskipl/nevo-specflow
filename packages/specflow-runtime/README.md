@@ -20,7 +20,7 @@ application operations, route adapter, session lifecycle, password authenticatio
 generic OIDC adapter, and in-memory stores. The root `src/config/` code owns project/local
 file loading and composition, but delegates auth-specific parsing, secret policy, and
 merge policy to the auth feature. `src/server/` is the composition root for application-wide
-Fastify construction and feature registration.
+Fastify construction. Auth is registered as an encapsulated Fastify feature plugin.
 
 HTTP request validation belongs in Fastify route schemas. Fastify/AJV rejects malformed
 `body`, `query`, and `params` before a handler runs; handlers should not repeat
@@ -41,7 +41,11 @@ the local override rather than additive merging.
 Supported auth modes:
 
 - `none`: no login providers may be enabled; `localUserId` may provide attribution.
-- `required`: at least one provider must be enabled; `localUserId` is forbidden.
+- `required`: at least one provider must be enabled; `localUserId` is forbidden. The
+  externally visible `server.publicOrigin` must use HTTPS. Plain HTTP is accepted only
+  for local development when both the Runtime bind host and public origin are loopback;
+  password-only loopback development may omit `publicOrigin`. A reverse-proxy deployment
+  may keep Runtime TLS disabled when its configured public origin is HTTPS.
 
 ## HTTP authentication API
 
@@ -54,6 +58,10 @@ The current Runtime exposes:
 - `POST /api/auth/logout`
 
 Password login request bodies are validated by Fastify/AJV before entering the handler.
+Password attempts are throttled before scrypt work both per normalized account and per
+direct network source; successful authentication clears the account counter but does not
+reset the source limit. Newly generated password hashes use scrypt `N=2^14, r=8, p=5`;
+the previous `N=2^14, r=8, p=1` format remains verify-only for compatibility.
 Authentication sessions are server-side, bounded, and expiring. Cookies are
 `HttpOnly`, `SameSite=Lax`, and `Secure` when TLS/HTTPS is used. OIDC uses
 authorization code flow with PKCE, state, and nonce and keeps provider tokens out of the
@@ -61,7 +69,8 @@ application session. The issuer is configured under `auth.providers.oidc`; the l
 shows Google, but the Runtime itself is provider-agnostic. The current supported profile is a
 confidential OIDC client using `client_secret_post`, which is the `openid-client` default used
 by this adapter. Issuers must use HTTPS. Identity mapping expects a verified standard `email`
-claim. Broader client-authentication profiles are not implied by the generic provider name.
+claim in the ID token. UserInfo fallback is not part of the current profile. Broader
+client-authentication profiles are not implied by the generic provider name.
 
 When TLS is enabled the Runtime uses HTTP/2 with HTTP/1.1 fallback on the same configured
 port.

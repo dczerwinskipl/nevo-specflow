@@ -20,16 +20,18 @@ afterEach(() => {
 
 describe('HttpClient.sse', () => {
   it('uses the shared base URL and exposes named, unnamed, and multiline events', async () => {
-    const fetchMock = vi.fn(async () =>
-      sseResponse(
-        ': heartbeat\n\n' +
-          'event: turn.updated\n' +
-          'id: 7\n' +
-          'data: first\n' +
-          'data: second\n\n' +
-          'data: plain\n\n',
-      ),
-    );
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        sseResponse(
+          ': heartbeat\n\n' +
+            'event: turn.updated\n' +
+            'id: 7\n' +
+            'data: first\n' +
+            'data: second\n\n' +
+            'data: plain\n\n',
+        ),
+      );
     vi.stubGlobal('fetch', fetchMock);
 
     const client = createHttpClient({ baseURL: '/api' });
@@ -62,9 +64,11 @@ describe('HttpClient.sse', () => {
   it('decodes domain events without treating heartbeat comments as messages', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () =>
-        sseResponse(': keep-alive\n\nevent: update\ndata: {"value":42}\n\n'),
-      ),
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(
+          sseResponse(': keep-alive\n\nevent: update\ndata: {"value":42}\n\n'),
+        ),
     );
 
     const client = createHttpClient();
@@ -84,7 +88,9 @@ describe('HttpClient.sse', () => {
   it('does not reconnect when application-owned decoding fails', async () => {
     const decodeError = new Error('invalid domain event');
     const reconnecting = vi.fn();
-    const fetchMock = vi.fn(async () => sseResponse('data: invalid\n\n'));
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(sseResponse('data: invalid\n\n'));
     vi.stubGlobal('fetch', fetchMock);
 
     const client = createHttpClient();
@@ -108,19 +114,21 @@ describe('HttpClient.sse', () => {
     const reconnecting = vi.fn();
     const fetchMock = vi
       .fn<typeof fetch>()
-      .mockImplementationOnce(async (_input, init) => {
+      .mockImplementationOnce((_input, init) => {
         const headers = new Headers(init?.headers);
         expect(headers.get('Authorization')).toBe('Bearer first');
         expect(headers.get('Last-Event-ID')).toBeNull();
 
-        return sseResponse('retry: 1\nid: 7\nevent: update\ndata: first\n\n');
+        return Promise.resolve(
+          sseResponse('retry: 1\nid: 7\nevent: update\ndata: first\n\n'),
+        );
       })
-      .mockImplementationOnce(async (_input, init) => {
+      .mockImplementationOnce((_input, init) => {
         const headers = new Headers(init?.headers);
         expect(headers.get('Authorization')).toBe('Bearer second');
         expect(headers.get('Last-Event-ID')).toBe('7');
 
-        return sseResponse('event: update\ndata: second\n\n');
+        return Promise.resolve(sseResponse('event: update\ndata: second\n\n'));
       });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -159,9 +167,9 @@ describe('HttpClient.sse', () => {
     let requestSignal: AbortSignal | null = null;
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (_input, init) => {
-        requestSignal = init?.signal as AbortSignal;
-        return sseResponse('data: one\n\n');
+      vi.fn<typeof fetch>().mockImplementation((_input, init) => {
+        requestSignal = init?.signal ?? null;
+        return Promise.resolve(sseResponse('data: one\n\n'));
       }),
     );
 

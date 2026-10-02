@@ -91,9 +91,7 @@ describe('createHttpClient', () => {
       code: AxiosError.ERR_NETWORK,
     });
 
-    const normalized = normalizeHttpError(
-      new AxiosError('offline', AxiosError.ERR_NETWORK),
-    );
+    const normalized = normalizeHttpError(new AxiosError('offline', AxiosError.ERR_NETWORK));
     expect(normalized).toBeInstanceOf(HttpClientError);
   });
 });

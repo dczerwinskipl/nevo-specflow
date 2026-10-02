@@ -29,13 +29,13 @@ Workflows under [`.github/workflows/`](../../../.github/workflows/):
 
 ## `ci` jobs
 
-| Job         | Steps                                                                                                                                                                                         |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `quality`   | `pnpm check:quality` (builds `tools/*`, then format, lint, `docs:check`, `version:check-transition`), `pnpm version:print`, an affected-graph dry-run, then `turbo run typecheck --affected`. |
-| `plan tests` | Resolves `turbo run test --affected --dry=json` into one independent test job per selected workspace.                                                                                        |
-| `test (...)` | Runs the selected workspace's `test` task. Product packages keep their package name; repository tools render as `tool/<name>` for readability.                                            |
-| `test`      | Required aggregate status. Its single `Verify tests` step fails when test planning or any selected workspace test fails.                                                                     |
-| `build`     | `turbo run build --affected`.                                                                                                                                                                 |
+| Job          | Steps                                                                                                                                                                                         |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `quality`    | `pnpm check:quality` (builds `tools/*`, then format, lint, `docs:check`, `version:check-transition`), `pnpm version:print`, an affected-graph dry-run, then `turbo run typecheck --affected`. |
+| `plan tests` | Resolves `turbo run test --affected --dry=json` into one independent test job per selected workspace.                                                                                         |
+| `test (...)` | Runs the selected workspace's `test` task. Product packages keep their package name; repository tools render as `tool/<name>` for readability.                                                |
+| `test`       | Required aggregate status. Its single `Verify tests` step fails when test planning or any selected workspace test fails.                                                                      |
+| `build`      | `turbo run build --affected`.                                                                                                                                                                 |
 
 `check:quality` is the **same script contributors run** (`pnpm check` = `check:quality`
 
@@ -59,6 +59,11 @@ still build through Turbo's `^build` edges.
 For example, if `@nevo/specflow-runtime` declares a dependency on
 `@nevo/http-client`, changing the HTTP client selects the client, Runtime, and any
 further dependents for testing; changing Runtime does not select the HTTP client's tests.
+The same rule applies to repository tools: `@nevo/specflow` declares
+`nevo-repo-product` as a development dependency because its build invokes that tool, so
+a product-tool change selects both workspaces while a SpecFlow change only requires the
+tool's `build` prerequisite, not its tests.
+
 The `quality` job prints `turbo run … --dry=text` so you can see exactly which
 workspaces were selected and why.
 
@@ -70,8 +75,8 @@ Concretely, for the product graph:
 | `packages/specflow/**` (the CLI)                | `@nevo/specflow` (+ its build prerequisites `@nevo/specflow-runtime`, `nevo-repo-product`). |
 | `packages/specflow-runtime/**` (the capability) | `@nevo/specflow-runtime` **and** its dependent `@nevo/specflow`.                            |
 
-`quality:build-tools` stays scoped to `nevo-repo-docs` + `nevo-repo-release` (what the
-quality gate itself needs). Product packaging never runs as an install/`prepare` script,
+`quality:build-tools` stays scoped to `nevo-repo-agents` + `nevo-repo-docs` +
+`nevo-repo-release` (what the quality gate itself needs). Product packaging never runs as an install/`prepare` script,
 so it cannot reintroduce a repo-wide pre-build.
 
 ## Product packaging (not a CI job)
@@ -109,7 +114,8 @@ runs always finish.
 Turbo hashes `pnpm-lock.yaml` and root `package.json` automatically, plus every file in
 `turbo.json#globalDependencies` — deliberately just `tsconfig.base.json`, which every
 package's `tsconfig` extends. A lockfile bump or a base-tsconfig change rebuilds and
-retests the whole graph.
+retests the whole graph. These repository-global inputs are the intentional exception to
+changed-package + dependents selection.
 
 Prettier / EditorConfig / ESLint config are **not** global inputs: they only change
 the repo-wide `format` / `lint` results, which run outside Turbo, so changing them does
@@ -121,5 +127,5 @@ not invalidate unrelated package builds.
 pnpm check                                             # the full gate (= what CI runs)
 pnpm check:quality                                     # just the repo-wide gate
 pnpm exec turbo run build test typecheck --affected --dry   # what a PR would select
-pnpm exec turbo run test --filter nevo-repo-release    # one package
+pnpm exec turbo run test --filter nevo-repo-release    # one internal tool
 ```

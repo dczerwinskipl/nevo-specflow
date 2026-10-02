@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  hashPassword,
-  isSupportedPasswordHash,
-  verifyPassword,
-} from '../../src/auth/password.js';
+import { hashPassword, isSupportedPasswordHash, verifyPassword } from '../../src/auth/password.js';
 
 describe('password hashing', () => {
   it('hashes and verifies a password with the supported scrypt format', async () => {

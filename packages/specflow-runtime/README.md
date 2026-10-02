@@ -60,3 +60,18 @@ When TLS is enabled the Runtime uses HTTP/2 with HTTP/1.1 fallback on the same c
 port.
 
 This package is private and bundled into the single `@nevo/specflow` distributable.
+
+## HTTP route contracts
+
+Runtime routes use Fastify's native AJV validation with TypeBox schemas and the
+`@fastify/type-provider-typebox` provider. A route schema is the single definition for
+both runtime validation and TypeScript inference: handlers receive already validated,
+typed `body`, `query`, and `params` values instead of casting or reparsing `unknown`.
+
+The Runtime keeps coercion and additional-property removal disabled. Invalid request
+payloads fail with Fastify's `400 Bad Request` before the handler runs. Domain and
+configuration invariants still belong to the feature/domain layer rather than AJV.
+
+Feature contracts live with the feature (for auth, `src/auth/contracts.ts`) and exported
+schemas may be reused by other workspace consumers such as the SpecFlow UI. Fastify/AJV
+remains the backend validator; TypeBox supplies JSON Schema plus static type inference.

@@ -29,7 +29,7 @@ nevo-specflow/
   packages/             product packages (@nevo/* scope)
     nevo-client/         @nevo/client              — product-neutral HTTP client and credential transport boundary
     specflow/            @nevo/specflow            — the `nevo-specflow` CLI shell + command composition
-    specflow-runtime/    @nevo/specflow-runtime    — Runtime vertical: capability (.) + CLI adapter (./cli); private, bundled into specflow
+    specflow-runtime/  @nevo/specflow-runtime  — Runtime vertical: capability (.) + CLI adapter (./cli); private, bundled into specflow
   tools/                repository-internal tooling — never published, all TypeScript
     docs/               nevo-repo-docs    — doc discovery, index, ADR authoring
     release/            nevo-repo-release — version model, cut-release-line, promote, release

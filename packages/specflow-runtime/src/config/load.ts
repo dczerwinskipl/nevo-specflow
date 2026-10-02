@@ -28,9 +28,7 @@ export async function loadRuntimeConfig(
   const localExists = await fileExists(localPath);
   const localSource = localExists ? await readRequiredConfig(localPath) : undefined;
 
-  const merged = localSource
-    ? mergeRuntimeConfigValues(projectSource, localSource)
-    : projectSource;
+  const merged = localSource ? mergeRuntimeConfigValues(projectSource, localSource) : projectSource;
 
   return {
     config: parseRuntimeConfig(merged),

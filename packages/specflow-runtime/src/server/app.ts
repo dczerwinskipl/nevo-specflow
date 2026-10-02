@@ -40,9 +40,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   dependencies: RuntimeAppDependencies = {},
 ): Promise<void> {
   const authStore = dependencies.auth?.store ?? new InMemoryAuthStore();
-  const authorization = createSpecFlowAuthorization(
-    config.authorization ?? { assignments: [] },
-  );
+  const authorization = createSpecFlowAuthorization(config.authorization ?? { assignments: [] });
 
   await app.register(cookie);
   await app.register(authFeature, {

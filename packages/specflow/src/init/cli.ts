@@ -20,13 +20,14 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
   return new Command('init')
     .description('Initialize Nevo SpecFlow configuration for this repository')
     .action(async () => {
-      if (!context.prompter) {
+      const prompter = context.prompter;
+      if (!prompter) {
         throw new Error('Interactive project initialization is not available in this CLI context.');
       }
 
       const result = await (context.initialize ?? initializeProject)({
         cwd: context.cwd,
-        initRuntime: () => initRuntime({ prompter: context.prompter as RuntimeInitPrompter }),
+        initRuntime: () => initRuntime({ prompter }),
       });
 
       context.stdout('Initialized Nevo SpecFlow.');

@@ -178,8 +178,7 @@ export function createSseStream<TEvent, TParams>(
 
             const value = next.result.value;
             const event: SseEvent = {
-              type:
-                value.event === undefined || value.event === '' ? 'message' : value.event,
+              type: value.event === undefined || value.event === '' ? 'message' : value.event,
               data: value.data,
               ...(value.id === undefined ? {} : { id: value.id }),
             };

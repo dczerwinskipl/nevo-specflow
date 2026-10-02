@@ -10,9 +10,7 @@ import {
   normalizeHttpError,
 } from '../src';
 
-function jsonAdapter(
-  assertConfig?: (config: Parameters<AxiosAdapter>[0]) => void,
-): AxiosAdapter {
+function jsonAdapter(assertConfig?: (config: Parameters<AxiosAdapter>[0]) => void): AxiosAdapter {
   return async (config) => {
     assertConfig?.(config);
     return {

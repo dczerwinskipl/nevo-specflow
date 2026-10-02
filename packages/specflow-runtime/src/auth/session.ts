@@ -1,9 +1,5 @@
 import type { RuntimeAuthConfig } from '../config/types.js';
-import type {
-  AuthProviderContract,
-  AuthSessionResponse,
-  AuthUserContract,
-} from './contracts.js';
+import type { AuthProviderContract, AuthSessionResponse, AuthUserContract } from './contracts.js';
 
 export type AuthProvider = AuthProviderContract;
 export type AuthUser = AuthUserContract;

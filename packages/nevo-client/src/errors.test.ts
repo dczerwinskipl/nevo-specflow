@@ -1,8 +1,4 @@
-import {
-  AxiosError,
-  AxiosHeaders,
-  type InternalAxiosRequestConfig,
-} from 'axios';
+import { AxiosError, AxiosHeaders, type InternalAxiosRequestConfig } from 'axios';
 import { describe, expect, it } from 'vitest';
 
 import { HttpClientError, normalizeHttpError } from './errors';

@@ -1,4 +1,4 @@
-import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 
 import type { RuntimeConfig } from '../config/types.js';

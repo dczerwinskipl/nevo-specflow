@@ -113,8 +113,7 @@ describe('runtime configuration', () => {
 
   it('rejects an unsupported password hash when password auth is enabled', () => {
     const config = requiredAuthConfig();
-    config.auth.providers.password.accounts.demo.passwordHash =
-      '$scrypt$32768$8$1$invalid$invalid';
+    config.auth.providers.password.accounts.demo.passwordHash = '$scrypt$32768$8$1$invalid$invalid';
 
     expect(() => parseRuntimeConfig(config)).toThrowError(
       'auth.providers.password.accounts.demo.passwordHash must use the supported SpecFlow password hash format.',
@@ -137,7 +136,9 @@ describe('runtime configuration', () => {
     const config = requiredAuthConfig();
     const { publicOrigin: _, ...server } = config.server;
 
-    expect(() => parseRuntimeConfig({ ...config, server })).toThrowError(/publicOrigin is required/);
+    expect(() => parseRuntimeConfig({ ...config, server })).toThrowError(
+      /publicOrigin is required/,
+    );
   });
 
   it('requires both TLS files when TLS is enabled', () => {

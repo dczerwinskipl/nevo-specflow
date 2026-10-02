@@ -8,7 +8,23 @@
     "sourceMap": false,
     "incremental": true,
     "tsBuildInfoFile": "./.tsbuild/specflow-runtime.tsbuildinfo",
-    "types": ["node"]
+    "types": [
+      "node"
+    ],
+    "paths": {
+      "@nevo/authorization": [
+        "../authorization/src/index.ts"
+      ],
+      "@nevo/specflow-contracts": [
+        "../specflow-contracts/src/index.ts"
+      ],
+      "@nevo/specflow-contracts/authorization": [
+        "../specflow-contracts/src/authorization.ts"
+      ]
+    }
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts"
+  ]
 }

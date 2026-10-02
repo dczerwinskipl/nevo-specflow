@@ -67,11 +67,11 @@ function assertNoProjectSecrets(value: unknown): void {
 
   const auth = childRecord(value, 'auth');
   const providers = childRecord(auth, 'providers');
-  const google = childRecord(providers, 'google');
+  const oidc = childRecord(providers, 'oidc');
 
-  if (google && Object.hasOwn(google, 'clientSecret')) {
+  if (oidc && Object.hasOwn(oidc, 'clientSecret')) {
     throw new RuntimeConfigError(
-      'auth.providers.google.clientSecret must be configured only in the local SpecFlow config.',
+      'auth.providers.oidc.clientSecret must be configured only in the local SpecFlow config.',
     );
   }
 

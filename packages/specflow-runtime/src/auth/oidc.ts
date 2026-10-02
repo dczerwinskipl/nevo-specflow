@@ -9,36 +9,35 @@ import {
   type Configuration,
 } from 'openid-client';
 
-import type { RuntimeGoogleProviderConfig } from '../config/types.js';
+import type { RuntimeOidcProviderConfig } from '../config/types.js';
 import type { StoredOidcTransaction } from './session-store.js';
 
-const GOOGLE_ISSUER = new URL('https://accounts.google.com');
-
-export interface GoogleOidcIdentity {
+export interface OidcIdentity {
   readonly subject: string;
   readonly email: string;
 }
 
-export interface GoogleOidcStart {
+export interface OidcStart {
   readonly authorizationUrl: URL;
   readonly transaction: StoredOidcTransaction;
 }
 
-export interface GoogleOidcClient {
-  start(redirectUri: string): Promise<GoogleOidcStart>;
-  complete(callbackUrl: URL, transaction: StoredOidcTransaction): Promise<GoogleOidcIdentity>;
+export interface OidcClient {
+  start(redirectUri: string): Promise<OidcStart>;
+  complete(callbackUrl: URL, transaction: StoredOidcTransaction): Promise<OidcIdentity>;
 }
 
-export function createGoogleOidcClient(provider: RuntimeGoogleProviderConfig): GoogleOidcClient {
+export function createOidcClient(provider: RuntimeOidcProviderConfig): OidcClient {
+  const issuer = provider.issuer;
   const clientId = provider.clientId;
   const clientSecret = provider.clientSecret;
-  if (!provider.enabled || !clientId || !clientSecret) {
-    throw new Error('Google OIDC is not fully configured.');
+  if (!provider.enabled || !issuer || !clientId || !clientSecret) {
+    throw new Error('OIDC is not fully configured.');
   }
 
   let configuration: Promise<Configuration> | undefined;
   const getConfiguration = (): Promise<Configuration> => {
-    configuration ??= discovery(GOOGLE_ISSUER, clientId, clientSecret);
+    configuration ??= discovery(new URL(issuer), clientId, clientSecret);
     return configuration;
   };
 
@@ -76,7 +75,7 @@ export function createGoogleOidcClient(provider: RuntimeGoogleProviderConfig): G
       const email = typeof claims?.email === 'string' ? normalizeEmail(claims.email) : '';
 
       if (!subject || !email || claims?.email_verified !== true) {
-        throw new Error('Google OIDC response did not contain a verified email identity.');
+        throw new Error('OIDC response did not contain a verified email identity.');
       }
 
       return { subject, email };

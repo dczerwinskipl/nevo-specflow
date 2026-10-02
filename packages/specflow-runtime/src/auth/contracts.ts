@@ -10,7 +10,7 @@ export const PasswordLoginBodySchema = Type.Object(
 
 export type PasswordLoginRequest = Static<typeof PasswordLoginBodySchema>;
 
-export const AuthProviderSchema = Type.Union([Type.Literal('password'), Type.Literal('google')]);
+export const AuthProviderSchema = Type.Union([Type.Literal('password'), Type.Literal('oidc')]);
 
 export type AuthProviderContract = Static<typeof AuthProviderSchema>;
 

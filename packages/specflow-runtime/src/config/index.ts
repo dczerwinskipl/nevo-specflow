@@ -11,7 +11,7 @@ export type {
   LoadedRuntimeConfig,
   RuntimeAuthConfig,
   RuntimeConfig,
-  RuntimeGoogleProviderConfig,
+  RuntimeOidcProviderConfig,
   RuntimePasswordAccountConfig,
   RuntimePasswordProviderConfig,
   RuntimeServerConfig,

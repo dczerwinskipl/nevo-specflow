@@ -44,7 +44,7 @@ describe('startRuntime', () => {
         '  providers:',
         '    password:',
         '      enabled: false',
-        '    google:',
+        '    oidc:',
         '      enabled: false',
         '',
       ].join('\n'),

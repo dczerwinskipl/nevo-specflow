@@ -27,8 +27,9 @@ export interface RuntimePasswordProviderConfig {
   readonly accounts: Readonly<Record<string, RuntimePasswordAccountConfig>>;
 }
 
-export interface RuntimeGoogleProviderConfig {
+export interface RuntimeOidcProviderConfig {
   readonly enabled: boolean;
+  readonly issuer?: string;
   readonly clientId?: string;
   readonly clientSecret?: string;
   readonly allowedEmails: Readonly<Record<string, string>>;
@@ -40,7 +41,7 @@ export interface RuntimeAuthConfig {
   readonly users: Readonly<Record<string, RuntimeUserConfig>>;
   readonly providers: {
     readonly password: RuntimePasswordProviderConfig;
-    readonly google: RuntimeGoogleProviderConfig;
+    readonly oidc: RuntimeOidcProviderConfig;
   };
 }
 

@@ -11,8 +11,8 @@ export function configuredAuthProviders(auth: RuntimeAuthConfig): AuthProvider[]
   if (auth.providers.password.enabled) {
     providers.push('password');
   }
-  if (auth.providers.google.enabled) {
-    providers.push('google');
+  if (auth.providers.oidc.enabled) {
+    providers.push('oidc');
   }
 
   return providers;

@@ -2,7 +2,7 @@ import { isSupportedPasswordHash } from '../auth/password.js';
 
 import type {
   RuntimeConfig,
-  RuntimeGoogleProviderConfig,
+  RuntimeOidcProviderConfig,
   RuntimePasswordProviderConfig,
   RuntimeUserConfig,
 } from './types.js';
@@ -13,10 +13,10 @@ const ROOT_KEYS = new Set(['server', 'auth']);
 const SERVER_KEYS = new Set(['host', 'port', 'publicOrigin', 'tls']);
 const TLS_KEYS = new Set(['enabled', 'certFile', 'keyFile']);
 const AUTH_KEYS = new Set(['mode', 'localUserId', 'users', 'providers']);
-const PROVIDER_KEYS = new Set(['password', 'google']);
+const PROVIDER_KEYS = new Set(['password', 'oidc']);
 const PASSWORD_KEYS = new Set(['enabled', 'accounts']);
 const PASSWORD_ACCOUNT_KEYS = new Set(['userId', 'passwordHash']);
-const GOOGLE_KEYS = new Set(['enabled', 'clientId', 'clientSecret', 'allowedEmails']);
+const OIDC_KEYS = new Set(['enabled', 'issuer', 'clientId', 'clientSecret', 'allowedEmails']);
 const USER_KEYS = new Set(['name']);
 
 export class RuntimeConfigError extends Error {
@@ -44,7 +44,7 @@ export function parseRuntimeConfig(value: unknown): RuntimeConfig {
 
   const users = parseUsers(auth.users);
   const password = parsePasswordProvider(providers.password);
-  const google = parseGoogleProvider(providers.google);
+  const oidc = parseOidcProvider(providers.oidc);
 
   const host = nonEmptyString(server.host, 'server.host');
   if (host.includes('://') || /[/?#]/u.test(host)) {
@@ -87,8 +87,8 @@ export function parseRuntimeConfig(value: unknown): RuntimeConfig {
     assertUserExists(users, account.userId, `auth.providers.password.accounts.${username}.userId`);
   }
 
-  for (const [email, userId] of Object.entries(google.allowedEmails)) {
-    assertUserExists(users, userId, `auth.providers.google.allowedEmails.${email}`);
+  for (const [email, userId] of Object.entries(oidc.allowedEmails)) {
+    assertUserExists(users, userId, `auth.providers.oidc.allowedEmails.${email}`);
   }
 
   if (password.enabled && Object.keys(password.accounts).length === 0) {
@@ -97,25 +97,25 @@ export function parseRuntimeConfig(value: unknown): RuntimeConfig {
     );
   }
 
-  if (google.enabled) {
+  if (oidc.enabled) {
     if (!publicOrigin) {
       throw new RuntimeConfigError(
-        'server.publicOrigin is required when the Google OIDC provider is enabled.',
+        'server.publicOrigin is required when the OIDC provider is enabled.',
       );
     }
-    if (!google.clientId || !google.clientSecret) {
+    if (!oidc.issuer || !oidc.clientId || !oidc.clientSecret) {
       throw new RuntimeConfigError(
-        'auth.providers.google.clientId and clientSecret are required when Google OIDC is enabled.',
+        'auth.providers.oidc.issuer, clientId, and clientSecret are required when OIDC is enabled.',
       );
     }
-    if (Object.keys(google.allowedEmails).length === 0) {
+    if (Object.keys(oidc.allowedEmails).length === 0) {
       throw new RuntimeConfigError(
-        'auth.providers.google.allowedEmails must contain at least one mapping when Google OIDC is enabled.',
+        'auth.providers.oidc.allowedEmails must contain at least one mapping when OIDC is enabled.',
       );
     }
   }
 
-  if (mode === 'none' && (password.enabled || google.enabled)) {
+  if (mode === 'none' && (password.enabled || oidc.enabled)) {
     throw new RuntimeConfigError('auth.mode=none cannot enable authentication providers.');
   }
 
@@ -123,7 +123,7 @@ export function parseRuntimeConfig(value: unknown): RuntimeConfig {
     throw new RuntimeConfigError('auth.localUserId is only valid when auth.mode=none.');
   }
 
-  if (mode === 'required' && !password.enabled && !google.enabled) {
+  if (mode === 'required' && !password.enabled && !oidc.enabled) {
     throw new RuntimeConfigError(
       'auth.mode=required requires at least one enabled authentication provider.',
     );
@@ -146,7 +146,7 @@ export function parseRuntimeConfig(value: unknown): RuntimeConfig {
       users,
       providers: {
         password,
-        google,
+        oidc,
       },
     },
   };
@@ -208,10 +208,10 @@ function parsePasswordProvider(value: unknown): RuntimePasswordProviderConfig {
   };
 }
 
-function parseGoogleProvider(value: unknown): RuntimeGoogleProviderConfig {
-  const path = 'auth.providers.google';
+function parseOidcProvider(value: unknown): RuntimeOidcProviderConfig {
+  const path = 'auth.providers.oidc';
   const config = record(value, path);
-  onlyKeys(config, GOOGLE_KEYS, path);
+  onlyKeys(config, OIDC_KEYS, path);
 
   const allowedEmailsValue = config.allowedEmails;
   const allowedEmails =
@@ -235,6 +235,9 @@ function parseGoogleProvider(value: unknown): RuntimeGoogleProviderConfig {
 
   return {
     enabled: boolean(config.enabled, `${path}.enabled`),
+    ...(config.issuer === undefined
+      ? {}
+      : { issuer: absoluteHttpIssuer(config.issuer, `${path}.issuer`) }),
     ...(config.clientId === undefined
       ? {}
       : { clientId: nonEmptyString(config.clientId, `${path}.clientId`) }),
@@ -299,6 +302,31 @@ function boolean(value: unknown, path: string): boolean {
     throw new RuntimeConfigError(`${path} must be a boolean.`);
   }
   return value;
+}
+
+function absoluteHttpIssuer(value: unknown, path: string): string {
+  const raw = nonEmptyString(value, path);
+
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new RuntimeConfigError(`${path} must be an absolute HTTP(S) URL.`);
+  }
+
+  if (
+    (url.protocol !== 'http:' && url.protocol !== 'https:') ||
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash
+  ) {
+    throw new RuntimeConfigError(
+      `${path} must be an absolute HTTP(S) URL without credentials, query, or fragment.`,
+    );
+  }
+
+  return raw;
 }
 
 function absoluteHttpOrigin(value: unknown, path: string): string {

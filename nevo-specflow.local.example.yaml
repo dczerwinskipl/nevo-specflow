@@ -17,8 +17,10 @@ auth:
         demo:
           userId: demo-user
           passwordHash: "<replace-with-a-local-password-hash>"
-    google:
+    # Google example. Another compatible OIDC issuer can be configured here.
+    oidc:
       enabled: true
+      issuer: https://accounts.google.com
       clientId: example.apps.googleusercontent.com
       clientSecret: "<replace-with-a-local-client-secret>"
       allowedEmails:

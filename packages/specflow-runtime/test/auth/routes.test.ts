@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { GoogleOidcClient } from '../../src/auth/google-oidc.js';
+import type { OidcClient } from '../../src/auth/oidc.js';
 import type { StoredOidcTransaction } from '../../src/auth/session-store.js';
 import type { RuntimeConfig } from '../../src/config/types.js';
 import { createRuntimeApp } from '../../src/server/app.js';
@@ -21,13 +21,13 @@ function passwordConfig(): RuntimeConfig {
             demo: { userId: 'demo-user', passwordHash: PASSWORD_HASH },
           },
         },
-        google: { enabled: false, allowedEmails: {} },
+        oidc: { enabled: false, allowedEmails: {} },
       },
     },
   };
 }
 
-function googleConfig(allowedEmails: Readonly<Record<string, string>>): RuntimeConfig {
+function oidcConfig(allowedEmails: Readonly<Record<string, string>>): RuntimeConfig {
   return {
     server: {
       host: '127.0.0.1',
@@ -40,8 +40,9 @@ function googleConfig(allowedEmails: Readonly<Record<string, string>>): RuntimeC
       users: { 'demo-user': { name: 'Demo User' } },
       providers: {
         password: { enabled: false, accounts: {} },
-        google: {
+        oidc: {
           enabled: true,
+          issuer: 'https://issuer.example.test',
           clientId: 'client-id',
           clientSecret: 'client-secret',
           allowedEmails,
@@ -148,7 +149,7 @@ describe('authentication HTTP API', () => {
         ...config.auth,
         providers: {
           password: { enabled: false, accounts: {} },
-          google: { enabled: false, allowedEmails: {} },
+          oidc: { enabled: false, allowedEmails: {} },
         },
       },
     };
@@ -189,7 +190,7 @@ describe('authentication HTTP API', () => {
         localUserId: 'demo-user',
         providers: {
           password: { enabled: false, accounts: {} },
-          google: { enabled: false, allowedEmails: {} },
+          oidc: { enabled: false, allowedEmails: {} },
         },
       },
     };
@@ -206,44 +207,40 @@ describe('authentication HTTP API', () => {
     }
   });
 
-  it('runs the Google redirect/callback flow without retaining provider tokens', async () => {
+  it('runs the OIDC redirect/callback flow without retaining provider tokens', async () => {
     const transaction: StoredOidcTransaction = {
       state: 'state',
       nonce: 'nonce',
       codeVerifier: 'verifier',
     };
-    const googleOidc: GoogleOidcClient = {
+    const oidc: OidcClient = {
       start(redirectUri) {
-        expect(redirectUri).toBe(
-          'https://specflow.example.test:4318/api/auth/oidc/google/callback',
-        );
+        expect(redirectUri).toBe('https://specflow.example.test:4318/api/auth/oidc/callback');
         return Promise.resolve({
-          authorizationUrl: new URL('https://accounts.google.test/authorize?state=state'),
+          authorizationUrl: new URL('https://issuer.example.test/authorize?state=state'),
           transaction,
         });
       },
       complete(callbackUrl, stored) {
         expect(callbackUrl.toString()).toBe(
-          'https://specflow.example.test:4318/api/auth/oidc/google/callback?code=abc&state=state',
+          'https://specflow.example.test:4318/api/auth/oidc/callback?code=abc&state=state',
         );
         expect(stored).toEqual(transaction);
-        return Promise.resolve({ subject: 'google-subject', email: ' Demo@Example.com ' });
+        return Promise.resolve({ subject: 'oidc-subject', email: ' Demo@Example.com ' });
       },
     };
 
-    const app = await createRuntimeApp(googleConfig({ 'demo@example.com': 'demo-user' }), {
-      googleOidc,
-    });
+    const app = await createRuntimeApp(oidcConfig({ 'demo@example.com': 'demo-user' }), { oidc });
     try {
-      const login = await app.inject({ method: 'GET', url: '/api/auth/oidc/google/login' });
+      const login = await app.inject({ method: 'GET', url: '/api/auth/oidc/login' });
       expect(login.statusCode).toBe(302);
-      expect(login.headers.location).toBe('https://accounts.google.test/authorize?state=state');
+      expect(login.headers.location).toBe('https://issuer.example.test/authorize?state=state');
       expect(String(login.headers['set-cookie'])).toContain('Secure');
       const oidcCookie = cookieValue(login.headers['set-cookie'], 'nevo_oidc');
 
       const callback = await app.inject({
         method: 'GET',
-        url: '/api/auth/oidc/google/callback?code=abc&state=state',
+        url: '/api/auth/oidc/callback?code=abc&state=state',
         headers: { cookie: `nevo_oidc=${oidcCookie}` },
       });
       expect(callback.statusCode).toBe(302);
@@ -258,19 +255,19 @@ describe('authentication HTTP API', () => {
       expect(current.json()).toEqual({
         authenticated: true,
         user: { id: 'demo-user', name: 'Demo User' },
-        provider: 'google',
-        availableProviders: ['google'],
+        provider: 'oidc',
+        availableProviders: ['oidc'],
       });
     } finally {
       await app.close();
     }
   });
 
-  it('rejects a Google identity that is not allow-listed', async () => {
-    const googleOidc: GoogleOidcClient = {
+  it('rejects a OIDC identity that is not allow-listed', async () => {
+    const oidc: OidcClient = {
       start() {
         return Promise.resolve({
-          authorizationUrl: new URL('https://accounts.google.test/authorize'),
+          authorizationUrl: new URL('https://issuer.example.test/authorize'),
           transaction: { state: 'state', nonce: 'nonce', codeVerifier: 'verifier' },
         });
       },
@@ -278,15 +275,15 @@ describe('authentication HTTP API', () => {
         return Promise.resolve({ subject: 'subject', email: 'other@example.com' });
       },
     };
-    const app = await createRuntimeApp(googleConfig({ 'demo@example.com': 'demo-user' }), {
-      googleOidc,
+    const app = await createRuntimeApp(oidcConfig({ 'demo@example.com': 'demo-user' }), {
+      oidc,
     });
     try {
-      const login = await app.inject({ method: 'GET', url: '/api/auth/oidc/google/login' });
+      const login = await app.inject({ method: 'GET', url: '/api/auth/oidc/login' });
       const oidcCookie = cookieValue(login.headers['set-cookie'], 'nevo_oidc');
       const callback = await app.inject({
         method: 'GET',
-        url: '/api/auth/oidc/google/callback?code=abc&state=state',
+        url: '/api/auth/oidc/callback?code=abc&state=state',
         headers: { cookie: `nevo_oidc=${oidcCookie}` },
       });
       expect(callback.statusCode).toBe(403);

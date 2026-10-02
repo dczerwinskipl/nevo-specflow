@@ -26,7 +26,7 @@ auth:
   providers:
     password:
       enabled: false
-    google:
+    oidc:
       enabled: false
 `;
 
@@ -57,9 +57,10 @@ function requiredAuthConfig() {
             },
           },
         },
-        google: {
+        oidc: {
           enabled: true,
-          clientId: 'example.apps.googleusercontent.com',
+          issuer: 'https://issuer.example.test',
+          clientId: 'client-id',
           clientSecret: 'fake-local-secret',
           allowedEmails,
         },
@@ -81,7 +82,7 @@ describe('runtime configuration', () => {
           mode: 'none',
           providers: {
             password: { enabled: false },
-            google: { enabled: false },
+            oidc: { enabled: false },
           },
         },
       }),
@@ -96,7 +97,7 @@ describe('runtime configuration', () => {
         users: {},
         providers: {
           password: { enabled: false, accounts: {} },
-          google: { enabled: false, allowedEmails: {} },
+          oidc: { enabled: false, allowedEmails: {} },
         },
       },
     });
@@ -122,9 +123,9 @@ describe('runtime configuration', () => {
     );
   });
 
-  it('rejects Google email collisions after normalization', () => {
+  it('rejects OIDC email collisions after normalization', () => {
     const config = requiredAuthConfig();
-    config.auth.providers.google.allowedEmails = {
+    config.auth.providers.oidc.allowedEmails = {
       'Demo@example.com': 'demo-user',
       ' demo@example.com ': 'demo-user',
     };
@@ -134,7 +135,26 @@ describe('runtime configuration', () => {
     );
   });
 
-  it('requires an explicit public origin when Google OIDC is enabled', () => {
+  it('requires issuer, client id, and client secret when OIDC is enabled', () => {
+    const config = requiredAuthConfig();
+    const { issuer, ...oidc } = config.auth.providers.oidc;
+    expect(issuer).toBe('https://issuer.example.test');
+
+    expect(() =>
+      parseRuntimeConfig({
+        ...config,
+        auth: {
+          ...config.auth,
+          providers: {
+            ...config.auth.providers,
+            oidc,
+          },
+        },
+      }),
+    ).toThrowError(/issuer, clientId, and clientSecret are required/);
+  });
+
+  it('requires an explicit public origin when OIDC is enabled', () => {
     const config = requiredAuthConfig();
     const { publicOrigin: _, ...server } = config.server;
 
@@ -155,7 +175,7 @@ describe('runtime configuration', () => {
           mode: 'none',
           providers: {
             password: { enabled: false },
-            google: { enabled: false },
+            oidc: { enabled: false },
           },
         },
       }),
@@ -174,7 +194,7 @@ describe('runtime configuration', () => {
           mode: 'required',
           providers: {
             password: { enabled: false },
-            google: { enabled: false },
+            oidc: { enabled: false },
           },
         },
       }),
@@ -224,7 +244,7 @@ describe('runtime configuration', () => {
                 },
               },
             },
-            google: { enabled: false },
+            oidc: { enabled: false },
           },
         },
       }),
@@ -244,7 +264,7 @@ describe('runtime configuration', () => {
           mode: 'none',
           providers: {
             password: { enabled: false },
-            google: { enabled: false },
+            oidc: { enabled: false },
           },
         },
       }),
@@ -280,7 +300,7 @@ describe('runtime configuration', () => {
                   stale: { userId: 'stale-user', passwordHash: 'stale-hash' },
                 },
               },
-              google: {
+              oidc: {
                 allowedEmails: {
                   'stale@example.com': 'stale-user',
                 },
@@ -296,7 +316,7 @@ describe('runtime configuration', () => {
                   demo: { userId: 'demo-user', passwordHash: 'local-hash' },
                 },
               },
-              google: {
+              oidc: {
                 allowedEmails: {
                   'demo@example.com': 'demo-user',
                 },
@@ -313,7 +333,7 @@ describe('runtime configuration', () => {
               demo: { userId: 'demo-user', passwordHash: 'local-hash' },
             },
           },
-          google: {
+          oidc: {
             allowedEmails: {
               'demo@example.com': 'demo-user',
             },
@@ -336,19 +356,19 @@ describe('runtime configuration', () => {
     expect(loaded.sources.local).toBe(join(cwd, '.nevo-local/nevo-specflow.yaml'));
   });
 
-  it('rejects Google client secrets from the project config', async () => {
+  it('rejects OIDC client secrets from the project config', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'specflow-project-secret-'));
     await writeFile(
       join(cwd, 'nevo-specflow.yaml'),
       PROJECT_CONFIG.replace(
-        'google:\n      enabled: false',
-        'google:\n      enabled: false\n      clientSecret: committed-secret',
+        'oidc:\n      enabled: false',
+        'oidc:\n      enabled: false\n      clientSecret: committed-secret',
       ),
       'utf8',
     );
 
     await expect(loadRuntimeConfig({ cwd })).rejects.toThrowError(
-      /auth\.providers\.google\.clientSecret must be configured only in the local SpecFlow config/,
+      /auth\.providers\.oidc\.clientSecret must be configured only in the local SpecFlow config/,
     );
   });
 

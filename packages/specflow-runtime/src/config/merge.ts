@@ -1,6 +1,6 @@
 const REPLACE_PATHS = new Set([
   'auth.providers.password.accounts',
-  'auth.providers.google.allowedEmails',
+  'auth.providers.oidc.allowedEmails',
 ]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -9,7 +9,7 @@ import {
   AuthSessionSchema,
   PasswordLoginBodySchema,
 } from './contracts.js';
-import { createGoogleOidcClient, type GoogleOidcClient, normalizeEmail } from './google-oidc.js';
+import { createOidcClient, type OidcClient, normalizeEmail } from './oidc.js';
 import { authenticatePassword } from './password-auth.js';
 import {
   AUTH_SESSION_TTL_MS,
@@ -20,12 +20,12 @@ import { authenticatedSession, unauthenticatedSession } from './session.js';
 
 const SESSION_COOKIE = 'nevo_session';
 const OIDC_COOKIE = 'nevo_oidc';
-const GOOGLE_CALLBACK_PATH = '/api/auth/oidc/google/callback';
+const OIDC_CALLBACK_PATH = '/api/auth/oidc/callback';
 const PASSWORD_LOGIN_BODY_LIMIT = 4_096;
 
 export interface AuthFeatureDependencies {
   readonly store?: InMemoryAuthStore;
-  readonly googleOidc?: GoogleOidcClient;
+  readonly oidc?: OidcClient;
 }
 
 export function registerAuthFeature(
@@ -35,11 +35,9 @@ export function registerAuthFeature(
 ): void {
   const routes = app.withTypeProvider<TypeBoxTypeProvider>();
   const store = dependencies.store ?? new InMemoryAuthStore();
-  const googleOidc =
-    dependencies.googleOidc ??
-    (config.auth.providers.google.enabled
-      ? createGoogleOidcClient(config.auth.providers.google)
-      : undefined);
+  const oidc =
+    dependencies.oidc ??
+    (config.auth.providers.oidc.enabled ? createOidcClient(config.auth.providers.oidc) : undefined);
   const cookieOptions = authCookieOptions(config);
 
   routes.get(
@@ -94,7 +92,7 @@ export function registerAuthFeature(
   );
 
   routes.get(
-    '/api/auth/oidc/google/login',
+    '/api/auth/oidc/login',
     {
       schema: {
         response: {
@@ -103,12 +101,12 @@ export function registerAuthFeature(
       },
     },
     async (_request, reply) => {
-      if (!config.auth.providers.google.enabled || !googleOidc) {
+      if (!config.auth.providers.oidc.enabled || !oidc) {
         return authError(reply, 404, 'provider_unavailable');
       }
 
-      const redirectUri = googleCallbackUrl(config);
-      const started = await googleOidc.start(redirectUri);
+      const redirectUri = oidcCallbackUrl(config);
+      const started = await oidc.start(redirectUri);
       const transactionId = store.createOidcTransaction(started.transaction);
       reply.setCookie(OIDC_COOKIE, transactionId, {
         ...cookieOptions,
@@ -119,7 +117,7 @@ export function registerAuthFeature(
   );
 
   routes.get(
-    GOOGLE_CALLBACK_PATH,
+    OIDC_CALLBACK_PATH,
     {
       schema: {
         response: {
@@ -131,7 +129,7 @@ export function registerAuthFeature(
       },
     },
     async (request, reply) => {
-      if (!config.auth.providers.google.enabled || !googleOidc) {
+      if (!config.auth.providers.oidc.enabled || !oidc) {
         return authError(reply, 404, 'provider_unavailable');
       }
 
@@ -142,18 +140,18 @@ export function registerAuthFeature(
       let identity;
       try {
         const callbackUrl = new URL(request.url, config.server.publicOrigin);
-        identity = await googleOidc.complete(callbackUrl, transaction);
+        identity = await oidc.complete(callbackUrl, transaction);
       } catch {
         return authError(reply, 401, 'oidc_authentication_failed');
       }
 
-      const userId = config.auth.providers.google.allowedEmails[normalizeEmail(identity.email)];
+      const userId = config.auth.providers.oidc.allowedEmails[normalizeEmail(identity.email)];
       if (!userId) return authError(reply, 403, 'identity_not_allowed');
 
       store.deleteSession(request.cookies[SESSION_COOKIE]);
       const sessionId = store.createSession({
         userId,
-        provider: 'google',
+        provider: 'oidc',
         providerSubject: identity.subject,
       });
       reply.setCookie(SESSION_COOKIE, sessionId, {
@@ -172,11 +170,11 @@ export function registerAuthFeature(
   });
 }
 
-function googleCallbackUrl(config: RuntimeConfig): string {
+function oidcCallbackUrl(config: RuntimeConfig): string {
   if (!config.server.publicOrigin) {
-    throw new Error('Google OIDC requires server.publicOrigin.');
+    throw new Error('OIDC requires server.publicOrigin.');
   }
-  return new URL(GOOGLE_CALLBACK_PATH, `${config.server.publicOrigin}/`).toString();
+  return new URL(OIDC_CALLBACK_PATH, `${config.server.publicOrigin}/`).toString();
 }
 
 interface AuthCookieOptions {

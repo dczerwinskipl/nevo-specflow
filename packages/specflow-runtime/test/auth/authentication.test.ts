@@ -24,9 +24,10 @@ const auth: RuntimeAuthConfig = {
         },
       },
     },
-    google: {
+    oidc: {
       enabled: true,
-      clientId: 'example.apps.googleusercontent.com',
+      issuer: 'https://issuer.example.test',
+      clientId: 'client-id',
       clientSecret: 'fake-local-secret',
       allowedEmails: {
         'demo@example.com': 'demo-user',
@@ -37,7 +38,7 @@ const auth: RuntimeAuthConfig = {
 
 describe('authentication model', () => {
   it('reports enabled login providers in stable order', () => {
-    expect(configuredAuthProviders(auth)).toEqual(['password', 'google']);
+    expect(configuredAuthProviders(auth)).toEqual(['password', 'oidc']);
   });
 
   it('keeps trusted local identity explicitly unauthenticated', () => {
@@ -47,7 +48,7 @@ describe('authentication model', () => {
       users: auth.users,
       providers: {
         password: { enabled: false, accounts: {} },
-        google: { enabled: false, allowedEmails: {} },
+        oidc: { enabled: false, allowedEmails: {} },
       },
     };
 
@@ -59,11 +60,11 @@ describe('authentication model', () => {
   });
 
   it('projects authenticated sessions without provider tokens', () => {
-    expect(authenticatedSession(auth, 'demo-user', 'google')).toEqual({
+    expect(authenticatedSession(auth, 'demo-user', 'oidc')).toEqual({
       authenticated: true,
       user: { id: 'demo-user', name: 'Demo User' },
-      provider: 'google',
-      availableProviders: ['password', 'google'],
+      provider: 'oidc',
+      availableProviders: ['password', 'oidc'],
     });
   });
 

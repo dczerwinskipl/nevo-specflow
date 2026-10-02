@@ -30,19 +30,13 @@ describe('normalizeHttpError', () => {
   it('normalizes HTTP responses with status and response data', () => {
     const config = requestConfig();
     const normalized = normalizeHttpError(
-      new AxiosError(
-        'request failed',
-        AxiosError.ERR_BAD_RESPONSE,
+      new AxiosError('request failed', AxiosError.ERR_BAD_RESPONSE, config, undefined, {
+        data: { message: 'nope' },
+        status: 500,
+        statusText: 'Internal Server Error',
+        headers: {},
         config,
-        undefined,
-        {
-          data: { message: 'nope' },
-          status: 500,
-          statusText: 'Internal Server Error',
-          headers: {},
-          config,
-        },
-      ),
+      }),
     );
 
     expect(normalized).toMatchObject({

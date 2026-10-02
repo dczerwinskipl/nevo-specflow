@@ -81,6 +81,27 @@ describe('HttpClient.sse', () => {
     stream.close();
   });
 
+  it('does not reconnect when application-owned decoding fails', async () => {
+    const decodeError = new Error('invalid domain event');
+    const reconnecting = vi.fn();
+    const fetchMock = vi.fn(async () => sseResponse('data: invalid\\n\\n'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createHttpClient();
+    const iterator = client
+      .sse('/events', {
+        decode: () => {
+          throw decodeError;
+        },
+        onReconnecting: reconnecting,
+      })
+      [Symbol.asyncIterator]();
+
+    await expect(iterator.next()).rejects.toBe(decodeError);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(reconnecting).not.toHaveBeenCalled();
+  });
+
   it('reconnects with Last-Event-ID and resolves fresh credentials for every attempt', async () => {
     let token = 'first';
     const connected = vi.fn();

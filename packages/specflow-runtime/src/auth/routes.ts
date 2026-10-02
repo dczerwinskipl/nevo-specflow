@@ -2,7 +2,7 @@ import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 
 import type { RuntimeConfig } from '../config/types.js';
-import { PasswordLoginBodySchema } from './contracts.js';
+import { AuthErrorSchema, AuthSessionSchema, PasswordLoginBodySchema } from './contracts.js';
 import { createGoogleOidcClient, type GoogleOidcClient, normalizeEmail } from './google-oidc.js';
 import { authenticatePassword } from './password-auth.js';
 import {
@@ -36,17 +36,34 @@ export function registerAuthFeature(
       : undefined);
   const cookieOptions = authCookieOptions(config);
 
-  routes.get('/api/auth/session', (request) => {
+  routes.get(
+    '/api/auth/session',
+    {
+      schema: {
+        response: {
+          200: AuthSessionSchema,
+        },
+      },
+    },
+    (request) => {
     const stored = store.getSession(request.cookies[SESSION_COOKIE]);
     if (!stored) return unauthenticatedSession(config.auth);
-    return authenticatedSession(config.auth, stored.userId, stored.provider);
-  });
+      return authenticatedSession(config.auth, stored.userId, stored.provider);
+    },
+  );
 
   routes.post(
     '/api/auth/password/login',
     {
       bodyLimit: PASSWORD_LOGIN_BODY_LIMIT,
-      schema: { body: PasswordLoginBodySchema },
+      schema: {
+        body: PasswordLoginBodySchema,
+        response: {
+          200: AuthSessionSchema,
+          401: AuthErrorSchema,
+          404: AuthErrorSchema,
+        },
+      },
     },
     async (request, reply) => {
       if (!config.auth.providers.password.enabled) {
@@ -70,7 +87,16 @@ export function registerAuthFeature(
     },
   );
 
-  routes.get('/api/auth/oidc/google/login', async (_request, reply) => {
+  routes.get(
+    '/api/auth/oidc/google/login',
+    {
+      schema: {
+        response: {
+          404: AuthErrorSchema,
+        },
+      },
+    },
+    async (_request, reply) => {
     if (!config.auth.providers.google.enabled || !googleOidc) {
       return authError(reply, 404, 'provider_unavailable');
     }
@@ -82,10 +108,23 @@ export function registerAuthFeature(
       ...cookieOptions,
       maxAge: Math.floor(OIDC_TRANSACTION_TTL_MS / 1000),
     });
-    return reply.redirect(started.authorizationUrl.toString());
-  });
+      return reply.redirect(started.authorizationUrl.toString());
+    },
+  );
 
-  routes.get(GOOGLE_CALLBACK_PATH, async (request, reply) => {
+  routes.get(
+    GOOGLE_CALLBACK_PATH,
+    {
+      schema: {
+        response: {
+          400: AuthErrorSchema,
+          401: AuthErrorSchema,
+          403: AuthErrorSchema,
+          404: AuthErrorSchema,
+        },
+      },
+    },
+    async (request, reply) => {
     if (!config.auth.providers.google.enabled || !googleOidc) {
       return authError(reply, 404, 'provider_unavailable');
     }
@@ -115,8 +154,9 @@ export function registerAuthFeature(
       ...cookieOptions,
       maxAge: Math.floor(AUTH_SESSION_TTL_MS / 1000),
     });
-    return reply.redirect(new URL('/', config.server.publicOrigin).toString());
-  });
+      return reply.redirect(new URL('/', config.server.publicOrigin).toString());
+    },
+  );
 
   routes.post('/api/auth/logout', (request, reply) => {
     store.deleteSession(request.cookies[SESSION_COOKIE]);

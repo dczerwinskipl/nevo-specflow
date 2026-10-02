@@ -33,6 +33,30 @@ concrete reason to use a different runner.
 
 Do not re-test framework behavior that the framework itself owns.
 
+## Test placement
+
+Keep tests with the ownership model of the code they verify:
+
+- **UI and reusable browser libraries** — co-locate focused `.test.ts(x)` files with the
+  component/module they verify. Shared test helpers may live in a dedicated
+  `test-utils/` area.
+- **Runtime, CLI, backend, and repository tooling** — use a package-level `test/`
+  tree that mirrors meaningful `src/` responsibilities such as `domain/`, `app/`,
+  `infra/`, and `cli/`.
+
+Do not force one directory convention across fundamentally different runtime surfaces.
+
+## Package isolation in CI
+
+Every workspace package that owns tests MUST expose its own `test` script. CI resolves
+the Turbo `test` task graph and runs affected package test tasks as independent matrix
+jobs with fail-fast disabled. On protected-branch pushes, all package test tasks run.
+
+The stable aggregate `test` status remains the required branch-protection check, but a
+failure in one package must not prevent unrelated package test jobs from completing.
+Package tests must therefore be runnable through their package's Turbo target without
+depending on another package's test process or execution order.
+
 ## Determinism
 
 Tests must not depend accidentally on wall-clock time, locale, network, ambient

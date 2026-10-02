@@ -24,40 +24,43 @@ export interface HttpClientOptions {
   readonly allowAbsoluteUrls?: boolean;
 }
 
-export type HttpRequestConfig<TBody = unknown> = AxiosRequestConfig<TBody>;
+export type HttpRequestConfig<TBody = unknown, TParams = unknown> = AxiosRequestConfig<
+  TBody,
+  TParams
+>;
 
 export interface HttpClient {
   readonly axios: AxiosInstance;
 
-  request<TResponse = unknown, TBody = unknown>(
-    config: HttpRequestConfig<TBody>,
+  request<TResponse = unknown, TBody = unknown, TParams = unknown>(
+    config: HttpRequestConfig<TBody, TParams>,
   ): Promise<TResponse>;
 
-  get<TResponse = unknown>(
+  get<TResponse = unknown, TParams = unknown>(
     url: string,
-    config?: HttpRequestConfig<never>,
+    config?: HttpRequestConfig<unknown, TParams>,
   ): Promise<TResponse>;
 
-  delete<TResponse = unknown>(
+  delete<TResponse = unknown, TParams = unknown>(
     url: string,
-    config?: HttpRequestConfig<never>,
+    config?: HttpRequestConfig<unknown, TParams>,
   ): Promise<TResponse>;
 
-  post<TResponse = unknown, TBody = unknown>(
-    url: string,
-    body?: TBody,
-    config?: HttpRequestConfig<TBody>,
-  ): Promise<TResponse>;
-
-  put<TResponse = unknown, TBody = unknown>(
+  post<TResponse = unknown, TBody = unknown, TParams = unknown>(
     url: string,
     body?: TBody,
-    config?: HttpRequestConfig<TBody>,
+    config?: HttpRequestConfig<TBody, TParams>,
   ): Promise<TResponse>;
 
-  patch<TResponse = unknown, TBody = unknown>(
+  put<TResponse = unknown, TBody = unknown, TParams = unknown>(
     url: string,
     body?: TBody,
-    config?: HttpRequestConfig<TBody>,
+    config?: HttpRequestConfig<TBody, TParams>,
+  ): Promise<TResponse>;
+
+  patch<TResponse = unknown, TBody = unknown, TParams = unknown>(
+    url: string,
+    body?: TBody,
+    config?: HttpRequestConfig<TBody, TParams>,
   ): Promise<TResponse>;
 }

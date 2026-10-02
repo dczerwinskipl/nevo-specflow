@@ -4,17 +4,12 @@ import { assertIdentifierSegment } from './validation.js';
 
 type CapabilityMap = Readonly<Record<string, string>>;
 
-type QualifiedCapabilities<
-  Name extends string,
-  Capabilities extends CapabilityMap,
-> = Readonly<{
+type QualifiedCapabilities<Name extends string, Capabilities extends CapabilityMap> = Readonly<{
   [Key in keyof Capabilities]: `${Name}.${Extract<Capabilities[Key], string>}`;
 }>;
 
-export interface DefinedResource<
-  Name extends string,
-  Capabilities extends CapabilityMap,
-> extends ResourceDefinition {
+export interface DefinedResource<Name extends string, Capabilities extends CapabilityMap>
+  extends ResourceDefinition {
   readonly name: Name;
   readonly capabilities: QualifiedCapabilities<Name, Capabilities>;
 }
@@ -24,10 +19,7 @@ export interface DefineResourceInput<Name extends string, Capabilities extends C
   readonly capabilities: Capabilities;
 }
 
-export function defineResource<
-  const Name extends string,
-  const Capabilities extends CapabilityMap,
->(
+export function defineResource<const Name extends string, const Capabilities extends CapabilityMap>(
   input: DefineResourceInput<Name, Capabilities>,
 ): DefinedResource<Name, Capabilities> {
   assertIdentifierSegment(input.name, 'Resource name');

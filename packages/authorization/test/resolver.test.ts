@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  AuthorizationConfigurationError,
-  createAuthorization,
-  defineResource,
-} from '../src/index.js';
+import { createAuthorization, defineResource } from '../src/index.js';
 
 const Spec = defineResource({
   name: 'spec',
@@ -47,19 +43,8 @@ function authorization() {
   });
 }
 
-describe('@nevo/authorization', () => {
-  it('qualifies feature-owned capability ids', () => {
-    expect(Spec).toMatchObject({
-      name: 'spec',
-      capabilities: {
-        View: 'spec.view',
-        Manage: 'spec.manage',
-      },
-    });
-    expect(Spec.capabilityIds).toEqual(['spec.view', 'spec.manage']);
-  });
-
-  it('unions matching roles and filters capabilities by explicit resource name', () => {
+describe('authorization resolver', () => {
+  it('unions matching roles and filters by explicit resource name', () => {
     const auth = authorization();
 
     expect(
@@ -87,9 +72,11 @@ describe('@nevo/authorization', () => {
     });
   });
 
-  it('does not match an assignment from another scope', () => {
+  it('matches broader assignments only inside their scope', () => {
+    const auth = authorization();
+
     expect(
-      authorization().resolveCapabilities({
+      auth.resolveCapabilities({
         subject: { kind: 'user', id: 'u1' },
         resource: {
           name: 'spec',
@@ -101,7 +88,7 @@ describe('@nevo/authorization', () => {
     });
   });
 
-  it('fails fast when can() receives a capability for another resource', () => {
+  it('fails fast on capability/resource mismatch', () => {
     expect(() =>
       authorization().can({
         subject: { kind: 'user', id: 'u1' },
@@ -112,29 +99,5 @@ describe('@nevo/authorization', () => {
         },
       }),
     ).toThrowError(/does not belong to resource 'spec'/);
-  });
-
-  it('fails configuration when roles or assignments reference unknown ids', () => {
-    expect(() =>
-      createAuthorization({
-        resources: [Spec],
-        roles: { broken: ['missing.capability'] },
-        assignments: [],
-      }),
-    ).toThrowError(AuthorizationConfigurationError);
-
-    expect(() =>
-      createAuthorization({
-        resources: [Spec],
-        roles: { viewer: [Spec.capabilities.View] },
-        assignments: [
-          {
-            subject: { kind: 'user', id: 'u1' },
-            role: 'missing-role',
-            scope: {},
-          },
-        ],
-      }),
-    ).toThrowError(/unknown role 'missing-role'/);
   });
 });

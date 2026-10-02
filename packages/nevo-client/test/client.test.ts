@@ -80,6 +80,17 @@ describe('createHttpClient', () => {
     await client.get('/resource');
   });
 
+  it('preserves errors owned by an external authentication flow', async () => {
+    const authError = new Error('interactive login required');
+    const client = createHttpClient({
+      credentials: customCredentials(() => {
+        throw authError;
+      }),
+    });
+
+    await expect(client.get('/resource')).rejects.toBe(authError);
+  });
+
   it('normalizes wrapper failures without taking over raw Axios recovery', async () => {
     const client = createHttpClient();
     client.axios.defaults.adapter = async (config) => {

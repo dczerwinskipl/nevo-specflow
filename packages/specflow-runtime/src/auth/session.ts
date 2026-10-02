@@ -1,18 +1,13 @@
 import type { RuntimeAuthConfig } from '../config/types.js';
+import type {
+  AuthProviderContract,
+  AuthSessionResponse,
+  AuthUserContract,
+} from './contracts.js';
 
-export type AuthProvider = 'password' | 'google';
-
-export interface AuthUser {
-  readonly id: string;
-  readonly name: string;
-}
-
-export interface AuthSession {
-  readonly authenticated: boolean;
-  readonly user?: AuthUser;
-  readonly provider?: AuthProvider;
-  readonly availableProviders: AuthProvider[];
-}
+export type AuthProvider = AuthProviderContract;
+export type AuthUser = AuthUserContract;
+export type AuthSession = AuthSessionResponse;
 
 export function configuredAuthProviders(auth: RuntimeAuthConfig): AuthProvider[] {
   const providers: AuthProvider[] = [];

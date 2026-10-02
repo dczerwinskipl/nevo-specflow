@@ -53,7 +53,11 @@ describe('startRuntime', () => {
       'utf8',
     );
 
-    const runtime = await startRuntime({ cwd });
+    const runtime = await startRuntime({
+      projectRoot: cwd,
+      projectConfigPath: join(cwd, '.nevo/config.yaml'),
+      localConfigPath: join(cwd, '.nevo/local/config.yaml'),
+    });
     try {
       expect(runtime.address).toContain(`:${port}`);
       const response = await fetch(`http://127.0.0.1:${port}/api/auth/session`);

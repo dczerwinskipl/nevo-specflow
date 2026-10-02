@@ -45,6 +45,7 @@ beforeAll(() => {
   version = parsed.version;
 
   prefix = mkdtempSync(join(tmpdir(), 'nevo-specflow-smoke-'));
+  execFileSync('git', ['init', '-q'], { cwd: prefix });
   writeFileSync(
     join(prefix, 'package.json'),
     JSON.stringify({ name: 'nevo-specflow-smoke-host', version: '0.0.0', private: true }),

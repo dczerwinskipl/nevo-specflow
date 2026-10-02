@@ -24,12 +24,22 @@ runtime:
 
   auth:
     mode: none
+    users:
+      demo-user:
+        name: Demo User
     providers:
       password:
         enabled: false
       oidc:
         enabled: false
 `;
+
+function loadFrom(cwd: string) {
+  return loadRuntimeConfig({
+    projectConfigPath: join(cwd, '.nevo/config.yaml'),
+    localConfigPath: join(cwd, '.nevo/local/config.yaml'),
+  });
+}
 
 function requiredAuthConfig() {
   const allowedEmails: Record<string, string> = {
@@ -472,13 +482,13 @@ describe('runtime configuration', () => {
     await writeFile(join(cwd, '.nevo/config.yaml'), PROJECT_CONFIG, 'utf8');
     await writeFile(
       join(cwd, '.nevo/local/config.yaml'),
-      'runtime:\n  server:\n    port: 9443\n',
+      'runtime:\n  auth:\n    localUserId: demo-user\n',
       'utf8',
     );
 
-    const loaded = await loadRuntimeConfig({ cwd });
+    const loaded = await loadFrom(cwd);
 
-    expect(loaded.config.server.port).toBe(9443);
+    expect(loaded.config.auth.localUserId).toBe('demo-user');
     expect(loaded.sources.project).toBe(join(cwd, '.nevo/config.yaml'));
     expect(loaded.sources.local).toBe(join(cwd, '.nevo/local/config.yaml'));
   });
@@ -492,7 +502,7 @@ describe('runtime configuration', () => {
       'utf8',
     );
 
-    const loaded = await loadRuntimeConfig({ cwd });
+    const loaded = await loadFrom(cwd);
 
     expect(loaded.config.server.port).toBe(4318);
   });
@@ -509,8 +519,8 @@ describe('runtime configuration', () => {
       'utf8',
     );
 
-    await expect(loadRuntimeConfig({ cwd })).rejects.toThrowError(
-      /auth\.providers\.oidc\.clientSecret must be configured only in the local SpecFlow config/,
+    await expect(loadFrom(cwd)).rejects.toThrowError(
+      /Unknown configuration key 'auth\.providers\.oidc\.clientSecret'/,
     );
   });
 
@@ -531,14 +541,66 @@ describe('runtime configuration', () => {
       'utf8',
     );
 
-    await expect(loadRuntimeConfig({ cwd })).rejects.toThrowError(
-      /auth\.providers\.password\.accounts\.demo\.passwordHash must be configured only in the local SpecFlow config/,
+    await expect(loadFrom(cwd)).rejects.toThrowError(
+      /Unknown configuration key 'auth\.providers\.password\.accounts'/,
     );
+  });
+
+  it.each([
+    ['auth.mode', 'runtime:\n  auth:\n    mode: required\n'],
+    ['auth.users', 'runtime:\n  auth:\n    users:\n      injected:\n        name: Injected\n'],
+    [
+      'password.enabled',
+      'runtime:\n  auth:\n    providers:\n      password:\n        enabled: true\n',
+    ],
+    [
+      'oidc.issuer',
+      'runtime:\n  auth:\n    providers:\n      oidc:\n        issuer: https://issuer.example.test\n',
+    ],
+    ['server.port', 'runtime:\n  server:\n    port: 9999\n'],
+    [
+      'server.tls.enabled',
+      'runtime:\n  server:\n    tls:\n      enabled: true\n',
+    ],
+  ])('rejects local override of project-owned %s', async (_field, localConfig) => {
+    const cwd = await mkdtemp(join(tmpdir(), 'specflow-local-ownership-'));
+    await mkdir(join(cwd, '.nevo/local'), { recursive: true });
+    await writeFile(join(cwd, '.nevo/config.yaml'), PROJECT_CONFIG, 'utf8');
+    await writeFile(join(cwd, '.nevo/local/config.yaml'), localConfig, 'utf8');
+
+    await expect(loadFrom(cwd)).rejects.toBeInstanceOf(RuntimeConfigError);
+  });
+
+  it('accepts local password credentials for a committed canonical user', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'specflow-local-password-'));
+    await mkdir(join(cwd, '.nevo/local'), { recursive: true });
+    const project = PROJECT_CONFIG.replace(
+      'mode: none',
+      'mode: required',
+    ).replace('password:\n        enabled: false', 'password:\n        enabled: true');
+    await writeFile(join(cwd, '.nevo/config.yaml'), project, 'utf8');
+    await writeFile(
+      join(cwd, '.nevo/local/config.yaml'),
+      `runtime:
+  auth:
+    providers:
+      password:
+        accounts:
+          demo:
+            userId: demo-user
+            passwordHash: ${SUPPORTED_PASSWORD_HASH}
+`,
+      'utf8',
+    );
+
+    const loaded = await loadFrom(cwd);
+
+    expect(loaded.config.auth.providers.password.accounts.demo?.userId).toBe('demo-user');
   });
 
   it('fails closed when the required project config is missing', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'specflow-config-missing-'));
 
-    await expect(loadRuntimeConfig({ cwd })).rejects.toBeInstanceOf(RuntimeConfigError);
+    await expect(loadFrom(cwd)).rejects.toBeInstanceOf(RuntimeConfigError);
   });
 });

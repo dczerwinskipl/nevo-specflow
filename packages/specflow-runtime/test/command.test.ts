@@ -13,7 +13,10 @@ const here = dirname(fileURLToPath(import.meta.url));
 
 describe('Runtime CLI adapters', () => {
   it('returns a Commander command named "start"', () => {
-    const cmd = createStartCommand({ stdout: () => undefined });
+    const cmd = createStartCommand({
+      stdout: () => undefined,
+      start: () => Promise.reject(new Error('not invoked')),
+    });
     expect(cmd).toBeInstanceOf(Command);
     expect(cmd.name()).toBe('start');
     expect(cmd.description()).toMatch(/Runtime server/i);

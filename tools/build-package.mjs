@@ -1,13 +1,6 @@
 #!/usr/bin/env node
 import { builtinModules } from 'node:module';
-import {
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  readdirSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -230,10 +223,7 @@ function moduleSpecifiers(file, text) {
       ts.isExternalModuleReference(node.moduleReference)
     ) {
       addLiteral(node.moduleReference.expression);
-    } else if (
-      ts.isCallExpression(node) &&
-      node.expression.kind === ts.SyntaxKind.ImportKeyword
-    ) {
+    } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
       addLiteral(node.arguments[0]);
     } else if (ts.isImportTypeNode(node)) {
       const argument = node.argument;

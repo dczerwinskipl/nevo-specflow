@@ -142,7 +142,7 @@ export async function executeRelease(
   });
   if (input.expectedTag && tag !== input.expectedTag) {
     throw new InconsistentStateError(
-      `Release candidate changed after validation: expected ${input.expectedTag}, resolved ${tag}. ` +
+      `Release candidate changed: expected ${input.expectedTag}, resolved ${tag}. ` +
         'Re-run the candidate build/smoke before executing; no release mutation was performed.',
     );
   }
@@ -151,7 +151,7 @@ export async function executeRelease(
     events.push(
       info(
         recoveringPublishedArtifacts
-          ? `Recovering ${tag}: its GitHub Release exists but required product assets are incomplete. ` +
+          ? `Recovering ${tag}: required product assets are incomplete. ` +
               `Not cutting ${plan.tag}.`
           : `Recovering ${tag}: its tag is on ${headShort} but the GitHub Release is missing. ` +
               `Not cutting ${plan.tag}.`,
@@ -180,7 +180,7 @@ export async function executeRelease(
     } else {
       events.push(
         info(
-          `Would create the GitHub Release for ${tag} (${plan.prerelease ? 'prerelease' : 'stable'}).`,
+          `Would create GitHub Release ${tag} (${plan.prerelease ? 'prerelease' : 'stable'}).`,
         ),
       );
     }

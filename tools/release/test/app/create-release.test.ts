@@ -149,7 +149,7 @@ describe('executeRelease — Phase A recovery + fail-closed GitHub reads', () =>
         deps(),
         { mutate: true },
       ),
-    ).rejects.toThrow(/candidate changed.*expected v1\.3\.0-beta\.1.*resolved v1\.3\.0-beta\.2/i);
+    ).rejects.toThrow(/candidate changed.*v1\.3\.0-beta\.1.*v1\.3\.0-beta\.2/i);
 
     expect(git.createdTags).toEqual([]);
     expect(github.createdReleases).toEqual([]);

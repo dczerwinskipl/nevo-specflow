@@ -65,15 +65,11 @@ beforeAll(() => {
     JSON.stringify({ name: 'nevo-specflow-smoke-host', version: '0.0.0', private: true }),
   );
   // pnpm run from repoRoot (pinned), directed at the prefix with --dir.
-  const install = crossSpawn.sync(
-    'pnpm',
-    ['--dir', prefix, '--ignore-workspace', 'add', tarball],
-    {
-      cwd: repoRoot,
-      encoding: 'utf8',
-      windowsHide: true,
-    },
-  );
+  const install = crossSpawn.sync('pnpm', ['--dir', prefix, '--ignore-workspace', 'add', tarball], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    windowsHide: true,
+  });
   if (install.error || install.status !== 0) {
     throw install.error ?? new Error(install.stderr || install.stdout || 'pnpm install failed');
   }
@@ -289,7 +285,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
           clearTimeout(timeout);
           reject(
             new Error(
-              `Packaged Runtime exited before startup: code=${String(code)} signal=${String(signal)} stderr=${stderr}`,
+              `Runtime exited before startup: code=${String(code)} signal=${String(signal)} stderr=${stderr}`,
             ),
           );
         });

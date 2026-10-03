@@ -5,7 +5,11 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { classifyReleaseLookup, resolveGhEnv } from '../../src/infra/github.js';
+import {
+  classifyReleaseLookup,
+  parseReleaseAssetNames,
+  resolveGhEnv,
+} from '../../src/infra/github.js';
 
 describe('classifyReleaseLookup — absent vs indeterminate', () => {
   it('HTTP 200 -> the Release exists', () => {
@@ -42,6 +46,22 @@ describe('classifyReleaseLookup — absent vs indeterminate', () => {
       exitCode: 1,
     });
     expect(r.outcome).toBe('indeterminate');
+  });
+});
+
+describe('parseReleaseAssetNames — fail closed on malformed GitHub data', () => {
+  it('returns the release asset names', () => {
+    expect(
+      parseReleaseAssetNames(
+        JSON.stringify(['nevo-specflow-1.2.3.tgz', 'nevo-specflow-1.2.3.tgz.sha256']),
+        'v1.2.3',
+      ),
+    ).toEqual(['nevo-specflow-1.2.3.tgz', 'nevo-specflow-1.2.3.tgz.sha256']);
+  });
+
+  it('rejects malformed JSON and non-string entries', () => {
+    expect(() => parseReleaseAssetNames('{', 'v1.2.3')).toThrow(/could not parse release assets/i);
+    expect(() => parseReleaseAssetNames('[1]', 'v1.2.3')).toThrow(/unexpected release-asset/i);
   });
 });
 

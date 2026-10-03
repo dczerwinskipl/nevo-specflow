@@ -30,6 +30,6 @@ The product ships as one self-contained bundle. Repository packages such as
 `@nevo/specflow-runtime` are build-time workspace boundaries and are bundled into
 `@nevo/specflow`; an installed product does not depend on the repository workspace.
 
-The canonical artifact is produced by `nevo-repo-product`. See
-[product packaging](../../docs/engineering/repository/product-packaging.md) and
+The package owns its artifact build under `packaging/`; standard `pnpm pack` creates the final archive.
+See [product packaging](../../docs/engineering/repository/product-packaging.md) and
 [dogfooding](../../docs/engineering/repository/dogfooding.md).

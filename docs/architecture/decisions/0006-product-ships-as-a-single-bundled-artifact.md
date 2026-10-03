@@ -2,8 +2,9 @@
 id: adr.0006-product-ships-as-a-single-bundled-artifact
 type: adr
 title: The product ships as a single bundled artifact
-status: current
+status: superseded
 date: 2026-09-06
+superseded_by: adr.0011-product-artifact-packaging-and-pnpm-compatibility
 summary: >
   `@nevo/specflow` is distributed as one self-contained tarball. `nevo-repo-product`
   (esbuild) bundles the `nevo-specflow` entry, the internal workspace capability packages
@@ -20,7 +21,7 @@ related:
 
 ## Status
 
-Current.
+Superseded by [ADR 0011 — Product artifact packaging and pnpm compatibility](0011-product-artifact-packaging-and-pnpm-compatibility.md).
 
 ## Context
 

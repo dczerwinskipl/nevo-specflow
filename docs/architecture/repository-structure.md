@@ -36,7 +36,6 @@ nevo-specflow/
     docs/               nevo-repo-docs    — doc discovery, index, ADR authoring
     release/            nevo-repo-release — version model, cut-release-line, promote, release
     github/             nevo-repo-github  — idempotent GitHub governance apply/verify (gh API)
-    product/            nevo-repo-product — the canonical bundle + pack + dogfood entrypoint
   docs/                 this documentation set
   version.json          { channel, version } for the current branch
   .artifacts/           generated product tarballs (git-ignored)
@@ -56,7 +55,7 @@ top-level commands. Each capability vertical owns its own command: `@nevo/specfl
 (`private: true`) exposes the Runtime capability at `.` and its capability-owned Commander
 adapters at `./cli` (`start` plus auth utilities), and is bundled into `@nevo/specflow` at
 pack time, so a user installs one artifact with no registry
-([ADR 0006](decisions/0006-product-ships-as-a-single-bundled-artifact.md),
+([ADR 0011](decisions/0011-product-artifact-packaging-and-pnpm-compatibility.md),
 [product packaging](../engineering/repository/product-packaging.md)). `start` starts the real Runtime HTTP server. UI hosting and most product capabilities are still
 migrated separately and are not implied by the Runtime server foundation.
 
@@ -93,13 +92,13 @@ environment variables. When affected calculation is uncertain, CI fails safe by 
 **more**, not fewer, checks.
 
 **Global invalidation.** Turbo hashes `pnpm-lock.yaml` and root `package.json`
-automatically; `turbo.json#globalDependencies` adds only `tsconfig.base.json` (extended
-by every package `tsconfig`). Those are the inputs that legitimately change every
-package's build/test/typecheck output. Repo-wide quality config (Prettier,
+automatically; `turbo.json#globalDependencies` adds `tsconfig.base.json`, both product-package
+profiles, and `tools/build-package.mjs`. Those inputs legitimately change package
+build/test/typecheck output across the graph. Repo-wide quality config (Prettier,
 EditorConfig, ESLint) is not global — it only affects `pnpm format` / `pnpm lint`,
 which run over the whole repo outside Turbo.
 
-Required CI checks are the stably-named jobs `pr-title`, `quality`, `verify tests` and `build`.
+Required CI checks are the stable jobs `pr-title`, `quality`, `dependency review`, `verify tests`, `build`, `product smoke`, and `codeql`.
 A check still reports success when affected filtering skipped its inner work, so a PR is
 never left permanently pending. Inspect what a change would run with
 `pnpm exec turbo run build test typecheck --affected --dry`.

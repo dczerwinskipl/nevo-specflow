@@ -7,127 +7,81 @@ read_when:
   - reviewing a Dependabot pull request
   - reporting or triaging a vulnerability
   - deciding how to pin a GitHub Action
-  - checking the current CodeQL status
+  - checking dependency-review or CodeQL policy
 summary: >
-  How dependency updates arrive (Dependabot, grouped, weekly), how versions are pinned,
-  the vulnerability-report path, the repository security features that are enabled, and
-  the current CodeQL status.
+  Dependency update, lockfile compatibility, dependency review, CodeQL, action pinning,
+  vulnerability reporting, and repository security policy.
 related:
   - engineering.repository.local-setup
   - engineering.repository.ci
+  - adr.0011-product-artifact-packaging-and-pnpm-compatibility
 ---
 
 # Dependencies and security
 
 ## Dependency versions
 
-- Package versions are **exact** in `package.json` — `pnpm-workspace.yaml` sets
-  `savePrefix: ""` so `pnpm add` never writes a range. Every bump is a visible diff.
-- The toolchain baseline, and why pnpm and TypeScript are each held a line back, are in
-  ADR [0002](../../architecture/decisions/0002-toolchain-selection.md).
+Package versions are exact: `pnpm-workspace.yaml` sets `savePrefix: ""`. Exact current versions
+live in manifests and `pnpm-lock.yaml`; durable toolchain policy is in
+[ADR 0010](../../architecture/decisions/0010-toolchain-policy-and-version-sources.md).
 
-## Lockfile shape and the dependency graph
+## Why the repository remains on pnpm 10
 
-The repository pins **pnpm 10** on purpose. pnpm 11+ writes a multi-document
-`pnpm-lock.yaml` that GitHub's Dependency Graph and Dependabot cannot parse — they read
-only the first document and report **zero dependencies**
-(`dependabot/dependabot-core#14794`). pnpm 10's single-document lockfile is parsed
-correctly, so Dependabot actually has a dependency tree to scan.
+GitHub's published Dependabot support matrix currently lists pnpm only through v10. The pnpm 11
+updater work tracked by
+[`dependabot/dependabot-core#14794`](https://github.com/dependabot/dependabot-core/issues/14794)
+has been closed, but GitHub Dependency Graph still has an open multi-document-lockfile parsing gap
+tracked by
+[`dependabot/dependabot-core#15904`](https://github.com/dependabot/dependabot-core/issues/15904).
+Because that parser failure can silently omit the project dependency graph, moving to an unsupported
+major would weaken dependency/security visibility, so the repository stays on pnpm 10.
 
-`.gitattributes` marks `pnpm-lock.yaml` `linguist-generated=true` (collapsed by default,
-excluded from language stats) but **not** `-diff` — a lockfile must stay diffable in PR
-review for supply-chain and reproducibility checks.
+The exact acceptance criteria for revisiting this and the product-packaging consequence are recorded
+in [ADR 0011](../../architecture/decisions/0011-product-artifact-packaging-and-pnpm-compatibility.md).
 
-Verify after any lockfile change:
-
-```bash
-grep -c '^---$' pnpm-lock.yaml     # must be 0 (single YAML document)
-```
-
-And, on the default branch, that GitHub sees real dependencies:
-
-```bash
-gh api repos/OWNER/REPO/dependency-graph/sbom --jq '.sbom.packages | length'
-```
+`.gitattributes` marks the lockfile as generated for display purposes but keeps it diffable.
+After a lockfile/toolchain change, verify that the file stays in the supported shape and that
+GitHub's dependency graph contains the real dependency set.
 
 ## Dependabot
 
-[`.github/dependabot.yml`](../../../.github/dependabot.yml), weekly (Monday):
+[`.github/dependabot.yml`](../../../.github/dependabot.yml) runs weekly. npm minor/patch updates are
+grouped, majors remain individual, and security updates remain independent. GitHub Actions updates
+are grouped separately. `@types/node` major tracks the supported Node runtime major and is changed
+only together with that runtime decision.
 
-| Ecosystem        | Grouping                                                                 | Commit prefix                     |
-| ---------------- | ------------------------------------------------------------------------ | --------------------------------- |
-| `npm` (pnpm)     | minor + patch collapsed into one `npm-minor-patch` PR; majors individual | `build(deps)` / `build(deps-dev)` |
-| `github-actions` | all in one `github-actions` PR                                           | `ci(deps)`                        |
+The `dependabot-pr-title` workflow only normalizes Dependabot's generated Conventional Commit
+subject after the normal title check rejects it. It never checks out or executes PR content with a
+write-capable token.
 
-Both groups are `applies-to: version-updates`, so grouping only affects the scheduled
-weekly run. Dependabot **security** updates (out-of-cycle patches for advisories) are
-enabled separately, are never grouped, and always arrive as their own PR.
+## Dependency Review
 
-### `@types/node` tracks the runtime major
-
-`@types/node` major is **ignored** by the updater
-(`ignore: @types/node / version-update:semver-major`). The typings major must match the
-Node major the repository actually runs (`engines.node: ">=24.20.0 <25"`, CI on
-`24.20.0`), so moving to `25.x` / `26.x` typings is part of a deliberate runtime bump
-(`engines` + `.nvmrc` + CI), not a routine Dependabot PR. Patch/minor bumps inside the
-Node 24 line are still proposed and land in the weekly `npm-minor-patch` group. No other
-package's majors are suppressed — they each still get an individual PR for review.
-
-### Bot PR titles
-
-The `commit-message.prefix` values are valid Conventional Commits types, and grouped
-Dependabot PRs (`build(deps): bump the … group …`) pass the `pr-title` check unchanged.
-A **single-package** bump, though, gets an upper-case subject
-(`build(deps-dev): Bump @types/node from …`), which `pr-title` rejects
-(`subjectPattern: ^(?![A-Z])…`). The
-[`dependabot-pr-title`](../../../.github/workflows/dependabot-pr-title.yml) workflow fixes
-this: after a `PR title` run **fails**, a `workflow_run` follow-up re-reads the PR from
-the API, and — only when the author is `dependabot[bot]`, the PR is open, and its head
-still matches the failed run — lower-cases the first letter of the subject (leaving a
-missing scope or an unknown type for `pr-title` to reject) and re-runs that exact `PR
-title` run. It uses `workflow_run` rather than `pull_request_target` because GitHub
-gives a Dependabot-triggered `pull_request` / `pull_request_target` workflow a read-only
-token; the follow-up never checks out or executes PR content and holds only
-`pull-requests: write` + `actions: write`. The global `pr-title` convention is unchanged
-— human PRs are validated exactly as before.
-
-Review a Dependabot PR like any other: `pnpm check` must pass; skim the changelog for
-behavior changes; for a grouped PR, note anything that isn't purely mechanical.
-
-## GitHub Action pinning
-
-Every `uses:` is pinned to a **full commit SHA** with a trailing version comment; a tag
-is mutable, a SHA is not. Dependabot's `github-actions` updater keeps both current. The
-table of pins is in [`.github/workflows/README.md`](../../../.github/workflows/README.md).
-
-## Vulnerability reports
-
-Private reporting via the repository **Security** tab — see [`SECURITY.md`](../../../SECURITY.md).
-Do not open a public issue.
-
-## Enabled security features
-
-Verified on GitHub:
-
-- Dependabot alerts
-- Dependabot security updates
-- Secret scanning
-- Secret scanning push protection
-- Private vulnerability reporting
-
-Re-check with:
-
-```bash
-REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
-gh api "repos/$REPO" --jq '.security_and_analysis'
-gh api "repos/$REPO/private-vulnerability-reporting"
-```
+Pull requests run GitHub's official Dependency Review Action. A newly introduced dependency with a
+known vulnerability of **moderate severity or higher** fails the `dependency review` check.
+This is deliberately a change-time gate; Dependabot alerts/security updates continue to cover
+vulnerabilities discovered after a dependency is already on the default branch.
 
 ## CodeQL
 
-CodeQL is not enabled yet. The repository now contains substantive Runtime and
-authentication code, so the earlier "no product code yet" rationale is obsolete.
-Adding `github/codeql-action` for `javascript-typescript` should be a dedicated
-repository-governance change that also decides whether `CodeQL` becomes a required
-branch check. See
-[`.github/workflows/README.md`](../../../.github/workflows/README.md#codeql).
+`.github/workflows/codeql.yml` analyzes JavaScript/TypeScript on pull requests, pushes to protected
+branches, and weekly. It uses CodeQL's no-build mode and the stable `codeql` check name. GitHub
+reduces `GITHUB_TOKEN` write permissions for fork and Dependabot pull requests, so those runs keep
+the analysis/check but set CodeQL upload to `never`; trusted same-repository/push runs upload SARIF.
+The workflow never switches to `pull_request_target` to regain write access to untrusted PR code.
+
+## GitHub Action pinning
+
+Every third-party `uses:` reference is pinned to a full commit SHA. Dependabot keeps those pins
+current. The current list is in
+[`.github/workflows/README.md`](../../../.github/workflows/README.md).
+
+## Vulnerability reports
+
+Use private vulnerability reporting through the repository Security tab; see
+[`SECURITY.md`](../../../SECURITY.md). Do not open a public issue.
+
+## Repository security features
+
+The repository uses Dependabot alerts/security updates, secret scanning with push protection,
+private vulnerability reporting, Dependency Review, and CodeQL. Repository/plan-level features
+should be re-verified after governance changes rather than assumed from documentation.

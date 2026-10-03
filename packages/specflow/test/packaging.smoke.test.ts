@@ -15,10 +15,10 @@ import { tmpdir } from 'node:os';
 import { basename, delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import crossSpawn from 'cross-spawn';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const sh = process.platform === 'win32';
 
 const pinnedPnpm = (
   JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as { packageManager: string }
@@ -31,18 +31,32 @@ let binDir = '';
 let runEnv: NodeJS.ProcessEnv = {};
 
 beforeAll(() => {
-  // pack via the tool (already built by the nevo-repo-product#test turbo edge).
-  const out = execFileSync('node', ['tools/product/dist/bin.js', 'pack', '--json'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-    shell: sh,
-  });
-  const parsed = JSON.parse(out.trim().split(/\r?\n/).filter(Boolean).pop() ?? '{}') as {
-    tarball: string;
-    version: string;
-  };
-  tarball = parsed.tarball;
-  version = parsed.version;
+  const prebuiltDir = process.env.NEVO_SPECFLOW_ARTIFACT_DIR;
+  if (prebuiltDir) {
+    const candidates = readdirSync(prebuiltDir)
+      .filter((file) => file.endsWith('.tgz'))
+      .map((file) => join(prebuiltDir, file));
+    if (candidates.length !== 1 || !candidates[0]) {
+      throw new Error(
+        `Expected exactly one prebuilt .tgz in ${prebuiltDir}, found ${String(candidates.length)}.`,
+      );
+    }
+    tarball = candidates[0];
+  } else {
+    // Local/default path: build the package before proving its installed boundary.
+    const out = execFileSync(
+      process.execPath,
+      ['packages/specflow/packaging/bin.ts', 'pack', '--json'],
+      {
+        cwd: repoRoot,
+        encoding: 'utf8',
+      },
+    );
+    const parsed = JSON.parse(out.trim().split(/\r?\n/).filter(Boolean).pop() ?? '{}') as {
+      tarball: string;
+    };
+    tarball = parsed.tarball;
+  }
 
   prefix = mkdtempSync(join(tmpdir(), 'nevo-specflow-smoke-'));
   execFileSync('git', ['init', '-q'], { cwd: prefix });
@@ -51,41 +65,52 @@ beforeAll(() => {
     JSON.stringify({ name: 'nevo-specflow-smoke-host', version: '0.0.0', private: true }),
   );
   // pnpm run from repoRoot (pinned), directed at the prefix with --dir.
-  execFileSync('pnpm', ['--dir', prefix, '--ignore-workspace', 'add', tarball], {
+  const install = crossSpawn.sync('pnpm', ['--dir', prefix, '--ignore-workspace', 'add', tarball], {
     cwd: repoRoot,
     encoding: 'utf8',
-    shell: sh,
+    windowsHide: true,
   });
+  if (install.error || install.status !== 0) {
+    throw install.error ?? new Error(install.stderr || install.stdout || 'pnpm install failed');
+  }
+
+  const manifestVersion = installedManifest().version;
+  if (typeof manifestVersion !== 'string') {
+    throw new Error('Installed artifact package.json has no string version.');
+  }
+  version = manifestVersion;
 
   binDir = join(prefix, 'node_modules', '.bin');
   runEnv = { ...process.env, PATH: `${binDir}${delimiter}${process.env.PATH ?? ''}` };
 }, 180_000);
 
-afterAll(() => {
-  if (prefix) rmSync(prefix, { recursive: true, force: true });
+afterAll(async () => {
+  if (prefix) {
+    if (process.platform === 'win32') {
+      // Give Windows a moment to release executable/file handles after the child exits.
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+    rmSync(prefix, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+  }
 });
 
 interface Run {
   code: number;
   stdout: string;
 }
-/** Invoke the installed `nevo-specflow` shim from the isolated prefix's .bin, via PATH. */
+/** Invoke the installed `nevo-specflow` shim from the isolated prefix's .bin/PATH. */
 function nevoSpec(args: string[], input?: string): Run {
-  try {
-    return {
-      code: 0,
-      stdout: execFileSync('nevo-specflow', args, {
-        cwd: prefix,
-        env: runEnv,
-        encoding: 'utf8',
-        shell: sh,
-        ...(input === undefined ? {} : { input }),
-      }),
-    };
-  } catch (err) {
-    const e = err as { status?: number; stdout?: string; stderr?: string };
-    return { code: e.status ?? 1, stdout: `${e.stdout ?? ''}${e.stderr ?? ''}` };
-  }
+  const result = crossSpawn.sync('nevo-specflow', args, {
+    cwd: prefix,
+    env: runEnv,
+    encoding: 'utf8',
+    input,
+    windowsHide: true,
+  });
+  return {
+    code: result.status ?? 1,
+    stdout: `${result.stdout ?? ''}${result.stderr ?? ''}`,
+  };
 }
 
 async function freePort(): Promise<number> {
@@ -112,16 +137,19 @@ function installedManifest(): Record<string, unknown> {
 
 describe('packaged @nevo/specflow — isolated tarball install', () => {
   it('was packed with the repository-pinned pnpm', () => {
-    const v = execFileSync('pnpm', ['--version'], {
+    const pnpm = crossSpawn.sync('pnpm', ['--version'], {
       cwd: repoRoot,
       encoding: 'utf8',
-      shell: sh,
-    }).trim();
+      windowsHide: true,
+    });
+    expect(pnpm.error).toBeFalsy();
+    expect(pnpm.status).toBe(0);
+    const v = (pnpm.stdout ?? '').trim();
     expect(v).toBe(pinnedPnpm);
     expect(pinnedPnpm.startsWith('10.')).toBe(true);
   });
 
-  it('installs a manifest with the packed version, correct engines, no deps, no scripts, no workspace:', () => {
+  it('installs a minimal manifest without dependency or workspace leakage', () => {
     const pj = installedManifest();
     expect(pj.name).toBe('@nevo/specflow');
     expect(pj.version).toBe(version);
@@ -174,7 +202,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     expect(r.stdout).toContain('start');
   });
 
-  it('B. nevo-specflow --version — exit 0, equals the packed package version (via the shim)', () => {
+  it('B. --version equals the packed package version via the installed shim', () => {
     const r = nevoSpec(['--version']);
     expect(r.code).toBe(0);
     expect(r.stdout.trim()).toBe(version);
@@ -186,7 +214,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     expect(r.stdout).toMatch(/Initialize Nevo SpecFlow configuration/i);
   });
 
-  it('D. nevo-specflow start --help — exposes the real Runtime server command (via the shim)', () => {
+  it('D. start --help exposes the Runtime server command via the installed shim', () => {
     const r = nevoSpec(['start', '--help']);
     expect(r.code).toBe(0);
     expect(r.stdout).toMatch(/Runtime server/i);
@@ -225,21 +253,35 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
       'utf8',
     );
 
-    const child = spawn('nevo-specflow', ['start'], {
-      cwd: prefix,
-      env: runEnv,
-      shell: sh,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    child.stdout.setEncoding('utf8');
-    child.stderr.setEncoding('utf8');
+    const installedBin = join(prefix, 'node_modules', '@nevo', 'specflow', 'dist', 'bin.js');
+    const child =
+      process.platform === 'win32'
+        ? spawn(process.execPath, [installedBin, 'start'], {
+            cwd: prefix,
+            env: runEnv,
+            stdio: ['ignore', 'pipe', 'pipe'],
+            windowsHide: true,
+          })
+        : crossSpawn('nevo-specflow', ['start'], {
+            cwd: prefix,
+            env: runEnv,
+            stdio: ['ignore', 'pipe', 'pipe'],
+            windowsHide: true,
+          });
+    const childStdout = child.stdout;
+    const childStderr = child.stderr;
+    if (!childStdout || !childStderr) {
+      throw new Error('Runtime smoke requires piped stdout and stderr.');
+    }
+    childStdout.setEncoding('utf8');
+    childStderr.setEncoding('utf8');
 
     let stdout = '';
     let stderr = '';
-    child.stdout.on('data', (chunk: string) => {
+    childStdout.on('data', (chunk: string) => {
       stdout += chunk;
     });
-    child.stderr.on('data', (chunk: string) => {
+    childStderr.on('data', (chunk: string) => {
       stderr += chunk;
     });
 
@@ -252,16 +294,16 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
         const onData = () => {
           if (stdout.includes(`Runtime listening at http://127.0.0.1:${port}`)) {
             clearTimeout(timeout);
-            child.stdout.off('data', onData);
+            childStdout.off('data', onData);
             resolve();
           }
         };
-        child.stdout.on('data', onData);
+        childStdout.on('data', onData);
         child.once('exit', (code, signal) => {
           clearTimeout(timeout);
           reject(
             new Error(
-              `Packaged Runtime exited before startup: code=${String(code)} signal=${String(signal)} stderr=${stderr}`,
+              `Runtime exited before startup: code=${String(code)} signal=${String(signal)} stderr=${stderr}`,
             ),
           );
         });
@@ -276,8 +318,15 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
 
       child.kill('SIGTERM');
       const [code, signal] = (await once(child, 'exit')) as [number | null, NodeJS.Signals | null];
-      expect(signal).toBeNull();
-      expect(code).toBe(0);
+      if (process.platform === 'win32') {
+        // Node cannot deliver POSIX-style SIGTERM to a child process on Windows;
+        // child.kill() terminates it and reports the signal instead.
+        expect(signal).toBe('SIGTERM');
+        expect(code).toBeNull();
+      } else {
+        expect(signal).toBeNull();
+        expect(code).toBe(0);
+      }
     } finally {
       if (child.exitCode === null && child.signalCode === null) {
         child.kill('SIGTERM');

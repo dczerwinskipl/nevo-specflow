@@ -53,8 +53,10 @@ describe('nevo-docs CLI', () => {
   });
 
   it('check validates the real repository corpus', async () => {
-    const { code, stdout } = await cli(['check']);
-    expect(code).toBe(0);
+    const { code, stdout, stderr } = await cli(['check']);
+    if (code !== 0) {
+      throw new Error(`nevo-docs check failed:\n${stderr}\n${stdout}`);
+    }
     expect(stdout).toMatch(/corpus valid, index current/);
   });
 

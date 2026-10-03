@@ -14,17 +14,22 @@
     "node": ">=24.20.0 <25"
   },
   "scripts": {
-    "build": "node ../../tools/product/dist/bin.js bundle",
+    "build": "node packaging/bin.ts bundle",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run --no-file-parallelism"
+    "test": "vitest run --no-file-parallelism",
+    "artifact:pack": "node packaging/bin.ts pack",
+    "dogfood": "node packaging/bin.ts dogfood",
+    "test:packaged": "vitest run test/packaging.smoke.test.ts --no-file-parallelism"
   },
   "dependencies": {
     "@nevo/specflow-runtime": "workspace:*",
     "yaml": "2.9.1"
   },
   "devDependencies": {
+    "@types/cross-spawn": "6.0.6",
     "commander": "15.0.0",
-    "vitest": "5.0.2",
-    "nevo-repo-product": "workspace:*"
+    "cross-spawn": "7.0.6",
+    "esbuild": "0.28.2",
+    "vitest": "5.0.2"
   }
 }

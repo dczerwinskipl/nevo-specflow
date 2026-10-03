@@ -2,7 +2,6 @@
 import { builtinModules } from 'node:module';
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
-import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import ts from 'typescript';
@@ -256,7 +255,10 @@ function resolveNodeBuildTarget(root) {
 }
 
 function verifyNodeNextDeclarations(cwd, pkg, profile) {
-  const tempDir = mkdtempSync(join(tmpdir(), 'nevo-package-surface-'));
+  // Keep the synthetic consumer on the package volume. On Windows, the runner temp
+  // directory may be on C: while the checkout is on D:, and path.relative() across
+  // drives is not a valid relative ESM specifier.
+  const tempDir = mkdtempSync(join(cwd, '.nevo-package-surface-'));
   try {
     const consumer = join(tempDir, 'consumer.mts');
     const imports = Object.values(pkg.exports ?? {}).map((target, index) => {

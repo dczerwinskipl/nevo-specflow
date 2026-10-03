@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
 const builder = join(repoRoot, 'tools', 'build-package.mjs');
 const fixtures: string[] = [];
 
@@ -15,7 +15,7 @@ afterEach(() => {
   }
 });
 
-describe('product package builder contract', () => {
+describe('repository package builder contract', () => {
   it('builds a platform-neutral package from the neutral profile', () => {
     const fixture = createFixture({
       profile: 'neutral',

@@ -6,6 +6,9 @@ import { hasCiGithubReleaseToken, wantsExecute, type CliContext } from '../conte
 interface CreateOptions {
   channel?: string;
   execute: boolean;
+  json: boolean;
+  expectedTag?: string;
+  deferAdvance: boolean;
 }
 
 export function createReleaseCommand(ctx: CliContext): Command {
@@ -18,14 +21,38 @@ export function createReleaseCommand(ctx: CliContext): Command {
         .makeOptionMandatory(),
     )
     .option('--execute', 'perform the release (otherwise run every check, change nothing)', false)
+    .option('--json', 'print the resolved release result as JSON', false)
+    .addOption(
+      new Option(
+        '--expected-tag <tag>',
+        'fail before mutation if the resolved candidate changed',
+      ).env('RELEASE_EXPECTED_TAG'),
+    )
+    .option(
+      '--defer-advance',
+      'defer stable next-patch PR until artifact publication has completed',
+      false,
+    )
     .action(async (opts: CreateOptions) => {
       const mutate = wantsExecute(opts.execute, ctx.env);
-      const { events } = await executeRelease(
-        { channel: opts.channel ?? '' },
+      const result = await executeRelease(
+        { channel: opts.channel ?? '', expectedTag: opts.expectedTag },
         { git: ctx.git, github: ctx.github, hasToken: hasCiGithubReleaseToken(ctx.env) },
-        { mutate },
+        { mutate, deferAdvance: opts.deferAdvance },
       );
-      for (const e of events) (e.level === 'warn' ? ctx.stderr : ctx.stdout)(e.message);
+      if (opts.json) {
+        ctx.stdout(
+          JSON.stringify({
+            tag: result.tag,
+            version: result.plan.version,
+            channel: result.plan.channel,
+            prerelease: result.plan.prerelease,
+            mutated: result.mutated,
+          }),
+        );
+        return;
+      }
+      for (const e of result.events) (e.level === 'warn' ? ctx.stderr : ctx.stdout)(e.message);
       if (!mutate) ctx.stdout('\nvalidate-only: every check passed; nothing was changed.');
     });
 }

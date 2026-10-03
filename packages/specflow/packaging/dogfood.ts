@@ -1,11 +1,11 @@
-// `nevo-repo-product dogfood` — build + pack the real distributable, install
+// `@nevo/specflow dogfood` — build + pack the real distributable, install
 // that tarball globally with pnpm, and smoke the installed `nevo-specflow`.
 
 import { delimiter } from 'node:path';
 
-import { run, StepFailedError } from './exec.js';
-import { packProduct, type PackResult } from './pack.js';
-import { findRepoRoot } from './paths.js';
+import { run, StepFailedError } from './exec.ts';
+import { packProduct, type PackResult } from './pack.ts';
+import { findRepoRoot } from './paths.ts';
 
 export interface DogfoodResult extends PackResult {
   readonly globalBinDir: string;

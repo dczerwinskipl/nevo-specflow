@@ -59,6 +59,11 @@ export interface GitHubClient {
    * (auth / network / permission / malformed) — the caller fails closed.
    */
   releaseExists(tag: string): Promise<boolean>;
+  /**
+   * Asset names on a confirmed existing Release. Throws when the asset list
+   * cannot be read; callers must fail closed rather than assume "no assets".
+   */
+  releaseAssetNames(tag: string): Promise<string[]>;
   createRelease(input: { tag: string; prerelease: boolean }): Promise<{ url: string }>;
   /** The one open PR for `head` -> `base`, or `null`. Throws on a query failure. */
   findOpenPullRequest(input: { head: string; base: string }): Promise<PullRequestRef | null>;

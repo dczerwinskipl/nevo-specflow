@@ -2,6 +2,8 @@
   "extends": "../../tsconfig.package-node.json",
   "compilerOptions": {
     "tsBuildInfoFile": "./.tsbuild/specflow.tsbuildinfo",
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
     "paths": {
       "@nevo/authorization": ["../authorization/src/index.ts"],
       "@nevo/specflow-contracts": ["../specflow-contracts/src/index.ts"],
@@ -10,5 +12,5 @@
       "@nevo/specflow-runtime/cli": ["../specflow-runtime/src/cli/command.ts"]
     }
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"]
+  "include": ["src/**/*.ts", "packaging/**/*.ts", "test/**/*.ts"]
 }

@@ -10,7 +10,7 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { bundleProduct } from '../src/bundle.js';
+import { bundleProduct } from '../../packaging/bundle';
 
 let dir: string;
 beforeEach(() => {

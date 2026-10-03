@@ -27,9 +27,11 @@ related:
 nevo-specflow/
   apps/                 deployable applications        (workspace glob; empty until one lands)
   packages/             product packages (@nevo/* scope)
+    authorization/       @nevo/authorization            — product-neutral scoped capability resolver
     http-client/         @nevo/http-client              — product-neutral HTTP client and credential transport boundary
-    specflow/            @nevo/specflow            — the `nevo-specflow` CLI shell + command composition
-    specflow-runtime/  @nevo/specflow-runtime  — Runtime vertical: capability (.) + CLI adapter (./cli); private, bundled into specflow
+    specflow-contracts/  @nevo/specflow-contracts       — shared SpecFlow resource/capability contracts
+    specflow/            @nevo/specflow                 — the `nevo-specflow` CLI shell + command composition
+    specflow-runtime/    @nevo/specflow-runtime         — Runtime vertical: capability (.) + CLI adapter (./cli); private, bundled into specflow
   tools/                repository-internal tooling — never published, all TypeScript
     docs/               nevo-repo-docs    — doc discovery, index, ADR authoring
     release/            nevo-repo-release — version model, cut-release-line, promote, release

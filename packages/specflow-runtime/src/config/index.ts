@@ -6,6 +6,10 @@ export type {
   RuntimePasswordProviderConfig,
   RuntimeUserConfig,
 } from '../auth/config.js';
+export type {
+  RuntimeAuthorizationAssignmentConfig,
+  RuntimeAuthorizationConfig,
+} from '../authorization/config.js';
 export { RuntimeConfigError } from './error.js';
 export {
   DEFAULT_LOCAL_CONFIG_PATH,

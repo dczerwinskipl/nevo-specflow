@@ -1,4 +1,6 @@
 import type { RuntimeAuthConfig } from './config.js';
+
+export const AUTH_SESSION_COOKIE = 'nevo_session';
 import type { AuthSession } from './session.js';
 import { authenticatedSession, unauthenticatedSession } from './session.js';
 import type { InMemoryAuthStore } from './session-store.js';

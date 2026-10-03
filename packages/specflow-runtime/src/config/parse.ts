@@ -1,4 +1,5 @@
 import { parseAuthConfig, validateAuthRuntimeContext } from '../auth/config.js';
+import { parseAuthorizationConfig } from '../authorization/config.js';
 import { RuntimeConfigError } from './error.js';
 import type { RuntimeConfig } from './types.js';
 import {
@@ -10,7 +11,7 @@ import {
   record,
 } from './value.js';
 
-const ROOT_KEYS = new Set(['server', 'auth']);
+const ROOT_KEYS = new Set(['server', 'auth', 'authorization']);
 const SERVER_KEYS = new Set(['host', 'port', 'publicOrigin', 'tls']);
 const TLS_KEYS = new Set(['enabled', 'certFile', 'keyFile']);
 
@@ -66,6 +67,11 @@ export function parseRuntimeConfig(value: unknown): RuntimeConfig {
   }
 
   const auth = parseAuthConfig(root.auth);
+  const authorization = parseAuthorizationConfig(
+    root.authorization,
+    new Set(Object.keys(auth.users)),
+  );
+
   validateAuthRuntimeContext(auth, {
     bindHost: host,
     tlsEnabled,
@@ -84,6 +90,7 @@ export function parseRuntimeConfig(value: unknown): RuntimeConfig {
       },
     },
     auth,
+    ...(root.authorization === undefined ? {} : { authorization }),
   };
 }
 

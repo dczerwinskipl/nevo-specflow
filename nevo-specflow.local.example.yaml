@@ -1,4 +1,5 @@
 # Example workstation-local override.
+# The authorization section is project-only and is rejected here.
 # Copy to .nevo-local/nevo-specflow.yaml. This example contains only fake values.
 
 server:

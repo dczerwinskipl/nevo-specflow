@@ -1,0 +1,44 @@
+{
+  "name": "@nevo/specflow-contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared SpecFlow product contracts consumed by Runtime and UI.",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./spec": {
+      "types": "./dist/spec/authorization.d.ts",
+      "default": "./dist/spec/authorization.js"
+    },
+    "./session": {
+      "types": "./dist/session/authorization.d.ts",
+      "default": "./dist/session/authorization.js"
+    },
+    "./settings": {
+      "types": "./dist/settings/authorization.d.ts",
+      "default": "./dist/settings/authorization.js"
+    },
+    "./authorization": {
+      "types": "./dist/authorization.d.ts",
+      "default": "./dist/authorization.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@nevo/authorization": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "5.0.2"
+  }
+}

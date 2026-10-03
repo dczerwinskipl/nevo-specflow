@@ -31,6 +31,23 @@ export function rulesFor(
       },
     });
   }
+
+  const codeScanning = policy.requiredCodeScanning;
+  if (codeScanning && Array.isArray(codeScanning.tools) && codeScanning.tools.length > 0) {
+    rules.push({
+      type: 'code_scanning',
+      parameters: {
+        code_scanning_tools: codeScanning.tools.map(
+          ({ tool, alertsThreshold, securityAlertsThreshold }) => ({
+            tool,
+            alerts_threshold: alertsThreshold,
+            security_alerts_threshold: securityAlertsThreshold,
+          }),
+        ),
+      },
+    });
+  }
+
   return rules;
 }
 

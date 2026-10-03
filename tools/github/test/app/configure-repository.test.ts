@@ -15,10 +15,13 @@ const policy: RepositoryPolicy = parsePolicy(
   ),
 );
 
-const prRuleParams = (rs: Record<string, unknown>): Record<string, unknown> => {
+const ruleParams = (rs: Record<string, unknown>, type: string): Record<string, unknown> => {
   const rules = rs.rules as { type: string; parameters?: Record<string, unknown> }[];
-  return rules.find((r) => r.type === 'pull_request')?.parameters ?? {};
+  return rules.find((r) => r.type === type)?.parameters ?? {};
 };
+
+const prRuleParams = (rs: Record<string, unknown>): Record<string, unknown> =>
+  ruleParams(rs, 'pull_request');
 
 describe('configureRepository', () => {
   it('a collaborator-API failure aborts without touching anything', () => {
@@ -37,9 +40,19 @@ describe('configureRepository', () => {
     const result = configureRepository(client, policy, { checkOnly: false });
     expect(result.review.kind).toBe('bootstrap');
     expect(client.createdRulesets).toHaveLength(2);
-    expect(prRuleParams(client.createdRulesets[0] as Record<string, unknown>)).toMatchObject({
+    const created = client.createdRulesets[0] as Record<string, unknown>;
+    expect(prRuleParams(created)).toMatchObject({
       required_approving_review_count: 0,
       require_last_push_approval: false,
+    });
+    expect(ruleParams(created, 'code_scanning')).toEqual({
+      code_scanning_tools: [
+        {
+          tool: 'CodeQL',
+          alerts_threshold: 'errors',
+          security_alerts_threshold: 'high_or_higher',
+        },
+      ],
     });
   });
 

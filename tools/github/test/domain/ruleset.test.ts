@@ -8,6 +8,15 @@ const policy: RepositoryPolicy = parsePolicy(
     merge: {},
     pullRequest: { required_approving_review_count: 1 },
     requiredStatusChecks: { strict: true, doNotEnforceOnCreate: true, checks: ['quality', 'test'] },
+    requiredCodeScanning: {
+      tools: [
+        {
+          tool: 'CodeQL',
+          alertsThreshold: 'errors',
+          securityAlertsThreshold: 'high_or_higher',
+        },
+      ],
+    },
     rulesets: [
       {
         name: 'protected-main',
@@ -21,7 +30,7 @@ const policy: RepositoryPolicy = parsePolicy(
 );
 
 describe('rulesFor / desiredRuleset', () => {
-  it('appends the pull_request rule with the effective params, then required_status_checks', () => {
+  it('appends pull-request, status-check and code-scanning rules from policy', () => {
     const rules = rulesFor(policy.rulesets[0]!, policy, { required_approving_review_count: 0 });
     expect(rules).toEqual([
       { type: 'deletion' },
@@ -33,6 +42,18 @@ describe('rulesFor / desiredRuleset', () => {
           strict_required_status_checks_policy: true,
           do_not_enforce_on_create: true,
           required_status_checks: [{ context: 'quality' }, { context: 'test' }],
+        },
+      },
+      {
+        type: 'code_scanning',
+        parameters: {
+          code_scanning_tools: [
+            {
+              tool: 'CodeQL',
+              alerts_threshold: 'errors',
+              security_alerts_threshold: 'high_or_higher',
+            },
+          ],
         },
       },
     ]);

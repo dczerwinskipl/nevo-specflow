@@ -64,10 +64,15 @@ vulnerabilities discovered after a dependency is already on the default branch.
 ## CodeQL
 
 `.github/workflows/codeql.yml` analyzes JavaScript/TypeScript on pull requests, pushes to protected
-branches, and weekly. It uses CodeQL's no-build mode and the stable `codeql` check name. GitHub
-reduces `GITHUB_TOKEN` write permissions for fork and Dependabot pull requests, so those runs keep
-the analysis/check but set CodeQL upload to `never`; trusted same-repository/push runs upload SARIF.
-The workflow never switches to `pull_request_target` to regain write access to untrusted PR code.
+branches, and weekly. It uses CodeQL's no-build mode and the stable `codeql` check name.
+Pull-request-triggered CodeQL analysis uses GitHub's supported SARIF upload path even when a fork or
+Dependabot run receives a read-only `GITHUB_TOKEN`; the workflow does not switch to
+`pull_request_target`.
+
+Protected `main` and `release/v*` rulesets additionally require CodeQL code-scanning results.
+Generic code-scanning errors block the ref update, and security alerts block at **high severity or
+above**. The required `codeql` status remains separate so a failed or missing analysis job cannot
+be mistaken for a clean scan.
 
 ## GitHub Action pinning
 

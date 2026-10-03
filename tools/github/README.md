@@ -53,6 +53,7 @@ head branches, auto-merge allowed, squash commit title/body taken from the PR.
 | `required_linear_history` | linear history                                                                                                                               |
 | `pull_request`            | PR required; squash-only; review threads resolved; stale approvals dismissed; (see review policy)                                            |
 | `required_status_checks`  | strict; `pr-title`, `quality`, `dependency review`, `verify tests`, `build`, `product smoke`, `codeql`; **`do_not_enforce_on_create: true`** |
+| `code_scanning`           | requires CodeQL results; blocks generic errors and security alerts at **high** severity or above                                             |
 
 No bypass actors.
 
@@ -88,10 +89,12 @@ Adding a second Write collaborator and re-running converges to the target **with
 edit to the policy file**. Code ownership is intentionally not used (there is no
 `.github/CODEOWNERS` — repository access is managed in GitHub).
 
-## Security features (not managed by this tool)
+## Security boundaries
 
 Dependabot alerts/security updates, secret scanning, push protection and private vulnerability
-reporting are repository/plan features; Dependency Review and CodeQL are enforced by checked-in workflows. Enable and verify with
+reporting are repository/plan features. Dependency Review and CodeQL execution are enforced by
+checked-in workflows; this tool manages the CodeQL merge threshold through the protected-branch
+rulesets. Enable and verify repository/plan features with
 `gh api repos/{owner}/{repo}` (`security_and_analysis`) /
 `gh api -X PUT repos/{owner}/{repo}/vulnerability-alerts` /
 `gh api -X PUT repos/{owner}/{repo}/private-vulnerability-reporting`. Report actual

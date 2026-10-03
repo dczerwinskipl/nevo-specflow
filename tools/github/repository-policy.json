@@ -37,6 +37,17 @@
     ]
   },
 
+  "requiredCodeScanning": {
+    "$comment": "Require CodeQL results before protected refs move. Generic code-scanning errors block; security findings block at high severity or above.",
+    "tools": [
+      {
+        "tool": "CodeQL",
+        "alertsThreshold": "errors",
+        "securityAlertsThreshold": "high_or_higher"
+      }
+    ]
+  },
+
   "rulesets": [
     {
       "name": "protected-main",

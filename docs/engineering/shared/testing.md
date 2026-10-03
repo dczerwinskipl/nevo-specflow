@@ -54,7 +54,12 @@ src/
     resolver.test.ts
 ```
 
-Use `.test.ts` / `.test.tsx`. If a co-located test needs a separate test-only helper under
+Use `.test.ts` / `.test.tsx` as the repository convention. Vitest also recognizes
+`.spec.ts(x)`; treat that suffix as test-only/reserved and do **not** use names such as
+`workflow.spec.ts` for production modules. For the SpecFlow domain, use unambiguous production
+names such as `spec.ts`, `workflow-spec.ts`, or `specification.ts`.
+
+If a co-located test needs a separate test-only helper under
 `src/`, use an explicit `.test-support.ts(x)` segment. Story-only support files should retain a
 `.stories.` segment. Those names make the development-only ownership visible to humans and let the
 package builder exclude them from production-source platform validation.

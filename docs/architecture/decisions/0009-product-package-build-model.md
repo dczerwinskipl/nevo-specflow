@@ -63,7 +63,7 @@ which records how the final public `nevo-specflow` distribution is assembled.
   generated declaration surface. Neutral **production** source and output are also rejected if
   their TypeScript/JavaScript syntax imports Node builtin modules, including explicit `node:*`
   imports that `types: []` alone would not prevent. Co-located development artifacts with explicit
-  `.test.`, `.stories.`, or `.test-support.` naming are excluded from the source-platform scan
+  `.test.`, Vitest-reserved `.spec.`, `.stories.`, or `.test-support.` naming are excluded from the source-platform scan
   because they are not package entrypoints or shipped output. The enforcement walks the TypeScript
   AST rather than matching source text, so comments cannot create false positives and
   type-only/dynamic imports in production source are covered.

@@ -107,7 +107,9 @@ generic product-package builder owns emitted filenames and bundles JavaScript pl
 files from the same public surface. Neutral packages extend `tsconfig.package-neutral.json`;
 Node-only packages extend `tsconfig.package-node.json` and declare `engines.node`. The builder
 derives the platform from that tsconfig profile, rejects ambiguous profile/manifest combinations,
-and rejects Node builtin imports from neutral package source/output. ESLint separately enforces the
+and rejects Node builtin imports from neutral package production source/output. Explicitly named
+co-located development artifacts such as `.test.*`, `.stories.*`, and `.test-support.*` are not
+part of that production-source scan. ESLint separately enforces the
 extensionless relative-source convention.
 
 Repository tooling under `tools/**` may use NodeNext-style `.js` specifiers when it executes

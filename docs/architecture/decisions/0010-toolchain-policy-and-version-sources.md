@@ -4,6 +4,7 @@ type: adr
 title: Toolchain policy and version sources
 status: current
 date: 2026-10-03
+supersedes: adr.0002-toolchain-selection
 summary: >
   Toolchain choices and upgrade constraints are durable architecture decisions, while exact
   installed versions are mutable dependency data owned by repository manifests, .nvmrc,

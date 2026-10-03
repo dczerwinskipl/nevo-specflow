@@ -4,6 +4,7 @@ type: adr
 title: Toolchain selection
 status: superseded
 date: 2026-09-05
+superseded_by: adr.0010-toolchain-policy-and-version-sources
 summary: >
   The monorepo foundation is pnpm 10 + Turborepo + TypeScript + ESLint flat config
   (type-aware for TS) + Prettier + Vitest on Node Active LTS. Two versions are held back

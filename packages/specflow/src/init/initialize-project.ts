@@ -208,6 +208,15 @@ async function restoreGitignore(snapshot: GitignoreSnapshot): Promise<void> {
   }
 }
 
+function isAlreadyExists(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === 'EEXIST'
+  );
+}
+
 async function fileExists(path: string): Promise<boolean> {
   try {
     await access(path, constants.F_OK);

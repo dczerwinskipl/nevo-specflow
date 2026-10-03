@@ -25,9 +25,10 @@ Current.
 ## Context
 
 Nevo SpecFlow is installed and updated as one npm-distributed product. The public
-`nevo-specflow` executable owns setup and lifecycle commands, and `nevo-specflow start` starts
-the local product: Runtime, HTTP surfaces, UI hosting, workflow/provider capabilities, and other
-product-owned services that are part of that installation.
+`nevo-specflow` executable owns setup and lifecycle commands. `nevo-specflow start` is the
+product-level startup entry point: today it starts the migrated Runtime surface; as the remaining
+product capabilities land, the same command composes the local UI, workflow/provider capabilities,
+and other product-owned services that belong to that installation.
 
 The repository also has an `apps/*` workspace glob. Treating every executable server or browser UI
 as an `apps/*` entry would create deployment boundaries that the product does not actually have.
@@ -71,7 +72,8 @@ The diagram shows allowed direction, not a requirement that every package direct
 package reachable below it.
 
 - Product-neutral packages such as `@nevo/authorization` and `@nevo/http-client` MUST NOT depend
-  on other `@nevo/*` packages.
+  on SpecFlow product packages. They MAY depend on other neutral Nevo packages if a real shared
+  dependency is introduced later.
 - `@nevo/specflow-contracts` MAY depend on neutral primitives but MUST NOT depend on Runtime, UI,
   or the product composition root.
 - Runtime MAY consume shared contracts and neutral foundations but MUST NOT depend on UI or

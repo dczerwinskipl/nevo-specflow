@@ -65,8 +65,8 @@ export default tseslint.config(
     ],
     rules: {
       'no-restricted-imports': productImportRestrictions({
-        regex: '^@nevo/',
-        message: 'Product-neutral foundation packages must not depend on other @nevo packages.',
+        regex: '^@nevo/specflow(?:-|/|$)',
+        message: 'Product-neutral foundation packages must not depend on SpecFlow product packages.',
       }),
     },
   },

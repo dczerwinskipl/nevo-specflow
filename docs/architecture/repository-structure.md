@@ -69,7 +69,7 @@ dependencies ([ADR 0011](decisions/0011-product-artifact-packaging-and-pnpm-comp
 
 The SpecFlow UI follows the same source-boundary model: when migrated, it belongs under
 `packages/specflow-ui` as `@nevo/specflow-ui`, not under `apps/`. Its React application and
-frontend build are part of the same local product started by `nevo-specflow start`; the final
+frontend build will be part of the same local product composed by `nevo-specflow start`; the final
 artifact may embed the built UI and Runtime may serve it. This placement does not make UI a reusable
 design-system package — reusable UI behavior remains owned by the Nevo UI design-system boundary.
 

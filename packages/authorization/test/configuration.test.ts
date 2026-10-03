@@ -6,8 +6,8 @@ import {
   defineResource,
 } from '../src/index.js';
 
-const Spec = defineResource({
-  name: 'spec',
+const Order = defineResource({
+  name: 'order',
   capabilities: {
     View: 'view',
   },
@@ -17,7 +17,7 @@ describe('authorization configuration', () => {
   it('rejects roles that reference unknown capabilities', () => {
     expect(() =>
       createAuthorization({
-        resources: [Spec],
+        resources: [Order],
         roles: { broken: ['missing.capability'] },
         assignments: [],
       }),
@@ -27,8 +27,8 @@ describe('authorization configuration', () => {
   it('rejects assignments that reference unknown roles', () => {
     expect(() =>
       createAuthorization({
-        resources: [Spec],
-        roles: { viewer: [Spec.capabilities.View] },
+        resources: [Order],
+        roles: { reader: [Order.capabilities.View] },
         assignments: [
           {
             subject: { kind: 'user', id: 'u1' },
@@ -43,11 +43,11 @@ describe('authorization configuration', () => {
   it('rejects duplicate resource names', () => {
     expect(() =>
       createAuthorization({
-        resources: [Spec, Spec],
+        resources: [Order, Order],
         roles: {},
         assignments: [],
       }),
-    ).toThrowError(/Duplicate authorization resource 'spec'/);
+    ).toThrowError(/Duplicate authorization resource 'order'/);
   });
 
   it('rejects manually constructed resource definitions with foreign capabilities', () => {
@@ -55,15 +55,15 @@ describe('authorization configuration', () => {
       createAuthorization({
         resources: [
           {
-            name: 'spec',
-            capabilities: { Manage: 'session.manage' },
-            capabilityIds: ['session.manage'],
+            name: 'order',
+            capabilities: { Manage: 'tenant.manage' },
+            capabilityIds: ['tenant.manage'],
           },
         ],
         roles: {},
         assignments: [],
       }),
-    ).toThrowError(/Capability 'session.manage' does not belong to resource 'spec'/);
+    ).toThrowError(/Capability 'tenant.manage' does not belong to resource 'order'/);
   });
 
   it('rejects manually constructed resource definitions whose capability views drift', () => {
@@ -71,9 +71,9 @@ describe('authorization configuration', () => {
       createAuthorization({
         resources: [
           {
-            name: 'spec',
-            capabilities: { View: 'spec.view' },
-            capabilityIds: ['spec.manage'],
+            name: 'order',
+            capabilities: { View: 'order.view' },
+            capabilityIds: ['order.manage'],
           },
         ],
         roles: {},

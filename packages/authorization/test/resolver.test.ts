@@ -2,38 +2,38 @@ import { describe, expect, it } from 'vitest';
 
 import { createAuthorization, defineResource } from '../src/index.js';
 
-const Spec = defineResource({
-  name: 'spec',
+const Order = defineResource({
+  name: 'order',
   capabilities: {
     View: 'view',
     Manage: 'manage',
   },
 });
 
-const Session = defineResource({
-  name: 'session',
+const Tenant = defineResource({
+  name: 'tenant',
   capabilities: {
-    Create: 'create',
+    Manage: 'manage',
   },
 });
 
 function authorization() {
   return createAuthorization({
-    resources: [Spec, Session],
+    resources: [Order, Tenant],
     roles: {
-      viewer: [Spec.capabilities.View],
-      developer: [Spec.capabilities.View, Spec.capabilities.Manage, Session.capabilities.Create],
+      reader: [Order.capabilities.View],
+      operator: [Order.capabilities.View, Order.capabilities.Manage, Tenant.capabilities.Manage],
     },
     assignments: [
       {
         subject: { kind: 'user', id: 'u1' },
-        role: 'viewer',
+        role: 'reader',
         scope: {},
       },
       {
         subject: { kind: 'user', id: 'u1' },
-        role: 'developer',
-        scope: { projectId: 'P1' },
+        role: 'operator',
+        scope: { tenantId: 'T1' },
       },
     ],
   });
@@ -47,24 +47,24 @@ describe('authorization resolver', () => {
       auth.resolveCapabilities({
         subject: { kind: 'user', id: 'u1' },
         resource: {
-          name: 'spec',
-          scope: { projectId: 'P1', specId: 'S1' },
+          name: 'order',
+          scope: { tenantId: 'T1', orderId: 'O1' },
         },
       }),
     ).toEqual({
-      capabilities: ['spec.view', 'spec.manage'],
+      capabilities: ['order.view', 'order.manage'],
     });
 
     expect(
       auth.resolveCapabilities({
         subject: { kind: 'user', id: 'u1' },
         resource: {
-          name: 'session',
-          scope: { projectId: 'P1', specId: 'S1' },
+          name: 'tenant',
+          scope: { tenantId: 'T1' },
         },
       }),
     ).toEqual({
-      capabilities: ['session.create'],
+      capabilities: ['tenant.manage'],
     });
   });
 
@@ -75,12 +75,12 @@ describe('authorization resolver', () => {
       auth.resolveCapabilities({
         subject: { kind: 'user', id: 'u1' },
         resource: {
-          name: 'spec',
-          scope: { projectId: 'P2', specId: 'S1' },
+          name: 'order',
+          scope: { tenantId: 'T2', orderId: 'O1' },
         },
       }),
     ).toEqual({
-      capabilities: ['spec.view'],
+      capabilities: ['order.view'],
     });
   });
 
@@ -88,12 +88,12 @@ describe('authorization resolver', () => {
     expect(() =>
       authorization().can({
         subject: { kind: 'user', id: 'u1' },
-        capability: Session.capabilities.Create,
+        capability: Tenant.capabilities.Manage,
         resource: {
-          name: 'spec',
-          scope: { projectId: 'P1', specId: 'S1' },
+          name: 'order',
+          scope: { tenantId: 'T1', orderId: 'O1' },
         },
       }),
-    ).toThrowError(/does not belong to resource 'spec'/);
+    ).toThrowError(/does not belong to resource 'order'/);
   });
 });

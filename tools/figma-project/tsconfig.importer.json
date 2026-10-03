@@ -16,7 +16,7 @@
       "@nevo/figma-core": ["../../packages/figma-core/src/index.ts"],
       "@nevo/figma-core/*": ["../../packages/figma-core/src/*"],
       "@nevo/ui/*": ["../../packages/nevo-ui/src/*"],
-      "@nevo/specflow-ui/*": ["../../apps/specflow-ui/src/*"],
+      "@nevo/specflow-ui/*": ["../../packages/specflow-ui/src/*"],
       "nevo-example-crm/*": ["../../examples/crm/src/*"],
       "nevo-figma-import/*": ["../figma-import/*"]
     }

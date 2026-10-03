@@ -6,7 +6,7 @@ import type { DesignStoryExport, CaptureSection } from './types';
 const storyModules = import.meta.glob<Record<string, unknown>>(
   [
     '../../../packages/nevo-ui/src/**/*.stories.tsx',
-    '../../../apps/specflow-ui/src/**/*.stories.tsx',
+    '../../../packages/specflow-ui/src/**/*.stories.tsx',
     '../../../examples/**/*.stories.tsx',
   ],
   { eager: true },

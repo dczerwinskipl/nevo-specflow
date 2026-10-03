@@ -91,8 +91,7 @@ The interactive application is **Nevo SpecFlow UI**.
 "Dashboard" is not the name of the whole application. It may describe an individual
 dashboard screen within the UI.
 
-The package name `@nevo/specflow-ui` is reserved for the UI when it becomes a distinct
-package boundary.
+The internal product UI capability package is named `@nevo/specflow-ui`.
 
 ### Reusable design system
 

@@ -18,9 +18,11 @@ related:
 
 # SpecFlow UI application architecture
 
-`apps/specflow-ui/` is the product application and composition root. It owns SpecFlow copy, brand
-assembly, routing, screens, and product-specific interaction decisions. It consumes reusable
-mechanics from `@nevo/ui`.
+`packages/specflow-ui/` is the product UI capability and React application composition root. It
+owns SpecFlow copy, brand assembly, routing, screens, frontend build output, and product-specific
+interaction decisions. It consumes reusable mechanics from `@nevo/ui` and remains part of the
+single local product composed by `@nevo/specflow`; it is not an independently deployed `apps/*`
+host.
 
 ## Runtime composition
 

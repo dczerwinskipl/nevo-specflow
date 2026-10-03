@@ -21,8 +21,8 @@ related:
 
 # React component guidelines
 
-These rules govern reusable components in `packages/nevo-ui/` and product composition in
-`apps/specflow-ui/`. They describe responsibilities, not a mandatory directory tree.
+These rules govern reusable components in `packages/nevo-ui/` and product UI composition in
+`packages/specflow-ui/`. They describe responsibilities, not a mandatory directory tree.
 
 ## Core principles
 
@@ -47,7 +47,7 @@ These rules govern reusable components in `packages/nevo-ui/` and product compos
 
 - `packages/nevo-ui/` owns domain-agnostic components, design tokens, app-shell mechanics, and
   workspace/floating behavior that can be reused by another application.
-- `apps/specflow-ui/` owns SpecFlow brand composition, routing, product screens, copy, and
+- `packages/specflow-ui/` owns SpecFlow brand composition, routing, product screens, copy, and
   product-specific interaction decisions.
 - `examples/` owns independent consumers. Examples MAY use Nevo UI but MUST NOT depend on
   SpecFlow UI.

@@ -8,12 +8,11 @@ packages:
   - "examples/*"
   - "packages/*"
   - "tools/*"
-  # packages/  -> real product packages (@nevo/*): shared authorization/contracts,
-  #              reusable UI/Figma foundations, and the specflow CLI and Runtime.
-  # apps/      -> deployable applications.
+  # packages/  -> source boundaries that compose the SpecFlow product plus reusable
+  #              neutral Nevo capabilities, including UI and Figma foundations.
+  # apps/      -> optional independently deployed/operated hosts; currently empty.
   # examples/  -> non-product reference consumers proving reusable package boundaries.
-  # tools/     -> repository-internal tooling (docs, agents, release, github, product,
-  #              and the Figma/Storybook pipeline).
+  # tools/     -> repository-internal tooling (docs, agents, release, github, Figma, Storybook).
 
 # Resolve dependencies and check `engines` against the pinned Node, regardless
 # of which Node the developer is currently running. Keep in sync with .nvmrc.

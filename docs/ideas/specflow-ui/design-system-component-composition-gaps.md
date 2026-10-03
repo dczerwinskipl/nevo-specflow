@@ -51,7 +51,7 @@ Implementation evidence was inspected from the current UI migration branch:
 feature/poc-to-specflow
 ```
 
-That branch currently contains `apps/specflow-ui` and `packages/nevo-ui`; the documentation branch
+That branch currently contains `packages/specflow-ui` and `packages/nevo-ui`; the documentation branch
 does not yet contain those migrated UI sources. Treat file/API observations below as migration-branch
 evidence until that UI branch is merged or rebased.
 

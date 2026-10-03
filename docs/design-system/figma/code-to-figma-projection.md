@@ -81,7 +81,7 @@ asset kind, paint/effect model, responsive representation, or layout primitive.
 - `packages/figma-core/` owns neutral authoring types, canonical IR, validation, and metadata
   contracts.
 - Component and resource declarations stay with their owners in `packages/nevo-ui/`,
-  `apps/specflow-ui/`, and `examples/`.
+  `packages/specflow-ui/`, and `examples/`.
 - `tools/figma-project/` composes the active project catalog and capture gallery.
 - `tools/figma-export/` captures runtime output into canonical IR.
 - `tools/figma-import/` owns generic plugin mechanics and Figma reconciliation.

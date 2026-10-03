@@ -35,7 +35,7 @@ product copy, code, packages, and documentation MUST NOT introduce a competing s
 | **Nevo UI**                  | The reusable design system and UI component platform. It is not the SpecFlow product UI.                    | Reusable design-system documentation.        |
 | **`@nevo/specflow`**         | The distributable product package and CLI composition root.                                                 | Package/API references.                      |
 | **`@nevo/specflow-runtime`** | Runtime capability package.                                                                                 | Internal package/API references.             |
-| **`@nevo/specflow-ui`**      | Reserved package name for the SpecFlow UI when it becomes a distinct package.                               | Internal package/API references.             |
+| **`@nevo/specflow-ui`**      | SpecFlow product UI capability package.                                                                     | Internal package/API references.             |
 
 ## Naming rules
 

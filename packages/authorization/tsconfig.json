@@ -1,14 +1,7 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../tsconfig.package-neutral.json",
   "compilerOptions": {
-    "noEmit": true,
-    "composite": false,
-    "declaration": false,
-    "declarationMap": false,
-    "sourceMap": false,
-    "incremental": true,
-    "tsBuildInfoFile": "./.tsbuild/authorization.tsbuildinfo",
-    "types": ["node"]
+    "tsBuildInfoFile": "./.tsbuild/authorization.tsbuildinfo"
   },
   "include": ["src/**/*.ts", "test/**/*.ts"]
 }

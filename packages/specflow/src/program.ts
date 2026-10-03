@@ -11,9 +11,9 @@ import {
 import type { RuntimeInitPrompter } from '@nevo/specflow-runtime';
 import { Command } from 'commander';
 
-import { createProjectInitCommand, type ProjectInitCommandContext } from './init/cli.js';
-import { startProjectRuntime } from './runtime/start-project-runtime.js';
-import { NEVO_SPECFLOW_VERSION } from './version.js';
+import { createProjectInitCommand, type ProjectInitCommandContext } from './init/cli';
+import { startProjectRuntime } from './runtime/start-project-runtime';
+import { NEVO_SPECFLOW_VERSION } from './version';
 
 export interface ProgramIO {
   readonly stdout: (line: string) => void;

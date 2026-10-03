@@ -5,9 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import { describe, expect, it } from 'vitest';
 
-import { createAuthCommand, createStartCommand } from '../src/cli/command.js';
-import { isSupportedPasswordHash, verifyPassword } from '../src/auth/password.js';
-import { PASSWORD_MAX_LENGTH } from '../src/auth/password-policy.js';
+import { createAuthCommand, createStartCommand } from '../src/cli/command';
+import { isSupportedPasswordHash, verifyPassword } from '../src/auth/authentication/password/hash';
+import { PASSWORD_MAX_LENGTH } from '../src/auth/authentication/password/policy';
 
 const here = dirname(fileURLToPath(import.meta.url));
 

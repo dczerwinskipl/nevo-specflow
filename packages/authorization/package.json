@@ -15,7 +15,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "node ../../tools/build-package.mjs",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run"
   },

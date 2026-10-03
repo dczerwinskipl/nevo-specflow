@@ -1,6 +1,6 @@
-import { AuthorizationConfigurationError } from './errors.js';
-import type { CapabilityId, ResourceDefinition } from './types.js';
-import { assertIdentifierSegment } from './validation.js';
+import { AuthorizationConfigurationError } from './errors';
+import type { CapabilityId, ResourceDefinition } from './types';
+import { assertIdentifierSegment } from './validation';
 
 type CapabilityMap = Readonly<Record<string, string>>;
 

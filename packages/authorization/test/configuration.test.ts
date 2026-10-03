@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  AuthorizationConfigurationError,
-  createAuthorization,
-  defineResource,
-} from '../src/index.js';
+import { AuthorizationConfigurationError, createAuthorization, defineResource } from '../src/index';
 
 const Order = defineResource({
   name: 'order',
@@ -80,5 +76,29 @@ describe('authorization configuration', () => {
         assignments: [],
       }),
     ).toThrowError(/capabilities and capabilityIds must contain the same unique capability ids/);
+  });
+
+  it('snapshots caller-owned assignments at construction time', () => {
+    const assignment = {
+      subject: { kind: 'user', id: 'u1' },
+      role: 'reader',
+      scope: { tenantId: 'T1' },
+    };
+    const authorization = createAuthorization({
+      resources: [Order],
+      roles: { reader: [Order.capabilities.View] },
+      assignments: [assignment],
+    });
+
+    assignment.subject.id = 'attacker';
+    assignment.scope.tenantId = 'T2';
+
+    expect(
+      authorization.can({
+        subject: { kind: 'user', id: 'u1' },
+        capability: Order.capabilities.View,
+        resource: { name: 'order', scope: { tenantId: 'T1', orderId: 'O1' } },
+      }),
+    ).toBe(true);
   });
 });

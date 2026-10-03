@@ -61,13 +61,14 @@ Steps:
    `pnpm install --frozen-lockfile` — no prior `pnpm build` / `pnpm check`, no committed
    `dist`.
 1. **Build the inputs, scoped.** `pnpm --filter nevo-repo-release build` and
-   `pnpm --filter @nevo/specflow-runtime build` — the package's own `tsc`, never a
-   global `turbo run build`, so packaging can run inside `turbo run test` and never
-   triggers a repo-wide pre-build.
+   `pnpm --filter @nevo/specflow-runtime... build` — Runtime and its transitive workspace
+   dependencies run their own builds only, never a global `turbo run build`. Reusable product
+   packages use the ADR 0009 library builder; repository tools such as release remain plain
+   `tsc`. Packaging can therefore run inside `turbo run test` without a repo-wide pre-build.
 2. **Resolve the version** from `nevo-release version` (the same command
    `pnpm version:print` uses — the repository's canonical channel/SemVer model). It is
    validated as a legal npm version.
-3. **Bundle** with esbuild (`nevo-repo-product bundle`): the `nevo-specflow` entry +
+3. **Bundle the distribution** with esbuild (`nevo-repo-product bundle`): the `nevo-specflow` entry +
    `@nevo/specflow-runtime` (`.` and `./cli`) + `commander`, into one ESM `dist/bin.js`
    with a `#!/usr/bin/env node` banner and `NEVO_SPECFLOW_VERSION_INJECTED` defined.
 4. **Write minimal metadata** into a scratch stage: `name`, the resolved `version`,
@@ -85,6 +86,15 @@ Steps:
    `packageManager`) and targets other directories with `--dir`, so Corepack always uses
    the **repository-pinned pnpm**, never "latest". The tarball name is deterministic:
    `nevo-specflow-<version>.tgz`.
+
+## Package build vs distribution bundle
+
+ADR 0009 owns source-package compilation: reusable product packages bundle their JavaScript and
+declaration surfaces with the generic library builder, with neutral and Node-only profiles made
+explicit. That package build does **not** create the product artifact.
+
+The separate `nevo-repo-product bundle` step defined by ADR 0006 is the only place that creates
+the final self-contained public CLI file and intentionally crosses workspace package boundaries.
 
 ## Package-metadata rules for `@nevo/specflow`
 

@@ -1,15 +1,15 @@
-import { AuthorizationConfigurationError } from './errors.js';
-import { createAuthorizationRegistry } from './registry.js';
-import { scopeMatches } from './scope.js';
-import { subjectsEqual } from './subject.js';
+import { AuthorizationConfigurationError } from './errors';
+import { createAuthorizationRegistry } from './registry';
+import { scopeMatches } from './scope';
+import { subjectsEqual } from './subject';
 import type {
   Authorization,
   AuthorizationDefinition,
   CapabilityId,
   ResolveCapabilitiesInput,
   ResolveCapabilitiesResult,
-} from './types.js';
-import { validateScope, validateSubject } from './validation.js';
+} from './types';
+import { validateScope, validateSubject } from './validation';
 
 export function createAuthorization(definition: AuthorizationDefinition): Authorization {
   const registry = createAuthorizationRegistry(

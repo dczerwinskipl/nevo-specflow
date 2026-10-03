@@ -9,7 +9,7 @@ import {
   mergeRuntimeConfigValues,
   parseRuntimeConfig,
   RuntimeConfigError,
-} from '../../src/config/index.js';
+} from '../../src/config/index';
 
 const SUPPORTED_PASSWORD_HASH =
   '$scrypt$16384$8$5$MDEyMzQ1Njc4OWFiY2RlZg$' + 'yMHgG_FDESRF0j5gjhGLotSMPdnfefUcNNFPyNoQtJE';
@@ -607,5 +607,13 @@ describe('runtime configuration', () => {
     const cwd = await mkdtemp(join(tmpdir(), 'specflow-config-missing-'));
 
     await expect(loadFrom(cwd)).rejects.toBeInstanceOf(RuntimeConfigError);
+  });
+  it('rejects credentials embedded in server.publicOrigin', () => {
+    const config = requiredAuthConfig();
+    config.server.publicOrigin = 'https://user:password@specflow.example.test:4318';
+
+    expect(() => parseRuntimeConfig(config)).toThrowError(
+      /without credentials, path, query, or fragment/,
+    );
   });
 });

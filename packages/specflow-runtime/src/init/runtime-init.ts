@@ -1,7 +1,7 @@
-import { initAuth, type AuthInitOptions } from '../auth/init.js';
-import { mergeRuntimeConfigValues } from '../config/merge.js';
-import { parseRuntimeConfig } from '../config/parse.js';
-import type { RuntimeInitContribution, RuntimeInitPrompter } from './contracts.js';
+import { initAuth, type AuthInitOptions } from '../auth/authentication/init';
+import { mergeRuntimeConfigValues } from '../config/merge';
+import { parseRuntimeConfig } from '../config/parse';
+import type { RuntimeInitContribution, RuntimeInitPrompter } from './contracts';
 
 export interface RuntimeInitOptions {
   readonly prompter: RuntimeInitPrompter;

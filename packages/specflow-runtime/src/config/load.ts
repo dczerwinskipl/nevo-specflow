@@ -7,16 +7,16 @@ import { parse } from 'yaml';
 import {
   assertNoLocalAuthorization,
   validateProjectAuthorizationSource,
-} from '../authorization/config-source.js';
-import { RuntimeConfigError } from './error.js';
+} from '../auth/authorization/config-source';
+import { RuntimeConfigError } from './error';
 import {
   assertLocalRuntimeConfigOwnership,
   assertProjectRuntimeConfigOwnership,
-} from './ownership.js';
-import { mergeRuntimeConfigValues } from './merge.js';
-import { parseRuntimeConfig } from './parse.js';
-import type { LoadedRuntimeConfig } from './types.js';
-import { isRecord } from './value.js';
+} from './ownership';
+import { mergeRuntimeConfigValues } from './merge';
+import { parseRuntimeConfig } from './parse';
+import type { LoadedRuntimeConfig } from './types';
+import { isRecord } from './value';
 
 export interface LoadRuntimeConfigOptions {
   readonly projectConfigPath: string;

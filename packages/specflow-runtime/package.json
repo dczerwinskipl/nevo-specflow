@@ -13,25 +13,22 @@
     "./cli": {
       "types": "./dist/cli/command.d.ts",
       "default": "./dist/cli/command.js"
-    },
-    "./auth-contracts": {
-      "types": "./dist/auth/contracts.d.ts",
-      "default": "./dist/auth/contracts.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "node ../../tools/build-package.mjs",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run"
   },
   "dependencies": {
+    "@fastify/cookie": "11.1.2",
+    "@fastify/rate-limit": "11.2.0",
+    "@fastify/type-provider-typebox": "6.1.0",
     "@nevo/authorization": "workspace:*",
     "@nevo/specflow-contracts": "workspace:*",
-    "@fastify/cookie": "11.1.2",
-    "@fastify/type-provider-typebox": "6.1.0",
     "commander": "15.0.0",
     "fastify": "5.12.5",
     "openid-client": "6.8.8",
@@ -40,5 +37,8 @@
   },
   "devDependencies": {
     "vitest": "5.0.2"
+  },
+  "engines": {
+    "node": ">=24.20.0 <25"
   }
 }

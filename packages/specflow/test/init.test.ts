@@ -4,8 +4,8 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { type ConfigWriteOptions, initializeProject } from '../src/init/initialize-project.js';
-import type { ProjectLayout } from '../src/project/layout.js';
+import { type ConfigWriteOptions, initializeProject } from '../src/init/initialize-project';
+import type { ProjectLayout } from '../src/project/layout';
 
 const dirs: string[] = [];
 

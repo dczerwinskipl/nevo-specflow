@@ -5,18 +5,18 @@ export type {
   RuntimePasswordAccountConfig,
   RuntimePasswordProviderConfig,
   RuntimeUserConfig,
-} from '../auth/config.js';
+} from '../auth/authentication/config/model';
 export type {
   RuntimeAuthorizationAssignmentConfig,
   RuntimeAuthorizationConfig,
-} from '../authorization/config.js';
-export { RuntimeConfigError } from './error.js';
-export { loadRuntimeConfig, type LoadRuntimeConfigOptions } from './load.js';
-export { mergeRuntimeConfigValues } from './merge.js';
-export { parseRuntimeConfig } from './parse.js';
+} from '../auth/authorization/config';
+export { RuntimeConfigError } from './error';
+export { loadRuntimeConfig, type LoadRuntimeConfigOptions } from './load';
+export { mergeRuntimeConfigValues } from './merge';
+export { parseRuntimeConfig } from './parse';
 export type {
   LoadedRuntimeConfig,
   RuntimeConfig,
   RuntimeServerConfig,
   RuntimeServerTlsConfig,
-} from './types.js';
+} from './types';

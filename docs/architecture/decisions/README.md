@@ -21,3 +21,4 @@ an ADR. Use [`../../templates/adr-template.md`](../../templates/adr-template.md)
 - [0006 — The product ships as a single bundled artifact](0006-product-ships-as-a-single-bundled-artifact.md)
 - [0007 — Documentation architecture and taxonomy](0007-documentation-architecture-and-taxonomy.md) — draft
 - [0008 — Product naming and surfaces](0008-product-naming-and-surfaces.md)
+- [0009 — Product package build model](0009-product-package-build-model.md)

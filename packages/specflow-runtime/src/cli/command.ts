@@ -3,7 +3,7 @@
 
 import { Command } from 'commander';
 
-import type { RuntimeHandle } from '../runtime.js';
+import type { RuntimeHandle } from '../runtime';
 
 export interface RuntimeCommandContext {
   readonly stdout: (line: string) => void;
@@ -30,4 +30,4 @@ function aborted(signal: AbortSignal): Promise<void> {
   );
 }
 
-export { createAuthCommand, type AuthCommandContext } from '../auth/cli.js';
+export { createAuthCommand, type AuthCommandContext } from '../auth/cli';

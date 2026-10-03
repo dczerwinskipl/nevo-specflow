@@ -5,8 +5,8 @@ import process from 'node:process';
 
 import { CommanderError } from 'commander';
 
-import { TerminalProjectInitPrompter } from './init/terminal-prompter.js';
-import { createProgram } from './program.js';
+import { TerminalProjectInitPrompter } from './init/terminal-prompter';
+import { createProgram } from './program';
 
 async function main(argv: string[]): Promise<number> {
   const shutdown = new AbortController();

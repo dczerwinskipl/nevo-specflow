@@ -3,13 +3,13 @@ import { resolve } from 'node:path';
 
 import Fastify, { type FastifyInstance, type RawServerBase } from 'fastify';
 
-import { loadRuntimeConfig, type LoadRuntimeConfigOptions } from './config/index.js';
-import type { RuntimeConfig } from './config/types.js';
+import { loadRuntimeConfig, type LoadRuntimeConfigOptions } from './config/index';
+import type { RuntimeConfig } from './config/types';
 import {
   configureRuntimeApp,
   RUNTIME_FASTIFY_OPTIONS,
   type RuntimeAppDependencies,
-} from './server/app.js';
+} from './server/app';
 
 export interface RuntimeStartOptions extends LoadRuntimeConfigOptions {
   readonly projectRoot: string;

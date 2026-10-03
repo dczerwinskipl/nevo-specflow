@@ -1,6 +1,6 @@
 import { startRuntime, type RuntimeHandle, type RuntimeStartOptions } from '@nevo/specflow-runtime';
 
-import { resolveProjectLayout, type ProjectLayout } from '../project/layout.js';
+import { resolveProjectLayout, type ProjectLayout } from '../project/layout';
 
 export interface StartProjectRuntimeDependencies {
   readonly resolveLayout?: (cwd: string) => Promise<ProjectLayout>;

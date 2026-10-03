@@ -171,11 +171,9 @@ treating that caller error as an ordinary authorization denial.
 
 ## Shared HTTP contract
 
-Plain authorization request/response types live in `@nevo/specflow-contracts`. Runtime owns the
-TypeBox schemas used by Fastify.
-
-Bidirectional compile-time assertions keep the Runtime schemas assignable to the shared types and
-the shared types assignable to the Runtime schemas.
+Authorization request/response TypeBox schemas live in `@nevo/specflow-contracts`, and the
+shared TypeScript types are inferred from those schemas. Runtime uses the exact same schemas with
+Fastify, so there is no second server-owned DTO/schema definition to drift.
 
 The exact endpoint contract is documented in the
 [authorization HTTP API reference](../../../reference/api/authorization.md).

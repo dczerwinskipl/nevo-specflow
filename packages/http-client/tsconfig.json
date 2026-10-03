@@ -1,15 +1,7 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../tsconfig.package-neutral.json",
   "compilerOptions": {
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
-    "noEmit": true,
-    "composite": false,
-    "declaration": false,
-    "declarationMap": false,
-    "sourceMap": false,
-    "incremental": true,
     "tsBuildInfoFile": "./.tsbuild/http-client.tsbuildinfo"
   },
   "include": ["src/**/*.ts"]

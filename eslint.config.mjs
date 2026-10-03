@@ -26,8 +26,7 @@ export default tseslint.config(
 
   js.configs.recommended,
 
-  // TypeScript — type-aware. Dormant until the first .ts source is migrated,
-  // but configured so it is correct when that happens.
+  // TypeScript — type-aware.
   {
     files: ['**/*.{ts,mts,cts,tsx}'],
     extends: [tseslint.configs.recommendedTypeChecked, tseslint.configs.stylisticTypeChecked],
@@ -39,10 +38,43 @@ export default tseslint.config(
     },
   },
 
+  // Product packages use extensionless relative TypeScript source imports.
+  {
+    files: ['packages/**/*.{ts,tsx,mts,cts}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '^\\.{1,2}/.*\\.(?:js|jsx|mjs|cjs|ts|tsx|mts|cts)$',
+              message: 'Product-package relative TypeScript imports must be extensionless.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   // Plain JS / ESM — no type-aware rules, no tsconfig membership required.
   {
     files: ['**/*.{js,mjs,cjs}'],
     extends: [tseslint.configs.recommended, tseslint.configs.disableTypeChecked],
+  },
+
+  // Node globals are explicit. Neutral product packages intentionally do not
+  // inherit process/Buffer/etc. merely because @types/node exists in the workspace.
+  {
+    files: [
+      'tools/**/*.{ts,mts,cts,tsx,js,mjs,cjs}',
+      'packages/specflow/**/*.{ts,mts,cts,tsx,js,mjs,cjs}',
+      'packages/specflow-runtime/**/*.{ts,mts,cts,tsx,js,mjs,cjs}',
+      '*.{js,mjs,cjs,ts,mts,cts}',
+      '*.config.{js,mjs,cjs,ts,mts,cts}',
+    ],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
   },
 
   // Shared language options + rules across both.
@@ -50,7 +82,6 @@ export default tseslint.config(
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: 'module',
-      globals: { ...globals.node },
     },
     rules: {
       'no-console': 'off',

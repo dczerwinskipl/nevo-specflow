@@ -776,6 +776,21 @@
       ]
     },
     {
+      "id": "adr.0009-product-package-build-model",
+      "type": "adr",
+      "title": "Product package build model",
+      "status": "current",
+      "file": "docs/architecture/decisions/0009-product-package-build-model.md",
+      "read_when": [],
+      "summary": "Product packages use extensionless TypeScript source imports and explicit neutral or Node package profiles. Reusable package JavaScript and declaration surfaces are bundled together with one tsdown-based library build, while repository tools keep raw NodeNext tsc output and the final nevo-specflow distribution remains governed by ADR 0006.",
+      "related": [
+        "adr.0002-toolchain-selection",
+        "adr.0006-product-ships-as-a-single-bundled-artifact",
+        "engineering.shared.code-organization",
+        "engineering.repository.product-packaging"
+      ]
+    },
+    {
       "id": "design-system.implementation.react.component-guidelines",
       "type": "engineering",
       "title": "React component guidelines",

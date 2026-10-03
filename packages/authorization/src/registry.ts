@@ -1,17 +1,12 @@
-import { AuthorizationConfigurationError } from './errors.js';
+import { AuthorizationConfigurationError } from './errors';
 import type {
   CapabilityId,
   ResourceDefinition,
   ResourceName,
   RoleAssignment,
   RoleId,
-} from './types.js';
-import {
-  assertIdentifierSegment,
-  assertNonEmpty,
-  validateScope,
-  validateSubject,
-} from './validation.js';
+} from './types';
+import { assertIdentifierSegment, validateScope, validateSubject } from './validation';
 
 export interface AuthorizationRegistry {
   readonly assignments: readonly RoleAssignment[];
@@ -51,7 +46,7 @@ export function createAuthorizationRegistry(
 
   const roles = new Map<RoleId, readonly CapabilityId[]>();
   for (const [role, capabilities] of Object.entries(rolesDefinition)) {
-    assertNonEmpty(role, 'Role id');
+    assertIdentifierSegment(role, 'Role id');
 
     const deduplicated = [...new Set(capabilities)];
     for (const capability of deduplicated) {
@@ -75,7 +70,11 @@ export function createAuthorizationRegistry(
       );
     }
 
-    return assignment;
+    return {
+      subject: { ...assignment.subject },
+      role: assignment.role,
+      scope: { ...assignment.scope },
+    };
   });
 
   return {

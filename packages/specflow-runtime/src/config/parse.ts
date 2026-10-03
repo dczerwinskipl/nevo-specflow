@@ -1,7 +1,8 @@
-import { parseAuthConfig, validateAuthRuntimeContext } from '../auth/config.js';
-import { parseAuthorizationConfig } from '../authorization/config.js';
-import { RuntimeConfigError } from './error.js';
-import type { RuntimeConfig } from './types.js';
+import { parseAuthConfig } from '../auth/authentication/config/parse';
+import { validateAuthRuntimeContext } from '../auth/authentication/config/runtime-policy';
+import { parseAuthorizationConfig } from '../auth/authorization/config';
+import { RuntimeConfigError } from './error';
+import type { RuntimeConfig } from './types';
 import {
   boolean,
   integer,
@@ -9,7 +10,7 @@ import {
   onlyKeys,
   optionalNonEmptyString,
   record,
-} from './value.js';
+} from './value';
 
 const ROOT_KEYS = new Set(['server', 'auth', 'authorization']);
 const SERVER_KEYS = new Set(['host', 'port', 'publicOrigin', 'tls']);
@@ -106,12 +107,14 @@ function absoluteHttpOrigin(value: unknown, path: string): string {
 
   if (
     (url.protocol !== 'http:' && url.protocol !== 'https:') ||
+    url.username ||
+    url.password ||
     url.pathname !== '/' ||
     url.search ||
     url.hash
   ) {
     throw new RuntimeConfigError(
-      `${path} must be an absolute HTTP(S) origin without a path, query, or fragment.`,
+      `${path} must be an absolute HTTP(S) origin without credentials, path, query, or fragment.`,
     );
   }
 

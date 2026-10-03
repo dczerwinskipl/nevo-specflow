@@ -8,6 +8,15 @@ import tseslint from 'typescript-eslint';
 import globals from 'globals';
 import prettier from 'eslint-config-prettier';
 
+const productRelativeImportPattern = {
+  regex: '^\\.{1,2}/.*\\.(?:js|jsx|mjs|cjs|ts|tsx|mts|cts)$',
+  message: 'Product-package relative TypeScript imports must be extensionless.',
+};
+
+function productImportRestrictions(...patterns) {
+  return ['error', { patterns: [productRelativeImportPattern, ...patterns] }];
+}
+
 export default tseslint.config(
   {
     ignores: [
@@ -42,17 +51,52 @@ export default tseslint.config(
   {
     files: ['packages/**/*.{ts,tsx,mts,cts}'],
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              regex: '^\\.{1,2}/.*\\.(?:js|jsx|mjs|cjs|ts|tsx|mts|cts)$',
-              message: 'Product-package relative TypeScript imports must be extensionless.',
-            },
-          ],
-        },
-      ],
+      'no-restricted-imports': productImportRestrictions(),
+    },
+  },
+
+  // Product package direction is intentionally one-way. These rules protect the
+  // durable package topology documented in ADR 0012; the composition root is the
+  // only layer allowed to depend on every product capability.
+  {
+    files: [
+      'packages/authorization/**/*.{ts,tsx,mts,cts}',
+      'packages/http-client/**/*.{ts,tsx,mts,cts}',
+    ],
+    rules: {
+      'no-restricted-imports': productImportRestrictions({
+        regex: '^@nevo/specflow(?:-|/|$)',
+        message:
+          'Product-neutral foundation packages must not depend on SpecFlow product packages.',
+      }),
+    },
+  },
+  {
+    files: ['packages/specflow-contracts/**/*.{ts,tsx,mts,cts}'],
+    rules: {
+      'no-restricted-imports': productImportRestrictions({
+        regex: '^@nevo/(?:specflow|specflow-runtime|specflow-ui)(?:/|$)',
+        message: 'Shared SpecFlow contracts must not depend on the product shell, Runtime, or UI.',
+      }),
+    },
+  },
+  {
+    files: ['packages/specflow-runtime/**/*.{ts,tsx,mts,cts}'],
+    rules: {
+      'no-restricted-imports': productImportRestrictions({
+        regex: '^@nevo/(?:specflow|specflow-ui)(?:/|$)',
+        message: 'Runtime must not depend on the product composition root or UI.',
+      }),
+    },
+  },
+  {
+    files: ['packages/specflow-ui/**/*.{ts,tsx,mts,cts}'],
+    rules: {
+      'no-restricted-imports': productImportRestrictions({
+        regex: '^@nevo/(?:authorization|specflow|specflow-runtime)(?:/|$)',
+        message:
+          'SpecFlow UI consumes shared contracts and client boundaries; it must not depend on Runtime, the product shell, or authorization policy implementation.',
+      }),
     },
   },
 

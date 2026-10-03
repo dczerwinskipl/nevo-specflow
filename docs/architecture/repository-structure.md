@@ -6,15 +6,18 @@ status: current
 read_when:
   - orienting to the repository layout
   - understanding how Turborepo and CI decide what runs
+  - deciding whether product code belongs under packages or apps
+  - understanding product package dependency direction
   - understanding the versioning and release-line model
   - reasoning about pre-1.0 compatibility
 summary: >
-  Monorepo layout (apps/packages/tools), the Turborepo task graph, the CI
-  affected-package model and what invalidates everything, the SemVer / release-line
-  model, and the pre-1.0 policy.
+  Monorepo layout and product package topology (apps/packages/tools), dependency direction,
+  the Turborepo task graph, the CI affected-package model and what invalidates everything,
+  the SemVer / release-line model, and the pre-1.0 policy.
 related:
   - engineering.repository.local-setup
   - engineering.repository.git-workflow
+  - adr.0012-product-package-topology-and-dependency-direction
   - adr.0010-toolchain-policy-and-version-sources
   - adr.0003-branch-and-release-model
 ---
@@ -25,7 +28,7 @@ related:
 
 ```text
 nevo-specflow/
-  apps/                 deployable applications        (workspace glob; empty until one lands)
+  apps/                 optional standalone hosts     (workspace glob; currently empty)
   packages/             product packages (@nevo/* scope)
     authorization/       @nevo/authorization            — product-neutral scoped capability resolver
     http-client/         @nevo/http-client              — product-neutral HTTP client and credential transport boundary
@@ -45,19 +48,35 @@ nevo-specflow/
 ```
 
 The workspace root is `private: true`. `apps/` and `packages/` are workspace globs;
-directories appear there with real code, not placeholders. Repository-internal tooling
-lives under `tools/` (unscoped, `private`) and is never confused with a publishable
-`@nevo/*` package ([ADR 0005](decisions/0005-repository-tooling-is-separate-from-the-product-api.md)).
+directories appear there with real code, not placeholders. `packages/*` owns source boundaries
+that make up the npm-distributed SpecFlow product and reusable Nevo capabilities. `apps/*` is
+reserved for a future independently deployed or independently operated host; it is intentionally
+empty today. A server process or browser UI does not become an `apps/*` entry merely because it is
+executable. Repository-internal tooling lives under `tools/` (unscoped, `private`) and is never
+confused with a product `@nevo/*` package
+([ADR 0005](decisions/0005-repository-tooling-is-separate-from-the-product-api.md),
+[ADR 0012](decisions/0012-product-package-topology-and-dependency-direction.md)).
 
-The first product boundary is real. `@nevo/specflow` owns the `nevo-specflow` **shell** —
-root program, `--version`, global flags/output/exit conventions — and **composes**
-top-level commands. Each capability vertical owns its own command: `@nevo/specflow-runtime`
-(`private: true`) exposes the Runtime capability at `.` and its capability-owned Commander
-adapters at `./cli` (`start` plus auth utilities), and is bundled into `@nevo/specflow` at
-pack time, so a user installs one artifact with no registry
-([ADR 0011](decisions/0011-product-artifact-packaging-and-pnpm-compatibility.md),
-[product packaging](../engineering/repository/product-packaging.md)). `start` starts the real Runtime HTTP server. UI hosting and most product capabilities are still
-migrated separately and are not implied by the Runtime server foundation.
+The first product boundary is real. `@nevo/specflow` is both the public `nevo-specflow`
+**shell** and the **product composition root**: root program, `--version`, global
+flags/output/exit conventions, product-level command composition, packaging, and startup
+composition. Each capability vertical owns its own implementation and command adapter.
+`@nevo/specflow-runtime` (`private: true`) exposes the Runtime capability at `.` and its
+capability-owned Commander adapters at `./cli` (`start` plus auth utilities), and is bundled into
+`@nevo/specflow` at pack time, so a user installs one artifact with no internal workspace
+dependencies ([ADR 0011](decisions/0011-product-artifact-packaging-and-pnpm-compatibility.md),
+[product packaging](../engineering/repository/product-packaging.md)).
+
+The SpecFlow UI follows the same source-boundary model: when migrated, it belongs under
+`packages/specflow-ui` as `@nevo/specflow-ui`, not under `apps/`. Its React application and
+frontend build will be part of the same local product composed by `nevo-specflow start`; the final
+artifact may embed the built UI and Runtime may serve it. This placement does not make UI a reusable
+design-system package — reusable UI behavior remains owned by the Nevo UI design-system boundary.
+
+Package dependencies flow toward neutral foundations and shared contracts, never from a capability
+back into the composition root. Runtime and UI may share `@nevo/specflow-contracts`; UI does not
+import Runtime internals. The enforceable directions and the `apps/*` criterion are defined by
+[ADR 0012](decisions/0012-product-package-topology-and-dependency-direction.md).
 
 ## Task graph (Turborepo)
 

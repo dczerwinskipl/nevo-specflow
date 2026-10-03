@@ -498,13 +498,16 @@
       "read_when": [
         "orienting to the repository layout",
         "understanding how Turborepo and CI decide what runs",
+        "deciding whether product code belongs under packages or apps",
+        "understanding product package dependency direction",
         "understanding the versioning and release-line model",
         "reasoning about pre-1.0 compatibility"
       ],
-      "summary": "Monorepo layout (apps/packages/tools), the Turborepo task graph, the CI affected-package model and what invalidates everything, the SemVer / release-line model, and the pre-1.0 policy.",
+      "summary": "Monorepo layout and product package topology (apps/packages/tools), dependency direction, the Turborepo task graph, the CI affected-package model and what invalidates everything, the SemVer / release-line model, and the pre-1.0 policy.",
       "related": [
         "engineering.repository.local-setup",
         "engineering.repository.git-workflow",
+        "adr.0012-product-package-topology-and-dependency-direction",
         "adr.0010-toolchain-policy-and-version-sources",
         "adr.0003-branch-and-release-model"
       ]
@@ -820,6 +823,21 @@
         "adr.0010-toolchain-policy-and-version-sources",
         "engineering.repository.product-packaging",
         "engineering.repository.dependencies-and-security"
+      ]
+    },
+    {
+      "id": "adr.0012-product-package-topology-and-dependency-direction",
+      "type": "adr",
+      "title": "Product package topology and dependency direction",
+      "status": "current",
+      "file": "docs/architecture/decisions/0012-product-package-topology-and-dependency-direction.md",
+      "read_when": [],
+      "summary": "Nevo SpecFlow is one npm-distributed local product composed from source packages. Product capabilities, including Runtime and UI, live under packages; apps is reserved for a future independently deployed or independently operated host. Package dependencies flow toward shared contracts and neutral foundations, with @nevo/specflow as the product composition root.",
+      "related": [
+        "architecture.repository-structure",
+        "adr.0005-repository-tooling-is-separate-from-the-product-api",
+        "adr.0011-product-artifact-packaging-and-pnpm-compatibility",
+        "design-system.principles.system-boundary"
       ]
     },
     {

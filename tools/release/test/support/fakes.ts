@@ -223,6 +223,8 @@ export function greenChecks(): NormalizedCheckRun[] {
     { name: 'quality', status: 'completed', conclusion: 'success', id: 1 },
     { name: 'verify tests', status: 'completed', conclusion: 'success', id: 2 },
     { name: 'build', status: 'completed', conclusion: 'success', id: 3 },
+    { name: 'product smoke', status: 'completed', conclusion: 'success', id: 4 },
+    { name: 'codeql', status: 'completed', conclusion: 'success', id: 5 },
   ];
 }
 

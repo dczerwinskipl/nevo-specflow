@@ -23,6 +23,19 @@ env:
   AFFECTED: ${{ github.event_name == 'pull_request' && '--affected' || '' }}
 
 jobs:
+
+  dependency-review:
+    name: dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: moderate
+
   quality:
     name: quality
     runs-on: ubuntu-latest
@@ -142,6 +155,39 @@ jobs:
           fi
 
           echo "Package tests passed (or no package test task was affected)."
+
+  packaged-product:
+    name: product smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Pack and smoke installed product
+        run: pnpm --filter @nevo/specflow test:packaged
+
+  verify-product-smoke:
+    name: product smoke
+    needs: packaged-product
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify product smoke matrix
+        env:
+          RESULT: ${{ needs.packaged-product.result }}
+        shell: bash
+        run: |
+          if [ "$RESULT" != "success" ]; then
+            echo "At least one packaged-product smoke job failed: $RESULT"
+            exit 1
+          fi
+          echo "Packaged-product smoke passed on Linux, Windows and macOS."
+
 
   build:
     name: build

@@ -116,9 +116,22 @@ export async function executeRelease(
   // ── Phase A: ensure tag + GitHub Release ────────────────────────────────
   let highestTag: string | null = null;
   let highestTagState: ExistingTag | null = null;
+  let recoveringPublishedArtifacts = false;
   if (plan.prerelease) {
     highestTag = highestPrereleaseTagFor(plan.version, plan.channel, await git.listTags());
-    if (highestTag) highestTagState = await inspectTag(deps, highestTag, headSha);
+    if (highestTag) {
+      highestTagState = await inspectTag(deps, highestTag, headSha);
+      if (highestTagState.state === 'ok' && highestTagState.release) {
+        const complete = await hasRequiredReleaseArtifacts(github, highestTag);
+        if (!complete) {
+          // Candidate selection historically treated tag + Release as complete. Now
+          // release assets are part of the durable publication contract, so keep the
+          // same prerelease number until its tarball + checksum are present.
+          highestTagState = { ...highestTagState, release: false };
+          recoveringPublishedArtifacts = true;
+        }
+      }
+    }
   }
 
   const { tag, recovering } = pickReleaseCandidate({
@@ -137,8 +150,11 @@ export async function executeRelease(
   if (recovering && tag !== plan.tag) {
     events.push(
       info(
-        `Recovering ${tag}: its tag is on ${headShort} but the GitHub Release is missing. ` +
-          `Not cutting ${plan.tag}.`,
+        recoveringPublishedArtifacts
+          ? `Recovering ${tag}: its GitHub Release exists but required product assets are incomplete. ` +
+              `Not cutting ${plan.tag}.`
+          : `Recovering ${tag}: its tag is on ${headShort} but the GitHub Release is missing. ` +
+              `Not cutting ${plan.tag}.`,
       ),
     );
   }
@@ -194,6 +210,25 @@ export async function executeRelease(
   }
 
   return { events, plan, tag, mutated: mutate };
+}
+
+
+async function hasRequiredReleaseArtifacts(github: GitHubClient, tag: string): Promise<boolean> {
+  let names: string[];
+  try {
+    names = await github.releaseAssetNames(tag);
+  } catch (err) {
+    throw new InconsistentStateError(
+      `Could not determine GitHub Release assets for ${tag}: ${errorMessage(err)}. ` +
+        'Refusing to advance the prerelease sequence without proving publication is complete.',
+      { cause: err },
+    );
+  }
+
+  const version = tag.replace(/^v/, '');
+  const tarball = `nevo-specflow-${version}.tgz`;
+  const required = [tarball, `${tarball}.sha256`];
+  return required.every((name) => names.includes(name));
 }
 
 /** §2 — refuse a stale / diverged local checkout. */

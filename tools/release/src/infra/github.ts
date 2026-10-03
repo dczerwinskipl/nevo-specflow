@@ -126,6 +126,23 @@ export function createGitHubClient(
       );
     },
 
+    async releaseAssetNames(tag): Promise<string[]> {
+      const raw = await gh(['release', 'view', tag, '--json', 'assets', '--jq', '[.assets[].name]']);
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(raw.trim() || '[]');
+      } catch (err) {
+        throw new Error(
+          `could not parse release assets for ${tag}: ${err instanceof Error ? err.message : String(err)}`,
+          { cause: err },
+        );
+      }
+      if (!Array.isArray(parsed) || parsed.some((name) => typeof name !== 'string')) {
+        throw new Error(`unexpected release-asset response shape for ${tag}`);
+      }
+      return parsed;
+    },
+
     async createRelease({ tag, prerelease }): Promise<{ url: string }> {
       const args = ['release', 'create', tag, '--verify-tag', '--title', tag, '--generate-notes'];
       if (prerelease) args.push('--prerelease');

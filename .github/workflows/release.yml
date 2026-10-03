@@ -94,6 +94,8 @@ jobs:
           name: nevo-specflow-release-candidate
           path: .artifacts/nevo-specflow-*.tgz
           if-no-files-found: error
+          include-hidden-files: true
+          compression-level: 0
           overwrite: true
           retention-days: 7
 

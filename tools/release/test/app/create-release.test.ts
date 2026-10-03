@@ -117,9 +117,31 @@ describe('executeRelease — Phase A recovery + fail-closed GitHub reads', () =>
     expect(git.createdTags).toEqual([{ tag: 'v1.3.0-beta.2', sha: HEAD }]);
   });
 
+  it('recovers the same prerelease when its Release is missing product assets', async () => {
+    git.state.tags.set('v1.3.0-beta.1', HEAD);
+    github.state.releases.add('v1.3.0-beta.1');
+    github.state.releaseAssets.set('v1.3.0-beta.1', ['nevo-specflow-1.3.0-beta.1.tgz']);
+
+    const result = await run('beta', false);
+    expect(result.tag).toBe('v1.3.0-beta.1');
+    expect(msgs(result)).toMatch(/required product assets are incomplete/i);
+  });
+
+  it('fails closed when assets of an existing prerelease cannot be read', async () => {
+    git.state.tags.set('v1.3.0-beta.1', HEAD);
+    github.state.releases.add('v1.3.0-beta.1');
+    github.state.failReleaseAssets = new Error('HTTP 503');
+
+    await expect(run('beta', false)).rejects.toThrow(/Release assets.*HTTP 503/i);
+  });
+
   it('expectedTag fails closed before mutation when the candidate changes after validation', async () => {
     git.state.tags.set('v1.3.0-beta.1', HEAD);
     github.state.releases.add('v1.3.0-beta.1');
+    github.state.releaseAssets.set('v1.3.0-beta.1', [
+      'nevo-specflow-1.3.0-beta.1.tgz',
+      'nevo-specflow-1.3.0-beta.1.tgz.sha256',
+    ]);
 
     await expect(
       executeRelease(

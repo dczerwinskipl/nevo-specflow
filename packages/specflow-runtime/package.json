@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Nevo SpecFlow Runtime vertical: configurable long-lived Runtime server and authentication foundation, bundled into @nevo/specflow.",
+  "description": "Nevo SpecFlow Runtime vertical: configurable long-lived Runtime server, authentication, and authorization foundation, bundled into @nevo/specflow.",
   "license": "MIT",
   "exports": {
     ".": {
@@ -28,6 +28,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@nevo/authorization": "workspace:*",
+    "@nevo/specflow-contracts": "workspace:*",
     "@fastify/cookie": "11.1.2",
     "@fastify/type-provider-typebox": "6.1.0",
     "commander": "15.0.0",

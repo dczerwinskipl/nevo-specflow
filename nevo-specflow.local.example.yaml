@@ -1,17 +1,24 @@
 # Example workstation-local configuration.
 # nevo-specflow init writes .nevo/local/config.yaml and ensures .nevo/local/ is ignored.
 # Local sections mirror the same capability namespaces as committed configuration.
+# Authorization is project-only and is rejected in local configuration.
 
 runtime:
+  server:
+    tls:
+      # Workstation-specific TLS material is local-owned when project TLS is enabled.
+      # certFile: .nevo/local/tls/cert.pem
+      # keyFile: .nevo/local/tls/key.pem
+
   auth:
     # For auth.mode=none, select the workstation attribution identity here.
-    # localUserId: demo
+    # localUserId: demo-user
 
     providers:
       password:
         accounts:
           demo:
-            userId: demo
+            userId: demo-user
             # Generated automatically by `nevo-specflow init` for password auth.
             passwordHash: "<replace-with-a-local-password-hash>"
 

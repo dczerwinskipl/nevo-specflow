@@ -6,6 +6,10 @@ export type {
   RuntimePasswordProviderConfig,
   RuntimeUserConfig,
 } from '../auth/config.js';
+export type {
+  RuntimeAuthorizationAssignmentConfig,
+  RuntimeAuthorizationConfig,
+} from '../authorization/config.js';
 export { RuntimeConfigError } from './error.js';
 export { loadRuntimeConfig, type LoadRuntimeConfigOptions } from './load.js';
 export { mergeRuntimeConfigValues } from './merge.js';

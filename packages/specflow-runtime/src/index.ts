@@ -11,6 +11,7 @@ export {
   AuthUserSchema,
   PasswordLoginBodySchema,
 } from './auth/contracts.js';
+export * from './authorization/index.js';
 export * from './config/index.js';
 export { initRuntime, type RuntimeInitOptions } from './init/runtime-init.js';
 export type {

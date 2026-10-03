@@ -4,6 +4,10 @@ import { isAbsolute } from 'node:path';
 
 import { parse } from 'yaml';
 
+import {
+  assertNoLocalAuthorization,
+  validateProjectAuthorizationSource,
+} from '../authorization/config-source.js';
 import { RuntimeConfigError } from './error.js';
 import {
   assertLocalRuntimeConfigOwnership,
@@ -33,6 +37,7 @@ export async function loadRuntimeConfig(
   const projectDocument = await readRequiredConfig(projectPath);
   const projectSource = runtimeSection(projectDocument, projectPath, true);
   assertProjectRuntimeConfigOwnership(projectSource);
+  validateProjectAuthorizationSource(projectSource);
 
   let localExists = false;
   let localSource: Record<string, unknown> | undefined;
@@ -43,6 +48,7 @@ export async function loadRuntimeConfig(
       const localDocument = await readRequiredConfig(localPath);
       localSource = runtimeSection(localDocument, localPath, false);
       if (localSource) {
+        assertNoLocalAuthorization(localSource);
         assertLocalRuntimeConfigOwnership(localSource);
       }
     }

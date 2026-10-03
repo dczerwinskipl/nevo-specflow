@@ -7,7 +7,8 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "tsBuildInfoFile": "./.tsbuild/specflow-runtime.build.tsbuildinfo"
+    "tsBuildInfoFile": "./.tsbuild/specflow-runtime.build.tsbuildinfo",
+    "paths": {}
   },
   "include": ["src/**/*.ts"]
 }

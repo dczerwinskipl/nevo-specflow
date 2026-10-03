@@ -41,6 +41,30 @@
       "related": []
     },
     {
+      "id": "docs.architecture-runtime-auth-readme",
+      "type": "hub",
+      "title": "Runtime authentication and authorization",
+      "status": "current",
+      "file": "docs/architecture/runtime/auth/README.md",
+      "read_when": [
+        "changing Runtime authentication or authorization",
+        "deciding where identity, roles, capabilities, or access checks belong"
+      ],
+      "summary": "Entry point for SpecFlow Runtime authentication and authorization architecture. Authentication resolves provider credentials to a canonical user identity; authorization resolves scoped capabilities for that identity.",
+      "related": [
+        "architecture.runtime.ownership-and-lifecycle",
+        "architecture.runtime.authorization",
+        "reference.configuration.authorization",
+        "reference.api.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "security"
+      ]
+    },
+    {
       "id": "docs.architecture-runtime-readme",
       "type": "hub",
       "title": "Runtime architecture",
@@ -483,6 +507,33 @@
         "engineering.repository.git-workflow",
         "adr.0002-toolchain-selection",
         "adr.0003-branch-and-release-model"
+      ]
+    },
+    {
+      "id": "architecture.runtime.authorization",
+      "type": "architecture",
+      "title": "Runtime authorization",
+      "status": "current",
+      "file": "docs/architecture/runtime/auth/authorization.md",
+      "read_when": [
+        "adding or changing a SpecFlow capability",
+        "changing Runtime role composition or scoped assignments",
+        "enforcing access to specs, sessions, or settings",
+        "exposing effective capabilities to the UI"
+      ],
+      "summary": "SpecFlow authorization uses feature-owned resources and capabilities, Runtime-owned flat roles, project-owned scoped role assignments, canonical user identities, and explicit resource scopes. The generic resolver remains unaware of SpecFlow hierarchy and transport concerns.",
+      "related": [
+        "docs.architecture-runtime-auth-readme",
+        "architecture.runtime.ownership-and-lifecycle",
+        "reference.configuration.authorization",
+        "reference.api.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "security",
+        "configuration"
       ]
     },
     {
@@ -1093,6 +1144,30 @@
         "engineering.shared.code-organization",
         "engineering.shared.effects-and-io",
         "engineering.cli.testing"
+      ]
+    },
+    {
+      "id": "ideas.authorization.follow-ups",
+      "type": "engineering",
+      "title": "Authorization follow-ups",
+      "status": "draft",
+      "file": "docs/ideas/authorization/README.md",
+      "read_when": [
+        "implementing authorization beyond the current foundation",
+        "adding authorization to SpecFlow domain endpoints or UI"
+      ],
+      "summary": "Remaining authorization integration work after the scoped authorization foundation: domain enforcement, collection filtering, per-row capabilities, and UI consumption.",
+      "related": [
+        "architecture.runtime.authorization",
+        "reference.api.authorization",
+        "reference.configuration.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "ui",
+        "security"
       ]
     },
     {
@@ -2463,6 +2538,29 @@
       ]
     },
     {
+      "id": "reference.api.authorization",
+      "type": "reference",
+      "title": "Authorization HTTP API",
+      "status": "current",
+      "file": "docs/reference/api/authorization.md",
+      "read_when": [
+        "calling the Runtime capability endpoint",
+        "implementing SpecFlow UI capability discovery",
+        "checking the current authorization HTTP contract"
+      ],
+      "summary": "Exact current Runtime capability-discovery endpoint. The server derives the subject, accepts an explicit resource name and scope, and returns effective capabilities for that resource only.",
+      "related": [
+        "architecture.runtime.authorization",
+        "reference.configuration.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "server",
+        "runtime",
+        "security"
+      ]
+    },
+    {
       "id": "reference.cli.nevo-specflow-contract",
       "type": "reference",
       "title": "nevo-specflow public CLI contract",
@@ -2478,6 +2576,29 @@
         "docs.product-specflow-cli-readme",
         "engineering.cli.architecture",
         "engineering.repository.product-packaging"
+      ]
+    },
+    {
+      "id": "reference.configuration.authorization",
+      "type": "reference",
+      "title": "Authorization configuration",
+      "status": "current",
+      "file": "docs/reference/configuration/authorization.md",
+      "read_when": [
+        "configuring SpecFlow authorization assignments",
+        "checking valid roles or assignment scopes",
+        "diagnosing Runtime authorization startup failures"
+      ],
+      "summary": "Exact current SpecFlow authorization configuration: project-only role assignments reference project auth.users ids, use one of three built-in roles, and use canonical scope parent chains.",
+      "related": [
+        "architecture.runtime.authorization",
+        "reference.api.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "configuration",
+        "runtime",
+        "security"
       ]
     }
   ]

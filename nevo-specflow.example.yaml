@@ -15,10 +15,17 @@ runtime:
   auth:
     mode: none
     users:
-      demo:
+      demo-user:
         name: Demo User
     providers:
       password:
         enabled: false
       oidc:
         enabled: false
+
+  authorization:
+    # Project-owned role assignments. User ids must exist in runtime.auth.users.
+    assignments:
+      - userId: demo-user
+        role: admin
+        scope: {}

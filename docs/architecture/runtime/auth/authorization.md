@@ -182,7 +182,7 @@ The exact endpoint contract is documented in the
 
 ## Current implementation boundary
 
-The current foundation implements:
+The current foundation provides:
 
 - generic scoped capability resolution;
 - SpecFlow resource/capability contracts;
@@ -191,9 +191,7 @@ The current foundation implements:
 - effective-subject resolution;
 - the capability discovery HTTP endpoint.
 
-Concrete SpecFlow domain operations are not yet universally authorization-enforced because those
-migrated endpoints are not all present. As those operations are introduced, enforcement uses the
-same resolver with canonical server-built scopes.
-
-Likewise, collection endpoints that need scoped visibility filter rows by the row resource's
-`view` capability and may attach that row's effective capabilities for UI actions.
+Concrete domain enforcement, authorization-aware collection filtering, row capability projection,
+and SpecFlow UI integration are not part of the current implementation. The remaining work is tracked
+as a non-authoritative implementation backlog in
+[authorization follow-ups](../../../ideas/authorization/README.md).

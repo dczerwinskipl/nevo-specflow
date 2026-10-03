@@ -1129,6 +1129,30 @@
       ]
     },
     {
+      "id": "ideas.authorization.follow-ups",
+      "type": "engineering",
+      "title": "Authorization follow-ups",
+      "status": "draft",
+      "file": "docs/ideas/authorization/README.md",
+      "read_when": [
+        "implementing authorization beyond the current foundation",
+        "adding authorization to SpecFlow domain endpoints or UI"
+      ],
+      "summary": "Remaining authorization integration work after the scoped authorization foundation: domain enforcement, collection filtering, per-row capabilities, and UI consumption.",
+      "related": [
+        "architecture.runtime.authorization",
+        "reference.api.authorization",
+        "reference.configuration.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "ui",
+        "security"
+      ]
+    },
+    {
       "id": "ideas.specflow-runtime.ai-adapters.correlation-identity",
       "type": "engineering",
       "title": "Provider correlation identity",

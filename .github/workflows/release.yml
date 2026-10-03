@@ -62,7 +62,7 @@ jobs:
           EXECUTE: "false"
         shell: bash
         run: |
-          result="$(node tools/release/dist/bin.js create --json --expected-tag "$PLANNED_TAG")"
+          result="$(node tools/release/dist/bin.js create --json)"
           echo "$result"
           tag="$(node -e 'const v=JSON.parse(process.argv[1]); process.stdout.write(v.tag)' "$result")"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
@@ -193,7 +193,7 @@ jobs:
           PLANNED_TAG: ${{ needs.plan.outputs.tag }}
         shell: bash
         run: |
-          result="$(node tools/release/dist/bin.js create --json)"
+          result="$(node tools/release/dist/bin.js create --json --expected-tag "$PLANNED_TAG")"
           echo "$result"
           actual_tag="$(node -e 'const v=JSON.parse(process.argv[1]); process.stdout.write(v.tag)' "$result")"
           if [ "$actual_tag" != "$PLANNED_TAG" ]; then

@@ -19,15 +19,15 @@ nevo-repo-product bundle [--entry src/bin.ts] [--outfile dist/bin.js] [--version
 
 nevo-repo-product pack [--json] [--skip-build]
     # The canonical product artifact:
-    #   pnpm --filter build (nevo-repo-release + @nevo/specflow-runtime — scoped,
+    #   pnpm --filter build (nevo-repo-release + @nevo/specflow-runtime... dependencies — scoped,
     #     turbo-free, never a global pre-build)
     #   -> version from `nevo-release version` (the repo's canonical model; no
     #      SemVer/channel logic is duplicated here)
     #   -> esbuild bundle into a scratch stage
     #   -> minimal package.json (real version, NO dependencies, NO scripts,
     #      engines copied verbatim from source)
-    #   -> THIRD_PARTY_NOTICES.txt (verbatim license of code EMBEDDED in the bundle
-    #      — commander; not build-only tools like esbuild)
+    #   -> THIRD_PARTY_NOTICES.txt from the actual esbuild inputs: installed license
+    #      text when available, otherwise upstream manifest attribution metadata
     #   -> `pnpm pack` -> .artifacts/nevo-specflow-<version>.tgz
     # Every child `pnpm` runs with cwd = repo root and `--dir <target>`, so Corepack
     # uses the repository-pinned pnpm, never "latest". --json prints { name, version, tarball }.
@@ -36,7 +36,7 @@ nevo-repo-product dogfood [--json]
     # pack, then `pnpm add -g <tarball>` (pinned pnpm), then put pnpm's global bin
     # dir on PATH and smoke the REAL installed `nevo-specflow` shim (not node dist/bin.js):
     # `--version` must equal the packed version, `--help` must list `start`,
-    # `start` must print the Runtime bootstrap marker. Never `pnpm link`,
+    # `start --help` must expose the Runtime server command. Never `pnpm link`,
     # never a `file:` path, never installs from packages/specflow.
 ```
 
@@ -50,17 +50,21 @@ The product must install from a lone `.tgz` with **no registry and no workspace*
 naive `@nevo/specflow-runtime: workspace:*` dependency cannot resolve there. Bundling
 the internal workspace code (and `commander`) into one file solves this with a mature,
 single-purpose tool. The repository's own tools stay plain `tsc`; esbuild is confined to
-this package and only touches the product distributable. The **source** boundary is
-untouched — `@nevo/specflow` still depends on `@nevo/specflow-runtime` as a real
-`workspace:*` package with a typed capability API; only the shipped form is one artifact.
+this package and only touches the product distributable. Product-library compilation is a
+separate ADR 0009 concern. The **source** boundary is untouched — `@nevo/specflow` still
+depends on `@nevo/specflow-runtime` as a real `workspace:*` package with a typed capability
+API; only the shipped form is one artifact.
 See [`docs/engineering/repository/product-packaging.md`](../../docs/engineering/repository/product-packaging.md).
 
 ## Tests
 
 `vitest run --no-file-parallelism`: `resolveProductVersion` units, a `bundleProduct`
-integration (define + shebang + self-containment), a subprocess CLI smoke, and
-`fresh-state.test.ts` — deletes `dist` / `.tsbuild` / `.artifacts` and proves
+integration (define + shebang + self-containment), a `dogfoodInstall` orchestration test
+(that verifies the long-running `start` command is only inspected through `start --help`),
+a subprocess CLI smoke, and `fresh-state.test.ts` — deletes `dist` / `.tsbuild` /
+`.artifacts` and proves
 `pnpm product:pack` still works and runs on the pinned pnpm. The full
 pack → isolated install → run-installed-`nevo-specflow`-**shim** proof lives with the
-product package (`packages/specflow/test/packaging.smoke.test.ts`), sequenced after this
-suite via a `nevo-repo-product#test` turbo edge.
+product package (`packages/specflow/test/packaging.smoke.test.ts`). Its Turbo task depends
+on `nevo-repo-product#build`, so the smoke has the executable it consumes without running
+the product-tool test suite a second time.

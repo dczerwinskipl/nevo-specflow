@@ -8,8 +8,8 @@ packages:
   - "examples/*"
   - "packages/*"
   - "tools/*"
-  # packages/  -> real product packages (@nevo/*): specflow (the public `nevo-specflow`
-  #              CLI) and specflow-runtime (the Runtime capability).
+  # packages/  -> real product packages (@nevo/*): shared authorization/contracts,
+  #              reusable UI/Figma foundations, and the specflow CLI and Runtime.
   # apps/      -> deployable applications.
   # examples/  -> non-product reference consumers proving reusable package boundaries.
   # tools/     -> repository-internal tooling (docs, release, github, product).

@@ -7,8 +7,8 @@ date: 2026-09-28
 summary: >
   Defines a documentation architecture that separates product behavior, durable system
   architecture, engineering guidance, reusable design-system knowledge, exact reference
-  contracts, and operational instructions, while using searchable scope, area, and tag
-  metadata so discovery does not depend on folder paths alone.
+  contracts, operational instructions, and a non-authoritative idea backlog, while using
+  searchable scope, area, and tag metadata so discovery does not depend on folder paths alone.
 related:
   - docs.readme
   - docs.architecture-readme
@@ -32,7 +32,8 @@ different reasons to be read:
 - reusable design-system knowledge that should remain independent of SpecFlow and may move with
   Nevo UI;
 - exact contracts such as APIs, events, configuration, and protocol shapes;
-- task-oriented instructions for humans and agents.
+- task-oriented instructions for humans and agents;
+- non-authoritative migration/design ideas that need to preserve evidence before an authoritative decision exists.
 
 These concerns must not become one undifferentiated development-document hierarchy. They also
 cannot rely only on directory location for discovery: the same document can concern AI, runtime,
@@ -87,6 +88,8 @@ docs/
 │   ├── specflow/
 │   ├── nevo-ui/
 │   └── process/
+├── ideas/
+│   └── <scope-or-package>/
 └── templates/
 ```
 
@@ -104,10 +107,16 @@ The physical path is not the semantic identity of a document.
 - **product** — user-visible behavior, terminology, interaction models, and product contracts.
 - **reference** — exact APIs, schemas, configuration keys, protocol/event shapes, and lookup material.
 - **instructions** — task-oriented guidance that routes to authoritative documents.
+- **ideas** — non-authoritative backlog for evidence, candidate contracts, migration hardening, and design directions that are not yet approved as architecture, engineering policy, product behavior, or exact reference contracts.
 - **templates** — non-authoritative starting material for authoring documents.
 
 A document that contains multiple independent responsibilities should be split instead of becoming
 a mixed source of truth.
+
+`ideas/` is intentionally different from the authoritative namespaces above. Its documents are
+proposals/evidence packs and remain `status: draft` until their durable conclusions are promoted to
+an authoritative home. The `ideas/README.md` hub may be `status: current` because it defines the
+namespace's interpretation, not a product/runtime rule.
 
 ### 3. Keep architecture and engineering distinct
 
@@ -181,6 +190,11 @@ may be `engineering`, and an exact token schema may be `reference`.
 The same rule applies to all physical namespaces: path and type are related but not required to
 mirror each other.
 
+Documents under `ideas/` use the semantic type that best describes their **content shape**, but the
+path plus draft status remains the authority signal: an `ideas/` document never becomes an exact
+reference contract merely by using `type: reference`, and proposal guidance MUST NOT override a
+current authoritative document.
+
 ### 8. Define an extensible ownership and search taxonomy
 
 The documentation model reserves these optional frontmatter fields for richer ownership and search:
@@ -233,15 +247,15 @@ security
 configuration
 ```
 
-`scope` and `areas` use one machine-readable taxonomy once taxonomy-aware validation is enabled.
+`scope` and `areas` use one machine-readable taxonomy enforced by `nevo-docs` validation.
 
 Tags are normalized and extensible rather than fully closed. They exist for search precision, not
 for authorization or architecture enforcement.
 
 The taxonomy fields are an additive extension to the existing documentation contract. They are not
-required merely because this ADR is current, and tooling that has not yet implemented them must not
-pretend they were validated or indexed. The baseline discovery contract remains `id`, `type`,
-`title`, `read_when`, `summary`, path, and `related`.
+required merely because this ADR is current. When present, `nevo-docs` validates and indexes
+`scope`, `areas`, and `tags` together with the baseline discovery fields `id`, `type`, `title`,
+`read_when`, `summary`, path, and `related`.
 
 No separate `applies_to` dimension is introduced: its intended meaning overlaps with
 `scope`, `areas`, and `read_when`.
@@ -261,11 +275,11 @@ Stable IDs are the canonical targets for `related` links and instruction routing
 Human readers should be able to browse the directory tree, but automated discovery must not depend
 on knowing a path in advance.
 
-`nevo-docs` indexes and searches the baseline metadata today. A taxonomy-aware implementation must
-add `scope`, `areas`, and `tags` without making directory paths part of semantic identity.
+`nevo-docs` indexes and searches the baseline metadata plus optional `scope`, `areas`, and `tags`
+today, without making directory paths part of semantic identity.
 
-When taxonomy support is enabled, filtering by semantic type, scope, and area is part of the
-documentation contract. Free-text tags improve ranking inside those boundaries.
+Filtering by semantic type, scope, and area is part of the documentation contract. Free-text tags
+improve ranking inside those boundaries.
 
 ### 11. Maintain one authoritative home for each rule
 
@@ -304,7 +318,7 @@ Those subjects use this documentation model but are decided independently.
 
 ### Costs
 
-- `nevo-docs` requires an additive tooling change before taxonomy-aware validation and search are enabled;
+- the controlled taxonomy is enforced by repository tooling, so adding a genuinely new scope or area requires an intentional taxonomy change;
 - authors must classify both semantic role and ownership scope;
 - the controlled scope/area vocabulary requires maintenance;
 - some subjects naturally cross namespaces, so links between authoritative documents remain

@@ -1,37 +1,35 @@
 # `@nevo/specflow`
 
-The public **Nevo SpecFlow** product package. It ships the `nevo-specflow`
-command-line interface and acts as the CLI composition root.
+The public **Nevo SpecFlow** product package. It ships the single installable
+`nevo-specflow` CLI and acts as the composition root for product capabilities.
 
-|                |                          |
-| -------------- | ------------------------ |
-| **Product**    | Nevo SpecFlow            |
-| **Package**    | `@nevo/specflow`         |
-| **CLI**        | `nevo-specflow`          |
-| **Runtime**    | `@nevo/specflow-runtime` |
-| **Repository** | `nevo-specflow`          |
-
-## Implemented CLI surface
+## Implemented CLI
 
 ```bash
 nevo-specflow --help
 nevo-specflow --version
+nevo-specflow init
 nevo-specflow start
+nevo-specflow auth hash-password --password-stdin
 ```
 
-`nevo-specflow start` is owned by
-[`@nevo/specflow-runtime/cli`](../specflow-runtime/README.md) and composed here.
-It currently proves the Runtime boundary and prints a deterministic bootstrap marker;
-the real long-lived Runtime is not migrated yet.
+`init` owns repository bootstrap and composes capability initialization. Runtime owns the server/auth configuration contribution it returns; the product shell writes that contribution to `.nevo/config.yaml` and ignored `.nevo/local/config.yaml` without duplicating Runtime config semantics. `start` starts the configured long-running Runtime HTTP server and remains active until
+shutdown. Both `init` and `start` resolve the Git repository root through the product shell, so
+running either command from a nested repository directory uses the same project configuration.
+The auth utility generates the supported password hash from one password line
+read from stdin, keeping the plaintext password out of command arguments.
 
-The shell owns the root program, version/global conventions, output/error/exit
-behavior, and command composition. Capability verticals own their command semantics.
+Command semantics belong to their capability verticals. The public package owns only the
+root CLI conventions, version/output behavior, process lifecycle, and command composition.
+The exact public surface is tracked in
+[`docs/reference/cli/nevo-specflow-contract.md`](../../docs/reference/cli/nevo-specflow-contract.md).
 
 ## Distribution
 
-The distributable remains a **single self-contained bundle**. `nevo-repo-product`
-bundles `@nevo/specflow`, `@nevo/specflow-runtime`, and Commander into
-`dist/bin.js`; consumers install one artifact with no workspace dependency.
+The product ships as one self-contained bundle. Repository packages such as
+`@nevo/specflow-runtime` are build-time workspace boundaries and are bundled into
+`@nevo/specflow`; an installed product does not depend on the repository workspace.
 
-See [product packaging](../../docs/engineering/repository/product-packaging.md) and
+The canonical artifact is produced by `nevo-repo-product`. See
+[product packaging](../../docs/engineering/repository/product-packaging.md) and
 [dogfooding](../../docs/engineering/repository/dogfooding.md).

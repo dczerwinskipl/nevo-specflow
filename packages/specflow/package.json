@@ -19,10 +19,12 @@
     "test": "vitest run --no-file-parallelism"
   },
   "dependencies": {
-    "@nevo/specflow-runtime": "workspace:*"
+    "@nevo/specflow-runtime": "workspace:*",
+    "yaml": "2.9.1"
   },
   "devDependencies": {
     "commander": "15.0.0",
-    "vitest": "5.0.2"
+    "vitest": "5.0.2",
+    "nevo-repo-product": "workspace:*"
   }
 }

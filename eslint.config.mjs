@@ -26,8 +26,7 @@ export default tseslint.config(
 
   js.configs.recommended,
 
-  // TypeScript — type-aware. Dormant until the first .ts source is migrated,
-  // but configured so it is correct when that happens.
+  // TypeScript — type-aware.
   {
     files: ['**/*.{ts,mts,cts,tsx}'],
     extends: [tseslint.configs.recommendedTypeChecked, tseslint.configs.stylisticTypeChecked],
@@ -36,6 +35,24 @@ export default tseslint.config(
         projectService: true,
         tsconfigRootDir: import.meta.dirname,
       },
+    },
+  },
+
+  // Product packages use extensionless relative TypeScript source imports.
+  {
+    files: ['packages/**/*.{ts,tsx,mts,cts}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '^\\.{1,2}/.*\\.(?:js|jsx|mjs|cjs|ts|tsx|mts|cts)$',
+              message: 'Product-package relative TypeScript imports must be extensionless.',
+            },
+          ],
+        },
+      ],
     },
   },
 
@@ -61,24 +78,6 @@ export default tseslint.config(
     },
   },
 
-  // These registries are open interfaces by design: component owners extend
-  // them through module augmentation without coupling the neutral Figma core.
-  {
-    files: [
-      'packages/figma-core/src/metadata.tsx',
-      'packages/nevo-ui/src/figma/captureRegistry.ts',
-      'apps/specflow-ui/src/app/figmaRegistry.ts',
-      'apps/specflow-ui/src/brand/nevo/figmaDesignSystem.ts',
-      'examples/crm/src/figmaRegistry.ts',
-      'tools/figma-project/src/project/captureRegistry.ts',
-      'tools/figma-project/src/types.ts',
-    ],
-    rules: {
-      '@typescript-eslint/no-empty-object-type': 'off',
-      '@typescript-eslint/no-redundant-type-constituents': 'off',
-    },
-  },
-
   // Playwright's page-evaluation boundary is intentionally dynamic; assertions
   // immediately validate the returned browser values.
   {
@@ -92,12 +91,26 @@ export default tseslint.config(
     },
   },
 
+  // Node globals are explicit. Neutral product packages intentionally do not
+  // inherit process/Buffer/etc. merely because @types/node exists in the workspace.
+  {
+    files: [
+      'tools/**/*.{ts,mts,cts,tsx,js,mjs,cjs}',
+      'packages/specflow/**/*.{ts,mts,cts,tsx,js,mjs,cjs}',
+      'packages/specflow-runtime/**/*.{ts,mts,cts,tsx,js,mjs,cjs}',
+      '*.{js,mjs,cjs,ts,mts,cts}',
+      '*.config.{js,mjs,cjs,ts,mts,cts}',
+    ],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
+  },
+
   // Shared language options + rules across both.
   {
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: 'module',
-      globals: { ...globals.node },
     },
     rules: {
       'no-console': 'off',

@@ -1,0 +1,31 @@
+# Example committed project configuration.
+# nevo-specflow init writes this shape to .nevo/config.yaml.
+# Top-level sections are product composition namespaces owned by their capabilities.
+
+runtime:
+  server:
+    host: 127.0.0.1
+    port: 4318
+    # OIDC init uses http://127.0.0.1:4318 so the browser origin matches the default bind host.
+    # A non-loopback required-auth Runtime must terminate TLS itself.
+    # publicOrigin: http://127.0.0.1:4318
+    tls:
+      enabled: false
+
+  auth:
+    mode: none
+    users:
+      demo-user:
+        name: Demo User
+    providers:
+      password:
+        enabled: false
+      oidc:
+        enabled: false
+
+  authorization:
+    # Project-owned role assignments. User ids must exist in runtime.auth.users.
+    assignments:
+      - userId: demo-user
+        role: admin
+        scope: {}

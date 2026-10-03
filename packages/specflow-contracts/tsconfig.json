@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.package-neutral.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./.tsbuild/specflow-contracts.tsbuildinfo",
+    "paths": {
+      "@nevo/authorization": ["../authorization/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}

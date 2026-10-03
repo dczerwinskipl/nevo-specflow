@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.package-neutral.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./.tsbuild/authorization.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}

@@ -7,11 +7,11 @@ read_when:
   - reviewing a Dependabot pull request
   - reporting or triaging a vulnerability
   - deciding how to pin a GitHub Action
-  - wondering when CodeQL gets turned on
+  - checking the current CodeQL status
 summary: >
   How dependency updates arrive (Dependabot, grouped, weekly), how versions are pinned,
   the vulnerability-report path, the repository security features that are enabled, and
-  when CodeQL should be added.
+  the current CodeQL status.
 related:
   - engineering.repository.local-setup
   - engineering.repository.ci

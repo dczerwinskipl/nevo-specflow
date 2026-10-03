@@ -46,13 +46,13 @@ head branches, auto-merge allowed, squash commit title/body taken from the PR.
 **Rulesets** `protected-main` (`refs/heads/main`) and `protected-release-lines`
 (`refs/heads/release/v*`), identical rules:
 
-| Rule                      | Effect                                                                                            |
-| ------------------------- | ------------------------------------------------------------------------------------------------- |
-| `deletion`                | branch cannot be deleted                                                                          |
-| `non_fast_forward`        | no force-push                                                                                     |
-| `required_linear_history` | linear history                                                                                    |
-| `pull_request`            | PR required; squash-only; review threads resolved; stale approvals dismissed; (see review policy) |
-| `required_status_checks`  | strict; `pr-title`, `quality`, `test`, `build`, `CodeQL`; **`do_not_enforce_on_create: true`**    |
+| Rule                      | Effect                                                                                                 |
+| ------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `deletion`                | branch cannot be deleted                                                                               |
+| `non_fast_forward`        | no force-push                                                                                          |
+| `required_linear_history` | linear history                                                                                         |
+| `pull_request`            | PR required; squash-only; review threads resolved; stale approvals dismissed; (see review policy)      |
+| `required_status_checks`  | strict; `pr-title`, `quality`, `verify tests`, `build`, `CodeQL`; **`do_not_enforce_on_create: true`** |
 
 No bypass actors.
 

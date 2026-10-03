@@ -1,66 +1,118 @@
-// Third-party attribution for code that is actually EMBEDDED in the shipped
-// bundle (dist/bin.js). Build-only tools (esbuild, tsc) are not included and get
-// no notice. The notice is derived from the installed dependency's own
-// authoritative LICENSE file so it cannot silently drift.
+// Third-party attribution for code actually embedded in the shipped bundle.
+// The package list comes from esbuild's metafile, so adding a bundled runtime
+// dependency cannot silently omit its license metadata.
 
-import { createRequire } from 'node:module';
 import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 
-// `nevo-repo-product` depends on the same `commander` (exact pinned version) that
-// esbuild compiles into the product bundle, so resolving from here gives the
-// identical license file.
-const require = createRequire(import.meta.url);
+import type { BundledThirdPartyPackage } from './bundle.js';
 
-/** Packages whose source is compiled into dist/bin.js and needs its license carried. */
-const BUNDLED = ['commander'] as const;
+interface ResolvedNoticePackage {
+  readonly name: string;
+  readonly version: string;
+  readonly license?: string;
+  readonly homepage?: string;
+  readonly repository?: string;
+  readonly author?: string;
+  readonly root: string;
+}
 
-export function buildThirdPartyNotices(): string {
-  const blocks = BUNDLED.map((name) => {
-    const pkgDir = resolvePackageDir(name);
-    const pkg = JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf8')) as {
-      version: string;
-      license?: string;
-      homepage?: string;
-    };
-    const license = readLicense(pkgDir);
-    return [
+export function buildThirdPartyNotices(packages: readonly BundledThirdPartyPackage[]): string {
+  const resolved = deduplicate(packages.map(resolvePackage));
+  const blocks = resolved.map((pkg) => {
+    const licenseText = readLicense(pkg.root);
+    if (!licenseText && !pkg.license) {
+      throw new Error(
+        `bundled package ${pkg.name}@${pkg.version} provides neither a LICENSE file nor package.json license metadata`,
+      );
+    }
+
+    const source = pkg.homepage ?? pkg.repository ?? `https://www.npmjs.com/package/${pkg.name}`;
+    const attribution = [
       '='.repeat(72),
-      `${name} ${pkg.version}${pkg.license ? ` (${pkg.license})` : ''}`,
-      pkg.homepage ?? `https://www.npmjs.com/package/${name}`,
+      `${pkg.name} ${pkg.version}${pkg.license ? ` (${pkg.license})` : ''}`,
+      source,
+      ...(pkg.author ? [`Author: ${pkg.author}`] : []),
       '='.repeat(72),
       '',
-      license,
-    ].join('\n');
+    ];
+
+    if (licenseText) {
+      attribution.push(licenseText);
+    } else {
+      attribution.push(
+        'The installed upstream package does not include a license text file.',
+        `Its package.json declares the license as: ${pkg.license}`,
+        'See the source URL above for the upstream project and license information.',
+      );
+    }
+
+    return attribution.join('\n');
   });
 
   return [
     'THIRD-PARTY NOTICES',
     '',
     '`@nevo/specflow` is distributed as a single bundled file (`dist/bin.js`). That',
-    'bundle embeds the third-party software listed below. Each package is used under',
-    'the terms of its own license, reproduced verbatim.',
+    'bundle embeds the third-party software listed below. When an installed upstream',
+    'package contains a license text, it is reproduced verbatim. When upstream ships',
+    'only package.json license metadata, that declaration and its source are preserved.',
     '',
     ...blocks,
     '',
   ].join('\n');
 }
 
-function resolvePackageDir(name: string): string {
-  // `require.resolve(name)` lands on the package's main file; walk up to its root.
-  let dir = dirname(require.resolve(name));
-  while (!existsSync(join(dir, 'package.json'))) {
-    const parent = dirname(dir);
-    if (parent === dir) throw new Error(`could not locate the package root for ${name}`);
-    dir = parent;
-  }
-  return dir;
+function resolvePackage(pkg: BundledThirdPartyPackage): ResolvedNoticePackage {
+  const manifest = JSON.parse(readFileSync(join(pkg.root, 'package.json'), 'utf8')) as {
+    name?: string;
+    version?: string;
+    license?: string;
+    homepage?: string;
+    repository?: string | { url?: string };
+    author?: string | { name?: string; email?: string };
+  };
+  if (!manifest.version) throw new Error(`package version missing in ${pkg.root}`);
+
+  return {
+    name: manifest.name ?? pkg.name,
+    version: manifest.version,
+    ...(manifest.license ? { license: manifest.license } : {}),
+    ...(manifest.homepage ? { homepage: manifest.homepage } : {}),
+    ...(repositoryUrl(manifest.repository)
+      ? { repository: repositoryUrl(manifest.repository) }
+      : {}),
+    ...(authorText(manifest.author) ? { author: authorText(manifest.author) } : {}),
+    root: pkg.root,
+  };
 }
 
-function readLicense(pkgDir: string): string {
-  for (const f of ['LICENSE', 'LICENSE.md', 'LICENSE.txt', 'license', 'COPYING']) {
-    const p = join(pkgDir, f);
-    if (existsSync(p)) return readFileSync(p, 'utf8').trimEnd();
+function repositoryUrl(repository: string | { url?: string } | undefined): string | undefined {
+  if (typeof repository === 'string') return repository;
+  return repository?.url;
+}
+
+function authorText(
+  author: string | { name?: string; email?: string } | undefined,
+): string | undefined {
+  if (typeof author === 'string') return author;
+  if (!author?.name) return undefined;
+  return author.email ? `${author.name} <${author.email}>` : author.name;
+}
+
+function deduplicate(packages: readonly ResolvedNoticePackage[]): readonly ResolvedNoticePackage[] {
+  const result = new Map<string, ResolvedNoticePackage>();
+  for (const pkg of packages) result.set(`${pkg.name}@${pkg.version}`, pkg);
+  return [...result.values()].sort((a, b) => {
+    const name = a.name.localeCompare(b.name);
+    return name === 0 ? a.version.localeCompare(b.version) : name;
+  });
+}
+
+function readLicense(pkgDir: string): string | undefined {
+  for (const file of ['LICENSE', 'LICENSE.md', 'LICENSE.txt', 'license', 'COPYING']) {
+    const path = join(pkgDir, file);
+    if (existsSync(path)) return readFileSync(path, 'utf8').trimEnd();
   }
-  throw new Error(`no LICENSE file found in ${pkgDir}`);
+  return undefined;
 }

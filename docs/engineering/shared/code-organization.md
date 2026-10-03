@@ -58,6 +58,49 @@ domain concept.
 Feature-local ownership is preferred over central folders that collect unrelated code
 of the same technical shape.
 
+### Structure vertical slices recursively
+
+A vertical slice is an ownership boundary, not permission to flatten a large feature into one
+directory. When a capability grows, split it again by cohesive sub-capability or operation.
+
+Prefer:
+
+```text
+feature/
+  composition.ts
+  sub-capability-a/
+    operation.ts
+    policy.ts
+    adapter.ts
+  sub-capability-b/
+    ...
+```
+
+over central technical buckets such as `feature/routes/`, `feature/services/`, or
+`feature/repositories/` when those folders separate code that changes together. A small genuinely
+shared adapter concern may stay at the feature root, but provider/operation-specific transport code
+belongs beside the operation it adapts.
+
+## TypeScript imports in product packages
+
+Code under `packages/**` uses TypeScript's bundler resolution. Relative TypeScript
+imports use extensionless source specifiers:
+
+```ts
+import { createThing } from './create-thing';
+```
+
+Do not write source-relative JavaScript/TypeScript module suffixes in product packages. The
+generic product-package builder owns emitted filenames and bundles JavaScript plus declaration
+files from the same public surface. Neutral packages extend `tsconfig.package-neutral.json`;
+Node-only packages extend `tsconfig.package-node.json` and declare `engines.node`. The builder
+derives the platform from that tsconfig profile, rejects ambiguous profile/manifest combinations,
+and rejects Node builtin imports from neutral package source/output. ESLint separately enforces the
+extensionless relative-source convention.
+
+Repository tooling under `tools/**` may use NodeNext-style `.js` specifiers when it executes
+raw `tsc` output. See ADR 0009 for the product-package build model.
+
 ## File size is an inspection trigger
 
 There is no hard line-count limit. Refactor when a file mixes independent

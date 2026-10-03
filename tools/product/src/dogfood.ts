@@ -4,7 +4,6 @@
 import { delimiter } from 'node:path';
 
 import { run, StepFailedError } from './exec.js';
-import { RUNTIME_BOOTSTRAP_MARKER } from './markers.js';
 import { packProduct, type PackResult } from './pack.js';
 import { findRepoRoot } from './paths.js';
 
@@ -13,25 +12,35 @@ export interface DogfoodResult extends PackResult {
   readonly checks: readonly string[];
 }
 
-export async function dogfoodInstall(
-  opts: { env?: NodeJS.ProcessEnv; log?: (line: string) => void } = {},
-): Promise<DogfoodResult> {
-  const log = opts.log ?? (() => undefined);
+export interface DogfoodInstallOptions {
+  readonly env?: NodeJS.ProcessEnv;
+  readonly log?: (line: string) => void;
+  readonly pack?: typeof packProduct;
+  readonly runCommand?: typeof run;
+}
+
+export async function dogfoodInstall(options: DogfoodInstallOptions = {}): Promise<DogfoodResult> {
+  const log = options.log ?? (() => undefined);
+  const pack = options.pack ?? packProduct;
+  const runCommand = options.runCommand ?? run;
   const repoRoot = findRepoRoot(process.cwd());
 
-  const packed = await packProduct({ env: opts.env, log });
+  const packed = await pack({ env: options.env, log });
 
   log(`installing globally: pnpm add -g ${packed.tarball}`);
-  run('pnpm', ['add', '-g', packed.tarball], { cwd: repoRoot, env: opts.env });
+  runCommand('pnpm', ['add', '-g', packed.tarball], { cwd: repoRoot, env: options.env });
 
-  const globalBinDir = run('pnpm', ['bin', '-g'], { cwd: repoRoot, env: opts.env });
+  const globalBinDir = runCommand('pnpm', ['bin', '-g'], {
+    cwd: repoRoot,
+    env: options.env,
+  });
   const env: NodeJS.ProcessEnv = {
     ...process.env,
-    ...opts.env,
+    ...options.env,
     PATH: `${globalBinDir}${delimiter}${process.env.PATH ?? ''}`,
   };
 
-  const nevoSpecFlow = (args: string[]): string => run('nevo-specflow', args, { env });
+  const nevoSpecFlow = (args: string[]): string => runCommand('nevo-specflow', args, { env });
   const checks: string[] = [];
 
   const version = nevoSpecFlow(['--version']);
@@ -44,7 +53,7 @@ export async function dogfoodInstall(
   checks.push(`nevo-specflow --version -> ${version}`);
 
   const help = nevoSpecFlow(['--help']);
-  for (const needle of ['nevo-specflow', 'start']) {
+  for (const needle of ['nevo-specflow', 'start', 'auth']) {
     if (!help.includes(needle)) {
       throw new StepFailedError(
         `\`nevo-specflow --help\` is missing ${JSON.stringify(needle)}:\n${help}`,
@@ -53,14 +62,13 @@ export async function dogfoodInstall(
   }
   checks.push('nevo-specflow --help -> ok');
 
-  const start = nevoSpecFlow(['start']);
-  if (!start.includes(RUNTIME_BOOTSTRAP_MARKER)) {
+  const startHelp = nevoSpecFlow(['start', '--help']);
+  if (!/Runtime server/iu.test(startHelp)) {
     throw new StepFailedError(
-      `\`nevo-specflow start\` did not run the Runtime capability ` +
-        `(expected ${JSON.stringify(RUNTIME_BOOTSTRAP_MARKER)}):\n${start}`,
+      `\`nevo-specflow start --help\` does not describe the Runtime server:\n${startHelp}`,
     );
   }
-  checks.push('nevo-specflow start -> Runtime capability ran');
+  checks.push('nevo-specflow start --help -> ok');
 
   return { ...packed, globalBinDir, checks };
 }

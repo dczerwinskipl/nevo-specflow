@@ -21,7 +21,7 @@ const onV13 = (channel: string, version: string, existingTags: string[] = []) =>
 
 describe('planRelease', () => {
   it('required HEAD checks exclude the PR-only pr-title check', () => {
-    expect([...REQUIRED_HEAD_CHECKS]).toEqual(['quality', 'test', 'build', 'CodeQL']);
+    expect([...REQUIRED_HEAD_CHECKS]).toEqual(['quality', 'verify tests', 'build', 'CodeQL']);
   });
 
   it('beta picks the next intentional number', () => {
@@ -127,8 +127,8 @@ describe('decideReleaseAction', () => {
 describe('check-run selection (§11)', () => {
   it('keeps the newest run per name and never lets an old success mask a new failure', () => {
     const byName = latestCheckRunsByName([
-      { name: 'test', status: 'completed', conclusion: 'success', id: 100 },
-      { name: 'test', status: 'completed', conclusion: 'failure', id: 101 },
+      { name: 'verify tests', status: 'completed', conclusion: 'success', id: 100 },
+      { name: 'verify tests', status: 'completed', conclusion: 'failure', id: 101 },
       { name: 'quality', status: 'completed', conclusion: 'success', id: 5 },
       { name: 'build', status: 'in_progress', conclusion: null, id: 9 },
       { name: 'CodeQL', status: 'completed', conclusion: 'success', id: 10 },
@@ -137,13 +137,13 @@ describe('check-run selection (§11)', () => {
     expect(byName.size).toBe(4);
     const { missing, notPassing } = evaluateRequiredChecks(byName, [...REQUIRED_HEAD_CHECKS]);
     expect(missing).toEqual([]);
-    expect(notPassing).toEqual(['test (completed/failure)', 'build (in_progress/pending)']);
+    expect(notPassing).toEqual(['verify tests (completed/failure)', 'build (in_progress/pending)']);
   });
 
   it('passes only when every required check is completed/success', () => {
     const byName = latestCheckRunsByName([
       { name: 'quality', status: 'completed', conclusion: 'success', id: 1 },
-      { name: 'test', status: 'completed', conclusion: 'success', id: 2 },
+      { name: 'verify tests', status: 'completed', conclusion: 'success', id: 2 },
       { name: 'build', status: 'completed', conclusion: 'success', id: 3 },
       { name: 'CodeQL', status: 'completed', conclusion: 'success', id: 4 },
     ]);

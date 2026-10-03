@@ -1,17 +1,70 @@
-import { describe, expect, it } from 'vitest';
+import { createServer } from 'node:net';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
-import { RUNTIME_BOOTSTRAP_MARKER, startRuntime } from '../src/index.js';
+import { afterEach, describe, expect, it } from 'vitest';
 
-describe('startRuntime — bootstrap capability', () => {
-  it('returns the deterministic bootstrap marker', () => {
-    expect(startRuntime()).toEqual({ kind: 'bootstrap', message: RUNTIME_BOOTSTRAP_MARKER });
+import { startRuntime } from '../src/index';
+
+const dirs: string[] = [];
+afterEach(async () => {
+  await Promise.all(dirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
+});
+
+async function freePort(): Promise<number> {
+  const server = createServer();
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
   });
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('Could not allocate a test port.');
+  await new Promise<void>((resolve, reject) =>
+    server.close((error) => (error ? reject(error) : resolve())),
+  );
+  return address.port;
+}
 
-  it('is pure — repeated calls give an equal result', () => {
-    expect(startRuntime()).toEqual(startRuntime());
-  });
+describe('startRuntime', () => {
+  it('loads configuration, starts the HTTP server, and closes explicitly', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'nevo-runtime-'));
+    dirs.push(cwd);
+    const port = await freePort();
+    await mkdir(join(cwd, '.nevo'), { recursive: true });
+    await writeFile(
+      join(cwd, '.nevo/config.yaml'),
+      [
+        'runtime:',
+        '  server:',
+        '    host: 127.0.0.1',
+        `    port: ${port}`,
+        '    tls:',
+        '      enabled: false',
+        '  auth:',
+        '    mode: none',
+        '    providers:',
+        '      password:',
+        '        enabled: false',
+        '      oidc:',
+        '        enabled: false',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
 
-  it('uses the canonical Runtime naming', () => {
-    expect(RUNTIME_BOOTSTRAP_MARKER).toBe('Nevo SpecFlow runtime bootstrap is available.');
+    const runtime = await startRuntime({
+      projectRoot: cwd,
+      projectConfigPath: join(cwd, '.nevo/config.yaml'),
+      localConfigPath: join(cwd, '.nevo/local/config.yaml'),
+    });
+    try {
+      expect(runtime.address).toContain(`:${port}`);
+      const response = await fetch(`http://127.0.0.1:${port}/api/auth/session`);
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ authenticated: false, availableProviders: [] });
+    } finally {
+      await runtime.close();
+    }
   });
 });

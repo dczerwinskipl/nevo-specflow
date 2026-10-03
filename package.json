@@ -15,12 +15,12 @@
     "lint": "eslint .",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format:check": "prettier --check . || (prettier --write tools/build-package.mjs && git diff -- tools/build-package.mjs && exit 1)",
     "quality:build-tools": "turbo run build --filter=nevo-repo-agents --filter=nevo-repo-docs --filter=nevo-repo-release",
     "version:print": "node tools/release/dist/bin.js version",
     "version:check-transition": "node tools/release/dist/bin.js check-transition",
     "check:quality": "pnpm quality:build-tools && pnpm format:check && pnpm lint && node tools/docs/dist/bin.js check && node tools/agents/dist/bin.js check && pnpm version:check-transition",
-    "check": "pnpm check:quality && turbo run typecheck test build",
+    "check": "pnpm check:quality && turbo run typecheck && turbo run build && turbo run test",
     "product:pack": "pnpm --filter nevo-repo-product build && node tools/product/dist/bin.js pack",
     "dogfood:install": "pnpm --filter nevo-repo-product build && node tools/product/dist/bin.js dogfood",
     "agents:build": "pnpm docs:check && pnpm --filter nevo-repo-agents build && node tools/agents/dist/bin.js build",
@@ -48,6 +48,7 @@
     "prettier": "3.9.9",
     "turbo": "2.11.4",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.70.1"
+    "typescript-eslint": "8.70.1",
+    "tsdown": "0.23.0"
   }
 }

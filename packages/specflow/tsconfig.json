@@ -1,20 +1,11 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../tsconfig.package-node.json",
   "compilerOptions": {
-    "noEmit": true,
-    "composite": false,
-    "declaration": false,
-    "declarationMap": false,
-    "sourceMap": false,
-    "incremental": true,
     "tsBuildInfoFile": "./.tsbuild/specflow.tsbuildinfo",
-    "types": ["node"],
-    // Typecheck / lint resolve the sibling package from source, so neither needs
-    // a prior build. Each mapping points at the exact file behind the matching
-    // `exports` entry, so the checked surface == the published surface. Runtime
-    // (esbuild bundle, vitest) resolves through `exports` -> dist, so the dist
-    // boundary stays real.
     "paths": {
+      "@nevo/authorization": ["../authorization/src/index.ts"],
+      "@nevo/specflow-contracts": ["../specflow-contracts/src/index.ts"],
+      "@nevo/specflow-contracts/authorization": ["../specflow-contracts/src/authorization.ts"],
       "@nevo/specflow-runtime": ["../specflow-runtime/src/index.ts"],
       "@nevo/specflow-runtime/cli": ["../specflow-runtime/src/cli/command.ts"]
     }

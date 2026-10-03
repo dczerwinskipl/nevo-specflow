@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Nevo Node product package",
+  "extends": "./tsconfig.package-neutral.json",
+  "compilerOptions": {
+    "types": ["node"]
+  }
+}

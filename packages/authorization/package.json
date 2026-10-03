@@ -1,0 +1,25 @@
+{
+  "name": "@nevo/authorization",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Framework-independent scoped capability authorization primitives for Nevo products.",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node ../../tools/build-package.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "5.0.2"
+  }
+}

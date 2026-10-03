@@ -30,14 +30,14 @@ for why.
 
 ## Layout
 
-| Package                                                                     | Role                                                                                                                                                                                                                                    |
-| --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`packages/specflow`](../../../packages/specflow/README.md)                 | `@nevo/specflow` — the CLI **shell**: the root `nevo-specflow` program, `--version`, global flags/output/exit conventions, and command **composition**. Thin `bin.ts`.                                                                  |
-| [`packages/specflow-runtime`](../../../packages/specflow-runtime/README.md) | `@nevo/specflow-runtime` — the Runtime **vertical**: the framework-independent capability at `.` (`startRuntime()`, no Commander) and its command adapter at `./cli` (`createStartCommand`). `private: true`, bundled into the product. |
-| [`tools/product`](../../../tools/product/README.md)                         | `nevo-repo-product` — the **one** packaging entrypoint (`bundle` · `pack` · `dogfood`).                                                                                                                                                 |
+| Package                                                                     | Role                                                                                                                                                                                                                                           |
+| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`packages/specflow`](../../../packages/specflow/README.md)                 | `@nevo/specflow` — the CLI **shell**: the root `nevo-specflow` program, `--version`, global flags/output/exit conventions, and command **composition**. Thin `bin.ts`.                                                                         |
+| [`packages/specflow-runtime`](../../../packages/specflow-runtime/README.md) | `@nevo/specflow-runtime` — the Runtime **vertical**: the application capability at `.` (`startRuntime()`, no Commander) and capability-owned command adapters at `./cli` (`start`, auth utilities). `private: true`, bundled into the product. |
+| [`tools/product`](../../../tools/product/README.md)                         | `nevo-repo-product` — the **one** packaging entrypoint (`bundle` · `pack` · `dogfood`).                                                                                                                                                        |
 
-**Ownership.** The shell composes (`program.addCommand(createStartCommand(ctx))`);
-it does not define a command's name, options, help or subcommands — the vertical does.
+**Ownership.** The shell composes capability-owned commands; it does not define a
+command's name, options, help or subcommands — the vertical does.
 Commander is imported only by the vertical's `./cli` adapter; its
 framework-independent capability/runtime does not import Commander — the same way a feature owns its HTTP routes while the server root
 only mounts them. The source dependency `@nevo/specflow → @nevo/specflow-runtime` is a
@@ -61,28 +61,40 @@ Steps:
    `pnpm install --frozen-lockfile` — no prior `pnpm build` / `pnpm check`, no committed
    `dist`.
 1. **Build the inputs, scoped.** `pnpm --filter nevo-repo-release build` and
-   `pnpm --filter @nevo/specflow-runtime build` — the package's own `tsc`, never a
-   global `turbo run build`, so packaging can run inside `turbo run test` and never
-   triggers a repo-wide pre-build.
+   `pnpm --filter @nevo/specflow-runtime... build` — Runtime and its transitive workspace
+   dependencies run their own builds only, never a global `turbo run build`. Reusable product
+   packages use the ADR 0009 library builder; repository tools such as release remain plain
+   `tsc`. Packaging can therefore run inside `turbo run test` without a repo-wide pre-build.
 2. **Resolve the version** from `nevo-release version` (the same command
    `pnpm version:print` uses — the repository's canonical channel/SemVer model). It is
    validated as a legal npm version.
-3. **Bundle** with esbuild (`nevo-repo-product bundle`): the `nevo-specflow` entry +
+3. **Bundle the distribution** with esbuild (`nevo-repo-product bundle`): the `nevo-specflow` entry +
    `@nevo/specflow-runtime` (`.` and `./cli`) + `commander`, into one ESM `dist/bin.js`
    with a `#!/usr/bin/env node` banner and `NEVO_SPECFLOW_VERSION_INJECTED` defined.
 4. **Write minimal metadata** into a scratch stage: `name`, the resolved `version`,
    `bin`, `type`, `license`, `engines`,
    `files: ["dist", "THIRD_PARTY_NOTICES.txt", "README.md", "LICENSE"]` — **no
    `dependencies`**, no `devDependencies`, no `scripts`.
-5. **Write `THIRD_PARTY_NOTICES.txt`** — the verbatim license of every third-party
-   package **embedded in the bundle** (currently `commander`), derived from that
-   package's own installed `LICENSE`. Build-only tools (esbuild, tsc) are **not** listed.
+5. **Write `THIRD_PARTY_NOTICES.txt`** from esbuild's actual bundled inputs. For
+   each embedded third-party package, copy its installed license text verbatim when
+   present. If upstream ships only `package.json` license metadata, preserve that
+   declaration plus available author/source metadata. If neither exists, packaging
+   fails closed. Build-only tools (esbuild, tsc) are **not** listed.
 6. **`pnpm pack`** the stage into `.artifacts/` (git-ignored). Every child `pnpm` — this
    pack, the input builds, the isolated install in the smoke test, the global
    `dogfood` install — runs with `cwd` = the repository root (which carries
    `packageManager`) and targets other directories with `--dir`, so Corepack always uses
    the **repository-pinned pnpm**, never "latest". The tarball name is deterministic:
    `nevo-specflow-<version>.tgz`.
+
+## Package build vs distribution bundle
+
+ADR 0009 owns source-package compilation: reusable product packages bundle their JavaScript and
+declaration surfaces with the generic library builder, with neutral and Node-only profiles made
+explicit. That package build does **not** create the product artifact.
+
+The separate `nevo-repo-product bundle` step defined by ADR 0006 is the only place that creates
+the final self-contained public CLI file and intentionally crosses workspace package boundaries.
 
 ## Package-metadata rules for `@nevo/specflow`
 
@@ -109,14 +121,14 @@ tar -xzOf .artifacts/nevo-specflow-*.tgz package/package.json
 
 ## What is proven, and where
 
-| Layer               | Test                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| capability          | `packages/specflow-runtime/test/runtime.test.ts` — `startRuntime()` returns the marker.                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| CLI adapter         | `packages/specflow-runtime/test/command.test.ts` — `createStartCommand` returns a `start` `Command`, its action writes the marker to the injected sink, and the capability module does **not** import Commander.                                                                                                                                                                                                                                                                                                                                   |
-| CLI shell           | `packages/specflow/test/cli.test.ts` — `createProgram` composes the command; `--help`, `--version`, `start` routing, unknown-command exit.                                                                                                                                                                                                                                                                                                                                                                                                         |
-| bundler             | `tools/product/test/bundle.test.ts` — esbuild injects the version, emits a runnable ESM file with the shebang, inlines a sibling module.                                                                                                                                                                                                                                                                                                                                                                                                           |
-| fresh clone         | `tools/product/test/fresh-state.test.ts` — after deleting `tools/product/{dist,.tsbuild}` and clearing `.artifacts`, `pnpm product:pack` still produces a tarball; the effective pnpm is the pinned one.                                                                                                                                                                                                                                                                                                                                           |
-| **packed artifact** | `packages/specflow/test/packaging.smoke.test.ts` — `pack` (pinned pnpm) → install the tarball into an **isolated prefix outside the workspace** (`pnpm --dir <prefix> --ignore-workspace add`) → run the installed `nevo-specflow` **through its `.bin` shim on `PATH`**: `--help` / `--version` / `start` / unknown-command; assert the exact tarball file list, the manifest (version, `engines`, no deps/scripts, no `workspace:`), and the Commander license in `THIRD_PARTY_NOTICES.txt`. Nothing resolves through the repo's `node_modules`. |
+| Layer               | Test                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| capability          | `packages/specflow-runtime/test/runtime.test.ts` — starts the real HTTP server, probes the auth session API, and closes it explicitly.                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| CLI adapter         | `packages/specflow-runtime/test/command.test.ts` — Runtime command adapters cover `start` lifecycle and the auth password-hash utility; the capability module does **not** import Commander.                                                                                                                                                                                                                                                                                                                                                                              |
+| CLI shell           | `packages/specflow/test/cli.test.ts` — `createProgram` composes capability commands; `--help`, `--version`, `start`, auth utility routing, and unknown-command behavior are covered.                                                                                                                                                                                                                                                                                                                                                                                      |
+| bundler             | `tools/product/test/bundle.test.ts` — esbuild injects the version, emits a runnable ESM file with the shebang, inlines a sibling module.                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| fresh clone         | `tools/product/test/fresh-state.test.ts` — after deleting `tools/product/{dist,.tsbuild}` and clearing `.artifacts`, `pnpm product:pack` still produces a tarball; the effective pnpm is the pinned one.                                                                                                                                                                                                                                                                                                                                                                  |
+| **packed artifact** | `packages/specflow/test/packaging.smoke.test.ts` — `pack` (pinned pnpm) → install the tarball into an **isolated prefix outside the workspace** (`pnpm --dir <prefix> --ignore-workspace add`) → run the installed `nevo-specflow` **through its `.bin` shim on `PATH`**: help/version, password-hash provisioning, real `start` → HTTP `/api/auth/session` probe → SIGTERM clean shutdown, and unknown-command behavior; assert the exact tarball file list, manifest and representative bundled dependency notices. Nothing resolves through the repo's `node_modules`. |
 
 ## Future GitHub Release compatibility
 

@@ -20,17 +20,13 @@ describe('createAuthorizationRegistry', () => {
 
   it('rejects assignments that reference unknown roles', () => {
     expect(() =>
-      createAuthorizationRegistry(
-        [Order],
-        { reader: [Order.capabilities.View] },
-        [
-          {
-            subject: { kind: 'user', id: 'u1' },
-            role: 'missing-role',
-            scope: {},
-          },
-        ],
-      ),
+      createAuthorizationRegistry([Order], { reader: [Order.capabilities.View] }, [
+        {
+          subject: { kind: 'user', id: 'u1' },
+          role: 'missing-role',
+          scope: {},
+        },
+      ]),
     ).toThrowError(/unknown role 'missing-role'/);
   });
 
@@ -78,11 +74,9 @@ describe('createAuthorizationRegistry', () => {
       role: 'reader',
       scope: { tenantId: 'T1' },
     };
-    const registry = createAuthorizationRegistry(
-      [Order],
-      { reader: [Order.capabilities.View] },
-      [assignment],
-    );
+    const registry = createAuthorizationRegistry([Order], { reader: [Order.capabilities.View] }, [
+      assignment,
+    ]);
 
     assignment.subject.id = 'attacker';
     assignment.scope.tenantId = 'T2';

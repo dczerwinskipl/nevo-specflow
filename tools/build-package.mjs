@@ -135,7 +135,7 @@ function validateNeutralSource(cwd, pkg) {
     sourceFiles,
     (name) =>
       /\.(?:ts|tsx|mts|cts)$/u.test(name) &&
-      !/\.(?:test|spec|stories|story|test-support)(?:\.|$)/u.test(name),
+      !/\.(?:test|stories|test-support)(?:\.|$)/u.test(name),
   );
 
   for (const file of sourceFiles) {

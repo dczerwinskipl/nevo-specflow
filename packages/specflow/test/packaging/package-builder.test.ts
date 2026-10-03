@@ -109,6 +109,21 @@ describe('repository package builder contract', () => {
 
     expect(runBuilder(fixture)).toMatchObject({ status: 0 });
   });
+
+  it('still validates production modules whose domain name contains .spec', () => {
+    const fixture = createFixture({
+      profile: 'neutral',
+      source: 'export const answer = 42;\n',
+    });
+    writeFileSync(
+      join(fixture, 'src', 'workflow.spec.ts'),
+      "import { readFile } from 'node:fs/promises';\nexport { readFile };\n",
+    );
+
+    const result = runBuilder(fixture);
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("neutral package imports Node builtin 'node:fs/promises'");
+  });
 });
 
 interface FixtureOptions {

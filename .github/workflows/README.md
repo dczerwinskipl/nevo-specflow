@@ -41,6 +41,9 @@ Current pins:
 
 Dependency Review rejects pull requests that introduce a dependency with a vulnerability of
 moderate severity or higher. CodeQL scans JavaScript/TypeScript on pull requests, protected-branch
-pushes, and weekly. Fork/Dependabot pull requests still run analysis but skip SARIF upload because
-GitHub downgrades their token to read-only; same-repository and protected-branch runs upload results.
-Both expose stable check names used by repository governance.
+pushes, and weekly. Pull-request analyses, including fork and Dependabot pull requests, use GitHub's
+supported pull-request SARIF upload path; the workflow does not use `pull_request_target`.
+`main` requires both the stable `codeql` check and native CodeQL code-scanning results, blocking
+updates for generic code-scanning errors or high-or-higher security alerts. Release lines keep the
+stable `codeql` check without the native code-scanning rule so `cut-release-line` can create a new
+branch before branch-specific analysis exists.

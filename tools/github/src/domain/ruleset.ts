@@ -31,6 +31,7 @@ export function rulesFor(
       },
     });
   }
+
   return rules;
 }
 

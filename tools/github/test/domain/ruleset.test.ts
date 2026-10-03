@@ -14,18 +14,45 @@ const policy: RepositoryPolicy = parsePolicy(
         target: 'branch',
         enforcement: 'active',
         conditions: { ref_name: { include: ['refs/heads/main'], exclude: [] } },
-        baseRules: [{ type: 'deletion' }, { type: 'non_fast_forward' }],
+        baseRules: [
+          { type: 'deletion' },
+          { type: 'non_fast_forward' },
+          {
+            type: 'code_scanning',
+            parameters: {
+              code_scanning_tools: [
+                {
+                  tool: 'CodeQL',
+                  alerts_threshold: 'errors',
+                  security_alerts_threshold: 'high_or_higher',
+                },
+              ],
+            },
+          },
+        ],
       },
     ],
   }),
 );
 
 describe('rulesFor / desiredRuleset', () => {
-  it('appends the pull_request rule with the effective params, then required_status_checks', () => {
+  it('preserves base code-scanning rules and appends PR/status-check policy', () => {
     const rules = rulesFor(policy.rulesets[0]!, policy, { required_approving_review_count: 0 });
     expect(rules).toEqual([
       { type: 'deletion' },
       { type: 'non_fast_forward' },
+      {
+        type: 'code_scanning',
+        parameters: {
+          code_scanning_tools: [
+            {
+              tool: 'CodeQL',
+              alerts_threshold: 'errors',
+              security_alerts_threshold: 'high_or_higher',
+            },
+          ],
+        },
+      },
       { type: 'pull_request', parameters: { required_approving_review_count: 0 } },
       {
         type: 'required_status_checks',

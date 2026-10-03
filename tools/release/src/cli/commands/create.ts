@@ -7,6 +7,7 @@ interface CreateOptions {
   channel?: string;
   execute: boolean;
   json: boolean;
+  expectedTag?: string;
 }
 
 export function createReleaseCommand(ctx: CliContext): Command {
@@ -20,10 +21,14 @@ export function createReleaseCommand(ctx: CliContext): Command {
     )
     .option('--execute', 'perform the release (otherwise run every check, change nothing)', false)
     .option('--json', 'print the resolved release result as JSON', false)
+    .addOption(
+      new Option('--expected-tag <tag>', 'fail before mutation if the resolved candidate changed')
+        .env('RELEASE_EXPECTED_TAG'),
+    )
     .action(async (opts: CreateOptions) => {
       const mutate = wantsExecute(opts.execute, ctx.env);
       const result = await executeRelease(
-        { channel: opts.channel ?? '' },
+        { channel: opts.channel ?? '', expectedTag: opts.expectedTag },
         { git: ctx.git, github: ctx.github, hasToken: hasCiGithubReleaseToken(ctx.env) },
         { mutate },
       );

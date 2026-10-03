@@ -117,6 +117,22 @@ describe('executeRelease — Phase A recovery + fail-closed GitHub reads', () =>
     expect(git.createdTags).toEqual([{ tag: 'v1.3.0-beta.2', sha: HEAD }]);
   });
 
+  it('expectedTag fails closed before mutation when the candidate changes after validation', async () => {
+    git.state.tags.set('v1.3.0-beta.1', HEAD);
+    github.state.releases.add('v1.3.0-beta.1');
+
+    await expect(
+      executeRelease(
+        { channel: 'beta', expectedTag: 'v1.3.0-beta.1' },
+        deps(),
+        { mutate: true },
+      ),
+    ).rejects.toThrow(/candidate changed.*expected v1\.3\.0-beta\.1.*resolved v1\.3\.0-beta\.2/i);
+
+    expect(git.createdTags).toEqual([]);
+    expect(github.createdReleases).toEqual([]);
+  });
+
   it('an ambiguous GitHub Release read (auth/network) fails closed, never "absent"', async () => {
     github.state.failReleaseView = new Error('HTTP 401: bad credentials');
     await expect(run('beta', false)).rejects.toThrow(

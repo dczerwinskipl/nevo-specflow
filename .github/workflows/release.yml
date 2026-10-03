@@ -62,7 +62,7 @@ jobs:
           EXECUTE: "false"
         shell: bash
         run: |
-          result="$(node tools/release/dist/bin.js create --json)"
+          result="$(node tools/release/dist/bin.js create --json --expected-tag "$PLANNED_TAG")"
           echo "$result"
           tag="$(node -e 'const v=JSON.parse(process.argv[1]); process.stdout.write(v.tag)' "$result")"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"

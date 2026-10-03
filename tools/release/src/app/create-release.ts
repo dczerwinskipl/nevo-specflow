@@ -51,7 +51,7 @@ export interface CreateReleaseResult {
 }
 
 export async function executeRelease(
-  input: { channel: string },
+  input: { channel: string; expectedTag?: string },
   deps: CreateReleaseDeps,
   { mutate }: { mutate: boolean },
 ): Promise<CreateReleaseResult> {
@@ -127,6 +127,13 @@ export async function executeRelease(
     highestTag,
     highestTagState,
   });
+  if (input.expectedTag && tag !== input.expectedTag) {
+    throw new InconsistentStateError(
+      `Release candidate changed after validation: expected ${input.expectedTag}, resolved ${tag}. ` +
+        'Re-run the candidate build/smoke before executing; no release mutation was performed.',
+    );
+  }
+
   if (recovering && tag !== plan.tag) {
     events.push(
       info(

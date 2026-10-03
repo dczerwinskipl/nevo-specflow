@@ -1,14 +1,14 @@
 // Fresh-clone acceptance for the package-owned artifact builder.
 
-import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
+import { run } from '../../packaging/exec';
+
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
-const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 const artifacts = join(repoRoot, '.artifacts');
 const productDependencies = [
   join(repoRoot, 'packages', 'authorization'),
@@ -22,10 +22,7 @@ const pinnedPnpm = (
 
 describe('pnpm product:pack — self-bootstrapping from a fresh install', () => {
   it('uses the repository-pinned pnpm', () => {
-    const version = execFileSync(pnpmCommand, ['--version'], {
-      cwd: repoRoot,
-      encoding: 'utf8',
-    }).trim();
+    const version = run('pnpm', ['--version'], { cwd: repoRoot });
     expect(version).toBe(pinnedPnpm);
     expect(pinnedPnpm.startsWith('10.')).toBe(true);
   });
@@ -46,11 +43,7 @@ describe('pnpm product:pack — self-bootstrapping from a fresh install', () => 
     }
     expect(readdirSync(artifacts)).toEqual([]);
 
-    execFileSync(pnpmCommand, ['product:pack'], {
-      cwd: repoRoot,
-      encoding: 'utf8',
-      timeout: 180_000,
-    });
+    run('pnpm', ['product:pack'], { cwd: repoRoot, timeout: 180_000 });
 
     for (const packageDir of productDependencies) {
       expect(existsSync(join(packageDir, 'dist'))).toBe(true);

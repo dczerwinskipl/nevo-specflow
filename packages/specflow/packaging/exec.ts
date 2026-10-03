@@ -1,12 +1,14 @@
-// Small child-process helpers for package-owned product packaging.
-// Commands are executed directly; Windows .cmd launchers are resolved explicitly
-// rather than enabling a shell for arguments.
+// Small child-process helper for package-owned product packaging.
+// cross-spawn resolves Windows command shims/PATHEXT without shell:true, so
+// arguments stay structured rather than being concatenated into a shell command.
 
-import { execFileSync } from 'node:child_process';
+import crossSpawn from 'cross-spawn';
 
 export interface RunOpts {
   readonly cwd?: string;
   readonly env?: NodeJS.ProcessEnv;
+  readonly input?: string;
+  readonly timeout?: number;
 }
 
 export class StepFailedError extends Error {
@@ -15,26 +17,23 @@ export class StepFailedError extends Error {
 
 /** Run a command to completion, returning trimmed stdout. Throws `StepFailedError` on failure. */
 export function run(command: string, args: readonly string[], opts: RunOpts = {}): string {
-  const executable = windowsLauncher(command);
-  try {
-    return execFileSync(executable, [...args], {
-      cwd: opts.cwd,
-      env: opts.env,
-      encoding: 'utf8',
-      maxBuffer: 64 * 1024 * 1024,
-      windowsHide: true,
-    }).trim();
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; status?: number | null };
+  const result = crossSpawn.sync(command, [...args], {
+    cwd: opts.cwd,
+    env: opts.env,
+    encoding: 'utf8',
+    input: opts.input,
+    maxBuffer: 64 * 1024 * 1024,
+    timeout: opts.timeout,
+    windowsHide: true,
+  });
+
+  if (result.error || result.status !== 0) {
+    const detail = (result.stderr ?? '').trim() || (result.stdout ?? '').trim();
     throw new StepFailedError(
-      `\`${command} ${args.join(' ')}\` failed (exit ${String(e.status ?? 'null')})\n` +
-        `${(e.stderr ?? '').trim() || (e.stdout ?? '').trim()}`,
-      { cause: err },
+      `\`${command} ${args.join(' ')}\` failed (exit ${String(result.status ?? 'null')})\n${detail}`,
+      result.error ? { cause: result.error } : undefined,
     );
   }
-}
 
-function windowsLauncher(command: string): string {
-  if (process.platform !== 'win32') return command;
-  return command === 'pnpm' || command === 'nevo-specflow' ? `${command}.cmd` : command;
+  return (result.stdout ?? '').trim();
 }

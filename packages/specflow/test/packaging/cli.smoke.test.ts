@@ -1,6 +1,6 @@
 // Thin subprocess smoke of the built executable — wiring contracts only.
 
-import { execFile, execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,10 +8,11 @@ import { promisify } from 'node:util';
 
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import { run } from '../../packaging/exec';
+
 const execFileAsync = promisify(execFile);
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const bin = join(pkgRoot, 'packaging', 'bin.ts');
-const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 
 async function cli(args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
   try {
@@ -27,9 +28,8 @@ beforeAll(() => {
   // The fresh-state test in this same package deletes and rebuilds dist; rebuild
   // here too if we happen to run while it is gone, so file order does not matter.
   if (!existsSync(bin)) {
-    execFileSync(pnpmCommand, ['--filter', '@nevo/specflow', 'typecheck'], {
+    run('pnpm', ['--filter', '@nevo/specflow', 'typecheck'], {
       cwd: join(pkgRoot, '..', '..'),
-      stdio: 'ignore',
     });
   }
 });

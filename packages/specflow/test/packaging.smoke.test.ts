@@ -7,7 +7,7 @@
 // bundle itself has no dependencies to resolve. Every `pnpm` runs from the repo
 // root (which carries `packageManager`) so Corepack never downloads "latest".
 
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { once } from 'node:events';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
@@ -15,10 +15,10 @@ import { tmpdir } from 'node:os';
 import { basename, delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import crossSpawn from 'cross-spawn';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 
 const pinnedPnpm = (
   JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as { packageManager: string }
@@ -65,11 +65,18 @@ beforeAll(() => {
     JSON.stringify({ name: 'nevo-specflow-smoke-host', version: '0.0.0', private: true }),
   );
   // pnpm run from repoRoot (pinned), directed at the prefix with --dir.
-  execFileSync(pnpmCommand, ['--dir', prefix, '--ignore-workspace', 'add', tarball], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-    windowsHide: true,
-  });
+  const install = crossSpawn.sync(
+    'pnpm',
+    ['--dir', prefix, '--ignore-workspace', 'add', tarball],
+    {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      windowsHide: true,
+    },
+  );
+  if (install.error || install.status !== 0) {
+    throw install.error ?? new Error(install.stderr || install.stdout || 'pnpm install failed');
+  }
 
   const manifestVersion = installedManifest().version;
   if (typeof manifestVersion !== 'string') {
@@ -91,24 +98,19 @@ interface Run {
   code: number;
   stdout: string;
 }
-/** Invoke the installed `nevo-specflow` shim from the isolated prefix's .bin. */
+/** Invoke the installed `nevo-specflow` shim from the isolated prefix's .bin/PATH. */
 function nevoSpec(args: string[], input?: string): Run {
-  const shim = join(binDir, process.platform === 'win32' ? 'nevo-specflow.cmd' : 'nevo-specflow');
-  try {
-    return {
-      code: 0,
-      stdout: execFileSync(shim, args, {
-        cwd: prefix,
-        env: runEnv,
-        encoding: 'utf8',
-        windowsHide: true,
-        ...(input === undefined ? {} : { input }),
-      }),
-    };
-  } catch (err) {
-    const e = err as { status?: number; stdout?: string; stderr?: string };
-    return { code: e.status ?? 1, stdout: `${e.stdout ?? ''}${e.stderr ?? ''}` };
-  }
+  const result = crossSpawn.sync('nevo-specflow', args, {
+    cwd: prefix,
+    env: runEnv,
+    encoding: 'utf8',
+    input,
+    windowsHide: true,
+  });
+  return {
+    code: result.status ?? 1,
+    stdout: `${result.stdout ?? ''}${result.stderr ?? ''}`,
+  };
 }
 
 async function freePort(): Promise<number> {
@@ -135,11 +137,14 @@ function installedManifest(): Record<string, unknown> {
 
 describe('packaged @nevo/specflow — isolated tarball install', () => {
   it('was packed with the repository-pinned pnpm', () => {
-    const v = execFileSync(pnpmCommand, ['--version'], {
+    const pnpm = crossSpawn.sync('pnpm', ['--version'], {
       cwd: repoRoot,
       encoding: 'utf8',
       windowsHide: true,
-    }).trim();
+    });
+    expect(pnpm.error).toBeUndefined();
+    expect(pnpm.status).toBe(0);
+    const v = (pnpm.stdout ?? '').trim();
     expect(v).toBe(pinnedPnpm);
     expect(pinnedPnpm.startsWith('10.')).toBe(true);
   });
@@ -248,19 +253,12 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
       'utf8',
     );
 
-    const installedBin = join(prefix, 'node_modules', '@nevo', 'specflow', 'dist', 'bin.js');
-    const child =
-      process.platform === 'win32'
-        ? spawn(process.execPath, [installedBin, 'start'], {
-            cwd: prefix,
-            env: runEnv,
-            stdio: ['ignore', 'pipe', 'pipe'],
-          })
-        : spawn('nevo-specflow', ['start'], {
-            cwd: prefix,
-            env: runEnv,
-            stdio: ['ignore', 'pipe', 'pipe'],
-          });
+    const child = crossSpawn('nevo-specflow', ['start'], {
+      cwd: prefix,
+      env: runEnv,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+    });
     child.stdout.setEncoding('utf8');
     child.stderr.setEncoding('utf8');
 

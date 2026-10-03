@@ -144,11 +144,7 @@ describe('executeRelease — Phase A recovery + fail-closed GitHub reads', () =>
     ]);
 
     await expect(
-      executeRelease(
-        { channel: 'beta', expectedTag: 'v1.3.0-beta.1' },
-        deps(),
-        { mutate: true },
-      ),
+      executeRelease({ channel: 'beta', expectedTag: 'v1.3.0-beta.1' }, deps(), { mutate: true }),
     ).rejects.toThrow(/candidate changed.*v1\.3\.0-beta\.1.*v1\.3\.0-beta\.2/i);
 
     expect(git.createdTags).toEqual([]);
@@ -210,24 +206,19 @@ describe('executeRelease — Phase B (stable advance) structural validation §3'
   });
 
   it('can defer stable advance until the release artifact is published', async () => {
-    const first = await executeRelease(
-      { channel: 'stable' },
-      deps(true),
-      { mutate: true, deferAdvance: true },
-    );
+    const first = await executeRelease({ channel: 'stable' }, deps(true), {
+      mutate: true,
+      deferAdvance: true,
+    });
 
     expect(msgs(first)).toMatch(/advance deferred.*artifact publication/i);
     expect(git.createdTags).toEqual([{ tag: 'v1.3.0', sha: HEAD }]);
     expect(github.createdReleases).toEqual(['v1.3.0']);
     expect(git.pushedBranches).toEqual([]);
 
-    await executeRelease(
-      { channel: 'stable', expectedTag: 'v1.3.0' },
-      deps(true),
-      {
-        mutate: true,
-      },
-    );
+    await executeRelease({ channel: 'stable', expectedTag: 'v1.3.0' }, deps(true), {
+      mutate: true,
+    });
     expect(git.createdTags).toEqual([{ tag: 'v1.3.0', sha: HEAD }]);
     expect(github.createdReleases).toEqual(['v1.3.0']);
     expect(git.pushedBranches.map((p) => p.branch)).toEqual([ADVANCE_BRANCH]);

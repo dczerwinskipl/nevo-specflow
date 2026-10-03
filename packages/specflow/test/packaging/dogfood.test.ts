@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { dogfoodInstall } from '../../packaging/dogfood.ts';
-import type { run } from '../../packaging/exec.ts';
-import type { packProduct } from '../../packaging/pack.ts';
+import { dogfoodInstall } from '../../packaging/dogfood';
+import type { run } from '../../packaging/exec';
+import type { packProduct } from '../../packaging/pack';
 
 describe('dogfoodInstall', () => {
   it('smokes long-running Runtime through start --help instead of starting the server', async () => {

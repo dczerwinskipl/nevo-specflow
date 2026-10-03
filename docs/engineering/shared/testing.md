@@ -6,11 +6,12 @@ status: current
 read_when:
   - writing tests for application or infrastructure code
   - choosing a test boundary
+  - placing tests, fixtures, test helpers, or Storybook stories
   - reviewing determinism or test isolation
 summary: >
-  Shared testing strategy: pure policy tests, application tests with in-memory fakes,
-  adapter integration tests, deterministic fixtures, and focused coverage rather than
-  framework re-testing.
+  Shared testing strategy and ownership-based placement: co-located module/component tests
+  and Storybook stories, cross-boundary package test trees, deterministic fixtures, and
+  focused coverage rather than framework re-testing.
 related:
   - engineering.shared.code-organization
   - engineering.shared.effects-and-io

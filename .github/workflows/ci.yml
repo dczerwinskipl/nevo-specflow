@@ -35,6 +35,21 @@ jobs:
         with:
           fail-on-severity: moderate
 
+  format-probe:
+    name: format probe
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Show exact Prettier diff
+        shell: bash
+        run: |
+          pnpm exec prettier --write tools/release/test/app/create-release.test.ts
+          git diff -- tools/release/test/app/create-release.test.ts
+          exit 1
+
   quality:
     name: quality
     runs-on: ubuntu-latest

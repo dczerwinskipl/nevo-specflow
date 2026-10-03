@@ -81,7 +81,11 @@ export function configureRepository(
     const want = desiredRuleset(spec, policy, prParams);
     const compare = (rs: Record<string, unknown>): string[] =>
       diffPartial(
-        { enforcement: want.enforcement, conditions: want.conditions, rules: want.rules },
+        {
+          enforcement: want.enforcement,
+          conditions: want.conditions,
+          rules: normalizeRules(want.rules),
+        },
         {
           enforcement: rs.enforcement,
           conditions: rs.conditions,

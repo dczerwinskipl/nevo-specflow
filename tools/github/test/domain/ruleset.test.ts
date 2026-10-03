@@ -80,4 +80,18 @@ describe('normalizeRules', () => {
       ]),
     ).toEqual([{ type: 'deletion' }, { type: 'pull_request', parameters: { x: 1 } }]);
   });
+
+  it('canonicalizes top-level rule order before comparison', () => {
+    expect(
+      normalizeRules([
+        { type: 'required_status_checks', parameters: { x: 1 } },
+        { type: 'code_scanning', parameters: { y: 2 } },
+        { type: 'pull_request', parameters: { z: 3 } },
+      ]),
+    ).toEqual([
+      { type: 'code_scanning', parameters: { y: 2 } },
+      { type: 'pull_request', parameters: { z: 3 } },
+      { type: 'required_status_checks', parameters: { x: 1 } },
+    ]);
+  });
 });

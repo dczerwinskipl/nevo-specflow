@@ -268,15 +268,20 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
             stdio: ['ignore', 'pipe', 'pipe'],
             windowsHide: true,
           });
-    child.stdout.setEncoding('utf8');
-    child.stderr.setEncoding('utf8');
+    const childStdout = child.stdout;
+    const childStderr = child.stderr;
+    if (!childStdout || !childStderr) {
+      throw new Error('Runtime smoke requires piped stdout and stderr.');
+    }
+    childStdout.setEncoding('utf8');
+    childStderr.setEncoding('utf8');
 
     let stdout = '';
     let stderr = '';
-    child.stdout.on('data', (chunk: string) => {
+    childStdout.on('data', (chunk: string) => {
       stdout += chunk;
     });
-    child.stderr.on('data', (chunk: string) => {
+    childStderr.on('data', (chunk: string) => {
       stderr += chunk;
     });
 
@@ -289,11 +294,11 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
         const onData = () => {
           if (stdout.includes(`Runtime listening at http://127.0.0.1:${port}`)) {
             clearTimeout(timeout);
-            child.stdout.off('data', onData);
+            childStdout.off('data', onData);
             resolve();
           }
         };
-        child.stdout.on('data', onData);
+        childStdout.on('data', onData);
         child.once('exit', (code, signal) => {
           clearTimeout(timeout);
           reject(

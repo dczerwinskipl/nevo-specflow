@@ -69,12 +69,12 @@ nevo-release create --channel beta|rc|stable [--execute]
     # nothing. Checks (both modes):
     #   - after fetch, the local release-branch HEAD must equal origin/<branch> — a
     #     behind / diverged / unresolvable checkout is refused (§ stale checkout);
-    #   - the branch HEAD must have PASSED quality + verify tests + build on GitHub (newest run
-    #     per check); an unreadable check-run response is refused;
+    #   - the branch HEAD must have PASSED quality + verify tests + build + product smoke +
+    #     codeql on GitHub (newest run per check); an unreadable check-run response is refused;
     #   - Phase A — tag + GitHub Release: orphaned last prerelease tag on HEAD is
-    #     completed, not skipped to N+1; a tag at a different commit is refused; if the
-    #     Release state cannot be DETERMINED (auth/network/ambiguous) it fails closed,
-    #     never assuming "absent".
+    #     completed, not skipped to N+1. A prerelease whose Release exists but whose
+    #     required .tgz/.sha256 assets are incomplete also keeps the same N until repaired.
+    #     A tag at a different commit is refused; unreadable Release/asset state fails closed.
     #   - Phase B (stable) — advance the branch, reached even when Phase A was a no-op.
     #     An existing advance branch is reused only when read-only Git inspection proves
     #     it is a single commit on the current origin/release/vX.Y HEAD changing only
@@ -111,7 +111,9 @@ structural recovery checks run without any plumbing writes. Errors: `UsageError`
 
 `GitHubClient` reads **fail closed**. `releaseExists` decides absent-vs-existing-vs-
 indeterminate from the **HTTP status code** of `gh api --include …/releases/tags/<tag>`
-(200 / 404 / everything-else-throws), never by matching human `gh` stderr. `gh`
+(200 / 404 / everything-else-throws), never by matching human `gh` stderr. For an existing
+prerelease, `releaseAssetNames` must also prove the expected `.tgz` and `.sha256` are present before
+the sequence may advance to N+1; malformed or unreadable asset state throws. `gh`
 authenticates from `GH_TOKEN` / `GITHUB_TOKEN`; the adapter copies
 `CI_GITHUB_RELEASE_TOKEN` into `GH_TOKEN` for its subprocesses only when neither is
 already set (`resolveGhEnv`). Each release workflow's `permissions:` block is the

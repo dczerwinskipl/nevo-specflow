@@ -245,11 +245,11 @@ The checks, in order (all performed in both modes):
    freshly-cut branch, a red commit, or an unreadable check-run response is refused;
 4. tag selection: `beta` / `rc` → the next number in that channel's sequence from the
    existing tags; `stable` → `v1.3.0`;
-5. **recovery-safe**: the target tag already on HEAD with its Release → nothing; on
-   HEAD without a Release → create just the missing Release; pointing elsewhere →
-   refuse loudly; an orphaned last prerelease tag on HEAD is completed, never skipped
-   to `-beta.2`. If the GitHub Release state cannot be **determined** (auth, network,
-   404-vs-outage ambiguity), the run fails closed rather than assuming "absent".
+5. **recovery-safe**: the target tag already on HEAD without its Release → complete that Release;
+   pointing elsewhere → refuse loudly. For prereleases, a tag + Release is still **incomplete**
+   until both `nevo-specflow-<version>.tgz` and its `.sha256` asset exist, so a failed artifact
+   publication keeps the same `beta.N` / `rc.N` on the next run instead of silently advancing.
+   If Release or asset state cannot be determined (auth/network/malformed response), fail closed.
 6. workflow candidate gate (both modes): build the exact planned tag version **once**, upload it as
    a workflow artifact, then install/smoke that same tarball on Linux, Windows, and macOS;
 7. execute only: revalidate and create/complete the annotated tag + GitHub Release (`--prerelease`

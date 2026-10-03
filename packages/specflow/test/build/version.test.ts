@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveProductVersion } from '../src/version.js';
-import { StepFailedError } from '../src/exec.js';
+import { resolveProductVersion } from '../../build/version.ts';
+import { StepFailedError } from '../../build/exec.ts';
 
 const base = { repoRoot: process.cwd(), releaseBin: 'unused-when-override' };
 

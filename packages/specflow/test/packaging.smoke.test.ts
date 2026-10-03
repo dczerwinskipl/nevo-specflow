@@ -31,8 +31,8 @@ let binDir = '';
 let runEnv: NodeJS.ProcessEnv = {};
 
 beforeAll(() => {
-  // pack via the tool (already built by the nevo-repo-product#test turbo edge).
-  const out = execFileSync('node', ['tools/product/dist/bin.js', 'pack', '--json'], {
+  // Pack through the package-owned build entrypoint.
+  const out = execFileSync(process.execPath, ['packages/specflow/build/bin.ts', 'pack', '--json'], {
     cwd: repoRoot,
     encoding: 'utf8',
     shell: sh,

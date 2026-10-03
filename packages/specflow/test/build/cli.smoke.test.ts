@@ -9,8 +9,8 @@ import { promisify } from 'node:util';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 const execFileAsync = promisify(execFile);
-const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
-const bin = join(pkgRoot, 'dist', 'bin.js');
+const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const bin = join(pkgRoot, 'build', 'bin.ts');
 
 async function cli(args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
   try {
@@ -26,7 +26,7 @@ beforeAll(() => {
   // The fresh-state test in this same package deletes and rebuilds dist; rebuild
   // here too if we happen to run while it is gone, so file order does not matter.
   if (!existsSync(bin)) {
-    execFileSync('pnpm', ['--filter', 'nevo-repo-product', 'build'], {
+    execFileSync('pnpm', ['--filter', '@nevo/specflow', 'typecheck'], {
       cwd: join(pkgRoot, '..', '..'),
       stdio: 'ignore',
       shell: process.platform === 'win32',
@@ -34,7 +34,7 @@ beforeAll(() => {
   }
 });
 
-describe('nevo-repo-product CLI', () => {
+describe('@nevo/specflow build CLI', () => {
   it('--help lists bundle, pack and dogfood', async () => {
     const { code, stdout } = await cli(['--help']);
     expect(code).toBe(0);

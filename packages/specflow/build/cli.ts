@@ -1,9 +1,9 @@
 import { Command } from 'commander';
 
-import { bundleProduct } from './bundle.js';
-import { dogfoodInstall } from './dogfood.js';
-import { packProduct } from './pack.js';
-import { readJson } from './paths.js';
+import { bundleProduct } from './bundle.ts';
+import { dogfoodInstall } from './dogfood.ts';
+import { packProduct } from './pack.ts';
+import { readJson } from './paths.ts';
 
 export interface CliIO {
   readonly stdout: (line: string) => void;
@@ -11,8 +11,8 @@ export interface CliIO {
 }
 
 export function createProgram(io: CliIO): Command {
-  const program = new Command('nevo-repo-product')
-    .description('Repository packaging tooling for the Nevo SpecFlow product (not a product CLI)')
+  const program = new Command('@nevo/specflow build')
+    .description('Package-owned build and packaging commands for @nevo/specflow')
     .configureOutput({
       writeOut: (s) => io.stdout(s.replace(/\n$/, '')),
       writeErr: (s) => io.stderr(s.replace(/\n$/, '')),

@@ -3,12 +3,28 @@
   "compilerOptions": {
     "tsBuildInfoFile": "./.tsbuild/specflow.tsbuildinfo",
     "paths": {
-      "@nevo/authorization": ["../authorization/src/index.ts"],
-      "@nevo/specflow-contracts": ["../specflow-contracts/src/index.ts"],
-      "@nevo/specflow-contracts/authorization": ["../specflow-contracts/src/authorization.ts"],
-      "@nevo/specflow-runtime": ["../specflow-runtime/src/index.ts"],
-      "@nevo/specflow-runtime/cli": ["../specflow-runtime/src/cli/command.ts"]
-    }
+      "@nevo/authorization": [
+        "../authorization/src/index.ts"
+      ],
+      "@nevo/specflow-contracts": [
+        "../specflow-contracts/src/index.ts"
+      ],
+      "@nevo/specflow-contracts/authorization": [
+        "../specflow-contracts/src/authorization.ts"
+      ],
+      "@nevo/specflow-runtime": [
+        "../specflow-runtime/src/index.ts"
+      ],
+      "@nevo/specflow-runtime/cli": [
+        "../specflow-runtime/src/cli/command.ts"
+      ]
+    },
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "build/**/*.ts",
+    "test/**/*.ts"
+  ]
 }

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { buildThirdPartyNotices } from '../src/notices.js';
+import { buildThirdPartyNotices } from '../../build/notices.ts';
 
 const dirs: string[] = [];
 

@@ -1,6 +1,477 @@
 {
   "docs": [
     {
+      "id": "adr.0001-record-architecture-decisions",
+      "type": "adr",
+      "title": "Record architecture decisions",
+      "status": "current",
+      "file": "docs/architecture/decisions/0001-record-architecture-decisions.md",
+      "read_when": [],
+      "summary": "Durable, cross-cutting decisions are recorded as lightweight numbered Markdown ADRs under docs/architecture/decisions/.",
+      "related": []
+    },
+    {
+      "id": "adr.0002-toolchain-selection",
+      "type": "adr",
+      "title": "Toolchain selection",
+      "status": "superseded",
+      "file": "docs/architecture/decisions/0002-toolchain-selection.md",
+      "read_when": [],
+      "summary": "The monorepo foundation is pnpm 10 + Turborepo + TypeScript + ESLint flat config (type-aware for TS) + Prettier + Vitest on Node Active LTS. Two versions are held back on purpose — pnpm (for GitHub Dependency Graph compatibility) and TypeScript (for the lint ecosystem) — each with an explicit upgrade condition.",
+      "related": [
+        "architecture.repository-structure",
+        "engineering.repository.local-setup",
+        "engineering.repository.dependencies-and-security",
+        "adr.0010-toolchain-policy-and-version-sources"
+      ]
+    },
+    {
+      "id": "adr.0003-branch-and-release-model",
+      "type": "adr",
+      "title": "Branch and release model",
+      "status": "current",
+      "file": "docs/architecture/decisions/0003-branch-and-release-model.md",
+      "read_when": [],
+      "summary": "main carries the next development version; short-lived feature/ and fix/ branches merge into it by squash-only PR; each maintained minor line has one long-lived release/vX.Y branch. The next-version choice (minor vs major) is always an explicit input.",
+      "related": [
+        "engineering.repository.git-workflow",
+        "architecture.repository-structure"
+      ]
+    },
+    {
+      "id": "adr.0004-mit-license",
+      "type": "adr",
+      "title": "MIT license",
+      "status": "current",
+      "file": "docs/architecture/decisions/0004-mit-license.md",
+      "read_when": [],
+      "summary": "The repository is licensed MIT — permissive, minimal obligations, sufficient for a public developer-tooling project. Provenance of any code brought in from another repository is checked per file when brought in.",
+      "related": [
+        "architecture.repository-structure"
+      ]
+    },
+    {
+      "id": "adr.0005-repository-tooling-is-separate-from-the-product-api",
+      "type": "adr",
+      "title": "Repository tooling is separate from the product API",
+      "status": "current",
+      "file": "docs/architecture/decisions/0005-repository-tooling-is-separate-from-the-product-api.md",
+      "read_when": [],
+      "summary": "Repository-internal developer tooling lives under `tools/*` as private, unscoped packages and never becomes a Nevo SpecFlow product surface by default. Product capabilities are designed as `@nevo/*` packages and `nevo-specflow` commands in their own right.",
+      "related": [
+        "architecture.repository-structure",
+        "engineering.cli.architecture"
+      ]
+    },
+    {
+      "id": "adr.0006-product-ships-as-a-single-bundled-artifact",
+      "type": "adr",
+      "title": "The product ships as a single bundled artifact",
+      "status": "superseded",
+      "file": "docs/architecture/decisions/0006-product-ships-as-a-single-bundled-artifact.md",
+      "read_when": [],
+      "summary": "`@nevo/specflow` is distributed as one self-contained tarball. `nevo-repo-product` (esbuild) bundles the `nevo-specflow` entry, the internal workspace capability packages and `commander` into `dist/bin.js`, so the artifact installs with no registry and no workspace. Source package boundaries are unchanged — only the distribution is one file.",
+      "related": [
+        "adr.0010-toolchain-policy-and-version-sources",
+        "adr.0005-repository-tooling-is-separate-from-the-product-api",
+        "architecture.repository-structure",
+        "engineering.repository.product-packaging"
+      ]
+    },
+    {
+      "id": "adr.0007-documentation-architecture-and-taxonomy",
+      "type": "adr",
+      "title": "Documentation architecture and taxonomy",
+      "status": "current",
+      "file": "docs/architecture/decisions/0007-documentation-architecture-and-taxonomy.md",
+      "read_when": [],
+      "summary": "Defines a documentation architecture that separates product behavior, durable system architecture, engineering guidance, reusable design-system knowledge, exact reference contracts, operational instructions, and a non-authoritative idea backlog, while using searchable scope, area, and tag metadata so discovery does not depend on folder paths alone.",
+      "related": [
+        "docs.readme",
+        "docs.architecture-readme",
+        "architecture.repository-structure"
+      ]
+    },
+    {
+      "id": "adr.0008-product-naming-and-surfaces",
+      "type": "adr",
+      "title": "Product naming and surfaces",
+      "status": "current",
+      "file": "docs/architecture/decisions/0008-product-naming-and-surfaces.md",
+      "read_when": [],
+      "summary": "Names the product Nevo SpecFlow, its executable nevo-specflow, its long-lived backend Nevo SpecFlow Runtime, its interactive application Nevo SpecFlow UI, and keeps Nevo UI as the reusable design system.",
+      "related": [
+        "product.shared.vocabulary",
+        "product.specflow.overview",
+        "architecture.repository-structure"
+      ]
+    },
+    {
+      "id": "adr.0009-product-package-build-model",
+      "type": "adr",
+      "title": "Product package build model",
+      "status": "current",
+      "file": "docs/architecture/decisions/0009-product-package-build-model.md",
+      "read_when": [],
+      "summary": "Product packages use extensionless TypeScript source imports and explicit neutral or Node package profiles. Reusable package JavaScript and declaration surfaces are bundled together with one tsdown-based library build, while repository tools keep raw NodeNext tsc output and the final nevo-specflow distribution remains governed by ADR 0011.",
+      "related": [
+        "adr.0010-toolchain-policy-and-version-sources",
+        "adr.0011-product-artifact-packaging-and-pnpm-compatibility",
+        "engineering.shared.code-organization",
+        "engineering.repository.product-packaging"
+      ]
+    },
+    {
+      "id": "adr.0010-toolchain-policy-and-version-sources",
+      "type": "adr",
+      "title": "Toolchain policy and version sources",
+      "status": "current",
+      "file": "docs/architecture/decisions/0010-toolchain-policy-and-version-sources.md",
+      "read_when": [],
+      "summary": "Toolchain choices and upgrade constraints are durable architecture decisions, while exact installed versions are mutable dependency data owned by repository manifests, .nvmrc, workspace configuration, and the lockfile.",
+      "related": [
+        "adr.0002-toolchain-selection",
+        "adr.0009-product-package-build-model",
+        "architecture.repository-structure",
+        "engineering.repository.local-setup",
+        "engineering.repository.dependencies-and-security"
+      ]
+    },
+    {
+      "id": "adr.0011-product-artifact-packaging-and-pnpm-compatibility",
+      "type": "adr",
+      "title": "Product artifact packaging and pnpm compatibility",
+      "status": "current",
+      "file": "docs/architecture/decisions/0011-product-artifact-packaging-and-pnpm-compatibility.md",
+      "read_when": [],
+      "summary": "Nevo SpecFlow keeps pnpm 10 while GitHub Dependabot cannot reliably parse pnpm 11+ multi-document lockfiles, and keeps only the package-owned custom logic needed to build the self-contained product artifact while delegating archive creation to pnpm pack.",
+      "related": [
+        "adr.0006-product-ships-as-a-single-bundled-artifact",
+        "adr.0010-toolchain-policy-and-version-sources",
+        "engineering.repository.product-packaging",
+        "engineering.repository.dependencies-and-security"
+      ]
+    },
+    {
+      "id": "architecture.ai.canonical-session-turn-work",
+      "type": "architecture",
+      "title": "Canonical AI Session, Turn, and Work model",
+      "status": "current",
+      "file": "docs/architecture/ai/canonical-session-turn-work.md",
+      "read_when": [
+        "implementing AI sessions or turn lifecycle",
+        "persisting or projecting provider execution",
+        "adding AI interactions, tools, reasoning, or commentary",
+        "computing current activity, attention, or session readiness"
+      ],
+      "summary": "AI execution is represented by a provider-neutral Session -> Turn -> Work -> ToolAction hierarchy. Terminal turns are immutable, one non-terminal turn is admitted per session, ordered work is canonical, and Runtime owns semantic readiness/current-activity projections rather than UI heuristics.",
+      "related": [
+        "architecture.ai.provider-boundary",
+        "architecture.runtime.ownership-and-lifecycle",
+        "architecture.principles.enforceable-invariants",
+        "product.specflow.ui.ai-session-ux",
+        "architecture.principles.normative-language"
+      ]
+    },
+    {
+      "id": "architecture.ai.provider-boundary",
+      "type": "architecture",
+      "title": "AI provider boundary",
+      "status": "current",
+      "file": "docs/architecture/ai/provider-boundary.md",
+      "read_when": [
+        "adding or changing an AI provider",
+        "exposing provider capabilities",
+        "mapping provider events, errors, interactions, or session identity",
+        "deciding whether provider-specific data may cross into Runtime or UI contracts"
+      ],
+      "summary": "AI providers are adapters behind canonical SpecFlow contracts. They expose honest capabilities, normalize lifecycle/events/errors at the boundary, keep provider-private identifiers and payloads out of product contracts, and preserve raw diagnostics only for bounded technical inspection.",
+      "related": [
+        "architecture.ai.canonical-session-turn-work",
+        "architecture.runtime.ownership-and-lifecycle",
+        "engineering.shared.effects-and-io",
+        "architecture.principles.normative-language"
+      ]
+    },
+    {
+      "id": "architecture.principles.enforceable-invariants",
+      "type": "architecture",
+      "title": "Enforceable invariants",
+      "status": "current",
+      "file": "docs/architecture/principles/enforceable-invariants.md",
+      "read_when": [
+        "deciding whether a rule belongs in code, documentation, or an instruction",
+        "designing a workflow gate, lifecycle guard, or state transition",
+        "reviewing a rule that agents or users are expected to remember manually"
+      ],
+      "summary": "Durable system invariants MUST be enforced deterministically by software whenever the system can observe and decide them. Prose explains the rule; it MUST NOT be the only mechanism protecting a machine-verifiable invariant.",
+      "related": [
+        "architecture.workflow.deterministic-workflow",
+        "architecture.runtime.ownership-and-lifecycle",
+        "engineering.shared.code-organization",
+        "architecture.principles.normative-language"
+      ]
+    },
+    {
+      "id": "architecture.principles.normative-language",
+      "type": "architecture",
+      "title": "Normative language and document authority",
+      "status": "current",
+      "file": "docs/architecture/principles/normative-language.md",
+      "read_when": [
+        "interpreting requirements in architecture, engineering, product, or reference docs",
+        "deciding whether a documented rule is mandatory or advisory",
+        "encountering conflicting documentation",
+        "using examples to infer behavior not stated explicitly"
+      ],
+      "summary": "Defines MUST, SHOULD, MAY, document authority, conflict handling, and no-extrapolation rules for Nevo SpecFlow documentation so humans and AI agents interpret requirements consistently.",
+      "related": [
+        "architecture.principles.enforceable-invariants"
+      ]
+    },
+    {
+      "id": "architecture.repository-structure",
+      "type": "architecture",
+      "title": "Repository structure",
+      "status": "current",
+      "file": "docs/architecture/repository-structure.md",
+      "read_when": [
+        "orienting to the repository layout",
+        "understanding how Turborepo and CI decide what runs",
+        "understanding the versioning and release-line model",
+        "reasoning about pre-1.0 compatibility"
+      ],
+      "summary": "Monorepo layout (apps/packages/tools), the Turborepo task graph, the CI affected-package model and what invalidates everything, the SemVer / release-line model, and the pre-1.0 policy.",
+      "related": [
+        "engineering.repository.local-setup",
+        "engineering.repository.git-workflow",
+        "adr.0010-toolchain-policy-and-version-sources",
+        "adr.0003-branch-and-release-model"
+      ]
+    },
+    {
+      "id": "architecture.runtime.authorization",
+      "type": "architecture",
+      "title": "Runtime authorization",
+      "status": "current",
+      "file": "docs/architecture/runtime/auth/authorization.md",
+      "read_when": [
+        "adding or changing a SpecFlow capability",
+        "changing Runtime role composition or scoped assignments",
+        "enforcing access to specs, sessions, or settings",
+        "exposing effective capabilities to the UI"
+      ],
+      "summary": "SpecFlow authorization uses feature-owned resources and capabilities, Runtime-owned flat roles, project-owned scoped role assignments, canonical user identities, and explicit resource scopes. The generic resolver remains unaware of SpecFlow hierarchy and transport concerns.",
+      "related": [
+        "docs.architecture-runtime-auth-readme",
+        "architecture.runtime.ownership-and-lifecycle",
+        "reference.configuration.authorization",
+        "reference.api.authorization"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "security",
+        "configuration"
+      ]
+    },
+    {
+      "id": "architecture.runtime.configuration",
+      "type": "architecture",
+      "title": "Project configuration and local state",
+      "status": "current",
+      "file": "docs/architecture/runtime/configuration.md",
+      "read_when": [
+        "adding or moving SpecFlow configuration",
+        "deciding whether a setting is committed or workstation-local",
+        "adding Runtime-owned local persistence"
+      ],
+      "summary": "Nevo SpecFlow uses one .nevo namespace: committed project configuration and definitions, ignored workstation-local configuration, and application-owned local Runtime state.",
+      "related": [
+        "docs.architecture-runtime-readme",
+        "architecture.runtime.ownership-and-lifecycle",
+        "reference.cli.nevo-specflow-contract"
+      ]
+    },
+    {
+      "id": "architecture.runtime.ownership-and-lifecycle",
+      "type": "architecture",
+      "title": "Runtime ownership and lifecycle",
+      "status": "current",
+      "file": "docs/architecture/runtime/ownership-and-lifecycle.md",
+      "read_when": [
+        "adding a long-lived Runtime capability or resource",
+        "introducing HTTP, realtime, MCP, provider-process, or persistence infrastructure",
+        "changing startup, shutdown, cancellation, or restart recovery",
+        "deciding whether a concern belongs to Runtime or a transport adapter"
+      ],
+      "summary": "Nevo SpecFlow Runtime is the composition and lifecycle owner for long-lived local application resources. Transports are adapters, resources have one lifecycle owner, startup/shutdown are deterministic, and restart recovery reconciles durable state before accepting conflicting work.",
+      "related": [
+        "architecture.principles.enforceable-invariants",
+        "architecture.ai.canonical-session-turn-work",
+        "architecture.ai.provider-boundary",
+        "engineering.shared.async-and-lifecycle",
+        "engineering.shared.effects-and-io",
+        "architecture.principles.normative-language"
+      ]
+    },
+    {
+      "id": "architecture.workflow.deterministic-workflow",
+      "type": "architecture",
+      "title": "Deterministic workflow",
+      "status": "current",
+      "file": "docs/architecture/workflow/deterministic-workflow.md",
+      "read_when": [
+        "designing workflow steps, transitions, gates, or actions",
+        "implementing start, finish, retry, or recovery behavior",
+        "deciding which workflow state is authoritative versus derived",
+        "exposing workflow state to CLI, Runtime, agents, or UI"
+      ],
+      "summary": "Workflow progression is driven by authoritative declarative state and deterministic operations, not agent-authored orchestration. Step start activates, step finish completes, transitions are explicit, gates inspect separately from verify, attempts scope evidence, and durable effects resume instead of duplicating.",
+      "related": [
+        "architecture.principles.enforceable-invariants",
+        "architecture.runtime.ownership-and-lifecycle",
+        "engineering.shared.effects-and-io",
+        "engineering.shared.testing",
+        "architecture.principles.normative-language"
+      ]
+    },
+    {
+      "id": "design-system.figma.code-to-figma-projection",
+      "type": "architecture",
+      "title": "Code-to-Figma projection boundary",
+      "status": "current",
+      "file": "docs/design-system/figma/code-to-figma-projection.md",
+      "read_when": [
+        "changing how Nevo UI components are exported to Figma",
+        "deciding whether Figma or runtime code owns a design property",
+        "adding capture metadata, importer behavior, stable IDs, or a new representation capability"
+      ],
+      "summary": "Runtime React/CSS is the visual source of truth. Figma is a downstream projection through typed capture metadata and canonical IR. Import/export infrastructure stays generic, stable IDs are durable migration identities, and component-specific cases do not leak into the importer.",
+      "related": [
+        "design-system.principles.system-boundary",
+        "design-system.implementation.react.component-guidelines",
+        "design-system.implementation.storybook.guidelines",
+        "architecture.principles.normative-language"
+      ]
+    },
+    {
+      "id": "design-system.implementation.react.component-guidelines",
+      "type": "engineering",
+      "title": "React component guidelines",
+      "status": "draft",
+      "file": "docs/design-system/implementation/react/component-guidelines.md",
+      "read_when": [
+        "creating or restructuring a React component or module",
+        "deciding whether a helper component gets its own file",
+        "placing state or writing a hook",
+        "reviewing a React change"
+      ],
+      "summary": "Small focused components, composition over configuration, split by responsibility not ceremony, feature-local vertical ownership, hooks by behavior, and where state lives.",
+      "related": [
+        "design-system.principles.ui-ux-guidelines",
+        "design-system.implementation.tailwind.styling-guidelines",
+        "design-system.principles.system-boundary",
+        "engineering.shared.testing"
+      ]
+    },
+    {
+      "id": "design-system.implementation.storybook.guidelines",
+      "type": "engineering",
+      "title": "Storybook guidelines",
+      "status": "draft",
+      "file": "docs/design-system/implementation/storybook/guidelines.md",
+      "read_when": [
+        "creating or editing a Storybook story",
+        "verifying a UI component visually or with interaction tests",
+        "building deterministic UI fixtures"
+      ],
+      "summary": "Story hierarchy and naming (Foundations / Shared UI / Features / Screens), strict co-location, typed fixture factories, args-first state, play-function interaction tests, and the mandatory verification workflow.",
+      "related": [
+        "design-system.implementation.react.component-guidelines",
+        "design-system.principles.ui-ux-guidelines",
+        "engineering.cli.testing"
+      ]
+    },
+    {
+      "id": "design-system.implementation.tailwind.styling-guidelines",
+      "type": "engineering",
+      "title": "Tailwind styling guidelines",
+      "status": "draft",
+      "file": "docs/design-system/implementation/tailwind/styling-guidelines.md",
+      "read_when": [
+        "composing Tailwind classes on a component",
+        "adding a component variant",
+        "mapping domain state to visual tone",
+        "deciding whether to use @apply or a CSS file"
+      ],
+      "summary": "Class-composition pipeline: static local layout inline, reusable variants via cva, domain state resolved to a semantic tone before classes, explicit conditional composition, and a narrow @apply policy.",
+      "related": [
+        "design-system.implementation.react.component-guidelines",
+        "design-system.principles.ui-ux-guidelines"
+      ]
+    },
+    {
+      "id": "design-system.principles.layout-and-containment",
+      "type": "engineering",
+      "title": "Layout and containment guidelines",
+      "status": "draft",
+      "file": "docs/design-system/principles/layout-and-containment.md",
+      "read_when": [
+        "deciding whether content needs a Card, border, alternate surface, or divider",
+        "composing a list, detail page, settings page, inspector, or dashboard",
+        "reviewing nested surfaces or visually heavy UI"
+      ],
+      "summary": "Borderless-first rules for grouping and containment. Start with typography, spacing, alignment and separators; use Cards and stronger surfaces only when an independently meaningful object or exceptional interaction genuinely needs containment.",
+      "related": [
+        "design-system.principles.ui-ux-guidelines",
+        "design-system.principles.system-boundary",
+        "design-system.implementation.react.component-guidelines",
+        "design-system.implementation.tailwind.styling-guidelines"
+      ]
+    },
+    {
+      "id": "design-system.principles.system-boundary",
+      "type": "architecture",
+      "title": "Nevo UI system boundary",
+      "status": "current",
+      "file": "docs/design-system/principles/system-boundary.md",
+      "read_when": [
+        "deciding whether a component belongs to Nevo UI or Nevo SpecFlow UI",
+        "extracting shared UI behavior from a product feature",
+        "designing a reusable interaction primitive or headless behavior"
+      ],
+      "summary": "Nevo UI owns reusable visual primitives, interaction behavior, accessibility and generic layout mechanics. Product routing, domain concepts, permissions and workflow-specific behavior remain in product applications. Reuse follows shared behavior, not merely similar markup.",
+      "related": [
+        "design-system.principles.ui-ux-guidelines",
+        "design-system.implementation.react.component-guidelines",
+        "product.specflow.ui.interaction-model",
+        "architecture.principles.normative-language"
+      ]
+    },
+    {
+      "id": "design-system.principles.ui-ux-guidelines",
+      "type": "engineering",
+      "title": "UI/UX engineering guidelines",
+      "status": "draft",
+      "file": "docs/design-system/principles/ui-ux-guidelines.md",
+      "read_when": [
+        "implementing or reviewing a UI screen or component",
+        "choosing typography, color, or spacing",
+        "designing progressive disclosure or an inspector",
+        "doing visual verification before marking UI work done"
+      ],
+      "summary": "Portable engineering rules for building UI: validate the composed screen, semantic typography/color/spacing tokens, information hierarchy, progressive disclosure, and mandatory visual self-review. Product-specific UX (AI sessions, SpecFlow UI screens) is under product/specflow/ui/.",
+      "related": [
+        "design-system.principles.layout-and-containment",
+        "design-system.implementation.react.component-guidelines",
+        "design-system.implementation.tailwind.styling-guidelines",
+        "design-system.implementation.storybook.guidelines",
+        "product.specflow.ui.interaction-model"
+      ]
+    },
+    {
       "id": "docs.architecture-ai-readme",
       "type": "hub",
       "title": "AI architecture",
@@ -245,665 +716,6 @@
       "related": []
     },
     {
-      "id": "ideas.developer-workspace",
-      "type": "hub",
-      "title": "Developer workspace ideas",
-      "status": "draft",
-      "file": "docs/ideas/developer-workspace/README.md",
-      "read_when": [
-        "designing in-product code inspection or editing",
-        "adding remote access to the current worktree from a phone or another laptop",
-        "integrating a full IDE with Nevo without duplicating workspace ownership"
-      ],
-      "summary": "Candidate design for a lightweight in-product code surface plus a separate VS Code-based full IDE, both operating on the same current worktree on the host running SpecFlow.",
-      "related": [
-        "ideas.readme",
-        "architecture.runtime.ownership-and-lifecycle"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ui",
-        "server",
-        "runtime"
-      ],
-      "tags": [
-        "code-editor",
-        "worktree",
-        "vscode",
-        "remote-development"
-      ]
-    },
-    {
-      "id": "ideas.readme",
-      "type": "hub",
-      "title": "Implementation ideas",
-      "status": "current",
-      "file": "docs/ideas/README.md",
-      "read_when": [
-        "collecting implementation ideas before they become approved architecture or specifications",
-        "looking for hardening follow-ups to apply while migrating legacy capabilities"
-      ],
-      "summary": "Non-authoritative implementation backlog for ideas worth evaluating during migration. Items here are deliberately separated from current architecture and become normative only after they are promoted into the appropriate architecture, engineering, product, or specification documents.",
-      "related": [
-        "adr.0007-documentation-architecture-and-taxonomy",
-        "architecture.ai.provider-boundary",
-        "architecture.runtime.ownership-and-lifecycle"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "docs"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.ai-adapters",
-      "type": "hub",
-      "title": "AI adapter hardening ideas",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/ai-adapters/README.md",
-      "read_when": [
-        "migrating AI providers into SpecFlow Runtime",
-        "hardening provider adapters before the MVP implementation settles"
-      ],
-      "summary": "Candidate hardening work for provider adapters: lifecycle and recovery fencing, environment and diagnostic security, evidence-based errors, output semantics, model/usage/capacity handling, resource ownership, liveness, raw diagnostics, and replay tests.",
-      "related": [
-        "ideas.readme",
-        "architecture.ai.provider-boundary",
-        "architecture.ai.canonical-session-turn-work",
-        "architecture.runtime.ownership-and-lifecycle"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "testing"
-      ],
-      "tags": [
-        "providers",
-        "lifecycle",
-        "streaming",
-        "recovery"
-      ]
-    },
-    {
-      "id": "ideas.specflow-ui",
-      "type": "hub",
-      "title": "SpecFlow UI product ideas",
-      "status": "draft",
-      "file": "docs/ideas/specflow-ui/README.md",
-      "read_when": [
-        "designing SpecFlow product screens and navigation",
-        "deciding which deterministic workflow facts should be visible to a human",
-        "mapping specifications, tasks, sessions, artifacts, and human actions into UI surfaces"
-      ],
-      "summary": "Non-authoritative UI/product inventory for turning deterministic SpecFlow state into a human steering surface without exposing legacy concepts or backend structure as navigation.",
-      "related": [
-        "ideas.readme",
-        "product.specflow.ui.interaction-model",
-        "product.specflow.ui.ai-session-ux",
-        "architecture.workflow.deterministic-workflow",
-        "architecture.ai.canonical-session-turn-work",
-        "ideas.developer-workspace"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ui",
-        "workflow"
-      ],
-      "tags": [
-        "information-architecture",
-        "human-steering",
-        "deterministic-workflow",
-        "artifacts"
-      ]
-    },
-    {
-      "id": "ideas.specflow-ui.components",
-      "type": "hub",
-      "title": "SpecFlow UI large component specifications",
-      "status": "draft",
-      "file": "docs/ideas/specflow-ui/components/README.md",
-      "read_when": [
-        "implementing or visually reviewing a large SpecFlow product composition",
-        "creating Storybook/Figma state fixtures for Session, Task, or steering UI"
-      ],
-      "summary": "Index of large product-owned UI compositions whose internal states need more precision than a screen-level spec. These docs define canonical input payloads, grouping/presentation rules, state mocks, component ownership, data loading, and visual behavior.",
-      "related": [
-        "ideas.specflow-ui.screens",
-        "ideas.specflow-ui.data-loading-refresh-and-eventing",
-        "design-system.principles.layout-and-containment"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ui"
-      ],
-      "tags": [
-        "components",
-        "compositions",
-        "storybook",
-        "figma"
-      ]
-    },
-    {
-      "id": "ideas.specflow-ui.screens",
-      "type": "hub",
-      "title": "SpecFlow UI screen specifications",
-      "status": "draft",
-      "file": "docs/ideas/specflow-ui/screens/README.md",
-      "read_when": [
-        "implementing or reviewing a large SpecFlow UI screen",
-        "locating the owner document for a concrete user interaction",
-        "deciding which shared UI/product rules a screen inherits"
-      ],
-      "summary": "Index of vertical SpecFlow UI screen specifications. Screen specs translate shared product and design-system rules into concrete use cases, anatomy, interactions, responsive behavior, component usage, token roles, states, and acceptance scenarios.",
-      "related": [
-        "ideas.specflow-ui",
-        "product.specflow.ui.interaction-model",
-        "design-system.principles.ui-ux-guidelines",
-        "design-system.principles.layout-and-containment"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ui"
-      ],
-      "tags": [
-        "screens",
-        "ui-spec",
-        "interaction",
-        "implementation-contract"
-      ]
-    },
-    {
-      "id": "architecture.ai.canonical-session-turn-work",
-      "type": "architecture",
-      "title": "Canonical AI Session, Turn, and Work model",
-      "status": "current",
-      "file": "docs/architecture/ai/canonical-session-turn-work.md",
-      "read_when": [
-        "implementing AI sessions or turn lifecycle",
-        "persisting or projecting provider execution",
-        "adding AI interactions, tools, reasoning, or commentary",
-        "computing current activity, attention, or session readiness"
-      ],
-      "summary": "AI execution is represented by a provider-neutral Session -> Turn -> Work -> ToolAction hierarchy. Terminal turns are immutable, one non-terminal turn is admitted per session, ordered work is canonical, and Runtime owns semantic readiness/current-activity projections rather than UI heuristics.",
-      "related": [
-        "architecture.ai.provider-boundary",
-        "architecture.runtime.ownership-and-lifecycle",
-        "architecture.principles.enforceable-invariants",
-        "product.specflow.ui.ai-session-ux",
-        "architecture.principles.normative-language"
-      ]
-    },
-    {
-      "id": "architecture.ai.provider-boundary",
-      "type": "architecture",
-      "title": "AI provider boundary",
-      "status": "current",
-      "file": "docs/architecture/ai/provider-boundary.md",
-      "read_when": [
-        "adding or changing an AI provider",
-        "exposing provider capabilities",
-        "mapping provider events, errors, interactions, or session identity",
-        "deciding whether provider-specific data may cross into Runtime or UI contracts"
-      ],
-      "summary": "AI providers are adapters behind canonical SpecFlow contracts. They expose honest capabilities, normalize lifecycle/events/errors at the boundary, keep provider-private identifiers and payloads out of product contracts, and preserve raw diagnostics only for bounded technical inspection.",
-      "related": [
-        "architecture.ai.canonical-session-turn-work",
-        "architecture.runtime.ownership-and-lifecycle",
-        "engineering.shared.effects-and-io",
-        "architecture.principles.normative-language"
-      ]
-    },
-    {
-      "id": "architecture.principles.enforceable-invariants",
-      "type": "architecture",
-      "title": "Enforceable invariants",
-      "status": "current",
-      "file": "docs/architecture/principles/enforceable-invariants.md",
-      "read_when": [
-        "deciding whether a rule belongs in code, documentation, or an instruction",
-        "designing a workflow gate, lifecycle guard, or state transition",
-        "reviewing a rule that agents or users are expected to remember manually"
-      ],
-      "summary": "Durable system invariants MUST be enforced deterministically by software whenever the system can observe and decide them. Prose explains the rule; it MUST NOT be the only mechanism protecting a machine-verifiable invariant.",
-      "related": [
-        "architecture.workflow.deterministic-workflow",
-        "architecture.runtime.ownership-and-lifecycle",
-        "engineering.shared.code-organization",
-        "architecture.principles.normative-language"
-      ]
-    },
-    {
-      "id": "architecture.principles.normative-language",
-      "type": "architecture",
-      "title": "Normative language and document authority",
-      "status": "current",
-      "file": "docs/architecture/principles/normative-language.md",
-      "read_when": [
-        "interpreting requirements in architecture, engineering, product, or reference docs",
-        "deciding whether a documented rule is mandatory or advisory",
-        "encountering conflicting documentation",
-        "using examples to infer behavior not stated explicitly"
-      ],
-      "summary": "Defines MUST, SHOULD, MAY, document authority, conflict handling, and no-extrapolation rules for Nevo SpecFlow documentation so humans and AI agents interpret requirements consistently.",
-      "related": [
-        "architecture.principles.enforceable-invariants"
-      ]
-    },
-    {
-      "id": "architecture.repository-structure",
-      "type": "architecture",
-      "title": "Repository structure",
-      "status": "current",
-      "file": "docs/architecture/repository-structure.md",
-      "read_when": [
-        "orienting to the repository layout",
-        "understanding how Turborepo and CI decide what runs",
-        "understanding the versioning and release-line model",
-        "reasoning about pre-1.0 compatibility"
-      ],
-      "summary": "Monorepo layout (apps/packages/tools), the Turborepo task graph, the CI affected-package model and what invalidates everything, the SemVer / release-line model, and the pre-1.0 policy.",
-      "related": [
-        "engineering.repository.local-setup",
-        "engineering.repository.git-workflow",
-        "adr.0010-toolchain-policy-and-version-sources",
-        "adr.0003-branch-and-release-model"
-      ]
-    },
-    {
-      "id": "architecture.runtime.authorization",
-      "type": "architecture",
-      "title": "Runtime authorization",
-      "status": "current",
-      "file": "docs/architecture/runtime/auth/authorization.md",
-      "read_when": [
-        "adding or changing a SpecFlow capability",
-        "changing Runtime role composition or scoped assignments",
-        "enforcing access to specs, sessions, or settings",
-        "exposing effective capabilities to the UI"
-      ],
-      "summary": "SpecFlow authorization uses feature-owned resources and capabilities, Runtime-owned flat roles, project-owned scoped role assignments, canonical user identities, and explicit resource scopes. The generic resolver remains unaware of SpecFlow hierarchy and transport concerns.",
-      "related": [
-        "docs.architecture-runtime-auth-readme",
-        "architecture.runtime.ownership-and-lifecycle",
-        "reference.configuration.authorization",
-        "reference.api.authorization"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "runtime",
-        "server",
-        "security",
-        "configuration"
-      ]
-    },
-    {
-      "id": "architecture.runtime.configuration",
-      "type": "architecture",
-      "title": "Project configuration and local state",
-      "status": "current",
-      "file": "docs/architecture/runtime/configuration.md",
-      "read_when": [
-        "adding or moving SpecFlow configuration",
-        "deciding whether a setting is committed or workstation-local",
-        "adding Runtime-owned local persistence"
-      ],
-      "summary": "Nevo SpecFlow uses one .nevo namespace: committed project configuration and definitions, ignored workstation-local configuration, and application-owned local Runtime state.",
-      "related": [
-        "docs.architecture-runtime-readme",
-        "architecture.runtime.ownership-and-lifecycle",
-        "reference.cli.nevo-specflow-contract"
-      ]
-    },
-    {
-      "id": "architecture.runtime.ownership-and-lifecycle",
-      "type": "architecture",
-      "title": "Runtime ownership and lifecycle",
-      "status": "current",
-      "file": "docs/architecture/runtime/ownership-and-lifecycle.md",
-      "read_when": [
-        "adding a long-lived Runtime capability or resource",
-        "introducing HTTP, realtime, MCP, provider-process, or persistence infrastructure",
-        "changing startup, shutdown, cancellation, or restart recovery",
-        "deciding whether a concern belongs to Runtime or a transport adapter"
-      ],
-      "summary": "Nevo SpecFlow Runtime is the composition and lifecycle owner for long-lived local application resources. Transports are adapters, resources have one lifecycle owner, startup/shutdown are deterministic, and restart recovery reconciles durable state before accepting conflicting work.",
-      "related": [
-        "architecture.principles.enforceable-invariants",
-        "architecture.ai.canonical-session-turn-work",
-        "architecture.ai.provider-boundary",
-        "engineering.shared.async-and-lifecycle",
-        "engineering.shared.effects-and-io",
-        "architecture.principles.normative-language"
-      ]
-    },
-    {
-      "id": "architecture.workflow.deterministic-workflow",
-      "type": "architecture",
-      "title": "Deterministic workflow",
-      "status": "current",
-      "file": "docs/architecture/workflow/deterministic-workflow.md",
-      "read_when": [
-        "designing workflow steps, transitions, gates, or actions",
-        "implementing start, finish, retry, or recovery behavior",
-        "deciding which workflow state is authoritative versus derived",
-        "exposing workflow state to CLI, Runtime, agents, or UI"
-      ],
-      "summary": "Workflow progression is driven by authoritative declarative state and deterministic operations, not agent-authored orchestration. Step start activates, step finish completes, transitions are explicit, gates inspect separately from verify, attempts scope evidence, and durable effects resume instead of duplicating.",
-      "related": [
-        "architecture.principles.enforceable-invariants",
-        "architecture.runtime.ownership-and-lifecycle",
-        "engineering.shared.effects-and-io",
-        "engineering.shared.testing",
-        "architecture.principles.normative-language"
-      ]
-    },
-    {
-      "id": "design-system.figma.code-to-figma-projection",
-      "type": "architecture",
-      "title": "Code-to-Figma projection boundary",
-      "status": "current",
-      "file": "docs/design-system/figma/code-to-figma-projection.md",
-      "read_when": [
-        "changing how Nevo UI components are exported to Figma",
-        "deciding whether Figma or runtime code owns a design property",
-        "adding capture metadata, importer behavior, stable IDs, or a new representation capability"
-      ],
-      "summary": "Runtime React/CSS is the visual source of truth. Figma is a downstream projection through typed capture metadata and canonical IR. Import/export infrastructure stays generic, stable IDs are durable migration identities, and component-specific cases do not leak into the importer.",
-      "related": [
-        "design-system.principles.system-boundary",
-        "design-system.implementation.react.component-guidelines",
-        "design-system.implementation.storybook.guidelines",
-        "architecture.principles.normative-language"
-      ]
-    },
-    {
-      "id": "design-system.principles.system-boundary",
-      "type": "architecture",
-      "title": "Nevo UI system boundary",
-      "status": "current",
-      "file": "docs/design-system/principles/system-boundary.md",
-      "read_when": [
-        "deciding whether a component belongs to Nevo UI or Nevo SpecFlow UI",
-        "extracting shared UI behavior from a product feature",
-        "designing a reusable interaction primitive or headless behavior"
-      ],
-      "summary": "Nevo UI owns reusable visual primitives, interaction behavior, accessibility and generic layout mechanics. Product routing, domain concepts, permissions and workflow-specific behavior remain in product applications. Reuse follows shared behavior, not merely similar markup.",
-      "related": [
-        "design-system.principles.ui-ux-guidelines",
-        "design-system.implementation.react.component-guidelines",
-        "product.specflow.ui.interaction-model",
-        "architecture.principles.normative-language"
-      ]
-    },
-    {
-      "id": "ideas.developer-workspace.code-inspection-and-editing",
-      "type": "architecture",
-      "title": "Code inspection, editing, and full IDE integration",
-      "status": "draft",
-      "file": "docs/ideas/developer-workspace/code-inspection-and-editing.md",
-      "read_when": [
-        "implementing links from agent output or findings to source files",
-        "adding an embedded code viewer or editor to SpecFlow",
-        "integrating a browser-accessible IDE with the current worktree",
-        "designing language-support or IDE extension points"
-      ],
-      "summary": "Use the current SpecFlow worktree as the shared filesystem source of truth, expose a compact React/Monaco code surface for review and small edits, and open a separate VS Code-based full IDE for project-wide work, terminal use, source control, and extensions.",
-      "related": [
-        "ideas.developer-workspace",
-        "ideas.readme",
-        "architecture.runtime.ownership-and-lifecycle"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ui",
-        "server",
-        "runtime",
-        "configuration",
-        "security"
-      ],
-      "tags": [
-        "monaco",
-        "vscode",
-        "lsp",
-        "worktree",
-        "file-reference",
-        "remote-development"
-      ]
-    },
-    {
-      "id": "adr.0001-record-architecture-decisions",
-      "type": "adr",
-      "title": "Record architecture decisions",
-      "status": "current",
-      "file": "docs/architecture/decisions/0001-record-architecture-decisions.md",
-      "read_when": [],
-      "summary": "Durable, cross-cutting decisions are recorded as lightweight numbered Markdown ADRs under docs/architecture/decisions/.",
-      "related": []
-    },
-    {
-      "id": "adr.0002-toolchain-selection",
-      "type": "adr",
-      "title": "Toolchain selection",
-      "status": "superseded",
-      "file": "docs/architecture/decisions/0002-toolchain-selection.md",
-      "read_when": [],
-      "summary": "The monorepo foundation is pnpm 10 + Turborepo + TypeScript + ESLint flat config (type-aware for TS) + Prettier + Vitest on Node Active LTS. Two versions are held back on purpose — pnpm (for GitHub Dependency Graph compatibility) and TypeScript (for the lint ecosystem) — each with an explicit upgrade condition.",
-      "related": [
-        "architecture.repository-structure",
-        "engineering.repository.local-setup",
-        "engineering.repository.dependencies-and-security",
-        "adr.0010-toolchain-policy-and-version-sources"
-      ]
-    },
-    {
-      "id": "adr.0003-branch-and-release-model",
-      "type": "adr",
-      "title": "Branch and release model",
-      "status": "current",
-      "file": "docs/architecture/decisions/0003-branch-and-release-model.md",
-      "read_when": [],
-      "summary": "main carries the next development version; short-lived feature/ and fix/ branches merge into it by squash-only PR; each maintained minor line has one long-lived release/vX.Y branch. The next-version choice (minor vs major) is always an explicit input.",
-      "related": [
-        "engineering.repository.git-workflow",
-        "architecture.repository-structure"
-      ]
-    },
-    {
-      "id": "adr.0004-mit-license",
-      "type": "adr",
-      "title": "MIT license",
-      "status": "current",
-      "file": "docs/architecture/decisions/0004-mit-license.md",
-      "read_when": [],
-      "summary": "The repository is licensed MIT — permissive, minimal obligations, sufficient for a public developer-tooling project. Provenance of any code brought in from another repository is checked per file when brought in.",
-      "related": [
-        "architecture.repository-structure"
-      ]
-    },
-    {
-      "id": "adr.0005-repository-tooling-is-separate-from-the-product-api",
-      "type": "adr",
-      "title": "Repository tooling is separate from the product API",
-      "status": "current",
-      "file": "docs/architecture/decisions/0005-repository-tooling-is-separate-from-the-product-api.md",
-      "read_when": [],
-      "summary": "Repository-internal developer tooling lives under `tools/*` as private, unscoped packages and never becomes a Nevo SpecFlow product surface by default. Product capabilities are designed as `@nevo/*` packages and `nevo-specflow` commands in their own right.",
-      "related": [
-        "architecture.repository-structure",
-        "engineering.cli.architecture"
-      ]
-    },
-    {
-      "id": "adr.0006-product-ships-as-a-single-bundled-artifact",
-      "type": "adr",
-      "title": "The product ships as a single bundled artifact",
-      "status": "current",
-      "file": "docs/architecture/decisions/0006-product-ships-as-a-single-bundled-artifact.md",
-      "read_when": [],
-      "summary": "`@nevo/specflow` is distributed as one self-contained tarball. `nevo-repo-product` (esbuild) bundles the `nevo-specflow` entry, the internal workspace capability packages and `commander` into `dist/bin.js`, so the artifact installs with no registry and no workspace. Source package boundaries are unchanged — only the distribution is one file.",
-      "related": [
-        "adr.0010-toolchain-policy-and-version-sources",
-        "adr.0005-repository-tooling-is-separate-from-the-product-api",
-        "architecture.repository-structure",
-        "engineering.repository.product-packaging"
-      ]
-    },
-    {
-      "id": "adr.0007-documentation-architecture-and-taxonomy",
-      "type": "adr",
-      "title": "Documentation architecture and taxonomy",
-      "status": "current",
-      "file": "docs/architecture/decisions/0007-documentation-architecture-and-taxonomy.md",
-      "read_when": [],
-      "summary": "Defines a documentation architecture that separates product behavior, durable system architecture, engineering guidance, reusable design-system knowledge, exact reference contracts, operational instructions, and a non-authoritative idea backlog, while using searchable scope, area, and tag metadata so discovery does not depend on folder paths alone.",
-      "related": [
-        "docs.readme",
-        "docs.architecture-readme",
-        "architecture.repository-structure"
-      ]
-    },
-    {
-      "id": "adr.0008-product-naming-and-surfaces",
-      "type": "adr",
-      "title": "Product naming and surfaces",
-      "status": "current",
-      "file": "docs/architecture/decisions/0008-product-naming-and-surfaces.md",
-      "read_when": [],
-      "summary": "Names the product Nevo SpecFlow, its executable nevo-specflow, its long-lived backend Nevo SpecFlow Runtime, its interactive application Nevo SpecFlow UI, and keeps Nevo UI as the reusable design system.",
-      "related": [
-        "product.shared.vocabulary",
-        "product.specflow.overview",
-        "architecture.repository-structure"
-      ]
-    },
-    {
-      "id": "adr.0009-product-package-build-model",
-      "type": "adr",
-      "title": "Product package build model",
-      "status": "current",
-      "file": "docs/architecture/decisions/0009-product-package-build-model.md",
-      "read_when": [],
-      "summary": "Product packages use extensionless TypeScript source imports and explicit neutral or Node package profiles. Reusable package JavaScript and declaration surfaces are bundled together with one tsdown-based library build, while repository tools keep raw NodeNext tsc output and the final nevo-specflow distribution remains governed by ADR 0006.",
-      "related": [
-        "adr.0010-toolchain-policy-and-version-sources",
-        "adr.0006-product-ships-as-a-single-bundled-artifact",
-        "engineering.shared.code-organization",
-        "engineering.repository.product-packaging"
-      ]
-    },
-    {
-      "id": "adr.0010-toolchain-policy-and-version-sources",
-      "type": "adr",
-      "title": "Toolchain policy and version sources",
-      "status": "current",
-      "file": "docs/architecture/decisions/0010-toolchain-policy-and-version-sources.md",
-      "read_when": [],
-      "summary": "Toolchain choices and upgrade constraints are durable architecture decisions, while exact installed versions are mutable dependency data owned by repository manifests, .nvmrc, workspace configuration, and the lockfile.",
-      "related": [
-        "adr.0002-toolchain-selection",
-        "adr.0009-product-package-build-model",
-        "architecture.repository-structure",
-        "engineering.repository.local-setup",
-        "engineering.repository.dependencies-and-security"
-      ]
-    },
-    {
-      "id": "design-system.implementation.react.component-guidelines",
-      "type": "engineering",
-      "title": "React component guidelines",
-      "status": "draft",
-      "file": "docs/design-system/implementation/react/component-guidelines.md",
-      "read_when": [
-        "creating or restructuring a React component or module",
-        "deciding whether a helper component gets its own file",
-        "placing state or writing a hook",
-        "reviewing a React change"
-      ],
-      "summary": "Small focused components, composition over configuration, split by responsibility not ceremony, feature-local vertical ownership, hooks by behavior, and where state lives.",
-      "related": [
-        "design-system.principles.ui-ux-guidelines",
-        "design-system.implementation.tailwind.styling-guidelines",
-        "design-system.principles.system-boundary",
-        "engineering.shared.testing"
-      ]
-    },
-    {
-      "id": "design-system.implementation.storybook.guidelines",
-      "type": "engineering",
-      "title": "Storybook guidelines",
-      "status": "draft",
-      "file": "docs/design-system/implementation/storybook/guidelines.md",
-      "read_when": [
-        "creating or editing a Storybook story",
-        "verifying a UI component visually or with interaction tests",
-        "building deterministic UI fixtures"
-      ],
-      "summary": "Story hierarchy and naming (Foundations / Shared UI / Features / Screens), strict co-location, typed fixture factories, args-first state, play-function interaction tests, and the mandatory verification workflow.",
-      "related": [
-        "design-system.implementation.react.component-guidelines",
-        "design-system.principles.ui-ux-guidelines",
-        "engineering.cli.testing"
-      ]
-    },
-    {
-      "id": "design-system.implementation.tailwind.styling-guidelines",
-      "type": "engineering",
-      "title": "Tailwind styling guidelines",
-      "status": "draft",
-      "file": "docs/design-system/implementation/tailwind/styling-guidelines.md",
-      "read_when": [
-        "composing Tailwind classes on a component",
-        "adding a component variant",
-        "mapping domain state to visual tone",
-        "deciding whether to use @apply or a CSS file"
-      ],
-      "summary": "Class-composition pipeline: static local layout inline, reusable variants via cva, domain state resolved to a semantic tone before classes, explicit conditional composition, and a narrow @apply policy.",
-      "related": [
-        "design-system.implementation.react.component-guidelines",
-        "design-system.principles.ui-ux-guidelines"
-      ]
-    },
-    {
-      "id": "design-system.principles.layout-and-containment",
-      "type": "engineering",
-      "title": "Layout and containment guidelines",
-      "status": "draft",
-      "file": "docs/design-system/principles/layout-and-containment.md",
-      "read_when": [
-        "deciding whether content needs a Card, border, alternate surface, or divider",
-        "composing a list, detail page, settings page, inspector, or dashboard",
-        "reviewing nested surfaces or visually heavy UI"
-      ],
-      "summary": "Borderless-first rules for grouping and containment. Start with typography, spacing, alignment and separators; use Cards and stronger surfaces only when an independently meaningful object or exceptional interaction genuinely needs containment.",
-      "related": [
-        "design-system.principles.ui-ux-guidelines",
-        "design-system.principles.system-boundary",
-        "design-system.implementation.react.component-guidelines",
-        "design-system.implementation.tailwind.styling-guidelines"
-      ]
-    },
-    {
-      "id": "design-system.principles.ui-ux-guidelines",
-      "type": "engineering",
-      "title": "UI/UX engineering guidelines",
-      "status": "draft",
-      "file": "docs/design-system/principles/ui-ux-guidelines.md",
-      "read_when": [
-        "implementing or reviewing a UI screen or component",
-        "choosing typography, color, or spacing",
-        "designing progressive disclosure or an inspector",
-        "doing visual verification before marking UI work done"
-      ],
-      "summary": "Portable engineering rules for building UI: validate the composed screen, semantic typography/color/spacing tokens, information hierarchy, progressive disclosure, and mandatory visual self-review. Product-specific UX (AI sessions, SpecFlow UI screens) is under product/specflow/ui/.",
-      "related": [
-        "design-system.principles.layout-and-containment",
-        "design-system.implementation.react.component-guidelines",
-        "design-system.implementation.tailwind.styling-guidelines",
-        "design-system.implementation.storybook.guidelines",
-        "product.specflow.ui.interaction-model"
-      ]
-    },
-    {
       "id": "engineering.cli.architecture",
       "type": "engineering",
       "title": "CLI architecture",
@@ -949,13 +761,13 @@
         "understanding what CI runs on a pull request",
         "a required check is failing or missing",
         "reproducing a CI failure locally",
-        "changing the CI workflow or required checks"
+        "changing CI or required checks"
       ],
-      "summary": "What the CI workflows run, how affected-package execution is scoped on PRs, which checks are required to merge, and what invalidates the whole graph.",
+      "summary": "Repository quality, affected package execution, dependency review, cross-platform artifact smoke, CodeQL, and the stable checks required by protected branches.",
       "related": [
         "engineering.repository.local-setup",
-        "architecture.repository-structure",
-        "engineering.repository.commit-conventions"
+        "engineering.repository.dependencies-and-security",
+        "architecture.repository-structure"
       ]
     },
     {
@@ -985,12 +797,13 @@
         "reviewing a Dependabot pull request",
         "reporting or triaging a vulnerability",
         "deciding how to pin a GitHub Action",
-        "checking the current CodeQL status"
+        "checking dependency-review or CodeQL policy"
       ],
-      "summary": "How dependency updates arrive (Dependabot, grouped, weekly), how versions are pinned, the vulnerability-report path, the repository security features that are enabled, and the current CodeQL status.",
+      "summary": "Dependency update, lockfile compatibility, dependency review, CodeQL, action pinning, vulnerability reporting, and repository security policy.",
       "related": [
         "engineering.repository.local-setup",
-        "engineering.repository.ci"
+        "engineering.repository.ci",
+        "adr.0011-product-artifact-packaging-and-pnpm-compatibility"
       ]
     },
     {
@@ -1037,14 +850,14 @@
       "file": "docs/engineering/repository/local-setup.md",
       "read_when": [
         "setting up the development environment",
-        "running the standard repository commands",
-        "understanding what Turborepo does here"
+        "running standard repository commands",
+        "understanding Turborepo inputs"
       ],
-      "summary": "Prerequisites (Node, Corepack/pnpm), the standard root commands, and how Turborepo owns the task graph.",
+      "summary": "Node/Corepack/pnpm prerequisites, standard root commands, and the repository task graph.",
       "related": [
+        "engineering.repository.ci",
         "engineering.repository.git-workflow",
-        "engineering.cli.testing",
-        "architecture.repository-structure"
+        "adr.0011-product-artifact-packaging-and-pnpm-compatibility"
       ]
     },
     {
@@ -1055,16 +868,14 @@
       "file": "docs/engineering/repository/product-packaging.md",
       "read_when": [
         "building or changing how the nevo-specflow product is packed",
-        "adding a package that ships inside @nevo/specflow",
-        "reviewing @nevo/specflow package metadata",
-        "wiring a CI or release job that needs the product tarball"
+        "adding code that ships inside @nevo/specflow",
+        "reviewing release artifacts or package metadata"
       ],
-      "summary": "How the Nevo SpecFlow product is turned into one installable artifact: nevo-repo-product bundles the nevo-specflow entry, the internal workspace capability packages and commander with esbuild, then packs on the pinned pnpm to produce .artifacts/nevo-specflow-<version>.tgz (with a THIRD_PARTY_NOTICES.txt). Source package boundaries stay real — the shell composes, each vertical owns its CLI adapter — only the distribution is a single file.",
+      "summary": "@nevo/specflow owns the product artifact build. Package-owned packaging scripts create a self-contained CLI bundle and attribution metadata, then standard pnpm pack creates the tarball.",
       "related": [
-        "adr.0006-product-ships-as-a-single-bundled-artifact",
+        "adr.0011-product-artifact-packaging-and-pnpm-compatibility",
         "engineering.repository.dogfooding",
-        "engineering.repository.releasing",
-        "architecture.repository-structure"
+        "engineering.repository.releasing"
       ]
     },
     {
@@ -1200,6 +1011,121 @@
         "server",
         "ui",
         "security"
+      ]
+    },
+    {
+      "id": "ideas.developer-workspace",
+      "type": "hub",
+      "title": "Developer workspace ideas",
+      "status": "draft",
+      "file": "docs/ideas/developer-workspace/README.md",
+      "read_when": [
+        "designing in-product code inspection or editing",
+        "adding remote access to the current worktree from a phone or another laptop",
+        "integrating a full IDE with Nevo without duplicating workspace ownership"
+      ],
+      "summary": "Candidate design for a lightweight in-product code surface plus a separate VS Code-based full IDE, both operating on the same current worktree on the host running SpecFlow.",
+      "related": [
+        "ideas.readme",
+        "architecture.runtime.ownership-and-lifecycle"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "server",
+        "runtime"
+      ],
+      "tags": [
+        "code-editor",
+        "worktree",
+        "vscode",
+        "remote-development"
+      ]
+    },
+    {
+      "id": "ideas.developer-workspace.code-inspection-and-editing",
+      "type": "architecture",
+      "title": "Code inspection, editing, and full IDE integration",
+      "status": "draft",
+      "file": "docs/ideas/developer-workspace/code-inspection-and-editing.md",
+      "read_when": [
+        "implementing links from agent output or findings to source files",
+        "adding an embedded code viewer or editor to SpecFlow",
+        "integrating a browser-accessible IDE with the current worktree",
+        "designing language-support or IDE extension points"
+      ],
+      "summary": "Use the current SpecFlow worktree as the shared filesystem source of truth, expose a compact React/Monaco code surface for review and small edits, and open a separate VS Code-based full IDE for project-wide work, terminal use, source control, and extensions.",
+      "related": [
+        "ideas.developer-workspace",
+        "ideas.readme",
+        "architecture.runtime.ownership-and-lifecycle"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "server",
+        "runtime",
+        "configuration",
+        "security"
+      ],
+      "tags": [
+        "monaco",
+        "vscode",
+        "lsp",
+        "worktree",
+        "file-reference",
+        "remote-development"
+      ]
+    },
+    {
+      "id": "ideas.readme",
+      "type": "hub",
+      "title": "Implementation ideas",
+      "status": "current",
+      "file": "docs/ideas/README.md",
+      "read_when": [
+        "collecting implementation ideas before they become approved architecture or specifications",
+        "looking for hardening follow-ups to apply while migrating legacy capabilities"
+      ],
+      "summary": "Non-authoritative implementation backlog for ideas worth evaluating during migration. Items here are deliberately separated from current architecture and become normative only after they are promoted into the appropriate architecture, engineering, product, or specification documents.",
+      "related": [
+        "adr.0007-documentation-architecture-and-taxonomy",
+        "architecture.ai.provider-boundary",
+        "architecture.runtime.ownership-and-lifecycle"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "docs"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.ai-adapters",
+      "type": "hub",
+      "title": "AI adapter hardening ideas",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/README.md",
+      "read_when": [
+        "migrating AI providers into SpecFlow Runtime",
+        "hardening provider adapters before the MVP implementation settles"
+      ],
+      "summary": "Candidate hardening work for provider adapters: lifecycle and recovery fencing, environment and diagnostic security, evidence-based errors, output semantics, model/usage/capacity handling, resource ownership, liveness, raw diagnostics, and replay tests.",
+      "related": [
+        "ideas.readme",
+        "architecture.ai.provider-boundary",
+        "architecture.ai.canonical-session-turn-work",
+        "architecture.runtime.ownership-and-lifecycle"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "providers",
+        "lifecycle",
+        "streaming",
+        "recovery"
       ]
     },
     {
@@ -1430,6 +1356,35 @@
         "timeout",
         "process",
         "cross-platform"
+      ]
+    },
+    {
+      "id": "ideas.specflow-runtime.ai-adapters.migration-inspection-map",
+      "type": "reference",
+      "title": "Legacy adapter migration inspection map",
+      "status": "draft",
+      "file": "docs/ideas/specflow-runtime/ai-adapters/migration-inspection-map.md",
+      "read_when": [
+        "migrating legacy Nevo provider behavior into SpecFlow Runtime",
+        "deciding which legacy behavior to preserve, harden, or deliberately drop"
+      ],
+      "summary": "Concrete legacy Nevo files and symbols worth inspecting during provider migration, grouped by hardening concern so an implementation agent can go directly to the relevant behavior instead of rediscovering it from historical logs.",
+      "related": [
+        "ideas.specflow-runtime.ai-adapters",
+        "architecture.ai.provider-boundary",
+        "architecture.ai.canonical-session-turn-work"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ai",
+        "runtime",
+        "testing"
+      ],
+      "tags": [
+        "migration",
+        "legacy",
+        "providers",
+        "inspection"
       ]
     },
     {
@@ -1801,6 +1756,65 @@
       ]
     },
     {
+      "id": "ideas.specflow-ui",
+      "type": "hub",
+      "title": "SpecFlow UI product ideas",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/README.md",
+      "read_when": [
+        "designing SpecFlow product screens and navigation",
+        "deciding which deterministic workflow facts should be visible to a human",
+        "mapping specifications, tasks, sessions, artifacts, and human actions into UI surfaces"
+      ],
+      "summary": "Non-authoritative UI/product inventory for turning deterministic SpecFlow state into a human steering surface without exposing legacy concepts or backend structure as navigation.",
+      "related": [
+        "ideas.readme",
+        "product.specflow.ui.interaction-model",
+        "product.specflow.ui.ai-session-ux",
+        "architecture.workflow.deterministic-workflow",
+        "architecture.ai.canonical-session-turn-work",
+        "ideas.developer-workspace"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "workflow"
+      ],
+      "tags": [
+        "information-architecture",
+        "human-steering",
+        "deterministic-workflow",
+        "artifacts"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.components",
+      "type": "hub",
+      "title": "SpecFlow UI large component specifications",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/components/README.md",
+      "read_when": [
+        "implementing or visually reviewing a large SpecFlow product composition",
+        "creating Storybook/Figma state fixtures for Session, Task, or steering UI"
+      ],
+      "summary": "Index of large product-owned UI compositions whose internal states need more precision than a screen-level spec. These docs define canonical input payloads, grouping/presentation rules, state mocks, component ownership, data loading, and visual behavior.",
+      "related": [
+        "ideas.specflow-ui.screens",
+        "ideas.specflow-ui.data-loading-refresh-and-eventing",
+        "design-system.principles.layout-and-containment"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "components",
+        "compositions",
+        "storybook",
+        "figma"
+      ]
+    },
+    {
       "id": "ideas.specflow-ui.components.session-conversation",
       "type": "product",
       "title": "Session conversation UI spec",
@@ -2141,6 +2155,35 @@
         "primary-secondary",
         "session",
         "responsive"
+      ]
+    },
+    {
+      "id": "ideas.specflow-ui.screens",
+      "type": "hub",
+      "title": "SpecFlow UI screen specifications",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/screens/README.md",
+      "read_when": [
+        "implementing or reviewing a large SpecFlow UI screen",
+        "locating the owner document for a concrete user interaction",
+        "deciding which shared UI/product rules a screen inherits"
+      ],
+      "summary": "Index of vertical SpecFlow UI screen specifications. Screen specs translate shared product and design-system rules into concrete use cases, anatomy, interactions, responsive behavior, component usage, token roles, states, and acceptance scenarios.",
+      "related": [
+        "ideas.specflow-ui",
+        "product.specflow.ui.interaction-model",
+        "design-system.principles.ui-ux-guidelines",
+        "design-system.principles.layout-and-containment"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "screens",
+        "ui-spec",
+        "interaction",
+        "implementation-contract"
       ]
     },
     {
@@ -2538,35 +2581,6 @@
       "related": [
         "product.specflow.ui.interaction-model",
         "product.specflow.cli.personas"
-      ]
-    },
-    {
-      "id": "ideas.specflow-runtime.ai-adapters.migration-inspection-map",
-      "type": "reference",
-      "title": "Legacy adapter migration inspection map",
-      "status": "draft",
-      "file": "docs/ideas/specflow-runtime/ai-adapters/migration-inspection-map.md",
-      "read_when": [
-        "migrating legacy Nevo provider behavior into SpecFlow Runtime",
-        "deciding which legacy behavior to preserve, harden, or deliberately drop"
-      ],
-      "summary": "Concrete legacy Nevo files and symbols worth inspecting during provider migration, grouped by hardening concern so an implementation agent can go directly to the relevant behavior instead of rediscovering it from historical logs.",
-      "related": [
-        "ideas.specflow-runtime.ai-adapters",
-        "architecture.ai.provider-boundary",
-        "architecture.ai.canonical-session-turn-work"
-      ],
-      "scope": "specflow",
-      "areas": [
-        "ai",
-        "runtime",
-        "testing"
-      ],
-      "tags": [
-        "migration",
-        "legacy",
-        "providers",
-        "inspection"
       ]
     },
     {

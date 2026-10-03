@@ -9,7 +9,7 @@ function requiredAuthConfig() {
     mode: 'required',
     users: {
       'demo-user': { name: 'Demo User' },
-    },
+    } as Record<string, { name: string }>,
     providers: {
       password: {
         enabled: true,
@@ -101,7 +101,10 @@ describe('authentication config parsing', () => {
 
   it('does not treat inherited object properties as configured users', () => {
     const config = requiredAuthConfig();
-    config.providers.password.accounts.demo.userId = 'toString';
+    config.providers.password.accounts.demo = {
+      userId: 'toString',
+      passwordHash: PASSWORD_HASH,
+    };
 
     expect(() => parseAuthConfig(config)).toThrowError(/references unknown user 'toString'/);
   });
@@ -112,7 +115,10 @@ describe('authentication config parsing', () => {
       string,
       { name: string }
     >;
-    config.providers.password.accounts.demo.userId = '__proto__';
+    config.providers.password.accounts.demo = {
+      userId: '__proto__',
+      passwordHash: PASSWORD_HASH,
+    };
     config.providers.oidc.allowedEmails = {
       'proto@example.com': '__proto__',
     };

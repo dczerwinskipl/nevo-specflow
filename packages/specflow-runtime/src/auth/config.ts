@@ -47,10 +47,7 @@ export interface RuntimeAuthConfig {
   };
 }
 
-export const AUTH_CONFIG_REPLACE_PATHS = [
-  'auth.providers.password.accounts',
-  'auth.providers.oidc.allowedEmails',
-] as const;
+export const AUTH_CONFIG_REPLACE_PATHS = ['auth.providers.password.accounts'] as const;
 
 const AUTH_KEYS = new Set(['mode', 'localUserId', 'users', 'providers']);
 const PROVIDER_KEYS = new Set(['password', 'oidc']);

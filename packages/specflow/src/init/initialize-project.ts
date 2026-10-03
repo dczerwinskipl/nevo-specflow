@@ -1,5 +1,6 @@
+import { randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
-import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { access, link, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 import { stringify } from 'yaml';
@@ -106,8 +107,8 @@ async function defaultWriteConfigFile(
   content: string,
   options: ConfigWriteOptions,
 ): Promise<void> {
-  const stagedPath = `${path}.init.tmp`;
-  await rm(stagedPath, { force: true });
+  const stagedPath = `${path}.init.${randomUUID()}.tmp`;
+  let published = false;
 
   try {
     await writeFile(stagedPath, content, {
@@ -115,8 +116,29 @@ async function defaultWriteConfigFile(
       flag: 'wx',
       ...(options.local ? { mode: 0o600 } : {}),
     });
-    await rename(stagedPath, path);
+
+    try {
+      // The staging file lives beside the destination, so link() publishes the complete
+      // file atomically on the same filesystem and fails with EEXIST if another writer
+      // created the destination after the initial admission check.
+      await link(stagedPath, path);
+      published = true;
+    } catch (error) {
+      if (isAlreadyExists(error)) {
+        throw new Error(`Refusing to overwrite existing SpecFlow config: ${path}`, {
+          cause: error,
+        });
+      }
+      throw error;
+    }
+
+    await rm(stagedPath, { force: true });
   } catch (error) {
+    // If cleanup fails after publish, remove only the destination we know this attempt
+    // created. EEXIST never sets published, so a concurrent writer's file is untouched.
+    if (published) {
+      await rm(path, { force: true });
+    }
     await rm(stagedPath, { force: true });
     throw error;
   }

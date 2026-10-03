@@ -456,7 +456,7 @@ describe('runtime configuration', () => {
     });
   });
 
-  it('replaces security-sensitive auth maps instead of merging stale entries', () => {
+  it('replaces local password accounts instead of merging stale entries', () => {
     expect(
       mergeRuntimeConfigValues(
         {
@@ -465,11 +465,6 @@ describe('runtime configuration', () => {
               password: {
                 accounts: {
                   stale: { userId: 'stale-user', passwordHash: 'stale-hash' },
-                },
-              },
-              oidc: {
-                allowedEmails: {
-                  'stale@example.com': 'stale-user',
                 },
               },
             },
@@ -483,11 +478,6 @@ describe('runtime configuration', () => {
                   demo: { userId: 'demo-user', passwordHash: 'local-hash' },
                 },
               },
-              oidc: {
-                allowedEmails: {
-                  'demo@example.com': 'demo-user',
-                },
-              },
             },
           },
         },
@@ -498,11 +488,6 @@ describe('runtime configuration', () => {
           password: {
             accounts: {
               demo: { userId: 'demo-user', passwordHash: 'local-hash' },
-            },
-          },
-          oidc: {
-            allowedEmails: {
-              'demo@example.com': 'demo-user',
             },
           },
         },

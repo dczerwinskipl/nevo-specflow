@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -68,12 +68,53 @@ describe('project initialization', () => {
       isIgnored: () => Promise.resolve(true),
     });
 
+    const nevoFiles = await readdir(join(root, '.nevo'), { recursive: true });
+    expect(nevoFiles.some((path) => path.includes('.init.') && path.endsWith('.tmp'))).toBe(false);
+  });
+
+  it('does not overwrite project config created while the wizard is running', async () => {
+    const root = await repository();
+    const projectConfigPath = join(root, '.nevo', 'config.yaml');
+    const concurrentContent = 'concurrent: project\\n';
+
     await expect(
-      readFile(join(root, '.nevo', 'config.yaml.init.tmp'), 'utf8'),
-    ).rejects.toMatchObject({ code: 'ENOENT' });
+      initializeProject({
+        layout: layout(root),
+        initRuntime: async () => {
+          await writeFile(projectConfigPath, concurrentContent, 'utf8');
+          return runtimeContribution();
+        },
+        isIgnored: () => Promise.resolve(true),
+      }),
+    ).rejects.toThrowError(/Refusing to overwrite existing SpecFlow config/);
+
+    await expect(readFile(projectConfigPath, 'utf8')).resolves.toBe(concurrentContent);
     await expect(
-      readFile(join(root, '.nevo', 'local', 'config.yaml.init.tmp'), 'utf8'),
+      readFile(join(root, '.nevo', 'local', 'config.yaml'), 'utf8'),
     ).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('does not overwrite local credentials created while the wizard is running', async () => {
+    const root = await repository();
+    const localConfigPath = join(root, '.nevo', 'local', 'config.yaml');
+    const concurrentContent = 'concurrent: local\\n';
+
+    await expect(
+      initializeProject({
+        layout: layout(root),
+        initRuntime: async () => {
+          await mkdir(join(root, '.nevo', 'local'), { recursive: true });
+          await writeFile(localConfigPath, concurrentContent, 'utf8');
+          return runtimeContribution();
+        },
+        isIgnored: () => Promise.resolve(true),
+      }),
+    ).rejects.toThrowError(/Refusing to overwrite existing SpecFlow config/);
+
+    await expect(readFile(localConfigPath, 'utf8')).resolves.toBe(concurrentContent);
+    await expect(readFile(join(root, '.nevo', 'config.yaml'), 'utf8')).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
   });
 
   it('does not treat existing committed .nevo definitions as an initialized config', async () => {

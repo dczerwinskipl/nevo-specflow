@@ -60,15 +60,18 @@ which records how the final public `nevo-specflow` distribution is assembled.
 - **Every package build validates source and emitted surfaces.** All declared runtime/type export
   targets must exist, every runtime target must be importable, declaration output must not contain
   extensionless relative module specifiers, and a synthetic NodeNext consumer must typecheck the
-  generated declaration surface. Neutral package source and output are also rejected if their
-  TypeScript/JavaScript syntax imports Node builtin modules, including explicit `node:*` imports
-  that `types: []` alone would not prevent. The enforcement walks the TypeScript AST rather than
-  matching source text, so comments cannot create false positives and type-only/dynamic imports are
-  covered.
+  generated declaration surface. Neutral **production** source and output are also rejected if
+  their TypeScript/JavaScript syntax imports Node builtin modules, including explicit `node:*`
+  imports that `types: []` alone would not prevent. Co-located development artifacts with explicit
+  `.test.`, `.stories.`, or `.test-support.` naming are excluded from the source-platform scan
+  because they are not package entrypoints or shipped output. The enforcement walks the TypeScript
+  AST rather than matching source text, so comments cannot create false positives and
+  type-only/dynamic imports in production source are covered.
 - **The generic builder has fixture-based contract tests.** The tests cover a valid neutral package,
-  neutral Node-builtin leakage (including type imports), comment false positives, valid Node output,
-  and profile/manifest mismatches so future packages inherit an executable contract rather than
-  copied build folklore.
+  neutral Node-builtin leakage (including type imports), exclusion of explicitly named co-located
+  development artifacts from production-source validation, comment false positives, valid Node
+  output, and profile/manifest mismatches so future packages inherit an executable contract rather
+  than copied build folklore.
 - **The Node package build target is derived from the repository `.nvmrc`.** Package
   `engines.node` remains the package compatibility assertion, while the adopted contributor/runtime
   major cannot drift from a separate hard-coded builder target.

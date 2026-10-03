@@ -88,6 +88,27 @@ describe('repository package builder contract', () => {
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("neutral package imports Node builtin 'node:fs'");
   });
+
+  it('does not treat co-located tests and stories as neutral production source', () => {
+    const fixture = createFixture({
+      profile: 'neutral',
+      source: 'export const answer = 42;\n',
+    });
+    writeFileSync(
+      join(fixture, 'src', 'index.test.ts'),
+      "import { readFile } from 'node:fs/promises';\nvoid readFile;\n",
+    );
+    writeFileSync(
+      join(fixture, 'src', 'index.stories.ts'),
+      "import { basename } from 'node:path';\nvoid basename;\n",
+    );
+    writeFileSync(
+      join(fixture, 'src', 'index.test-support.ts'),
+      "import { randomUUID } from 'node:crypto';\nvoid randomUUID;\n",
+    );
+
+    expect(runBuilder(fixture)).toMatchObject({ status: 0 });
+  });
 });
 
 interface FixtureOptions {

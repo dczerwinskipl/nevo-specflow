@@ -53,8 +53,12 @@ src/
     resolver.test.ts
 ```
 
-Use `.test.ts` / `.test.tsx`. Do not create a mirrored `test/` or `__tests__/` tree merely to
-separate unit tests from source.
+Use `.test.ts` / `.test.tsx`. If a co-located test needs a separate test-only helper under
+`src/`, use an explicit `.test-support.ts(x)` segment. Story-only support files should retain a
+`.stories.` segment. Those names make the development-only ownership visible to humans and let the
+package builder exclude them from production-source platform validation.
+
+Do not create a mirrored `test/` or `__tests__/` tree merely to separate unit tests from source.
 
 A useful ownership check is: **if moving or deleting the production module should naturally move or
 delete this test too, the test should be co-located.**

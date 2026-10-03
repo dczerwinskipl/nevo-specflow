@@ -130,8 +130,12 @@ function findSource(cwd, stem) {
 
 function validateNeutralSource(cwd, pkg) {
   const sourceFiles = [];
-  collectMatchingFiles(join(cwd, 'src'), sourceFiles, (name) =>
-    /\.(?:ts|tsx|mts|cts)$/u.test(name),
+  collectMatchingFiles(
+    join(cwd, 'src'),
+    sourceFiles,
+    (name) =>
+      /\.(?:ts|tsx|mts|cts)$/u.test(name) &&
+      !/\.(?:test|spec|stories|story|test-support)(?:\.|$)/u.test(name),
   );
 
   for (const file of sourceFiles) {

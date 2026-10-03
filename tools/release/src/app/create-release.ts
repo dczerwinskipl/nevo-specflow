@@ -45,6 +45,8 @@ export interface CreateReleaseDeps {
 export interface CreateReleaseResult {
   readonly events: ActionEvent[];
   readonly plan: ValidReleasePlan;
+  /** Actual tag acted on, including recovery of an incomplete prior prerelease. */
+  readonly tag: string;
   readonly mutated: boolean;
 }
 
@@ -184,7 +186,7 @@ export async function executeRelease(
     );
   }
 
-  return { events, plan, mutated: mutate };
+  return { events, plan, tag, mutated: mutate };
 }
 
 /** §2 — refuse a stale / diverged local checkout. */

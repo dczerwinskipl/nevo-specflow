@@ -5,7 +5,7 @@ import { dogfoodInstall } from './dogfood.ts';
 import { packProduct } from './pack.ts';
 import { readJson } from './paths.ts';
 
-export interface CliIO {
+export export interface CliIO {
   readonly stdout: (line: string) => void;
   readonly stderr: (line: string) => void;
 }
@@ -40,9 +40,11 @@ export function createProgram(io: CliIO): Command {
     .description('build + version + esbuild + pnpm pack -> .artifacts/nevo-specflow-<version>.tgz')
     .option('--json', 'print { name, version, tarball } as JSON', false)
     .option('--skip-build', 'assume the product graph is already built', false)
-    .action(async (opts: { json: boolean; skipBuild: boolean }) => {
+    .option('--version <version>', 'explicit artifact version (release workflow/tests)')
+    .action(async (opts: { json: boolean; skipBuild: boolean; version?: string }) => {
       const result = await packProduct({
         skipBuild: opts.skipBuild,
+        version: opts.version,
         log: opts.json ? undefined : (l) => io.stderr(l),
       });
       io.stdout(

@@ -151,6 +151,7 @@ describe('password authentication HTTP adapter', () => {
       await app.close();
     }
   });
+
   it('isolates session cookies between Runtime ports on the same host', async () => {
     const firstConfig = passwordConfig();
     const secondConfig = {
@@ -183,5 +184,4 @@ describe('password authentication HTTP adapter', () => {
       await second.close();
     }
   });
-
 });

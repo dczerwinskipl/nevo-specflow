@@ -68,6 +68,7 @@ describe('product package builder contract', () => {
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain('neutral packages must not declare engines.node');
   });
+
   it('uses TypeScript syntax rather than comments when enforcing neutral imports', () => {
     const fixture = createFixture({
       profile: 'neutral',

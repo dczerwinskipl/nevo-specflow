@@ -126,6 +126,7 @@ describe('Runtime CLI adapters', () => {
     expect(adapter).toMatch(/from 'commander'/);
     expect(authAdapter).toMatch(/from 'commander'/);
   });
+
   it('counts CLI password length by Unicode code points', async () => {
     const password = '😀'.repeat(PASSWORD_MAX_LENGTH);
     const out: string[] = [];
@@ -140,5 +141,4 @@ describe('Runtime CLI adapters', () => {
     expect(out).toHaveLength(1);
     await expect(verifyPassword(password, out[0] ?? '')).resolves.toBe(true);
   });
-
 });

@@ -98,6 +98,7 @@ describe('authentication config parsing', () => {
       ' secret-with-significant-spaces ',
     );
   });
+
   it('does not treat inherited object properties as configured users', () => {
     const config = requiredAuthConfig();
     config.providers.password.accounts.demo.userId = 'toString';
@@ -120,5 +121,4 @@ describe('authentication config parsing', () => {
     expect(Object.hasOwn(parsed.users, '__proto__')).toBe(true);
     expect(parsed.users.__proto__).toEqual({ name: 'Proto User' });
   });
-
 });

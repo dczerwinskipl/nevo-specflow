@@ -42,7 +42,9 @@ describe('OIDC login operation', () => {
       'https://specflow.example.test/api/auth/oidc/callback',
     );
     expect(started.ok).toBe(true);
-    expect(store.consumeOidcTransaction(previousTransaction, 'old')).toEqual({ status: 'missing' });
+    expect(store.consumeOidcTransaction(previousTransaction, 'old')).toEqual({
+      status: 'missing',
+    });
     if (!started.ok) throw new Error('Expected OIDC login to start.');
 
     const completed = await completeOidcLogin(
@@ -92,8 +94,12 @@ describe('OIDC login operation', () => {
       ),
     ).resolves.toEqual({ ok: false, error: 'service_unavailable' });
 
-    expect(store.consumeOidcTransaction(existing, 'existing')).toMatchObject({ status: 'consumed', transaction: { state: 'existing' } });
+    expect(store.consumeOidcTransaction(existing, 'existing')).toMatchObject({
+      status: 'consumed',
+      transaction: { state: 'existing' },
+    });
   });
+
   it('does not consume pending state when callback state is wrong', async () => {
     const store = new InMemoryAuthStore({ idFactory: () => 'oidc-id' });
     const transactionId = store.createOidcTransaction({
@@ -131,5 +137,4 @@ describe('OIDC login operation', () => {
       transaction: { state: 'expected-state' },
     });
   });
-
 });

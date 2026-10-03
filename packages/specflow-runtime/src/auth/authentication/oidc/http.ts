@@ -103,10 +103,7 @@ export const oidcRoutes: FastifyPluginCallback<OidcRoutesOptions> = (app, option
       );
 
       if (!result.ok) {
-        if (
-          result.error !== 'invalid_oidc_transaction' ||
-          !result.preserveTransactionCookie
-        ) {
+        if (result.error !== 'invalid_oidc_transaction' || !result.preserveTransactionCookie) {
           reply.clearCookie(options.cookieNames.oidc, options.cookieOptions);
         }
 

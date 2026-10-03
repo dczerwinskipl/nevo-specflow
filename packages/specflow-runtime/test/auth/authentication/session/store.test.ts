@@ -97,6 +97,7 @@ describe('InMemoryAuthStore', () => {
     expect(store.policy.sessionTtlMs).toBe(1_234);
     expect(Object.isFrozen(store.policy)).toBe(true);
   });
+
   it('does not consume an OIDC transaction when state does not match', () => {
     const store = new InMemoryAuthStore({ idFactory: () => 'oidc-id' });
     const id = store.createOidcTransaction({
@@ -113,5 +114,4 @@ describe('InMemoryAuthStore', () => {
       transaction: { state: 'expected' },
     });
   });
-
 });

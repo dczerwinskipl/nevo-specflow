@@ -608,6 +608,7 @@ describe('runtime configuration', () => {
 
     await expect(loadFrom(cwd)).rejects.toBeInstanceOf(RuntimeConfigError);
   });
+
   it('rejects credentials embedded in server.publicOrigin', () => {
     const config = requiredAuthConfig();
     config.server.publicOrigin = 'https://user:password@specflow.example.test:4318';
@@ -616,6 +617,7 @@ describe('runtime configuration', () => {
       /without credentials, path, query, or fragment/,
     );
   });
+
   it('does not include local secret source text in YAML parse errors', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'specflow-local-yaml-secret-'));
     await mkdir(join(cwd, '.nevo/local'), { recursive: true });
@@ -644,5 +646,4 @@ describe('runtime configuration', () => {
       expect(message).not.toContain('clientSecret');
     }
   });
-
 });

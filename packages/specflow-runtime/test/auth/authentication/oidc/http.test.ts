@@ -216,6 +216,7 @@ describe('OIDC HTTP adapter', () => {
       await app.close();
     }
   });
+
   it('preserves pending login state and cookie after a callback with the wrong state', async () => {
     let completeCalls = 0;
     const oidc: OidcClient = {
@@ -260,5 +261,4 @@ describe('OIDC HTTP adapter', () => {
       await app.close();
     }
   });
-
 });

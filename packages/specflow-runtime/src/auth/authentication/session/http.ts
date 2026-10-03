@@ -29,7 +29,11 @@ export const sessionRoutes: FastifyPluginCallback<SessionRoutesOptions> = (app, 
     },
     (request, reply) => {
       reply.header('Cache-Control', 'no-store');
-      return getAuthSession(options.auth, options.store, request.cookies[options.cookieNames.session]);
+      return getAuthSession(
+        options.auth,
+        options.store,
+        request.cookies[options.cookieNames.session],
+      );
     },
   );
 

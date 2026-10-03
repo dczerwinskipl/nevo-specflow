@@ -29,9 +29,6 @@ export interface AuthStore {
     transaction: StoredOidcTransaction,
     replacingTransactionId?: string,
   ): string;
-  consumeOidcTransaction(
-    id: string | undefined,
-    expectedState: string,
-  ): OidcTransactionConsumption;
+  consumeOidcTransaction(id: string | undefined, expectedState: string): OidcTransactionConsumption;
   deleteOidcTransaction(id: string | undefined): void;
 }

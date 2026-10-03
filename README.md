@@ -37,12 +37,12 @@ and every package's typecheck / test / build. Full setup and the command referen
 
 ## Repository shape
 
-| Path        | Contents                                                                                                                                                                                                  |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/`     | Deployable applications. Workspace glob; populated when an app lands.                                                                                                                                     |
-| `packages/` | Product packages under the `@nevo/*` scope; individual packages may be public or internal/private. Workspace glob; populated when a package lands.                                                        |
+| Path        | Contents                                                                                                                                                                                             |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/`     | Deployable applications. Workspace glob; populated when an app lands.                                                                                                                                |
+| `packages/` | Product packages under the `@nevo/*` scope; individual packages may be public or internal/private. Workspace glob; populated when a package lands.                                                   |
 | `tools/`    | Repository-internal tooling such as [`docs`](tools/docs/README.md), [`release`](tools/release/README.md), and [`github`](tools/github/README.md). Product packaging is owned by `packages/specflow`. |
-| `docs/`     | [Documentation](docs/README.md): architecture, engineering, design system, product, reference, and instructions.                                                                                          |
+| `docs/`     | [Documentation](docs/README.md): architecture, engineering, design system, product, reference, and instructions.                                                                                     |
 
 ## Contributing
 

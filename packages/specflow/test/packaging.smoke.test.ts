@@ -32,11 +32,15 @@ let runEnv: NodeJS.ProcessEnv = {};
 
 beforeAll(() => {
   // Pack through the package-owned build entrypoint.
-  const out = execFileSync(process.execPath, ['packages/specflow/packaging/bin.ts', 'pack', '--json'], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-    shell: sh,
-  });
+  const out = execFileSync(
+    process.execPath,
+    ['packages/specflow/packaging/bin.ts', 'pack', '--json'],
+    {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      shell: sh,
+    },
+  );
   const parsed = JSON.parse(out.trim().split(/\r?\n/).filter(Boolean).pop() ?? '{}') as {
     tarball: string;
     version: string;

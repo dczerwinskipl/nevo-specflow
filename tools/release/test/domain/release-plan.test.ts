@@ -21,7 +21,13 @@ const onV13 = (channel: string, version: string, existingTags: string[] = []) =>
 
 describe('planRelease', () => {
   it('required HEAD checks exclude the PR-only pr-title check', () => {
-    expect([...REQUIRED_HEAD_CHECKS]).toEqual(['quality', 'verify tests', 'build', 'product smoke', 'codeql']);
+    expect([...REQUIRED_HEAD_CHECKS]).toEqual([
+      'quality',
+      'verify tests',
+      'build',
+      'product smoke',
+      'codeql',
+    ]);
   });
 
   it('beta picks the next intentional number', () => {

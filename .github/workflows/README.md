@@ -1,14 +1,14 @@
 # Workflows
 
-| Workflow                                             | Trigger                                  | Purpose                                                                                                      |
-| ---------------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| [`ci.yml`](ci.yml)                                   | PRs; pushes to `main`, `release/v*`      | Quality/typecheck/test/build, dependency review on PRs, and installed-product smoke on Linux/Windows/macOS. |
-| [`codeql.yml`](codeql.yml)                           | PRs; protected-branch pushes; weekly     | CodeQL analysis for JavaScript/TypeScript.                                                                  |
-| [`pr-title.yml`](pr-title.yml)                       | PR opened / edited / synced              | Conventional Commits check on the PR title.                                                                 |
-| [`dependabot-pr-title.yml`](dependabot-pr-title.yml) | `workflow_run` after failed PR-title CI  | Safely normalize Dependabot's generated title and re-run the title check.                                   |
-| [`release.yml`](release.yml)                         | `workflow_dispatch` on `release/v*`      | Verify release HEAD, create tag/Release, build checksum + attested artifact, upload it, advance stable line. |
-| [`cut-release-line.yml`](cut-release-line.yml)       | `workflow_dispatch`                      | Cut a release line and open/hand off the main-bump PR.                                                      |
-| [`promote-release.yml`](promote-release.yml)         | `workflow_dispatch` on `release/v*`      | Open the channel-promotion PR.                                                                              |
+| Workflow                                             | Trigger                                 | Purpose                                                                                                      |
+| ---------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| [`ci.yml`](ci.yml)                                   | PRs; pushes to `main`, `release/v*`     | Quality/typecheck/test/build, dependency review on PRs, and installed-product smoke on Linux/Windows/macOS.  |
+| [`codeql.yml`](codeql.yml)                           | PRs; protected-branch pushes; weekly    | CodeQL analysis for JavaScript/TypeScript.                                                                   |
+| [`pr-title.yml`](pr-title.yml)                       | PR opened / edited / synced             | Conventional Commits check on the PR title.                                                                  |
+| [`dependabot-pr-title.yml`](dependabot-pr-title.yml) | `workflow_run` after failed PR-title CI | Safely normalize Dependabot's generated title and re-run the title check.                                    |
+| [`release.yml`](release.yml)                         | `workflow_dispatch` on `release/v*`     | Verify release HEAD, create tag/Release, build checksum + attested artifact, upload it, advance stable line. |
+| [`cut-release-line.yml`](cut-release-line.yml)       | `workflow_dispatch`                     | Cut a release line and open/hand off the main-bump PR.                                                       |
+| [`promote-release.yml`](promote-release.yml)         | `workflow_dispatch` on `release/v*`     | Open the channel-promotion PR.                                                                               |
 
 Workflows use least-privilege permissions. No privileged workflow checks out and executes
 untrusted pull-request code. The release workflow additionally needs `checks: read`,

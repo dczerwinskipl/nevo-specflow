@@ -57,6 +57,8 @@ describe('pnpm product:pack — self-bootstrapping from a fresh install', () => 
     for (const packageDir of productDependencies) {
       expect(existsSync(join(packageDir, 'dist'))).toBe(true);
     }
-    expect(readdirSync(artifacts).filter((file) => file.endsWith('.tgz')).length).toBeGreaterThan(0);
+    expect(
+      readdirSync(artifacts).filter((file) => file.endsWith('.tgz')).length,
+    ).toBeGreaterThan(0);
   }, 200_000);
 });

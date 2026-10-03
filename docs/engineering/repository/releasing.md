@@ -80,11 +80,11 @@ by `release/vX.Y`'s rules no matter what the source branch is called. A local
 `pnpm version:print` derives the build version from `version.json` + the CI
 environment:
 
-| Situation                                    | Build version                                                     |
-| -------------------------------------------- | ----------------------------------------------------------------- |
-| `channel: alpha` / `beta` / `rc`             | `<version>-<channel>.<GITHUB_RUN_NUMBER>` — e.g. `1.3.0-beta.147` |
-| `channel: stable`                            | `<version>` — e.g. `1.3.0`                                        |
-| ref is a tag `refs/tags/vX.Y.Z[-beta\|rc.N]` | that exact version — never re-derived                             |
+| Situation                             | Build version                                                     |                                       |
+| ------------------------------------- | ----------------------------------------------------------------- | ------------------------------------- |
+| `channel: alpha` / `beta` / `rc`      | `<version>-<channel>.<GITHUB_RUN_NUMBER>` — e.g. `1.3.0-beta.147` |                                       |
+| `channel: stable`                     | `<version>` — e.g. `1.3.0`                                        |                                       |
+| ref is a tag `refs/tags/vX.Y.Z[-beta\ | rc.N]`                                                            | that exact version — never re-derived |
 
 The run number is a **build identifier**, not a release number.
 
@@ -152,13 +152,13 @@ Minimum fine-grained PAT permissions, derived from the GitHub APIs the tool actu
 calls (push a branch by plumbing, list/open a PR, request auto-merge, and — on the
 `Release` workflow only — read the HEAD check-runs and create a tag + GitHub Release):
 
-| Permission    | Level        | Why                                                                                 |
-| ------------- | ------------ | ----------------------------------------------------------------------------------- |
-| Contents      | Read & write | push the promotion / bump / advance branch; create the tag + GitHub Release         |
-| Pull requests | Read & write | list the open PR, open it, request auto-merge                                       |
-| Checks        | Read         | `Release` only — read release-branch HEAD required check-runs |
-| Workflows     | Read         | only if a PR ever changes a file under `.github/workflows/`                         |
-| Metadata      | Read         | mandatory for every fine-grained PAT                                                |
+| Permission    | Level        | Why                                                                         |
+| ------------- | ------------ | --------------------------------------------------------------------------- |
+| Contents      | Read & write | push the promotion / bump / advance branch; create the tag + GitHub Release |
+| Pull requests | Read & write | list the open PR, open it, request auto-merge                               |
+| Checks        | Read         | `Release` only — read release-branch HEAD required check-runs               |
+| Workflows     | Read         | only if a PR ever changes a file under `.github/workflows/`                 |
+| Metadata      | Read         | mandatory for every fine-grained PAT                                        |
 
 The workflow `permissions:` blocks mirror this exactly — `release.yml` is the only one
 with `checks: read`, because it is the only one that reads check-runs. No token value is
@@ -221,10 +221,10 @@ After the promotion PR merges, run **`Release`** to cut the `<target>` tag.
 
 Run **`Release`** from a `release/vX.Y` branch:
 
-| Input     | Meaning                                                               |
-| --------- | --------------------------------------------------------------------- |
-| `channel` | `beta` \| `rc` \| `stable`                                            |
-| `execute` | Unchecked = **validate-only**: run every check below, change nothing. |
+| Input     | Meaning                                                               |        |          |
+| --------- | --------------------------------------------------------------------- | ------ | -------- |
+| `channel` | `beta` \                                                              | `rc` \ | `stable` |
+| `execute` | Unchecked = **validate-only**: run every check below, change nothing. |        |          |
 
 **Validate-only is real validation, not a rubber stamp.** It runs every read-only
 check the execute path runs and answers _"would this succeed right now?"_ — it just

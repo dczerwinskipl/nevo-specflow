@@ -23,7 +23,6 @@ env:
   AFFECTED: ${{ github.event_name == 'pull_request' && '--affected' || '' }}
 
 jobs:
-
   dependency-review:
     name: dependency review
     if: github.event_name == 'pull_request'
@@ -187,7 +186,6 @@ jobs:
             exit 1
           fi
           echo "Packaged-product smoke passed on Linux, Windows and macOS."
-
 
   build:
     name: build

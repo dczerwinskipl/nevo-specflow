@@ -19,12 +19,12 @@ related:
 
 ## Prerequisites
 
-| Tool | Version | Notes |
-| --- | --- | --- |
-| Node.js | `.nvmrc` / root `engines.node` | One supported runtime line for contributors and CI. |
-| Corepack | current enough to activate pinned pnpm | Do not maintain a separate global pnpm version. |
-| pnpm | root `packageManager` | Deliberately remains on pnpm 10; see ADR 0011. |
-| Git | recent | Required by repository/product flows. |
+| Tool     | Version                                | Notes                                               |
+| -------- | -------------------------------------- | --------------------------------------------------- |
+| Node.js  | `.nvmrc` / root `engines.node`         | One supported runtime line for contributors and CI. |
+| Corepack | current enough to activate pinned pnpm | Do not maintain a separate global pnpm version.     |
+| pnpm     | root `packageManager`                  | Deliberately remains on pnpm 10; see ADR 0011.      |
+| Git      | recent                                 | Required by repository/product flows.               |
 
 ```bash
 corepack enable
@@ -35,15 +35,15 @@ pnpm install --frozen-lockfile
 
 ## Standard commands
 
-| Command | Purpose |
-| --- | --- |
-| `pnpm check` | Canonical pre-push gate: quality, typecheck, build and tests. |
-| `pnpm check:quality` | Read-only formatting check, lint, docs/agent validation and version transition gate. |
-| `pnpm build` / `test` / `typecheck` | Run package tasks through Turbo. |
-| `pnpm format` | Write formatting fixes. |
-| `pnpm docs:check` | Validate docs and generated index. |
-| `pnpm product:pack` | Create the installable product tarball. |
-| `pnpm dogfood:install` | Install and smoke the real tarball globally. |
+| Command                             | Purpose                                                                              |
+| ----------------------------------- | ------------------------------------------------------------------------------------ |
+| `pnpm check`                        | Canonical pre-push gate: quality, typecheck, build and tests.                        |
+| `pnpm check:quality`                | Read-only formatting check, lint, docs/agent validation and version transition gate. |
+| `pnpm build` / `test` / `typecheck` | Run package tasks through Turbo.                                                     |
+| `pnpm format`                       | Write formatting fixes.                                                              |
+| `pnpm docs:check`                   | Validate docs and generated index.                                                   |
+| `pnpm product:pack`                 | Create the installable product tarball.                                              |
+| `pnpm dogfood:install`              | Install and smoke the real tarball globally.                                         |
 
 `format:check` is intentionally read-only. A check command must never repair the working tree.
 

@@ -11,7 +11,7 @@ Repository-internal tooling. **Never** published and never a Nevo SpecFlow produ
 | `tools/figma-project` | Repository-local design integration tooling. |
 
 Product-specific build/packaging logic does not live here; it belongs to
-`packages/specflow/build/` because it exists solely to produce `@nevo/specflow`.
+`packages/specflow/packaging/` because it exists solely to produce `@nevo/specflow`.
 
 Everything under `tools/*` participates in the pnpm/Turbo workspace only when it has independent
 repository-development value.

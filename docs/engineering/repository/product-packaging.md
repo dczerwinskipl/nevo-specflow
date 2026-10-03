@@ -28,7 +28,7 @@ Packaging belongs to the product package:
 
 - `packages/specflow/src/` owns the public CLI shell;
 - capability packages such as `@nevo/specflow-runtime` remain independent source boundaries;
-- `packages/specflow/build/` owns distribution-only build logic;
+- `packages/specflow/packaging/` owns distribution-only build logic;
 - standard `pnpm pack` owns creation of the final npm-style archive.
 
 There is no standalone `nevo-repo-product` workspace.
@@ -78,7 +78,7 @@ The packed manifest has no `dependencies`, `devDependencies`, scripts, or `works
 
 ## Verification
 
-`packages/specflow/test/build/` covers bundling, notices, version resolution, fresh-state packing,
+`packages/specflow/test/packaging/` covers bundling, notices, version resolution, fresh-state packing,
 dogfood behavior, build CLI wiring, and the shared package-builder contract.
 
 `packages/specflow/test/packaging.smoke.test.ts` proves the actual distribution boundary:

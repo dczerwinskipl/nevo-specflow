@@ -74,7 +74,7 @@ which records how the final public `nevo-specflow` distribution is assembled.
   major cannot drift from a separate hard-coded builder target.
 - **`@nevo/specflow` distribution packaging remains separate.** ADR 0011 owns the final
   self-contained CLI artifact; its distribution-only build logic is package-owned under
-  `packages/specflow/build/`.
+  `packages/specflow/packaging/`.
 - **Repository tooling under `tools/**` remains raw NodeNext `tsc` output** unless a later ADR
   deliberately changes the tooling build model.
 

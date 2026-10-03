@@ -14,11 +14,11 @@
     "node": ">=24.20.0 <25"
   },
   "scripts": {
-    "build": "node build/bin.ts bundle",
+    "build": "node packaging/bin.ts bundle",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run --no-file-parallelism",
-    "artifact:pack": "node build/bin.ts pack",
-    "dogfood": "node build/bin.ts dogfood",
+    "artifact:pack": "node packaging/bin.ts pack",
+    "dogfood": "node packaging/bin.ts dogfood",
     "test:packaged": "vitest run test/packaging.smoke.test.ts --no-file-parallelism"
   },
   "dependencies": {

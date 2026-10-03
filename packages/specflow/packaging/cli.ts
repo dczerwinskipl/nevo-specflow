@@ -5,7 +5,7 @@ import { dogfoodInstall } from './dogfood.ts';
 import { packProduct } from './pack.ts';
 import { readJson } from './paths.ts';
 
-export export interface CliIO {
+export interface CliIO {
   readonly stdout: (line: string) => void;
   readonly stderr: (line: string) => void;
 }

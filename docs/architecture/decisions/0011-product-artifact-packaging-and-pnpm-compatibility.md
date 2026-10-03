@@ -45,7 +45,7 @@ notices from code actually embedded in that bundle, and prove the installed arti
 - Keep the repository on the pnpm 10 line until GitHub Dependabot and Dependency Graph reliably
   support the lockfile format produced by the pnpm major we intend to adopt.
 - Remove the standalone `tools/product` / `nevo-repo-product` workspace.
-- Make product-artifact build logic owned by `packages/specflow/build/`, next to the package whose
+- Make product-artifact build logic owned by `packages/specflow/packaging/`, next to the package whose
   artifact it creates.
 - Use standard `pnpm pack` for the final tarball/archive operation.
 - Keep custom package-owned logic only for responsibilities that `pnpm pack` does not satisfy for

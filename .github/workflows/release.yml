@@ -84,7 +84,7 @@ jobs:
         shell: bash
         run: |
           version="${RELEASE_TAG#v}"
-          result="$(node packages/specflow/build/bin.ts pack --json --version "$version")"
+          result="$(node packages/specflow/packaging/bin.ts pack --json --version "$version")"
           echo "$result"
           tarball="$(node -e 'const v=JSON.parse(process.argv[1]); process.stdout.write(v.tarball)' "$result")"
           dir="$(dirname "$tarball")"

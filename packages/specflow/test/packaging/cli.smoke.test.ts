@@ -10,7 +10,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 const execFileAsync = promisify(execFile);
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const bin = join(pkgRoot, 'build', 'bin.ts');
+const bin = join(pkgRoot, 'packaging', 'bin.ts');
 
 async function cli(args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
   try {
@@ -34,7 +34,7 @@ beforeAll(() => {
   }
 });
 
-describe('@nevo/specflow build CLI', () => {
+describe('@nevo/specflow packaging CLI', () => {
   it('--help lists bundle, pack and dogfood', async () => {
     const { code, stdout } = await cli(['--help']);
     expect(code).toBe(0);

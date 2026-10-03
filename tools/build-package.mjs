@@ -215,7 +215,13 @@ function isNodeBuiltin(specifier) {
 }
 
 function moduleSpecifiers(file, text) {
-  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, scriptKindFor(file));
+  const source = ts.createSourceFile(
+    file,
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+    scriptKindFor(file),
+  );
   const specifiers = [];
 
   const addLiteral = (node) => {

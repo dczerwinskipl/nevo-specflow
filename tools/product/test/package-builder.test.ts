@@ -88,7 +88,6 @@ describe('product package builder contract', () => {
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("neutral package imports Node builtin 'node:fs'");
   });
-
 });
 
 interface FixtureOptions {

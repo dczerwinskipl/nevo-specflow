@@ -108,9 +108,10 @@ describe('authentication config parsing', () => {
 
   it('stores special dictionary keys without mutating object prototypes', () => {
     const config = requiredAuthConfig();
-    config.users = Object.fromEntries([
-      ['__proto__', { name: 'Proto User' }],
-    ]) as Record<string, { name: string }>;
+    config.users = Object.fromEntries([['__proto__', { name: 'Proto User' }]]) as Record<
+      string,
+      { name: string }
+    >;
     config.providers.password.accounts.demo.userId = '__proto__';
     config.providers.oidc.allowedEmails = {
       'proto@example.com': '__proto__',

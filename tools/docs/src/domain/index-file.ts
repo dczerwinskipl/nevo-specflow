@@ -53,7 +53,11 @@ export function buildIndex(docs: readonly DocRecord[]): BuiltIndex {
     md += `## ${type.charAt(0).toUpperCase()}${type.slice(1)}\n\n`;
     md += '| ID | Title | Status | Summary |\n|---|---|---|---|\n';
     for (const doc of group) {
-      const summary = asString(doc.summary).replace(/\r?\n/g, ' ').replace(/\|/g, '\\|').trim();
+      const summary = asString(doc.summary)
+        .replace(/\r?\n/g, ' ')
+        .replace(/\\/g, '\\\\')
+        .replace(/\|/g, '\\|')
+        .trim();
       md +=
         `| \`${asString(doc.id)}\` | [${asString(doc.title)}](${relLink(doc.file)}) | ` +
         `${asString(doc.status)} | ${summary} |\n`;

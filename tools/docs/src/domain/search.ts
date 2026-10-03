@@ -7,7 +7,8 @@ export function normalizeTerm(term: string): string {
   const t = term
     .toLowerCase()
     .trim()
-    .replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, '');
+    .replace(/^[^a-z0-9]+/, '')
+    .replace(/[^a-z0-9]+$/, '');
   if (!t) return '';
   if (t.endsWith('ies') && t.length > 4) return `${t.slice(0, -3)}y`;
   if (t.endsWith('sses')) return t.slice(0, -2);

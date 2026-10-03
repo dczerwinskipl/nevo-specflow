@@ -37,6 +37,17 @@ describe('buildIndex', () => {
     expect(a.json).not.toMatch(/[0-9]{4}-[0-9]{2}-[0-9]{2}T/);
   });
 
+  it('escapes backslashes before table pipes in summaries', () => {
+    const built = buildIndex([
+      {
+        ...DOCS[0]!,
+        summary: String.raw`Windows path C:\temp\docs | generated`,
+      },
+    ]);
+
+    expect(built.md).toContain(String.raw`Windows path C:\\temp\\docs \| generated`);
+  });
+
   it('emits taxonomy only when authored so existing documents do not gain empty fields', () => {
     const built = buildIndex([
       { ...DOCS[0]!, scope: 'repo', areas: ['release'], tags: ['git'] },

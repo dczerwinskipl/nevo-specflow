@@ -62,8 +62,10 @@ duplicated across operating systems.
 CodeQL uses no-build JavaScript/TypeScript analysis. The stable check name is `codeql`.
 Pull-request-triggered analysis uploads SARIF through GitHub's supported pull-request path for
 same-repository, fork and Dependabot pull requests; the workflow does not use
-`pull_request_target`. Protected-branch rulesets also require CodeQL code-scanning results and
-block generic errors or security alerts at high severity or above.
+`pull_request_target`. Protected `main` also requires native CodeQL code-scanning results and
+blocks generic errors or security alerts at high severity or above. Release lines keep the stable
+`codeql` status gate without the native code-scanning rule so their branch-creating push remains
+possible.
 
 ## Required checks
 

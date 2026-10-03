@@ -37,17 +37,6 @@
     ]
   },
 
-  "requiredCodeScanning": {
-    "$comment": "Require CodeQL results before protected refs move. Generic code-scanning errors block; security findings block at high severity or above.",
-    "tools": [
-      {
-        "tool": "CodeQL",
-        "alertsThreshold": "errors",
-        "securityAlertsThreshold": "high_or_higher"
-      }
-    ]
-  },
-
   "rulesets": [
     {
       "name": "protected-main",
@@ -58,7 +47,19 @@
       "baseRules": [
         { "type": "deletion" },
         { "type": "non_fast_forward" },
-        { "type": "required_linear_history" }
+        { "type": "required_linear_history" },
+        {
+          "type": "code_scanning",
+          "parameters": {
+            "code_scanning_tools": [
+              {
+                "tool": "CodeQL",
+                "alerts_threshold": "errors",
+                "security_alerts_threshold": "high_or_higher"
+              }
+            ]
+          }
+        }
       ]
     },
     {

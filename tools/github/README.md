@@ -44,7 +44,7 @@ the bootstrap exception, and the fail-closed path are exercised without a real r
 head branches, auto-merge allowed, squash commit title/body taken from the PR.
 
 **Rulesets** `protected-main` (`refs/heads/main`) and `protected-release-lines`
-(`refs/heads/release/v*`), identical rules:
+(`refs/heads/release/v*`) share these core rules:
 
 | Rule                      | Effect                                                                                                                                       |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -53,7 +53,12 @@ head branches, auto-merge allowed, squash commit title/body taken from the PR.
 | `required_linear_history` | linear history                                                                                                                               |
 | `pull_request`            | PR required; squash-only; review threads resolved; stale approvals dismissed; (see review policy)                                            |
 | `required_status_checks`  | strict; `pr-title`, `quality`, `dependency review`, `verify tests`, `build`, `product smoke`, `codeql`; **`do_not_enforce_on_create: true`** |
-| `code_scanning`           | requires CodeQL results; blocks generic errors and security alerts at **high** severity or above                                             |
+
+`protected-main` additionally requires native CodeQL `code_scanning` results and blocks generic
+errors or security alerts at **high** severity or above. `protected-release-lines` deliberately
+does not add that native rule because release lines are created by `cut-release-line` before a
+branch-specific CodeQL result can exist; subsequent updates are still gated by the required
+`codeql` status check.
 
 No bypass actors.
 
@@ -93,8 +98,8 @@ edit to the policy file**. Code ownership is intentionally not used (there is no
 
 Dependabot alerts/security updates, secret scanning, push protection and private vulnerability
 reporting are repository/plan features. Dependency Review and CodeQL execution are enforced by
-checked-in workflows; this tool manages the CodeQL merge threshold through the protected-branch
-rulesets. Enable and verify repository/plan features with
+checked-in workflows; this tool manages the native CodeQL merge threshold on `main` through its
+protected-branch ruleset. Enable and verify repository/plan features with
 `gh api repos/{owner}/{repo}` (`security_and_analysis`) /
 `gh api -X PUT repos/{owner}/{repo}/vulnerability-alerts` /
 `gh api -X PUT repos/{owner}/{repo}/private-vulnerability-reporting`. Report actual

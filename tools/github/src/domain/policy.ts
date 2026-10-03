@@ -14,17 +14,7 @@ export interface RulesetSpec {
   readonly enforcement: string;
   readonly conditions: unknown;
   readonly bypass_actors?: unknown[];
-  readonly baseRules?: { type: string }[];
-}
-
-export type CodeScanningAlertsThreshold = 'none' | 'errors' | 'errors_and_warnings' | 'all';
-export type CodeScanningSecurityAlertsThreshold =
-  'none' | 'critical' | 'high_or_higher' | 'medium_or_higher' | 'all';
-
-export interface RequiredCodeScanningTool {
-  readonly tool: string;
-  readonly alertsThreshold: CodeScanningAlertsThreshold;
-  readonly securityAlertsThreshold: CodeScanningSecurityAlertsThreshold;
+  readonly baseRules?: { type: string; parameters?: unknown }[];
 }
 
 export interface RepositoryPolicy {
@@ -34,9 +24,6 @@ export interface RepositoryPolicy {
     readonly strict?: boolean;
     readonly doNotEnforceOnCreate?: boolean;
     readonly checks?: string[];
-  };
-  readonly requiredCodeScanning?: {
-    readonly tools?: RequiredCodeScanningTool[];
   };
   readonly rulesets: RulesetSpec[];
 }

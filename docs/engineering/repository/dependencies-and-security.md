@@ -69,10 +69,14 @@ Pull-request-triggered CodeQL analysis uses GitHub's supported SARIF upload path
 Dependabot run receives a read-only `GITHUB_TOKEN`; the workflow does not switch to
 `pull_request_target`.
 
-Protected `main` and `release/v*` rulesets additionally require CodeQL code-scanning results.
-Generic code-scanning errors block the ref update, and security alerts block at **high severity or
-above**. The required `codeql` status remains separate so a failed or missing analysis job cannot
-be mistaken for a clean scan.
+Protected `main` additionally requires native CodeQL code-scanning results. Generic code-scanning
+errors block the update, and security alerts block at **high severity or above**. The required
+`codeql` status remains separate so a failed or missing analysis job cannot be mistaken for a
+clean scan.
+
+`release/v*` deliberately keeps only the required `codeql` status check. Release lines are
+created directly by `cut-release-line`, before a branch-specific CodeQL result can exist, and the
+native `code_scanning` ruleset rule has no `do_not_enforce_on_create` equivalent.
 
 ## GitHub Action pinning
 

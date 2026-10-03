@@ -54,6 +54,9 @@ describe('configureRepository', () => {
         },
       ],
     });
+
+    const releaseLines = client.createdRulesets[1] as Record<string, unknown>;
+    expect(ruleParams(releaseLines, 'code_scanning')).toEqual({});
   });
 
   it('two eligible reviewers -> target: rulesets carry 1 required approval', () => {

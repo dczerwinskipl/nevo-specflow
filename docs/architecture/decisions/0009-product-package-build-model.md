@@ -8,10 +8,10 @@ summary: >
   Product packages use extensionless TypeScript source imports and explicit neutral or
   Node package profiles. Reusable package JavaScript and declaration surfaces are bundled
   together with one tsdown-based library build, while repository tools keep raw NodeNext
-  tsc output and the final nevo-specflow distribution remains governed by ADR 0006.
+  tsc output and the final nevo-specflow distribution remains governed by ADR 0011.
 related:
   - adr.0010-toolchain-policy-and-version-sources
-  - adr.0006-product-ships-as-a-single-bundled-artifact
+  - adr.0011-product-artifact-packaging-and-pnpm-compatibility
   - engineering.shared.code-organization
   - engineering.repository.product-packaging
 ---
@@ -33,7 +33,7 @@ The repository also has both platform-neutral libraries consumed by Runtime/UI a
 product packages. A package build must make that runtime boundary explicit and must not rely on
 agents copying a long sequence of compiler and bundler flags correctly.
 
-This decision is separate from [ADR 0006](0006-product-ships-as-a-single-bundled-artifact.md),
+This decision is separate from [ADR 0011](0011-product-artifact-packaging-and-pnpm-compatibility.md),
 which records how the final public `nevo-specflow` distribution is assembled.
 
 ## Decision
@@ -72,8 +72,9 @@ which records how the final public `nevo-specflow` distribution is assembled.
 - **The Node package build target is derived from the repository `.nvmrc`.** Package
   `engines.node` remains the package compatibility assertion, while the adopted contributor/runtime
   major cannot drift from a separate hard-coded builder target.
-- **`@nevo/specflow` distribution packaging remains separate.** ADR 0006 still owns the final
-  self-contained CLI artifact and `nevo-repo-product` remains its only bundler.
+- **`@nevo/specflow` distribution packaging remains separate.** ADR 0011 owns the final
+  self-contained CLI artifact; its distribution-only build logic is package-owned under
+  `packages/specflow/build/`.
 - **Repository tooling under `tools/**` remains raw NodeNext `tsc` output** unless a later ADR
   deliberately changes the tooling build model.
 

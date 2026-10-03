@@ -52,7 +52,7 @@ head branches, auto-merge allowed, squash commit title/body taken from the PR.
 | `non_fast_forward`        | no force-push                                                                                     |
 | `required_linear_history` | linear history                                                                                    |
 | `pull_request`            | PR required; squash-only; review threads resolved; stale approvals dismissed; (see review policy) |
-| `required_status_checks`  | strict; `pr-title`, `quality`, `verify tests`, `build`; **`do_not_enforce_on_create: true`**      |
+| `required_status_checks`  | strict; `pr-title`, `quality`, `dependency review`, `verify tests`, `build`, `product smoke`, `codeql`; **`do_not_enforce_on_create: true`**      |
 
 No bypass actors.
 
@@ -90,8 +90,8 @@ edit to the policy file**. Code ownership is intentionally not used (there is no
 
 ## Security features (not managed by this tool)
 
-Dependabot alerts, Dependabot security updates, secret scanning, push protection and
-private vulnerability reporting are toggled per repository/plan. Enable and verify with
+Dependabot alerts/security updates, secret scanning, push protection and private vulnerability
+reporting are repository/plan features; Dependency Review and CodeQL are enforced by checked-in workflows. Enable and verify with
 `gh api repos/{owner}/{repo}` (`security_and_analysis`) /
 `gh api -X PUT repos/{owner}/{repo}/vulnerability-alerts` /
 `gh api -X PUT repos/{owner}/{repo}/private-vulnerability-reporting`. Report actual

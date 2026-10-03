@@ -41,7 +41,7 @@ and every package's typecheck / test / build. Full setup and the command referen
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `apps/`     | Deployable applications. Workspace glob; populated when an app lands.                                                                                                                                     |
 | `packages/` | Product packages under the `@nevo/*` scope; individual packages may be public or internal/private. Workspace glob; populated when a package lands.                                                        |
-| `tools/`    | Repository-internal TypeScript tooling — [`docs`](tools/docs/README.md), [`product`](tools/product/README.md), [`release`](tools/release/README.md), [`github`](tools/github/README.md). Never published. |
+| `tools/`    | Repository-internal tooling such as [`docs`](tools/docs/README.md), [`release`](tools/release/README.md), and [`github`](tools/github/README.md). Product packaging is owned by `packages/specflow`. |
 | `docs/`     | [Documentation](docs/README.md): architecture, engineering, design system, product, reference, and instructions.                                                                                          |
 
 ## Contributing

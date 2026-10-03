@@ -7,125 +7,106 @@ read_when:
   - understanding what CI runs on a pull request
   - a required check is failing or missing
   - reproducing a CI failure locally
-  - changing the CI workflow or required checks
+  - changing CI or required checks
 summary: >
-  What the CI workflows run, how affected-package execution is scoped on PRs, which
-  checks are required to merge, and what invalidates the whole graph.
+  Repository quality, affected package execution, dependency review, cross-platform artifact smoke,
+  CodeQL, and the stable checks required by protected branches.
 related:
   - engineering.repository.local-setup
+  - engineering.repository.dependencies-and-security
   - architecture.repository-structure
-  - engineering.repository.commit-conventions
 ---
 
 # Continuous integration
 
-Workflows under [`.github/workflows/`](../../../.github/workflows/):
+## Workflows
 
-| Workflow                                         | Trigger                                | Does                                                                                                                 |
-| ------------------------------------------------ | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `pr-title`                                       | PR opened / edited / synchronized      | Validates the PR title against [Conventional Commits](commit-conventions.md) — `<type>(<scope>): …`, scope required. |
-| `ci`                                             | PRs; pushes to `main` and `release/v*` | The quality gate, then typecheck / test / build.                                                                     |
-| `cut-release-line`, `promote-release`, `release` | `workflow_dispatch`                    | See [releasing](releasing.md).                                                                                       |
+- `ci.yml`: repository quality, affected typecheck/tests/build, Dependency Review on pull requests,
+  and the packaged-product smoke matrix.
+- `codeql.yml`: JavaScript/TypeScript CodeQL on pull requests, protected-branch pushes, and weekly.
+- `pr-title.yml`: Conventional Commit PR-title validation.
+- release workflows: see [releasing](releasing.md).
 
-## `ci` jobs
+## Main CI jobs
 
-| Job            | Steps                                                                                                                                                                                         |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `quality`      | `pnpm check:quality` (builds `tools/*`, then format, lint, `docs:check`, `version:check-transition`), `pnpm version:print`, an affected-graph dry-run, then `turbo run typecheck --affected`. |
-| `plan tests`   | Resolves `turbo run test --affected --dry=json` into one independent test job per selected workspace.                                                                                         |
-| `test (...)`   | Runs the selected workspace's `test` task. Product packages keep their package name; repository tools render as `tool/<name>` for readability.                                                |
-| `verify tests` | Required aggregate status. It fails when test planning or any selected workspace test fails.                                                                                                  |
-| `build`        | `turbo run build --affected`.                                                                                                                                                                 |
+`quality` runs the canonical repository gate and affected typecheck. Test planning resolves the
+Turbo test graph into independent package jobs; `verify tests` is their stable aggregate status.
+`build` runs affected builds.
 
-`check:quality` is the **same script contributors run** (`pnpm check` = `check:quality`
+On pull requests, Turbo compares the PR base/head and selects changed packages plus downstream
+dependents. On pushes to `main` and `release/v*`, package tasks run across the full graph.
 
-- the package graph), so local and CI cannot drift. Its steps run **repository-wide** —
-  one Prettier config, one ESLint config, one doc corpus, one `version.json` — so package
-  filtering has no meaning for them.
+Repository-wide formatting, lint, docs/agent validation and version transition checks are not
+affected-filtered.
 
-Typecheck, test and build are **package-scoped**:
+## Dependency Review
 
-- On a **pull request** they run with `--affected`, comparing
-  `pull_request.base.sha`…`pull_request.head.sha`. Checkout uses `fetch-depth: 0` so
-  the full history is present — a shallow clone would make every package look affected.
-- On **`main` and `release/v*` pushes** they run over **all** packages (no `--affected`).
-  Post-merge validation is deliberately more conservative than PR validation.
+Pull requests run the official Dependency Review Action and fail when a newly introduced dependency
+has a known vulnerability of moderate severity or higher. Its stable check name is
+`dependency review`.
 
-Affected execution includes a changed package and its **dependents**, because that comes
-from declared workspace `dependencies` — not a hard-coded matrix. It does **not** select
-a dependency's tests merely because one of its consumers changed. Task prerequisites may
-still build through Turbo's `^build` edges.
+## Packaged product smoke
 
-For example, if `@nevo/specflow-runtime` declares a dependency on
-`@nevo/http-client`, changing the HTTP client selects the client, Runtime, and any
-further dependents for testing; changing Runtime does not select the HTTP client's tests.
-The same rule applies to repository tools: `@nevo/specflow` declares
-`nevo-repo-product` as a development dependency because its build invokes that tool, so
-a product-tool change selects both workspaces while a SpecFlow change only requires the
-tool's `build` prerequisite, not its tests.
+A dedicated matrix runs `packages/specflow/test/packaging.smoke.test.ts` on:
 
-The `quality` job prints `turbo run … --dry=text` so you can see exactly which
-workspaces were selected and why.
+- Ubuntu;
+- Windows;
+- macOS.
 
-Concretely, for the product graph:
+It packages and installs the actual tarball outside the workspace and executes the installed CLI and
+Runtime. `product smoke` is the aggregate required check. The full package test suite is not
+duplicated across operating systems.
 
-| Change                                          | Affected `build` / `test`                                                                   |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `tools/release/**` only                         | `nevo-repo-release` — **not** the `@nevo/*` product packages.                               |
-| `packages/specflow/**` (the CLI)                | `@nevo/specflow` (+ its build prerequisites `@nevo/specflow-runtime`, `nevo-repo-product`). |
-| `packages/specflow-runtime/**` (the capability) | `@nevo/specflow-runtime` **and** its dependent `@nevo/specflow`.                            |
+## CodeQL
 
-`quality:build-tools` stays scoped to `nevo-repo-agents` + `nevo-repo-docs` +
-`nevo-repo-release` (what the quality gate itself needs). Product packaging never runs as an install/`prepare` script,
-so it cannot reintroduce a repo-wide pre-build.
-
-## Product packaging (not a CI job)
-
-`pnpm product:pack` (→ `.artifacts/nevo-specflow-<version>.tgz`) and `pnpm dogfood:install`
-are developer commands, not CI jobs — see [product packaging](product-packaging.md) and
-[dogfooding](dogfooding.md). The packed artifact is proven in CI by
-`packages/specflow/test/packaging.smoke.test.ts`, which runs inside the normal `test` job.
+CodeQL uses no-build JavaScript/TypeScript analysis. The stable check name is `codeql`.
 
 ## Required checks
 
-The branch rulesets (`protected-main`, `protected-release-lines`) require these exact
-check names — kept stable even if the steps inside them change:
+Protected `main` and `release/v*` use these stable required checks:
 
 ```text
 pr-title
 quality
+dependency review
 verify tests
 build
+product smoke
+codeql
 ```
 
-They are applied by
-[`tools/github (nevo-repo-github)`](../../../tools/github/README.md). A job whose
-`--affected` run selected nothing still exits 0 and reports its check green, so a PR is
-never left permanently pending.
+`pr-title` and `dependency review` are pull-request checks. The release tool separately verifies
+the release-branch HEAD checks that exist on protected-branch pushes:
 
-The `release` workflow separately re-checks that a release branch's HEAD has `quality` +
-`verify tests` + `build` green (not `pr-title` — that only runs on PRs) before it cuts a tag.
+```text
+quality
+verify tests
+build
+product smoke
+codeql
+```
 
-Concurrency: a new commit on a PR cancels the previous PR run; `main` / `release/v*`
-runs always finish.
+Repository policy is declared in `tools/github/repository-policy.json`.
 
-## What invalidates everything
+## Cache invalidation
 
-Turbo hashes `pnpm-lock.yaml` and root `package.json` automatically, plus every file in
-`turbo.json#globalDependencies` — deliberately just `tsconfig.base.json`, which every
-package's `tsconfig` extends. A lockfile bump or a base-tsconfig change rebuilds and
-retests the whole graph. These repository-global inputs are the intentional exception to
-changed-package + dependents selection.
+Turbo already hashes `pnpm-lock.yaml` and the root `package.json`. In addition,
+`turbo.json#globalDependencies` contains all repository-wide package-build inputs:
 
-Prettier / EditorConfig / ESLint config are **not** global inputs: they only change
-the repo-wide `format` / `lint` results, which run outside Turbo, so changing them does
-not invalidate unrelated package builds.
+- `tsconfig.base.json`;
+- `tsconfig.package-neutral.json`;
+- `tsconfig.package-node.json`;
+- `tools/build-package.mjs`.
 
-## Reproducing locally
+Changing any of those intentionally invalidates package build/test/typecheck caches. Prettier,
+EditorConfig and ESLint configuration affect repository-wide checks outside Turbo and therefore are
+not global package-task inputs.
+
+## Local reproduction
 
 ```bash
-pnpm check                                             # the full gate (= what CI runs)
-pnpm check:quality                                     # just the repo-wide gate
-pnpm exec turbo run build test typecheck --affected --dry   # what a PR would select
-pnpm exec turbo run test --filter nevo-repo-release    # one internal tool
+pnpm check
+pnpm check:quality
+pnpm exec turbo run build test typecheck --affected --dry
+pnpm --filter @nevo/specflow test:packaged
 ```

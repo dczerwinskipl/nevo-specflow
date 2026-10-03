@@ -156,7 +156,7 @@ calls (push a branch by plumbing, list/open a PR, request auto-merge, and — on
 | ------------- | ------------ | ----------------------------------------------------------------------------------- |
 | Contents      | Read & write | push the promotion / bump / advance branch; create the tag + GitHub Release         |
 | Pull requests | Read & write | list the open PR, open it, request auto-merge                                       |
-| Checks        | Read         | `Release` only — read the release-branch HEAD `quality`/`verify tests`/`build` runs |
+| Checks        | Read         | `Release` only — read release-branch HEAD required check-runs |
 | Workflows     | Read         | only if a PR ever changes a file under `.github/workflows/`                         |
 | Metadata      | Read         | mandatory for every fine-grained PAT                                                |
 
@@ -238,7 +238,7 @@ The checks, in order (all performed in both modes):
    (`git pull --ff-only` and retry); an unresolvable `origin/<branch>` fails closed.
    The release always tags the current remote protected-branch commit.
 2. branch / version-in-line / channel (**promote first** if the channel does not match);
-3. **the release-branch HEAD passed CI** — `quality`, `verify tests` and `build` check-runs
+3. **the release-branch HEAD passed CI** — `quality`, `verify tests`, `build`, `product smoke`, and `codeql` check-runs
    must all be `success` on that commit (not `pr-title`, which is PR-only). A
    freshly-cut branch, a red commit, or an unreadable check-run response is refused;
 4. tag selection: `beta` / `rc` → the next number in that channel's sequence from the
@@ -249,7 +249,9 @@ The checks, in order (all performed in both modes):
    to `-beta.2`. If the GitHub Release state cannot be **determined** (auth, network,
    404-vs-outage ambiguity), the run fails closed rather than assuming "absent".
 6. execute: create the annotated tag + a GitHub Release (`--prerelease` for beta/rc,
-   generated notes). **No npm package is published.**
+   generated notes), build the exact tagged product artifact, write its SHA-256 checksum,
+   create a GitHub provenance attestation, and upload the tarball + checksum to that Release.
+   **No npm package is published.**
 
 The tag + Release (step 6) and the stable branch-advance below are **independent
 idempotent steps**: a re-run after "tag done, advance failed" still performs the

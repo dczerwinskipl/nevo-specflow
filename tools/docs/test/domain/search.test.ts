@@ -60,6 +60,19 @@ describe('normalizeTerm / tokenize', () => {
     expect(normalizeTerm('branches')).toBe('branch');
     expect(tokenize('React, react components!')).toEqual(['react', 'component']);
   });
+
+  it('trims long non-alphanumeric prefixes and suffixes without changing normalization', () => {
+    const punctuation = '/'.repeat(100_000);
+    expect(normalizeTerm(`${punctuation}branches${punctuation}`)).toBe('branch');
+  });
+
+  it('returns empty for input containing only non-alphanumeric characters', () => {
+    expect(normalizeTerm('/'.repeat(200_000))).toBe('');
+  });
+
+  it('trims only the edges', () => {
+    expect(normalizeTerm('/foo/bar/')).toBe('foo/bar');
+  });
 });
 
 describe('scoreDoc', () => {

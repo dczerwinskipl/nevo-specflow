@@ -37,6 +37,28 @@ describe('buildIndex', () => {
     expect(a.json).not.toMatch(/[0-9]{4}-[0-9]{2}-[0-9]{2}T/);
   });
 
+  it('encodes table delimiters while preserving literal backslashes in summaries', () => {
+    const built = buildIndex([
+      {
+        ...DOCS[0]!,
+        summary: String.raw`Windows path C:\temp\docs | generated`,
+      },
+    ]);
+
+    expect(built.md).toContain(String.raw`Windows path C:\temp\docs &#124; generated`);
+  });
+
+  it('normalizes CR, LF and CRLF line breaks inside summaries', () => {
+    const built = buildIndex([
+      {
+        ...DOCS[0]!,
+        summary: 'line 1\r\nline 2\nline 3\rline 4',
+      },
+    ]);
+
+    expect(built.md).toContain('line 1 line 2 line 3 line 4');
+  });
+
   it('emits taxonomy only when authored so existing documents do not gain empty fields', () => {
     const built = buildIndex([
       { ...DOCS[0]!, scope: 'repo', areas: ['release'], tags: ['git'] },

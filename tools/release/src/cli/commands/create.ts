@@ -8,6 +8,7 @@ interface CreateOptions {
   execute: boolean;
   json: boolean;
   expectedTag?: string;
+  deferAdvance: boolean;
 }
 
 export function createReleaseCommand(ctx: CliContext): Command {
@@ -25,12 +26,17 @@ export function createReleaseCommand(ctx: CliContext): Command {
       new Option('--expected-tag <tag>', 'fail before mutation if the resolved candidate changed')
         .env('RELEASE_EXPECTED_TAG'),
     )
+    .option(
+      '--defer-advance',
+      'defer stable next-patch PR until artifact publication has completed',
+      false,
+    )
     .action(async (opts: CreateOptions) => {
       const mutate = wantsExecute(opts.execute, ctx.env);
       const result = await executeRelease(
         { channel: opts.channel ?? '', expectedTag: opts.expectedTag },
         { git: ctx.git, github: ctx.github, hasToken: hasCiGithubReleaseToken(ctx.env) },
-        { mutate },
+        { mutate, deferAdvance: opts.deferAdvance },
       );
       if (opts.json) {
         ctx.stdout(

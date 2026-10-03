@@ -195,7 +195,7 @@ jobs:
           PLANNED_TAG: ${{ needs.plan.outputs.tag }}
         shell: bash
         run: |
-          result="$(node tools/release/dist/bin.js create --json --expected-tag "$PLANNED_TAG")"
+          result="$(node tools/release/dist/bin.js create --json --expected-tag "$PLANNED_TAG" --defer-advance)"
           echo "$result"
           actual_tag="$(node -e 'const v=JSON.parse(process.argv[1]); process.stdout.write(v.tag)' "$result")"
           if [ "$actual_tag" != "$PLANNED_TAG" ]; then
@@ -216,3 +216,14 @@ jobs:
           CHECKSUM: ${{ steps.artifact.outputs.checksum }}
         shell: bash
         run: gh release upload "$RELEASE_TAG" "$TARBALL" "$CHECKSUM" --clobber
+
+      - name: Advance stable release line after publication
+        if: inputs.channel == 'stable'
+        env:
+          GH_TOKEN: ${{ secrets.CI_GITHUB_RELEASE_TOKEN || github.token }}
+          CI_GITHUB_RELEASE_TOKEN_PRESENT: ${{ secrets.CI_GITHUB_RELEASE_TOKEN != '' }}
+          RELEASE_CHANNEL: ${{ inputs.channel }}
+          EXECUTE: "true"
+          PLANNED_TAG: ${{ needs.plan.outputs.tag }}
+        shell: bash
+        run: node tools/release/dist/bin.js create --json --expected-tag "$PLANNED_TAG"

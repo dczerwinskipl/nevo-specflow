@@ -209,6 +209,26 @@ describe('executeRelease — Phase B (stable advance) structural validation §3'
     ]);
   });
 
+  it('can defer stable advance until the release artifact is published', async () => {
+    const first = await executeRelease(
+      { channel: 'stable' },
+      deps(true),
+      { mutate: true, deferAdvance: true },
+    );
+
+    expect(msgs(first)).toMatch(/advance deferred.*artifact publication/i);
+    expect(git.createdTags).toEqual([{ tag: 'v1.3.0', sha: HEAD }]);
+    expect(github.createdReleases).toEqual(['v1.3.0']);
+    expect(git.pushedBranches).toEqual([]);
+
+    await executeRelease({ channel: 'stable', expectedTag: 'v1.3.0' }, deps(true), {
+      mutate: true,
+    });
+    expect(git.createdTags).toEqual([{ tag: 'v1.3.0', sha: HEAD }]);
+    expect(github.createdReleases).toEqual(['v1.3.0']);
+    expect(git.pushedBranches.map((p) => p.branch)).toEqual([ADVANCE_BRANCH]);
+  });
+
   it('§9: phase A already complete -> phase B still runs', async () => {
     git.state.tags.set('v1.3.0', HEAD);
     github.state.releases.add('v1.3.0');

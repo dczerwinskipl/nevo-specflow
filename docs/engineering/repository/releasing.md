@@ -253,13 +253,17 @@ The checks, in order (all performed in both modes):
 6. workflow candidate gate (both modes): build the exact planned tag version **once**, upload it as
    a workflow artifact, then install/smoke that same tarball on Linux, Windows, and macOS;
 7. execute only: revalidate and create/complete the annotated tag + GitHub Release (`--prerelease`
-   for beta/rc, generated notes). The publish job downloads the already-tested candidate, verifies
-   its embedded version still matches the planned tag, writes SHA-256, creates provenance, and
-   uploads those exact bytes + checksum. **No npm package is published.**
+   for beta/rc, generated notes) while deferring the stable next-patch mutation. The publish job
+   downloads the already-tested candidate, verifies its embedded version still matches the planned
+   tag, writes SHA-256, creates provenance, and uploads those exact bytes + checksum;
+8. stable only: after artifact publication succeeds, run the same idempotent release operation again
+   to create/reuse the next-patch advance PR. A failed attest/upload therefore cannot move the
+   protected release line away from the release that still needs repair. **No npm package is
+   published.**
 
-The tag + Release mutation (step 7) and the stable branch-advance below are **independent
-idempotent steps**: a re-run after "tag done, advance failed" still performs the
-advance — it is not skipped just because the tag is already complete.
+The tag + Release mutation, artifact publication, and stable branch advance are ordered but
+idempotent recovery points. Publication must complete before stable advance; a re-run after any
+partial state repairs the same release rather than skipping forward.
 
 ### After a stable tag
 

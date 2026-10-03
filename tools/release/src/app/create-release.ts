@@ -53,7 +53,7 @@ export interface CreateReleaseResult {
 export async function executeRelease(
   input: { channel: string; expectedTag?: string },
   deps: CreateReleaseDeps,
-  { mutate }: { mutate: boolean },
+  { mutate, deferAdvance = false }: { mutate: boolean; deferAdvance?: boolean },
 ): Promise<CreateReleaseResult> {
   const { git, github } = deps;
   const events: ActionEvent[] = [];
@@ -188,7 +188,9 @@ export async function executeRelease(
 
   // ── Phase B: for a stable release, ensure the branch advances ───────────
   // Reached even when Phase A was a no-op.
-  if (plan.nextBranchState) {
+  if (plan.nextBranchState && deferAdvance) {
+    events.push(info('Stable branch advance deferred until release artifact publication completes.'));
+  } else if (plan.nextBranchState) {
     const nextState = plan.nextBranchState;
     await ensureVersionFileChangePr(
       { git, github, hasToken: deps.hasToken },

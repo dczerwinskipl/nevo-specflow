@@ -19,8 +19,15 @@ build/
 coverage/
 *.lcov
 
+# Browser and Figma generated output
+playwright-report/
+test-results/
+tools/figma-project/generated/
+
 # Logs & diagnostics
 *.log
+chromatic-build-*.xml
+chromatic-diagnostics.json
 npm-debug.log*
 pnpm-debug.log*
 

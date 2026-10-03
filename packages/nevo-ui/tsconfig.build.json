@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "declarationMap": true,
+    "incremental": false,
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "paths": {
+      "@nevo/figma-core": ["../figma-core/dist/index.d.ts"],
+      "@nevo/figma-core/authoring": ["../figma-core/dist/authoring/index.d.ts"],
+      "@nevo/figma-core/ir": ["../figma-core/dist/ir/ir.d.ts"],
+      "@nevo/figma-core/metadata": ["../figma-core/dist/metadata.d.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": [
+    "src/**/*.stories.ts",
+    "src/**/*.stories.tsx",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx"
+  ]
+}

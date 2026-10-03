@@ -1,0 +1,24 @@
+{
+  "name": "nevo-figma-export",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Source-agnostic browser capture and canonical Figma IR export tooling.",
+  "license": "MIT",
+  "exports": {
+    "./extract": "./src/extract.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@nevo/figma-core": "workspace:*",
+    "playwright": "1.55.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.0",
+    "vitest": "5.0.2"
+  }
+}

@@ -47,7 +47,7 @@ prevent transport or presentation concerns from becoming one large package.
   owns the public executable, product-level command composition, packaging, and startup composition.
 - `@nevo/specflow-runtime` remains a product capability package. Owning a long-lived Fastify server
   does not by itself make it an `apps/*` entry.
-- The SpecFlow UI will land as `packages/specflow-ui` / `@nevo/specflow-ui`. It owns the React
+- The SpecFlow UI lives at `packages/specflow-ui` as `@nevo/specflow-ui`. It owns the React
   application source and frontend build output, but is still part of the same local SpecFlow
   product. The final product artifact may embed its built assets and Runtime may serve them as part
   of `nevo-specflow start`.

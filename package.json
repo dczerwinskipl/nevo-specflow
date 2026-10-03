@@ -31,7 +31,13 @@
     "docs:get": "pnpm --filter nevo-repo-docs build && node tools/docs/dist/bin.js get",
     "docs:context": "pnpm --filter nevo-repo-docs build && node tools/docs/dist/bin.js context",
     "docs:check": "pnpm --filter nevo-repo-docs build && node tools/docs/dist/bin.js check",
-    "docs:adr": "pnpm --filter nevo-repo-docs build && node tools/docs/dist/bin.js adr"
+    "docs:adr": "pnpm --filter nevo-repo-docs build && node tools/docs/dist/bin.js adr",
+    "storybook": "pnpm --filter nevo-repo-storybook dev",
+    "storybook:build": "pnpm --filter nevo-repo-storybook build",
+    "chromatic": "pnpm --filter nevo-repo-storybook chromatic",
+    "test:a11y": "pnpm --filter nevo-repo-storybook test",
+    "figma:export": "pnpm --filter nevo-figma-project export",
+    "figma:build-plugin": "pnpm --filter nevo-figma-import build:ui && pnpm --filter nevo-figma-project build:plugin"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

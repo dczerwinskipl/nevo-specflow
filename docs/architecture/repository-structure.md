@@ -31,14 +31,20 @@ nevo-specflow/
   apps/                 optional standalone hosts     (workspace glob; currently empty)
   packages/             product packages (@nevo/* scope)
     authorization/       @nevo/authorization            — product-neutral scoped capability resolver
+    figma-core/          @nevo/figma-core               — neutral Figma authoring and canonical IR contracts
     http-client/         @nevo/http-client              — product-neutral HTTP client and credential transport boundary
+    nevo-ui/             @nevo/ui                       — reusable design-system components and workspace mechanics
     specflow-contracts/  @nevo/specflow-contracts       — shared SpecFlow resource/capability contracts
     specflow/            @nevo/specflow                 — the `nevo-specflow` CLI shell + command composition
     specflow-runtime/    @nevo/specflow-runtime         — Runtime vertical: capability (.) + CLI adapter (./cli); private, bundled into specflow
+    specflow-ui/         @nevo/specflow-ui              — product UI capability and React application; private
   tools/                repository-internal tooling — never published, all TypeScript
+    agents/             nevo-repo-agents  — agent profile generation and validation
     docs/               nevo-repo-docs    — doc discovery, index, ADR authoring
     release/            nevo-repo-release — version model, cut-release-line, promote, release
     github/             nevo-repo-github  — idempotent GitHub governance apply/verify (gh API)
+    figma-*/            generic Figma export/import and project capture tooling
+    storybook/          shared Storybook composition and visual test host
   docs/                 this documentation set
   version.json          { channel, version } for the current branch
   .artifacts/           generated product tarballs (git-ignored)
@@ -67,8 +73,8 @@ capability-owned Commander adapters at `./cli` (`start` plus auth utilities), an
 dependencies ([ADR 0011](decisions/0011-product-artifact-packaging-and-pnpm-compatibility.md),
 [product packaging](../engineering/repository/product-packaging.md)).
 
-The SpecFlow UI follows the same source-boundary model: when migrated, it belongs under
-`packages/specflow-ui` as `@nevo/specflow-ui`, not under `apps/`. Its React application and
+The SpecFlow UI follows the same source-boundary model: it lives under `packages/specflow-ui` as
+`@nevo/specflow-ui`, not under `apps/`. Its React application and
 frontend build will be part of the same local product composed by `nevo-specflow start`; the final
 artifact may embed the built UI and Runtime may serve it. This placement does not make UI a reusable
 design-system package — reusable UI behavior remains owned by the Nevo UI design-system boundary.

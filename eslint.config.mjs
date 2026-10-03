@@ -115,6 +115,35 @@ export default tseslint.config(
     extends: [tseslint.configs.recommended, tseslint.configs.disableTypeChecked],
   },
 
+  // Storybook play functions and test doubles intentionally implement callback
+  // contracts that may be async/no-op for only some scenarios.
+  {
+    files: [
+      'packages/nevo-ui/**/*.stories.tsx',
+      'packages/nevo-ui/**/*.test.{ts,tsx}',
+      'tools/figma-import/**/*.test.ts',
+    ],
+    rules: {
+      '@typescript-eslint/no-empty-function': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/unbound-method': 'off',
+      '@typescript-eslint/require-await': 'off',
+    },
+  },
+
+  // Playwright's page-evaluation boundary is intentionally dynamic; assertions
+  // immediately validate the returned browser values.
+  {
+    files: ['tools/figma-import/ui.test.ts'],
+    rules: {
+      '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+    },
+  },
+
   // Node globals are explicit. Neutral product packages intentionally do not
   // inherit process/Buffer/etc. merely because @types/node exists in the workspace.
   {
@@ -138,10 +167,32 @@ export default tseslint.config(
     },
     rules: {
       'no-console': 'off',
+      '@typescript-eslint/no-empty-object-type': [
+        'error',
+        { allowInterfaces: 'with-single-extends' },
+      ],
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
+    },
+  },
+
+  // Keep the open-registry exception after shared rules so the deliberate
+  // module-augmentation interfaces remain valid without weakening components.
+  {
+    files: [
+      'packages/figma-core/src/metadata.tsx',
+      'packages/nevo-ui/src/figma/captureRegistry.ts',
+      'packages/specflow-ui/src/app/figmaRegistry.ts',
+      'packages/specflow-ui/src/brand/nevo/figmaDesignSystem.ts',
+      'examples/crm/src/figmaRegistry.ts',
+      'tools/figma-project/src/project/captureRegistry.ts',
+      'tools/figma-project/src/types.ts',
+    ],
+    rules: {
+      '@typescript-eslint/no-empty-object-type': 'off',
+      '@typescript-eslint/no-redundant-type-constituents': 'off',
     },
   },
 

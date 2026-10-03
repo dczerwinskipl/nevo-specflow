@@ -15,8 +15,9 @@ Product behavior of the UI. How the UI is _built_ is under
 [`../../../design-system/`](../../../design-system/) — keep implementation detail out of
 these files.
 
-| Doc                                       | Covers                                                                               |
-| ----------------------------------------- | ------------------------------------------------------------------------------------ |
-| [Personas](personas.md)                   | Who opens the UI and what they need.                                                 |
-| [Interaction model](interaction-model.md) | Responsive shell, product hierarchy, navigation & state preservation, surface types. |
-| [AI-session UX](ai-session-ux.md)         | Turn state, Work information levels, commentary, live vs historical.                 |
+| Doc                                                     | Covers                                                                               |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| [Personas](personas.md)                                 | Who opens the UI and what they need.                                                 |
+| [Interaction model](interaction-model.md)               | Responsive shell, product hierarchy, navigation & state preservation, surface types. |
+| [Application architecture](application-architecture.md) | Runtime composition, routing, ownership boundaries, and current foundation screens.  |
+| [AI-session UX](ai-session-ux.md)                       | Turn state, Work information levels, commentary, live vs historical.                 |

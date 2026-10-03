@@ -1,0 +1,18 @@
+.message-composer:hover:not([data-disabled='true']),
+.message-composer:focus-within:not([data-disabled='true']) {
+  border-color: var(--color-border-strong);
+}
+
+.message-composer:not([data-disabled='true']):has([data-control-surface='embedded']:focus-visible) {
+  border-color: var(--color-focus-ring);
+}
+
+.message-composer:not([data-disabled='true']):has(
+    [data-control-surface='embedded']:is(
+      [aria-invalid='true'],
+      [aria-invalid='grammar'],
+      [aria-invalid='spelling']
+    )
+  ) {
+  border-color: var(--color-border-error);
+}

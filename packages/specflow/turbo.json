@@ -1,31 +1,15 @@
 {
   "$schema": "https://turborepo.com/schema.json",
-  "extends": [
-    "//"
-  ],
+  "extends": ["//"],
   "tasks": {
     "build": {
-      "dependsOn": [
-        "^build"
-      ],
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        "!**/*.md",
-        "!**/*.test.*"
-      ],
-      "outputs": [
-        "dist/**"
-      ]
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.md", "!**/*.test.*"],
+      "outputs": ["dist/**"]
     },
     "test": {
-      "dependsOn": [
-        "^build",
-        "build"
-      ],
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        "!**/*.md"
-      ],
+      "dependsOn": ["^build", "build"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
       "outputs": []
     }
   }

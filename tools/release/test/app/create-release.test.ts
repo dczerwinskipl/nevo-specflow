@@ -221,9 +221,13 @@ describe('executeRelease — Phase B (stable advance) structural validation §3'
     expect(github.createdReleases).toEqual(['v1.3.0']);
     expect(git.pushedBranches).toEqual([]);
 
-    await executeRelease({ channel: 'stable', expectedTag: 'v1.3.0' }, deps(true), {
-      mutate: true,
-    });
+    await executeRelease(
+      { channel: 'stable', expectedTag: 'v1.3.0' },
+      deps(true),
+      {
+        mutate: true,
+      },
+    );
     expect(git.createdTags).toEqual([{ tag: 'v1.3.0', sha: HEAD }]);
     expect(github.createdReleases).toEqual(['v1.3.0']);
     expect(git.pushedBranches.map((p) => p.branch)).toEqual([ADVANCE_BRANCH]);

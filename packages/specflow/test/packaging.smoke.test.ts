@@ -7,7 +7,7 @@
 // bundle itself has no dependencies to resolve. Every `pnpm` runs from the repo
 // root (which carries `packageManager`) so Corepack never downloads "latest".
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
@@ -84,8 +84,12 @@ beforeAll(() => {
   runEnv = { ...process.env, PATH: `${binDir}${delimiter}${process.env.PATH ?? ''}` };
 }, 180_000);
 
-afterAll(() => {
+afterAll(async () => {
   if (prefix) {
+    if (process.platform === 'win32') {
+      // Give Windows a moment to release executable/file handles after the child exits.
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
     rmSync(prefix, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   }
 });
@@ -249,12 +253,21 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
       'utf8',
     );
 
-    const child = crossSpawn('nevo-specflow', ['start'], {
-      cwd: prefix,
-      env: runEnv,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      windowsHide: true,
-    });
+    const installedBin = join(prefix, 'node_modules', '@nevo', 'specflow', 'dist', 'bin.js');
+    const child =
+      process.platform === 'win32'
+        ? spawn(process.execPath, [installedBin, 'start'], {
+            cwd: prefix,
+            env: runEnv,
+            stdio: ['ignore', 'pipe', 'pipe'],
+            windowsHide: true,
+          })
+        : crossSpawn('nevo-specflow', ['start'], {
+            cwd: prefix,
+            env: runEnv,
+            stdio: ['ignore', 'pipe', 'pipe'],
+            windowsHide: true,
+          });
     child.stdout.setEncoding('utf8');
     child.stderr.setEncoding('utf8');
 

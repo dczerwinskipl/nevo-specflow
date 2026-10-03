@@ -151,7 +151,7 @@ export async function executeRelease(
     events.push(
       info(
         recoveringPublishedArtifacts
-          ? `Recovering ${tag}: required product assets are incomplete. ` +
+          ? `Recovering ${tag}: its GitHub Release exists but required product assets are incomplete. ` +
               `Not cutting ${plan.tag}.`
           : `Recovering ${tag}: its tag is on ${headShort} but the GitHub Release is missing. ` +
               `Not cutting ${plan.tag}.`,
@@ -180,7 +180,9 @@ export async function executeRelease(
     } else {
       events.push(
         info(
-          `Would create GitHub Release ${tag} (${plan.prerelease ? 'prerelease' : 'stable'}).`,
+          `Would create the GitHub Release for ${tag} (${
+            plan.prerelease ? 'prerelease' : 'stable'
+          }).`,
         ),
       );
     }
@@ -215,7 +217,6 @@ export async function executeRelease(
 
   return { events, plan, tag, mutated: mutate };
 }
-
 
 async function hasRequiredReleaseArtifacts(github: GitHubClient, tag: string): Promise<boolean> {
   let names: string[];

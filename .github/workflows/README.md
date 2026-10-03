@@ -36,6 +36,8 @@ Current pins:
 | `actions/attest`                      | `1e69f48acb82d1966a394da916b4c1698aa569d6` | v4.2.2  |
 | `actions/upload-artifact`             | `043fb46d1a93c77aae656e7c1c64a875d1fc6a0a` | v7.0.1  |
 | `actions/download-artifact`           | `37930b1c2abaa49bbe596cd826c3c89aef350131` | v7.0.0  |
+| `actions/upload-artifact`             | `043fb46d1a93c77aae656e7c1c64a875d1fc6a0a` | v7.0.1  |
+| `actions/download-artifact`           | `37930b1c2abaa49bbe596cd826c3c89aef350131` | v7.0.0  |
 
 ## Security gates
 

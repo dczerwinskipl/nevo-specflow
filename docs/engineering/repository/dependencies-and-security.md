@@ -64,6 +64,9 @@ vulnerabilities discovered after a dependency is already on the default branch.
 branches, and weekly. It uses CodeQL's no-build mode and the stable `codeql` check name. GitHub
 reduces `GITHUB_TOKEN` write permissions for fork and Dependabot pull requests, so those runs keep
 the analysis/check but set CodeQL upload to `never`; trusted same-repository/push runs upload SARIF.
+The workflow never switches to `pull_request_target` to regain write access to untrusted PR code. GitHub
+reduces `GITHUB_TOKEN` write permissions for fork and Dependabot pull requests, so those runs keep
+the analysis/check but set CodeQL upload to `never`; trusted same-repository/push runs upload SARIF.
 The workflow never switches to `pull_request_target` to regain write access to untrusted PR code.
 
 ## GitHub Action pinning

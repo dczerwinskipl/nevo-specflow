@@ -8,7 +8,7 @@ read_when:
   - adding code that ships inside @nevo/specflow
   - reviewing release artifacts or package metadata
 summary: >
-  @nevo/specflow owns the product artifact build. Package-owned build scripts create a
+  @nevo/specflow owns the product artifact build. Package-owned packaging scripts create a
   self-contained CLI bundle and attribution metadata, then standard pnpm pack creates the tarball.
 related:
   - adr.0011-product-artifact-packaging-and-pnpm-compatibility

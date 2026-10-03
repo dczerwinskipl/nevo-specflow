@@ -66,7 +66,9 @@ beforeAll(() => {
 }, 180_000);
 
 afterAll(() => {
-  if (prefix) rmSync(prefix, { recursive: true, force: true });
+  if (prefix) {
+    rmSync(prefix, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+  }
 });
 
 interface Run {
@@ -229,12 +231,19 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
       'utf8',
     );
 
-    const child = spawn('nevo-specflow', ['start'], {
-      cwd: prefix,
-      env: runEnv,
-      shell: sh,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    const installedBin = join(prefix, 'node_modules', '@nevo', 'specflow', 'dist', 'bin.js');
+    const child =
+      process.platform === 'win32'
+        ? spawn(process.execPath, [installedBin, 'start'], {
+            cwd: prefix,
+            env: runEnv,
+            stdio: ['ignore', 'pipe', 'pipe'],
+          })
+        : spawn('nevo-specflow', ['start'], {
+            cwd: prefix,
+            env: runEnv,
+            stdio: ['ignore', 'pipe', 'pipe'],
+          });
     child.stdout.setEncoding('utf8');
     child.stderr.setEncoding('utf8');
 
@@ -280,8 +289,15 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
 
       child.kill('SIGTERM');
       const [code, signal] = (await once(child, 'exit')) as [number | null, NodeJS.Signals | null];
-      expect(signal).toBeNull();
-      expect(code).toBe(0);
+      if (process.platform === 'win32') {
+        // Node cannot deliver POSIX-style SIGTERM to a child process on Windows;
+        // child.kill() terminates it and reports the signal instead.
+        expect(signal).toBe('SIGTERM');
+        expect(code).toBeNull();
+      } else {
+        expect(signal).toBeNull();
+        expect(code).toBe(0);
+      }
     } finally {
       if (child.exitCode === null && child.signalCode === null) {
         child.kill('SIGTERM');

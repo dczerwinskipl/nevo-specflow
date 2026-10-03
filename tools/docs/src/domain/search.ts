@@ -3,12 +3,31 @@
 
 import { asString, type DocRecord } from './frontmatter.js';
 
+function isAsciiAlphanumeric(char: string): boolean {
+  const code = char.charCodeAt(0);
+  return (
+    (code >= 48 && code <= 57) ||
+    (code >= 97 && code <= 122)
+  );
+}
+
+function trimNonAlphanumeric(value: string): string {
+  let start = 0;
+  let end = value.length;
+
+  while (start < end && !isAsciiAlphanumeric(value[start]!)) {
+    start += 1;
+  }
+
+  while (end > start && !isAsciiAlphanumeric(value[end - 1]!)) {
+    end -= 1;
+  }
+
+  return value.slice(start, end);
+}
+
 export function normalizeTerm(term: string): string {
-  const t = term
-    .toLowerCase()
-    .trim()
-    .replace(/^[^a-z0-9]+/, '')
-    .replace(/[^a-z0-9]+$/, '');
+  const t = trimNonAlphanumeric(term.toLowerCase());
   if (!t) return '';
   if (t.endsWith('ies') && t.length > 4) return `${t.slice(0, -3)}y`;
   if (t.endsWith('sses')) return t.slice(0, -2);

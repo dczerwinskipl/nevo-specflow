@@ -23,6 +23,27 @@ function relLink(file: string): string {
   return file.replace(/^docs\//, '');
 }
 
+function encodeMarkdownTableCell(value: string): string {
+  const result: string[] = [];
+
+  for (let i = 0; i < value.length; i += 1) {
+    const char = value[i]!;
+
+    if (char === '\r') {
+      result.push(' ');
+      if (value[i + 1] === '\n') i += 1;
+    } else if (char === '\n') {
+      result.push(' ');
+    } else if (char === '|') {
+      result.push('&#124;');
+    } else {
+      result.push(char);
+    }
+  }
+
+  return result.join('').trim();
+}
+
 export interface BuiltIndex {
   readonly json: string;
   readonly md: string;
@@ -53,10 +74,7 @@ export function buildIndex(docs: readonly DocRecord[]): BuiltIndex {
     md += `## ${type.charAt(0).toUpperCase()}${type.slice(1)}\n\n`;
     md += '| ID | Title | Status | Summary |\n|---|---|---|---|\n';
     for (const doc of group) {
-      const summary = asString(doc.summary)
-        .replace(/\r?\n/g, ' ')
-        .replace(/[\\|]/g, (char) => `\\${char}`)
-        .trim();
+      const summary = encodeMarkdownTableCell(asString(doc.summary));
       md +=
         `| \`${asString(doc.id)}\` | [${asString(doc.title)}](${relLink(doc.file)}) | ` +
         `${asString(doc.status)} | ${summary} |\n`;

@@ -65,6 +65,14 @@ describe('normalizeTerm / tokenize', () => {
     const punctuation = '/'.repeat(100_000);
     expect(normalizeTerm(`${punctuation}branches${punctuation}`)).toBe('branch');
   });
+
+  it('returns empty for input containing only non-alphanumeric characters', () => {
+    expect(normalizeTerm('/'.repeat(200_000))).toBe('');
+  });
+
+  it('trims only the edges', () => {
+    expect(normalizeTerm('/foo/bar/')).toBe('foo/bar');
+  });
 });
 
 describe('scoreDoc', () => {

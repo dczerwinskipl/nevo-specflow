@@ -6,11 +6,12 @@ status: current
 read_when:
   - writing tests for application or infrastructure code
   - choosing a test boundary
+  - placing tests, fixtures, test helpers, or Storybook stories
   - reviewing determinism or test isolation
 summary: >
-  Shared testing strategy: pure policy tests, application tests with in-memory fakes,
-  adapter integration tests, deterministic fixtures, and focused coverage rather than
-  framework re-testing.
+  Shared testing strategy and ownership-based placement: co-located module/component tests
+  and Storybook stories, cross-boundary package test trees, deterministic fixtures, and
+  focused coverage rather than framework re-testing.
 related:
   - engineering.shared.code-organization
   - engineering.shared.effects-and-io
@@ -33,18 +34,109 @@ concrete reason to use a different runner.
 
 Do not re-test framework behavior that the framework itself owns.
 
-## Test placement
+## Test and story placement
 
-Keep tests with the ownership model of the code they verify:
+Placement follows **ownership**, not technology. A test or Storybook story that belongs to one
+module/component lives beside that owner. A package-level `test/` tree is reserved for tests whose
+boundary genuinely spans multiple source modules or an external/package boundary.
 
-- **UI and reusable browser libraries** — co-locate focused `.test.ts(x)` files with the
-  component/module they verify. Shared test helpers may live in a dedicated
-  `test-utils/` area.
-- **Runtime, CLI, backend, and repository tooling** — use a package-level `test/`
-  tree that mirrors meaningful `src/` responsibilities such as `domain/`, `app/`,
-  `infra/`, and `cli/`.
+### Co-locate owned tests
 
-Do not force one directory convention across fundamentally different runtime surfaces.
+Co-locate focused unit/module tests with the production file they verify:
+
+```text
+src/
+  retry.ts
+  retry.test.ts
+
+  authorization/
+    resolver.ts
+    resolver.test.ts
+```
+
+Use `.test.ts` / `.test.tsx` as the repository convention. Vitest also recognizes
+`.spec.ts(x)`; treat that suffix as test-only/reserved and do **not** use names such as
+`workflow.spec.ts` for production modules. For the SpecFlow domain, use unambiguous production
+names such as `spec.ts`, `workflow-spec.ts`, or `specification.ts`.
+
+If a co-located test needs a separate test-only helper under
+`src/`, use an explicit `.test-support.ts(x)` segment. Story-only support files should retain a
+`.stories.` segment. Those names make the development-only ownership visible to humans and let the
+package builder exclude them from production-source platform validation.
+
+Do not create a mirrored `test/` or `__tests__/` tree merely to separate unit tests from source.
+
+A useful ownership check is: **if moving or deleting the production module should naturally move or
+delete this test too, the test should be co-located.**
+
+For a focused unit test, import the owned module directly rather than routing through a package
+barrel only to reach it. Test the package barrel/public surface separately when that public contract
+itself is the behavior under test.
+
+### React components and stories
+
+React follows the same rule; it is not a special exception:
+
+```text
+Button/
+  Button.tsx
+  Button.test.tsx
+  Button.stories.tsx
+  button.css
+  index.ts
+```
+
+Component tests, hooks tests, stories, feature-local fixtures, and feature-local test helpers stay
+with the component or vertical slice that owns them. Stories describe the same public UI contract
+and should move with the component.
+
+Do not create central `stories/`, `components-tests/`, or repository-wide fixture folders for
+artifacts owned by one component.
+
+### Use `test/` for cross-boundary verification
+
+Use a package-level `test/` directory when there is no single source module that owns the test,
+for example:
+
+- package/public-API contract tests spanning several modules;
+- adapter or integration tests spanning multiple application responsibilities;
+- real filesystem/process/network boundary tests;
+- packaging, installed-artifact, end-to-end, or smoke tests.
+
+Name the boundary when it helps make the reason obvious:
+
+```text
+test/
+  public-api.contract.test.ts
+  authorization.contract.test.ts
+  packaging.smoke.test.ts
+```
+
+A `test/` tree may mirror meaningful capabilities when the tests themselves are integration-level.
+Do not use that permission to recreate a second copy of `src/` for ordinary units.
+
+### Test helpers
+
+Prefer a helper beside the tests/slice that owns it. Introduce a package-level `test-utils/` only
+when multiple independent slices genuinely share the helper. Avoid generic fixture/helper dumping
+grounds.
+
+### Existing code and migration
+
+This convention applies to new tests immediately. Existing package-level tests do not need a
+repository-wide mechanical move. When a focused unit test is touched and its owner is clear, move it
+beside that owner when doing so is low-risk. Keep true integration/contract/smoke tests in `test/`.
+
+### Placement checklist for coding agents
+
+Before creating or moving a test/story:
+
+1. Identify the production owner and the behavior boundary.
+2. If one module/component/vertical slice owns it, co-locate it.
+3. If the test coordinates multiple owners or verifies a package/external boundary, use `test/`.
+4. Keep React stories next to the component.
+5. Prefer feature-local helpers; promote helpers only after real reuse appears.
+6. Do not choose layout from an older neighboring file when that file conflicts with this rule.
 
 ## Package isolation in CI
 

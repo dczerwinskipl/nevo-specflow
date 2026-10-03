@@ -57,14 +57,15 @@ describe('executeRelease — validate-only parity + §2 local/remote HEAD', () =
       { name: 'quality', status: 'completed', conclusion: 'success', id: 1 },
       { name: 'verify tests', status: 'completed', conclusion: 'failure', id: 2 },
       { name: 'build', status: 'completed', conclusion: 'success', id: 3 },
-      { name: 'CodeQL', status: 'completed', conclusion: 'success', id: 4 },
+      { name: 'product smoke', status: 'completed', conclusion: 'success', id: 4 },
+      { name: 'codeql', status: 'completed', conclusion: 'success', id: 5 },
     ];
     await expect(run('beta', false)).rejects.toBeInstanceOf(InconsistentStateError);
     await expect(run('beta', true)).rejects.toBeInstanceOf(InconsistentStateError);
     expect(git.createdTags).toEqual([]);
   });
 
-  it('a stale local HEAD (behind/diverged from origin) is refused before any mutation', async () => {
+  it('refuses a stale local HEAD before any mutation', async () => {
     git.state.refs.set(`origin/${RELEASE_BRANCH}`, BASE); // remote moved past local HEAD
     await expect(run('beta', false)).rejects.toThrow(/is not origin\/release\/v1\.3/);
     await expect(run('beta', true)).rejects.toThrow(/is not origin\/release\/v1\.3/);
@@ -95,7 +96,7 @@ describe('executeRelease — validate-only parity + §2 local/remote HEAD', () =
 describe('executeRelease — Phase A recovery + fail-closed GitHub reads', () => {
   beforeEach(() => onReleaseBranch({ channel: 'beta', version: '1.3.0' }));
 
-  it('orphan beta.1 on HEAD, Release missing -> completes beta.1 (execute), described in dry-run', async () => {
+  it('recovers an orphan beta.1 on HEAD instead of skipping it', async () => {
     git.state.tags.set('v1.3.0-beta.1', HEAD);
     const dry = await run('beta', false);
     expect(msgs(dry)).toMatch(/creating the missing GitHub Release/);
@@ -109,11 +110,45 @@ describe('executeRelease — Phase A recovery + fail-closed GitHub reads', () =>
     expect(github.createdReleases).toEqual(['v1.3.0-beta.1']);
   });
 
-  it('an orphan prerelease tag sitting on a different commit is not reused -> next number', async () => {
+  it('does not reuse an orphan prerelease tag from another commit', async () => {
     git.state.tags.set('v1.3.0-beta.1', 'elsewhere00000000000000000000000000000000');
     await run('beta', true);
     // beta.1 is elsewhere and has no Release -> do not reuse it, cut beta.2.
     expect(git.createdTags).toEqual([{ tag: 'v1.3.0-beta.2', sha: HEAD }]);
+  });
+
+  it('recovers the same prerelease when its Release is missing product assets', async () => {
+    git.state.tags.set('v1.3.0-beta.1', HEAD);
+    github.state.releases.add('v1.3.0-beta.1');
+    github.state.releaseAssets.set('v1.3.0-beta.1', ['nevo-specflow-1.3.0-beta.1.tgz']);
+
+    const result = await run('beta', false);
+    expect(result.tag).toBe('v1.3.0-beta.1');
+    expect(msgs(result)).toMatch(/required product assets are incomplete/i);
+  });
+
+  it('fails closed when assets of an existing prerelease cannot be read', async () => {
+    git.state.tags.set('v1.3.0-beta.1', HEAD);
+    github.state.releases.add('v1.3.0-beta.1');
+    github.state.failReleaseAssets = new Error('HTTP 503');
+
+    await expect(run('beta', false)).rejects.toThrow(/Release assets.*HTTP 503/i);
+  });
+
+  it('fails before mutation when expectedTag no longer matches', async () => {
+    git.state.tags.set('v1.3.0-beta.1', HEAD);
+    github.state.releases.add('v1.3.0-beta.1');
+    github.state.releaseAssets.set('v1.3.0-beta.1', [
+      'nevo-specflow-1.3.0-beta.1.tgz',
+      'nevo-specflow-1.3.0-beta.1.tgz.sha256',
+    ]);
+
+    await expect(
+      executeRelease({ channel: 'beta', expectedTag: 'v1.3.0-beta.1' }, deps(), { mutate: true }),
+    ).rejects.toThrow(/candidate changed.*v1\.3\.0-beta\.1.*v1\.3\.0-beta\.2/i);
+
+    expect(git.createdTags).toEqual([]);
+    expect(github.createdReleases).toEqual([]);
   });
 
   it('an ambiguous GitHub Release read (auth/network) fails closed, never "absent"', async () => {
@@ -160,7 +195,7 @@ describe('executeRelease — Phase B (stable advance) structural validation §3'
     expect(git.pushedBranches).toEqual([]);
   });
 
-  it('fresh stable with token: tags, releases, pushes the advance branch and opens the PR', async () => {
+  it('publishes stable and opens the advance PR when a token is available', async () => {
     await run('stable', true, true);
     expect(git.createdTags).toEqual([{ tag: 'v1.3.0', sha: HEAD }]);
     expect(github.createdReleases).toEqual(['v1.3.0']);
@@ -168,6 +203,25 @@ describe('executeRelease — Phase B (stable advance) structural validation §3'
     expect(github.createdPrs).toEqual([
       expect.objectContaining({ head: ADVANCE_BRANCH, base: RELEASE_BRANCH }),
     ]);
+  });
+
+  it('can defer stable advance until the release artifact is published', async () => {
+    const first = await executeRelease({ channel: 'stable' }, deps(true), {
+      mutate: true,
+      deferAdvance: true,
+    });
+
+    expect(msgs(first)).toMatch(/advance deferred.*artifact publication/i);
+    expect(git.createdTags).toEqual([{ tag: 'v1.3.0', sha: HEAD }]);
+    expect(github.createdReleases).toEqual(['v1.3.0']);
+    expect(git.pushedBranches).toEqual([]);
+
+    await executeRelease({ channel: 'stable', expectedTag: 'v1.3.0' }, deps(true), {
+      mutate: true,
+    });
+    expect(git.createdTags).toEqual([{ tag: 'v1.3.0', sha: HEAD }]);
+    expect(github.createdReleases).toEqual(['v1.3.0']);
+    expect(git.pushedBranches.map((p) => p.branch)).toEqual([ADVANCE_BRANCH]);
   });
 
   it('§9: phase A already complete -> phase B still runs', async () => {
@@ -185,13 +239,13 @@ describe('executeRelease — Phase B (stable advance) structural validation §3'
     expect(github.createdPrs).toHaveLength(1);
   });
 
-  it('advance branch: correct version.json but an unrelated file also changed -> reject', async () => {
+  it('rejects an advance branch that also changes an unrelated file', async () => {
     seedAdvance({ ...releaseFiles(), 'version.json': versionFileText(NEXT), 'unrelated.txt': 'x' });
     await expect(run('stable', true, true)).rejects.toThrow(/not only version\.json/);
     expect(git.pushedBranches).toEqual([]);
   });
 
-  it('advance branch: derives from the wrong base (not current release HEAD) -> reject', async () => {
+  it('rejects an advance branch based on the wrong release HEAD', async () => {
     seedAdvance({ ...releaseFiles(), 'version.json': versionFileText(NEXT) }, BASE);
     await expect(run('stable', true, true)).rejects.toThrow(/not a single commit on the current/);
   });

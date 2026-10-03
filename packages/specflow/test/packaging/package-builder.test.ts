@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
 const builder = join(repoRoot, 'tools', 'build-package.mjs');
 const fixtures: string[] = [];
 
@@ -15,7 +15,7 @@ afterEach(() => {
   }
 });
 
-describe('product package builder contract', () => {
+describe('repository package builder contract', () => {
   it('builds a platform-neutral package from the neutral profile', () => {
     const fixture = createFixture({
       profile: 'neutral',
@@ -87,6 +87,31 @@ describe('product package builder contract', () => {
     const result = runBuilder(fixture);
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("neutral package imports Node builtin 'node:fs'");
+  });
+
+  it('does not treat co-located tests and stories as neutral production source', () => {
+    const fixture = createFixture({
+      profile: 'neutral',
+      source: 'export const answer = 42;\n',
+    });
+    writeFileSync(
+      join(fixture, 'src', 'index.test.ts'),
+      "import { readFile } from 'node:fs/promises';\nvoid readFile;\n",
+    );
+    writeFileSync(
+      join(fixture, 'src', 'index.spec.ts'),
+      "import { basename } from 'node:path';\nvoid basename;\n",
+    );
+    writeFileSync(
+      join(fixture, 'src', 'index.stories.ts'),
+      "import { basename } from 'node:path';\nvoid basename;\n",
+    );
+    writeFileSync(
+      join(fixture, 'src', 'index.test-support.ts'),
+      "import { randomUUID } from 'node:crypto';\nvoid randomUUID;\n",
+    );
+
+    expect(runBuilder(fixture)).toMatchObject({ status: 0 });
   });
 });
 

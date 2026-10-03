@@ -26,7 +26,15 @@
     "$comment": "Exact check-run (job) names. doNotEnforceOnCreate lets `cut-release-line` create release/vX.Y (a non-PR push, so no checks can have run on it) while still gating every later push.",
     "strict": true,
     "doNotEnforceOnCreate": true,
-    "checks": ["pr-title", "quality", "verify tests", "build", "CodeQL"]
+    "checks": [
+      "pr-title",
+      "quality",
+      "dependency review",
+      "verify tests",
+      "build",
+      "product smoke",
+      "codeql"
+    ]
   },
 
   "rulesets": [
@@ -39,7 +47,19 @@
       "baseRules": [
         { "type": "deletion" },
         { "type": "non_fast_forward" },
-        { "type": "required_linear_history" }
+        { "type": "required_linear_history" },
+        {
+          "type": "code_scanning",
+          "parameters": {
+            "code_scanning_tools": [
+              {
+                "tool": "CodeQL",
+                "alerts_threshold": "errors",
+                "security_alerts_threshold": "high_or_higher"
+              }
+            ]
+          }
+        }
       ]
     },
     {

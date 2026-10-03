@@ -21,7 +21,13 @@ const onV13 = (channel: string, version: string, existingTags: string[] = []) =>
 
 describe('planRelease', () => {
   it('required HEAD checks exclude the PR-only pr-title check', () => {
-    expect([...REQUIRED_HEAD_CHECKS]).toEqual(['quality', 'verify tests', 'build', 'CodeQL']);
+    expect([...REQUIRED_HEAD_CHECKS]).toEqual([
+      'quality',
+      'verify tests',
+      'build',
+      'product smoke',
+      'codeql',
+    ]);
   });
 
   it('beta picks the next intentional number', () => {
@@ -131,10 +137,11 @@ describe('check-run selection (§11)', () => {
       { name: 'verify tests', status: 'completed', conclusion: 'failure', id: 101 },
       { name: 'quality', status: 'completed', conclusion: 'success', id: 5 },
       { name: 'build', status: 'in_progress', conclusion: null, id: 9 },
-      { name: 'CodeQL', status: 'completed', conclusion: 'success', id: 10 },
+      { name: 'product smoke', status: 'completed', conclusion: 'success', id: 10 },
+      { name: 'codeql', status: 'completed', conclusion: 'success', id: 11 },
       { id: 12 },
     ]);
-    expect(byName.size).toBe(4);
+    expect(byName.size).toBe(5);
     const { missing, notPassing } = evaluateRequiredChecks(byName, [...REQUIRED_HEAD_CHECKS]);
     expect(missing).toEqual([]);
     expect(notPassing).toEqual(['verify tests (completed/failure)', 'build (in_progress/pending)']);
@@ -145,7 +152,8 @@ describe('check-run selection (§11)', () => {
       { name: 'quality', status: 'completed', conclusion: 'success', id: 1 },
       { name: 'verify tests', status: 'completed', conclusion: 'success', id: 2 },
       { name: 'build', status: 'completed', conclusion: 'success', id: 3 },
-      { name: 'CodeQL', status: 'completed', conclusion: 'success', id: 4 },
+      { name: 'product smoke', status: 'completed', conclusion: 'success', id: 4 },
+      { name: 'codeql', status: 'completed', conclusion: 'success', id: 5 },
     ]);
     expect(evaluateRequiredChecks(byName, [...REQUIRED_HEAD_CHECKS])).toEqual({
       missing: [],

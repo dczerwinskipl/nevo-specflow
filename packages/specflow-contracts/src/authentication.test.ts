@@ -6,7 +6,7 @@ import {
   PASSWORD_MAX_LENGTH,
   PASSWORD_USERNAME_MAX_LENGTH,
   PasswordLoginRequestSchema,
-} from '../src/authentication';
+} from './authentication';
 
 describe('SpecFlow authentication contracts', () => {
   it('models authenticated and unauthenticated sessions as distinct states', () => {

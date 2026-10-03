@@ -1,4 +1,4 @@
-// `nevo-repo-product pack` — the ONE canonical way to produce the installable
+// `@nevo/specflow artifact:pack` — the canonical way to produce the installable
 // Nevo SpecFlow product artifact. Local dogfooding, and any future CI / release
 // job, call this same function; there is no second pack implementation.
 
@@ -6,11 +6,11 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } fro
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 
-import { bundleProduct } from './bundle.js';
-import { run, StepFailedError } from './exec.js';
-import { buildThirdPartyNotices } from './notices.js';
-import { findRepoRoot, readJson, repoPaths, type RepoPaths } from './paths.js';
-import { resolveProductVersion } from './version.js';
+import { bundleProduct } from './bundle.ts';
+import { run, StepFailedError } from './exec.ts';
+import { buildThirdPartyNotices } from './notices.ts';
+import { findRepoRoot, readJson, repoPaths, type RepoPaths } from './paths.ts';
+import { resolveProductVersion } from './version.ts';
 
 export interface PackResult {
   readonly name: string;

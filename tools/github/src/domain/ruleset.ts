@@ -31,6 +31,7 @@ export function rulesFor(
       },
     });
   }
+
   return rules;
 }
 
@@ -49,14 +50,26 @@ export function desiredRuleset(
   };
 }
 
-/** Strip server-added noise so a stored ruleset compares cleanly against the policy. */
+/**
+ * Strip server-added noise and canonicalize top-level rule order.
+ *
+ * GitHub may reorder rules when persisting a ruleset (for example moving
+ * `code_scanning` after PR/status-check rules). Rule order is not part of the
+ * desired policy, so reconciliation compares the canonicalized sets instead of
+ * array positions.
+ */
 export function normalizeRules(rules: unknown): unknown[] {
   if (!Array.isArray(rules)) return [];
-  return rules.map((r) => {
-    const rule = (typeof r === 'object' && r !== null ? r : {}) as {
-      type?: unknown;
-      parameters?: unknown;
-    };
-    return rule.parameters ? { type: rule.type, parameters: rule.parameters } : { type: rule.type };
-  });
+
+  return rules
+    .map((r) => {
+      const rule = (typeof r === 'object' && r !== null ? r : {}) as {
+        type?: unknown;
+        parameters?: unknown;
+      };
+      return rule.parameters
+        ? { type: rule.type, parameters: rule.parameters }
+        : { type: rule.type };
+    })
+    .sort((left, right) => String(left.type).localeCompare(String(right.type)));
 }

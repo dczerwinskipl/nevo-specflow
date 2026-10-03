@@ -150,9 +150,11 @@ export function seedBranch(
 export interface FakeGitHubState {
   checkRuns: NormalizedCheckRun[];
   releases: Set<string>;
+  releaseAssets: Map<string, string[]>;
   openPrs: { head: string; base: string; url: string }[];
   /** when set, releaseExists / findOpenPullRequest / checkRunsForCommit throw it. */
   failReleaseView?: Error;
+  failReleaseAssets?: Error;
   failPrList?: Error;
   failCheckRuns?: Error;
   /** 'ok' -> enabled; 'unavailable' -> the expected non-fatal case; Error -> thrown. */
@@ -170,6 +172,7 @@ export function createFakeGitHub(overrides: Partial<FakeGitHubState> = {}): Fake
   const state: FakeGitHubState = {
     checkRuns: greenChecks(),
     releases: new Set(),
+    releaseAssets: new Map(),
     openPrs: [],
     autoMerge: 'ok',
     ...overrides,
@@ -191,6 +194,11 @@ export function createFakeGitHub(overrides: Partial<FakeGitHubState> = {}): Fake
     releaseExists: async (tag) => {
       if (state.failReleaseView) throw state.failReleaseView;
       return state.releases.has(tag);
+    },
+    releaseAssetNames: async (tag) => {
+      if (state.failReleaseAssets) throw state.failReleaseAssets;
+      if (!state.releases.has(tag)) throw new Error(`Release ${tag} does not exist`);
+      return [...(state.releaseAssets.get(tag) ?? [])];
     },
     createRelease: async ({ tag }) => {
       state.releases.add(tag);
@@ -223,7 +231,8 @@ export function greenChecks(): NormalizedCheckRun[] {
     { name: 'quality', status: 'completed', conclusion: 'success', id: 1 },
     { name: 'verify tests', status: 'completed', conclusion: 'success', id: 2 },
     { name: 'build', status: 'completed', conclusion: 'success', id: 3 },
-    { name: 'CodeQL', status: 'completed', conclusion: 'success', id: 4 },
+    { name: 'product smoke', status: 'completed', conclusion: 'success', id: 4 },
+    { name: 'codeql', status: 'completed', conclusion: 'success', id: 5 },
   ];
 }
 

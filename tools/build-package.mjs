@@ -130,8 +130,12 @@ function findSource(cwd, stem) {
 
 function validateNeutralSource(cwd, pkg) {
   const sourceFiles = [];
-  collectMatchingFiles(join(cwd, 'src'), sourceFiles, (name) =>
-    /\.(?:ts|tsx|mts|cts)$/u.test(name),
+  collectMatchingFiles(
+    join(cwd, 'src'),
+    sourceFiles,
+    (name) =>
+      /\.(?:ts|tsx|mts|cts)$/u.test(name) &&
+      !/\.(?:test|spec|stories|test-support)(?:\.|$)/u.test(name),
   );
 
   for (const file of sourceFiles) {
@@ -255,9 +259,9 @@ function resolveNodeBuildTarget(root) {
 }
 
 function verifyNodeNextDeclarations(cwd, pkg, profile) {
-  // Keep the synthetic consumer on the package's volume. On Windows, path.relative()
-  // cannot produce a valid module specifier when the OS temp directory and the
-  // checkout live on different drives (for example C: and D:).
+  // Keep the synthetic consumer on the package volume. On Windows, the runner temp
+  // directory may be on C: while the checkout is on D:, and path.relative() across
+  // drives is not a valid relative ESM specifier.
   const tempDir = mkdtempSync(join(cwd, '.nevo-package-surface-'));
   try {
     const consumer = join(tempDir, 'consumer.mts');

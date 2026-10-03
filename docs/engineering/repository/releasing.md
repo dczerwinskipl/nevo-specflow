@@ -40,13 +40,15 @@ Everything is a **Run workflow** in the Actions tab. To ship `stable 0.1.0`:
 
 - **Promotion** changes `version.json` on the protected branch **only through a normal
   PR** — it never edits `release/vX.Y` directly and never tags anything.
-- **Release** creates the Git tag + GitHub Release, and only after the branch HEAD has
-  passed `quality` + `verify tests` + `build` + `CodeQL`.
+- **Release** resolves the exact tag, builds that candidate once, smokes the same tarball on
+  Linux/Windows/macOS, and only then may create/complete the tag + GitHub Release. The branch HEAD
+  must already have passed `quality`, `verify tests`, `build`, `product smoke`, and `codeql`.
 - A `stable` Release also opens the PR that advances the branch to the next patch's
   `beta`, so later builds never keep reporting the shipped version.
-- Every workflow has a **validate-only** mode (leave `execute` unchecked): it runs all
-  the real checks and reports what it _would_ do, changing nothing.
-- Distributing an npm package / installing the CLI is out of scope here.
+- Every workflow has a **validate-only** mode (leave `execute` unchecked): Release still builds and
+  cross-platform smokes the exact candidate, but does not create a tag/Release/PR or attestation.
+- Releases publish a GitHub Release tarball + SHA-256 + provenance attestation; npm publishing is
+  intentionally out of scope.
 
 ## `version.json`
 
@@ -80,11 +82,11 @@ by `release/vX.Y`'s rules no matter what the source branch is called. A local
 `pnpm version:print` derives the build version from `version.json` + the CI
 environment:
 
-| Situation                                    | Build version                                                     |
-| -------------------------------------------- | ----------------------------------------------------------------- |
-| `channel: alpha` / `beta` / `rc`             | `<version>-<channel>.<GITHUB_RUN_NUMBER>` — e.g. `1.3.0-beta.147` |
-| `channel: stable`                            | `<version>` — e.g. `1.3.0`                                        |
-| ref is a tag `refs/tags/vX.Y.Z[-beta\|rc.N]` | that exact version — never re-derived                             |
+| Situation                         | Build version                                                     |                                           |
+| --------------------------------- | ----------------------------------------------------------------- | ----------------------------------------- |
+| `channel: alpha` / `beta` / `rc`  | `<version>-<channel>.<GITHUB_RUN_NUMBER>` — e.g. `1.3.0-beta.147` |                                           |
+| `channel: stable`                 | `<version>` — e.g. `1.3.0`                                        |                                           |
+| tag ref `refs/tags/vX.Y.Z[-beta.N | -rc.N]`                                                           | that exact tag version — never re-derived |
 
 The run number is a **build identifier**, not a release number.
 
@@ -152,13 +154,13 @@ Minimum fine-grained PAT permissions, derived from the GitHub APIs the tool actu
 calls (push a branch by plumbing, list/open a PR, request auto-merge, and — on the
 `Release` workflow only — read the HEAD check-runs and create a tag + GitHub Release):
 
-| Permission    | Level        | Why                                                                           |
-| ------------- | ------------ | ----------------------------------------------------------------------------- |
-| Contents      | Read & write | push the promotion / bump / advance branch; create the tag + GitHub Release   |
-| Pull requests | Read & write | list the open PR, open it, request auto-merge                                 |
-| Checks        | Read         | `Release` only — read the HEAD `quality`/`verify tests`/`build`/`CodeQL` runs |
-| Workflows     | Read         | only if a PR ever changes a file under `.github/workflows/`                   |
-| Metadata      | Read         | mandatory for every fine-grained PAT                                          |
+| Permission    | Level        | Why                                                                         |
+| ------------- | ------------ | --------------------------------------------------------------------------- |
+| Contents      | Read & write | push the promotion / bump / advance branch; create the tag + GitHub Release |
+| Pull requests | Read & write | list the open PR, open it, request auto-merge                               |
+| Checks        | Read         | `Release` only — read release-branch HEAD required check-runs               |
+| Workflows     | Read         | only if a PR ever changes a file under `.github/workflows/`                 |
+| Metadata      | Read         | mandatory for every fine-grained PAT                                        |
 
 The workflow `permissions:` blocks mirror this exactly — `release.yml` is the only one
 with `checks: read`, because it is the only one that reads check-runs. No token value is
@@ -223,13 +225,13 @@ Run **`Release`** from a `release/vX.Y` branch:
 
 | Input     | Meaning                                                               |
 | --------- | --------------------------------------------------------------------- |
-| `channel` | `beta` \| `rc` \| `stable`                                            |
+| `channel` | `beta`, `rc`, or `stable`                                             |
 | `execute` | Unchecked = **validate-only**: run every check below, change nothing. |
 
-**Validate-only is real validation, not a rubber stamp.** It runs every read-only
-check the execute path runs and answers _"would this succeed right now?"_ — it just
-never creates a commit / branch / tag / Release / PR / auto-merge. A dry run that
-"passes" means the real run would proceed.
+**Validate-only is real validation, not a rubber stamp.** It runs the release-plan checks, builds
+one exact candidate artifact, and installs/smokes that same tarball on Linux, Windows, and macOS.
+It does not create a commit / branch / tag / Release / PR / auto-merge or attestation. A dry run
+that passes proves the candidate and current repository state are ready for the mutation step.
 
 The checks, in order (all performed in both modes):
 
@@ -238,23 +240,30 @@ The checks, in order (all performed in both modes):
    (`git pull --ff-only` and retry); an unresolvable `origin/<branch>` fails closed.
    The release always tags the current remote protected-branch commit.
 2. branch / version-in-line / channel (**promote first** if the channel does not match);
-3. **the release-branch HEAD passed CI** — `quality`, `verify tests`, `build` and `CodeQL`
-   check-runs
+3. **the release-branch HEAD passed CI** — `quality`, `verify tests`, `build`, `product smoke`, and `codeql` check-runs
    must all be `success` on that commit (not `pr-title`, which is PR-only). A
    freshly-cut branch, a red commit, or an unreadable check-run response is refused;
 4. tag selection: `beta` / `rc` → the next number in that channel's sequence from the
    existing tags; `stable` → `v1.3.0`;
-5. **recovery-safe**: the target tag already on HEAD with its Release → nothing; on
-   HEAD without a Release → create just the missing Release; pointing elsewhere →
-   refuse loudly; an orphaned last prerelease tag on HEAD is completed, never skipped
-   to `-beta.2`. If the GitHub Release state cannot be **determined** (auth, network,
-   404-vs-outage ambiguity), the run fails closed rather than assuming "absent".
-6. execute: create the annotated tag + a GitHub Release (`--prerelease` for beta/rc,
-   generated notes). **No npm package is published.**
+5. **recovery-safe**: the target tag already on HEAD without its Release → complete that Release;
+   pointing elsewhere → refuse loudly. For prereleases, a tag + Release is still **incomplete**
+   until both `nevo-specflow-<version>.tgz` and its `.sha256` asset exist, so a failed artifact
+   publication keeps the same `beta.N` / `rc.N` on the next run instead of silently advancing.
+   If Release or asset state cannot be determined (auth/network/malformed response), fail closed.
+6. workflow candidate gate (both modes): build the exact planned tag version **once**, upload it as
+   a workflow artifact, then install/smoke that same tarball on Linux, Windows, and macOS;
+7. execute only: revalidate and create/complete the annotated tag + GitHub Release (`--prerelease`
+   for beta/rc, generated notes) while deferring the stable next-patch mutation. The publish job
+   downloads the already-tested candidate, verifies its embedded version still matches the planned
+   tag, writes SHA-256, creates provenance, and uploads those exact bytes + checksum;
+8. stable only: after artifact publication succeeds, run the same idempotent release operation again
+   to create/reuse the next-patch advance PR. A failed attest/upload therefore cannot move the
+   protected release line away from the release that still needs repair. **No npm package is
+   published.**
 
-The tag + Release (step 6) and the stable branch-advance below are **independent
-idempotent steps**: a re-run after "tag done, advance failed" still performs the
-advance — it is not skipped just because the tag is already complete.
+The tag + Release mutation, artifact publication, and stable branch advance are ordered but
+idempotent recovery points. Publication must complete before stable advance; a re-run after any
+partial state repairs the same release rather than skipping forward.
 
 ### After a stable tag
 

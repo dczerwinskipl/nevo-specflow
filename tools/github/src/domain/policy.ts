@@ -14,7 +14,7 @@ export interface RulesetSpec {
   readonly enforcement: string;
   readonly conditions: unknown;
   readonly bypass_actors?: unknown[];
-  readonly baseRules?: { type: string }[];
+  readonly baseRules?: { type: string; parameters?: unknown }[];
 }
 
 export interface RepositoryPolicy {

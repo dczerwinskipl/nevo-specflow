@@ -7,7 +7,7 @@
 
 import { existsSync } from 'node:fs';
 
-import { run, StepFailedError } from './exec.js';
+import { run, StepFailedError } from './exec.ts';
 
 const SEMVER =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;

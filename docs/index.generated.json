@@ -775,7 +775,7 @@
       "id": "adr.0006-product-ships-as-a-single-bundled-artifact",
       "type": "adr",
       "title": "The product ships as a single bundled artifact",
-      "status": "current",
+      "status": "superseded",
       "file": "docs/architecture/decisions/0006-product-ships-as-a-single-bundled-artifact.md",
       "read_when": [],
       "summary": "`@nevo/specflow` is distributed as one self-contained tarball. `nevo-repo-product` (esbuild) bundles the `nevo-specflow` entry, the internal workspace capability packages and `commander` into `dist/bin.js`, so the artifact installs with no registry and no workspace. Source package boundaries are unchanged — only the distribution is one file.",
@@ -821,10 +821,10 @@
       "status": "current",
       "file": "docs/architecture/decisions/0009-product-package-build-model.md",
       "read_when": [],
-      "summary": "Product packages use extensionless TypeScript source imports and explicit neutral or Node package profiles. Reusable package JavaScript and declaration surfaces are bundled together with one tsdown-based library build, while repository tools keep raw NodeNext tsc output and the final nevo-specflow distribution remains governed by ADR 0006.",
+      "summary": "Product packages use extensionless TypeScript source imports and explicit neutral or Node package profiles. Reusable package JavaScript and declaration surfaces are bundled together with one tsdown-based library build, while repository tools keep raw NodeNext tsc output and the final nevo-specflow distribution remains governed by ADR 0011.",
       "related": [
         "adr.0010-toolchain-policy-and-version-sources",
-        "adr.0006-product-ships-as-a-single-bundled-artifact",
+        "adr.0011-product-artifact-packaging-and-pnpm-compatibility",
         "engineering.shared.code-organization",
         "engineering.repository.product-packaging"
       ]
@@ -842,6 +842,21 @@
         "adr.0009-product-package-build-model",
         "architecture.repository-structure",
         "engineering.repository.local-setup",
+        "engineering.repository.dependencies-and-security"
+      ]
+    },
+    {
+      "id": "adr.0011-product-artifact-packaging-and-pnpm-compatibility",
+      "type": "adr",
+      "title": "Product artifact packaging and pnpm compatibility",
+      "status": "current",
+      "file": "docs/architecture/decisions/0011-product-artifact-packaging-and-pnpm-compatibility.md",
+      "read_when": [],
+      "summary": "Nevo SpecFlow keeps pnpm 10 while GitHub's documented Dependabot support stops at pnpm 10 and Dependency Graph still has an open multi-document-lockfile parsing gap, while keeping only the package-owned custom logic needed to build the self-contained product artifact and delegating archive creation to pnpm pack.",
+      "related": [
+        "adr.0006-product-ships-as-a-single-bundled-artifact",
+        "adr.0010-toolchain-policy-and-version-sources",
+        "engineering.repository.product-packaging",
         "engineering.repository.dependencies-and-security"
       ]
     },
@@ -919,7 +934,7 @@
       "related": [
         "design-system.implementation.react.component-guidelines",
         "design-system.principles.ui-ux-guidelines",
-        "engineering.cli.testing"
+        "engineering.shared.testing"
       ]
     },
     {
@@ -1026,13 +1041,13 @@
         "understanding what CI runs on a pull request",
         "a required check is failing or missing",
         "reproducing a CI failure locally",
-        "changing the CI workflow or required checks"
+        "changing CI or required checks"
       ],
-      "summary": "What the CI workflows run, how affected-package execution is scoped on PRs, which checks are required to merge, and what invalidates the whole graph.",
+      "summary": "Repository quality, affected package execution, dependency review, cross-platform artifact smoke, CodeQL, Chromatic visual regression, and the stable checks required by protected branches.",
       "related": [
         "engineering.repository.local-setup",
-        "architecture.repository-structure",
-        "engineering.repository.commit-conventions"
+        "engineering.repository.dependencies-and-security",
+        "architecture.repository-structure"
       ]
     },
     {
@@ -1062,12 +1077,13 @@
         "reviewing a Dependabot pull request",
         "reporting or triaging a vulnerability",
         "deciding how to pin a GitHub Action",
-        "checking the current CodeQL status"
+        "checking dependency-review or CodeQL policy"
       ],
-      "summary": "How dependency updates arrive (Dependabot, grouped, weekly), how versions are pinned, the vulnerability-report path, the repository security features that are enabled, and the current CodeQL status.",
+      "summary": "Dependency update, lockfile compatibility, dependency review, CodeQL, action pinning, vulnerability reporting, and repository security policy.",
       "related": [
         "engineering.repository.local-setup",
-        "engineering.repository.ci"
+        "engineering.repository.ci",
+        "adr.0011-product-artifact-packaging-and-pnpm-compatibility"
       ]
     },
     {
@@ -1083,7 +1099,7 @@
       "summary": "`pnpm dogfood:install` builds the real distributable, packs it, installs THAT tarball globally with pnpm, and smokes the installed `nevo-specflow`. It deliberately uses a tarball — not a workspace link — so it catches packaging problems a linked install would hide.",
       "related": [
         "engineering.repository.product-packaging",
-        "adr.0006-product-ships-as-a-single-bundled-artifact"
+        "adr.0011-product-artifact-packaging-and-pnpm-compatibility"
       ]
     },
     {
@@ -1114,14 +1130,14 @@
       "file": "docs/engineering/repository/local-setup.md",
       "read_when": [
         "setting up the development environment",
-        "running the standard repository commands",
-        "understanding what Turborepo does here"
+        "running standard repository commands",
+        "understanding Turborepo inputs"
       ],
-      "summary": "Prerequisites (Node, Corepack/pnpm), the standard root commands, and how Turborepo owns the task graph.",
+      "summary": "Node/Corepack/pnpm prerequisites, standard root commands, and the repository task graph.",
       "related": [
+        "engineering.repository.ci",
         "engineering.repository.git-workflow",
-        "engineering.cli.testing",
-        "architecture.repository-structure"
+        "adr.0011-product-artifact-packaging-and-pnpm-compatibility"
       ]
     },
     {
@@ -1132,16 +1148,14 @@
       "file": "docs/engineering/repository/product-packaging.md",
       "read_when": [
         "building or changing how the nevo-specflow product is packed",
-        "adding a package that ships inside @nevo/specflow",
-        "reviewing @nevo/specflow package metadata",
-        "wiring a CI or release job that needs the product tarball"
+        "adding code that ships inside @nevo/specflow",
+        "reviewing release artifacts or package metadata"
       ],
-      "summary": "How the Nevo SpecFlow product is turned into one installable artifact: nevo-repo-product bundles the nevo-specflow entry, the internal workspace capability packages and commander with esbuild, then packs on the pinned pnpm to produce .artifacts/nevo-specflow-<version>.tgz (with a THIRD_PARTY_NOTICES.txt). Source package boundaries stay real — the shell composes, each vertical owns its CLI adapter — only the distribution is a single file.",
+      "summary": "@nevo/specflow owns the product artifact build. Package-owned packaging scripts create a self-contained CLI bundle and attribution metadata, then standard pnpm pack creates the tarball.",
       "related": [
-        "adr.0006-product-ships-as-a-single-bundled-artifact",
+        "adr.0011-product-artifact-packaging-and-pnpm-compatibility",
         "engineering.repository.dogfooding",
-        "engineering.repository.releasing",
-        "architecture.repository-structure"
+        "engineering.repository.releasing"
       ]
     },
     {
@@ -1246,9 +1260,10 @@
       "read_when": [
         "writing tests for application or infrastructure code",
         "choosing a test boundary",
+        "placing tests, fixtures, test helpers, or Storybook stories",
         "reviewing determinism or test isolation"
       ],
-      "summary": "Shared testing strategy: pure policy tests, application tests with in-memory fakes, adapter integration tests, deterministic fixtures, and focused coverage rather than framework re-testing.",
+      "summary": "Shared testing strategy and ownership-based placement: co-located module/component tests and Storybook stories, cross-boundary package test trees, deterministic fixtures, and focused coverage rather than framework re-testing.",
       "related": [
         "engineering.shared.code-organization",
         "engineering.shared.effects-and-io",

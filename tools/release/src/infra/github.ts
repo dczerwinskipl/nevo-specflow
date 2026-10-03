@@ -52,6 +52,30 @@ export function classifyReleaseLookup(res: {
   };
 }
 
+export function parseReleaseAssetNames(raw: string, tag: string): string[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw.trim() || '[]');
+  } catch (err) {
+    throw new Error(
+      `could not parse release assets for ${tag}: ${err instanceof Error ? err.message : String(err)}`,
+      { cause: err },
+    );
+  }
+  if (!Array.isArray(parsed)) {
+    throw new Error(`unexpected release-asset response shape for ${tag}`);
+  }
+
+  const names: string[] = [];
+  for (const value of parsed as unknown[]) {
+    if (typeof value !== 'string') {
+      throw new Error(`unexpected release-asset response shape for ${tag}`);
+    }
+    names.push(value);
+  }
+  return names;
+}
+
 export function createGitHubClient(
   repoRoot: string,
   env: Readonly<Record<string, string | undefined>> = process.env,
@@ -124,6 +148,19 @@ export function createGitHubClient(
         `could not determine whether the GitHub Release '${tag}' exists: ${lookup.reason}. ` +
           `Refusing to treat this as "the Release is absent".`,
       );
+    },
+
+    async releaseAssetNames(tag): Promise<string[]> {
+      const raw = await gh([
+        'release',
+        'view',
+        tag,
+        '--json',
+        'assets',
+        '--jq',
+        '[.assets[].name]',
+      ]);
+      return parseReleaseAssetNames(raw, tag);
     },
 
     async createRelease({ tag, prerelease }): Promise<{ url: string }> {

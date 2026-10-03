@@ -5,7 +5,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { BundledThirdPartyPackage } from './bundle.js';
+import type { BundledThirdPartyPackage } from './bundle.ts';
 
 interface ResolvedNoticePackage {
   readonly name: string;

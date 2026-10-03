@@ -5,7 +5,7 @@ import process from 'node:process';
 
 import { CommanderError } from 'commander';
 
-import { createProgram } from './cli.js';
+import { createProgram } from './cli.ts';
 
 async function main(argv: string[]): Promise<number> {
   const program = createProgram({

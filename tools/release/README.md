@@ -63,19 +63,21 @@ nevo-release promote --target rc|stable [--execute]
     #     is set. Auto-merge is CONVERGED: a re-run re-requests it on the existing
     #     valid PR. Env fallback: PROMOTE_TARGET, EXECUTE, CI_GITHUB_RELEASE_TOKEN_PRESENT.
 
-nevo-release create --channel beta|rc|stable [--execute]
+nevo-release create --channel beta|rc|stable [--execute] [--expected-tag vX.Y.Z] [--defer-advance]
     # Run on a release/vX.Y branch. ONE operation, explicit mutation boundary: without
     # --execute it runs every read-only check and reports what would happen, changing
     # nothing. Checks (both modes):
     #   - after fetch, the local release-branch HEAD must equal origin/<branch> — a
     #     behind / diverged / unresolvable checkout is refused (§ stale checkout);
-    #   - the branch HEAD must have PASSED quality + verify tests + build + CodeQL on GitHub (newest run
-    #     per check); an unreadable check-run response is refused;
+    #   - the branch HEAD must have PASSED quality + verify tests + build + product smoke +
+    #     codeql on GitHub (newest run per check); an unreadable check-run response is refused;
     #   - Phase A — tag + GitHub Release: orphaned last prerelease tag on HEAD is
-    #     completed, not skipped to N+1; a tag at a different commit is refused; if the
-    #     Release state cannot be DETERMINED (auth/network/ambiguous) it fails closed,
-    #     never assuming "absent".
+    #     completed, not skipped to N+1. A prerelease whose Release exists but whose
+    #     required .tgz/.sha256 assets are incomplete also keeps the same N until repaired.
+    #     A tag at a different commit is refused; unreadable Release/asset state fails closed.
     #   - Phase B (stable) — advance the branch, reached even when Phase A was a no-op.
+    #     --defer-advance keeps this mutation pending so release CI can publish/attest the
+    #     tested artifact first; a second idempotent create then performs the advance.
     #     An existing advance branch is reused only when read-only Git inspection proves
     #     it is a single commit on the current origin/release/vX.Y HEAD changing only
     #     version.json to the expected next state. Extra file / wrong base / wrong
@@ -111,7 +113,9 @@ structural recovery checks run without any plumbing writes. Errors: `UsageError`
 
 `GitHubClient` reads **fail closed**. `releaseExists` decides absent-vs-existing-vs-
 indeterminate from the **HTTP status code** of `gh api --include …/releases/tags/<tag>`
-(200 / 404 / everything-else-throws), never by matching human `gh` stderr. `gh`
+(200 / 404 / everything-else-throws), never by matching human `gh` stderr. For an existing
+prerelease, `releaseAssetNames` must also prove the expected `.tgz` and `.sha256` are present before
+the sequence may advance to N+1; malformed or unreadable asset state throws. `gh`
 authenticates from `GH_TOKEN` / `GITHUB_TOKEN`; the adapter copies
 `CI_GITHUB_RELEASE_TOKEN` into `GH_TOKEN` for its subprocesses only when neither is
 already set (`resolveGhEnv`). Each release workflow's `permissions:` block is the

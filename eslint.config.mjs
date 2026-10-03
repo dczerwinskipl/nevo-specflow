@@ -56,6 +56,15 @@ export default tseslint.config(
     },
   },
 
+  // Package-owned build scripts execute directly through Node's native TypeScript
+  // support, so their relative module specifiers use explicit .ts extensions.
+  {
+    files: ['packages/specflow/packaging/**/*.ts'],
+    rules: {
+      'no-restricted-imports': 'off',
+    },
+  },
+
   // Plain JS / ESM — no type-aware rules, no tsconfig membership required.
   {
     files: ['**/*.{js,mjs,cjs}'],

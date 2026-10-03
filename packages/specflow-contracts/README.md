@@ -22,7 +22,8 @@ The package must remain platform neutral:
 - dependencies must themselves be suitable for neutral product code.
 
 The shared package builder enforces the neutral profile and rejects Node builtin imports from neutral
-package source/output; this is a build contract, not only a documentation convention.
+package production source/output; explicitly named co-located development artifacts are excluded
+from that production-source scan. This is a build contract, not only a documentation convention.
 
 Runtime may use these schemas directly with Fastify Type Providers. UI/client code may use the same
 types and, where useful, schemas without depending on Runtime.

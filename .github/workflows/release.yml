@@ -1,10 +1,9 @@
 name: Release
 
-# Manually triggered from a release/vX.Y branch. Verifies the branch HEAD passed
-# CI, then creates the Git tag + GitHub Release for the branch's { channel,
-# version }. Idempotent: a re-run after "tag created, Release failed" finishes the
-# Release; it never silently bumps the sequence. No npm publishing.
-
+# Manually triggered from a release/vX.Y branch. Resolve the exact candidate first,
+# build it once, smoke that same tarball on all supported OSes, then (execute mode)
+# create the tag/Release and publish the already-tested bytes. Recovery remains
+# idempotent when tag/Release creation or artifact publication was only partially done.
 on:
   workflow_dispatch:
     inputs:
@@ -18,23 +17,23 @@ on:
         type: boolean
         default: false
 
-# Least privilege — exactly the GitHub APIs this workflow calls:
-#   contents: write       create + push the annotated tag; push the advance branch
-#   pull-requests: write  open the post-stable advance PR; request auto-merge
-#   checks: read          read the release-branch HEAD check-runs before tagging
 permissions:
-  contents: write
-  pull-requests: write
-  checks: read
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: release
+  plan:
+    name: plan release
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: read
+    outputs:
+      tag: ${{ steps.plan.outputs.tag }}
     steps:
       - name: Guard — release branch only
         env:
@@ -51,18 +50,180 @@ jobs:
           token: ${{ secrets.CI_GITHUB_RELEASE_TOKEN || github.token }}
       - uses: ./.github/actions/setup
 
+      - name: Build the release tool
+        run: pnpm --filter nevo-repo-release build
+
+      - name: Resolve and validate release candidate
+        id: plan
+        env:
+          GH_TOKEN: ${{ secrets.CI_GITHUB_RELEASE_TOKEN || github.token }}
+          CI_GITHUB_RELEASE_TOKEN_PRESENT: ${{ secrets.CI_GITHUB_RELEASE_TOKEN != '' }}
+          RELEASE_CHANNEL: ${{ inputs.channel }}
+          EXECUTE: "false"
+        shell: bash
+        run: |
+          result="$(node tools/release/dist/bin.js create --json)"
+          echo "$result"
+          tag="$(node -e 'const v=JSON.parse(process.argv[1]); process.stdout.write(v.tag)' "$result")"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  candidate:
+    name: build release candidate
+    needs: plan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+
+      - name: Build exact release candidate
+        env:
+          RELEASE_TAG: ${{ needs.plan.outputs.tag }}
+        shell: bash
+        run: |
+          version="${RELEASE_TAG#v}"
+          result="$(node packages/specflow/packaging/bin.ts pack --json --version "$version")"
+          echo "$result"
+
+      - name: Upload release candidate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nevo-specflow-release-candidate
+          path: .artifacts/nevo-specflow-*.tgz
+          if-no-files-found: error
+          include-hidden-files: true
+          compression-level: 0
+          overwrite: true
+          retention-days: 7
+
+  candidate-smoke:
+    name: release candidate smoke (${{ matrix.os }})
+    needs:
+      - plan
+      - candidate
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Download exact release candidate
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: nevo-specflow-release-candidate
+          path: .artifacts/release-candidate
+      - name: Smoke installed release candidate
+        env:
+          NEVO_SPECFLOW_ARTIFACT_DIR: ${{ github.workspace }}/.artifacts/release-candidate
+        run: pnpm --filter @nevo/specflow test:packaged
+
+  publish:
+    name: publish release
+    needs:
+      - plan
+      - candidate
+      - candidate-smoke
+    if: inputs.execute
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.CI_GITHUB_RELEASE_TOKEN || github.token }}
+      - uses: ./.github/actions/setup
       - name: Configure git identity
         run: |
-          git config user.name  "github-actions[bot]"
+          git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Build the release tool
         run: pnpm --filter nevo-repo-release build
 
-      - name: Release
+      - name: Download tested release candidate
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: nevo-specflow-release-candidate
+          path: .artifacts/release-candidate
+
+      - name: Verify candidate identity and checksum
+        id: artifact
+        env:
+          RELEASE_TAG: ${{ needs.plan.outputs.tag }}
+        shell: bash
+        run: |
+          mapfile -t tarballs < <(find .artifacts/release-candidate -maxdepth 1 -type f -name 'nevo-specflow-*.tgz' -print)
+          if [ "${#tarballs[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one release-candidate tarball, found ${#tarballs[@]}"
+            exit 1
+          fi
+          tarball="${tarballs[0]}"
+          expected_version="${RELEASE_TAG#v}"
+          actual_version="$(tar -xOzf "$tarball" package/package.json | node -e 'let s=""; process.stdin.on("data",c=>s+=c); process.stdin.on("end",()=>process.stdout.write(JSON.parse(s).version))')"
+          if [ "$actual_version" != "$expected_version" ]; then
+            echo "::error::Candidate version $actual_version does not match planned tag $RELEASE_TAG"
+            exit 1
+          fi
+          checksum="$tarball.sha256"
+          dir="$(dirname "$tarball")"
+          name="$(basename "$tarball")"
+          (cd "$dir" && sha256sum "$name" > "$name.sha256")
+          echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
+          echo "checksum=$checksum" >> "$GITHUB_OUTPUT"
+
+      - name: Create tag and GitHub Release
         env:
           GH_TOKEN: ${{ secrets.CI_GITHUB_RELEASE_TOKEN || github.token }}
           CI_GITHUB_RELEASE_TOKEN_PRESENT: ${{ secrets.CI_GITHUB_RELEASE_TOKEN != '' }}
           RELEASE_CHANNEL: ${{ inputs.channel }}
-          EXECUTE: ${{ inputs.execute }}
-        run: node tools/release/dist/bin.js create
+          EXECUTE: "true"
+          PLANNED_TAG: ${{ needs.plan.outputs.tag }}
+        shell: bash
+        run: |
+          result="$(node tools/release/dist/bin.js create --json --expected-tag "$PLANNED_TAG" --defer-advance)"
+          echo "$result"
+          actual_tag="$(node -e 'const v=JSON.parse(process.argv[1]); process.stdout.write(v.tag)' "$result")"
+          if [ "$actual_tag" != "$PLANNED_TAG" ]; then
+            echo "::error::Release plan changed after candidate verification: planned $PLANNED_TAG, got $actual_tag"
+            exit 1
+          fi
+
+      - name: Attest tested release artifact
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: ${{ steps.artifact.outputs.tarball }}
+
+      - name: Attach artifact and checksum to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.CI_GITHUB_RELEASE_TOKEN || github.token }}
+          RELEASE_TAG: ${{ needs.plan.outputs.tag }}
+          TARBALL: ${{ steps.artifact.outputs.tarball }}
+          CHECKSUM: ${{ steps.artifact.outputs.checksum }}
+        shell: bash
+        run: gh release upload "$RELEASE_TAG" "$TARBALL" "$CHECKSUM" --clobber
+
+      - name: Advance stable release line after publication
+        if: inputs.channel == 'stable'
+        env:
+          GH_TOKEN: ${{ secrets.CI_GITHUB_RELEASE_TOKEN || github.token }}
+          CI_GITHUB_RELEASE_TOKEN_PRESENT: ${{ secrets.CI_GITHUB_RELEASE_TOKEN != '' }}
+          RELEASE_CHANNEL: ${{ inputs.channel }}
+          EXECUTE: "true"
+          PLANNED_TAG: ${{ needs.plan.outputs.tag }}
+        shell: bash
+        run: node tools/release/dist/bin.js create --json --expected-tag "$PLANNED_TAG"

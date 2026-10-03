@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { createAuthorization, defineResource } from '../src/index';
+import { defineResource } from './resource';
+import { createAuthorization } from './resolver';
 
 const Order = defineResource({
   name: 'order',
@@ -39,7 +40,7 @@ function authorization() {
   });
 }
 
-describe('authorization resolver', () => {
+describe('createAuthorization', () => {
   it('unions matching roles and filters by explicit resource name', () => {
     const auth = authorization();
 

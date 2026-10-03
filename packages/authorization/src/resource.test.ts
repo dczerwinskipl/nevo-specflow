@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { defineResource } from '../src/index';
+import { defineResource } from './resource';
 
 describe('defineResource', () => {
   it('qualifies feature-owned capability ids', () => {

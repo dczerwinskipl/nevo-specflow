@@ -215,13 +215,7 @@ function isNodeBuiltin(specifier) {
 }
 
 function moduleSpecifiers(file, text) {
-  const source = ts.createSourceFile(
-    file,
-    text,
-    ts.ScriptTarget.Latest,
-    true,
-    scriptKindFor(file),
-  );
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, scriptKindFor(file));
   const specifiers = [];
 
   const addLiteral = (node) => {
@@ -236,10 +230,7 @@ function moduleSpecifiers(file, text) {
       ts.isExternalModuleReference(node.moduleReference)
     ) {
       addLiteral(node.moduleReference.expression);
-    } else if (
-      ts.isCallExpression(node) &&
-      node.expression.kind === ts.SyntaxKind.ImportKeyword
-    ) {
+    } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
       addLiteral(node.arguments[0]);
     } else if (ts.isImportTypeNode(node)) {
       const argument = node.argument;

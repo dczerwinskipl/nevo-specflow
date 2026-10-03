@@ -142,14 +142,14 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
       encoding: 'utf8',
       windowsHide: true,
     });
-    expect(pnpm.error).toBeUndefined();
+    expect(pnpm.error).toBeFalsy();
     expect(pnpm.status).toBe(0);
     const v = (pnpm.stdout ?? '').trim();
     expect(v).toBe(pinnedPnpm);
     expect(pinnedPnpm.startsWith('10.')).toBe(true);
   });
 
-  it('installs a manifest with the packed version, correct engines, no deps, no scripts, no workspace:', () => {
+  it('installs a minimal manifest without dependency or workspace leakage', () => {
     const pj = installedManifest();
     expect(pj.name).toBe('@nevo/specflow');
     expect(pj.version).toBe(version);
@@ -202,7 +202,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     expect(r.stdout).toContain('start');
   });
 
-  it('B. nevo-specflow --version — exit 0, equals the packed package version (via the shim)', () => {
+  it('B. --version equals the packed package version via the installed shim', () => {
     const r = nevoSpec(['--version']);
     expect(r.code).toBe(0);
     expect(r.stdout.trim()).toBe(version);
@@ -214,7 +214,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     expect(r.stdout).toMatch(/Initialize Nevo SpecFlow configuration/i);
   });
 
-  it('D. nevo-specflow start --help — exposes the real Runtime server command (via the shim)', () => {
+  it('D. start --help exposes the Runtime server command via the installed shim', () => {
     const r = nevoSpec(['start', '--help']);
     expect(r.code).toBe(0);
     expect(r.stdout).toMatch(/Runtime server/i);

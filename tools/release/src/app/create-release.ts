@@ -189,7 +189,9 @@ export async function executeRelease(
   // ── Phase B: for a stable release, ensure the branch advances ───────────
   // Reached even when Phase A was a no-op.
   if (plan.nextBranchState && deferAdvance) {
-    events.push(info('Stable branch advance deferred until release artifact publication completes.'));
+    events.push(
+      info('Stable branch advance deferred until release artifact publication completes.'),
+    );
   } else if (plan.nextBranchState) {
     const nextState = plan.nextBranchState;
     await ensureVersionFileChangePr(

@@ -5,7 +5,11 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { classifyReleaseLookup, parseReleaseAssetNames, resolveGhEnv } from '../../src/infra/github.js';
+import {
+  classifyReleaseLookup,
+  parseReleaseAssetNames,
+  resolveGhEnv,
+} from '../../src/infra/github.js';
 
 describe('classifyReleaseLookup — absent vs indeterminate', () => {
   it('HTTP 200 -> the Release exists', () => {

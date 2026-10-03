@@ -82,11 +82,11 @@ by `release/vX.Y`'s rules no matter what the source branch is called. A local
 `pnpm version:print` derives the build version from `version.json` + the CI
 environment:
 
-| Situation                                | Build version                                                     |
-| ---------------------------------------- | ----------------------------------------------------------------- |
-| `channel: alpha` / `beta` / `rc`         | `<version>-<channel>.<GITHUB_RUN_NUMBER>` — e.g. `1.3.0-beta.147` |
-| `channel: stable`                        | `<version>` — e.g. `1.3.0`                                      |
-| tag ref `refs/tags/vX.Y.Z[-beta.N|-rc.N]` | that exact tag version — never re-derived                         |
+| Situation                         | Build version                                                     |                                           |
+| --------------------------------- | ----------------------------------------------------------------- | ----------------------------------------- |
+| `channel: alpha` / `beta` / `rc`  | `<version>-<channel>.<GITHUB_RUN_NUMBER>` — e.g. `1.3.0-beta.147` |                                           |
+| `channel: stable`                 | `<version>` — e.g. `1.3.0`                                        |                                           |
+| tag ref `refs/tags/vX.Y.Z[-beta.N | -rc.N]`                                                           | that exact tag version — never re-derived |
 
 The run number is a **build identifier**, not a release number.
 

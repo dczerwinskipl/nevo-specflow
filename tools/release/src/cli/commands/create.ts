@@ -23,8 +23,10 @@ export function createReleaseCommand(ctx: CliContext): Command {
     .option('--execute', 'perform the release (otherwise run every check, change nothing)', false)
     .option('--json', 'print the resolved release result as JSON', false)
     .addOption(
-      new Option('--expected-tag <tag>', 'fail before mutation if the resolved candidate changed')
-        .env('RELEASE_EXPECTED_TAG'),
+      new Option(
+        '--expected-tag <tag>',
+        'fail before mutation if the resolved candidate changed',
+      ).env('RELEASE_EXPECTED_TAG'),
     )
     .option(
       '--defer-advance',

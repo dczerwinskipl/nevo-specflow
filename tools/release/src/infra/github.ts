@@ -143,7 +143,15 @@ export function createGitHubClient(
     },
 
     async releaseAssetNames(tag): Promise<string[]> {
-      const raw = await gh(['release', 'view', tag, '--json', 'assets', '--jq', '[.assets[].name]']);
+      const raw = await gh([
+        'release',
+        'view',
+        tag,
+        '--json',
+        'assets',
+        '--jq',
+        '[.assets[].name]',
+      ]);
       return parseReleaseAssetNames(raw, tag);
     },
 

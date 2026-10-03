@@ -28,16 +28,13 @@ export function createAuthCommand(context: AuthCommandContext): Command {
 }
 
 function passwordFromStdin(input: string): string {
-  const password = input.endsWith('
-')
+  const password = input.endsWith('\r\n')
     ? input.slice(0, -2)
-    : input.endsWith('
-')
+    : input.endsWith('\n')
       ? input.slice(0, -1)
       : input;
 
-  if (password.includes('
-') || password.includes('')) {
+  if (password.includes('\n') || password.includes('\r')) {
     throw new Error('Password input must contain exactly one line.');
   }
   if (password.length === 0) {

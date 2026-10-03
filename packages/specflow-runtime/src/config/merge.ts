@@ -1,4 +1,4 @@
-import { AUTH_CONFIG_REPLACE_PATHS } from '../auth/config.js';
+import { AUTH_CONFIG_REPLACE_PATHS } from '../auth/authentication/config/merge-policy';
 
 const REPLACE_PATHS = new Set<string>(AUTH_CONFIG_REPLACE_PATHS);
 

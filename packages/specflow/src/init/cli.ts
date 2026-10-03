@@ -3,13 +3,13 @@ import { relative } from 'node:path';
 import { initRuntime, type RuntimeInitPrompter } from '@nevo/specflow-runtime';
 import { Command } from 'commander';
 
-import { resolveProjectLayout, type ProjectLayout } from '../project/layout.js';
+import { resolveProjectLayout, type ProjectLayout } from '../project/layout';
 
 import {
   initializeProject,
   type InitializeProjectOptions,
   type InitializeProjectResult,
-} from './initialize-project.js';
+} from './initialize-project';
 
 export interface ProjectInitCommandContext {
   readonly cwd: string;

@@ -10,7 +10,7 @@ import {
   LOCAL_CONFIG_RELATIVE_PATH,
   LOCAL_IGNORE_ENTRY,
   type ProjectLayout,
-} from '../project/layout.js';
+} from '../project/layout';
 
 export interface ProjectConfigContribution {
   readonly projectConfig: Record<string, unknown>;

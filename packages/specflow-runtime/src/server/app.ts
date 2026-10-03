@@ -5,18 +5,22 @@ import Fastify, {
   type RawServerBase,
 } from 'fastify';
 
-import { authFeature, type AuthFeatureDependencies } from '../auth/index.js';
-import { InMemoryAuthStore } from '../auth/session-store.js';
-import { createSpecFlowAuthorization } from '../authorization/composition.js';
-import { authorizationFeature } from '../authorization/routes.js';
-import type { RuntimeConfig } from '../config/types.js';
+import { authFeature, type AuthFeatureDependencies } from '../auth/index';
+import type { RuntimeConfig } from '../config/types';
+import { serializeRuntimeRequest } from './logging';
 
 export interface RuntimeAppDependencies {
   readonly auth?: AuthFeatureDependencies;
 }
 
 export const RUNTIME_FASTIFY_OPTIONS = {
-  logger: false,
+  logger: {
+    level: 'warn',
+    stream: process.stderr,
+    serializers: {
+      req: serializeRuntimeRequest,
+    },
+  },
   ajv: {
     customOptions: {
       coerceTypes: false,
@@ -39,22 +43,13 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   config: RuntimeConfig,
   dependencies: RuntimeAppDependencies = {},
 ): Promise<void> {
-  const authStore = dependencies.auth?.store ?? new InMemoryAuthStore();
-  const authorization = createSpecFlowAuthorization(config.authorization ?? { assignments: [] });
-
   await app.register(cookie);
   await app.register(authFeature, {
     auth: config.auth,
+    ...(config.authorization ? { authorization: config.authorization } : {}),
     ...(config.server.publicOrigin ? { publicOrigin: config.server.publicOrigin } : {}),
+    serverPort: config.server.port,
     secureCookies: config.server.tls.enabled,
-    dependencies: {
-      ...(dependencies.auth ?? {}),
-      store: authStore,
-    },
-  });
-  await app.register(authorizationFeature, {
-    auth: config.auth,
-    authorization,
-    store: authStore,
+    ...(dependencies.auth ? { dependencies: dependencies.auth } : {}),
   });
 }

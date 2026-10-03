@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createAuthorization, defineResource } from '../src/index.js';
+import { createAuthorization, defineResource } from '../src/index';
 
 const Order = defineResource({
   name: 'order',

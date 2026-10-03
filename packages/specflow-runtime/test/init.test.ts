@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  initRuntime,
-  type RuntimeInitPrompter,
-  type RuntimeInitPromptChoice,
-} from '../src/index.js';
+import { initRuntime, type RuntimeInitPrompter, type RuntimeInitPromptChoice } from '../src/index';
 
 const PASSWORD_HASH =
   '$scrypt$16384$8$5$MDEyMzQ1Njc4OWFiY2RlZg$yMHgG_FDESRF0j5gjhGLotSMPdnfefUcNNFPyNoQtJE';
@@ -112,7 +108,7 @@ describe('Runtime project initialization', () => {
 
     expect(contribution.projectConfig).toMatchObject({
       server: {
-        publicOrigin: 'http://localhost:4318',
+        publicOrigin: 'http://127.0.0.1:4318',
       },
       auth: {
         mode: 'required',

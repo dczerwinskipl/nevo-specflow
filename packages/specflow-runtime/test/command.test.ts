@@ -5,9 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import { describe, expect, it } from 'vitest';
 
-import { createAuthCommand, createStartCommand } from '../src/cli/command.js';
-import { isSupportedPasswordHash, verifyPassword } from '../src/auth/password.js';
-import { PASSWORD_MAX_LENGTH } from '../src/auth/password-policy.js';
+import { createAuthCommand, createStartCommand } from '../src/cli/command';
+import { isSupportedPasswordHash, verifyPassword } from '../src/auth/authentication/password/hash';
+import { PASSWORD_MAX_LENGTH } from '../src/auth/authentication/password/policy';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -125,5 +125,20 @@ describe('Runtime CLI adapters', () => {
     const authAdapter = readFileSync(join(here, '..', 'src', 'auth', 'cli.ts'), 'utf8');
     expect(adapter).toMatch(/from 'commander'/);
     expect(authAdapter).toMatch(/from 'commander'/);
+  });
+
+  it('counts CLI password length by Unicode code points', async () => {
+    const password = '😀'.repeat(PASSWORD_MAX_LENGTH);
+    const out: string[] = [];
+    const cmd = createAuthCommand({
+      stdout: (line) => out.push(line),
+      readPasswordFromStdin: () => Promise.resolve(`${password}\n`),
+    });
+    cmd.exitOverride();
+
+    await cmd.parseAsync(['node', 'auth', 'hash-password', '--password-stdin']);
+
+    expect(out).toHaveLength(1);
+    await expect(verifyPassword(password, out[0] ?? '')).resolves.toBe(true);
   });
 });

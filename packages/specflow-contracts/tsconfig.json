@@ -1,16 +1,7 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../tsconfig.package-neutral.json",
   "compilerOptions": {
-    "noEmit": true,
-    "composite": false,
-    "declaration": false,
-    "declarationMap": false,
-    "sourceMap": false,
-    "incremental": true,
     "tsBuildInfoFile": "./.tsbuild/specflow-contracts.tsbuildinfo",
-    "types": ["node"],
-    // Lint/typecheck resolve the generic authorization package from source.
-    // Build clears this mapping and resolves its built package export instead.
     "paths": {
       "@nevo/authorization": ["../authorization/src/index.ts"]
     }

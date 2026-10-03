@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 
-import { hashPassword } from './password.js';
-import { PASSWORD_MAX_LENGTH } from './password-policy.js';
+import { hashPassword } from './authentication/password/hash';
+import { PASSWORD_MAX_LENGTH } from './authentication/password/policy';
 
 export interface AuthCommandContext {
   readonly stdout: (line: string) => void;
@@ -40,7 +40,7 @@ function passwordFromStdin(input: string): string {
   if (password.length === 0) {
     throw new Error('Password must not be empty.');
   }
-  if (password.length > PASSWORD_MAX_LENGTH) {
+  if ([...password].length > PASSWORD_MAX_LENGTH) {
     throw new Error(`Password must be at most ${PASSWORD_MAX_LENGTH} characters.`);
   }
 

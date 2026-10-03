@@ -1,4 +1,4 @@
-import { RuntimeConfigError } from './error.js';
+import { RuntimeConfigError } from './error';
 
 export type ConfigRecord = Record<string, unknown>;
 
@@ -13,9 +13,7 @@ export function childRecord(
   value: ConfigRecord | undefined,
   key: string,
 ): ConfigRecord | undefined {
-  if (!value) {
-    return undefined;
-  }
+  if (!value) return undefined;
 
   const child = value[key];
   return isRecord(child) ? child : undefined;
@@ -44,6 +42,13 @@ export function nonEmptyString(value: unknown, path: string): string {
     throw new RuntimeConfigError(`${path} must be a non-empty string.`);
   }
   return value.trim();
+}
+
+export function opaqueNonEmptyString(value: unknown, path: string): string {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new RuntimeConfigError(`${path} must be a non-empty string.`);
+  }
+  return value;
 }
 
 export function optionalNonEmptyString(value: unknown, path: string): string | undefined {

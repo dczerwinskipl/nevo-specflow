@@ -1,12 +1,12 @@
 import {
   assertLocalAuthConfigOwnership,
   assertProjectAuthConfigOwnership,
-} from '../auth/config.js';
+} from '../auth/authentication/config/ownership';
 import {
   assertLocalServerConfigOwnership,
   assertProjectServerConfigOwnership,
-} from '../server/config-ownership.js';
-import { childRecord, onlyKeys, record } from './value.js';
+} from '../server/config-ownership';
+import { childRecord, onlyKeys, record } from './value';
 
 const PROJECT_RUNTIME_KEYS = new Set(['server', 'auth', 'authorization']);
 const LOCAL_RUNTIME_KEYS = new Set(['server', 'auth']);

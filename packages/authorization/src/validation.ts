@@ -1,5 +1,7 @@
-import { AuthorizationConfigurationError } from './errors.js';
-import type { Scope, Subject } from './types.js';
+import { AuthorizationConfigurationError } from './errors';
+import type { Scope, Subject } from './types';
+
+const IDENTIFIER_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9_-]*$/u;
 
 export function assertNonEmpty(value: string, name: string): void {
   if (value.trim() === '') {
@@ -8,9 +10,10 @@ export function assertNonEmpty(value: string, name: string): void {
 }
 
 export function assertIdentifierSegment(value: string, name: string): void {
-  assertNonEmpty(value, name);
-  if (value.includes('.')) {
-    throw new AuthorizationConfigurationError(`${name} must not contain '.'.`);
+  if (!IDENTIFIER_SEGMENT.test(value)) {
+    throw new AuthorizationConfigurationError(
+      `${name} must contain only letters, digits, '_' or '-', and must start with a letter or digit.`,
+    );
   }
 }
 

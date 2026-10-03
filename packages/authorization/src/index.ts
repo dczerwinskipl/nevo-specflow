@@ -1,6 +1,6 @@
-export { AuthorizationConfigurationError } from './errors.js';
-export { defineResource, type DefinedResource, type DefineResourceInput } from './resource.js';
-export { createAuthorization } from './resolver.js';
+export { AuthorizationConfigurationError } from './errors';
+export { defineResource, type DefinedResource, type DefineResourceInput } from './resource';
+export { createAuthorization } from './resolver';
 export type {
   Authorization,
   AuthorizationDefinition,
@@ -15,4 +15,4 @@ export type {
   RoleId,
   Scope,
   Subject,
-} from './types.js';
+} from './types';

@@ -1,21 +1,12 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../tsconfig.package-node.json",
   "compilerOptions": {
-    "noEmit": true,
-    "composite": false,
-    "declaration": false,
-    "declarationMap": false,
-    "sourceMap": false,
-    "incremental": true,
     "tsBuildInfoFile": "./.tsbuild/specflow-runtime.tsbuildinfo",
-    "types": ["node"],
-    // Lint/typecheck resolve workspace dependencies from source and do not require
-    // generated dist. The build config clears these mappings and resolves the
-    // actual package exports after Turbo/pnpm builds dependencies first.
     "paths": {
       "@nevo/authorization": ["../authorization/src/index.ts"],
       "@nevo/specflow-contracts": ["../specflow-contracts/src/index.ts"],
-      "@nevo/specflow-contracts/authorization": ["../specflow-contracts/src/authorization.ts"]
+      "@nevo/specflow-contracts/authorization": ["../specflow-contracts/src/authorization.ts"],
+      "@nevo/specflow-contracts/authentication": ["../specflow-contracts/src/authentication.ts"]
     }
   },
   "include": ["src/**/*.ts", "test/**/*.ts"]

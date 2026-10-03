@@ -1,4 +1,4 @@
-import { onlyKeys, record } from '../config/value.js';
+import { onlyKeys, record } from '../config/value';
 
 const PROJECT_SERVER_KEYS = new Set(['host', 'port', 'publicOrigin', 'tls']);
 const PROJECT_TLS_KEYS = new Set(['enabled']);

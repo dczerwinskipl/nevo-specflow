@@ -2,8 +2,9 @@
 id: adr.0002-toolchain-selection
 type: adr
 title: Toolchain selection
-status: current
+status: superseded
 date: 2026-09-05
+superseded_by: adr.0010-toolchain-policy-and-version-sources
 summary: >
   The monorepo foundation is pnpm 10 + Turborepo + TypeScript + ESLint flat config
   (type-aware for TS) + Prettier + Vitest on Node Active LTS. Two versions are held back
@@ -13,13 +14,14 @@ related:
   - architecture.repository-structure
   - engineering.repository.local-setup
   - engineering.repository.dependencies-and-security
+  - adr.0010-toolchain-policy-and-version-sources
 ---
 
 # 0002 — Toolchain selection
 
 ## Status
 
-Current.
+Superseded by [ADR 0010 — Toolchain policy and version sources](0010-toolchain-policy-and-version-sources.md).
 
 ## Context
 

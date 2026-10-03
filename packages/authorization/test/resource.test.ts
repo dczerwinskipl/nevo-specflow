@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { defineResource } from '../src/index.js';
+import { defineResource } from '../src/index';
 
 describe('defineResource', () => {
   it('qualifies feature-owned capability ids', () => {
@@ -28,14 +28,14 @@ describe('defineResource', () => {
         name: 'order.item',
         capabilities: { View: 'view' },
       }),
-    ).toThrowError(/Resource name must not contain/);
+    ).toThrowError(/Resource name must contain only letters/);
 
     expect(() =>
       defineResource({
         name: 'order',
         capabilities: { View: 'item.view' },
       }),
-    ).toThrowError(/Capability action 'View' must not contain/);
+    ).toThrowError(/Capability action 'View' must contain only letters/);
   });
 
   it('rejects duplicate qualified capabilities', () => {
@@ -48,5 +48,21 @@ describe('defineResource', () => {
         },
       }),
     ).toThrowError(/duplicate capability 'order.view'/);
+  });
+
+  it('rejects non-canonical resource and capability identifier segments', () => {
+    expect(() =>
+      defineResource({
+        name: ' order',
+        capabilities: { View: 'view' },
+      }),
+    ).toThrowError(/must contain only letters/);
+
+    expect(() =>
+      defineResource({
+        name: 'order',
+        capabilities: { View: 'view details' },
+      }),
+    ).toThrowError(/must contain only letters/);
   });
 });

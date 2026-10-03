@@ -9,7 +9,7 @@ import {
   mergeRuntimeConfigValues,
   parseRuntimeConfig,
   RuntimeConfigError,
-} from '../../src/config/index.js';
+} from '../../src/config/index';
 
 const SUPPORTED_PASSWORD_HASH =
   '$scrypt$16384$8$5$MDEyMzQ1Njc4OWFiY2RlZg$' + 'yMHgG_FDESRF0j5gjhGLotSMPdnfefUcNNFPyNoQtJE';
@@ -607,5 +607,43 @@ describe('runtime configuration', () => {
     const cwd = await mkdtemp(join(tmpdir(), 'specflow-config-missing-'));
 
     await expect(loadFrom(cwd)).rejects.toBeInstanceOf(RuntimeConfigError);
+  });
+
+  it('rejects credentials embedded in server.publicOrigin', () => {
+    const config = requiredAuthConfig();
+    config.server.publicOrigin = 'https://user:password@specflow.example.test:4318';
+
+    expect(() => parseRuntimeConfig(config)).toThrowError(
+      /without credentials, path, query, or fragment/,
+    );
+  });
+
+  it('does not include local secret source text in YAML parse errors', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'specflow-local-yaml-secret-'));
+    await mkdir(join(cwd, '.nevo/local'), { recursive: true });
+    await writeFile(join(cwd, '.nevo/config.yaml'), PROJECT_CONFIG, 'utf8');
+    await writeFile(
+      join(cwd, '.nevo/local/config.yaml'),
+      [
+        'runtime:',
+        '  auth:',
+        '    providers:',
+        '      oidc:',
+        '        clientSecret: [super-secret-value',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+
+    try {
+      await loadFrom(cwd);
+      throw new Error('Expected malformed local YAML to fail.');
+    } catch (error) {
+      expect(error).toBeInstanceOf(RuntimeConfigError);
+      const message = error instanceof Error ? error.message : String(error);
+      expect(message).toMatch(/Invalid YAML/);
+      expect(message).not.toContain('super-secret-value');
+      expect(message).not.toContain('clientSecret');
+    }
   });
 });

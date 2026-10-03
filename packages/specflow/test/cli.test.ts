@@ -1,8 +1,8 @@
 import { CommanderError } from 'commander';
 import { describe, expect, it } from 'vitest';
 
-import { createProgram } from '../src/program.js';
-import { NEVO_SPECFLOW_VERSION } from '../src/version.js';
+import { createProgram } from '../src/program';
+import { NEVO_SPECFLOW_VERSION } from '../src/version';
 
 function harness() {
   const out: string[] = [];

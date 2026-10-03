@@ -9,7 +9,7 @@ import {
   isGitIgnored,
   LOCAL_CONFIG_RELATIVE_PATH,
   resolveProjectLayout,
-} from '../src/project/layout.js';
+} from '../src/project/layout';
 
 const dirs: string[] = [];
 

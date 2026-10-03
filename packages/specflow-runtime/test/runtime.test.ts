@@ -5,7 +5,7 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { startRuntime } from '../src/index.js';
+import { startRuntime } from '../src/index';
 
 const dirs: string[] = [];
 afterEach(async () => {

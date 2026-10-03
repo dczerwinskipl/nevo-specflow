@@ -6,9 +6,9 @@ runtime:
   server:
     host: 127.0.0.1
     port: 4318
-    # OIDC init uses http://localhost:4318 for a loopback callback by default.
+    # OIDC init uses http://127.0.0.1:4318 so the browser origin matches the default bind host.
     # A non-loopback required-auth Runtime must terminate TLS itself.
-    # publicOrigin: http://localhost:4318
+    # publicOrigin: http://127.0.0.1:4318
     tls:
       enabled: false
 

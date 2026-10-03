@@ -19,7 +19,7 @@ nevo-repo-product bundle [--entry src/bin.ts] [--outfile dist/bin.js] [--version
 
 nevo-repo-product pack [--json] [--skip-build]
     # The canonical product artifact:
-    #   pnpm --filter build (nevo-repo-release + @nevo/specflow-runtime — scoped,
+    #   pnpm --filter build (nevo-repo-release + @nevo/specflow-runtime... dependencies — scoped,
     #     turbo-free, never a global pre-build)
     #   -> version from `nevo-release version` (the repo's canonical model; no
     #      SemVer/channel logic is duplicated here)
@@ -50,9 +50,10 @@ The product must install from a lone `.tgz` with **no registry and no workspace*
 naive `@nevo/specflow-runtime: workspace:*` dependency cannot resolve there. Bundling
 the internal workspace code (and `commander`) into one file solves this with a mature,
 single-purpose tool. The repository's own tools stay plain `tsc`; esbuild is confined to
-this package and only touches the product distributable. The **source** boundary is
-untouched — `@nevo/specflow` still depends on `@nevo/specflow-runtime` as a real
-`workspace:*` package with a typed capability API; only the shipped form is one artifact.
+this package and only touches the product distributable. Product-library compilation is a
+separate ADR 0009 concern. The **source** boundary is untouched — `@nevo/specflow` still
+depends on `@nevo/specflow-runtime` as a real `workspace:*` package with a typed capability
+API; only the shipped form is one artifact.
 See [`docs/engineering/repository/product-packaging.md`](../../docs/engineering/repository/product-packaging.md).
 
 ## Tests

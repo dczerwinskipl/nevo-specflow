@@ -32,3 +32,8 @@ jobs:
           build-mode: none
       - name: Analyze
         uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          # Fork/Dependabot PR tokens are read-only. Still run the full analysis so
+          # the required check is meaningful, but upload only when security-events
+          # write access is available.
+          upload: ${{ (github.actor == 'dependabot[bot]' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork)) && 'never' || 'always' }}

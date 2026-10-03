@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
-const sh = process.platform === 'win32';
+const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 const artifacts = join(repoRoot, '.artifacts');
 const productDependencies = [
   join(repoRoot, 'packages', 'authorization'),
@@ -22,10 +22,9 @@ const pinnedPnpm = (
 
 describe('pnpm product:pack — self-bootstrapping from a fresh install', () => {
   it('uses the repository-pinned pnpm', () => {
-    const version = execFileSync('pnpm', ['--version'], {
+    const version = execFileSync(pnpmCommand, ['--version'], {
       cwd: repoRoot,
       encoding: 'utf8',
-      shell: sh,
     }).trim();
     expect(version).toBe(pinnedPnpm);
     expect(pinnedPnpm.startsWith('10.')).toBe(true);
@@ -47,10 +46,9 @@ describe('pnpm product:pack — self-bootstrapping from a fresh install', () => 
     }
     expect(readdirSync(artifacts)).toEqual([]);
 
-    execFileSync('pnpm', ['product:pack'], {
+    execFileSync(pnpmCommand, ['product:pack'], {
       cwd: repoRoot,
       encoding: 'utf8',
-      shell: sh,
       timeout: 180_000,
     });
 

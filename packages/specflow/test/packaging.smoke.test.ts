@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const sh = process.platform === 'win32';
+const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 
 const pinnedPnpm = (
   JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as { packageManager: string }
@@ -31,22 +31,32 @@ let binDir = '';
 let runEnv: NodeJS.ProcessEnv = {};
 
 beforeAll(() => {
-  // Pack through the package-owned build entrypoint.
-  const out = execFileSync(
-    process.execPath,
-    ['packages/specflow/packaging/bin.ts', 'pack', '--json'],
-    {
-      cwd: repoRoot,
-      encoding: 'utf8',
-      shell: sh,
-    },
-  );
-  const parsed = JSON.parse(out.trim().split(/\r?\n/).filter(Boolean).pop() ?? '{}') as {
-    tarball: string;
-    version: string;
-  };
-  tarball = parsed.tarball;
-  version = parsed.version;
+  const prebuiltDir = process.env.NEVO_SPECFLOW_ARTIFACT_DIR;
+  if (prebuiltDir) {
+    const candidates = readdirSync(prebuiltDir)
+      .filter((file) => file.endsWith('.tgz'))
+      .map((file) => join(prebuiltDir, file));
+    if (candidates.length !== 1 || !candidates[0]) {
+      throw new Error(
+        `Expected exactly one prebuilt .tgz in ${prebuiltDir}, found ${String(candidates.length)}.`,
+      );
+    }
+    tarball = candidates[0];
+  } else {
+    // Local/default path: build the package before proving its installed boundary.
+    const out = execFileSync(
+      process.execPath,
+      ['packages/specflow/packaging/bin.ts', 'pack', '--json'],
+      {
+        cwd: repoRoot,
+        encoding: 'utf8',
+      },
+    );
+    const parsed = JSON.parse(out.trim().split(/\r?\n/).filter(Boolean).pop() ?? '{}') as {
+      tarball: string;
+    };
+    tarball = parsed.tarball;
+  }
 
   prefix = mkdtempSync(join(tmpdir(), 'nevo-specflow-smoke-'));
   execFileSync('git', ['init', '-q'], { cwd: prefix });
@@ -55,11 +65,17 @@ beforeAll(() => {
     JSON.stringify({ name: 'nevo-specflow-smoke-host', version: '0.0.0', private: true }),
   );
   // pnpm run from repoRoot (pinned), directed at the prefix with --dir.
-  execFileSync('pnpm', ['--dir', prefix, '--ignore-workspace', 'add', tarball], {
+  execFileSync(pnpmCommand, ['--dir', prefix, '--ignore-workspace', 'add', tarball], {
     cwd: repoRoot,
     encoding: 'utf8',
-    shell: sh,
+    windowsHide: true,
   });
+
+  const manifestVersion = installedManifest().version;
+  if (typeof manifestVersion !== 'string') {
+    throw new Error('Installed artifact package.json has no string version.');
+  }
+  version = manifestVersion;
 
   binDir = join(prefix, 'node_modules', '.bin');
   runEnv = { ...process.env, PATH: `${binDir}${delimiter}${process.env.PATH ?? ''}` };
@@ -75,16 +91,17 @@ interface Run {
   code: number;
   stdout: string;
 }
-/** Invoke the installed `nevo-specflow` shim from the isolated prefix's .bin, via PATH. */
+/** Invoke the installed `nevo-specflow` shim from the isolated prefix's .bin. */
 function nevoSpec(args: string[], input?: string): Run {
+  const shim = join(binDir, process.platform === 'win32' ? 'nevo-specflow.cmd' : 'nevo-specflow');
   try {
     return {
       code: 0,
-      stdout: execFileSync('nevo-specflow', args, {
+      stdout: execFileSync(shim, args, {
         cwd: prefix,
         env: runEnv,
         encoding: 'utf8',
-        shell: sh,
+        windowsHide: true,
         ...(input === undefined ? {} : { input }),
       }),
     };
@@ -118,10 +135,10 @@ function installedManifest(): Record<string, unknown> {
 
 describe('packaged @nevo/specflow — isolated tarball install', () => {
   it('was packed with the repository-pinned pnpm', () => {
-    const v = execFileSync('pnpm', ['--version'], {
+    const v = execFileSync(pnpmCommand, ['--version'], {
       cwd: repoRoot,
       encoding: 'utf8',
-      shell: sh,
+      windowsHide: true,
     }).trim();
     expect(v).toBe(pinnedPnpm);
     expect(pinnedPnpm.startsWith('10.')).toBe(true);

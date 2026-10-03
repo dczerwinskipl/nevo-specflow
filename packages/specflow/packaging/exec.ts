@@ -1,5 +1,6 @@
-// Small child-process helpers. The packaging tool legitimately shells out to
-// `pnpm` / `node`; keep it in one narrow place.
+// Small child-process helpers for package-owned product packaging.
+// Commands are executed directly; Windows .cmd launchers are resolved explicitly
+// rather than enabling a shell for arguments.
 
 import { execFileSync } from 'node:child_process';
 
@@ -14,14 +15,14 @@ export class StepFailedError extends Error {
 
 /** Run a command to completion, returning trimmed stdout. Throws `StepFailedError` on failure. */
 export function run(command: string, args: readonly string[], opts: RunOpts = {}): string {
+  const executable = windowsLauncher(command);
   try {
-    return execFileSync(command, [...args], {
+    return execFileSync(executable, [...args], {
       cwd: opts.cwd,
       env: opts.env,
       encoding: 'utf8',
       maxBuffer: 64 * 1024 * 1024,
-      // `pnpm` is a shell script on Windows; `shell: true` lets it resolve.
-      shell: process.platform === 'win32',
+      windowsHide: true,
     }).trim();
   } catch (err) {
     const e = err as { stdout?: string; stderr?: string; status?: number | null };
@@ -31,4 +32,9 @@ export function run(command: string, args: readonly string[], opts: RunOpts = {}
       { cause: err },
     );
   }
+}
+
+function windowsLauncher(command: string): string {
+  if (process.platform !== 'win32') return command;
+  return command === 'pnpm' || command === 'nevo-specflow' ? `${command}.cmd` : command;
 }

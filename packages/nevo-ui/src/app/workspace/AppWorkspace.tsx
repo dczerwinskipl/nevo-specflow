@@ -52,6 +52,19 @@ export interface AppWorkspaceRegionProps {
   children: ReactNode;
 }
 
+export interface AppWorkspaceSecondaryRegionProps extends AppWorkspaceRegionProps {
+  /**
+   * Controls whether the declarative/default Secondary is visible on split-capable layouts.
+   * Defaults to true. The default Secondary never auto-stacks on narrow layouts.
+   */
+  open?: boolean;
+  /**
+   * When provided, the split Secondary gets a Close action that requests open=false.
+   * Consumers can restore the default Secondary later by rendering it with open=true.
+   */
+  onOpenChange?: (open: boolean) => void;
+}
+
 interface CommonAppWorkspaceProps {
   split?: AppWorkspaceSplitMode;
   labels?: Partial<AppWorkspaceLabels>;
@@ -62,7 +75,7 @@ export type AppWorkspaceProps = CommonAppWorkspaceProps & {
 };
 
 const defaultAppWorkspaceLabels: AppWorkspaceLabels = {
-  backToPrimary: 'Back to primary content',
+  backToPrimary: 'Back',
   closeSecondary: 'Close secondary content',
   openNavigation: 'Open navigation',
 };
@@ -71,6 +84,7 @@ interface WorkspaceSecondaryPresentation {
   surface: AppWorkspaceSurface;
   key: string;
   canStack: boolean;
+  returnsToDefault?: boolean;
   transition?: WorkspaceTransition;
   onClose?: () => void | Promise<unknown>;
   onBack?: () => void | Promise<unknown>;
@@ -87,7 +101,7 @@ function AppWorkspacePrimary(_props: AppWorkspaceRegionProps) {
   return null;
 }
 
-function AppWorkspaceSecondary(_props: AppWorkspaceRegionProps) {
+function AppWorkspaceSecondary(_props: AppWorkspaceSecondaryRegionProps) {
   return null;
 }
 
@@ -110,12 +124,18 @@ function flattenWorkspaceChildren(children: ReactNode): ReactElement[] {
   return result;
 }
 
+interface ComposedDefaultSecondary {
+  surface: AppWorkspaceSurface;
+  open: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
 function resolveComposedWorkspace(children: ReactNode): {
   primary: AppWorkspaceSurface;
-  defaultSecondary?: AppWorkspaceSurface;
+  defaultSecondary?: ComposedDefaultSecondary;
 } {
   let primary: AppWorkspaceSurface | undefined;
-  let defaultSecondary: AppWorkspaceSurface | undefined;
+  let defaultSecondary: ComposedDefaultSecondary | undefined;
 
   for (const child of flattenWorkspaceChildren(children)) {
     if (child.type === AppWorkspacePrimary) {
@@ -128,8 +148,12 @@ function resolveComposedWorkspace(children: ReactNode): {
       if (defaultSecondary) {
         throw new Error('AppWorkspace accepts only one AppWorkspace.Secondary.');
       }
-      const props = child.props as AppWorkspaceRegionProps;
-      defaultSecondary = { header: props.header, content: props.children };
+      const props = child.props as AppWorkspaceSecondaryRegionProps;
+      defaultSecondary = {
+        surface: { header: props.header, content: props.children },
+        open: props.open ?? true,
+        onOpenChange: props.onOpenChange,
+      };
     } else {
       throw new Error(
         'AppWorkspace children must be AppWorkspace.Primary or AppWorkspace.Secondary.',
@@ -149,8 +173,8 @@ function useWorkspaceLayoutState(
   hasSecondary: boolean,
   secondaryCanStack: boolean,
 ): WorkspaceLayoutState {
-  const { availableWidth, navigationMode } = useAppWorkspace();
-  const isSplitView = supportsRuntimeWorkspaceSplit(availableWidth, navigationMode);
+  const { availableWidth } = useAppWorkspace();
+  const isSplitView = supportsRuntimeWorkspaceSplit(availableWidth);
   const showSecondary = hasSecondary && (isSplitView || secondaryCanStack);
   const resolvedSplit = resolveWorkspaceSplit(split, isSplitView && showSecondary, availableWidth);
 
@@ -459,21 +483,27 @@ function AppWorkspaceRoot({ children, labels: labelsProp, split = 'balanced' }: 
   const workspace = useOptionalWorkspace();
   const { navigationMode } = useAppWorkspace();
   const runtimeSecondary = workspace?.secondary ?? null;
+  const defaultSecondary = staticSurfaces.defaultSecondary;
+  const defaultSecondaryOpen = defaultSecondary?.open ?? false;
   const secondaryPresentation: WorkspaceSecondaryPresentation | undefined = runtimeSecondary
     ? {
         surface: runtimeSecondary.surface,
         key: `runtime-${runtimeSecondary.instanceKey}`,
         canStack: true,
+        returnsToDefault: defaultSecondaryOpen,
         transition: workspace?.transition,
-        onClose: workspace?.closeSecondary,
+        onClose: defaultSecondaryOpen ? undefined : workspace?.closeSecondary,
         onBack: workspace?.canGoBack ? workspace.popSecondary : workspace?.closeSecondary,
       }
-    : staticSurfaces.defaultSecondary
+    : defaultSecondaryOpen && defaultSecondary
       ? {
-          surface: staticSurfaces.defaultSecondary,
+          surface: defaultSecondary.surface,
           key: 'default-secondary',
           canStack: false,
           transition: workspace?.transition,
+          onClose: defaultSecondary.onOpenChange
+            ? () => defaultSecondary.onOpenChange?.(false)
+            : undefined,
         }
       : undefined;
   const outgoingSecondary = workspace?.transition.outgoing;
@@ -501,7 +531,10 @@ function AppWorkspaceRoot({ children, labels: labelsProp, split = 'balanced' }: 
   const primaryNavigationAction =
     navigationMode === 'drawer' ? <NavigationAction label={labels.openNavigation} /> : undefined;
   const secondaryBackAction =
-    secondaryPresentation?.onBack && (state.mode === 'stacked' || workspace?.canGoBack) ? (
+    secondaryPresentation?.onBack &&
+    (state.mode === 'stacked' ||
+      workspace?.canGoBack ||
+      (state.mode === 'split' && secondaryPresentation.returnsToDefault)) ? (
       <BackAction label={labels.backToPrimary} onBack={secondaryPresentation.onBack} />
     ) : undefined;
   const secondaryCloseAction = secondaryPresentation?.onClose ? (
@@ -548,7 +581,10 @@ function AppWorkspaceRoot({ children, labels: labelsProp, split = 'balanced' }: 
 
   return (
     <div
-      className="relative flex h-full max-w-full items-stretch overflow-hidden"
+      className={cn(
+        'relative flex h-full max-w-full items-stretch overflow-hidden',
+        state.mode === 'split' && navigationMode === 'drawer' && workspaceSurfaceClassName,
+      )}
       data-layout={state.mode}
       data-workspace-fit={state.mode === 'split' && state.showSecondary ? 'content' : 'available'}
       style={{

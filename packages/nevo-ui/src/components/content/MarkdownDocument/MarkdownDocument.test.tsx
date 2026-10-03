@@ -17,6 +17,38 @@ describe('MarkdownDocument', () => {
     expect(html).toContain('<table');
   });
 
+  it('allows product code to resolve Markdown links contextually', () => {
+    const html = renderToStaticMarkup(
+      <MarkdownDocument
+        renderLink={({ children, href }) => (
+          <button data-workspace-reference={href} type="button">
+            {children}
+          </button>
+        )}
+        source={'[Open file](./src/app.ts)'}
+      />,
+    );
+
+    expect(html).toContain('data-workspace-reference="./src/app.ts"');
+    expect(html).toContain('>Open file</button>');
+    expect(html).not.toContain('target="_blank"');
+  });
+
+  it('falls back to the shared external link when the product renderer does not claim a link', () => {
+    const html = renderToStaticMarkup(
+      <MarkdownDocument
+        renderLink={({ href }) =>
+          href?.startsWith('./') ? <button type="button">Local</button> : undefined
+        }
+        source={'[Docs](https://example.com)'}
+      />,
+    );
+
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noreferrer noopener"');
+    expect(html).toContain('>Docs</');
+  });
+
   it('does not enable raw HTML', () => {
     const html = renderToStaticMarkup(<MarkdownDocument source={'<script>alert("x")</script>'} />);
 

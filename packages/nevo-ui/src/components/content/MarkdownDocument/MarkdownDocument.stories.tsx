@@ -56,3 +56,21 @@ export const RawHtmlIsNotEnabled: Story = {
     source: '<script>alert("nope")</script>\n\n<strong>Raw HTML is not enabled.</strong>',
   },
 };
+
+export const ProductLinkRenderer: Story = {
+  args: {
+    source:
+      'Open [src/app.ts](./src/app.ts) in the contextual file preview, or visit [docs](https://example.com).',
+    renderLink: ({ children, href, title }) =>
+      href?.startsWith('./') ? (
+        <button
+          className="text-content-link underline underline-offset-2 hover:text-content-link-hover"
+          data-workspace-reference={href}
+          title={title}
+          type="button"
+        >
+          {children}
+        </button>
+      ) : undefined,
+  },
+};

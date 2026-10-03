@@ -1,13 +1,26 @@
+import type { ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '../../../lib';
 import { Link } from '../../actions/Link';
 import { Typography } from '../../foundations/Typography';
 
+export interface MarkdownDocumentLinkProps {
+  children: ReactNode;
+  href?: string;
+  title?: string;
+}
+
 export interface MarkdownDocumentProps {
   source: string;
   className?: string;
   labels?: Partial<MarkdownDocumentLabels>;
+  /**
+   * Product-owned link/reference renderer. Return null/undefined to keep the shared default link.
+   * Use it to turn workspace-relative references into contextual navigation without reimplementing
+   * Markdown parsing or normal external-link styling.
+   */
+  renderLink?: (props: MarkdownDocumentLinkProps) => ReactNode;
 }
 
 export interface MarkdownDocumentLabels {
@@ -20,7 +33,18 @@ const defaultMarkdownDocumentLabels: MarkdownDocumentLabels = {
   incompleteTask: 'Incomplete task',
 };
 
-function markdownComponents(labels: MarkdownDocumentLabels): Components {
+function DefaultMarkdownLink({ children, href, title }: MarkdownDocumentLinkProps) {
+  return (
+    <Link href={href} rel="noreferrer noopener" target="_blank" title={title}>
+      {children}
+    </Link>
+  );
+}
+
+function markdownComponents(
+  labels: MarkdownDocumentLabels,
+  renderLink?: (props: MarkdownDocumentLinkProps) => ReactNode,
+): Components {
   return {
     h1: ({ children }) => (
       <Typography as="h1" className="mb-3 mt-8 text-content-primary first:mt-0" variant="title-lg">
@@ -82,11 +106,12 @@ function markdownComponents(labels: MarkdownDocumentLabels): Components {
     strong: ({ children }) => (
       <strong className="font-semibold text-content-primary">{children}</strong>
     ),
-    a: ({ children, href, title }) => (
-      <Link href={href} rel="noreferrer noopener" target="_blank" title={title}>
-        {children}
-      </Link>
-    ),
+    a: ({ children, href, title }) =>
+      renderLink?.({ children, href, title }) ?? (
+        <DefaultMarkdownLink href={href} title={title}>
+          {children}
+        </DefaultMarkdownLink>
+      ),
     blockquote: ({ children }) => (
       <blockquote className="my-3 border-l-2 border-border-strong pl-4 text-content-muted first:mt-0 last:mb-0 [&_p]:text-body-md [&_p]:text-content-muted">
         {children}
@@ -141,11 +166,19 @@ function markdownComponents(labels: MarkdownDocumentLabels): Components {
   };
 }
 
-export function MarkdownDocument({ className, labels: labelsProp, source }: MarkdownDocumentProps) {
+export function MarkdownDocument({
+  className,
+  labels: labelsProp,
+  renderLink,
+  source,
+}: MarkdownDocumentProps) {
   const labels = { ...defaultMarkdownDocumentLabels, ...labelsProp };
   return (
     <div className={cn('w-full min-w-0 max-w-full [overflow-wrap:anywhere]', className)}>
-      <ReactMarkdown components={markdownComponents(labels)} remarkPlugins={[remarkGfm]}>
+      <ReactMarkdown
+        components={markdownComponents(labels, renderLink)}
+        remarkPlugins={[remarkGfm]}
+      >
         {source}
       </ReactMarkdown>
     </div>

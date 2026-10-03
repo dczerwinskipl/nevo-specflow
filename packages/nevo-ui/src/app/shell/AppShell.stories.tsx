@@ -424,7 +424,7 @@ export const MobileBackHeader: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Open Orbit Finance' }));
     await canvas.findByRole('heading', { name: 'Orbit Finance' });
     assert(
-      canvas.getByRole('button', { name: 'Back to primary content' }),
+      canvas.getByRole('button', { name: 'Back' }),
       'The Secondary layer should keep Back outside page actions.',
     );
   },

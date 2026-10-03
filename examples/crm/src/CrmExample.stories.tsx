@@ -47,17 +47,15 @@ export const CompactCustomerSelected: Story = {
     const workspace = canvasElement.querySelector<HTMLElement>(
       '[data-app-shell-region="workspace"]',
     );
-    const layout = workspace?.querySelector<HTMLElement>('[data-layout="stacked"]');
-    const secondary = layout?.querySelector<HTMLElement>('[data-header-covered]:not(.hidden)');
-    if (!workspace || !layout || !secondary) {
-      throw new Error('Compact CRM should expose a full-width stacked Secondary surface.');
+    const layout = workspace?.querySelector<HTMLElement>('[data-layout="split"]');
+    const primary = layout?.querySelector<HTMLElement>('[data-workspace-surface="primary"]');
+    const secondary = layout?.querySelector<HTMLElement>('[data-workspace-surface="secondary"]');
+    if (!workspace || !layout || !primary || !secondary) {
+      throw new Error('Compact CRM should expose both workspace surfaces side by side.');
     }
 
-    if (
-      Math.abs(secondary.getBoundingClientRect().width - workspace.getBoundingClientRect().width) >
-      1
-    ) {
-      throw new Error('Compact CRM Secondary must occupy the full workspace width.');
+    if (secondary.getBoundingClientRect().left < primary.getBoundingClientRect().right - 1) {
+      throw new Error('Compact CRM workspace surfaces must not overlap.');
     }
   },
 };

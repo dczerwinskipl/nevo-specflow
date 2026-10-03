@@ -1,1 +1,5 @@
-export { MarkdownDocument, type MarkdownDocumentProps } from './MarkdownDocument';
+export {
+  MarkdownDocument,
+  type MarkdownDocumentLinkProps,
+  type MarkdownDocumentProps,
+} from './MarkdownDocument';

@@ -7,9 +7,9 @@ packages:
   - "apps/*"
   - "packages/*"
   - "tools/*"
-  # packages/  -> real product packages (@nevo/*): shared authorization/contracts
-  #              foundations plus the specflow CLI and Runtime capability.
-  # apps/      -> deployable applications; still empty until one lands.
+  # packages/  -> source boundaries that compose the SpecFlow product plus reusable
+  #              neutral Nevo capabilities; the future SpecFlow UI belongs here too.
+  # apps/      -> optional independently deployed/operated hosts; currently empty.
   # tools/     -> repository-internal tooling (docs, agents, release, github, figma-project).
 
 # Resolve dependencies and check `engines` against the pinned Node, regardless

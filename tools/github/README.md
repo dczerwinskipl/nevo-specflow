@@ -19,7 +19,9 @@ node tools/github/dist/bin.js configure           # apply, then verify
 
 Requires `gh` authenticated as a repository **admin**. The tool detects the repo from
 the checkout, contains no secrets, matches rulesets by name (safe to re-run), prints
-what it changed, and exits non-zero on verification failure or (`--check`) any drift.
+what it changed, and exits non-zero on verification failure or (`--check`) any drift. GitHub may
+canonicalize top-level ruleset order after a write; reconciliation normalizes that order before
+comparing desired and observed state.
 
 ## Architecture
 

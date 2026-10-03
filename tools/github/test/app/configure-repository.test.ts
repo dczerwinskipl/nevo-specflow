@@ -96,4 +96,34 @@ describe('configureRepository', () => {
     expect(second.problems).toEqual([]);
     expect(second.changed).toEqual([]);
   });
+
+  it('does not report drift when GitHub canonicalizes top-level rule order', () => {
+    const client = createFakeAdminClient({
+      collaborators: [
+        { login: 'a', permissions: { push: true } },
+        { login: 'b', permissions: { admin: true } },
+      ],
+    });
+    Object.assign(client.state.repoSettings, policy.merge);
+    configureRepository(client, policy, { checkOnly: false });
+
+    const mainRuleset = client.state.rulesets.get(1);
+    expect(mainRuleset).toBeDefined();
+
+    const rules = mainRuleset?.rules as { type: string }[];
+    const githubOrder = [
+      'deletion',
+      'non_fast_forward',
+      'required_linear_history',
+      'pull_request',
+      'required_status_checks',
+      'code_scanning',
+    ];
+    mainRuleset!.rules = [...rules].sort(
+      (left, right) => githubOrder.indexOf(left.type) - githubOrder.indexOf(right.type),
+    );
+
+    const result = configureRepository(client, policy, { checkOnly: true });
+    expect(result.problems).toEqual([]);
+  });
 });

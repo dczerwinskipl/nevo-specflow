@@ -40,13 +40,15 @@ Everything is a **Run workflow** in the Actions tab. To ship `stable 0.1.0`:
 
 - **Promotion** changes `version.json` on the protected branch **only through a normal
   PR** — it never edits `release/vX.Y` directly and never tags anything.
-- **Release** creates the Git tag + GitHub Release, and only after the branch HEAD has
-  passed `quality` + `verify tests` + `build`.
+- **Release** resolves the exact tag, builds that candidate once, smokes the same tarball on
+  Linux/Windows/macOS, and only then may create/complete the tag + GitHub Release. The branch HEAD
+  must already have passed `quality`, `verify tests`, `build`, `product smoke`, and `codeql`.
 - A `stable` Release also opens the PR that advances the branch to the next patch's
   `beta`, so later builds never keep reporting the shipped version.
-- Every workflow has a **validate-only** mode (leave `execute` unchecked): it runs all
-  the real checks and reports what it _would_ do, changing nothing.
-- Distributing an npm package / installing the CLI is out of scope here.
+- Every workflow has a **validate-only** mode (leave `execute` unchecked): Release still builds and
+  cross-platform smokes the exact candidate, but does not create a tag/Release/PR or attestation.
+- Releases publish a GitHub Release tarball + SHA-256 + provenance attestation; npm publishing is
+  intentionally out of scope.
 
 ## `version.json`
 
@@ -80,11 +82,11 @@ by `release/vX.Y`'s rules no matter what the source branch is called. A local
 `pnpm version:print` derives the build version from `version.json` + the CI
 environment:
 
-| Situation                             | Build version                                                     |                                       |
-| ------------------------------------- | ----------------------------------------------------------------- | ------------------------------------- |
-| `channel: alpha` / `beta` / `rc`      | `<version>-<channel>.<GITHUB_RUN_NUMBER>` — e.g. `1.3.0-beta.147` |                                       |
-| `channel: stable`                     | `<version>` — e.g. `1.3.0`                                        |                                       |
-| ref is a tag `refs/tags/vX.Y.Z[-beta\ | rc.N]`                                                            | that exact version — never re-derived |
+| Situation                                | Build version                                                     |
+| ---------------------------------------- | ----------------------------------------------------------------- |
+| `channel: alpha` / `beta` / `rc`         | `<version>-<channel>.<GITHUB_RUN_NUMBER>` — e.g. `1.3.0-beta.147` |
+| `channel: stable`                        | `<version>` — e.g. `1.3.0`                                      |
+| tag ref `refs/tags/vX.Y.Z[-beta.N|-rc.N]` | that exact tag version — never re-derived                         |
 
 The run number is a **build identifier**, not a release number.
 
@@ -221,15 +223,15 @@ After the promotion PR merges, run **`Release`** to cut the `<target>` tag.
 
 Run **`Release`** from a `release/vX.Y` branch:
 
-| Input     | Meaning                                                               |        |          |
-| --------- | --------------------------------------------------------------------- | ------ | -------- |
-| `channel` | `beta` \                                                              | `rc` \ | `stable` |
-| `execute` | Unchecked = **validate-only**: run every check below, change nothing. |        |          |
+| Input     | Meaning                                                               |
+| --------- | --------------------------------------------------------------------- |
+| `channel` | `beta`, `rc`, or `stable`                                             |
+| `execute` | Unchecked = **validate-only**: run every check below, change nothing. |
 
-**Validate-only is real validation, not a rubber stamp.** It runs every read-only
-check the execute path runs and answers _"would this succeed right now?"_ — it just
-never creates a commit / branch / tag / Release / PR / auto-merge. A dry run that
-"passes" means the real run would proceed.
+**Validate-only is real validation, not a rubber stamp.** It runs the release-plan checks, builds
+one exact candidate artifact, and installs/smokes that same tarball on Linux, Windows, and macOS.
+It does not create a commit / branch / tag / Release / PR / auto-merge or attestation. A dry run
+that passes proves the candidate and current repository state are ready for the mutation step.
 
 The checks, in order (all performed in both modes):
 
@@ -248,12 +250,14 @@ The checks, in order (all performed in both modes):
    refuse loudly; an orphaned last prerelease tag on HEAD is completed, never skipped
    to `-beta.2`. If the GitHub Release state cannot be **determined** (auth, network,
    404-vs-outage ambiguity), the run fails closed rather than assuming "absent".
-6. execute: create the annotated tag + a GitHub Release (`--prerelease` for beta/rc,
-   generated notes), build the exact tagged product artifact, write its SHA-256 checksum,
-   create a GitHub provenance attestation, and upload the tarball + checksum to that Release.
-   **No npm package is published.**
+6. workflow candidate gate (both modes): build the exact planned tag version **once**, upload it as
+   a workflow artifact, then install/smoke that same tarball on Linux, Windows, and macOS;
+7. execute only: revalidate and create/complete the annotated tag + GitHub Release (`--prerelease`
+   for beta/rc, generated notes). The publish job downloads the already-tested candidate, verifies
+   its embedded version still matches the planned tag, writes SHA-256, creates provenance, and
+   uploads those exact bytes + checksum. **No npm package is published.**
 
-The tag + Release (step 6) and the stable branch-advance below are **independent
+The tag + Release mutation (step 7) and the stable branch-advance below are **independent
 idempotent steps**: a re-run after "tag done, advance failed" still performs the
 advance — it is not skipped just because the tag is already complete.
 

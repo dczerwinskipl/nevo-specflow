@@ -59,7 +59,10 @@ duplicated across operating systems.
 
 ## CodeQL
 
-CodeQL uses no-build JavaScript/TypeScript analysis. The stable check name is `codeql`.
+CodeQL uses no-build JavaScript/TypeScript analysis. The stable check name is `codeql`. Fork and
+Dependabot pull requests run the analysis without SARIF upload because their token is read-only;
+trusted runs upload results. This keeps the required check usable for external contributors without
+using `pull_request_target`.
 
 ## Required checks
 

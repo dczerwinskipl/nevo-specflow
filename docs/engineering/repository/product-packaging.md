@@ -81,9 +81,13 @@ The packed manifest has no `dependencies`, `devDependencies`, scripts, or `works
 `packages/specflow/test/packaging/` covers bundling, notices, version resolution, fresh-state packing,
 dogfood behavior, build CLI wiring, and the shared package-builder contract.
 
-`packages/specflow/test/packaging.smoke.test.ts` proves the actual distribution boundary:
+`packages/specflow/test/packaging.smoke.test.ts` proves the actual distribution boundary. By
+default it builds the package itself; release CI can point it at a prebuilt candidate so several
+runners verify the exact same bytes.
 
-- package the real artifact;
+It verifies:
+
+- package the real artifact (or consume the one supplied release candidate);
 - install it into an isolated directory outside the workspace;
 - execute `nevo-specflow` through the installed `.bin` shim;
 - verify help/version/init/start/password hashing;
@@ -94,9 +98,12 @@ CI runs that installed-artifact smoke on Linux, Windows, and macOS.
 
 ## Release artifacts
 
-An executing release builds the artifact for the exact tag selected by the release tool, writes a
-SHA-256 checksum, creates a GitHub artifact provenance attestation, and uploads the tarball and
-checksum to the GitHub Release. There is no npm publish.
+Release validation first resolves the exact tag, then builds that version **once**. The resulting
+`.tgz` is stored as a workflow artifact and the same file is downloaded and installed by Linux,
+Windows, and macOS smoke jobs. Only after all three pass may execute mode create/complete the tag and
+GitHub Release. The publish job re-downloads those tested bytes, verifies the embedded package
+version against the planned tag, writes SHA-256, attests that tarball, and uploads the tarball plus
+checksum. There is no npm publish.
 
 An SBOM is not generated from the root lockfile because that would describe repository/dev
 dependencies rather than the code actually embedded in the bundled artifact. Add an SBOM only when

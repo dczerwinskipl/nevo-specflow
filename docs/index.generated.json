@@ -814,7 +814,7 @@
       "status": "current",
       "file": "docs/architecture/decisions/0011-product-artifact-packaging-and-pnpm-compatibility.md",
       "read_when": [],
-      "summary": "Nevo SpecFlow keeps pnpm 10 while GitHub Dependabot cannot reliably parse pnpm 11+ multi-document lockfiles, and keeps only the package-owned custom logic needed to build the self-contained product artifact while delegating archive creation to pnpm pack.",
+      "summary": "Nevo SpecFlow keeps pnpm 10 while GitHub's documented Dependabot support stops at pnpm 10 and Dependency Graph still has an open multi-document-lockfile parsing gap, while keeping only the package-owned custom logic needed to build the self-contained product artifact and delegating archive creation to pnpm pack.",
       "related": [
         "adr.0006-product-ships-as-a-single-bundled-artifact",
         "adr.0010-toolchain-policy-and-version-sources",
@@ -1022,7 +1022,7 @@
       "summary": "`pnpm dogfood:install` builds the real distributable, packs it, installs THAT tarball globally with pnpm, and smokes the installed `nevo-specflow`. It deliberately uses a tarball — not a workspace link — so it catches packaging problems a linked install would hide.",
       "related": [
         "engineering.repository.product-packaging",
-        "adr.0006-product-ships-as-a-single-bundled-artifact"
+        "adr.0011-product-artifact-packaging-and-pnpm-compatibility"
       ]
     },
     {

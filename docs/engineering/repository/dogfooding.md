@@ -13,7 +13,7 @@ summary: >
   would hide.
 related:
   - engineering.repository.product-packaging
-  - adr.0006-product-ships-as-a-single-bundled-artifact
+  - adr.0011-product-artifact-packaging-and-pnpm-compatibility
 ---
 
 # Dogfooding the product build
@@ -26,9 +26,8 @@ This is a **repository developer workflow**, not the future public
 `nevo-specflow install` / `nevo-specflow update` (those are not designed yet — see
 [repository-structure](../../architecture/repository-structure.md)). It:
 
-1. builds the packaging tool if needed, then runs
-   [`pnpm product:pack`](product-packaging.md) (self-bootstrapping — no prior
-   `pnpm build` / `pnpm check` required);
+1. runs the package-owned [`pnpm product:pack`](product-packaging.md) flow
+   (self-bootstrapping — no prior `pnpm build` / `pnpm check` required);
 2. `pnpm add -g <the packed tarball>` — on the **repository-pinned pnpm** (every child
    `pnpm` runs from the repo root, so Corepack never downloads "latest");
 3. puts pnpm's global bin dir on `PATH` and runs the **real installed `nevo-specflow`

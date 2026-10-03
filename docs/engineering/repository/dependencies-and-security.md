@@ -27,11 +27,14 @@ live in manifests and `pnpm-lock.yaml`; durable toolchain policy is in
 
 ## Why the repository remains on pnpm 10
 
-pnpm 11+ uses a multi-document lockfile shape that GitHub Dependabot/Dependency Graph does not yet
-reliably consume. The upstream tracker is
-[`dependabot/dependabot-core#14794`](https://github.com/dependabot/dependabot-core/issues/14794).
-Keeping a newer package manager while GitHub reports an incomplete dependency tree would weaken
-security automation, so the repository stays on pnpm 10.
+GitHub's published Dependabot support matrix currently lists pnpm only through v10. The pnpm 11
+updater work tracked by
+[`dependabot/dependabot-core#14794`](https://github.com/dependabot/dependabot-core/issues/14794)
+has been closed, but GitHub Dependency Graph still has an open multi-document-lockfile parsing gap
+tracked by
+[`dependabot/dependabot-core#15904`](https://github.com/dependabot/dependabot-core/issues/15904).
+Because that parser failure can silently omit the project dependency graph, moving to an unsupported
+major would weaken dependency/security visibility, so the repository stays on pnpm 10.
 
 The exact acceptance criteria for revisiting this and the product-packaging consequence are recorded
 in [ADR 0011](../../architecture/decisions/0011-product-artifact-packaging-and-pnpm-compatibility.md).
@@ -62,9 +65,6 @@ vulnerabilities discovered after a dependency is already on the default branch.
 
 `.github/workflows/codeql.yml` analyzes JavaScript/TypeScript on pull requests, pushes to protected
 branches, and weekly. It uses CodeQL's no-build mode and the stable `codeql` check name. GitHub
-reduces `GITHUB_TOKEN` write permissions for fork and Dependabot pull requests, so those runs keep
-the analysis/check but set CodeQL upload to `never`; trusted same-repository/push runs upload SARIF.
-The workflow never switches to `pull_request_target` to regain write access to untrusted PR code. GitHub
 reduces `GITHUB_TOKEN` write permissions for fork and Dependabot pull requests, so those runs keep
 the analysis/check but set CodeQL upload to `never`; trusted same-repository/push runs upload SARIF.
 The workflow never switches to `pull_request_target` to regain write access to untrusted PR code.

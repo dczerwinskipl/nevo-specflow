@@ -1,44 +1,57 @@
 import { constants } from 'node:fs';
 import { access, readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { isAbsolute } from 'node:path';
 
 import { parse } from 'yaml';
 
-import { assertNoProjectAuthSecrets } from '../auth/config.js';
 import {
   assertNoLocalAuthorization,
   validateProjectAuthorizationSource,
 } from '../authorization/config-source.js';
 import { RuntimeConfigError } from './error.js';
+import {
+  assertLocalRuntimeConfigOwnership,
+  assertProjectRuntimeConfigOwnership,
+} from './ownership.js';
 import { mergeRuntimeConfigValues } from './merge.js';
 import { parseRuntimeConfig } from './parse.js';
 import type { LoadedRuntimeConfig } from './types.js';
-import { childRecord, isRecord } from './value.js';
-
-export const DEFAULT_PROJECT_CONFIG_PATH = 'nevo-specflow.yaml';
-export const DEFAULT_LOCAL_CONFIG_PATH = '.nevo-local/nevo-specflow.yaml';
+import { isRecord } from './value.js';
 
 export interface LoadRuntimeConfigOptions {
-  readonly cwd?: string;
-  readonly projectPath?: string;
-  readonly localPath?: string;
+  readonly projectConfigPath: string;
+  readonly localConfigPath?: string;
 }
 
 export async function loadRuntimeConfig(
-  options: LoadRuntimeConfigOptions = {},
+  options: LoadRuntimeConfigOptions,
 ): Promise<LoadedRuntimeConfig> {
-  const cwd = resolve(options.cwd ?? process.cwd());
-  const projectPath = resolve(cwd, options.projectPath ?? DEFAULT_PROJECT_CONFIG_PATH);
-  const localPath = resolve(cwd, options.localPath ?? DEFAULT_LOCAL_CONFIG_PATH);
+  assertAbsolutePath(options.projectConfigPath, 'projectConfigPath');
+  if (options.localConfigPath) {
+    assertAbsolutePath(options.localConfigPath, 'localConfigPath');
+  }
 
-  const projectSource = await readRequiredConfig(projectPath);
-  assertNoProjectSecrets(projectSource);
+  const projectPath = options.projectConfigPath;
+  const localPath = options.localConfigPath;
+
+  const projectDocument = await readRequiredConfig(projectPath);
+  const projectSource = runtimeSection(projectDocument, projectPath, true);
+  assertProjectRuntimeConfigOwnership(projectSource);
   validateProjectAuthorizationSource(projectSource);
 
-  const localExists = await fileExists(localPath);
-  const localSource = localExists ? await readRequiredConfig(localPath) : undefined;
-  if (localSource) {
-    assertNoLocalAuthorization(localSource);
+  let localExists = false;
+  let localSource: Record<string, unknown> | undefined;
+
+  if (localPath) {
+    localExists = await fileExists(localPath);
+    if (localExists) {
+      const localDocument = await readRequiredConfig(localPath);
+      localSource = runtimeSection(localDocument, localPath, false);
+      if (localSource) {
+        assertNoLocalAuthorization(localSource);
+        assertLocalRuntimeConfigOwnership(localSource);
+      }
+    }
   }
 
   const merged = localSource ? mergeRuntimeConfigValues(projectSource, localSource) : projectSource;
@@ -47,9 +60,15 @@ export async function loadRuntimeConfig(
     config: parseRuntimeConfig(merged),
     sources: {
       project: projectPath,
-      ...(localExists ? { local: localPath } : {}),
+      ...(localExists && localPath ? { local: localPath } : {}),
     },
   };
+}
+
+function assertAbsolutePath(path: string, name: string): void {
+  if (!isAbsolute(path)) {
+    throw new RuntimeConfigError(`${name} must be an absolute path supplied by the product shell.`);
+  }
 }
 
 async function readRequiredConfig(path: string): Promise<unknown> {
@@ -71,12 +90,28 @@ async function readRequiredConfig(path: string): Promise<unknown> {
   }
 }
 
-function assertNoProjectSecrets(value: unknown): void {
+function runtimeSection(value: unknown, path: string, required: true): Record<string, unknown>;
+function runtimeSection(
+  value: unknown,
+  path: string,
+  required: false,
+): Record<string, unknown> | undefined;
+function runtimeSection(
+  value: unknown,
+  path: string,
+  required: boolean,
+): Record<string, unknown> | undefined {
   if (!isRecord(value)) {
-    return;
+    throw new RuntimeConfigError(`SpecFlow config root must be an object: ${path}`);
   }
 
-  assertNoProjectAuthSecrets(childRecord(value, 'auth'));
+  const runtime = value.runtime;
+  if (runtime === undefined && !required) return undefined;
+  if (!isRecord(runtime)) {
+    throw new RuntimeConfigError(`SpecFlow config must define an object at 'runtime': ${path}`);
+  }
+
+  return runtime;
 }
 
 async function fileExists(path: string): Promise<boolean> {

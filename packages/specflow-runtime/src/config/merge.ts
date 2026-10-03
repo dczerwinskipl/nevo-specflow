@@ -7,11 +7,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Applies workstation-local overrides to project configuration.
+ * Composes already provenance-validated project and workstation-local Runtime values.
  *
- * Objects merge recursively and scalar values replace the project value. Feature-owned
- * security-sensitive maps are composed here as replacement paths so removing a local
- * entry also revokes it.
+ * Callers MUST validate project/local ownership before invoking this function. Objects
+ * merge recursively and scalar values replace the project value only for paths whose
+ * owning capability explicitly permits local configuration. Feature-owned
+ * security-sensitive maps are replacement paths so removing a local entry also revokes it.
  */
 export function mergeRuntimeConfigValues(projectValue: unknown, localValue: unknown): unknown {
   return mergeValue(projectValue, localValue, []);

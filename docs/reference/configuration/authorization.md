@@ -22,29 +22,30 @@ related:
 
 # Authorization configuration
 
-Authorization policy is project configuration in `nevo-specflow.yaml`.
+Authorization policy is project configuration under `runtime.authorization` in `.nevo/config.yaml`.
 
-`.nevo-local/nevo-specflow.yaml` must not contain an `authorization` section. Runtime rejects a
+`.nevo/local/config.yaml` must not contain a `runtime.authorization` section. Runtime rejects a
 local authorization section during config loading.
 
 ## Shape
 
 ```yaml
-authorization:
-  assignments:
-    - userId: demo-user
-      role: developer
-      scope:
-        projectId: P1
+runtime:
+  authorization:
+    assignments:
+      - userId: demo-user
+        role: developer
+        scope:
+          projectId: P1
 ```
 
 Each assignment has exactly:
 
-- `userId`: canonical project `auth.users.<userId>` key;
+- `userId`: canonical project `runtime.auth.users.<userId>` key;
 - `role`: one of `viewer`, `developer`, `admin`;
 - `scope`: canonical assignment scope.
 
-`userId` must exist in the project `auth.users` section. A user introduced only by local config
+`userId` must exist in the project `runtime.auth.users` section. A user introduced only by local config
 does not satisfy this requirement.
 
 ## Valid scopes
@@ -84,9 +85,9 @@ There is no role inheritance in the authorization resolver and no wildcard capab
 
 ## Auth mode interaction
 
-`auth.mode=required` uses the authenticated session user's canonical id.
+`runtime.auth.mode=required` uses the authenticated session user's canonical id.
 
-`auth.mode=none` with `auth.localUserId` uses that canonical configured user id.
+`runtime.auth.mode=none` with `runtime.auth.localUserId` uses that canonical configured user id.
 
-`auth.mode=none` without `auth.localUserId` disables Runtime access control rather than creating
+`runtime.auth.mode=none` without `runtime.auth.localUserId` disables Runtime access control rather than creating
 an anonymous zero-permission user.

@@ -131,6 +131,14 @@ describe('authentication HTTP API', () => {
         headers: { cookie: `nevo_session=${session}` },
       });
       expect(logout.statusCode).toBe(204);
+      expect(String(logout.headers['set-cookie'])).toContain('nevo_session=');
+
+      const repeatedLogout = await app.inject({
+        method: 'POST',
+        url: '/api/auth/logout',
+        headers: { cookie: `nevo_session=${session}` },
+      });
+      expect(repeatedLogout.statusCode).toBe(204);
 
       const afterLogout = await app.inject({
         method: 'GET',

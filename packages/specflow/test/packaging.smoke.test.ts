@@ -9,7 +9,7 @@
 
 import { execFileSync, spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { basename, delimiter, dirname, join } from 'node:path';
@@ -45,6 +45,7 @@ beforeAll(() => {
   version = parsed.version;
 
   prefix = mkdtempSync(join(tmpdir(), 'nevo-specflow-smoke-'));
+  execFileSync('git', ['init', '-q'], { cwd: prefix });
   writeFileSync(
     join(prefix, 'package.json'),
     JSON.stringify({ name: 'nevo-specflow-smoke-host', version: '0.0.0', private: true }),
@@ -168,6 +169,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     const r = nevoSpec(['--help']);
     expect(r.code).toBe(0);
     expect(r.stdout).toContain('nevo-specflow');
+    expect(r.stdout).toContain('init');
     expect(r.stdout).toContain('start');
   });
 
@@ -177,13 +179,19 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     expect(r.stdout.trim()).toBe(version);
   });
 
-  it('C. nevo-specflow start --help — exposes the real Runtime server command (via the shim)', () => {
+  it('C. nevo-specflow init --help — exposes project bootstrap (via the shim)', () => {
+    const r = nevoSpec(['init', '--help']);
+    expect(r.code).toBe(0);
+    expect(r.stdout).toMatch(/Initialize Nevo SpecFlow configuration/i);
+  });
+
+  it('D. nevo-specflow start --help — exposes the real Runtime server command (via the shim)', () => {
     const r = nevoSpec(['start', '--help']);
     expect(r.code).toBe(0);
     expect(r.stdout).toMatch(/Runtime server/i);
   });
 
-  it('D. generates a password hash through the installed auth utility', () => {
+  it('E. generates a password hash through the installed auth utility', () => {
     const r = nevoSpec(
       ['auth', 'hash-password', '--password-stdin'],
       'correct horse battery staple\n',
@@ -192,23 +200,25 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     expect(r.stdout.trim()).toMatch(/^\$scrypt\$16384\$8\$5\$/u);
   });
 
-  it('E. starts the packaged Runtime, serves HTTP, and shuts down cleanly', async () => {
+  it('F. starts the packaged Runtime, serves HTTP, and shuts down cleanly', async () => {
     const port = await freePort();
+    mkdirSync(join(prefix, '.nevo'), { recursive: true });
     writeFileSync(
-      join(prefix, 'nevo-specflow.yaml'),
+      join(prefix, '.nevo/config.yaml'),
       [
-        'server:',
-        '  host: 127.0.0.1',
-        `  port: ${port}`,
-        '  tls:',
-        '    enabled: false',
-        'auth:',
-        '  mode: none',
-        '  providers:',
-        '    password:',
+        'runtime:',
+        '  server:',
+        '    host: 127.0.0.1',
+        `    port: ${port}`,
+        '    tls:',
         '      enabled: false',
-        '    oidc:',
-        '      enabled: false',
+        '  auth:',
+        '    mode: none',
+        '    providers:',
+        '      password:',
+        '        enabled: false',
+        '      oidc:',
+        '        enabled: false',
         '',
       ].join('\n'),
       'utf8',

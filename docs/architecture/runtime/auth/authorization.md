@@ -114,26 +114,26 @@ The generic resolver intentionally does not know this hierarchy.
 
 ## Canonical user identity
 
-Authorization assignments reference the canonical key in project `auth.users`.
+Authorization assignments reference the canonical key in project `runtime.auth.users`.
 
 Password usernames, OIDC emails, display names, and other provider identifiers are authentication
 inputs, not authorization subject ids.
 
-Project assignments are validated against project-owned `auth.users` before local configuration is
-merged. An assignment therefore cannot depend on a user that exists only in `.nevo-local`.
+Project assignments are validated against project-owned `runtime.auth.users` before local configuration is
+merged. An assignment therefore cannot depend on a user that exists only in `.nevo/local/config.yaml`.
 
 ## Effective subject
 
 Runtime derives authorization access from the auth mode:
 
 ```text
-auth.mode=required
+runtime.auth.mode=required
   authenticated session -> canonical session user
 
-auth.mode=none + localUserId
+runtime.auth.mode=none + localUserId
   -> canonical localUserId
 
-auth.mode=none + no localUserId
+runtime.auth.mode=none + no localUserId
   -> access control disabled
 ```
 

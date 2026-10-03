@@ -17,7 +17,7 @@ export function validateProjectAuthorizationSource(value: unknown): void {
 export function assertNoLocalAuthorization(value: unknown): void {
   if (isRecord(value) && Object.hasOwn(value, 'authorization')) {
     throw new RuntimeConfigError(
-      'authorization is project-only and must not be defined in .nevo-local configuration.',
+      'authorization is project-only and must not be defined in .nevo/local/config.yaml.',
     );
   }
 }

@@ -1,5 +1,5 @@
 import { createServer } from 'node:net';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -31,27 +31,33 @@ describe('startRuntime', () => {
     const cwd = await mkdtemp(join(tmpdir(), 'nevo-runtime-'));
     dirs.push(cwd);
     const port = await freePort();
+    await mkdir(join(cwd, '.nevo'), { recursive: true });
     await writeFile(
-      join(cwd, 'nevo-specflow.yaml'),
+      join(cwd, '.nevo/config.yaml'),
       [
-        'server:',
-        '  host: 127.0.0.1',
-        `  port: ${port}`,
-        '  tls:',
-        '    enabled: false',
-        'auth:',
-        '  mode: none',
-        '  providers:',
-        '    password:',
+        'runtime:',
+        '  server:',
+        '    host: 127.0.0.1',
+        `    port: ${port}`,
+        '    tls:',
         '      enabled: false',
-        '    oidc:',
-        '      enabled: false',
+        '  auth:',
+        '    mode: none',
+        '    providers:',
+        '      password:',
+        '        enabled: false',
+        '      oidc:',
+        '        enabled: false',
         '',
       ].join('\n'),
       'utf8',
     );
 
-    const runtime = await startRuntime({ cwd });
+    const runtime = await startRuntime({
+      projectRoot: cwd,
+      projectConfigPath: join(cwd, '.nevo/config.yaml'),
+      localConfigPath: join(cwd, '.nevo/local/config.yaml'),
+    });
     try {
       expect(runtime.address).toContain(`:${port}`);
       const response = await fetch(`http://127.0.0.1:${port}/api/auth/session`);

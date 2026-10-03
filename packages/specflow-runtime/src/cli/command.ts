@@ -3,19 +3,19 @@
 
 import { Command } from 'commander';
 
-import { startRuntime, type RuntimeHandle, type RuntimeStartOptions } from '../runtime.js';
+import type { RuntimeHandle } from '../runtime.js';
 
 export interface RuntimeCommandContext {
   readonly stdout: (line: string) => void;
   readonly signal?: AbortSignal;
-  readonly start?: (options?: RuntimeStartOptions) => Promise<RuntimeHandle>;
+  readonly start: () => Promise<RuntimeHandle>;
 }
 
 export function createStartCommand(ctx: RuntimeCommandContext): Command {
   return new Command('start')
     .description('Start the Nevo SpecFlow Runtime server')
     .action(async () => {
-      const handle = await (ctx.start ?? startRuntime)();
+      const handle = await ctx.start();
       ctx.stdout(`Nevo SpecFlow Runtime listening at ${handle.address}`);
 
       if (!ctx.signal) return;

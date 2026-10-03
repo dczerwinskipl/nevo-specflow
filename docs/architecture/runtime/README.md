@@ -13,6 +13,7 @@ summary: >
 The **Nevo SpecFlow Runtime** is the long-lived local application backend.
 
 - [Ownership and lifecycle](ownership-and-lifecycle.md)
+- [Project configuration and local state](configuration.md)
 - [Authentication and authorization](auth/)
 
 AI-specific runtime semantics live under [AI architecture](../ai/). Deterministic workflow

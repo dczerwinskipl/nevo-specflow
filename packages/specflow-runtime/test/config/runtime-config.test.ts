@@ -15,20 +15,65 @@ const SUPPORTED_PASSWORD_HASH =
   '$scrypt$16384$8$5$MDEyMzQ1Njc4OWFiY2RlZg$' + 'yMHgG_FDESRF0j5gjhGLotSMPdnfefUcNNFPyNoQtJE';
 
 const PROJECT_CONFIG = `
-server:
-  host: 127.0.0.1
-  port: 4318
-  tls:
-    enabled: false
+runtime:
+  server:
+    host: 127.0.0.1
+    port: 4318
+    tls:
+      enabled: false
 
-auth:
-  mode: none
-  providers:
-    password:
-      enabled: false
-    oidc:
-      enabled: false
+  auth:
+    mode: none
+    users:
+      demo-user:
+        name: Demo User
+    providers:
+      password:
+        enabled: false
+      oidc:
+        enabled: false
 `;
+
+function loadFrom(cwd: string) {
+  return loadRuntimeConfig({
+    projectConfigPath: join(cwd, '.nevo/config.yaml'),
+    localConfigPath: join(cwd, '.nevo/local/config.yaml'),
+  });
+}
+
+const LOCAL_PROJECT_POLICY_OVERRIDES = [
+  `runtime:
+  auth:
+    mode: required
+`,
+  `runtime:
+  auth:
+    users:
+      injected:
+        name: Injected
+`,
+  `runtime:
+  auth:
+    providers:
+      password:
+        enabled: true
+`,
+  `runtime:
+  auth:
+    providers:
+      oidc:
+        issuer: https://issuer.example.test
+`,
+  `runtime:
+  server:
+    port: 9999
+`,
+  `runtime:
+  server:
+    tls:
+      enabled: true
+`,
+] as const;
 
 function requiredAuthConfig() {
   const allowedEmails: Record<string, string> = {
@@ -42,8 +87,8 @@ function requiredAuthConfig() {
       publicOrigin: 'https://specflow.example.test:4318',
       tls: {
         enabled: true,
-        certFile: '.nevo-local/tls/cert.pem',
-        keyFile: '.nevo-local/tls/key.pem',
+        certFile: '.nevo/local/tls/cert.pem',
+        keyFile: '.nevo/local/tls/key.pem',
       },
     },
     auth: {
@@ -270,8 +315,8 @@ describe('runtime configuration', () => {
           publicOrigin: 'http://localhost:4318',
           tls: {
             enabled: true,
-            certFile: '.nevo-local/tls/cert.pem',
-            keyFile: '.nevo-local/tls/key.pem',
+            certFile: '.nevo/local/tls/cert.pem',
+            keyFile: '.nevo/local/tls/key.pem',
           },
         },
         auth: {
@@ -291,7 +336,7 @@ describe('runtime configuration', () => {
         server: {
           host: '127.0.0.1',
           port: 4318,
-          tls: { enabled: true, certFile: '.nevo-local/tls/cert.pem' },
+          tls: { enabled: true, certFile: '.nevo/local/tls/cert.pem' },
         },
         auth: {
           mode: 'none',
@@ -411,7 +456,7 @@ describe('runtime configuration', () => {
     });
   });
 
-  it('replaces security-sensitive auth maps instead of merging stale entries', () => {
+  it('replaces local password accounts instead of merging stale entries', () => {
     expect(
       mergeRuntimeConfigValues(
         {
@@ -420,11 +465,6 @@ describe('runtime configuration', () => {
               password: {
                 accounts: {
                   stale: { userId: 'stale-user', passwordHash: 'stale-hash' },
-                },
-              },
-              oidc: {
-                allowedEmails: {
-                  'stale@example.com': 'stale-user',
                 },
               },
             },
@@ -436,11 +476,6 @@ describe('runtime configuration', () => {
               password: {
                 accounts: {
                   demo: { userId: 'demo-user', passwordHash: 'local-hash' },
-                },
-              },
-              oidc: {
-                allowedEmails: {
-                  'demo@example.com': 'demo-user',
                 },
               },
             },
@@ -455,11 +490,6 @@ describe('runtime configuration', () => {
               demo: { userId: 'demo-user', passwordHash: 'local-hash' },
             },
           },
-          oidc: {
-            allowedEmails: {
-              'demo@example.com': 'demo-user',
-            },
-          },
         },
       },
     });
@@ -467,57 +497,115 @@ describe('runtime configuration', () => {
 
   it('loads required project YAML and applies the optional local override', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'specflow-config-'));
-    await writeFile(join(cwd, 'nevo-specflow.yaml'), PROJECT_CONFIG, 'utf8');
-    await mkdir(join(cwd, '.nevo-local'));
-    await writeFile(join(cwd, '.nevo-local/nevo-specflow.yaml'), 'server:\n  port: 9443\n', 'utf8');
+    await mkdir(join(cwd, '.nevo/local'), { recursive: true });
+    await writeFile(join(cwd, '.nevo/config.yaml'), PROJECT_CONFIG, 'utf8');
+    await writeFile(
+      join(cwd, '.nevo/local/config.yaml'),
+      'runtime:\n  auth:\n    localUserId: demo-user\n',
+      'utf8',
+    );
 
-    const loaded = await loadRuntimeConfig({ cwd });
+    const loaded = await loadFrom(cwd);
 
-    expect(loaded.config.server.port).toBe(9443);
-    expect(loaded.sources.project).toBe(join(cwd, 'nevo-specflow.yaml'));
-    expect(loaded.sources.local).toBe(join(cwd, '.nevo-local/nevo-specflow.yaml'));
+    expect(loaded.config.auth.localUserId).toBe('demo-user');
+    expect(loaded.sources.project).toBe(join(cwd, '.nevo/config.yaml'));
+    expect(loaded.sources.local).toBe(join(cwd, '.nevo/local/config.yaml'));
+  });
+
+  it('ignores unrelated product-owned top-level sections while loading Runtime config', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'specflow-other-capability-'));
+    await mkdir(join(cwd, '.nevo'), { recursive: true });
+    await writeFile(
+      join(cwd, '.nevo/config.yaml'),
+      `${PROJECT_CONFIG}\nworkflow:\n  default: standard\n`,
+      'utf8',
+    );
+
+    const loaded = await loadFrom(cwd);
+
+    expect(loaded.config.server.port).toBe(4318);
   });
 
   it('rejects OIDC client secrets from the project config', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'specflow-project-secret-'));
+    await mkdir(join(cwd, '.nevo'), { recursive: true });
     await writeFile(
-      join(cwd, 'nevo-specflow.yaml'),
+      join(cwd, '.nevo/config.yaml'),
       PROJECT_CONFIG.replace(
-        'oidc:\n      enabled: false',
-        'oidc:\n      enabled: false\n      clientSecret: committed-secret',
+        'oidc:\n        enabled: false',
+        'oidc:\n        enabled: false\n        clientSecret: committed-secret',
       ),
       'utf8',
     );
 
-    await expect(loadRuntimeConfig({ cwd })).rejects.toThrowError(
-      /auth\.providers\.oidc\.clientSecret must be configured only in the local SpecFlow config/,
+    await expect(loadFrom(cwd)).rejects.toThrowError(
+      /Unknown configuration key 'auth\.providers\.oidc\.clientSecret'/,
     );
   });
 
   it('rejects password hashes from the project config', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'specflow-password-secret-'));
+    await mkdir(join(cwd, '.nevo'), { recursive: true });
     await writeFile(
-      join(cwd, 'nevo-specflow.yaml'),
+      join(cwd, '.nevo/config.yaml'),
       PROJECT_CONFIG.replace(
-        'password:\n      enabled: false',
+        'password:\n        enabled: false',
         `password:
-      enabled: false
-      accounts:
-        demo:
-          userId: demo-user
-          passwordHash: ${SUPPORTED_PASSWORD_HASH}`,
+        enabled: false
+        accounts:
+          demo:
+            userId: demo-user
+            passwordHash: ${SUPPORTED_PASSWORD_HASH}`,
       ),
       'utf8',
     );
 
-    await expect(loadRuntimeConfig({ cwd })).rejects.toThrowError(
-      /auth\.providers\.password\.accounts\.demo\.passwordHash must be configured only in the local SpecFlow config/,
+    await expect(loadFrom(cwd)).rejects.toThrowError(
+      /Unknown configuration key 'auth\.providers\.password\.accounts'/,
     );
+  });
+
+  it('rejects local overrides of project-owned settings', async () => {
+    for (const localConfig of LOCAL_PROJECT_POLICY_OVERRIDES) {
+      const cwd = await mkdtemp(join(tmpdir(), 'specflow-local-ownership-'));
+      await mkdir(join(cwd, '.nevo/local'), { recursive: true });
+      await writeFile(join(cwd, '.nevo/config.yaml'), PROJECT_CONFIG, 'utf8');
+      await writeFile(join(cwd, '.nevo/local/config.yaml'), localConfig, 'utf8');
+
+      await expect(loadFrom(cwd)).rejects.toBeInstanceOf(RuntimeConfigError);
+    }
+  });
+
+  it('accepts local password credentials for a committed canonical user', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'specflow-local-password-'));
+    await mkdir(join(cwd, '.nevo/local'), { recursive: true });
+    const project = PROJECT_CONFIG.replace('mode: none', 'mode: required').replace(
+      'password:\n        enabled: false',
+      'password:\n        enabled: true',
+    );
+    await writeFile(join(cwd, '.nevo/config.yaml'), project, 'utf8');
+    await writeFile(
+      join(cwd, '.nevo/local/config.yaml'),
+      `runtime:
+  auth:
+    providers:
+      password:
+        accounts:
+          demo:
+            userId: demo-user
+            passwordHash: ${SUPPORTED_PASSWORD_HASH}
+`,
+      'utf8',
+    );
+
+    const loaded = await loadFrom(cwd);
+
+    expect(loaded.config.auth.providers.password.accounts.demo?.userId).toBe('demo-user');
   });
 
   it('fails closed when the required project config is missing', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'specflow-config-missing-'));
 
-    await expect(loadRuntimeConfig({ cwd })).rejects.toBeInstanceOf(RuntimeConfigError);
+    await expect(loadFrom(cwd)).rejects.toBeInstanceOf(RuntimeConfigError);
   });
 });

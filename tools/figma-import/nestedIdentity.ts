@@ -6,7 +6,6 @@ function safe(value: string) {
 
 export function semanticLayerKey(layer: NestedLayerIR): string | undefined {
   if ('identity' in layer && layer.identity?.key) return `key/${safe(layer.identity.key)}`;
-  if ('identity' in layer && layer.identity?.layer) return `layer/${safe(layer.identity.layer)}`;
   if ('componentRef' in layer) return `component/${safe(layer.componentRef)}`;
   if (layer.kind === 'slot-ref') return `slot/${safe(layer.name)}`;
   if (layer.kind === 'text' && layer.runs?.length) return 'typography-flow';

@@ -8,8 +8,14 @@ export const figmaProjectConfig = {
     host: '127.0.0.1',
     port: 4173,
     captureViewport: { width: 1440, height: 1400, deviceScaleFactor: 1 },
-    designOutput: 'generated/design-system.ir.json',
-    screensOutput: 'generated/screens.ir.json',
+    profileOutputs: {
+      'nevo-ui': { design: 'generated/design-system.ir.json' },
+      'specflow-ui': {
+        design: 'generated/specflow-components.ir.json',
+        screens: 'generated/specflow-screens.ir.json',
+      },
+      'crm-example': { screens: 'generated/crm-example-screens.ir.json' },
+    },
   },
   importer: {
     figma: {

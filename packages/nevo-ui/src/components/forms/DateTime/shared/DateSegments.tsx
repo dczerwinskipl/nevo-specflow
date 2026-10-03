@@ -12,13 +12,15 @@ export interface DateSegmentsProps extends Omit<DateInputProps, 'children' | 'cl
   standalone?: boolean;
 }
 
+type DateInputSegment = Parameters<DateInputProps['children']>[0];
+
 export function DateSegments({ className, standalone = false, ...props }: DateSegmentsProps) {
   return (
     <DateInput
       {...props}
       className={cn(standalone ? dateControlClassName : dateInputClassName, className)}
     >
-      {(segment) => (
+      {(segment: DateInputSegment) => (
         <DateSegment
           segment={segment}
           className={segment.type === 'literal' ? dateLiteralClassName : dateSegmentClassName}

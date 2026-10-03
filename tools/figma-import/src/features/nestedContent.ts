@@ -41,6 +41,7 @@ import { recolorAssetInstance } from './componentPrimitives';
 import { nestedStableIds } from '../../nestedIdentity';
 import { loadProjectFont, upsertSemanticText } from '../resourceAdapters/typography';
 import { assetMainComponentFor } from './assetResources';
+import { slotDisplayName } from '../core/displayNames';
 import { applyTextPresentation, applyTextSizing } from './textProjection';
 
 export type ConfigureNestedComponent = (
@@ -188,7 +189,7 @@ export function materializeStructure(
     return [
       {
         kind: 'element',
-        name: `slot:${layer.name}`,
+        name: slotDisplayName(layer.name, layer.displayName),
         style: slot.style,
         bindings: slot.bindings,
         children: materializeStructure(slot.children, slots),
@@ -457,7 +458,7 @@ export async function syncNestedChildren(
         resources,
         definitions,
       );
-      frame.name = child.componentRef;
+      frame.name = childSpec.displayName ?? child.componentRef;
       applyOpacity(frame, child.style ?? template.root);
       applyChildPlacement(frame, parent, child.style ?? {});
       parent.insertChild(index, frame);
@@ -473,7 +474,7 @@ export async function syncNestedChildren(
     } else if (!(await instanceUsesMainComponent(instance, resolved.component))) {
       instance.swapComponent(resolved.component);
     }
-    instance.name = child.componentRef;
+    instance.name = resolved.spec.displayName ?? child.componentRef;
     mark(instance, childId);
     await applyNestedOverrides(
       instance,
@@ -624,7 +625,7 @@ export async function applyNestedOverrides(
     if (!textStyle) continue;
     const textNode = instance
       .findAllWithCriteria({ types: ['TEXT'] })
-      .find((candidate) => candidate.name === `slot:${slotName}`);
+      .find((candidate) => candidate.getPluginData(DATA_KEY).endsWith(`/slot/${slotName}`));
     if (textNode) applyTextPresentation(textNode, textStyle);
   }
   for (const [slotName, value] of Object.entries(child.slots)) {
@@ -635,7 +636,7 @@ export async function applyNestedOverrides(
     if (!asset) continue;
     const assetInstance = instance
       .findAllWithCriteria({ types: ['INSTANCE'] })
-      .find((candidate) => candidate.name === `slot:${slotName}`);
+      .find((candidate) => candidate.getPluginData(DATA_KEY).endsWith(`/slot/${slotName}`));
     const mainComponent = findStable<ComponentNode>(asset.assetRef, ['COMPONENT']);
     if (
       assetInstance &&
@@ -648,7 +649,7 @@ export async function applyNestedOverrides(
   for (const { slotName, value } of nestedContainers) {
     const container = instance
       .findAllWithCriteria({ types: ['FRAME'] })
-      .find((candidate) => candidate.name === `slot:${slotName}`);
+      .find((candidate) => candidate.getPluginData(DATA_KEY).endsWith(`/slot/${slotName}`));
     if (container) {
       await syncNestedOverridesInPlace(
         container,

@@ -52,4 +52,16 @@ describe('WorkspaceHeader actions', () => {
     expect(markup).toContain('disabled=""');
     expect(markup).toContain('data-workspace-header-title="true"');
   });
+
+  it('allows generated overflow copy to be localized', () => {
+    const markup = renderToStaticMarkup(
+      <WorkspaceHeader
+        actions={actions}
+        labels={{ moreActions: 'Więcej działań' }}
+        title="Klienci"
+      />,
+    );
+
+    expect(markup).toContain('aria-label="Więcej działań"');
+  });
 });

@@ -34,9 +34,11 @@ export const AlertDialogContent = forwardRef<
   );
 });
 
-export function AlertDialogHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('grid gap-1', className)} {...props} />;
-}
+export const AlertDialogHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+  function AlertDialogHeader({ className, ...props }, ref) {
+    return <div ref={ref} className={cn('grid gap-1', className)} {...props} />;
+  },
+);
 
 export const AlertDialogTitle = forwardRef<
   ComponentRef<typeof AlertDialogPrimitive.Title>,
@@ -66,12 +68,15 @@ export const AlertDialogDescription = forwardRef<
   );
 });
 
-export function AlertDialogFooter({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={cn('flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)}
-      {...designSlot('AlertDialog', 'footer')}
-      {...props}
-    />
-  );
-}
+export const AlertDialogFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
+  function AlertDialogFooter({ className, ...props }, ref) {
+    return (
+      <div
+        ref={ref}
+        className={cn('flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)}
+        {...designSlot('AlertDialog', 'footer')}
+        {...props}
+      />
+    );
+  },
+);

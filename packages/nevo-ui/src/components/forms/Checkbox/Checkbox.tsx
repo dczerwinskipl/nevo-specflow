@@ -88,6 +88,7 @@ export interface CheckboxFieldProps extends CheckboxProps {
 
 export function CheckboxField({
   'aria-describedby': ariaDescribedBy,
+  className,
   description,
   disabled,
   fieldClassName,
@@ -107,7 +108,7 @@ export function CheckboxField({
         aria-describedby={describedBy}
         disabled={disabled}
         id={id}
-        className="mt-0.5"
+        className={cn('mt-0.5', className)}
       />
       <div className="min-w-0">
         <label

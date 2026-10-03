@@ -123,11 +123,11 @@ describe('component-set reconstruction', () => {
   });
 
   it('reuses a standalone component by persisted identity after a display-name migration', async () => {
-    const stableId = 'TraditionalNavigationMenu/';
+    const stableId = 'SideNavigation/';
     const existing = component('existing-navigation', stableId);
     const figmaMock = figmaWithMasters([existing], []);
     const spec = {
-      component: 'TraditionalNavigationMenu',
+      component: 'SideNavigation',
       displayName: 'SideNavigation',
       order: 1,
       target: 'component',

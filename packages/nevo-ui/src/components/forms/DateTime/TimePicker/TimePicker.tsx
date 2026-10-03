@@ -12,6 +12,7 @@ import { cn } from '../../../../lib';
 import { iconButtonVariants } from '../../../actions/IconButton';
 import { Icon } from '../../../foundations/Icon';
 import { useFieldControl } from '../../Field';
+import { isAriaInvalid } from '../../shared/textControlState';
 import { AdaptivePickerSurface } from '../shared/AdaptivePickerSurface';
 import { clampPickerValue } from '../shared/clampPickerValue';
 import { DateSegments } from '../shared/DateSegments';
@@ -121,7 +122,7 @@ export function TimePicker({
     disabled,
     id: props.id,
   });
-  const resolvedInvalid = field.ariaInvalid === true || field.ariaInvalid === 'true';
+  const resolvedInvalid = isAriaInvalid(field.ariaInvalid);
   const state = field.disabled ? 'disabled' : resolvedInvalid ? 'invalid' : 'default';
   const capture = useDesignMetadata('TimePicker', { state });
 

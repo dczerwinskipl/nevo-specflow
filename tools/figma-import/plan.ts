@@ -1,6 +1,7 @@
 import type {
   FigmaComponentDefinition,
   ComponentCaptureIR,
+  DesignSystemIR,
   NestedLayerIR,
   ScreensIR,
   SlotIR,
@@ -182,20 +183,52 @@ function collectSlotRequirements(
 }
 
 /** All existing managed identities required before a screen mutation starts. */
-export function screenRequirements(ir: ScreensIR): ReferenceRequirement[] {
-  const definitions = new Map(
-    ir.definitions.map((definition) => [definition.component, definition]),
+function captureRequirements(
+  definitions: readonly FigmaComponentDefinition[],
+  capturesByComponent: Readonly<Record<string, readonly ComponentCaptureIR[]>>,
+  roots?: ReadonlySet<string>,
+) {
+  const definitionsByComponent = new Map(
+    definitions.map((definition) => [definition.component, definition]),
   );
   const result = new Map<string, ReferenceRequirement>();
-  for (const captures of Object.values(ir.screens)) {
+  for (const [component, captures] of Object.entries(capturesByComponent)) {
+    if (roots && !roots.has(component)) continue;
     for (const capture of captures) {
       for (const slot of Object.values(capture.slots)) {
-        if (slot) collectSlotRequirements(slot, definitions, result);
+        if (slot) collectSlotRequirements(slot, definitionsByComponent, result);
       }
-      capture.structure?.forEach((layer) => collectLayerRequirements(layer, definitions, result));
+      capture.structure?.forEach((layer) =>
+        collectLayerRequirements(layer, definitionsByComponent, result),
+      );
     }
   }
   return [...result.values()].sort((left, right) => left.stableId.localeCompare(right.stableId));
+}
+
+/** Existing resources and external main components required by component export roots. */
+export function designSystemRequirements(ir: DesignSystemIR): ReferenceRequirement[] {
+  const roots = ir.profile ? new Set(ir.profile.roots) : undefined;
+  const ownedStableIds = new Set(
+    ir.definitions
+      .filter(
+        (definition) =>
+          (!definition.target || definition.target === 'component') &&
+          (!roots || roots.has(definition.component)),
+      )
+      .flatMap((definition) => [
+        ...selectCanonicalCaptures(ir.components[definition.component] ?? []).keys(),
+      ]),
+  );
+  return captureRequirements(ir.definitions, ir.components, roots).filter(
+    (requirement) => requirement.kind !== 'component' || !ownedStableIds.has(requirement.stableId),
+  );
+}
+
+/** All existing managed identities required before a screen mutation starts. */
+export function screenRequirements(ir: ScreensIR): ReferenceRequirement[] {
+  const roots = ir.profile ? new Set(ir.profile.roots) : undefined;
+  return captureRequirements(ir.definitions, ir.screens, roots);
 }
 
 /** Existing Design System main components required before a screen mutation starts. */

@@ -6,8 +6,7 @@ export const designSpec = defineRecipeDesign({
   component: 'Button',
   recipe: buttonVariants,
   order: 10,
-  // Native disabled:boolean remains an explicit Button → Figma State adapter.
-  // Keeping the existing axis avoids breaking stable IDs in current Figma files.
+  // Native disabled:boolean is an explicit Button → Figma State adapter.
   additionalProperties: { state: ['default', 'disabled'] },
   additionalDefaults: { state: 'default' },
   slots: {

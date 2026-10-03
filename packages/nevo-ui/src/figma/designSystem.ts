@@ -1,4 +1,8 @@
-import { createComponentAuthoring, defineDesignSystem } from '@nevo/figma-core/authoring';
+import {
+  createComponentAuthoring,
+  defineDesignSystem,
+  defineFigmaExportProfile,
+} from '@nevo/figma-core/authoring';
 import { designSpecs as appDesignSpecs } from '../app/shell/AppShell.figma';
 import { designSpecs as environmentDesignSpecs } from '../components/foundations/Environment/Environment.figma';
 import { designSpec as buttonDesignSpec } from '../components/actions/Button/Button.figma';
@@ -98,3 +102,11 @@ export const nevoUiDesignSystem = defineDesignSystem([
 ] as const);
 
 export const { componentRef, slot, variantProperty } = createComponentAuthoring(nevoUiDesignSystem);
+
+export const nevoUiFigmaExportProfile = defineFigmaExportProfile(nevoUiDesignSystem, {
+  id: 'nevo-ui',
+  owner: '@nevo/ui',
+  displayName: 'Nevo UI design system',
+  roots: nevoUiDesignSystem.map((definition) => definition.component),
+  resources: 'owned',
+});

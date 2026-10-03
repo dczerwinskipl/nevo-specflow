@@ -1,12 +1,22 @@
 @import 'tailwindcss';
 @import './design-system/brand-environment.generated.css';
+@import './app/workspace/AppWorkspace.css';
+@import './components/data/DataTable/DataTable.css';
+@import './components/forms/shared/textControl.css';
+@import './components/forms/Select/Select.css';
+@import './components/forms/TextArea/TextArea.css';
+@import './components/layout/ScrollArea/ScrollArea.css';
+@import './components/overlays/Drawer/Drawer.css';
+@import './components/overlays/Menu/Menu.css';
+@import './components/overlays/Popover/Popover.css';
+@import './components/patterns/MessageComposer/MessageComposer.css';
 @source './';
 
 /*
  * NEvo UI foundations.
  *
  * Everything in this file is part of the product-facing design contract:
- * semantic colors, typography, icon sizing and the global application base.
+ * semantic colors, typography, component styles and the global application base.
  * Capture-gallery presentation lives separately in gallery.css.
  */
 @theme static {

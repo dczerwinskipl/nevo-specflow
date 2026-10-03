@@ -16,7 +16,6 @@ import {
 import { cn } from '../../../lib';
 import { Icon, type IconName } from '../../foundations/Icon';
 import { Typography } from '../../foundations/Typography';
-import './Menu.css';
 
 export const Menu = DropdownMenu.Root;
 export const MenuTrigger = DropdownMenu.Trigger;

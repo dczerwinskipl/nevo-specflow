@@ -38,6 +38,11 @@ function floorBoundaryToStep(value: ZonedDateTime, minuteStep: MinuteStep) {
   return value.set({ second: 0, millisecond: 0 }).subtract({ minutes: remainder });
 }
 
+interface ZonedDatePickerState {
+  setValue(value: ZonedDateTime | null): void;
+  value: ZonedDateTime | null;
+}
+
 export interface DateTimePickerContentProps {
   fallbackValue: ZonedDateTime;
   hourCycle?: 12 | 24;
@@ -61,9 +66,9 @@ export function DateTimePickerContent({
   onDone,
   presentation,
 }: DateTimePickerContentProps) {
-  const state = useContext(DatePickerStateContext);
+  const state = useContext(DatePickerStateContext) as ZonedDatePickerState | null;
   const [mobileStep, setMobileStep] = useState<'date' | 'time'>('date');
-  const currentValue = (state?.value as ZonedDateTime | null) ?? fallbackValue;
+  const currentValue = state?.value ?? fallbackValue;
   const time = timeOf(currentValue);
   const timeMin = minValue && isSameDay(currentValue, minValue) ? timeOf(minValue) : null;
   const timeMax = maxValue && isSameDay(currentValue, maxValue) ? timeOf(maxValue) : null;

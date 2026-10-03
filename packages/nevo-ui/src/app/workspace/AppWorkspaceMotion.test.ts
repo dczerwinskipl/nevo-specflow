@@ -8,6 +8,7 @@ describe('AppWorkspace motion CSS contract', () => {
 
     expect(css).toContain("[data-workspace-motion='entering'][data-workspace-direction='forward']");
     expect(css).toContain('@keyframes workspace-enter-forward');
+    expect(css).toContain('@keyframes workspace-exit-backward');
     expect(css).toContain('var(--motion-duration-workspace-navigation)');
     expect(css).toContain('var(--motion-ease-workspace-navigation)');
     expect(css).toContain('@media (prefers-reduced-motion: reduce)');

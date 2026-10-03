@@ -1,6 +1,6 @@
 import { Time } from '@internationalized/date';
 import { useMemo, type CSSProperties } from 'react';
-import { ListBox, ListBoxItem } from 'react-aria-components';
+import { ListBox, ListBoxItem, type ListBoxItemRenderProps } from 'react-aria-components';
 import { cn } from '../../../../lib';
 import {
   createHourOptions,
@@ -74,7 +74,7 @@ function WheelColumn({
           id={String(option)}
           textValue={format(option)}
           style={wheelItemStyle}
-          className={({ isFocused }) =>
+          className={({ isFocused }: ListBoxItemRenderProps) =>
             cn(
               'flex cursor-pointer snap-center items-center justify-center rounded-control px-2 font-sans text-body-lg text-content-primary outline-none',
               isFocused && 'outline outline-2 outline-focus-ring outline-offset-[-2px]',

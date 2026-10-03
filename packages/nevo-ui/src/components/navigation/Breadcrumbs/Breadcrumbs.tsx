@@ -1,19 +1,27 @@
 import {
   Children,
-  cloneElement,
+  createContext,
   isValidElement,
+  useContext,
   type HTMLAttributes,
   type ReactElement,
-  type ReactNode,
 } from 'react';
 import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
 import { cn } from '../../../lib';
 import { Link } from '../../actions/Link';
 import { Icon } from '../../foundations/Icon';
 
+export type BreadcrumbItemElement = ReactElement<BreadcrumbItemProps, typeof BreadcrumbItem>;
+
 export interface BreadcrumbsProps extends HTMLAttributes<HTMLElement> {
-  children: ReactNode;
+  children: BreadcrumbItemElement | BreadcrumbItemElement[];
   label?: string;
+}
+
+const BreadcrumbCurrentContext = createContext(false);
+
+function isBreadcrumbItemElement(child: unknown): child is BreadcrumbItemElement {
+  return isValidElement(child) && child.type === BreadcrumbItem;
 }
 
 export function Breadcrumbs({
@@ -23,7 +31,12 @@ export function Breadcrumbs({
   ...props
 }: BreadcrumbsProps) {
   const capture = useDesignMetadata('Breadcrumbs');
-  const items = Children.toArray(children);
+  const items = Children.toArray(children).map((child) => {
+    if (!isBreadcrumbItemElement(child)) {
+      throw new Error('Breadcrumbs children must be BreadcrumbItem elements.');
+    }
+    return child;
+  });
 
   return (
     <nav aria-label={label} className={className} {...props} {...capture}>
@@ -36,11 +49,9 @@ export function Breadcrumbs({
             key={isValidElement(child) && child.key ? child.key : index}
             className="flex min-w-0 items-center gap-1"
           >
-            {isValidElement(child)
-              ? cloneElement(child as ReactElement<{ current?: boolean }>, {
-                  current: index === items.length - 1,
-                })
-              : child}
+            <BreadcrumbCurrentContext.Provider value={index === items.length - 1}>
+              {child}
+            </BreadcrumbCurrentContext.Provider>
             {index < items.length - 1 ? (
               <Icon aria-hidden name="chevron-right" size="sm" className="text-content-muted" />
             ) : null}
@@ -64,9 +75,11 @@ export function BreadcrumbItem({
   href,
   ...props
 }: BreadcrumbItemProps) {
+  const inferredCurrent = useContext(BreadcrumbCurrentContext);
+  const resolvedCurrent = current ?? inferredCurrent;
   const itemClassName = cn('block min-w-0 max-w-full truncate', className);
 
-  if (current) {
+  if (resolvedCurrent) {
     return (
       <span aria-current="page" className={cn(itemClassName, 'text-content-primary')} {...props}>
         {children}

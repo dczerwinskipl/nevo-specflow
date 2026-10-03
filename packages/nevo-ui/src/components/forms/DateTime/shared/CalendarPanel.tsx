@@ -51,14 +51,14 @@ function CalendarGridContent({ range = false }: { range?: boolean }) {
   return (
     <CalendarGrid className="w-full border-separate border-spacing-1">
       <CalendarGridHeader>
-        {(day) => (
+        {(day: string) => (
           <CalendarHeaderCell className="pb-1 text-center text-label-sm text-content-muted">
             {day}
           </CalendarHeaderCell>
         )}
       </CalendarGridHeader>
       <CalendarGridBody>
-        {(date) => <CalendarCell date={date} className={cellClassName} />}
+        {(date: CalendarDate) => <CalendarCell date={date} className={cellClassName} />}
       </CalendarGridBody>
     </CalendarGrid>
   );

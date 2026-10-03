@@ -10,8 +10,6 @@ import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
 import { cn } from '../../../lib';
 import { useFieldControl } from '../Field';
 import { textControlDesignState } from '../shared/textControlState';
-import '../shared/textControl.css';
-import './TextArea.css';
 
 const textAreaBaseClassName =
   'text-area scrollbar-subtle w-full font-sans text-body-md text-content-primary transition-colors placeholder:text-content-placeholder disabled:cursor-not-allowed';

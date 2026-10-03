@@ -1,6 +1,6 @@
 import { DesignCaptureProvider } from '@nevo/figma-core/metadata';
 import { colorTokens } from '@nevo/ui/design-system/theme';
-import { designSpecs, captureSections } from './registry';
+import { designSpecs, captureSections, exportProfiles } from './registry';
 import { ProjectionFixtures, projectionFixtureSpecs } from './ProjectionFixtures';
 import './gallery.css';
 
@@ -14,7 +14,7 @@ export function Gallery() {
     <DesignCaptureProvider>
       <main className="gallery-root">
         <script id="design-capture-registry" type="application/json">
-          {JSON.stringify({ definitions, colorTokens })}
+          {JSON.stringify({ definitions, colorTokens, profiles: exportProfiles })}
         </script>
         <header className="hero">
           <p className="eyebrow">Nevo UI capture pipeline</p>

@@ -4,7 +4,6 @@ import { cn } from '../../../lib';
 import { useFieldControl } from '../Field';
 import { useInputGroupControl } from '../InputGroup';
 import { textControlDesignState } from '../shared/textControlState';
-import '../shared/textControl.css';
 
 const textInputBaseClassName =
   'text-input w-full font-sans text-body-md text-content-primary transition-colors placeholder:text-content-placeholder disabled:cursor-not-allowed';

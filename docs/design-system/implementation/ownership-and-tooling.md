@@ -13,6 +13,7 @@ summary: >
 related:
   - design-system.principles.system-boundary
   - design-system.figma.code-to-figma-projection
+  - design-system.implementation.library-packaging
   - design-system.implementation.storybook.guidelines
   - product.specflow.ui.application-architecture
 ---
@@ -36,6 +37,10 @@ import SpecFlow code, and independent examples MUST NOT use SpecFlow components 
 
 Stories and Figma declarations remain beside the code they describe. Tool packages compose or
 transport those declarations; they MUST NOT become a second owner of component behavior.
+
+Figma export roots are selected by explicit owner profiles. The shared Storybook/capture host may
+discover stories from all owners, but discovery alone MUST NOT add a component or screen to any
+owner's Figma export.
 
 ## Verification
 

@@ -25,11 +25,24 @@ async function combinedSource(root: string) {
 
 describe('frontend and Figma dependency boundaries', () => {
   it('keeps reusable Nevo UI independent from SpecFlow and its router', async () => {
-    const source = await combinedSource('../../packages/nevo-ui/src');
+    const [source, manifestSource] = await Promise.all([
+      combinedSource('../../packages/nevo-ui/src'),
+      readFile('../../packages/nevo-ui/package.json', 'utf8'),
+    ]);
+    const manifest = JSON.parse(manifestSource) as {
+      dependencies?: Record<string, string>;
+      peerDependencies?: Record<string, string>;
+    };
+    const packageDependencies = {
+      ...manifest.dependencies,
+      ...manifest.peerDependencies,
+    };
 
     expect(source).not.toContain('@nevo/specflow-ui');
     expect(source).not.toContain('@tanstack/react-router');
     expect(source).not.toMatch(/\b(?:Specification|Agent Session|SpecFlow)\b/);
+    expect(packageDependencies).not.toHaveProperty('@nevo/specflow-ui');
+    expect(packageDependencies).not.toHaveProperty('@tanstack/react-router');
   });
 
   it('keeps the neutral Figma core independent from concrete UI owners', async () => {

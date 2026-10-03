@@ -7,129 +7,145 @@ import { Typography } from '../../foundations/Typography';
 export interface MarkdownDocumentProps {
   source: string;
   className?: string;
+  labels?: Partial<MarkdownDocumentLabels>;
 }
 
-const components: Components = {
-  h1: ({ children }) => (
-    <Typography as="h1" className="mb-3 mt-8 text-content-primary first:mt-0" variant="title-lg">
-      {children}
-    </Typography>
-  ),
-  h2: ({ children }) => (
-    <Typography
-      as="h2"
-      className="mb-3 mt-6 border-b border-divider pb-2 text-content-primary first:mt-0"
-      variant="title-md"
-    >
-      {children}
-    </Typography>
-  ),
-  h3: ({ children }) => (
-    <Typography as="h3" className="mb-2 mt-5 text-content-primary first:mt-0" variant="title-sm">
-      {children}
-    </Typography>
-  ),
-  h4: ({ children }) => (
-    <Typography as="h4" className="mb-2 mt-4 text-content-primary first:mt-0" variant="label-md">
-      {children}
-    </Typography>
-  ),
-  p: ({ children }) => (
-    <Typography
-      as="p"
-      className="my-3 text-content-secondary first:mt-0 last:mb-0"
-      variant="body-lg"
-    >
-      {children}
-    </Typography>
-  ),
-  ul: ({ children, className }) => (
-    <Typography
-      as="ul"
-      className={cn(
-        'my-3 list-disc pl-6 text-content-secondary first:mt-0 last:mb-0',
-        className?.includes('contains-task-list') && 'list-none pl-0',
-      )}
-      variant="body-lg"
-    >
-      {children}
-    </Typography>
-  ),
-  ol: ({ children }) => (
-    <Typography
-      as="ol"
-      className="my-3 list-decimal pl-6 text-content-secondary first:mt-0 last:mb-0"
-      variant="body-lg"
-    >
-      {children}
-    </Typography>
-  ),
-  li: ({ children, className }) => <li className={cn('mt-1 first:mt-0', className)}>{children}</li>,
-  strong: ({ children }) => (
-    <strong className="font-semibold text-content-primary">{children}</strong>
-  ),
-  a: ({ children, href, title }) => (
-    <Link href={href} rel="noreferrer noopener" target="_blank" title={title}>
-      {children}
-    </Link>
-  ),
-  blockquote: ({ children }) => (
-    <blockquote className="my-3 border-l-2 border-border-strong pl-4 text-content-muted first:mt-0 last:mb-0 [&_p]:text-body-md [&_p]:text-content-muted">
-      {children}
-    </blockquote>
-  ),
-  code: ({ children, className }) => (
-    <Typography
-      as="code"
-      className={cn(
-        'rounded-control-inline border border-border-default bg-surface-control px-1.5 py-0.5 text-content-secondary',
-        className,
-      )}
-      variant="code-md"
-    >
-      {children}
-    </Typography>
-  ),
-  pre: ({ children }) => (
-    <pre className="my-3 max-w-full overflow-x-auto rounded-composite border border-border-default bg-canvas px-4 py-3 text-content-secondary first:mt-0 last:mb-0 [&_code]:border-0 [&_code]:bg-transparent [&_code]:p-0">
-      {children}
-    </pre>
-  ),
-  hr: () => <hr className="my-6 border-0 border-t border-divider" />,
-  input: ({ node: _node, type, ...props }) => (
-    <input
-      {...props}
-      aria-label={props.checked ? 'Completed task' : 'Incomplete task'}
-      className="mr-2 accent-action-primary"
-      disabled
-      type={type}
-    />
-  ),
-  table: ({ children }) => (
-    <div className="my-3 w-full max-w-full overflow-x-auto first:mt-0 last:mb-0">
-      <table className="min-w-full border-collapse">{children}</table>
-    </div>
-  ),
-  th: ({ children }) => (
-    <th className="border border-border-default bg-surface-raised px-3 py-2 text-left">
-      <Typography as="span" className="text-content-primary" variant="label-md">
-        {children}
-      </Typography>
-    </th>
-  ),
-  td: ({ children }) => (
-    <td className="border border-border-default px-3 py-2 text-left">
-      <Typography as="span" className="text-content-secondary" variant="body-md">
-        {children}
-      </Typography>
-    </td>
-  ),
+export interface MarkdownDocumentLabels {
+  completedTask: string;
+  incompleteTask: string;
+}
+
+const defaultMarkdownDocumentLabels: MarkdownDocumentLabels = {
+  completedTask: 'Completed task',
+  incompleteTask: 'Incomplete task',
 };
 
-export function MarkdownDocument({ className, source }: MarkdownDocumentProps) {
+function markdownComponents(labels: MarkdownDocumentLabels): Components {
+  return {
+    h1: ({ children }) => (
+      <Typography as="h1" className="mb-3 mt-8 text-content-primary first:mt-0" variant="title-lg">
+        {children}
+      </Typography>
+    ),
+    h2: ({ children }) => (
+      <Typography
+        as="h2"
+        className="mb-3 mt-6 border-b border-divider pb-2 text-content-primary first:mt-0"
+        variant="title-md"
+      >
+        {children}
+      </Typography>
+    ),
+    h3: ({ children }) => (
+      <Typography as="h3" className="mb-2 mt-5 text-content-primary first:mt-0" variant="title-sm">
+        {children}
+      </Typography>
+    ),
+    h4: ({ children }) => (
+      <Typography as="h4" className="mb-2 mt-4 text-content-primary first:mt-0" variant="label-md">
+        {children}
+      </Typography>
+    ),
+    p: ({ children }) => (
+      <Typography
+        as="p"
+        className="my-3 text-content-secondary first:mt-0 last:mb-0"
+        variant="body-lg"
+      >
+        {children}
+      </Typography>
+    ),
+    ul: ({ children, className }) => (
+      <Typography
+        as="ul"
+        className={cn(
+          'my-3 list-disc pl-6 text-content-secondary first:mt-0 last:mb-0',
+          className?.includes('contains-task-list') && 'list-none pl-0',
+        )}
+        variant="body-lg"
+      >
+        {children}
+      </Typography>
+    ),
+    ol: ({ children }) => (
+      <Typography
+        as="ol"
+        className="my-3 list-decimal pl-6 text-content-secondary first:mt-0 last:mb-0"
+        variant="body-lg"
+      >
+        {children}
+      </Typography>
+    ),
+    li: ({ children, className }) => (
+      <li className={cn('mt-1 first:mt-0', className)}>{children}</li>
+    ),
+    strong: ({ children }) => (
+      <strong className="font-semibold text-content-primary">{children}</strong>
+    ),
+    a: ({ children, href, title }) => (
+      <Link href={href} rel="noreferrer noopener" target="_blank" title={title}>
+        {children}
+      </Link>
+    ),
+    blockquote: ({ children }) => (
+      <blockquote className="my-3 border-l-2 border-border-strong pl-4 text-content-muted first:mt-0 last:mb-0 [&_p]:text-body-md [&_p]:text-content-muted">
+        {children}
+      </blockquote>
+    ),
+    code: ({ children, className }) => (
+      <Typography
+        as="code"
+        className={cn(
+          'rounded-control-inline border border-border-default bg-surface-control px-1.5 py-0.5 text-content-secondary',
+          className,
+        )}
+        variant="code-md"
+      >
+        {children}
+      </Typography>
+    ),
+    pre: ({ children }) => (
+      <pre className="my-3 max-w-full overflow-x-auto rounded-composite border border-border-default bg-canvas px-4 py-3 text-content-secondary first:mt-0 last:mb-0 [&_code]:border-0 [&_code]:bg-transparent [&_code]:p-0">
+        {children}
+      </pre>
+    ),
+    hr: () => <hr className="my-6 border-0 border-t border-divider" />,
+    input: ({ node: _node, type, ...props }) => (
+      <input
+        {...props}
+        aria-label={props.checked ? labels.completedTask : labels.incompleteTask}
+        className="mr-2 accent-action-primary"
+        disabled
+        type={type}
+      />
+    ),
+    table: ({ children }) => (
+      <div className="my-3 w-full max-w-full overflow-x-auto first:mt-0 last:mb-0">
+        <table className="min-w-full border-collapse">{children}</table>
+      </div>
+    ),
+    th: ({ children }) => (
+      <th className="border border-border-default bg-surface-raised px-3 py-2 text-left">
+        <Typography as="span" className="text-content-primary" variant="label-md">
+          {children}
+        </Typography>
+      </th>
+    ),
+    td: ({ children }) => (
+      <td className="border border-border-default px-3 py-2 text-left">
+        <Typography as="span" className="text-content-secondary" variant="body-md">
+          {children}
+        </Typography>
+      </td>
+    ),
+  };
+}
+
+export function MarkdownDocument({ className, labels: labelsProp, source }: MarkdownDocumentProps) {
+  const labels = { ...defaultMarkdownDocumentLabels, ...labelsProp };
   return (
     <div className={cn('w-full min-w-0 max-w-full [overflow-wrap:anywhere]', className)}>
-      <ReactMarkdown components={components} remarkPlugins={[remarkGfm]}>
+      <ReactMarkdown components={markdownComponents(labels)} remarkPlugins={[remarkGfm]}>
         {source}
       </ReactMarkdown>
     </div>

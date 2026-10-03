@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
+import { createElement } from 'react';
 import { describe, expect, it } from 'vitest';
 import { BreadcrumbItem, Breadcrumbs } from './Breadcrumbs';
 
@@ -30,5 +31,15 @@ describe('Breadcrumbs', () => {
     );
 
     expect(html).toContain('class="router-link"');
+  });
+
+  it('rejects children outside the BreadcrumbItem contract', () => {
+    const invalid = createElement(Breadcrumbs, {
+      children: createElement('span'),
+    } as unknown as Parameters<typeof Breadcrumbs>[0]);
+
+    expect(() => renderToStaticMarkup(invalid)).toThrow(
+      'Breadcrumbs children must be BreadcrumbItem elements.',
+    );
   });
 });

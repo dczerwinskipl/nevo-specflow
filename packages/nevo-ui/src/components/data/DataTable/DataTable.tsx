@@ -9,7 +9,6 @@ import { DataTableHeader } from './DataTableHeader';
 import type { DataTableProps } from './DataTable.types';
 import { defaultDataTableEmptyState, defaultDataTableMessages } from './DataTable.utils';
 import { useDataTable } from './useDataTable';
-import './DataTable.css';
 
 export type * from './DataTable.types';
 

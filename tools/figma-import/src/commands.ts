@@ -1,5 +1,6 @@
 import { validateIR } from '@nevo/figma-core/schema';
 import {
+  designSystemRequirements,
   orderFigmaComponentDefinitionsByDependencies,
   resourceCatalogStableId,
   screenRequirements,
@@ -85,13 +86,21 @@ function designMasterRequirements(
   ir: DesignSystemIR,
   resourceCatalogs: readonly ResourceCatalogDefinition[],
 ) {
+  const roots = ir.profile ? new Set(ir.profile.roots) : undefined;
+  const ownsResources = ir.profile?.resources !== 'dependencies';
   const componentIds = ir.definitions
-    .filter((spec) => !spec.target || spec.target === 'component')
+    .filter(
+      (spec) =>
+        (!spec.target || spec.target === 'component') && (!roots || roots.has(spec.component)),
+    )
     .flatMap((spec) => [...canonicalCaptures(spec, ir.components[spec.component] ?? []).keys()]);
   return [
     ...new Set([
       ...componentIds,
-      ...resourceCatalogsOfKind(resourceCatalogs, 'text-style')
+      ...designSystemRequirements(ir)
+        .filter((requirement) => requirement.kind === 'component')
+        .map((requirement) => requirement.stableId),
+      ...(ownsResources ? resourceCatalogsOfKind(resourceCatalogs, 'text-style') : [])
         .flatMap((catalog) => catalog.items)
         .filter((item) =>
           ir.resources.textStyles.some((style) => style.stableId === item.resourceRef),
@@ -191,7 +200,7 @@ export async function inspectIR(
     exists: existingByKind.get(item.kind)?.has(item.stableId) ?? false,
   }));
   const deletions =
-    ir.kind === 'design-system'
+    ir.kind === 'design-system' && !ir.profile
       ? [...existingByKind].flatMap(([kind, stableIds]) =>
           [...stableIds]
             .filter(
@@ -234,36 +243,69 @@ export async function importDesignSystemIR(
 ) {
   assertDesignSystemIR(value);
   const ir = value;
+  const rootComponents = ir.profile ? new Set(ir.profile.roots) : undefined;
+  const ownsResources = ir.profile?.resources !== 'dependencies';
   const assetCatalogs = resourceCatalogsOfKind(resourceCatalogs, 'asset');
   const textStyleCatalogs = resourceCatalogsOfKind(resourceCatalogs, 'text-style');
   const componentSpecs = orderFigmaComponentDefinitionsByDependencies(
-    ir.definitions.filter((spec) => !spec.target || spec.target === 'component'),
+    ir.definitions.filter(
+      (spec) =>
+        (!spec.target || spec.target === 'component') &&
+        (!rootComponents || rootComponents.has(spec.component)),
+    ),
     ir.components,
   );
   const progress = createImportProgress(
-    5 + assetCatalogs.length + textStyleCatalogs.length + componentSpecs.length * 2,
+    5 +
+      (ownsResources ? assetCatalogs.length + textStyleCatalogs.length : 0) +
+      componentSpecs.length * 2,
     report,
   );
   progress.complete('Validated Design System IR.');
-  await progress.run('Preparing managed Figma page…', () => ensureManagedPage());
-  const section = ensureSection(
-    DESIGN_SECTION_ID,
-    figmaProjectConfig.figma.sections.designSystem.name,
-  );
-  const overviewsSection = ensureSection(
-    OVERVIEWS_SECTION_ID,
-    figmaProjectConfig.figma.sections.overviews.name,
-  );
+  await progress.run('Preparing managed Figma page…', async () => {
+    if (ownsResources) return ensureManagedPage();
+    const existing = await locateManagedPage();
+    if (!existing)
+      throw new Error('Missing managed Design System page. Run the Nevo UI sync first.');
+    await figma.setCurrentPageAsync(existing);
+    return existing;
+  });
   const definitions = new Map(
     ir.definitions.map((definition) => [definition.component, definition]),
   );
-  let resources = await progress.run('Synchronizing variables and text styles…', () =>
-    importStage('Design resources', () => upsertDesignResources(ir)),
+  let resources = ownsResources
+    ? await progress.run('Synchronizing variables and text styles…', () =>
+        importStage('Design resources', () => upsertDesignResources(ir)),
+      )
+    : await progress.run('Locating Design System resources…', () => readDesignResources(ir));
+  if (!ownsResources) {
+    const missingMasters = designSystemRequirements(ir)
+      .filter((requirement) => requirement.kind === 'component')
+      .filter((requirement) => !findStable(requirement.stableId, ['COMPONENT']))
+      .map((requirement) => requirement.stableId);
+    if (missingMasters.length) {
+      throw new Error(
+        `Missing Design System main components: ${missingMasters.join(', ')}. Run the Nevo UI sync first.`,
+      );
+    }
+  }
+  const sectionSuffix = ir.profile ? `/${ir.profile.id}` : '';
+  const section = ensureSection(
+    `${DESIGN_SECTION_ID}${sectionSuffix}`,
+    ir.profile?.displayName ?? figmaProjectConfig.figma.sections.designSystem.name,
   );
-  const assets = await progress.run('Synchronizing asset main components…', () =>
-    importStage('Asset main components', () => upsertAssetResources(ir, section, resources)),
+  const overviewsSection = ensureSection(
+    `${OVERVIEWS_SECTION_ID}${sectionSuffix}`,
+    ir.profile
+      ? `${ir.profile.displayName} — Overviews`
+      : figmaProjectConfig.figma.sections.overviews.name,
   );
-  resources = { ...resources, assets };
+  if (ownsResources) {
+    const assets = await progress.run('Synchronizing asset main components…', () =>
+      importStage('Asset main components', () => upsertAssetResources(ir, section, resources)),
+    );
+    resources = { ...resources, assets };
+  }
   const generated: (ComponentSetNode | ComponentNode)[] = [];
   const overviews: FrameNode[] = [];
   let y = 24;
@@ -272,7 +314,7 @@ export async function importDesignSystemIR(
 
   const presentedAssetRefs = new Set<string>();
   let lastAssetSet: ComponentSetNode | undefined;
-  for (const assetCatalog of assetCatalogs) {
+  for (const assetCatalog of ownsResources ? assetCatalogs : []) {
     const { assetSet, assetOverview } = await progress.run(
       `Synchronizing ${assetCatalog.name} asset catalogue…`,
       async () => {
@@ -300,10 +342,12 @@ export async function importDesignSystemIR(
     overviewY = assetOverview.y + assetOverview.height + 48;
   }
 
-  const unpresentedAssets = [...resources.assets]
-    .filter(([stableId]) => !presentedAssetRefs.has(stableId))
-    .map(([, master]) => master);
-  if (assetCatalogs.length) {
+  const unpresentedAssets = ownsResources
+    ? [...resources.assets]
+        .filter(([stableId]) => !presentedAssetRefs.has(stableId))
+        .map(([, master]) => master)
+    : [];
+  if (ownsResources && assetCatalogs.length) {
     for (const [index, master] of unpresentedAssets.entries()) {
       if (master.parent !== section) section.appendChild(master);
       master.x = (lastAssetSet?.x ?? 24) + (lastAssetSet?.width ?? 0) + 24 + index * 40;
@@ -311,7 +355,7 @@ export async function importDesignSystemIR(
     }
     generated.push(...unpresentedAssets);
     y = Math.max(y, ...unpresentedAssets.map((asset) => asset.y + asset.height + 48));
-  } else {
+  } else if (ownsResources) {
     const assetMasters = unpresentedAssets;
     for (const [index, master] of assetMasters.entries()) {
       if (master.parent !== section) section.appendChild(master);
@@ -323,7 +367,7 @@ export async function importDesignSystemIR(
     y = Math.max(...assetMasters.map((asset) => asset.y + asset.height), 24) + 48;
   }
 
-  for (const textStyleCatalog of textStyleCatalogs) {
+  for (const textStyleCatalog of ownsResources ? textStyleCatalogs : []) {
     const { textStyleSet, textStyleOverview } = await progress.run(
       `Synchronizing ${textStyleCatalog.name} text-style catalogue…`,
       async () => {
@@ -401,7 +445,11 @@ export async function importDesignSystemIR(
     figma.viewport.scrollAndZoomIntoView([section, overviewsSection]);
   });
   const componentSummary = ir.definitions
-    .filter((spec) => !spec.target || spec.target === 'component')
+    .filter(
+      (spec) =>
+        (!spec.target || spec.target === 'component') &&
+        (!rootComponents || rootComponents.has(spec.component)),
+    )
     .map((spec) => {
       const count = canonicalCaptures(spec, ir.components[spec.component] ?? []).size;
       return spec.variantProperties.length
@@ -414,8 +462,9 @@ export async function importDesignSystemIR(
 
 export async function importScreensIR(value: unknown, report: ImportProgress = () => undefined) {
   assertScreensIR(value);
+  const screenRoots = value.profile ? new Set(value.profile.roots) : undefined;
   const screenSpecs = [...value.definitions]
-    .filter((spec) => spec.target === 'screen')
+    .filter((spec) => spec.target === 'screen' && (!screenRoots || screenRoots.has(spec.component)))
     .sort((left, right) => left.order - right.order);
   const progress = createImportProgress(4 + screenSpecs.length, report);
   progress.complete('Validated Screens IR.');
@@ -435,6 +484,7 @@ export async function importScreensIR(value: unknown, report: ImportProgress = (
     generatedAt: value.generatedAt,
     source: value.source,
     semantics: value.semantics,
+    profile: value.profile,
     definitions: value.definitions,
     resources: value.resources,
     diagnostics: value.diagnostics,
@@ -455,10 +505,13 @@ export async function importScreensIR(value: unknown, report: ImportProgress = (
   }
   const section = await progress.run('Preparing managed Screens section…', async () => {
     await adoptManagedPage(managedPage);
-    const designSection = findStable<SectionNode>(DESIGN_SECTION_ID, ['SECTION']);
+    const designSection =
+      findStable<SectionNode>(`${DESIGN_SECTION_ID}/nevo-ui`, ['SECTION']) ??
+      findStable<SectionNode>(DESIGN_SECTION_ID, ['SECTION']);
+    const sectionSuffix = value.profile ? `/${value.profile.id}` : '';
     return ensureSection(
-      SCREENS_SECTION_ID,
-      figmaProjectConfig.figma.sections.screens.name,
+      `${SCREENS_SECTION_ID}${sectionSuffix}`,
+      value.profile?.displayName ?? figmaProjectConfig.figma.sections.screens.name,
       designSection ? designSection.x + designSection.width + 80 : 1200,
     );
   });

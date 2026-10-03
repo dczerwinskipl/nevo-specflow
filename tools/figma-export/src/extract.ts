@@ -9,6 +9,17 @@ import {
   collectCssProjectionDiagnostics,
   stripDiagnosticOnlyStyleProperties,
 } from './cssProjectionDiagnostics';
+import { selectExportProfileRoots } from './exportProfiles';
+
+interface CapturedExportProfile {
+  id: string;
+  owner: string;
+  displayName: string;
+  roots: string[];
+  resources: 'owned' | 'dependencies';
+}
+
+type CapturedProjectIR = DesignSystemIR & { profiles: CapturedExportProfile[] };
 
 function numberFromEnvironment(name: string, fallback: number) {
   const value = process.env[name];
@@ -63,7 +74,7 @@ function startVite(): ChildProcess {
   });
 }
 
-async function extract(): Promise<DesignSystemIR> {
+async function extract(): Promise<CapturedProjectIR> {
   const browser = await chromium.launch({ headless: true });
   try {
     const { width, height, deviceScaleFactor } = captureViewport;
@@ -89,6 +100,7 @@ async function extract(): Promise<DesignSystemIR> {
             {
               kind: 'text' | 'asset-swap' | 'container' | 'slot';
               propertyName?: string;
+              displayName?: string;
               required?: boolean;
               defaultText?: string;
               defaultAssetRefs?: Record<string, string>;
@@ -99,6 +111,13 @@ async function extract(): Promise<DesignSystemIR> {
           figma?: { root?: { layoutMode?: 'NONE' | 'HORIZONTAL' | 'VERTICAL' } };
         }[];
         colorTokens: { stableId: string; name: string; cssVariable: string }[];
+        profiles: {
+          id: string;
+          owner: string;
+          displayName: string;
+          roots: string[];
+          resources: 'owned' | 'dependencies';
+        }[];
       };
       const definitionNames = new Set(
         registry.definitions.map((definition) => definition.component),
@@ -693,6 +712,7 @@ async function extract(): Promise<DesignSystemIR> {
       interface BrowserSlotReference {
         kind: 'slot-ref';
         name: string;
+        displayName?: string;
       }
       type BrowserNestedLayer =
         | BrowserNestedComponent
@@ -907,7 +927,10 @@ async function extract(): Promise<DesignSystemIR> {
       };
       const nestedLayersOf = (
         container: HTMLElement,
-        slotOwner?: { root: HTMLElement; names: ReadonlySet<string> },
+        slotOwner?: {
+          root: HTMLElement;
+          slots: Record<string, { displayName?: string }>;
+        },
       ): BrowserNestedLayer[] =>
         Array.from(container.childNodes).flatMap((node): BrowserNestedLayer[] => {
           if (node.nodeType === Node.TEXT_NODE) {
@@ -928,8 +951,14 @@ async function extract(): Promise<DesignSystemIR> {
           const element = node as HTMLElement;
           if (isExcludedFromVisualCapture(element)) return [];
           const slotName = element.dataset.designSlot;
-          if (slotName && slotOwner?.names.has(slotName) && belongsTo(element, slotOwner.root)) {
-            return [{ kind: 'slot-ref', name: slotName }];
+          if (slotName && slotOwner?.slots[slotName] && belongsTo(element, slotOwner.root)) {
+            return [
+              {
+                kind: 'slot-ref',
+                name: slotName,
+                displayName: slotOwner.slots[slotName].displayName,
+              },
+            ];
           }
           if (getComputedStyle(element).display === 'contents') {
             return nestedLayersOf(element, slotOwner);
@@ -1163,7 +1192,6 @@ async function extract(): Promise<DesignSystemIR> {
         );
         components[definition.component] = roots.map((root) => {
           const properties = propertiesOf(root);
-          const declaredSlotNames = new Set(Object.keys(definition.slots));
           const slots = Object.fromEntries(
             Object.entries(definition.slots).map(([slotName, slotSpec]) => {
               const slotCandidates = Array.from(
@@ -1223,7 +1251,7 @@ async function extract(): Promise<DesignSystemIR> {
                   style: slotStyle,
                   children: richText
                     ? [richText]
-                    : nestedLayersOf(slot, { root, names: declaredSlotNames }),
+                    : nestedLayersOf(slot, { root, slots: definition.slots }),
                   bindings: semanticBindingsOf(slot),
                 },
               ];
@@ -1251,7 +1279,7 @@ async function extract(): Promise<DesignSystemIR> {
             slots,
             structure: nestedLayersOf(root, {
               root,
-              names: new Set(Object.keys(definition.slots)),
+              slots: definition.slots,
             }),
           };
         });
@@ -1277,11 +1305,12 @@ async function extract(): Promise<DesignSystemIR> {
           slotAttribute: 'data-design-slot' as const,
           note: 'Specs define meaning; Tailwind and the rendered browser provide resolved visual values.',
         },
+        profiles: registry.profiles,
         definitions: registry.definitions,
         resources: { colors, textStyles, assets },
         diagnostics,
         components,
-      } as DesignSystemIR;
+      } as CapturedProjectIR;
     }, projectSource);
     const diagnostics = [
       ...(captured.diagnostics ?? []),
@@ -1311,67 +1340,82 @@ try {
   if (!process.env.NEVO_CAPTURE_URL) vite = startVite();
   await waitForServer(baseUrl);
   const captured = await extract();
-  const designDefinitions = captured.definitions.filter(
-    (definition) => !definition.target || definition.target === 'component',
-  );
-  const screenContentDefinitions = captured.definitions.filter(
-    (definition) => definition.target === 'fragment' || definition.target === 'screen',
-  );
-  const designIR: DesignSystemIR = {
-    ...captured,
-    definitions: designDefinitions,
-    diagnostics: captured.diagnostics?.filter((diagnostic) =>
-      designDefinitions.some((definition) => definition.component === diagnostic.component),
-    ),
-    components: Object.fromEntries(
-      designDefinitions.map((definition) => [
-        definition.component,
-        captured.components[definition.component] ?? [],
-      ]),
-    ),
-  };
-  const screensIR: ScreensIR = {
-    kind: 'screens',
-    schemaVersion: 3,
-    generatedAt: captured.generatedAt,
-    source: captured.source,
-    semantics: captured.semantics,
-    // Screens carry read-only component contracts so nested componentRefs can be
-    // resolved, but only target=screen definitions are synchronized by this file.
-    definitions: captured.definitions,
-    resources: captured.resources,
-    diagnostics: captured.diagnostics?.filter((diagnostic) =>
-      screenContentDefinitions.some((definition) => definition.component === diagnostic.component),
-    ),
-    screens: Object.fromEntries(
-      screenContentDefinitions.map((definition) => [
-        definition.component,
-        captured.components[definition.component] ?? [],
-      ]),
-    ),
-  };
-  validateIR(designIR);
-  validateIR(screensIR);
-  await Promise.all([
-    mkdir(path.dirname(designOutputPath), { recursive: true }),
-    mkdir(path.dirname(screensOutputPath), { recursive: true }),
-  ]);
-  await Promise.all([
-    writeFile(designOutputPath, `${JSON.stringify(designIR, null, 2)}\n`, 'utf8'),
-    writeFile(screensOutputPath, `${JSON.stringify(screensIR, null, 2)}\n`, 'utf8'),
-  ]);
-  const componentCount = Object.values(designIR.components).reduce(
-    (sum, captures) => sum + captures.length,
-    0,
-  );
-  const screenCount = Object.values(screensIR.screens).reduce(
-    (sum, captures) => sum + captures.length,
-    0,
-  );
-  console.log(
-    `Wrote ${designIR.resources.textStyles.length} text styles, ${designIR.resources.assets.length} assets and ${componentCount} component captures to ${designOutputPath}`,
-  );
-  console.log(`Wrote ${screenCount} fragment/screen captures to ${screensOutputPath}`);
+  const outputByProfile = JSON.parse(
+    process.env.NEVO_EXPORT_PROFILE_OUTPUTS ??
+      JSON.stringify({
+        'nevo-ui': { design: designOutputPath },
+        'specflow-ui': { screens: screensOutputPath },
+      }),
+  ) as Record<string, { design?: string; screens?: string }>;
+  const writes: Promise<void>[] = [];
+  for (const profile of captured.profiles) {
+    const outputs = outputByProfile[profile.id];
+    if (!outputs) continue;
+    const { componentRoots, screenRoots } = selectExportProfileRoots(captured.definitions, profile);
+    if (outputs.design && componentRoots.length) {
+      const designIR: DesignSystemIR = {
+        kind: 'design-system',
+        schemaVersion: 4,
+        generatedAt: captured.generatedAt,
+        source: captured.source,
+        semantics: captured.semantics,
+        profile,
+        definitions: captured.definitions,
+        resources: captured.resources,
+        diagnostics: captured.diagnostics?.filter((diagnostic) =>
+          componentRoots.some((definition) => definition.component === diagnostic.component),
+        ),
+        components: Object.fromEntries(
+          componentRoots.map((definition) => [
+            definition.component,
+            captured.components[definition.component] ?? [],
+          ]),
+        ),
+      };
+      validateIR(designIR);
+      await mkdir(path.dirname(outputs.design), { recursive: true });
+      writes.push(writeFile(outputs.design, `${JSON.stringify(designIR, null, 2)}\n`, 'utf8'));
+      const count = Object.values(designIR.components).reduce(
+        (sum, captures) => sum + captures.length,
+        0,
+      );
+      console.log(
+        `Prepared ${count} ${profile.displayName} component captures for ${outputs.design}`,
+      );
+    }
+    if (outputs.screens && screenRoots.length) {
+      const screensIR: ScreensIR = {
+        kind: 'screens',
+        schemaVersion: 3,
+        generatedAt: captured.generatedAt,
+        source: captured.source,
+        semantics: captured.semantics,
+        profile,
+        definitions: captured.definitions,
+        resources: captured.resources,
+        diagnostics: captured.diagnostics?.filter((diagnostic) =>
+          screenRoots.some((definition) => definition.component === diagnostic.component),
+        ),
+        screens: Object.fromEntries(
+          screenRoots.map((definition) => [
+            definition.component,
+            captured.components[definition.component] ?? [],
+          ]),
+        ),
+      };
+      validateIR(screensIR);
+      await mkdir(path.dirname(outputs.screens), { recursive: true });
+      writes.push(writeFile(outputs.screens, `${JSON.stringify(screensIR, null, 2)}\n`, 'utf8'));
+      const count = Object.values(screensIR.screens).reduce(
+        (sum, captures) => sum + captures.length,
+        0,
+      );
+      console.log(
+        `Prepared ${count} ${profile.displayName} screen captures for ${outputs.screens}`,
+      );
+    }
+  }
+  await Promise.all(writes);
 } finally {
   vite?.kill();
 }

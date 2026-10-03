@@ -22,4 +22,16 @@ describe('MarkdownDocument', () => {
 
     expect(html).not.toContain('<script>');
   });
+
+  it('allows generated task labels to be localized', () => {
+    const html = renderToStaticMarkup(
+      <MarkdownDocument
+        labels={{ completedTask: 'Zadanie ukończone', incompleteTask: 'Zadanie nieukończone' }}
+        source={'- [x] Done\n- [ ] Pending'}
+      />,
+    );
+
+    expect(html).toContain('aria-label="Zadanie ukończone"');
+    expect(html).toContain('aria-label="Zadanie nieukończone"');
+  });
 });

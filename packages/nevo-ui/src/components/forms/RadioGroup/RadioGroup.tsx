@@ -60,6 +60,7 @@ export interface RadioGroupOptionProps extends RadioGroupItemProps {
 
 export function RadioGroupOption({
   'aria-describedby': ariaDescribedBy,
+  className,
   description,
   disabled,
   id: idProp,
@@ -79,7 +80,7 @@ export function RadioGroupOption({
         aria-describedby={describedBy}
         disabled={disabled}
         id={id}
-        className="mt-0.5"
+        className={cn('mt-0.5', className)}
       />
       <div className="min-w-0">
         <label

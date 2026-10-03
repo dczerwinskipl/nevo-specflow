@@ -11,13 +11,13 @@ import {
 describe('CSS layout projection', () => {
   it('separates a human-facing name from the persisted component identity', () => {
     const spec = {
-      component: 'TraditionalNavigationMenu',
+      component: 'SideNavigation',
       displayName: 'SideNavigation',
       variantProperties: [],
     } as unknown as FigmaComponentDefinition;
 
     expect(componentDisplayName(spec)).toBe('SideNavigation');
-    expect(stableIdForProperties(spec, {})).toBe('TraditionalNavigationMenu/');
+    expect(stableIdForProperties(spec, {})).toBe('SideNavigation/');
     expect(componentDisplayName({ component: 'LegacyControl' })).toBe('LegacyControl');
   });
 

@@ -40,7 +40,6 @@ import {
   type WorkspaceHeaderActionTone,
   type WorkspaceHeaderProps,
 } from './WorkspaceHeader';
-import './AppWorkspace.css';
 
 export interface AppWorkspaceLabels {
   backToPrimary: string;
@@ -380,17 +379,20 @@ function MobileRuntimeSurfaceRegion({
       className={cn(
         '@container absolute inset-0 min-w-0 overflow-hidden outline-none',
         'h-full w-full',
-        runtime.surface === 'secondary' && 'z-10 bg-canvas bg-app-base',
+        runtime.surface === 'secondary' && 'bg-canvas bg-app-base',
         !runtime.visible && 'hidden',
       )}
       {...workspaceSurfaceRuntimeAttributes(runtime)}
-      aria-hidden={!runtime.visible || undefined}
+      aria-hidden={!runtime.visible || !runtime.interactive || undefined}
       data-header-covered={headerCovered}
       inert={!runtime.interactive ? true : undefined}
       onAnimationEnd={onMotionComplete}
       ref={setSurfaceRef}
       tabIndex={tabIndex}
-      style={{ maxWidth: maxWidth === undefined ? '100%' : `${maxWidth}px` }}
+      style={{
+        maxWidth: maxWidth === undefined ? '100%' : `${maxWidth}px`,
+        zIndex: runtime.surface === 'secondary' ? (runtime.motion.phase === 'idle' ? 10 : 20) : 0,
+      }}
     >
       <ScrollArea
         className="mobile-workspace-scroll-area h-full"
@@ -474,6 +476,13 @@ function AppWorkspaceRoot({ children, labels: labelsProp, split = 'balanced' }: 
           transition: workspace?.transition,
         }
       : undefined;
+  const outgoingSecondary = workspace?.transition.outgoing;
+  const outgoingSecondaryPresentation = outgoingSecondary
+    ? {
+        surface: outgoingSecondary.surface,
+        key: `runtime-${outgoingSecondary.instanceKey}`,
+      }
+    : undefined;
   const state = useWorkspaceLayoutState(
     split,
     secondaryPresentation !== undefined,
@@ -507,6 +516,12 @@ function AppWorkspaceRoot({ children, labels: labelsProp, split = 'balanced' }: 
           onPress: () => void secondaryPresentation.onClose?.(),
         }
       : undefined;
+  const outgoingBackAction = outgoingSecondaryPresentation ? (
+    <BackAction label={labels.backToPrimary} onBack={() => undefined} />
+  ) : undefined;
+  const outgoingCloseAction = outgoingSecondaryPresentation ? (
+    <CloseAction label={labels.closeSecondary} onClose={() => undefined} />
+  ) : undefined;
 
   useLayoutEffect(() => {
     if (!secondaryPresentation?.canStack) return;
@@ -567,6 +582,23 @@ function AppWorkspaceRoot({ children, labels: labelsProp, split = 'balanced' }: 
           surfaceRef={secondaryRegionRef}
           tabIndex={state.mode === 'stacked' ? -1 : undefined}
           trailingAction={secondaryCloseAction}
+        />
+      ) : null}
+
+      {state.mode === 'stacked' &&
+      mobileRuntime.outgoingSecondary.mounted &&
+      outgoingSecondaryPresentation ? (
+        <RuntimeSurfaceRegion
+          instanceKey={outgoingSecondaryPresentation.key}
+          key={`outgoing-${outgoingSecondaryPresentation.key}`}
+          leadingAction={outgoingBackAction}
+          maxWidth={undefined}
+          mobileRuntime={mobileRuntime.outgoingSecondary}
+          onMobileMotionComplete={mobileRuntime.completeMotion}
+          stackedVisual
+          surface={outgoingSecondaryPresentation.surface}
+          surfaceName="secondary"
+          trailingAction={outgoingCloseAction}
         />
       ) : null}
     </div>

@@ -104,7 +104,10 @@ export function bindComponentProperties(
     const capture = captures.get(component.getPluginData(DATA_KEY));
     if (!capture) continue;
     for (const [slotName, slotSpec] of Object.entries(spec.slots)) {
-      const child = component.children.find((candidate) => candidate.name === `slot:${slotName}`);
+      const stableId = `${capture?.stableId}/slot/${slotName}`;
+      const child = component.children.find(
+        (candidate) => candidate.getPluginData(DATA_KEY) === stableId,
+      );
       if (slotSpec.kind === 'text' && child?.type === 'TEXT') {
         child.componentPropertyReferences = {};
         child.characters = slotSpec.defaultText;

@@ -1,6 +1,6 @@
 import type { FigmaComponentDefinition } from '@nevo/figma-core/ir';
 import { compileDesignDefinition } from '@nevo/figma-core/authoring';
-import { projectDesignSystem } from './project/designSystem';
+import { projectDesignSystem, projectFigmaExportProfiles } from './project/designSystem';
 import type { DesignStoryExport, CaptureSection } from './types';
 
 const storyModules = import.meta.glob<Record<string, unknown>>(
@@ -27,17 +27,58 @@ export const designSpecs = [...projectDesignSystem]
   .map(compileDesignDefinition)
   .sort((left, right) => left.order - right.order);
 
-export function collectCaptureSections(
-  modules: Record<string, Record<string, unknown>>,
-): CaptureSection[] {
-  return Object.values(modules)
-    .flatMap((module) => Object.values(module))
-    .flatMap((value): CaptureSection[] => {
-      const story = value as DesignStoryExport;
-      const designCapture = story?.parameters?.designCapture;
-      return designCapture && story.render ? [{ ...designCapture, render: story.render }] : [];
-    })
-    .sort((left, right) => left.order - right.order);
+export const exportProfiles = projectFigmaExportProfiles.map((profile) => ({
+  ...profile,
+  roots: [...profile.roots],
+}));
+
+export function validateExportProfiles(
+  profiles: readonly { id: string; roots: readonly string[] }[],
+  definitions: readonly Pick<FigmaComponentDefinition, 'component'>[],
+) {
+  const definitionIds = new Set(definitions.map((definition) => definition.component));
+  const profileIds = new Set<string>();
+  const rootOwners = new Map<string, string>();
+  for (const profile of profiles) {
+    if (profileIds.has(profile.id))
+      throw new Error(`Duplicate Figma export profile: ${profile.id}`);
+    profileIds.add(profile.id);
+    for (const root of profile.roots) {
+      if (!definitionIds.has(root)) {
+        throw new Error(`Figma export profile ${profile.id} references unknown root ${root}`);
+      }
+      const previousOwner = rootOwners.get(root);
+      if (previousOwner) {
+        throw new Error(
+          `Figma export root ${root} is owned by both ${previousOwner} and ${profile.id}`,
+        );
+      }
+      rootOwners.set(root, profile.id);
+    }
+  }
 }
 
-export const captureSections = collectCaptureSections(storyModules);
+validateExportProfiles(exportProfiles, designSpecs);
+
+export function collectCaptureSections(
+  modules: Record<string, Record<string, unknown>>,
+  roots?: ReadonlySet<string>,
+): CaptureSection[] {
+  return (
+    Object.values(modules)
+      .flatMap((module) => Object.values(module))
+      .flatMap((value): CaptureSection[] => {
+        const story = value as DesignStoryExport;
+        const designCapture = story?.parameters?.designCapture;
+        return designCapture && story.render ? [{ ...designCapture, render: story.render }] : [];
+      })
+      // Primitive capture fixtures materialize canonical resources used by every
+      // profile. They remain capture inputs, while profile roots alone determine
+      // component/screen ownership in emitted IR.
+      .filter((section) => !roots || section.kind === 'primitive' || roots.has(section.component))
+      .sort((left, right) => left.order - right.order)
+  );
+}
+
+const exportRoots = new Set(exportProfiles.flatMap((profile) => profile.roots));
+export const captureSections = collectCaptureSections(storyModules, exportRoots);

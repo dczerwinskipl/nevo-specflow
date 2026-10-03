@@ -5,6 +5,13 @@
   animation-timing-function: var(--motion-ease-workspace-navigation);
 }
 
+[data-workspace-motion='exiting'][data-workspace-direction='backward'] {
+  animation-name: workspace-exit-backward;
+  animation-duration: var(--motion-duration-workspace-navigation);
+  animation-fill-mode: both;
+  animation-timing-function: var(--motion-ease-workspace-navigation);
+}
+
 .workspace-stack__layer--current {
   position: relative;
 }
@@ -80,8 +87,22 @@
   }
 }
 
+@keyframes workspace-exit-backward {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(100%, 0, 0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   [data-workspace-motion='entering'][data-workspace-direction='forward'] {
+    animation-duration: 1ms;
+  }
+
+  [data-workspace-motion='exiting'][data-workspace-direction='backward'] {
     animation-duration: 1ms;
   }
 

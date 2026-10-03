@@ -19,7 +19,6 @@ import { Icon } from '../../foundations/Icon';
 import { Typography } from '../../foundations/Typography';
 import { useFieldControl } from '../Field';
 import { isAriaInvalid } from '../shared/textControlState';
-import './Select.css';
 
 interface SelectContextValue {
   disabled: boolean;

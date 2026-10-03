@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ComponentCaptureIR, FigmaComponentDefinition, ScreensIR } from '@nevo/figma-core/ir';
+import type {
+  ComponentCaptureIR,
+  DesignSystemIR,
+  FigmaComponentDefinition,
+  ScreensIR,
+} from '@nevo/figma-core/ir';
 import {
   buildComponentImportPlan,
   componentReferenceKind,
+  designSystemRequirements,
   mainComponentRequirement,
   orderFigmaComponentDefinitionsByDependencies,
   screenRequirements,
@@ -128,5 +134,99 @@ describe('pure Figma import plan', () => {
       stableId: 'ExampleControl/md',
       kind: 'component',
     });
+  });
+
+  it('separates app-owned component roots from their Design System dependencies', () => {
+    const appDefinition: FigmaComponentDefinition = {
+      ...buttonDefinition,
+      component: 'AppControl',
+      order: 2,
+    };
+    const appCapture: ComponentCaptureIR = {
+      ...capture('md'),
+      stableId: 'AppControl/md',
+      component: 'AppControl',
+      structure: [{ componentRef: 'ExampleControl', properties: { size: 'sm' }, slots: {} }],
+    };
+    const designSystem: DesignSystemIR = {
+      kind: 'design-system',
+      schemaVersion: 4,
+      generatedAt: 'fixture',
+      source: {
+        name: 'Fixture',
+        reference: 'fixture',
+        route: 'http://localhost/',
+        viewport: { width: 100, height: 100, deviceScaleFactor: 1 },
+      },
+      semantics: {
+        componentIdentityAttribute: 'data-design-component',
+        slotAttribute: 'data-design-slot',
+        note: 'Fixture',
+      },
+      profile: {
+        id: 'app',
+        owner: 'app',
+        displayName: 'App components',
+        roots: ['AppControl'],
+        resources: 'dependencies',
+      },
+      definitions: [buttonDefinition, appDefinition],
+      resources: { colors: [], textStyles: [], assets: [] },
+      components: {
+        ExampleControl: [capture('sm')],
+        AppControl: [appCapture],
+      },
+    };
+
+    expect(designSystemRequirements(designSystem)).toEqual([
+      { stableId: 'ExampleControl/sm', kind: 'component' },
+    ]);
+  });
+
+  it('only inspects screen roots selected by the owner profile', () => {
+    const dependency = {
+      componentRef: 'ExampleControl',
+      properties: { size: 'md' },
+      slots: {},
+    };
+    const screens: ScreensIR = {
+      kind: 'screens',
+      schemaVersion: 3,
+      generatedAt: 'fixture',
+      source: {
+        name: 'Fixture',
+        reference: 'fixture',
+        route: 'http://localhost/',
+        viewport: { width: 100, height: 100, deviceScaleFactor: 1 },
+      },
+      semantics: {
+        componentIdentityAttribute: 'data-design-component',
+        slotAttribute: 'data-design-slot',
+        note: 'Fixture',
+      },
+      profile: {
+        id: 'app-screens',
+        owner: 'app',
+        displayName: 'App screens',
+        roots: ['OwnedScreen'],
+        resources: 'dependencies',
+      },
+      definitions: [buttonDefinition],
+      resources: { colors: [], textStyles: [], assets: [] },
+      screens: {
+        OwnedScreen: [{ ...capture('owned'), component: 'OwnedScreen', structure: [dependency] }],
+        UnownedScreen: [
+          {
+            ...capture('unowned'),
+            component: 'UnownedScreen',
+            structure: [{ ...dependency, properties: { size: 'sm' } }],
+          },
+        ],
+      },
+    };
+
+    expect(screenRequirements(screens)).toEqual([
+      { stableId: 'ExampleControl/md', kind: 'component' },
+    ]);
   });
 });

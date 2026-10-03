@@ -1,6 +1,11 @@
 import { Time } from '@internationalized/date';
 import { useEffect, useMemo, useRef } from 'react';
-import { ListBox, ListBoxItem, type Selection } from 'react-aria-components';
+import {
+  ListBox,
+  ListBoxItem,
+  type ListBoxItemRenderProps,
+  type Selection,
+} from 'react-aria-components';
 import { cn } from '../../../../lib';
 import {
   createHourOptions,
@@ -62,7 +67,7 @@ function OptionColumn({
         className="max-h-64 overflow-y-auto rounded-control bg-surface-subtle p-1 outline-none"
         selectedKeys={new Set([String(selected)])}
         selectionMode="single"
-        onSelectionChange={(selection) => {
+        onSelectionChange={(selection: Selection) => {
           const next = selectedNumber(selection);
           if (next !== undefined) onSelect(next);
         }}
@@ -72,7 +77,7 @@ function OptionColumn({
             key={option}
             id={String(option)}
             textValue={format(option)}
-            className={({ isFocused, isHovered, isPressed, isSelected }) =>
+            className={({ isFocused, isHovered, isPressed, isSelected }: ListBoxItemRenderProps) =>
               cn(
                 'flex h-control-height-compact cursor-pointer items-center justify-center rounded-control px-3 font-sans text-body-md text-content-secondary outline-none',
                 (isHovered || isFocused) && 'bg-surface-hover text-content-primary',

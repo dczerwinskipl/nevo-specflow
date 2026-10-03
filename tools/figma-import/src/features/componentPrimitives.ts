@@ -25,11 +25,13 @@ import { colorVariableFor } from './documentResources';
 import { loadProjectFont } from '../resourceAdapters/typography';
 import { assetMainComponentFor } from './assetResources';
 import { applyTextPresentation, applyTextSizing } from './textProjection';
+import { slotDisplayName } from '../core/displayNames';
 
 export async function upsertTextSlot(
   component: RenderRootNode,
   capture: ComponentCaptureIR,
   slotName: string,
+  displayName: string | undefined,
   slot: Extract<SlotIR, { kind: 'text' }>,
   ir: DesignSystemIR,
   resources: DesignResources,
@@ -47,7 +49,7 @@ export async function upsertTextSlot(
   // Figma only allows these references on layers that belong to a component
   // main component. A generated screen is a regular Frame, so it has nothing to detach.
   if (component.type === 'COMPONENT') textNode.componentPropertyReferences = {};
-  textNode.name = `slot:${slotName}`;
+  textNode.name = slotDisplayName(slotName, displayName);
   mark(textNode, stableId);
   textNode.fontName = await loadProjectFont(slot.style.fontWeight);
   textNode.characters = slot.text;
@@ -114,7 +116,7 @@ export async function upsertAssetSwapSlot(
     if (!(await instanceUsesMainComponent(instance, mainComponent)))
       instance.swapComponent(mainComponent);
   }
-  instance.name = `slot:${slotName}`;
+  instance.name = slotDisplayName(slotName, slotSpec.displayName ?? slotSpec.propertyName);
   mark(instance, stableId);
   if (slot) applyOpacity(instance, slot.style);
   instance.setPluginData(SLOT_SCHEMA_KEY, SLOT_SCHEMA_VERSION);

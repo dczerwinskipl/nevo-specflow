@@ -22,4 +22,20 @@ describe('RadioGroup', () => {
     expect(html).toContain('Standard');
     expect(html).toContain('Default processing.');
   });
+
+  it('merges consumer classes onto the item while keeping option layout classes', () => {
+    const html = renderToStaticMarkup(
+      <RadioGroup defaultValue="a">
+        <RadioGroupOption
+          className="consumer-control"
+          label="Standard"
+          optionClassName="consumer-option"
+          value="a"
+        />
+      </RadioGroup>,
+    );
+
+    expect(html).toContain('consumer-option');
+    expect(html).toContain('mt-0.5 consumer-control');
+  });
 });

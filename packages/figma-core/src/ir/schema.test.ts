@@ -49,4 +49,60 @@ describe('canonical IR validation', () => {
       }),
     ).toThrow(/missing Button/);
   });
+
+  it('requires captures only for explicit profile roots while retaining dependency definitions', () => {
+    expect(() =>
+      validateIR({
+        ...emptyDesignSystem,
+        profile: {
+          id: 'app',
+          owner: 'app',
+          displayName: 'Application',
+          roots: ['AppControl'],
+          resources: 'dependencies',
+        },
+        definitions: [
+          {
+            component: 'SharedControl',
+            order: 1,
+            variantProperties: [],
+            propertyValues: {},
+            slots: {},
+          },
+          {
+            component: 'AppControl',
+            order: 2,
+            variantProperties: [],
+            propertyValues: {},
+            slots: {},
+          },
+        ],
+        components: {
+          AppControl: [
+            {
+              stableId: 'AppControl/',
+              sourceId: 'app-control',
+              component: 'AppControl',
+              properties: {},
+              root: {},
+              bindings: {},
+              slots: {},
+            },
+          ],
+        },
+      }),
+    ).not.toThrow();
+  });
+
+  it('rejects missing and duplicate profile roots', () => {
+    const profile = {
+      id: 'app',
+      owner: 'app',
+      displayName: 'Application',
+      roots: ['Missing', 'Missing'],
+      resources: 'dependencies',
+    } as const;
+
+    expect(() => validateIR({ ...emptyDesignSystem, profile })).toThrow(/duplicate values/);
+  });
 });

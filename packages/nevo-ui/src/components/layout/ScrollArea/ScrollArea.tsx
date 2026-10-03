@@ -11,7 +11,6 @@ import {
 } from 'react';
 
 import { cn } from '../../../lib';
-import './ScrollArea.css';
 
 export type ScrollAreaDirection = 'horizontal' | 'vertical' | 'both';
 export type ScrollAreaEdge = 'left' | 'right' | 'top' | 'bottom';

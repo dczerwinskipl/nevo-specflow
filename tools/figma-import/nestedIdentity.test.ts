@@ -46,6 +46,22 @@ describe('nested semantic identity', () => {
     expect(after[2]).toBe(before[0]);
   });
 
+  it('keeps human layer names separate from machine identity', () => {
+    const named: NestedLayerIR = {
+      kind: 'element',
+      name: 'Header',
+      identity: { layer: 'Header' },
+      style: {},
+      children: [],
+    };
+    const keyed: NestedLayerIR = { ...named, identity: { key: 'header', layer: 'Renamed header' } };
+
+    expect(nestedStableIds('Card/default', [named])).toEqual([
+      'Card/default/child/anonymous-0/element',
+    ]);
+    expect(nestedStableIds('Card/default', [keyed])).toEqual(['Card/default/child/key/header']);
+  });
+
   it('keeps the legacy typography-flow ID for the new canonical rich-text node', () => {
     const rich: NestedLayerIR = {
       kind: 'text',

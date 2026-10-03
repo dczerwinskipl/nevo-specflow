@@ -29,10 +29,19 @@ export interface WorkspaceHeaderProps {
   actions?: readonly WorkspaceHeaderAction[];
   className?: string;
   icon?: IconName;
+  labels?: Partial<WorkspaceHeaderLabels>;
   status?: ReactNode;
   subtitle?: ReactNode;
   title: ReactNode;
 }
+
+export interface WorkspaceHeaderLabels {
+  moreActions: string;
+}
+
+const defaultWorkspaceHeaderLabels: WorkspaceHeaderLabels = {
+  moreActions: 'More actions',
+};
 
 export interface ResolvedWorkspaceHeaderActions {
   directPrimary?: WorkspaceHeaderAction;
@@ -57,10 +66,12 @@ export function resolveWorkspaceHeaderActions(
 function WorkspaceActionMenu({
   actions,
   className,
+  label,
   navigationAction,
 }: {
   actions: readonly WorkspaceHeaderAction[];
   className?: string;
+  label: string;
   navigationAction?: WorkspaceHeaderAction;
 }) {
   if (actions.length === 0 && !navigationAction) return null;
@@ -69,7 +80,7 @@ function WorkspaceActionMenu({
     <Menu>
       <MenuTrigger asChild>
         <IconButton
-          aria-label="More actions"
+          aria-label={label}
           className={className}
           icon="ellipsis"
           size="sm"
@@ -128,11 +139,13 @@ export function WorkspaceHeader({
   actions = [],
   className,
   icon,
+  labels: labelsProp,
   status,
   subtitle,
   title,
 }: WorkspaceHeaderProps) {
   const resolved = resolveWorkspaceHeaderActions(actions);
+  const labels = { ...defaultWorkspaceHeaderLabels, ...labelsProp };
 
   return (
     <div
@@ -165,7 +178,7 @@ export function WorkspaceHeader({
       {resolved.directPrimary || resolved.overflow.length > 0 ? (
         <div className="flex shrink-0 items-center gap-1.5">
           {resolved.directPrimary ? <DirectPrimaryAction action={resolved.directPrimary} /> : null}
-          <WorkspaceActionMenu actions={resolved.overflow} />
+          <WorkspaceActionMenu actions={resolved.overflow} label={labels.moreActions} />
         </div>
       ) : null}
     </div>
@@ -182,6 +195,13 @@ export function getWorkspaceHeaderActions(node: ReactNode): readonly WorkspaceHe
   return isWorkspaceHeaderElement(node) ? (node.props.actions ?? []) : [];
 }
 
+export function getWorkspaceHeaderLabels(node: ReactNode): WorkspaceHeaderLabels {
+  return {
+    ...defaultWorkspaceHeaderLabels,
+    ...(isWorkspaceHeaderElement(node) ? node.props.labels : undefined),
+  };
+}
+
 export function CompactWorkspaceActions({
   className,
   header,
@@ -191,10 +211,12 @@ export function CompactWorkspaceActions({
   header: ReactNode;
   navigationAction?: WorkspaceHeaderAction;
 }) {
+  const labels = getWorkspaceHeaderLabels(header);
   return (
     <WorkspaceActionMenu
       actions={resolveWorkspaceHeaderActions(getWorkspaceHeaderActions(header), true).overflow}
       className={className}
+      label={labels.moreActions}
       navigationAction={navigationAction}
     />
   );

@@ -24,6 +24,8 @@ export interface WorkspaceSecondaryState {
 export interface WorkspaceTransition {
   action: 'push' | 'pop' | 'replace' | 'close';
   revision: number;
+  incoming: WorkspaceSecondaryState | null;
+  outgoing: WorkspaceSecondaryState | null;
 }
 
 type WorkspaceSecondaryInternalState = WorkspaceSecondaryState & {
@@ -112,6 +114,8 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
   const [transition, setTransition] = useState<WorkspaceTransition>({
     action: 'close',
     revision: 0,
+    incoming: null,
+    outgoing: null,
   });
   const stackRef = useRef<WorkspaceSecondaryInternalState[]>([]);
   const nextInstanceKey = useRef(0);
@@ -131,10 +135,26 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
     setStackState(next);
   }, []);
 
-  const publishTransition = useCallback((action: WorkspaceTransition['action']) => {
-    transitionRevision.current += 1;
-    setTransition({ action, revision: transitionRevision.current });
-  }, []);
+  const publishTransition = useCallback(
+    (
+      action: WorkspaceTransition['action'],
+      outgoing: WorkspaceSecondaryInternalState | undefined,
+      incoming: WorkspaceSecondaryInternalState | undefined,
+    ) => {
+      transitionRevision.current += 1;
+      setTransition({
+        action,
+        revision: transitionRevision.current,
+        outgoing: outgoing
+          ? { surface: outgoing.surface, instanceKey: outgoing.instanceKey }
+          : null,
+        incoming: incoming
+          ? { surface: incoming.surface, instanceKey: incoming.instanceKey }
+          : null,
+      });
+    },
+    [],
+  );
 
   const createEntry = useCallback(
     (
@@ -200,7 +220,7 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
 
       const next = createEntry(surface, options, returnFocusTo);
       publishStack(current ? [...stackRef.current.slice(0, -1), next] : [next]);
-      publishTransition(current ? 'replace' : 'push');
+      publishTransition(current ? 'replace' : 'push', current, next);
       return true;
     },
     [createEntry, isCurrentTop, passesCloseGuard, publishStack, publishTransition],
@@ -209,8 +229,10 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
   const pushSecondary = useCallback(
     (surface: AppWorkspaceSurface, options?: WorkspaceSecondaryOptions) => {
       if (!mountedRef.current) return Promise.resolve(false);
-      publishStack([...stackRef.current, createEntry(surface, options)]);
-      publishTransition('push');
+      const current = stackRef.current.at(-1);
+      const next = createEntry(surface, options);
+      publishStack([...stackRef.current, next]);
+      publishTransition('push', current, next);
       return Promise.resolve(true);
     },
     [createEntry, publishStack, publishTransition],
@@ -222,8 +244,9 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
     if (!(await passesCloseGuard(current)) || !isCurrentTop(current)) return false;
 
     const nextStack = stackRef.current.slice(0, -1);
+    const incoming = nextStack.at(-1);
     publishStack(nextStack);
-    publishTransition('pop');
+    publishTransition('pop', current, incoming);
     current.onClose?.();
     restoreFocus(current.returnFocusTo, nextStack.length);
     return true;
@@ -237,7 +260,7 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
     const rootFocusTarget = stackRef.current[0]?.returnFocusTo ?? current.returnFocusTo;
     const closing = [...stackRef.current].reverse();
     publishStack([]);
-    publishTransition('close');
+    publishTransition('close', current, undefined);
     closing.forEach((entry) => entry.onClose?.());
     restoreFocus(rootFocusTarget, 0);
     return true;

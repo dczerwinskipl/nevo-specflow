@@ -86,6 +86,20 @@ describe('nested element box reconciliation', () => {
 });
 
 describe('slot-ref materialization', () => {
+  it('uses a human name without changing the slot identity key', () => {
+    const slot: Extract<SlotIR, { kind: 'container' }> = {
+      kind: 'container',
+      style: {},
+      children: [],
+    };
+
+    expect(
+      materializeStructure([{ kind: 'slot-ref', name: 'internalBody', displayName: 'Body' }], {
+        internalBody: slot,
+      }),
+    ).toEqual([{ kind: 'element', name: 'Body', style: {}, bindings: undefined, children: [] }]);
+  });
+
   it('preserves semantic text style and color references from a text slot', () => {
     const slot: Extract<SlotIR, { kind: 'text' }> = {
       kind: 'text',

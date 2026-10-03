@@ -56,8 +56,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   const capture = useDesignMetadata('Button', {
     variant,
     size,
-    // Kept as State for this PoC because changing an existing ComponentSet axis
-    // would invalidate current stable variant IDs during reconciliation.
+    // Native disabled state is projected as the explicit Figma State axis.
     state: disabled ? 'disabled' : 'default',
   });
   return (

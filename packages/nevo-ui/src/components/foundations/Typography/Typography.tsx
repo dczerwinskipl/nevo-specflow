@@ -1,4 +1,12 @@
-import type { ElementType, HTMLAttributes, ReactNode } from 'react';
+import {
+  forwardRef,
+  type ComponentPropsWithoutRef,
+  type ComponentPropsWithRef,
+  type ElementType,
+  type ForwardedRef,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import { tv } from 'tailwind-variants/lite';
 import { useDesignMetadata } from '@nevo/figma-core/metadata';
 import { cn } from '../../../lib';
@@ -27,30 +35,48 @@ export const typographyVariants = tv({
   defaultVariants: { variant: 'body-md' },
 });
 
-export interface TypographyProps extends HTMLAttributes<HTMLElement> {
-  as?: ElementType;
+interface TypographyOwnProps<Component extends ElementType> {
+  as?: Component;
   children?: ReactNode;
   variant?: TypographyVariant;
 }
 
-export function Typography({
-  as: Component = 'span',
-  children,
-  className,
-  variant = 'body-md',
-  ...props
-}: TypographyProps) {
-  const capture = useDesignMetadata(
-    'Typography',
-    {},
-    {
-      textFlow: true,
-      textStyleRef: typographyTextStyleRef(variant),
-    },
-  );
-  return (
-    <Component className={cn(typographyVariants({ variant }), className)} {...props} {...capture}>
-      {children}
-    </Component>
-  );
-}
+export type TypographyProps<Component extends ElementType = 'span'> =
+  TypographyOwnProps<Component> &
+    Omit<ComponentPropsWithoutRef<Component>, keyof TypographyOwnProps<Component>>;
+
+type TypographyComponent = <Component extends ElementType = 'span'>(
+  props: TypographyProps<Component> & { ref?: ComponentPropsWithRef<Component>['ref'] },
+) => ReactElement | null;
+
+type TypographyImplementationProps = TypographyOwnProps<ElementType> &
+  Omit<ComponentPropsWithoutRef<'span'>, keyof TypographyOwnProps<ElementType>>;
+
+const TypographyWithRef = forwardRef<HTMLElement, TypographyImplementationProps>(
+  function Typography(
+    { as, children, className, variant = 'body-md', ...props },
+    ref: ForwardedRef<HTMLElement>,
+  ) {
+    const ResolvedComponent = as ?? 'span';
+    const capture = useDesignMetadata(
+      'Typography',
+      {},
+      {
+        textFlow: true,
+        textStyleRef: typographyTextStyleRef(variant),
+      },
+    );
+    return (
+      <ResolvedComponent
+        ref={ref}
+        className={cn(typographyVariants({ variant }), className)}
+        {...props}
+        {...capture}
+      >
+        {children}
+      </ResolvedComponent>
+    );
+  },
+);
+
+export const Typography = TypographyWithRef as TypographyComponent;

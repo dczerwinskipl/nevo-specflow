@@ -63,6 +63,7 @@ export interface SwitchFieldProps extends ComponentPropsWithoutRef<typeof Switch
 
 export function SwitchField({
   'aria-describedby': ariaDescribedBy,
+  className,
   description,
   disabled,
   fieldClassName,
@@ -104,7 +105,7 @@ export function SwitchField({
         aria-describedby={describedBy}
         disabled={disabled}
         id={id}
-        className="mt-0.5"
+        className={cn('mt-0.5', className)}
       />
     </div>
   );

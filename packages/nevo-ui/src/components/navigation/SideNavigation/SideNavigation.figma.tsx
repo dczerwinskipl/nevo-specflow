@@ -1,7 +1,7 @@
 import { defineDesignComponent } from '@nevo/figma-core/authoring';
 
 export const designSpec = defineDesignComponent({
-  component: 'TraditionalNavigationMenu',
+  component: 'SideNavigation',
   displayName: 'SideNavigation',
   description:
     'Simple two-level business application navigation backed by the generic Navigation Core.',

@@ -1,8 +1,8 @@
 import { createComponentAuthoring, defineDesignSystem } from '@nevo/figma-core/authoring';
-import { specFlowDesignSystem } from '@nevo/specflow-ui/figma';
+import { specFlowDesignSystem, specFlowFigmaExportProfile } from '@nevo/specflow-ui/figma';
 import { nevoBrandDesignSystem } from '@nevo/specflow-ui/brand/figma';
-import { nevoUiDesignSystem } from '@nevo/ui/figma';
-import { crmDesignSystem } from 'nevo-example-crm/figma';
+import { nevoUiDesignSystem, nevoUiFigmaExportProfile } from '@nevo/ui/figma';
+import { crmDesignSystem, crmFigmaExportProfile } from 'nevo-example-crm/figma';
 
 export const projectDesignSystem = defineDesignSystem([
   ...nevoUiDesignSystem,
@@ -13,3 +13,9 @@ export const projectDesignSystem = defineDesignSystem([
 
 export const { componentRef, slot, variantProperty } =
   createComponentAuthoring(projectDesignSystem);
+
+export const projectFigmaExportProfiles = [
+  nevoUiFigmaExportProfile,
+  specFlowFigmaExportProfile,
+  crmFigmaExportProfile,
+] as const;

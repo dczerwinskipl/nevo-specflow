@@ -2,6 +2,7 @@ import {
   Button as AriaButton,
   Disclosure as AriaDisclosure,
   DisclosurePanel as AriaDisclosurePanel,
+  type ButtonRenderProps,
 } from 'react-aria-components';
 import {
   createContext,
@@ -9,6 +10,7 @@ import {
   useContext,
   type ComponentPropsWithoutRef,
   type ComponentRef,
+  type ReactNode,
 } from 'react';
 import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
 import { fastColorTransitionClassName } from '../../../design-system/interactionRecipes';
@@ -69,6 +71,8 @@ export type CollapsibleTriggerProps = Omit<
   className?: string;
 };
 
+type CollapsibleTriggerRenderProps = ButtonRenderProps & { defaultChildren: ReactNode };
+
 export const CollapsibleTrigger = forwardRef<
   ComponentRef<typeof AriaButton>,
   CollapsibleTriggerProps
@@ -87,7 +91,7 @@ export const CollapsibleTrigger = forwardRef<
       {...props}
       {...designSlot('Collapsible', 'trigger')}
     >
-      {(renderProps) => (
+      {(renderProps: CollapsibleTriggerRenderProps) => (
         <>
           {showIndicator ? (
             <Icon

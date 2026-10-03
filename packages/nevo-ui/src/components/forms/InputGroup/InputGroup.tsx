@@ -10,7 +10,6 @@ import { tv } from 'tailwind-variants/lite';
 import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
 import { cn } from '../../../lib';
 import { useFieldControl } from '../Field';
-import '../shared/textControl.css';
 
 interface InputGroupContextValue {
   disabled: boolean;

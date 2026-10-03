@@ -31,6 +31,7 @@ import {
 } from './componentLayout';
 import { upsertAssetSwapSlot, upsertTextSlot } from './componentPrimitives';
 import { colorVariableFor } from './documentResources';
+import { slotDisplayName } from '../core/displayNames';
 import {
   materializeStructure,
   syncNestedChildren,
@@ -222,6 +223,7 @@ export async function upsertContainerSlot(
   component: RenderRootNode,
   capture: ComponentCaptureIR,
   slotName: string,
+  displayName: string | undefined,
   slot: Extract<SlotIR, { kind: 'container' }>,
   ir: DesignSystemIR,
   resources: DesignResources,
@@ -238,7 +240,7 @@ export async function upsertContainerSlot(
     frame = figma.createFrame();
     component.appendChild(frame);
   }
-  frame.name = `slot:${slotName}`;
+  frame.name = slotDisplayName(slotName, displayName);
   mark(frame, stableId);
   configurePublicContainerSlot(frame, slot, component, ir, resources);
 
@@ -293,7 +295,7 @@ export async function upsertNativeSlot(
     component.insertChild(index, nativeSlot);
     legacy?.remove();
   }
-  nativeSlot.name = slotSpec.propertyName;
+  nativeSlot.name = slotDisplayName(slotName, slotSpec.displayName ?? slotSpec.propertyName);
   mark(nativeSlot, stableId);
   configurePublicContainerSlot(nativeSlot, slot, component, ir, resources);
   const propertyKey = nativeSlotPropertyKey(nativeSlot);
@@ -372,7 +374,17 @@ export async function configureComponent(
           throw new Error(`${spec.component} is missing text slot ${slotName}`);
         continue;
       }
-      ordered.push(await upsertTextSlot(component, capture, slotName, slot, ir, resources));
+      ordered.push(
+        await upsertTextSlot(
+          component,
+          capture,
+          slotName,
+          slotSpec.displayName ?? slotSpec.propertyName,
+          slot,
+          ir,
+          resources,
+        ),
+      );
     } else if (slotSpec.kind === 'asset-swap') {
       ordered.push(
         await upsertAssetSwapSlot(
@@ -396,6 +408,7 @@ export async function configureComponent(
           component,
           capture,
           slotName,
+          slotSpec.displayName,
           slot,
           ir,
           resources,
@@ -417,6 +430,7 @@ export async function configureComponent(
             component,
             capture,
             slotName,
+            slotSpec.displayName,
             { ...slot, kind: 'container' },
             ir,
             resources,

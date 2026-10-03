@@ -5,23 +5,42 @@
   "type": "module",
   "description": "Product-neutral typed authoring, capture metadata, canonical IR, and validation for code-to-Figma projection.",
   "license": "MIT",
+  "files": [
+    "dist"
+  ],
   "exports": {
-    ".": "./src/index.ts",
-    "./authoring": "./src/authoring/index.ts",
-    "./ir": "./src/ir/ir.ts",
-    "./schema": "./src/ir/schema.ts",
-    "./metadata": "./src/metadata.tsx"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./authoring": {
+      "types": "./dist/authoring/index.d.ts",
+      "import": "./dist/authoring/index.js"
+    },
+    "./ir": {
+      "types": "./dist/ir/ir.d.ts",
+      "import": "./dist/ir/ir.js"
+    },
+    "./schema": {
+      "types": "./dist/ir/schema.d.ts",
+      "import": "./dist/ir/schema.js"
+    },
+    "./metadata": {
+      "types": "./dist/metadata.d.ts",
+      "import": "./dist/metadata.js"
+    }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node scripts/verify-package.mjs",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run"
   },
-  "dependencies": {
-    "react": "19.1.1"
+  "peerDependencies": {
+    "react": ">=19 <20"
   },
   "devDependencies": {
     "@types/react": "19.1.12",
+    "react": "19.1.1",
     "react-dom": "19.1.1",
     "vitest": "5.0.2"
   }

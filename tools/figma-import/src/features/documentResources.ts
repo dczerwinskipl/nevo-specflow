@@ -91,7 +91,9 @@ export async function upsertDesignResources(ir: DesignSystemIR): Promise<DesignR
   return { colors, textStyles, assets: new Map() };
 }
 
-export async function readDesignResources(ir: ScreensIR): Promise<DesignResources> {
+export async function readDesignResources(
+  ir: DesignSystemIR | ScreensIR,
+): Promise<DesignResources> {
   const [variables, textStyles] = await Promise.all([
     figma.variables.getLocalVariablesAsync('COLOR'),
     figma.getLocalTextStylesAsync(),

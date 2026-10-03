@@ -12,6 +12,7 @@ summary: >
   Small focused components, composition over configuration, split by responsibility not
   ceremony, feature-local vertical ownership, hooks by behavior, and where state lives.
 related:
+  - design-system.implementation.react.component-authoring-contract
   - design-system.principles.ui-ux-guidelines
   - design-system.implementation.tailwind.styling-guidelines
   - design-system.principles.system-boundary

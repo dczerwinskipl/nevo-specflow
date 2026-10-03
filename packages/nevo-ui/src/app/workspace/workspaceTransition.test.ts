@@ -3,33 +3,46 @@ import {
   resolveWorkspacePresentationTransition,
   resolveWorkspaceSurfaceTransition,
 } from './workspaceTransition';
+import type { WorkspaceTransition } from './WorkspaceContext';
+
+function transition(
+  action: WorkspaceTransition['action'],
+  outgoing: number | null,
+  incoming: number | null,
+): WorkspaceTransition {
+  return {
+    action,
+    revision: 1,
+    outgoing: outgoing === null ? null : { instanceKey: outgoing, surface: { content: null } },
+    incoming: incoming === null ? null : { instanceKey: incoming, surface: { content: null } },
+  };
+}
 
 describe('workspace presentation transition model', () => {
   it('maps push navigation to a forward Secondary entry', () => {
-    expect(resolveWorkspacePresentationTransition({ action: 'push', revision: 1 })).toEqual({
+    expect(resolveWorkspacePresentationTransition(transition('push', null, 1))).toEqual({
       phase: 'entering',
       direction: 'forward',
-      target: 'secondary',
+      target: 'incoming',
     });
   });
 
-  it.each(['pop', 'replace', 'close'] as const)(
-    'keeps the current immediate presentation for %s navigation',
-    (action) => {
-      expect(resolveWorkspacePresentationTransition({ action, revision: 1 })).toEqual({
-        phase: 'idle',
-      });
-    },
-  );
+  it.each(['pop', 'replace', 'close'] as const)('models outgoing lifecycle for %s', (action) => {
+    expect(resolveWorkspacePresentationTransition(transition(action, 2, null))).toEqual({
+      phase: 'exiting',
+      direction: 'backward',
+      target: 'outgoing',
+    });
+  });
 
   it('is idle without navigation intent', () => {
     expect(resolveWorkspacePresentationTransition()).toEqual({ phase: 'idle' });
   });
 
   it('assigns presentation intent only to its semantic target', () => {
-    const transition = resolveWorkspacePresentationTransition({ action: 'push', revision: 1 });
+    const resolved = resolveWorkspacePresentationTransition(transition('push', null, 1));
 
-    expect(resolveWorkspaceSurfaceTransition('primary', transition)).toEqual({ phase: 'idle' });
-    expect(resolveWorkspaceSurfaceTransition('secondary', transition)).toEqual(transition);
+    expect(resolveWorkspaceSurfaceTransition('outgoing', resolved)).toEqual({ phase: 'idle' });
+    expect(resolveWorkspaceSurfaceTransition('incoming', resolved)).toEqual(resolved);
   });
 });

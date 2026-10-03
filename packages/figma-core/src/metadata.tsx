@@ -26,11 +26,13 @@ type CaptureMetadata<Component extends CaptureComponent> =
 interface DesignMetadataContextValue {
   enabled: boolean;
   captureComponents: ReadonlySet<string>;
+  excludedComponents: ReadonlySet<string>;
 }
 
 const DesignMetadataContext = createContext<DesignMetadataContextValue>({
   enabled: false,
   captureComponents: new Set(),
+  excludedComponents: new Set(),
 });
 
 /** Enables neutral DOM metadata for optional design inspection/capture tooling. */
@@ -40,7 +42,11 @@ export function DesignMetadataProvider({
 }: PropsWithChildren<{ captureComponents?: readonly CaptureComponent[] }>) {
   return (
     <DesignMetadataContext.Provider
-      value={{ enabled: true, captureComponents: new Set(captureComponents) }}
+      value={{
+        enabled: true,
+        captureComponents: new Set(captureComponents),
+        excludedComponents: new Set(),
+      }}
     >
       {children}
     </DesignMetadataContext.Provider>
@@ -48,6 +54,24 @@ export function DesignMetadataProvider({
 }
 
 export { DesignMetadataProvider as DesignCaptureProvider };
+
+/** Tooling boundary for transparent composition hosts inside a captured component. */
+export function DesignMetadataBoundary({
+  children,
+  excludeComponents,
+}: PropsWithChildren<{ excludeComponents: readonly CaptureComponent[] }>) {
+  const parent = useContext(DesignMetadataContext);
+  return (
+    <DesignMetadataContext.Provider
+      value={{
+        ...parent,
+        excludedComponents: new Set([...parent.excludedComponents, ...excludeComponents]),
+      }}
+    >
+      {children}
+    </DesignMetadataContext.Provider>
+  );
+}
 
 function metadataAttribute(name: string) {
   return `data-design-${name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}`;
@@ -86,8 +110,8 @@ export function useDesignMetadata<Component extends CaptureComponent>(
   properties?: CaptureProperties<Component>,
   metadata?: CaptureMetadata<Component>,
 ) {
-  const { enabled, captureComponents } = useContext(DesignMetadataContext);
-  if (!enabled) return {};
+  const { enabled, captureComponents, excludedComponents } = useContext(DesignMetadataContext);
+  if (!enabled || excludedComponents.has(component)) return {};
   return {
     'data-design-component': component,
     ...(captureComponents.has(component) ? { 'data-design-capture': 'true' } : {}),

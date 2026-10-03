@@ -16,4 +16,13 @@ describe('Checkbox', () => {
     expect(html).toContain('Include archived');
     expect(html).toContain('Archived records are included.');
   });
+
+  it('merges consumer classes onto the control while keeping field layout classes', () => {
+    const html = renderToStaticMarkup(
+      <CheckboxField className="consumer-control" fieldClassName="consumer-field" label="Choice" />,
+    );
+
+    expect(html).toContain('consumer-field');
+    expect(html).toContain('mt-0.5 consumer-control');
+  });
 });

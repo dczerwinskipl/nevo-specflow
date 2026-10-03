@@ -12,7 +12,7 @@ import {
   type RefObject,
 } from 'react';
 
-import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
+import { DesignMetadataBoundary, designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
 import { AppBackground, WorkspaceSurface } from '../../components/foundations/Environment';
 import { Drawer, DrawerContent, DrawerTitle } from '../../components/overlays/Drawer';
 import { cn } from '../../lib';
@@ -175,72 +175,72 @@ export function AppShell({
   return (
     <AppNavigationContext.Provider value={navigationContext}>
       <AppFloatingProvider supported={wide}>
-        <AppBackground
-          brandPrimary={brandPrimary}
-          designMetadata={false}
-          ref={shellRef}
-          className={cn(
-            'relative flex h-screen w-full flex-row items-start justify-center gap-[var(--app-shell-gap)] overflow-hidden',
-            className,
-          )}
-          style={geometryStyle}
-          {...props}
-          {...capture}
-        >
-          <Drawer open={navigationOpen} onOpenChange={setNavigationOpen}>
-            {wide ? (
-              <aside
-                key="persistent-navigation"
-                className="flex h-full w-[var(--app-navigation-width)] shrink-0 flex-col pt-2"
-                data-app-shell-region="navigation"
-                {...designSlot('AppShell', 'navigation')}
-              >
-                {navigation}
-              </aside>
-            ) : null}
-
-            <AppWorkspaceContext.Provider key="workspace" value={workspaceContext}>
-              {workspaceMaterialOwner === 'shell' ? (
-                <WorkspaceSurface
-                  as="main"
-                  className={cn(
-                    'mt-4 h-[calc(100%-1rem)] w-max min-w-0 max-w-[calc(100%-var(--app-navigation-width)-var(--app-shell-gap))] flex-none overflow-hidden rounded-tl-surface border-t border-l border-workspace-edge',
-                    workspaceIsInset && 'rounded-r-surface border-r',
-                  )}
-                  data-app-shell-region="workspace"
-                  data-app-shell-workspace-fit={workspaceIsInset ? 'inset' : 'edge'}
-                  designMetadata={false}
-                  {...designSlot('AppShell', 'workspace')}
+        <DesignMetadataBoundary excludeComponents={['AppBackground', 'WorkspaceSurface']}>
+          <AppBackground
+            brandPrimary={brandPrimary}
+            ref={shellRef}
+            className={cn(
+              'relative flex h-screen w-full flex-row items-start justify-center gap-[var(--app-shell-gap)] overflow-hidden',
+              className,
+            )}
+            style={geometryStyle}
+            {...props}
+            {...capture}
+          >
+            <Drawer open={navigationOpen} onOpenChange={setNavigationOpen}>
+              {wide ? (
+                <aside
+                  key="persistent-navigation"
+                  className="flex h-full w-[var(--app-navigation-width)] shrink-0 flex-col pt-2"
+                  data-app-shell-region="navigation"
+                  {...designSlot('AppShell', 'navigation')}
                 >
-                  {children}
-                </WorkspaceSurface>
-              ) : (
-                <main
-                  className="h-full w-full min-w-0 flex-none overflow-hidden"
-                  data-app-shell-region="workspace"
-                  data-app-shell-workspace-material-owner="panel"
-                  {...designSlot('AppShell', 'workspace')}
+                  {navigation}
+                </aside>
+              ) : null}
+
+              <AppWorkspaceContext.Provider key="workspace" value={workspaceContext}>
+                {workspaceMaterialOwner === 'shell' ? (
+                  <WorkspaceSurface
+                    as="main"
+                    className={cn(
+                      'mt-4 h-[calc(100%-1rem)] w-max min-w-0 max-w-[calc(100%-var(--app-navigation-width)-var(--app-shell-gap))] flex-none overflow-hidden rounded-tl-surface border-t border-l border-workspace-edge',
+                      workspaceIsInset && 'rounded-r-surface border-r',
+                    )}
+                    data-app-shell-region="workspace"
+                    data-app-shell-workspace-fit={workspaceIsInset ? 'inset' : 'edge'}
+                    {...designSlot('AppShell', 'workspace')}
+                  >
+                    {children}
+                  </WorkspaceSurface>
+                ) : (
+                  <main
+                    className="h-full w-full min-w-0 flex-none overflow-hidden"
+                    data-app-shell-region="workspace"
+                    data-app-shell-workspace-material-owner="panel"
+                    {...designSlot('AppShell', 'workspace')}
+                  >
+                    {children}
+                  </main>
+                )}
+              </AppWorkspaceContext.Provider>
+
+              {!wide ? (
+                <DrawerContent
+                  key="drawer-navigation"
+                  className="max-w-[min(20rem,85vw)]"
+                  closeLabel={labels.closeNavigation}
+                  side="left"
                 >
-                  {children}
-                </main>
-              )}
-            </AppWorkspaceContext.Provider>
+                  <DrawerTitle className="sr-only">{labels.navigationTitle}</DrawerTitle>
+                  {navigation}
+                </DrawerContent>
+              ) : null}
+            </Drawer>
 
-            {!wide ? (
-              <DrawerContent
-                key="drawer-navigation"
-                className="max-w-[min(20rem,85vw)]"
-                closeLabel={labels.closeNavigation}
-                side="left"
-              >
-                <DrawerTitle className="sr-only">{labels.navigationTitle}</DrawerTitle>
-                {navigation}
-              </DrawerContent>
-            ) : null}
-          </Drawer>
-
-          <AppFloatingOutlet />
-        </AppBackground>
+            <AppFloatingOutlet />
+          </AppBackground>
+        </DesignMetadataBoundary>
       </AppFloatingProvider>
     </AppNavigationContext.Provider>
   );

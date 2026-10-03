@@ -3,7 +3,6 @@ import { forwardRef, type ComponentPropsWithoutRef, type ComponentRef } from 're
 import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
 import { floatingSurfaceClassName } from '../../../design-system/floatingRecipes';
 import { cn } from '../../../lib';
-import './Popover.css';
 
 export const Popover = PopoverPrimitive.Root;
 export const PopoverTrigger = PopoverPrimitive.Trigger;

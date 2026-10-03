@@ -105,6 +105,11 @@ identities.
 Durable identity MUST NOT be derived from display text, story order, or incidental child indexes
 when a semantic key exists.
 
+`key` is the authored machine identity for a nested layer. `layer` and `displayName` are names for
+people and MUST NOT be fallback reconciliation identities. Human-facing names SHOULD describe the
+semantic role (`Body`, `Actions`, `Leading icon`) rather than expose technical slot syntax or an
+incidental DOM tag. Renaming those labels does not migrate the managed node.
+
 Changing an ID scheme MUST be treated as a migration decision because existing Figma
 instances/overrides MAY depend on it.
 
@@ -150,3 +155,22 @@ Storybook is the human documentation/review surface.
 Technical capture stories/fixtures MAY exist for deterministic extraction, but they MUST NOT
 pollute the normal Storybook navigation. Human-readable stories remain independently named and
 reviewable.
+
+## Export ownership profiles
+
+Story discovery and Figma ownership are separate inputs. Each package or application that exports
+to Figma declares a small explicit profile containing:
+
+- a stable profile/owner identity;
+- human-facing section name;
+- selected component, fragment, or screen roots;
+- whether canonical resources are owned or required dependencies.
+
+Nevo UI owns the complete reusable design-system export and its resources. Applications select only
+their own component/pattern/screen roots. Canonical definitions and resources required to interpret
+nested Nevo UI content travel in IR as dependency closure, but they do not become app-owned export
+roots and MUST already exist in the managed Figma document before an application import mutates it.
+
+The importer scopes reconciliation sections and stale-content cleanup to the active owner profile.
+It MUST NOT delete or re-parent another owner's managed components while synchronizing a partial
+application export.

@@ -16,8 +16,7 @@ const defaultSideNavigationMessages: SideNavigationMessages = {
   expand: (label) => `Expand ${label}`,
 };
 
-/** Persisted Figma identity retained to update existing managed instances in place. */
-export const sideNavigationFigmaIdentity = 'TraditionalNavigationMenu' as const;
+export const sideNavigationFigmaIdentity = 'SideNavigation' as const;
 
 type AccessibleNavigationName =
   | { 'aria-label': string; 'aria-labelledby'?: string }

@@ -4,6 +4,7 @@ import type {
   DesignSystemIR,
   DesignValue,
   FigmaGeometryOverride,
+  FigmaExportProfileIR,
   NestedLayerIR,
   ScreensIR,
   SlotIR,
@@ -96,6 +97,7 @@ function validateDefinition(
       fail(`${path}.slots.${name}.kind`, 'is not supported');
     if (slot.kind === 'text' || slot.kind === 'asset-swap' || slot.kind === 'slot')
       text(slot.propertyName, `${path}.slots.${name}.propertyName`);
+    if (slot.displayName !== undefined) text(slot.displayName, `${path}.slots.${name}.displayName`);
     if (slot.kind === 'text') text(slot.defaultText, `${path}.slots.${name}.defaultText`);
     if (slot.kind === 'asset-swap') {
       text(slot.variantProperty, `${path}.slots.${name}.variantProperty`);
@@ -231,6 +233,7 @@ function validateLayer(
   text(value.kind, `${path}.kind`);
   if (value.kind === 'slot-ref') {
     text(value.name, `${path}.name`);
+    if (value.displayName !== undefined) text(value.displayName, `${path}.displayName`);
     return;
   }
   if (value.kind === 'text') {
@@ -393,6 +396,18 @@ export function validateIR(value: unknown): asserts value is AnyIR {
     fail('IR.schemaVersion', 'Unsupported design-system schemaVersion');
   if (value.kind === 'screens' && value.schemaVersion !== 3)
     fail('IR.schemaVersion', 'Unsupported screens schemaVersion');
+  if (value.profile !== undefined) {
+    record(value.profile, 'IR.profile');
+    text(value.profile.id, 'IR.profile.id');
+    text(value.profile.owner, 'IR.profile.owner');
+    text(value.profile.displayName, 'IR.profile.displayName');
+    array(value.profile.roots, 'IR.profile.roots');
+    value.profile.roots.forEach((root, index) => text(root, `IR.profile.roots[${index}]`));
+    unique(value.profile.roots as string[], 'IR.profile.roots');
+    if (value.profile.resources !== 'owned' && value.profile.resources !== 'dependencies')
+      fail('IR.profile.resources', 'must be owned or dependencies');
+  }
+  const profile = value.profile as unknown as FigmaExportProfileIR | undefined;
   if (value.diagnostics !== undefined) {
     array(value.diagnostics, 'IR.diagnostics');
     const supported = new Set([
@@ -429,6 +444,9 @@ export function validateIR(value: unknown): asserts value is AnyIR {
   );
   if (definitions.size !== value.definitions.length)
     fail('IR.definitions', 'component names must be unique');
+  for (const [index, root] of (profile?.roots ?? []).entries()) {
+    if (!definitions.has(root)) fail(`IR.profile.roots[${index}]`, `references missing ${root}`);
+  }
   record(value.resources, 'IR.resources');
   const resources = value.resources as unknown as DesignSystemIR['resources'];
   const identityKinds = new Map<string, string>();
@@ -544,7 +562,10 @@ export function validateIR(value: unknown): asserts value is AnyIR {
     value.kind === 'design-system'
       ? new Set(['component', undefined])
       : new Set(['fragment', 'screen']);
-  for (const definition of definitions.values()) {
+  const requiredDefinitions = profile
+    ? profile.roots.map((root) => definitions.get(root)!).filter(Boolean)
+    : [...definitions.values()];
+  for (const definition of requiredDefinitions) {
     if (
       requiredTargets.has(definition.target) &&
       !Object.prototype.hasOwnProperty.call(collection, definition.component)

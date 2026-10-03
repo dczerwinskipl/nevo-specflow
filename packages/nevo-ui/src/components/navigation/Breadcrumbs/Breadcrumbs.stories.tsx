@@ -11,7 +11,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  args: { children: 'Customers' },
+  args: { children: <BreadcrumbItem>Customers</BreadcrumbItem> },
   render: () => (
     <Breadcrumbs>
       <BreadcrumbItem href="#customers">Customers</BreadcrumbItem>
@@ -21,7 +21,7 @@ export const Default: Story = {
 };
 
 export const LongCurrentPage: Story = {
-  args: { children: 'Customers' },
+  args: { children: <BreadcrumbItem>Customers</BreadcrumbItem> },
   render: () => (
     <div className="max-w-sm">
       <Breadcrumbs>

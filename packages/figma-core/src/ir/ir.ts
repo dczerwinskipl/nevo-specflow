@@ -6,9 +6,9 @@ export type ComputedStyleRecord = Record<string, string>;
 export type SemanticTokenBindings = Partial<Record<keyof DesignTokenBindings, string>>;
 
 export interface LayerIdentityIR {
-  /** Explicit neutral author key, preferred over inferred identity. */
+  /** Machine-stable author key used for reconciliation. */
   key?: string;
-  /** Semantic layer name from data-design-layer. */
+  /** Human-facing semantic layer name; never used as reconciliation identity. */
   layer?: string;
 }
 
@@ -62,16 +62,23 @@ export interface AssetResourceIR {
 }
 
 export type FigmaSlotDefinition =
-  | { kind: 'text'; propertyName: string; defaultText: string; required?: boolean }
+  | {
+      kind: 'text';
+      propertyName: string;
+      displayName?: string;
+      defaultText: string;
+      required?: boolean;
+    }
   | {
       kind: 'asset-swap';
       propertyName: string;
+      displayName?: string;
       required?: boolean;
       defaultAssetRefs: Record<string, string>;
       variantProperty: string;
     }
-  | { kind: 'container'; required?: boolean; exposeVisibility?: boolean }
-  | { kind: 'slot'; propertyName: string; required?: boolean };
+  | { kind: 'container'; displayName?: string; required?: boolean; exposeVisibility?: boolean }
+  | { kind: 'slot'; propertyName: string; displayName?: string; required?: boolean };
 
 export interface TokenBindingRule {
   property: string;
@@ -150,6 +157,7 @@ export interface AssetLayerIR {
 export interface NestedSlotReferenceIR {
   kind: 'slot-ref';
   name: string;
+  displayName?: string;
 }
 
 export type NestedLayerIR =
@@ -202,6 +210,14 @@ export interface ComponentCaptureIR {
   structure?: NestedLayerIR[];
 }
 
+export interface FigmaExportProfileIR {
+  id: string;
+  owner: string;
+  displayName: string;
+  roots: string[];
+  resources: 'owned' | 'dependencies';
+}
+
 export interface DesignSystemIR {
   kind: 'design-system';
   schemaVersion: 4;
@@ -217,6 +233,7 @@ export interface DesignSystemIR {
     slotAttribute: 'data-design-slot';
     note: string;
   };
+  profile?: FigmaExportProfileIR;
   definitions: FigmaComponentDefinition[];
   resources: {
     colors: ColorTokenIR[];
@@ -233,6 +250,7 @@ export interface ScreensIR {
   generatedAt: string;
   source: DesignSystemIR['source'];
   semantics: DesignSystemIR['semantics'];
+  profile?: FigmaExportProfileIR;
   definitions: FigmaComponentDefinition[];
   resources: DesignSystemIR['resources'];
   diagnostics?: ProjectionDiagnosticIR[];

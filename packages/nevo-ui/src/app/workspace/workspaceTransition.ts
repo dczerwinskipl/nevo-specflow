@@ -2,7 +2,7 @@ import type { WorkspaceTransition } from './WorkspaceContext';
 
 export type WorkspacePresentationPhase = 'idle' | 'entering' | 'exiting';
 export type WorkspacePresentationDirection = 'forward' | 'backward';
-export type WorkspacePresentationTarget = 'primary' | 'secondary';
+export type WorkspacePresentationTarget = 'incoming' | 'outgoing';
 
 export type WorkspacePresentationTransition =
   | { phase: 'idle' }
@@ -27,12 +27,23 @@ export function resolveWorkspacePresentationTransition(
     return {
       phase: 'entering',
       direction: 'forward',
-      target: 'secondary',
+      target: 'incoming',
     };
   }
 
-  // The current product behavior reveals pop/replace/close immediately. Future exit behavior
-  // belongs here; the runtime already exposes animation completion without duration timers.
+  if (
+    transition?.outgoing &&
+    (transition.action === 'pop' ||
+      transition.action === 'replace' ||
+      transition.action === 'close')
+  ) {
+    return {
+      phase: 'exiting',
+      direction: 'backward',
+      target: 'outgoing',
+    };
+  }
+
   return idleWorkspacePresentationTransition;
 }
 

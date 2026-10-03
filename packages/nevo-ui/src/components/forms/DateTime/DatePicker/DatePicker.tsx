@@ -7,6 +7,7 @@ import {
 import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
 import { cn } from '../../../../lib';
 import { useFieldControl } from '../../Field';
+import { isAriaInvalid } from '../../shared/textControlState';
 import { AdaptivePickerSurface } from '../shared/AdaptivePickerSurface';
 import { clampPickerValue } from '../shared/clampPickerValue';
 import { DateControl } from '../shared/DateControl';
@@ -110,7 +111,7 @@ export function DatePicker({
     disabled,
     id: props.id,
   });
-  const resolvedInvalid = field.ariaInvalid === true || field.ariaInvalid === 'true';
+  const resolvedInvalid = isAriaInvalid(field.ariaInvalid);
   const state = field.disabled ? 'disabled' : resolvedInvalid ? 'invalid' : 'default';
   const capture = useDesignMetadata('DatePicker', { state });
 
@@ -132,7 +133,7 @@ export function DatePicker({
       minValue={minValue}
       shouldCloseOnSelect={false}
       value={picker.resolvedOpen ? picker.draftValue : picker.committedValue}
-      onChange={(nextValue) => {
+      onChange={(nextValue: CalendarDate | null) => {
         if (picker.resolvedOpen) picker.setDraftValue(nextValue);
         else picker.commitValue(nextValue);
       }}

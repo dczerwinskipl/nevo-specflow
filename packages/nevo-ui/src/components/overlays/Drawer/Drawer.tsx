@@ -9,7 +9,6 @@ import { designLayerMetadata, designSlot, useDesignMetadata } from '@nevo/figma-
 import { cn } from '../../../lib';
 import { typographyTextStyleRef } from '../../../design-system/resources';
 import { IconButton } from '../../actions/IconButton';
-import './Drawer.css';
 
 export const Drawer = Dialog.Root;
 export const DrawerTrigger = Dialog.Trigger;

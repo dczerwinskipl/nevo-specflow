@@ -15,7 +15,6 @@ import { tv, type VariantProps } from 'tailwind-variants/lite';
 import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
 import { cn } from '../../../lib';
 import { EmbeddedTextArea, type TextAreaProps } from '../../forms/TextArea/TextArea';
-import './MessageComposer.css';
 
 export type MessageComposerEnterKeyBehavior = 'submit' | 'newline';
 export type MessageComposerFormEvent = SyntheticEvent<HTMLFormElement, SubmitEvent>;

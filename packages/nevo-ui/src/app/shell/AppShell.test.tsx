@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { DesignMetadataProvider } from '@nevo/figma-core/metadata';
 import { AppShell, resolveAppShellLayout } from './AppShell';
 import { WIDE_SHELL_MIN_WIDTH } from '../workspace/workspaceSizing';
 
@@ -63,5 +64,20 @@ describe('AppShell', () => {
     expect(source).toContain('<WorkspaceSurface');
     expect(source).not.toContain('bg-workspace-material');
     expect(source).not.toContain('bg-workspace ');
+  });
+
+  it('keeps transparent environment hosts out of capture metadata without public tooling props', () => {
+    const markup = renderToStaticMarkup(
+      <DesignMetadataProvider captureComponents={['AppShell']}>
+        <AppShell navigation={<nav>Navigation</nav>}>
+          <div>Workspace</div>
+        </AppShell>
+      </DesignMetadataProvider>,
+    );
+
+    expect(markup.match(/data-design-component=/g)).toHaveLength(1);
+    expect(markup).toContain('data-design-component="AppShell"');
+    expect(markup).not.toContain('data-design-component="AppBackground"');
+    expect(markup).not.toContain('data-design-component="WorkspaceSurface"');
   });
 });

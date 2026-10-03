@@ -11,7 +11,6 @@ process.env.NEVO_CAPTURE_HEIGHT = String(config.export.captureViewport.height);
 process.env.NEVO_CAPTURE_DEVICE_SCALE_FACTOR = String(
   config.export.captureViewport.deviceScaleFactor,
 );
-process.env.NEVO_DESIGN_IR_OUT = config.export.designOutput;
-process.env.NEVO_SCREENS_IR_OUT = config.export.screensOutput;
+process.env.NEVO_EXPORT_PROFILE_OUTPUTS = JSON.stringify(config.export.profileOutputs);
 
 await import('nevo-figma-export/extract');

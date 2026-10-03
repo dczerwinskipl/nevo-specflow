@@ -5,18 +5,45 @@
   "type": "module",
   "description": "Reusable Nevo UI components, foundations, and product-neutral application layout mechanics.",
   "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "./dist/styles.css"
+  ],
   "exports": {
-    ".": "./src/index.ts",
-    "./styles.css": "./src/design-system.css",
-    "./figma": "./src/figma/index.ts",
-    "./figma/define": "./src/figma/define.ts",
-    "./figma/resources": "./src/figma/resources.ts",
-    "./design-system/color": "./src/design-system/color.ts",
-    "./design-system/resources": "./src/design-system/resources.ts",
-    "./design-system/theme": "./src/design-system/theme.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles.css": "./dist/styles.css",
+    "./figma": {
+      "types": "./dist/figma/index.d.ts",
+      "import": "./dist/figma/index.js"
+    },
+    "./figma/define": {
+      "types": "./dist/figma/define.d.ts",
+      "import": "./dist/figma/define.js"
+    },
+    "./figma/resources": {
+      "types": "./dist/figma/resources.d.ts",
+      "import": "./dist/figma/resources.js"
+    },
+    "./design-system/color": {
+      "types": "./dist/design-system/color.d.ts",
+      "import": "./dist/design-system/color.js"
+    },
+    "./design-system/resources": {
+      "types": "./dist/design-system/resources.d.ts",
+      "import": "./dist/design-system/resources.js"
+    },
+    "./design-system/theme": {
+      "types": "./dist/design-system/theme.d.ts",
+      "import": "./dist/design-system/theme.js"
+    }
   },
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && tsc -p tsconfig.build.json && node scripts/verify-package.mjs",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run"
   },
@@ -36,13 +63,15 @@
     "@tanstack/react-table": "9.2.4",
     "clsx": "2.1.1",
     "lucide-react": "0.544.0",
-    "react": "19.1.1",
     "react-aria-components": "1.21.0",
-    "react-dom": "19.1.1",
     "react-markdown": "10.1.0",
     "remark-gfm": "4.0.1",
     "tailwindcss": "4.3.3",
     "tailwind-variants": "3.3.1"
+  },
+  "peerDependencies": {
+    "react": ">=19 <20",
+    "react-dom": ">=19 <20"
   },
   "devDependencies": {
     "@storybook/react-vite": "10.6.0",
@@ -51,6 +80,8 @@
     "@types/react": "19.1.12",
     "@types/react-dom": "19.1.9",
     "@vitejs/plugin-react": "5.0.2",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
     "vite": "7.1.4",
     "vitest": "5.0.2"
   }

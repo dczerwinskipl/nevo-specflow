@@ -14,4 +14,13 @@ describe('Switch', () => {
     expect(html).toContain('Notifications');
     expect(html).toContain('Notify the account team.');
   });
+
+  it('merges consumer classes onto the control while keeping field layout classes', () => {
+    const html = renderToStaticMarkup(
+      <SwitchField className="consumer-control" fieldClassName="consumer-field" label="Enabled" />,
+    );
+
+    expect(html).toContain('consumer-field');
+    expect(html).toContain('mt-0.5 consumer-control');
+  });
 });

@@ -55,8 +55,7 @@ export function buildIndex(docs: readonly DocRecord[]): BuiltIndex {
     for (const doc of group) {
       const summary = asString(doc.summary)
         .replace(/\r?\n/g, ' ')
-        .replace(/\\/g, '\\\\')
-        .replace(/\|/g, '\\|')
+        .replace(/[\\|]/g, (char) => `\\${char}`)
         .trim();
       md +=
         `| \`${asString(doc.id)}\` | [${asString(doc.title)}](${relLink(doc.file)}) | ` +

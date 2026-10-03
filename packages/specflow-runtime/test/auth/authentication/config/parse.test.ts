@@ -98,4 +98,27 @@ describe('authentication config parsing', () => {
       ' secret-with-significant-spaces ',
     );
   });
+  it('does not treat inherited object properties as configured users', () => {
+    const config = requiredAuthConfig();
+    config.providers.password.accounts.demo.userId = 'toString';
+
+    expect(() => parseAuthConfig(config)).toThrowError(/references unknown user 'toString'/);
+  });
+
+  it('stores special dictionary keys without mutating object prototypes', () => {
+    const config = requiredAuthConfig();
+    config.users = Object.fromEntries([
+      ['__proto__', { name: 'Proto User' }],
+    ]) as Record<string, { name: string }>;
+    config.providers.password.accounts.demo.userId = '__proto__';
+    config.providers.oidc.allowedEmails = {
+      'proto@example.com': '__proto__',
+    };
+
+    const parsed = parseAuthConfig(config);
+    expect(Object.getPrototypeOf(parsed.users)).toBeNull();
+    expect(Object.hasOwn(parsed.users, '__proto__')).toBe(true);
+    expect(parsed.users.__proto__).toEqual({ name: 'Proto User' });
+  });
+
 });

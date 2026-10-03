@@ -13,7 +13,7 @@ import type { PasswordAccountThrottle } from './account-throttle';
 import { loginWithPassword } from './login';
 import { ttlSeconds } from '../session/policy';
 import type { AuthStore } from '../session/state';
-import { AUTH_SESSION_COOKIE, type AuthCookieOptions } from '../../http/cookies';
+import type { AuthCookieNames, AuthCookieOptions } from '../../http/cookies';
 import { PASSWORD_SOURCE_ATTEMPT_LIMIT, PASSWORD_SOURCE_WINDOW_MS } from '../../http/rate-limit';
 
 const PASSWORD_LOGIN_BODY_LIMIT = 8 * 1024;
@@ -22,6 +22,7 @@ export interface PasswordRoutesOptions {
   readonly auth: RuntimeAuthConfig;
   readonly store: AuthStore;
   readonly accountThrottle: PasswordAccountThrottle;
+  readonly cookieNames: AuthCookieNames;
   readonly cookieOptions: AuthCookieOptions;
 }
 
@@ -57,7 +58,7 @@ export const passwordRoutes: FastifyPluginCallback<PasswordRoutesOptions> = (
         options.auth,
         options.store,
         options.accountThrottle,
-        request.cookies[AUTH_SESSION_COOKIE],
+        request.cookies[options.cookieNames.session],
         request.body.username,
         request.body.password,
       );
@@ -75,7 +76,7 @@ export const passwordRoutes: FastifyPluginCallback<PasswordRoutesOptions> = (
         return response;
       }
 
-      reply.setCookie(AUTH_SESSION_COOKIE, result.sessionId, {
+      reply.setCookie(options.cookieNames.session, result.sessionId, {
         ...options.cookieOptions,
         maxAge: ttlSeconds(options.store.policy.sessionTtlMs),
       });

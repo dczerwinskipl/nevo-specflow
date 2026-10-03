@@ -83,10 +83,9 @@ async function readRequiredConfig(path: string): Promise<unknown> {
   }
 
   try {
-    return parse(source);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new RuntimeConfigError(`Invalid YAML in ${path}: ${message}`);
+    return parse(source, { prettyErrors: false });
+  } catch {
+    throw new RuntimeConfigError(`Invalid YAML in ${path}.`);
   }
 }
 

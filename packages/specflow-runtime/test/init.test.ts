@@ -108,7 +108,7 @@ describe('Runtime project initialization', () => {
 
     expect(contribution.projectConfig).toMatchObject({
       server: {
-        publicOrigin: 'http://localhost:4318',
+        publicOrigin: 'http://127.0.0.1:4318',
       },
       auth: {
         mode: 'required',

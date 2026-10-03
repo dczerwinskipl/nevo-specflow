@@ -6,11 +6,12 @@ import { AuthSessionResponseSchema } from '@nevo/specflow-contracts/authenticati
 import type { RuntimeAuthConfig } from '../config/model';
 import { clearAuthState, getAuthSession } from './access';
 import type { AuthStore } from './state';
-import { AUTH_SESSION_COOKIE, OIDC_COOKIE, type AuthCookieOptions } from '../../http/cookies';
+import type { AuthCookieNames, AuthCookieOptions } from '../../http/cookies';
 
 export interface SessionRoutesOptions {
   readonly auth: RuntimeAuthConfig;
   readonly store: AuthStore;
+  readonly cookieNames: AuthCookieNames;
   readonly cookieOptions: AuthCookieOptions;
 }
 
@@ -28,18 +29,18 @@ export const sessionRoutes: FastifyPluginCallback<SessionRoutesOptions> = (app, 
     },
     (request, reply) => {
       reply.header('Cache-Control', 'no-store');
-      return getAuthSession(options.auth, options.store, request.cookies[AUTH_SESSION_COOKIE]);
+      return getAuthSession(options.auth, options.store, request.cookies[options.cookieNames.session]);
     },
   );
 
   routes.post('/api/auth/logout', (request, reply) => {
     clearAuthState(
       options.store,
-      request.cookies[AUTH_SESSION_COOKIE],
-      request.cookies[OIDC_COOKIE],
+      request.cookies[options.cookieNames.session],
+      request.cookies[options.cookieNames.oidc],
     );
-    reply.clearCookie(AUTH_SESSION_COOKIE, options.cookieOptions);
-    reply.clearCookie(OIDC_COOKIE, options.cookieOptions);
+    reply.clearCookie(options.cookieNames.session, options.cookieOptions);
+    reply.clearCookie(options.cookieNames.oidc, options.cookieOptions);
     return reply.code(204).send();
   });
 

@@ -3,9 +3,12 @@ import { describe, expect, it } from 'vitest';
 import type { OidcClient } from '../../../../src/auth/authentication/oidc/client';
 import { OidcProviderError } from '../../../../src/auth/authentication/oidc/errors';
 import type { StoredOidcTransaction } from '../../../../src/auth/authentication/session/state';
+import { authCookieNames } from '../../../../src/auth/http/cookies';
 import { createRuntimeApp } from '../../../../src/server/app';
 import { oidcConfig, passwordConfig } from '../../support/config';
 import { cookieValue } from '../../support/http';
+
+const COOKIE_NAMES = authCookieNames(4318);
 
 describe('OIDC HTTP adapter', () => {
   it('does not register OIDC routes when the provider is disabled', async () => {
@@ -129,16 +132,16 @@ describe('OIDC HTTP adapter', () => {
     try {
       const login = await app.inject({ method: 'GET', url: '/api/auth/oidc/login' });
       expect(login.statusCode).toBe(302);
-      const oidcCookie = cookieValue(login.headers['set-cookie'], 'nevo_oidc');
+      const oidcCookie = cookieValue(login.headers['set-cookie'], COOKIE_NAMES.oidc);
 
       const callback = await app.inject({
         method: 'GET',
         url: '/api/auth/oidc/callback?code=abc&state=state',
-        headers: { cookie: `nevo_oidc=${oidcCookie}` },
+        headers: { cookie: `${COOKIE_NAMES.oidc}=${oidcCookie}` },
       });
       expect(callback.statusCode).toBe(302);
       expect(callback.headers.location).toBe('https://specflow.example.test:4318/');
-      expect(cookieValue(callback.headers['set-cookie'], 'nevo_session')).not.toBe('');
+      expect(cookieValue(callback.headers['set-cookie'], COOKIE_NAMES.session)).not.toBe('');
     } finally {
       await app.close();
     }
@@ -159,11 +162,11 @@ describe('OIDC HTTP adapter', () => {
 
     try {
       const login = await app.inject({ method: 'GET', url: '/api/auth/oidc/login' });
-      const oidcCookie = cookieValue(login.headers['set-cookie'], 'nevo_oidc');
+      const oidcCookie = cookieValue(login.headers['set-cookie'], COOKIE_NAMES.oidc);
       const callback = await app.inject({
         method: 'GET',
         url: '/api/auth/oidc/callback?code=abc&state=state',
-        headers: { cookie: `nevo_oidc=${oidcCookie}` },
+        headers: { cookie: `${COOKIE_NAMES.oidc}=${oidcCookie}` },
       });
       expect(callback.statusCode).toBe(403);
       expect(callback.json()).toEqual({ error: 'identity_not_allowed' });
@@ -199,11 +202,11 @@ describe('OIDC HTTP adapter', () => {
 
     try {
       const login = await app.inject({ method: 'GET', url: '/api/auth/oidc/login' });
-      const oidcCookie = cookieValue(login.headers['set-cookie'], 'nevo_oidc');
+      const oidcCookie = cookieValue(login.headers['set-cookie'], COOKIE_NAMES.oidc);
       const callback = await app.inject({
         method: 'GET',
         url: '/api/auth/oidc/callback?code=abc&state=state',
-        headers: { cookie: `nevo_oidc=${oidcCookie}` },
+        headers: { cookie: `${COOKIE_NAMES.oidc}=${oidcCookie}` },
       });
 
       expect(callback.statusCode).toBe(503);
@@ -213,4 +216,49 @@ describe('OIDC HTTP adapter', () => {
       await app.close();
     }
   });
+  it('preserves pending login state and cookie after a callback with the wrong state', async () => {
+    let completeCalls = 0;
+    const oidc: OidcClient = {
+      start: () =>
+        Promise.resolve({
+          authorizationUrl: new URL('https://issuer.example.test/authorize?state=expected'),
+          transaction: { state: 'expected', nonce: 'nonce', codeVerifier: 'verifier' },
+        }),
+      complete: () => {
+        completeCalls += 1;
+        return Promise.resolve({ email: 'demo@example.com' });
+      },
+    };
+    const app = await createRuntimeApp(oidcConfig({ 'demo@example.com': 'demo-user' }), {
+      auth: { oidc },
+    });
+
+    try {
+      const login = await app.inject({ method: 'GET', url: '/api/auth/oidc/login' });
+      const oidcCookie = cookieValue(login.headers['set-cookie'], COOKIE_NAMES.oidc);
+
+      const attackerCallback = await app.inject({
+        method: 'GET',
+        url: '/api/auth/oidc/callback?code=abc&state=wrong',
+        headers: { cookie: `${COOKIE_NAMES.oidc}=${oidcCookie}` },
+      });
+      expect(attackerCallback.statusCode).toBe(400);
+      expect(attackerCallback.json()).toEqual({ error: 'invalid_oidc_transaction' });
+      expect(String(attackerCallback.headers['set-cookie'] ?? '')).not.toContain(
+        `${COOKIE_NAMES.oidc}=;`,
+      );
+      expect(completeCalls).toBe(0);
+
+      const validCallback = await app.inject({
+        method: 'GET',
+        url: '/api/auth/oidc/callback?code=abc&state=expected',
+        headers: { cookie: `${COOKIE_NAMES.oidc}=${oidcCookie}` },
+      });
+      expect(validCallback.statusCode).toBe(302);
+      expect(completeCalls).toBe(1);
+    } finally {
+      await app.close();
+    }
+  });
+
 });

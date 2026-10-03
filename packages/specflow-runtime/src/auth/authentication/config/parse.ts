@@ -84,10 +84,10 @@ export function parseAuthConfig(value: unknown): RuntimeAuthConfig {
 }
 
 function parseUsers(value: unknown): Readonly<Record<string, RuntimeUserConfig>> {
-  if (value === undefined) return {};
+  if (value === undefined) return dictionary<RuntimeUserConfig>();
 
   const users = record(value, 'auth.users');
-  const result: Record<string, RuntimeUserConfig> = {};
+  const result = dictionary<RuntimeUserConfig>();
 
   for (const [userId, rawUser] of Object.entries(users)) {
     const path = `auth.users.${userId}`;
@@ -107,8 +107,9 @@ function parsePasswordProvider(value: unknown): RuntimePasswordProviderConfig {
 
   const enabled = boolean(config.enabled, `${path}.enabled`);
   const accountsValue = config.accounts;
-  const accounts = accountsValue === undefined ? {} : record(accountsValue, `${path}.accounts`);
-  const result: Record<string, { userId: string; passwordHash: string }> = {};
+  const accounts =
+    accountsValue === undefined ? dictionary<unknown>() : record(accountsValue, `${path}.accounts`);
+  const result = dictionary<{ userId: string; passwordHash: string }>();
 
   for (const [rawUsername, rawAccount] of Object.entries(accounts)) {
     nonEmptyKey(rawUsername, `${path}.accounts`);
@@ -160,8 +161,10 @@ function parseOidcProvider(value: unknown): RuntimeOidcProviderConfig {
 
   const allowedEmailsValue = config.allowedEmails;
   const allowedEmails =
-    allowedEmailsValue === undefined ? {} : record(allowedEmailsValue, `${path}.allowedEmails`);
-  const mappings: Record<string, string> = {};
+    allowedEmailsValue === undefined
+      ? dictionary<unknown>()
+      : record(allowedEmailsValue, `${path}.allowedEmails`);
+  const mappings = dictionary<string>();
 
   for (const [email, rawUserId] of Object.entries(allowedEmails)) {
     const normalizedEmail = email.trim().toLowerCase();
@@ -212,7 +215,11 @@ function assertUserExists(
   userId: string,
   path: string,
 ): void {
-  if (!(userId in users)) {
+  if (!Object.hasOwn(users, userId)) {
     throw new RuntimeConfigError(`${path} references unknown user '${userId}'.`);
   }
+}
+
+function dictionary<T>(): Record<string, T> {
+  return Object.create(null) as Record<string, T>;
 }

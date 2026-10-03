@@ -46,7 +46,7 @@ export function authenticatedSession(
 }
 
 export function configuredUser(auth: RuntimeAuthConfig, userId: string): AuthUser {
-  const user = auth.users[userId];
+  const user = Object.hasOwn(auth.users, userId) ? auth.users[userId] : undefined;
   if (!user) {
     throw new Error(`Configured auth user '${userId}' does not exist.`);
   }

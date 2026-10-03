@@ -15,7 +15,7 @@ summary: >
 related:
   - engineering.repository.local-setup
   - engineering.repository.git-workflow
-  - adr.0002-toolchain-selection
+  - adr.0010-toolchain-policy-and-version-sources
   - adr.0003-branch-and-release-model
 ---
 

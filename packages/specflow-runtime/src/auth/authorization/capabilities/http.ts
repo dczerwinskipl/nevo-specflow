@@ -11,13 +11,14 @@ import {
 
 import type { RuntimeAuthConfig } from '../../authentication/config/model';
 import type { AuthStore } from '../../authentication/session/state';
+import type { AuthCookieNames } from '../../http/cookies';
 import { resolveCapabilitiesForSession } from './resolve';
-import { AUTH_SESSION_COOKIE } from '../../http/cookies';
 
 export interface CapabilityRoutesOptions {
   readonly auth: RuntimeAuthConfig;
   readonly authorization: Authorization;
   readonly store: AuthStore;
+  readonly cookieNames: AuthCookieNames;
 }
 
 export const capabilityRoutes: FastifyPluginCallback<CapabilityRoutesOptions> = (
@@ -45,7 +46,7 @@ export const capabilityRoutes: FastifyPluginCallback<CapabilityRoutesOptions> = 
         options.auth,
         options.store,
         options.authorization,
-        request.cookies[AUTH_SESSION_COOKIE],
+        request.cookies[options.cookieNames.session],
         request.body.resource,
       );
 

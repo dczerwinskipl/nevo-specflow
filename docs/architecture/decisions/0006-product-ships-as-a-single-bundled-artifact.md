@@ -10,7 +10,7 @@ summary: >
   and `commander` into `dist/bin.js`, so the artifact installs with no registry and no
   workspace. Source package boundaries are unchanged — only the distribution is one file.
 related:
-  - adr.0002-toolchain-selection
+  - adr.0010-toolchain-policy-and-version-sources
   - adr.0005-repository-tooling-is-separate-from-the-product-api
   - architecture.repository-structure
   - engineering.repository.product-packaging

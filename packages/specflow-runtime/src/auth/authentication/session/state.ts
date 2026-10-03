@@ -13,6 +13,11 @@ export interface StoredOidcTransaction {
   readonly codeVerifier: string;
 }
 
+export type OidcTransactionConsumption =
+  | { readonly status: 'consumed'; readonly transaction: StoredOidcTransaction }
+  | { readonly status: 'missing' }
+  | { readonly status: 'state_mismatch' };
+
 export interface AuthStore {
   readonly policy: AuthSessionPolicy;
 
@@ -24,6 +29,9 @@ export interface AuthStore {
     transaction: StoredOidcTransaction,
     replacingTransactionId?: string,
   ): string;
-  consumeOidcTransaction(id: string | undefined): StoredOidcTransaction | null;
+  consumeOidcTransaction(
+    id: string | undefined,
+    expectedState: string,
+  ): OidcTransactionConsumption;
   deleteOidcTransaction(id: string | undefined): void;
 }

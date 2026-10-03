@@ -25,12 +25,15 @@ describe('InMemoryAuthStore', () => {
       nonce: 'nonce',
       codeVerifier: 'verifier',
     });
-    expect(store.consumeOidcTransaction(transactionId)).toEqual({
-      state: 'state',
-      nonce: 'nonce',
-      codeVerifier: 'verifier',
+    expect(store.consumeOidcTransaction(transactionId, 'state')).toEqual({
+      status: 'consumed',
+      transaction: {
+        state: 'state',
+        nonce: 'nonce',
+        codeVerifier: 'verifier',
+      },
     });
-    expect(store.consumeOidcTransaction(transactionId)).toBeNull();
+    expect(store.consumeOidcTransaction(transactionId, 'state')).toEqual({ status: 'missing' });
   });
 
   it('fails closed at session capacity without evicting live sessions', () => {
@@ -83,7 +86,10 @@ describe('InMemoryAuthStore', () => {
         codeVerifier: 'verifier',
       }),
     ).toThrowError(AuthStoreCapacityError);
-    expect(store.consumeOidcTransaction(current)?.state).toBe('one');
+    expect(store.consumeOidcTransaction(current, 'one')).toMatchObject({
+      status: 'consumed',
+      transaction: { state: 'one' },
+    });
   });
 
   it('publishes the effective immutable policy used by server-side state', () => {
@@ -91,4 +97,21 @@ describe('InMemoryAuthStore', () => {
     expect(store.policy.sessionTtlMs).toBe(1_234);
     expect(Object.isFrozen(store.policy)).toBe(true);
   });
+  it('does not consume an OIDC transaction when state does not match', () => {
+    const store = new InMemoryAuthStore({ idFactory: () => 'oidc-id' });
+    const id = store.createOidcTransaction({
+      state: 'expected',
+      nonce: 'nonce',
+      codeVerifier: 'verifier',
+    });
+
+    expect(store.consumeOidcTransaction(id, 'attacker-state')).toEqual({
+      status: 'state_mismatch',
+    });
+    expect(store.consumeOidcTransaction(id, 'expected')).toMatchObject({
+      status: 'consumed',
+      transaction: { state: 'expected' },
+    });
+  });
+
 });

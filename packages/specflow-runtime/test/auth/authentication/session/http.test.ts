@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { InMemoryAuthStore } from '../../../../src/auth/authentication/session/store';
+import { authCookieNames } from '../../../../src/auth/http/cookies';
 import { createRuntimeApp } from '../../../../src/server/app';
 import { noAuthConfig, passwordConfig } from '../../support/config';
+
+const COOKIE_NAMES = authCookieNames(4318);
 
 describe('authentication session HTTP adapter', () => {
   it('projects trusted local identity without pretending it is authenticated', async () => {
@@ -38,13 +41,13 @@ describe('authentication session HTTP adapter', () => {
         method: 'POST',
         url: '/api/auth/logout',
         headers: {
-          cookie: `nevo_session=${sessionId}; nevo_oidc=${transactionId}`,
+          cookie: `${COOKIE_NAMES.session}=${sessionId}; ${COOKIE_NAMES.oidc}=${transactionId}`,
         },
       });
 
       expect(response.statusCode).toBe(204);
       expect(store.getSession(sessionId)).toBeNull();
-      expect(store.consumeOidcTransaction(transactionId)).toBeNull();
+      expect(store.consumeOidcTransaction(transactionId, 'state')).toEqual({ status: 'missing' });
     } finally {
       await app.close();
     }

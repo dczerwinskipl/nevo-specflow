@@ -48,6 +48,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     auth: config.auth,
     ...(config.authorization ? { authorization: config.authorization } : {}),
     ...(config.server.publicOrigin ? { publicOrigin: config.server.publicOrigin } : {}),
+    serverPort: config.server.port,
     secureCookies: config.server.tls.enabled,
     ...(dependencies.auth ? { dependencies: dependencies.auth } : {}),
   });

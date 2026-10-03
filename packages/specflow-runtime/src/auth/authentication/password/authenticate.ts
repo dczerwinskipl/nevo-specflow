@@ -13,7 +13,11 @@ export async function authenticatePassword(
 ): Promise<AuthUser | null> {
   if (!auth.providers.password.enabled) return null;
 
-  const account = auth.providers.password.accounts[normalizePasswordUsername(username)];
+  const normalizedUsername = normalizePasswordUsername(username);
+  const accounts = auth.providers.password.accounts;
+  const account = Object.hasOwn(accounts, normalizedUsername)
+    ? accounts[normalizedUsername]
+    : undefined;
   const valid = await verifyPassword(password, account?.passwordHash ?? DUMMY_PASSWORD_HASH);
 
   if (!account || !valid) return null;

@@ -2,6 +2,7 @@ import type { AuthorizationCapabilitiesResponse } from '@nevo/specflow-contracts
 import { describe, expect, it } from 'vitest';
 
 import { InMemoryAuthStore } from '../../../src/auth/authentication/session/store';
+import { authCookieNames } from '../../../src/auth/http/cookies';
 import type { RuntimeConfig } from '../../../src/config/types';
 import { createRuntimeApp } from '../../../src/server/app';
 
@@ -34,6 +35,8 @@ function baseConfig(): RuntimeConfig {
   };
 }
 
+const COOKIE_NAMES = authCookieNames(4318);
+
 describe('authorization HTTP API', () => {
   it('requires a subject when auth is required', async () => {
     const app = await createRuntimeApp(baseConfig());
@@ -59,7 +62,7 @@ describe('authorization HTTP API', () => {
       const spec = await app.inject({
         method: 'POST',
         url: '/api/authorization/capabilities',
-        headers: { cookie: `nevo_session=${session}` },
+        headers: { cookie: `${COOKIE_NAMES.session}=${session}` },
         payload: {
           resource: { name: 'spec', scope: { projectId: 'P1', specId: 'S1' } },
         },
@@ -73,7 +76,7 @@ describe('authorization HTTP API', () => {
       const sessions = await app.inject({
         method: 'POST',
         url: '/api/authorization/capabilities',
-        headers: { cookie: `nevo_session=${session}` },
+        headers: { cookie: `${COOKIE_NAMES.session}=${session}` },
         payload: {
           resource: { name: 'session', scope: { projectId: 'P1', specId: 'S1' } },
         },
@@ -87,7 +90,7 @@ describe('authorization HTTP API', () => {
       const otherProject = await app.inject({
         method: 'POST',
         url: '/api/authorization/capabilities',
-        headers: { cookie: `nevo_session=${session}` },
+        headers: { cookie: `${COOKIE_NAMES.session}=${session}` },
         payload: {
           resource: { name: 'spec', scope: { projectId: 'P2', specId: 'S1' } },
         },
@@ -107,7 +110,7 @@ describe('authorization HTTP API', () => {
       const item = await app.inject({
         method: 'POST',
         url: '/api/authorization/capabilities',
-        headers: { cookie: `nevo_session=${session}` },
+        headers: { cookie: `${COOKIE_NAMES.session}=${session}` },
         payload: {
           resource: { name: 'spec', scope: { projectId: 'P1', specId: 'S1' } },
         },
@@ -117,7 +120,7 @@ describe('authorization HTTP API', () => {
       const project = await app.inject({
         method: 'POST',
         url: '/api/authorization/capabilities',
-        headers: { cookie: `nevo_session=${session}` },
+        headers: { cookie: `${COOKIE_NAMES.session}=${session}` },
         payload: {
           resource: { name: 'spec', scope: { projectId: 'P1' } },
         },

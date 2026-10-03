@@ -6,7 +6,12 @@ import {
   type AuthSessionPolicy,
   type AuthSessionPolicyOverrides,
 } from './policy';
-import type { AuthStore, StoredAuthSession, StoredOidcTransaction } from './state';
+import type {
+  AuthStore,
+  OidcTransactionConsumption,
+  StoredAuthSession,
+  StoredOidcTransaction,
+} from './state';
 
 interface Expiring<T> {
   readonly value: T;
@@ -79,11 +84,18 @@ export class InMemoryAuthStore implements AuthStore {
     return id;
   }
 
-  consumeOidcTransaction(id: string | undefined): StoredOidcTransaction | null {
-    if (!id) return null;
-    const value = this.read(this.oidcTransactions, id);
+  consumeOidcTransaction(
+    id: string | undefined,
+    expectedState: string,
+  ): OidcTransactionConsumption {
+    if (!id) return { status: 'missing' };
+
+    const transaction = this.read(this.oidcTransactions, id);
+    if (!transaction) return { status: 'missing' };
+    if (transaction.state !== expectedState) return { status: 'state_mismatch' };
+
     this.oidcTransactions.delete(id);
-    return value ? { ...value } : null;
+    return { status: 'consumed', transaction: { ...transaction } };
   }
 
   deleteOidcTransaction(id: string | undefined): void {

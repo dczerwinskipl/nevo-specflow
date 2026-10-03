@@ -12,6 +12,7 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const packageDir = process.cwd();
 const manifest = readJson(join(packageDir, 'package.json'));
 const packageProfile = resolvePackageProfile(packageDir, manifest);
+const nodeBuildTarget = resolveNodeBuildTarget(repoRoot);
 const entries = deriveEntries(packageDir, manifest);
 
 const NODE_BUILTINS = new Set(
@@ -34,7 +35,7 @@ await build({
   clean: true,
   format: 'esm',
   platform: packageProfile === 'node' ? 'node' : 'neutral',
-  target: packageProfile === 'node' ? 'node24' : 'es2024',
+  target: packageProfile === 'node' ? nodeBuildTarget : 'es2024',
   fixedExtension: false,
   sourcemap: true,
   dts: {
@@ -184,7 +185,7 @@ function collectMatchingFiles(dir, out, matches) {
 }
 
 function rejectExtensionlessDeclarationImports(file) {
-  for (const specifier of moduleSpecifiers(readFileSync(file, 'utf8'))) {
+  for (const specifier of moduleSpecifiers(file, readFileSync(file, 'utf8'))) {
     if (!specifier.startsWith('.')) continue;
     if (!extname(specifier)) {
       throw new Error(`Extensionless relative declaration import in ${file}: ${specifier}`);
@@ -193,7 +194,7 @@ function rejectExtensionlessDeclarationImports(file) {
 }
 
 function rejectNodeBuiltinImports(file, packageName) {
-  for (const specifier of moduleSpecifiers(readFileSync(file, 'utf8'))) {
+  for (const specifier of moduleSpecifiers(file, readFileSync(file, 'utf8'))) {
     if (!isNodeBuiltin(specifier)) continue;
     throw new Error(
       `${packageName}: neutral package imports Node builtin '${specifier}' in ${relative(packageDir, file)}.`,
@@ -206,14 +207,61 @@ function isNodeBuiltin(specifier) {
   return NODE_BUILTINS.has(normalized) || NODE_BUILTINS.has(normalized.split('/')[0]);
 }
 
-function moduleSpecifiers(text) {
+function moduleSpecifiers(file, text) {
+  const source = ts.createSourceFile(
+    file,
+    text,
+    ts.ScriptTarget.Latest,
+    true,
+    scriptKindFor(file),
+  );
   const specifiers = [];
-  const importPattern =
-    /(?:from\s+|import\s*\(|import\s+|export\s+[^'"]*from\s+)['"]([^'"]+)['"]/gu;
-  for (const match of text.matchAll(importPattern)) {
-    if (match[1]) specifiers.push(match[1]);
-  }
+
+  const addLiteral = (node) => {
+    if (node && ts.isStringLiteralLike(node)) specifiers.push(node.text);
+  };
+
+  const visit = (node) => {
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
+      addLiteral(node.moduleSpecifier);
+    } else if (
+      ts.isImportEqualsDeclaration(node) &&
+      ts.isExternalModuleReference(node.moduleReference)
+    ) {
+      addLiteral(node.moduleReference.expression);
+    } else if (
+      ts.isCallExpression(node) &&
+      node.expression.kind === ts.SyntaxKind.ImportKeyword
+    ) {
+      addLiteral(node.arguments[0]);
+    } else if (ts.isImportTypeNode(node)) {
+      const argument = node.argument;
+      if (ts.isLiteralTypeNode(argument)) addLiteral(argument.literal);
+    }
+
+    ts.forEachChild(node, visit);
+  };
+
+  visit(source);
   return specifiers;
+}
+
+function scriptKindFor(file) {
+  if (file.endsWith('.tsx')) return ts.ScriptKind.TSX;
+  if (file.endsWith('.jsx')) return ts.ScriptKind.JSX;
+  if (file.endsWith('.js') || file.endsWith('.mjs') || file.endsWith('.cjs')) {
+    return ts.ScriptKind.JS;
+  }
+  return ts.ScriptKind.TS;
+}
+
+function resolveNodeBuildTarget(root) {
+  const version = readFileSync(join(root, '.nvmrc'), 'utf8').trim();
+  const match = /^v?(\d+)(?:\.|$)/u.exec(version);
+  if (!match?.[1]) {
+    throw new Error(`Could not derive the Node build target from .nvmrc: ${version}`);
+  }
+  return `node${match[1]}`;
 }
 
 function verifyNodeNextDeclarations(cwd, pkg, profile) {

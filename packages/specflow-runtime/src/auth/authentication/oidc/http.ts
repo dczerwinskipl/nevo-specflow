@@ -13,7 +13,7 @@ import type { OidcClient } from './client';
 import { completeOidcLogin, startOidcLogin } from './login';
 import { ttlSeconds } from '../session/policy';
 import type { AuthStore } from '../session/state';
-import { AUTH_SESSION_COOKIE, OIDC_COOKIE, type AuthCookieOptions } from '../../http/cookies';
+import type { AuthCookieNames, AuthCookieOptions } from '../../http/cookies';
 import {
   OIDC_START_SOURCE_ATTEMPT_LIMIT,
   OIDC_START_SOURCE_WINDOW_MS,
@@ -26,6 +26,7 @@ export interface OidcRoutesOptions {
   readonly store: AuthStore;
   readonly oidc: OidcClient;
   readonly publicOrigin: string;
+  readonly cookieNames: AuthCookieNames;
   readonly cookieOptions: AuthCookieOptions;
 }
 
@@ -52,7 +53,7 @@ export const oidcRoutes: FastifyPluginCallback<OidcRoutesOptions> = (app, option
       const result = await startOidcLogin(
         options.store,
         options.oidc,
-        request.cookies[OIDC_COOKIE],
+        request.cookies[options.cookieNames.oidc],
         new URL(OIDC_CALLBACK_PATH, `${options.publicOrigin}/`).toString(),
       );
 
@@ -71,7 +72,7 @@ export const oidcRoutes: FastifyPluginCallback<OidcRoutesOptions> = (app, option
         return response;
       }
 
-      reply.setCookie(OIDC_COOKIE, result.transactionId, {
+      reply.setCookie(options.cookieNames.oidc, result.transactionId, {
         ...options.cookieOptions,
         maxAge: ttlSeconds(options.store.policy.oidcTransactionTtlMs),
       });
@@ -79,9 +80,6 @@ export const oidcRoutes: FastifyPluginCallback<OidcRoutesOptions> = (app, option
     },
   );
 
-  // The callback query is provider protocol input. openid-client validates the raw URL
-  // together with PKCE, state, and nonce; duplicating that protocol surface in a strict
-  // application DTO would create a second, drifting validator.
   routes.get(
     OIDC_CALLBACK_PATH,
     {
@@ -99,13 +97,19 @@ export const oidcRoutes: FastifyPluginCallback<OidcRoutesOptions> = (app, option
         options.provider,
         options.store,
         options.oidc,
-        request.cookies[OIDC_COOKIE],
-        request.cookies[AUTH_SESSION_COOKIE],
+        request.cookies[options.cookieNames.oidc],
+        request.cookies[options.cookieNames.session],
         new URL(request.url, options.publicOrigin),
       );
 
       if (!result.ok) {
-        reply.clearCookie(OIDC_COOKIE, options.cookieOptions);
+        if (
+          result.error !== 'invalid_oidc_transaction' ||
+          !result.preserveTransactionCookie
+        ) {
+          reply.clearCookie(options.cookieNames.oidc, options.cookieOptions);
+        }
+
         if ('providerError' in result) {
           request.log.warn(
             { oidc: result.providerError.diagnostic },
@@ -120,8 +124,8 @@ export const oidcRoutes: FastifyPluginCallback<OidcRoutesOptions> = (app, option
         return response;
       }
 
-      reply.clearCookie(OIDC_COOKIE, options.cookieOptions);
-      reply.setCookie(AUTH_SESSION_COOKIE, result.sessionId, {
+      reply.clearCookie(options.cookieNames.oidc, options.cookieOptions);
+      reply.setCookie(options.cookieNames.session, result.sessionId, {
         ...options.cookieOptions,
         maxAge: ttlSeconds(options.store.policy.sessionTtlMs),
       });

@@ -68,6 +68,26 @@ describe('product package builder contract', () => {
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain('neutral packages must not declare engines.node');
   });
+  it('uses TypeScript syntax rather than comments when enforcing neutral imports', () => {
+    const fixture = createFixture({
+      profile: 'neutral',
+      source: "// import 'node:fs';\nexport const answer = 42;\n",
+    });
+
+    expect(runBuilder(fixture)).toMatchObject({ status: 0 });
+  });
+
+  it('rejects type-only Node builtin imports from a neutral package', () => {
+    const fixture = createFixture({
+      profile: 'neutral',
+      source: "type Stat = import('node:fs').Stats;\nexport type { Stat };\n",
+    });
+
+    const result = runBuilder(fixture);
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("neutral package imports Node builtin 'node:fs'");
+  });
+
 });
 
 interface FixtureOptions {

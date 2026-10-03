@@ -51,7 +51,12 @@ export async function startOidcLogin(
 export type OidcCompleteResult =
   | {
       readonly ok: false;
-      readonly error: 'invalid_oidc_transaction' | 'identity_not_allowed' | 'service_unavailable';
+      readonly error: 'invalid_oidc_transaction';
+      readonly preserveTransactionCookie: boolean;
+    }
+  | {
+      readonly ok: false;
+      readonly error: 'identity_not_allowed' | 'service_unavailable';
     }
   | {
       readonly ok: false;
@@ -68,12 +73,27 @@ export async function completeOidcLogin(
   currentSessionId: string | undefined,
   callbackUrl: URL,
 ): Promise<OidcCompleteResult> {
-  const transaction = store.consumeOidcTransaction(oidcTransactionId);
-  if (!transaction) return { ok: false, error: 'invalid_oidc_transaction' };
+  const callbackState = callbackUrl.searchParams.get('state');
+  if (!callbackState) {
+    return {
+      ok: false,
+      error: 'invalid_oidc_transaction',
+      preserveTransactionCookie: true,
+    };
+  }
+
+  const consumption = store.consumeOidcTransaction(oidcTransactionId, callbackState);
+  if (consumption.status !== 'consumed') {
+    return {
+      ok: false,
+      error: 'invalid_oidc_transaction',
+      preserveTransactionCookie: consumption.status === 'state_mismatch',
+    };
+  }
 
   let identity;
   try {
-    identity = await oidc.complete(callbackUrl, transaction);
+    identity = await oidc.complete(callbackUrl, consumption.transaction);
   } catch (error) {
     if (error instanceof OidcProviderError) {
       return error.kind === 'unavailable'
@@ -83,7 +103,11 @@ export async function completeOidcLogin(
     throw error;
   }
 
-  const userId = provider.allowedEmails[normalizeEmail(identity.email)];
+  const normalizedEmail = normalizeEmail(identity.email);
+  if (!Object.hasOwn(provider.allowedEmails, normalizedEmail)) {
+    return { ok: false, error: 'identity_not_allowed' };
+  }
+  const userId = provider.allowedEmails[normalizedEmail];
   if (!userId) return { ok: false, error: 'identity_not_allowed' };
 
   try {

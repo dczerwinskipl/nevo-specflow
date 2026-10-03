@@ -14,10 +14,12 @@ export async function initRuntime(options: RuntimeInitOptions): Promise<RuntimeI
     ...(options.hashPassword ? { hashPassword: options.hashPassword } : {}),
   });
 
+  const host = '127.0.0.1';
+  const port = 4318;
   const server: Record<string, unknown> = {
-    host: '127.0.0.1',
-    port: 4318,
-    ...(auth.requiresPublicOrigin ? { publicOrigin: 'http://localhost:4318' } : {}),
+    host,
+    port,
+    ...(auth.requiresPublicOrigin ? { publicOrigin: `http://${host}:${String(port)}` } : {}),
     tls: { enabled: false },
   };
 
@@ -29,8 +31,6 @@ export async function initRuntime(options: RuntimeInitOptions): Promise<RuntimeI
     auth: auth.localAuth,
   };
 
-  // Runtime owns these config sections, so it validates the exact effective result
-  // before handing a contribution back to the product-level project initializer.
   parseRuntimeConfig(mergeRuntimeConfigValues(projectConfig, localConfig));
 
   return {

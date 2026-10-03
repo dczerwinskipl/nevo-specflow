@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { InMemoryAuthStore } from '../../../../src/auth/authentication/session/store';
+import { authCookieNames } from '../../../../src/auth/http/cookies';
 import { createRuntimeApp } from '../../../../src/server/app';
 import { noAuthConfig, passwordConfig } from '../../support/config';
 import { cookieValue } from '../../support/http';
+
+const COOKIE_NAMES = authCookieNames(4318);
 
 describe('password authentication HTTP adapter', () => {
   it('lets Fastify validate the request before the handler runs', async () => {
@@ -58,7 +61,7 @@ describe('password authentication HTTP adapter', () => {
       expect(String(setCookie)).toContain('HttpOnly');
       expect(String(setCookie)).toContain('SameSite=Lax');
       expect(String(setCookie)).not.toContain('Secure');
-      expect(cookieValue(setCookie, 'nevo_session')).not.toBe('');
+      expect(cookieValue(setCookie, COOKIE_NAMES.session)).not.toBe('');
     } finally {
       await app.close();
     }
@@ -148,4 +151,37 @@ describe('password authentication HTTP adapter', () => {
       await app.close();
     }
   });
+  it('isolates session cookies between Runtime ports on the same host', async () => {
+    const firstConfig = passwordConfig();
+    const secondConfig = {
+      ...passwordConfig(),
+      server: { ...passwordConfig().server, port: 4319 },
+    };
+    const first = await createRuntimeApp(firstConfig);
+    const second = await createRuntimeApp(secondConfig);
+
+    try {
+      const payload = {
+        username: 'demo',
+        password: 'correct horse battery staple',
+      };
+      const firstLogin = await first.inject({
+        method: 'POST',
+        url: '/api/auth/password/login',
+        payload,
+      });
+      const secondLogin = await second.inject({
+        method: 'POST',
+        url: '/api/auth/password/login',
+        payload,
+      });
+
+      expect(String(firstLogin.headers['set-cookie'])).toContain('nevo_session_4318=');
+      expect(String(secondLogin.headers['set-cookie'])).toContain('nevo_session_4319=');
+    } finally {
+      await first.close();
+      await second.close();
+    }
+  });
+
 });

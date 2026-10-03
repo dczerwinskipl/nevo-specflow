@@ -2,7 +2,7 @@
 id: adr.0002-toolchain-selection
 type: adr
 title: Toolchain selection
-status: current
+status: superseded
 date: 2026-09-05
 summary: >
   The monorepo foundation is pnpm 10 + Turborepo + TypeScript + ESLint flat config
@@ -13,13 +13,14 @@ related:
   - architecture.repository-structure
   - engineering.repository.local-setup
   - engineering.repository.dependencies-and-security
+  - adr.0010-toolchain-policy-and-version-sources
 ---
 
 # 0002 — Toolchain selection
 
 ## Status
 
-Current.
+Superseded by [ADR 0010 — Toolchain policy and version sources](0010-toolchain-policy-and-version-sources.md).
 
 ## Context
 

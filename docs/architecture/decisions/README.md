@@ -14,7 +14,7 @@ An ADR records a decision that is durable and cross-cutting. Routine local choic
 an ADR. Use [`../../templates/adr-template.md`](../../templates/adr-template.md).
 
 - [0001 — Record architecture decisions](0001-record-architecture-decisions.md)
-- [0002 — Toolchain selection](0002-toolchain-selection.md)
+- [0002 — Toolchain selection](0002-toolchain-selection.md) — superseded by [0010](0010-toolchain-policy-and-version-sources.md)
 - [0003 — Branch and release model](0003-branch-and-release-model.md)
 - [0004 — MIT license](0004-mit-license.md)
 - [0005 — Repository tooling is separate from the product API](0005-repository-tooling-is-separate-from-the-product-api.md)
@@ -22,3 +22,4 @@ an ADR. Use [`../../templates/adr-template.md`](../../templates/adr-template.md)
 - [0007 — Documentation architecture and taxonomy](0007-documentation-architecture-and-taxonomy.md) — draft
 - [0008 — Product naming and surfaces](0008-product-naming-and-surfaces.md)
 - [0009 — Product package build model](0009-product-package-build-model.md)
+- [0010 — Toolchain policy and version sources](0010-toolchain-policy-and-version-sources.md)

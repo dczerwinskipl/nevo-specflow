@@ -15,7 +15,7 @@ import { InMemoryAuthStore } from './authentication/session/store';
 import { capabilityRoutes } from './authorization/capabilities/http';
 import { createSpecFlowAuthorization } from './authorization/composition';
 import type { RuntimeAuthorizationConfig } from './authorization/config';
-import { authCookieOptions } from './http/cookies';
+import { authCookieNames, authCookieOptions } from './http/cookies';
 import { registerAuthRateLimit } from './http/rate-limit';
 
 export interface AuthFeatureDependencies {
@@ -29,6 +29,7 @@ export interface AuthFeatureOptions {
   readonly auth: RuntimeAuthConfig;
   readonly authorization?: RuntimeAuthorizationConfig;
   readonly publicOrigin?: string;
+  readonly serverPort: number;
   readonly secureCookies: boolean;
   readonly dependencies?: AuthFeatureDependencies;
 }
@@ -43,12 +44,13 @@ export const authFeature: FastifyPluginAsync<AuthFeatureOptions> = async (app, o
 
   const store = dependencies?.store ?? new InMemoryAuthStore(dependencies?.inMemoryStorePolicy);
   const cookieOptions = authCookieOptions(options.secureCookies);
+  const cookieNames = authCookieNames(options.serverPort);
   const authorization = createSpecFlowAuthorization(options.authorization ?? { assignments: [] });
 
   await registerAuthRateLimit(app);
 
-  app.register(sessionRoutes, { auth: options.auth, store, cookieOptions });
-  app.register(capabilityRoutes, { auth: options.auth, authorization, store });
+  app.register(sessionRoutes, { auth: options.auth, store, cookieNames, cookieOptions });
+  app.register(capabilityRoutes, { auth: options.auth, authorization, store, cookieNames });
 
   if (options.auth.providers.password.enabled) {
     app.register(passwordRoutes, {
@@ -56,6 +58,7 @@ export const authFeature: FastifyPluginAsync<AuthFeatureOptions> = async (app, o
       store,
       accountThrottle:
         dependencies?.passwordAccountThrottle ?? new InMemoryPasswordAccountThrottle(),
+      cookieNames,
       cookieOptions,
     });
   }
@@ -70,6 +73,7 @@ export const authFeature: FastifyPluginAsync<AuthFeatureOptions> = async (app, o
       store,
       oidc: dependencies?.oidc ?? createOidcClient(options.auth.providers.oidc),
       publicOrigin: options.publicOrigin,
+      cookieNames,
       cookieOptions,
     });
   }

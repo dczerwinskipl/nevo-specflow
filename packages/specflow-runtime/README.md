@@ -101,7 +101,11 @@ The entire `.nevo/local/` directory is Git-ignored and is also reserved for futu
 local state. Authentication secrets, including password hashes and OIDC client secrets, are
 local-only. Project/local provenance is validated before merge; local config cannot change canonical
 users, auth mode, provider policy, OIDC mapping, server bind/origin, or TLS enablement.
-Security-sensitive auth maps use replacement rather than additive merge semantics.
+Security-sensitive auth maps use replacement rather than additive merge semantics. Parsed identity,
+account, and OIDC mapping dictionaries use own-property lookups and prototype-safe storage so special
+keys such as `__proto__` or `toString` cannot become inherited identities. YAML syntax errors are
+reported without echoing source snippets, so malformed local secret configuration does not leak
+secret text to stderr.
 
 `auth.mode` supports:
 
@@ -113,8 +117,10 @@ disabled, both the bind host and any `publicOrigin` must be loopback. Reverse-pr
 and forwarded-client-IP trust are intentionally not supported yet.
 
 If `publicOrigin` is configured, its protocol must match Runtime TLS: HTTPS with TLS, HTTP without
-TLS. Origins containing credentials, paths, queries, or fragments are rejected rather than silently
-normalized.
+TLS. It is the canonical browser-facing origin used for OIDC redirects and therefore must match the
+hostname users actually open in the browser. The initializer uses the same loopback host for bind
+and public origin (`127.0.0.1`) so host-only auth cookies survive the OIDC redirect. Origins
+containing credentials, paths, queries, or fragments are rejected rather than silently normalized.
 
 ## Password authentication
 
@@ -154,13 +160,16 @@ The currently supported profile is deliberately narrow:
 - allow-list mapping from normalized email to the internal user id.
 
 OIDC discovery/network failures are distinguished from callback authentication failures at the
-provider boundary. Runtime enables Fastify's structured logger at warning level and writes warnings
-to stderr so CLI stdout remains a stable product surface. Request logging records only the request
+provider boundary. Failed discovery is coalesced behind a short retry cooldown so a provider outage
+does not cause every request to start a new discovery call. Runtime enables Fastify's structured
+logger at warning level and writes warnings to stderr so CLI stdout remains a stable product surface. Request logging records only the request
 method, path without query/fragment data, and direct network source metadata. Provider diagnostics
 are deliberately sanitized to category/code/status metadata rather than raw provider response bodies.
 OIDC start uses the same Fastify-owned source/IP throttling boundary as password login. Starting a
-new OIDC flow atomically replaces the prior pending transaction for that browser, and logout clears
-both session and pending OIDC state.
+new OIDC flow atomically replaces the prior pending transaction for that browser. Callback state is
+matched atomically before the transaction is consumed; a missing or attacker-supplied wrong state
+does not destroy a valid pending login or clear its browser cookie. Logout clears both session and
+pending OIDC state.
 
 ## HTTP authentication API
 
@@ -179,9 +188,11 @@ Registered only when the corresponding provider is enabled:
 Sessions and pending OIDC transactions are server-side, bounded, and expiring. Capacity is
 fail-closed: a full store returns a controlled HTTP 503 and never evicts live authentication state.
 The `AuthStore` exposes the effective immutable session policy, and cookie lifetime is derived from
-that same policy so injected stores cannot drift from HTTP TTLs. `GET /api/auth/session` and
-capability discovery use `Cache-Control: no-store`. Cookies are `HttpOnly`, `SameSite=Lax`, and
-`Secure` whenever Runtime TLS is enabled.
+that same policy so injected stores cannot drift from HTTP TTLs. Cookie names are scoped by Runtime
+server port, preventing two local Runtime instances on the same hostname but different ports from
+overwriting each other's session/OIDC cookies. `GET /api/auth/session` and capability discovery
+use `Cache-Control: no-store`. Cookies are `HttpOnly`, `SameSite=Lax`, and `Secure` whenever
+Runtime TLS is enabled.
 
 See [project configuration and local state](../../docs/architecture/runtime/configuration.md),
 [`nevo-specflow.example.yaml`](../../nevo-specflow.example.yaml), and

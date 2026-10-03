@@ -28,19 +28,22 @@ export function createAuthCommand(context: AuthCommandContext): Command {
 }
 
 function passwordFromStdin(input: string): string {
-  const password = input.endsWith('\r\n')
+  const password = input.endsWith('
+')
     ? input.slice(0, -2)
-    : input.endsWith('\n')
+    : input.endsWith('
+')
       ? input.slice(0, -1)
       : input;
 
-  if (password.includes('\n') || password.includes('\r')) {
+  if (password.includes('
+') || password.includes('')) {
     throw new Error('Password input must contain exactly one line.');
   }
   if (password.length === 0) {
     throw new Error('Password must not be empty.');
   }
-  if (password.length > PASSWORD_MAX_LENGTH) {
+  if ([...password].length > PASSWORD_MAX_LENGTH) {
     throw new Error(`Password must be at most ${PASSWORD_MAX_LENGTH} characters.`);
   }
 

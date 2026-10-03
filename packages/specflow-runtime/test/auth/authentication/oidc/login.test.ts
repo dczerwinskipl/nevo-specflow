@@ -42,7 +42,7 @@ describe('OIDC login operation', () => {
       'https://specflow.example.test/api/auth/oidc/callback',
     );
     expect(started.ok).toBe(true);
-    expect(store.consumeOidcTransaction(previousTransaction)).toBeNull();
+    expect(store.consumeOidcTransaction(previousTransaction, 'old')).toEqual({ status: 'missing' });
     if (!started.ok) throw new Error('Expected OIDC login to start.');
 
     const completed = await completeOidcLogin(
@@ -92,6 +92,44 @@ describe('OIDC login operation', () => {
       ),
     ).resolves.toEqual({ ok: false, error: 'service_unavailable' });
 
-    expect(store.consumeOidcTransaction(existing)?.state).toBe('existing');
+    expect(store.consumeOidcTransaction(existing, 'existing')).toMatchObject({ status: 'consumed', transaction: { state: 'existing' } });
   });
+  it('does not consume pending state when callback state is wrong', async () => {
+    const store = new InMemoryAuthStore({ idFactory: () => 'oidc-id' });
+    const transactionId = store.createOidcTransaction({
+      state: 'expected-state',
+      nonce: 'nonce',
+      codeVerifier: 'verifier',
+    });
+    let completeCalls = 0;
+    const oidc: OidcClient = {
+      start: () => Promise.reject(new Error('not used')),
+      complete: () => {
+        completeCalls += 1;
+        return Promise.resolve({ email: 'demo@example.com' });
+      },
+    };
+
+    await expect(
+      completeOidcLogin(
+        provider,
+        store,
+        oidc,
+        transactionId,
+        undefined,
+        new URL('https://specflow.example.test/api/auth/oidc/callback?code=abc&state=wrong'),
+      ),
+    ).resolves.toEqual({
+      ok: false,
+      error: 'invalid_oidc_transaction',
+      preserveTransactionCookie: true,
+    });
+
+    expect(completeCalls).toBe(0);
+    expect(store.consumeOidcTransaction(transactionId, 'expected-state')).toMatchObject({
+      status: 'consumed',
+      transaction: { state: 'expected-state' },
+    });
+  });
+
 });

@@ -66,11 +66,7 @@ settings
       "specId": "S1"
     }
   },
-  "capabilities": [
-    "spec.view",
-    "spec.create",
-    "spec.manage"
-  ]
+  "capabilities": ["spec.view", "spec.create", "spec.manage"]
 }
 ```
 
@@ -87,9 +83,7 @@ For a spec-scoped viewer, the same request can return:
       "specId": "S1"
     }
   },
-  "capabilities": [
-    "spec.view"
-  ]
+  "capabilities": ["spec.view"]
 }
 ```
 

@@ -40,11 +40,9 @@ authorization:
 
 Each assignment has exactly:
 
-| Field | Meaning |
-|---|---|
-| `userId` | Canonical project `auth.users.<userId>` key |
-| `role` | One of `viewer`, `developer`, `admin` |
-| `scope` | Canonical assignment scope |
+- `userId`: canonical project `auth.users.<userId>` key;
+- `role`: one of `viewer`, `developer`, `admin`;
+- `scope`: canonical assignment scope.
 
 `userId` must exist in the project `auth.users` section. A user introduced only by local config
 does not satisfy this requirement.
@@ -74,11 +72,10 @@ An empty scope is global.
 
 ## Current roles
 
-| Role | Capabilities |
-|---|---|
-| `viewer` | `spec.view`, `session.view` |
-| `developer` | viewer capabilities + `spec.create`, `spec.manage`, `session.create`, `session.manage` |
-| `admin` | developer capabilities + `settings.view`, `settings.manage` |
+- `viewer`: `spec.view`, `session.view`;
+- `developer`: viewer capabilities plus `spec.create`, `spec.manage`, `session.create`,
+  `session.manage`;
+- `admin`: developer capabilities plus `settings.view`, `settings.manage`.
 
 The role definitions are application code in Runtime. Configuration assigns those roles; it does not
 define or extend them.

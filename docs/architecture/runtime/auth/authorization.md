@@ -66,11 +66,9 @@ explicit resource name.
 
 The current feature-owned resources are:
 
-| Resource | Capabilities |
-|---|---|
-| `spec` | `spec.view`, `spec.create`, `spec.manage` |
-| `session` | `session.view`, `session.create`, `session.manage` |
-| `settings` | `settings.view`, `settings.manage` |
+- `spec`: `spec.view`, `spec.create`, `spec.manage`;
+- `session`: `session.view`, `session.create`, `session.manage`;
+- `settings`: `settings.view`, `settings.manage`.
 
 There is intentionally no `spec.list` capability. Spec collection visibility is expressed by
 `spec.view` on each spec's canonical scope. This allows a user assigned only to one spec to see

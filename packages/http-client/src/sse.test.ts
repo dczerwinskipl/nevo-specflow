@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { bearerTokenCredentials, createHttpClient } from './index';
+import { createHttpClient } from './client';
+import { bearerTokenCredentials } from './credentials';
 
 function sseResponse(body: string, init: ResponseInit = {}): Response {
   const headers = new Headers(init.headers);

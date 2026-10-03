@@ -80,9 +80,11 @@ at mobile and desktop widths.
 
 ## Testing
 
-Follow the [shared testing guidance](../../../engineering/shared/testing.md): pure view-model and
-hook logic in fast unit tests; component behavior and accessibility via Storybook
-interaction tests; inspect computed styles when exact visuals matter.
+Follow the [shared testing guidance](../../../engineering/shared/testing.md): focused unit,
+hook, and component tests are co-located with their owner; Storybook stories sit beside the
+component; only cross-module/integration/package-boundary tests belong in a package-level `test/`
+tree. Use fast unit tests for pure view-model/hook logic, Storybook interaction tests for component
+behavior and accessibility, and inspect computed styles when exact visuals matter.
 
 ## Review checklist
 

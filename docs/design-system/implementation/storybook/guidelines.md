@@ -14,7 +14,7 @@ summary: >
 related:
   - design-system.implementation.react.component-guidelines
   - design-system.principles.ui-ux-guidelines
-  - engineering.cli.testing
+  - engineering.shared.testing
 ---
 
 # Storybook guidelines
@@ -35,10 +35,15 @@ Story `title` defines the sidebar tree:
 ## Co-location and naming
 
 - `<component>.stories.tsx` sits **beside** `<component>.tsx`. No omnibus story files.
+- Focused component tests (`<component>.test.tsx`) follow the same ownership rule.
 - Story exports are PascalCase (`EmptyState`, `ActiveTool`).
-- Test utilities live in a dedicated `test-utils/` area, never in production component
-  directories.
+- Component/feature-owned fixtures and test helpers stay with that component or vertical slice.
+  Introduce a shared `test-utils/` area only when multiple independent slices genuinely reuse the
+  helper.
 - Mobile variants spread the base story and add a viewport parameter.
+
+See [shared testing](../../../engineering/shared/testing.md#test-and-story-placement) for the
+repository-wide placement rule.
 
 ## Fixtures
 

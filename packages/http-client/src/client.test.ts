@@ -1,7 +1,8 @@
 import { type AxiosAdapter } from 'axios';
 import { describe, expect, it } from 'vitest';
 
-import { createHttpClient, customCredentials } from './index';
+import { createHttpClient } from './client';
+import { customCredentials } from './credentials';
 
 function jsonAdapter(assertConfig?: (config: Parameters<AxiosAdapter>[0]) => void): AxiosAdapter {
   return (config) => {

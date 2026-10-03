@@ -58,6 +58,18 @@ domain concept.
 Feature-local ownership is preferred over central folders that collect unrelated code
 of the same technical shape.
 
+### Keep owned development artifacts with the feature
+
+Source-adjacent artifacts follow the same ownership rule as production code. Focused unit tests,
+component tests, hooks tests, Storybook stories, and feature-local fixtures/helpers belong beside
+the module, component, or vertical slice they describe.
+
+Do not move them into central technical buckets merely because they are tests or stories. A
+package-level `test/` directory is for cross-module integration, public-contract, packaging,
+process-boundary, smoke, or end-to-end verification.
+
+See [Testing](testing.md#test-and-story-placement) for the placement decision and examples.
+
 ### Structure vertical slices recursively
 
 A vertical slice is an ownership boundary, not permission to flatten a large feature into one
@@ -95,7 +107,9 @@ generic product-package builder owns emitted filenames and bundles JavaScript pl
 files from the same public surface. Neutral packages extend `tsconfig.package-neutral.json`;
 Node-only packages extend `tsconfig.package-node.json` and declare `engines.node`. The builder
 derives the platform from that tsconfig profile, rejects ambiguous profile/manifest combinations,
-and rejects Node builtin imports from neutral package source/output. ESLint separately enforces the
+and rejects Node builtin imports from neutral package production source/output. Explicitly named
+co-located development artifacts such as `.test.*`, `.stories.*`, and `.test-support.*` are not
+part of that production-source scan. ESLint separately enforces the
 extensionless relative-source convention.
 
 Repository tooling under `tools/**` may use NodeNext-style `.js` specifiers when it executes

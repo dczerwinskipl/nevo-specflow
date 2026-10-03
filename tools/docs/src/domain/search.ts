@@ -5,10 +5,7 @@ import { asString, type DocRecord } from './frontmatter.js';
 
 function isAsciiAlphanumeric(char: string): boolean {
   const code = char.charCodeAt(0);
-  return (
-    (code >= 48 && code <= 57) ||
-    (code >= 97 && code <= 122)
-  );
+  return (code >= 48 && code <= 57) || (code >= 97 && code <= 122);
 }
 
 function trimNonAlphanumeric(value: string): string {

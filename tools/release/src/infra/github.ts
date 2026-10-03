@@ -62,10 +62,18 @@ export function parseReleaseAssetNames(raw: string, tag: string): string[] {
       { cause: err },
     );
   }
-  if (!Array.isArray(parsed) || parsed.some((name) => typeof name !== 'string')) {
+  if (!Array.isArray(parsed)) {
     throw new Error(`unexpected release-asset response shape for ${tag}`);
   }
-  return parsed;
+
+  const names: string[] = [];
+  for (const value of parsed as unknown[]) {
+    if (typeof value !== 'string') {
+      throw new Error(`unexpected release-asset response shape for ${tag}`);
+    }
+    names.push(value);
+  }
+  return names;
 }
 
 export function createGitHubClient(

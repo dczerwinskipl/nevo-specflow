@@ -32,10 +32,7 @@ export function LocalizationProvider({
 export function useLocale() {
   const { i18n } = useTranslation();
   const locale = normalizeLocale(i18n.resolvedLanguage ?? i18n.language) ?? DEFAULT_LOCALE;
-  const setLocale = useCallback(
-    (nextLocale: AppLocale) => changeLocale(i18n, nextLocale),
-    [i18n],
-  );
+  const setLocale = useCallback((nextLocale: AppLocale) => changeLocale(i18n, nextLocale), [i18n]);
 
   return { locale, setLocale };
 }

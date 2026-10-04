@@ -54,11 +54,15 @@ export function createSpecFlowI18n(locale: AppLocale = resolveInitialLocale()): 
 
 export const appI18n = createSpecFlowI18n();
 
-export async function changeLocale(instance: I18nInstance, locale: AppLocale): Promise<void> {
+export async function changeLocale(
+  instance: I18nInstance,
+  locale: AppLocale,
+  storage: Pick<Storage, 'setItem'> | undefined = browserStorage(),
+): Promise<void> {
   await instance.changeLanguage(locale);
 
   try {
-    browserStorage()?.setItem(LOCALE_STORAGE_KEY, locale);
+    storage?.setItem(LOCALE_STORAGE_KEY, locale);
   } catch {
     // Persistence is best-effort; changing the active locale must still succeed.
   }

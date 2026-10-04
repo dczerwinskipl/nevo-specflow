@@ -37,7 +37,7 @@ describe('SpecFlow localization', () => {
   });
 
   it('changes and persists the selected locale', async () => {
-    const writes: Array<[string, string]> = [];
+    const writes: [string, string][] = [];
     const instance = createSpecFlowI18n('en');
 
     await changeLocale(instance, 'pl', {

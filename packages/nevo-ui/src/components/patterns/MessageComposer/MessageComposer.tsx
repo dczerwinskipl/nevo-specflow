@@ -143,7 +143,7 @@ const MessageComposerRoot = forwardRef<HTMLFormElement, MessageComposerProps>(
     const handleSubmit: NonNullable<FormHTMLAttributes<HTMLFormElement>['onSubmit']> = (event) => {
       event.preventDefault();
       if (disabled || readOnly) return;
-      void onSubmit(editorRef.current?.value ?? '', event as MessageComposerFormEvent);
+      void onSubmit(editorRef.current?.value ?? '', event);
     };
 
     return (

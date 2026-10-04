@@ -25,6 +25,10 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup
 
+      - name: Build Storybook workspace dependencies
+        if: env.CHROMATIC_PROJECT_TOKEN != ''
+        run: pnpm exec turbo run build --filter=@nevo/ui
+
       - name: Publish Storybook and run visual tests
         if: env.CHROMATIC_PROJECT_TOKEN != ''
         run: pnpm chromatic

@@ -16,7 +16,7 @@
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "quality:build-tools": "turbo run build --filter=nevo-repo-agents --filter=nevo-repo-docs --filter=nevo-repo-release",
+    "quality:build-tools": "turbo run build --filter=nevo-repo-agents --filter=nevo-repo-docs --filter=nevo-repo-release --filter=@nevo/figma-core",
     "version:print": "node tools/release/dist/bin.js version",
     "version:check-transition": "node tools/release/dist/bin.js check-transition",
     "check:quality": "pnpm quality:build-tools && pnpm format:check && pnpm lint && node tools/docs/dist/bin.js check && node tools/agents/dist/bin.js check && pnpm version:check-transition",
@@ -42,13 +42,13 @@
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@types/node": "24.19.0",
-    "eslint": "10.11.0",
+    "eslint": "10.12.0",
     "eslint-config-prettier": "10.1.8",
-    "globals": "17.12.0",
+    "globals": "17.13.0",
     "prettier": "3.9.9",
-    "turbo": "2.11.4",
+    "tsdown": "0.23.0",
+    "turbo": "2.11.7",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.70.1",
-    "tsdown": "0.23.0"
+    "typescript-eslint": "8.71.0"
   }
 }

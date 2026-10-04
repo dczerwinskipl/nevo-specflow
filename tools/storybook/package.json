@@ -18,25 +18,25 @@
     "@nevo/specflow-ui": "workspace:*",
     "@nevo/ui": "workspace:*",
     "nevo-example-crm": "workspace:*",
-    "react": "19.1.1",
-    "react-dom": "19.1.1"
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
-    "@playwright/test": "1.55.0",
-    "@storybook/addon-a11y": "10.6.0",
-    "@storybook/addon-docs": "10.6.0",
-    "@storybook/addon-vitest": "10.6.0",
-    "@storybook/react-vite": "10.6.0",
+    "@playwright/test": "1.63.0",
+    "@storybook/addon-a11y": "10.6.1",
+    "@storybook/addon-docs": "10.6.1",
+    "@storybook/addon-vitest": "10.6.1",
+    "@storybook/react-vite": "10.6.1",
     "@tailwindcss/vite": "4.3.3",
-    "@tanstack/react-router": "1.170.40",
+    "@tanstack/react-router": "1.170.41",
     "@types/node": "24.19.0",
-    "@types/react": "19.1.12",
-    "@types/react-dom": "19.1.9",
-    "@vitest/browser-playwright": "4.1.11",
-    "chromatic": "18.10.1",
-    "playwright": "1.55.0",
-    "storybook": "10.6.0",
-    "vite": "7.1.4",
-    "vitest": "4.1.11"
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitest/browser-playwright": "5.0.3",
+    "chromatic": "18.10.2",
+    "playwright": "1.63.0",
+    "storybook": "10.6.1",
+    "vite": "8.3.2",
+    "vitest": "5.0.3"
   }
 }

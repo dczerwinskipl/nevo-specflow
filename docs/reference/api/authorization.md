@@ -28,7 +28,7 @@ related:
 POST /api/authorization/capabilities
 ```
 
-The request does not contain a subject. Runtime derives the effective subject from the current auth
+The request does not contain a subject. Runtime derives the effective subject from the current authentication
 mode and session.
 
 ### Request
@@ -93,7 +93,7 @@ who has only `viewer` at `{ projectId: "P1", specId: "S1" }` receives no capabil
 
 ### Authentication required
 
-When `auth.mode=required` has no authenticated session:
+When `authentication.mode=required` has no authenticated session:
 
 ```http
 401
@@ -109,7 +109,7 @@ The endpoint sets `Cache-Control: no-store`.
 
 ### Disabled access control
 
-When `auth.mode=none` has no `localUserId`, Runtime access control is disabled. The endpoint
+When `authentication.mode=none` has no `localUserId`, Runtime access control is disabled. The endpoint
 returns all registered capabilities for the requested resource.
 
 For resource `spec`, that is currently:

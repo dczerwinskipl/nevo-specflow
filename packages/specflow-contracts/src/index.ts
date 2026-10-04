@@ -3,6 +3,8 @@ export {
   AuthSessionMethodSchema,
   AuthSessionResponseSchema,
   AuthUserSchema,
+  OIDC_PROVIDER_ID_MAX_LENGTH,
+  OIDC_PROVIDER_NAME_MAX_LENGTH,
   OIDC_RETURN_TO_MAX_LENGTH,
   OidcCallbackErrorCodeSchema,
   OidcCallbackErrorResponseSchema,

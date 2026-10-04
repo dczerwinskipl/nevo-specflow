@@ -52,8 +52,8 @@ export async function initRuntime(options: RuntimeInitOptions): Promise<RuntimeI
     summary: [
       `Runtime: http://${host}:${String(port)}`,
       ...(publicOrigin ? [`Browser origin: ${publicOrigin}`] : []),
-      auth.summary,
-      authorization.summary,
+      ...auth.summary,
+      ...authorization.summary,
     ],
   };
 }

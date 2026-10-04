@@ -13,13 +13,18 @@ import { isSupportedPasswordHash } from '../password/hash';
 import { PASSWORD_USERNAME_MAX_LENGTH } from '../password/policy';
 import { normalizePasswordUsername } from '../password/username';
 import {
+  isValidOidcProviderId,
+  isValidOidcProviderName,
   OIDC_PROVIDER_ID_MAX_LENGTH,
-  OIDC_PROVIDER_ID_PATTERN,
-  type RuntimeAuthConfig,
-  type RuntimeOidcProviderConfig,
-  type RuntimeOidcProvidersConfig,
-  type RuntimePasswordProviderConfig,
-  type RuntimeUserConfig,
+  OIDC_PROVIDER_NAME_MAX_LENGTH,
+  oidcProviderNameKey,
+} from './oidc-policy';
+import type {
+  RuntimeAuthConfig,
+  RuntimeOidcProviderConfig,
+  RuntimeOidcProvidersConfig,
+  RuntimePasswordProviderConfig,
+  RuntimeUserConfig,
 } from './model';
 
 const AUTH_KEYS = new Set(['mode', 'localUserId', 'users', 'providers']);
@@ -36,7 +41,6 @@ const OIDC_INSTANCE_KEYS = new Set([
   'allowedEmails',
 ]);
 const USER_KEYS = new Set(['name']);
-const OIDC_PROVIDER_ID_REGEX = new RegExp(OIDC_PROVIDER_ID_PATTERN, 'u');
 
 export function parseAuthConfig(value: unknown): RuntimeAuthConfig {
   const auth = record(value, 'auth');
@@ -174,10 +178,21 @@ function parseOidcProviders(value: unknown): RuntimeOidcProvidersConfig {
       ? dictionary<unknown>()
       : record(config.instances, `${path}.instances`);
   const instances = dictionary<RuntimeOidcProviderConfig>();
+  const providerNames = new Map<string, string>();
 
   for (const [providerId, rawProvider] of Object.entries(rawInstances)) {
     validateProviderId(providerId, `${path}.instances`);
-    instances[providerId] = parseOidcProvider(rawProvider, `${path}.instances.${providerId}`);
+    const provider = parseOidcProvider(rawProvider, `${path}.instances.${providerId}`);
+    const nameKey = oidcProviderNameKey(provider.name);
+    const duplicateId = providerNames.get(nameKey);
+    if (duplicateId) {
+      throw new RuntimeConfigError(
+        `${path}.instances.${providerId}.name duplicates the visible provider name configured for '${duplicateId}'.`,
+      );
+    }
+
+    providerNames.set(nameKey, providerId);
+    instances[providerId] = provider;
   }
 
   return { instances };
@@ -188,6 +203,12 @@ function parseOidcProvider(value: unknown, path: string): RuntimeOidcProviderCon
   onlyKeys(config, OIDC_INSTANCE_KEYS, path);
 
   const name = nonEmptyString(config.name, `${path}.name`);
+  if (!isValidOidcProviderName(name)) {
+    throw new RuntimeConfigError(
+      `${path}.name must be a single-line display name of at most ${String(OIDC_PROVIDER_NAME_MAX_LENGTH)} characters.`,
+    );
+  }
+
   const enabled = boolean(config.enabled, `${path}.enabled`);
   const issuer =
     config.issuer === undefined ? undefined : absoluteHttpsUrl(config.issuer, `${path}.issuer`);
@@ -252,7 +273,7 @@ function parseOidcProvider(value: unknown, path: string): RuntimeOidcProviderCon
 
 function validateProviderId(providerId: string, path: string): void {
   nonEmptyKey(providerId, path);
-  if (providerId.length > OIDC_PROVIDER_ID_MAX_LENGTH || !OIDC_PROVIDER_ID_REGEX.test(providerId)) {
+  if (!isValidOidcProviderId(providerId)) {
     throw new RuntimeConfigError(
       `${path} provider ids must be lowercase slugs containing letters, digits, and internal hyphens (max ${String(OIDC_PROVIDER_ID_MAX_LENGTH)} characters): '${providerId}'.`,
     );

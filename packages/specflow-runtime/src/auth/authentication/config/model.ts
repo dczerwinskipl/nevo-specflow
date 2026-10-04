@@ -1,8 +1,5 @@
 export type AuthMode = 'none' | 'required';
 
-export const OIDC_PROVIDER_ID_PATTERN = '^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$';
-export const OIDC_PROVIDER_ID_MAX_LENGTH = 64;
-
 export interface RuntimeUserConfig {
   readonly name: string;
 }

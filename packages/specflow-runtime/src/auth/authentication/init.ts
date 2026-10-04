@@ -1,9 +1,13 @@
 import type { RuntimeSetupUi } from '../../init/contracts';
 import {
-  OIDC_PROVIDER_ID_MAX_LENGTH,
-  OIDC_PROVIDER_ID_PATTERN,
-  type RuntimeUserConfig,
-} from './config/model';
+  isValidOidcProviderId,
+  isValidOidcProviderName,
+  OIDC_PROVIDER_NAME_MAX_LENGTH,
+  normalizeOidcProviderName,
+  oidcProviderIdFromName,
+  oidcProviderNameKey,
+} from './config/oidc-policy';
+import type { RuntimeUserConfig } from './config/model';
 import { hashPassword as hashRuntimePassword } from './password/hash';
 import { normalizePasswordUsername } from './password/username';
 
@@ -12,7 +16,7 @@ export interface AuthInitResult {
   readonly localAuth: Record<string, unknown>;
   readonly users: Readonly<Record<string, RuntimeUserConfig>>;
   readonly requiresPublicOrigin: boolean;
-  readonly summary: string;
+  readonly summary: readonly string[];
 }
 
 export interface AuthInitOptions {
@@ -20,8 +24,15 @@ export interface AuthInitOptions {
   readonly hashPassword?: (password: string) => Promise<string>;
 }
 
+interface OidcProjectSetup {
+  readonly name: string;
+  readonly enabled: true;
+  readonly issuer: string;
+  readonly clientId: string;
+  readonly allowedEmails: Readonly<Record<string, string>>;
+}
+
 const NEW_USER = '__new__';
-const OIDC_PROVIDER_ID_REGEX = new RegExp(OIDC_PROVIDER_ID_PATTERN, 'u');
 
 export async function initAuth(options: AuthInitOptions): Promise<AuthInitResult> {
   const { ui } = options;
@@ -50,13 +61,17 @@ export async function initAuth(options: AuthInitOptions): Promise<AuthInitResult
       },
       users,
       requiresPublicOrigin: false,
-      summary: 'Authentication: disabled (trusted local identity)',
+      summary: [
+        'Authentication: trusted local identity (no sign-in)',
+        `Local identity: ${formatUser(users, userId)}`,
+        ...canonicalUserSummary(users),
+      ],
     };
   }
 
   const users = dictionary<RuntimeUserConfig>();
   const passwordAccounts = dictionary<{ userId: string; passwordHash: string }>();
-  const projectOidc = dictionary<Record<string, unknown>>();
+  const projectOidc = dictionary<OidcProjectSetup>();
   const localOidc = dictionary<{ clientSecret: string }>();
 
   let passwordEnabled: boolean;
@@ -85,11 +100,6 @@ export async function initAuth(options: AuthInitOptions): Promise<AuthInitResult
     }
   } while (!passwordEnabled && Object.keys(projectOidc).length === 0);
 
-  const methods = [
-    ...(passwordEnabled ? ['username/password'] : []),
-    ...Object.values(projectOidc).map((provider) => String(provider.name)),
-  ];
-
   return {
     projectAuth: {
       mode: 'required',
@@ -107,7 +117,7 @@ export async function initAuth(options: AuthInitOptions): Promise<AuthInitResult
     },
     users,
     requiresPublicOrigin: Object.keys(projectOidc).length > 0,
-    summary: `Authentication: ${methods.join(' + ')}`,
+    summary: requiredAuthSummary(users, passwordEnabled, passwordAccounts, projectOidc),
   };
 }
 
@@ -134,14 +144,14 @@ async function addPasswordAccount(
 async function addOidcProvider(
   ui: RuntimeSetupUi,
   users: Record<string, RuntimeUserConfig>,
-  existing: Readonly<Record<string, unknown>>,
+  existing: Readonly<Record<string, OidcProjectSetup>>,
 ): Promise<{
   readonly id: string;
-  readonly project: Record<string, unknown>;
+  readonly project: OidcProjectSetup;
   readonly clientSecret: string;
 }> {
-  const name = await requiredInput(ui, 'OIDC provider name', 'Company SSO');
-  const generatedId = providerIdFromName(name);
+  const name = await requiredOidcProviderName(ui, existing);
+  const generatedId = oidcProviderIdFromName(name);
   const suggestedId = generatedId === '' ? 'company' : generatedId;
   const id = await requiredProviderId(ui, existing, suggestedId);
   const issuer = await requiredInput(ui, 'Issuer URL', 'https://accounts.google.com');
@@ -179,6 +189,36 @@ async function addOidcProvider(
     },
     clientSecret,
   };
+}
+
+async function requiredOidcProviderName(
+  ui: RuntimeSetupUi,
+  existing: Readonly<Record<string, OidcProjectSetup>>,
+): Promise<string> {
+  const existingNames = new Set(
+    Object.values(existing).map((provider) => oidcProviderNameKey(provider.name)),
+  );
+
+  while (true) {
+    const name = normalizeOidcProviderName(await requiredInput(ui, 'OIDC provider name', 'Company SSO'));
+    if (!isValidOidcProviderName(name)) {
+      ui.note(
+        `Provider name must be a single-line display name of at most ${String(OIDC_PROVIDER_NAME_MAX_LENGTH)} characters.`,
+        'OIDC provider name',
+      );
+      continue;
+    }
+
+    if (existingNames.has(oidcProviderNameKey(name))) {
+      ui.note(
+        `An OIDC provider named '${name}' already exists. Provider names must be unique.`,
+        'OIDC provider name',
+      );
+      continue;
+    }
+
+    return name;
+  }
 }
 
 async function selectCanonicalUser(
@@ -225,16 +265,12 @@ async function createCanonicalUser(
 
 async function requiredProviderId(
   ui: RuntimeSetupUi,
-  existing: Readonly<Record<string, unknown>>,
+  existing: Readonly<Record<string, OidcProjectSetup>>,
   suggested: string,
 ): Promise<string> {
   while (true) {
     const id = (await requiredInput(ui, 'Provider id', suggested)).trim();
-    if (
-      id.length <= OIDC_PROVIDER_ID_MAX_LENGTH &&
-      OIDC_PROVIDER_ID_REGEX.test(id) &&
-      !Object.hasOwn(existing, id)
-    ) {
+    if (isValidOidcProviderId(id) && !Object.hasOwn(existing, id)) {
       return id;
     }
 
@@ -247,31 +283,50 @@ async function requiredProviderId(
   }
 }
 
-function providerIdFromName(name: string): string {
-  let result = '';
-  let separatorPending = false;
+function requiredAuthSummary(
+  users: Readonly<Record<string, RuntimeUserConfig>>,
+  passwordEnabled: boolean,
+  passwordAccounts: Readonly<Record<string, { userId: string; passwordHash: string }>>,
+  oidcProviders: Readonly<Record<string, OidcProjectSetup>>,
+): readonly string[] {
+  const methods = [
+    ...(passwordEnabled ? ['username/password'] : []),
+    ...(Object.keys(oidcProviders).length > 0 ? ['OIDC'] : []),
+  ];
+  const lines = ['Authentication: required', `Login methods: ${methods.join(', ')}`];
 
-  for (const char of name.trim().toLowerCase()) {
-    const isAsciiLetter = char >= 'a' && char <= 'z';
-    const isDigit = char >= '0' && char <= '9';
-
-    if (!isAsciiLetter && !isDigit) {
-      if (result.length > 0) separatorPending = true;
-      continue;
+  if (passwordEnabled) {
+    lines.push('Password accounts:');
+    for (const [username, account] of Object.entries(passwordAccounts)) {
+      lines.push(`  - ${username} -> ${formatUser(users, account.userId)}`);
     }
-
-    if (separatorPending && result.length > 0 && result.length + 1 < OIDC_PROVIDER_ID_MAX_LENGTH) {
-      result += '-';
-    }
-
-    if (result.length >= OIDC_PROVIDER_ID_MAX_LENGTH) break;
-    result += char;
-    separatorPending = false;
-
-    if (result.length >= OIDC_PROVIDER_ID_MAX_LENGTH) break;
   }
 
-  return result;
+  if (Object.keys(oidcProviders).length > 0) {
+    lines.push('OIDC providers:');
+    for (const [providerId, provider] of Object.entries(oidcProviders)) {
+      lines.push(`  - ${provider.name} [${providerId}]`);
+      lines.push(`    Issuer: ${provider.issuer}`);
+      lines.push(`    Client ID: ${provider.clientId}`);
+      for (const [email, userId] of Object.entries(provider.allowedEmails)) {
+        lines.push(`    ${email} -> ${formatUser(users, userId)}`);
+      }
+    }
+  }
+
+  return [...lines, ...canonicalUserSummary(users)];
+}
+
+function canonicalUserSummary(users: Readonly<Record<string, RuntimeUserConfig>>): readonly string[] {
+  return ['Canonical users:', ...Object.keys(users).map((userId) => `  - ${formatUser(users, userId)}`)];
+}
+
+function formatUser(
+  users: Readonly<Record<string, RuntimeUserConfig>>,
+  userId: string,
+): string {
+  const user = users[userId];
+  return user ? `${user.name} (${userId})` : userId;
 }
 
 async function requiredInput(

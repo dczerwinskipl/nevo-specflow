@@ -2,6 +2,8 @@ import { Type, type Static } from 'typebox';
 
 export const PASSWORD_USERNAME_MAX_LENGTH = 256;
 export const PASSWORD_MAX_LENGTH = 1_024;
+export const OIDC_PROVIDER_ID_MAX_LENGTH = 64;
+export const OIDC_PROVIDER_NAME_MAX_LENGTH = 32;
 export const OIDC_RETURN_TO_MAX_LENGTH = 2_048;
 
 export const AuthUserSchema = Type.Object(
@@ -23,7 +25,7 @@ export const AuthSessionMethodSchema = Type.Union([
   Type.Object(
     {
       kind: Type.Literal('oidc'),
-      providerId: Type.String({ minLength: 1 }),
+      providerId: Type.String({ minLength: 1, maxLength: OIDC_PROVIDER_ID_MAX_LENGTH }),
     },
     { additionalProperties: false },
   ),
@@ -41,8 +43,8 @@ export const AuthLoginMethodsSchema = Type.Object(
     oidc: Type.Array(
       Type.Object(
         {
-          id: Type.String({ minLength: 1 }),
-          name: Type.String({ minLength: 1 }),
+          id: Type.String({ minLength: 1, maxLength: OIDC_PROVIDER_ID_MAX_LENGTH }),
+          name: Type.String({ minLength: 1, maxLength: OIDC_PROVIDER_NAME_MAX_LENGTH }),
         },
         { additionalProperties: false },
       ),

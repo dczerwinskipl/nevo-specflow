@@ -47,21 +47,59 @@ describe('authentication config parsing', () => {
     });
   });
 
-  it('rejects invalid OIDC provider ids', () => {
+  it.each([
+    ['company', true],
+    ['company-sso-2', true],
+    ['a'.repeat(64), true],
+    ['Company', false],
+    ['company_sso', false],
+    ['-company', false],
+    ['company-', false],
+    ['a'.repeat(65), false],
+  ])('validates OIDC provider id %s consistently', (providerId, valid) => {
     const config = requiredAuthConfig();
+    const candidate = {
+      ...config,
+      providers: {
+        ...config.providers,
+        oidc: {
+          instances: {
+            [providerId]: config.providers.oidc.instances.company,
+          },
+        },
+      },
+    };
+
+    if (valid) {
+      expect(() => parseAuthConfig(candidate)).not.toThrow();
+    } else {
+      expect(() => parseAuthConfig(candidate)).toThrowError(/provider ids must be lowercase slugs/i);
+    }
+  });
+
+  it('bounds and de-duplicates visible OIDC provider names', () => {
+    const tooLong = requiredAuthConfig();
+    tooLong.providers.oidc.instances.company.name = 'A'.repeat(33);
+    expect(() => parseAuthConfig(tooLong)).toThrowError(/display name of at most 32 characters/i);
+
+    const duplicate = requiredAuthConfig();
     expect(() =>
       parseAuthConfig({
-        ...config,
+        ...duplicate,
         providers: {
-          ...config.providers,
+          ...duplicate.providers,
           oidc: {
             instances: {
-              'Company SSO': config.providers.oidc.instances.company,
+              company: duplicate.providers.oidc.instances.company,
+              customer: {
+                ...duplicate.providers.oidc.instances.company,
+                name: ' company sso ',
+              },
             },
           },
         },
       }),
-    ).toThrowError(/provider ids must be lowercase slugs/i);
+    ).toThrowError(/duplicates the visible provider name/i);
   });
 
   it('normalizes password account names and rejects collisions', () => {

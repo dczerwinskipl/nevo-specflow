@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   AuthSessionResponseSchema,
+  OIDC_PROVIDER_NAME_MAX_LENGTH,
   OidcStartRequestSchema,
   PASSWORD_MAX_LENGTH,
   PASSWORD_USERNAME_MAX_LENGTH,
@@ -39,6 +40,28 @@ describe('SpecFlow authentication contracts', () => {
         authenticated: true,
         user: { id: 'demo-user', name: 'Demo User' },
         loginMethods: { password: { enabled: false }, oidc: [] },
+      }),
+    ).toBe(false);
+  });
+
+  it('bounds OIDC provider names at the transport boundary', () => {
+    const base = {
+      authenticationRequired: true,
+      authenticated: false as const,
+      loginMethods: {
+        password: { enabled: false },
+        oidc: [{ id: 'company', name: 'A'.repeat(OIDC_PROVIDER_NAME_MAX_LENGTH) }],
+      },
+    };
+
+    expect(Value.Check(AuthSessionResponseSchema, base)).toBe(true);
+    expect(
+      Value.Check(AuthSessionResponseSchema, {
+        ...base,
+        loginMethods: {
+          ...base.loginMethods,
+          oidc: [{ id: 'company', name: 'A'.repeat(OIDC_PROVIDER_NAME_MAX_LENGTH + 1) }],
+        },
       }),
     ).toBe(false);
   });

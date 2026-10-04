@@ -116,8 +116,9 @@ Runtime setup first decides whether authentication is required. Required authent
 username/password with one or more named OIDC instances; at least one login method must remain
 enabled. Password setup hashes secrets inside Runtime, while every OIDC client secret stays local.
 Canonical users remain distinct from provider credentials, and each canonical user created during
-setup receives an explicit authorization role. The bootstrap user defaults to `admin`, subsequent
-users default to `developer`, and setup cannot finish without at least one administrator. Trusted
+setup receives an explicit authorization role. The first-created canonical user is the bootstrap user and defaults to `admin`; subsequent
+users default to `developer`. Setup preserves that creation order explicitly rather than deriving it
+from configuration-object key order, and it cannot finish without at least one administrator. Trusted
 local mode keeps its local identity without showing a login screen.
 
 Before the product shell asks to write files, Runtime contributes a human-readable review of its

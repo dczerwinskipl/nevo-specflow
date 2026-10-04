@@ -1,6 +1,6 @@
 import { useSyncExternalStore, type PropsWithChildren } from 'react';
 
-import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
+import { designLayerMetadata, designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { AppShell, useAppNavigation } from '@nevo/ui';
 import { Link, useRouter } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
@@ -27,11 +27,20 @@ function ProductNavigation({
     'block rounded-control px-3 py-2 text-content-secondary hover:bg-surface-hover hover:text-content-primary';
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 px-3 pt-5 pr-12">
+    <div
+      className="flex h-full min-h-0 flex-col"
+      {...designLayerMetadata({ layer: 'product-navigation' })}
+    >
+      <div
+        className="shrink-0 px-3 pt-5 pr-12"
+        {...designLayerMetadata({ layer: 'brand' })}
+      >
         <NevoBrandLogo {...defaultNevoBrand} product="SpecFlow" size="md" type="horizontal" />
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-8">
+      <div
+        className="min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-8"
+        {...designLayerMetadata({ layer: 'navigation-links' })}
+      >
         <nav aria-label={t('navigation.product')} className="grid gap-1">
           <Link
             activeProps={{ className: `${linkClassName} bg-surface-selected` }}
@@ -51,7 +60,10 @@ function ProductNavigation({
           </Link>
         </nav>
       </div>
-      <div className="shrink-0 border-t border-divider px-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3">
+      <div
+        className="shrink-0 border-t border-divider px-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3"
+        {...designLayerMetadata({ layer: 'account-footer' })}
+      >
         {state.status === 'ready' ? (
           <AccountMenu session={state.session} onSignOut={onSignOut} />
         ) : null}

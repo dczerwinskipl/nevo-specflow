@@ -22,7 +22,8 @@
     "signedIn": "Signed in",
     "localAccess": "Local access",
     "openMenu": "Open user menu for {{name}}",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "menu": "User menu"
   },
   "auth": {
     "loadingSignIn": "Loading sign in",

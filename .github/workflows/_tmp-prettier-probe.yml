@@ -1,0 +1,22 @@
+name: Temporary Prettier probe
+
+on:
+  push:
+    branches:
+      - feature/auth-login-init
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - name: Format Runtime origin test
+        shell: bash
+        run: |
+          pnpm exec prettier --write packages/specflow-runtime/test/server/origin.test.ts
+          echo '---FORMATTED---'
+          cat packages/specflow-runtime/test/server/origin.test.ts

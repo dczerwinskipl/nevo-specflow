@@ -233,7 +233,7 @@ export function safeReturnTo(value: string | undefined): string {
   }
 }
 
-export function loginErrorKey(code: string): string {
+export function loginErrorKey(code: string) {
   switch (code) {
     case 'invalid_credentials':
       return 'auth.errors.invalidCredentials';

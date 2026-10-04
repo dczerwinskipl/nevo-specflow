@@ -31,10 +31,7 @@ function ProductNavigation({
       className="flex h-full min-h-0 flex-col"
       {...designLayerMetadata({ layer: 'product-navigation' })}
     >
-      <div
-        className="shrink-0 px-3 pt-5 pr-12"
-        {...designLayerMetadata({ layer: 'brand' })}
-      >
+      <div className="shrink-0 px-3 pt-5 pr-12" {...designLayerMetadata({ layer: 'brand' })}>
         <NevoBrandLogo {...defaultNevoBrand} product="SpecFlow" size="md" type="horizontal" />
       </div>
       <div

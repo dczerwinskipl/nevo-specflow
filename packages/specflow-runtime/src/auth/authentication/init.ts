@@ -97,7 +97,8 @@ export async function initAuth(options: AuthInitOptions): Promise<AuthInitResult
 
     if (!passwordEnabled && Object.keys(projectOidc).length === 0) {
       ui.note(
-        'Authentication requires at least one login method. Enable password login or add an OIDC provider.',
+        'Authentication requires at least one login method. ' +
+          'Enable password login or add an OIDC provider.',
         'Authentication',
       );
     }
@@ -144,14 +145,17 @@ async function addPasswordAccount(
 
   if (owner === NEW_USER) {
     while (true) {
-      username = normalizePasswordUsername(await requiredInput(options.ui, 'Username', 'user'));
+      username = normalizePasswordUsername(
+        await requiredInput(options.ui, 'Username', 'user'),
+      );
       if (Object.hasOwn(accounts, username)) {
         options.ui.note(`Password account '${username}' already exists.`, 'Username');
         continue;
       }
       if (canonicalUsers.has(username)) {
         options.ui.note(
-          `User '${username}' already exists. Choose Existing user to add another login method.`,
+          `User '${username}' already exists. ` +
+            'Choose Existing user to add another login method.',
           'Username',
         );
         continue;
@@ -274,7 +278,9 @@ async function uniquePasswordUsername(
   defaultValue: string,
 ): Promise<string> {
   while (true) {
-    const username = normalizePasswordUsername(await requiredInput(ui, 'Username', defaultValue));
+    const username = normalizePasswordUsername(
+      await requiredInput(ui, 'Username', defaultValue),
+    );
     if (!Object.hasOwn(accounts, username)) return username;
     ui.note(`Password account '${username}' already exists.`, 'Username');
   }
@@ -338,7 +344,8 @@ async function requiredProviderId(
     ui.note(
       Object.hasOwn(existing, id)
         ? `OIDC provider '${id}' already exists.`
-        : 'Provider id must be a lowercase slug containing letters, digits, and internal hyphens.',
+        : 'Provider id must be a lowercase slug containing letters, digits, ' +
+          'and internal hyphens.',
       'Provider id',
     );
   }

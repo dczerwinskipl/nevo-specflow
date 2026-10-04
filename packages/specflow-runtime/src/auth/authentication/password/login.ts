@@ -48,7 +48,10 @@ export async function loginWithPassword(
 
   let sessionId: string;
   try {
-    sessionId = store.createSession({ userId: user.id, provider: 'password' }, currentSessionId);
+    sessionId = store.createSession(
+      { userId: user.id, authenticatedWith: { kind: 'password' } },
+      currentSessionId,
+    );
   } catch (error) {
     if (error instanceof AuthStoreCapacityError) {
       return { ok: false, error: 'service_unavailable' };
@@ -59,6 +62,6 @@ export async function loginWithPassword(
   return {
     ok: true,
     sessionId,
-    session: authenticatedSession(auth, user.id, 'password'),
+    session: authenticatedSession(auth, user.id, { kind: 'password' }),
   };
 }

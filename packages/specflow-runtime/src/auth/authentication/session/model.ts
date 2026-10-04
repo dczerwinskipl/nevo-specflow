@@ -1,47 +1,45 @@
 import type { RuntimeAuthConfig } from '../config/model';
 import type {
-  AuthProvider as AuthProviderContract,
+  AuthLoginMethods,
+  AuthSessionMethod,
   AuthSessionResponse,
   AuthUser as AuthUserContract,
 } from '@nevo/specflow-contracts/authentication';
 
-export type AuthProvider = AuthProviderContract;
 export type AuthUser = AuthUserContract;
 export type AuthSession = AuthSessionResponse;
 
-export function configuredAuthProviders(auth: RuntimeAuthConfig): AuthProvider[] {
-  const providers: AuthProvider[] = [];
-
-  if (auth.providers.password.enabled) {
-    providers.push('password');
-  }
-  if (auth.providers.oidc.enabled) {
-    providers.push('oidc');
-  }
-
-  return providers;
+export function configuredLoginMethods(auth: RuntimeAuthConfig): AuthLoginMethods {
+  return {
+    password: { enabled: auth.providers.password.enabled },
+    oidc: Object.entries(auth.providers.oidc.instances).flatMap(([id, provider]) =>
+      provider.enabled ? [{ id, name: provider.name }] : [],
+    ),
+  };
 }
 
 export function unauthenticatedSession(auth: RuntimeAuthConfig): AuthSession {
   const user = auth.localUserId ? configuredUser(auth, auth.localUserId) : undefined;
 
   return {
+    authenticationRequired: auth.mode === 'required',
     authenticated: false,
     ...(user ? { user } : {}),
-    availableProviders: configuredAuthProviders(auth),
+    loginMethods: configuredLoginMethods(auth),
   };
 }
 
 export function authenticatedSession(
   auth: RuntimeAuthConfig,
   userId: string,
-  provider: AuthProvider,
+  authenticatedWith: AuthSessionMethod,
 ): AuthSession {
   return {
+    authenticationRequired: auth.mode === 'required',
     authenticated: true,
     user: configuredUser(auth, userId),
-    provider,
-    availableProviders: configuredAuthProviders(auth),
+    authenticatedWith,
+    loginMethods: configuredLoginMethods(auth),
   };
 }
 

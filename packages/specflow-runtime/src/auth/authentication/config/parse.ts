@@ -12,19 +12,31 @@ import {
 import { isSupportedPasswordHash } from '../password/hash';
 import { PASSWORD_USERNAME_MAX_LENGTH } from '../password/policy';
 import { normalizePasswordUsername } from '../password/username';
-import type {
-  RuntimeAuthConfig,
-  RuntimeOidcProviderConfig,
-  RuntimePasswordProviderConfig,
-  RuntimeUserConfig,
+import {
+  OIDC_PROVIDER_ID_MAX_LENGTH,
+  OIDC_PROVIDER_ID_PATTERN,
+  type RuntimeAuthConfig,
+  type RuntimeOidcProviderConfig,
+  type RuntimeOidcProvidersConfig,
+  type RuntimePasswordProviderConfig,
+  type RuntimeUserConfig,
 } from './model';
 
 const AUTH_KEYS = new Set(['mode', 'localUserId', 'users', 'providers']);
 const PROVIDER_KEYS = new Set(['password', 'oidc']);
 const PASSWORD_KEYS = new Set(['enabled', 'accounts']);
 const PASSWORD_ACCOUNT_KEYS = new Set(['userId', 'passwordHash']);
-const OIDC_KEYS = new Set(['enabled', 'issuer', 'clientId', 'clientSecret', 'allowedEmails']);
+const OIDC_CONTAINER_KEYS = new Set(['instances']);
+const OIDC_INSTANCE_KEYS = new Set([
+  'name',
+  'enabled',
+  'issuer',
+  'clientId',
+  'clientSecret',
+  'allowedEmails',
+]);
 const USER_KEYS = new Set(['name']);
+const OIDC_PROVIDER_ID_REGEX = new RegExp(OIDC_PROVIDER_ID_PATTERN, 'u');
 
 export function parseAuthConfig(value: unknown): RuntimeAuthConfig {
   const auth = record(value, 'auth');
@@ -35,7 +47,7 @@ export function parseAuthConfig(value: unknown): RuntimeAuthConfig {
 
   const users = parseUsers(auth.users);
   const password = parsePasswordProvider(providers.password);
-  const oidc = parseOidcProvider(providers.oidc);
+  const oidc = parseOidcProviders(providers.oidc);
 
   const mode = auth.mode;
   if (mode !== 'none' && mode !== 'required') {
@@ -51,8 +63,14 @@ export function parseAuthConfig(value: unknown): RuntimeAuthConfig {
     assertUserExists(users, account.userId, `auth.providers.password.accounts.${username}.userId`);
   }
 
-  for (const [email, userId] of Object.entries(oidc.allowedEmails)) {
-    assertUserExists(users, userId, `auth.providers.oidc.allowedEmails.${email}`);
+  for (const [providerId, provider] of Object.entries(oidc.instances)) {
+    for (const [email, userId] of Object.entries(provider.allowedEmails)) {
+      assertUserExists(
+        users,
+        userId,
+        `auth.providers.oidc.instances.${providerId}.allowedEmails.${email}`,
+      );
+    }
   }
 
   if (password.enabled && Object.keys(password.accounts).length === 0) {
@@ -61,7 +79,9 @@ export function parseAuthConfig(value: unknown): RuntimeAuthConfig {
     );
   }
 
-  if (mode === 'none' && (password.enabled || oidc.enabled)) {
+  const hasEnabledOidc = Object.values(oidc.instances).some((provider) => provider.enabled);
+
+  if (mode === 'none' && (password.enabled || hasEnabledOidc)) {
     throw new RuntimeConfigError('auth.mode=none cannot enable authentication providers.');
   }
 
@@ -69,9 +89,9 @@ export function parseAuthConfig(value: unknown): RuntimeAuthConfig {
     throw new RuntimeConfigError('auth.localUserId is only valid when auth.mode=none.');
   }
 
-  if (mode === 'required' && !password.enabled && !oidc.enabled) {
+  if (mode === 'required' && !password.enabled && !hasEnabledOidc) {
     throw new RuntimeConfigError(
-      'auth.mode=required requires at least one enabled authentication provider.',
+      'auth.mode=required requires password login or at least one enabled OIDC provider.',
     );
   }
 
@@ -145,11 +165,32 @@ function parsePasswordProvider(value: unknown): RuntimePasswordProviderConfig {
   return { enabled, accounts: result };
 }
 
-function parseOidcProvider(value: unknown): RuntimeOidcProviderConfig {
+function parseOidcProviders(value: unknown): RuntimeOidcProvidersConfig {
   const path = 'auth.providers.oidc';
   const config = record(value, path);
-  onlyKeys(config, OIDC_KEYS, path);
+  onlyKeys(config, OIDC_CONTAINER_KEYS, path);
+  const rawInstances =
+    config.instances === undefined
+      ? dictionary<unknown>()
+      : record(config.instances, `${path}.instances`);
+  const instances = dictionary<RuntimeOidcProviderConfig>();
 
+  for (const [providerId, rawProvider] of Object.entries(rawInstances)) {
+    validateProviderId(providerId, `${path}.instances`);
+    instances[providerId] = parseOidcProvider(
+      rawProvider,
+      `${path}.instances.${providerId}`,
+    );
+  }
+
+  return { instances };
+}
+
+function parseOidcProvider(value: unknown, path: string): RuntimeOidcProviderConfig {
+  const config = record(value, path);
+  onlyKeys(config, OIDC_INSTANCE_KEYS, path);
+
+  const name = nonEmptyString(config.name, `${path}.name`);
   const enabled = boolean(config.enabled, `${path}.enabled`);
   const issuer =
     config.issuer === undefined ? undefined : absoluteHttpsUrl(config.issuer, `${path}.issuer`);
@@ -184,15 +225,16 @@ function parseOidcProvider(value: unknown): RuntimeOidcProviderConfig {
   if (enabled) {
     if (!issuer || !clientId || !clientSecret) {
       throw new RuntimeConfigError(
-        'auth.providers.oidc.issuer, clientId, and clientSecret are required when OIDC is enabled.',
+        `${path}.issuer, clientId, and clientSecret are required when the OIDC provider is enabled.`,
       );
     }
     if (Object.keys(mappings).length === 0) {
       throw new RuntimeConfigError(
-        'auth.providers.oidc.allowedEmails must contain at least one mapping when OIDC is enabled.',
+        `${path}.allowedEmails must contain at least one mapping when the OIDC provider is enabled.`,
       );
     }
     return {
+      name,
       enabled: true,
       issuer,
       clientId,
@@ -202,12 +244,25 @@ function parseOidcProvider(value: unknown): RuntimeOidcProviderConfig {
   }
 
   return {
+    name,
     enabled: false,
     ...(issuer ? { issuer } : {}),
     ...(clientId ? { clientId } : {}),
     ...(clientSecret ? { clientSecret } : {}),
     allowedEmails: mappings,
   };
+}
+
+function validateProviderId(providerId: string, path: string): void {
+  nonEmptyKey(providerId, path);
+  if (
+    providerId.length > OIDC_PROVIDER_ID_MAX_LENGTH ||
+    !OIDC_PROVIDER_ID_REGEX.test(providerId)
+  ) {
+    throw new RuntimeConfigError(
+      `${path} provider ids must be lowercase slugs containing letters, digits, and internal hyphens (max ${String(OIDC_PROVIDER_ID_MAX_LENGTH)} characters): '${providerId}'.`,
+    );
+  }
 }
 
 function assertUserExists(

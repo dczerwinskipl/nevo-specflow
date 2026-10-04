@@ -1,16 +1,21 @@
-import type { AuthProvider } from '@nevo/specflow-contracts/authentication';
+import type { AuthSessionMethod } from '@nevo/specflow-contracts/authentication';
 
 import type { AuthSessionPolicy } from './policy';
 
 export interface StoredAuthSession {
   readonly userId: string;
-  readonly provider: AuthProvider;
+  readonly authenticatedWith: AuthSessionMethod;
 }
 
-export interface StoredOidcTransaction {
+export interface OidcProtocolTransaction {
   readonly state: string;
   readonly nonce: string;
   readonly codeVerifier: string;
+}
+
+export interface StoredOidcTransaction extends OidcProtocolTransaction {
+  readonly providerId: string;
+  readonly returnTo: string;
 }
 
 export type OidcTransactionConsumption =

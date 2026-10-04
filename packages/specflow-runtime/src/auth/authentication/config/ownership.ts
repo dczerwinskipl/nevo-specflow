@@ -3,10 +3,18 @@ import { onlyKeys, record } from '../../../config/value';
 const PROVIDER_KEYS = new Set(['password', 'oidc']);
 const PROJECT_AUTH_KEYS = new Set(['mode', 'users', 'providers']);
 const PROJECT_PASSWORD_KEYS = new Set(['enabled']);
-const PROJECT_OIDC_KEYS = new Set(['enabled', 'issuer', 'clientId', 'allowedEmails']);
+const PROJECT_OIDC_KEYS = new Set(['instances']);
+const PROJECT_OIDC_INSTANCE_KEYS = new Set([
+  'name',
+  'enabled',
+  'issuer',
+  'clientId',
+  'allowedEmails',
+]);
 const LOCAL_AUTH_KEYS = new Set(['localUserId', 'providers']);
 const LOCAL_PASSWORD_KEYS = new Set(['accounts']);
-const LOCAL_OIDC_KEYS = new Set(['clientSecret']);
+const LOCAL_OIDC_KEYS = new Set(['instances']);
+const LOCAL_OIDC_INSTANCE_KEYS = new Set(['clientSecret']);
 
 export function assertProjectAuthConfigOwnership(value: unknown): void {
   if (value === undefined) return;
@@ -24,8 +32,12 @@ export function assertProjectAuthConfigOwnership(value: unknown): void {
   }
 
   if (providers.oidc !== undefined) {
-    const oidc = record(providers.oidc, 'auth.providers.oidc');
-    onlyKeys(oidc, PROJECT_OIDC_KEYS, 'auth.providers.oidc');
+    assertOidcOwnership(
+      providers.oidc,
+      'auth.providers.oidc',
+      PROJECT_OIDC_KEYS,
+      PROJECT_OIDC_INSTANCE_KEYS,
+    );
   }
 }
 
@@ -45,7 +57,29 @@ export function assertLocalAuthConfigOwnership(value: unknown): void {
   }
 
   if (providers.oidc !== undefined) {
-    const oidc = record(providers.oidc, 'auth.providers.oidc');
-    onlyKeys(oidc, LOCAL_OIDC_KEYS, 'auth.providers.oidc');
+    assertOidcOwnership(
+      providers.oidc,
+      'auth.providers.oidc',
+      LOCAL_OIDC_KEYS,
+      LOCAL_OIDC_INSTANCE_KEYS,
+    );
+  }
+}
+
+function assertOidcOwnership(
+  value: unknown,
+  path: string,
+  containerKeys: ReadonlySet<string>,
+  instanceKeys: ReadonlySet<string>,
+): void {
+  const oidc = record(value, path);
+  onlyKeys(oidc, containerKeys, path);
+  if (oidc.instances === undefined) return;
+
+  const instances = record(oidc.instances, `${path}.instances`);
+  for (const [providerId, rawProvider] of Object.entries(instances)) {
+    const providerPath = `${path}.instances.${providerId}`;
+    const provider = record(rawProvider, providerPath);
+    onlyKeys(provider, instanceKeys, providerPath);
   }
 }

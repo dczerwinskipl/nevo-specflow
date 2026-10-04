@@ -1,5 +1,8 @@
 export type AuthMode = 'none' | 'required';
 
+export const OIDC_PROVIDER_ID_PATTERN = '^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$';
+export const OIDC_PROVIDER_ID_MAX_LENGTH = 64;
+
 export interface RuntimeUserConfig {
   readonly name: string;
 }
@@ -15,6 +18,7 @@ export interface RuntimePasswordProviderConfig {
 }
 
 interface RuntimeOidcProviderConfigBase {
+  readonly name: string;
   readonly allowedEmails: Readonly<Record<string, string>>;
 }
 
@@ -33,7 +37,12 @@ export interface RuntimeOidcEnabledProviderConfig extends RuntimeOidcProviderCon
 }
 
 export type RuntimeOidcProviderConfig =
-  RuntimeOidcDisabledProviderConfig | RuntimeOidcEnabledProviderConfig;
+  | RuntimeOidcDisabledProviderConfig
+  | RuntimeOidcEnabledProviderConfig;
+
+export interface RuntimeOidcProvidersConfig {
+  readonly instances: Readonly<Record<string, RuntimeOidcProviderConfig>>;
+}
 
 export interface RuntimeAuthConfig {
   readonly mode: AuthMode;
@@ -41,6 +50,14 @@ export interface RuntimeAuthConfig {
   readonly users: Readonly<Record<string, RuntimeUserConfig>>;
   readonly providers: {
     readonly password: RuntimePasswordProviderConfig;
-    readonly oidc: RuntimeOidcProviderConfig;
+    readonly oidc: RuntimeOidcProvidersConfig;
   };
+}
+
+export function enabledOidcProviders(
+  auth: RuntimeAuthConfig,
+): ReadonlyArray<readonly [string, RuntimeOidcEnabledProviderConfig]> {
+  return Object.entries(auth.providers.oidc.instances).flatMap(([id, provider]) =>
+    provider.enabled ? ([[id, provider]] as const) : [],
+  );
 }

@@ -27,7 +27,10 @@ function hostsAddressSameRuntime(bindHost: string, publicHost: string): boolean 
 }
 
 function normalizeHost(host: string): string {
-  const normalized = host.trim().toLowerCase().replace(/^\[(.*)\]$/u, '$1');
+  const normalized = host
+    .trim()
+    .toLowerCase()
+    .replace(/^\[(.*)\]$/u, '$1');
   return normalized.endsWith('.') ? normalized.slice(0, -1) : normalized;
 }
 

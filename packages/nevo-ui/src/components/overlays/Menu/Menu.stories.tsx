@@ -9,6 +9,8 @@ import {
   MenuGroup,
   MenuItem,
   MenuLabel,
+  MenuRadioGroup,
+  MenuRadioItem,
   MenuSeparator,
   MenuTrigger,
 } from './Menu';
@@ -119,6 +121,27 @@ function MenuItemMatrix() {
   );
 }
 
+function MenuSelectionExample() {
+  const [language, setLanguage] = useState('en');
+
+  return (
+    <div className="flex min-h-64 items-center justify-center bg-canvas p-8">
+      <Menu>
+        <MenuTrigger asChild>
+          <Button variant="secondary">Language</Button>
+        </MenuTrigger>
+        <MenuContent aria-label="Language">
+          <MenuLabel>Language</MenuLabel>
+          <MenuRadioGroup value={language} onValueChange={setLanguage}>
+            <MenuRadioItem value="en">English</MenuRadioItem>
+            <MenuRadioItem value="pl">Polski</MenuRadioItem>
+          </MenuRadioGroup>
+        </MenuContent>
+      </Menu>
+    </div>
+  );
+}
+
 const meta = {
   title: 'Nevo UI/Overlays/Menu',
   component: MenuExample,
@@ -145,6 +168,19 @@ export const Actions: Story = {};
 
 export const LongLabels: Story = {
   args: { longLabels: true },
+};
+
+export const RadioSelection: Story = {
+  render: () => <MenuSelectionExample />,
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Language' }));
+    const polish = await waitFor(
+      () => document.querySelector<HTMLElement>('[role="menuitemradio"][data-value="pl"]'),
+      'Radio menu items should render with menuitemradio semantics.',
+    );
+    await userEvent.click(polish);
+    assert(polish.getAttribute('aria-checked') === 'true', 'Selecting a radio item should check it.');
+  },
 };
 
 export const InteractionContract: Story = {

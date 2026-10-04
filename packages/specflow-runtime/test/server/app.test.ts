@@ -24,10 +24,9 @@ function webApp(): RuntimeWebApp {
 
 describe('Runtime product web surface', () => {
   it('serves the web app at root and preserves API routes on the same origin', async () => {
-    const app = await createRuntimeApp(
-      oidcConfig({ 'demo@example.com': 'demo-user' }),
-      { webApp: webApp() },
-    );
+    const app = await createRuntimeApp(oidcConfig({ 'demo@example.com': 'demo-user' }), {
+      webApp: webApp(),
+    });
 
     try {
       const root = await app.inject({ method: 'GET', url: '/' });

@@ -93,7 +93,6 @@ function discoverThirdPartyPackages(
   );
 }
 
-
 function copyProductUiAssets(productPackage: string, outputDir: string): void {
   const source = resolve(productPackage, '..', 'specflow-ui', 'dist');
   const index = join(source, 'index.html');

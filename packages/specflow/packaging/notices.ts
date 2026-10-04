@@ -118,7 +118,6 @@ function readLicense(pkgDir: string): string | undefined {
   return undefined;
 }
 
-
 interface DependencyManifest {
   readonly name?: string;
   readonly dependencies?: Readonly<Record<string, string>>;
@@ -139,11 +138,7 @@ export function discoverThirdPartyDependencyClosure(
     a.name === b.name ? a.root.localeCompare(b.root) : a.name.localeCompare(b.name),
   );
 
-  function visitDependency(
-    packageRoot: string,
-    dependencyName: string,
-    optional: boolean,
-  ): void {
+  function visitDependency(packageRoot: string, dependencyName: string, optional: boolean): void {
     const workspacePackage = workspacePackages.get(dependencyName);
     if (workspacePackage) {
       visit(workspacePackage);
@@ -200,7 +195,10 @@ function workspacePackageRoots(workspaceRoot: string): ReadonlyMap<string, strin
   return result;
 }
 
-function resolveDependencyRoot(fromPackageRoot: string, dependencyName: string): string | undefined {
+function resolveDependencyRoot(
+  fromPackageRoot: string,
+  dependencyName: string,
+): string | undefined {
   const require = createRequire(join(fromPackageRoot, 'package.json'));
 
   for (const request of [`${dependencyName}/package.json`, dependencyName]) {

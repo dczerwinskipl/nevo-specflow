@@ -8,10 +8,7 @@ import { basename, join } from 'node:path';
 
 import { bundleProduct } from './bundle.ts';
 import { run, StepFailedError } from './exec.ts';
-import {
-  buildThirdPartyNotices,
-  discoverThirdPartyDependencyClosure,
-} from './notices.ts';
+import { buildThirdPartyNotices, discoverThirdPartyDependencyClosure } from './notices.ts';
 import { findRepoRoot, readJson, repoPaths, type RepoPaths } from './paths.ts';
 import { resolveProductVersion } from './version.ts';
 

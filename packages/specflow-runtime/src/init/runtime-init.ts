@@ -50,11 +50,7 @@ export async function initRuntime(options: RuntimeInitOptions): Promise<RuntimeI
   return {
     projectConfig,
     localConfig,
-    summary: [
-      `SpecFlow: ${LOCAL_PRODUCT_ORIGIN}`,
-      ...auth.summary,
-      ...authorization.summary,
-    ],
+    summary: [`SpecFlow: ${LOCAL_PRODUCT_ORIGIN}`, ...auth.summary, ...authorization.summary],
   };
 }
 

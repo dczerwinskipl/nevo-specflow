@@ -194,6 +194,7 @@ export const RadioSelection: Story = {
       selectedPolish.getAttribute('aria-checked') === 'true',
       'Selecting a radio item should persist the checked state.',
     );
+    await userEvent.keyboard('{Escape}');
   },
 };
 

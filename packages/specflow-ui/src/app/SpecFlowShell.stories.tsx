@@ -68,6 +68,7 @@ export const AuthenticatedAccount: Story = {
     if (accountMenu.querySelectorAll('[role="menuitemradio"]').length !== 2) {
       throw new Error('Account menu should expose both language choices as radio items.');
     }
+    await userEvent.keyboard('{Escape}');
   },
 };
 
@@ -109,7 +110,10 @@ export const MobileNavigation: Story = {
     if (!playgroundLink) throw new Error('Compact navigation should expose UI Playground.');
     await userEvent.click(playgroundLink);
     await waitFor(
-      () => canvasElement.ownerDocument.querySelector('[role="dialog"]') === null,
+      () =>
+        canvasElement.ownerDocument.querySelector(
+          '.drawer-panel[data-side="left"][data-state="open"]',
+        ) === null,
       'Selecting a route should close compact navigation.',
     );
   },

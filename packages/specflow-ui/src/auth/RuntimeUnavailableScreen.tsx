@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { Button } from '@nevo/ui';
+import { useTranslation } from 'react-i18next';
 
 import type { AuthStore } from './store';
 import { safeReturnTo } from './LoginScreen';
@@ -34,15 +35,17 @@ export function RuntimeUnavailableView({
   readonly retrying?: boolean;
   readonly onRetry?: () => void;
 }) {
+  const { t } = useTranslation();
+
   return (
     <StandaloneAuthSurface>
       <div className="grid w-full gap-8">
         <StandaloneAuthHeader
-          description="SpecFlow Runtime did not respond. Make sure it is running and reachable, then try again."
-          title="Unable to connect"
+          description={t('auth.runtimeUnavailable.description')}
+          title={t('auth.runtimeUnavailable.title')}
         />
         <Button aria-busy={retrying} disabled={retrying} width="full" onClick={onRetry}>
-          {retrying ? 'Retrying…' : 'Retry'}
+          {retrying ? t('common.retrying') : t('common.retry')}
         </Button>
       </div>
     </StandaloneAuthSurface>

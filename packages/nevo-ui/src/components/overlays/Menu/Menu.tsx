@@ -20,6 +20,7 @@ import { Typography } from '../../foundations/Typography';
 export const Menu = DropdownMenu.Root;
 export const MenuTrigger = DropdownMenu.Trigger;
 export const MenuGroup = DropdownMenu.Group;
+export const MenuRadioGroup = DropdownMenu.RadioGroup;
 
 export type MenuContentProps = ComponentPropsWithoutRef<typeof DropdownMenu.Content> & {
   container?: HTMLElement | null;
@@ -141,6 +142,37 @@ export const MenuItem = forwardRef<ComponentRef<typeof DropdownMenu.Item>, MenuI
     );
   },
 );
+
+export interface MenuRadioItemProps
+  extends Omit<ComponentPropsWithoutRef<typeof DropdownMenu.RadioItem>, 'children'> {
+  children: ReactNode;
+}
+
+export const MenuRadioItem = forwardRef<
+  ComponentRef<typeof DropdownMenu.RadioItem>,
+  MenuRadioItemProps
+>(function MenuRadioItem({ children, className, ...props }, ref) {
+  return (
+    <DropdownMenu.RadioItem
+      ref={ref}
+      className={cn(menuItemVariants({ tone: 'neutral' }), className)}
+      {...props}
+    >
+      <span className="inline-flex size-icon-sm shrink-0 items-center justify-center">
+        <DropdownMenu.ItemIndicator>
+          <Icon name="check" size="sm" />
+        </DropdownMenu.ItemIndicator>
+      </span>
+      <Typography
+        as="span"
+        className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-current"
+        variant="body-sm"
+      >
+        {children}
+      </Typography>
+    </DropdownMenu.RadioItem>
+  );
+});
 
 export const MenuLabel = forwardRef<
   ComponentRef<typeof DropdownMenu.Label>,

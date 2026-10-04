@@ -8,9 +8,11 @@ import Fastify, {
 import { authFeature, type AuthFeatureDependencies } from '../auth/index';
 import type { RuntimeConfig } from '../config/types';
 import { serializeRuntimeRequest } from './logging';
+import { registerRuntimeWebApp, type RuntimeWebApp } from './web-app';
 
 export interface RuntimeAppDependencies {
   readonly auth?: AuthFeatureDependencies;
+  readonly webApp?: RuntimeWebApp;
 }
 
 export const RUNTIME_FASTIFY_OPTIONS = {
@@ -45,6 +47,20 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
 ): Promise<void> {
   await app.register(cookie);
 
+  await app.register(authFeature, {
+    auth: config.auth,
+    ...(config.authorization ? { authorization: config.authorization } : {}),
+    ...(config.server.publicOrigin ? { publicOrigin: config.server.publicOrigin } : {}),
+    serverPort: config.server.port,
+    secureCookies: config.server.tls.enabled,
+    ...(dependencies.auth ? { dependencies: dependencies.auth } : {}),
+  });
+
+  if (dependencies.webApp) {
+    registerRuntimeWebApp(app, dependencies.webApp);
+    return;
+  }
+
   app.get('/', (_request, reply) => {
     if (config.server.publicOrigin) {
       return reply.redirect(config.server.publicOrigin);
@@ -54,14 +70,5 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       status: 'ok',
       message: 'This address serves the Runtime API, not the SpecFlow web UI.',
     };
-  });
-
-  await app.register(authFeature, {
-    auth: config.auth,
-    ...(config.authorization ? { authorization: config.authorization } : {}),
-    ...(config.server.publicOrigin ? { publicOrigin: config.server.publicOrigin } : {}),
-    serverPort: config.server.port,
-    secureCookies: config.server.tls.enabled,
-    ...(dependencies.auth ? { dependencies: dependencies.auth } : {}),
   });
 }

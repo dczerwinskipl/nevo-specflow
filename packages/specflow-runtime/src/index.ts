@@ -11,3 +11,4 @@ export type {
   RuntimeSetupUi,
 } from './init/contracts';
 export { startRuntime, type RuntimeHandle, type RuntimeStartOptions } from './runtime';
+export type { RuntimeWebApp, RuntimeWebAppAsset } from './server/web-app';

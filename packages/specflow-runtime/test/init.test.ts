@@ -108,26 +108,26 @@ describe('Runtime project initialization', () => {
   it(
     'owns no-auth attribution and guarantees an administrator even after a non-admin selection',
     async () => {
-    const ui = new ScriptedUi(
-      [false],
-      ['developer', '<default>'],
-      ['demo-user', 'Demo User'],
-    );
-    const contribution = await initRuntime({ ui });
+      const ui = new ScriptedUi(
+        [false],
+        ['developer', '<default>'],
+        ['demo-user', 'Demo User'],
+      );
+      const contribution = await initRuntime({ ui });
 
-    expect(contribution.projectConfig).toMatchObject({
-      auth: {
-        mode: 'none',
-        users: { 'demo-user': { name: 'Demo User' } },
-      },
-      authorization: {
-        assignments: [{ userId: 'demo-user', role: 'admin', scope: {} }],
-      },
-    });
-    expect(contribution.localConfig).toEqual({
-      auth: { localUserId: 'demo-user' },
-    });
-    expect(ui.notes.join('\n')).toMatch(/at least one administrator is required/i);
+      expect(contribution.projectConfig).toMatchObject({
+        auth: {
+          mode: 'none',
+          users: { 'demo-user': { name: 'Demo User' } },
+        },
+        authorization: {
+          assignments: [{ userId: 'demo-user', role: 'admin', scope: {} }],
+        },
+      });
+      expect(contribution.localConfig).toEqual({
+        auth: { localUserId: 'demo-user' },
+      });
+      expect(ui.notes.join('\n')).toMatch(/at least one administrator is required/i);
       expect(contribution.summary.join('\n')).toContain('Demo User (demo-user): admin');
     },
   );
@@ -162,76 +162,76 @@ describe('Runtime project initialization', () => {
   it(
     'supports multiple OIDC instances, rejects ambiguous names, and reviews mappings without secrets',
     async () => {
-    const ui = new ScriptedUi(
-      [true, false, true, false, true, false, false],
-      ['demo', '<default>'],
-      [
-        'Company SSO',
-        'company',
-        '<default>',
-        'company-client-id',
-        'demo@example.com',
-        '<default>',
-        'Demo User',
-        ' company sso ',
-        'Customer Workforce Identity',
-        'customer',
-        'https://login.customer.example',
-        'customer-client-id',
-        'demo@customer.example',
-        '<default>',
-      ],
-      ['company-secret', 'customer-secret'],
-    );
+      const ui = new ScriptedUi(
+        [true, false, true, false, true, false, false],
+        ['demo', '<default>'],
+        [
+          'Company SSO',
+          'company',
+          '<default>',
+          'company-client-id',
+          'demo@example.com',
+          '<default>',
+          'Demo User',
+          ' company sso ',
+          'Customer Workforce Identity',
+          'customer',
+          'https://login.customer.example',
+          'customer-client-id',
+          'demo@customer.example',
+          '<default>',
+        ],
+        ['company-secret', 'customer-secret'],
+      );
 
-    const contribution = await initRuntime({ ui });
+      const contribution = await initRuntime({ ui });
 
-    expect(contribution.projectConfig).toMatchObject({
-      server: { publicOrigin: 'http://127.0.0.1:5173' },
-      auth: {
-        mode: 'required',
-        providers: {
-          password: { enabled: false },
-          oidc: {
-            instances: {
-              company: {
-                name: 'Company SSO',
-                clientId: 'company-client-id',
-                allowedEmails: { 'demo@example.com': 'demo' },
-              },
-              customer: {
-                name: 'Customer Workforce Identity',
-                clientId: 'customer-client-id',
-                allowedEmails: { 'demo@customer.example': 'demo' },
+      expect(contribution.projectConfig).toMatchObject({
+        server: { publicOrigin: 'http://127.0.0.1:5173' },
+        auth: {
+          mode: 'required',
+          providers: {
+            password: { enabled: false },
+            oidc: {
+              instances: {
+                company: {
+                  name: 'Company SSO',
+                  clientId: 'company-client-id',
+                  allowedEmails: { 'demo@example.com': 'demo' },
+                },
+                customer: {
+                  name: 'Customer Workforce Identity',
+                  clientId: 'customer-client-id',
+                  allowedEmails: { 'demo@customer.example': 'demo' },
+                },
               },
             },
           },
         },
-      },
-    });
-    expect(contribution.localConfig).toEqual({
-      auth: {
-        providers: {
-          oidc: {
-            instances: {
-              company: { clientSecret: 'company-secret' },
-              customer: { clientSecret: 'customer-secret' },
+      });
+      expect(contribution.localConfig).toEqual({
+        auth: {
+          providers: {
+            oidc: {
+              instances: {
+                company: { clientSecret: 'company-secret' },
+                customer: { clientSecret: 'customer-secret' },
+              },
             },
           },
         },
-      },
-    });
+      });
 
-    expect(ui.notes.join('\n')).toMatch(/provider names must be unique/i);
-    const review = contribution.summary.join('\n');
-    expect(review).toContain('Company SSO [company]');
-    expect(review).toContain('Issuer: https://accounts.google.com');
-    expect(review).toContain('Client ID: company-client-id');
-    expect(review).toContain('demo@example.com -> Demo User (demo)');
-    expect(review).toContain('Customer Workforce Identity [customer]');
-    expect(review).toContain('demo@customer.example -> Demo User (demo)');
-    expect(review).toContain('Demo User (demo): admin');
-    expect(review).not.toContain('company-secret');
+      expect(ui.notes.join('\n')).toMatch(/provider names must be unique/i);
+      const review = contribution.summary.join('\n');
+      expect(review).toContain('Company SSO [company]');
+      expect(review).toContain('Issuer: https://accounts.google.com');
+      expect(review).toContain('Client ID: company-client-id');
+      expect(review).toContain('demo@example.com -> Demo User (demo)');
+      expect(review).toContain('Customer Workforce Identity [customer]');
+      expect(review).toContain('demo@customer.example -> Demo User (demo)');
+      expect(review).toContain('Demo User (demo): admin');
+      expect(review).not.toContain('company-secret');
       expect(review).not.toContain('customer-secret');
     },
   );

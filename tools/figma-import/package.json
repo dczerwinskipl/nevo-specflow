@@ -6,6 +6,7 @@
   "description": "Generic canonical IR to Figma importer and managed reconciliation plugin.",
   "license": "MIT",
   "exports": {
+    "./build-ui": "./build-ui.mjs",
     "./config": "./config.ts",
     "./runtime": "./src/code.ts"
   },

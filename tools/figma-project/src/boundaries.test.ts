@@ -23,38 +23,57 @@ async function combinedSource(root: string) {
   ).join('\n');
 }
 
+async function runtimeDependencies(packageRoot: string) {
+  const manifest = JSON.parse(await readFile(`${packageRoot}/package.json`, 'utf8')) as {
+    dependencies?: Record<string, string>;
+    peerDependencies?: Record<string, string>;
+  };
+  return {
+    ...manifest.dependencies,
+    ...manifest.peerDependencies,
+  };
+}
+
 describe('frontend and Figma dependency boundaries', () => {
   it('keeps reusable Nevo UI independent from SpecFlow and its router', async () => {
-    const [source, manifestSource] = await Promise.all([
+    const [source, packageDependencies] = await Promise.all([
       combinedSource('../../packages/nevo-ui/src'),
-      readFile('../../packages/nevo-ui/package.json', 'utf8'),
+      runtimeDependencies('../../packages/nevo-ui'),
     ]);
-    const manifest = JSON.parse(manifestSource) as {
-      dependencies?: Record<string, string>;
-      peerDependencies?: Record<string, string>;
-    };
-    const packageDependencies = {
-      ...manifest.dependencies,
-      ...manifest.peerDependencies,
-    };
 
-    expect(source).not.toContain('@nevo/specflow-ui');
+    expect(source).not.toMatch(/@nevo\/specflow(?:-|\/|$)/);
     expect(source).not.toContain('@tanstack/react-router');
     expect(source).not.toMatch(/\b(?:Specification|Agent Session|SpecFlow)\b/);
-    expect(packageDependencies).not.toHaveProperty('@nevo/specflow-ui');
+    expect(Object.keys(packageDependencies)).not.toContainEqual(
+      expect.stringMatching(/^@nevo\/specflow(?:-|\/|$)/),
+    );
     expect(packageDependencies).not.toHaveProperty('@tanstack/react-router');
   });
 
-  it('keeps Figma contracts and capture metadata independent from concrete UI owners', async () => {
-    const [coreSource, captureSource] = await Promise.all([
+  it('keeps Figma core independent from React, capture runtime, and product UI', async () => {
+    const [source, packageDependencies] = await Promise.all([
       combinedSource('../../packages/figma-core/src'),
-      combinedSource('../../packages/figma-capture/src'),
+      runtimeDependencies('../../packages/figma-core'),
     ]);
-    const source = `${coreSource}\n${captureSource}`;
+
+    expect(source).not.toMatch(/from ['"]react(?:-dom)?(?:\/|['"])/);
+    expect(source).not.toMatch(/@nevo\/(?:figma-capture|ui|specflow)(?:-|\/|$)/);
+    expect(Object.keys(packageDependencies)).not.toContainEqual(
+      expect.stringMatching(/^(?:react(?:-dom)?|@nevo\/(?:figma-capture|ui|specflow)(?:-|\/|$))/),
+    );
+  });
+
+  it('keeps Figma capture limited to React and neutral Figma core', async () => {
+    const [source, packageDependencies] = await Promise.all([
+      combinedSource('../../packages/figma-capture/src'),
+      runtimeDependencies('../../packages/figma-capture'),
+    ]);
 
     expect(source).not.toContain('@nevo/ui');
-    expect(source).not.toContain('@nevo/specflow-ui');
+    expect(source).not.toMatch(/@nevo\/specflow(?:-|\/|$)/);
+    expect(source).not.toMatch(/from ['"]react-dom(?:\/|['"])/);
     expect(source).not.toMatch(/\b(?:Button|Drawer|AppShell|CRM|SpecFlow)\b/);
+    expect(Object.keys(packageDependencies).sort()).toEqual(['@nevo/figma-core', 'react']);
   });
 
   it('keeps generic exporter and importer behavior component-agnostic', async () => {

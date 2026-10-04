@@ -13,6 +13,8 @@ describe('SpecFlow Figma plugin ownership', () => {
     expect(manifest.id).toBe('nevo-specflow-ir-importer-local');
     expect(manifest.main).toBe('dist/plugin/code.js');
     expect(manifest.ui).toBe('dist/plugin/ui.html');
+    expect(buildSource).toContain("from 'nevo-figma-import/build-ui'");
+    expect(buildSource).not.toContain("from '../figma-import/");
     expect(buildSource).not.toContain('figma-import/dist');
   });
 });

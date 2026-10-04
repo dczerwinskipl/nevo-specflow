@@ -88,6 +88,45 @@ export default tseslint.config(
     },
   },
 
+  // Reusable UI/Figma foundations follow the same one-way dependency rule as
+  // the product capabilities below. Keep these restrictions next to the
+  // generic package rule so new source files inherit them automatically.
+  {
+    files: ['packages/figma-core/**/*.{ts,tsx,mts,cts}'],
+    rules: {
+      'no-restricted-imports': productImportRestrictions({
+        regex: '^(?:react(?:-dom)?(?:/|$)|@nevo/(?:figma-capture|ui|specflow)(?:-|/|$))',
+        message:
+          'Figma core is neutral authoring/IR infrastructure and must not depend on React, capture runtime, concrete UI, or SpecFlow product packages.',
+      }),
+    },
+  },
+  {
+    files: ['packages/figma-capture/**/*.{ts,tsx,mts,cts}'],
+    rules: {
+      'no-restricted-imports': productImportRestrictions(
+        {
+          regex: '^@nevo/(?!figma-core(?:/|$))',
+          message:
+            'Figma capture may depend on neutral Figma core, but not on product or concrete UI packages.',
+        },
+        {
+          regex: '^react-dom(?:/|$)',
+          message: 'Figma capture uses React context only and must not depend on a DOM renderer.',
+        },
+      ),
+    },
+  },
+  {
+    files: ['packages/nevo-ui/**/*.{ts,tsx,mts,cts}'],
+    rules: {
+      'no-restricted-imports': productImportRestrictions({
+        regex: '^@nevo/specflow(?:-|/|$)',
+        message: 'Reusable Nevo UI must not depend on any SpecFlow product package.',
+      }),
+    },
+  },
+
   // Product package direction is intentionally one-way. These rules protect the
   // durable package topology documented in ADR 0012; the composition root is the
   // only layer allowed to depend on every product capability.

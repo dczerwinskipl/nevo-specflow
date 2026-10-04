@@ -4,6 +4,9 @@ import { RouterProvider, createMemoryHistory } from '@tanstack/react-router';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
 
+import type { AppLocale } from '../i18n';
+import { StoryLocalization } from '../i18n/StoryLocalization';
+
 import type { AuthApi } from '../auth/api';
 import { createAuthStore } from '../auth/store';
 import { createSpecFlowRouter } from './router';
@@ -12,9 +15,11 @@ type AuthMode = 'local' | 'required' | 'authenticated' | 'unavailable';
 
 function RoutedApplication({
   authMode = 'local',
+  locale = 'en',
   path = '/',
 }: {
   authMode?: AuthMode;
+  locale?: AppLocale;
   path?: '/' | '/ui-playground' | '/login';
 }) {
   const router = useMemo(
@@ -25,7 +30,11 @@ function RoutedApplication({
       ),
     [authMode, path],
   );
-  return <RouterProvider router={router} />;
+  return (
+    <StoryLocalization locale={locale}>
+      <RouterProvider router={router} />
+    </StoryLocalization>
+  );
 }
 
 const meta = {
@@ -44,6 +53,8 @@ export const AlreadyAuthenticatedLogin: Story = {
   args: { authMode: 'authenticated', path: '/login' },
 };
 export const RuntimeUnavailable: Story = { args: { authMode: 'unavailable' } };
+export const Polish: Story = { args: { locale: 'pl' } };
+export const AuthenticatedAccount: Story = { args: { authMode: 'authenticated' } };
 
 export const Navigation: Story = {
   play: async ({ canvas, userEvent }) => {
@@ -68,6 +79,7 @@ export const MobileNavigation: Story = {
     if (!navigation?.textContent?.includes('UI Playground')) {
       throw new Error('Opening compact navigation should expose the product links.');
     }
+    await canvas.findByRole('button', { name: 'Open user menu for Local User' });
   },
 };
 

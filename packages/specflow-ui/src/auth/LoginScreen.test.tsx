@@ -21,6 +21,8 @@ describe('LoginScreen', () => {
     expect(html).toContain('workspace-surface-material');
     expect(html).toContain('rounded-surface');
     expect(html).toContain('border-workspace-edge');
+    expect(html).toContain('items-center');
+    expect(html).not.toContain('items-start');
     expect(html).toContain('Welcome back');
     expect(html).toContain('Access your SpecFlow workspace.');
     expect(html).not.toContain('Sign in to continue to SpecFlow.');
@@ -29,6 +31,8 @@ describe('LoginScreen', () => {
     expect(html).toContain('Username');
     expect(html).toContain('Password');
     expect(html).toContain('Sign in');
+    expect(html).toContain('gap-8');
+    expect(html).toContain('gap-4');
   });
 
   it('uses a primary OIDC action only when it is the sole login method', () => {

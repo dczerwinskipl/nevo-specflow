@@ -7,7 +7,6 @@ import type {
 import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import {
   Alert,
-  AppBackground,
   Button,
   Field,
   PasswordInput,
@@ -15,10 +14,9 @@ import {
   Spinner,
   TextInput,
   Typography,
-  WorkspaceSurface,
 } from '@nevo/ui';
 
-import { defaultNevoBrand, NevoBrandLogo } from '../brand';
+import { StandaloneAuthHeader, StandaloneAuthSurface } from './StandaloneAuthLayout';
 import { authErrorCode } from './api';
 import type { AuthStore } from './store';
 
@@ -130,21 +128,14 @@ export function LoginScreenView({
   return (
     <StandaloneAuthSurface>
       <div
-        className="grid w-full gap-7"
+        className="grid w-full gap-8"
         {...capture}
         {...designSlot('SpecFlowLoginScreen', 'content')}
       >
-        <div className="grid gap-6">
-          <NevoBrandLogo brand="nevo" product="SpecFlow" size="lg" type="horizontal" />
-          <div className="grid gap-1.5">
-            <Typography as="h1" variant="title-lg">
-              Welcome back
-            </Typography>
-            <Typography className="text-content-secondary" variant="body-md">
-              Access your SpecFlow workspace.
-            </Typography>
-          </div>
-        </div>
+        <StandaloneAuthHeader
+          description="Access your SpecFlow workspace."
+          title="Welcome back"
+        />
 
         {error ? (
           <Alert role="alert" tone="danger" title="Sign in failed">
@@ -188,27 +179,29 @@ export function LoginScreenView({
         ) : null}
 
         {hasPassword ? (
-          <form className="grid gap-5" onSubmit={handleSubmit}>
-            <Field>
-              <Field.Label>Username</Field.Label>
-              <TextInput
-                autoComplete="username"
-                disabled={busy}
-                name="username"
-                value={username}
-                onChange={(event) => onUsernameChange?.(event.currentTarget.value)}
-              />
-            </Field>
-            <Field>
-              <Field.Label>Password</Field.Label>
-              <PasswordInput
-                autoComplete="current-password"
-                disabled={busy}
-                name="password"
-                value={password}
-                onChange={(event) => onPasswordChange?.(event.currentTarget.value)}
-              />
-            </Field>
+          <form className="grid gap-8" onSubmit={handleSubmit}>
+            <div className="grid gap-4">
+              <Field>
+                <Field.Label>Username</Field.Label>
+                <TextInput
+                  autoComplete="username"
+                  disabled={busy}
+                  name="username"
+                  value={username}
+                  onChange={(event) => onUsernameChange?.(event.currentTarget.value)}
+                />
+              </Field>
+              <Field>
+                <Field.Label>Password</Field.Label>
+                <PasswordInput
+                  autoComplete="current-password"
+                  disabled={busy}
+                  name="password"
+                  value={password}
+                  onChange={(event) => onPasswordChange?.(event.currentTarget.value)}
+                />
+              </Field>
+            </div>
             <Button
               aria-busy={pending === 'password'}
               disabled={busy || username.length === 0 || password.length === 0}
@@ -221,22 +214,6 @@ export function LoginScreenView({
         ) : null}
       </div>
     </StandaloneAuthSurface>
-  );
-}
-
-function StandaloneAuthSurface({ children }: { readonly children: React.ReactNode }) {
-  return (
-    <AppBackground
-      brandPrimary={defaultNevoBrand.coreColor}
-      className="flex min-h-dvh w-full items-start justify-center px-4 py-6 text-content-primary sm:items-center sm:px-8 sm:py-10"
-    >
-      <WorkspaceSurface
-        as="main"
-        className="w-full max-w-md rounded-surface border border-workspace-edge p-5 sm:p-8"
-      >
-        {children}
-      </WorkspaceSurface>
-    </AppBackground>
   );
 }
 

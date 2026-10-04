@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import en from './locales/en.json';
+import pl from './locales/pl.json';
 import {
   changeLocale,
   createSpecFlowI18n,
@@ -25,6 +27,10 @@ describe('SpecFlow localization', () => {
     expect(resolveInitialLocale({ getItem: () => null }, ['de-DE'])).toBe('en');
   });
 
+  it('keeps English and Polish JSON catalogs structurally aligned', () => {
+    expect(messageKeys(pl)).toEqual(messageKeys(en));
+  });
+
   it('loads independent English and Polish JSON catalogs', () => {
     expect(createSpecFlowI18n('en').t('auth.login.title')).toBe('Welcome back');
     expect(createSpecFlowI18n('pl').t('auth.login.title')).toBe('Witaj ponownie');
@@ -42,3 +48,11 @@ describe('SpecFlow localization', () => {
     expect(writes).toEqual([[LOCALE_STORAGE_KEY, 'pl']]);
   });
 });
+
+function messageKeys(value: unknown, prefix = ''): string[] {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return [prefix];
+
+  return Object.entries(value)
+    .flatMap(([key, nested]) => messageKeys(nested, prefix ? `${prefix}.${key}` : key))
+    .sort();
+}

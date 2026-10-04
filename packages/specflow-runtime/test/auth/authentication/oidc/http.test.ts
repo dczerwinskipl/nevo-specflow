@@ -173,4 +173,139 @@ describe('OIDC HTTP adapter', () => {
       await app.close();
     }
   });
+
+  it('rate-limits OIDC starts by normalized IPv6 /64 before provider work', async () => {
+    let startCalls = 0;
+    const oidc: OidcClient = {
+      start() {
+        startCalls += 1;
+        return Promise.resolve({
+          authorizationUrl: new URL('https://issuer.example.test/authorize'),
+          transaction: {
+            state: `state-${String(startCalls)}`,
+            nonce: 'nonce',
+            codeVerifier: 'verifier',
+          },
+        });
+      },
+      complete: () => Promise.reject(new Error('not used')),
+    };
+    const app = await createRuntimeApp(oidcConfig({ 'demo@example.com': 'demo-user' }), {
+      auth: { oidcClients: { company: oidc } },
+    });
+
+    try {
+      for (let attempt = 1; attempt <= 10; attempt += 1) {
+        const response = await app.inject({
+          method: 'POST',
+          url: START_URL,
+          payload: {},
+          remoteAddress: `2001:db8:abcd:1234::${attempt.toString(16)}`,
+        });
+        expect(response.statusCode).toBe(200);
+      }
+
+      const limited = await app.inject({
+        method: 'POST',
+        url: START_URL,
+        payload: {},
+        remoteAddress: '2001:db8:abcd:1234::ffff',
+      });
+
+      expect(limited.statusCode).toBe(429);
+      expect(limited.headers['retry-after']).toBeDefined();
+      expect(limited.json()).toEqual({ error: 'rate_limited' });
+      expect(startCalls).toBe(10);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('redirects a provider outage during callback without exposing provider details', async () => {
+    const oidc: OidcClient = {
+      start: () =>
+        Promise.resolve({
+          authorizationUrl: new URL('https://issuer.example.test/authorize?state=state'),
+          transaction: { state: 'state', nonce: 'nonce', codeVerifier: 'verifier' },
+        }),
+      complete: () =>
+        Promise.reject(
+          new OidcProviderError(
+            'unavailable',
+            'token endpoint unavailable',
+            {
+              category: 'token_endpoint',
+              code: 'temporarily_unavailable',
+              status: 503,
+            },
+            new Error('provider response body that must stay private'),
+          ),
+        ),
+    };
+    const app = await createRuntimeApp(oidcConfig({ 'demo@example.com': 'demo-user' }), {
+      auth: { oidcClients: { company: oidc } },
+    });
+
+    try {
+      const start = await app.inject({ method: 'POST', url: START_URL, payload: {} });
+      const oidcCookie = cookieValue(start.headers['set-cookie'], COOKIE_NAMES.oidc);
+      const callback = await app.inject({
+        method: 'GET',
+        url: `${CALLBACK_URL}?code=abc&state=state`,
+        headers: { cookie: `${COOKIE_NAMES.oidc}=${oidcCookie}` },
+      });
+
+      expect(callback.statusCode).toBe(302);
+      expect(callback.headers.location).toContain('/login?');
+      expect(callback.headers.location).toContain('error=provider_unavailable');
+      expect(String(callback.headers.location)).not.toContain('provider response body');
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('preserves pending OIDC state after a callback with the wrong state', async () => {
+    let completeCalls = 0;
+    const oidc: OidcClient = {
+      start: () =>
+        Promise.resolve({
+          authorizationUrl: new URL('https://issuer.example.test/authorize?state=expected'),
+          transaction: { state: 'expected', nonce: 'nonce', codeVerifier: 'verifier' },
+        }),
+      complete: () => {
+        completeCalls += 1;
+        return Promise.resolve({ email: 'demo@example.com' });
+      },
+    };
+    const app = await createRuntimeApp(oidcConfig({ 'demo@example.com': 'demo-user' }), {
+      auth: { oidcClients: { company: oidc } },
+    });
+
+    try {
+      const start = await app.inject({ method: 'POST', url: START_URL, payload: {} });
+      const oidcCookie = cookieValue(start.headers['set-cookie'], COOKIE_NAMES.oidc);
+
+      const attackerCallback = await app.inject({
+        method: 'GET',
+        url: `${CALLBACK_URL}?code=abc&state=wrong`,
+        headers: { cookie: `${COOKIE_NAMES.oidc}=${oidcCookie}` },
+      });
+      expect(attackerCallback.statusCode).toBe(302);
+      expect(attackerCallback.headers.location).toContain('error=invalid_oidc_transaction');
+      expect(String(attackerCallback.headers['set-cookie'] ?? '')).not.toContain(
+        `${COOKIE_NAMES.oidc}=;`,
+      );
+      expect(completeCalls).toBe(0);
+
+      const validCallback = await app.inject({
+        method: 'GET',
+        url: `${CALLBACK_URL}?code=abc&state=expected`,
+        headers: { cookie: `${COOKIE_NAMES.oidc}=${oidcCookie}` },
+      });
+      expect(validCallback.statusCode).toBe(302);
+      expect(completeCalls).toBe(1);
+    } finally {
+      await app.close();
+    }
+  });
 });

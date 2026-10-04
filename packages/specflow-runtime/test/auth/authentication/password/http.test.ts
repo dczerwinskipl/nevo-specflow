@@ -155,4 +155,38 @@ describe('password authentication HTTP adapter', () => {
       await app.close();
     }
   });
+
+  it('isolates session cookies between Runtime ports on the same host', async () => {
+    const firstConfig = passwordConfig();
+    const secondBase = passwordConfig();
+    const secondConfig = {
+      ...secondBase,
+      server: { ...secondBase.server, port: 4319 },
+    };
+    const first = await createRuntimeApp(firstConfig);
+    const second = await createRuntimeApp(secondConfig);
+
+    try {
+      const payload = {
+        username: 'demo',
+        password: 'correct horse battery staple',
+      };
+      const firstLogin = await first.inject({
+        method: 'POST',
+        url: '/api/auth/password/login',
+        payload,
+      });
+      const secondLogin = await second.inject({
+        method: 'POST',
+        url: '/api/auth/password/login',
+        payload,
+      });
+
+      expect(String(firstLogin.headers['set-cookie'])).toContain('nevo_session_4318=');
+      expect(String(secondLogin.headers['set-cookie'])).toContain('nevo_session_4319=');
+    } finally {
+      await first.close();
+      await second.close();
+    }
+  });
 });

@@ -15,6 +15,8 @@ export interface BundleInput {
   /** value baked in for `NEVO_SPECFLOW_VERSION_INJECTED`. */
   readonly version: string;
   readonly cwd?: string;
+  /** built SpecFlow UI directory; defaults to the workspace package dist output. */
+  readonly uiSourceDir?: string;
 }
 
 export interface BundledThirdPartyPackage {
@@ -55,7 +57,10 @@ export async function bundleProduct(input: BundleInput): Promise<BundleResult> {
     logLevel: 'silent',
   });
 
-  copyProductUiAssets(cwd, dirname(outfile));
+  copyProductUiAssets(
+    input.uiSourceDir ?? resolve(cwd, '..', 'specflow-ui', 'dist'),
+    dirname(outfile),
+  );
 
   return {
     outfile,
@@ -93,8 +98,7 @@ function discoverThirdPartyPackages(
   );
 }
 
-function copyProductUiAssets(productPackage: string, outputDir: string): void {
-  const source = resolve(productPackage, '..', 'specflow-ui', 'dist');
+function copyProductUiAssets(source: string, outputDir: string): void {
   const index = join(source, 'index.html');
   if (!existsSync(index)) {
     throw new Error(

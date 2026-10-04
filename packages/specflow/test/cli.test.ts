@@ -52,10 +52,10 @@ describe('createProgram — nevo-specflow router', () => {
     expect(out[0]).toMatch(/^\$scrypt\$16384\$8\$5\$/u);
   });
 
-  it('start routes into the Runtime capability and reports its listening address', async () => {
+  it('start routes into the Runtime capability and reports the product address', async () => {
     const { run, out } = harness();
     await run(['start']);
-    expect(out).toEqual(['Nevo SpecFlow Runtime API listening at http://127.0.0.1:4318']);
+    expect(out).toEqual(['Nevo SpecFlow available at http://127.0.0.1:4318']);
   });
 
   it('an unknown command is a usage error', async () => {

@@ -7,6 +7,7 @@ import type {
 import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import {
   Alert,
+  AppBackground,
   Button,
   Field,
   PasswordInput,
@@ -14,9 +15,10 @@ import {
   Spinner,
   TextInput,
   Typography,
+  WorkspaceSurface,
 } from '@nevo/ui';
 
-import { NevoBrandLogo } from '../brand';
+import { defaultNevoBrand, NevoBrandLogo } from '../brand';
 import { authErrorCode } from './api';
 import type { AuthStore } from './store';
 
@@ -127,19 +129,19 @@ export function LoginScreenView({
 
   return (
     <StandaloneAuthSurface>
-      <main
-        className="grid w-full max-w-md gap-8"
+      <div
+        className="grid w-full gap-7"
         {...capture}
         {...designSlot('SpecFlowLoginScreen', 'content')}
       >
-        <div className="grid justify-items-start gap-6">
+        <div className="grid gap-6">
           <NevoBrandLogo brand="nevo" product="SpecFlow" size="lg" type="horizontal" />
-          <div className="grid gap-2">
+          <div className="grid gap-1.5">
             <Typography as="h1" variant="title-lg">
-              Sign in
+              Welcome back
             </Typography>
             <Typography className="text-content-secondary" variant="body-md">
-              Sign in to continue to SpecFlow.
+              Access your SpecFlow workspace.
             </Typography>
           </div>
         </div>
@@ -217,18 +219,24 @@ export function LoginScreenView({
             </Button>
           </form>
         ) : null}
-      </main>
+      </div>
     </StandaloneAuthSurface>
   );
 }
 
 function StandaloneAuthSurface({ children }: { readonly children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh bg-surface text-content-primary">
-      <div className="mx-auto flex min-h-dvh w-full max-w-screen-sm items-start justify-center px-5 pb-10 pt-12 sm:items-center sm:px-8 sm:py-12">
+    <AppBackground
+      brandPrimary={defaultNevoBrand.coreColor}
+      className="flex min-h-dvh w-full items-start justify-center px-4 py-6 text-content-primary sm:items-center sm:px-8 sm:py-10"
+    >
+      <WorkspaceSurface
+        as="main"
+        className="w-full max-w-md rounded-surface border border-workspace-edge p-5 sm:p-8"
+      >
         {children}
-      </div>
-    </div>
+      </WorkspaceSurface>
+    </AppBackground>
   );
 }
 

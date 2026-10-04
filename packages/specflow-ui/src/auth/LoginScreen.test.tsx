@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { LoginScreenView, loginErrorMessage, oidcButtonVariant, safeReturnTo } from './LoginScreen';
 
 describe('LoginScreen', () => {
-  it('renders password and multiple OIDC methods without a containing card', () => {
+  it('renders auth inside the same app/workspace material hierarchy as SpecFlow', () => {
     const html = renderToStaticMarkup(
       <LoginScreenView
         loginMethods={{
@@ -17,6 +17,13 @@ describe('LoginScreen', () => {
       />,
     );
 
+    expect(html).toContain('bg-app-base');
+    expect(html).toContain('workspace-surface-material');
+    expect(html).toContain('rounded-surface');
+    expect(html).toContain('border-workspace-edge');
+    expect(html).toContain('Welcome back');
+    expect(html).toContain('Access your SpecFlow workspace.');
+    expect(html).not.toContain('Sign in to continue to SpecFlow.');
     expect(html).toContain('Continue with Company SSO');
     expect(html).toContain('Continue with Customer SSO');
     expect(html).toContain('Username');

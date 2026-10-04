@@ -2,6 +2,7 @@ import type { AuthLoginMethods } from '@nevo/specflow-contracts/authentication';
 import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
+import { StoryLocalization } from '../i18n/StoryLocalization';
 import { LoginScreenView, loginErrorMessage } from './LoginScreen';
 
 const passwordOnly: AuthLoginMethods = {
@@ -35,6 +36,7 @@ const meta = {
   title: 'SpecFlow/Screens/Login',
   component: LoginScreenView,
   parameters: { layout: 'fullscreen' },
+  decorators: [(Story) => <StoryLocalization><Story /></StoryLocalization>],
   args: {
     loginMethods: mixed,
     onOidc: () => undefined,
@@ -82,6 +84,14 @@ export const SubmittingPassword: Story = {
     password: 'password',
     pending: 'password',
   },
+};
+
+export const Polish: Story = {
+  render: (args) => (
+    <StoryLocalization locale="pl">
+      <LoginScreenView {...args} />
+    </StoryLocalization>
+  ),
 };
 
 export const Mobile: Story = {

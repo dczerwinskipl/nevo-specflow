@@ -23,7 +23,7 @@ related:
 
 - `ci.yml`: repository quality, affected typecheck/tests/build, Dependency Review on pull requests,
   and the packaged-product smoke matrix.
-- `chromatic.yml`: shared Storybook publishing and visual regression on pull requests and `main`.
+- `chromatic.yml`: shared Storybook publishing and visual regression on demand, plus automatic baseline publishing on `main`.
 - `codeql.yml`: JavaScript/TypeScript CodeQL on pull requests, protected-branch pushes, and weekly.
 - `pr-title.yml`: Conventional Commit PR-title validation.
 - release workflows: see [releasing](releasing.md).
@@ -76,10 +76,12 @@ the `CHROMATIC_PROJECT_TOKEN` repository Actions secret. The secret value comes 
 project's **Manage → Configure** page and must never be committed or added to a repository-local
 environment file.
 
-The workflow skips cleanly when the secret is unavailable, including on pull requests from forks.
-The `chromatic` job remains informational while the first baseline is being established; add it to
-the branch ruleset only after that baseline has been reviewed and visual approval should block
-merges.
+Pull requests do not publish Storybook automatically. Run **Actions → Chromatic → Run workflow**
+for the PR branch when visual review is useful. Pushes to `main` always publish automatically so
+the shared baseline stays current. Repeated manual runs on the same branch cancel the older run.
+
+The workflow skips cleanly when the secret is unavailable. `chromatic` remains informational and
+is not a protected-branch required check.
 
 ## Required checks
 

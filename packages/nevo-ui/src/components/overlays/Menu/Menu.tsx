@@ -143,8 +143,10 @@ export const MenuItem = forwardRef<ComponentRef<typeof DropdownMenu.Item>, MenuI
   },
 );
 
-export interface MenuRadioItemProps
-  extends Omit<ComponentPropsWithoutRef<typeof DropdownMenu.RadioItem>, 'children'> {
+export interface MenuRadioItemProps extends Omit<
+  ComponentPropsWithoutRef<typeof DropdownMenu.RadioItem>,
+  'children'
+> {
   children: ReactNode;
 }
 

@@ -56,7 +56,7 @@ export function parseAuthConfig(value: unknown): RuntimeAuthConfig {
 
   const mode = auth.mode;
   if (mode !== 'none' && mode !== 'required') {
-    throw new RuntimeConfigError("auth.mode must be either 'none' or 'required'.");
+    throw new RuntimeConfigError("authentication.mode must be either 'none' or 'required'.");
   }
 
   const localUserId = optionalNonEmptyString(auth.localUserId, 'authentication.localUserId');
@@ -65,7 +65,11 @@ export function parseAuthConfig(value: unknown): RuntimeAuthConfig {
   }
 
   for (const [username, account] of Object.entries(password.accounts)) {
-    assertUserExists(users, account.userId, `authentication.providers.password.accounts.${username}.userId`);
+    assertUserExists(
+      users,
+      account.userId,
+      `authentication.providers.password.accounts.${username}.userId`,
+    );
   }
 
   for (const [providerId, provider] of Object.entries(oidc.instances)) {
@@ -87,11 +91,15 @@ export function parseAuthConfig(value: unknown): RuntimeAuthConfig {
   const hasEnabledOidc = Object.values(oidc.instances).some((provider) => provider.enabled);
 
   if (mode === 'none' && (password.enabled || hasEnabledOidc)) {
-    throw new RuntimeConfigError('authentication.mode=none cannot enable authentication providers.');
+    throw new RuntimeConfigError(
+      'authentication.mode=none cannot enable authentication providers.',
+    );
   }
 
   if (mode === 'required' && localUserId) {
-    throw new RuntimeConfigError('authentication.localUserId is only valid when auth.mode=none.');
+    throw new RuntimeConfigError(
+      'authentication.localUserId is only valid when authentication.mode=none.',
+    );
   }
 
   if (mode === 'required' && !password.enabled && !hasEnabledOidc) {
@@ -189,6 +197,7 @@ function parseOidcProviders(value: unknown): RuntimeOidcProvidersConfig {
     if (duplicateId) {
       throw new RuntimeConfigError(
         `${path}.instances.${providerId}.name duplicates the visible provider name configured for '${duplicateId}'.`,
+
       );
     }
 
@@ -276,7 +285,9 @@ function validateProviderId(providerId: string, path: string): void {
   nonEmptyKey(providerId, path);
   if (!isValidOidcProviderId(providerId)) {
     throw new RuntimeConfigError(
-      `${path} provider ids must be lowercase slugs containing letters, digits, and internal hyphens (max ${String(OIDC_PROVIDER_ID_MAX_LENGTH)} characters): '${providerId}'.`,
+      `${path} provider ids must be lowercase slugs containing letters, digits, and internal hyphens (max ${String(
+        OIDC_PROVIDER_ID_MAX_LENGTH,
+      )} characters): '${providerId}'.`,
     );
   }
 }

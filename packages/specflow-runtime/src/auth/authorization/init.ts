@@ -41,7 +41,10 @@ export function createAuthorizationSetup(ui: RuntimeSetupUi): AuthorizationSetup
     },
 
     async finish() {
-      if (assignments.length > 0 && !assignments.some((assignment) => assignment.role === 'admin')) {
+      if (
+        assignments.length > 0 &&
+        !assignments.some((assignment) => assignment.role === 'admin')
+      ) {
         ui.note(
           'At least one administrator is required. Choose the user that should bootstrap project administration.',
           'Authorization',

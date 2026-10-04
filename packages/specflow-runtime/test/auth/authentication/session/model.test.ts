@@ -54,7 +54,7 @@ describe('authentication session model', () => {
     expect(unauthenticatedSession(localAuth)).toEqual({
       authenticationRequired: false,
       authenticated: false,
-      user: { id: 'demo-user', name: 'OIDC Display Name' },
+      user: { id: 'demo-user', name: 'Demo User' },
       loginMethods: { password: { enabled: false }, oidc: [] },
     });
   });
@@ -70,7 +70,7 @@ describe('authentication session model', () => {
     ).toEqual({
       authenticationRequired: true,
       authenticated: true,
-      user: { id: 'demo-user', name: 'Demo User' },
+      user: { id: 'demo-user', name: 'OIDC Display Name' },
       authenticatedWith: { kind: 'oidc', providerId: 'company' },
       loginMethods: {
         password: { enabled: true },

@@ -301,7 +301,9 @@ async function requiredOidcProviderName(
     );
     if (!isValidOidcProviderName(name)) {
       ui.note(
-        `Provider name must be a single-line display name of at most ${String(OIDC_PROVIDER_NAME_MAX_LENGTH)} characters.`,
+        `Provider name must be a single-line display name of at most ${String(
+          OIDC_PROVIDER_NAME_MAX_LENGTH,
+        )} characters.`,
         'OIDC provider name',
       );
       continue;

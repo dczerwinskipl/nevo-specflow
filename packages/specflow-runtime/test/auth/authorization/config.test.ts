@@ -14,7 +14,7 @@ runtime:
     port: 4318
     tls:
       enabled: false
-  auth:
+  authentication:
     mode: none
     users:
       demo-user:
@@ -125,7 +125,7 @@ describe('SpecFlow authorization configuration', () => {
     );
     await writeFile(
       join(cwd, '.nevo/local/config.yaml'),
-      'runtime:\n  auth:\n    users:\n      demo-user:\n        name: Local User\n',
+      'runtime:\n  authentication:\n    users:\n      demo-user:\n        name: Local User\n',
       'utf8',
     );
     await expect(loadFrom(cwd)).rejects.toThrowError(/unknown project auth user 'demo-user'/);

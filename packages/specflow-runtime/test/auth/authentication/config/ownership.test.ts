@@ -24,7 +24,7 @@ describe('authentication config ownership', () => {
         },
       }),
     ).toThrowError(
-      /Unknown configuration key 'auth\.providers\.oidc\.instances\.company\.clientSecret'/,
+      /Unknown configuration key 'authentication\.providers\.oidc\.instances\.company\.clientSecret'/,
     );
   });
 
@@ -33,6 +33,6 @@ describe('authentication config ownership', () => {
       assertLocalAuthConfigOwnership({
         mode: 'required',
       }),
-    ).toThrowError(/Unknown configuration key 'auth\.mode'/);
+    ).toThrowError(/Unknown configuration key 'authentication\.mode'/);
   });
 });

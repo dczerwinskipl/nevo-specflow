@@ -22,5 +22,5 @@ export function assertLocalRuntimeConfigOwnership(value: unknown): void {
   const runtime = record(value, 'runtime');
   onlyKeys(runtime, LOCAL_RUNTIME_KEYS, 'runtime');
   assertLocalServerConfigOwnership(childRecord(runtime, 'server'));
-  assertLocalAuthConfigOwnership(childRecord(runtime, 'auth'));
+  assertLocalAuthConfigOwnership(childRecord(runtime, 'authentication'));
 }

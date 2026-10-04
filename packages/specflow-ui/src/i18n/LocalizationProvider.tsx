@@ -2,13 +2,7 @@ import { useCallback, useEffect, type PropsWithChildren } from 'react';
 import type { i18n as I18nInstance } from 'i18next';
 import { I18nextProvider, useTranslation } from 'react-i18next';
 
-import {
-  appI18n,
-  changeLocale,
-  DEFAULT_LOCALE,
-  normalizeLocale,
-  type AppLocale,
-} from './i18n';
+import { appI18n, changeLocale, DEFAULT_LOCALE, normalizeLocale, type AppLocale } from './i18n';
 
 export function LocalizationProvider({
   children,

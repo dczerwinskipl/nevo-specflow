@@ -126,12 +126,11 @@ export function LoginScreenView({
   };
 
   return (
-    <StandaloneAuthSurface>
-      <div
-        className="grid w-full gap-8"
-        {...capture}
-        {...designSlot('SpecFlowLoginScreen', 'content')}
-      >
+    <StandaloneAuthSurface
+      rootAttributes={capture}
+      surfaceAttributes={designSlot('SpecFlowLoginScreen', 'content')}
+    >
+      <div className="grid w-full gap-8">
         <StandaloneAuthHeader description="Access your SpecFlow workspace." title="Welcome back" />
 
         {error ? (

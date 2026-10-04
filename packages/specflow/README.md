@@ -13,8 +13,10 @@ nevo-specflow start
 nevo-specflow auth hash-password --password-stdin
 ```
 
-`init` owns repository bootstrap and composes capability initialization. Runtime owns the server/auth configuration contribution it returns; the product shell writes that contribution to `.nevo/config.yaml` and ignored `.nevo/local/config.yaml` without duplicating Runtime config semantics. `start` starts the configured long-running local SpecFlow server, serving the built UI at the
-root origin and Runtime endpoints under `/api`, and remains active until shutdown. Both `init` and `start` resolve the Git repository root through the product shell, so
+`init` owns repository bootstrap and composes capability initialization. Runtime owns the server/auth configuration contribution it returns; the product shell writes that contribution to `.nevo/config.yaml` and ignored `.nevo/local/config.yaml` without duplicating Runtime config semantics. `start` starts the configured long-running local SpecFlow server. With the default local
+configuration, open `http://127.0.0.1:4318`: the built UI is served at that product origin and
+Runtime endpoints live under `/api` on the same host and port. The process remains active until
+shutdown. Both `init` and `start` resolve the Git repository root through the product shell, so
 running either command from a nested repository directory uses the same project configuration.
 The auth utility generates the supported password hash from one password line
 read from stdin, keeping the plaintext password out of command arguments.

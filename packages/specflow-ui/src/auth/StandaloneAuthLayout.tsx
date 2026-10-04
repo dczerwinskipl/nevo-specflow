@@ -1,22 +1,39 @@
 import type { ReactNode } from 'react';
 
+import { DesignMetadataBoundary } from '@nevo/figma-capture/metadata';
 import { AppBackground, Typography, WorkspaceSurface } from '@nevo/ui';
 
 import { defaultNevoBrand, NevoBrandLogo } from '../brand';
 
-export function StandaloneAuthSurface({ children }: { readonly children: ReactNode }) {
+type DesignAttributes = Readonly<Record<string, string>>;
+
+export function StandaloneAuthSurface({
+  children,
+  rootAttributes,
+  surfaceAttributes,
+}: {
+  readonly children: ReactNode;
+  readonly rootAttributes?: DesignAttributes;
+  readonly surfaceAttributes?: DesignAttributes;
+}) {
   return (
-    <AppBackground
-      brandPrimary={defaultNevoBrand.coreColor}
-      className="flex min-h-dvh w-full items-center justify-center px-4 py-6 text-content-primary sm:px-8 sm:py-10"
-    >
-      <WorkspaceSurface
-        as="main"
-        className="w-full max-w-md rounded-surface border border-workspace-edge p-6 sm:p-8"
+    <DesignMetadataBoundary excludeComponents={['AppBackground']}>
+      <AppBackground
+        {...rootAttributes}
+        brandPrimary={defaultNevoBrand.coreColor}
+        className="flex min-h-dvh w-full items-center justify-center px-4 py-6 text-content-primary sm:px-8 sm:py-10"
+        data-auth-layout="root"
       >
-        {children}
-      </WorkspaceSurface>
-    </AppBackground>
+        <WorkspaceSurface
+          {...surfaceAttributes}
+          as="main"
+          className="w-full max-w-md rounded-surface border border-workspace-edge p-6 sm:p-8"
+          data-auth-layout="surface"
+        >
+          {children}
+        </WorkspaceSurface>
+      </AppBackground>
+    </DesignMetadataBoundary>
   );
 }
 

@@ -75,7 +75,14 @@ Login methods are represented according to their actual semantics:
 
 The browser UI never reads Runtime YAML to discover login methods.
 
-During local UI development Vite runs on the fixed origin `http://127.0.0.1:5173` and proxies `/api` to the default Runtime at `http://127.0.0.1:4318`. OIDC setup uses the browser origin for its callback/public origin, so the provider returns through Vite and the final redirect lands back in the UI while host-scoped cookies remain valid.
+Normal product execution is single-origin. `nevo-specflow start` serves the built SpecFlow UI at
+`http://127.0.0.1:4318` by default and Runtime endpoints under `/api` on that same origin.
+OIDC callbacks and browser redirects therefore use the same product origin users open in the browser.
+
+When developing the UI package directly, Vite may run at `http://127.0.0.1:5173` and proxy
+`/api` to Runtime on `http://127.0.0.1:4318`. Port 5173 is a development convenience only; it
+is not the normal installed-product topology or the address users should open after
+`nevo-specflow start`.
 
 ## Brand and tokens
 

@@ -8,9 +8,11 @@ runtime:
     port: 4318
     # Required when at least one OIDC instance is enabled.
     # A non-loopback required-auth Runtime must terminate TLS itself.
-    # Browser-facing SpecFlow UI origin used for OIDC callbacks.
-    # Current local dev UI: http://127.0.0.1:5173 (proxies /api to Runtime on 4318).
-    # publicOrigin: http://127.0.0.1:5173
+    # Browser-facing SpecFlow product origin used for OIDC callbacks and redirects.
+    # Normal `nevo-specflow start` serves both UI and /api on this origin.
+    # publicOrigin: http://127.0.0.1:4318
+    # UI-only Vite development may use http://127.0.0.1:5173 with /api proxied to 4318;
+    # that is a development override, not the normal generated/product topology.
     tls:
       enabled: false
 

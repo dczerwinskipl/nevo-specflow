@@ -8,6 +8,7 @@ import Fastify, {
 import { authFeature, type AuthFeatureDependencies } from '../auth/index';
 import type { RuntimeConfig } from '../config/types';
 import { serializeRuntimeRequest } from './logging';
+import { isRuntimeOwnOrigin } from './origin';
 import { registerRuntimeWebApp, type RuntimeWebApp } from './web-app';
 
 export interface RuntimeAppDependencies {
@@ -62,7 +63,10 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   }
 
   app.get('/', (_request, reply) => {
-    if (config.server.publicOrigin) {
+    if (
+      config.server.publicOrigin &&
+      !isRuntimeOwnOrigin(config.server, config.server.publicOrigin)
+    ) {
       return reply.redirect(config.server.publicOrigin);
     }
     return {

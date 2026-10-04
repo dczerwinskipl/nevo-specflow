@@ -89,7 +89,7 @@ and runtime-context policy are separate responsibilities.
 ## Configuration
 
 Runtime owns the `server` configuration it consumes and composes feature-owned configuration such
-as `auth`. Its `initRuntime` operation owns the corresponding setup prompts/defaults, secret split,
+as `authentication`. Its `initRuntime` operation owns the corresponding setup prompts/defaults, secret split,
 hashing, and effective-config validation; the public product initializer only owns repository/file
 bootstrap.
 
@@ -103,7 +103,7 @@ local-only. Project/local provenance is validated before merge; local config can
 users, auth mode, provider policy, OIDC mapping, server bind/origin, or TLS enablement. OIDC project
 configuration is a map under `authentication.providers.oidc.instances`; each instance has a stable provider id
 and a user-facing name, while the matching local instance contributes only its client secret.
-Security-sensitive auth maps use replacement rather than additive merge semantics. Parsed identity,
+Security-sensitive authentication maps use replacement rather than additive merge semantics. Parsed identity,
 account, and OIDC mapping dictionaries use own-property lookups and prototype-safe storage so special
 keys such as `__proto__` or `toString` cannot become inherited identities. YAML syntax errors are
 reported without echoing source snippets, so malformed local secret configuration does not leak

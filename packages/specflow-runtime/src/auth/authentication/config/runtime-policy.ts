@@ -23,13 +23,13 @@ export function validateAuthRuntimeContext(
 
   if (!isLoopbackHost(context.bindHost)) {
     throw new RuntimeConfigError(
-      'auth.mode=required without Runtime TLS is allowed only when server.host is loopback.',
+      'authentication.mode=required without Runtime TLS is allowed only when server.host is loopback.',
     );
   }
 
   if (context.publicOrigin && !isLoopbackHost(new URL(context.publicOrigin).hostname)) {
     throw new RuntimeConfigError(
-      'auth.mode=required without Runtime TLS requires server.publicOrigin to be loopback.',
+      'authentication.mode=required without Runtime TLS requires server.publicOrigin to be loopback.',
     );
   }
 }

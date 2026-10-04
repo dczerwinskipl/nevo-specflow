@@ -47,6 +47,10 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+function assert(condition: unknown, message: string): asserts condition {
+  if (!condition) throw new Error(message);
+}
+
 export const PasswordOnly: Story = { args: { loginMethods: passwordOnly } };
 export const SingleOidc: Story = { args: { loginMethods: singleOidc } };
 export const MultipleOidc: Story = { args: { loginMethods: multipleOidc } };
@@ -121,6 +125,24 @@ export const FigmaCapture: Story = {
     </DesignCaptureProvider>
   ),
   tags: ['!dev', '!autodocs'],
+  play: async ({ canvasElement }) => {
+    const root = canvasElement.querySelector<HTMLElement>(
+      '[data-design-capture="true"][data-design-component="SpecFlowLoginScreen"]',
+    );
+    assert(root, 'Login Figma capture must expose a screen-level capture root.');
+    assert(
+      root.dataset.authLayout === 'root',
+      'Login Figma capture root must own the complete standalone auth surface.',
+    );
+
+    const content = root.querySelector<HTMLElement>('[data-design-slot="content"]');
+    assert(content, 'Login Figma capture must expose its required content slot below the root.');
+    assert(content !== root, 'Login Figma content slot must be a descendant of the capture root.');
+    assert(
+      content.dataset.authLayout === 'surface',
+      'Login Figma content slot must include the workspace material surface.',
+    );
+  },
   parameters: {
     controls: { disable: true },
     designCapture: {

@@ -125,7 +125,7 @@ export const FigmaCapture: Story = {
     </DesignCaptureProvider>
   ),
   tags: ['!dev', '!autodocs'],
-  play: async ({ canvasElement }) => {
+  play: ({ canvasElement }) => {
     const root = canvasElement.querySelector<HTMLElement>(
       '[data-design-capture="true"][data-design-component="SpecFlowLoginScreen"]',
     );

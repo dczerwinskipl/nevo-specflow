@@ -4,9 +4,7 @@ import { isRequestAtPublicOrigin } from '../../src/server/origin';
 
 describe('Runtime public-origin request comparison', () => {
   it('treats equivalent loopback hosts as the same origin', () => {
-    expect(
-      isRequestAtPublicOrigin('http://localhost:4318', '127.0.0.1:4318', false),
-    ).toBe(true);
+    expect(isRequestAtPublicOrigin('http://localhost:4318', '127.0.0.1:4318', false)).toBe(true);
   });
 
   it('matches canonical external hostnames without inferring DNS from the bind host', () => {

@@ -45,9 +45,9 @@ describe('Runtime public-origin request comparison', () => {
   });
 
   it('fails closed when the direct Host header is absent or malformed', () => {
-    expect(
-      isRequestAtPublicOrigin('https://specflow.example.com:4318', undefined, true),
-    ).toBe(false);
+    expect(isRequestAtPublicOrigin('https://specflow.example.com:4318', undefined, true)).toBe(
+      false,
+    );
     expect(
       isRequestAtPublicOrigin(
         'https://specflow.example.com:4318',

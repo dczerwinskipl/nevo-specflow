@@ -17,6 +17,7 @@ This area owns reusable Nevo UI knowledge. SpecFlow-specific UX belongs under
 - [UI/UX principles](principles/ui-ux-guidelines.md)
 - [Layout and containment](principles/layout-and-containment.md)
 - [Code-to-Figma projection](figma/code-to-figma-projection.md)
+- [Implementation ownership and tooling](implementation/ownership-and-tooling.md)
 - [React component guidance](implementation/react/)
 - [Tailwind guidance](implementation/tailwind/)
 - [Storybook guidance](implementation/storybook/)

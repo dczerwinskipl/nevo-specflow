@@ -9,6 +9,7 @@ node_modules/
 # Generated artifacts (owned by their generators, not hand-formatted)
 **/*.generated.*
 docs/**/*.generated.*
+tools/figma-project/generated/
 .agents/skills/nevo-agents-*/SKILL.md
 .claude/skills/nevo-agents-*/SKILL.md
 pnpm-lock.yaml

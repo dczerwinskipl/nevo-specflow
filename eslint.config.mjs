@@ -47,11 +47,83 @@ export default tseslint.config(
     },
   },
 
+  // Neutral production projects intentionally exclude Node-powered tests and
+  // package tooling. Point ESLint at their dedicated TypeScript projects.
+  {
+    files: ['packages/nevo-ui/**/*.test.{ts,tsx}', 'packages/nevo-ui/**/*.stories.{ts,tsx}'],
+    languageOptions: {
+      parserOptions: {
+        projectService: false,
+        project: ['./packages/nevo-ui/tsconfig.test.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  {
+    files: ['packages/nevo-ui/scripts/**/*.mts', 'packages/nevo-ui/vite.config.ts'],
+    languageOptions: {
+      parserOptions: {
+        projectService: false,
+        project: ['./packages/nevo-ui/tsconfig.tools.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  {
+    files: ['packages/figma-core/**/*.test.{ts,tsx}'],
+    languageOptions: {
+      parserOptions: {
+        projectService: false,
+        project: ['./packages/figma-core/tsconfig.test.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+
   // Product packages use extensionless relative TypeScript source imports.
   {
     files: ['packages/**/*.{ts,tsx,mts,cts}'],
     rules: {
       'no-restricted-imports': productImportRestrictions(),
+    },
+  },
+
+  // Reusable UI/Figma foundations follow the same one-way dependency rule as
+  // the product capabilities below. Keep these restrictions next to the
+  // generic package rule so new source files inherit them automatically.
+  {
+    files: ['packages/figma-core/**/*.{ts,tsx,mts,cts}'],
+    rules: {
+      'no-restricted-imports': productImportRestrictions({
+        regex: '^(?:react(?:-dom)?(?:/|$)|@nevo/(?:figma-capture|ui|specflow)(?:-|/|$))',
+        message:
+          'Figma core is neutral authoring/IR infrastructure and must not depend on React, capture runtime, concrete UI, or SpecFlow product packages.',
+      }),
+    },
+  },
+  {
+    files: ['packages/figma-capture/**/*.{ts,tsx,mts,cts}'],
+    rules: {
+      'no-restricted-imports': productImportRestrictions(
+        {
+          regex: '^@nevo/(?!figma-core(?:/|$))',
+          message:
+            'Figma capture may depend on neutral Figma core, but not on product or concrete UI packages.',
+        },
+        {
+          regex: '^react-dom(?:/|$)',
+          message: 'Figma capture uses React context only and must not depend on a DOM renderer.',
+        },
+      ),
+    },
+  },
+  {
+    files: ['packages/nevo-ui/**/*.{ts,tsx,mts,cts}'],
+    rules: {
+      'no-restricted-imports': productImportRestrictions({
+        regex: '^@nevo/specflow(?:-|/|$)',
+        message: 'Reusable Nevo UI must not depend on any SpecFlow product package.',
+      }),
     },
   },
 
@@ -115,6 +187,35 @@ export default tseslint.config(
     extends: [tseslint.configs.recommended, tseslint.configs.disableTypeChecked],
   },
 
+  // Storybook play functions and test doubles intentionally implement callback
+  // contracts that may be async/no-op for only some scenarios.
+  {
+    files: [
+      'packages/nevo-ui/**/*.stories.tsx',
+      'packages/nevo-ui/**/*.test.{ts,tsx}',
+      'tools/figma-import/**/*.test.ts',
+    ],
+    rules: {
+      '@typescript-eslint/no-empty-function': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/unbound-method': 'off',
+      '@typescript-eslint/require-await': 'off',
+    },
+  },
+
+  // Playwright's page-evaluation boundary is intentionally dynamic; assertions
+  // immediately validate the returned browser values.
+  {
+    files: ['tools/figma-import/ui.test.ts'],
+    rules: {
+      '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+    },
+  },
+
   // Node globals are explicit. Neutral product packages intentionally do not
   // inherit process/Buffer/etc. merely because @types/node exists in the workspace.
   {
@@ -138,10 +239,32 @@ export default tseslint.config(
     },
     rules: {
       'no-console': 'off',
+      '@typescript-eslint/no-empty-object-type': [
+        'error',
+        { allowInterfaces: 'with-single-extends' },
+      ],
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
+    },
+  },
+
+  // Keep the open-registry exception after shared rules so the deliberate
+  // module-augmentation interfaces remain valid without weakening components.
+  {
+    files: [
+      'packages/figma-core/src/metadata.ts',
+      'packages/nevo-ui/src/figma/captureRegistry.ts',
+      'packages/specflow-ui/src/app/figmaRegistry.ts',
+      'packages/specflow-ui/src/brand/nevo/figmaDesignSystem.ts',
+      'examples/crm/src/figmaRegistry.ts',
+      'tools/figma-project/src/project/captureRegistry.ts',
+      'tools/figma-project/src/types.ts',
+    ],
+    rules: {
+      '@typescript-eslint/no-empty-object-type': 'off',
+      '@typescript-eslint/no-redundant-type-constituents': 'off',
     },
   },
 

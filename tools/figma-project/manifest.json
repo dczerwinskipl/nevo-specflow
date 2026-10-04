@@ -1,0 +1,12 @@
+{
+  "name": "Nevo SpecFlow IR Importer",
+  "id": "nevo-specflow-ir-importer-local",
+  "api": "1.0.0",
+  "main": "dist/plugin/code.js",
+  "ui": "dist/plugin/ui.html",
+  "documentAccess": "dynamic-page",
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": ["none"]
+  }
+}

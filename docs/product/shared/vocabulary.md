@@ -35,12 +35,12 @@ product copy, code, packages, and documentation MUST NOT introduce a competing s
 | **Nevo UI**                  | The reusable design system and UI component platform. It is not the SpecFlow product UI.                    | Reusable design-system documentation.        |
 | **`@nevo/specflow`**         | The distributable product package and CLI composition root.                                                 | Package/API references.                      |
 | **`@nevo/specflow-runtime`** | Runtime capability package.                                                                                 | Internal package/API references.             |
-| **`@nevo/specflow-ui`**      | Reserved package name for the SpecFlow UI when it becomes a distinct package.                               | Internal package/API references.             |
+| **`@nevo/specflow-ui`**      | SpecFlow product UI capability package.                                                                     | Internal package/API references.             |
 
 ## Naming rules
 
 - Product prose and branding MUST use **Nevo SpecFlow** as the formal product name. They MUST NOT
-  use "SpecDev" or "dashboard" as the product name.
+  use pre-rebrand naming or "dashboard" as the product name.
 - The whole interactive application MUST be called **Nevo SpecFlow UI** (or **UI** when the product
   context is unambiguous). **Dashboard** MAY name an individual screen/view, not the surface itself.
 - The long-lived application backend MUST be called **Nevo SpecFlow Runtime** (or **Runtime** in

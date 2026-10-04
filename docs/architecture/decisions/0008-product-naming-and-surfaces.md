@@ -22,9 +22,8 @@ Current.
 
 ## Context
 
-The project accumulated several historical names while proving individual boundaries:
-`SpecDev`, `nevo-spec`, "dashboard", "server", and package names derived from those
-terms.
+The project accumulated several pre-rebrand names while proving individual boundaries, along with
+`nevo-spec`, "dashboard", "server", and package names derived from those terms.
 
 Those names no longer describe the intended product shape. The product has one identity
 but several different surfaces and runtime responsibilities:
@@ -92,8 +91,7 @@ The interactive application is **Nevo SpecFlow UI**.
 "Dashboard" is not the name of the whole application. It may describe an individual
 dashboard screen within the UI.
 
-The package name `@nevo/specflow-ui` is reserved for the UI when it becomes a distinct
-package boundary.
+The internal product UI capability package is named `@nevo/specflow-ui`.
 
 ### Reusable design system
 

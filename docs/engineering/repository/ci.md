@@ -10,7 +10,7 @@ read_when:
   - changing CI or required checks
 summary: >
   Repository quality, affected package execution, dependency review, cross-platform artifact smoke,
-  CodeQL, and the stable checks required by protected branches.
+  CodeQL, Chromatic visual regression, and the stable checks required by protected branches.
 related:
   - engineering.repository.local-setup
   - engineering.repository.dependencies-and-security
@@ -23,6 +23,7 @@ related:
 
 - `ci.yml`: repository quality, affected typecheck/tests/build, Dependency Review on pull requests,
   and the packaged-product smoke matrix.
+- `chromatic.yml`: shared Storybook publishing and visual regression on pull requests and `main`.
 - `codeql.yml`: JavaScript/TypeScript CodeQL on pull requests, protected-branch pushes, and weekly.
 - `pr-title.yml`: Conventional Commit PR-title validation.
 - release workflows: see [releasing](releasing.md).
@@ -66,6 +67,19 @@ same-repository, fork and Dependabot pull requests; the workflow does not use
 blocks generic errors or security alerts at high severity or above. Release lines keep the stable
 `codeql` status gate without the native code-scanning rule so their branch-creating push remains
 possible.
+
+## Visual regression with Chromatic
+
+The `chromatic` workflow publishes the single shared Storybook owned by `tools/storybook/`. It
+uses the version-pinned workspace CLI through `pnpm chromatic` and reads its credential only from
+the `CHROMATIC_PROJECT_TOKEN` repository Actions secret. The secret value comes from the Chromatic
+project's **Manage → Configure** page and must never be committed or added to a repository-local
+environment file.
+
+The workflow skips cleanly when the secret is unavailable, including on pull requests from forks.
+The `chromatic` job remains informational while the first baseline is being established; add it to
+the branch ruleset only after that baseline has been reviewed and visual approval should block
+merges.
 
 ## Required checks
 

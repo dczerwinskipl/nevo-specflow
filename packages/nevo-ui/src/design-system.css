@@ -1,0 +1,213 @@
+@import 'tailwindcss';
+@import './design-system/brand-environment.generated.css';
+@import './app/workspace/AppWorkspace.css';
+@import './components/data/DataTable/DataTable.css';
+@import './components/forms/shared/textControl.css';
+@import './components/forms/Select/Select.css';
+@import './components/forms/TextArea/TextArea.css';
+@import './components/layout/ScrollArea/ScrollArea.css';
+@import './components/overlays/Drawer/Drawer.css';
+@import './components/overlays/Menu/Menu.css';
+@import './components/overlays/Popover/Popover.css';
+@import './components/patterns/MessageComposer/MessageComposer.css';
+@source './';
+
+/*
+ * Nevo UI foundations.
+ *
+ * Everything in this file is part of the product-facing design contract:
+ * semantic colors, typography, component styles and the global application base.
+ * Capture-gallery presentation lives separately in gallery.css.
+ */
+@theme static {
+  --font-sans:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+
+  --color-canvas: #0a0a0a;
+  --color-surface: rgba(255, 255, 255, 0.018);
+  --color-surface-raised: #121212;
+  --color-surface-subtle: rgba(255, 255, 255, 0.025);
+  --color-surface-control: rgba(255, 255, 255, 0.045);
+  --color-surface-hover: rgba(255, 255, 255, 0.06);
+  --color-surface-selected: rgba(255, 255, 255, 0.09);
+  --color-workspace-material: rgba(255, 255, 255, 0.045);
+  --color-overlay: rgba(0, 0, 0, 0.66);
+
+  --color-action-secondary: rgba(255, 255, 255, 0.045);
+  --color-action-secondary-hover: rgba(255, 255, 255, 0.07);
+
+  --color-border-default: rgba(255, 255, 255, 0.095);
+  --color-border-strong: rgba(255, 255, 255, 0.17);
+  --color-border-subtle: rgba(255, 255, 255, 0.05);
+  --color-workspace-edge: rgba(255, 255, 255, 0.12);
+  --color-divider: rgba(255, 255, 255, 0.06);
+
+  --color-content-primary: #f3f4f6;
+  --color-content-secondary: #c5c7cc;
+  --color-content-muted: #85888f;
+  --color-content-placeholder: #7a7e87;
+  --color-content-on-primary: #ffffff;
+  --color-content-link: #60a5fa;
+  --color-content-link-hover: #93c5fd;
+
+  --color-action-danger: #ef4444;
+  --color-action-danger-subtle: rgba(239, 68, 68, 0.05);
+
+  --color-status-info: #60a5fa;
+  --color-status-success: #34d399;
+  --color-status-attention: #fbbf24;
+  --color-status-danger: #f87171;
+
+  --color-content-error: #ef4444;
+  --color-border-error: #ef4444;
+  --color-scrollbar-thumb: rgba(255, 255, 255, 0.16);
+  --color-scrollbar-thumb-hover: rgba(255, 255, 255, 0.26);
+  --color-scroll-edge-indicator: color-mix(in srgb, var(--color-content-primary) 8%, transparent);
+
+  --spacing-icon-sm: 0.875rem;
+  --spacing-icon-md: 1.125rem;
+
+  /* Compact indicators and content-authored workspace geometry. */
+  --spacing-status-indicator-sm: 0.375rem;
+  --spacing-status-indicator-md: 0.5rem;
+  --spacing-progress-track: 0.375rem;
+
+  --spacing-content-narrow: 47.5rem;
+  --spacing-content-standard: 68.75rem;
+  --spacing-content-wide: 80rem;
+  --spacing-content-xwide: 90rem;
+
+  --spacing-floating-window-collapsed: 11rem;
+  --spacing-floating-window-expanded: 25rem;
+
+  --color-progress-fill: var(--color-action-primary);
+  /* Shared control geometry: inline 24px, compact 32px, default 36px. */
+  --spacing-control-height-inline: 1.5rem;
+  --spacing-control-height-compact: 2rem;
+  --spacing-control-height-default: 2.25rem;
+  --spacing-control-padding-inline: 0.5rem;
+  --spacing-control-padding-compact: 0.625rem;
+  --spacing-control-padding-default: 0.75rem;
+
+  /* Shape hierarchy: inline action → control → composite → app surface. */
+  --radius-control-inline: 0.25rem;
+  --radius-control: 0.375rem;
+  --radius-composite: 0.75rem;
+  --radius-surface: 1rem;
+
+  /* Product-tool state changes: immediate feedback without decorative motion. */
+  --motion-duration-fast: 120ms;
+  --motion-duration-normal: 150ms;
+  --motion-duration-workspace-navigation: 300ms;
+  --motion-ease-workspace-navigation: ease;
+  --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  --text-title-lg: 1.25rem;
+  --text-title-lg--line-height: 1.75rem;
+  --text-title-lg--letter-spacing: -0.01em;
+  --text-title-lg--font-weight: 600;
+
+  --text-title-md: 1rem;
+  --text-title-md--line-height: 1.5rem;
+  --text-title-md--letter-spacing: -0.005em;
+  --text-title-md--font-weight: 600;
+
+  --text-title-sm: 0.875rem;
+  --text-title-sm--line-height: 1.25rem;
+  --text-title-sm--letter-spacing: 0;
+  --text-title-sm--font-weight: 600;
+
+  --text-body-lg: 0.9375rem;
+  --text-body-lg--line-height: 1.5rem;
+  --text-body-lg--letter-spacing: 0;
+  --text-body-lg--font-weight: 400;
+
+  --text-body-md: 0.875rem;
+  --text-body-md--line-height: 1.25rem;
+  --text-body-md--letter-spacing: 0;
+  --text-body-md--font-weight: 400;
+
+  --text-body-sm: 0.75rem;
+  --text-body-sm--line-height: 1rem;
+  --text-body-sm--letter-spacing: 0;
+  --text-body-sm--font-weight: 400;
+
+  --text-label-md: 0.8125rem;
+  --text-label-md--line-height: 1.125rem;
+  --text-label-md--letter-spacing: 0;
+  --text-label-md--font-weight: 600;
+
+  --text-label-sm: 0.75rem;
+  --text-label-sm--line-height: 1rem;
+  --text-label-sm--letter-spacing: 0;
+  --text-label-sm--font-weight: 600;
+
+  /* Non-interactive headings for navigation and grouped floating content. */
+  --text-section-label: 0.75rem;
+  --text-section-label--line-height: 1rem;
+  --text-section-label--letter-spacing: 0.12em;
+  --text-section-label--font-weight: 600;
+
+  --text-code-md: 0.8125rem;
+  --text-code-md--line-height: 1.25rem;
+  --text-code-md--letter-spacing: 0;
+  --text-code-md--font-weight: 400;
+}
+
+:root {
+  color-scheme: dark;
+  font-synthesis: none;
+}
+
+html {
+  min-height: 100%;
+  background: var(--color-canvas);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0;
+  background: transparent;
+  color: var(--color-content-primary);
+  font-family: var(--font-sans);
+}
+
+.workspace-surface-material,
+.mobile-workspace-scroll-area {
+  --color-scroll-edge-indicator: rgba(0, 0, 0, 0.34);
+  --color-scrollbar-thumb: rgba(0, 0, 0, 0.34);
+  --color-scrollbar-thumb-hover: rgba(0, 0, 0, 0.48);
+}
+
+.workspace-surface-material::before {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.14) 0%,
+      rgba(255, 255, 255, 0.065) 18%,
+      rgba(255, 255, 255, 0.018) 52%,
+      rgba(255, 255, 255, 0.055) 84%,
+      rgba(255, 255, 255, 0.1) 100%
+    )
+    top / 100% 1px no-repeat;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.075),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+  content: '';
+  pointer-events: none;
+}
+
+:where(a, button, input, select, textarea):focus-visible:not([data-focus-ring='delegated']),
+.focus-ring-within:has(:focus-visible) {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}

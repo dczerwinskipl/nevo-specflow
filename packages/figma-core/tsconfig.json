@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.package-neutral.json",
+  "compilerOptions": {
+    "lib": ["ES2024"],
+    "incremental": true,
+    "tsBuildInfoFile": "./.tsbuild/figma-core.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
+}

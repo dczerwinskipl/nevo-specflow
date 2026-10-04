@@ -122,6 +122,9 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
+      - name: Install Playwright Chromium
+        if: matrix.package == 'nevo-figma-import' || matrix.package == 'nevo-repo-storybook'
+        run: pnpm --filter "${{ matrix.package }}" exec playwright install --with-deps chromium
       - name: Test ${{ matrix.package }}
         env:
           PACKAGE: ${{ matrix.package }}

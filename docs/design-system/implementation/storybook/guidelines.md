@@ -2,15 +2,14 @@
 id: design-system.implementation.storybook.guidelines
 type: engineering
 title: Storybook guidelines
-status: draft
+status: current
 read_when:
   - creating or editing a Storybook story
   - verifying a UI component visually or with interaction tests
   - building deterministic UI fixtures
 summary: >
-  Story hierarchy and naming (Foundations / Shared UI / Features / Screens), strict
-  co-location, typed fixture factories, args-first state, play-function interaction
-  tests, and the mandatory verification workflow.
+  The shared Storybook host, owner-based story hierarchy, co-location, deterministic
+  fixtures, accessibility checks, and the required desktop/mobile verification workflow.
 related:
   - design-system.implementation.react.component-guidelines
   - design-system.principles.ui-ux-guidelines
@@ -19,18 +18,23 @@ related:
 
 # Storybook guidelines
 
-`status: draft` — working guidance. Exact scripts and config paths are set with the dashboard code.
+The repository has one Storybook host under `tools/storybook/`. Its configuration discovers
+stories owned by Nevo UI, SpecFlow UI, and independent examples without moving those stories out
+of their owner packages.
 
 ## Story hierarchy
 
 Story `title` defines the sidebar tree:
 
-| Tier        | Title pattern                   | Purpose                                                             |
-| ----------- | ------------------------------- | ------------------------------------------------------------------- |
-| Foundations | `Foundations/<Topic>`           | Design tokens, color/type scales, token-resolution and smoke tests. |
-| Shared UI   | `Shared/UI/<Component>`         | Domain-agnostic primitives.                                         |
-| Features    | `Features/<Domain>/<Component>` | Vertical domain features composing primitives + fixtures.           |
-| Screens     | `Screens/<PageName>`            | Full page views with routing/layout context (reserved).             |
+| Owner       | Title pattern                    | Purpose                                                        |
+| ----------- | -------------------------------- | -------------------------------------------------------------- |
+| Nevo UI     | `Nevo UI/<Category>/<Component>` | Reusable foundations, primitives, patterns, and app mechanics. |
+| SpecFlow UI | `SpecFlow/<Area>/<Story>`        | Brand, product composition, features, and full screens.        |
+| Examples    | `Examples/<Example>/<Story>`     | Independent consumer examples, including CRM.                  |
+
+Use `Brand`, `Components`, `Features`, and `Screens` below `SpecFlow`. Nevo UI categories follow
+the package organization, such as `Foundations`, `Actions`, `Forms`, `Navigation`, `Data`, and
+`Patterns`.
 
 ## Co-location and naming
 
@@ -62,14 +66,15 @@ are forbidden in fixtures.
 
 ## Testing
 
-Story `play` functions are interaction tests (run under the Storybook + Vitest browser
-project). Assert on rendered DOM and, where exact visuals matter, on
-`window.getComputedStyle`.
+Story `play` functions are interaction tests. Assert on rendered DOM and, where exact visuals
+matter, on `window.getComputedStyle`. The shared host runs automated accessibility checks as
+errors against WCAG A/AA and best-practice rules.
 
 ## Verification workflow (before marking UI work done)
 
-1. Render every affected story with no backend.
-2. Run the full Storybook/Vitest suite (unit + browser).
-3. Inspect desktop and mobile (`375px`) viewports.
-4. Inspect computed styles when exact colors/spacing/animation matter — never claim
+1. Render every affected story with no backend using `pnpm storybook`.
+2. Build the complete catalog with `pnpm storybook:build`.
+3. Run Storybook interaction and accessibility checks with `pnpm test:storybook`.
+4. Inspect desktop and mobile (`375px`) viewports.
+5. Inspect computed styles when exact colors/spacing/animation matter — never claim
    visual consistency from class names alone.

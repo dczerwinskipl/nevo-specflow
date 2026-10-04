@@ -1,0 +1,39 @@
+{
+  "name": "nevo-figma-project",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Repository-owned composition root for Nevo UI, SpecFlow, and example Figma captures.",
+  "license": "MIT",
+  "scripts": {
+    "build": "vite build && node build-plugin.mjs",
+    "build:plugin": "node build-plugin.mjs",
+    "dev": "vite --host 127.0.0.1 --port 4173",
+    "export": "tsx src/export.ts",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.importer.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@nevo/figma-capture": "workspace:*",
+    "@nevo/figma-core": "workspace:*",
+    "@nevo/specflow-ui": "workspace:*",
+    "@nevo/ui": "workspace:*",
+    "nevo-example-crm": "workspace:*",
+    "nevo-figma-export": "workspace:*",
+    "nevo-figma-import": "workspace:*",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "1.140.0",
+    "@tailwindcss/vite": "4.3.3",
+    "@types/node": "24.19.0",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "esbuild": "0.28.2",
+    "tsx": "4.23.15",
+    "vite": "8.3.2",
+    "vitest": "5.0.3"
+  }
+}

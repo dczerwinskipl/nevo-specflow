@@ -16,10 +16,10 @@
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "quality:build-tools": "turbo run build --filter=nevo-repo-agents --filter=nevo-repo-docs --filter=nevo-repo-release",
+    "quality:build-prerequisites": "turbo run build --filter=nevo-repo-agents --filter=nevo-repo-docs --filter=nevo-repo-release --filter=@nevo/figma-core --filter=@nevo/figma-capture",
     "version:print": "node tools/release/dist/bin.js version",
     "version:check-transition": "node tools/release/dist/bin.js check-transition",
-    "check:quality": "pnpm quality:build-tools && pnpm format:check && pnpm lint && node tools/docs/dist/bin.js check && node tools/agents/dist/bin.js check && pnpm version:check-transition",
+    "check:quality": "pnpm quality:build-prerequisites && pnpm format:check && pnpm lint && node tools/docs/dist/bin.js check && node tools/agents/dist/bin.js check && pnpm version:check-transition",
     "check": "pnpm check:quality && turbo run typecheck && turbo run build && turbo run test",
     "product:pack": "pnpm --filter @nevo/specflow artifact:pack",
     "dogfood:install": "pnpm --filter @nevo/specflow dogfood",
@@ -31,18 +31,24 @@
     "docs:get": "pnpm --filter nevo-repo-docs build && node tools/docs/dist/bin.js get",
     "docs:context": "pnpm --filter nevo-repo-docs build && node tools/docs/dist/bin.js context",
     "docs:check": "pnpm --filter nevo-repo-docs build && node tools/docs/dist/bin.js check",
-    "docs:adr": "pnpm --filter nevo-repo-docs build && node tools/docs/dist/bin.js adr"
+    "docs:adr": "pnpm --filter nevo-repo-docs build && node tools/docs/dist/bin.js adr",
+    "storybook": "pnpm --filter nevo-repo-storybook dev",
+    "storybook:build": "pnpm --filter nevo-repo-storybook build",
+    "chromatic": "pnpm --filter nevo-repo-storybook chromatic",
+    "test:storybook": "pnpm --filter nevo-repo-storybook test",
+    "figma:export": "pnpm --filter nevo-figma-project export",
+    "figma:build-plugin": "turbo run build:plugin --filter=nevo-figma-project"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@types/node": "24.19.0",
-    "eslint": "10.11.0",
+    "eslint": "10.12.0",
     "eslint-config-prettier": "10.1.8",
-    "globals": "17.12.0",
+    "globals": "17.13.0",
     "prettier": "3.9.9",
-    "turbo": "2.11.4",
+    "tsdown": "0.23.0",
+    "turbo": "2.11.7",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.70.1",
-    "tsdown": "0.23.0"
+    "typescript-eslint": "8.71.0"
   }
 }

@@ -1,0 +1,206 @@
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { chromium } from 'playwright';
+import { describe, expect, it } from 'vitest';
+
+describe('Figma importer UI', () => {
+  const resources = {
+    colors: [{ stableId: 'color/test', name: 'Test', value: '#000000' }],
+    textStyles: [
+      {
+        kind: 'text-style',
+        stableId: 'text/test',
+        name: 'Test',
+        style: {
+          fontFamily: 'Inter',
+          fontSize: '16px',
+          fontWeight: '400',
+          lineHeight: '24px',
+          letterSpacing: '0px',
+          textTransform: 'none',
+        },
+      },
+    ],
+    assets: [
+      {
+        kind: 'asset',
+        stableId: 'asset/test',
+        svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"/>',
+        representation: 'svg',
+        style: { width: '1px', height: '1px', opacity: '1', color: '#000000' },
+      },
+    ],
+  } as const;
+
+  it('uses one kind-aware import action', async () => {
+    const [html, code, appSource, template] = await Promise.all([
+      readFile('dist/ui.html', 'utf8'),
+      readFile('src/code.ts', 'utf8'),
+      readFile('ui/src/app.ts', 'utf8'),
+      readFile('ui/template.html', 'utf8'),
+    ]);
+    expect(html).toMatch(/^<!-- Generated from tools\/figma-import\/ui by build-ui\.mjs/);
+    expect(html).toContain('id="import"');
+    expect(html).toContain('type: "IMPORT_IR"');
+    expect(appSource).toContain("type: 'IMPORT_IR'");
+    expect(template).not.toContain("type: 'IMPORT_IR'");
+    expect(html).toContain('id="tab-file"');
+    expect(html).toContain('id="tab-json"');
+    expect(code).toContain('themeColors: true');
+    expect(html).toContain('type: "RESIZE_UI"');
+    expect(html).toContain('"PROGRESS"');
+    expect(html).not.toContain('id="design"');
+    expect(html).not.toContain('id="screens"');
+    expect(html).not.toContain('IMPORT_DESIGN_IR');
+    expect(html).not.toContain('IMPORT_SCREENS_IR');
+  });
+
+  it('shares parsed content between file and manual tabs', async () => {
+    const screens = JSON.stringify({
+      schemaVersion: 3,
+      kind: 'screens',
+      generatedAt: '2026-09-29T00:00:00.000Z',
+      source: {
+        name: 'Test',
+        reference: 'test',
+        route: 'http://localhost/',
+        viewport: { width: 1, height: 1, deviceScaleFactor: 1 },
+      },
+      semantics: {
+        componentIdentityAttribute: 'data-design-component',
+        slotAttribute: 'data-design-slot',
+        note: 'Test',
+      },
+      definitions: [],
+      resources,
+      screens: {},
+    });
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage({ viewport: { width: 560, height: 720 } });
+      const pageErrors: string[] = [];
+      page.on('pageerror', (error) => pageErrors.push(error.message));
+      await page.addInitScript(() => {
+        window.postMessage = () => undefined;
+      });
+      await page.goto(pathToFileURL(resolve('dist/ui.html')).href);
+      await expect(page.locator('#import').isHidden()).resolves.toBe(true);
+
+      await page.locator('#tab-json').evaluate((node) => (node as HTMLButtonElement).click());
+      await page.fill(
+        '#json',
+        JSON.stringify({
+          schemaVersion: 4,
+          kind: 'design-system',
+          generatedAt: '2026-09-29T00:00:00.000Z',
+          source: {
+            name: 'Test',
+            reference: 'test',
+            route: 'http://localhost/',
+            viewport: { width: 1, height: 1, deviceScaleFactor: 1 },
+          },
+          semantics: {
+            componentIdentityAttribute: 'data-design-component',
+            slotAttribute: 'data-design-slot',
+            note: 'Test',
+          },
+          definitions: [],
+          resources,
+          components: {},
+        }),
+      );
+      expect(pageErrors).toEqual([]);
+      await expect(page.locator('#json-error').textContent()).resolves.toBe('');
+      await expect(page.locator('#summary-kind').textContent()).resolves.toBe('Design System');
+      await expect(page.locator('#import').isVisible()).resolves.toBe(true);
+      await expect(page.locator('#status').getAttribute('class')).resolves.not.toContain('error');
+      await page.evaluate(() =>
+        window.onmessage?.({
+          data: {
+            pluginMessage: {
+              type: 'INSPECTION',
+              requestId: 1,
+              inspection: {
+                kind: 'design-system',
+                managedPageExists: true,
+                items: [
+                  { stableId: 'color/test', kind: 'color', exists: true },
+                  { stableId: 'text/test', kind: 'text-style', exists: false },
+                  { stableId: 'asset/test', kind: 'asset', exists: false },
+                ],
+                deletions: [{ stableId: 'asset/legacy', kind: 'asset' }],
+              },
+            },
+          },
+        } as MessageEvent),
+      );
+      await expect(page.locator('.availability.update').count()).resolves.toBeGreaterThan(0);
+      await expect(page.locator('.availability.new').count()).resolves.toBeGreaterThan(0);
+      await expect(page.locator('.availability.delete').count()).resolves.toBe(1);
+      const importBox = await page.locator('#import').boundingBox();
+      expect(importBox && importBox.y + importBox.height).toBeLessThanOrEqual(720);
+      await expect(page.locator('#import').isVisible()).resolves.toBe(true);
+
+      await page.locator('#tab-json').evaluate((node) => (node as HTMLButtonElement).click());
+      await expect(page.locator('#json').inputValue()).resolves.toContain('"kind":"design-system"');
+      await page.locator('#json').evaluate((node, value) => {
+        const textarea = node as HTMLTextAreaElement;
+        textarea.value = value;
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      }, screens);
+      await page.locator('#tab-file').evaluate((node) => (node as HTMLButtonElement).click());
+      await page.waitForTimeout(50);
+      await expect(page.locator('#summary-kind').textContent()).resolves.toBe('Screens');
+      await page.evaluate(() =>
+        window.onmessage?.({
+          data: {
+            pluginMessage: {
+              type: 'INSPECTION',
+              requestId: 2,
+              inspection: {
+                kind: 'screens',
+                managedPageExists: true,
+                items: [
+                  { stableId: 'AppShell/desktop', kind: 'component', exists: false },
+                  { stableId: 'Drawer/', kind: 'component', exists: false },
+                ],
+                deletions: [],
+              },
+            },
+          },
+        } as MessageEvent),
+      );
+      await page.waitForTimeout(50);
+      await expect(page.locator('#status').textContent()).resolves.toContain(
+        '2 required Design System dependencies are missing',
+      );
+      await expect(page.locator('.summary-list').textContent()).resolves.toContain('AppShell');
+      await expect(page.locator('.summary-list').textContent()).resolves.toContain('Drawer');
+      await expect(page.locator('.resource-kind').count()).resolves.toBe(2);
+      await expect(
+        page
+          .locator('details[open]')
+          .filter({ hasText: 'Missing Design System dependencies' })
+          .count(),
+      ).resolves.toBe(1);
+      await expect(page.locator('#import').isDisabled()).resolves.toBe(true);
+
+      await page.evaluate(() =>
+        window.onmessage?.({
+          data: {
+            pluginMessage: {
+              type: 'INSPECTION_ERROR',
+              requestId: 2,
+              message: 'Unavailable',
+            },
+          },
+        } as MessageEvent),
+      );
+      await page.waitForTimeout(50);
+      await expect(page.locator('#import').isDisabled()).resolves.toBe(true);
+    } finally {
+      await browser.close();
+    }
+  }, 15_000);
+});

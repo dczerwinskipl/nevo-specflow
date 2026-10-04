@@ -1,0 +1,43 @@
+:is(.text-input, .text-area):not([data-control-surface='embedded']):hover:not(:disabled):not(
+    :is([aria-invalid='true'], [aria-invalid='grammar'], [aria-invalid='spelling'])
+  ),
+.input-group:hover:not([data-disabled='true']):not(
+    :has(> :is([aria-invalid='true'], [aria-invalid='grammar'], [aria-invalid='spelling']))
+  ) {
+  border-color: var(--color-border-strong);
+}
+
+:is(.text-input, .text-area):not([data-control-surface='embedded']):focus-visible,
+:is(.text-input, .text-area):not([data-control-surface='embedded'])[data-design-prop-state='focus'],
+.input-group:focus-within:not([data-disabled='true']) {
+  border-color: var(--color-focus-ring);
+  outline: none;
+}
+
+:is(.text-input, .text-area)[data-control-surface='embedded']:focus-visible {
+  outline: none;
+}
+
+:is(.text-input, .text-area):not([data-control-surface='embedded']):is(
+    [aria-invalid='true'],
+    [aria-invalid='grammar'],
+    [aria-invalid='spelling']
+  ),
+.input-group:not([data-disabled='true']):has(
+    > :is([aria-invalid='true'], [aria-invalid='grammar'], [aria-invalid='spelling'])
+  ) {
+  border-color: var(--color-border-error);
+}
+
+:is(.text-input, .text-area):not([data-control-surface='embedded']):is(
+    [aria-invalid='true'],
+    [aria-invalid='grammar'],
+    [aria-invalid='spelling']
+  ):focus-visible,
+.input-group:focus-within:not([data-disabled='true']):has(
+    > :is([aria-invalid='true'], [aria-invalid='grammar'], [aria-invalid='spelling'])
+  ) {
+  border-color: var(--color-border-error);
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}

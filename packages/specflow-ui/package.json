@@ -1,0 +1,39 @@
+{
+  "name": "@nevo/specflow-ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Nevo SpecFlow product frontend.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/App.tsx",
+    "./brand": "./src/brand/index.ts",
+    "./brand/figma": "./src/brand/nevo/figmaDesignSystem.ts",
+    "./brand/figma-resources": "./src/brand/nevo/figmaResources.ts",
+    "./figma": "./src/app/figmaRegistry.ts"
+  },
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite --host 127.0.0.1",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@nevo/figma-capture": "workspace:*",
+    "@nevo/figma-core": "workspace:*",
+    "@nevo/ui": "workspace:*",
+    "@tanstack/react-router": "1.170.41",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "tailwind-variants": "3.3.1"
+  },
+  "devDependencies": {
+    "@storybook/react-vite": "10.6.1",
+    "@tailwindcss/vite": "4.3.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "vite": "8.3.2",
+    "vitest": "5.0.3"
+  }
+}

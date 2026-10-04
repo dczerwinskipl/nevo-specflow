@@ -1,0 +1,40 @@
+name: Chromatic
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: chromatic-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: chromatic
+    runs-on: ubuntu-latest
+    env:
+      CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+
+      - name: Build Storybook workspace dependencies
+        if: env.CHROMATIC_PROJECT_TOKEN != ''
+        run: pnpm exec turbo run build --filter=@nevo/ui
+
+      - name: Publish Storybook and run visual tests
+        if: env.CHROMATIC_PROJECT_TOKEN != ''
+        run: pnpm chromatic
+
+      # Fork pull requests cannot read repository secrets. Keeping the job green avoids
+      # leaving an informational visual check permanently pending for those contributors.
+      - name: Explain skipped visual tests
+        if: env.CHROMATIC_PROJECT_TOKEN == ''
+        run: echo "Chromatic skipped because CHROMATIC_PROJECT_TOKEN is unavailable."

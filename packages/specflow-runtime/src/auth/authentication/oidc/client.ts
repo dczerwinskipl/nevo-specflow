@@ -19,6 +19,7 @@ import {
 
 export interface OidcIdentity {
   readonly email: string;
+  readonly name: string;
 }
 
 export interface OidcStart {
@@ -93,7 +94,8 @@ export function createOidcClient(provider: RuntimeOidcEnabledProviderConfig): Oi
         throw oidcIdentityClaimsError();
       }
 
-      return { email };
+      const claimedName = typeof claims?.name === 'string' ? claims.name.trim() : '';
+      return { email, name: claimedName || email };
     },
   };
 }

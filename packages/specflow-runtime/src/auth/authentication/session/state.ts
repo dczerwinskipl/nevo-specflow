@@ -4,6 +4,7 @@ import type { AuthSessionPolicy } from './policy';
 
 export interface StoredAuthSession {
   readonly userId: string;
+  readonly userName?: string;
   readonly authenticatedWith: AuthSessionMethod;
 }
 

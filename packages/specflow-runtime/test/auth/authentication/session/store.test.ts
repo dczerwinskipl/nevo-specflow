@@ -71,13 +71,18 @@ describe('InMemoryAuthStore', () => {
     });
 
     const replacement = store.createSession(
-      { userId: 'one', authenticatedWith: { kind: 'oidc', providerId: 'company' } },
+      {
+        userId: 'one',
+        userName: 'OIDC User',
+        authenticatedWith: { kind: 'oidc', providerId: 'company' },
+      },
       current,
     );
 
     expect(store.getSession(current)).toBeNull();
     expect(store.getSession(replacement)).toEqual({
       userId: 'one',
+      userName: 'OIDC User',
       authenticatedWith: { kind: 'oidc', providerId: 'company' },
     });
   });

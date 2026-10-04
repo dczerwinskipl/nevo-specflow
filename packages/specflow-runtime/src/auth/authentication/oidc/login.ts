@@ -152,7 +152,11 @@ export async function completeOidcLogin(
     return {
       ok: true,
       sessionId: store.createSession(
-        { userId, authenticatedWith: { kind: 'oidc', providerId } },
+        {
+          userId,
+          userName: identity.name,
+          authenticatedWith: { kind: 'oidc', providerId },
+        },
         currentSessionId,
       ),
       returnTo: consumption.transaction.returnTo,

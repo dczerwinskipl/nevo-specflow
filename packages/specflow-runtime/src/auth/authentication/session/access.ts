@@ -10,7 +10,7 @@ export function getAuthSession(
 ): AuthSession {
   const stored = store.getSession(sessionId);
   return stored
-    ? authenticatedSession(auth, stored.userId, stored.authenticatedWith)
+    ? authenticatedSession(auth, stored.userId, stored.authenticatedWith, stored.userName)
     : unauthenticatedSession(auth);
 }
 

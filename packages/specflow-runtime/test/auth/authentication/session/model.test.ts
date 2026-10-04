@@ -54,14 +54,19 @@ describe('authentication session model', () => {
     expect(unauthenticatedSession(localAuth)).toEqual({
       authenticationRequired: false,
       authenticated: false,
-      user: { id: 'demo-user', name: 'Demo User' },
+      user: { id: 'demo-user', name: 'OIDC Display Name' },
       loginMethods: { password: { enabled: false }, oidc: [] },
     });
   });
 
-  it('projects the concrete OIDC instance without provider-private state', () => {
+  it('projects OIDC profile data from the authenticated session', () => {
     expect(
-      authenticatedSession(auth, 'demo-user', { kind: 'oidc', providerId: 'company' }),
+      authenticatedSession(
+        auth,
+        'demo-user',
+        { kind: 'oidc', providerId: 'company' },
+        'OIDC Display Name',
+      ),
     ).toEqual({
       authenticationRequired: true,
       authenticated: true,

@@ -36,7 +36,7 @@ describe('OIDC login operation', () => {
         }),
       complete: (_callbackUrl, stored) => {
         expect(stored).toMatchObject(transaction);
-        return Promise.resolve({ email: ' Demo@Example.com ' });
+        return Promise.resolve({ email: ' Demo@Example.com ', name: 'Dominik Example' });
       },
     };
 
@@ -68,6 +68,7 @@ describe('OIDC login operation', () => {
     if (completed.ok) {
       expect(store.getSession(completed.sessionId)).toEqual({
         userId: 'demo-user',
+        userName: 'Dominik Example',
         authenticatedWith: { kind: 'oidc', providerId: 'company' },
       });
     }
@@ -109,7 +110,7 @@ describe('OIDC login operation', () => {
       start: () => Promise.reject(new Error('not used')),
       complete: () => {
         completeCalls += 1;
-        return Promise.resolve({ email: 'demo@example.com' });
+        return Promise.resolve({ email: 'demo@example.com', name: 'Demo User' });
       },
     };
 

@@ -81,8 +81,16 @@ export function SpecFlowShell({
   const capture = useDesignMetadata('SpecFlowApplicationShell', { viewport: 'desktop' });
 
   const signOut = async () => {
-    await auth.logout();
-    await router.navigate({ to: '/login', search: { returnTo: '/' }, replace: true });
+    try {
+      await auth.logout();
+      await router.navigate({ to: '/login', search: { returnTo: '/' }, replace: true });
+    } catch {
+      await router.navigate({
+        to: '/runtime-unavailable',
+        search: { returnTo: '/' },
+        replace: true,
+      });
+    }
   };
 
   return (

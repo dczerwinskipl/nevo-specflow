@@ -14,7 +14,7 @@ runtime:
     tls:
       enabled: false
 
-  auth:
+  authentication:
     mode: none
     users:
       demo-user:

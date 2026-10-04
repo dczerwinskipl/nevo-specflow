@@ -8,8 +8,8 @@ runtime:
       # certFile: .nevo/local/tls/cert.pem
       # keyFile: .nevo/local/tls/key.pem
 
-  auth:
-    # For auth.mode=none, select the workstation attribution identity here.
+  authentication:
+    # For authentication.mode=none, select the workstation attribution identity here.
     # localUserId: demo-user
 
     providers:

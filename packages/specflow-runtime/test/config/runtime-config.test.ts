@@ -379,7 +379,7 @@ describe('runtime configuration', () => {
     config.auth.mode = 'none';
 
     expect(() => parseRuntimeConfig(config)).toThrowError(
-      /auth\.mode=none cannot enable authentication providers/,
+      /authentication\.mode=none cannot enable authentication providers/,
     );
   });
 
@@ -394,7 +394,7 @@ describe('runtime configuration', () => {
           localUserId: 'demo-user',
         },
       }),
-    ).toThrowError(/auth\.localUserId is only valid when auth\.mode=none/);
+    ).toThrowError(/authentication\.localUserId is only valid when auth\.mode=none/);
   });
 
   it('rejects provider mappings to unknown users', () => {
@@ -507,7 +507,7 @@ describe('runtime configuration', () => {
     await writeFile(join(cwd, '.nevo/config.yaml'), PROJECT_CONFIG, 'utf8');
     await writeFile(
       join(cwd, '.nevo/local/config.yaml'),
-      'runtime:\n  auth:\n    localUserId: demo-user\n',
+      'runtime:\n  authentication:\n    localUserId: demo-user\n',
       'utf8',
     );
 
@@ -632,7 +632,7 @@ describe('runtime configuration', () => {
       join(cwd, '.nevo/local/config.yaml'),
       [
         'runtime:',
-        '  auth:',
+        '  authentication:',
         '    providers:',
         '      oidc:',
         '        clientSecret: [super-secret-value',

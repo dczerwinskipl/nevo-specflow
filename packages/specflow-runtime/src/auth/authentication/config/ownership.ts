@@ -19,22 +19,22 @@ const LOCAL_OIDC_INSTANCE_KEYS = new Set(['clientSecret']);
 export function assertProjectAuthConfigOwnership(value: unknown): void {
   if (value === undefined) return;
 
-  const auth = record(value, 'auth');
-  onlyKeys(auth, PROJECT_AUTH_KEYS, 'auth');
+  const auth = record(value, 'authentication');
+  onlyKeys(auth, PROJECT_AUTH_KEYS, 'authentication');
 
   if (auth.providers === undefined) return;
-  const providers = record(auth.providers, 'auth.providers');
-  onlyKeys(providers, PROVIDER_KEYS, 'auth.providers');
+  const providers = record(auth.providers, 'authentication.providers');
+  onlyKeys(providers, PROVIDER_KEYS, 'authentication.providers');
 
   if (providers.password !== undefined) {
-    const password = record(providers.password, 'auth.providers.password');
-    onlyKeys(password, PROJECT_PASSWORD_KEYS, 'auth.providers.password');
+    const password = record(providers.password, 'authentication.providers.password');
+    onlyKeys(password, PROJECT_PASSWORD_KEYS, 'authentication.providers.password');
   }
 
   if (providers.oidc !== undefined) {
     assertOidcOwnership(
       providers.oidc,
-      'auth.providers.oidc',
+      'authentication.providers.oidc',
       PROJECT_OIDC_KEYS,
       PROJECT_OIDC_INSTANCE_KEYS,
     );
@@ -44,22 +44,22 @@ export function assertProjectAuthConfigOwnership(value: unknown): void {
 export function assertLocalAuthConfigOwnership(value: unknown): void {
   if (value === undefined) return;
 
-  const auth = record(value, 'auth');
-  onlyKeys(auth, LOCAL_AUTH_KEYS, 'auth');
+  const auth = record(value, 'authentication');
+  onlyKeys(auth, LOCAL_AUTH_KEYS, 'authentication');
 
   if (auth.providers === undefined) return;
-  const providers = record(auth.providers, 'auth.providers');
-  onlyKeys(providers, PROVIDER_KEYS, 'auth.providers');
+  const providers = record(auth.providers, 'authentication.providers');
+  onlyKeys(providers, PROVIDER_KEYS, 'authentication.providers');
 
   if (providers.password !== undefined) {
-    const password = record(providers.password, 'auth.providers.password');
-    onlyKeys(password, LOCAL_PASSWORD_KEYS, 'auth.providers.password');
+    const password = record(providers.password, 'authentication.providers.password');
+    onlyKeys(password, LOCAL_PASSWORD_KEYS, 'authentication.providers.password');
   }
 
   if (providers.oidc !== undefined) {
     assertOidcOwnership(
       providers.oidc,
-      'auth.providers.oidc',
+      'authentication.providers.oidc',
       LOCAL_OIDC_KEYS,
       LOCAL_OIDC_INSTANCE_KEYS,
     );

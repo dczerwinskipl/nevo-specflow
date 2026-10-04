@@ -101,7 +101,7 @@ The entire `.nevo/local/` directory is Git-ignored and is also reserved for futu
 local state. Authentication secrets, including password hashes and per-instance OIDC client secrets, are
 local-only. Project/local provenance is validated before merge; local config cannot change canonical
 users, auth mode, provider policy, OIDC mapping, server bind/origin, or TLS enablement. OIDC project
-configuration is a map under `auth.providers.oidc.instances`; each instance has a stable provider id
+configuration is a map under `authentication.providers.oidc.instances`; each instance has a stable provider id
 and a user-facing name, while the matching local instance contributes only its client secret.
 Security-sensitive auth maps use replacement rather than additive merge semantics. Parsed identity,
 account, and OIDC mapping dictionaries use own-property lookups and prototype-safe storage so special
@@ -109,7 +109,7 @@ keys such as `__proto__` or `toString` cannot become inherited identities. YAML 
 reported without echoing source snippets, so malformed local secret configuration does not leak
 secret text to stderr.
 
-`auth.mode` supports:
+`authentication.mode` supports:
 
 - `none`: no login provider is enabled; optional `localUserId` may provide attribution;
 - `required`: at least one login provider is enabled and `localUserId` is forbidden.

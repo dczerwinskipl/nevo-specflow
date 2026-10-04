@@ -41,7 +41,7 @@ describe('startRuntime', () => {
         `    port: ${port}`,
         '    tls:',
         '      enabled: false',
-        '  auth:',
+        '  authentication:',
         '    mode: none',
         '    providers:',
         '      password:',

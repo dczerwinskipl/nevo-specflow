@@ -40,10 +40,10 @@ export async function initRuntime(options: RuntimeInitOptions): Promise<RuntimeI
 
   const projectConfig = {
     server,
-    auth: auth.projectAuth,
+    authentication: auth.projectAuth,
     authorization: authorization.projectAuthorization,
   };
-  const localConfig = { auth: auth.localAuth };
+  const localConfig = { authentication: auth.localAuth };
 
   validateGeneratedRuntimeConfig(projectConfig, localConfig);
 

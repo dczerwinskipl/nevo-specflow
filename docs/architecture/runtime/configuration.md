@@ -50,10 +50,10 @@ Current shape:
 ```yaml
 runtime:
   server: ...
-  auth: ...
+  authentication: ...
 ```
 
-Runtime owns everything inside the `runtime` subtree. Within Runtime, auth owns `auth` and Runtime
+Runtime owns everything inside the `runtime` subtree. Within Runtime, authentication owns `authentication` and Runtime
 server composition owns `server`. Runtime initialization (`initRuntime`) owns their prompts,
 defaults, project/local split, password hashing, secret policy, merge rules, and validation.
 
@@ -63,7 +63,7 @@ the aggregate documents without reconstructing Runtime settings.
 Server provenance is explicit too: `host`, `port`, `publicOrigin`, and `tls.enabled` are
 project-owned policy. Workstation-local Runtime config may supply only TLS certificate/key paths.
 The merged Runtime config is validated after composition, so local credentials cannot weaken
-project-owned auth or server policy.
+project-owned authentication or server policy.
 
 This namespace boundary is deliberate. Future AI, workflow, repository, or integration
 configuration can add their own top-level capability namespace without becoming an unknown Runtime
@@ -80,7 +80,7 @@ Current ownership is explicit:
 
 - `server`: project owns `host`, `port`, `publicOrigin`, and `tls.enabled`; local owns
   `tls.certFile` and `tls.keyFile`.
-- `auth`: project owns `mode`, `users`, provider `enabled`, and OIDC
+- `authentication`: project owns `mode`, `users`, provider `enabled`, and OIDC
   `issuer`/`clientId`/`allowedEmails`; local owns `localUserId`, password `accounts`, and
   OIDC `clientSecret`.
 

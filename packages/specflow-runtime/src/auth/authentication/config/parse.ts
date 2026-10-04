@@ -44,11 +44,11 @@ const OIDC_INSTANCE_KEYS = new Set([
 const USER_KEYS = new Set(['name']);
 
 export function parseAuthConfig(value: unknown): RuntimeAuthConfig {
-  const auth = record(value, 'auth');
-  onlyKeys(auth, AUTH_KEYS, 'auth');
+  const auth = record(value, 'authentication');
+  onlyKeys(auth, AUTH_KEYS, 'authentication');
 
-  const providers = record(auth.providers, 'auth.providers');
-  onlyKeys(providers, PROVIDER_KEYS, 'auth.providers');
+  const providers = record(auth.providers, 'authentication.providers');
+  onlyKeys(providers, PROVIDER_KEYS, 'authentication.providers');
 
   const users = parseUsers(auth.users);
   const password = parsePasswordProvider(providers.password);
@@ -59,13 +59,13 @@ export function parseAuthConfig(value: unknown): RuntimeAuthConfig {
     throw new RuntimeConfigError("auth.mode must be either 'none' or 'required'.");
   }
 
-  const localUserId = optionalNonEmptyString(auth.localUserId, 'auth.localUserId');
+  const localUserId = optionalNonEmptyString(auth.localUserId, 'authentication.localUserId');
   if (localUserId) {
-    assertUserExists(users, localUserId, 'auth.localUserId');
+    assertUserExists(users, localUserId, 'authentication.localUserId');
   }
 
   for (const [username, account] of Object.entries(password.accounts)) {
-    assertUserExists(users, account.userId, `auth.providers.password.accounts.${username}.userId`);
+    assertUserExists(users, account.userId, `authentication.providers.password.accounts.${username}.userId`);
   }
 
   for (const [providerId, provider] of Object.entries(oidc.instances)) {
@@ -73,30 +73,30 @@ export function parseAuthConfig(value: unknown): RuntimeAuthConfig {
       assertUserExists(
         users,
         userId,
-        `auth.providers.oidc.instances.${providerId}.allowedEmails.${email}`,
+        `authentication.providers.oidc.instances.${providerId}.allowedEmails.${email}`,
       );
     }
   }
 
   if (password.enabled && Object.keys(password.accounts).length === 0) {
     throw new RuntimeConfigError(
-      'auth.providers.password.accounts must contain at least one account when password auth is enabled.',
+      'authentication.providers.password.accounts must contain at least one account when password auth is enabled.',
     );
   }
 
   const hasEnabledOidc = Object.values(oidc.instances).some((provider) => provider.enabled);
 
   if (mode === 'none' && (password.enabled || hasEnabledOidc)) {
-    throw new RuntimeConfigError('auth.mode=none cannot enable authentication providers.');
+    throw new RuntimeConfigError('authentication.mode=none cannot enable authentication providers.');
   }
 
   if (mode === 'required' && localUserId) {
-    throw new RuntimeConfigError('auth.localUserId is only valid when auth.mode=none.');
+    throw new RuntimeConfigError('authentication.localUserId is only valid when auth.mode=none.');
   }
 
   if (mode === 'required' && !password.enabled && !hasEnabledOidc) {
     throw new RuntimeConfigError(
-      'auth.mode=required requires password login or at least one enabled OIDC provider.',
+      'authentication.mode=required requires password login or at least one enabled OIDC provider.',
     );
   }
 
@@ -111,12 +111,12 @@ export function parseAuthConfig(value: unknown): RuntimeAuthConfig {
 function parseUsers(value: unknown): Readonly<Record<string, RuntimeUserConfig>> {
   if (value === undefined) return dictionary<RuntimeUserConfig>();
 
-  const users = record(value, 'auth.users');
+  const users = record(value, 'authentication.users');
   const result = dictionary<RuntimeUserConfig>();
 
   for (const [userId, rawUser] of Object.entries(users)) {
-    const path = `auth.users.${userId}`;
-    nonEmptyKey(userId, 'auth.users');
+    const path = `authentication.users.${userId}`;
+    nonEmptyKey(userId, 'authentication.users');
     const user = record(rawUser, path);
     onlyKeys(user, USER_KEYS, path);
     result[userId] = { name: nonEmptyString(user.name, `${path}.name`) };
@@ -126,7 +126,7 @@ function parseUsers(value: unknown): Readonly<Record<string, RuntimeUserConfig>>
 }
 
 function parsePasswordProvider(value: unknown): RuntimePasswordProviderConfig {
-  const path = 'auth.providers.password';
+  const path = 'authentication.providers.password';
   const config = record(value, path);
   onlyKeys(config, PASSWORD_KEYS, path);
 
@@ -171,7 +171,7 @@ function parsePasswordProvider(value: unknown): RuntimePasswordProviderConfig {
 }
 
 function parseOidcProviders(value: unknown): RuntimeOidcProvidersConfig {
-  const path = 'auth.providers.oidc';
+  const path = 'authentication.providers.oidc';
   const config = record(value, path);
   onlyKeys(config, OIDC_CONTAINER_KEYS, path);
   const rawInstances =

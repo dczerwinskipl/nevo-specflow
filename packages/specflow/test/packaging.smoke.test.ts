@@ -243,7 +243,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
         `    port: ${port}`,
         '    tls:',
         '      enabled: false',
-        '  auth:',
+        '  authentication:',
         '    mode: none',
         '    providers:',
         '      password:',

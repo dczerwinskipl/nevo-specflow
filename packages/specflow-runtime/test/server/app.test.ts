@@ -1,7 +1,13 @@
+import Fastify from 'fastify';
 import { describe, expect, it } from 'vitest';
 
+import type { RuntimeConfig } from '../../src/config/types';
 import type { RuntimeWebApp } from '../../src/server/web-app';
-import { createRuntimeApp } from '../../src/server/app';
+import {
+  configureRuntimeApp,
+  createRuntimeApp,
+  RUNTIME_FASTIFY_OPTIONS,
+} from '../../src/server/app';
 import { oidcConfig, passwordConfig } from '../auth/support/config';
 
 function webApp(): RuntimeWebApp {
@@ -77,6 +83,35 @@ describe('Runtime product web surface', () => {
         headers: { host: 'specflow.example.com:4318' },
       });
       expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual(diagnostic);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('keeps the API diagnostic root for canonical HTTP/2 authority without Host', async () => {
+    const configured = oidcConfig({ 'demo@example.com': 'demo-user' });
+    const config: RuntimeConfig = {
+      ...configured,
+      server: {
+        ...configured.server,
+        host: '0.0.0.0',
+        publicOrigin: 'https://specflow.example.com:4318',
+      },
+    };
+    const app = Fastify(RUNTIME_FASTIFY_OPTIONS);
+
+    app.addHook('onRequest', (request, _reply, done) => {
+      delete request.raw.headers.host;
+      request.raw.headers[':authority'] = 'specflow.example.com:4318';
+      done();
+    });
+    await configureRuntimeApp(app, config);
+
+    try {
+      const response = await app.inject({ method: 'GET', url: '/' });
+      expect(response.statusCode).toBe(200);
+      expect(response.headers.location).toBeUndefined();
       expect(response.json()).toEqual(diagnostic);
     } finally {
       await app.close();

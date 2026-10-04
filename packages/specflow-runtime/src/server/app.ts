@@ -67,7 +67,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       config.server.publicOrigin &&
       !isRequestAtPublicOrigin(
         config.server.publicOrigin,
-        request.headers.host,
+        request.host,
         config.server.tls.enabled,
       )
     ) {

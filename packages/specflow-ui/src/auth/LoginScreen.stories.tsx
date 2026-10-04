@@ -76,6 +76,16 @@ export const Mobile: Story = {
   parameters: { viewport: { defaultViewport: 'mobile1' } },
 };
 
+export const MobileLongOidcName: Story = {
+  args: {
+    loginMethods: {
+      password: { enabled: false },
+      oidc: [{ id: 'northwind', name: 'Northwind Workforce Identity SSO' }],
+    },
+  },
+  parameters: { viewport: { defaultViewport: 'mobile1' } },
+};
+
 export const FigmaCapture: Story = {
   render: () => (
     <DesignCaptureProvider captureComponents={['SpecFlowLoginScreen']}>

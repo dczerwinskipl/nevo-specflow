@@ -14,5 +14,7 @@ describe('Button', () => {
     const full = renderToStaticMarkup(<Button width="full">Continue</Button>);
     expect(full).toContain('w-full');
     expect(full).not.toContain('w-fit');
+    expect(full).toContain('truncate');
+    expect(full).toContain('min-w-0');
   });
 });

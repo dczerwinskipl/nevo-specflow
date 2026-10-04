@@ -159,7 +159,8 @@ export function LoginScreenView({
                   key={provider.id}
                   aria-busy={providerPending}
                   disabled={busy}
-                  variant="secondary"
+                  title={provider.name}
+                  variant={oidcButtonVariant(loginMethods)}
                   width="full"
                   onClick={() => void onOidc?.(provider.id)}
                 >
@@ -225,6 +226,14 @@ function StandaloneAuthSurface({ children }: { readonly children: React.ReactNod
       </div>
     </div>
   );
+}
+
+export function oidcButtonVariant(
+  loginMethods: AuthLoginMethods,
+): 'primary' | 'secondary' {
+  return !loginMethods.password.enabled && loginMethods.oidc.length === 1
+    ? 'primary'
+    : 'secondary';
 }
 
 export function safeReturnTo(value: string | undefined): string {

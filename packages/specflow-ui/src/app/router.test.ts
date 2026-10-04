@@ -36,14 +36,22 @@ describe('SpecFlow router', () => {
 
   it('redirects protected app routes to standalone login and preserves returnTo', async () => {
     const router = routerAt('/ui-playground', loginRequired);
+    const redirected = waitForResolvedPath(router, '/login');
+
     await router.load();
+    await redirected;
+
     expect(router.state.location.pathname).toBe('/login');
     expect(router.state.location.search).toMatchObject({ returnTo: '/ui-playground' });
   });
 
   it('redirects an authenticated login route back into the application', async () => {
     const router = routerAt('/login?returnTo=%2Fui-playground', authenticated);
+    const redirected = waitForResolvedPath(router, '/ui-playground');
+
     await router.load();
+    await redirected;
+
     expect(router.state.location.pathname).toBe('/ui-playground');
   });
 
@@ -55,7 +63,11 @@ describe('SpecFlow router', () => {
       createMemoryHistory({ initialEntries: ['/ui-playground'] }),
       createAuthStore(api),
     );
+    const redirected = waitForResolvedPath(router, '/runtime-unavailable');
+
     await router.load();
+    await redirected;
+
     expect(router.state.location.pathname).toBe('/runtime-unavailable');
   });
 });
@@ -75,4 +87,34 @@ function fakeApi(overrides: Partial<AuthApi> = {}): AuthApi {
     logout: () => Promise.resolve(),
     ...overrides,
   };
+}
+
+function waitForResolvedPath(
+  router: ReturnType<typeof createSpecFlowRouter>,
+  pathname: string,
+): Promise<void> {
+  if (
+    router.state.status === 'idle' &&
+    router.state.resolvedLocation?.pathname === pathname
+  ) {
+    return Promise.resolve();
+  }
+
+  return new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      unsubscribe();
+      reject(
+        new Error(
+          `Timed out waiting for router to resolve ${pathname}; current location is ${router.state.location.href}.`,
+        ),
+      );
+    }, 1_000);
+
+    const unsubscribe = router.subscribe('onResolved', ({ toLocation }) => {
+      if (toLocation.pathname !== pathname) return;
+      clearTimeout(timeout);
+      unsubscribe();
+      resolve();
+    });
+  });
 }

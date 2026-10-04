@@ -2,6 +2,7 @@ export type {
   AuthMode,
   RuntimeAuthConfig,
   RuntimeOidcProviderConfig,
+  RuntimeOidcProvidersConfig,
   RuntimePasswordAccountConfig,
   RuntimePasswordProviderConfig,
   RuntimeUserConfig,

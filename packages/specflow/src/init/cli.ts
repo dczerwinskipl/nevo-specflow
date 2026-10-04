@@ -1,11 +1,16 @@
 import { relative } from 'node:path';
 
-import { initRuntime, type RuntimeInitPrompter } from '@nevo/specflow-runtime';
+import {
+  initRuntime,
+  type RuntimeInitContribution,
+  type RuntimeSetupUi,
+} from '@nevo/specflow-runtime';
 import { Command } from 'commander';
 
 import { resolveProjectLayout, type ProjectLayout } from '../project/layout';
 
 import {
+  assertProjectCanInitialize,
   initializeProject,
   type InitializeProjectOptions,
   type InitializeProjectResult,
@@ -14,8 +19,9 @@ import {
 export interface ProjectInitCommandContext {
   readonly cwd: string;
   readonly stdout: (line: string) => void;
-  readonly prompter?: RuntimeInitPrompter;
+  readonly ui?: RuntimeSetupUi;
   readonly resolveLayout?: (cwd: string) => Promise<ProjectLayout>;
+  readonly initRuntime?: (options: { ui: RuntimeSetupUi }) => Promise<RuntimeInitContribution>;
   readonly initialize?: (options: InitializeProjectOptions) => Promise<InitializeProjectResult>;
 }
 
@@ -23,15 +29,40 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
   return new Command('init')
     .description('Initialize Nevo SpecFlow configuration for this repository')
     .action(async () => {
-      const prompter = context.prompter;
-      if (!prompter) {
+      const ui = context.ui;
+      if (!ui) {
         throw new Error('Interactive project initialization is not available in this CLI context.');
       }
 
       const layout = await (context.resolveLayout ?? resolveProjectLayout)(context.cwd);
+      await assertProjectCanInitialize(layout);
+
+      const runtime = await (context.initRuntime ?? initRuntime)({ ui });
+      const contribution = {
+        projectConfig: { runtime: runtime.projectConfig },
+        localConfig: { runtime: runtime.localConfig },
+      };
+
+      ui.note(
+        [
+          ...runtime.summary,
+          '',
+          `Project config: ${relative(layout.root, layout.projectConfigPath)}`,
+          `Local config: ${relative(layout.root, layout.localConfigPath)}`,
+          '',
+          'You can change these settings later.',
+        ].join('\n'),
+        'Review',
+      );
+
+      if (!(await ui.confirm('Write configuration?', true))) {
+        ui.note('No files were written.', 'Setup cancelled');
+        return;
+      }
+
       const result = await (context.initialize ?? initializeProject)({
         layout,
-        initRuntime: () => initRuntime({ prompter }),
+        contribution,
       });
 
       context.stdout('Initialized Nevo SpecFlow.');

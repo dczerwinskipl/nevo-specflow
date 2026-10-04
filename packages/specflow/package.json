@@ -22,6 +22,7 @@
     "test:packaged": "vitest run test/packaging.smoke.test.ts --no-file-parallelism"
   },
   "dependencies": {
+    "@clack/prompts": "1.8.1",
     "@nevo/specflow-runtime": "workspace:*",
     "yaml": "2.9.1"
   },

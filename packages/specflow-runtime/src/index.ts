@@ -6,7 +6,7 @@
 export { initRuntime, type RuntimeInitOptions } from './init/runtime-init';
 export type {
   RuntimeInitContribution,
-  RuntimeInitPrompter,
-  RuntimeInitPromptChoice,
+  RuntimeSetupChoice,
+  RuntimeSetupUi,
 } from './init/contracts';
 export { startRuntime, type RuntimeHandle, type RuntimeStartOptions } from './runtime';

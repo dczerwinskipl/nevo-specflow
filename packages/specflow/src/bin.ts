@@ -5,7 +5,10 @@ import process from 'node:process';
 
 import { CommanderError } from 'commander';
 
-import { TerminalProjectInitPrompter } from './init/terminal-prompter';
+import {
+  ClackProjectSetupUi,
+  ProjectSetupCancelledError,
+} from './init/clack-setup-ui';
 import { createProgram } from './program';
 
 async function main(argv: string[]): Promise<number> {
@@ -14,14 +17,13 @@ async function main(argv: string[]): Promise<number> {
   process.once('SIGINT', abort);
   process.once('SIGTERM', abort);
 
-  const initPrompter = new TerminalProjectInitPrompter(process.stdin, process.stdout);
   const program = createProgram({
     stdout: (line) => process.stdout.write(`${line}\n`),
     stderr: (line) => process.stderr.write(`${line}\n`),
     readPasswordFromStdin: readStdin,
     signal: shutdown.signal,
     cwd: process.cwd(),
-    initPrompter,
+    initUi: new ClackProjectSetupUi(),
   });
 
   try {
@@ -32,10 +34,10 @@ async function main(argv: string[]): Promise<number> {
       if (err.code === 'commander.helpDisplayed' || err.code === 'commander.version') return 0;
       return 2;
     }
+    if (err instanceof ProjectSetupCancelledError) return 0;
     process.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`);
     return 1;
   } finally {
-    initPrompter.close();
     process.off('SIGINT', abort);
     process.off('SIGTERM', abort);
   }

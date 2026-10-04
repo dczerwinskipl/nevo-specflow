@@ -31,7 +31,7 @@ runtime:
       password:
         enabled: false
       oidc:
-        enabled: false
+        instances: {}
 `;
 
 function loadFrom(cwd: string) {
@@ -107,11 +107,16 @@ function requiredAuthConfig() {
           },
         },
         oidc: {
-          enabled: true,
-          issuer: 'https://issuer.example.test',
-          clientId: 'client-id',
-          clientSecret: 'fake-local-secret',
-          allowedEmails,
+          instances: {
+            company: {
+              name: 'Company SSO',
+              enabled: true,
+              issuer: 'https://issuer.example.test',
+              clientId: 'client-id',
+              clientSecret: 'fake-local-secret',
+              allowedEmails,
+            },
+          },
         },
       },
     },
@@ -131,7 +136,7 @@ describe('runtime configuration', () => {
           mode: 'none',
           providers: {
             password: { enabled: false },
-            oidc: { enabled: false },
+            oidc: { instances: {} },
           },
         },
       }),
@@ -146,7 +151,7 @@ describe('runtime configuration', () => {
         users: {},
         providers: {
           password: { enabled: false, accounts: {} },
-          oidc: { enabled: false, allowedEmails: {} },
+          oidc: { instances: {} },
         },
       },
     });
@@ -174,7 +179,7 @@ describe('runtime configuration', () => {
 
   it('rejects OIDC email collisions after normalization', () => {
     const config = requiredAuthConfig();
-    config.auth.providers.oidc.allowedEmails = {
+    config.auth.providers.oidc.instances.company.allowedEmails = {
       'Demo@example.com': 'demo-user',
       ' demo@example.com ': 'demo-user',
     };
@@ -186,7 +191,8 @@ describe('runtime configuration', () => {
 
   it('requires issuer, client id, and client secret when OIDC is enabled', () => {
     const config = requiredAuthConfig();
-    const { issuer, ...oidc } = config.auth.providers.oidc;
+    const company = config.auth.providers.oidc.instances.company;
+    const { issuer, ...provider } = company;
     expect(issuer).toBe('https://issuer.example.test');
 
     expect(() =>
@@ -196,7 +202,7 @@ describe('runtime configuration', () => {
           ...config.auth,
           providers: {
             ...config.auth.providers,
-            oidc,
+            oidc: { instances: { company: provider } },
           },
         },
       }),
@@ -234,7 +240,7 @@ describe('runtime configuration', () => {
                 },
               },
             },
-            oidc: { enabled: false },
+            oidc: { instances: {} },
           },
         },
       }),
@@ -262,7 +268,7 @@ describe('runtime configuration', () => {
                 },
               },
             },
-            oidc: { enabled: false },
+            oidc: { instances: {} },
           },
         },
       }),
@@ -323,7 +329,7 @@ describe('runtime configuration', () => {
           mode: 'none',
           providers: {
             password: { enabled: false },
-            oidc: { enabled: false },
+            oidc: { instances: {} },
           },
         },
       }),
@@ -342,7 +348,7 @@ describe('runtime configuration', () => {
           mode: 'none',
           providers: {
             password: { enabled: false },
-            oidc: { enabled: false },
+            oidc: { instances: {} },
           },
         },
       }),
@@ -361,11 +367,11 @@ describe('runtime configuration', () => {
           mode: 'required',
           providers: {
             password: { enabled: false },
-            oidc: { enabled: false },
+            oidc: { instances: {} },
           },
         },
       }),
-    ).toThrowError(/requires at least one enabled authentication provider/);
+    ).toThrowError(/requires password login or at least one enabled OIDC provider/);
   });
 
   it('does not allow authentication providers in none mode', () => {
@@ -411,7 +417,7 @@ describe('runtime configuration', () => {
                 },
               },
             },
-            oidc: { enabled: false },
+            oidc: { instances: {} },
           },
         },
       }),
@@ -431,7 +437,7 @@ describe('runtime configuration', () => {
           mode: 'none',
           providers: {
             password: { enabled: false },
-            oidc: { enabled: false },
+            oidc: { instances: {} },
           },
         },
       }),
@@ -532,14 +538,14 @@ describe('runtime configuration', () => {
     await writeFile(
       join(cwd, '.nevo/config.yaml'),
       PROJECT_CONFIG.replace(
-        'oidc:\n        enabled: false',
-        'oidc:\n        enabled: false\n        clientSecret: committed-secret',
+        'oidc:\n        instances: {}',
+        'oidc:\n        instances:\n          company:\n            clientSecret: committed-secret',
       ),
       'utf8',
     );
 
     await expect(loadFrom(cwd)).rejects.toThrowError(
-      /Unknown configuration key 'auth\.providers\.oidc\.clientSecret'/,
+      /Unknown configuration key 'auth\.providers\.oidc\.instances\.company\.clientSecret'/,
     );
   });
 

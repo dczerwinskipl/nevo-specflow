@@ -6,7 +6,7 @@ runtime:
   server:
     host: 127.0.0.1
     port: 4318
-    # OIDC init uses http://127.0.0.1:4318 so the browser origin matches the default bind host.
+    # Required when at least one OIDC instance is enabled.
     # A non-loopback required-auth Runtime must terminate TLS itself.
     # publicOrigin: http://127.0.0.1:4318
     tls:
@@ -21,10 +21,19 @@ runtime:
       password:
         enabled: false
       oidc:
-        enabled: false
+        instances: {}
+
+        # Example:
+        # instances:
+        #   company:
+        #     name: Company SSO
+        #     enabled: true
+        #     issuer: https://issuer.example.com
+        #     clientId: specflow-client
+        #     allowedEmails:
+        #       developer@example.com: demo-user
 
   authorization:
-    # Project-owned role assignments. User ids must exist in runtime.auth.users.
     assignments:
       - userId: demo-user
         role: admin

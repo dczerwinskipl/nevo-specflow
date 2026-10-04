@@ -4,7 +4,11 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { type ConfigWriteOptions, initializeProject } from '../src/init/initialize-project';
+import {
+  assertProjectCanInitialize,
+  type ConfigWriteOptions,
+  initializeProject,
+} from '../src/init/initialize-project';
 import type { ProjectLayout } from '../src/project/layout';
 
 const dirs: string[] = [];
@@ -29,19 +33,18 @@ function layout(root: string): ProjectLayout {
   };
 }
 
-const runtimeContribution = () =>
-  Promise.resolve({
-    projectConfig: { marker: 'runtime-project' },
-    localConfig: { marker: 'runtime-local' },
-  });
+const contribution = {
+  projectConfig: { runtime: { marker: 'runtime-project' } },
+  localConfig: { runtime: { marker: 'runtime-local' } },
+};
 
 describe('project initialization', () => {
-  it('writes Runtime-owned contributions under the product-owned runtime namespace', async () => {
+  it('writes already-collected product contributions', async () => {
     const root = await repository();
 
     const result = await initializeProject({
       layout: layout(root),
-      initRuntime: runtimeContribution,
+      contribution,
       isIgnored: () => Promise.resolve(true),
     });
 
@@ -64,7 +67,7 @@ describe('project initialization', () => {
 
     await initializeProject({
       layout: layout(root),
-      initRuntime: runtimeContribution,
+      contribution,
       isIgnored: () => Promise.resolve(true),
     });
 
@@ -72,49 +75,25 @@ describe('project initialization', () => {
     expect(nevoFiles.some((path) => path.includes('.init.') && path.endsWith('.tmp'))).toBe(false);
   });
 
-  it('does not overwrite project config created while the wizard is running', async () => {
+  it('rechecks admission at persistence time after an earlier wizard admission check', async () => {
     const root = await repository();
     const projectConfigPath = join(root, '.nevo', 'config.yaml');
-    const concurrentContent = 'concurrent: project\\n';
+
+    await assertProjectCanInitialize(layout(root));
+    await writeFile(projectConfigPath, 'concurrent: project\n', 'utf8');
 
     await expect(
       initializeProject({
         layout: layout(root),
-        initRuntime: async () => {
-          await writeFile(projectConfigPath, concurrentContent, 'utf8');
-          return runtimeContribution();
-        },
+        contribution,
         isIgnored: () => Promise.resolve(true),
       }),
-    ).rejects.toThrowError(/Refusing to overwrite existing SpecFlow config/);
+    ).rejects.toThrowError(/already initialized/);
 
-    await expect(readFile(projectConfigPath, 'utf8')).resolves.toBe(concurrentContent);
+    await expect(readFile(projectConfigPath, 'utf8')).resolves.toBe('concurrent: project\n');
     await expect(
       readFile(join(root, '.nevo', 'local', 'config.yaml'), 'utf8'),
     ).rejects.toMatchObject({ code: 'ENOENT' });
-  });
-
-  it('does not overwrite local credentials created while the wizard is running', async () => {
-    const root = await repository();
-    const localConfigPath = join(root, '.nevo', 'local', 'config.yaml');
-    const concurrentContent = 'concurrent: local\\n';
-
-    await expect(
-      initializeProject({
-        layout: layout(root),
-        initRuntime: async () => {
-          await mkdir(join(root, '.nevo', 'local'), { recursive: true });
-          await writeFile(localConfigPath, concurrentContent, 'utf8');
-          return runtimeContribution();
-        },
-        isIgnored: () => Promise.resolve(true),
-      }),
-    ).rejects.toThrowError(/Refusing to overwrite existing SpecFlow config/);
-
-    await expect(readFile(localConfigPath, 'utf8')).resolves.toBe(concurrentContent);
-    await expect(readFile(join(root, '.nevo', 'config.yaml'), 'utf8')).rejects.toMatchObject({
-      code: 'ENOENT',
-    });
   });
 
   it('does not treat existing committed .nevo definitions as an initialized config', async () => {
@@ -123,31 +102,12 @@ describe('project initialization', () => {
     await expect(
       initializeProject({
         layout: layout(root),
-        initRuntime: runtimeContribution,
+        contribution,
         isIgnored: () => Promise.resolve(true),
       }),
     ).resolves.toMatchObject({
       projectConfigPath: join(root, '.nevo', 'config.yaml'),
     });
-  });
-
-  it('refuses an existing project config before invoking Runtime initialization', async () => {
-    const root = await repository();
-    await writeFile(join(root, '.nevo', 'config.yaml'), 'existing: true\n', 'utf8');
-    let runtimeInitCalls = 0;
-
-    await expect(
-      initializeProject({
-        layout: layout(root),
-        initRuntime: () => {
-          runtimeInitCalls += 1;
-          return runtimeContribution();
-        },
-        isIgnored: () => Promise.resolve(true),
-      }),
-    ).rejects.toThrowError(/already initialized/);
-
-    expect(runtimeInitCalls).toBe(0);
   });
 
   it('refuses to write local secrets when Git ignore cannot be proven effective', async () => {
@@ -157,7 +117,7 @@ describe('project initialization', () => {
     await expect(
       initializeProject({
         layout: layout(root),
-        initRuntime: runtimeContribution,
+        contribution,
         isIgnored: () => Promise.resolve(false),
       }),
     ).rejects.toThrowError(/Git does not ignore \.nevo\/local\/config\.yaml/);
@@ -165,9 +125,6 @@ describe('project initialization', () => {
     await expect(readFile(join(root, '.nevo', 'config.yaml'), 'utf8')).rejects.toMatchObject({
       code: 'ENOENT',
     });
-    await expect(
-      readFile(join(root, '.nevo', 'local', 'config.yaml'), 'utf8'),
-    ).rejects.toMatchObject({ code: 'ENOENT' });
     expect(await readFile(join(root, '.gitignore'), 'utf8')).toBe(
       '.nevo/local/\n!.nevo/local/config.yaml\n',
     );
@@ -180,7 +137,7 @@ describe('project initialization', () => {
 
     await initializeProject({
       layout: layout(root),
-      initRuntime: runtimeContribution,
+      contribution,
       isIgnored: () => Promise.resolve(checks.shift() ?? true),
     });
 
@@ -198,16 +155,14 @@ describe('project initialization', () => {
       content: string,
       options: ConfigWriteOptions,
     ): Promise<void> => {
-      if (!options.local) {
-        throw new Error('simulated project write failure');
-      }
+      if (!options.local) throw new Error('simulated project write failure');
       await writeFile(path, content, 'utf8');
     };
 
     await expect(
       initializeProject({
         layout: layout(root),
-        initRuntime: runtimeContribution,
+        contribution,
         isIgnored: () => Promise.resolve(true),
         writeConfigFile,
       }),

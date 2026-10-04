@@ -8,7 +8,7 @@ read_when:
   - deciding whether UI code belongs in the product app or Nevo UI
   - changing the product shell or brand composition
 summary: >
-  The SpecFlow UI composition root, routing and screen ownership, reusable Nevo UI
+  The SpecFlow UI composition root, routing and authentication boundary, reusable Nevo UI
   boundary, and the intentionally minimal foundation screens.
 related:
   - design-system.principles.system-boundary
@@ -19,17 +19,37 @@ related:
 # SpecFlow UI application architecture
 
 `packages/specflow-ui/` is the product UI capability and React application composition root. It
-owns SpecFlow copy, brand assembly, routing, screens, frontend build output, and product-specific
-interaction decisions. It consumes reusable mechanics from `@nevo/ui` and remains part of the
-single local product composed by `@nevo/specflow`; it is not an independently deployed `apps/*`
-host.
+owns SpecFlow copy, brand assembly, routing, screens, frontend build output, authentication UI, and
+product-specific interaction decisions. It consumes reusable mechanics from `@nevo/ui` and remains
+part of the single local product composed by `@nevo/specflow`; it is not an independently deployed
+`apps/*` host.
 
 ## Runtime composition
 
-`src/app/router.tsx` owns the TanStack Router tree. The root renders `SpecFlowShell`, with:
+`src/app/router.tsx` owns the TanStack Router tree. The root itself is neutral because not every
+surface belongs inside the application shell.
+
+Standalone routes:
+
+- `/login` renders authentication outside `AppShell`;
+- `/runtime-unavailable` renders bootstrap/recovery outside `AppShell`.
+
+A pathless application layout owns `SpecFlowShell` and guards product routes. It asks the Runtime
+for `GET /api/auth/session` before entering the application. Required authentication redirects an
+unauthenticated user to `/login` with a local `returnTo`; trusted local mode enters directly.
+An authenticated visit to `/login` returns to the requested app surface. Failure to load Runtime
+authentication state is a distinct bootstrap failure and routes to the recovery screen rather than
+being treated as an unauthenticated user.
+
+The current product routes under the guarded layout remain:
 
 - `/` for the foundation home screen;
 - `/ui-playground` for a product-owned component/workspace integration screen.
+
+The login screen is product-owned and composes existing Nevo UI fields, password input, buttons,
+alerts, separators and typography. It deliberately does not use `AppShell` or add a login-specific
+Card. OIDC instance names come from the Runtime session contract; password login remains one
+capability regardless of the number of configured password accounts.
 
 Product screens compose `AppWorkspace`, `WorkspaceHeader`, and `AppContent` from Nevo UI. The
 runtime workspace connects compact screens to AppShell's drawer navigation and owns responsive
@@ -41,9 +61,22 @@ The UI intentionally depends on `@nevo/figma-core` for neutral authoring/IR cont
 `@nevo/figma-capture` for opt-in React metadata used by the projection pipeline. Those dependencies
 do not transfer product ownership into the generic Figma packages.
 
-The current screens are deliberately a working foundation, not a simulated legacy application.
-They provide real navigation and responsive composition without inventing domain state that the
-Runtime does not expose yet.
+## Authentication state
+
+The Runtime session response is the UI source of truth. It explicitly distinguishes whether
+authentication is required from whether a browser session is authenticated. This is necessary
+because trusted local mode intentionally has an effective local user without a login flow.
+
+Login methods are represented according to their actual semantics:
+
+- password is a single enabled/disabled capability;
+- OIDC is a list of named configured instances;
+- an authenticated session records password, or OIDC plus the concrete provider id.
+
+The browser UI never reads Runtime YAML to discover login methods.
+
+During local UI development Vite proxies `/api` to the default Runtime at
+`http://127.0.0.1:4318`, preserving same-origin browser cookie behavior.
 
 ## Brand and tokens
 
@@ -54,6 +87,9 @@ Figma resources.
 ## Interaction and accessibility
 
 Navigation uses real links and router state. Interactive controls use semantic elements, visible
-focus treatment, keyboard behavior, and accessible labels from Nevo UI contracts. Screen changes
-MUST be reviewed at desktop and mobile widths and represented in the shared Storybook when a stable
-screen state exists.
+focus treatment, keyboard behavior, and accessible labels from Nevo UI contracts. Login methods
+remain keyboard accessible, errors use semantic alerts, and busy controls are disabled and expose
+`aria-busy`.
+
+Screen changes MUST be reviewed at desktop and mobile widths and represented in the shared Storybook
+when a stable screen state exists.

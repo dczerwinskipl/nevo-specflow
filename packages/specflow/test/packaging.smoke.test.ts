@@ -247,7 +247,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
         '      password:',
         '        enabled: false',
         '      oidc:',
-        '        enabled: false',
+        '        instances: {}',
         '',
       ].join('\n'),
       'utf8',
@@ -312,8 +312,9 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
       const response = await fetch(`http://127.0.0.1:${port}/api/auth/session`);
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({
+        authenticationRequired: false,
         authenticated: false,
-        availableProviders: [],
+        loginMethods: { password: { enabled: false }, oidc: [] },
       });
 
       child.kill('SIGTERM');

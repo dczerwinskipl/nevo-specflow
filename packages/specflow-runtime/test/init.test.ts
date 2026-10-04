@@ -256,7 +256,7 @@ describe('Runtime project initialization', () => {
     expect(ui.inputMessages).not.toContain('Display name');
     expect(ui.inputMessages).not.toContain('Browser origin for OIDC callbacks');
     expect(contribution.projectConfig).toMatchObject({
-      server: { publicOrigin: 'http://127.0.0.1:5173' },
+      server: { publicOrigin: 'http://127.0.0.1:4318' },
       authentication: {
         users: { 'demo@example.com': { name: 'demo@example.com' } },
         providers: {
@@ -274,8 +274,7 @@ describe('Runtime project initialization', () => {
         assignments: [{ userId: 'demo@example.com', role: 'admin', scope: {} }],
       },
     });
-    expect(contribution.summary).toContain('Web app / OIDC return: http://127.0.0.1:5173');
-    expect(contribution.summary).toContain('Runtime API: http://127.0.0.1:4318 (API only)');
+    expect(contribution.summary).toContain('SpecFlow: http://127.0.0.1:4318');
   });
 
   it('creates OIDC identity from the allowed email without asking for canonical-user linkage', async () => {

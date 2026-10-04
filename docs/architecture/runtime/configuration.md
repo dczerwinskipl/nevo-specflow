@@ -118,9 +118,9 @@ enabled. Password setup hashes secrets inside Runtime, while every OIDC client s
 
 For a new password user, the username is also the canonical user id; the wizard does not ask for a
 second technical identifier. Additional password accounts explicitly choose `New user` or
-`Existing user`. OIDC identities are configured by allowed email and may likewise create a new
-user or link to an existing one, but their human-facing profile data comes from verified OIDC claims
-at sign-in rather than from init prompts.
+`Existing user`. OIDC identities are configured by allowed email; the normalized email becomes
+their stable configured identity automatically, while human-facing profile data comes from verified
+OIDC claims at sign-in rather than from init prompts.
 
 A role is selected immediately whenever setup creates a new user. The first-created user defaults to
 `admin`; subsequent users default to `developer`. Setup preserves creation order explicitly and

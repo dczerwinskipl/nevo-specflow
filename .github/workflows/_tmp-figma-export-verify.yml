@@ -16,6 +16,8 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Install Chromium
         run: pnpm --filter nevo-figma-export exec playwright install --with-deps chromium
+      - name: Build Figma export dependencies
+        run: pnpm exec turbo run build --filter=nevo-figma-project
       - name: Export canonical Figma IR
         run: pnpm figma:export
       - name: Verify SpecFlow login screen export

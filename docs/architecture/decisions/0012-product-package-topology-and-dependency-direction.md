@@ -26,9 +26,9 @@ Current.
 
 Nevo SpecFlow is installed and updated as one npm-distributed product. The public
 `nevo-specflow` executable owns setup and lifecycle commands. `nevo-specflow start` is the
-product-level startup entry point: today it starts the migrated Runtime surface; as the remaining
-product capabilities land, the same command composes the local UI, workflow/provider capabilities,
-and other product-owned services that belong to that installation.
+product-level startup entry point: it composes the Runtime and built local UI on one HTTP origin,
+and it remains the place where workflow/provider capabilities and other product-owned services are
+added as those capabilities land.
 
 The repository also has an `apps/*` workspace glob. Treating every executable server or browser UI
 as an `apps/*` entry would create deployment boundaries that the product does not actually have.

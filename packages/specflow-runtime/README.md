@@ -119,11 +119,13 @@ disabled, both the bind host and any `publicOrigin` must be loopback. Reverse-pr
 and forwarded-client-IP trust are intentionally not supported yet.
 
 If `publicOrigin` is configured, its protocol must match Runtime TLS: HTTPS with TLS, HTTP without
-TLS. It is the browser-facing origin used for OIDC redirects and therefore must match the hostname
-users actually open in the browser. In the current repository-local development setup, init uses
-`http://127.0.0.1:5173` without prompting: that is the fixed SpecFlow UI Vite origin and it proxies
-`/api` to the Runtime API on `http://127.0.0.1:4318`. Runtime does not currently serve the UI at
-its API root, so opening port `4318` in a browser is not the product UI.
+TLS. It is the browser-facing product origin used for OIDC redirects and therefore must match the
+hostname users actually open in the browser. The packaged product uses one local origin:
+`http://127.0.0.1:4318`. Runtime serves the built SpecFlow UI at that root and the API under
+`/api`, so OIDC callbacks, browser routes, and API requests share the same host and port.
+
+The standalone Vite server on port `5173` remains a UI-development convenience only; it is not part
+of the normal `nevo-specflow start` topology.
 
 ## Password authentication
 

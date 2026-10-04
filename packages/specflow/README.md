@@ -13,8 +13,8 @@ nevo-specflow start
 nevo-specflow auth hash-password --password-stdin
 ```
 
-`init` owns repository bootstrap and composes capability initialization. Runtime owns the server/auth configuration contribution it returns; the product shell writes that contribution to `.nevo/config.yaml` and ignored `.nevo/local/config.yaml` without duplicating Runtime config semantics. `start` starts the configured long-running Runtime HTTP server and remains active until
-shutdown. Both `init` and `start` resolve the Git repository root through the product shell, so
+`init` owns repository bootstrap and composes capability initialization. Runtime owns the server/auth configuration contribution it returns; the product shell writes that contribution to `.nevo/config.yaml` and ignored `.nevo/local/config.yaml` without duplicating Runtime config semantics. `start` starts the configured long-running local SpecFlow server, serving the built UI at the
+root origin and Runtime endpoints under `/api`, and remains active until shutdown. Both `init` and `start` resolve the Git repository root through the product shell, so
 running either command from a nested repository directory uses the same project configuration.
 The auth utility generates the supported password hash from one password line
 read from stdin, keeping the plaintext password out of command arguments.
@@ -26,7 +26,8 @@ The exact public surface is tracked in
 
 ## Distribution
 
-The product ships as one self-contained bundle. Repository packages such as
+The product ships as one self-contained CLI bundle plus the built UI assets under `dist/ui`.
+Repository packages such as
 `@nevo/specflow-runtime` are build-time workspace boundaries and are bundled into
 `@nevo/specflow`; an installed product does not depend on the repository workspace.
 

@@ -132,10 +132,7 @@ export function LoginScreenView({
         {...capture}
         {...designSlot('SpecFlowLoginScreen', 'content')}
       >
-        <StandaloneAuthHeader
-          description="Access your SpecFlow workspace."
-          title="Welcome back"
-        />
+        <StandaloneAuthHeader description="Access your SpecFlow workspace." title="Welcome back" />
 
         {error ? (
           <Alert role="alert" tone="danger" title="Sign in failed">

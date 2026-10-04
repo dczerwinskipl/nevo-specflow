@@ -1,4 +1,4 @@
-import { FormEvent, useState, useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore, type FormEvent } from 'react';
 
 import type {
   AuthLoginMethods,

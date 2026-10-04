@@ -1,40 +1,42 @@
+import type { AuthLoginMethods } from '@nevo/specflow-contracts/authentication';
 import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
 import { LoginScreenView, loginErrorMessage } from './LoginScreen';
 
-const passwordOnly = {
+const passwordOnly: AuthLoginMethods = {
   password: { enabled: true },
   oidc: [],
-} as const;
-const singleOidc = {
+};
+const singleOidc: AuthLoginMethods = {
   password: { enabled: false },
   oidc: [{ id: 'company', name: 'Company SSO' }],
-} as const;
-const multipleOidc = {
+};
+const multipleOidc: AuthLoginMethods = {
   password: { enabled: false },
   oidc: [
     { id: 'company', name: 'Company SSO' },
     { id: 'customer', name: 'Customer SSO' },
   ],
-} as const;
-const passwordAndSingleOidc = {
+};
+const passwordAndSingleOidc: AuthLoginMethods = {
   password: { enabled: true },
   oidc: [{ id: 'company', name: 'Company SSO' }],
-} as const;
-const mixed = {
+};
+const mixed: AuthLoginMethods = {
   password: { enabled: true },
   oidc: [
     { id: 'company', name: 'Company SSO' },
     { id: 'customer', name: 'Customer SSO' },
   ],
-} as const;
+};
 
 const meta = {
   title: 'SpecFlow/Screens/Login',
   component: LoginScreenView,
   parameters: { layout: 'fullscreen' },
   args: {
+    loginMethods: mixed,
     onOidc: () => undefined,
     onPasswordChange: () => undefined,
     onPasswordSubmit: () => undefined,

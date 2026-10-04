@@ -17,7 +17,7 @@ export function StandaloneAuthSurface({
   readonly surfaceAttributes?: DesignAttributes;
 }) {
   return (
-    <DesignMetadataBoundary excludeComponents={['AppBackground']}>
+    <DesignMetadataBoundary excludeComponents={['AppBackground', 'WorkspaceSurface']}>
       <AppBackground
         {...rootAttributes}
         brandPrimary={defaultNevoBrand.coreColor}

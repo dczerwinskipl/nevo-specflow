@@ -142,6 +142,10 @@ export const FigmaCapture: Story = {
       content.dataset.authLayout === 'surface',
       'Login Figma content slot must include the workspace material surface.',
     );
+    assert(
+      content.dataset.designComponent === undefined,
+      'Login Figma content slot must remain structural instead of projecting WorkspaceSurface as an empty nested component.',
+    );
   },
   parameters: {
     controls: { disable: true },

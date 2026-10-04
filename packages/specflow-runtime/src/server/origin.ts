@@ -1,14 +1,40 @@
-import { isIP } from 'node:net';
+export function isRequestAtPublicOrigin(
+  publicOrigin: string,
+  requestHost: string | undefined,
+  tlsEnabled: boolean,
+): boolean {
+  if (!requestHost) return false;
 
-import type { RuntimeServerConfig } from '../config/types';
+  const protocol = tlsEnabled ? 'https:' : 'http:';
+  const requestOrigin = originFromDirectHost(protocol, requestHost);
+  if (!requestOrigin) return false;
 
-export function isRuntimeOwnOrigin(server: RuntimeServerConfig, publicOrigin: string): boolean {
-  const url = new URL(publicOrigin);
-  const runtimeProtocol = server.tls.enabled ? 'https:' : 'http:';
-  if (url.protocol !== runtimeProtocol) return false;
-  if (effectivePort(url) !== server.port) return false;
+  const published = new URL(publicOrigin);
+  if (requestOrigin.protocol !== published.protocol) return false;
+  if (effectivePort(requestOrigin) !== effectivePort(published)) return false;
 
-  return hostsAddressSameRuntime(server.host, url.hostname);
+  return hostsEquivalent(requestOrigin.hostname, published.hostname);
+}
+
+function originFromDirectHost(protocol: 'http:' | 'https:', host: string): URL | undefined {
+  let url: URL;
+  try {
+    url = new URL(`${protocol}//${host}`);
+  } catch {
+    return undefined;
+  }
+
+  if (
+    url.username ||
+    url.password ||
+    url.pathname !== '/' ||
+    url.search ||
+    url.hash
+  ) {
+    return undefined;
+  }
+
+  return url;
 }
 
 function effectivePort(url: URL): number {
@@ -16,14 +42,12 @@ function effectivePort(url: URL): number {
   return url.protocol === 'https:' ? 443 : 80;
 }
 
-function hostsAddressSameRuntime(bindHost: string, publicHost: string): boolean {
-  const bind = normalizeHost(bindHost);
-  const published = normalizeHost(publicHost);
+function hostsEquivalent(left: string, right: string): boolean {
+  const normalizedLeft = normalizeHost(left);
+  const normalizedRight = normalizeHost(right);
 
-  if (bind === published) return true;
-  if (isLoopbackHost(bind) && isLoopbackHost(published)) return true;
-  if (isWildcardHost(bind) && isLoopbackHost(published)) return true;
-  return false;
+  if (normalizedLeft === normalizedRight) return true;
+  return isLoopbackHost(normalizedLeft) && isLoopbackHost(normalizedRight);
 }
 
 function normalizeHost(host: string): string {
@@ -34,12 +58,14 @@ function normalizeHost(host: string): string {
   return normalized.endsWith('.') ? normalized.slice(0, -1) : normalized;
 }
 
-function isWildcardHost(host: string): boolean {
-  return host === '0.0.0.0' || host === '::' || host === '0:0:0:0:0:0:0:0';
-}
-
 function isLoopbackHost(host: string): boolean {
   if (host === 'localhost' || host.endsWith('.localhost')) return true;
   if (host === '::1' || host === '0:0:0:0:0:0:0:1') return true;
-  return isIP(host) === 4 && host.split('.')[0] === '127';
+
+  const parts = host.split('.');
+  return (
+    parts.length === 4 &&
+    parts[0] === '127' &&
+    parts.every((part) => /^(0|[1-9][0-9]{0,2})$/u.test(part) && Number(part) <= 255)
+  );
 }

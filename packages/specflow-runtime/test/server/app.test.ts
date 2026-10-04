@@ -59,19 +59,59 @@ describe('Runtime product web surface', () => {
     }
   });
 
-  it('redirects API-only root when publicOrigin is a genuinely different origin', async () => {
-    const app = await createRuntimeApp(oidcConfig({ 'demo@example.com': 'demo-user' }));
+  it('keeps the API diagnostic root when the request already uses the canonical public host', async () => {
+    const configured = oidcConfig({ 'demo@example.com': 'demo-user' });
+    const app = await createRuntimeApp({
+      ...configured,
+      server: {
+        ...configured.server,
+        host: '0.0.0.0',
+        publicOrigin: 'https://specflow.example.com:4318',
+      },
+    });
 
     try {
-      const response = await app.inject({ method: 'GET', url: '/' });
-      expect(response.statusCode).toBe(302);
-      expect(response.headers.location).toBe('https://specflow.example.test:4318');
+      const response = await app.inject({
+        method: 'GET',
+        url: '/',
+        headers: { host: 'specflow.example.com:4318' },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual(diagnostic);
     } finally {
       await app.close();
     }
   });
 
-  it('keeps the API diagnostic root when publicOrigin resolves to this Runtime', async () => {
+  it('redirects API-only root once when reached through a non-canonical address', async () => {
+    const configured = oidcConfig({ 'demo@example.com': 'demo-user' });
+    const app = await createRuntimeApp({
+      ...configured,
+      server: {
+        ...configured.server,
+        host: '0.0.0.0',
+        publicOrigin: 'https://specflow.example.com:4318',
+      },
+    });
+
+    try {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/',
+        headers: {
+          host: '192.168.1.10:4318',
+          'x-forwarded-host': 'specflow.example.com:4318',
+          'x-forwarded-proto': 'https',
+        },
+      });
+      expect(response.statusCode).toBe(302);
+      expect(response.headers.location).toBe('https://specflow.example.com:4318');
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('keeps equivalent loopback aliases on the API diagnostic root', async () => {
     const configured = oidcConfig({ 'demo@example.com': 'demo-user' });
     const app = await createRuntimeApp({
       ...configured,
@@ -84,7 +124,11 @@ describe('Runtime product web surface', () => {
     });
 
     try {
-      const response = await app.inject({ method: 'GET', url: '/' });
+      const response = await app.inject({
+        method: 'GET',
+        url: '/',
+        headers: { host: '127.0.0.1:4318' },
+      });
       expect(response.statusCode).toBe(200);
       expect(response.json()).toEqual(diagnostic);
     } finally {

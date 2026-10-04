@@ -166,9 +166,10 @@ The currently supported profile is deliberately narrow:
 - optional standard `name` claim used as the authenticated session display name, falling back to email;
 - allow-list mapping from normalized email to the internal user id.
 
-During init, an OIDC allow-list identity can create a new user directly from its email or link to an
-existing user. The wizard never asks for an OIDC display name: profile data comes from the provider
-when the user signs in.
+During init, each normalized OIDC allow-list email is the canonical user id. If that exact id already
+exists it is reused; otherwise setup creates it automatically. The wizard does not offer arbitrary
+linking to another canonical user and does not ask for an OIDC display name: profile display data
+comes from provider claims when the user signs in.
 
 OIDC discovery/network failures are distinguished from callback authentication failures at the
 provider boundary. Failed discovery is coalesced behind a short retry cooldown so a provider outage

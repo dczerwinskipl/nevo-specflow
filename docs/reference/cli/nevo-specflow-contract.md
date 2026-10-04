@@ -9,7 +9,7 @@ read_when:
   - planning a new nevo-specflow command
 summary: >
   The currently-implemented public surface of the nevo-specflow CLI — --help, --version,
-  project initialization, the Runtime server command, and the password-hash auth utility — plus the commands that
+  project initialization, the local product server command, and the password-hash auth utility — plus the commands that
   do not exist yet.
 related:
   - docs.product-specflow-cli-readme
@@ -32,7 +32,7 @@ related:
 nevo-specflow --help        # usage and the command list; exit 0
 nevo-specflow --version     # the installed product version, carried in the artifact; exit 0
 nevo-specflow init             # initialize .nevo project/local configuration
-nevo-specflow start                                      # start the configured Runtime HTTP server; exit 0 after shutdown
+nevo-specflow start                                      # start the configured local SpecFlow server and UI; exit 0 after shutdown
 nevo-specflow auth hash-password --password-stdin         # hash one password line from stdin
 ```
 

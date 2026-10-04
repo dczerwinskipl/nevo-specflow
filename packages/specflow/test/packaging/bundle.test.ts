@@ -4,7 +4,7 @@
 // sibling module resolves without leaving anything to require at runtime).
 
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -21,6 +21,10 @@ afterEach(() => rmSync(dir, { recursive: true, force: true }));
 describe('bundleProduct', () => {
   it('injects NEVO_SPECFLOW_VERSION_INJECTED and emits a runnable ESM file with a shebang', async () => {
     writeFileSync(join(dir, 'sibling.ts'), 'export const marker = () => "sibling-ok";\n');
+    const uiSourceDir = join(dir, 'ui-dist');
+    mkdirSync(uiSourceDir, { recursive: true });
+    writeFileSync(join(uiSourceDir, 'index.html'), '<!doctype html><title>SpecFlow</title>\n');
+
     writeFileSync(
       join(dir, 'entry.ts'),
       [
@@ -36,9 +40,11 @@ describe('bundleProduct', () => {
       outfile: 'out/bundle.js',
       version: '9.9.9-test.1',
       cwd: dir,
+      uiSourceDir,
     });
 
     expect(readFileSync(outfile, 'utf8').split('\n')[0]).toBe('#!/usr/bin/env node');
+    expect(readFileSync(join(dir, 'out', 'ui', 'index.html'), 'utf8')).toContain('SpecFlow');
     const stdout = execFileSync('node', [outfile], { encoding: 'utf8' });
     // version was baked in, and the sibling module was bundled (not left as an import).
     expect(stdout).toBe('9.9.9-test.1 sibling-ok');

@@ -248,13 +248,34 @@ async function requiredProviderId(
 }
 
 function providerIdFromName(name: string): string {
-  return name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/gu, '-')
-    .replace(/^-+|-+$/gu, '')
-    .slice(0, OIDC_PROVIDER_ID_MAX_LENGTH)
-    .replace(/-+$/u, '');
+  let result = '';
+  let separatorPending = false;
+
+  for (const char of name.trim().toLowerCase()) {
+    const isAsciiLetter = char >= 'a' && char <= 'z';
+    const isDigit = char >= '0' && char <= '9';
+
+    if (!isAsciiLetter && !isDigit) {
+      if (result.length > 0) separatorPending = true;
+      continue;
+    }
+
+    if (
+      separatorPending &&
+      result.length > 0 &&
+      result.length + 1 < OIDC_PROVIDER_ID_MAX_LENGTH
+    ) {
+      result += '-';
+    }
+
+    if (result.length >= OIDC_PROVIDER_ID_MAX_LENGTH) break;
+    result += char;
+    separatorPending = false;
+
+    if (result.length >= OIDC_PROVIDER_ID_MAX_LENGTH) break;
+  }
+
+  return result;
 }
 
 async function requiredInput(

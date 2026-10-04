@@ -190,6 +190,8 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     expect(notices).toMatch(/fastify 5\.12\.5/);
     expect(notices).toMatch(/openid-client 6\.8\.8/);
     expect(notices).toMatch(/@fastify\/rate-limit 11\.2\.0/);
+    expect(notices).toMatch(/@clack\/prompts 1\.8\.1/);
+    expect(notices).toMatch(/@clack\/core 1\.5\.1/);
     // esbuild is build-only — its code is not in the bundle, so it is not listed.
     expect(notices).not.toMatch(/esbuild/i);
   });

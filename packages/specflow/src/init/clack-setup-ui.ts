@@ -10,41 +10,44 @@ export class ProjectSetupCancelledError extends Error {
 }
 
 export class ClackProjectSetupUi implements RuntimeSetupUi {
-  confirm(message: string, initialValue = true): Promise<boolean> {
-    return resolvePrompt(prompts.confirm({ message, initialValue }), 'SpecFlow setup cancelled.');
+  async confirm(message: string, initialValue = true): Promise<boolean> {
+    const value = await prompts.confirm({ message, initialValue });
+    return resolvePrompt<boolean>(value);
   }
 
-  select<T extends string>(
+  async select<T extends string>(
     message: string,
     choices: readonly RuntimeSetupChoice<T>[],
     initialValue?: T,
   ): Promise<T> {
-    return resolvePrompt(
-      prompts.select<T>({
-        message,
-        options: choices.map((choice) => ({
+    const options = choices.map(
+      (choice) =>
+        ({
           value: choice.value,
           label: choice.label,
           ...(choice.hint ? { hint: choice.hint } : {}),
-        })),
-        ...(initialValue ? { initialValue } : {}),
-      }),
-      'SpecFlow setup cancelled.',
+        }) as prompts.Option<T>,
     );
+
+    const value = await prompts.select<T>({
+      message,
+      options,
+      ...(initialValue ? { initialValue } : {}),
+    });
+    return resolvePrompt<T>(value);
   }
 
-  input(message: string, defaultValue?: string): Promise<string> {
-    return resolvePrompt(
-      prompts.text({
-        message,
-        ...(defaultValue !== undefined ? { placeholder: defaultValue, defaultValue } : {}),
-      }),
-      'SpecFlow setup cancelled.',
-    );
+  async input(message: string, defaultValue?: string): Promise<string> {
+    const value = await prompts.text({
+      message,
+      ...(defaultValue !== undefined ? { placeholder: defaultValue, defaultValue } : {}),
+    });
+    return resolvePrompt<string>(value);
   }
 
-  secret(message: string): Promise<string> {
-    return resolvePrompt(prompts.password({ message }), 'SpecFlow setup cancelled.');
+  async secret(message: string): Promise<string> {
+    const value = await prompts.password({ message });
+    return resolvePrompt<string>(value);
   }
 
   note(message: string, title?: string): void {
@@ -52,13 +55,9 @@ export class ClackProjectSetupUi implements RuntimeSetupUi {
   }
 }
 
-async function resolvePrompt<T>(
-  pending: Promise<T | symbol>,
-  cancellationMessage: string,
-): Promise<T> {
-  const value = await pending;
+function resolvePrompt<T>(value: T | typeof prompts.CANCEL_SYMBOL): T {
   if (prompts.isCancel(value)) {
-    prompts.cancel(cancellationMessage);
+    prompts.cancel('SpecFlow setup cancelled.');
     throw new ProjectSetupCancelledError();
   }
   return value as T;

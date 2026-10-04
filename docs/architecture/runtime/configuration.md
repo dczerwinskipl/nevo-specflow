@@ -112,7 +112,9 @@ The product shell resolves the Git repository root for both `init` and `start`, 
 absolute config paths and the project root into Runtime. Runtime does not discover product file
 locations from `process.cwd()`.
 
-The initial Runtime authentication choices are no authentication, password login, and OIDC.
-Password setup hashes the secret inside Runtime. OIDC setup keeps the client secret local.
-Canonical users remain distinct from provider credentials; the password wizard defaults
-`username == userId` for the common case.
+Runtime setup first decides whether authentication is required. Required authentication can combine
+username/password with one or more named OIDC instances; at least one login method must remain
+enabled. Password setup hashes secrets inside Runtime, while every OIDC client secret stays local.
+Canonical users remain distinct from provider credentials, and each canonical user created during
+setup receives an explicit authorization role. Trusted local mode keeps its local identity without
+showing a login screen.

@@ -2,10 +2,7 @@ import { isIP } from 'node:net';
 
 import type { RuntimeServerConfig } from '../config/types';
 
-export function isRuntimeOwnOrigin(
-  server: RuntimeServerConfig,
-  publicOrigin: string,
-): boolean {
+export function isRuntimeOwnOrigin(server: RuntimeServerConfig, publicOrigin: string): boolean {
   const url = new URL(publicOrigin);
   const runtimeProtocol = server.tls.enabled ? 'https:' : 'http:';
   if (url.protocol !== runtimeProtocol) return false;

@@ -175,7 +175,10 @@ export const RadioSelection: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Language' }));
     const polish = await waitFor(
-      () => document.querySelector<HTMLElement>('[role="menuitemradio"][data-value="pl"]'),
+      () =>
+        [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find((item) =>
+          item.textContent?.includes('Polski'),
+        ) ?? null,
       'Radio menu items should render with menuitemradio semantics.',
     );
     await userEvent.click(polish);

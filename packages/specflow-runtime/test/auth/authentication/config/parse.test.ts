@@ -67,7 +67,9 @@ describe('authentication config parsing', () => {
       Demo: { userId: 'demo-user', passwordHash: PASSWORD_HASH },
       ' demo ': { userId: 'demo-user', passwordHash: PASSWORD_HASH },
     };
-    expect(() => parseAuthConfig(collision)).toThrowError(/duplicate username after normalization/i);
+    expect(() => parseAuthConfig(collision)).toThrowError(
+      /duplicate username after normalization/i,
+    );
   });
 
   it('keeps configured usernames inside the HTTP boundary using Unicode code-point length', () => {
@@ -91,7 +93,8 @@ describe('authentication config parsing', () => {
     expect(() => parseAuthConfig(insecure)).toThrowError(/must be an absolute HTTPS URL/);
 
     const missingSecret = requiredAuthConfig();
-    delete (missingSecret.providers.oidc.instances.company as { clientSecret?: string }).clientSecret;
+    delete (missingSecret.providers.oidc.instances.company as { clientSecret?: string })
+      .clientSecret;
     expect(() => parseAuthConfig(missingSecret)).toThrowError(/clientSecret are required/);
   });
 

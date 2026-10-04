@@ -177,10 +177,7 @@ function parseOidcProviders(value: unknown): RuntimeOidcProvidersConfig {
 
   for (const [providerId, rawProvider] of Object.entries(rawInstances)) {
     validateProviderId(providerId, `${path}.instances`);
-    instances[providerId] = parseOidcProvider(
-      rawProvider,
-      `${path}.instances.${providerId}`,
-    );
+    instances[providerId] = parseOidcProvider(rawProvider, `${path}.instances.${providerId}`);
   }
 
   return { instances };
@@ -255,10 +252,7 @@ function parseOidcProvider(value: unknown, path: string): RuntimeOidcProviderCon
 
 function validateProviderId(providerId: string, path: string): void {
   nonEmptyKey(providerId, path);
-  if (
-    providerId.length > OIDC_PROVIDER_ID_MAX_LENGTH ||
-    !OIDC_PROVIDER_ID_REGEX.test(providerId)
-  ) {
+  if (providerId.length > OIDC_PROVIDER_ID_MAX_LENGTH || !OIDC_PROVIDER_ID_REGEX.test(providerId)) {
     throw new RuntimeConfigError(
       `${path} provider ids must be lowercase slugs containing letters, digits, and internal hyphens (max ${String(OIDC_PROVIDER_ID_MAX_LENGTH)} characters): '${providerId}'.`,
     );

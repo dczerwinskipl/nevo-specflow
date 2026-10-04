@@ -156,11 +156,7 @@ export function normalizeReturnTo(value: string | undefined): string | null {
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
-function loginRedirect(
-  publicOrigin: string,
-  error: OidcCallbackErrorCode,
-  returnTo?: string,
-): URL {
+function loginRedirect(publicOrigin: string, error: OidcCallbackErrorCode, returnTo?: string): URL {
   const url = new URL('/login', publicOrigin);
   url.searchParams.set('error', error);
   if (returnTo && returnTo !== DEFAULT_RETURN_TO) {

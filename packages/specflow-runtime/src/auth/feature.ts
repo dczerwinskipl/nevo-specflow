@@ -1,9 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 
-import {
-  enabledOidcProviders,
-  type RuntimeAuthConfig,
-} from './authentication/config/model';
+import { enabledOidcProviders, type RuntimeAuthConfig } from './authentication/config/model';
 import { createOidcClient, type OidcClient } from './authentication/oidc/client';
 import { oidcRoutes } from './authentication/oidc/http';
 import {

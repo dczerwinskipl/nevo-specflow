@@ -93,10 +93,7 @@ function waitForResolvedPath(
   router: ReturnType<typeof createSpecFlowRouter>,
   pathname: string,
 ): Promise<void> {
-  if (
-    router.state.status === 'idle' &&
-    router.state.resolvedLocation?.pathname === pathname
-  ) {
+  if (router.state.status === 'idle' && router.state.resolvedLocation?.pathname === pathname) {
     return Promise.resolve();
   }
 

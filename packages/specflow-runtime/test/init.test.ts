@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  initRuntime,
-  type RuntimeSetupChoice,
-  type RuntimeSetupUi,
-} from '../src/index';
+import { initRuntime, type RuntimeSetupChoice, type RuntimeSetupUi } from '../src/index';
 
 const PASSWORD_HASH =
   '$scrypt$16384$8$5$MDEyMzQ1Njc4OWFiY2RlZg$yMHgG_FDESRF0j5gjhGLotSMPdnfefUcNNFPyNoQtJE';

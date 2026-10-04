@@ -59,9 +59,7 @@ const appRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: '_app',
   beforeLoad: async ({ context, location }) => {
-    const returnTo = safeReturnTo(
-      `${location.pathname}${location.searchStr}${location.hash}`,
-    );
+    const returnTo = safeReturnTo(`${location.pathname}${location.searchStr}${location.hash}`);
     let session;
     try {
       session = await context.auth.ensureSession();

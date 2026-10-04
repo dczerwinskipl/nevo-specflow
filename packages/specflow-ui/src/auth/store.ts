@@ -38,7 +38,8 @@ export function createAuthStore(
     if (!force && pending) return pending;
 
     setState({ status: 'loading' });
-    const request = api.getSession()
+    const request = api
+      .getSession()
       .then((session) => {
         setState({ status: 'ready', session });
         return session;

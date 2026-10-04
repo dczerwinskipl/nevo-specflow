@@ -37,8 +37,7 @@ export interface RuntimeOidcEnabledProviderConfig extends RuntimeOidcProviderCon
 }
 
 export type RuntimeOidcProviderConfig =
-  | RuntimeOidcDisabledProviderConfig
-  | RuntimeOidcEnabledProviderConfig;
+  RuntimeOidcDisabledProviderConfig | RuntimeOidcEnabledProviderConfig;
 
 export interface RuntimeOidcProvidersConfig {
   readonly instances: Readonly<Record<string, RuntimeOidcProviderConfig>>;

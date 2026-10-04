@@ -1,8 +1,4 @@
-import {
-  createHttpClient,
-  isHttpClientError,
-  type HttpClient,
-} from '@nevo/http-client';
+import { createHttpClient, isHttpClientError, type HttpClient } from '@nevo/http-client';
 import type {
   AuthSessionResponse,
   OidcStartSuccessResponse,
@@ -20,10 +16,7 @@ export function createBrowserAuthApi(client: HttpClient = createHttpClient()): A
   return {
     getSession: () => client.get<AuthSessionResponse>('/api/auth/session'),
     loginWithPassword: (request) =>
-      client.post<AuthSessionResponse, PasswordLoginRequest>(
-        '/api/auth/password/login',
-        request,
-      ),
+      client.post<AuthSessionResponse, PasswordLoginRequest>('/api/auth/password/login', request),
     startOidc: (providerId, returnTo) =>
       client.post<OidcStartSuccessResponse, { returnTo: string }>(
         `/api/auth/oidc/${encodeURIComponent(providerId)}/start`,

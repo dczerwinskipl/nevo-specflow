@@ -1,5 +1,8 @@
 import { initAuth, type AuthInitOptions } from '../auth/authentication/init';
-import { assertNoLocalAuthorization, validateProjectAuthorizationSource } from '../auth/authorization/config-source';
+import {
+  assertNoLocalAuthorization,
+  validateProjectAuthorizationSource,
+} from '../auth/authorization/config-source';
 import { initAuthorization } from '../auth/authorization/init';
 import { mergeRuntimeConfigValues } from '../config/merge';
 import {
@@ -44,11 +47,7 @@ export async function initRuntime(options: RuntimeInitOptions): Promise<RuntimeI
   return {
     projectConfig,
     localConfig,
-    summary: [
-      `Runtime: http://${host}:${String(port)}`,
-      auth.summary,
-      authorization.summary,
-    ],
+    summary: [`Runtime: http://${host}:${String(port)}`, auth.summary, authorization.summary],
   };
 }
 

@@ -5,10 +5,7 @@ import process from 'node:process';
 
 import { CommanderError } from 'commander';
 
-import {
-  ClackProjectSetupUi,
-  ProjectSetupCancelledError,
-} from './init/clack-setup-ui';
+import { ClackProjectSetupUi, ProjectSetupCancelledError } from './init/clack-setup-ui';
 import { createProgram } from './program';
 
 async function main(argv: string[]): Promise<number> {

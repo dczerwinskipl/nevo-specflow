@@ -61,9 +61,7 @@ describe('OIDC login operation', () => {
       oidc,
       started.transactionId,
       undefined,
-      new URL(
-        'https://specflow.example.test/api/auth/oidc/company/callback?code=abc&state=state',
-      ),
+      new URL('https://specflow.example.test/api/auth/oidc/company/callback?code=abc&state=state'),
     );
 
     expect(completed).toMatchObject({ ok: true, returnTo: '/specs/S1' });

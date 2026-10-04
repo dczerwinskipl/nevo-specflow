@@ -1,9 +1,6 @@
 import * as prompts from '@clack/prompts';
 
-import type {
-  RuntimeSetupChoice,
-  RuntimeSetupUi,
-} from '@nevo/specflow-runtime';
+import type { RuntimeSetupChoice, RuntimeSetupUi } from '@nevo/specflow-runtime';
 
 export class ProjectSetupCancelledError extends Error {
   constructor() {
@@ -14,10 +11,7 @@ export class ProjectSetupCancelledError extends Error {
 
 export class ClackProjectSetupUi implements RuntimeSetupUi {
   confirm(message: string, initialValue = true): Promise<boolean> {
-    return resolvePrompt(
-      prompts.confirm({ message, initialValue }),
-      'SpecFlow setup cancelled.',
-    );
+    return resolvePrompt(prompts.confirm({ message, initialValue }), 'SpecFlow setup cancelled.');
   }
 
   select<T extends string>(
@@ -43,9 +37,7 @@ export class ClackProjectSetupUi implements RuntimeSetupUi {
     return resolvePrompt(
       prompts.text({
         message,
-        ...(defaultValue !== undefined
-          ? { placeholder: defaultValue, defaultValue }
-          : {}),
+        ...(defaultValue !== undefined ? { placeholder: defaultValue, defaultValue } : {}),
       }),
       'SpecFlow setup cancelled.',
     );

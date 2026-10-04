@@ -103,9 +103,7 @@ export async function initAuth(options: AuthInitOptions): Promise<AuthInitResult
     localAuth: {
       providers: {
         ...(passwordEnabled ? { password: { accounts: passwordAccounts } } : {}),
-        ...(Object.keys(localOidc).length > 0
-          ? { oidc: { instances: localOidc } }
-          : {}),
+        ...(Object.keys(localOidc).length > 0 ? { oidc: { instances: localOidc } } : {}),
       },
     },
     users,
@@ -204,9 +202,7 @@ async function selectCanonicalUser(
     Object.hasOwn(users, suggestedUserId) ? suggestedUserId : NEW_USER,
   );
 
-  return selected === NEW_USER
-    ? createCanonicalUser(ui, users, suggestedUserId)
-    : selected;
+  return selected === NEW_USER ? createCanonicalUser(ui, users, suggestedUserId) : selected;
 }
 
 async function createCanonicalUser(

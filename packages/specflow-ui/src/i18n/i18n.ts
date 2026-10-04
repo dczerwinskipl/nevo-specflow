@@ -45,7 +45,7 @@ export function createSpecFlowI18n(locale: AppLocale = resolveInitialLocale()): 
     },
     lng: locale,
     fallbackLng: DEFAULT_LOCALE,
-    supportedLngs: supportedLocales,
+    supportedLngs: [...supportedLocales],
     interpolation: { escapeValue: false },
     initImmediate: false,
   });
@@ -74,7 +74,11 @@ export async function changeLocale(
 
 function browserStorage(): Pick<Storage, 'getItem' | 'setItem'> | undefined {
   if (typeof window === 'undefined') return undefined;
-  return window.localStorage;
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
 }
 
 function browserLanguages(): readonly string[] {

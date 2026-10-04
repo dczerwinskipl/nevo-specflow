@@ -158,12 +158,14 @@ describe('Runtime project initialization', () => {
       ['demo', '<default>'],
       [
         'Company SSO',
+        'Company',
         'company',
         '<default>',
         'company-client-id',
         'demo@example.com',
         '<default>',
         'Demo User',
+        'A'.repeat(33),
         ' company sso ',
         'Customer Workforce Identity',
         'customer',
@@ -213,6 +215,8 @@ describe('Runtime project initialization', () => {
       },
     });
 
+    expect(ui.notes.join('\n')).toMatch(/lowercase slug/i);
+    expect(ui.notes.join('\n')).toMatch(/at most 32 characters/i);
     expect(ui.notes.join('\n')).toMatch(/provider names must be unique/i);
     const review = contribution.summary.join('\n');
     expect(review).toContain('Company SSO [company]');

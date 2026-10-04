@@ -1,10 +1,9 @@
 import type { AuthSessionResponse } from '@nevo/specflow-contracts/authentication';
-import { createMemoryHistory } from '@tanstack/react-router';
 import { describe, expect, it } from 'vitest';
 
 import type { AuthApi } from '../auth/api';
 import { createAuthStore } from '../auth/store';
-import { createSpecFlowRouter } from './router';
+import { resolveAppAccess, resolveLoginAccess } from './router';
 
 const noAuth: AuthSessionResponse = {
   authenticationRequired: false,
@@ -27,54 +26,63 @@ const authenticated: AuthSessionResponse = {
   loginMethods: { password: { enabled: true }, oidc: [] },
 };
 
-describe('SpecFlow router', () => {
+describe('SpecFlow router access policy', () => {
   it('allows trusted local mode into app routes without a login screen', async () => {
-    const router = await loadedRouter(createAuthStore(fakeApi(), noAuth));
-
-    await router.navigate({ to: '/ui-playground' });
-
-    expect(router.state.location.pathname).toBe('/ui-playground');
+    await expect(resolveAppAccess(storeWith(noAuth), '/ui-playground')).resolves.toEqual({
+      kind: 'allow',
+    });
   });
 
-  it('redirects protected app routes to standalone login and preserves returnTo', async () => {
-    const router = await loadedRouter(createAuthStore(fakeApi(), loginRequired));
+  it('redirects required unauthenticated app access to login and preserves a safe returnTo', async () => {
+    await expect(resolveAppAccess(storeWith(loginRequired), '/ui-playground')).resolves.toEqual({
+      kind: 'login',
+      returnTo: '/ui-playground',
+    });
 
-    await router.navigate({ to: '/ui-playground' });
-
-    expect(router.state.location.pathname).toBe('/login');
-    expect(router.state.location.search).toMatchObject({ returnTo: '/ui-playground' });
+    await expect(resolveAppAccess(storeWith(loginRequired), '//evil.example')).resolves.toEqual({
+      kind: 'login',
+      returnTo: '/',
+    });
   });
 
   it('redirects an authenticated login route back into the application', async () => {
-    const router = await loadedRouter(createAuthStore(fakeApi(), authenticated));
-
-    await router.navigate({
-      to: '/login',
-      search: { returnTo: '/ui-playground' },
+    await expect(resolveLoginAccess(storeWith(authenticated), '/ui-playground')).resolves.toEqual({
+      kind: 'app',
+      returnTo: '/ui-playground',
     });
-
-    expect(router.state.location.pathname).toBe('/ui-playground');
   });
 
-  it('routes Runtime bootstrap failure to a standalone recovery screen', async () => {
-    const api = fakeApi({
-      getSession: () => Promise.reject(new Error('runtime down')),
+  it('redirects local-mode login visits back into the application', async () => {
+    await expect(resolveLoginAccess(storeWith(noAuth), undefined)).resolves.toEqual({
+      kind: 'app',
+      returnTo: '/',
     });
-    const router = await loadedRouter(createAuthStore(api));
+  });
 
-    await router.navigate({ to: '/ui-playground' });
+  it('keeps required unauthenticated users on the login route', async () => {
+    await expect(resolveLoginAccess(storeWith(loginRequired), '/')).resolves.toEqual({
+      kind: 'allow',
+    });
+  });
 
-    expect(router.state.location.pathname).toBe('/runtime-unavailable');
+  it('routes Runtime bootstrap failure to a standalone recovery state', async () => {
+    const auth = createAuthStore(
+      fakeApi({ getSession: () => Promise.reject(new Error('runtime down')) }),
+    );
+
+    await expect(resolveAppAccess(auth, '/ui-playground')).resolves.toEqual({
+      kind: 'runtime-unavailable',
+      returnTo: '/ui-playground',
+    });
+    await expect(resolveLoginAccess(auth, '/ui-playground')).resolves.toEqual({
+      kind: 'runtime-unavailable',
+      returnTo: '/ui-playground',
+    });
   });
 });
 
-async function loadedRouter(auth: ReturnType<typeof createAuthStore>) {
-  const router = createSpecFlowRouter(
-    createMemoryHistory({ initialEntries: ['/runtime-unavailable'] }),
-    auth,
-  );
-  await router.load();
-  return router;
+function storeWith(session: AuthSessionResponse) {
+  return createAuthStore(fakeApi(), session);
 }
 
 function fakeApi(overrides: Partial<AuthApi> = {}): AuthApi {

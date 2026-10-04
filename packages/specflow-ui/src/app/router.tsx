@@ -1,3 +1,4 @@
+import type { AuthSessionResponse } from '@nevo/specflow-contracts/authentication';
 import {
   Outlet,
   createRootRouteWithContext,
@@ -17,6 +18,16 @@ export interface SpecFlowRouterContext {
   readonly auth: AuthStore;
 }
 
+export type AppAccessDecision =
+  | { readonly kind: 'allow' }
+  | { readonly kind: 'login'; readonly returnTo: string }
+  | { readonly kind: 'runtime-unavailable'; readonly returnTo: string };
+
+export type LoginAccessDecision =
+  | { readonly kind: 'allow' }
+  | { readonly kind: 'app'; readonly returnTo: string }
+  | { readonly kind: 'runtime-unavailable'; readonly returnTo: string };
+
 const rootRoute = createRootRouteWithContext<SpecFlowRouterContext>()({
   component: Outlet,
 });
@@ -29,18 +40,17 @@ const loginRoute = createRoute({
     ...(typeof search.error === 'string' ? { error: search.error } : {}),
   }),
   beforeLoad: async ({ context, search }) => {
-    let session;
-    try {
-      session = await context.auth.ensureSession();
-    } catch {
+    const decision = await resolveLoginAccess(context.auth, search.returnTo);
+
+    if (decision.kind === 'runtime-unavailable') {
       throw redirect({
         to: '/runtime-unavailable',
-        search: { returnTo: safeReturnTo(search.returnTo) },
+        search: { returnTo: decision.returnTo },
       });
     }
 
-    if (!session.authenticationRequired || session.authenticated) {
-      throw redirect({ href: safeReturnTo(search.returnTo) });
+    if (decision.kind === 'app') {
+      throw redirect({ href: decision.returnTo });
     }
   },
   component: LoginRouteScreen,
@@ -60,20 +70,19 @@ const appRoute = createRoute({
   id: '_app',
   beforeLoad: async ({ context, location }) => {
     const returnTo = safeReturnTo(`${location.pathname}${location.searchStr}${location.hash}`);
-    let session;
-    try {
-      session = await context.auth.ensureSession();
-    } catch {
+    const decision = await resolveAppAccess(context.auth, returnTo);
+
+    if (decision.kind === 'runtime-unavailable') {
       throw redirect({
         to: '/runtime-unavailable',
-        search: { returnTo },
+        search: { returnTo: decision.returnTo },
       });
     }
 
-    if (session.authenticationRequired && !session.authenticated) {
+    if (decision.kind === 'login') {
       throw redirect({
         to: '/login',
-        search: { returnTo },
+        search: { returnTo: decision.returnTo },
       });
     }
   },
@@ -111,6 +120,42 @@ export function createSpecFlowRouter(history?: RouterHistory, auth: AuthStore = 
 }
 
 export const router = createSpecFlowRouter();
+
+export async function resolveAppAccess(
+  auth: AuthStore,
+  returnTo: string,
+): Promise<AppAccessDecision> {
+  const safeTarget = safeReturnTo(returnTo);
+  let session: AuthSessionResponse;
+
+  try {
+    session = await auth.ensureSession();
+  } catch {
+    return { kind: 'runtime-unavailable', returnTo: safeTarget };
+  }
+
+  return session.authenticationRequired && !session.authenticated
+    ? { kind: 'login', returnTo: safeTarget }
+    : { kind: 'allow' };
+}
+
+export async function resolveLoginAccess(
+  auth: AuthStore,
+  returnTo: string | undefined,
+): Promise<LoginAccessDecision> {
+  const safeTarget = safeReturnTo(returnTo);
+  let session: AuthSessionResponse;
+
+  try {
+    session = await auth.ensureSession();
+  } catch {
+    return { kind: 'runtime-unavailable', returnTo: safeTarget };
+  }
+
+  return !session.authenticationRequired || session.authenticated
+    ? { kind: 'app', returnTo: safeTarget }
+    : { kind: 'allow' };
+}
 
 function LoginRouteScreen() {
   const { auth } = loginRoute.useRouteContext();

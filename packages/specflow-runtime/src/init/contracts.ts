@@ -1,4 +1,6 @@
-export interface RuntimeSetupChoice<T extends string> {
+export type RuntimeSetupSelectValue = string | symbol;
+
+export interface RuntimeSetupChoice<T extends RuntimeSetupSelectValue> {
   readonly value: T;
   readonly label: string;
   readonly hint?: string;
@@ -6,7 +8,7 @@ export interface RuntimeSetupChoice<T extends string> {
 
 export interface RuntimeSetupUi {
   confirm(message: string, initialValue?: boolean): Promise<boolean>;
-  select<T extends string>(
+  select<T extends RuntimeSetupSelectValue>(
     message: string,
     choices: readonly RuntimeSetupChoice<T>[],
     initialValue?: T,

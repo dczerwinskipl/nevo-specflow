@@ -1,13 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
-import { initRuntime, type RuntimeSetupChoice, type RuntimeSetupUi } from '../src/index';
+import {
+  initRuntime,
+  type RuntimeSetupChoice,
+  type RuntimeSetupSelectValue,
+  type RuntimeSetupUi,
+} from '../src/index';
 
 const PASSWORD_HASH =
   '$scrypt$16384$8$5$MDEyMzQ1Njc4OWFiY2RlZg$yMHgG_FDESRF0j5gjhGLotSMPdnfefUcNNFPyNoQtJE';
 
 class ScriptedUi implements RuntimeSetupUi {
   readonly notes: string[] = [];
-  readonly selectDefaults: (string | undefined)[] = [];
+  readonly selectDefaults: (RuntimeSetupSelectValue | undefined)[] = [];
+  readonly inputMessages: string[] = [];
 
   constructor(
     private readonly confirmations: boolean[],
@@ -22,24 +28,37 @@ class ScriptedUi implements RuntimeSetupUi {
     return Promise.resolve(value);
   }
 
-  select<T extends string>(
+  select<T extends RuntimeSetupSelectValue>(
     _message: string,
-    _choices: readonly RuntimeSetupChoice<T>[],
+    choices: readonly RuntimeSetupChoice<T>[],
     initialValue?: T,
   ): Promise<T> {
     this.selectDefaults.push(initialValue);
     const value = this.selections.shift();
     if (!value) throw new Error('Missing scripted selection.');
+
     if (value === '<default>') {
       if (initialValue === undefined) {
         throw new Error('Script requested a missing default selection.');
       }
       return Promise.resolve(initialValue);
     }
-    return Promise.resolve(value as T);
+
+    if (value === '<create>') {
+      const createChoice = choices.find((choice) => typeof choice.value === 'symbol');
+      if (!createChoice) throw new Error('Script requested a missing create-user selection.');
+      return Promise.resolve(createChoice.value);
+    }
+
+    const matchingChoice = choices.find((choice) => choice.value === value);
+    if (!matchingChoice) {
+      throw new Error(`Scripted selection '${value}' is not available.`);
+    }
+    return Promise.resolve(matchingChoice.value);
   }
 
-  input(_message: string, defaultValue?: string): Promise<string> {
+  input(message: string, defaultValue?: string): Promise<string> {
+    this.inputMessages.push(message);
     const value = this.inputs.shift();
     if (value === undefined) throw new Error('Missing scripted input.');
     return Promise.resolve(value === '<default>' ? (defaultValue ?? '') : value);
@@ -125,12 +144,12 @@ describe('Runtime project initialization', () => {
     expect(contribution.summary.join('\n')).toContain('Demo User (demo-user): admin');
   });
 
-  it('defaults the bootstrap user to admin and additional users to developer', async () => {
+  it('keeps bootstrap role defaults in canonical-user creation order for integer-like ids', async () => {
     const ui = new ScriptedUi(
       [true, true, true, false, false],
-      ['__new__', '<default>', '<default>'],
-      ['demo', '<default>', 'Demo User', 'jane', '<default>', 'Jane User'],
-      ['demo-password', 'demo-password', 'jane-password', 'jane-password'],
+      ['<create>', '<default>', '<default>'],
+      ['ten', '10', 'Ten User', 'two', '2', 'Two User'],
+      ['ten-password', 'ten-password', 'two-password', 'two-password'],
     );
 
     const contribution = await initRuntime({
@@ -142,14 +161,90 @@ describe('Runtime project initialization', () => {
     expect(contribution.projectConfig).toMatchObject({
       authorization: {
         assignments: [
-          { userId: 'demo', role: 'admin', scope: {} },
-          { userId: 'jane', role: 'developer', scope: {} },
+          { userId: '10', role: 'admin', scope: {} },
+          { userId: '2', role: 'developer', scope: {} },
         ],
       },
     });
     const review = contribution.summary.join('\n');
-    expect(review).toContain('Demo User (demo): admin');
-    expect(review).toContain('Jane User (jane): developer');
+    expect(review.indexOf('Ten User (10): admin')).toBeLessThan(
+      review.indexOf('Two User (2): developer'),
+    );
+  });
+
+  it('allows a canonical user id that matched the former create-user sentinel', async () => {
+    const ui = new ScriptedUi(
+      [true, true, true, false, false],
+      ['__new__', '<default>'],
+      ['first', '__new__', 'Sentinel User', 'second'],
+      ['first-password', 'first-password', 'second-password', 'second-password'],
+    );
+
+    const contribution = await initRuntime({
+      ui,
+      hashPassword: () => Promise.resolve(PASSWORD_HASH),
+    });
+
+    expect(contribution.projectConfig).toMatchObject({
+      auth: {
+        users: { __new__: { name: 'Sentinel User' } },
+      },
+      authorization: {
+        assignments: [{ userId: '__new__', role: 'admin', scope: {} }],
+      },
+    });
+    expect(contribution.localConfig).toMatchObject({
+      auth: {
+        providers: {
+          password: {
+            accounts: {
+              first: { userId: '__new__' },
+              second: { userId: '__new__' },
+            },
+          },
+        },
+      },
+    });
+  });
+
+  it('reprompts an invalid OIDC issuer before collecting downstream provider fields', async () => {
+    const ui = new ScriptedUi(
+      [true, false, true, false, false],
+      ['<default>'],
+      [
+        'Company SSO',
+        'company',
+        'http://issuer.example.test',
+        'https://issuer.example.test',
+        'company-client-id',
+        'demo@example.com',
+        'demo',
+        'Demo User',
+        '<default>',
+      ],
+      ['company-secret'],
+    );
+
+    const contribution = await initRuntime({ ui });
+
+    expect(ui.notes.join('\n')).toMatch(/absolute HTTPS URL/i);
+    expect(ui.inputMessages).toEqual(
+      expect.arrayContaining(['Issuer URL', 'Client ID', 'Allowed email']),
+    );
+    expect(ui.inputMessages.indexOf('Issuer URL')).toBeLessThan(
+      ui.inputMessages.indexOf('Client ID'),
+    );
+    expect(contribution.projectConfig).toMatchObject({
+      auth: {
+        providers: {
+          oidc: {
+            instances: {
+              company: { issuer: 'https://issuer.example.test' },
+            },
+          },
+        },
+      },
+    });
   });
 
   it('reviews multiple OIDC mappings without secrets', async () => {
@@ -172,6 +267,7 @@ describe('Runtime project initialization', () => {
         'https://login.customer.example',
         'customer-client-id',
         'demo@customer.example',
+        '<default>',
         '<default>',
       ],
       ['company-secret', 'customer-secret'],

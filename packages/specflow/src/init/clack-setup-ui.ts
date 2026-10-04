@@ -1,6 +1,10 @@
 import * as prompts from '@clack/prompts';
 
-import type { RuntimeSetupChoice, RuntimeSetupUi } from '@nevo/specflow-runtime';
+import type {
+  RuntimeSetupChoice,
+  RuntimeSetupSelectValue,
+  RuntimeSetupUi,
+} from '@nevo/specflow-runtime';
 
 export class ProjectSetupCancelledError extends Error {
   constructor() {
@@ -15,7 +19,7 @@ export class ClackProjectSetupUi implements RuntimeSetupUi {
     return resolvePrompt<boolean>(value);
   }
 
-  async select<T extends string>(
+  async select<T extends RuntimeSetupSelectValue>(
     message: string,
     choices: readonly RuntimeSetupChoice<T>[],
     initialValue?: T,
@@ -55,7 +59,7 @@ export class ClackProjectSetupUi implements RuntimeSetupUi {
   }
 }
 
-function resolvePrompt<T extends string | boolean>(value: T | typeof prompts.CANCEL_SYMBOL): T {
+function resolvePrompt<T>(value: T | typeof prompts.CANCEL_SYMBOL): T {
   if (prompts.isCancel(value)) {
     prompts.cancel('SpecFlow setup cancelled.');
     throw new ProjectSetupCancelledError();

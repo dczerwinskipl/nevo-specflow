@@ -26,7 +26,7 @@ export async function initRuntime(options: RuntimeInitOptions): Promise<RuntimeI
   const host = '127.0.0.1';
   const port = 4318;
   const publicOrigin = auth.requiresPublicOrigin ? await askBrowserOrigin(options.ui) : undefined;
-  const authorization = await initAuthorization(options.ui, auth.users);
+  const authorization = await initAuthorization(options.ui, auth.canonicalUsers);
 
   const server: Record<string, unknown> = {
     host,

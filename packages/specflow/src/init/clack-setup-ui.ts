@@ -32,7 +32,7 @@ export class ClackProjectSetupUi implements RuntimeSetupUi {
     const value = await prompts.select<T>({
       message,
       options,
-      ...(initialValue ? { initialValue } : {}),
+      ...(initialValue !== undefined ? { initialValue } : {}),
     });
     return resolvePrompt<T>(value);
   }

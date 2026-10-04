@@ -1,1 +1,1 @@
-export const AUTH_CONFIG_REPLACE_PATHS = ['auth.providers.password.accounts'] as const;
+export const AUTH_CONFIG_REPLACE_PATHS = ['authentication.providers.password.accounts'] as const;

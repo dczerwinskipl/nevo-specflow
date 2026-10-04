@@ -49,9 +49,10 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
     const invalid = isAriaInvalid(field.ariaInvalid);
     const state = field.disabled ? 'disabled' : invalid ? 'invalid' : 'default';
     const capture = useDesignMetadata('PasswordInput', { state });
+    const fieldSlot = field.insideField ? designSlot('Field', 'control') : {};
 
     return (
-      <div className={cn('w-full', wrapperClassName)} {...capture}>
+      <div className={cn('w-full', wrapperClassName)} {...fieldSlot} {...capture}>
         <InputGroup disabled={field.disabled} {...designSlot('PasswordInput', 'control')}>
           <TextInput
             ref={ref}

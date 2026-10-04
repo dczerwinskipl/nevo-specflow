@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { RuntimeAuthConfig } from '../../../../src/auth/authentication/config/model';
 import {
   authenticatedSession,
-  configuredAuthProviders,
+  configuredLoginMethods,
   unauthenticatedSession,
 } from '../../../../src/auth/authentication/session/model';
 
@@ -18,44 +18,64 @@ const auth: RuntimeAuthConfig = {
       },
     },
     oidc: {
-      enabled: true,
-      issuer: 'https://issuer.example.test',
-      clientId: 'client-id',
-      clientSecret: 'secret',
-      allowedEmails: { 'demo@example.com': 'demo-user' },
+      instances: {
+        company: {
+          name: 'Company SSO',
+          enabled: true,
+          issuer: 'https://issuer.example.test',
+          clientId: 'client-id',
+          clientSecret: 'secret',
+          allowedEmails: { 'demo@example.com': 'demo-user' },
+        },
+      },
     },
   },
 };
 
 describe('authentication session model', () => {
-  it('reports enabled providers in stable order', () => {
-    expect(configuredAuthProviders(auth)).toEqual(['password', 'oidc']);
+  it('reports password capability and enabled OIDC instances', () => {
+    expect(configuredLoginMethods(auth)).toEqual({
+      password: { enabled: true },
+      oidc: [{ id: 'company', name: 'Company SSO' }],
+    });
   });
 
-  it('keeps trusted local identity explicitly unauthenticated', () => {
+  it('keeps trusted local identity explicitly unauthenticated and login-free', () => {
     const localAuth: RuntimeAuthConfig = {
       mode: 'none',
       localUserId: 'demo-user',
       users: auth.users,
       providers: {
         password: { enabled: false, accounts: {} },
-        oidc: { enabled: false, allowedEmails: {} },
+        oidc: { instances: {} },
       },
     };
 
     expect(unauthenticatedSession(localAuth)).toEqual({
+      authenticationRequired: false,
       authenticated: false,
       user: { id: 'demo-user', name: 'Demo User' },
-      availableProviders: [],
+      loginMethods: { password: { enabled: false }, oidc: [] },
     });
   });
 
-  it('projects authenticated sessions without provider-private state', () => {
-    expect(authenticatedSession(auth, 'demo-user', 'oidc')).toEqual({
+  it('projects OIDC profile data from the authenticated session', () => {
+    expect(
+      authenticatedSession(
+        auth,
+        'demo-user',
+        { kind: 'oidc', providerId: 'company' },
+        'OIDC Display Name',
+      ),
+    ).toEqual({
+      authenticationRequired: true,
       authenticated: true,
-      user: { id: 'demo-user', name: 'Demo User' },
-      provider: 'oidc',
-      availableProviders: ['password', 'oidc'],
+      user: { id: 'demo-user', name: 'OIDC Display Name' },
+      authenticatedWith: { kind: 'oidc', providerId: 'company' },
+      loginMethods: {
+        password: { enabled: true },
+        oidc: [{ id: 'company', name: 'Company SSO' }],
+      },
     });
   });
 });

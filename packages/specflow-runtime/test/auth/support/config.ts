@@ -16,13 +16,16 @@ export function passwordConfig(): RuntimeConfig {
             demo: { userId: 'demo-user', passwordHash: PASSWORD_HASH },
           },
         },
-        oidc: { enabled: false, allowedEmails: {} },
+        oidc: { instances: {} },
       },
     },
   };
 }
 
-export function oidcConfig(allowedEmails: Readonly<Record<string, string>>): RuntimeConfig {
+export function oidcConfig(
+  allowedEmails: Readonly<Record<string, string>>,
+  providerId = 'company',
+): RuntimeConfig {
   return {
     server: {
       host: '127.0.0.1',
@@ -36,11 +39,16 @@ export function oidcConfig(allowedEmails: Readonly<Record<string, string>>): Run
       providers: {
         password: { enabled: false, accounts: {} },
         oidc: {
-          enabled: true,
-          issuer: 'https://issuer.example.test',
-          clientId: 'client-id',
-          clientSecret: 'client-secret',
-          allowedEmails,
+          instances: {
+            [providerId]: {
+              name: 'Company SSO',
+              enabled: true,
+              issuer: 'https://issuer.example.test',
+              clientId: 'client-id',
+              clientSecret: 'client-secret',
+              allowedEmails,
+            },
+          },
         },
       },
     },
@@ -56,7 +64,7 @@ export function noAuthConfig(): RuntimeConfig {
       users: { 'demo-user': { name: 'Demo User' } },
       providers: {
         password: { enabled: false, accounts: {} },
-        oidc: { enabled: false, allowedEmails: {} },
+        oidc: { instances: {} },
       },
     },
   };

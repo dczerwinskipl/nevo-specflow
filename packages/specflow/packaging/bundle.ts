@@ -2,7 +2,7 @@
 // entry, internal workspace packages, and runtime third-party dependencies into a
 // single self-contained ESM file.
 
-import { mkdirSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve, sep } from 'node:path';
 
 import { build } from 'esbuild';
@@ -15,6 +15,8 @@ export interface BundleInput {
   /** value baked in for `NEVO_SPECFLOW_VERSION_INJECTED`. */
   readonly version: string;
   readonly cwd?: string;
+  /** built SpecFlow UI directory; defaults to the workspace package dist output. */
+  readonly uiSourceDir?: string;
 }
 
 export interface BundledThirdPartyPackage {
@@ -55,6 +57,11 @@ export async function bundleProduct(input: BundleInput): Promise<BundleResult> {
     logLevel: 'silent',
   });
 
+  copyProductUiAssets(
+    input.uiSourceDir ?? resolve(cwd, '..', 'specflow-ui', 'dist'),
+    dirname(outfile),
+  );
+
   return {
     outfile,
     thirdPartyPackages: discoverThirdPartyPackages(Object.keys(result.metafile.inputs), cwd),
@@ -89,4 +96,17 @@ function discoverThirdPartyPackages(
   return [...packages.values()].sort((a, b) =>
     a.name === b.name ? a.root.localeCompare(b.root) : a.name.localeCompare(b.name),
   );
+}
+
+function copyProductUiAssets(source: string, outputDir: string): void {
+  const index = join(source, 'index.html');
+  if (!existsSync(index)) {
+    throw new Error(
+      `SpecFlow UI build output is missing at ${source}. Build @nevo/specflow-ui before bundling the product.`,
+    );
+  }
+
+  const destination = join(outputDir, 'ui');
+  rmSync(destination, { recursive: true, force: true });
+  cpSync(source, destination, { recursive: true });
 }

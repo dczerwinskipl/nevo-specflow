@@ -41,13 +41,13 @@ describe('startRuntime', () => {
         `    port: ${port}`,
         '    tls:',
         '      enabled: false',
-        '  auth:',
+        '  authentication:',
         '    mode: none',
         '    providers:',
         '      password:',
         '        enabled: false',
         '      oidc:',
-        '        enabled: false',
+        '        instances: {}',
         '',
       ].join('\n'),
       'utf8',
@@ -60,9 +60,21 @@ describe('startRuntime', () => {
     });
     try {
       expect(runtime.address).toContain(`:${port}`);
+      const root = await fetch(`http://127.0.0.1:${port}/`);
+      expect(root.status).toBe(200);
+      expect(await root.json()).toEqual({
+        service: 'Nevo SpecFlow Runtime API',
+        status: 'ok',
+        message: 'This address serves the Runtime API, not the SpecFlow web UI.',
+      });
+
       const response = await fetch(`http://127.0.0.1:${port}/api/auth/session`);
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ authenticated: false, availableProviders: [] });
+      expect(await response.json()).toEqual({
+        authenticationRequired: false,
+        authenticated: false,
+        loginMethods: { password: { enabled: false }, oidc: [] },
+      });
     } finally {
       await runtime.close();
     }

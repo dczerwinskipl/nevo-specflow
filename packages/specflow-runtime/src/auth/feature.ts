@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 
-import type { RuntimeAuthConfig } from './authentication/config/model';
+import { enabledOidcProviders, type RuntimeAuthConfig } from './authentication/config/model';
 import { createOidcClient, type OidcClient } from './authentication/oidc/client';
 import { oidcRoutes } from './authentication/oidc/http';
 import {
@@ -20,7 +20,7 @@ import { registerAuthRateLimit } from './http/rate-limit';
 
 export interface AuthFeatureDependencies {
   readonly store?: AuthStore;
-  readonly oidc?: OidcClient;
+  readonly oidcClients?: Readonly<Record<string, OidcClient>>;
   readonly passwordAccountThrottle?: PasswordAccountThrottle;
   readonly inMemoryStorePolicy?: AuthSessionPolicyOverrides;
 }
@@ -63,16 +63,19 @@ export const authFeature: FastifyPluginAsync<AuthFeatureOptions> = async (app, o
     });
   }
 
-  if (options.auth.providers.oidc.enabled) {
-    if (!options.publicOrigin) {
-      throw new Error('OIDC is enabled but Runtime publicOrigin is missing after validation.');
-    }
+  const oidcProviders = enabledOidcProviders(options.auth);
+  if (oidcProviders.length > 0 && !options.publicOrigin) {
+    throw new Error('OIDC is enabled but Runtime publicOrigin is missing after validation.');
+  }
 
+  for (const [providerId, provider] of oidcProviders) {
     app.register(oidcRoutes, {
-      provider: options.auth.providers.oidc,
+      prefix: `/api/auth/oidc/${providerId}`,
+      providerId,
+      provider,
       store,
-      oidc: dependencies?.oidc ?? createOidcClient(options.auth.providers.oidc),
-      publicOrigin: options.publicOrigin,
+      oidc: dependencies?.oidcClients?.[providerId] ?? createOidcClient(provider),
+      publicOrigin: options.publicOrigin!,
       cookieNames,
       cookieOptions,
     });

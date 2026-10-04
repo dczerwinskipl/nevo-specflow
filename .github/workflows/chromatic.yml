@@ -1,14 +1,14 @@
 name: Chromatic
 
 on:
-  pull_request:
+  workflow_dispatch:
   push:
     branches:
       - main
 
 concurrency:
-  group: chromatic-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: chromatic-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -33,8 +33,6 @@ jobs:
         if: env.CHROMATIC_PROJECT_TOKEN != ''
         run: pnpm chromatic
 
-      # Fork pull requests cannot read repository secrets. Keeping the job green avoids
-      # leaving an informational visual check permanently pending for those contributors.
       - name: Explain skipped visual tests
         if: env.CHROMATIC_PROJECT_TOKEN == ''
         run: echo "Chromatic skipped because CHROMATIC_PROJECT_TOKEN is unavailable."

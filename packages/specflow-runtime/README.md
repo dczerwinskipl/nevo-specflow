@@ -89,7 +89,7 @@ and runtime-context policy are separate responsibilities.
 ## Configuration
 
 Runtime owns the `server` configuration it consumes and composes feature-owned configuration such
-as `auth`. Its `initRuntime` operation owns the corresponding setup prompts/defaults, secret split,
+as `authentication`. Its `initRuntime` operation owns the corresponding setup prompts/defaults, secret split,
 hashing, and effective-config validation; the public product initializer only owns repository/file
 bootstrap.
 
@@ -98,16 +98,18 @@ its `runtime` subtree. Runtime does not discover the repository root or assume c
 to `process.cwd()`.
 
 The entire `.nevo/local/` directory is Git-ignored and is also reserved for future Runtime-owned
-local state. Authentication secrets, including password hashes and OIDC client secrets, are
+local state. Authentication secrets, including password hashes and per-instance OIDC client secrets, are
 local-only. Project/local provenance is validated before merge; local config cannot change canonical
-users, auth mode, provider policy, OIDC mapping, server bind/origin, or TLS enablement.
-Security-sensitive auth maps use replacement rather than additive merge semantics. Parsed identity,
+users, auth mode, provider policy, OIDC mapping, server bind/origin, or TLS enablement. OIDC project
+configuration is a map under `authentication.providers.oidc.instances`; each instance has a stable provider id
+and a user-facing name, while the matching local instance contributes only its client secret.
+Security-sensitive authentication maps use replacement rather than additive merge semantics. Parsed identity,
 account, and OIDC mapping dictionaries use own-property lookups and prototype-safe storage so special
 keys such as `__proto__` or `toString` cannot become inherited identities. YAML syntax errors are
 reported without echoing source snippets, so malformed local secret configuration does not leak
 secret text to stderr.
 
-`auth.mode` supports:
+`authentication.mode` supports:
 
 - `none`: no login provider is enabled; optional `localUserId` may provide attribution;
 - `required`: at least one login provider is enabled and `localUserId` is forbidden.
@@ -117,10 +119,13 @@ disabled, both the bind host and any `publicOrigin` must be loopback. Reverse-pr
 and forwarded-client-IP trust are intentionally not supported yet.
 
 If `publicOrigin` is configured, its protocol must match Runtime TLS: HTTPS with TLS, HTTP without
-TLS. It is the canonical browser-facing origin used for OIDC redirects and therefore must match the
-hostname users actually open in the browser. The initializer uses the same loopback host for bind
-and public origin (`127.0.0.1`) so host-only auth cookies survive the OIDC redirect. Origins
-containing credentials, paths, queries, or fragments are rejected rather than silently normalized.
+TLS. It is the browser-facing product origin used for OIDC redirects and therefore must match the
+hostname users actually open in the browser. The packaged product uses one local origin:
+`http://127.0.0.1:4318`. Runtime serves the built SpecFlow UI at that root and the API under
+`/api`, so OIDC callbacks, browser routes, and API requests share the same host and port.
+
+The standalone Vite server on port `5173` remains a UI-development convenience only; it is not part
+of the normal `nevo-specflow start` topology.
 
 ## Password authentication
 
@@ -150,14 +155,21 @@ hash in local configuration, not committed project configuration.
 ## OIDC profile
 
 OIDC uses authorization code flow with PKCE, state, and nonce. Provider tokens are not stored in the
-application session. The provider is generic and configured by issuer; Google is only an example.
+application session. Each provider instance is generic and configured by issuer; Google is only an example. Multiple
+named OIDC instances may be enabled at the same time.
 
 The currently supported profile is deliberately narrow:
 
 - HTTPS issuer;
 - confidential client using `client_secret_post`;
 - verified standard `email` claim in the ID token;
+- optional standard `name` claim used as the authenticated session display name, falling back to email;
 - allow-list mapping from normalized email to the internal user id.
+
+During init, each normalized OIDC allow-list email is the canonical user id. If that exact id already
+exists it is reused; otherwise setup creates it automatically. The wizard does not offer arbitrary
+linking to another canonical user and does not ask for an OIDC display name: profile display data
+comes from provider claims when the user signs in.
 
 OIDC discovery/network failures are distinguished from callback authentication failures at the
 provider boundary. Failed discovery is coalesced behind a short retry cooldown so a provider outage
@@ -165,11 +177,14 @@ does not cause every request to start a new discovery call. Runtime enables Fast
 logger at warning level and writes warnings to stderr so CLI stdout remains a stable product surface. Request logging records only the request
 method, path without query/fragment data, and direct network source metadata. Provider diagnostics
 are deliberately sanitized to category/code/status metadata rather than raw provider response bodies.
-OIDC start uses the same Fastify-owned source/IP throttling boundary as password login. Starting a
-new OIDC flow atomically replaces the prior pending transaction for that browser. Callback state is
-matched atomically before the transaction is consumed; a missing or attacker-supplied wrong state
-does not destroy a valid pending login or clear its browser cookie. Logout clears both session and
-pending OIDC state.
+OIDC start uses the same Fastify-owned source/IP throttling boundary as password login. The browser
+starts a concrete provider with `POST /api/auth/oidc/:providerId/start`; Runtime stores the provider
+id and a validated local return target in the pending transaction and returns the external
+authorization URL as JSON. Starting a new OIDC flow atomically replaces the prior pending transaction
+for that browser. Callback state is matched atomically before the transaction is consumed, and the
+provider-specific callback must match the provider recorded in the transaction. Authentication
+failures redirect back to the standalone login route with a stable error code instead of rendering a
+raw API response. Logout clears both session and pending OIDC state.
 
 ## HTTP authentication API
 
@@ -179,11 +194,11 @@ Always registered:
 - `POST /api/auth/logout`
 - `POST /api/authorization/capabilities`
 
-Registered only when the corresponding provider is enabled:
+Registered only when the corresponding login method/provider instance is enabled:
 
 - `POST /api/auth/password/login`
-- `GET /api/auth/oidc/login`
-- `GET /api/auth/oidc/callback`
+- `POST /api/auth/oidc/:providerId/start`
+- `GET /api/auth/oidc/:providerId/callback`
 
 Sessions and pending OIDC transactions are server-side, bounded, and expiring. Capacity is
 fail-closed: a full store returns a controlled HTTP 503 and never evicts live authentication state.
@@ -198,3 +213,11 @@ See [project configuration and local state](../../docs/architecture/runtime/conf
 [`nevo-specflow.example.yaml`](../../nevo-specflow.example.yaml), and
 [`nevo-specflow.local.example.yaml`](../../nevo-specflow.local.example.yaml) for the configuration
 shape.
+
+### Local OIDC identity model
+
+During setup, each allowed OIDC email becomes the stable canonical user id for that identity. The
+wizard does not ask for a separate display name or canonical-user link. At sign-in time Runtime uses
+the OIDC `name` claim for the session display name, falling back to the normalized email when the
+provider does not supply one. Authorization remains configuration-driven and is assigned when the
+OIDC identity is added during setup.

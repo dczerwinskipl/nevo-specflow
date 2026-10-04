@@ -50,10 +50,10 @@ Current shape:
 ```yaml
 runtime:
   server: ...
-  auth: ...
+  authentication: ...
 ```
 
-Runtime owns everything inside the `runtime` subtree. Within Runtime, auth owns `auth` and Runtime
+Runtime owns everything inside the `runtime` subtree. Within Runtime, authentication owns `authentication` and Runtime
 server composition owns `server`. Runtime initialization (`initRuntime`) owns their prompts,
 defaults, project/local split, password hashing, secret policy, merge rules, and validation.
 
@@ -63,7 +63,7 @@ the aggregate documents without reconstructing Runtime settings.
 Server provenance is explicit too: `host`, `port`, `publicOrigin`, and `tls.enabled` are
 project-owned policy. Workstation-local Runtime config may supply only TLS certificate/key paths.
 The merged Runtime config is validated after composition, so local credentials cannot weaken
-project-owned auth or server policy.
+project-owned authentication or server policy.
 
 This namespace boundary is deliberate. Future AI, workflow, repository, or integration
 configuration can add their own top-level capability namespace without becoming an unknown Runtime
@@ -80,7 +80,7 @@ Current ownership is explicit:
 
 - `server`: project owns `host`, `port`, `publicOrigin`, and `tls.enabled`; local owns
   `tls.certFile` and `tls.keyFile`.
-- `auth`: project owns `mode`, `users`, provider `enabled`, and OIDC
+- `authentication`: project owns `mode`, `users`, provider `enabled`, and OIDC
   `issuer`/`clientId`/`allowedEmails`; local owns `localUserId`, password `accounts`, and
   OIDC `clientSecret`.
 
@@ -112,7 +112,22 @@ The product shell resolves the Git repository root for both `init` and `start`, 
 absolute config paths and the project root into Runtime. Runtime does not discover product file
 locations from `process.cwd()`.
 
-The initial Runtime authentication choices are no authentication, password login, and OIDC.
-Password setup hashes the secret inside Runtime. OIDC setup keeps the client secret local.
-Canonical users remain distinct from provider credentials; the password wizard defaults
-`username == userId` for the common case.
+Runtime setup first decides whether authentication is required. Required authentication can combine
+username/password with one or more named OIDC instances; at least one login method must remain
+enabled. Password setup hashes secrets inside Runtime, while every OIDC client secret stays local.
+
+For a new password user, the username is also the canonical user id; the wizard does not ask for a
+second technical identifier. Additional password accounts explicitly choose `New user` or
+`Existing user`. OIDC identities are configured by allowed email; the normalized email becomes
+their stable configured identity automatically, while human-facing profile data comes from verified
+OIDC claims at sign-in rather than from init prompts.
+
+A role is selected immediately whenever setup creates a new user. The first-created user defaults to
+`admin`; subsequent users default to `developer`. Setup preserves creation order explicitly and
+cannot finish without at least one administrator. Trusted local mode keeps its local identity without
+showing a login screen.
+
+Before the product shell asks to write files, Runtime contributes a human-readable review of its
+non-secret choices: authentication mode and methods, named OIDC instances and ids, issuer/client id,
+identity-to-user mappings, canonical users, and role assignments. Passwords, hashes, client secrets,
+and other workstation-local secrets are never included in that review.

@@ -1,5 +1,5 @@
 import { RuntimeConfigError } from '../../../config/error';
-import type { RuntimeAuthConfig } from './model';
+import { enabledOidcProviders, type RuntimeAuthConfig } from './model';
 
 export interface AuthRuntimeContext {
   readonly bindHost: string;
@@ -11,9 +11,9 @@ export function validateAuthRuntimeContext(
   auth: RuntimeAuthConfig,
   context: AuthRuntimeContext,
 ): void {
-  if (auth.providers.oidc.enabled && !context.publicOrigin) {
+  if (enabledOidcProviders(auth).length > 0 && !context.publicOrigin) {
     throw new RuntimeConfigError(
-      'server.publicOrigin is required when the OIDC provider is enabled.',
+      'server.publicOrigin is required when an OIDC provider is enabled.',
     );
   }
 
@@ -23,13 +23,13 @@ export function validateAuthRuntimeContext(
 
   if (!isLoopbackHost(context.bindHost)) {
     throw new RuntimeConfigError(
-      'auth.mode=required without Runtime TLS is allowed only when server.host is loopback.',
+      'authentication.mode=required without Runtime TLS is allowed only when server.host is loopback.',
     );
   }
 
   if (context.publicOrigin && !isLoopbackHost(new URL(context.publicOrigin).hostname)) {
     throw new RuntimeConfigError(
-      'auth.mode=required without Runtime TLS requires server.publicOrigin to be loopback.',
+      'authentication.mode=required without Runtime TLS requires server.publicOrigin to be loopback.',
     );
   }
 }

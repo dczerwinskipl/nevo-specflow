@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { getVariantValues, objectKeys, variantCombinations } from '@nevo/figma-core/authoring';
 import { Button, buttonDefaults, buttonVariants, type ButtonProps } from './Button';
@@ -7,8 +7,12 @@ import { iconRegistry } from '../../foundations/Icon';
 
 const variants = getVariantValues(buttonVariants, 'variant');
 const sizes = getVariantValues(buttonVariants, 'size');
+const widths = getVariantValues(buttonVariants, 'width');
 const icons = objectKeys(iconRegistry);
 const canonicalVariants = variantCombinations(buttonVariants);
+const canonicalMatrixStyle = {
+  '--matrix-item-count': canonicalVariants.length,
+} as CSSProperties;
 
 const meta = {
   title: 'Nevo UI/Actions/Button',
@@ -29,6 +33,7 @@ const meta = {
   argTypes: {
     variant: { control: 'select', options: variants },
     size: { control: 'inline-radio', options: sizes },
+    width: { control: 'inline-radio', options: widths },
     leadingIcon: {
       control: 'select',
       description: 'Optional icon displayed before the label.',
@@ -51,6 +56,7 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
+type CanonicalButtonVariant = (typeof canonicalVariants)[number];
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -86,35 +92,47 @@ function Capture({
   );
 }
 
+function canonicalSourceId(
+  combination: CanonicalButtonVariant,
+  state: 'default' | 'disabled',
+): string {
+  const base = `${combination.variant}-${combination.size}-${combination.width}`;
+  return state === 'disabled' ? `${base}-disabled` : base;
+}
+
 function ButtonMatrix() {
   return (
     <div className="variant-matrix">
-      <div className="matrix-row matrix-row-wide">
+      <div className="matrix-row" style={canonicalMatrixStyle}>
         <strong>generated</strong>
-        {canonicalVariants.map(({ size, variant }) => (
+        {canonicalVariants.map((combination) => (
           <Capture
             canonical
-            key={`${variant}-${size}`}
-            sourceId={`${variant}-${size}`}
-            size={size}
-            variant={variant}
+            key={canonicalSourceId(combination, 'default')}
+            sourceId={canonicalSourceId(combination, 'default')}
+            size={combination.size}
+            variant={combination.variant}
+            width={combination.width}
           >
-            {(variant ?? 'primary').charAt(0).toUpperCase() + (variant ?? 'primary').slice(1)}
+            {(combination.variant ?? 'primary').charAt(0).toUpperCase() +
+              (combination.variant ?? 'primary').slice(1)}
           </Capture>
         ))}
       </div>
-      <div className="matrix-row matrix-row-wide">
+      <div className="matrix-row" style={canonicalMatrixStyle}>
         <strong>disabled</strong>
-        {canonicalVariants.map(({ size, variant }) => (
+        {canonicalVariants.map((combination) => (
           <Capture
             canonical
             disabled
-            key={`${variant}-${size}-disabled`}
-            sourceId={`${variant}-${size}-disabled`}
-            size={size}
-            variant={variant}
+            key={canonicalSourceId(combination, 'disabled')}
+            sourceId={canonicalSourceId(combination, 'disabled')}
+            size={combination.size}
+            variant={combination.variant}
+            width={combination.width}
           >
-            {(variant ?? 'primary').charAt(0).toUpperCase() + (variant ?? 'primary').slice(1)}
+            {(combination.variant ?? 'primary').charAt(0).toUpperCase() +
+              (combination.variant ?? 'primary').slice(1)}
           </Capture>
         ))}
       </div>
@@ -177,6 +195,30 @@ export const Disabled: Story = {
 
 export const VariantCapture: Story = {
   render: () => <ButtonMatrix />,
+  play: async ({ canvasElement }) => {
+    const captures = Array.from(
+      canvasElement.querySelectorAll<HTMLElement>(
+        '[data-design-canonical="true"][data-design-source-id]',
+      ),
+    );
+    const sourceIds = captures.map((capture) => capture.dataset.designSourceId ?? '');
+    const expectedIds = canonicalVariants.flatMap((combination) => [
+      canonicalSourceId(combination, 'default'),
+      canonicalSourceId(combination, 'disabled'),
+    ]);
+
+    assert(
+      sourceIds.length === expectedIds.length,
+      'Button capture should render every canonical recipe combination in both states.',
+    );
+    assert(
+      new Set(sourceIds).size === sourceIds.length,
+      'Button canonical captures must have unique source ids.',
+    );
+    for (const expectedId of expectedIds) {
+      assert(sourceIds.includes(expectedId), `Button capture is missing '${expectedId}'.`);
+    }
+  },
   tags: ['!dev', '!autodocs'],
   parameters: {
     controls: { disable: true },

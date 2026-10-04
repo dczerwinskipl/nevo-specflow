@@ -22,7 +22,7 @@ runtime:
     tls:
       enabled: false
 
-  auth:
+  authentication:
     mode: none
     users:
       demo-user:
@@ -31,7 +31,7 @@ runtime:
       password:
         enabled: false
       oidc:
-        enabled: false
+        instances: {}
 `;
 
 function loadFrom(cwd: string) {
@@ -43,23 +43,23 @@ function loadFrom(cwd: string) {
 
 const LOCAL_PROJECT_POLICY_OVERRIDES = [
   `runtime:
-  auth:
+  authentication:
     mode: required
 `,
   `runtime:
-  auth:
+  authentication:
     users:
       injected:
         name: Injected
 `,
   `runtime:
-  auth:
+  authentication:
     providers:
       password:
         enabled: true
 `,
   `runtime:
-  auth:
+  authentication:
     providers:
       oidc:
         issuer: https://issuer.example.test
@@ -91,7 +91,7 @@ function requiredAuthConfig() {
         keyFile: '.nevo/local/tls/key.pem',
       },
     },
-    auth: {
+    authentication: {
       mode: 'required',
       users: {
         'demo-user': { name: 'Demo User' },
@@ -107,11 +107,16 @@ function requiredAuthConfig() {
           },
         },
         oidc: {
-          enabled: true,
-          issuer: 'https://issuer.example.test',
-          clientId: 'client-id',
-          clientSecret: 'fake-local-secret',
-          allowedEmails,
+          instances: {
+            company: {
+              name: 'Company SSO',
+              enabled: true,
+              issuer: 'https://issuer.example.test',
+              clientId: 'client-id',
+              clientSecret: 'fake-local-secret',
+              allowedEmails,
+            },
+          },
         },
       },
     },
@@ -127,11 +132,11 @@ describe('runtime configuration', () => {
           port: 4318,
           tls: { enabled: false },
         },
-        auth: {
+        authentication: {
           mode: 'none',
           providers: {
             password: { enabled: false },
-            oidc: { enabled: false },
+            oidc: { instances: {} },
           },
         },
       }),
@@ -146,7 +151,7 @@ describe('runtime configuration', () => {
         users: {},
         providers: {
           password: { enabled: false, accounts: {} },
-          oidc: { enabled: false, allowedEmails: {} },
+          oidc: { instances: {} },
         },
       },
     });
@@ -165,16 +170,17 @@ describe('runtime configuration', () => {
 
   it('rejects an unsupported password hash when password auth is enabled', () => {
     const config = requiredAuthConfig();
-    config.auth.providers.password.accounts.demo.passwordHash = '$scrypt$32768$8$1$invalid$invalid';
+    config.authentication.providers.password.accounts.demo.passwordHash =
+      '$scrypt$32768$8$1$invalid$invalid';
 
     expect(() => parseRuntimeConfig(config)).toThrowError(
-      'auth.providers.password.accounts.demo.passwordHash must use a supported SpecFlow password hash format.',
+      'authentication.providers.password.accounts.demo.passwordHash must use a supported SpecFlow password hash format.',
     );
   });
 
   it('rejects OIDC email collisions after normalization', () => {
     const config = requiredAuthConfig();
-    config.auth.providers.oidc.allowedEmails = {
+    config.authentication.providers.oidc.instances.company.allowedEmails = {
       'Demo@example.com': 'demo-user',
       ' demo@example.com ': 'demo-user',
     };
@@ -186,17 +192,18 @@ describe('runtime configuration', () => {
 
   it('requires issuer, client id, and client secret when OIDC is enabled', () => {
     const config = requiredAuthConfig();
-    const { issuer, ...oidc } = config.auth.providers.oidc;
+    const company = config.authentication.providers.oidc.instances.company;
+    const { issuer, ...provider } = company;
     expect(issuer).toBe('https://issuer.example.test');
 
     expect(() =>
       parseRuntimeConfig({
         ...config,
-        auth: {
-          ...config.auth,
+        authentication: {
+          ...config.authentication,
           providers: {
-            ...config.auth.providers,
-            oidc,
+            ...config.authentication.providers,
+            oidc: { instances: { company: provider } },
           },
         },
       }),
@@ -221,7 +228,7 @@ describe('runtime configuration', () => {
           publicOrigin: 'http://specflow.example.test:4318',
           tls: { enabled: false },
         },
-        auth: {
+        authentication: {
           mode: 'required',
           users: { 'demo-user': { name: 'Demo User' } },
           providers: {
@@ -234,7 +241,7 @@ describe('runtime configuration', () => {
                 },
               },
             },
-            oidc: { enabled: false },
+            oidc: { instances: {} },
           },
         },
       }),
@@ -249,7 +256,7 @@ describe('runtime configuration', () => {
           port: 4318,
           tls: { enabled: false },
         },
-        auth: {
+        authentication: {
           mode: 'required',
           users: { 'demo-user': { name: 'Demo User' } },
           providers: {
@@ -262,7 +269,7 @@ describe('runtime configuration', () => {
                 },
               },
             },
-            oidc: { enabled: false },
+            oidc: { instances: {} },
           },
         },
       }),
@@ -319,11 +326,11 @@ describe('runtime configuration', () => {
             keyFile: '.nevo/local/tls/key.pem',
           },
         },
-        auth: {
+        authentication: {
           mode: 'none',
           providers: {
             password: { enabled: false },
-            oidc: { enabled: false },
+            oidc: { instances: {} },
           },
         },
       }),
@@ -338,11 +345,11 @@ describe('runtime configuration', () => {
           port: 4318,
           tls: { enabled: true, certFile: '.nevo/local/tls/cert.pem' },
         },
-        auth: {
+        authentication: {
           mode: 'none',
           providers: {
             password: { enabled: false },
-            oidc: { enabled: false },
+            oidc: { instances: {} },
           },
         },
       }),
@@ -357,23 +364,23 @@ describe('runtime configuration', () => {
           port: 4318,
           tls: { enabled: false },
         },
-        auth: {
+        authentication: {
           mode: 'required',
           providers: {
             password: { enabled: false },
-            oidc: { enabled: false },
+            oidc: { instances: {} },
           },
         },
       }),
-    ).toThrowError(/requires at least one enabled authentication provider/);
+    ).toThrowError(/requires password login or at least one enabled OIDC provider/);
   });
 
   it('does not allow authentication providers in none mode', () => {
     const config = requiredAuthConfig();
-    config.auth.mode = 'none';
+    config.authentication.mode = 'none';
 
     expect(() => parseRuntimeConfig(config)).toThrowError(
-      /auth\.mode=none cannot enable authentication providers/,
+      /authentication\.mode=none cannot enable authentication providers/,
     );
   });
 
@@ -383,12 +390,12 @@ describe('runtime configuration', () => {
     expect(() =>
       parseRuntimeConfig({
         ...config,
-        auth: {
-          ...config.auth,
+        authentication: {
+          ...config.authentication,
           localUserId: 'demo-user',
         },
       }),
-    ).toThrowError(/auth\.localUserId is only valid when auth\.mode=none/);
+    ).toThrowError(/authentication\.localUserId is only valid when authentication\.mode=none/);
   });
 
   it('rejects provider mappings to unknown users', () => {
@@ -399,7 +406,7 @@ describe('runtime configuration', () => {
           port: 4318,
           tls: { enabled: false },
         },
-        auth: {
+        authentication: {
           mode: 'none',
           providers: {
             password: {
@@ -411,7 +418,7 @@ describe('runtime configuration', () => {
                 },
               },
             },
-            oidc: { enabled: false },
+            oidc: { instances: {} },
           },
         },
       }),
@@ -427,11 +434,11 @@ describe('runtime configuration', () => {
           tls: { enabled: false },
           apiPort: 4319,
         },
-        auth: {
+        authentication: {
           mode: 'none',
           providers: {
             password: { enabled: false },
-            oidc: { enabled: false },
+            oidc: { instances: {} },
           },
         },
       }),
@@ -460,7 +467,7 @@ describe('runtime configuration', () => {
     expect(
       mergeRuntimeConfigValues(
         {
-          auth: {
+          authentication: {
             providers: {
               password: {
                 accounts: {
@@ -471,7 +478,7 @@ describe('runtime configuration', () => {
           },
         },
         {
-          auth: {
+          authentication: {
             providers: {
               password: {
                 accounts: {
@@ -483,7 +490,7 @@ describe('runtime configuration', () => {
         },
       ),
     ).toEqual({
-      auth: {
+      authentication: {
         providers: {
           password: {
             accounts: {
@@ -501,7 +508,7 @@ describe('runtime configuration', () => {
     await writeFile(join(cwd, '.nevo/config.yaml'), PROJECT_CONFIG, 'utf8');
     await writeFile(
       join(cwd, '.nevo/local/config.yaml'),
-      'runtime:\n  auth:\n    localUserId: demo-user\n',
+      'runtime:\n  authentication:\n    localUserId: demo-user\n',
       'utf8',
     );
 
@@ -532,14 +539,14 @@ describe('runtime configuration', () => {
     await writeFile(
       join(cwd, '.nevo/config.yaml'),
       PROJECT_CONFIG.replace(
-        'oidc:\n        enabled: false',
-        'oidc:\n        enabled: false\n        clientSecret: committed-secret',
+        'oidc:\n        instances: {}',
+        'oidc:\n        instances:\n          company:\n            clientSecret: committed-secret',
       ),
       'utf8',
     );
 
     await expect(loadFrom(cwd)).rejects.toThrowError(
-      /Unknown configuration key 'auth\.providers\.oidc\.clientSecret'/,
+      /Unknown configuration key 'authentication\.providers\.oidc\.instances\.company\.clientSecret'/,
     );
   });
 
@@ -561,7 +568,7 @@ describe('runtime configuration', () => {
     );
 
     await expect(loadFrom(cwd)).rejects.toThrowError(
-      /Unknown configuration key 'auth\.providers\.password\.accounts'/,
+      /Unknown configuration key 'authentication\.providers\.password\.accounts'/,
     );
   });
 
@@ -587,7 +594,7 @@ describe('runtime configuration', () => {
     await writeFile(
       join(cwd, '.nevo/local/config.yaml'),
       `runtime:
-  auth:
+  authentication:
     providers:
       password:
         accounts:
@@ -626,7 +633,7 @@ describe('runtime configuration', () => {
       join(cwd, '.nevo/local/config.yaml'),
       [
         'runtime:',
-        '  auth:',
+        '  authentication:',
         '    providers:',
         '      oidc:',
         '        clientSecret: [super-secret-value',

@@ -14,7 +14,7 @@ read_when:
   - diagnosing Runtime authorization startup failures
 summary: >
   Exact current SpecFlow authorization configuration: project-only role assignments reference
-  project auth.users ids, use one of three built-in roles, and use canonical scope parent chains.
+  project authentication.users ids, use one of three built-in roles, and use canonical scope parent chains.
 related:
   - architecture.runtime.authorization
   - reference.api.authorization
@@ -41,11 +41,11 @@ runtime:
 
 Each assignment has exactly:
 
-- `userId`: canonical project `runtime.auth.users.<userId>` key;
+- `userId`: canonical project `runtime.authentication.users.<userId>` key;
 - `role`: one of `viewer`, `developer`, `admin`;
 - `scope`: canonical assignment scope.
 
-`userId` must exist in the project `runtime.auth.users` section. A user introduced only by local config
+`userId` must exist in the project `runtime.authentication.users` section. A user introduced only by local config
 does not satisfy this requirement.
 
 ## Valid scopes
@@ -83,11 +83,11 @@ define or extend them.
 
 There is no role inheritance in the authorization resolver and no wildcard capability.
 
-## Auth mode interaction
+## Authentication mode interaction
 
-`runtime.auth.mode=required` uses the authenticated session user's canonical id.
+`runtime.authentication.mode=required` uses the authenticated session user's canonical id.
 
-`runtime.auth.mode=none` with `runtime.auth.localUserId` uses that canonical configured user id.
+`runtime.authentication.mode=none` with `runtime.authentication.localUserId` uses that canonical configured user id.
 
-`runtime.auth.mode=none` without `runtime.auth.localUserId` disables Runtime access control rather than creating
+`runtime.authentication.mode=none` without `runtime.authentication.localUserId` disables Runtime access control rather than creating
 an anonymous zero-permission user.

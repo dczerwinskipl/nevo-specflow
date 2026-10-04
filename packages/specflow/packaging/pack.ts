@@ -8,7 +8,7 @@ import { basename, join } from 'node:path';
 
 import { bundleProduct } from './bundle.ts';
 import { run, StepFailedError } from './exec.ts';
-import { buildThirdPartyNotices } from './notices.ts';
+import { buildThirdPartyNotices, discoverThirdPartyDependencyClosure } from './notices.ts';
 import { findRepoRoot, readJson, repoPaths, type RepoPaths } from './paths.ts';
 import { resolveProductVersion } from './version.ts';
 
@@ -43,9 +43,15 @@ export async function packProduct(opts: PackOptions = {}): Promise<PackResult> {
   const paths = repoPaths(findRepoRoot(process.cwd()));
 
   if (!opts.skipBuild) {
-    log('building pack inputs (nevo-repo-release, @nevo/specflow-runtime + dependencies)…');
+    log(
+      'building pack inputs (nevo-repo-release, @nevo/specflow-runtime, @nevo/specflow-ui + dependencies)…',
+    );
     run('pnpm', ['--filter', 'nevo-repo-release', 'build'], { cwd: paths.root, env: opts.env });
     run('pnpm', ['--filter', '@nevo/specflow-runtime...', 'build'], {
+      cwd: paths.root,
+      env: opts.env,
+    });
+    run('pnpm', ['--filter', '@nevo/specflow-ui...', 'build'], {
       cwd: paths.root,
       env: opts.env,
     });
@@ -71,9 +77,13 @@ export async function packProduct(opts: PackOptions = {}): Promise<PackResult> {
     writeStageManifest(stage, paths, version);
     copyIfPresent(join(paths.productPackage, 'README.md'), join(stage, 'README.md'));
     copyIfPresent(join(paths.root, 'LICENSE'), join(stage, 'LICENSE'));
+    const uiThirdPartyPackages = discoverThirdPartyDependencyClosure(
+      join(paths.root, 'packages', 'specflow-ui'),
+      paths.root,
+    );
     writeFileSync(
       join(stage, 'THIRD_PARTY_NOTICES.txt'),
-      buildThirdPartyNotices(bundle.thirdPartyPackages),
+      buildThirdPartyNotices([...bundle.thirdPartyPackages, ...uiThirdPartyPackages]),
     );
 
     mkdirSync(paths.artifactsDir, { recursive: true });

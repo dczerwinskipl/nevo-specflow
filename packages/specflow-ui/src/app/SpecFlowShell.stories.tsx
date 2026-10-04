@@ -1,14 +1,29 @@
+import type { AuthSessionResponse } from '@nevo/specflow-contracts/authentication';
 import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
 import { RouterProvider, createMemoryHistory } from '@tanstack/react-router';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
 
+import type { AuthApi } from '../auth/api';
+import { createAuthStore } from '../auth/store';
 import { createSpecFlowRouter } from './router';
 
-function RoutedApplication({ path = '/' }: { path?: '/' | '/ui-playground' }) {
+type AuthMode = 'local' | 'required' | 'authenticated' | 'unavailable';
+
+function RoutedApplication({
+  authMode = 'local',
+  path = '/',
+}: {
+  authMode?: AuthMode;
+  path?: '/' | '/ui-playground' | '/login';
+}) {
   const router = useMemo(
-    () => createSpecFlowRouter(createMemoryHistory({ initialEntries: [path] })),
-    [path],
+    () =>
+      createSpecFlowRouter(
+        createMemoryHistory({ initialEntries: [path] }),
+        storyAuthStore(authMode),
+      ),
+    [authMode, path],
   );
   return <RouterProvider router={router} />;
 }
@@ -23,8 +38,12 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Home: Story = {};
-
 export const Playground: Story = { args: { path: '/ui-playground' } };
+export const AuthenticationRequired: Story = { args: { authMode: 'required' } };
+export const AlreadyAuthenticatedLogin: Story = {
+  args: { authMode: 'authenticated', path: '/login' },
+};
+export const RuntimeUnavailable: Story = { args: { authMode: 'unavailable' } };
 
 export const Navigation: Story = {
   play: async ({ canvas, userEvent }) => {
@@ -79,3 +98,48 @@ export const FigmaCapture: Story = {
     },
   },
 };
+
+function storyAuthStore(mode: AuthMode) {
+  if (mode === 'unavailable') {
+    return createAuthStore(
+      fakeApi({ getSession: () => Promise.reject(new Error('Runtime unavailable')) }),
+    );
+  }
+
+  const session: AuthSessionResponse =
+    mode === 'required'
+      ? {
+          authenticationRequired: true,
+          authenticated: false,
+          loginMethods: {
+            password: { enabled: true },
+            oidc: [{ id: 'company', name: 'Company SSO' }],
+          },
+        }
+      : mode === 'authenticated'
+        ? {
+            authenticationRequired: true,
+            authenticated: true,
+            user: { id: 'demo', name: 'Demo' },
+            authenticatedWith: { kind: 'password' },
+            loginMethods: { password: { enabled: true }, oidc: [] },
+          }
+        : {
+            authenticationRequired: false,
+            authenticated: false,
+            user: { id: 'local-user', name: 'Local User' },
+            loginMethods: { password: { enabled: false }, oidc: [] },
+          };
+
+  return createAuthStore(fakeApi(), session);
+}
+
+function fakeApi(overrides: Partial<AuthApi> = {}): AuthApi {
+  return {
+    getSession: () => Promise.reject(new Error('Story should use its initial session')),
+    loginWithPassword: () => Promise.reject(new Error('not configured')),
+    startOidc: () => Promise.reject(new Error('not configured')),
+    logout: () => Promise.resolve(),
+    ...overrides,
+  };
+}

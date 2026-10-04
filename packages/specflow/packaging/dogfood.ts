@@ -63,9 +63,9 @@ export async function dogfoodInstall(options: DogfoodInstallOptions = {}): Promi
   checks.push('nevo-specflow --help -> ok');
 
   const startHelp = nevoSpecFlow(['start', '--help']);
-  if (!/Runtime server/iu.test(startHelp)) {
+  if (!/SpecFlow local server/iu.test(startHelp)) {
     throw new StepFailedError(
-      `\`nevo-specflow start --help\` does not describe the Runtime server:\n${startHelp}`,
+      `\`nevo-specflow start --help\` does not describe the local SpecFlow server:\n${startHelp}`,
     );
   }
   checks.push('nevo-specflow start --help -> ok');

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { OIDC_PROVIDER_NAME_MAX_LENGTH } from '@nevo/specflow-contracts/authentication';
 
 import { parseAuthConfig } from '../../../../src/auth/authentication/config/parse';
 import { PASSWORD_USERNAME_MAX_LENGTH } from '../../../../src/auth/authentication/password/policy';
@@ -18,27 +19,94 @@ function requiredAuthConfig() {
         } as Record<string, { userId: string; passwordHash: string }>,
       },
       oidc: {
-        enabled: true,
-        issuer: 'https://issuer.example.test',
-        clientId: 'client-id',
-        clientSecret: 'local-secret',
-        allowedEmails: {
-          'demo@example.com': 'demo-user',
-        } as Record<string, string>,
+        instances: {
+          company: {
+            name: 'Company SSO',
+            enabled: true,
+            issuer: 'https://issuer.example.test',
+            clientId: 'client-id',
+            clientSecret: 'local-secret',
+            allowedEmails: {
+              'demo@example.com': 'demo-user',
+            } as Record<string, string>,
+          },
+        },
       },
     },
   };
 }
 
 describe('authentication config parsing', () => {
-  it('returns a narrowed enabled OIDC configuration', () => {
+  it('returns narrowed enabled OIDC instances with stable ids and display names', () => {
     const parsed = parseAuthConfig(requiredAuthConfig());
-    expect(parsed.providers.oidc).toMatchObject({
+    expect(parsed.providers.oidc.instances.company).toMatchObject({
+      name: 'Company SSO',
       enabled: true,
       issuer: 'https://issuer.example.test',
       clientId: 'client-id',
       clientSecret: 'local-secret',
     });
+  });
+
+  it.each([
+    ['company', true],
+    ['company-sso-2', true],
+    ['a'.repeat(64), true],
+    ['Company', false],
+    ['company_sso', false],
+    ['-company', false],
+    ['company-', false],
+    ['a'.repeat(65), false],
+  ])('validates OIDC provider id %s consistently', (providerId, valid) => {
+    const config = requiredAuthConfig();
+    const candidate = {
+      ...config,
+      providers: {
+        ...config.providers,
+        oidc: {
+          instances: {
+            [providerId]: config.providers.oidc.instances.company,
+          },
+        },
+      },
+    };
+
+    if (valid) {
+      expect(() => parseAuthConfig(candidate)).not.toThrow();
+    } else {
+      expect(() => parseAuthConfig(candidate)).toThrowError(
+        /provider ids must be lowercase slugs/i,
+      );
+    }
+  });
+
+  it('normalizes, bounds and de-duplicates visible OIDC provider names', () => {
+    const normalized = requiredAuthConfig();
+    normalized.providers.oidc.instances.company.name = ' Company SSO ';
+    expect(parseAuthConfig(normalized).providers.oidc.instances.company?.name).toBe('Company SSO');
+
+    const tooLong = requiredAuthConfig();
+    tooLong.providers.oidc.instances.company.name = 'A'.repeat(OIDC_PROVIDER_NAME_MAX_LENGTH + 1);
+    expect(() => parseAuthConfig(tooLong)).toThrowError(/display name of at most/i);
+
+    const duplicate = requiredAuthConfig();
+    expect(() =>
+      parseAuthConfig({
+        ...duplicate,
+        providers: {
+          ...duplicate.providers,
+          oidc: {
+            instances: {
+              company: duplicate.providers.oidc.instances.company,
+              customer: {
+                ...duplicate.providers.oidc.instances.company,
+                name: ' company sso ',
+              },
+            },
+          },
+        },
+      }),
+    ).toThrowError(/duplicates the visible provider name/i);
   });
 
   it('normalizes password account names and rejects collisions', () => {
@@ -75,28 +143,28 @@ describe('authentication config parsing', () => {
 
   it('requires HTTPS OIDC issuers and complete enabled-provider settings', () => {
     const insecure = requiredAuthConfig();
-    insecure.providers.oidc.issuer = 'http://issuer.example.test';
+    insecure.providers.oidc.instances.company.issuer = 'http://issuer.example.test';
     expect(() => parseAuthConfig(insecure)).toThrowError(/must be an absolute HTTPS URL/);
 
     const missingSecret = requiredAuthConfig();
-    delete (missingSecret.providers.oidc as { clientSecret?: string }).clientSecret;
+    delete (missingSecret.providers.oidc.instances.company as { clientSecret?: string })
+      .clientSecret;
     expect(() => parseAuthConfig(missingSecret)).toThrowError(/clientSecret are required/);
   });
 
   it('rejects normalized OIDC email collisions without rewriting opaque secrets', () => {
     const collision = requiredAuthConfig();
-    collision.providers.oidc.allowedEmails = {
+    collision.providers.oidc.instances.company.allowedEmails = {
       'Demo@example.com': 'demo-user',
       ' demo@example.com ': 'demo-user',
     };
     expect(() => parseAuthConfig(collision)).toThrowError(/duplicate email after normalization/i);
 
     const secret = requiredAuthConfig();
-    secret.providers.oidc.clientSecret = ' secret-with-significant-spaces ';
+    secret.providers.oidc.instances.company.clientSecret = ' secret-with-significant-spaces ';
     const parsed = parseAuthConfig(secret);
-    expect(parsed.providers.oidc.enabled && parsed.providers.oidc.clientSecret).toBe(
-      ' secret-with-significant-spaces ',
-    );
+    const company = parsed.providers.oidc.instances.company;
+    expect(company?.enabled && company.clientSecret).toBe(' secret-with-significant-spaces ');
   });
 
   it('does not treat inherited object properties as configured users', () => {
@@ -105,7 +173,6 @@ describe('authentication config parsing', () => {
       userId: 'toString',
       passwordHash: PASSWORD_HASH,
     };
-
     expect(() => parseAuthConfig(config)).toThrowError(/references unknown user 'toString'/);
   });
 
@@ -116,7 +183,7 @@ describe('authentication config parsing', () => {
       userId: '__proto__',
       passwordHash: PASSWORD_HASH,
     };
-    config.providers.oidc.allowedEmails = {
+    config.providers.oidc.instances.company.allowedEmails = {
       'proto@example.com': '__proto__',
     };
 

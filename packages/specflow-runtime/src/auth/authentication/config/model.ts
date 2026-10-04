@@ -15,6 +15,7 @@ export interface RuntimePasswordProviderConfig {
 }
 
 interface RuntimeOidcProviderConfigBase {
+  readonly name: string;
   readonly allowedEmails: Readonly<Record<string, string>>;
 }
 
@@ -35,12 +36,24 @@ export interface RuntimeOidcEnabledProviderConfig extends RuntimeOidcProviderCon
 export type RuntimeOidcProviderConfig =
   RuntimeOidcDisabledProviderConfig | RuntimeOidcEnabledProviderConfig;
 
+export interface RuntimeOidcProvidersConfig {
+  readonly instances: Readonly<Record<string, RuntimeOidcProviderConfig>>;
+}
+
 export interface RuntimeAuthConfig {
   readonly mode: AuthMode;
   readonly localUserId?: string;
   readonly users: Readonly<Record<string, RuntimeUserConfig>>;
   readonly providers: {
     readonly password: RuntimePasswordProviderConfig;
-    readonly oidc: RuntimeOidcProviderConfig;
+    readonly oidc: RuntimeOidcProvidersConfig;
   };
+}
+
+export function enabledOidcProviders(
+  auth: RuntimeAuthConfig,
+): readonly (readonly [string, RuntimeOidcEnabledProviderConfig])[] {
+  return Object.entries(auth.providers.oidc.instances).flatMap(([id, provider]) =>
+    provider.enabled ? ([[id, provider]] as const) : [],
+  );
 }

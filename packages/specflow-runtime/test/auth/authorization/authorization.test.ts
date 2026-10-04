@@ -18,7 +18,7 @@ function baseConfig(): RuntimeConfig {
       },
       providers: {
         password: { enabled: false, accounts: {} },
-        oidc: { enabled: false, allowedEmails: {} },
+        oidc: { instances: {} },
       },
     },
     authorization: {
@@ -56,7 +56,10 @@ describe('authorization HTTP API', () => {
 
   it('resolves only capabilities for the requested resource and matching scope', async () => {
     const store = new InMemoryAuthStore({ idFactory: () => 'session-id' });
-    const session = store.createSession({ userId: 'developer', provider: 'password' });
+    const session = store.createSession({
+      userId: 'developer',
+      authenticatedWith: { kind: 'password' },
+    });
     const app = await createRuntimeApp(baseConfig(), { auth: { store } });
     try {
       const spec = await app.inject({
@@ -103,7 +106,10 @@ describe('authorization HTTP API', () => {
 
   it('keeps item-scoped view access without requiring a collection-level list capability', async () => {
     const store = new InMemoryAuthStore({ idFactory: () => 'scoped-session-id' });
-    const session = store.createSession({ userId: 'scopedViewer', provider: 'password' });
+    const session = store.createSession({
+      userId: 'scopedViewer',
+      authenticatedWith: { kind: 'password' },
+    });
     const app = await createRuntimeApp(baseConfig(), { auth: { store } });
 
     try {

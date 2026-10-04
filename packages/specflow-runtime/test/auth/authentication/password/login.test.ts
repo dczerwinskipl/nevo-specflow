@@ -16,7 +16,7 @@ const auth: RuntimeAuthConfig = {
         demo: { userId: 'demo-user', passwordHash: PASSWORD_HASH },
       },
     },
-    oidc: { enabled: false, allowedEmails: {} },
+    oidc: { instances: {} },
   },
 };
 
@@ -24,7 +24,10 @@ describe('password login operation', () => {
   it('replaces the current session after successful login', async () => {
     let id = 0;
     const store = new InMemoryAuthStore({ idFactory: () => `id-${String(++id)}` });
-    const previous = store.createSession({ userId: 'demo-user', provider: 'oidc' });
+    const previous = store.createSession({
+      userId: 'demo-user',
+      authenticatedWith: { kind: 'oidc', providerId: 'company' },
+    });
 
     const result = await loginWithPassword(
       auth,
@@ -38,8 +41,9 @@ describe('password login operation', () => {
     expect(result).toMatchObject({
       ok: true,
       session: {
+        authenticationRequired: true,
         authenticated: true,
-        provider: 'password',
+        authenticatedWith: { kind: 'password' },
         user: { id: 'demo-user' },
       },
     });
@@ -68,7 +72,10 @@ describe('password login operation', () => {
       idFactory: () => `id-${String(++id)}`,
       maxSessions: 1,
     });
-    const existing = store.createSession({ userId: 'other-user', provider: 'password' });
+    const existing = store.createSession({
+      userId: 'other-user',
+      authenticatedWith: { kind: 'password' },
+    });
 
     await expect(
       loginWithPassword(
@@ -83,7 +90,7 @@ describe('password login operation', () => {
 
     expect(store.getSession(existing)).toEqual({
       userId: 'other-user',
-      provider: 'password',
+      authenticatedWith: { kind: 'password' },
     });
   });
 });

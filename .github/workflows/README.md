@@ -3,7 +3,7 @@
 | Workflow                                             | Trigger                                 | Purpose                                                                                                     |
 | ---------------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | [`ci.yml`](ci.yml)                                   | PRs; pushes to `main`, `release/v*`     | Quality/typecheck/test/build, dependency review on PRs, and installed-product smoke on Linux/Windows/macOS. |
-| [`chromatic.yml`](chromatic.yml)                     | PRs; pushes to `main`                   | Publish the shared Storybook and run visual regression tests when its project token is available.           |
+| [`chromatic.yml`](chromatic.yml)                     | Manual; pushes to `main`                | Publish the shared Storybook and run visual regression tests when its project token is available.           |
 | [`codeql.yml`](codeql.yml)                           | PRs; protected-branch pushes; weekly    | CodeQL analysis for JavaScript/TypeScript.                                                                  |
 | [`pr-title.yml`](pr-title.yml)                       | PR opened / edited / synced             | Conventional Commits check on the PR title.                                                                 |
 | [`dependabot-pr-title.yml`](dependabot-pr-title.yml) | `workflow_run` after failed PR-title CI | Safely normalize Dependabot's generated title and re-run the title check.                                   |
@@ -24,11 +24,12 @@ in [releasing](../../docs/engineering/repository/releasing.md#ci_github_release_
 The workflow runs the version-pinned `chromatic` CLI from `tools/storybook/`, where the
 repository's shared Storybook is owned. Configure the repository Actions secret
 `CHROMATIC_PROJECT_TOKEN` from the Chromatic project's **Manage → Configure** page. The token is
-never stored in source. Runs without the secret, including pull requests from forks, report a
-successful skipped job instead of exposing credentials or waiting forever.
+never stored in source. Pull requests do not run Chromatic automatically. Use **Actions → Chromatic → Run workflow** and
+select the PR branch when visual review is needed. Pushes to `main` continue to publish
+automatically so the baseline is kept current. Runs without the secret report a successful skipped
+job instead of exposing credentials or waiting forever.
 
-`chromatic` is informational until the team intentionally adds it to the branch ruleset after
-establishing and reviewing the first baseline.
+`chromatic` is informational and is not a required branch check.
 
 ## Action pinning
 

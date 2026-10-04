@@ -9,7 +9,7 @@ import {
 } from 'openid-client';
 
 import type { RuntimeOidcEnabledProviderConfig } from '../config/model';
-import type { StoredOidcTransaction } from '../session/state';
+import type { OidcProtocolTransaction } from '../session/state';
 import { createRetryableOidcDiscovery } from './discovery';
 import {
   classifyOidcDiscoveryError,
@@ -19,16 +19,17 @@ import {
 
 export interface OidcIdentity {
   readonly email: string;
+  readonly name: string;
 }
 
 export interface OidcStart {
   readonly authorizationUrl: URL;
-  readonly transaction: StoredOidcTransaction;
+  readonly transaction: OidcProtocolTransaction;
 }
 
 export interface OidcClient {
   start(redirectUri: string): Promise<OidcStart>;
-  complete(callbackUrl: URL, transaction: StoredOidcTransaction): Promise<OidcIdentity>;
+  complete(callbackUrl: URL, transaction: OidcProtocolTransaction): Promise<OidcIdentity>;
 }
 
 export function createOidcClient(provider: RuntimeOidcEnabledProviderConfig): OidcClient {
@@ -93,7 +94,8 @@ export function createOidcClient(provider: RuntimeOidcEnabledProviderConfig): Oi
         throw oidcIdentityClaimsError();
       }
 
-      return { email };
+      const claimedName = typeof claims?.name === 'string' ? claims.name.trim() : '';
+      return { email, name: claimedName || email };
     },
   };
 }

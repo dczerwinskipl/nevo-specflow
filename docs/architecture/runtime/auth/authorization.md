@@ -33,7 +33,7 @@ Authentication answers who the effective user is. Authorization answers what tha
 a resource in a scope.
 
 Authorization does not depend on whether identity came from password authentication, OIDC, or
-trusted local mode. Provider-specific identifiers are resolved to the canonical `auth.users` id
+trusted local mode. Provider-specific identifiers are resolved to the canonical `authentication.users` id
 before authorization runs.
 
 The generic authorization core is `@nevo/authorization`. It does not know SpecFlow resource names,
@@ -114,26 +114,27 @@ The generic resolver intentionally does not know this hierarchy.
 
 ## Canonical user identity
 
-Authorization assignments reference the canonical key in project `runtime.auth.users`.
+Authorization assignments reference the canonical key in project `runtime.authentication.users`.
 
-Password usernames, OIDC emails, display names, and other provider identifiers are authentication
-inputs, not authorization subject ids.
+The canonical id is the authorization subject id. Init chooses transparent defaults for new users:
+a new password user's username becomes its canonical id, and a new OIDC user's allowed email becomes
+its canonical id. OIDC identities use their normalized allowed email as their canonical id; human-facing profile data remains provider-owned. OIDC display names remain provider profile data and are not authorization identities.
 
-Project assignments are validated against project-owned `runtime.auth.users` before local configuration is
+Project assignments are validated against project-owned `runtime.authentication.users` before local configuration is
 merged. An assignment therefore cannot depend on a user that exists only in `.nevo/local/config.yaml`.
 
 ## Effective subject
 
-Runtime derives authorization access from the auth mode:
+Runtime derives authorization access from the authentication mode:
 
 ```text
-runtime.auth.mode=required
+runtime.authentication.mode=required
   authenticated session -> canonical session user
 
-runtime.auth.mode=none + localUserId
+runtime.authentication.mode=none + localUserId
   -> canonical localUserId
 
-runtime.auth.mode=none + no localUserId
+runtime.authentication.mode=none + no localUserId
   -> access control disabled
 ```
 

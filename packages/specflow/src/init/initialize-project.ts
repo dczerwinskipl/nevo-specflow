@@ -23,7 +23,7 @@ export interface ConfigWriteOptions {
 
 export interface InitializeProjectOptions {
   readonly layout: ProjectLayout;
-  readonly initRuntime: () => Promise<ProjectConfigContribution>;
+  readonly contribution: ProjectConfigContribution;
   readonly isIgnored?: (root: string, relativePath: string) => Promise<boolean>;
   readonly writeConfigFile?: (
     path: string,
@@ -45,11 +45,7 @@ interface GitignoreSnapshot {
   readonly changed: boolean;
 }
 
-export async function initializeProject(
-  options: InitializeProjectOptions,
-): Promise<InitializeProjectResult> {
-  const { layout } = options;
-
+export async function assertProjectCanInitialize(layout: ProjectLayout): Promise<void> {
   if (await fileExists(layout.projectConfigPath)) {
     throw new Error(`Nevo SpecFlow is already initialized: ${layout.projectConfigPath}`);
   }
@@ -58,10 +54,16 @@ export async function initializeProject(
       `Refusing to overwrite existing workstation-local SpecFlow config: ${layout.localConfigPath}`,
     );
   }
+}
 
-  const runtime = await options.initRuntime();
-  const projectConfig = { runtime: runtime.projectConfig };
-  const localConfig = { runtime: runtime.localConfig };
+export async function initializeProject(
+  options: InitializeProjectOptions,
+): Promise<InitializeProjectResult> {
+  const { layout } = options;
+  await assertProjectCanInitialize(layout);
+
+  const projectConfig = options.contribution.projectConfig;
+  const localConfig = options.contribution.localConfig;
   const checkIgnored = options.isIgnored ?? isGitIgnored;
   const writeConfig = options.writeConfigFile ?? defaultWriteConfigFile;
 
@@ -118,9 +120,6 @@ async function defaultWriteConfigFile(
     });
 
     try {
-      // The staging file lives beside the destination, so link() publishes the complete
-      // file atomically on the same filesystem and fails with EEXIST if another writer
-      // created the destination after the initial admission check.
       await link(stagedPath, path);
       published = true;
     } catch (error) {
@@ -134,8 +133,6 @@ async function defaultWriteConfigFile(
 
     await rm(stagedPath, { force: true });
   } catch (error) {
-    // If cleanup fails after publish, remove only the destination we know this attempt
-    // created. EEXIST never sets published, so a concurrent writer's file is untouched.
     if (published) {
       await rm(path, { force: true });
     }
@@ -160,8 +157,6 @@ async function ensureLocalIgnore(
   }
 
   if (!(await checkIgnored(root, LOCAL_CONFIG_RELATIVE_PATH))) {
-    // An existing later negation can cancel an earlier canonical rule. Append the
-    // canonical rule at the end once, then verify the concrete secret path again.
     if (current === original || !current.trimEnd().endsWith(LOCAL_IGNORE_ENTRY)) {
       current = appendIgnoreRule(current);
       await writeFile(gitignorePath, current, 'utf8');

@@ -12,7 +12,7 @@ import {
   record,
 } from './value';
 
-const ROOT_KEYS = new Set(['server', 'auth', 'authorization']);
+const ROOT_KEYS = new Set(['server', 'authentication', 'authorization']);
 const SERVER_KEYS = new Set(['host', 'port', 'publicOrigin', 'tls']);
 const TLS_KEYS = new Set(['enabled', 'certFile', 'keyFile']);
 
@@ -67,7 +67,7 @@ export function parseRuntimeConfig(value: unknown): RuntimeConfig {
     }
   }
 
-  const auth = parseAuthConfig(root.auth);
+  const auth = parseAuthConfig(root.authentication);
   const authorization = parseAuthorizationConfig(
     root.authorization,
     new Set(Object.keys(auth.users)),

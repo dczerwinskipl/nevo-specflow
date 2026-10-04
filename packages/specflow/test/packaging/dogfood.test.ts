@@ -5,7 +5,7 @@ import type { run } from '../../packaging/exec';
 import type { packProduct } from '../../packaging/pack';
 
 describe('dogfoodInstall', () => {
-  it('smokes long-running Runtime through start --help instead of starting the server', async () => {
+  it('smokes the local product server through start --help instead of starting it', async () => {
     const calls: { command: string; args: readonly string[] }[] = [];
 
     const fakePack: typeof packProduct = () =>
@@ -23,7 +23,7 @@ describe('dogfoodInstall', () => {
         return 'Usage: nevo-specflow [options] [command]\nCommands: start auth';
       }
       if (command === 'nevo-specflow' && args[0] === 'start' && args[1] === '--help') {
-        return 'Start the Nevo SpecFlow Runtime server';
+        return 'Start the Nevo SpecFlow local server';
       }
       return '';
     };

@@ -5,10 +5,11 @@ import {
   type ComponentSlotRegistry,
 } from '@nevo/figma-core/authoring';
 
+import { loginScreenDesignSpec } from '../auth/LoginScreen.figma';
 import { designSpec } from './SpecFlowShell.figma';
 import { nevoBrandDesignSystem } from '../brand/nevo/figmaDesignSystem';
 
-export const specFlowDesignSystem = [designSpec] as const;
+export const specFlowDesignSystem = [designSpec, loginScreenDesignSpec] as const;
 
 const specFlowOwnedDesign = defineDesignSystem([
   ...nevoBrandDesignSystem,

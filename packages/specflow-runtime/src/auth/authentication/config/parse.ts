@@ -15,6 +15,7 @@ import { normalizePasswordUsername } from '../password/username';
 import {
   isValidOidcProviderId,
   isValidOidcProviderName,
+  normalizeOidcProviderName,
   OIDC_PROVIDER_ID_MAX_LENGTH,
   OIDC_PROVIDER_NAME_MAX_LENGTH,
   oidcProviderNameKey,
@@ -202,7 +203,7 @@ function parseOidcProvider(value: unknown, path: string): RuntimeOidcProviderCon
   const config = record(value, path);
   onlyKeys(config, OIDC_INSTANCE_KEYS, path);
 
-  const name = nonEmptyString(config.name, `${path}.name`);
+  const name = normalizeOidcProviderName(nonEmptyString(config.name, `${path}.name`));
   if (!isValidOidcProviderName(name)) {
     throw new RuntimeConfigError(
       `${path}.name must be a single-line display name of at most ${String(OIDC_PROVIDER_NAME_MAX_LENGTH)} characters.`,

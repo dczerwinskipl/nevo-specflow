@@ -80,7 +80,11 @@ describe('authentication config parsing', () => {
     }
   });
 
-  it('bounds and de-duplicates visible OIDC provider names', () => {
+  it('normalizes, bounds and de-duplicates visible OIDC provider names', () => {
+    const normalized = requiredAuthConfig();
+    normalized.providers.oidc.instances.company.name = ' Company SSO ';
+    expect(parseAuthConfig(normalized).providers.oidc.instances.company?.name).toBe('Company SSO');
+
     const tooLong = requiredAuthConfig();
     tooLong.providers.oidc.instances.company.name = 'A'.repeat(OIDC_PROVIDER_NAME_MAX_LENGTH + 1);
     expect(() => parseAuthConfig(tooLong)).toThrowError(/display name of at most/i);

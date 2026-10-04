@@ -98,9 +98,11 @@ its `runtime` subtree. Runtime does not discover the repository root or assume c
 to `process.cwd()`.
 
 The entire `.nevo/local/` directory is Git-ignored and is also reserved for future Runtime-owned
-local state. Authentication secrets, including password hashes and OIDC client secrets, are
+local state. Authentication secrets, including password hashes and per-instance OIDC client secrets, are
 local-only. Project/local provenance is validated before merge; local config cannot change canonical
-users, auth mode, provider policy, OIDC mapping, server bind/origin, or TLS enablement.
+users, auth mode, provider policy, OIDC mapping, server bind/origin, or TLS enablement. OIDC project
+configuration is a map under `auth.providers.oidc.instances`; each instance has a stable provider id
+and a user-facing name, while the matching local instance contributes only its client secret.
 Security-sensitive auth maps use replacement rather than additive merge semantics. Parsed identity,
 account, and OIDC mapping dictionaries use own-property lookups and prototype-safe storage so special
 keys such as `__proto__` or `toString` cannot become inherited identities. YAML syntax errors are
@@ -150,7 +152,8 @@ hash in local configuration, not committed project configuration.
 ## OIDC profile
 
 OIDC uses authorization code flow with PKCE, state, and nonce. Provider tokens are not stored in the
-application session. The provider is generic and configured by issuer; Google is only an example.
+application session. Each provider instance is generic and configured by issuer; Google is only an example. Multiple
+named OIDC instances may be enabled at the same time.
 
 The currently supported profile is deliberately narrow:
 
@@ -165,11 +168,14 @@ does not cause every request to start a new discovery call. Runtime enables Fast
 logger at warning level and writes warnings to stderr so CLI stdout remains a stable product surface. Request logging records only the request
 method, path without query/fragment data, and direct network source metadata. Provider diagnostics
 are deliberately sanitized to category/code/status metadata rather than raw provider response bodies.
-OIDC start uses the same Fastify-owned source/IP throttling boundary as password login. Starting a
-new OIDC flow atomically replaces the prior pending transaction for that browser. Callback state is
-matched atomically before the transaction is consumed; a missing or attacker-supplied wrong state
-does not destroy a valid pending login or clear its browser cookie. Logout clears both session and
-pending OIDC state.
+OIDC start uses the same Fastify-owned source/IP throttling boundary as password login. The browser
+starts a concrete provider with `POST /api/auth/oidc/:providerId/start`; Runtime stores the provider
+id and a validated local return target in the pending transaction and returns the external
+authorization URL as JSON. Starting a new OIDC flow atomically replaces the prior pending transaction
+for that browser. Callback state is matched atomically before the transaction is consumed, and the
+provider-specific callback must match the provider recorded in the transaction. Authentication
+failures redirect back to the standalone login route with a stable error code instead of rendering a
+raw API response. Logout clears both session and pending OIDC state.
 
 ## HTTP authentication API
 
@@ -179,11 +185,11 @@ Always registered:
 - `POST /api/auth/logout`
 - `POST /api/authorization/capabilities`
 
-Registered only when the corresponding provider is enabled:
+Registered only when the corresponding login method/provider instance is enabled:
 
 - `POST /api/auth/password/login`
-- `GET /api/auth/oidc/login`
-- `GET /api/auth/oidc/callback`
+- `POST /api/auth/oidc/:providerId/start`
+- `GET /api/auth/oidc/:providerId/callback`
 
 Sessions and pending OIDC transactions are server-side, bounded, and expiring. Capacity is
 fail-closed: a full store returns a controlled HTTP 503 and never evicts live authentication state.

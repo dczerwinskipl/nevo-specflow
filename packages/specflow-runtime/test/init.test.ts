@@ -114,7 +114,7 @@ describe('Runtime project initialization', () => {
     const contribution = await initRuntime({
       ui: new ScriptedUi(
         [true, false, true, false, true, false, false],
-        ['demo', 'demo', 'admin'],
+        ['demo', 'admin'],
         [
           'Company SSO',
           'company',

@@ -23,7 +23,7 @@ runtime:
       password:
         enabled: false
       oidc:
-        enabled: false
+        instances: {}
   authorization:
     assignments:
       - userId: demo-user

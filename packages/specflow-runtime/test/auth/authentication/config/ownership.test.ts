@@ -6,19 +6,26 @@ import {
 } from '../../../../src/auth/authentication/config/ownership';
 
 describe('authentication config ownership', () => {
-  it('rejects local secrets from project configuration', () => {
+  it('rejects local OIDC secrets from project configuration', () => {
     expect(() =>
       assertProjectAuthConfigOwnership({
         mode: 'required',
         providers: {
           password: { enabled: false },
           oidc: {
-            enabled: false,
-            clientSecret: 'committed-secret',
+            instances: {
+              company: {
+                name: 'Company SSO',
+                enabled: false,
+                clientSecret: 'committed-secret',
+              },
+            },
           },
         },
       }),
-    ).toThrowError(/Unknown configuration key 'auth\.providers\.oidc\.clientSecret'/);
+    ).toThrowError(
+      /Unknown configuration key 'auth\.providers\.oidc\.instances\.company\.clientSecret'/,
+    );
   });
 
   it('rejects project policy from local configuration', () => {

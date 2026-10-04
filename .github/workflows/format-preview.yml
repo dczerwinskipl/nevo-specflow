@@ -1,0 +1,22 @@
+name: Format preview
+
+on:
+  push:
+    branches:
+      - feature/auth-login-init
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - name: Format affected auth setup files
+        run: |
+          pnpm exec prettier --write             packages/specflow-runtime/src/auth/authentication/init.ts             packages/specflow-runtime/src/auth/authorization/init.ts             packages/specflow-runtime/test/init.test.ts
+      - name: Print formatting diff
+        run: |
+          git diff --             packages/specflow-runtime/src/auth/authentication/init.ts             packages/specflow-runtime/src/auth/authorization/init.ts             packages/specflow-runtime/test/init.test.ts

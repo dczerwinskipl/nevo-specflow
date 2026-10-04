@@ -105,10 +105,8 @@ describe('Runtime project initialization', () => {
     expect(review).not.toContain(PASSWORD_HASH);
   });
 
-  it(
-    'owns no-auth attribution and guarantees an administrator even after a non-admin selection',
-    async () => {
-      const ui = new ScriptedUi([false], ['developer', '<default>'], ['demo-user', 'Demo User']);
+  it('guarantees an administrator for trusted local setup', async () => {
+    const ui = new ScriptedUi([false], ['developer', '<default>'], ['demo-user', 'Demo User']);
       const contribution = await initRuntime({ ui });
 
       expect(contribution.projectConfig).toMatchObject({
@@ -124,9 +122,8 @@ describe('Runtime project initialization', () => {
         auth: { localUserId: 'demo-user' },
       });
       expect(ui.notes.join('\n')).toMatch(/at least one administrator is required/i);
-      expect(contribution.summary.join('\n')).toContain('Demo User (demo-user): admin');
-    },
-  );
+    expect(contribution.summary.join('\n')).toContain('Demo User (demo-user): admin');
+  });
 
   it('defaults the bootstrap user to admin and additional users to developer', async () => {
     const ui = new ScriptedUi(
@@ -155,10 +152,8 @@ describe('Runtime project initialization', () => {
     expect(review).toContain('Jane User (jane): developer');
   });
 
-  it(
-    'supports multiple OIDC instances, rejects ambiguous names, and reviews mappings without secrets',
-    async () => {
-      const ui = new ScriptedUi(
+  it('reviews multiple OIDC mappings without secrets', async () => {
+    const ui = new ScriptedUi(
         [true, false, true, false, true, false, false],
         ['demo', '<default>'],
         [
@@ -227,8 +222,7 @@ describe('Runtime project initialization', () => {
       expect(review).toContain('Customer Workforce Identity [customer]');
       expect(review).toContain('demo@customer.example -> Demo User (demo)');
       expect(review).toContain('Demo User (demo): admin');
-      expect(review).not.toContain('company-secret');
-      expect(review).not.toContain('customer-secret');
-    },
-  );
+    expect(review).not.toContain('company-secret');
+    expect(review).not.toContain('customer-secret');
+  });
 });

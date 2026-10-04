@@ -2,8 +2,9 @@
 // The package list comes from esbuild's metafile, so adding a bundled runtime
 // dependency cannot silently omit its license metadata.
 
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 
 import type { BundledThirdPartyPackage } from './bundle.ts';
 
@@ -53,8 +54,8 @@ export function buildThirdPartyNotices(packages: readonly BundledThirdPartyPacka
   return [
     'THIRD-PARTY NOTICES',
     '',
-    '`@nevo/specflow` is distributed as a single bundled file (`dist/bin.js`). That',
-    'bundle embeds the third-party software listed below. When an installed upstream',
+    '`@nevo/specflow` ships a bundled CLI/Runtime plus built browser UI assets.',
+    'The distribution embeds the third-party software listed below. When an installed upstream',
     'package contains a license text, it is reproduced verbatim. When upstream ships',
     'only package.json license metadata, that declaration and its source are preserved.',
     '',
@@ -115,4 +116,107 @@ function readLicense(pkgDir: string): string | undefined {
     if (existsSync(path)) return readFileSync(path, 'utf8').trimEnd();
   }
   return undefined;
+}
+
+
+interface DependencyManifest {
+  readonly name?: string;
+  readonly dependencies?: Readonly<Record<string, string>>;
+  readonly optionalDependencies?: Readonly<Record<string, string>>;
+}
+
+export function discoverThirdPartyDependencyClosure(
+  entryPackageDir: string,
+  workspaceRoot: string,
+): readonly BundledThirdPartyPackage[] {
+  const workspacePackages = workspacePackageRoots(workspaceRoot);
+  const discovered = new Map<string, BundledThirdPartyPackage>();
+  const visited = new Set<string>();
+
+  visit(entryPackageDir);
+
+  return [...discovered.values()].sort((a, b) =>
+    a.name === b.name ? a.root.localeCompare(b.root) : a.name.localeCompare(b.name),
+  );
+
+  function visit(packageRoot: string): void {
+    if (visited.has(packageRoot)) return;
+    visited.add(packageRoot);
+
+    const manifest = readManifest<DependencyManifest>(packageRoot);
+    const dependencies = {
+      ...manifest.dependencies,
+      ...manifest.optionalDependencies,
+    };
+
+    for (const dependencyName of Object.keys(dependencies)) {
+      const workspacePackage = workspacePackages.get(dependencyName);
+      if (workspacePackage) {
+        visit(workspacePackage);
+        continue;
+      }
+
+      const dependencyRoot = resolveDependencyRoot(packageRoot, dependencyName);
+      if (!dependencyRoot) continue;
+
+      const dependencyManifest = readManifest<DependencyManifest>(dependencyRoot);
+      const canonicalName = dependencyManifest.name ?? dependencyName;
+      if (canonicalName.startsWith('@nevo/')) {
+        visit(dependencyRoot);
+        continue;
+      }
+
+      discovered.set(dependencyRoot, { name: canonicalName, root: dependencyRoot });
+      visit(dependencyRoot);
+    }
+  }
+}
+
+function workspacePackageRoots(workspaceRoot: string): ReadonlyMap<string, string> {
+  const packagesDir = join(workspaceRoot, 'packages');
+  const result = new Map<string, string>();
+
+  for (const entry of readdirSync(packagesDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const packageRoot = join(packagesDir, entry.name);
+    const manifestPath = join(packageRoot, 'package.json');
+    if (!existsSync(manifestPath)) continue;
+
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { name?: string };
+    if (manifest.name) result.set(manifest.name, packageRoot);
+  }
+
+  return result;
+}
+
+function resolveDependencyRoot(fromPackageRoot: string, dependencyName: string): string | undefined {
+  const require = createRequire(join(fromPackageRoot, 'package.json'));
+
+  for (const request of [`${dependencyName}/package.json`, dependencyName]) {
+    try {
+      const resolved = require.resolve(request);
+      if (request.endsWith('/package.json')) return dirname(resolved);
+
+      let current = dirname(resolved);
+      for (;;) {
+        const manifestPath = join(current, 'package.json');
+        if (existsSync(manifestPath)) {
+          const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { name?: string };
+          if (manifest.name === dependencyName) return current;
+        }
+
+        const parent = dirname(current);
+        if (parent === current) break;
+        current = parent;
+      }
+    } catch {
+      // Optional/platform-specific dependency not installed for this build.
+    }
+  }
+
+  return undefined;
+}
+
+function readManifest<T>(packageRoot: string): T {
+  return JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8')) as T;
 }

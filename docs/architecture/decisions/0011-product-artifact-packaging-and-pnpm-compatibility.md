@@ -62,7 +62,8 @@ notices from code actually embedded in that bundle, and prove the installed arti
     into one executable ESM file;
   - inject the canonical version resolved from the release model;
   - create a minimal install manifest with no workspace/runtime dependency leakage;
-  - generate `THIRD_PARTY_NOTICES.txt` from the actual bundled inputs and fail closed when license
+  - generate `THIRD_PARTY_NOTICES.txt` from the actual CLI/Runtime bundle inputs plus the
+    production dependency closure of embedded browser UI assets, and fail closed when license
     information is unavailable;
   - support fresh-state, isolated-install, dogfood, and release-artifact verification.
 - Do not duplicate pnpm's archive implementation or create another repository-level packaging

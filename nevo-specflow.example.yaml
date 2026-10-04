@@ -19,6 +19,10 @@ runtime:
     users:
       demo-user:
         name: Demo User
+      # OIDC identities use the normalized allowed email as their stable id.
+      # The active session display name comes from OIDC claims.
+      developer@example.com:
+        name: developer@example.com
     providers:
       password:
         enabled: false
@@ -33,10 +37,13 @@ runtime:
         #     issuer: https://issuer.example.com
         #     clientId: specflow-client
         #     allowedEmails:
-        #       developer@example.com: demo-user
+        #       developer@example.com: developer@example.com
 
   authorization:
     assignments:
       - userId: demo-user
         role: admin
+        scope: {}
+      - userId: developer@example.com
+        role: developer
         scope: {}

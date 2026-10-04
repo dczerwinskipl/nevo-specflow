@@ -210,3 +210,11 @@ See [project configuration and local state](../../docs/architecture/runtime/conf
 [`nevo-specflow.example.yaml`](../../nevo-specflow.example.yaml), and
 [`nevo-specflow.local.example.yaml`](../../nevo-specflow.local.example.yaml) for the configuration
 shape.
+
+### Local OIDC identity model
+
+During setup, each allowed OIDC email becomes the stable canonical user id for that identity. The
+wizard does not ask for a separate display name or canonical-user link. At sign-in time Runtime uses
+the OIDC `name` claim for the session display name, falling back to the normalized email when the
+provider does not supply one. Authorization remains configuration-driven and is assigned when the
+OIDC identity is added during setup.

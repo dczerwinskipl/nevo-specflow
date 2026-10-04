@@ -21,6 +21,18 @@ describe('Tailwind Variants metadata derivation', () => {
     expect(variantCombinations(buttonVariants)).toHaveLength(16);
   });
 
+  it('derives a unique Button capture identity from every recipe axis', () => {
+    const ids = variantCombinations(buttonVariants).flatMap(({ variant, size, width }) => {
+      const base = `${variant}-${size}-${width}`;
+      return [base, `${base}-disabled`];
+    });
+
+    expect(ids).toHaveLength(32);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toContain('primary-md-content');
+    expect(ids).toContain('primary-md-full');
+  });
+
   it('sees a newly added variant without another options list', () => {
     const extended = tv({
       variants: { tone: { neutral: '', positive: '', warning: '' } },

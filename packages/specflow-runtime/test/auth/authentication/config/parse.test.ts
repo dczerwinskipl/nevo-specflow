@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { OIDC_PROVIDER_NAME_MAX_LENGTH } from '@nevo/specflow-contracts/authentication';
 
 import { parseAuthConfig } from '../../../../src/auth/authentication/config/parse';
 import { PASSWORD_USERNAME_MAX_LENGTH } from '../../../../src/auth/authentication/password/policy';
@@ -79,8 +80,8 @@ describe('authentication config parsing', () => {
 
   it('bounds and de-duplicates visible OIDC provider names', () => {
     const tooLong = requiredAuthConfig();
-    tooLong.providers.oidc.instances.company.name = 'A'.repeat(33);
-    expect(() => parseAuthConfig(tooLong)).toThrowError(/display name of at most 32 characters/i);
+    tooLong.providers.oidc.instances.company.name = 'A'.repeat(OIDC_PROVIDER_NAME_MAX_LENGTH + 1);
+    expect(() => parseAuthConfig(tooLong)).toThrowError(new RegExp(`display name of at most ${String(OIDC_PROVIDER_NAME_MAX_LENGTH)} characters`, 'i'));
 
     const duplicate = requiredAuthConfig();
     expect(() =>

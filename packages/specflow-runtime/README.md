@@ -120,8 +120,7 @@ and forwarded-client-IP trust are intentionally not supported yet.
 
 If `publicOrigin` is configured, its protocol must match Runtime TLS: HTTPS with TLS, HTTP without
 TLS. It is the canonical browser-facing origin used for OIDC redirects and therefore must match the
-hostname users actually open in the browser. The initializer uses the same loopback host for bind
-and public origin (`127.0.0.1`) so host-only auth cookies survive the OIDC redirect. Origins
+hostname users actually open in the browser. The initializer keeps the same loopback host for bind and browser public origin (`127.0.0.1`) so host-only auth cookies survive the OIDC redirect, while allowing a different browser port. The local UI development default is `http://127.0.0.1:5173`, which matches the fixed Vite dev-server port and proxies `/api` to Runtime on port `4318`. Origins
 containing credentials, paths, queries, or fragments are rejected rather than silently normalized.
 
 ## Password authentication

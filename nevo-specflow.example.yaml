@@ -8,7 +8,8 @@ runtime:
     port: 4318
     # Required when at least one OIDC instance is enabled.
     # A non-loopback required-auth Runtime must terminate TLS itself.
-    # publicOrigin: http://127.0.0.1:4318
+    # Local UI dev default: http://127.0.0.1:5173
+    # publicOrigin: http://127.0.0.1:5173
     tls:
       enabled: false
 

@@ -75,8 +75,7 @@ Login methods are represented according to their actual semantics:
 
 The browser UI never reads Runtime YAML to discover login methods.
 
-During local UI development Vite proxies `/api` to the default Runtime at
-`http://127.0.0.1:4318`, preserving same-origin browser cookie behavior.
+During local UI development Vite runs on the fixed origin `http://127.0.0.1:5173` and proxies `/api` to the default Runtime at `http://127.0.0.1:4318`. OIDC setup uses the browser origin for its callback/public origin, so the provider returns through Vite and the final redirect lands back in the UI while host-scoped cookies remain valid.
 
 ## Brand and tokens
 

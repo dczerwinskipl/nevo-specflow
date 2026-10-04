@@ -124,13 +124,14 @@ describe('Runtime project initialization', () => {
           'https://login.customer.example',
           'customer-client-id',
           'demo@customer.example',
+          '<default>',
         ],
         ['company-secret', 'customer-secret'],
       ),
     });
 
     expect(contribution.projectConfig).toMatchObject({
-      server: { publicOrigin: 'http://127.0.0.1:4318' },
+      server: { publicOrigin: 'http://127.0.0.1:5173' },
       auth: {
         mode: 'required',
         providers: {

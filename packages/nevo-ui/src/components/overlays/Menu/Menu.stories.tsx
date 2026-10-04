@@ -182,7 +182,18 @@ export const RadioSelection: Story = {
       'Radio menu items should render with menuitemradio semantics.',
     );
     await userEvent.click(polish);
-    assert(polish.getAttribute('aria-checked') === 'true', 'Selecting a radio item should check it.');
+    await userEvent.click(canvas.getByRole('button', { name: 'Language' }));
+    const selectedPolish = await waitFor(
+      () =>
+        [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find((item) =>
+          item.textContent?.includes('Polski'),
+        ) ?? null,
+      'The menu should reopen with the selected radio item.',
+    );
+    assert(
+      selectedPolish.getAttribute('aria-checked') === 'true',
+      'Selecting a radio item should persist the checked state.',
+    );
   },
 };
 

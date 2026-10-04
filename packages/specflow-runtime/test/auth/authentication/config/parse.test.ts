@@ -81,7 +81,12 @@ describe('authentication config parsing', () => {
   it('bounds and de-duplicates visible OIDC provider names', () => {
     const tooLong = requiredAuthConfig();
     tooLong.providers.oidc.instances.company.name = 'A'.repeat(OIDC_PROVIDER_NAME_MAX_LENGTH + 1);
-    expect(() => parseAuthConfig(tooLong)).toThrowError(new RegExp(`display name of at most ${String(OIDC_PROVIDER_NAME_MAX_LENGTH)} characters`, 'i'));
+    expect(() => parseAuthConfig(tooLong)).toThrowError(
+      new RegExp(
+        `display name of at most ${String(OIDC_PROVIDER_NAME_MAX_LENGTH)} characters`,
+        'i',
+      ),
+    );
 
     const duplicate = requiredAuthConfig();
     expect(() =>

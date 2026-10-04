@@ -55,9 +55,7 @@ export class ClackProjectSetupUi implements RuntimeSetupUi {
   }
 }
 
-function resolvePrompt<T extends string | boolean>(
-  value: T | typeof prompts.CANCEL_SYMBOL,
-): T {
+function resolvePrompt<T extends string | boolean>(value: T | typeof prompts.CANCEL_SYMBOL): T {
   if (prompts.isCancel(value)) {
     prompts.cancel('SpecFlow setup cancelled.');
     throw new ProjectSetupCancelledError();

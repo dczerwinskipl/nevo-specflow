@@ -31,7 +31,9 @@ class ScriptedUi implements RuntimeSetupUi {
     const value = this.selections.shift();
     if (!value) throw new Error('Missing scripted selection.');
     if (value === '<default>') {
-      if (initialValue === undefined) throw new Error('Script requested a missing default selection.');
+      if (initialValue === undefined) {
+        throw new Error('Script requested a missing default selection.');
+      }
       return Promise.resolve(initialValue);
     }
     return Promise.resolve(value as T);
@@ -103,7 +105,9 @@ describe('Runtime project initialization', () => {
     expect(review).not.toContain(PASSWORD_HASH);
   });
 
-  it('owns no-auth attribution and guarantees an administrator even after a non-admin selection', async () => {
+  it(
+    'owns no-auth attribution and guarantees an administrator even after a non-admin selection',
+    async () => {
     const ui = new ScriptedUi(
       [false],
       ['developer', '<default>'],
@@ -124,8 +128,9 @@ describe('Runtime project initialization', () => {
       auth: { localUserId: 'demo-user' },
     });
     expect(ui.notes.join('\n')).toMatch(/at least one administrator is required/i);
-    expect(contribution.summary.join('\n')).toContain('Demo User (demo-user): admin');
-  });
+      expect(contribution.summary.join('\n')).toContain('Demo User (demo-user): admin');
+    },
+  );
 
   it('defaults the bootstrap user to admin and additional users to developer', async () => {
     const ui = new ScriptedUi(
@@ -154,7 +159,9 @@ describe('Runtime project initialization', () => {
     expect(review).toContain('Jane User (jane): developer');
   });
 
-  it('supports multiple OIDC instances, rejects ambiguous names, and reviews mappings without secrets', async () => {
+  it(
+    'supports multiple OIDC instances, rejects ambiguous names, and reviews mappings without secrets',
+    async () => {
     const ui = new ScriptedUi(
       [true, false, true, false, true, false, false],
       ['demo', '<default>'],
@@ -225,6 +232,7 @@ describe('Runtime project initialization', () => {
     expect(review).toContain('demo@customer.example -> Demo User (demo)');
     expect(review).toContain('Demo User (demo): admin');
     expect(review).not.toContain('company-secret');
-    expect(review).not.toContain('customer-secret');
-  });
+      expect(review).not.toContain('customer-secret');
+    },
+  );
 });

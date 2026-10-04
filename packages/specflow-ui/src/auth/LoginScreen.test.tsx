@@ -1,12 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import {
-  LoginScreenView,
-  loginErrorMessage,
-  oidcButtonVariant,
-  safeReturnTo,
-} from './LoginScreen';
+import { LoginScreenView, loginErrorMessage, oidcButtonVariant, safeReturnTo } from './LoginScreen';
 
 describe('LoginScreen', () => {
   it('renders password and multiple OIDC methods without a containing card', () => {

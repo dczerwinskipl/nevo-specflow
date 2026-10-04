@@ -200,7 +200,9 @@ async function requiredOidcProviderName(
   );
 
   while (true) {
-    const name = normalizeOidcProviderName(await requiredInput(ui, 'OIDC provider name', 'Company SSO'));
+    const name = normalizeOidcProviderName(
+      await requiredInput(ui, 'OIDC provider name', 'Company SSO'),
+    );
     if (!isValidOidcProviderName(name)) {
       ui.note(
         `Provider name must be a single-line display name of at most ${String(OIDC_PROVIDER_NAME_MAX_LENGTH)} characters.`,
@@ -318,7 +320,10 @@ function requiredAuthSummary(
 }
 
 function canonicalUserSummary(users: Readonly<Record<string, RuntimeUserConfig>>): readonly string[] {
-  return ['Canonical users:', ...Object.keys(users).map((userId) => `  - ${formatUser(users, userId)}`)];
+  return [
+    'Canonical users:',
+    ...Object.keys(users).map((userId) => `  - ${formatUser(users, userId)}`),
+  ];
 }
 
 function formatUser(

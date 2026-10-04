@@ -228,9 +228,7 @@ function StandaloneAuthSurface({ children }: { readonly children: React.ReactNod
   );
 }
 
-export function oidcButtonVariant(
-  loginMethods: AuthLoginMethods,
-): 'primary' | 'secondary' {
+export function oidcButtonVariant(loginMethods: AuthLoginMethods): 'primary' | 'secondary' {
   return !loginMethods.password.enabled && loginMethods.oidc.length === 1
     ? 'primary'
     : 'secondary';

@@ -18,6 +18,10 @@ const multipleOidc = {
     { id: 'customer', name: 'Customer SSO' },
   ],
 } as const;
+const passwordAndSingleOidc = {
+  password: { enabled: true },
+  oidc: [{ id: 'company', name: 'Company SSO' }],
+} as const;
 const mixed = {
   password: { enabled: true },
   oidc: [
@@ -44,6 +48,9 @@ type Story = StoryObj<typeof meta>;
 export const PasswordOnly: Story = { args: { loginMethods: passwordOnly } };
 export const SingleOidc: Story = { args: { loginMethods: singleOidc } };
 export const MultipleOidc: Story = { args: { loginMethods: multipleOidc } };
+export const PasswordAndSingleOidc: Story = {
+  args: { loginMethods: passwordAndSingleOidc },
+};
 export const PasswordAndOidc: Story = { args: { loginMethods: mixed } };
 
 export const InvalidCredentials: Story = {

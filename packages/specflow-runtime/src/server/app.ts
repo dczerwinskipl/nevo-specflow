@@ -65,11 +65,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   app.get('/', (request, reply) => {
     if (
       config.server.publicOrigin &&
-      !isRequestAtPublicOrigin(
-        config.server.publicOrigin,
-        request.host,
-        config.server.tls.enabled,
-      )
+      !isRequestAtPublicOrigin(config.server.publicOrigin, request.host, config.server.tls.enabled)
     ) {
       return reply.redirect(config.server.publicOrigin);
     }

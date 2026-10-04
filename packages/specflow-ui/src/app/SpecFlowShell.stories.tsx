@@ -104,8 +104,8 @@ export const MobileNavigation: Story = {
     );
     if (!accountTrigger) throw new Error('Compact navigation account footer is missing.');
 
-    const playgroundLink = [...navigation.querySelectorAll<HTMLAnchorElement>('a')].find(
-      (link) => link.textContent?.includes('UI Playground'),
+    const playgroundLink = [...navigation.querySelectorAll<HTMLAnchorElement>('a')].find((link) =>
+      link.textContent?.includes('UI Playground'),
     );
     if (!playgroundLink) throw new Error('Compact navigation should expose UI Playground.');
     await userEvent.click(playgroundLink);

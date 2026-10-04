@@ -26,11 +26,7 @@ describe('Runtime public-origin request comparison', () => {
 
   it('rejects a different direct host, port, or protocol', () => {
     expect(
-      isRequestAtPublicOrigin(
-        'https://specflow.example.com:4318',
-        '192.168.1.10:4318',
-        true,
-      ),
+      isRequestAtPublicOrigin('https://specflow.example.com:4318', '192.168.1.10:4318', true),
     ).toBe(false);
     expect(
       isRequestAtPublicOrigin(

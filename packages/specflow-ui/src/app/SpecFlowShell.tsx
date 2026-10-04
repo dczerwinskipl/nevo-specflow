@@ -69,10 +69,7 @@ function ProductNavigation({
   );
 }
 
-export function SpecFlowShell({
-  auth,
-  children,
-}: PropsWithChildren<{ readonly auth: AuthStore }>) {
+export function SpecFlowShell({ auth, children }: PropsWithChildren<{ readonly auth: AuthStore }>) {
   const { t } = useTranslation();
   const router = useRouter();
   const capture = useDesignMetadata('SpecFlowApplicationShell', { viewport: 'desktop' });

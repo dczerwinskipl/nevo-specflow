@@ -47,7 +47,7 @@ export function createSpecFlowI18n(locale: AppLocale = resolveInitialLocale()): 
     fallbackLng: DEFAULT_LOCALE,
     supportedLngs: [...supportedLocales],
     interpolation: { escapeValue: false },
-    initImmediate: false,
+    initAsync: false,
   });
   return instance;
 }

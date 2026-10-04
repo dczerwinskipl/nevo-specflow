@@ -19,7 +19,7 @@
   },
   "account": {
     "localIdentity": "Tożsamość lokalna",
-    "signedIn": "Zalogowany",
+    "signedIn": "Zalogowano",
     "localAccess": "Dostęp lokalny",
     "openMenu": "Otwórz menu użytkownika {{name}}",
     "signOut": "Wyloguj się"

@@ -98,7 +98,7 @@ describe('Runtime project initialization', () => {
     expect(ui.inputMessages).toEqual(['Username', 'Display name']);
     expect(ui.selectMessages).toEqual(['Role for Demo User']);
     expect(contribution.projectConfig).toMatchObject({
-      auth: {
+      authentication: {
         mode: 'required',
         users: { demo: { name: 'Demo User' } },
       },
@@ -107,7 +107,7 @@ describe('Runtime project initialization', () => {
       },
     });
     expect(contribution.localConfig).toMatchObject({
-      auth: {
+      authentication: {
         providers: {
           password: {
             accounts: {
@@ -142,7 +142,7 @@ describe('Runtime project initialization', () => {
     const ownerChoices = ui.selectChoiceLabels[1];
     expect(ownerChoices).toEqual(['New user', 'Existing user']);
     expect(contribution.localConfig).toMatchObject({
-      auth: {
+      authentication: {
         providers: {
           password: {
             accounts: {
@@ -213,13 +213,13 @@ describe('Runtime project initialization', () => {
     });
 
     expect(contribution.projectConfig).toMatchObject({
-      auth: { users: { __new__: { name: 'Sentinel User' } } },
+      authentication: { users: { __new__: { name: 'Sentinel User' } } },
       authorization: {
         assignments: [{ userId: '__new__', role: 'admin', scope: {} }],
       },
     });
     expect(contribution.localConfig).toMatchObject({
-      auth: {
+      authentication: {
         providers: {
           password: {
             accounts: {
@@ -258,7 +258,7 @@ describe('Runtime project initialization', () => {
     expect(ui.inputMessages).not.toContain('Browser origin for OIDC callbacks');
     expect(contribution.projectConfig).toMatchObject({
       server: { publicOrigin: 'http://127.0.0.1:5173' },
-      auth: {
+      authentication: {
         users: { 'demo@example.com': { name: 'demo@example.com' } },
         providers: {
           oidc: {
@@ -307,7 +307,7 @@ describe('Runtime project initialization', () => {
     expect(ui.selectMessages).toContain('OIDC identity demo@example.com belongs to');
     expect(ui.inputMessages.filter((message) => message === 'Display name')).toHaveLength(1);
     expect(contribution.projectConfig).toMatchObject({
-      auth: {
+      authentication: {
         users: { demo: { name: 'Demo User' } },
         providers: {
           oidc: {

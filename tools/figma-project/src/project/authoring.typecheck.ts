@@ -73,18 +73,18 @@ componentRef('Buton', { variant: 'primary', size: 'sm', width: 'content', state:
 // @ts-expect-error unknown capture component ID
 useDesignMetadata('Buton', {});
 
-// @ts-expect-error unknown Button capture property
 useDesignMetadata('Button', {
   variant: 'primary',
   size: 'sm',
   width: 'content',
   state: 'default',
+  // @ts-expect-error unknown Button capture property
   foo: 'bar',
 });
 
-// @ts-expect-error invalid Button capture property value
 useDesignMetadata('Button', {
   variant: 'primary',
+  // @ts-expect-error invalid Button capture property value
   size: 'xl',
   width: 'content',
   state: 'default',
@@ -105,12 +105,12 @@ slot('Button', 'leadngIcon');
 // @ts-expect-error unknown Button variant property
 variantProperty('Button', 'density');
 
-// @ts-expect-error unknown Button variant axis
 componentRef('Button', {
   variant: 'primary',
   size: 'sm',
   width: 'content',
   state: 'default',
+  // @ts-expect-error unknown Button variant axis
   density: 'compact',
 });
 

@@ -12,11 +12,7 @@ export async function initAuthorization(
   users: Readonly<Record<string, RuntimeUserConfig>>,
 ): Promise<AuthorizationInitResult> {
   const userEntries = Object.entries(users);
-  const assignments: {
-    userId: string;
-    role: SpecFlowRole;
-    scope: Record<string, never>;
-  }[] = [];
+  const assignments: { userId: string; role: SpecFlowRole; scope: Record<string, never> }[] = [];
 
   for (const [index, [userId, user]] of userEntries.entries()) {
     const role = await ui.select<SpecFlowRole>(
@@ -31,10 +27,7 @@ export async function initAuthorization(
     assignments.push({ userId, role, scope: {} });
   }
 
-  if (
-    assignments.length > 0 &&
-    !assignments.some((assignment) => assignment.role === 'admin')
-  ) {
+  if (assignments.length > 0 && !assignments.some((assignment) => assignment.role === 'admin')) {
     ui.note(
       'At least one administrator is required. Choose the canonical user that should bootstrap project administration.',
       'Authorization',
@@ -68,10 +61,7 @@ export async function initAuthorization(
   };
 }
 
-function formatUser(
-  users: Readonly<Record<string, RuntimeUserConfig>>,
-  userId: string,
-): string {
+function formatUser(users: Readonly<Record<string, RuntimeUserConfig>>, userId: string): string {
   const user = users[userId];
   return user ? `${user.name} (${userId})` : userId;
 }

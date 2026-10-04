@@ -108,11 +108,7 @@ describe('Runtime project initialization', () => {
   it(
     'owns no-auth attribution and guarantees an administrator even after a non-admin selection',
     async () => {
-      const ui = new ScriptedUi(
-        [false],
-        ['developer', '<default>'],
-        ['demo-user', 'Demo User'],
-      );
+      const ui = new ScriptedUi([false], ['developer', '<default>'], ['demo-user', 'Demo User']);
       const contribution = await initRuntime({ ui });
 
       expect(contribution.projectConfig).toMatchObject({

@@ -319,17 +319,16 @@ function requiredAuthSummary(
   return [...lines, ...canonicalUserSummary(users)];
 }
 
-function canonicalUserSummary(users: Readonly<Record<string, RuntimeUserConfig>>): readonly string[] {
+function canonicalUserSummary(
+  users: Readonly<Record<string, RuntimeUserConfig>>,
+): readonly string[] {
   return [
     'Canonical users:',
     ...Object.keys(users).map((userId) => `  - ${formatUser(users, userId)}`),
   ];
 }
 
-function formatUser(
-  users: Readonly<Record<string, RuntimeUserConfig>>,
-  userId: string,
-): string {
+function formatUser(users: Readonly<Record<string, RuntimeUserConfig>>, userId: string): string {
   const user = users[userId];
   return user ? `${user.name} (${userId})` : userId;
 }

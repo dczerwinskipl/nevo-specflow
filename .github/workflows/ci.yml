@@ -49,12 +49,6 @@ jobs:
       - name: Quality gate
         run: pnpm check:quality
 
-      - name: Preview auth formatting after quality failure
-        if: failure()
-        run: |
-          pnpm exec prettier --write             packages/specflow-runtime/src/auth/authentication/init.ts             packages/specflow-runtime/src/auth/authorization/init.ts             packages/specflow-runtime/test/init.test.ts
-          git diff --             packages/specflow-runtime/src/auth/authentication/init.ts             packages/specflow-runtime/src/auth/authorization/init.ts             packages/specflow-runtime/test/init.test.ts
-
       - name: Resolved version
         run: pnpm version:print
 

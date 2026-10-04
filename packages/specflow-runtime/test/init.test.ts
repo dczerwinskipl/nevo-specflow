@@ -83,9 +83,7 @@ class ScriptedUi implements RuntimeSetupUi {
 }
 
 describe('Runtime project initialization', () => {
-  it(
-    'uses username as the new password user id and assigns the role immediately',
-    async () => {
+  it('uses username as the new password user id and assigns the role immediately', async () => {
     const ui = new ScriptedUi(
       [true, true, false, false],
       ['<default>'],
@@ -125,8 +123,7 @@ describe('Runtime project initialization', () => {
     expect(review).toContain('Demo User (demo): admin');
     expect(review).not.toContain('test123');
     expect(review).not.toContain(PASSWORD_HASH);
-    },
-  );
+  });
 
   it('offers New user / Existing user when another password account is added', async () => {
     const ui = new ScriptedUi(
@@ -161,8 +158,7 @@ describe('Runtime project initialization', () => {
         assignments: [{ userId: 'demo', role: 'admin', scope: {} }],
       },
     });
-    },
-  );
+  });
 
   it('guarantees an administrator for trusted local setup', async () => {
     const ui = new ScriptedUi([false], ['developer', '<default>'], ['demo-user', 'Demo User']);
@@ -174,8 +170,7 @@ describe('Runtime project initialization', () => {
       },
     });
     expect(ui.notes.join('\n')).toMatch(/at least one administrator is required/i);
-    },
-  );
+  });
 
   it('preserves role defaults for integer-like usernames in creation order', async () => {
     const ui = new ScriptedUi(
@@ -190,9 +185,9 @@ describe('Runtime project initialization', () => {
       hashPassword: () => Promise.resolve(PASSWORD_HASH),
     });
 
-    expect(
-      ui.selectDefaults.filter((value) => value === 'admin' || value === 'developer'),
-    ).toEqual(['admin', 'developer']);
+    expect(ui.selectDefaults.filter((value) => value === 'admin' || value === 'developer')).toEqual(
+      ['admin', 'developer'],
+    );
     expect(contribution.projectConfig).toMatchObject({
       authorization: {
         assignments: [
@@ -201,8 +196,7 @@ describe('Runtime project initialization', () => {
         ],
       },
     });
-    },
-  );
+  });
 
   it('allows the former sentinel text as an ordinary password username/user id', async () => {
     const ui = new ScriptedUi(
@@ -235,12 +229,9 @@ describe('Runtime project initialization', () => {
         },
       },
     });
-    },
-  );
+  });
 
-  it(
-    'reprompts an invalid OIDC issuer before collecting client or identity data',
-    async () => {
+  it('reprompts an invalid OIDC issuer before collecting client or identity data', async () => {
     const ui = new ScriptedUi(
       [true, false, true, false, false],
       ['<default>'],
@@ -283,18 +274,11 @@ describe('Runtime project initialization', () => {
         assignments: [{ userId: 'demo@example.com', role: 'admin', scope: {} }],
       },
     });
-    expect(contribution.summary).toContain(
-      'Web app / OIDC return: http://127.0.0.1:5173',
-    );
-    expect(contribution.summary).toContain(
-      'Runtime API: http://127.0.0.1:4318 (API only)',
-    );
-    },
-  );
+    expect(contribution.summary).toContain('Web app / OIDC return: http://127.0.0.1:5173');
+    expect(contribution.summary).toContain('Runtime API: http://127.0.0.1:4318 (API only)');
+  });
 
-  it(
-    'creates OIDC identity from the allowed email without asking for canonical-user linkage',
-    async () => {
+  it('creates OIDC identity from the allowed email without asking for canonical-user linkage', async () => {
     const ui = new ScriptedUi(
       [true, true, false, true, false, false],
       ['<default>', '<default>'],
@@ -340,12 +324,9 @@ describe('Runtime project initialization', () => {
         ],
       },
     });
-    },
-  );
+  });
 
-  it(
-    'validates authorization assignments against generated authentication users',
-    async () => {
+  it('validates authorization assignments against generated authentication users', async () => {
     const ui = new ScriptedUi(
       [true, true, true, false, true, false, false],
       ['<default>', '<new-user>', '<default>', '<default>'],

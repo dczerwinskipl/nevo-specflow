@@ -78,9 +78,7 @@ export function createAuthorizationSetup(ui: RuntimeSetupUi): AuthorizationSetup
         },
         summary: [
           'Authorization:',
-          ...assignments.map(
-            (assignment) => `  - ${formatUser(assignment)}: ${assignment.role}`,
-          ),
+          ...assignments.map((assignment) => `  - ${formatUser(assignment)}: ${assignment.role}`),
         ],
       };
     },

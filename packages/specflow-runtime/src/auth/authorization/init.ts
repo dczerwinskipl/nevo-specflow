@@ -46,8 +46,7 @@ export function createAuthorizationSetup(ui: RuntimeSetupUi): AuthorizationSetup
         !assignments.some((assignment) => assignment.role === 'admin')
       ) {
         ui.note(
-          'At least one administrator is required. ' +
-            'Choose the user that should bootstrap project administration.',
+          'At least one administrator is required. Choose the user that should bootstrap project administration.',
           'Authorization',
         );
         const firstUserId = assignments[0]?.userId;

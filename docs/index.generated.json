@@ -1169,7 +1169,7 @@
         "adding code that ships inside @nevo/specflow",
         "reviewing release artifacts or package metadata"
       ],
-      "summary": "@nevo/specflow owns the product artifact build. Package-owned packaging scripts create a self-contained CLI bundle and attribution metadata, then standard pnpm pack creates the tarball.",
+      "summary": "@nevo/specflow owns the product artifact build. Package-owned packaging scripts create the self-contained CLI/Runtime bundle, embed the built UI, and generate attribution metadata before standard pnpm pack creates the tarball.",
       "related": [
         "adr.0011-product-artifact-packaging-and-pnpm-compatibility",
         "engineering.repository.dogfooding",

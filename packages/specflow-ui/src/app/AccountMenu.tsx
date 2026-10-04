@@ -54,7 +54,7 @@ export function AccountMenu({
           <Icon name="chevron-down" size="sm" />
         </button>
       </MenuTrigger>
-      <MenuContent align="start" className="w-60" side="top">
+      <MenuContent align="start" aria-label={t('account.menu')} className="w-60" side="top">
         <MenuLabel>{userName}</MenuLabel>
         <MenuSeparator />
         <LocaleMenuItems />

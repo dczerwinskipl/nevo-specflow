@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { DesignMetadataBoundary } from '@nevo/figma-capture/metadata';
+import { DesignMetadataBoundary, designLayerMetadata } from '@nevo/figma-capture/metadata';
 import { AppBackground, Typography, WorkspaceSurface } from '@nevo/ui';
 
 import { defaultNevoBrand, NevoBrandLogo } from '../brand';
@@ -25,7 +25,10 @@ export function StandaloneAuthSurface({
         className="relative flex min-h-dvh w-full items-center justify-center px-4 py-6 text-content-primary sm:px-8 sm:py-10"
         data-auth-layout="root"
       >
-        <div className="absolute right-4 top-4 sm:right-8 sm:top-6">
+        <div
+          className="absolute right-4 top-4 sm:right-8 sm:top-6"
+          {...designLayerMetadata({ layer: 'language-selector' })}
+        >
           <StandaloneLocaleMenu />
         </div>
         <WorkspaceSurface

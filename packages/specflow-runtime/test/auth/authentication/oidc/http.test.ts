@@ -49,7 +49,7 @@ describe('OIDC HTTP adapter', () => {
           'https://specflow.example.test:4318/api/auth/oidc/company/callback?code=abc&state=state',
         );
         expect(stored).toMatchObject(transaction);
-        return Promise.resolve({ email: ' Demo@Example.com ' });
+        return Promise.resolve({ email: ' Demo@Example.com ', name: 'Demo User' });
       },
     };
 
@@ -90,7 +90,7 @@ describe('OIDC HTTP adapter', () => {
           authorizationUrl: new URL('https://issuer.example.test/authorize?state=state'),
           transaction: { state: 'state', nonce: 'nonce', codeVerifier: 'verifier' },
         }),
-      complete: () => Promise.resolve({ email: 'other@example.com' }),
+      complete: () => Promise.resolve({ email: 'other@example.com', name: 'Other User' }),
     };
     const app = await createRuntimeApp(oidcConfig({ 'demo@example.com': 'demo-user' }), {
       auth: { oidcClients: { company: oidc } },
@@ -274,7 +274,7 @@ describe('OIDC HTTP adapter', () => {
         }),
       complete: () => {
         completeCalls += 1;
-        return Promise.resolve({ email: 'demo@example.com' });
+        return Promise.resolve({ email: 'demo@example.com', name: 'Demo User' });
       },
     };
     const app = await createRuntimeApp(oidcConfig({ 'demo@example.com': 'demo-user' }), {

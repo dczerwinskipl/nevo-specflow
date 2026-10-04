@@ -242,7 +242,7 @@ async function chooseUserMode(
   ui: RuntimeSetupUi,
   message: string,
 ): Promise<typeof NEW_USER | typeof EXISTING_USER> {
-  return ui.select(
+  return ui.select<typeof NEW_USER | typeof EXISTING_USER>(
     message,
     [
       { value: NEW_USER, label: 'New user' },

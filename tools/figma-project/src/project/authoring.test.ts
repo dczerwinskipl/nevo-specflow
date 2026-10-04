@@ -18,11 +18,12 @@ describe('project Figma authoring', () => {
       componentRef('Button', {
         variant: 'primary',
         size: 'sm',
+        width: 'content',
         state: 'default',
       }),
     ).toEqual({
       componentRef: 'Button',
-      properties: { variant: 'primary', size: 'sm', state: 'default' },
+      properties: { variant: 'primary', size: 'sm', width: 'content', state: 'default' },
     });
     expect(slot('Button', 'leadingIcon')).toBe('leadingIcon');
     expect(variantProperty('Button', 'size')).toBe('size');

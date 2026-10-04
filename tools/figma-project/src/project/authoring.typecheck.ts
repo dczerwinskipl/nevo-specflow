@@ -13,14 +13,19 @@ type ButtonAxes = Extract<
   { component: 'Button' }
 >['propertyValues'];
 
-componentRef('Button', { variant: 'primary', size: 'sm', state: 'default' });
+componentRef('Button', { variant: 'primary', size: 'sm', width: 'content', state: 'default' });
 slot('Button', 'leadingIcon');
 slot('Button', 'label');
 variantProperty('Button', 'size');
 assetRef('Icon', { name: 'search', size: 'sm' });
 resourceSetRef('Icon');
 textStyleRef('Typography', { variant: 'body-md' });
-useDesignMetadata('Button', { variant: 'primary', size: 'sm', state: 'default' });
+useDesignMetadata('Button', {
+  variant: 'primary',
+  size: 'sm',
+  width: 'content',
+  state: 'default',
+});
 useDesignMetadata(
   'Icon',
   {},
@@ -63,16 +68,27 @@ const completeDefaults: AssetSwapSlotFor<ButtonAxes> = {
 void completeDefaults;
 
 // @ts-expect-error unknown component ID
-componentRef('Buton', { variant: 'primary', size: 'sm', state: 'default' });
+componentRef('Buton', { variant: 'primary', size: 'sm', width: 'content', state: 'default' });
 
 // @ts-expect-error unknown capture component ID
 useDesignMetadata('Buton', {});
 
 // @ts-expect-error unknown Button capture property
-useDesignMetadata('Button', { variant: 'primary', size: 'sm', state: 'default', foo: 'bar' });
+useDesignMetadata('Button', {
+  variant: 'primary',
+  size: 'sm',
+  width: 'content',
+  state: 'default',
+  foo: 'bar',
+});
 
 // @ts-expect-error invalid Button capture property value
-useDesignMetadata('Button', { variant: 'primary', size: 'xl', state: 'default' });
+useDesignMetadata('Button', {
+  variant: 'primary',
+  size: 'xl',
+  width: 'content',
+  state: 'default',
+});
 
 // @ts-expect-error unknown Button runtime slot
 designSlot('Button', 'leadngIcon');
@@ -90,10 +106,16 @@ slot('Button', 'leadngIcon');
 variantProperty('Button', 'density');
 
 // @ts-expect-error unknown Button variant axis
-componentRef('Button', { variant: 'primary', size: 'sm', state: 'default', density: 'compact' });
+componentRef('Button', {
+  variant: 'primary',
+  size: 'sm',
+  width: 'content',
+  state: 'default',
+  density: 'compact',
+});
 
 // @ts-expect-error invalid Button size
-componentRef('Button', { variant: 'primary', size: 'lg', state: 'default' });
+componentRef('Button', { variant: 'primary', size: 'lg', width: 'content', state: 'default' });
 
 // @ts-expect-error unknown resource
 assetRef('Illustration', { name: 'search', size: 'sm' });

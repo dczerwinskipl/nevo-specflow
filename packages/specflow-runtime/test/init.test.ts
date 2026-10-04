@@ -1,20 +1,33 @@
 import { describe, expect, it } from 'vitest';
 
-import { initRuntime, type RuntimeInitPrompter, type RuntimeInitPromptChoice } from '../src/index';
+import {
+  initRuntime,
+  type RuntimeSetupChoice,
+  type RuntimeSetupUi,
+} from '../src/index';
 
 const PASSWORD_HASH =
   '$scrypt$16384$8$5$MDEyMzQ1Njc4OWFiY2RlZg$yMHgG_FDESRF0j5gjhGLotSMPdnfefUcNNFPyNoQtJE';
 
-class ScriptedPrompter implements RuntimeInitPrompter {
+class ScriptedUi implements RuntimeSetupUi {
+  readonly notes: string[] = [];
+
   constructor(
+    private readonly confirmations: boolean[],
     private readonly selections: string[],
     private readonly inputs: string[],
     private readonly secrets: string[] = [],
   ) {}
 
+  confirm(): Promise<boolean> {
+    const value = this.confirmations.shift();
+    if (value === undefined) throw new Error('Missing scripted confirmation.');
+    return Promise.resolve(value);
+  }
+
   select<T extends string>(
     _message: string,
-    _choices: readonly RuntimeInitPromptChoice<T>[],
+    _choices: readonly RuntimeSetupChoice<T>[],
   ): Promise<T> {
     const value = this.selections.shift();
     if (!value) throw new Error('Missing scripted selection.');
@@ -27,18 +40,23 @@ class ScriptedPrompter implements RuntimeInitPrompter {
     return Promise.resolve(value === '<default>' ? (defaultValue ?? '') : value);
   }
 
-  secret(_message: string): Promise<string> {
+  secret(): Promise<string> {
     const value = this.secrets.shift();
     if (value === undefined) throw new Error('Missing scripted secret.');
     return Promise.resolve(value);
   }
+
+  note(message: string): void {
+    this.notes.push(message);
+  }
 }
 
 describe('Runtime project initialization', () => {
-  it('owns password auth defaults, hashing and project/local split', async () => {
+  it('owns password auth, hashing, authorization and project/local split', async () => {
     const contribution = await initRuntime({
-      prompter: new ScriptedPrompter(
-        ['password'],
+      ui: new ScriptedUi(
+        [true, true, false, false],
+        ['admin'],
         ['demo', '<default>', 'Demo User'],
         ['test123', 'test123'],
       ),
@@ -46,20 +64,17 @@ describe('Runtime project initialization', () => {
     });
 
     expect(contribution.projectConfig).toMatchObject({
-      server: {
-        host: '127.0.0.1',
-        port: 4318,
-        tls: { enabled: false },
-      },
+      server: { host: '127.0.0.1', port: 4318, tls: { enabled: false } },
       auth: {
         mode: 'required',
-        users: {
-          demo: { name: 'Demo User' },
-        },
+        users: { demo: { name: 'Demo User' } },
         providers: {
           password: { enabled: true },
-          oidc: { enabled: false },
+          oidc: { instances: {} },
         },
+      },
+      authorization: {
+        assignments: [{ userId: 'demo', role: 'admin', scope: {} }],
       },
     });
     expect(contribution.projectConfig).not.toHaveProperty('auth.providers.password.accounts');
@@ -68,10 +83,7 @@ describe('Runtime project initialization', () => {
         providers: {
           password: {
             accounts: {
-              demo: {
-                userId: 'demo',
-                passwordHash: PASSWORD_HASH,
-              },
+              demo: { userId: 'demo', passwordHash: PASSWORD_HASH },
             },
           },
         },
@@ -79,17 +91,18 @@ describe('Runtime project initialization', () => {
     });
   });
 
-  it('owns no-auth attribution semantics', async () => {
+  it('owns no-auth attribution and still assigns capabilities to the local identity', async () => {
     const contribution = await initRuntime({
-      prompter: new ScriptedPrompter(['none'], ['demo-user', 'Demo User']),
+      ui: new ScriptedUi([false], ['developer'], ['demo-user', 'Demo User']),
     });
 
     expect(contribution.projectConfig).toMatchObject({
       auth: {
         mode: 'none',
-        users: {
-          'demo-user': { name: 'Demo User' },
-        },
+        users: { 'demo-user': { name: 'Demo User' } },
+      },
+      authorization: {
+        assignments: [{ userId: 'demo-user', role: 'developer', scope: {} }],
       },
     });
     expect(contribution.localConfig).toEqual({
@@ -97,31 +110,47 @@ describe('Runtime project initialization', () => {
     });
   });
 
-  it('keeps the OIDC client secret local while Runtime owns callback defaults', async () => {
+  it('supports multiple OIDC instances and keeps each client secret local', async () => {
     const contribution = await initRuntime({
-      prompter: new ScriptedPrompter(
-        ['oidc'],
-        ['<default>', 'demo-client-id', 'demo@example.com', '<default>', 'Demo User'],
-        ['demo-client-secret'],
+      ui: new ScriptedUi(
+        [true, false, true, false, true, false, false],
+        ['demo', 'demo', 'admin'],
+        [
+          'Company SSO',
+          'company',
+          '<default>',
+          'company-client-id',
+          'demo@example.com',
+          '<default>',
+          'Demo User',
+          'Customer SSO',
+          'customer',
+          'https://login.customer.example',
+          'customer-client-id',
+          'demo@customer.example',
+        ],
+        ['company-secret', 'customer-secret'],
       ),
     });
 
     expect(contribution.projectConfig).toMatchObject({
-      server: {
-        publicOrigin: 'http://127.0.0.1:4318',
-      },
+      server: { publicOrigin: 'http://127.0.0.1:4318' },
       auth: {
         mode: 'required',
-        users: {
-          demo: { name: 'Demo User' },
-        },
         providers: {
+          password: { enabled: false },
           oidc: {
-            enabled: true,
-            issuer: 'https://accounts.google.com',
-            clientId: 'demo-client-id',
-            allowedEmails: {
-              'demo@example.com': 'demo',
+            instances: {
+              company: {
+                name: 'Company SSO',
+                clientId: 'company-client-id',
+                allowedEmails: { 'demo@example.com': 'demo' },
+              },
+              customer: {
+                name: 'Customer SSO',
+                clientId: 'customer-client-id',
+                allowedEmails: { 'demo@customer.example': 'demo' },
+              },
             },
           },
         },
@@ -131,7 +160,10 @@ describe('Runtime project initialization', () => {
       auth: {
         providers: {
           oidc: {
-            clientSecret: 'demo-client-secret',
+            instances: {
+              company: { clientSecret: 'company-secret' },
+              customer: { clientSecret: 'customer-secret' },
+            },
           },
         },
       },

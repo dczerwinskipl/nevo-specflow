@@ -18,27 +18,41 @@ function requiredAuthConfig() {
         } as Record<string, { userId: string; passwordHash: string }>,
       },
       oidc: {
-        enabled: true,
-        issuer: 'https://issuer.example.test',
-        clientId: 'client-id',
-        clientSecret: 'local-secret',
-        allowedEmails: {
-          'demo@example.com': 'demo-user',
-        } as Record<string, string>,
+        instances: {
+          company: {
+            name: 'Company SSO',
+            enabled: true,
+            issuer: 'https://issuer.example.test',
+            clientId: 'client-id',
+            clientSecret: 'local-secret',
+            allowedEmails: {
+              'demo@example.com': 'demo-user',
+            } as Record<string, string>,
+          },
+        },
       },
     },
   };
 }
 
 describe('authentication config parsing', () => {
-  it('returns a narrowed enabled OIDC configuration', () => {
+  it('returns narrowed enabled OIDC instances with stable ids and display names', () => {
     const parsed = parseAuthConfig(requiredAuthConfig());
-    expect(parsed.providers.oidc).toMatchObject({
+    expect(parsed.providers.oidc.instances.company).toMatchObject({
+      name: 'Company SSO',
       enabled: true,
       issuer: 'https://issuer.example.test',
       clientId: 'client-id',
       clientSecret: 'local-secret',
     });
+  });
+
+  it('rejects invalid OIDC provider ids', () => {
+    const config = requiredAuthConfig();
+    config.providers.oidc.instances = {
+      'Company SSO': config.providers.oidc.instances.company,
+    };
+    expect(() => parseAuthConfig(config)).toThrowError(/provider ids must be lowercase slugs/i);
   });
 
   it('normalizes password account names and rejects collisions', () => {
@@ -53,9 +67,7 @@ describe('authentication config parsing', () => {
       Demo: { userId: 'demo-user', passwordHash: PASSWORD_HASH },
       ' demo ': { userId: 'demo-user', passwordHash: PASSWORD_HASH },
     };
-    expect(() => parseAuthConfig(collision)).toThrowError(
-      /duplicate username after normalization/i,
-    );
+    expect(() => parseAuthConfig(collision)).toThrowError(/duplicate username after normalization/i);
   });
 
   it('keeps configured usernames inside the HTTP boundary using Unicode code-point length', () => {
@@ -75,28 +87,27 @@ describe('authentication config parsing', () => {
 
   it('requires HTTPS OIDC issuers and complete enabled-provider settings', () => {
     const insecure = requiredAuthConfig();
-    insecure.providers.oidc.issuer = 'http://issuer.example.test';
+    insecure.providers.oidc.instances.company.issuer = 'http://issuer.example.test';
     expect(() => parseAuthConfig(insecure)).toThrowError(/must be an absolute HTTPS URL/);
 
     const missingSecret = requiredAuthConfig();
-    delete (missingSecret.providers.oidc as { clientSecret?: string }).clientSecret;
+    delete (missingSecret.providers.oidc.instances.company as { clientSecret?: string }).clientSecret;
     expect(() => parseAuthConfig(missingSecret)).toThrowError(/clientSecret are required/);
   });
 
   it('rejects normalized OIDC email collisions without rewriting opaque secrets', () => {
     const collision = requiredAuthConfig();
-    collision.providers.oidc.allowedEmails = {
+    collision.providers.oidc.instances.company.allowedEmails = {
       'Demo@example.com': 'demo-user',
       ' demo@example.com ': 'demo-user',
     };
     expect(() => parseAuthConfig(collision)).toThrowError(/duplicate email after normalization/i);
 
     const secret = requiredAuthConfig();
-    secret.providers.oidc.clientSecret = ' secret-with-significant-spaces ';
+    secret.providers.oidc.instances.company.clientSecret = ' secret-with-significant-spaces ';
     const parsed = parseAuthConfig(secret);
-    expect(parsed.providers.oidc.enabled && parsed.providers.oidc.clientSecret).toBe(
-      ' secret-with-significant-spaces ',
-    );
+    const company = parsed.providers.oidc.instances.company;
+    expect(company?.enabled && company.clientSecret).toBe(' secret-with-significant-spaces ');
   });
 
   it('does not treat inherited object properties as configured users', () => {
@@ -105,7 +116,6 @@ describe('authentication config parsing', () => {
       userId: 'toString',
       passwordHash: PASSWORD_HASH,
     };
-
     expect(() => parseAuthConfig(config)).toThrowError(/references unknown user 'toString'/);
   });
 
@@ -116,7 +126,7 @@ describe('authentication config parsing', () => {
       userId: '__proto__',
       passwordHash: PASSWORD_HASH,
     };
-    config.providers.oidc.allowedEmails = {
+    config.providers.oidc.instances.company.allowedEmails = {
       'proto@example.com': '__proto__',
     };
 

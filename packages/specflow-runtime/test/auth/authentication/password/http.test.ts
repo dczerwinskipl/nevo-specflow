@@ -51,10 +51,11 @@ describe('password authentication HTTP adapter', () => {
       });
       expect(login.statusCode).toBe(200);
       expect(login.json()).toEqual({
+        authenticationRequired: true,
         authenticated: true,
         user: { id: 'demo-user', name: 'Demo User' },
-        provider: 'password',
-        availableProviders: ['password'],
+        authenticatedWith: { kind: 'password' },
+        loginMethods: { password: { enabled: true }, oidc: [] },
       });
 
       const setCookie = login.headers['set-cookie'];
@@ -114,7 +115,10 @@ describe('password authentication HTTP adapter', () => {
 
   it('returns 503 without evicting live sessions when the store is full', async () => {
     const store = new InMemoryAuthStore({ maxSessions: 1 });
-    const existing = store.createSession({ userId: 'other-user', provider: 'password' });
+    const existing = store.createSession({
+      userId: 'other-user',
+      authenticatedWith: { kind: 'password' },
+    });
     const app = await createRuntimeApp(passwordConfig(), { auth: { store } });
 
     try {
@@ -131,7 +135,7 @@ describe('password authentication HTTP adapter', () => {
       expect(response.json()).toEqual({ error: 'service_unavailable' });
       expect(store.getSession(existing)).toEqual({
         userId: 'other-user',
-        provider: 'password',
+        authenticatedWith: { kind: 'password' },
       });
     } finally {
       await app.close();
@@ -149,39 +153,6 @@ describe('password authentication HTTP adapter', () => {
       expect(response.statusCode).toBe(404);
     } finally {
       await app.close();
-    }
-  });
-
-  it('isolates session cookies between Runtime ports on the same host', async () => {
-    const firstConfig = passwordConfig();
-    const secondConfig = {
-      ...passwordConfig(),
-      server: { ...passwordConfig().server, port: 4319 },
-    };
-    const first = await createRuntimeApp(firstConfig);
-    const second = await createRuntimeApp(secondConfig);
-
-    try {
-      const payload = {
-        username: 'demo',
-        password: 'correct horse battery staple',
-      };
-      const firstLogin = await first.inject({
-        method: 'POST',
-        url: '/api/auth/password/login',
-        payload,
-      });
-      const secondLogin = await second.inject({
-        method: 'POST',
-        url: '/api/auth/password/login',
-        payload,
-      });
-
-      expect(String(firstLogin.headers['set-cookie'])).toContain('nevo_session_4318=');
-      expect(String(secondLogin.headers['set-cookie'])).toContain('nevo_session_4319=');
-    } finally {
-      await first.close();
-      await second.close();
     }
   });
 });

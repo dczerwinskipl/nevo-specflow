@@ -3,41 +3,42 @@ import { describe, expect, it } from 'vitest';
 
 import {
   AuthSessionResponseSchema,
+  OidcStartRequestSchema,
   PASSWORD_MAX_LENGTH,
   PASSWORD_USERNAME_MAX_LENGTH,
   PasswordLoginRequestSchema,
 } from './authentication';
 
 describe('SpecFlow authentication contracts', () => {
-  it('models authenticated and unauthenticated sessions as distinct states', () => {
+  it('models login methods and the concrete authenticated method', () => {
     expect(
       Value.Check(AuthSessionResponseSchema, {
+        authenticationRequired: true,
         authenticated: true,
         user: { id: 'demo-user', name: 'Demo User' },
-        provider: 'oidc',
-        availableProviders: ['oidc'],
+        authenticatedWith: { kind: 'oidc', providerId: 'company' },
+        loginMethods: {
+          password: { enabled: true },
+          oidc: [{ id: 'company', name: 'Company SSO' }],
+        },
       }),
     ).toBe(true);
 
     expect(
       Value.Check(AuthSessionResponseSchema, {
+        authenticationRequired: false,
         authenticated: false,
-        availableProviders: [],
+        user: { id: 'demo-user', name: 'Demo User' },
+        loginMethods: { password: { enabled: false }, oidc: [] },
       }),
     ).toBe(true);
 
     expect(
       Value.Check(AuthSessionResponseSchema, {
+        authenticationRequired: true,
         authenticated: true,
-        availableProviders: ['oidc'],
-      }),
-    ).toBe(false);
-
-    expect(
-      Value.Check(AuthSessionResponseSchema, {
-        authenticated: false,
-        provider: 'oidc',
-        availableProviders: ['oidc'],
+        user: { id: 'demo-user', name: 'Demo User' },
+        loginMethods: { password: { enabled: false }, oidc: [] },
       }),
     ).toBe(false);
   });
@@ -63,5 +64,10 @@ describe('SpecFlow authentication contracts', () => {
         password: '😀'.repeat(PASSWORD_MAX_LENGTH + 1),
       }),
     ).toBe(false);
+  });
+
+  it('accepts an optional OIDC return target without making it provider metadata', () => {
+    expect(Value.Check(OidcStartRequestSchema, {})).toBe(true);
+    expect(Value.Check(OidcStartRequestSchema, { returnTo: '/specs/S1?tab=tasks' })).toBe(true);
   });
 });

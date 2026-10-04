@@ -47,7 +47,7 @@ describe('startRuntime', () => {
         '      password:',
         '        enabled: false',
         '      oidc:',
-        '        enabled: false',
+        '        instances: {}',
         '',
       ].join('\n'),
       'utf8',
@@ -62,7 +62,11 @@ describe('startRuntime', () => {
       expect(runtime.address).toContain(`:${port}`);
       const response = await fetch(`http://127.0.0.1:${port}/api/auth/session`);
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ authenticated: false, availableProviders: [] });
+      expect(await response.json()).toEqual({
+        authenticationRequired: false,
+        authenticated: false,
+        loginMethods: { password: { enabled: false }, oidc: [] },
+      });
     } finally {
       await runtime.close();
     }

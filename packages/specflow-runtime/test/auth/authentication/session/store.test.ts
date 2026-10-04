@@ -3,8 +3,16 @@ import { describe, expect, it } from 'vitest';
 import { AuthStoreCapacityError } from '../../../../src/auth/authentication/session/errors';
 import { InMemoryAuthStore } from '../../../../src/auth/authentication/session/store';
 
+const oidcTransaction = (state: string) => ({
+  state,
+  nonce: 'nonce',
+  codeVerifier: 'verifier',
+  providerId: 'company',
+  returnTo: '/specs',
+});
+
 describe('InMemoryAuthStore', () => {
-  it('expires sessions and consumes OIDC transactions once', () => {
+  it('expires sessions and consumes provider-aware OIDC transactions once', () => {
     let now = 1_000;
     let nextId = 0;
     const store = new InMemoryAuthStore({
@@ -14,24 +22,22 @@ describe('InMemoryAuthStore', () => {
       oidcTransactionTtlMs: 50,
     });
 
-    const sessionId = store.createSession({ userId: 'demo-user', provider: 'password' });
-    expect(store.getSession(sessionId)).toEqual({ userId: 'demo-user', provider: 'password' });
+    const sessionId = store.createSession({
+      userId: 'demo-user',
+      authenticatedWith: { kind: 'password' },
+    });
+    expect(store.getSession(sessionId)).toEqual({
+      userId: 'demo-user',
+      authenticatedWith: { kind: 'password' },
+    });
     now = 1_101;
     expect(store.getSession(sessionId)).toBeNull();
 
     now = 2_000;
-    const transactionId = store.createOidcTransaction({
-      state: 'state',
-      nonce: 'nonce',
-      codeVerifier: 'verifier',
-    });
+    const transactionId = store.createOidcTransaction(oidcTransaction('state'));
     expect(store.consumeOidcTransaction(transactionId, 'state')).toEqual({
       status: 'consumed',
-      transaction: {
-        state: 'state',
-        nonce: 'nonce',
-        codeVerifier: 'verifier',
-      },
+      transaction: oidcTransaction('state'),
     });
     expect(store.consumeOidcTransaction(transactionId, 'state')).toEqual({ status: 'missing' });
   });
@@ -43,12 +49,12 @@ describe('InMemoryAuthStore', () => {
       maxSessions: 2,
     });
 
-    const first = store.createSession({ userId: 'one', provider: 'password' });
-    const second = store.createSession({ userId: 'two', provider: 'password' });
+    const first = store.createSession({ userId: 'one', authenticatedWith: { kind: 'password' } });
+    const second = store.createSession({ userId: 'two', authenticatedWith: { kind: 'password' } });
 
-    expect(() => store.createSession({ userId: 'three', provider: 'password' })).toThrowError(
-      AuthStoreCapacityError,
-    );
+    expect(() =>
+      store.createSession({ userId: 'three', authenticatedWith: { kind: 'password' } }),
+    ).toThrowError(AuthStoreCapacityError);
     expect(store.getSession(first)?.userId).toBe('one');
     expect(store.getSession(second)?.userId).toBe('two');
   });
@@ -59,12 +65,21 @@ describe('InMemoryAuthStore', () => {
       idFactory: () => `id-${++nextId}`,
       maxSessions: 1,
     });
-    const current = store.createSession({ userId: 'one', provider: 'password' });
+    const current = store.createSession({
+      userId: 'one',
+      authenticatedWith: { kind: 'password' },
+    });
 
-    const replacement = store.createSession({ userId: 'one', provider: 'oidc' }, current);
+    const replacement = store.createSession(
+      { userId: 'one', authenticatedWith: { kind: 'oidc', providerId: 'company' } },
+      current,
+    );
 
     expect(store.getSession(current)).toBeNull();
-    expect(store.getSession(replacement)).toEqual({ userId: 'one', provider: 'oidc' });
+    expect(store.getSession(replacement)).toEqual({
+      userId: 'one',
+      authenticatedWith: { kind: 'oidc', providerId: 'company' },
+    });
   });
 
   it('fails closed at OIDC transaction capacity without invalidating live state', () => {
@@ -73,22 +88,14 @@ describe('InMemoryAuthStore', () => {
       idFactory: () => `id-${++nextId}`,
       maxOidcTransactions: 1,
     });
-    const current = store.createOidcTransaction({
-      state: 'one',
-      nonce: 'nonce',
-      codeVerifier: 'verifier',
-    });
+    const current = store.createOidcTransaction(oidcTransaction('one'));
 
-    expect(() =>
-      store.createOidcTransaction({
-        state: 'two',
-        nonce: 'nonce',
-        codeVerifier: 'verifier',
-      }),
-    ).toThrowError(AuthStoreCapacityError);
+    expect(() => store.createOidcTransaction(oidcTransaction('two'))).toThrowError(
+      AuthStoreCapacityError,
+    );
     expect(store.consumeOidcTransaction(current, 'one')).toMatchObject({
       status: 'consumed',
-      transaction: { state: 'one' },
+      transaction: { state: 'one', providerId: 'company', returnTo: '/specs' },
     });
   });
 
@@ -100,11 +107,7 @@ describe('InMemoryAuthStore', () => {
 
   it('does not consume an OIDC transaction when state does not match', () => {
     const store = new InMemoryAuthStore({ idFactory: () => 'oidc-id' });
-    const id = store.createOidcTransaction({
-      state: 'expected',
-      nonce: 'nonce',
-      codeVerifier: 'verifier',
-    });
+    const id = store.createOidcTransaction(oidcTransaction('expected'));
 
     expect(store.consumeOidcTransaction(id, 'attacker-state')).toEqual({
       status: 'state_mismatch',

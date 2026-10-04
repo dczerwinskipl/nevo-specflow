@@ -16,9 +16,10 @@ describe('authentication session HTTP adapter', () => {
       expect(response.statusCode).toBe(200);
       expect(response.headers['cache-control']).toBe('no-store');
       expect(response.json()).toEqual({
+        authenticationRequired: false,
         authenticated: false,
         user: { id: 'demo-user', name: 'Demo User' },
-        availableProviders: [],
+        loginMethods: { password: { enabled: false }, oidc: [] },
       });
     } finally {
       await app.close();
@@ -28,11 +29,16 @@ describe('authentication session HTTP adapter', () => {
   it('clears both session and pending OIDC state on logout', async () => {
     let id = 0;
     const store = new InMemoryAuthStore({ idFactory: () => `id-${String(++id)}` });
-    const sessionId = store.createSession({ userId: 'demo-user', provider: 'password' });
+    const sessionId = store.createSession({
+      userId: 'demo-user',
+      authenticatedWith: { kind: 'password' },
+    });
     const transactionId = store.createOidcTransaction({
       state: 'state',
       nonce: 'nonce',
       codeVerifier: 'verifier',
+      providerId: 'company',
+      returnTo: '/',
     });
     const app = await createRuntimeApp(passwordConfig(), { auth: { store } });
 

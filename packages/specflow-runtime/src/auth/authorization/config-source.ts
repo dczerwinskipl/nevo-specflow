@@ -7,8 +7,8 @@ export function validateProjectAuthorizationSource(value: unknown): void {
     return;
   }
 
-  const auth = childRecord(value, 'auth');
-  const users = childRecord(auth, 'users');
+  const authentication = childRecord(value, 'authentication');
+  const users = childRecord(authentication, 'users');
   const projectUserIds = new Set(Object.keys(users ?? {}));
 
   parseAuthorizationConfig(value.authorization, projectUserIds);

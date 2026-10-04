@@ -282,10 +282,10 @@ describe('Runtime project initialization', () => {
     );
   });
 
-  it('links an OIDC identity to an existing user without redefining its role', async () => {
+  it('creates OIDC identity from the allowed email without asking for canonical-user linkage', async () => {
     const ui = new ScriptedUi(
       [true, true, false, true, false, false],
-      ['<default>', '<existing-user>', 'demo'],
+      ['<default>', '<default>'],
       [
         'demo',
         'Demo User',
@@ -303,23 +303,72 @@ describe('Runtime project initialization', () => {
       hashPassword: () => Promise.resolve(PASSWORD_HASH),
     });
 
-    expect(ui.selectMessages).toContain('OIDC identity demo@example.com belongs to');
+    expect(ui.selectMessages).not.toContain('OIDC identity demo@example.com belongs to');
     expect(ui.inputMessages.filter((message) => message === 'Display name')).toHaveLength(1);
     expect(contribution.projectConfig).toMatchObject({
       authentication: {
-        users: { demo: { name: 'Demo User' } },
+        users: {
+          demo: { name: 'Demo User' },
+          'demo@example.com': { name: 'demo@example.com' },
+        },
         providers: {
           oidc: {
             instances: {
               company: {
-                allowedEmails: { 'demo@example.com': 'demo' },
+                allowedEmails: { 'demo@example.com': 'demo@example.com' },
               },
             },
           },
         },
       },
       authorization: {
-        assignments: [{ userId: 'demo', role: 'admin', scope: {} }],
+        assignments: [
+          { userId: 'demo', role: 'admin', scope: {} },
+          { userId: 'demo@example.com', role: 'developer', scope: {} },
+        ],
+      },
+    });
+  });
+
+  it('validates authorization assignments against generated authentication users', async () => {
+    const ui = new ScriptedUi(
+      [true, true, true, false, true, false, false],
+      ['<default>', '<new-user>', '<default>', '<default>'],
+      [
+        'admin',
+        'Admin Admin',
+        'user',
+        'User user',
+        'Google Account',
+        'google-account',
+        '<default>',
+        'googleClientId',
+        'dominikczerwinski@gmail.com',
+      ],
+      ['admin-pass', 'admin-pass', 'user-pass', 'user-pass', 'google-secret'],
+    );
+
+    await expect(
+      initRuntime({
+        ui,
+        hashPassword: () => Promise.resolve(PASSWORD_HASH),
+      }),
+    ).resolves.toMatchObject({
+      projectConfig: {
+        authentication: {
+          users: {
+            admin: { name: 'Admin Admin' },
+            user: { name: 'User user' },
+            'dominikczerwinski@gmail.com': { name: 'dominikczerwinski@gmail.com' },
+          },
+        },
+        authorization: {
+          assignments: [
+            { userId: 'admin', role: 'admin' },
+            { userId: 'user', role: 'developer' },
+            { userId: 'dominikczerwinski@gmail.com', role: 'developer' },
+          ],
+        },
       },
     });
   });

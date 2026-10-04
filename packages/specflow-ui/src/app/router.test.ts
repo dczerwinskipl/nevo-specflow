@@ -29,28 +29,29 @@ const authenticated: AuthSessionResponse = {
 
 describe('SpecFlow router', () => {
   it('allows trusted local mode into app routes without a login screen', async () => {
-    const router = routerAt('/ui-playground', noAuth);
-    await router.load();
+    const router = await loadedRouter(createAuthStore(fakeApi(), noAuth));
+
+    await router.navigate({ to: '/ui-playground' });
+
     expect(router.state.location.pathname).toBe('/ui-playground');
   });
 
   it('redirects protected app routes to standalone login and preserves returnTo', async () => {
-    const router = routerAt('/ui-playground', loginRequired);
-    const redirected = waitForResolvedPath(router, '/login');
+    const router = await loadedRouter(createAuthStore(fakeApi(), loginRequired));
 
-    await router.load();
-    await redirected;
+    await router.navigate({ to: '/ui-playground' });
 
     expect(router.state.location.pathname).toBe('/login');
     expect(router.state.location.search).toMatchObject({ returnTo: '/ui-playground' });
   });
 
   it('redirects an authenticated login route back into the application', async () => {
-    const router = routerAt('/login?returnTo=%2Fui-playground', authenticated);
-    const redirected = waitForResolvedPath(router, '/ui-playground');
+    const router = await loadedRouter(createAuthStore(fakeApi(), authenticated));
 
-    await router.load();
-    await redirected;
+    await router.navigate({
+      to: '/login',
+      search: { returnTo: '/ui-playground' },
+    });
 
     expect(router.state.location.pathname).toBe('/ui-playground');
   });
@@ -59,24 +60,21 @@ describe('SpecFlow router', () => {
     const api = fakeApi({
       getSession: () => Promise.reject(new Error('runtime down')),
     });
-    const router = createSpecFlowRouter(
-      createMemoryHistory({ initialEntries: ['/ui-playground'] }),
-      createAuthStore(api),
-    );
-    const redirected = waitForResolvedPath(router, '/runtime-unavailable');
+    const router = await loadedRouter(createAuthStore(api));
 
-    await router.load();
-    await redirected;
+    await router.navigate({ to: '/ui-playground' });
 
     expect(router.state.location.pathname).toBe('/runtime-unavailable');
   });
 });
 
-function routerAt(path: string, session: AuthSessionResponse) {
-  return createSpecFlowRouter(
-    createMemoryHistory({ initialEntries: [path] }),
-    createAuthStore(fakeApi(), session),
+async function loadedRouter(auth: ReturnType<typeof createAuthStore>) {
+  const router = createSpecFlowRouter(
+    createMemoryHistory({ initialEntries: ['/runtime-unavailable'] }),
+    auth,
   );
+  await router.load();
+  return router;
 }
 
 function fakeApi(overrides: Partial<AuthApi> = {}): AuthApi {
@@ -87,31 +85,4 @@ function fakeApi(overrides: Partial<AuthApi> = {}): AuthApi {
     logout: () => Promise.resolve(),
     ...overrides,
   };
-}
-
-function waitForResolvedPath(
-  router: ReturnType<typeof createSpecFlowRouter>,
-  pathname: string,
-): Promise<void> {
-  if (router.state.status === 'idle' && router.state.resolvedLocation?.pathname === pathname) {
-    return Promise.resolve();
-  }
-
-  return new Promise<void>((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      unsubscribe();
-      reject(
-        new Error(
-          `Timed out waiting for router to resolve ${pathname}; current location is ${router.state.location.href}.`,
-        ),
-      );
-    }, 1_000);
-
-    const unsubscribe = router.subscribe('onResolved', ({ toLocation }) => {
-      if (toLocation.pathname !== pathname) return;
-      clearTimeout(timeout);
-      unsubscribe();
-      resolve();
-    });
-  });
 }

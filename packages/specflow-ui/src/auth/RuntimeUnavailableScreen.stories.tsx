@@ -7,7 +7,13 @@ const meta = {
   title: 'SpecFlow/Screens/Runtime Unavailable',
   component: RuntimeUnavailableView,
   parameters: { layout: 'fullscreen' },
-  decorators: [(Story) => <StoryLocalization><Story /></StoryLocalization>],
+  decorators: [
+    (Story) => (
+      <StoryLocalization>
+        <Story />
+      </StoryLocalization>
+    ),
+  ],
   args: { onRetry: () => undefined },
 } satisfies Meta<typeof RuntimeUnavailableView>;
 

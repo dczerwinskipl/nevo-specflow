@@ -1,0 +1,75 @@
+name: Temporary Figma export verification
+
+on:
+  push:
+    branches:
+      - feature/auth-login-init
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - name: Install Chromium
+        run: pnpm --filter nevo-figma-project exec playwright install --with-deps chromium
+      - name: Export canonical Figma IR
+        run: pnpm figma:export
+      - name: Verify SpecFlow login screen export
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+
+          const path = 'tools/figma-project/generated/specflow-screens.ir.json';
+          const ir = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const captures = ir.screens?.SpecFlowLoginScreen;
+          if (!Array.isArray(captures) || captures.length === 0) {
+            throw new Error('SpecFlowLoginScreen export is missing.');
+          }
+
+          const capture = captures[0];
+          const content = capture.slots?.content;
+          if (!content || !Array.isArray(content.children) || content.children.length === 0) {
+            throw new Error('SpecFlowLoginScreen content slot exported without children.');
+          }
+
+          const serialized = JSON.stringify(content);
+          for (const expected of [
+            'NevoBrandLogo',
+            'Button',
+            'TextInput',
+            'PasswordInput',
+            'Separator',
+            'Continue with Company SSO',
+            'Sign in',
+          ]) {
+            if (!serialized.includes(expected)) {
+              throw new Error(`SpecFlowLoginScreen export is missing ${expected}.`);
+            }
+          }
+
+          if (content.children.length === 1 && content.children[0]?.componentRef === 'WorkspaceSurface') {
+            throw new Error('Login content collapsed to an empty WorkspaceSurface component instance.');
+          }
+
+          const rootBackground = capture.root?.backgroundImage;
+          const surfaceBackground = content.style?.backgroundImage;
+          if (!rootBackground || rootBackground === 'none') {
+            throw new Error('Login export lost standalone auth background visuals.');
+          }
+          if (!surfaceBackground || surfaceBackground === 'none') {
+            throw new Error('Login export lost workspace surface visuals.');
+          }
+
+          console.log(JSON.stringify({
+            captureCount: captures.length,
+            contentChildCount: content.children.length,
+            componentRefs: [...new Set(serialized.match(/"componentRef":"[^"]+"/g) ?? [])],
+            rootBackground,
+            surfaceBackground,
+          }, null, 2));
+          NODE

@@ -54,7 +54,22 @@ export const AlreadyAuthenticatedLogin: Story = {
 };
 export const RuntimeUnavailable: Story = { args: { authMode: 'unavailable' } };
 export const Polish: Story = { args: { locale: 'pl' } };
-export const AuthenticatedAccount: Story = { args: { authMode: 'authenticated' } };
+export const AuthenticatedAccount: Story = {
+  args: { authMode: 'authenticated' },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'Open user menu for Demo' }));
+    const accountMenu = await waitFor(
+      () => document.querySelector<HTMLElement>('[role="menu"][aria-label="User menu"]'),
+      'Authenticated account menu should open.',
+    );
+    if (!accountMenu.textContent?.includes('Sign out')) {
+      throw new Error('Authenticated account menu should expose sign out.');
+    }
+    if (accountMenu.querySelectorAll('[role="menuitemradio"]').length !== 2) {
+      throw new Error('Account menu should expose both language choices as radio items.');
+    }
+  },
+};
 
 export const Navigation: Story = {
   play: async ({ canvas, userEvent }) => {
@@ -79,7 +94,24 @@ export const MobileNavigation: Story = {
     if (!navigation?.textContent?.includes('UI Playground')) {
       throw new Error('Opening compact navigation should expose the product links.');
     }
-    await canvas.findByRole('button', { name: 'Open user menu for Local User' });
+    const accountTrigger = await waitFor(
+      () =>
+        [...canvasElement.ownerDocument.querySelectorAll<HTMLButtonElement>('button')].find(
+          (button) => button.getAttribute('aria-label') === 'Open user menu for Local User',
+        ) ?? null,
+      'Compact navigation should keep the account footer mounted.',
+    );
+    if (!accountTrigger) throw new Error('Compact navigation account footer is missing.');
+
+    const playgroundLink = [...navigation.querySelectorAll<HTMLAnchorElement>('a')].find(
+      (link) => link.textContent?.includes('UI Playground'),
+    );
+    if (!playgroundLink) throw new Error('Compact navigation should expose UI Playground.');
+    await userEvent.click(playgroundLink);
+    await waitFor(
+      () => canvasElement.ownerDocument.querySelector('[role="dialog"]') === null,
+      'Selecting a route should close compact navigation.',
+    );
   },
 };
 

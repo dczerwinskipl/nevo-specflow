@@ -8,4 +8,11 @@ describe('Button', () => {
     expect(renderToStaticMarkup(<Button type="submit">Save</Button>)).toContain('type="submit"');
     expect(renderToStaticMarkup(<Button disabled>Save</Button>)).toContain('disabled=""');
   });
+
+  it('owns explicit content and full-width layout variants', () => {
+    expect(renderToStaticMarkup(<Button>Save</Button>)).toContain('w-fit');
+    const full = renderToStaticMarkup(<Button width="full">Continue</Button>);
+    expect(full).toContain('w-full');
+    expect(full).not.toContain('w-fit');
+  });
 });

@@ -9,10 +9,10 @@ import { cn } from '../../../lib';
 import { Icon, type IconName } from '../../foundations/Icon';
 import { Typography, type TypographyVariant } from '../../foundations/Typography';
 
-export const buttonDefaults = { variant: 'primary', size: 'md' } as const;
+export const buttonDefaults = { variant: 'primary', size: 'md', width: 'content' } as const;
 
 export const buttonVariants = tv({
-  base: `inline-flex w-fit cursor-pointer items-center justify-center whitespace-nowrap border border-solid disabled:pointer-events-none disabled:opacity-50 ${fastColorTransitionClassName}`,
+  base: `inline-flex cursor-pointer items-center justify-center whitespace-nowrap border border-solid disabled:pointer-events-none disabled:opacity-50 ${fastColorTransitionClassName}`,
   variants: {
     variant: {
       ...actionVariantClasses,
@@ -21,12 +21,17 @@ export const buttonVariants = tv({
       sm: 'h-control-height-compact gap-1.5 rounded-control px-control-padding-compact',
       md: 'h-control-height-default gap-2 rounded-control px-control-padding-default',
     },
+    width: {
+      content: 'w-fit',
+      full: 'w-full',
+    },
   },
   defaultVariants: buttonDefaults,
 });
 
 export type ButtonVariant = NonNullable<VariantProps<typeof buttonVariants>['variant']>;
 export type ButtonSize = NonNullable<VariantProps<typeof buttonVariants>['size']>;
+export type ButtonWidth = NonNullable<VariantProps<typeof buttonVariants>['width']>;
 
 const labelTypographyBySize = {
   sm: 'label-sm',
@@ -49,6 +54,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     trailingIcon,
     type = 'button',
     variant = buttonDefaults.variant,
+    width = buttonDefaults.width,
     ...props
   },
   ref,
@@ -56,13 +62,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   const capture = useDesignMetadata('Button', {
     variant,
     size,
-    // Native disabled state is projected as the explicit Figma State axis.
+    width,
     state: disabled ? 'disabled' : 'default',
   });
   return (
     <button
       ref={ref}
-      className={cn(buttonVariants({ variant, size }), className)}
+      className={cn(buttonVariants({ variant, size, width }), className)}
       disabled={disabled}
       type={type}
       {...props}

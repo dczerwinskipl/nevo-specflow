@@ -300,6 +300,12 @@ importers:
       '@nevo/figma-core':
         specifier: workspace:*
         version: link:../figma-core
+      '@nevo/http-client':
+        specifier: workspace:*
+        version: link:../http-client
+      '@nevo/specflow-contracts':
+        specifier: workspace:*
+        version: link:../specflow-contracts
       '@nevo/ui':
         specifier: workspace:*
         version: link:../nevo-ui

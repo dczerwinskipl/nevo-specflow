@@ -158,13 +158,17 @@ export function LoginScreenView({
                 <Button
                   key={provider.id}
                   aria-busy={providerPending}
+                  className="!h-auto min-h-control-height-default py-control-padding-compact"
                   disabled={busy}
-                  title={provider.name}
                   variant={oidcButtonVariant(loginMethods)}
                   width="full"
                   onClick={() => void onOidc?.(provider.id)}
                 >
-                  {providerPending ? `Opening ${provider.name}…` : `Continue with ${provider.name}`}
+                  <span className="block whitespace-normal break-words text-center">
+                    {providerPending
+                      ? `Opening ${provider.name}…`
+                      : `Continue with ${provider.name}`}
+                  </span>
                 </Button>
               );
             })}

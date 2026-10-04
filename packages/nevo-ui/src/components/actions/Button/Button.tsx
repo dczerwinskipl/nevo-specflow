@@ -83,7 +83,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         </span>
       ) : null}
       <Typography
-        className={cn('block text-current', width === 'full' && 'min-w-0 truncate')}
+        className="block text-current"
         {...designSlot('Button', 'label')}
         variant={labelTypographyBySize[size]}
       >

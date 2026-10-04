@@ -48,7 +48,7 @@ describe('LoginScreen', () => {
     ).toBe('secondary');
   });
 
-  it('keeps a long allowed provider label inside the full-width action contract', () => {
+  it('wraps a long allowed OIDC provider name instead of truncating it', () => {
     const html = renderToStaticMarkup(
       <LoginScreenView
         loginMethods={{
@@ -60,7 +60,29 @@ describe('LoginScreen', () => {
 
     expect(html).toContain('Continue with Northwind Workforce Identity SSO');
     expect(html).toContain('w-full');
-    expect(html).toContain('truncate');
+    expect(html).toContain('whitespace-normal');
+    expect(html).toContain('break-words');
+    expect(html).toContain('!h-auto');
+    expect(html).not.toContain('truncate');
+  });
+
+  it('keeps similar long OIDC provider names visibly distinguishable', () => {
+    const html = renderToStaticMarkup(
+      <LoginScreenView
+        loginMethods={{
+          password: { enabled: false },
+          oidc: [
+            { id: 'northwind-eu', name: 'Northwind Workforce Identity EU' },
+            { id: 'northwind-us', name: 'Northwind Workforce Identity US' },
+          ],
+        }}
+      />,
+    );
+
+    expect(html).toContain('Continue with Northwind Workforce Identity EU');
+    expect(html).toContain('Continue with Northwind Workforce Identity US');
+    expect(html.match(/whitespace-normal/g)).toHaveLength(2);
+    expect(html).not.toContain('truncate');
   });
 
   it('keeps return targets local', () => {

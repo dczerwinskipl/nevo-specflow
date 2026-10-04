@@ -9,12 +9,15 @@ describe('Button', () => {
     expect(renderToStaticMarkup(<Button disabled>Save</Button>)).toContain('disabled=""');
   });
 
-  it('owns explicit content and full-width layout variants', () => {
+  it('owns explicit content and full-width layout variants without hiding label content', () => {
     expect(renderToStaticMarkup(<Button>Save</Button>)).toContain('w-fit');
-    const full = renderToStaticMarkup(<Button width="full">Continue</Button>);
+
+    const full = renderToStaticMarkup(
+      <Button width="full">Northwind Workforce Identity EU</Button>,
+    );
     expect(full).toContain('w-full');
     expect(full).not.toContain('w-fit');
-    expect(full).toContain('truncate');
-    expect(full).toContain('min-w-0');
+    expect(full).not.toContain('truncate');
+    expect(full).toContain('Northwind Workforce Identity EU');
   });
 });

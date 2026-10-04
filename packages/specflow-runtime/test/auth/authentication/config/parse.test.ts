@@ -49,10 +49,19 @@ describe('authentication config parsing', () => {
 
   it('rejects invalid OIDC provider ids', () => {
     const config = requiredAuthConfig();
-    config.providers.oidc.instances = {
-      'Company SSO': config.providers.oidc.instances.company,
-    };
-    expect(() => parseAuthConfig(config)).toThrowError(/provider ids must be lowercase slugs/i);
+    expect(() =>
+      parseAuthConfig({
+        ...config,
+        providers: {
+          ...config.providers,
+          oidc: {
+            instances: {
+              'Company SSO': config.providers.oidc.instances.company,
+            },
+          },
+        },
+      }),
+    ).toThrowError(/provider ids must be lowercase slugs/i);
   });
 
   it('normalizes password account names and rejects collisions', () => {

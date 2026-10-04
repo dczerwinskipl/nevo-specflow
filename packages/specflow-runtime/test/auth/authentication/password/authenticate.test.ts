@@ -14,7 +14,7 @@ const auth: RuntimeAuthConfig = {
         demo: { userId: 'demo-user', passwordHash: PASSWORD_HASH },
       },
     },
-    oidc: { enabled: false, allowedEmails: {} },
+    oidc: { instances: {} },
   },
 };
 

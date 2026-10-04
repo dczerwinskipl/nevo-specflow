@@ -43,9 +43,15 @@ export async function packProduct(opts: PackOptions = {}): Promise<PackResult> {
   const paths = repoPaths(findRepoRoot(process.cwd()));
 
   if (!opts.skipBuild) {
-    log('building pack inputs (nevo-repo-release, @nevo/specflow-runtime + dependencies)…');
+    log(
+      'building pack inputs (nevo-repo-release, @nevo/specflow-runtime, @nevo/specflow-ui + dependencies)…',
+    );
     run('pnpm', ['--filter', 'nevo-repo-release', 'build'], { cwd: paths.root, env: opts.env });
     run('pnpm', ['--filter', '@nevo/specflow-runtime...', 'build'], {
+      cwd: paths.root,
+      env: opts.env,
+    });
+    run('pnpm', ['--filter', '@nevo/specflow-ui...', 'build'], {
       cwd: paths.root,
       env: opts.env,
     });

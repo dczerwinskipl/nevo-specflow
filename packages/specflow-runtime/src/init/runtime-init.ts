@@ -14,7 +14,7 @@ import type { RuntimeInitContribution, RuntimeSetupUi } from './contracts';
 
 const LOCAL_RUNTIME_HOST = '127.0.0.1';
 const LOCAL_RUNTIME_PORT = 4318;
-const LOCAL_WEB_APP_ORIGIN = 'http://127.0.0.1:5173';
+const LOCAL_PRODUCT_ORIGIN = `http://${LOCAL_RUNTIME_HOST}:${String(LOCAL_RUNTIME_PORT)}`;
 
 export interface RuntimeInitOptions {
   readonly ui: RuntimeSetupUi;
@@ -30,7 +30,7 @@ export async function initRuntime(options: RuntimeInitOptions): Promise<RuntimeI
   });
   const authorization = await authorizationSetup.finish();
 
-  const publicOrigin = auth.requiresPublicOrigin ? LOCAL_WEB_APP_ORIGIN : undefined;
+  const publicOrigin = auth.requiresPublicOrigin ? LOCAL_PRODUCT_ORIGIN : undefined;
   const server: Record<string, unknown> = {
     host: LOCAL_RUNTIME_HOST,
     port: LOCAL_RUNTIME_PORT,
@@ -51,8 +51,7 @@ export async function initRuntime(options: RuntimeInitOptions): Promise<RuntimeI
     projectConfig,
     localConfig,
     summary: [
-      ...(publicOrigin ? [`Web app / OIDC return: ${publicOrigin}`] : []),
-      `Runtime API: http://${LOCAL_RUNTIME_HOST}:${String(LOCAL_RUNTIME_PORT)} (API only)`,
+      `SpecFlow: ${LOCAL_PRODUCT_ORIGIN}`,
       ...auth.summary,
       ...authorization.summary,
     ],

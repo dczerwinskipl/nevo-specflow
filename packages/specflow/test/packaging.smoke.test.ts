@@ -169,15 +169,31 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
       encoding: 'utf8',
     });
 
-  it('ships exactly the intended files (incl. THIRD_PARTY_NOTICES.txt), nothing else', () => {
+  it('ships the CLI and built SpecFlow UI, nothing outside the intended product surface', () => {
     const listing = tarArgs('-tzf').split(/\r?\n/).filter(Boolean).sort();
-    expect(listing).toEqual([
-      'package/LICENSE',
-      'package/README.md',
-      'package/THIRD_PARTY_NOTICES.txt',
-      'package/dist/bin.js',
-      'package/package.json',
-    ]);
+    expect(listing).toEqual(
+      expect.arrayContaining([
+        'package/LICENSE',
+        'package/README.md',
+        'package/THIRD_PARTY_NOTICES.txt',
+        'package/dist/bin.js',
+        'package/dist/ui/index.html',
+        'package/package.json',
+      ]),
+    );
+    expect(listing.some((path) => /^package\/dist\/ui\/assets\/.*\.js$/u.test(path))).toBe(true);
+    expect(listing.some((path) => /^package\/dist\/ui\/assets\/.*\.css$/u.test(path))).toBe(true);
+    expect(
+      listing.every(
+        (path) =>
+          path === 'package/LICENSE' ||
+          path === 'package/README.md' ||
+          path === 'package/THIRD_PARTY_NOTICES.txt' ||
+          path === 'package/package.json' ||
+          path === 'package/dist/bin.js' ||
+          path.startsWith('package/dist/ui/'),
+      ),
+    ).toBe(true);
   });
 
   it('THIRD_PARTY_NOTICES.txt carries licenses for third-party code embedded in the bundle', () => {
@@ -216,10 +232,10 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
     expect(r.stdout).toMatch(/Initialize Nevo SpecFlow configuration/i);
   });
 
-  it('D. start --help exposes the Runtime server command via the installed shim', () => {
+  it('D. start --help exposes the local product server via the installed shim', () => {
     const r = nevoSpec(['start', '--help']);
     expect(r.code).toBe(0);
-    expect(r.stdout).toMatch(/Runtime API server/i);
+    expect(r.stdout).toMatch(/SpecFlow local server/i);
   });
 
   it('E. generates a password hash through the installed auth utility', () => {
@@ -294,7 +310,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
         }, 10_000);
 
         const onData = () => {
-          if (stdout.includes(`Runtime API listening at http://127.0.0.1:${port}`)) {
+          if (stdout.includes(`SpecFlow available at http://127.0.0.1:${port}`)) {
             clearTimeout(timeout);
             childStdout.off('data', onData);
             resolve();
@@ -310,6 +326,15 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
           );
         });
       });
+
+      const root = await fetch(`http://127.0.0.1:${port}/`);
+      expect(root.status).toBe(200);
+      expect(root.headers.get('content-type')).toMatch(/text\/html/u);
+      expect(await root.text()).toContain('<div id="root"></div>');
+
+      const clientRoute = await fetch(`http://127.0.0.1:${port}/login`);
+      expect(clientRoute.status).toBe(200);
+      expect(await clientRoute.text()).toContain('<div id="root"></div>');
 
       const response = await fetch(`http://127.0.0.1:${port}/api/auth/session`);
       expect(response.status).toBe(200);

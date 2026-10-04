@@ -19,6 +19,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@nevo/figma-capture": "workspace:*",
     "@nevo/figma-core": "workspace:*",
     "@nevo/ui": "workspace:*",
     "@tanstack/react-router": "1.170.41",

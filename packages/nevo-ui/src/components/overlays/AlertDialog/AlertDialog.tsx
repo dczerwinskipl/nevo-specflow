@@ -6,7 +6,7 @@ import {
   type HTMLAttributes,
 } from 'react';
 import { cn } from '../../../lib';
-import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
+import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 
 export const AlertDialog = AlertDialogPrimitive.Root;
 export const AlertDialogTrigger = AlertDialogPrimitive.Trigger;

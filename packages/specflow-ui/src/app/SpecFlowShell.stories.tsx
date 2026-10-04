@@ -1,4 +1,4 @@
-import { DesignCaptureProvider } from '@nevo/figma-core/metadata';
+import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
 import { RouterProvider, createMemoryHistory } from '@tanstack/react-router';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';

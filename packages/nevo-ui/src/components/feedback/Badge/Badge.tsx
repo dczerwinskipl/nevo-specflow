@@ -1,6 +1,6 @@
 import { forwardRef, type HTMLAttributes } from 'react';
 import { tv } from 'tailwind-variants/lite';
-import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
+import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import type { StatusTone } from '../../../design-system/statusTone';
 import { cn } from '../../../lib';
 

@@ -15,6 +15,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@nevo/figma-capture": "workspace:*",
     "@nevo/figma-core": "workspace:*",
     "@nevo/ui": "workspace:*",
     "react": "19.3.0",

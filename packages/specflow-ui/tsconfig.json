@@ -14,6 +14,7 @@
     "tsBuildInfoFile": "./.tsbuild/specflow-ui.tsbuildinfo",
     "types": ["vite/client"],
     "paths": {
+      "@nevo/figma-capture/metadata": ["../figma-capture/src/metadata.tsx"],
       "@nevo/figma-core": ["../figma-core/src/index.ts"],
       "@nevo/figma-core/*": ["../figma-core/src/*"],
       "@nevo/ui": ["../nevo-ui/src/index.ts"],

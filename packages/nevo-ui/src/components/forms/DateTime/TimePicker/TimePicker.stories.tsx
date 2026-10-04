@@ -1,7 +1,7 @@
 import { parseTime } from '@internationalized/date';
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { DesignCaptureProvider } from '@nevo/figma-core/metadata';
+import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
 import { Field } from '../../Field';
 import { TimePicker } from './TimePicker';
 

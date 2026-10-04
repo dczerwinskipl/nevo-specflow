@@ -1,6 +1,6 @@
 import { forwardRef, type HTMLAttributes } from 'react';
 import { cn } from '../../../lib';
-import { useDesignMetadata } from '@nevo/figma-core/metadata';
+import { useDesignMetadata } from '@nevo/figma-capture/metadata';
 export const Skeleton = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   function Skeleton({ className, ...props }, ref) {
     const capture = useDesignMetadata('Skeleton');

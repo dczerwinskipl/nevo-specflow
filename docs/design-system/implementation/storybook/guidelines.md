@@ -74,7 +74,7 @@ errors against WCAG A/AA and best-practice rules.
 
 1. Render every affected story with no backend using `pnpm storybook`.
 2. Build the complete catalog with `pnpm storybook:build`.
-3. Run accessibility checks with `pnpm test:a11y`.
+3. Run Storybook interaction and accessibility checks with `pnpm test:storybook`.
 4. Inspect desktop and mobile (`375px`) viewports.
 5. Inspect computed styles when exact colors/spacing/animation matter — never claim
    visual consistency from class names alone.

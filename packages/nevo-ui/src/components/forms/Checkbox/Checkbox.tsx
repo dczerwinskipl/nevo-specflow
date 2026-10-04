@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { cn } from '../../../lib';
-import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
+import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { Icon } from '../../foundations/Icon';
 import { useFieldControl } from '../Field';
 

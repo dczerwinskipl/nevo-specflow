@@ -1,27 +1,12 @@
 import { createContext, useContext, type PropsWithChildren } from 'react';
-
-export interface DesignCaptureRegistry {}
-export interface DesignCaptureMetadataRegistry {}
-export interface DesignCaptureSlotRegistry {}
-
-export interface DesignMetadataCapabilities {
-  textFlow?: boolean;
-  textSeparator?: string;
-  textStyleRef?: string;
-  assetRef?: string;
-  assetRepresentation?: 'svg' | 'svg-mask';
-  key?: string;
-  layer?: string;
-}
-
-type CaptureComponent = keyof DesignCaptureRegistry & string;
-type SlotComponent = keyof DesignCaptureSlotRegistry & string;
-type CaptureProperties<Component extends CaptureComponent> = DesignCaptureRegistry[Component];
-type NoMetadata = Readonly<Record<string, never>>;
-type CaptureMetadata<Component extends CaptureComponent> =
-  Component extends keyof DesignCaptureMetadataRegistry
-    ? DesignCaptureMetadataRegistry[Component]
-    : NoMetadata;
+import type {
+  CaptureComponent,
+  CaptureMetadata,
+  CaptureProperties,
+  CaptureSlot,
+  DesignMetadataCapabilities,
+  SlotComponent,
+} from '@nevo/figma-core/metadata';
 
 interface DesignMetadataContextValue {
   enabled: boolean;
@@ -35,7 +20,7 @@ const DesignMetadataContext = createContext<DesignMetadataContextValue>({
   excludedComponents: new Set(),
 });
 
-/** Enables neutral DOM metadata for optional design inspection/capture tooling. */
+/** Enables opt-in DOM metadata for design inspection and capture tooling. */
 export function DesignMetadataProvider({
   children,
   captureComponents = [],
@@ -96,10 +81,10 @@ export function designLayerMetadata(
  * Stable public anatomy marker. Slots are intentionally part of runtime markup so
  * inspection tools can understand component composition without a Figma dependency.
  */
-export function designSlot<
-  Component extends SlotComponent,
-  Slot extends DesignCaptureSlotRegistry[Component] & string,
->(component: Component, slot: Slot) {
+export function designSlot<Component extends SlotComponent, Slot extends CaptureSlot<Component>>(
+  component: Component,
+  slot: Slot,
+) {
   void component;
   return { 'data-design-slot': slot } as const;
 }

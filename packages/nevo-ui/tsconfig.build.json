@@ -12,7 +12,8 @@
       "@nevo/figma-core": ["../figma-core/dist/index.d.ts"],
       "@nevo/figma-core/authoring": ["../figma-core/dist/authoring/index.d.ts"],
       "@nevo/figma-core/ir": ["../figma-core/dist/ir/ir.d.ts"],
-      "@nevo/figma-core/metadata": ["../figma-core/dist/metadata.d.ts"]
+      "@nevo/figma-core/metadata": ["../figma-core/dist/metadata.d.ts"],
+      "@nevo/figma-capture/metadata": ["../figma-capture/dist/metadata.d.ts"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],

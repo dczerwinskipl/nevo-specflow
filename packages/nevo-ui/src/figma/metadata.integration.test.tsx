@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { Button, Icon, Typography } from '../components';
-import { DesignCaptureProvider } from '@nevo/figma-core/metadata';
+import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
 
 describe('capture-only DOM instrumentation', () => {
   it('keeps normal component DOM free of extractor identity and prop attributes', () => {

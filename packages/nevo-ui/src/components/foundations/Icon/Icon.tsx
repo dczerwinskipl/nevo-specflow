@@ -34,7 +34,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
-import { useDesignMetadata } from '@nevo/figma-core/metadata';
+import { useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { iconAssetRef, type IconName, type IconSize } from '../../../design-system/resources';
 import { cn } from '../../../lib';
 

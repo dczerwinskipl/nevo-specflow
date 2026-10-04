@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { DesignCaptureProvider } from '@nevo/figma-core/metadata';
+import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
 import { Button } from '../../actions/Button';
 import { TextInput } from '../../forms/TextInput';
 import { Typography } from '../../foundations/Typography';

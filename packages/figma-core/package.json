@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Product-neutral typed authoring, capture metadata, canonical IR, and validation for code-to-Figma projection.",
+  "description": "Product-neutral typed authoring, canonical IR, and validation contracts for code-to-Figma projection.",
   "license": "MIT",
   "files": [
     "dist"
@@ -11,37 +11,31 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    },
-    "./authoring": {
-      "types": "./dist/authoring/index.d.ts",
-      "import": "./dist/authoring/index.js"
-    },
-    "./ir": {
-      "types": "./dist/ir/ir.d.ts",
-      "import": "./dist/ir/ir.js"
-    },
-    "./schema": {
-      "types": "./dist/ir/schema.d.ts",
-      "import": "./dist/ir/schema.js"
+      "default": "./dist/index.js"
     },
     "./metadata": {
       "types": "./dist/metadata.d.ts",
-      "import": "./dist/metadata.js"
+      "default": "./dist/metadata.js"
+    },
+    "./authoring": {
+      "types": "./dist/authoring/index.d.ts",
+      "default": "./dist/authoring/index.js"
+    },
+    "./ir": {
+      "types": "./dist/ir/ir.d.ts",
+      "default": "./dist/ir/ir.js"
+    },
+    "./schema": {
+      "types": "./dist/ir/schema.d.ts",
+      "default": "./dist/ir/schema.js"
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && node scripts/verify-package.mjs",
-    "typecheck": "tsc -p tsconfig.json",
+    "build": "node ../../tools/build-package.mjs",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
     "test": "vitest run"
   },
-  "peerDependencies": {
-    "react": ">=19 <20"
-  },
   "devDependencies": {
-    "@types/react": "19.3.0",
-    "react": "19.3.0",
-    "react-dom": "19.3.0",
     "vitest": "5.0.3"
   }
 }

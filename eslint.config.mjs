@@ -47,6 +47,39 @@ export default tseslint.config(
     },
   },
 
+  // Neutral production projects intentionally exclude Node-powered tests and
+  // package tooling. Point ESLint at their dedicated TypeScript projects.
+  {
+    files: ['packages/nevo-ui/**/*.test.{ts,tsx}', 'packages/nevo-ui/**/*.stories.{ts,tsx}'],
+    languageOptions: {
+      parserOptions: {
+        projectService: false,
+        project: ['./packages/nevo-ui/tsconfig.test.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  {
+    files: ['packages/nevo-ui/scripts/**/*.mts', 'packages/nevo-ui/vite.config.ts'],
+    languageOptions: {
+      parserOptions: {
+        projectService: false,
+        project: ['./packages/nevo-ui/tsconfig.tools.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  {
+    files: ['packages/figma-core/**/*.test.{ts,tsx}'],
+    languageOptions: {
+      parserOptions: {
+        projectService: false,
+        project: ['./packages/figma-core/tsconfig.test.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+
   // Product packages use extensionless relative TypeScript source imports.
   {
     files: ['packages/**/*.{ts,tsx,mts,cts}'],
@@ -182,7 +215,7 @@ export default tseslint.config(
   // module-augmentation interfaces remain valid without weakening components.
   {
     files: [
-      'packages/figma-core/src/metadata.tsx',
+      'packages/figma-core/src/metadata.ts',
       'packages/nevo-ui/src/figma/captureRegistry.ts',
       'packages/specflow-ui/src/app/figmaRegistry.ts',
       'packages/specflow-ui/src/brand/nevo/figmaDesignSystem.ts',

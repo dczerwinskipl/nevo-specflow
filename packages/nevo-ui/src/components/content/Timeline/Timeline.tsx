@@ -1,5 +1,5 @@
 import { forwardRef, type OlHTMLAttributes } from 'react';
-import { useDesignMetadata } from '@nevo/figma-core/metadata';
+import { useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { cn } from '../../../lib';
 import { TimelineContent } from './TimelineContent';
 import { TimelineItem } from './TimelineItem';

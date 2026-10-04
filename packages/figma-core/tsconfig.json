@@ -1,18 +1,10 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../tsconfig.package-neutral.json",
   "compilerOptions": {
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "lib": ["ES2024", "DOM", "DOM.Iterable"],
-    "jsx": "react-jsx",
-    "noEmit": true,
-    "composite": false,
-    "declaration": false,
-    "declarationMap": false,
-    "sourceMap": false,
+    "lib": ["ES2024"],
     "incremental": true,
-    "tsBuildInfoFile": "./.tsbuild/figma-core.tsbuildinfo",
-    "types": ["node"]
+    "tsBuildInfoFile": "./.tsbuild/figma-core.tsbuildinfo"
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
 }

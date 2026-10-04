@@ -1,7 +1,7 @@
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import { forwardRef, type ComponentPropsWithoutRef, type ComponentRef } from 'react';
 import { cn } from '../../../lib';
-import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
+import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 
 export const TooltipProvider = TooltipPrimitive.Provider;
 export const Tooltip = TooltipPrimitive.Root;

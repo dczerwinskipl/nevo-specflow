@@ -45,8 +45,12 @@ describe('frontend and Figma dependency boundaries', () => {
     expect(packageDependencies).not.toHaveProperty('@tanstack/react-router');
   });
 
-  it('keeps the neutral Figma core independent from concrete UI owners', async () => {
-    const source = await combinedSource('../../packages/figma-core/src');
+  it('keeps Figma contracts and capture metadata independent from concrete UI owners', async () => {
+    const [coreSource, captureSource] = await Promise.all([
+      combinedSource('../../packages/figma-core/src'),
+      combinedSource('../../packages/figma-capture/src'),
+    ]);
+    const source = `${coreSource}\n${captureSource}`;
 
     expect(source).not.toContain('@nevo/ui');
     expect(source).not.toContain('@nevo/specflow-ui');

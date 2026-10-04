@@ -12,7 +12,7 @@ import {
   type ComponentRef,
   type ReactNode,
 } from 'react';
-import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
+import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { fastColorTransitionClassName } from '../../../design-system/interactionRecipes';
 import { cn } from '../../../lib';
 import { Icon } from '../../foundations/Icon';

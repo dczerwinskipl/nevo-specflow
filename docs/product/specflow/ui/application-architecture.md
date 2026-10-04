@@ -37,6 +37,10 @@ surface behavior; `AppWorkspaceSlots` remains the static split-layout and Figma 
 contract. Nevo UI owns those reusable layout mechanics but knows nothing about routes, SpecFlow
 navigation, or product data.
 
+The UI intentionally depends on `@nevo/figma-core` for neutral authoring/IR contracts and on
+`@nevo/figma-capture` for opt-in React metadata used by the projection pipeline. Those dependencies
+do not transfer product ownership into the generic Figma packages.
+
 The current screens are deliberately a working foundation, not a simulated legacy application.
 They provide real navigation and responsive composition without inventing domain state that the
 Runtime does not expose yet.

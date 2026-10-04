@@ -12,7 +12,7 @@ import {
   type SyntheticEvent,
 } from 'react';
 import { tv, type VariantProps } from 'tailwind-variants/lite';
-import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
+import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { cn } from '../../../lib';
 import { EmbeddedTextArea, type TextAreaProps } from '../../forms/TextArea/TextArea';
 

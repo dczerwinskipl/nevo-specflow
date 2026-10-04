@@ -1,8 +1,8 @@
 import { CalendarDate, Time } from '@internationalized/date';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactNode } from 'react';
-import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
-import { DesignCaptureProvider } from '@nevo/figma-core/metadata';
+import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
+import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
 import { SegmentedControl } from '../SegmentedControl';
 import { DateCalendarPanel, DateRangeCalendarPanel } from './shared/CalendarPanel';
 import { PickerActions } from './shared/PickerActions';

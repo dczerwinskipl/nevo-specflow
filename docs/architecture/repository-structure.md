@@ -31,6 +31,7 @@ nevo-specflow/
   apps/                 optional standalone hosts     (workspace glob; currently empty)
   packages/             product packages (@nevo/* scope)
     authorization/       @nevo/authorization            — product-neutral scoped capability resolver
+    figma-capture/       @nevo/figma-capture             — React metadata for opt-in design capture
     figma-core/          @nevo/figma-core               — neutral Figma authoring and canonical IR contracts
     http-client/         @nevo/http-client              — product-neutral HTTP client and credential transport boundary
     nevo-ui/             @nevo/ui                       — reusable design-system components and workspace mechanics

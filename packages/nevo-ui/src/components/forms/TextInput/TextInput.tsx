@@ -1,5 +1,5 @@
 import { forwardRef, type InputHTMLAttributes } from 'react';
-import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
+import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { cn } from '../../../lib';
 import { useFieldControl } from '../Field';
 import { useInputGroupControl } from '../InputGroup';

@@ -1,5 +1,5 @@
 import { forwardRef, useState } from 'react';
-import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
+import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { cn } from '../../../lib';
 import { IconButton } from '../../actions/IconButton';
 import { useFieldControl } from '../Field';

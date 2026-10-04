@@ -14,6 +14,7 @@
     "tsBuildInfoFile": "./.tsbuild/figma-project.tsbuildinfo",
     "types": ["@figma/plugin-typings", "node", "vite/client"],
     "paths": {
+      "@nevo/figma-capture/metadata": ["../../packages/figma-capture/src/metadata.tsx"],
       "@nevo/figma-core": ["../../packages/figma-core/src/index.ts"],
       "@nevo/figma-core/*": ["../../packages/figma-core/src/*"],
       "@nevo/ui": ["../../packages/nevo-ui/src/index.ts"],

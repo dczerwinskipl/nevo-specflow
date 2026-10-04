@@ -4,7 +4,7 @@ type: engineering
 title: UI library packaging boundary
 status: current
 read_when:
-  - changing @nevo/ui or @nevo/figma-core package exports, build output, CSS, or peer dependencies
+  - changing @nevo/ui, @nevo/figma-core, or @nevo/figma-capture exports, build output, CSS, or peer dependencies
   - preparing reusable UI code for extraction or publication
 summary: >
   Build and package contract for reusable UI and neutral Figma infrastructure without
@@ -17,12 +17,17 @@ related:
 
 # UI library packaging boundary
 
-`@nevo/ui` and `@nevo/figma-core` remain private workspace packages. Private status controls release
-policy; it does not justify source-only package exports.
+`@nevo/ui`, `@nevo/figma-core`, and `@nevo/figma-capture` remain private workspace packages.
+Private status controls release policy; it does not justify source-only package exports.
 
 Their package exports MUST point at generated `dist/` JavaScript and declarations. A package build
 MUST produce and verify every exported target. React and React DOM are host-owned peer dependencies,
 with local dev dependencies available for build and tests.
+
+Production source in reusable packages MUST use the neutral TypeScript profile and MUST NOT see
+Node globals. Node-powered generators, Vite configuration, and tests that need filesystem access
+use separate Node-profile projects. `@nevo/figma-core` contains no React runtime; React capture
+metadata belongs to `@nevo/figma-capture`.
 
 `@nevo/ui/styles.css` is the explicit style entry. It contains the compiled semantic tokens,
 Tailwind utilities used by the package, component-specific CSS, and the current global application

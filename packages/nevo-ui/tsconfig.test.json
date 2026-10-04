@@ -1,0 +1,23 @@
+{
+  "extends": "../../tsconfig.package-node.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "incremental": false,
+    "types": ["node", "vite/client"],
+    "paths": {
+      "@nevo/figma-capture/metadata": ["../figma-capture/src/metadata.tsx"],
+      "@nevo/figma-core": ["../figma-core/src/index.ts"],
+      "@nevo/figma-core/*": ["../figma-core/src/*"],
+      "@nevo/ui": ["./src/index.ts"],
+      "@nevo/ui/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "src/figma/captureRegistry.ts",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.stories.ts",
+    "src/**/*.stories.tsx"
+  ]
+}

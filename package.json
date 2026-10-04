@@ -16,10 +16,10 @@
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "quality:build-tools": "turbo run build --filter=nevo-repo-agents --filter=nevo-repo-docs --filter=nevo-repo-release --filter=@nevo/figma-core",
+    "quality:build-prerequisites": "turbo run build --filter=nevo-repo-agents --filter=nevo-repo-docs --filter=nevo-repo-release --filter=@nevo/figma-core --filter=@nevo/figma-capture",
     "version:print": "node tools/release/dist/bin.js version",
     "version:check-transition": "node tools/release/dist/bin.js check-transition",
-    "check:quality": "pnpm quality:build-tools && pnpm format:check && pnpm lint && node tools/docs/dist/bin.js check && node tools/agents/dist/bin.js check && pnpm version:check-transition",
+    "check:quality": "pnpm quality:build-prerequisites && pnpm format:check && pnpm lint && node tools/docs/dist/bin.js check && node tools/agents/dist/bin.js check && pnpm version:check-transition",
     "check": "pnpm check:quality && turbo run typecheck && turbo run build && turbo run test",
     "product:pack": "pnpm --filter @nevo/specflow artifact:pack",
     "dogfood:install": "pnpm --filter @nevo/specflow dogfood",
@@ -35,9 +35,9 @@
     "storybook": "pnpm --filter nevo-repo-storybook dev",
     "storybook:build": "pnpm --filter nevo-repo-storybook build",
     "chromatic": "pnpm --filter nevo-repo-storybook chromatic",
-    "test:a11y": "pnpm --filter nevo-repo-storybook test",
+    "test:storybook": "pnpm --filter nevo-repo-storybook test",
     "figma:export": "pnpm --filter nevo-figma-project export",
-    "figma:build-plugin": "pnpm --filter nevo-figma-import build:ui && pnpm --filter nevo-figma-project build:plugin"
+    "figma:build-plugin": "turbo run build:plugin --filter=nevo-figma-project"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

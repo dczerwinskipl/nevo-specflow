@@ -78,16 +78,20 @@ asset kind, paint/effect model, responsive representation, or layout primitive.
 
 ## Repository ownership and workflow
 
-- `packages/figma-core/` owns neutral authoring types, canonical IR, validation, and metadata
-  contracts.
+- `packages/figma-core/` owns product-neutral authoring types, canonical IR, and validation.
+- `packages/figma-capture/` owns React-specific capture context and DOM metadata helpers. Keeping
+  it separate prevents generic Node-side export/import tooling from acquiring a React peer.
 - Component and resource declarations stay with their owners in `packages/nevo-ui/`,
   `packages/specflow-ui/`, and `examples/`.
-- `tools/figma-project/` composes the active project catalog and capture gallery.
+- `tools/figma-project/` composes the active project catalog and capture gallery, and owns the
+  SpecFlow plugin manifest, identity, and complete generated plugin artifact.
 - `tools/figma-export/` captures runtime output into canonical IR.
-- `tools/figma-import/` owns generic plugin mechanics and Figma reconciliation.
+- `tools/figma-import/` owns reusable plugin UI/runtime mechanics and Figma reconciliation. It has
+  no SpecFlow identity and never receives generated files from another workspace.
 
 Use `pnpm figma:export` to create the project IR and `pnpm figma:build-plugin` to build the import
-plugin. Generated IR and plugin build output are local artifacts and are not source-of-truth files.
+plugin under `tools/figma-project/dist/plugin/`. Load `tools/figma-project/manifest.json` in Figma.
+Generated IR and plugin build output are local artifacts and are not source-of-truth files.
 
 ## Generic importer, project-owned declarations
 

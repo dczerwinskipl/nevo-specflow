@@ -1,9 +1,9 @@
-import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
+import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { AppShell, Typography } from '@nevo/ui';
 import { Link } from '@tanstack/react-router';
 import type { PropsWithChildren } from 'react';
 
-import { NevoBrandLogo } from '../brand';
+import { defaultNevoBrand, NevoBrandLogo } from '../brand';
 
 function ProductNavigation() {
   const linkClassName =
@@ -11,7 +11,7 @@ function ProductNavigation() {
 
   return (
     <div className="flex h-full flex-col px-3 py-5">
-      <NevoBrandLogo brand="nevo" product="SpecFlow" size="md" type="horizontal" />
+      <NevoBrandLogo {...defaultNevoBrand} product="SpecFlow" size="md" type="horizontal" />
       <nav aria-label="Product navigation" className="mt-8 grid gap-1">
         <Link
           activeProps={{ className: `${linkClassName} bg-surface-selected` }}
@@ -41,7 +41,7 @@ export function SpecFlowShell({ children }: PropsWithChildren) {
   return (
     <div className="h-dvh w-full" {...capture}>
       <div className="h-full" {...designSlot('SpecFlowApplicationShell', 'shell')}>
-        <AppShell brandPrimary="#2b6bff" navigation={<ProductNavigation />}>
+        <AppShell brandPrimary={defaultNevoBrand.coreColor} navigation={<ProductNavigation />}>
           {children}
         </AppShell>
       </div>

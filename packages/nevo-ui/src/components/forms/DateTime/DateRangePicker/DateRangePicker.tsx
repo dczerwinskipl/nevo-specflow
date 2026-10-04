@@ -4,7 +4,7 @@ import {
   DateRangePicker as AriaDateRangePicker,
   type DateRangePickerProps as AriaDateRangePickerProps,
 } from 'react-aria-components';
-import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
+import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { cn } from '../../../../lib';
 import { useFieldControl } from '../../Field';
 import { isAriaInvalid } from '../../shared/textControlState';

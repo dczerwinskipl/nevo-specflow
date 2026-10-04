@@ -1,6 +1,6 @@
 import type { RowData } from '@tanstack/react-table';
 import { useMemo } from 'react';
-import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
+import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { cn } from '../../../lib';
 import { ScrollArea } from '../../layout/ScrollArea';
 import { DataTableBody } from './DataTableBody';

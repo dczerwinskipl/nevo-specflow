@@ -1,6 +1,6 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
 import { tv, type VariantProps } from 'tailwind-variants/lite';
-import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
+import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import {
   actionVariantClasses,
   fastColorTransitionClassName,

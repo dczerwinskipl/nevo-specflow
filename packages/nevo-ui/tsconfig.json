@@ -1,24 +1,23 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../tsconfig.package-neutral.json",
   "compilerOptions": {
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
-    "noEmit": true,
-    "composite": false,
-    "declaration": false,
-    "declarationMap": false,
-    "sourceMap": false,
-    "incremental": true,
-    "tsBuildInfoFile": "./.tsbuild/nevo-ui.tsbuildinfo",
-    "types": ["node", "vite/client"],
+    "incremental": false,
+    "types": ["vite/client"],
     "paths": {
+      "@nevo/figma-capture/metadata": ["../figma-capture/src/metadata.tsx"],
       "@nevo/figma-core": ["../figma-core/src/index.ts"],
       "@nevo/figma-core/*": ["../figma-core/src/*"],
       "@nevo/ui": ["./src/index.ts"],
       "@nevo/ui/*": ["./src/*"]
     }
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": [
+    "src/**/*.stories.ts",
+    "src/**/*.stories.tsx",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx"
+  ]
 }

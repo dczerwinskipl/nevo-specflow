@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { DesignCaptureProvider } from '@nevo/figma-core/metadata';
+import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
 import { TextInput } from './TextInput';
 import { WorkspaceSurfacePreview } from '../../foundations/Environment';
 import { Typography } from '../../foundations/Typography';

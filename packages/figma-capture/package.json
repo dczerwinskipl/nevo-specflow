@@ -1,0 +1,31 @@
+{
+  "name": "@nevo/figma-capture",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "React metadata helpers for opt-in Nevo design inspection and capture.",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    "./metadata": {
+      "types": "./dist/metadata.d.ts",
+      "default": "./dist/metadata.js"
+    }
+  },
+  "scripts": {
+    "build": "node ../../tools/build-package.mjs",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@nevo/figma-core": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=19 <20"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "react": "19.3.0"
+  }
+}

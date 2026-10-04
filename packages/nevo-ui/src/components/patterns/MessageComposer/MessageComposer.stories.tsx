@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { DesignCaptureProvider } from '@nevo/figma-core/metadata';
+import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
 import { Button } from '../../actions/Button';
 import { IconButton } from '../../actions/IconButton';
 import { MessageComposer, type MessageComposerProps } from './MessageComposer';

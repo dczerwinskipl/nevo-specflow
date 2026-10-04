@@ -9,7 +9,7 @@ import {
   type KeyboardEvent,
 } from 'react';
 import { tv } from 'tailwind-variants/lite';
-import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
+import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { cn } from '../../../lib';
 import { fastColorTransitionClassName } from '../../../design-system/interactionRecipes';
 import {

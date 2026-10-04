@@ -1,6 +1,6 @@
 import { forwardRef, type HTMLAttributes } from 'react';
 import { tv, type VariantProps } from 'tailwind-variants/lite';
-import { useDesignMetadata } from '@nevo/figma-core/metadata';
+import { useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { cn } from '../../../lib';
 
 export const separatorDefaults = { orientation: 'horizontal' } as const;

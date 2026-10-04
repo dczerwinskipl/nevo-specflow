@@ -6,7 +6,7 @@ import {
   type NumberFieldProps as AriaNumberFieldProps,
 } from 'react-aria-components';
 import type { AriaAttributes } from 'react';
-import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
+import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { fastColorTransitionClassName } from '../../../design-system/interactionRecipes';
 import { cn } from '../../../lib';
 import { iconButtonVariants } from '../../actions/IconButton';

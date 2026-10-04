@@ -1,4 +1,4 @@
-import { DesignCaptureProvider } from '@nevo/figma-core/metadata';
+import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
 import { colorTokens } from '@nevo/ui/design-system/theme';
 import { designSpecs, captureSections, exportProfiles } from './registry';
 import { ProjectionFixtures, projectionFixtureSpecs } from './ProjectionFixtures';

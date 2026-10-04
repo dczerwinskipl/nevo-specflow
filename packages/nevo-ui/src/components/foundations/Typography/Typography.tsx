@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { tv } from 'tailwind-variants/lite';
-import { useDesignMetadata } from '@nevo/figma-core/metadata';
+import { useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { cn } from '../../../lib';
 import { typographyTextStyleRef, type TypographyVariant } from '../../../design-system/resources';
 

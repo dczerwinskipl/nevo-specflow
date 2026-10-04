@@ -1,6 +1,6 @@
 import { parseZonedDateTime } from '@internationalized/date';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { DesignCaptureProvider } from '@nevo/figma-core/metadata';
+import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
 import { Field } from '../../Field';
 import { DateTimePicker } from './DateTimePicker';
 

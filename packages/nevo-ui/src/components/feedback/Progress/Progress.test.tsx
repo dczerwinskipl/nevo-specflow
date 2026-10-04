@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { DesignMetadataProvider } from '@nevo/figma-core/metadata';
+import { DesignMetadataProvider } from '@nevo/figma-capture/metadata';
 import { Progress, normalizeProgressValue } from './Progress';
 import { designSpec } from './Progress.figma';
 

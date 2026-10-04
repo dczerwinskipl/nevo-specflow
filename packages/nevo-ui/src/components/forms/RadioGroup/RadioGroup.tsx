@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { cn } from '../../../lib';
-import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
+import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 
 export const RadioGroup = forwardRef<
   ComponentRef<typeof RadioGroupPrimitive.Root>,

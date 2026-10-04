@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, type HTMLAttributes, type ReactNode } from 'react';
-import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
+import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { sectionLabelContainerClassName } from '../../../design-system/sectionRecipes';
 import { cn } from '../../../lib';
 import { Typography } from '../../foundations/Typography';

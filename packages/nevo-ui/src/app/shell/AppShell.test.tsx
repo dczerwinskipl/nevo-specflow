@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { DesignMetadataProvider } from '@nevo/figma-core/metadata';
+import { DesignMetadataProvider } from '@nevo/figma-capture/metadata';
 import { AppShell, resolveAppShellLayout } from './AppShell';
 import { WIDE_SHELL_MIN_WIDTH } from '../workspace/workspaceSizing';
 

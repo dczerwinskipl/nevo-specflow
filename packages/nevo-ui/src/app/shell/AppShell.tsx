@@ -12,7 +12,11 @@ import {
   type RefObject,
 } from 'react';
 
-import { DesignMetadataBoundary, designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
+import {
+  DesignMetadataBoundary,
+  designSlot,
+  useDesignMetadata,
+} from '@nevo/figma-capture/metadata';
 import { AppBackground, WorkspaceSurface } from '../../components/foundations/Environment';
 import { Drawer, DrawerContent, DrawerTitle } from '../../components/overlays/Drawer';
 import { cn } from '../../lib';

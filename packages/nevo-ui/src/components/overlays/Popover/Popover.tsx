@@ -1,6 +1,6 @@
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { forwardRef, type ComponentPropsWithoutRef, type ComponentRef } from 'react';
-import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
+import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { floatingSurfaceClassName } from '../../../design-system/floatingRecipes';
 import { cn } from '../../../lib';
 

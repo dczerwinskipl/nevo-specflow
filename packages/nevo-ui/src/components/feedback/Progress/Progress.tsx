@@ -1,5 +1,5 @@
 import { forwardRef, type HTMLAttributes } from 'react';
-import { designLayerMetadata, useDesignMetadata } from '@nevo/figma-core/metadata';
+import { designLayerMetadata, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { cn } from '../../../lib';
 
 type ProgressAccessibilityProps =

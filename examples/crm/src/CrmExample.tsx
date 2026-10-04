@@ -32,7 +32,7 @@ import {
   type NavigationNode,
   type StatusTone,
 } from '@nevo/ui';
-import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
+import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { cn } from '@nevo/ui';
 
 type CustomerStatus = 'Active' | 'Lead' | 'At risk';

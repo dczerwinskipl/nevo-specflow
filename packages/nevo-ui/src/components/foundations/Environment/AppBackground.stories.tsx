@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
-import { DesignCaptureProvider } from '@nevo/figma-core/metadata';
+import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
 import { DEFAULT_BRAND_PRIMARY } from '../../../design-system/brandEnvironment';
 import { Typography } from '../Typography';
 import { AppBackground } from './Environment';

@@ -5,7 +5,7 @@ import {
   brandEnvironmentStyle,
   workspaceSurfaceClassName,
 } from '../../../design-system/brandEnvironment';
-import { useDesignMetadata } from '@nevo/figma-core/metadata';
+import { useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { cn } from '../../../lib';
 
 export interface AppBackgroundProps extends HTMLAttributes<HTMLDivElement> {

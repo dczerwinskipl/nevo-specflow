@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.package-neutral.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "tsBuildInfoFile": "./.tsbuild/figma-capture.tsbuildinfo",
+    "paths": {
+      "@nevo/figma-core/metadata": ["../figma-core/src/metadata.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

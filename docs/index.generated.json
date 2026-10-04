@@ -885,7 +885,7 @@
       "status": "current",
       "file": "docs/design-system/implementation/library-packaging.md",
       "read_when": [
-        "changing @nevo/ui or @nevo/figma-core package exports, build output, CSS, or peer dependencies",
+        "changing @nevo/ui, @nevo/figma-core, or @nevo/figma-capture exports, build output, CSS, or peer dependencies",
         "preparing reusable UI code for extraction or publication"
       ],
       "summary": "Build and package contract for reusable UI and neutral Figma infrastructure without introducing a release model for the internal monorepo packages.",

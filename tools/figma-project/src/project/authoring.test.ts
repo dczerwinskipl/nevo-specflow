@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { resourceCatalogsOfKind } from '@nevo/figma-core/authoring';
-import { designSlot } from '@nevo/figma-core/metadata';
+import { designSlot } from '@nevo/figma-capture/metadata';
 import { componentRef, slot, variantProperty } from './designSystem';
 import { projectResourceCatalogs } from './resourceCatalogs';
 import { assetRef, resourceSetRef, textStyleRef } from './resources';

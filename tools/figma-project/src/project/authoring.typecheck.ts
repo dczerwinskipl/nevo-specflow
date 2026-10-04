@@ -1,5 +1,5 @@
 import { defineDesignComponent, type AssetSwapSlotFor } from '@nevo/figma-core/authoring';
-import { designSlot, useDesignMetadata } from '@nevo/figma-core/metadata';
+import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import { specFlowDesignSystem } from '@nevo/specflow-ui/figma';
 import { iconAssetRef, typographyTextStyleRef } from '@nevo/ui/design-system/resources';
 import { nevoUiDesignSystem } from '@nevo/ui/figma';

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactNode } from 'react';
 
-import { DesignCaptureProvider } from '@nevo/figma-core/metadata';
+import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
 import { Button } from '../../actions/Button';
 import { DataTable, type DataTableColumn } from '../../data/DataTable';
 import { Badge } from '../../feedback/Badge';

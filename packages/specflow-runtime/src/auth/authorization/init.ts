@@ -11,8 +11,7 @@ export async function initAuthorization(
   ui: RuntimeSetupUi,
   users: Readonly<Record<string, RuntimeUserConfig>>,
 ): Promise<AuthorizationInitResult> {
-  const assignments: Array<{ userId: string; role: SpecFlowRole; scope: Record<string, never> }> =
-    [];
+  const assignments: { userId: string; role: SpecFlowRole; scope: Record<string, never> }[] = [];
 
   for (const [userId, user] of Object.entries(users)) {
     const role = await ui.select<SpecFlowRole>(

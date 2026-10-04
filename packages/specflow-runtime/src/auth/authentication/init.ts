@@ -54,13 +54,12 @@ export async function initAuth(options: AuthInitOptions): Promise<AuthInitResult
     };
   }
 
-  const users: Record<string, RuntimeUserConfig> = Object.create(null);
-  const passwordAccounts: Record<string, { userId: string; passwordHash: string }> =
-    Object.create(null);
-  const projectOidc: Record<string, Record<string, unknown>> = Object.create(null);
-  const localOidc: Record<string, { clientSecret: string }> = Object.create(null);
+  const users = dictionary<RuntimeUserConfig>();
+  const passwordAccounts = dictionary<{ userId: string; passwordHash: string }>();
+  const projectOidc = dictionary<Record<string, unknown>>();
+  const localOidc = dictionary<{ clientSecret: string }>();
 
-  let passwordEnabled = false;
+  let passwordEnabled: boolean;
   do {
     passwordEnabled = await ui.confirm('Enable username/password login?', true);
     if (passwordEnabled) {
@@ -142,12 +141,13 @@ async function addOidcProvider(
   readonly clientSecret: string;
 }> {
   const name = await requiredInput(ui, 'OIDC provider name', 'Company SSO');
-  const suggestedId = providerIdFromName(name) || 'company';
+  const generatedId = providerIdFromName(name);
+  const suggestedId = generatedId === '' ? 'company' : generatedId;
   const id = await requiredProviderId(ui, existing, suggestedId);
   const issuer = await requiredInput(ui, 'Issuer URL', 'https://accounts.google.com');
   const clientId = await requiredInput(ui, 'Client ID');
   const clientSecret = await requiredSecret(ui, 'Client secret');
-  const allowedEmails: Record<string, string> = Object.create(null);
+  const allowedEmails = dictionary<string>();
 
   do {
     let email: string;
@@ -285,4 +285,8 @@ async function confirmedSecret(
     if (value === confirmation) return value;
     ui.note('The values do not match. Try again.', 'Password');
   }
+}
+
+function dictionary<T>(): Record<string, T> {
+  return Object.create(null) as Record<string, T>;
 }

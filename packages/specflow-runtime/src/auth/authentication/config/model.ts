@@ -55,7 +55,7 @@ export interface RuntimeAuthConfig {
 
 export function enabledOidcProviders(
   auth: RuntimeAuthConfig,
-): ReadonlyArray<readonly [string, RuntimeOidcEnabledProviderConfig]> {
+): readonly (readonly [string, RuntimeOidcEnabledProviderConfig])[] {
   return Object.entries(auth.providers.oidc.instances).flatMap(([id, provider]) =>
     provider.enabled ? ([[id, provider]] as const) : [],
   );

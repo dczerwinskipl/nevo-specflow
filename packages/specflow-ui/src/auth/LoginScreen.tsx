@@ -27,7 +27,11 @@ export interface LoginScreenProps {
 }
 
 export function LoginScreen({ auth, initialError, returnTo = '/' }: LoginScreenProps) {
-  const state = useSyncExternalStore(auth.subscribe, auth.getState, auth.getState);
+  const state = useSyncExternalStore(
+    (listener) => auth.subscribe(listener),
+    () => auth.getState(),
+    () => auth.getState(),
+  );
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | undefined>(

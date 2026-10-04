@@ -43,14 +43,15 @@ const loginRoute = createRoute({
     const decision = await resolveLoginAccess(context.auth, search.returnTo);
 
     if (decision.kind === 'runtime-unavailable') {
-      throw redirect({
+      redirect({
         to: '/runtime-unavailable',
         search: { returnTo: decision.returnTo },
+        throw: true,
       });
     }
 
     if (decision.kind === 'app') {
-      throw redirect({ href: decision.returnTo });
+      redirect({ href: decision.returnTo, throw: true });
     }
   },
   component: LoginRouteScreen,
@@ -80,9 +81,10 @@ const appRoute = createRoute({
     }
 
     if (decision.kind === 'login') {
-      throw redirect({
+      redirect({
         to: '/login',
         search: { returnTo: decision.returnTo },
+        throw: true,
       });
     }
   },

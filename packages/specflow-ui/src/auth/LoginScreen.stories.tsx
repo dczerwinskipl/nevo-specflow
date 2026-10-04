@@ -36,7 +36,13 @@ const meta = {
   title: 'SpecFlow/Screens/Login',
   component: LoginScreenView,
   parameters: { layout: 'fullscreen' },
-  decorators: [(Story) => <StoryLocalization><Story /></StoryLocalization>],
+  decorators: [
+    (Story) => (
+      <StoryLocalization>
+        <Story />
+      </StoryLocalization>
+    ),
+  ],
   args: {
     loginMethods: mixed,
     onOidc: () => undefined,

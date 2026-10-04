@@ -19,7 +19,7 @@ describe('Runtime CLI adapters', () => {
     });
     expect(cmd).toBeInstanceOf(Command);
     expect(cmd.name()).toBe('start');
-    expect(cmd.description()).toMatch(/Runtime API server/i);
+    expect(cmd.description()).toMatch(/SpecFlow local server/i);
   });
 
   it('starts the Runtime and reports its listening address', async () => {
@@ -38,7 +38,7 @@ describe('Runtime CLI adapters', () => {
     });
     cmd.exitOverride();
     await cmd.parseAsync(['node', 'start']);
-    expect(out).toEqual(['Nevo SpecFlow Runtime API listening at http://127.0.0.1:4318']);
+    expect(out).toEqual(['Nevo SpecFlow available at http://127.0.0.1:4318']);
     expect(closed).toBe(false);
   });
 

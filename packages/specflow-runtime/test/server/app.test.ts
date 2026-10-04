@@ -60,7 +60,7 @@ describe('Runtime product web surface', () => {
     try {
       const response = await app.inject({ method: 'GET', url: '/' });
       expect(response.statusCode).toBe(302);
-      expect(response.headers.location).toBe('https://specflow.example.test:4318/');
+      expect(response.headers.location).toBe('https://specflow.example.test:4318');
     } finally {
       await app.close();
     }

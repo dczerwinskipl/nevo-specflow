@@ -60,13 +60,11 @@ const meta = {
   component: AppWorkspaceSlots,
   tags: ['autodocs'],
   parameters: { layout: 'fullscreen' },
-  decorators: [
-    (Story) => (
-      <AppShell navigation={<Region label="Navigation" />}>
-        <Story />
-      </AppShell>
-    ),
-  ],
+  render: (args) => (
+    <AppShell navigation={<Region label="Navigation" />}>
+      <AppWorkspaceSlots {...args} />
+    </AppShell>
+  ),
   args: {
     primary: { content: <Region label="Primary workspace" /> },
     secondary: { content: <Region label="Secondary workspace" /> },
@@ -442,10 +440,13 @@ export const DismissibleDefaultSecondaryContract: Story = {
   render: () => <DismissibleDefaultSecondaryFixture />,
   tags: ['!dev', '!autodocs'],
   parameters: {
-    // This contract fixture renders a complete AppShell inside the story-level AppShell decorator.
     a11y: { test: 'off' },
   },
   play: async ({ canvas, canvasElement, userEvent }) => {
+    assert(
+      canvasElement.querySelectorAll('[data-app-shell-region="workspace"]').length === 1,
+      'A complete AppShell fixture should not be nested inside another AppShell.',
+    );
     await waitFor(
       () => canvas.queryByText('Default context content'),
       'The default Secondary should be visible on split entry.',

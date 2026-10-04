@@ -172,9 +172,7 @@ describe('Runtime project initialization', () => {
     expect(ui.notes.join('\n')).toMatch(/at least one administrator is required/i);
   });
 
-  it(
-    'keeps bootstrap role defaults in actual creation order for integer-like usernames',
-    async () => {
+  it('preserves role defaults for integer-like usernames in creation order', async () => {
     const ui = new ScriptedUi(
       [true, true, true, false, false],
       ['<default>', '<new-user>', '<default>'],
@@ -187,9 +185,9 @@ describe('Runtime project initialization', () => {
       hashPassword: () => Promise.resolve(PASSWORD_HASH),
     });
 
-      expect(
-        ui.selectDefaults.filter((value) => value === 'admin' || value === 'developer'),
-      ).toEqual(['admin', 'developer']);
+    expect(
+      ui.selectDefaults.filter((value) => value === 'admin' || value === 'developer'),
+    ).toEqual(['admin', 'developer']);
     expect(contribution.projectConfig).toMatchObject({
       authorization: {
         assignments: [
@@ -198,8 +196,7 @@ describe('Runtime project initialization', () => {
         ],
       },
     });
-    },
-  );
+  });
 
   it('allows the former sentinel text as an ordinary password username/user id', async () => {
     const ui = new ScriptedUi(
@@ -285,9 +282,7 @@ describe('Runtime project initialization', () => {
     );
   });
 
-  it(
-    'can link an OIDC identity to an existing user without redefining user data or role',
-    async () => {
+  it('links an OIDC identity to an existing user without redefining its role', async () => {
     const ui = new ScriptedUi(
       [true, true, false, true, false, false],
       ['<default>', '<existing-user>', 'demo'],
@@ -327,6 +322,5 @@ describe('Runtime project initialization', () => {
         assignments: [{ userId: 'demo', role: 'admin', scope: {} }],
       },
     });
-    },
-  );
+  });
 });

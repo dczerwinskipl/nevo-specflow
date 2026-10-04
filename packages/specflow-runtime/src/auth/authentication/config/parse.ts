@@ -197,7 +197,6 @@ function parseOidcProviders(value: unknown): RuntimeOidcProvidersConfig {
     if (duplicateId) {
       throw new RuntimeConfigError(
         `${path}.instances.${providerId}.name duplicates the visible provider name configured for '${duplicateId}'.`,
-
       );
     }
 

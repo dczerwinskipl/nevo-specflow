@@ -222,15 +222,8 @@ async function resolveOidcUser(
 ): Promise<string> {
   if (canonicalUsers.has(email)) return email;
 
-  if (canonicalUsers.size > 0) {
-    const mode = await chooseUserMode(options.ui, `OIDC identity ${email} belongs to`);
-    if (mode === EXISTING_USER) {
-      return chooseExistingUser(options.ui, canonicalUsers);
-    }
-  }
-
-  // The OIDC provider supplies the human-facing profile at sign-in time. The
-  // configured email is the stable fallback identity before a session exists.
+  // OIDC supplies the human-facing profile at sign-in time. The normalized
+  // allowed email is the stable configured identity and fallback display value.
   await addCanonicalUser(options, canonicalUsers, email, { name: email });
   return email;
 }

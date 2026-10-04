@@ -44,6 +44,18 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   dependencies: RuntimeAppDependencies = {},
 ): Promise<void> {
   await app.register(cookie);
+
+  app.get('/', (_request, reply) => {
+    if (config.server.publicOrigin) {
+      return reply.redirect(config.server.publicOrigin);
+    }
+    return {
+      service: 'Nevo SpecFlow Runtime API',
+      status: 'ok',
+      message: 'This address serves the Runtime API, not the SpecFlow web UI.',
+    };
+  });
+
   await app.register(authFeature, {
     auth: config.auth,
     ...(config.authorization ? { authorization: config.authorization } : {}),

@@ -74,9 +74,10 @@ const appRoute = createRoute({
     const decision = await resolveAppAccess(context.auth, returnTo);
 
     if (decision.kind === 'runtime-unavailable') {
-      throw redirect({
+      redirect({
         to: '/runtime-unavailable',
         search: { returnTo: decision.returnTo },
+        throw: true,
       });
     }
 

@@ -162,7 +162,8 @@ async function addOidcProvider(
       );
     }
 
-    const suggestedUserId = email.split('@')[0]?.trim() || 'user';
+    const emailLocalPart = email.split('@')[0]?.trim() ?? '';
+    const suggestedUserId = emailLocalPart === '' ? 'user' : emailLocalPart;
     const userId = await selectCanonicalUser(ui, users, suggestedUserId);
     allowedEmails[email] = userId;
   } while (await ui.confirm('Add another allowed identity for this provider?', false));

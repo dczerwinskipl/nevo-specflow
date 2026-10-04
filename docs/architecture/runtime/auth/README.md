@@ -28,12 +28,16 @@ Runtime treats authentication and authorization as separate concerns.
 
 Authentication establishes the effective canonical user. Password accounts, one or more named OIDC
 instances, and trusted local mode all converge on the same `auth.users` user id before authorization
-is evaluated. Password is one login capability with multiple accounts. OIDC is a collection of
-instances under `auth.providers.oidc.instances`; every enabled instance has a stable lowercase
-slug id and a distinct single-line user-facing name of at most 32 characters, plus its own
-issuer/client configuration and email-to-user mappings. Provider ids and display names are separate
-concepts: ids are routing/configuration identities, while names are the labels shown on login
-actions. Client secrets remain workstation-local under the corresponding instance id.
+is evaluated. Password is one login capability with multiple accounts. A newly created password
+user uses its username as its canonical id; extra login accounts can explicitly link to an existing
+user instead of exposing a second id field in the wizard.
+
+OIDC is a collection of instances under `auth.providers.oidc.instances`; every enabled instance has
+a stable lowercase slug id and a distinct single-line user-facing name of at most 32 characters,
+plus its own issuer/client configuration and email-to-user mappings. A new OIDC identity uses its
+allowed email as the default canonical id, or can link to an existing user. Human-facing OIDC
+profile data is taken from verified provider claims at sign-in, not entered during setup. Provider
+ids and provider display names remain separate concepts. Client secrets remain workstation-local.
 
 The browser-facing session contract explicitly reports whether authentication is required, whether
 the current browser is authenticated, whether password login is enabled, and the enabled OIDC

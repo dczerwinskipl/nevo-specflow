@@ -39,10 +39,10 @@ nevo-specflow auth hash-password --password-stdin         # hash one password li
 - `--version` prints the version baked into the installed build (from the repository's
   release model). It does not depend on any file outside the installed package.
 - An unknown command or bad usage exits non-zero with usage on stderr.
-- `init` discovers the Git repository root, creates committed `.nevo/config.yaml` plus ignored `.nevo/local/config.yaml`, ensures `.nevo/local/` is in `.gitignore`, and interactively configures no-auth, password, or OIDC authentication. It refuses to overwrite an existing project config. Password secrets are hashed internally and OIDC client secrets are written only to local config.
+- `init` discovers the Git repository root, creates committed `.nevo/config.yaml` plus ignored `.nevo/local/config.yaml`, ensures `.nevo/local/` is in `.gitignore`, and interactively configures no-auth, password, or OIDC authentication. New password users use their username as their user id; additional login identities explicitly choose New user or Existing user. OIDC profile data is provider-owned and is not entered manually. Password secrets are hashed internally and OIDC client secrets are written only to local config.
 - `start` is defined by the Runtime vertical (`@nevo/specflow-runtime/cli`) and
   composed into the shell. It loads Runtime configuration, starts the Fastify HTTP server,
-  reports the listening address, and owns graceful shutdown through the CLI process signal.
+  reports the Runtime API listening address, and owns graceful shutdown through the CLI process signal. The Runtime API root is not currently the SpecFlow UI.
 - `auth hash-password --password-stdin` is owned by the Runtime auth feature. It reads
   exactly one password line from stdin and prints a supported scrypt hash for the local
   Runtime configuration; the plaintext password is not accepted as a command argument.

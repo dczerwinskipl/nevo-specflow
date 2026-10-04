@@ -119,9 +119,11 @@ disabled, both the bind host and any `publicOrigin` must be loopback. Reverse-pr
 and forwarded-client-IP trust are intentionally not supported yet.
 
 If `publicOrigin` is configured, its protocol must match Runtime TLS: HTTPS with TLS, HTTP without
-TLS. It is the canonical browser-facing origin used for OIDC redirects and therefore must match the
-hostname users actually open in the browser. The initializer keeps the same loopback host for bind and browser public origin (`127.0.0.1`) so host-only auth cookies survive the OIDC redirect, while allowing a different browser port. The local UI development default is `http://127.0.0.1:5173`, which matches the fixed Vite dev-server port and proxies `/api` to Runtime on port `4318`. Origins
-containing credentials, paths, queries, or fragments are rejected rather than silently normalized.
+TLS. It is the browser-facing origin used for OIDC redirects and therefore must match the hostname
+users actually open in the browser. In the current repository-local development setup, init uses
+`http://127.0.0.1:5173` without prompting: that is the fixed SpecFlow UI Vite origin and it proxies
+`/api` to the Runtime API on `http://127.0.0.1:4318`. Runtime does not currently serve the UI at
+its API root, so opening port `4318` in a browser is not the product UI.
 
 ## Password authentication
 
@@ -159,7 +161,12 @@ The currently supported profile is deliberately narrow:
 - HTTPS issuer;
 - confidential client using `client_secret_post`;
 - verified standard `email` claim in the ID token;
+- optional standard `name` claim used as the authenticated session display name, falling back to email;
 - allow-list mapping from normalized email to the internal user id.
+
+During init, an OIDC allow-list identity can create a new user directly from its email or link to an
+existing user. The wizard never asks for an OIDC display name: profile data comes from the provider
+when the user signs in.
 
 OIDC discovery/network failures are distinguished from callback authentication failures at the
 provider boundary. Failed discovery is coalesced behind a short retry cooldown so a provider outage

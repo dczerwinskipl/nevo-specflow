@@ -116,8 +116,10 @@ The generic resolver intentionally does not know this hierarchy.
 
 Authorization assignments reference the canonical key in project `runtime.auth.users`.
 
-Password usernames, OIDC emails, display names, and other provider identifiers are authentication
-inputs, not authorization subject ids.
+The canonical id is the authorization subject id. Init chooses transparent defaults for new users:
+a new password user's username becomes its canonical id, and a new OIDC user's allowed email becomes
+its canonical id. Additional authentication identities can explicitly link to an existing canonical
+user instead. OIDC display names remain provider profile data and are not authorization identities.
 
 Project assignments are validated against project-owned `runtime.auth.users` before local configuration is
 merged. An assignment therefore cannot depend on a user that exists only in `.nevo/local/config.yaml`.

@@ -8,7 +8,8 @@ runtime:
     port: 4318
     # Required when at least one OIDC instance is enabled.
     # A non-loopback required-auth Runtime must terminate TLS itself.
-    # Local UI dev default: http://127.0.0.1:5173
+    # Browser-facing SpecFlow UI origin used for OIDC callbacks.
+    # Current local dev UI: http://127.0.0.1:5173 (proxies /api to Runtime on 4318).
     # publicOrigin: http://127.0.0.1:5173
     tls:
       enabled: false

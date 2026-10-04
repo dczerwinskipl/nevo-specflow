@@ -115,11 +115,17 @@ locations from `process.cwd()`.
 Runtime setup first decides whether authentication is required. Required authentication can combine
 username/password with one or more named OIDC instances; at least one login method must remain
 enabled. Password setup hashes secrets inside Runtime, while every OIDC client secret stays local.
-Canonical users remain distinct from provider credentials, and each canonical user created during
-setup receives an explicit authorization role. The first-created canonical user is the bootstrap user and defaults to `admin`; subsequent
-users default to `developer`. Setup preserves that creation order explicitly rather than deriving it
-from configuration-object key order, and it cannot finish without at least one administrator. Trusted
-local mode keeps its local identity without showing a login screen.
+
+For a new password user, the username is also the canonical user id; the wizard does not ask for a
+second technical identifier. Additional password accounts explicitly choose `New user` or
+`Existing user`. OIDC identities are configured by allowed email and may likewise create a new
+user or link to an existing one, but their human-facing profile data comes from verified OIDC claims
+at sign-in rather than from init prompts.
+
+A role is selected immediately whenever setup creates a new user. The first-created user defaults to
+`admin`; subsequent users default to `developer`. Setup preserves creation order explicitly and
+cannot finish without at least one administrator. Trusted local mode keeps its local identity without
+showing a login screen.
 
 Before the product shell asks to write files, Runtime contributes a human-readable review of its
 non-secret choices: authentication mode and methods, named OIDC instances and ids, issuer/client id,

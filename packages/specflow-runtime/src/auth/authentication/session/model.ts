@@ -54,5 +54,9 @@ export function configuredUser(
     throw new Error(`Configured auth user '${userId}' does not exist.`);
   }
 
-  return { id: userId, name: userName?.trim() || user.name };
+  const sessionName = userName?.trim();
+  return {
+    id: userId,
+    name: sessionName === undefined || sessionName === '' ? user.name : sessionName,
+  };
 }

@@ -9,6 +9,7 @@ import type {
 
 class DefaultingUi implements RuntimeSetupUi {
   readonly defaults: (RuntimeSetupSelectValue | undefined)[] = [];
+  readonly notes: string[] = [];
 
   confirm(): Promise<boolean> {
     throw new Error('confirm is not used by authorization setup');
@@ -32,7 +33,9 @@ class DefaultingUi implements RuntimeSetupUi {
     throw new Error('secret is not used by authorization setup');
   }
 
-  note(): void {}
+  note(message: string): void {
+    this.notes.push(message);
+  }
 }
 
 describe('authorization initialization', () => {

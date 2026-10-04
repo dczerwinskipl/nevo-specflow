@@ -25,7 +25,7 @@ export async function initRuntime(options: RuntimeInitOptions): Promise<RuntimeI
   const authorizationSetup = createAuthorizationSetup(options.ui);
   const auth = await initAuth({
     ui: options.ui,
-    onUserCreated: authorizationSetup.addUser,
+    onUserCreated: (userId, user) => authorizationSetup.addUser(userId, user),
     ...(options.hashPassword ? { hashPassword: options.hashPassword } : {}),
   });
   const authorization = await authorizationSetup.finish();

@@ -139,35 +139,46 @@ export function discoverThirdPartyDependencyClosure(
     a.name === b.name ? a.root.localeCompare(b.root) : a.name.localeCompare(b.name),
   );
 
+  function visitDependency(
+    packageRoot: string,
+    dependencyName: string,
+    optional: boolean,
+  ): void {
+    const workspacePackage = workspacePackages.get(dependencyName);
+    if (workspacePackage) {
+      visit(workspacePackage);
+      return;
+    }
+
+    const dependencyRoot = resolveDependencyRoot(packageRoot, dependencyName);
+    if (!dependencyRoot) {
+      if (optional) return;
+      throw new Error(
+        `Could not resolve production dependency ${dependencyName} from ${packageRoot} while generating product notices.`,
+      );
+    }
+
+    const dependencyManifest = readManifest<DependencyManifest>(dependencyRoot);
+    const canonicalName = dependencyManifest.name ?? dependencyName;
+    if (canonicalName.startsWith('@nevo/')) {
+      visit(dependencyRoot);
+      return;
+    }
+
+    discovered.set(dependencyRoot, { name: canonicalName, root: dependencyRoot });
+    visit(dependencyRoot);
+  }
+
   function visit(packageRoot: string): void {
     if (visited.has(packageRoot)) return;
     visited.add(packageRoot);
 
     const manifest = readManifest<DependencyManifest>(packageRoot);
-    const dependencies = {
-      ...manifest.dependencies,
-      ...manifest.optionalDependencies,
-    };
-
-    for (const dependencyName of Object.keys(dependencies)) {
-      const workspacePackage = workspacePackages.get(dependencyName);
-      if (workspacePackage) {
-        visit(workspacePackage);
-        continue;
-      }
-
-      const dependencyRoot = resolveDependencyRoot(packageRoot, dependencyName);
-      if (!dependencyRoot) continue;
-
-      const dependencyManifest = readManifest<DependencyManifest>(dependencyRoot);
-      const canonicalName = dependencyManifest.name ?? dependencyName;
-      if (canonicalName.startsWith('@nevo/')) {
-        visit(dependencyRoot);
-        continue;
-      }
-
-      discovered.set(dependencyRoot, { name: canonicalName, root: dependencyRoot });
-      visit(dependencyRoot);
+    for (const dependencyName of Object.keys(manifest.dependencies ?? {})) {
+      visitDependency(packageRoot, dependencyName, false);
+    }
+    for (const dependencyName of Object.keys(manifest.optionalDependencies ?? {})) {
+      visitDependency(packageRoot, dependencyName, true);
     }
   }
 }

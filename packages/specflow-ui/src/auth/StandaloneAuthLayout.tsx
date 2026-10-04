@@ -26,7 +26,7 @@ export function StandaloneAuthSurface({
         data-auth-layout="root"
       >
         <div
-          className="absolute right-4 top-4 sm:right-8 sm:top-6"
+          className="absolute right-[max(1rem,env(safe-area-inset-right))] top-[max(1rem,env(safe-area-inset-top))] sm:right-8 sm:top-6"
           {...designLayerMetadata({ layer: 'language-selector' })}
         >
           <StandaloneLocaleMenu />

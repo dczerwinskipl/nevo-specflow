@@ -16,7 +16,7 @@ export function createStartCommand(ctx: RuntimeCommandContext): Command {
     .description('Start the Nevo SpecFlow Runtime server')
     .action(async () => {
       const handle = await ctx.start();
-      ctx.stdout(`Nevo SpecFlow Runtime listening at ${handle.address}`);
+      ctx.stdout(`Nevo SpecFlow Runtime API listening at ${handle.address}`);
 
       if (!ctx.signal) return;
       if (!ctx.signal.aborted) await aborted(ctx.signal);

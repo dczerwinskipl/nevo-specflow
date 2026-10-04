@@ -1,4 +1,4 @@
-import type { RuntimeSetupUi } from '../../init/contracts';
+import type { RuntimeSetupSelectValue, RuntimeSetupUi } from '../../init/contracts';
 import { RuntimeConfigError } from '../../config/error';
 import { absoluteHttpsUrl } from '../../config/value';
 import {
@@ -24,6 +24,7 @@ export interface AuthInitResult {
 export interface AuthInitOptions {
   readonly ui: RuntimeSetupUi;
   readonly hashPassword?: (password: string) => Promise<string>;
+  readonly onUserCreated: (userId: string, user: RuntimeUserConfig) => Promise<void>;
 }
 
 interface OidcProjectSetup {
@@ -34,7 +35,8 @@ interface OidcProjectSetup {
   readonly allowedEmails: Readonly<Record<string, string>>;
 }
 
-const CREATE_USER = Symbol('create-user');
+const NEW_USER = Symbol('new-user');
+const EXISTING_USER = Symbol('existing-user');
 
 export async function initAuth(options: AuthInitOptions): Promise<AuthInitResult> {
   const { ui } = options;
@@ -47,7 +49,8 @@ export async function initAuth(options: AuthInitOptions): Promise<AuthInitResult
     );
     const userId = await requiredInput(ui, 'Local user id', 'local-user');
     const displayName = await requiredInput(ui, 'Display name', 'Local User');
-    const canonicalUsers = new Map<string, RuntimeUserConfig>([[userId, { name: displayName }]]);
+    const canonicalUsers = new Map<string, RuntimeUserConfig>();
+    await addCanonicalUser(options, canonicalUsers, userId, { name: displayName });
 
     return {
       projectAuth: {
@@ -58,9 +61,7 @@ export async function initAuth(options: AuthInitOptions): Promise<AuthInitResult
           oidc: { instances: {} },
         },
       },
-      localAuth: {
-        localUserId: userId,
-      },
+      localAuth: { localUserId: userId },
       canonicalUsers,
       requiresPublicOrigin: false,
       summary: [
@@ -88,7 +89,7 @@ export async function initAuth(options: AuthInitOptions): Promise<AuthInitResult
 
     let addOidc = await ui.confirm('Add an OIDC provider?', !passwordEnabled);
     while (addOidc) {
-      const provider = await addOidcProvider(ui, canonicalUsers, projectOidc);
+      const provider = await addOidcProvider(options, canonicalUsers, projectOidc);
       projectOidc[provider.id] = provider.project;
       localOidc[provider.id] = { clientSecret: provider.clientSecret };
       addOidc = await ui.confirm('Add another OIDC provider?', false);
@@ -133,23 +134,46 @@ async function addPasswordAccount(
   canonicalUsers: Map<string, RuntimeUserConfig>,
   accounts: Record<string, { userId: string; passwordHash: string }>,
 ): Promise<void> {
-  const { ui } = options;
+  const owner =
+    canonicalUsers.size === 0
+      ? NEW_USER
+      : await chooseUserMode(options.ui, 'Password account belongs to');
+
+  let userId: string;
   let username: string;
 
-  while (true) {
-    username = normalizePasswordUsername(await requiredInput(ui, 'Username', 'user'));
-    if (!Object.hasOwn(accounts, username)) break;
-    ui.note(`Password account '${username}' already exists.`, 'Username');
+  if (owner === NEW_USER) {
+    while (true) {
+      username = normalizePasswordUsername(await requiredInput(options.ui, 'Username', 'user'));
+      if (Object.hasOwn(accounts, username)) {
+        options.ui.note(`Password account '${username}' already exists.`, 'Username');
+        continue;
+      }
+      if (canonicalUsers.has(username)) {
+        options.ui.note(
+          `User '${username}' already exists. Choose Existing user to add another login method.`,
+          'Username',
+        );
+        continue;
+      }
+      break;
+    }
+
+    userId = username;
+    const displayName = await requiredInput(options.ui, 'Display name', username);
+    await addCanonicalUser(options, canonicalUsers, userId, { name: displayName });
+  } else {
+    userId = await chooseExistingUser(options.ui, canonicalUsers);
+    username = await uniquePasswordUsername(options.ui, accounts, userId);
   }
 
-  const userId = await selectCanonicalUser(ui, canonicalUsers, username);
-  const password = await confirmedSecret(ui, 'Password', 'Confirm password');
+  const password = await confirmedSecret(options.ui, 'Password', 'Confirm password');
   const passwordHash = await (options.hashPassword ?? hashRuntimePassword)(password);
   accounts[username] = { userId, passwordHash };
 }
 
 async function addOidcProvider(
-  ui: RuntimeSetupUi,
+  options: AuthInitOptions,
   canonicalUsers: Map<string, RuntimeUserConfig>,
   existing: Readonly<Record<string, OidcProjectSetup>>,
 ): Promise<{
@@ -157,6 +181,7 @@ async function addOidcProvider(
   readonly project: OidcProjectSetup;
   readonly clientSecret: string;
 }> {
+  const { ui } = options;
   const name = await requiredOidcProviderName(ui, existing);
   const generatedId = oidcProviderIdFromName(name);
   const suggestedId = generatedId === '' ? 'company' : generatedId;
@@ -173,29 +198,93 @@ async function addOidcProvider(
       if (email.includes('@') && !Object.hasOwn(allowedEmails, email)) break;
       ui.note(
         Object.hasOwn(allowedEmails, email)
-          ? `Identity '${email}' is already mapped for this provider.`
+          ? `Identity '${email}' is already configured for this provider.`
           : 'Enter a valid email address.',
         'OIDC identity',
       );
     }
 
-    const emailLocalPart = email.split('@')[0]?.trim() ?? '';
-    const suggestedUserId = emailLocalPart === '' ? 'user' : emailLocalPart;
-    const userId = await selectCanonicalUser(ui, canonicalUsers, suggestedUserId);
+    const userId = await resolveOidcUser(options, canonicalUsers, email);
     allowedEmails[email] = userId;
   } while (await ui.confirm('Add another allowed identity for this provider?', false));
 
   return {
     id,
-    project: {
-      name,
-      enabled: true,
-      issuer,
-      clientId,
-      allowedEmails,
-    },
+    project: { name, enabled: true, issuer, clientId, allowedEmails },
     clientSecret,
   };
+}
+
+async function resolveOidcUser(
+  options: AuthInitOptions,
+  canonicalUsers: Map<string, RuntimeUserConfig>,
+  email: string,
+): Promise<string> {
+  if (canonicalUsers.has(email)) return email;
+
+  if (canonicalUsers.size > 0) {
+    const mode = await chooseUserMode(options.ui, `OIDC identity ${email} belongs to`);
+    if (mode === EXISTING_USER) {
+      return chooseExistingUser(options.ui, canonicalUsers);
+    }
+  }
+
+  // The OIDC provider supplies the human-facing profile at sign-in time. The
+  // configured email is the stable fallback identity before a session exists.
+  await addCanonicalUser(options, canonicalUsers, email, { name: email });
+  return email;
+}
+
+async function addCanonicalUser(
+  options: AuthInitOptions,
+  canonicalUsers: Map<string, RuntimeUserConfig>,
+  userId: string,
+  user: RuntimeUserConfig,
+): Promise<void> {
+  if (canonicalUsers.has(userId)) {
+    throw new Error(`Canonical user '${userId}' already exists.`);
+  }
+  canonicalUsers.set(userId, user);
+  await options.onUserCreated(userId, user);
+}
+
+async function chooseUserMode(
+  ui: RuntimeSetupUi,
+  message: string,
+): Promise<typeof NEW_USER | typeof EXISTING_USER> {
+  return ui.select(
+    message,
+    [
+      { value: NEW_USER, label: 'New user' },
+      { value: EXISTING_USER, label: 'Existing user' },
+    ],
+    NEW_USER,
+  );
+}
+
+async function chooseExistingUser(
+  ui: RuntimeSetupUi,
+  canonicalUsers: ReadonlyMap<string, RuntimeUserConfig>,
+): Promise<string> {
+  return ui.select(
+    'Existing user',
+    [...canonicalUsers.entries()].map(([id, user]) => ({
+      value: id,
+      label: user.name === id ? id : `${user.name} (${id})`,
+    })),
+  );
+}
+
+async function uniquePasswordUsername(
+  ui: RuntimeSetupUi,
+  accounts: Readonly<Record<string, unknown>>,
+  defaultValue: string,
+): Promise<string> {
+  while (true) {
+    const username = normalizePasswordUsername(await requiredInput(ui, 'Username', defaultValue));
+    if (!Object.hasOwn(accounts, username)) return username;
+    ui.note(`Password account '${username}' already exists.`, 'Username');
+  }
 }
 
 async function requiredOidcProviderName(
@@ -242,47 +331,6 @@ async function requiredOidcIssuer(ui: RuntimeSetupUi): Promise<string> {
   }
 }
 
-async function selectCanonicalUser(
-  ui: RuntimeSetupUi,
-  canonicalUsers: Map<string, RuntimeUserConfig>,
-  suggestedUserId: string,
-): Promise<string> {
-  if (canonicalUsers.size === 0) {
-    return createCanonicalUser(ui, canonicalUsers, suggestedUserId);
-  }
-
-  const choices = [
-    ...[...canonicalUsers.entries()].map(([id, user]) => ({
-      value: id,
-      label: `${user.name} (${id})`,
-    })),
-    { value: CREATE_USER, label: 'Create new user' },
-  ] as const;
-  const initialValue = canonicalUsers.has(suggestedUserId) ? suggestedUserId : CREATE_USER;
-  const selected = await ui.select('Canonical user', choices, initialValue);
-
-  return selected === CREATE_USER
-    ? createCanonicalUser(ui, canonicalUsers, suggestedUserId)
-    : selected;
-}
-
-async function createCanonicalUser(
-  ui: RuntimeSetupUi,
-  canonicalUsers: Map<string, RuntimeUserConfig>,
-  suggestedUserId: string,
-): Promise<string> {
-  let userId: string;
-  while (true) {
-    userId = await requiredInput(ui, 'User id', suggestedUserId);
-    if (!canonicalUsers.has(userId)) break;
-    ui.note(`User '${userId}' already exists. Select it instead or choose another id.`, 'User');
-  }
-
-  const displayName = await requiredInput(ui, 'Display name', userId);
-  canonicalUsers.set(userId, { name: displayName });
-  return userId;
-}
-
 async function requiredProviderId(
   ui: RuntimeSetupUi,
   existing: Readonly<Record<string, OidcProjectSetup>>,
@@ -290,9 +338,7 @@ async function requiredProviderId(
 ): Promise<string> {
   while (true) {
     const id = (await requiredInput(ui, 'Provider id', suggested)).trim();
-    if (isValidOidcProviderId(id) && !Object.hasOwn(existing, id)) {
-      return id;
-    }
+    if (isValidOidcProviderId(id) && !Object.hasOwn(existing, id)) return id;
 
     ui.note(
       Object.hasOwn(existing, id)
@@ -341,7 +387,7 @@ function canonicalUserSummary(
   canonicalUsers: ReadonlyMap<string, RuntimeUserConfig>,
 ): readonly string[] {
   return [
-    'Canonical users:',
+    'Users:',
     ...[...canonicalUsers.keys()].map(
       (userId) => `  - ${formatUser(canonicalUsers, userId)}`,
     ),
@@ -352,9 +398,7 @@ function usersConfig(
   canonicalUsers: ReadonlyMap<string, RuntimeUserConfig>,
 ): Record<string, RuntimeUserConfig> {
   const result = dictionary<RuntimeUserConfig>();
-  for (const [userId, user] of canonicalUsers) {
-    result[userId] = user;
-  }
+  for (const [userId, user] of canonicalUsers) result[userId] = user;
   return result;
 }
 
@@ -363,7 +407,8 @@ function formatUser(
   userId: string,
 ): string {
   const user = canonicalUsers.get(userId);
-  return user ? `${user.name} (${userId})` : userId;
+  if (!user || user.name === userId) return userId;
+  return `${user.name} (${userId})`;
 }
 
 async function requiredInput(

@@ -56,7 +56,7 @@ export function StandaloneLocaleMenu() {
           {locale}
         </Button>
       </MenuTrigger>
-      <MenuContent align="end">
+      <MenuContent align="end" aria-label={t('common.language')}>
         <LocaleMenuItems />
       </MenuContent>
     </Menu>

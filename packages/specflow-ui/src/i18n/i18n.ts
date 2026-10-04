@@ -1,7 +1,8 @@
 import i18next, { type i18n as I18nInstance } from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
-import { resources } from './resources';
+import en from './locales/en.json';
+import pl from './locales/pl.json';
 
 export const supportedLocales = ['en', 'pl'] as const;
 export type AppLocale = (typeof supportedLocales)[number];
@@ -38,7 +39,10 @@ export function resolveInitialLocale(
 export function createSpecFlowI18n(locale: AppLocale = resolveInitialLocale()): I18nInstance {
   const instance = i18next.createInstance();
   void instance.use(initReactI18next).init({
-    resources,
+    resources: {
+      en: { translation: en },
+      pl: { translation: pl },
+    },
     lng: locale,
     fallbackLng: DEFAULT_LOCALE,
     supportedLngs: supportedLocales,

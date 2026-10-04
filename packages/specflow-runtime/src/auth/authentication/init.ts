@@ -1,4 +1,4 @@
-import type { RuntimeSetupSelectValue, RuntimeSetupUi } from '../../init/contracts';
+import type { RuntimeSetupUi } from '../../init/contracts';
 import { RuntimeConfigError } from '../../config/error';
 import { absoluteHttpsUrl } from '../../config/value';
 import {

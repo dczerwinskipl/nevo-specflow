@@ -19,7 +19,7 @@ describe('Runtime CLI adapters', () => {
     });
     expect(cmd).toBeInstanceOf(Command);
     expect(cmd.name()).toBe('start');
-    expect(cmd.description()).toMatch(/Runtime server/i);
+    expect(cmd.description()).toMatch(/Runtime API server/i);
   });
 
   it('starts the Runtime and reports its listening address', async () => {

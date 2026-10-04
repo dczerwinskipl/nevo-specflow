@@ -13,7 +13,7 @@ export interface RuntimeCommandContext {
 
 export function createStartCommand(ctx: RuntimeCommandContext): Command {
   return new Command('start')
-    .description('Start the Nevo SpecFlow Runtime server')
+    .description('Start the Nevo SpecFlow Runtime API server')
     .action(async () => {
       const handle = await ctx.start();
       ctx.stdout(`Nevo SpecFlow Runtime API listening at ${handle.address}`);

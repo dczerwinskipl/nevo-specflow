@@ -219,7 +219,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
   it('D. start --help exposes the Runtime server command via the installed shim', () => {
     const r = nevoSpec(['start', '--help']);
     expect(r.code).toBe(0);
-    expect(r.stdout).toMatch(/Runtime server/i);
+    expect(r.stdout).toMatch(/Runtime API server/i);
   });
 
   it('E. generates a password hash through the installed auth utility', () => {

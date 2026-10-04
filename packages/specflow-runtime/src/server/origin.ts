@@ -24,13 +24,7 @@ function originFromDirectHost(protocol: 'http:' | 'https:', host: string): URL |
     return undefined;
   }
 
-  if (
-    url.username ||
-    url.password ||
-    url.pathname !== '/' ||
-    url.search ||
-    url.hash
-  ) {
+  if (url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
     return undefined;
   }
 

@@ -20,9 +20,9 @@ describe('Runtime public-origin request comparison', () => {
   });
 
   it('normalizes default ports and IPv6 host syntax', () => {
-    expect(isRequestAtPublicOrigin('https://specflow.example.com', 'specflow.example.com', true)).toBe(
-      true,
-    );
+    expect(
+      isRequestAtPublicOrigin('https://specflow.example.com', 'specflow.example.com', true),
+    ).toBe(true);
     expect(isRequestAtPublicOrigin('http://[::1]:4318', '[::1]:4318', false)).toBe(true);
   });
 
@@ -51,7 +51,9 @@ describe('Runtime public-origin request comparison', () => {
   });
 
   it('fails closed when the direct Host header is absent or malformed', () => {
-    expect(isRequestAtPublicOrigin('https://specflow.example.com:4318', undefined, true)).toBe(false);
+    expect(
+      isRequestAtPublicOrigin('https://specflow.example.com:4318', undefined, true),
+    ).toBe(false);
     expect(
       isRequestAtPublicOrigin(
         'https://specflow.example.com:4318',

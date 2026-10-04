@@ -1,7 +1,7 @@
 import { useSyncExternalStore, type PropsWithChildren } from 'react';
 
 import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
-import { AppShell } from '@nevo/ui';
+import { AppShell, useAppNavigation } from '@nevo/ui';
 import { Link, useRouter } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 
@@ -17,6 +17,7 @@ function ProductNavigation({
   readonly onSignOut: () => void | Promise<void>;
 }) {
   const { t } = useTranslation();
+  const { closeNavigation } = useAppNavigation();
   const state = useSyncExternalStore(
     (listener) => auth.subscribe(listener),
     () => auth.getState(),
@@ -36,6 +37,7 @@ function ProductNavigation({
             activeProps={{ className: `${linkClassName} bg-surface-selected` }}
             className={linkClassName}
             to="/"
+            onClick={closeNavigation}
           >
             {t('navigation.home')}
           </Link>
@@ -43,6 +45,7 @@ function ProductNavigation({
             activeProps={{ className: `${linkClassName} bg-surface-selected` }}
             className={linkClassName}
             to="/ui-playground"
+            onClick={closeNavigation}
           >
             {t('navigation.uiPlayground')}
           </Link>

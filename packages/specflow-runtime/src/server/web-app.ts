@@ -14,13 +14,11 @@ export function registerRuntimeWebApp<RawServer extends RawServerBase>(
   app: FastifyInstance<RawServer>,
   webApp: RuntimeWebApp,
 ): void {
-  const sendIndex = (_request: unknown, reply: { type(value: string): unknown; header(name: string, value: string): unknown; send(value: Buffer): unknown }) => {
+  app.get('/', (_request, reply) => {
     reply.type(webApp.indexHtml.contentType);
     reply.header('Cache-Control', 'no-cache');
     return reply.send(webApp.indexHtml.body);
-  };
-
-  app.get('/', sendIndex as never);
+  });
   app.get('/*', (request, reply) => {
     const pathname = request.url.split('?', 1)[0] ?? '/';
 

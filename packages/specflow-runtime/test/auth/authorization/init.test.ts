@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { RuntimeUserConfig } from '../../../src/auth/authentication/config/model';
-import { initAuthorization } from '../../../src/auth/authorization/init';
+import { createAuthorizationSetup } from '../../../src/auth/authorization/init';
 import type {
   RuntimeSetupChoice,
   RuntimeSetupSelectValue,
@@ -37,14 +36,13 @@ class DefaultingUi implements RuntimeSetupUi {
 }
 
 describe('authorization initialization', () => {
-  it('uses canonical-user creation order instead of object-key enumeration order', async () => {
+  it('assigns roles immediately in canonical-user creation order', async () => {
     const ui = new DefaultingUi();
-    const users = new Map<string, RuntimeUserConfig>([
-      ['10', { name: 'Ten User' }],
-      ['2', { name: 'Two User' }],
-    ]);
+    const setup = createAuthorizationSetup(ui);
 
-    const result = await initAuthorization(ui, users);
+    await setup.addUser('10', { name: 'Ten User' });
+    await setup.addUser('2', { name: 'Two User' });
+    const result = await setup.finish();
 
     expect(ui.defaults).toEqual(['admin', 'developer']);
     expect(result.projectAuthorization).toEqual({

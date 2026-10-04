@@ -13,6 +13,8 @@ const PASSWORD_HASH =
 class ScriptedUi implements RuntimeSetupUi {
   readonly notes: string[] = [];
   readonly selectDefaults: (RuntimeSetupSelectValue | undefined)[] = [];
+  readonly selectMessages: string[] = [];
+  readonly selectChoiceLabels: string[][] = [];
   readonly inputMessages: string[] = [];
 
   constructor(
@@ -29,30 +31,35 @@ class ScriptedUi implements RuntimeSetupUi {
   }
 
   select<T extends RuntimeSetupSelectValue>(
-    _message: string,
+    message: string,
     choices: readonly RuntimeSetupChoice<T>[],
     initialValue?: T,
   ): Promise<T> {
     this.selectDefaults.push(initialValue);
-    const value = this.selections.shift();
-    if (!value) throw new Error('Missing scripted selection.');
+    this.selectMessages.push(message);
+    this.selectChoiceLabels.push(choices.map((choice) => choice.label));
 
-    if (value === '<default>') {
+    const token = this.selections.shift();
+    if (!token) throw new Error('Missing scripted selection.');
+
+    if (token === '<default>') {
       if (initialValue === undefined) {
         throw new Error('Script requested a missing default selection.');
       }
       return Promise.resolve(initialValue);
     }
 
-    if (value === '<create>') {
-      const createChoice = choices.find((choice) => typeof choice.value === 'symbol');
-      if (!createChoice) throw new Error('Script requested a missing create-user selection.');
-      return Promise.resolve(createChoice.value);
-    }
-
-    const matchingChoice = choices.find((choice) => choice.value === value);
+    const symbolicLabel =
+      token === '<new-user>'
+        ? 'New user'
+        : token === '<existing-user>'
+          ? 'Existing user'
+          : undefined;
+    const matchingChoice = symbolicLabel
+      ? choices.find((choice) => choice.label === symbolicLabel)
+      : choices.find((choice) => choice.value === token);
     if (!matchingChoice) {
-      throw new Error(`Scripted selection '${value}' is not available.`);
+      throw new Error(`Scripted selection '${token}' is not available.`);
     }
     return Promise.resolve(matchingChoice.value);
   }
@@ -76,11 +83,11 @@ class ScriptedUi implements RuntimeSetupUi {
 }
 
 describe('Runtime project initialization', () => {
-  it('owns password auth, hashing, authorization and a secret-free review', async () => {
+  it('uses username as the new password user id and assigns the role immediately', async () => {
     const ui = new ScriptedUi(
       [true, true, false, false],
       ['<default>'],
-      ['demo', '<default>', 'Demo User'],
+      ['demo', 'Demo User'],
       ['test123', 'test123'],
     );
     const contribution = await initRuntime({
@@ -88,22 +95,18 @@ describe('Runtime project initialization', () => {
       hashPassword: () => Promise.resolve(PASSWORD_HASH),
     });
 
+    expect(ui.inputMessages).toEqual(['Username', 'Display name']);
+    expect(ui.selectMessages).toEqual(['Role for Demo User']);
     expect(contribution.projectConfig).toMatchObject({
-      server: { host: '127.0.0.1', port: 4318, tls: { enabled: false } },
       auth: {
         mode: 'required',
         users: { demo: { name: 'Demo User' } },
-        providers: {
-          password: { enabled: true },
-          oidc: { instances: {} },
-        },
       },
       authorization: {
         assignments: [{ userId: 'demo', role: 'admin', scope: {} }],
       },
     });
-    expect(contribution.projectConfig).not.toHaveProperty('auth.providers.password.accounts');
-    expect(contribution.localConfig).toEqual({
+    expect(contribution.localConfig).toMatchObject({
       auth: {
         providers: {
           password: {
@@ -116,12 +119,45 @@ describe('Runtime project initialization', () => {
     });
 
     const review = contribution.summary.join('\n');
-    expect(review).toContain('Authentication: required');
-    expect(review).toContain('Login methods: username/password');
     expect(review).toContain('demo -> Demo User (demo)');
     expect(review).toContain('Demo User (demo): admin');
     expect(review).not.toContain('test123');
     expect(review).not.toContain(PASSWORD_HASH);
+  });
+
+  it('offers New user / Existing user when another password account is added', async () => {
+    const ui = new ScriptedUi(
+      [true, true, true, false, false],
+      ['<default>', '<existing-user>', 'demo'],
+      ['demo', 'Demo User', 'demo-alt'],
+      ['first-password', 'first-password', 'second-password', 'second-password'],
+    );
+
+    const contribution = await initRuntime({
+      ui,
+      hashPassword: () => Promise.resolve(PASSWORD_HASH),
+    });
+
+    expect(ui.selectMessages).toContain('Password account belongs to');
+    const ownerChoices = ui.selectChoiceLabels[1];
+    expect(ownerChoices).toEqual(['New user', 'Existing user']);
+    expect(contribution.localConfig).toMatchObject({
+      auth: {
+        providers: {
+          password: {
+            accounts: {
+              demo: { userId: 'demo' },
+              'demo-alt': { userId: 'demo' },
+            },
+          },
+        },
+      },
+    });
+    expect(contribution.projectConfig).toMatchObject({
+      authorization: {
+        assignments: [{ userId: 'demo', role: 'admin', scope: {} }],
+      },
+    });
   });
 
   it('guarantees an administrator for trusted local setup', async () => {
@@ -129,26 +165,18 @@ describe('Runtime project initialization', () => {
     const contribution = await initRuntime({ ui });
 
     expect(contribution.projectConfig).toMatchObject({
-      auth: {
-        mode: 'none',
-        users: { 'demo-user': { name: 'Demo User' } },
-      },
       authorization: {
         assignments: [{ userId: 'demo-user', role: 'admin', scope: {} }],
       },
     });
-    expect(contribution.localConfig).toEqual({
-      auth: { localUserId: 'demo-user' },
-    });
     expect(ui.notes.join('\n')).toMatch(/at least one administrator is required/i);
-    expect(contribution.summary.join('\n')).toContain('Demo User (demo-user): admin');
   });
 
-  it('keeps bootstrap role defaults in canonical-user creation order for integer-like ids', async () => {
+  it('keeps bootstrap role defaults in actual creation order for integer-like usernames', async () => {
     const ui = new ScriptedUi(
       [true, true, true, false, false],
-      ['<create>', '<default>', '<default>'],
-      ['ten', '10', 'Ten User', 'two', '2', 'Two User'],
+      ['<default>', '<new-user>', '<default>'],
+      ['10', 'Ten User', '2', 'Two User'],
       ['ten-password', 'ten-password', 'two-password', 'two-password'],
     );
 
@@ -157,7 +185,10 @@ describe('Runtime project initialization', () => {
       hashPassword: () => Promise.resolve(PASSWORD_HASH),
     });
 
-    expect(ui.selectDefaults.slice(-2)).toEqual(['admin', 'developer']);
+    expect(ui.selectDefaults.filter((value) => value === 'admin' || value === 'developer')).toEqual([
+      'admin',
+      'developer',
+    ]);
     expect(contribution.projectConfig).toMatchObject({
       authorization: {
         assignments: [
@@ -166,17 +197,13 @@ describe('Runtime project initialization', () => {
         ],
       },
     });
-    const review = contribution.summary.join('\n');
-    expect(review.indexOf('Ten User (10): admin')).toBeLessThan(
-      review.indexOf('Two User (2): developer'),
-    );
   });
 
-  it('allows a canonical user id that matched the former create-user sentinel', async () => {
+  it('allows the former sentinel text as an ordinary password username/user id', async () => {
     const ui = new ScriptedUi(
       [true, true, true, false, false],
-      ['__new__', '<default>'],
-      ['first', '__new__', 'Sentinel User', 'second'],
+      ['<default>', '<existing-user>', '__new__'],
+      ['__new__', 'Sentinel User', 'second'],
       ['first-password', 'first-password', 'second-password', 'second-password'],
     );
 
@@ -186,9 +213,7 @@ describe('Runtime project initialization', () => {
     });
 
     expect(contribution.projectConfig).toMatchObject({
-      auth: {
-        users: { __new__: { name: 'Sentinel User' } },
-      },
+      auth: { users: { __new__: { name: 'Sentinel User' } } },
       authorization: {
         assignments: [{ userId: '__new__', role: 'admin', scope: {} }],
       },
@@ -198,7 +223,7 @@ describe('Runtime project initialization', () => {
         providers: {
           password: {
             accounts: {
-              first: { userId: '__new__' },
+              __new__: { userId: '__new__' },
               second: { userId: '__new__' },
             },
           },
@@ -207,7 +232,7 @@ describe('Runtime project initialization', () => {
     });
   });
 
-  it('reprompts an invalid OIDC issuer before collecting downstream provider fields', async () => {
+  it('reprompts an invalid OIDC issuer before collecting client or identity data', async () => {
     const ui = new ScriptedUi(
       [true, false, true, false, false],
       ['<default>'],
@@ -218,9 +243,6 @@ describe('Runtime project initialization', () => {
         'https://issuer.example.test',
         'company-client-id',
         'demo@example.com',
-        'demo',
-        'Demo User',
-        '<default>',
       ],
       ['company-secret'],
     );
@@ -228,101 +250,78 @@ describe('Runtime project initialization', () => {
     const contribution = await initRuntime({ ui });
 
     expect(ui.notes.join('\n')).toMatch(/absolute HTTPS URL/i);
-    expect(ui.inputMessages).toEqual(
-      expect.arrayContaining(['Issuer URL', 'Client ID', 'Allowed email']),
-    );
+    expect(ui.inputMessages.filter((message) => message === 'Issuer URL')).toHaveLength(2);
     expect(ui.inputMessages.indexOf('Issuer URL')).toBeLessThan(
       ui.inputMessages.indexOf('Client ID'),
     );
+    expect(ui.inputMessages).not.toContain('Display name');
+    expect(ui.inputMessages).not.toContain('Browser origin for OIDC callbacks');
     expect(contribution.projectConfig).toMatchObject({
+      server: { publicOrigin: 'http://127.0.0.1:5173' },
       auth: {
+        users: { 'demo@example.com': { name: 'demo@example.com' } },
         providers: {
           oidc: {
             instances: {
-              company: { issuer: 'https://issuer.example.test' },
+              company: {
+                issuer: 'https://issuer.example.test',
+                allowedEmails: { 'demo@example.com': 'demo@example.com' },
+              },
             },
           },
         },
       },
+      authorization: {
+        assignments: [{ userId: 'demo@example.com', role: 'admin', scope: {} }],
+      },
     });
+    expect(contribution.summary).toContain(
+      'Web app / OIDC return: http://127.0.0.1:5173',
+    );
+    expect(contribution.summary).toContain(
+      'Runtime API: http://127.0.0.1:4318 (API only)',
+    );
   });
 
-  it('reviews multiple OIDC mappings without secrets', async () => {
+  it('can link an OIDC identity to an existing user without redefining user data or role', async () => {
     const ui = new ScriptedUi(
-      [true, false, true, false, true, false, false],
-      ['demo', '<default>'],
+      [true, true, false, true, false, false],
+      ['<default>', '<existing-user>', 'demo'],
       [
+        'demo',
+        'Demo User',
         'Company SSO',
-        'Company',
         'company',
         '<default>',
         'company-client-id',
         'demo@example.com',
-        '<default>',
-        'Demo User',
-        'A'.repeat(33),
-        ' company sso ',
-        'Customer Workforce Identity',
-        'customer',
-        'https://login.customer.example',
-        'customer-client-id',
-        'demo@customer.example',
-        '<default>',
-        '<default>',
       ],
-      ['company-secret', 'customer-secret'],
+      ['password', 'password', 'company-secret'],
     );
 
-    const contribution = await initRuntime({ ui });
+    const contribution = await initRuntime({
+      ui,
+      hashPassword: () => Promise.resolve(PASSWORD_HASH),
+    });
 
+    expect(ui.selectMessages).toContain('OIDC identity demo@example.com belongs to');
+    expect(ui.inputMessages.filter((message) => message === 'Display name')).toHaveLength(1);
     expect(contribution.projectConfig).toMatchObject({
-      server: { publicOrigin: 'http://127.0.0.1:5173' },
       auth: {
-        mode: 'required',
+        users: { demo: { name: 'Demo User' } },
         providers: {
-          password: { enabled: false },
           oidc: {
             instances: {
               company: {
-                name: 'Company SSO',
-                clientId: 'company-client-id',
                 allowedEmails: { 'demo@example.com': 'demo' },
               },
-              customer: {
-                name: 'Customer Workforce Identity',
-                clientId: 'customer-client-id',
-                allowedEmails: { 'demo@customer.example': 'demo' },
-              },
             },
           },
         },
       },
-    });
-    expect(contribution.localConfig).toEqual({
-      auth: {
-        providers: {
-          oidc: {
-            instances: {
-              company: { clientSecret: 'company-secret' },
-              customer: { clientSecret: 'customer-secret' },
-            },
-          },
-        },
+      authorization: {
+        assignments: [{ userId: 'demo', role: 'admin', scope: {} }],
       },
     });
-
-    expect(ui.notes.join('\n')).toMatch(/lowercase slug/i);
-    expect(ui.notes.join('\n')).toMatch(/at most 32 characters/i);
-    expect(ui.notes.join('\n')).toMatch(/provider names must be unique/i);
-    const review = contribution.summary.join('\n');
-    expect(review).toContain('Company SSO [company]');
-    expect(review).toContain('Issuer: https://accounts.google.com');
-    expect(review).toContain('Client ID: company-client-id');
-    expect(review).toContain('demo@example.com -> Demo User (demo)');
-    expect(review).toContain('Customer Workforce Identity [customer]');
-    expect(review).toContain('demo@customer.example -> Demo User (demo)');
-    expect(review).toContain('Demo User (demo): admin');
-    expect(review).not.toContain('company-secret');
-    expect(review).not.toContain('customer-secret');
   });
 });

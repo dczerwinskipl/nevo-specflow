@@ -294,7 +294,7 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
         }, 10_000);
 
         const onData = () => {
-          if (stdout.includes(`Runtime listening at http://127.0.0.1:${port}`)) {
+          if (stdout.includes(`Runtime API listening at http://127.0.0.1:${port}`)) {
             clearTimeout(timeout);
             childStdout.off('data', onData);
             resolve();

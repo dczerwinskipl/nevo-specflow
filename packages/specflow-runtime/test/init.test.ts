@@ -7,7 +7,7 @@ const PASSWORD_HASH =
 
 class ScriptedUi implements RuntimeSetupUi {
   readonly notes: string[] = [];
-  readonly selectDefaults: Array<string | undefined> = [];
+  readonly selectDefaults: (string | undefined)[] = [];
 
   constructor(
     private readonly confirmations: boolean[],

@@ -7,7 +7,7 @@ export { OIDC_PROVIDER_ID_MAX_LENGTH, OIDC_PROVIDER_NAME_MAX_LENGTH };
 
 export function isValidOidcProviderId(value: string): boolean {
   if (value.length === 0 || value.length > OIDC_PROVIDER_ID_MAX_LENGTH) return false;
-  if (value[0] === '-' || value[value.length - 1] === '-') return false;
+  if (value.startsWith('-') || value.endsWith('-')) return false;
 
   for (const char of value) {
     const isAsciiLetter = char >= 'a' && char <= 'z';

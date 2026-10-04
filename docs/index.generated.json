@@ -50,7 +50,7 @@
         "changing Runtime authentication or authorization",
         "deciding where identity, roles, capabilities, or access checks belong"
       ],
-      "summary": "Entry point for SpecFlow Runtime authentication and authorization architecture. Authentication resolves provider credentials to a canonical user identity; authorization resolves scoped capabilities for that identity.",
+      "summary": "Entry point for SpecFlow Runtime authentication and authorization architecture. Authentication resolves password accounts, named OIDC instances, or trusted local attribution to canonical users; authorization independently resolves scoped capabilities for those users.",
       "related": [
         "architecture.runtime.ownership-and-lifecycle",
         "architecture.runtime.authorization",
@@ -704,7 +704,7 @@
         "deciding whether UI code belongs in the product app or Nevo UI",
         "changing the product shell or brand composition"
       ],
-      "summary": "The SpecFlow UI composition root, routing and screen ownership, reusable Nevo UI boundary, and the intentionally minimal foundation screens.",
+      "summary": "The SpecFlow UI composition root, routing and authentication boundary, reusable Nevo UI boundary, and the intentionally minimal foundation screens.",
       "related": [
         "design-system.principles.system-boundary",
         "design-system.implementation.ownership-and-tooling",

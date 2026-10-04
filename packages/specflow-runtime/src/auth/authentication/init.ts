@@ -260,11 +260,7 @@ function providerIdFromName(name: string): string {
       continue;
     }
 
-    if (
-      separatorPending &&
-      result.length > 0 &&
-      result.length + 1 < OIDC_PROVIDER_ID_MAX_LENGTH
-    ) {
+    if (separatorPending && result.length > 0 && result.length + 1 < OIDC_PROVIDER_ID_MAX_LENGTH) {
       result += '-';
     }
 

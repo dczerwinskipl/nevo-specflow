@@ -1,4 +1,6 @@
 @import '@nevo/ui/styles.css';
+@import 'tailwindcss/utilities.css' layer(utilities);
+@reference '../../../packages/nevo-ui/src/design-system.css';
 @source '../../../packages/nevo-ui/src';
 @source '../../../packages/specflow-ui/src';
 @source '../../../examples';

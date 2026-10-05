@@ -153,6 +153,20 @@ content axis.
 ## 8. Screen anatomy
 
 - Workspace header: Specs.
+- Screen and row action triggers use compact ellipses with accessible names, not visible labels.
+  Opening replaces the visible ellipsis with a compact context heading in the same anchored surface:
+  `Specs` for screen actions and the Spec key (or title fallback) for row actions. Items expand below
+  that heading; there is no separate ellipsis above the expanded menu, generic `Actions` heading,
+  or Close control. The surface sizes to its content and grows from the trigger footprint, without
+  moving the underlying list. Outside click and Escape dismiss it and restore the ellipsis.
+  Each action has an icon and text; the shared OverflowMenu owns reveal motion and reduced motion.
+- Dominant attention summaries have one passive leading icon: conversation for input/decision,
+  document inspection for review, warning only for explicit blockage. `attentionReason` is an
+  optional semantic projection field, never inferred from label text. Unknown attention reasons
+  use the conversation cue; agent-remediable issues use a quiet information cue.
+- Header overflow includes Create session with a conversation-plus icon. The application owner
+  supplies the common Session-start intent; without that capability the entry is disabled.
+  This does not implement a private composer or fabricate a Session in presentation state.
 - Collection control: Active / Archive.
 - compact Search Specs control when the collection is large enough that scanning/grouping alone is
   insufficient; Archive should expect this earlier than Active because it grows monotonically.

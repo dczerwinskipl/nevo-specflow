@@ -39,7 +39,7 @@ function ProductNavigation({
 
   const navigationNodes = useMemo<readonly NavigationNode<NavigationTarget>[]>(
     () => [
-      { key: 'home', label: t('navigation.home'), target: { to: '/' } },
+      { key: 'specs', label: t('navigation.specs'), target: { to: '/' } },
       {
         key: 'ui-playground',
         label: t('navigation.uiPlayground'),

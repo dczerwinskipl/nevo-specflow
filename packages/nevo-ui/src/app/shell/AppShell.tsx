@@ -208,7 +208,7 @@ export function AppShell({
                   <WorkspaceSurface
                     as="main"
                     className={cn(
-                      'mt-4 h-[calc(100%-1rem)] w-max min-w-0 max-w-[calc(100%-var(--app-navigation-width)-var(--app-shell-gap))] flex-none overflow-hidden rounded-tl-surface border-t border-l border-workspace-edge',
+                      'mt-4 h-[calc(100%-1rem)] w-max has-[[data-workspace-fit=available]]:w-full min-w-0 max-w-[calc(100%-var(--app-navigation-width)-var(--app-shell-gap))] flex-none overflow-hidden rounded-tl-surface border-t border-l border-workspace-edge',
                       workspaceIsInset && 'rounded-tr-surface border-r',
                     )}
                     data-app-shell-region="workspace"

@@ -12,10 +12,15 @@ import { createAuthStore, type AuthStore } from '../auth/store';
 import { LoginScreen, safeReturnTo } from '../auth/LoginScreen';
 import { RuntimeUnavailableScreen } from '../auth/RuntimeUnavailableScreen';
 import { SpecFlowShell } from './SpecFlowShell';
-import { HomeScreen, UiPlaygroundScreen } from './screens';
+import { UiPlaygroundScreen } from './screens';
+import { SpecsOverview } from '../features/specs/overview/SpecsOverview';
+import { useSpecsOverview } from '../features/specs/overview/useSpecsOverview';
+import { defaultSpecsSource } from '../features/specs/overview/source';
+import type { SpecsOverviewSource } from '../features/specs/overview/model';
 
 export interface SpecFlowRouterContext {
   readonly auth: AuthStore;
+  readonly specs: SpecsOverviewSource;
 }
 
 export type AppAccessDecision =
@@ -92,10 +97,13 @@ const appRoute = createRoute({
   component: AppRouteLayout,
 });
 
-const homeRoute = createRoute({
+const specsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/',
-  component: HomeScreen,
+  validateSearch: (search: Record<string, unknown>) => ({
+    collection: search.collection === 'archive' ? ('archive' as const) : ('active' as const),
+  }),
+  component: SpecsRouteScreen,
 });
 
 const uiPlaygroundRoute = createRoute({
@@ -107,15 +115,34 @@ const uiPlaygroundRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   loginRoute,
   runtimeUnavailableRoute,
-  appRoute.addChildren([homeRoute, uiPlaygroundRoute]),
+  appRoute.addChildren([specsRoute, uiPlaygroundRoute]),
 ]);
 
-export function createSpecFlowRouter(history?: RouterHistory, auth: AuthStore = createAuthStore()) {
+export function createSpecFlowRouter(
+  history?: RouterHistory,
+  auth: AuthStore = createAuthStore(),
+  specs: SpecsOverviewSource = defaultSpecsSource(),
+) {
   return createRouter({
     routeTree,
-    context: { auth },
+    context: { auth, specs },
     ...(history ? { history } : {}),
   });
+}
+
+function SpecsRouteScreen() {
+  const { specs } = specsRoute.useRouteContext();
+  const { collection } = specsRoute.useSearch();
+  const navigate = specsRoute.useNavigate();
+  const { state, refresh } = useSpecsOverview(specs, collection);
+  return (
+    <SpecsOverview
+      state={state}
+      onRefresh={refresh}
+      sample={specs.sample}
+      onCollectionChange={(value) => void navigate({ search: { collection: value } })}
+    />
+  );
 }
 
 export const router = createSpecFlowRouter();

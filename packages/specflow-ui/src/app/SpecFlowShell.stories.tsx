@@ -10,6 +10,7 @@ import { StoryLocalization } from '../i18n/StoryLocalization';
 import type { AuthApi } from '../auth/api';
 import { createAuthStore } from '../auth/store';
 import { createSpecFlowRouter } from './router';
+import { createSpecsFixture } from '../features/specs/overview/fixtures';
 
 type AuthMode =
   'local' | 'required' | 'authenticated' | 'authenticated-refresh-failure' | 'unavailable';
@@ -28,6 +29,7 @@ function RoutedApplication({
       createSpecFlowRouter(
         createMemoryHistory({ initialEntries: [path] }),
         storyAuthStore(authMode),
+        { sample: true, read: (collection) => Promise.resolve(createSpecsFixture(collection)) },
       ),
     [authMode, path],
   );
@@ -47,7 +49,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Home: Story = {};
+export const Specs: Story = {};
 export const Playground: Story = { args: { path: '/ui-playground' } };
 export const AuthenticationRequired: Story = { args: { authMode: 'required' } };
 export const AlreadyAuthenticatedLogin: Story = {
@@ -227,7 +229,7 @@ export const FigmaCapture: Story = {
     designCapture: {
       component: 'SpecFlowApplicationShell',
       title: 'Nevo SpecFlow — Application shell',
-      description: 'Initial desktop application shell with Home selected',
+      description: 'Desktop application shell with Specs selected',
       kind: 'screen',
       order: 200,
     },

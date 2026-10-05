@@ -368,6 +368,16 @@ export const NarrowSurfaceContract: Story = {
     }, 'The workspace should stack below the 840px threshold.');
     const activeSurface = layout.querySelector<HTMLElement>('[data-header-covered]:not(.hidden)');
     assert(activeSurface, 'The stacked workspace should expose one active surface.');
+    const floatingControl = activeSurface.querySelector<HTMLElement>(
+      '.mobile-floating-navigation > button',
+    );
+    assert(floatingControl, 'The narrow surface should expose floating navigation.');
+    const floatingStyle = getComputedStyle(floatingControl);
+    assert(
+      floatingStyle.backgroundColor !== 'rgba(0, 0, 0, 0)' &&
+        floatingStyle.backdropFilter !== 'none',
+      'Floating controls should retain a translucent surface and backdrop blur above content.',
+    );
     assert(
       Math.abs(
         activeSurface.getBoundingClientRect().width - workspace.getBoundingClientRect().width,

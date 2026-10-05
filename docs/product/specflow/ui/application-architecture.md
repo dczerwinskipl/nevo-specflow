@@ -44,8 +44,27 @@ being treated as an unauthenticated user.
 
 The current product routes under the guarded layout remain:
 
-- `/` for the foundation home screen;
+- `/` for the read-only Specs Overview (`?collection=active|archive`);
 - `/ui-playground` for a product-owned component/workspace integration screen.
+
+## Specs Overview increment
+
+`src/features/specs/overview/` owns the typed collection projection, product steering rows,
+Active/Archive presentation, collection search, and loading/refresh/error composition. The
+screen follows the [Specs Overview contract](../../../ideas/specflow-ui/screens/specs-overview-ui-spec.md)
+and its shared steering contract. Signal priority, concrete targets, human attention, and current
+execution membership are supplied by the projection, not reconstructed from workflow lifecycle.
+
+`SpecsOverviewSource` is the transport seam; its reader is abortable and scoped to the selected
+collection. Refresh retains the last valid snapshot on failure, while a collection switch hides
+the previous collection immediately and ignores late results. No Runtime Specs endpoint is
+invented by this increment. Without a configured source the product displays an explicit
+unavailable state. Development builds can opt into deterministic sample projections using
+`VITE_SPECFLOW_SAMPLE_DATA=true`; the sample is labelled and does not bypass Runtime authentication.
+
+The app intentionally does not expose creation or destination navigation before those capabilities
+exist. Product-level stories exercise distinct Specification/Task/Session intent through the
+`onOpenTarget` seam. The actual sample preview renders passive rows and explains this boundary.
 
 The login and Runtime-recovery screens are product-owned compositions on Nevo UI's
 `StandaloneShell`. That shared shell owns the navigation-free application frame: AppBackground,

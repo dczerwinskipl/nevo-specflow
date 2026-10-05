@@ -1,2 +1,4 @@
 @import '@nevo/ui/styles.css';
+@import 'tailwindcss/utilities.css' layer(utilities);
+@reference '../../nevo-ui/src/design-system.css';
 @source './';

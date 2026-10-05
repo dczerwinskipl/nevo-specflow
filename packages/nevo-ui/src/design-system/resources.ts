@@ -6,6 +6,7 @@ export const iconNames = [
   'close',
   'loader',
   'file',
+  'file-search',
   'branch',
   'chevron-right',
   'chevron-down',
@@ -21,6 +22,7 @@ export const iconNames = [
   'menu',
   'ellipsis',
   'chat',
+  'chat-plus',
   'minimize',
   'open-full',
   'info',
@@ -32,6 +34,7 @@ export const iconNames = [
   'list-checks',
   'settings',
   'log-out',
+  'refresh',
 ] as const;
 
 export const iconSizes = ['sm', 'md'] as const;

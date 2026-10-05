@@ -104,8 +104,9 @@ Per Spec item:
 3. one bounded secondary line with progress, one dominant aggregate state summary, and at most one
    materially useful concurrent qualifier.
 
-Attention priority should favor facts that prove the human is blocking useful progress. A live
-Session interaction waiting for response is normally stronger than a passive ready-to-start action.
+Cross-group priority is `attention > ready > working > quiet`. Inside Requires attention, ordering
+should favor facts that prove the human is blocking useful progress; a live Session interaction
+waiting for response is normally stronger than a passive approval request.
 
 Do not duplicate one Spec across several stacked list groups. One dominant semantic group owns the
 row. A lower-priority concurrent state may contribute at most one bounded, non-interactive qualifier

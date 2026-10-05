@@ -123,11 +123,6 @@ export const Polish: Story = {
 export const Mobile: Story = {
   args: { loginMethods: mixed },
   parameters: { viewport: { defaultViewport: 'mobile1' } },
-};
-
-export const SmallMobileMixedMethods: Story = {
-  args: { loginMethods: mixed },
-  parameters: { viewport: { defaultViewport: 'mobile1' } },
   play: ({ canvasElement }) => {
     assertStandaloneAuthLayout(canvasElement);
     assert(

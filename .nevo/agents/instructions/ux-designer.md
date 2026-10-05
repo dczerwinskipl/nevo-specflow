@@ -12,7 +12,7 @@ For repeated components, state which geometry is owned by the pattern instead of
 
 Define what must remain visually invariant across states. Repeated rows/items should normally keep the same skeleton, title/metadata hierarchy, alignment, and interaction model while state changes content and semantic emphasis. Avoid state-specific mini-layouts that make users reconstruct the row structure for every item.
 
-Define the **affordance budget** explicitly. If the row is the primary interactive surface, ordinary status/metadata prose must not accidentally become competing links. Allow nested interactive controls only when they have a distinct, intentional destination or action and can remain visually subordinate.
+Define the **affordance budget** explicitly. If the row is the primary interactive surface, ordinary status/metadata prose must not accidentally become competing links. Allow nested interactive controls only when they have a distinct, intentional destination or action and can remain visually subordinate. When whole-row navigation coexists with selection or nested controls, define a valid semantic DOM/focus contract: interactive elements must be siblings rather than illegally nested, and activating a nested control must not also trigger the row target.
 
 Specify wrapping and collapse deliberately. Keep logically related information on one line while useful space exists, then allow a predictable wrap or stack at smaller widths. Prefer a flexible primary content area with compact optional metadata over arbitrary fixed column splits that waste space or squeeze titles. Also validate wide and ultra-wide layouts so trailing metadata does not drift so far from its title that horizontal relationships become unclear.
 
@@ -23,6 +23,7 @@ Use realistic examples, including long titles, dense source data that must be re
 When a visual reference or mock exists, extract and preserve the structural reasons it works rather than copying decoration blindly. Record deliberate deviations. If the product semantics, architecture, design-system guidance, or reference material conflict, report the conflict instead of resolving it silently.
 
 At handoff, leave the implementer with:
+
 1. design invariants;
 2. a bounded presentation/component API where it can enforce those invariants;
 3. layout/alignment rules;

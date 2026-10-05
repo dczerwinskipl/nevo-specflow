@@ -121,16 +121,14 @@ export const PasswordAndOidc: Story = {
 
     const rootRect = root.getBoundingClientRect();
     const surfaceRect = surface.getBoundingClientRect();
+    const centerDelta = Math.abs(
+      surfaceRect.left + surfaceRect.width / 2 - (rootRect.left + rootRect.width / 2),
+    );
     assert(
       surfaceRect.width <= 449,
       `Desktop auth surface should remain compact; received ${surfaceRect.width}px.`,
     );
-    assert(
-      Math.abs(
-        surfaceRect.left + surfaceRect.width / 2 - (rootRect.left + rootRect.width / 2),
-      ) <= 2,
-      'Desktop auth surface must remain horizontally centered.',
-    );
+    assert(centerDelta <= 2, 'Desktop auth surface must remain horizontally centered.');
   },
 };
 

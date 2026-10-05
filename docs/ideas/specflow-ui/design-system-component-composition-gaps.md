@@ -271,8 +271,8 @@ SpecAttentionAggregate
 
 Responsibilities:
 
-- show one dominant attention/ready/working/quiet group while preserving materially important
-  concurrent meaning through a bounded aggregate qualifier;
+- show one dominant Requires attention / In progress / Ready-or-idle group while preserving
+  materially important concurrent meaning through a bounded aggregate qualifier;
 - keep the whole Spec row as the stable navigation target to Specification;
 - keep ordinary row status/reason prose non-interactive;
 - expose concrete Task/evidence/action context after entering the Specification rather than

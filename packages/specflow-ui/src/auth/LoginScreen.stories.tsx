@@ -59,6 +59,26 @@ function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
+function assertStandaloneAuthLayout(canvasElement: HTMLElement) {
+  const selector = canvasElement.querySelector<HTMLElement>(
+    '[data-auth-layout="language-selector"]',
+  );
+  const surface = canvasElement.querySelector<HTMLElement>('[data-auth-layout="surface"]');
+  const root = canvasElement.querySelector<HTMLElement>('[data-auth-layout="root"]');
+  assert(selector && surface && root, 'Standalone auth layout regions must be present.');
+
+  const selectorRect = selector.getBoundingClientRect();
+  const surfaceRect = surface.getBoundingClientRect();
+  assert(
+    selectorRect.bottom <= surfaceRect.top,
+    'Locale selector must remain above the authentication surface without overlap.',
+  );
+  assert(
+    root.scrollWidth <= root.clientWidth + 1,
+    'Standalone auth layout must not introduce horizontal overflow on small screens.',
+  );
+}
+
 export const PasswordOnly: Story = { args: { loginMethods: passwordOnly } };
 export const SingleOidc: Story = { args: { loginMethods: singleOidc } };
 export const MultipleOidc: Story = { args: { loginMethods: multipleOidc } };
@@ -103,6 +123,18 @@ export const Polish: Story = {
 export const Mobile: Story = {
   args: { loginMethods: mixed },
   parameters: { viewport: { defaultViewport: 'mobile1' } },
+};
+
+export const SmallMobileMixedMethods: Story = {
+  args: { loginMethods: mixed },
+  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  play: ({ canvasElement }) => {
+    assertStandaloneAuthLayout(canvasElement);
+    assert(
+      canvasElement.querySelectorAll('button').length >= 4,
+      'Small mobile login should render both OIDC actions, password submit, and locale control.',
+    );
+  },
 };
 
 export const MobileLongOidcName: Story = {

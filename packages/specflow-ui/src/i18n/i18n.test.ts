@@ -31,6 +31,17 @@ describe('SpecFlow localization', () => {
     expect(messageKeys(pl)).toEqual(messageKeys(en));
   });
 
+  it('keeps interpolation placeholders aligned across locale catalogs', () => {
+    const englishMessages = messageEntries(en);
+    const polishMessages = messageEntries(pl);
+
+    for (const [key, englishMessage] of Object.entries(englishMessages)) {
+      expect(interpolationPlaceholders(polishMessages[key] ?? '')).toEqual(
+        interpolationPlaceholders(englishMessage),
+      );
+    }
+  });
+
   it('loads independent English and Polish JSON catalogs', () => {
     expect(createSpecFlowI18n('en').t('auth.login.title')).toBe('Welcome back');
     expect(createSpecFlowI18n('pl').t('auth.login.title')).toBe('Witaj ponownie');
@@ -54,5 +65,22 @@ function messageKeys(value: unknown, prefix = ''): string[] {
 
   return Object.entries(value)
     .flatMap(([key, nested]) => messageKeys(nested, prefix ? `${prefix}.${key}` : key))
+    .sort();
+}
+
+function messageEntries(value: unknown, prefix = ''): Record<string, string> {
+  if (typeof value === 'string') return { [prefix]: value };
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return {};
+
+  return Object.fromEntries(
+    Object.entries(value).flatMap(([key, nested]) =>
+      Object.entries(messageEntries(nested, prefix ? `${prefix}.${key}` : key)),
+    ),
+  );
+}
+
+function interpolationPlaceholders(message: string): string[] {
+  return [...message.matchAll(/{{\s*([A-Za-z0-9_.-]+)\s*}}/gu)]
+    .map((match) => match[1] ?? '')
     .sort();
 }

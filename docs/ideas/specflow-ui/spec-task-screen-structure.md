@@ -160,17 +160,16 @@ Other active
   Spec F        Agent remediation available
 ```
 
-This is a structural example, not a requirement to render literal grouped sections.
+This is the current structural contract for Specs Overview: Active Specs use grouped sections.
+The exact visual treatment of the headers remains a design concern, but flattening these groups is
+not an implementation-level alternative.
 
-The important rule is that **attention, ready, and working remain perceptibly different**.
+The important rule is that **attention, ready, working, and quiet remain perceptibly different**.
 
 A Specification can carry concurrent signals, for example one Task may require review while another
-Task is currently being executed. If the screen uses mutually exclusive groups, place the Spec by
-its highest-priority human-facing signal and preserve the other meaningful signals inside the item;
-do not silently discard them. Avoid duplicating the same Spec across several groups unless the UI is
-deliberately presenting independent projections rather than one canonical work queue.
-
-A flat list is still valid if the sort, labels, and hierarchy communicate those categories clearly.
+Task is currently being executed. Place the Spec in the group selected by its highest-priority
+human-facing signal and reduce the remaining meaningful signals into the bounded aggregate summary
+defined by the steering-row contract. Do not duplicate the same Spec across several groups.
 
 ## 3.3 Minimum information per Spec item
 

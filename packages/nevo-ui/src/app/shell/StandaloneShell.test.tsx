@@ -28,10 +28,7 @@ describe('StandaloneShell', () => {
   it('exposes deterministic design slots without owning product copy', () => {
     const html = renderToStaticMarkup(
       <DesignCaptureProvider captureComponents={['StandaloneShell']}>
-        <StandaloneShell
-          desktopHeader={<span>Desktop</span>}
-          mobileHeader={<span>Mobile</span>}
-        >
+        <StandaloneShell desktopHeader={<span>Desktop</span>} mobileHeader={<span>Mobile</span>}>
           Body
         </StandaloneShell>
       </DesignCaptureProvider>,

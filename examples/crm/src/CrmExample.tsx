@@ -178,7 +178,7 @@ function CrmNavigation() {
 
   return (
     <div
-      className="flex h-full min-h-0 flex-col"
+      className="flex min-h-0 flex-1 flex-col"
       style={{ paddingInline: APP_NAVIGATION_INLINE_PADDING }}
     >
       <div className="border-b border-border-subtle py-5">

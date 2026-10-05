@@ -80,7 +80,7 @@ function messageEntries(value: unknown, prefix = ''): Record<string, string> {
 }
 
 function interpolationPlaceholders(message: string): string[] {
-  return [...message.matchAll(/{{\s*([A-Za-z0-9_.-]+)\s*}}/gu)]
+  return [...message.matchAll(/\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}/gu)]
     .map((match) => match[1] ?? '')
     .sort();
 }

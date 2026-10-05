@@ -46,6 +46,26 @@ Primary / secondary / tertiary must be distinguishable at a glance. Repetition r
 emphasis — the tenth identical badge carries less signal than the first, so compress
 repeated content rather than repeating a heavy treatment.
 
+## Stable composition and repeated structures
+
+Repeated collections need a stable visual grammar. Before implementing a repeated row/item pattern,
+define the repeated unit, dominant scan direction, alignment anchors/content start, primary/secondary
+line hierarchy, metadata budget, and responsive wrap/collapse rules. These are screen/pattern
+invariants, not per-state implementation choices.
+
+Items belonging to the same collection should preserve the same skeleton across states unless their
+meaning genuinely requires a different structure. State can change copy, actions, and semantic
+emphasis; it should not arbitrarily move the title, introduce a new column, change indentation, or
+turn one item into a mini-dashboard while its neighbors remain rows.
+
+Keep logically related content inline while useful space exists. Responsive layouts should wrap or
+stack under actual pressure, not because an arbitrary fixed split reserves empty space elsewhere.
+Optional metadata should normally size to content while the primary information remains flexible.
+
+When an approved screen contract or visual reference defines these invariants, implementation should
+preserve them. Material deviations belong in the owning product UX contract, not as one-off CSS
+decisions.
+
 ## Typography
 
 Use **semantic typography tokens** (role-named: heading, body, label, metadata,
@@ -149,4 +169,6 @@ rather than saying only that "desktop and mobile were checked".
 
 Raw font-size/colour values in components; borders substituting for hierarchy; promoting
 technical inspection data to the summary level; treating "fits on screen" as "belongs on
-screen"; verifying UI from source instead of a rendered surface.
+screen"; state-specific bespoke row geometry; arbitrary fixed column splits for optional metadata;
+premature wrapping that leaves useful width empty; verifying UI from source instead of a rendered
+surface.

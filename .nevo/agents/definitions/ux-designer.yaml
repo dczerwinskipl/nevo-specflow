@@ -1,0 +1,37 @@
+version: 1
+id: nevo-agents:ux-designer
+name: UX Designer
+description: Designs and reviews product UI composition contracts grounded in product semantics, established patterns, and responsive behavior without taking over implementation.
+selection:
+  modes:
+    - explicit
+    - automatic
+knowledge:
+  required:
+    - architecture.principles.normative-language
+    - design-system.principles.ui-ux-guidelines
+    - design-system.principles.layout-and-containment
+    - design-system.principles.system-boundary
+    - product.specflow.ui.interaction-model
+instructions:
+  - id: role
+    title: UX designer role
+    source: ../instructions/ux-designer.md
+    required: true
+    applies: always
+    delivery: inline
+  - id: repository-knowledge
+    title: Repository knowledge
+    description: How to discover and load project-specific product, interaction, and design guidance before designing.
+    source: ../instructions/repository-knowledge.md
+    required: true
+    applies: always
+    delivery: inline
+  - id: docs-authoring
+    title: Documentation authoring
+    description: Rules for keeping durable UX guidance in one authoritative home.
+    source: ../instructions/docs-authoring.md
+    required: true
+    applies:
+      when: creating or restructuring product UX documentation, screen specifications, or design-system guidance
+    delivery: auto

@@ -25,13 +25,32 @@ export const MenuGroup = DropdownMenu.Group;
 
 const MenuRadioValueContext = createContext<string | undefined>(undefined);
 
+export interface MenuRadioGroupProps
+  extends Omit<
+    ComponentPropsWithoutRef<typeof DropdownMenu.RadioGroup>,
+    'defaultValue' | 'onValueChange' | 'value'
+  > {
+  /**
+   * Dropdown-menu radio groups are controlled-only in Radix. Requiring the value keeps
+   * runtime checked state and design-capture metadata sourced from the same selection.
+   */
+  value: string;
+  onValueChange?: (value: string) => void;
+  defaultValue?: never;
+}
+
 export const MenuRadioGroup = forwardRef<
   ComponentRef<typeof DropdownMenu.RadioGroup>,
-  ComponentPropsWithoutRef<typeof DropdownMenu.RadioGroup>
->(function MenuRadioGroup({ value, ...props }, ref) {
+  MenuRadioGroupProps
+>(function MenuRadioGroup({ onValueChange, value, ...props }, ref) {
   return (
     <MenuRadioValueContext.Provider value={value}>
-      <DropdownMenu.RadioGroup ref={ref} value={value} {...props} />
+      <DropdownMenu.RadioGroup
+        ref={ref}
+        value={value}
+        onValueChange={onValueChange}
+        {...props}
+      />
     </MenuRadioValueContext.Provider>
   );
 });

@@ -11,6 +11,9 @@ knowledge:
     - architecture.principles.normative-language
     - engineering.shared.code-organization
     - design-system.principles.system-boundary
+    - design-system.principles.ui-ux-guidelines
+    - design-system.principles.layout-and-containment
+    - design-system.implementation.storybook.guidelines
 instructions:
   - id: role
     title: Implementer role
@@ -49,9 +52,9 @@ instructions:
     delivery: auto
   - id: storybook
     title: Storybook and visual verification
-    description: Story authoring and visual verification guidance for reusable UI work.
+    description: Story authoring and rendered visual verification guidance for UI work.
     source: ../instructions/storybook.md
     required: true
     applies:
-      when: creating or changing reusable UI components, stories, or visual behavior
+      when: creating or changing UI components, product screens, stories, or visual behavior
     delivery: auto

@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { setTimeout as delay } from 'node:timers/promises';
 import type { SpecsOverviewProjection } from '@nevo/specflow-contracts/specs-overview';
 import { createRuntimeApp } from '../../src/server/app';
 import { InMemoryAuthStore } from '../../src/auth/authentication/session/store';
@@ -7,6 +8,8 @@ import { passwordConfig } from '../auth/support/config';
 import { cookieValue } from '../auth/support/http';
 import { SAMPLE_PROJECT_ID } from '../../src/specs/overview/sample';
 
+vi.mock('node:timers/promises', () => ({ setTimeout: vi.fn(() => Promise.resolve()) }));
+
 describe('Specs overview HTTP integration', () => {
   it('retains trusted-local disabled access semantics', async () => {
     const config = passwordConfig();
@@ -14,6 +17,7 @@ describe('Specs overview HTTP integration', () => {
     try {
       const response = await app.inject('/api/specs/overview');
       expect(response.statusCode).toBe(200);
+      expect(delay).toHaveBeenLastCalledWith(200);
       expect(response.json<SpecsOverviewProjection>().items).toHaveLength(6);
     } finally {
       await app.close();

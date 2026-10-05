@@ -29,6 +29,7 @@ tags and PR references. Frontend presentation does not reconstruct domain state.
 Runtime currently returns a fixed catalogue with `sample: true` and stable
 `backend-sample-active-1` / `backend-sample-archive-1` revisions. This data is shipped with the
 product so dogfooding can exercise real HTTP, login, refresh and collection switching.
+The provisional endpoint adds a non-blocking 200 ms response delay to expose loading/refresh states.
 It is not repository discovery, persistent Specs, live workflow execution or a mutation API.
 Sample entries deliberately omit external PR URLs rather than linking fictional pull requests.
 

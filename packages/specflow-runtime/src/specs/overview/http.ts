@@ -1,4 +1,5 @@
 import type { FastifyPluginCallback } from 'fastify';
+import { setTimeout as delay } from 'node:timers/promises';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import {
   SpecsOverviewProjectionSchema,
@@ -22,8 +23,10 @@ export const specsOverviewRoutes: FastifyPluginCallback<CapabilityRoutesOptions>
         response: { 200: SpecsOverviewProjectionSchema, 401: AuthorizationErrorResponseSchema },
       },
     },
-    (request, reply) => {
+    async (request, reply) => {
       reply.header('Cache-Control', 'no-store');
+      // Simulate transport latency for the provisional backend sample catalogue.
+      await delay(200);
       const access = resolveAuthorizationAccess(
         options.auth,
         options.store,

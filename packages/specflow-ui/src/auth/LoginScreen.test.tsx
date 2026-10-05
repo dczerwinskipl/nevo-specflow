@@ -31,20 +31,24 @@ describe('LoginScreen', () => {
     const rootTag = openingTagFor(html, 'data-auth-layout="root"');
     const bodyTag = openingTagFor(html, 'data-auth-layout="body"');
     const mobileHeaderTag = openingTagFor(html, 'data-auth-layout="mobile-header"');
+    const mobileSelectorTag = openingTagFor(html, 'data-auth-layout="mobile-language-selector"');
     const desktopHeaderTag = openingTagFor(html, 'data-auth-layout="desktop-header"');
     const surfaceTag = openingTagFor(html, 'data-auth-layout="surface"');
 
     expect(rootTag).toContain('bg-app-base');
     expect(rootTag).toContain('flex-col');
     expect(mobileHeaderTag).toContain('sm:hidden');
-    expect(mobileHeaderTag).toContain('justify-between');
+    expect(mobileHeaderTag).toContain('h-[calc(3.5rem+env(safe-area-inset-top))]');
+    expect(mobileSelectorTag).toContain('ml-auto');
     expect(desktopHeaderTag).toContain('sm:flex');
     expect(desktopHeaderTag).toContain('justify-between');
     expect(bodyTag).toContain('items-center');
     expect(bodyTag).toContain('justify-center');
     expect(surfaceTag).toContain('workspace-surface-material');
-    expect(surfaceTag).toContain('rounded-surface');
+    expect(surfaceTag).toContain('rounded-t-surface');
+    expect(surfaceTag).toContain('sm:rounded-surface');
     expect(surfaceTag).toContain('border-workspace-edge');
+    expect(surfaceTag).toContain('sm:p-8');
 
     expect(html).toContain('Welcome back');
     expect(html).toContain('Access your SpecFlow workspace.');

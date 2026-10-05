@@ -230,8 +230,8 @@ export const GeometryContract: Story = {
       'Desktop navigation should remain 260px wide.',
     );
     assert(
-      Math.abs(workspaceRect.left - navigationRect.right - 16) < 1,
-      'Navigation and workspace should retain the 16px gap.',
+      Math.abs(workspaceRect.left - navigationRect.right - 8) < 1,
+      'Navigation and workspace should retain the compact 8px gap.',
     );
     assert(
       Math.abs(workspaceRect.top - shellRect.top - 16) < 1,

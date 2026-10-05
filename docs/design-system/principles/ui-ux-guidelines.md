@@ -49,9 +49,16 @@ repeated content rather than repeating a heavy treatment.
 ## Stable composition and repeated structures
 
 Repeated collections need a stable visual grammar. Before implementing a repeated row/item pattern,
-define the repeated unit, dominant scan direction, alignment anchors/content start, primary/secondary
-line hierarchy, metadata budget, and responsive wrap/collapse rules. These are screen/pattern
-invariants, not per-state implementation choices.
+define the repeated unit, dominant scan direction, **scan columns/alignment tracks**, content start,
+primary/secondary line hierarchy, metadata budget, and responsive wrap/collapse rules. These are
+screen/pattern invariants, not per-state implementation choices.
+
+For dense operational lists, prefer columnar alignment when the user compares the same semantic field
+vertically across rows. The same kind of information should occupy the same scan column instead of
+drifting according to title length, state, or which optional metadata happens to be present. Keep the
+primary content track flexible and secondary/trailing tracks bounded; columns exist to reduce eye
+travel, not to fill the width. The detailed collection/grid rules live in
+[Layout and containment guidelines](layout-and-containment.md#scan-column-rule).
 
 Items belonging to the same collection should preserve the same skeleton across states unless their
 meaning genuinely requires a different structure. State can change copy, actions, and semantic

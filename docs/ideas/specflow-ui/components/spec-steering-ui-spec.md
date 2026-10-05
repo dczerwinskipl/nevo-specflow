@@ -53,17 +53,23 @@ Product-owned composition:
 
 ```text
 SpecSteeringCollection
-└── SpecListGroup
-    ├── SpecListGroupHeader
-    └── SpecListRow
+├── Active
+│   └── SpecListGroup
+│       ├── SpecListGroupHeader
+│       └── ActiveSpecListRow
+└── Archive
+    └── ArchiveSpecListRow
 ```
+
+Active and Archive may share low-level visual primitives, but their bounded presentation semantics are
+different and must not be collapsed into one catch-all metadata model.
 
 Use Nevo UI Typography, interaction/focus primitives, StatusIndicator/Badge sparingly, Separator,
 Tabs or SegmentedControl for Active/Archive, EmptyState, and Skeleton.
 
 Do not create a generic DashboardCard abstraction.
 
-The group header and every row share one **fixed selection/disclosure gutter** and one **content
+The group header and every row share one **fixed leading/disclosure gutter** and one **content
 start**. The gutter is owned by the list pattern, not by callers.
 
 Conceptually:
@@ -72,12 +78,13 @@ Conceptually:
 [ gutter ] [ content ------------------------------------------------------ ]
 
 [   v    ] Requires attention  3
-[   □    ] UI-1234  Deterministic admission...              PR #27  Auth
-[   □    ] UI-1235  Runtime authorization...                        Runtime
+[        ] UI-1234  Deterministic admission...              PR #27  Auth
+[        ] UI-1235  Runtime authorization...                        Runtime
 ```
 
-The group label and row identity text start on the same vertical axis. A chevron or checkbox MUST NOT
-shift that axis. The current pattern does not place a separate leading status marker in front of the
+The group label and row identity text start on the same vertical axis. A chevron or future
+row-selection control MUST NOT shift that axis. Current Specs Overview rows have no selection
+checkbox or bulk-Spec action; their gutter stays visually empty. The current pattern does not place a separate leading status marker in front of the
 group label because that would create a second content start. Semantic group tone may use the header
 surface, text/accent treatment, or a marker that does not consume horizontal space before the label.
 
@@ -136,7 +143,12 @@ type SpecListPullRequestSummary =
 
 type SpecListTagTuple = readonly [] | readonly [string] | readonly [string, string];
 
-interface SpecListRowModel {
+interface SpecListTrailingMetadata {
+  pullRequests?: SpecListPullRequestSummary;
+  tags?: SpecListTagTuple;
+}
+
+interface ActiveSpecListRowModel {
   id: string;
   key?: string;
   title: string;
@@ -146,24 +158,39 @@ interface SpecListRowModel {
   };
   stateSummary: SpecListStateSummary;
   qualifier?: SpecListConcurrentQualifier;
-  trailing?: {
-    pullRequests?: SpecListPullRequestSummary;
-    tags?: SpecListTagTuple;
+  trailing?: SpecListTrailingMetadata;
+}
+
+type ArchiveSpecHistorySummary =
+  | { kind: 'completed'; completedAt: string }
+  | { kind: 'archived'; archivedAt: string };
+
+interface ArchiveSpecListRowModel {
+  id: string;
+  key?: string;
+  title: string;
+  progress?: {
+    completed: number;
+    total: number;
   };
+  history: ArchiveSpecHistorySummary;
+  trailing?: SpecListTrailingMetadata;
 }
 
 interface SpecListGroupModel {
   kind: SpecListGroupKind;
   label: string;
   count: number;
-  items: readonly SpecListRowModel[];
+  items: readonly ActiveSpecListRowModel[];
 }
 ```
 
 The type names are illustrative, but the constraints are normative:
 
-- row input is a bounded presentation model, not the raw overview projection;
-- `stateSummary.kind` is the dominant semantic state and determines the one group that owns the row;
+- Active and Archive row inputs are separate bounded presentation models, not the raw overview
+  projection;
+- `ActiveSpecListRowModel.stateSummary.kind` is the dominant semantic state and determines the one
+  group that owns the Active row;
 - same-category multiplicity is represented by the dominant summary's count, never by repeating raw
   signals;
 - `qualifier` is optional and may represent **one** materially useful concurrent lower-priority
@@ -175,11 +202,14 @@ The type names are illustrative, but the constraints are normative:
   component never constructs provider URLs;
 - `pullRequests.kind: 'multiple'` renders bounded non-interactive metadata such as `3 PRs`; opening
   the Spec exposes the individual links;
+- Archive rows use `ArchiveSpecListRowModel.history` instead of Active steering state; the UI formats
+  the authoritative `completedAt` / `archivedAt` timestamp for display and does not invent
+  historical prose from unrelated fields;
 - Task IDs and per-Task signal labels are forbidden in the canonical Specs list row;
 - arbitrary `string[]` metadata bags are forbidden because they make visual budget unenforceable.
 
-If product requirements later need another summary fact, extend the presentation contract
-deliberately rather than exposing the raw source arrays.
+If product requirements later need another summary fact, extend the corresponding Active or Archive
+presentation contract deliberately rather than exposing raw source arrays or a generic metadata bag.
 
 ## 4. Primary queue ordering and grouping
 
@@ -229,11 +259,12 @@ The DOM contract MUST remain valid when selection or nested controls exist:
 
 - `SpecListRow` root is a non-interactive list/container element;
 - the Specification navigation target is a real semantic link and owns the row's primary hit area;
-- the selection checkbox and linked-PR control are sibling interactive elements, never descendants
-  of that link/button;
-- activating the checkbox or PR MUST NOT trigger Specification navigation;
-- keyboard focus order is predictable: selection control when present, Specification target, then
-  any allowed trailing interactive control;
+- any future selection control and the linked-PR control are sibling interactive elements, never
+  descendants of that link/button;
+- activating a sibling selection control (when present) or PR MUST NOT trigger Specification
+  navigation;
+- keyboard focus order is predictable: future selection control when present, Specification target,
+  then any allowed trailing interactive control;
 - do not implement a clickable row by wrapping `<input>`, `<button>`, or another `<a>` inside
   one outer `<a>`/`<button>`.
 
@@ -260,14 +291,14 @@ Every active Spec row uses the same two-level skeleton.
 Wide example:
 
 ```text
-[□] UI-1234  Deterministic admission and execution boundaries     PR #27  Auth
+[        ] UI-1234  Deterministic admission and execution boundaries     PR #27  Auth
              5 / 9 tasks · Owner decision required
 ```
 
 Another state:
 
 ```text
-[□] RT-104   Provider diagnostics and replay                      Runtime
+[        ] RT-104   Provider diagnostics and replay                      Runtime
              2 / 8 tasks · Reviewer working on 3 tasks
 ```
 
@@ -354,21 +385,21 @@ wide/ultra-wide viewport MUST prove that title and trailing metadata still read 
 Wide:
 
 ```text
-[□] UI-1234  Deterministic admission and execution boundaries     PR #27  Auth
+[        ] UI-1234  Deterministic admission and execution boundaries     PR #27  Auth
              5 / 9 tasks · Owner decision required
 ```
 
 Compact:
 
 ```text
-[□] UI-1234  Deterministic admission and execution boundaries
+[        ] UI-1234  Deterministic admission and execution boundaries
              5 / 9 tasks · Owner decision required · PR #27 · Auth
 ```
 
 Narrow:
 
 ```text
-[□] UI-1234
+[        ] UI-1234
     Deterministic admission and execution boundaries
     5 / 9 tasks · Owner decision required
     PR #27 · Auth
@@ -423,7 +454,8 @@ Group by attention / ready / working / quiet.
 
 ### Archive
 
-Historical browsing dominates.
+Historical browsing dominates. Archive uses `ArchiveSpecListRowModel`; it does not reuse
+`ActiveSpecListRowModel.stateSummary` or map historical completion to `quiet`.
 
 Default:
 
@@ -447,7 +479,8 @@ Search/filter becomes more important in Archive because the collection grows mon
 ## 11. Payload-backed fixtures
 
 Fixtures SHOULD retain rich source projection data where useful, but each story must assert or expose
-the bounded `SpecListRowModel` produced for rendering.
+the bounded presentation model produced for its collection: `ActiveSpecListRowModel` for Active
+steering stories and `ArchiveSpecListRowModel` for Archive stories.
 
 ### SS-01 — attention
 
@@ -544,17 +577,37 @@ UI-1237  Navigation cleanup
 
 ### SS-09 — archived
 
+Presentation model:
+
+```ts
+{
+  id: 'spec-z',
+  title: 'Previous workflow hardening',
+  progress: { completed: 12, total: 12 },
+  history: { kind: 'completed', completedAt: '2026-09-24T16:30:00Z' }
+}
+```
+
+Rendered row:
+
 ```text
 Previous workflow hardening
 12 / 12 tasks · Completed Sep 24
 ```
 
-## 12. Hover, focus, selection, and bulk edit
+The localized date label is derived from the semantic history field; Archive does not fake an Active
+`quiet` summary to render completion.
+
+## 12. Hover, focus, disclosure, and optional future selection
 
 The whole row has one hover/focus treatment.
 
-When bulk selection is available, the checkbox occupies the same fixed gutter used by the group
-disclosure control. Selection must not shift title alignment.
+Current Specs Overview does **not** expose Spec multi-select or bulk-Spec actions. Its row gutter is
+empty while group headers use that same gutter for disclosure.
+
+If a future product variant gains an actual selection capability and authoritative bulk actions, its
+selection control occupies the existing fixed gutter and must not shift title alignment. The generic
+DOM guidance below remains conditional on such a product contract.
 
 Group disclosure is a real local interaction, not decorative iconography:
 
@@ -567,8 +620,30 @@ Group disclosure is a real local interaction, not decorative iconography:
   project settings, and is preserved only while the Specs Overview remains mounted;
 - collapsing a group does not change its count, ordering, underlying projection, or workflow state.
 
-A small checkbox/chevron may have a larger invisible hit target, but the visible gutter width stays
-stable.
+A small disclosure chevron (and any future selection control) may have a larger invisible hit target,
+but the visible gutter width stays stable.
+
+### Search, group counts, and disclosure
+
+Search narrows the selected collection and must never leave a matching result hidden only because the
+user previously collapsed its Active group.
+
+For Active:
+
+- `SpecListGroupModel.count` is the number of rows matching the current collection/filter in that
+  group; collapse state never changes the count;
+- while Search is active, groups with zero matches are omitted;
+- groups containing matches are temporarily expanded so every result is discoverable;
+- entering Search snapshots the user's current local disclosure state without overwriting it;
+- changing the query recomputes visible rows/counts and temporary expansion, but does not mutate that
+  pre-search disclosure snapshot;
+- clearing Search restores the user's pre-search expanded/collapsed choices while the screen remains
+  mounted;
+- a no-match result is a filtered empty state, not an empty Active collection.
+
+Archive has no Active semantic groups/disclosure. Search simply filters bounded
+`ArchiveSpecListRowModel` rows; no-match Archive search is likewise distinct from an empty Archive
+collection.
 
 Nested PR control focus/hover, when present, must be visually distinct from the row target without
 turning ordinary metadata text into buttons.
@@ -636,14 +711,16 @@ spec-steering/multiple-pull-requests
 spec-steering/ultra-wide
 spec-steering/compact-wrap
 spec-steering/narrow
-spec-steering/bulk-selection
+spec-steering/search-matching-collapsed-group
+spec-steering/search-no-matches
 spec-steering/loading
 spec-steering/empty-active
 ```
 
 The concurrent-signals story must prove that a rich source projection still renders a bounded
-secondary line rather than exposing all source details. Add a collapsed-group state so disclosure
-semantics and gutter alignment are visible and testable.
+secondary line rather than exposing all source details. The search/disclosure story starts with a
+collapsed group, activates Search for a matching row, proves temporary expansion and filtered counts,
+then clears Search and proves restoration of the pre-search local disclosure state.
 
 ## 18. Acceptance criteria
 
@@ -653,20 +730,23 @@ semantics and gutter alignment are visible and testable.
 4. The entire Spec row has one stable destination: the Specification.
 5. Ordinary status/summary prose inside a row is non-interactive and is not styled as a link.
 6. Only explicitly allowed external/contextual controls such as a linked PR may coexist with the row target, using sibling interactive elements rather than invalid nested controls.
-7. Group header text and row identity share the same content start; chevrons/checkboxes remain in one
-   fixed gutter.
+7. Group header text and row identity share the same content start; the disclosure chevron and the
+   empty current-row gutter use one fixed gutter. Current Specs Overview exposes no row-selection
+   checkbox.
 8. All active rows preserve one primary-line + secondary-line skeleton across states.
 9. The secondary line is bounded to progress + dominant aggregate summary + at most one explicit
    concurrent qualifier; it does not render Task IDs or raw signal lists.
-10. The visual row consumes a strict presentation model rather than raw `signals[]` /
-    `currentExecutions[]`.
+10. Active and Archive rows consume their strict bounded presentation models rather than raw
+    `signals[]` / `currentExecutions[]` or one generic metadata bag.
 11. One linked PR is an explicit link with a provided href; multiple PRs render as non-interactive
     aggregate metadata, and visible tags are capped at two.
 12. Ultra-wide layout uses a full-width row surface with one bounded information rail, preventing a large dead zone between title and trailing metadata.
 13. Group spacing is visually stronger than row spacing: `groupGap > rowGap`.
 14. Group chevrons are real disclosure buttons: groups start expanded, expose accessible expanded
     state, and preserve local collapse state only while the screen remains mounted.
-15. Batch execution remains batch-shaped and never invents a representative Task.
-16. Archive reads historically, not like stale Active steering.
-17. Rows remain compact, cardless, scannable, and resilient at Wide, Compact, Narrow, long-title, and
+15. Search counts only filtered visible rows, omits zero-match groups, temporarily expands matching
+    groups, and restores pre-search disclosure state after Search clears.
+16. Batch execution remains batch-shaped and never invents a representative Task.
+17. Archive uses its historical bounded row model rather than Active steering state.
+18. Rows remain compact, cardless, scannable, and resilient at Wide, Compact, Narrow, long-title, and
     dense-metadata fixtures.

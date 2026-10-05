@@ -22,11 +22,15 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   play: ({ canvasElement }) => {
-    const surface = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="surface"]');
+    const surface = canvasElement.querySelector<HTMLElement>(
+      '[data-standalone-shell-region="surface"]',
+    );
     const desktopHeader = canvasElement.querySelector<HTMLElement>(
       '[data-standalone-shell-region="desktop-header"]',
     );
-    const root = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="root"]');
+    const root = canvasElement.querySelector<HTMLElement>(
+      '[data-standalone-shell-region="root"]',
+    );
     if (!surface || !desktopHeader || !root || !surface.contains(desktopHeader)) {
       throw new Error('Desktop recovery header must stay inside the standalone surface.');
     }

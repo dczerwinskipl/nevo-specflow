@@ -308,6 +308,16 @@ Bad:
 The mapper decides which aggregate fact wins; the visual row does not concatenate arbitrary source
 signals.
 
+Linked-PR examples:
+
+```text
+single   -> PR #27        // explicit link using the supplied href
+multiple -> 3 PRs         // non-interactive aggregate metadata
+```
+
+The multiple-PR aggregate never guesses which provider page or representative PR should open. Enter
+the Specification to inspect the individual links.
+
 ## 7. Horizontal composition and ultra-wide behavior
 
 The row interaction surface, divider, hover, focus, and selection treatment span the available list
@@ -623,6 +633,7 @@ spec-steering/quiet
 spec-steering/archive-row
 spec-steering/long-title
 spec-steering/max-trailing-metadata
+spec-steering/multiple-pull-requests
 spec-steering/ultra-wide
 spec-steering/compact-wrap
 spec-steering/narrow

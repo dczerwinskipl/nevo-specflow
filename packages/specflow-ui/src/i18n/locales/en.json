@@ -18,8 +18,6 @@
     "closeSecondary": "Close secondary content"
   },
   "account": {
-    "localIdentity": "Local identity",
-    "signedIn": "Signed in",
     "localAccess": "Local access",
     "openMenu": "Open user menu for {{name}}",
     "signOut": "Sign out",

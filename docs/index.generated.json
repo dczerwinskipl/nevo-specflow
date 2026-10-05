@@ -952,7 +952,8 @@
       "related": [
         "design-system.implementation.react.component-guidelines",
         "design-system.principles.ui-ux-guidelines",
-        "engineering.shared.testing"
+        "engineering.shared.testing",
+        "engineering.repository.ci"
       ]
     },
     {

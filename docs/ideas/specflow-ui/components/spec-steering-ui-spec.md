@@ -132,8 +132,7 @@ type SpecListConcurrentQualifier =
   | { kind: 'remediation'; reason: 'agent-remediation-available' };
 
 type SpecListPullRequestSummary =
-  | { kind: 'single'; number: number; href: string }
-  | { kind: 'multiple'; count: number };
+  { kind: 'single'; number: number; href: string } | { kind: 'multiple'; count: number };
 
 type SpecListTagTuple = readonly [] | readonly [string] | readonly [string, string];
 
@@ -668,6 +667,6 @@ semantics and gutter alignment are visible and testable.
 14. Group chevrons are real disclosure buttons: groups start expanded, expose accessible expanded
     state, and preserve local collapse state only while the screen remains mounted.
 15. Batch execution remains batch-shaped and never invents a representative Task.
-15. Archive reads historically, not like stale Active steering.
-16. Rows remain compact, cardless, scannable, and resilient at Wide, Compact, Narrow, long-title, and
+16. Archive reads historically, not like stale Active steering.
+17. Rows remain compact, cardless, scannable, and resilient at Wide, Compact, Narrow, long-title, and
     dense-metadata fixtures.

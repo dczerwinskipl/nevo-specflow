@@ -33,14 +33,15 @@ export const Default: Story = {
 
     const rootRect = root.getBoundingClientRect();
     const surfaceRect = surface.getBoundingClientRect();
+    const centerDelta = Math.abs(
+      surfaceRect.left + surfaceRect.width / 2 - (rootRect.left + rootRect.width / 2),
+    );
     if (surfaceRect.width > 449) {
-      throw new Error(`Desktop recovery surface should remain compact; received ${surfaceRect.width}px.`);
+      throw new Error(
+        `Desktop recovery surface should remain compact; received ${surfaceRect.width}px.`,
+      );
     }
-    if (
-      Math.abs(
-        surfaceRect.left + surfaceRect.width / 2 - (rootRect.left + rootRect.width / 2),
-      ) > 2
-    ) {
+    if (centerDelta > 2) {
       throw new Error('Desktop recovery surface must remain horizontally centered.');
     }
   },

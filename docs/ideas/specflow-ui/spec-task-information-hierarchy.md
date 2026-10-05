@@ -46,14 +46,16 @@ The target steering loop is:
 
 ```text
 overview
-  -> see that something requires attention or is ready
-  -> 1 click
-context + evidence + why the action exists
-  -> 2nd deliberate interaction
-deterministic action / human decision
+  -> see which Specification needs attention / is ready / is active
+  -> open Specification
+Specification
+  -> see the responsible Task(s), context, evidence, and why the action exists
+  -> open Task when Task-specific detail is needed
+  -> deliberate deterministic action / human decision
 ```
 
-The first click is for understanding. The second click may mutate workflow state.
+Navigation from the overview is for understanding, not mutation. A workflow mutation remains an
+explicit deliberate action after sufficient Specification/Task context is visible.
 
 The UI should not make the owner reconstruct state from YAML, raw gate output, provider events, or
 legacy lifecycle statuses.
@@ -129,22 +131,24 @@ These are product projections, not persisted status values.
 
 ## 4.2 Minimum Specification summary
 
-| Information                         | Class                 | Evidence                                                                             | Why it matters                                                                                        |
-| ----------------------------------- | --------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| Specification title / identity      | Orientation           | Product direction                                                                    | User must know which change is being discussed.                                                       |
-| Active vs Archive                   | Orientation           | Old-repo deterministic evidence + product direction                                  | Determines whether this belongs to current work or history.                                           |
-| Current workflow step               | Orientation / Context | Product direction; Task equivalent exists in legacy deterministic flow               | Shows where the Spec is in its process.                                                               |
-| Semantic workflow status            | Orientation           | Current deterministic architecture concept; legacy implementation evidence for Tasks | More human-readable than raw step/state.                                                              |
-| Requires-human-attention projection | Requires attention    | Product direction                                                                    | Lets the overview act as a work queue.                                                                |
-| Reason attention is required        | Requires attention    | Product direction                                                                    | "Review TASK-03" is useful; a red dot alone is not.                                                   |
-| Ready next action                   | Ready                 | Legacy deterministic action inspection + product direction                           | Distinguishes ready-to-start from waiting-on-human.                                                   |
-| Active/running work summary         | Current activity      | Current Session semantics + product direction                                        | Shows that work is already happening and on what.                                                     |
-| Task progress summary               | Context               | Legacy dashboard evidence                                                            | Useful orientation without opening every Task.                                                        |
-| Issue/remediation summary           | Context               | Deterministic fail-closed model                                                      | Explains which intended action cannot proceed and whether another remediation path remains available. |
-| Last meaningful activity            | Context               | Candidate                                                                            | Helps scan stale vs active Specs; not a workflow truth.                                               |
+The canonical Specs-overview row has a deliberately small information budget:
 
-The overview should prefer a small number of meaningful projections over exposing every underlying
-status.
+| Information                    | Class              | Overview treatment                                                                 |
+| ------------------------------ | ------------------ | ---------------------------------------------------------------------------------- |
+| Specification identity/title   | Orientation        | Always visible; primary row content.                                               |
+| Queue/group state              | Steering           | Communicated by the owning semantic group, not repeated as a heavy badge per row. |
+| Aggregate state reason         | Attention/activity | One concise high-level summary; no Task IDs or raw signal enumeration.            |
+| Task progress                  | Context            | Compact `completed / total` summary when known.                                   |
+| Linked PR                      | Context            | Optional one compact explicit control when useful.                                 |
+| Scope tags                     | Context            | Optional; at most two visible values.                                              |
+
+Current workflow step, raw semantic workflow status, individual Task signals, Session identity,
+provider/model/effort, detailed remediation paths, and last-activity detail remain available to the
+source projection or deeper surfaces but do not automatically earn space in the canonical row.
+
+The overview should expose a small number of meaningful aggregates rather than mirror every
+underlying status. The detailed presentation contract lives in
+[Spec steering collection and item UI spec](components/spec-steering-ui-spec.md).
 
 ## 4.3 Ordering principle
 
@@ -783,10 +787,10 @@ yet.
 ```text
 Specs overview
   Spec A: REQUIRES ATTENTION
-  "TASK-03 requires review"
+  "3 Tasks require review"
 
 open Spec A
-  Task 03 highlighted as attention
+  responsible Tasks are identified and attention context is visible
 
 open Task 03
   - why review is required
@@ -799,17 +803,18 @@ open Task 03
   [Review / decision action]
 ```
 
-This is the reference "one click for context, second deliberate click for decision" flow.
+The overview deliberately stays aggregate. Task-specific context is exposed after entering the
+Specification; the final decision remains a separate deliberate interaction.
 
 ## 14.3 Agent is working
 
 ```text
 Specs overview
   Spec A: IN PROGRESS
-  "Reviewer working on TASK-03"
+  "Reviewer working on 3 Tasks"
 
 open Spec A
-  Task 03 shows current activity
+  authoritative execution scope identifies the participating Tasks
 
 open Task 03
   current Session/execution scope
@@ -822,8 +827,8 @@ or Open full session
   Full Session directly
 ```
 
-The "working on TASK-03" label is allowed only when current execution identity proves TASK-03 is in
-scope. A linked/historical Session alone is insufficient.
+The aggregate "Reviewer working on 3 Tasks" summary is allowed only when authoritative current
+execution scope proves that work is active. A linked/historical Session alone is insufficient.
 
 Working is not ready and is not requires-attention.
 

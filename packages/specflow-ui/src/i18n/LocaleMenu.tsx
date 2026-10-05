@@ -49,11 +49,11 @@ export function StandaloneLocaleMenu() {
       <MenuTrigger asChild>
         <Button
           aria-label={t('common.changeLanguage')}
-          className="uppercase"
           size="sm"
+          trailingIcon="chevron-down"
           variant="ghost"
         >
-          {locale}
+          {t(localeLabels[locale])}
         </Button>
       </MenuTrigger>
       <MenuContent align="end" aria-label={t('common.language')}>

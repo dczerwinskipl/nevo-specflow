@@ -121,6 +121,34 @@ function MenuItemMatrix() {
   );
 }
 
+function MenuRadioItemMatrix() {
+  return (
+    <div className="flex min-h-96 items-center justify-center bg-canvas p-8">
+      <Menu modal={false} open>
+        <MenuTrigger asChild>
+          <Button variant="secondary">Radio states</Button>
+        </MenuTrigger>
+        <MenuContent
+          aria-label="Menu radio item states"
+          onCloseAutoFocus={(event) => event.preventDefault()}
+        >
+          <MenuRadioGroup value="checked">
+            <MenuRadioItem data-design-source-id="unchecked" value="unchecked">
+              Unchecked
+            </MenuRadioItem>
+            <MenuRadioItem data-design-source-id="checked" value="checked">
+              Checked
+            </MenuRadioItem>
+            <MenuRadioItem data-design-source-id="disabled" disabled value="disabled">
+              Disabled
+            </MenuRadioItem>
+          </MenuRadioGroup>
+        </MenuContent>
+      </Menu>
+    </div>
+  );
+}
+
 function MenuSelectionExample() {
   const [language, setLanguage] = useState('en');
 
@@ -247,6 +275,25 @@ export const ItemStateCapture: Story = {
       description: 'Compact neutral and destructive actions across interaction states',
       kind: 'component',
       order: 32,
+    },
+  },
+};
+
+export const RadioItemStateCapture: Story = {
+  render: () => (
+    <DesignCaptureProvider captureComponents={['MenuRadioItem']}>
+      <MenuRadioItemMatrix />
+    </DesignCaptureProvider>
+  ),
+  tags: ['!dev', '!autodocs'],
+  parameters: {
+    controls: { disable: true },
+    designCapture: {
+      component: 'MenuRadioItem',
+      title: 'Menu radio item',
+      description: 'Single-choice menu rows across unchecked, checked, and disabled states',
+      kind: 'component',
+      order: 33,
     },
   },
 };

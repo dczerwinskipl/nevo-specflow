@@ -22,18 +22,25 @@ export function StandaloneAuthSurface({
       <AppBackground
         {...rootAttributes}
         brandPrimary={defaultNevoBrand.coreColor}
-        className="flex min-h-dvh w-full flex-col pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(1rem,env(safe-area-inset-top))] text-content-primary sm:pb-[max(2rem,env(safe-area-inset-bottom))] sm:pl-[max(2rem,env(safe-area-inset-left))] sm:pr-[max(2rem,env(safe-area-inset-right))] sm:pt-[max(1.5rem,env(safe-area-inset-top))]"
+        className="flex min-h-dvh w-full flex-col text-content-primary"
         data-auth-layout="root"
       >
         <div
-          className="flex shrink-0 justify-end"
-          data-auth-layout="language-selector"
-          {...designLayerMetadata({ layer: 'language-selector' })}
+          className="flex shrink-0 items-center justify-between border-b border-divider pb-2 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(0.5rem,env(safe-area-inset-top))] sm:hidden"
+          data-auth-layout="mobile-header"
+          {...designLayerMetadata({ layer: 'mobile-auth-header' })}
         >
-          <StandaloneLocaleMenu />
+          <NevoBrandLogo brand="nevo" product="SpecFlow" size="sm" type="horizontal" />
+          <div
+            data-auth-layout="mobile-language-selector"
+            {...designLayerMetadata({ layer: 'language-selector' })}
+          >
+            <StandaloneLocaleMenu />
+          </div>
         </div>
+
         <div
-          className="flex flex-1 items-center justify-center py-4 sm:py-6"
+          className="flex flex-1 items-center justify-center px-[max(1rem,env(safe-area-inset-left))] py-4 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-[max(2rem,env(safe-area-inset-left))] sm:py-6 sm:pr-[max(2rem,env(safe-area-inset-right))] sm:pb-[max(2rem,env(safe-area-inset-bottom))]"
           data-auth-layout="body"
         >
           <WorkspaceSurface
@@ -58,8 +65,20 @@ export function StandaloneAuthHeader({
   readonly description: string;
 }) {
   return (
-    <div className="grid gap-6">
-      <NevoBrandLogo brand="nevo" product="SpecFlow" size="lg" type="horizontal" />
+    <div className="grid gap-5 sm:gap-6">
+      <div
+        className="hidden items-center justify-between gap-4 sm:flex"
+        data-auth-layout="desktop-header"
+        {...designLayerMetadata({ layer: 'desktop-auth-header' })}
+      >
+        <NevoBrandLogo brand="nevo" product="SpecFlow" size="lg" type="horizontal" />
+        <div
+          data-auth-layout="desktop-language-selector"
+          {...designLayerMetadata({ layer: 'language-selector' })}
+        >
+          <StandaloneLocaleMenu />
+        </div>
+      </div>
       <div className="grid gap-2">
         <Typography as="h1" variant="title-lg">
           {title}

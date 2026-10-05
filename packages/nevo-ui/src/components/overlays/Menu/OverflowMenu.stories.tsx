@@ -7,11 +7,11 @@ const meta = {
   component: OverflowMenu,
   parameters: { layout: 'fullscreen' },
   args: {
-    label: 'UI-1234',
-    triggerLabel: 'Specification actions',
+    label: 'RECORD-1234',
+    triggerLabel: 'Record actions',
     children: (
       <>
-        <MenuItem leadingIcon="file">Open specification</MenuItem>
+        <MenuItem leadingIcon="file">Open record</MenuItem>
         <MenuSeparator />
         <MenuItem disabled leadingIcon="archive">
           Archive unavailable
@@ -43,7 +43,7 @@ async function waitFor<T>(read: () => T | null | false, message: string): Promis
 
 export const Expanding: Story = {
   play: async ({ canvas, userEvent }) => {
-    const trigger = canvas.getByRole('button', { name: 'Specification actions' });
+    const trigger = canvas.getByRole('button', { name: 'Record actions' });
     const anchor = trigger.getBoundingClientRect();
     trigger.focus();
     await userEvent.keyboard('{Enter}');
@@ -60,7 +60,7 @@ export const Expanding: Story = {
       'Open menu must not leave a separate ellipsis.',
     );
     assert(
-      menu.querySelector('[data-overflow-menu-label]')?.textContent === 'UI-1234',
+      menu.querySelector('[data-overflow-menu-label]')?.textContent === 'RECORD-1234',
       'Heading must identify the action scope.',
     );
     const label = menu.querySelector<HTMLElement>('[data-overflow-menu-label]')!;
@@ -79,7 +79,7 @@ export const Expanding: Story = {
     );
     assert(!menu.querySelector('button'), 'There must be no Close button.');
     assert(
-      document.activeElement?.textContent === 'Open specification',
+      document.activeElement?.textContent === 'Open record',
       'Keyboard focus must skip the passive heading.',
     );
     const style = getComputedStyle(menu);

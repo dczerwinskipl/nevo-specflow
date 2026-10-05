@@ -170,8 +170,9 @@ The important rule is that **attention, ready, working, and quiet remain percept
 
 A Specification can carry concurrent signals, for example one Task may require review while another
 Task is currently being executed. Place the Spec in the group selected by its highest-priority
-human-facing signal and reduce the remaining meaningful signals into the bounded aggregate summary
-defined by the steering-row contract. Do not duplicate the same Spec across several groups.
+human-facing signal. The row keeps one dominant aggregate summary and may show at most one bounded
+lower-priority qualifier when omitting it would materially misrepresent current state. Do not
+duplicate the same Spec across several groups or expose raw signal collections.
 
 ## 3.3 Minimum information per Spec item
 
@@ -183,12 +184,13 @@ The canonical overview row shows:
 
 - Spec identity/title;
 - compact Task progress when known;
-- one aggregate human-facing state summary;
-- optional compact trailing metadata allowed by the steering-row presentation contract.
+- one dominant aggregate human-facing state summary;
+- at most one bounded concurrent qualifier allowed by the steering-row presentation contract;
+- optional compact trailing metadata allowed by that contract.
 
 Task IDs, per-Task signal labels, raw Session/execution identifiers, and arbitrary lists of concurrent
 signals are not overview-row content. Multiplicity is preserved in the source projection and reduced
-to an aggregate summary for scanning.
+to the dominant summary plus at most one explicit aggregate qualifier for scanning.
 
 Examples:
 

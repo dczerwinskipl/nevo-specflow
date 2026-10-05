@@ -126,6 +126,15 @@ type SpecListStateSummary =
   | { kind: 'working'; role?: string; taskCount?: number }
   | { kind: 'quiet' };
 
+type SpecListConcurrentQualifier =
+  | { kind: 'ready'; readyCount: number }
+  | { kind: 'working'; role?: string; taskCount?: number }
+  | { kind: 'remediation'; reason: 'agent-remediation-available' };
+
+type SpecListPullRequestSummary =
+  | { kind: 'single'; number: number; href: string }
+  | { kind: 'multiple'; count: number };
+
 type SpecListTagTuple = readonly [] | readonly [string] | readonly [string, string];
 
 interface SpecListRowModel {
@@ -137,11 +146,9 @@ interface SpecListRowModel {
     total: number;
   };
   stateSummary: SpecListStateSummary;
+  qualifier?: SpecListConcurrentQualifier;
   trailing?: {
-    pullRequest?: {
-      number: number;
-      label?: string;
-    };
+    pullRequests?: SpecListPullRequestSummary;
     tags?: SpecListTagTuple;
   };
 }
@@ -157,10 +164,18 @@ interface SpecListGroupModel {
 The type names are illustrative, but the constraints are normative:
 
 - row input is a bounded presentation model, not the raw overview projection;
-- the secondary summary contains only aggregate/high-level state;
+- `stateSummary.kind` is the dominant semantic state and determines the one group that owns the row;
+- same-category multiplicity is represented by the dominant summary's count, never by repeating raw
+  signals;
+- `qualifier` is optional and may represent **one** materially useful concurrent lower-priority
+  state; it is aggregate, non-interactive, and never contains Task IDs;
+- when attention, ready, and working coexist, current authoritative work is normally a more useful
+  qualifier than merely-ready work because it changes the interpretation of what is happening now;
 - tags are capped at two visible values;
-- one PR summary may be visible; several PRs collapse to one compact aggregate representation rather
-  than multiple chips;
+- `pullRequests.kind: 'single'` renders one explicit PR link using the provided `href`; the
+  component never constructs provider URLs;
+- `pullRequests.kind: 'multiple'` renders bounded non-interactive metadata such as `3 PRs`; opening
+  the Spec exposes the individual links;
 - Task IDs and per-Task signal labels are forbidden in the canonical Specs list row;
 - arbitrary `string[]` metadata bags are forbidden because they make visual budget unenforceable.
 
@@ -191,7 +206,10 @@ Within Requires attention, an active Session interaction waiting for the human i
 strongest signal. Beyond that, the application/read model should provide semantic priority rather
 than the frontend reverse-engineering urgency from raw statuses.
 
-Do not duplicate one Spec into Attention + Ready + Working rows.
+Do not duplicate one Spec into Attention + Ready + Working rows. The dominant group follows the
+human-steering priority `attention > ready > working > quiet`. Lower-priority concurrent state stays
+in the source projection and may contribute at most one bounded `qualifier` when omitting it would
+materially misrepresent the row. The qualifier never changes the row's group or navigation target.
 
 ## 5. Interaction model and affordance budget
 
@@ -264,10 +282,11 @@ The secondary line has a strict budget:
 
 - task progress when known;
 - one aggregate state summary;
-- at most one additional aggregate qualifier only when omitting it would materially change the
-  user's interpretation.
+- at most one `qualifier` only when omitting concurrent state would materially change the user's
+  interpretation.
 
-As a default, render no more than **2–3 high-level semantic fragments total** on the secondary line.
+Render no more than **three high-level semantic fragments total** on the secondary line: progress,
+dominant summary, and the optional qualifier.
 Do not enumerate individual Task IDs, multiple concurrent signals, raw workflow labels, provider
 details, model/effort, branch, owner, reviewer, timestamps, and other available fields merely because
 the data exists.
@@ -444,16 +463,21 @@ ready: TASK-05 ready
 working: Reviewer on TASK-02/TASK-03
 ```
 
+The mapper chooses `attention` as the dominant group/summary and one materially useful concurrent
+qualifier. Current authoritative work wins the qualifier slot over merely-ready work in this case.
+
 Rendered row remains bounded:
 
 ```text
 Requires attention  1
 
 UI-1234  Deterministic admission
-5 / 9 tasks · 2 require attention
+5 / 9 tasks · 2 require attention · Reviewer working on 2 tasks
 ```
 
-Do not concatenate all source signals.
+The ready signal remains preserved in the source projection and becomes explicit after entering the
+Specification. The overview does not concatenate it into a fourth fragment or imply that it is the
+dominant state.
 
 ### SS-03 — aggregate attention
 
@@ -522,6 +546,17 @@ The whole row has one hover/focus treatment.
 
 When bulk selection is available, the checkbox occupies the same fixed gutter used by the group
 disclosure control. Selection must not shift title alignment.
+
+Group disclosure is a real local interaction, not decorative iconography:
+
+- every rendered group starts expanded on first mount;
+- the gutter chevron is a semantic button that toggles only that group's rows;
+- the button exposes `aria-expanded` and an accessible name such as
+  "Collapse Requires attention group" / "Expand Requires attention group";
+- native button keyboard behavior applies, including Enter/Space activation and visible focus;
+- collapsed/expanded state is local presentation state, is not encoded in the URL or persisted to
+  project settings, and is preserved only while the Specs Overview remains mounted;
+- collapsing a group does not change its count, ordering, underlying projection, or workflow state.
 
 A small checkbox/chevron may have a larger invisible hit target, but the visible gutter width stays
 stable.
@@ -597,7 +632,8 @@ spec-steering/empty-active
 ```
 
 The concurrent-signals story must prove that a rich source projection still renders a bounded
-secondary line rather than exposing all source details.
+secondary line rather than exposing all source details. Add a collapsed-group state so disclosure
+semantics and gutter alignment are visible and testable.
 
 ## 18. Acceptance criteria
 
@@ -610,14 +646,17 @@ secondary line rather than exposing all source details.
 7. Group header text and row identity share the same content start; chevrons/checkboxes remain in one
    fixed gutter.
 8. All active rows preserve one primary-line + secondary-line skeleton across states.
-9. The secondary line is bounded to aggregate/high-level state and does not render Task IDs or raw
-   signal lists.
+9. The secondary line is bounded to progress + dominant aggregate summary + at most one explicit
+   concurrent qualifier; it does not render Task IDs or raw signal lists.
 10. The visual row consumes a strict presentation model rather than raw `signals[]` /
     `currentExecutions[]`.
-11. Visible tags are capped at two and PR metadata is compact.
+11. One linked PR is an explicit link with a provided href; multiple PRs render as non-interactive
+    aggregate metadata, and visible tags are capped at two.
 12. Ultra-wide layout uses a full-width row surface with one bounded information rail, preventing a large dead zone between title and trailing metadata.
 13. Group spacing is visually stronger than row spacing: `groupGap > rowGap`.
-14. Batch execution remains batch-shaped and never invents a representative Task.
+14. Group chevrons are real disclosure buttons: groups start expanded, expose accessible expanded
+    state, and preserve local collapse state only while the screen remains mounted.
+15. Batch execution remains batch-shaped and never invents a representative Task.
 15. Archive reads historically, not like stale Active steering.
 16. Rows remain compact, cardless, scannable, and resilient at Wide, Compact, Narrow, long-title, and
     dense-metadata fixtures.

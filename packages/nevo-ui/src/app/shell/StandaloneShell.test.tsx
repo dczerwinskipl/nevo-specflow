@@ -23,9 +23,11 @@ describe('StandaloneShell', () => {
     expect(html).toContain('Mobile identity');
     expect(html).toContain('Desktop identity');
     expect(html).toContain('Content');
+    expect(html).not.toContain('data-design-component');
+    expect(html).not.toContain('data-design-capture');
   });
 
-  it('exposes deterministic design slots without owning product copy', () => {
+  it('exposes its own capture identity and deterministic slots when captured directly', () => {
     const html = renderToStaticMarkup(
       <DesignCaptureProvider captureComponents={['StandaloneShell']}>
         <StandaloneShell desktopHeader={<span>Desktop</span>} mobileHeader={<span>Mobile</span>}>
@@ -35,8 +37,11 @@ describe('StandaloneShell', () => {
     );
 
     expect(html).toContain('data-design-component="StandaloneShell"');
+    expect(html).toContain('data-design-capture="true"');
     expect(html).toContain('data-design-slot="mobileHeader"');
     expect(html).toContain('data-design-slot="desktopHeader"');
     expect(html).toContain('data-design-slot="content"');
+    expect(html).not.toContain('data-design-component="AppBackground"');
+    expect(html).not.toContain('data-design-component="WorkspaceSurface"');
   });
 });

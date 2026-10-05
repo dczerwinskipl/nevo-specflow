@@ -17,6 +17,7 @@ import {
 
 import type { SpecsCollection, SpecsOverviewState, SteeringTarget } from './model';
 import { SpecSteeringCollection } from './SpecSteeringCollection';
+import { filterSpecsOverview } from './search';
 
 export interface SpecsOverviewProps {
   readonly state: SpecsOverviewState;
@@ -47,14 +48,7 @@ export function SpecsOverview({
   const searchable = Boolean(
     projection && (state.collection === 'archive' || projection.items.length >= 12),
   );
-  const visible = projection
-    ? {
-        ...projection,
-        items: projection.items.filter((item) =>
-          item.title.toLocaleLowerCase().includes(term.trim().toLocaleLowerCase()),
-        ),
-      }
-    : undefined;
+  const visible = projection ? filterSpecsOverview(projection, term) : undefined;
   const busy = state.loading || state.refreshing;
 
   return (
@@ -113,7 +107,7 @@ export function SpecsOverview({
                   value={state.collection}
                   onValueChange={(value) => onCollectionChange(value as SpecsCollection)}
                 >
-                  <SegmentedControl.Item value="active">{t('specs.active')}</SegmentedControl.Item>
+                  <SegmentedControl.Item value="active">{t('specs.current')}</SegmentedControl.Item>
                   <SegmentedControl.Item value="archive">
                     {t('specs.archive')}
                   </SegmentedControl.Item>
@@ -174,10 +168,10 @@ export function SpecsOverview({
                   ))}
                 </div>
               ) : null}
-              {projection && !state.loading ? (
+              {visible && !state.loading ? (
                 <SpecSteeringCollection
-                  projection={projection}
-                  query={term}
+                  projection={visible}
+                  searching={term.trim().length > 0}
                   onOpenTarget={onOpenTarget}
                   specificationHref={specificationHref}
                 />
@@ -189,14 +183,14 @@ export function SpecsOverview({
                     term
                       ? 'specs.noResults'
                       : state.collection === 'active'
-                        ? 'specs.emptyActive'
+                        ? 'specs.emptyCurrent'
                         : 'specs.emptyArchive',
                   )}
                   description={t(
                     term
                       ? 'specs.noResultsDescription'
                       : state.collection === 'active'
-                        ? 'specs.emptyActiveDescription'
+                        ? 'specs.emptyCurrentDescription'
                         : 'specs.emptyArchiveDescription',
                   )}
                   actions={

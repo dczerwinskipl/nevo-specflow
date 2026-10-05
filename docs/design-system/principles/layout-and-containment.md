@@ -262,6 +262,11 @@ A scan column is an alignment track, not necessarily a visible table column. It 
 with CSS Grid, aligned flex regions, or another layout mechanism, but the visual contract is the
 same: the same kind of information starts in the same place across sibling rows.
 
+Stable alignment does not justify excessive whitespace. Scan columns SHOULD use the smallest
+practical width and semantic gap that preserve vertical comparability and minimize eye travel.
+Size bounded tracks against representative normal values, not a pathological longest value that
+reserves unused space in every row. Keep lists list-shaped; alignment tracks do not require a table.
+
 Prefer a column when users repeatedly compare the same attribute down the collection, for example:
 
 - disclosure / selection / type affordance;

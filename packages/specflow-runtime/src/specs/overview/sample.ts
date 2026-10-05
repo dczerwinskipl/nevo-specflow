@@ -2,6 +2,9 @@ import type {
   SpecsCollection,
   SpecsOverviewProjection,
   SpecsOverviewGroup,
+  SpecSteeringItemProjection,
+  CurrentSpecsOverviewProjection,
+  ArchiveSpecsOverviewProjection,
 } from '@nevo/specflow-contracts/specs-overview';
 import { overviewGroups } from './groups';
 
@@ -9,12 +12,42 @@ import { overviewGroups } from './groups';
 export const SAMPLE_PROJECT_ID = 'specflow-preview';
 
 export function sampleSpecsOverview(
+  collection: 'active',
+  configuredGroups?: readonly SpecsOverviewGroup[],
+): CurrentSpecsOverviewProjection;
+export function sampleSpecsOverview(
+  collection: 'archive',
+  configuredGroups?: readonly SpecsOverviewGroup[],
+): ArchiveSpecsOverviewProjection;
+export function sampleSpecsOverview(
+  collection: SpecsCollection,
+  configuredGroups?: readonly SpecsOverviewGroup[],
+): SpecsOverviewProjection;
+export function sampleSpecsOverview(
   collection: SpecsCollection,
   configuredGroups?: readonly SpecsOverviewGroup[],
 ): SpecsOverviewProjection {
+  if (collection === 'archive')
+    return {
+      revision: 'backend-sample-archive-1',
+      collection,
+      groups: [],
+      sample: true,
+      items: [
+        {
+          id: 'archived-shell',
+          completedAt: '2026-09-27T12:00:00Z',
+          archivedAt: '2026-09-28T12:00:00Z',
+          key: 'UI-1200',
+          title: 'Responsive application shell and workspace navigation',
+          updatedAt: '2026-09-28T12:00:00Z',
+          progress: { completed: 8, total: 8 },
+        },
+      ],
+    };
   const groups = overviewGroups(configuredGroups);
   // Preclassified mock data, not a production lifecycle/group derivation engine.
-  const items: SpecsOverviewProjection['items'] = [
+  const items: SpecSteeringItemProjection[] = [
     {
       id: 'admission',
       groupId: 'requires-attention',
@@ -145,23 +178,6 @@ export function sampleSpecsOverview(
     collection,
     groups,
     sample: true,
-    items:
-      collection === 'active'
-        ? items.filter((item) => groups.some((group) => group.id === item.groupId))
-        : [
-            {
-              id: 'archived-shell',
-              groupId: 'ready',
-              overviewSummary: { kind: 'ready' },
-              completedAt: '2026-09-27T12:00:00Z',
-              archivedAt: '2026-09-28T12:00:00Z',
-              key: 'UI-1200',
-              title: 'Responsive application shell and workspace navigation',
-              updatedAt: '2026-09-28T12:00:00Z',
-              progress: { completed: 8, total: 8 },
-              signals: [],
-              currentExecutions: [],
-            },
-          ],
+    items: items.filter((item) => groups.some((group) => group.id === item.groupId)),
   };
 }

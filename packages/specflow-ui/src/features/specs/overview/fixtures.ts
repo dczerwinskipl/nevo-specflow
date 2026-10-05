@@ -1,5 +1,8 @@
 import type {
   SpecSteeringItemProjection,
+  SpecArchiveItemProjection,
+  CurrentSpecsOverviewProjection,
+  ArchiveSpecsOverviewProjection,
   SpecSteeringSignal,
   SpecsCollection,
   SpecsOverviewProjection,
@@ -35,6 +38,20 @@ export function createSpecItem(
     ...overrides,
   };
 }
+export function createArchiveItem(
+  overrides: Partial<SpecArchiveItemProjection> = {},
+): SpecArchiveItemProjection {
+  return {
+    id: 'archive-spec',
+    title: 'Archived specification',
+    updatedAt: '2026-10-01T12:00:00Z',
+    progress: { completed: 5, total: 9 },
+    ...overrides,
+  };
+}
+export function createSpecsFixture(collection?: 'active'): CurrentSpecsOverviewProjection;
+export function createSpecsFixture(collection: 'archive'): ArchiveSpecsOverviewProjection;
+export function createSpecsFixture(collection: SpecsCollection): SpecsOverviewProjection;
 export function createSpecsFixture(
   collection: SpecsCollection = 'active',
 ): SpecsOverviewProjection {
@@ -44,7 +61,7 @@ export function createSpecsFixture(
       collection,
       groups: [],
       items: Array.from({ length: 18 }, (_, index) =>
-        createSpecItem({
+        createArchiveItem({
           id: `archive-${index}`,
           title:
             [
@@ -203,7 +220,7 @@ export function createSpecsFixture(
   };
 }
 
-export function createLongContentFixture(): SpecsOverviewProjection {
+export function createLongContentFixture(): CurrentSpecsOverviewProjection {
   const base = createSpecsFixture();
   return {
     ...base,

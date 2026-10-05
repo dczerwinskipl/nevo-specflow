@@ -17,7 +17,12 @@ import { LoginScreen } from '../../../auth/LoginScreen';
 import { createAuthStore } from '../../../auth/store';
 import { StoryLocalization } from '../../../i18n/StoryLocalization';
 import type { AppLocale } from '../../../i18n';
-import { createLongContentFixture, createSpecItem, createSpecsFixture } from './fixtures';
+import {
+  createLongContentFixture,
+  createSpecItem,
+  createSpecsFixture,
+  createArchiveItem,
+} from './fixtures';
 import type {
   SpecsCollection,
   SpecsOverviewProjection,
@@ -63,7 +68,7 @@ function SourceLifecycleFixture() {
       </div>
       <div className="flex gap-4 p-4" aria-label="Source test controls">
         <button type="button" onClick={() => settle('active')}>
-          Resolve Active
+          Resolve Current
         </button>
         <button type="button" onClick={() => settle('archive')}>
           Resolve Archive
@@ -203,9 +208,13 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Active: Story = {
+export const Current: Story = {
   play: async ({ canvas, canvasElement, userEvent }) => {
     await canvas.findByRole('heading', { name: 'Requires attention' });
+    canvas.getByRole('radio', { name: 'Current' });
+    canvas.getByRole('radio', { name: 'Archive' });
+    if (canvas.getByRole('button', { name: 'Specs actions' }).textContent?.trim())
+      throw new Error('Header overflow should visibly contain only the ellipsis icon.');
     const headings = [...canvasElement.querySelectorAll('[data-spec-group-header] h2')];
     if (
       headings.map((element) => element.textContent).join('|') !==
@@ -238,6 +247,15 @@ export const Active: Story = {
     });
     if (destination.getAttribute('href') !== '/specs/admission')
       throw new Error('Navigation must expose a real href.');
+    const row = destination.closest<HTMLElement>('[data-spec-id]');
+    if (!row || window.getComputedStyle(row).borderRadius === '0px')
+      throw new Error('Interactive row hover must share rounded focus geometry.');
+    if (destination.getAttribute('data-focus-ring') !== 'delegated')
+      throw new Error('Primary navigation must delegate focus to its stretched row surface.');
+    await userEvent.hover(row);
+    if (window.getComputedStyle(destination).textDecorationLine.includes('underline'))
+      throw new Error('Whole-row hover should not imply that only the title is clickable.');
+    await userEvent.unhover(row);
     await userEvent.click(destination);
     if (
       !canvas
@@ -326,7 +344,7 @@ export const ReadyAndDraft: Story = {
 export const Loading: Story = {
   args: { state: { collection: 'active', loading: true, refreshing: false, error: false } },
 };
-export const EmptyActive: Story = {
+export const EmptyCurrent: Story = {
   args: { state: { ...loaded, projection: { ...loaded.projection!, items: [] } } },
 };
 export const EmptyArchive: Story = {
@@ -378,7 +396,7 @@ export const CollectionSwitch: Story = {
     canvas.getByRole('textbox', { name: 'Search specs' });
     if (canvas.queryByText('Requires attention'))
       throw new Error('Active signals cannot leak into Archive.');
-    await userEvent.click(canvas.getByRole('radio', { name: 'Active' }));
+    await userEvent.click(canvas.getByRole('radio', { name: 'Current' }));
     canvas.getByText('Requires attention');
     await userEvent.click(canvas.getByRole('button', { name: 'Specs actions' }));
     const refresh = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
@@ -517,7 +535,7 @@ export const MissingKey: Story = {
       },
     },
   },
-  play: Active.play,
+  play: Current.play,
 };
 
 export const ArchiveLifecycle: Story = {
@@ -530,24 +548,24 @@ export const ArchiveLifecycle: Story = {
         collection: 'archive',
         groups: [],
         items: [
-          createSpecItem({
+          createArchiveItem({
             id: 'completed',
             title: 'Completed specification',
             completedAt: '2026-09-22T14:00:00Z',
             updatedAt: '2099-01-01T00:00:00Z',
           }),
-          createSpecItem({
+          createArchiveItem({
             id: 'archived',
             title: 'Archived specification',
             archivedAt: '2026-09-25T09:00:00Z',
           }),
-          createSpecItem({
+          createArchiveItem({
             id: 'both',
             title: 'Completed then archived',
             completedAt: '2026-09-22T14:00:00Z',
             archivedAt: '2026-09-25T09:00:00Z',
           }),
-          createSpecItem({
+          createArchiveItem({
             id: 'undated',
             title: 'Imported historical specification',
             updatedAt: '2099-01-01T00:00:00Z',
@@ -602,6 +620,9 @@ export const ConfiguredOrder: Story = {
           { id: 'draft', order: 10 },
           { id: 'active', order: 20 },
         ],
+        items: createSpecsFixture().items.filter(
+          (item) => item.groupId === 'draft' || item.groupId === 'active',
+        ),
       },
     },
   },
@@ -635,7 +656,7 @@ export const SourceLifecycle: Story = {
   play: async ({ canvas, userEvent }) => {
     canvas.getByRole('status', { name: 'Loading specifications' });
     await userEvent.click(canvas.getByRole('radio', { name: 'Archive' }));
-    await userEvent.click(canvas.getByRole('button', { name: 'Resolve Active' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Resolve Current' }));
     if (canvas.queryByText('Requires attention'))
       throw new Error('A late Active response must not leak into Archive.');
     await userEvent.click(canvas.getByRole('button', { name: 'Resolve Archive' }));

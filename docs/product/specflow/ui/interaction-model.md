@@ -74,7 +74,7 @@ product entry is Specs Overview:
 ```text
 Project
 ├── Specs
-│   ├── Active / Archive                  collection views, not necessarily nav items
+│   ├── Current / Archive                 collection views, not necessarily nav items
 │   └── Specification
 │       ├── Task details                  contextual Secondary
 │       └── Session

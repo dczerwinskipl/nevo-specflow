@@ -229,7 +229,7 @@ Workspace stack and is not encoded in product URLs.
 
 Routable state includes, as appropriate:
 
-- Specs collection / Active versus Archive;
+- Specs collection / Current versus Archive (internal Current identifier `active`);
 - selected Specification;
 - Full Session;
 - Project Settings and a stable Settings section.

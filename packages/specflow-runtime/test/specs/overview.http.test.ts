@@ -61,8 +61,15 @@ describe('Specs overview HTTP integration', () => {
       });
       expect(active.json<SpecsOverviewProjection>().items).toHaveLength(6);
       const archive = await app.inject({ url: '/api/specs/overview?collection=archive', headers });
+      expect(archive.statusCode).toBe(200);
       expect(archive.json<SpecsOverviewProjection>().collection).toBe('archive');
+      expect(archive.json<SpecsOverviewProjection>().groups).toEqual([]);
       expect(archive.json<SpecsOverviewProjection>().items[0]?.id).toBe('archived-shell');
+      const historical = archive.json<SpecsOverviewProjection>().items[0];
+      expect(historical).toHaveProperty('completedAt');
+      for (const field of ['groupId', 'overviewSummary', 'signals', 'currentExecutions']) {
+        expect(historical).not.toHaveProperty(field);
+      }
       await app.inject({ method: 'POST', url: '/api/auth/logout', headers });
       expect((await app.inject({ url: '/api/specs/overview', headers })).statusCode).toBe(401);
     } finally {
@@ -109,25 +116,28 @@ describe('Specs overview HTTP integration', () => {
     }
   });
 
-  it('does not grant an authenticated user without view permission access to sample rows', async () => {
-    const config = passwordConfig();
-    const store = new InMemoryAuthStore();
-    const session = store.createSession({
-      userId: 'demo-user',
-      authenticatedWith: { kind: 'password' },
-    });
-    const app = await createRuntimeApp(config, { auth: { store } });
-    try {
-      const response = await app.inject({
-        url: '/api/specs/overview',
-        headers: {
-          cookie: `${authCookieNames(config.server.port).session}=${session}`,
-        },
+  it.each(['active', 'archive'])(
+    'returns empty 200, not collection-level 403, without per-item view permission (%s)',
+    async (collection) => {
+      const config = passwordConfig();
+      const store = new InMemoryAuthStore();
+      const session = store.createSession({
+        userId: 'demo-user',
+        authenticatedWith: { kind: 'password' },
       });
-      expect(response.statusCode).toBe(200);
-      expect(response.json<SpecsOverviewProjection>().items).toEqual([]);
-    } finally {
-      await app.close();
-    }
-  });
+      const app = await createRuntimeApp(config, { auth: { store } });
+      try {
+        const response = await app.inject({
+          url: `/api/specs/overview?collection=${collection}`,
+          headers: {
+            cookie: `${authCookieNames(config.server.port).session}=${session}`,
+          },
+        });
+        expect(response.statusCode).toBe(200);
+        expect(response.json<SpecsOverviewProjection>().items).toEqual([]);
+      } finally {
+        await app.close();
+      }
+    },
+  );
 });

@@ -18,13 +18,15 @@ related:
 
 `GET /api/specs/overview?collection=active|archive` reads a collection. Omitted `collection`
 defaults to `active`; unsupported values and additional query fields return `400`.
+User-facing tabs are **Current | Archive**; `active` is only the internal/API Current identifier.
 
 The response schema and inferred types are owned by `@nevo/specflow-contracts/specs-overview`.
-The envelope contains `revision`, `collection`, `sample`, ordered `groups`, and `items`. Each item
-supplies backend-owned `groupId`, `overviewSummary`, optional bounded `concurrentWork`, identity,
-title, progress, optional `completedAt` / `archivedAt`, tags and PR references. Rich `signals` and
-`currentExecutions` remain inspection evidence; canonical rows consume a feature-owned bounded
-presentation model. Frontend presentation MUST NOT reconstruct grouping or domain state.
+The envelope is discriminated by `collection`: Current (`active`) contains steering items with
+backend-owned `groupId`, `overviewSummary`, optional bounded `concurrentWork`, rich `signals` and
+`currentExecutions`. Archive (`archive`) contains separate historical items with identity, progress,
+optional `completedAt` / `archivedAt`, tags and PR references, and an empty `groups` array. Archive
+items MUST NOT fabricate steering fields or a Ready group. Both collections map into their own
+bounded row models. Frontend presentation MUST NOT reconstruct grouping or domain state.
 
 ## Provisional data
 
@@ -76,7 +78,7 @@ specs:
 
 This is project policy, not a workstation-local override. Unknown IDs, duplicate IDs, labels, and
 rule-expression fields are rejected. Archive remains a flat historical collection, independent of
-enabled Active groups. Completion timestamps win archive timestamps; missing lifecycle timestamps
+enabled Current groups. Completion timestamps win archive timestamps; missing lifecycle timestamps
 render neutral Archived without inventing a date from updatedAt.
 
 ## Access

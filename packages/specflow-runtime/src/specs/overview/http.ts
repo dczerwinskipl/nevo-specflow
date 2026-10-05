@@ -5,6 +5,7 @@ import {
   SpecsOverviewProjectionSchema,
   SpecsOverviewQuerySchema,
   type SpecsOverviewGroup,
+  type SpecOverviewIdentity,
 } from '@nevo/specflow-contracts/specs-overview';
 import { AuthorizationErrorResponseSchema } from '@nevo/specflow-contracts/authorization';
 import type { CapabilityRoutesOptions } from '../../auth/authorization/capabilities/http';
@@ -36,18 +37,17 @@ export const specsOverviewRoutes: FastifyPluginCallback<
         return { error: 'authentication_required' as const };
       }
       const projection = sampleSpecsOverview(request.query.collection ?? 'active', options.groups);
-      return {
-        ...projection,
-        items: projection.items.filter(
-          (item) =>
-            access.mode === 'disabled' ||
-            options.authorization.can({
-              subject: access.subject,
-              resource: { name: 'spec', scope: { projectId: SAMPLE_PROJECT_ID, specId: item.id } },
-              capability: 'spec.view',
-            }),
-        ),
-      };
+      // Collection access is per-item; no grant yields empty 200, not a collection 403.
+      const canView = (item: SpecOverviewIdentity) =>
+        access.mode === 'disabled' ||
+        options.authorization.can({
+          subject: access.subject,
+          resource: { name: 'spec', scope: { projectId: SAMPLE_PROJECT_ID, specId: item.id } },
+          capability: 'spec.view',
+        });
+      if (projection.collection === 'archive')
+        return { ...projection, items: projection.items.filter(canView) };
+      return { ...projection, items: projection.items.filter(canView) };
     },
   );
   done();

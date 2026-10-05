@@ -53,7 +53,7 @@ Product-owned composition:
 
 ```text
 SpecSteeringCollection
-├── Active
+├── Current
 │   └── SpecListGroup
 │       ├── SpecListGroupHeader
 │       └── ActiveSpecListRow
@@ -61,11 +61,11 @@ SpecSteeringCollection
     └── ArchiveSpecListRow
 ```
 
-Active and Archive may share low-level visual primitives, but their bounded presentation semantics are
+Current and Archive may share low-level visual primitives, but their bounded presentation semantics are
 different and must not be collapsed into one catch-all metadata model.
 
 Use Nevo UI Typography, interaction/focus primitives, StatusIndicator/Badge sparingly, Separator,
-Tabs or SegmentedControl for Active/Archive, EmptyState, and Skeleton.
+Tabs or SegmentedControl for Current/Archive, EmptyState, and Skeleton.
 
 Do not create a generic DashboardCard abstraction.
 
@@ -115,21 +115,27 @@ The backend/application overview projection may remain rich enough to preserve s
 ```text
 {
   id,
-  slug,
   title,
-  summary?,
+  key?,
   updatedAt,
-  lastMeaningfulActivityAt?,
-  workflow,
   progress,
+  groupId,
+  overviewSummary,
+  concurrentWork?,
+  pullRequests?,
+  tags?,
   signals[],
-  currentExecutions[],
-  completedAt?,
-  archivedAt?
+  currentExecutions[]
 }
 ```
 
 That rich projection MUST NOT be passed directly to `SpecListRow`.
+
+The transport envelope is discriminated by collection. Current (`active`) requires the backend
+classification and steering facts above. Archive uses a separate historical source item with
+identity/progress/metadata and optional authoritative `completedAt` / `archivedAt`, but no Current
+`groupId`, `overviewSummary`, `signals`, or `currentExecutions`. Its `groups` list is empty. Archive
+MUST NOT fabricate Ready or other steering state to satisfy the Current source schema.
 
 A feature-owned mapper converts it to a bounded presentation model before rendering. The visual row
 does not receive raw `signals[]`, raw `currentExecutions[]`, Task IDs, or arbitrary arrays of
@@ -143,15 +149,15 @@ type SpecListGroupKind = 'requires-attention' | 'active' | 'ready' | 'draft';
 type SpecListStateSummary =
   | {
       kind: 'attention';
-      reason: 'agent-input' | 'owner-decision' | 'review' | 'spec-approval';
+      reason: 'input' | 'decision' | 'review' | 'blocked' | 'approval';
       count?: number;
     }
-  | { kind: 'active'; role?: string; taskCount?: number }
-  | { kind: 'ready'; readyCount: number }
-  | { kind: 'draft' };
+  | { kind: 'active'; executionCount: number }
+  | { kind: 'ready' }
+  | { kind: 'draft' }
+  | { kind: 'unavailable' };
 
-type SpecListConcurrentQualifier =
-  { kind: 'active'; role?: string; taskCount?: number } | { kind: 'ready'; readyCount: number };
+type SpecListConcurrentQualifier = { executionCount: number };
 
 type SpecListPullRequestSummary =
   { kind: 'single'; number: number; href: string } | { kind: 'multiple'; count: number };
@@ -202,7 +208,7 @@ interface SpecListGroupModel {
 
 The type names are illustrative, but the constraints are normative:
 
-- Active and Archive row inputs are separate bounded presentation models, not the raw overview
+- Current and Archive row inputs are separate bounded presentation models, not the raw overview
   projection;
 - `ActiveSpecListRowModel.groupId` is backend-owned; row summaries do not determine classification;
 - same-category multiplicity is represented by the dominant summary's count, never by repeating raw
@@ -223,12 +229,12 @@ The type names are illustrative, but the constraints are normative:
 - Task IDs and per-Task signal labels are forbidden in the canonical Specs list row;
 - arbitrary `string[]` metadata bags are forbidden because they make visual budget unenforceable.
 
-If product requirements later need another summary fact, extend the corresponding Active or Archive
+If product requirements later need another summary fact, extend the corresponding Current or Archive
 presentation contract deliberately rather than exposing raw source arrays or a generic metadata bag.
 
 ## 4. Primary queue ordering and grouping
 
-One Spec appears in **one canonical Active queue position**.
+One Spec appears in **one canonical Current queue position**.
 
 The default backend-derived Overview presentation groups are, in order:
 
@@ -306,7 +312,7 @@ entering the Specification, where that context can be explained properly.
 
 ## 6. Row anatomy, scan columns, and information budget
 
-Every active Spec row uses the same two-level skeleton and the same nested scan columns.
+Every Current Spec row uses the same two-level skeleton and the same nested scan columns.
 
 Wide conceptual shape:
 
@@ -319,7 +325,7 @@ Another state uses the same columns:
 
 ```text
 [utility][marker][ Provider diagnostics and replay ......................... ][ Runtime ]
-                 [ RT-104  ][ 2 / 8 tasks ][ Reviewer working on 3 tasks ... ]
+                 [ RT-104  ][ 2 / 8 tasks ][ 1 active session .............. ]
 ```
 
 The title spans the secondary identity/progress/summary tracks, while trailing metadata occupies one
@@ -338,6 +344,10 @@ grid-template-columns:
 
 Exact widths/gaps remain token-driven, but semantic fields MUST keep their scan column across sibling
 rows. Optional values do not cause later columns to drift left.
+
+Stable alignment does not justify excessive whitespace. Scan columns SHOULD use the smallest
+practical width and semantic gap that preserve vertical comparability and minimize eye travel.
+These are visual alignment tracks, not a requirement to turn the list into a DataTable.
 
 Hierarchy:
 
@@ -362,7 +372,7 @@ Good:
 
 ```text
 5 / 9 tasks · Owner decision required
-2 / 8 tasks · Reviewer working on 3 tasks
+2 / 8 tasks · 1 active session
 0 / 5 tasks · Ready to start
 ```
 
@@ -387,7 +397,7 @@ the Specification to inspect the individual links.
 
 ## 7. Horizontal composition and ultra-wide behavior
 
-The row interaction surface, divider, hover, focus, and selection treatment span the available list
+The row interaction surface, divider, hover, and focus treatment span the available list
 width. The **information rail inside the row** does not have to stretch title and trailing metadata
 to opposite edges of an ultra-wide workspace.
 
@@ -484,9 +494,9 @@ groupGap > rowGap
 
 Use design-system spacing tokens rather than scattering literal pixel values.
 
-## 10. Active versus Archive
+## 10. Current versus Archive
 
-### Active
+### Current
 
 Steering semantics dominate.
 
@@ -528,7 +538,7 @@ Spec Y
 ...
 ```
 
-Do not force archived Specs into Active Overview presentation groups based on
+Do not force archived Specs into Current Overview presentation groups based on
 stale historical signals.
 
 Search/filter becomes more important in Archive because the collection grows monotonically.
@@ -536,7 +546,7 @@ Search/filter becomes more important in Archive because the collection grows mon
 ## 11. Payload-backed fixtures
 
 Fixtures SHOULD retain rich source projection data where useful, but each story must assert or expose
-the bounded presentation model produced for its collection: `ActiveSpecListRowModel` for Active
+the bounded presentation model produced for its collection: `ActiveSpecListRowModel` for Current
 steering stories and `ArchiveSpecListRowModel` for Archive stories.
 
 ### SS-01 — attention
@@ -562,8 +572,9 @@ ready: TASK-05 ready
 active: Reviewer on TASK-02/TASK-03
 ```
 
-The mapper chooses `attention` as the dominant group/summary and one materially useful concurrent
-qualifier. Current authoritative work wins the qualifier slot over merely-ready work in this case.
+The backend supplies `requires-attention` as the group, an attention summary, and one materially
+useful concurrent-work aggregate. The mapper preserves these decisions; it does not classify raw
+signals. Current authoritative work occupies the qualifier slot rather than merely-ready work.
 
 Rendered row remains bounded:
 
@@ -571,11 +582,11 @@ Rendered row remains bounded:
 Requires attention  1
 
 UI-1234  Deterministic admission
-5 / 9 tasks · Review required · Reviewer working on 2 tasks
+5 / 9 tasks · Review required · 1 session active
 ```
 
 This is representable as `stateSummary: { kind: 'attention', reason: 'review', count: 1 }` plus one
-`active` qualifier. The ready signal remains preserved in the source projection and becomes explicit after entering the
+`{ executionCount: 1 }` qualifier. The ready signal remains preserved in the source projection and becomes explicit after entering the
 Specification. The overview does not concatenate it into a fourth fragment or imply that it is the
 dominant state.
 
@@ -588,7 +599,7 @@ UI-1234  Deterministic admission
 
 ### SS-04 — Spec-level attention
 
-`stateSummary: { kind: 'attention', reason: 'spec-approval' }`
+`stateSummary: { kind: 'attention', reason: 'approval' }`
 
 ```text
 UI-1235  Authorization policy
@@ -604,13 +615,13 @@ UI-1236  Localization preferences
 0 / 5 tasks · Ready to start
 ```
 
-### SS-06 — batch in progress
+### SS-06 — Active batch
 
 ```text
 Active  1
 
 RT-104  Provider diagnostics and replay
-2 / 8 tasks · Reviewer working on 3 tasks
+2 / 8 tasks · 1 active session
 ```
 
 Do not choose a representative Task.
@@ -710,6 +721,10 @@ field.
 
 The whole row has one hover/focus treatment.
 
+Hover and keyboard focus MUST use coherent rounded geometry from shared design-system radius
+tokens. Resting rows keep subtle dividers; do not add another separator system or underline the
+title on whole-row hover. Explicit PR links retain their independent link affordance.
+
 Current Specs Overview does **not** expose Spec multi-select or bulk-Spec actions. Its row gutter is
 empty while group headers use that same gutter for disclosure.
 
@@ -737,9 +752,9 @@ but the visible gutter width stays stable.
 ### Search, group counts, and disclosure
 
 Search narrows the selected collection and must never leave a matching result hidden only because the
-user previously collapsed its Active group.
+user previously collapsed its Current-collection group.
 
-For Active:
+For Current:
 
 - `SpecListGroupModel.count` is the number of rows matching the current collection/filter in that
   group; collapse state never changes the count;
@@ -761,9 +776,9 @@ For Active:
 - clearing Search back to an empty query removes the temporary disabled state and restores the exact
   expanded/collapsed choices captured on the empty -> non-empty transition while the screen remains
   mounted;
-- a no-match result is a filtered empty state, not an empty Active collection.
+- a no-match result is a filtered empty state, not an empty Current collection.
 
-Archive has no Active semantic groups/disclosure. Search simply filters bounded
+Archive has no Current semantic groups/disclosure. Search simply filters bounded
 `ArchiveSpecListRowModel` rows; no-match Archive search is likewise distinct from an empty Archive
 collection.
 
@@ -772,7 +787,10 @@ turning ordinary metadata text into buttons.
 
 ## 13. Data loading / events
 
-Use one collection projection for the selected Active/Archive collection.
+Use one collection projection for the selected Current/Archive collection.
+
+One feature-owned filtered view MUST feed rendered rows, group counts, and the no-results state.
+Do not implement independent Search matching rules in the screen and collection renderer.
 
 A Spec/Task semantic event should update/invalidate only affected item(s) where possible.
 
@@ -837,7 +855,7 @@ spec-steering/narrow
 spec-steering/search-matching-collapsed-group
 spec-steering/search-no-matches
 spec-steering/loading
-spec-steering/empty-active
+spec-steering/empty-current
 ```
 
 The concurrent-signals story must prove that a rich source projection still renders a bounded
@@ -852,7 +870,7 @@ synthesized date.
 
 ## 18. Acceptance criteria
 
-1. A Spec appears once in the canonical Active queue.
+1. A Spec appears once in the canonical Current queue.
 2. Requires attention means human intervention is actually needed.
 3. Default group order is `requires-attention > active > ready > draft`, backend-owned and configuration-driven, not derived from row signals in React.
 4. The entire Spec row has one stable destination: the Specification.
@@ -861,12 +879,12 @@ synthesized date.
 7. Group headers and rows share one outer utility/marker/content grid: disclosure uses the utility
    track, restrained group colour may use the fixed marker track, and labels/row identity share one
    content axis. Current Specs Overview exposes no row-selection checkbox.
-8. All active rows preserve one primary-line + secondary-line skeleton and stable semantic scan
+8. All Current rows preserve one primary-line + secondary-line skeleton and stable semantic scan
    columns across states; key, progress, summary, and bounded trailing metadata do not drift because
    another row has different content.
 9. The secondary line is bounded to progress + dominant aggregate summary + at most one explicit
    concurrent qualifier; it does not render Task IDs or raw signal lists.
-10. Active and Archive rows consume their strict bounded presentation models rather than raw
+10. Current and Archive rows consume their strict bounded presentation models rather than raw
     `signals[]` / `currentExecutions[]` or one generic metadata bag.
 11. One linked PR is an explicit link with a provided href; multiple PRs render as non-interactive
     aggregate metadata, and visible tags are capped at two.

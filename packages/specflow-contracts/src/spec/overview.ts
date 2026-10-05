@@ -64,24 +64,35 @@ export const SpecSteeringSignalSchema = Type.Object({
   target: SteeringTargetSchema,
 });
 export type SpecSteeringSignal = Static<typeof SpecSteeringSignalSchema>;
-export const SpecSteeringItemProjectionSchema = Type.Object({
+export const SpecOverviewIdentitySchema = Type.Object({
   id: Type.String(),
   title: Type.String(),
-  groupId: SpecsOverviewGroupIdSchema,
-  overviewSummary: SpecsOverviewSummarySchema,
-  concurrentWork: Type.Optional(Type.Object({ executionCount: Type.Integer({ minimum: 1 }) })),
   key: Type.Optional(Type.String()),
   pullRequests: Type.Optional(
     Type.Array(Type.Object({ number: Type.Integer(), url: Type.String() })),
   ),
   tags: Type.Optional(Type.Array(Type.String())),
   updatedAt: Type.String(),
-  completedAt: Type.Optional(Type.String()),
-  archivedAt: Type.Optional(Type.String()),
   progress: Type.Object({
     completed: Type.Integer({ minimum: 0 }),
     total: Type.Integer({ minimum: 0 }),
   }),
+});
+export type SpecOverviewIdentity = Static<typeof SpecOverviewIdentitySchema>;
+export const SpecArchiveItemProjectionSchema = Type.Object(
+  {
+    ...SpecOverviewIdentitySchema.properties,
+    completedAt: Type.Optional(Type.String()),
+    archivedAt: Type.Optional(Type.String()),
+  },
+  { additionalProperties: false },
+);
+export type SpecArchiveItemProjection = Static<typeof SpecArchiveItemProjectionSchema>;
+export const SpecSteeringItemProjectionSchema = Type.Object({
+  ...SpecOverviewIdentitySchema.properties,
+  groupId: SpecsOverviewGroupIdSchema,
+  overviewSummary: SpecsOverviewSummarySchema,
+  concurrentWork: Type.Optional(Type.Object({ executionCount: Type.Integer({ minimum: 1 }) })),
   signals: Type.Array(SpecSteeringSignalSchema),
   currentExecutions: Type.Array(
     Type.Object({
@@ -93,13 +104,28 @@ export const SpecSteeringItemProjectionSchema = Type.Object({
   steeringAvailable: Type.Optional(Type.Boolean()),
 });
 export type SpecSteeringItemProjection = Static<typeof SpecSteeringItemProjectionSchema>;
-export const SpecsOverviewProjectionSchema = Type.Object({
+const envelope = {
   revision: Type.String(),
-  collection: SpecsCollectionSchema,
-  groups: Type.Array(SpecsOverviewGroupSchema),
   sample: Type.Optional(Type.Boolean()),
+};
+export const CurrentSpecsOverviewProjectionSchema = Type.Object({
+  ...envelope,
+  collection: Type.Literal('active'),
+  groups: Type.Array(SpecsOverviewGroupSchema),
   items: Type.Array(SpecSteeringItemProjectionSchema),
 });
+export type CurrentSpecsOverviewProjection = Static<typeof CurrentSpecsOverviewProjectionSchema>;
+export const ArchiveSpecsOverviewProjectionSchema = Type.Object({
+  ...envelope,
+  collection: Type.Literal('archive'),
+  groups: Type.Array(SpecsOverviewGroupSchema, { maxItems: 0 }),
+  items: Type.Array(SpecArchiveItemProjectionSchema),
+});
+export type ArchiveSpecsOverviewProjection = Static<typeof ArchiveSpecsOverviewProjectionSchema>;
+export const SpecsOverviewProjectionSchema = Type.Union([
+  CurrentSpecsOverviewProjectionSchema,
+  ArchiveSpecsOverviewProjectionSchema,
+]);
 export type SpecsOverviewProjection = Static<typeof SpecsOverviewProjectionSchema>;
 export const SpecsOverviewQuerySchema = Type.Object(
   { collection: Type.Optional(SpecsCollectionSchema) },

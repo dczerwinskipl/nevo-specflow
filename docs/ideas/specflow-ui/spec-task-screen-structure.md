@@ -145,32 +145,33 @@ It should not expose deep workflow mechanics.
 ```text
 Specs
 
-[ Active ] [ Archive ]
+[ Current ] [ Archive ]
 
 Requires attention
   Spec A        3 Tasks require review
   Spec B        Owner decision required
 
-In progress
+Active
   Spec C        Reviewer working on 3 Tasks
 
-Ready / idle
+Ready
   Spec D        Ready to start
-  Spec E        No immediate action
-  Spec F        Agent remediation available
+
+Draft
+  Spec E        In preparation
 ```
 
-This is the current structural contract for Specs Overview: Active Specs use grouped sections.
+This is the current structural contract for Specs Overview: Current Specs use grouped sections.
 The exact visual treatment of the headers remains a design concern, but flattening these groups is
 not an implementation-level alternative.
 
-The important rule is that **Requires attention, In progress, and Ready / idle remain perceptibly
-different**, while Ready and Idle remain distinguishable through the row summary inside their shared
-low-priority group.
+Requires attention, Active, Ready and Draft remain perceptibly different. These are backend-derived
+Overview presentation groups, not Specification lifecycle statuses. Active requires actual current
+execution, Ready requires preparation/readiness, and Draft is still being prepared.
 
 A Specification can carry concurrent signals, for example one Task may require review while another
 Task is currently being executed. Place the Spec according to the canonical cross-group priority
-`attention > in-progress > ready-idle`. The row keeps one dominant aggregate summary and may show at
+`requires-attention > active > ready > draft`. The row keeps one dominant aggregate summary and may show at
 most one bounded lower-priority qualifier when omitting it would materially misrepresent current
 state. Do not duplicate the same Spec across several groups or expose raw signal collections.
 
@@ -475,7 +476,7 @@ The user learns the context before performing Start.
 ## 7.1 Specs overview
 
 ```text
-In progress
+Active
 
 Spec A
   2 / 8 Tasks · Reviewer working on 3 Tasks
@@ -786,7 +787,7 @@ user needs to act.
 Still deferred:
 
 - Task list vs board vs grouped rows;
-- exact Active/Archive control;
+- exact Current/Archive control;
 - exact Spec workflow visualization;
 - exact Task Secondary width;
 - exact in-Task disclosure treatment for evidence summaries before deeper inspection;

@@ -30,7 +30,7 @@ It should answer:
 1. What actually requires my intervention now?
 2. What is ready if I choose to start/continue it?
 3. What is currently being worked?
-4. What else is active but calm?
+4. Which Specifications are still Draft?
 
 "Requires attention" means progress is waiting on a human, not merely that an action exists.
 
@@ -46,7 +46,7 @@ It does not own Task evidence, Session transcript, or detailed workflow inspecti
 - See current agent work, including batch execution, without inventing one representative Task.
 - Open a Specification through one stable row target.
 - Understand the aggregate reason for a Spec's queue position without exposing Task-level navigation in the list.
-- Switch between Active and Archive collection views.
+- Switch between Current and Archive collection views.
 - Create a Specification with only a title, optionally add initial description, and optionally
   continue directly into agent initialization.
 
@@ -82,14 +82,22 @@ Frontend must not infer:
 
 ## 5. API availability / migration status
 
-| Need                           | New SpecFlow | Old repo evidence                                                                           | Direction                                                                                                                                                                                                                                                              |
-| ------------------------------ | ------------ | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Active/archive Spec collection | **missing**  | **old-repo-available** via `GET /api/dashboard`                                             | Preserve list identity/summary, replace legacy lifecycle ranking with new semantic steering projection.                                                                                                                                                                |
-| Create Specification           | **missing**  | **old-repo-available** via `POST /api/specs`                                                | Preserve scaffolding capability, not the old request shape: target UX requires title only, derives slug internally, uses deterministic workflow unconditionally, allows optional initial description/goal, and may continue into the shared Session-start interaction. |
-| Task summary/progress          | **missing**  | **old-repo-available** in `/api/dashboard` and `GET /api/specs/:source/:slug/task-statuses` | Preserve useful task metadata, but do not treat legacy `ready`/status as complete new readiness model.                                                                                                                                                                 |
-| Human-attention projection     | **missing**  | partial/legacy workflow-action evidence                                                     | Add explicit server-owned attention signals.                                                                                                                                                                                                                           |
-| Current single/batch execution | **missing**  | partial Session/task association exists, but association is not authoritative execution     | Add explicit current execution projection.                                                                                                                                                                                                                             |
-| Live invalidation              | **missing**  | **old-repo-available** via `GET /api/events` specs-changed SSE                              | Reuse event-driven invalidation concept; exact new transport may differ.                                                                                                                                                                                               |
+| Need                            | New SpecFlow | Old repo evidence                                                                           | Direction                                                                                                                                                                                                                                                              |
+| ------------------------------- | ------------ | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current/archive Spec collection | **missing**  | **old-repo-available** via `GET /api/dashboard`                                             | Preserve list identity/summary, replace legacy lifecycle ranking with new semantic steering projection.                                                                                                                                                                |
+| Create Specification            | **missing**  | **old-repo-available** via `POST /api/specs`                                                | Preserve scaffolding capability, not the old request shape: target UX requires title only, derives slug internally, uses deterministic workflow unconditionally, allows optional initial description/goal, and may continue into the shared Session-start interaction. |
+| Task summary/progress           | **missing**  | **old-repo-available** in `/api/dashboard` and `GET /api/specs/:source/:slug/task-statuses` | Preserve useful task metadata, but do not treat legacy `ready`/status as complete new readiness model.                                                                                                                                                                 |
+| Human-attention projection      | **missing**  | partial/legacy workflow-action evidence                                                     | Add explicit server-owned attention signals.                                                                                                                                                                                                                           |
+| Current single/batch execution  | **missing**  | partial Session/task association exists, but association is not authoritative execution     | Add explicit current execution projection.                                                                                                                                                                                                                             |
+| Live invalidation               | **missing**  | **old-repo-available** via `GET /api/events` specs-changed SSE                              | Reuse event-driven invalidation concept; exact new transport may differ.                                                                                                                                                                                               |
+
+The collection read now has a typed backend sample at `GET /api/specs/overview`, including fixed
+progress, human-attention summaries and current executions. The missing production capabilities in
+the table refer to real repository Specs/workflow data, not the sample endpoint. The sample uses real
+authentication and per-item `spec.view` filtering, marks responses `sample: true`, and intentionally
+retains 200 ms latency for loading/refresh verification. See
+[Specs Overview API](../../../reference/api/specs-overview.md) for the discriminated Current/Archive
+source contracts and access semantics. Sample detail navigation and mutations remain unavailable.
 
 Creation and collection reads are separate application capabilities. Creating a Specification does not
 require starting an agent Session; create-and-start composes Specification creation with the common
@@ -138,7 +146,7 @@ Avoid miniature detail screens inside rows.
 ```text
 ┌───────────────┬────────────────────────────────────────────────────────────┐
 │ Nevo SpecFlow │ Specs                                      [+ New spec]    │
-│               │ [ Active ] [ Archive ]                                     │
+│               │ [ Current ] [ Archive ]                                    │
 │ Specs         │                                                            │
 │               │ ▾ ● Requires attention  2                                  │
 │ Settings      │     Deterministic admission and execution boundaries        │
@@ -146,16 +154,16 @@ Avoid miniature detail screens inside rows.
 │               │     Runtime authorization and project access policy         │
 │               │     UI-1235   3 / 7 tasks   Agent input required            │
 │               │                                                            │
-│               │ ▾ ● Active  1                                         │
+│               │ ▾ ● Active  1                                              │
 │               │     Provider diagnostics and replay               PR #31    │
-│               │     RT-104    2 / 8 tasks   Reviewer working on 3 tasks     │
+│               │     RT-104    2 / 8 tasks   1 active session                │
 │               │                                                            │
-│               │ ▾ ○ Ready / Draft  2                                        │
+│               │ ▾ ○ Ready  1                                               │
 │               │     Localization preferences                                │
 │               │     UI-1236   0 / 5 tasks   Ready to start                  │
 │               │ ▾ ○ Draft  1                                               │
 │               │     Navigation cleanup                                      │
-│               │     UI-1237   4 / 7 tasks   In preparation             │
+│               │     UI-1237   4 / 7 tasks   In preparation                  │
 └───────────────┴────────────────────────────────────────────────────────────┘
 ```
 
@@ -182,9 +190,9 @@ content axis.
 - Header overflow includes Create session with a conversation-plus icon. The application owner
   supplies the common Session-start intent; without that capability the entry is disabled.
   This does not implement a private composer or fabricate a Session in presentation state.
-- Collection control: Active / Archive.
+- Collection control: Current / Archive.
 - compact Search Specs control when the collection is large enough that scanning/grouping alone is
-  insufficient; Archive should expect this earlier than Active because it grows monotonically.
+  insufficient; Archive should expect this earlier than Current because it grows monotonically.
 - Backend-derived groups for Requires attention, Active, Ready, and Draft; each group uses the
   disclosure behavior defined by the Spec steering contract.
 - Spec summary rows.
@@ -242,14 +250,14 @@ inside the create dialog.
 
 ### Collection switch
 
-Active/Archive changes collection state, not workflow state.
+Current/Archive changes collection state, not workflow state.
 
 ### Search
 
 Search narrows the selected collection. Local filtering is fine for a bounded loaded set; server
 search follows shared debounce/cancellation rules when needed.
 
-The detailed Search × Active-group count × disclosure behavior is owned by
+The detailed Search × Current-group count × disclosure behavior is owned by
 [Spec steering UI spec](../components/spec-steering-ui-spec.md#search-group-counts-and-disclosure).
 In particular, a matching result must never remain hidden inside a previously collapsed group, and
 group counts describe rows in the current filtered view rather than the unfiltered collection.
@@ -257,7 +265,7 @@ group counts describe rows in the current filtered view rather than the unfilter
 ## 11. States
 
 - loading: preserve header/filter geometry, restrained row skeletons;
-- empty active: concise empty state with New specification action;
+- empty current: concise empty state with New specification action;
 - archive empty: concise local empty state;
 - requires attention: human intervention is actually required;
 - active: actual ongoing agent/system work without stealing attention;
@@ -272,7 +280,7 @@ This screen inherits
 
 ### Initial/live behavior
 
-- fetch only the selected Active or Archive collection;
+- fetch only the selected Current or Archive collection;
 - relevant Spec change events invalidate/update affected collection items;
 - do not fetch every Task document or every Session merely to render the overview;
 - when many Spec-change events arrive in one filesystem/runtime burst, coalesce the resulting
@@ -305,7 +313,7 @@ The detailed row/group/aggregation contract is defined in
 | ---------------------- | ------------------------------------------------------------------------ |
 | Shell/workspace        | AppShell + AppWorkspace                                                  |
 | Header                 | WorkspaceHeader                                                          |
-| Active/Archive         | Tabs or SegmentedControl after visual composition review                 |
+| Current/Archive        | Tabs or SegmentedControl after visual composition review                 |
 | Groups                 | product composition + Typography                                         |
 | Rows                   | product-owned SpecSummaryItem using semantic list/button/link primitives |
 | Status cue             | StatusIndicator/Badge sparingly                                          |
@@ -324,7 +332,7 @@ Do not force the work queue into DataTable unless final content proves genuinely
 - row hover/focus: shared interaction tokens;
 - dividers: \`border-divider\` / \`border-border-subtle\` only when whitespace is insufficient;
 - attention: strongest semantic marker/tone according to actual meaning, not decorative color;
-- in progress: restrained running/activity marker;
+- Active: restrained running/activity marker;
 - Ready: restrained success marker; Draft: neutral marker and preparation summary.
 
 ## 15. Local containment rules
@@ -347,16 +355,16 @@ Do not force the work queue into DataTable unless final content proves genuinely
 
 - rich concurrent source signals collapsing to one bounded row summary;
 - Spec-level attention;
-- in-progress batch;
+- active batch;
 - Ready, distinct from Draft;
 - Draft in preparation;
 - long title and max trailing metadata;
 - ultra-wide layout;
 - Compact wrapping;
 - Narrow layout;
-- Active search with a matching previously-collapsed group;
-- Active search with no matches;
-- Active empty;
+- Current search with a matching previously-collapsed group;
+- Current search with no matches;
+- Current empty;
 - Archive populated;
 - Archive with many Specs + search.
 
@@ -365,8 +373,8 @@ Do not force the work queue into DataTable unless final content proves genuinely
 - requires-attention is reserved for human-blocking situations;
 - default group order is Requires attention -> Active -> Ready -> Draft;
 - these groups are backend-derived presentation categories, not Specification lifecycle statuses;
-- a Spec appears once in the canonical Active queue;
-- Active Specs use the grouped steering presentation defined by the Spec steering contract;
+- a Spec appears once in the canonical Current queue;
+- Current Specs use the grouped steering presentation defined by the Spec steering contract;
 - the entire row always opens Specification;
 - summary/status prose inside the row is non-interactive;
 - Task IDs and raw signal lists do not appear in the canonical row;
@@ -385,7 +393,7 @@ Do not force the work queue into DataTable unless final content proves genuinely
 
 ## 19. Open questions
 
-- exact Active/Archive control;
+- exact Current/Archive control;
 - exact ordering/tie-break inside multiple simultaneous **attention** signals beyond the known rule
   that an active Session waiting on a human is high urgency;
 - exact archive interaction;

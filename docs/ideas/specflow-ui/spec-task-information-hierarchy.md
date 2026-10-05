@@ -111,20 +111,22 @@ Before opening a Specification, the screen should make these categories distingu
 REQUIRES ATTENTION
 Something is waiting on the human.
 
-IN PROGRESS
+ACTIVE
 Agent/runtime work is currently happening.
 
-READY / IDLE
-No work is currently active and no human intervention is required.
-Individual rows still say whether a useful operation is Ready or there is No immediate action.
+READY
+Specification is prepared for execution; no work is running and no human is required.
+
+DRAFT
+Specification is still being prepared and has not reached Ready.
 ```
 
 Issue/remediation is **not** a fifth top-level category by itself.
 
 - if an issue requires human intervention, project it as Requires attention with the concrete reason;
-- if the agent/system is actively remediating without human input, keep it under In progress;
-- if remediation is merely available or nothing is progressing, keep it under Ready / idle and
-  expose the concise reason in the row summary.
+- if a Session/execution is actively remediating without human input, classify it as Active;
+- available remediation alone does not prove readiness: otherwise classify it as Ready or Draft
+  from authoritative Specification preparation/readiness facts.
 
 These are product projections, not persisted status values.
 
@@ -159,27 +161,29 @@ Cross-group priority is canonical and matches the steering-row contract:
 
 ```text
 1. requires attention
-2. in progress
-3. ready / idle
+2. active
+3. ready
+4. draft
 ```
 
 The semantic distinction is:
 
 - **Requires attention**: intended progress needs human input, decision, or intervention.
-- **In progress**: the system/agent is actively progressing or remediating without human input.
-- **Ready / idle**: no work is currently active and no human intervention is required. The row
-  summary still distinguishes Ready from Idle.
+- **Active**: a Session/execution is actually progressing without required human input.
+- **Ready**: the Specification is prepared for execution with no current work or human intervention.
+- **Draft**: the Specification is still being prepared and is not yet Ready.
 
-Within Ready / idle, Ready rows sort before Idle rows by default because an available useful action is
-more actionable than a no-immediate-action state.
+The collection tabs are Current and Archive. Current retains internal/API identifier `active`.
+Overview groups are backend-derived presentation categories, not Specification lifecycle statuses;
+the backend supplies enabled IDs and order, and frontend i18n owns their standard labels.
 
 A generic problem/blocked condition is not a separate priority tier. It moves into Requires attention
 only when authoritative semantics say the human must intervene; otherwise active remediation remains
-In progress, while available-but-not-running remediation or a no-progress state remains Ready / idle.
+Active, while available-but-not-running remediation uses authoritative Ready or Draft classification.
 
 Ordering **inside** a group is a separate concern. For example, within Requires attention an active
-Session waiting directly on the human may rank ahead of a passive approval request; within Ready /
-idle, Ready ranks ahead of Idle. Intra-group tie-breaks must not redefine the cross-group order above.
+Session waiting directly on the human may rank ahead of a passive approval request.
+Intra-group tie-breaks must not redefine `requires-attention > active > ready > draft`.
 
 ---
 
@@ -822,8 +826,8 @@ Specification; the final decision remains a separate deliberate interaction.
 
 ```text
 Specs overview
-  Spec A: IN PROGRESS
-  "Reviewer working on 3 Tasks"
+  Spec A: ACTIVE
+  "1 active session"
 
 open Spec A
   authoritative execution scope identifies the participating Tasks

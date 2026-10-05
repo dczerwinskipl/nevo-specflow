@@ -447,7 +447,8 @@ Refresh: **yes**, header/overflow.
 
 Refreshes:
 
-- current Active/Archive collection projection currently displayed.
+- selected Current/Archive collection projection currently displayed (`active` remains the internal
+  Current collection identifier).
 
 May also refetch on:
 

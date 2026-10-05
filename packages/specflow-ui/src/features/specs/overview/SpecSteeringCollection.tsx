@@ -9,26 +9,22 @@ export function SpecSteeringCollection({
   projection,
   onOpenTarget,
   specificationHref,
-  query = '',
+  searching = false,
 }: {
   readonly projection: SpecsOverviewProjection;
   readonly onOpenTarget?: (target: SteeringTarget) => void;
   readonly specificationHref?: (id: string) => string;
-  readonly query?: string;
+  readonly searching?: boolean;
 }) {
   const { t } = useTranslation();
   const id = useId();
   // Search overrides only rendered disclosure. Normal state remains the immutable
   // pre-search snapshot throughout every non-empty query, including zero matches.
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
-  const searching = query.trim().length > 0;
-  const items = projection.items.filter((item) =>
-    item.title.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()),
-  );
   if (projection.collection === 'archive')
     return (
       <ul className="m-0 min-w-0 list-none divide-y divide-border-subtle p-0">
-        {items.map((item) => (
+        {projection.items.map((item) => (
           <SpecListRow
             key={item.id}
             item={archiveRow(item)}
@@ -41,7 +37,7 @@ export function SpecSteeringCollection({
   return (
     <div className="grid min-w-0 gap-4">
       {projection.groups.map((group) => {
-        const rows = items.filter((item) => item.groupId === group.id);
+        const rows = projection.items.filter((item) => item.groupId === group.id);
         if (!rows.length) return null;
         const expanded = searching || !collapsed.has(group.id);
         const controls = id + '-' + group.id;

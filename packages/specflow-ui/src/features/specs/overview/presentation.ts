@@ -1,5 +1,10 @@
 import type { SpecsOverviewSummary } from '@nevo/specflow-contracts/specs-overview';
-import type { SpecSteeringItemProjection, SpecsOverviewGroupId } from './model';
+import type {
+  SpecSteeringItemProjection,
+  SpecArchiveItemProjection,
+  SpecOverviewIdentity,
+  SpecsOverviewGroupId,
+} from './model';
 
 type Tags = readonly [] | readonly [string] | readonly [string, string];
 type PullRequests =
@@ -26,7 +31,7 @@ export interface ArchiveSpecRowModel extends RowIdentity {
 }
 export type SpecRowModel = ActiveSpecRowModel | ArchiveSpecRowModel;
 
-function identity(item: SpecSteeringItemProjection): RowIdentity {
+function identity(item: SpecOverviewIdentity): RowIdentity {
   const [first, second] = item.tags ?? [];
   const tags: Tags = first === undefined ? [] : second === undefined ? [first] : [first, second];
   const prs = item.pullRequests ?? [];
@@ -55,7 +60,7 @@ export function activeRow(item: SpecSteeringItemProjection): ActiveSpecRowModel 
     qualifier: item.concurrentWork,
   };
 }
-export function archiveRow(item: SpecSteeringItemProjection): ArchiveSpecRowModel {
+export function archiveRow(item: SpecArchiveItemProjection): ArchiveSpecRowModel {
   return {
     ...identity(item),
     collection: 'archive',

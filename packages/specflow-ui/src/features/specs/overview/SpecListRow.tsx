@@ -28,7 +28,7 @@ export function SpecListRow({ item, specificationHref, onOpenTarget }: SpecListR
   return (
     <li
       className={cn(
-        '@container/spec-row group relative min-h-14 min-w-0 py-2',
+        '@container/spec-row group relative min-h-14 min-w-0 rounded-control py-2',
         specificationHref && 'hover:bg-surface-hover',
         fastColorTransitionClassName,
       )}
@@ -48,7 +48,8 @@ export function SpecListRow({ item, specificationHref, onOpenTarget }: SpecListR
               {specificationHref ? (
                 <a
                   href={specificationHref}
-                  className="pointer-events-auto static cursor-pointer outline-none after:absolute after:inset-0 after:rounded-control focus-visible:after:outline-2 focus-visible:after:outline-focus-ring group-hover:underline"
+                  data-focus-ring="delegated"
+                  className="pointer-events-auto static cursor-pointer outline-none after:absolute after:inset-0 after:rounded-control focus-visible:after:outline-2 focus-visible:after:outline-focus-ring"
                   aria-label={t('specs.openSpec', { title: item.title })}
                   onClick={(event) => {
                     if (

@@ -51,7 +51,7 @@ The current product routes under the guarded layout remain:
 ## Specs Overview increment
 
 `src/features/specs/overview/` owns the typed collection projection, product steering rows,
-Active/Archive presentation, collection search, and loading/refresh/error composition. The
+Current/Archive presentation, collection search, and loading/refresh/error composition. The
 screen follows the [Specs Overview contract](../../../ideas/specflow-ui/screens/specs-overview-ui-spec.md)
 and its shared steering contract. Signal priority, concrete targets, human attention, and current
 execution membership are supplied by the projection, not reconstructed from workflow lifecycle.

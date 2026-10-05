@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createSpecItem, createSpecsFixture } from './fixtures';
+import { createSpecItem, createSpecsFixture, createArchiveItem } from './fixtures';
 import { activeRow, archiveRow } from './presentation';
 import { groupTranslationKey } from './model';
 
@@ -70,7 +70,7 @@ describe('Specs Overview presentation boundary', () => {
     ],
     [{}, { kind: 'archived', timestamp: undefined }],
   ])('uses only authoritative Archive lifecycle data: %j', (timestamps, history) => {
-    const row = archiveRow(createSpecItem({ ...timestamps, updatedAt: '2099-01-01T00:00:00Z' }));
+    const row = archiveRow(createArchiveItem({ ...timestamps, updatedAt: '2099-01-01T00:00:00Z' }));
     expect(row.history).toEqual(history);
     expect(row).not.toHaveProperty('summary');
     expect(row).not.toHaveProperty('groupId');

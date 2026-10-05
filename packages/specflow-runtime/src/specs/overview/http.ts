@@ -4,17 +4,16 @@ import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import {
   SpecsOverviewProjectionSchema,
   SpecsOverviewQuerySchema,
+  type SpecsOverviewGroup,
 } from '@nevo/specflow-contracts/specs-overview';
 import { AuthorizationErrorResponseSchema } from '@nevo/specflow-contracts/authorization';
 import type { CapabilityRoutesOptions } from '../../auth/authorization/capabilities/http';
 import { resolveAuthorizationAccess } from '../../auth/authorization/access';
 import { SAMPLE_PROJECT_ID, sampleSpecsOverview } from './sample';
 
-export const specsOverviewRoutes: FastifyPluginCallback<CapabilityRoutesOptions> = (
-  app,
-  options,
-  done,
-) => {
+export const specsOverviewRoutes: FastifyPluginCallback<
+  CapabilityRoutesOptions & { groups?: readonly SpecsOverviewGroup[] }
+> = (app, options, done) => {
   app.withTypeProvider<TypeBoxTypeProvider>().get(
     '/api/specs/overview',
     {
@@ -36,7 +35,7 @@ export const specsOverviewRoutes: FastifyPluginCallback<CapabilityRoutesOptions>
         reply.code(401);
         return { error: 'authentication_required' as const };
       }
-      const projection = sampleSpecsOverview(request.query.collection ?? 'active');
+      const projection = sampleSpecsOverview(request.query.collection ?? 'active', options.groups);
       return {
         ...projection,
         items: projection.items.filter(

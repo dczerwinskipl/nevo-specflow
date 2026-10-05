@@ -138,7 +138,7 @@ metadata.
 Reference presentation contract:
 
 ```ts
-type SpecListGroupKind = 'attention' | 'in-progress' | 'ready-idle';
+type SpecListGroupKind = 'requires-attention' | 'active' | 'ready' | 'draft';
 
 type SpecListStateSummary =
   | {
@@ -146,13 +146,12 @@ type SpecListStateSummary =
       reason: 'agent-input' | 'owner-decision' | 'review' | 'spec-approval';
       count?: number;
     }
-  | { kind: 'in-progress'; role?: string; taskCount?: number }
+  | { kind: 'active'; role?: string; taskCount?: number }
   | { kind: 'ready'; readyCount: number }
-  | { kind: 'idle'; reason: 'no-immediate-action' | 'agent-remediation-available' };
+  | { kind: 'draft' };
 
 type SpecListConcurrentQualifier =
-  | { kind: 'in-progress'; role?: string; taskCount?: number }
-  | { kind: 'ready'; readyCount: number };
+  { kind: 'active'; role?: string; taskCount?: number } | { kind: 'ready'; readyCount: number };
 
 type SpecListPullRequestSummary =
   { kind: 'single'; number: number; href: string } | { kind: 'multiple'; count: number };
@@ -172,6 +171,7 @@ interface ActiveSpecListRowModel {
     completed: number;
     total: number;
   };
+  groupId: SpecListGroupKind; // backend-owned classification
   stateSummary: SpecListStateSummary;
   qualifier?: SpecListConcurrentQualifier;
   trailing?: SpecListTrailingMetadata;
@@ -204,13 +204,12 @@ The type names are illustrative, but the constraints are normative:
 
 - Active and Archive row inputs are separate bounded presentation models, not the raw overview
   projection;
-- `ActiveSpecListRowModel.stateSummary.kind` is the dominant semantic state and determines the one
-  group that owns the Active row through the mapping below;
+- `ActiveSpecListRowModel.groupId` is backend-owned; row summaries do not determine classification;
 - same-category multiplicity is represented by the dominant summary's count, never by repeating raw
   signals;
 - `qualifier` is optional and may represent **one** materially useful concurrent lower-priority
   state; it is aggregate, non-interactive, and never contains Task IDs;
-- when attention, ready, and in-progress state coexist, authoritative current work is normally a more
+- when attention, ready, and active state coexist, authoritative current work is normally a more
   useful qualifier than merely-ready work because it changes the interpretation of what is happening
   now;
 - tags are capped at two visible values;
@@ -231,38 +230,27 @@ presentation contract deliberately rather than exposing raw source arrays or a g
 
 One Spec appears in **one canonical Active queue position**.
 
-The current Active collection has three semantic groups:
+The default backend-derived Overview presentation groups are, in order:
 
-```text
-requires attention
-in progress
-ready / idle
-```
+1. **Requires attention** (`requires-attention`): any actionable human-attention condition belonging
+   to the Specification, a Task, Session, review, decision request, or blocker.
+2. **Active** (`active`): authoritative current execution or Session activity without higher-priority
+   human attention. This is not necessarily the Specification lifecycle status.
+3. **Ready** (`ready`): approved/ready for work, with no execution and no human attention.
+4. **Draft** (`draft`): still in preparation, before Ready.
 
-Cross-group priority is:
+Precedence is `requires-attention > active > ready > draft`. Each Specification has exactly one
+backend-owned `groupId`; attention wins even when work is concurrent. Internal `working`, `quiet`,
+`issue`, and similar signals are not top-level groups.
 
-```text
-attention > in-progress > ready-idle
-```
+The backend supplies enabled standard IDs and their order through the collection's `groups` list.
+Project-owned `.nevo/config.yaml` may configure `specs.overview.groups` with `id` and numeric
+`order`; omitted configuration uses orders 10/20/30/40. A configured list enables only listed IDs.
+The frontend renders the supplied order and maps stable IDs to its normal i18n keys. English labels
+and generic rule expressions MUST NOT be put in YAML. Semantics remain backend-owned.
 
-The row-state mapping is deterministic:
-
-- `attention` -> Requires attention;
-- `in-progress` -> In progress;
-- `ready` and `idle` -> Ready / idle.
-
-Ready and idle remain distinct **row summaries** inside the same low-priority group. Ready means a
-useful operation is available if the human chooses to start/continue it. Idle means no immediate
-useful action or active progress needs emphasis. Within Ready / idle, ready rows sort ahead of idle
-rows unless a more specific product ordering rule is introduced later.
-
-For the current Specs Overview, use grouped sections. A future flat queue is a separate design
-decision and must not be introduced as an implementation convenience.
-
-An "issue" is not automatically its own human-attention category. If the issue requires owner
-intervention, it contributes an attention summary. If the agent/system is actively remediating it
-without human input, it belongs in In progress. If remediation is merely available or nothing is
-currently progressing, it remains in Ready / idle with the appropriate row summary.
+The current mock returns predefined classifications and aggregate facts. This does not implement a
+production grouping engine. Replacing the sample with real projections must preserve this contract.
 
 Within Requires attention, an active Session interaction waiting for the human is normally the
 strongest signal. Beyond that, the application/read model should provide semantic priority rather
@@ -502,7 +490,7 @@ Use design-system spacing tokens rather than scattering literal pixel values.
 
 Steering semantics dominate.
 
-Group by Requires attention / In progress / Ready / idle.
+Render the backend-supplied groups; defaults are Requires attention / Active / Ready / Draft.
 
 ### Archive
 
@@ -540,7 +528,7 @@ Spec Y
 ...
 ```
 
-Do not force archived Specs into Requires attention / In progress / Ready / idle groups based on
+Do not force archived Specs into Active Overview presentation groups based on
 stale historical signals.
 
 Search/filter becomes more important in Archive because the collection grows monotonically.
@@ -564,14 +552,14 @@ UI-1234  Deterministic admission
 
 No `TASK-03` appears in the canonical row.
 
-### SS-02 — concurrent attention + ready + in-progress
+### SS-02 — concurrent attention + ready + active
 
 Source may contain several signals:
 
 ```text
 attention: TASK-03 requires review
 ready: TASK-05 ready
-in-progress: Reviewer on TASK-02/TASK-03
+active: Reviewer on TASK-02/TASK-03
 ```
 
 The mapper chooses `attention` as the dominant group/summary and one materially useful concurrent
@@ -587,7 +575,7 @@ UI-1234  Deterministic admission
 ```
 
 This is representable as `stateSummary: { kind: 'attention', reason: 'review', count: 1 }` plus one
-`in-progress` qualifier. The ready signal remains preserved in the source projection and becomes explicit after entering the
+`active` qualifier. The ready signal remains preserved in the source projection and becomes explicit after entering the
 Specification. The overview does not concatenate it into a fourth fragment or imply that it is the
 dominant state.
 
@@ -607,10 +595,10 @@ UI-1235  Authorization policy
 3 / 7 tasks · Specification approval required
 ```
 
-### SS-05 — ready inside Ready / idle
+### SS-05 — Ready
 
 ```text
-Ready / idle  2
+Ready  1
 
 UI-1236  Localization preferences
 0 / 5 tasks · Ready to start
@@ -619,7 +607,7 @@ UI-1236  Localization preferences
 ### SS-06 — batch in progress
 
 ```text
-In progress  1
+Active  1
 
 RT-104  Provider diagnostics and replay
 2 / 8 tasks · Reviewer working on 3 tasks
@@ -627,29 +615,17 @@ RT-104  Provider diagnostics and replay
 
 Do not choose a representative Task.
 
-### SS-07 — available remediation inside Ready / idle
-
-`stateSummary: { kind: 'idle', reason: 'agent-remediation-available' }`
+### SS-07 — Draft
 
 ```text
-Ready / idle  2
-
-RT-105  Runtime recovery
-4 / 7 tasks · Agent remediation available
-```
-
-If owner intervention is required, the projection belongs in Requires attention instead.
-
-### SS-08 — idle inside Ready / idle
-
-`stateSummary: { kind: 'idle', reason: 'no-immediate-action' }`
-
-```text
-Ready / idle  2
+Draft  1
 
 UI-1237  Navigation cleanup
-4 / 7 tasks · No immediate action
+4 / 7 tasks · In preparation
 ```
+
+Draft means the Specification is still being prepared. Available remediation alone does not prove
+human attention or active execution; the backend supplies classification from authoritative facts.
 
 ### SS-09 — archived
 
@@ -824,8 +800,8 @@ Keep visible rows while refreshing.
 - progress/trailing metadata: muted/secondary;
 - dividers subtle;
 - attention carries the strongest semantic tone;
-- in-progress uses a restrained running/activity tone;
-- Ready / idle remains neutral/subtle, with row prose distinguishing ready from idle;
+- active uses a restrained running/activity tone;
+- Ready uses restrained success tone; Draft uses neutral tone and preparation prose;
 - group semantics cannot rely on color alone;
 - no decorative different strong background per group.
 
@@ -846,10 +822,9 @@ Required:
 spec-steering/attention
 spec-steering/concurrent-source-signals-bounded-row
 spec-steering/spec-attention
-spec-steering/ready-idle
-spec-steering/batch-in-progress
-spec-steering/remediation-available
-spec-steering/idle
+spec-steering/ready-and-draft
+spec-steering/batch-active
+spec-steering/draft
 spec-steering/archive-row
 spec-steering/archive-completed-and-archived
 spec-steering/archive-without-lifecycle-timestamp
@@ -879,8 +854,7 @@ synthesized date.
 
 1. A Spec appears once in the canonical Active queue.
 2. Requires attention means human intervention is actually needed.
-3. Cross-group priority is `attention > in-progress > ready-idle`; ready and idle remain distinct row
-   summaries within the same Ready / idle group.
+3. Default group order is `requires-attention > active > ready > draft`, backend-owned and configuration-driven, not derived from row signals in React.
 4. The entire Spec row has one stable destination: the Specification.
 5. Ordinary status/summary prose inside a row is non-interactive and is not styled as a link.
 6. Only explicitly allowed external/contextual controls such as a linked PR may coexist with the row target, using sibling interactive elements rather than invalid nested controls.

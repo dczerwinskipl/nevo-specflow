@@ -77,7 +77,6 @@
     "noResultsDescription": "Wpisz inny tytuł lub wyczyść wyszukiwanie, aby zobaczyć tę kolekcję.",
     "signalsUnavailable": "Informacje o stanie pracy są niedostępne",
     "openSpec": "Otwórz specyfikację: {{title}}",
-    "selectSpec": "Zaznacz specyfikację: {{title}}",
     "rowActions": "Akcje specyfikacji: {{title}}",
     "createSession": "Utwórz sesję",
     "openDetails": "Otwórz specyfikację",
@@ -95,11 +94,44 @@
     "execution_other": "{{role}} · {{count}} zadań",
     "updated": "Aktualizacja: {{date}}",
     "groups": {
-      "attention": "Wymaga uwagi",
+      "requiresAttention": "Wymaga uwagi",
+      "active": "W toku",
       "ready": "Gotowe",
-      "working": "W trakcie pracy",
-      "issue": "Pozostałe aktywne",
-      "quiet": "Pozostałe aktywne"
+      "draft": "Szkice"
+    },
+    "collapseGroup": "Zwiń grupę {{label}}",
+    "expandGroup": "Rozwiń grupę {{label}}",
+    "groupSearchExpanded": "Grupa {{label}} rozwinięta podczas wyszukiwania",
+    "pullRequests": "{{count}} PR",
+    "summary": {
+      "input": "Agent potrzebuje odpowiedzi",
+      "decision": "Wymagana decyzja właściciela",
+      "review_one": "Wymagana weryfikacja",
+      "review_few": "{{count}} zadania wymagają weryfikacji",
+      "review_many": "{{count}} zadań wymaga weryfikacji",
+      "review_other": "{{count}} zadań wymaga weryfikacji",
+      "blocked": "Wymagana interwencja człowieka",
+      "approval": "Wymagana akceptacja specyfikacji",
+      "active_one": "1 aktywna sesja",
+      "active_few": "{{count}} aktywne sesje",
+      "active_many": "{{count}} aktywnych sesji",
+      "active_other": "{{count}} aktywnych sesji",
+      "ready": "Gotowe do rozpoczęcia",
+      "draft": "W przygotowaniu",
+      "unavailable": "Informacje o stanie pracy są niedostępne",
+      "concurrent_one": "1 sesja w toku",
+      "concurrent_few": "{{count}} sesje w toku",
+      "concurrent_many": "{{count}} sesji w toku",
+      "concurrent_other": "{{count}} sesji w toku"
+    },
+    "history": {
+      "completed": "Ukończono {{date}}",
+      "archived": "Zarchiwizowano {{date}}",
+      "archivedWithoutDate": "Zarchiwizowano"
+    },
+    "forbidden": {
+      "title": "Brak dostępu",
+      "description": "Nie masz uprawnień do przeglądania tych specyfikacji."
     }
   },
   "playground": {

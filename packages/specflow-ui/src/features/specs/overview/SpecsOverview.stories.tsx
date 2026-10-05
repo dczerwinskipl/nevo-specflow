@@ -68,18 +68,15 @@ function OverviewFixture({
   state,
   locale = 'en',
   interactive = true,
-  selectable = false,
 }: {
   state: SpecsOverviewState;
   locale?: AppLocale;
   interactive?: boolean;
-  selectable?: boolean;
 }) {
   const [collectionOverride, setCollectionOverride] = useState<SpecsOverviewState>();
   const [target, setTarget] = useState<SteeringTarget>();
   const [refreshes, setRefreshes] = useState(0);
   const [sessionStarts, setSessionStarts] = useState(0);
-  const [selected, setSelected] = useState<string[]>([]);
   return (
     <StoryLocalization locale={locale}>
       <div className="h-dvh w-full">
@@ -109,22 +106,10 @@ function OverviewFixture({
             onRefresh={() => setRefreshes((count) => count + 1)}
             onCreateSession={interactive ? () => setSessionStarts((count) => count + 1) : undefined}
             onOpenTarget={interactive ? setTarget : undefined}
-            selectionFor={
-              selectable
-                ? (id) => ({
-                    selected: selected.includes(id),
-                    onSelectedChange: (checked) =>
-                      setSelected((current) =>
-                        checked
-                          ? [...current.filter((value) => value !== id), id]
-                          : current.filter((value) => value !== id),
-                      ),
-                  })
-                : undefined
-            }
+            specificationHref={interactive ? (id) => `/specs/${id}` : undefined}
           />
           <output className="sr-only" aria-label="Fixture interaction result">
-            {JSON.stringify({ target, refreshes, selected, sessionStarts })}
+            {JSON.stringify({ target, refreshes, sessionStarts })}
           </output>
         </AppShell>
       </div>
@@ -150,62 +135,55 @@ type Story = StoryObj<typeof meta>;
 
 export const Active: Story = {
   play: async ({ canvas, canvasElement, userEvent }) => {
-    const rows = canvasElement.querySelectorAll('[data-spec-id]');
-    if (rows.length !== 7) throw new Error('Every Specification must occupy one queue position.');
-    await userEvent.click(
-      canvas.getByRole('button', {
-        name: 'Open specification: Deterministic admission and execution boundaries',
-      }),
+    const headings = [...canvasElement.querySelectorAll('[data-spec-group-header] h2')];
+    if (
+      headings.map((element) => element.textContent).join('|') !==
+      'Requires attention|Active|Ready|Draft'
+    )
+      throw new Error('Backend group order and frontend translations must be preserved.');
+    if (canvasElement.querySelectorAll('[data-spec-id]').length !== 7)
+      throw new Error('Every Specification appears exactly once.');
+    if (canvas.queryByRole('checkbox')) throw new Error('Specs has no bulk-selection capability.');
+    if (canvasElement.textContent?.includes('TASK-'))
+      throw new Error('Raw Task IDs must not leak.');
+    canvas.getByText('Agent input required');
+    canvas.getByText(/1 session active/);
+    canvas.getByText('1 active session');
+    const edges = [
+      ...canvasElement.querySelectorAll('[data-spec-title], [data-spec-group-header] h2'),
+    ].map((el) => el.getBoundingClientRect().left);
+    if (edges.some((left) => Math.abs(left - edges[0]!) > 1))
+      throw new Error('Shared content axis drift.');
+    const progressEdges = [...canvasElement.querySelectorAll('[data-spec-progress]')].map(
+      (el) => el.getBoundingClientRect().left,
     );
+    if (progressEdges.some((left) => Math.abs(left - progressEdges[0]!) > 1))
+      throw new Error('Progress scan column drift.');
+    const destination = canvas.getByRole('link', {
+      name: 'Open specification: Deterministic admission and execution boundaries',
+    });
+    if (destination.getAttribute('href') !== '/specs/admission')
+      throw new Error('Navigation must expose a real href.');
+    await userEvent.click(destination);
     if (
       !canvas
         .getByLabelText('Fixture interaction result')
-        .textContent?.includes('"kind":"specification"')
+        .textContent?.includes('"specId":"admission"')
     )
-      throw new Error('Identity must preserve neutral Spec intent.');
-    if (canvas.queryByRole('button', { name: /TASK-03 requires review/ }))
-      throw new Error('The overview must have one Spec destination, not nested task actions.');
-    const titleEdges = [...canvasElement.querySelectorAll('[data-spec-title]')].map(
-      (element) => element.getBoundingClientRect().left,
+      throw new Error('Specification navigation must preserve identity.');
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Collapse Requires attention group' }),
     );
-    const headingEdges = [...canvasElement.querySelectorAll('summary h2')].map(
-      (element) => element.getBoundingClientRect().left,
-    );
-    if ([...titleEdges, ...headingEdges].some((left) => Math.abs(left - titleEdges[0]!) > 1))
-      throw new Error('All titles and group labels must share the same content axis.');
-    const header = canvasElement.querySelector('summary')!;
-    const surfaceProbe = document.createElement('div');
-    surfaceProbe.className = 'bg-surface-control';
-    canvasElement.append(surfaceProbe);
-    const surfaceColor = getComputedStyle(surfaceProbe).backgroundColor;
-    surfaceProbe.remove();
-    if (getComputedStyle(header).backgroundColor !== surfaceColor)
-      throw new Error('Group headers must use the stronger shared control surface token.');
-    for (const reason of canvasElement.querySelectorAll<HTMLElement>('[data-spec-reason]')) {
-      const summary = reason.parentElement!;
-      const key = summary.firstElementChild!;
-      const text = reason.querySelector('span')!;
-      const keyRange = document.createRange();
-      keyRange.selectNodeContents(key);
-      const reasonRange = document.createRange();
-      reasonRange.selectNodeContents(text);
-      const lineHeight = parseFloat(getComputedStyle(summary).lineHeight);
-      const offset =
-        (reasonRange.getClientRects()[0]!.top - keyRange.getClientRects()[0]!.top) / lineHeight;
-      if (Math.abs(offset - Math.round(offset)) > 0.05)
-        throw new Error('Reason text must share the metadata baseline, including after wrapping.');
-    }
-    canvas.getByText('Implementer · 3 Tasks');
-    const attention = canvas.getByText('Requires attention').closest('details');
-    const ready = canvas.getByText('Ready', { exact: true }).closest('details');
-    if (!attention || !ready) throw new Error('Expected independent steering disclosures.');
-    await userEvent.click(attention.querySelector('summary')!);
-    if (attention.open || !ready.open)
-      throw new Error('Collapsing one group must not close another.');
-    await userEvent.click(attention.querySelector('summary')!);
-    if (!attention.open || !ready.open) throw new Error('Groups must reopen independently.');
+    if (
+      canvas
+        .getByRole('button', { name: 'Expand Requires attention group' })
+        .getAttribute('aria-expanded') !== 'false'
+    )
+      throw new Error('Normal disclosure should collapse.');
+    await userEvent.click(canvas.getByRole('button', { name: 'Expand Requires attention group' }));
   },
 };
+
 export const SpecLevelAttention: Story = {
   args: {
     state: {
@@ -248,7 +226,7 @@ export const SingleTaskWorking: Story = {
     },
   },
 };
-export const QuietAndRemediation: Story = {
+export const ReadyAndDraft: Story = {
   args: {
     state: {
       ...loaded,
@@ -297,7 +275,8 @@ export const Archive: Story = {
     await userEvent.type(search, 'canonical');
     if (canvas.queryByText('Requires attention'))
       throw new Error('Archive must remain historical.');
-    await userEvent.clear(search);
+    await userEvent.click(search);
+    await userEvent.keyboard('{Control>}a{/Control}');
     await userEvent.type(search, 'does-not-exist');
     canvas.getByText('No matching specifications');
     await userEvent.click(canvas.getByRole('button', { name: 'Clear search' }));
@@ -340,86 +319,6 @@ export const LongContent: Story = {
   args: { state: { ...loaded, projection: createLongContentFixture() } },
 };
 export const Polish: Story = { args: { locale: 'pl' } };
-export const Selection: Story = {
-  args: { selectable: true },
-  play: async ({ canvas, userEvent }) => {
-    const reasons = [...document.querySelectorAll('[data-spec-reason]')];
-    if (reasons.length < 3 || reasons.some((reason) => !reason.querySelector('svg')))
-      throw new Error('Each dominant attention/issue reason must have a passive icon.');
-    const firstTitle = canvas.getByRole('heading', {
-      name: 'Deterministic admission and execution boundaries',
-    });
-    const firstCheckbox = canvas.getByRole('checkbox', {
-      name: 'Select specification: Deterministic admission and execution boundaries',
-    });
-    const titleBox = firstTitle.getBoundingClientRect();
-    const rowBox = firstTitle.closest('[data-spec-id]')!.getBoundingClientRect();
-    const checkboxBox = firstCheckbox.getBoundingClientRect();
-    if (
-      checkboxBox.width !== 16 ||
-      titleBox.left - checkboxBox.right < 16 ||
-      Math.abs(rowBox.top + rowBox.height / 2 - checkboxBox.top - checkboxBox.height / 2) > 1
-    )
-      throw new Error(
-        'Standard checkbox must have breathing room and be vertically centered in its row.',
-      );
-    await userEvent.click(
-      canvas.getByRole('checkbox', {
-        name: 'Select specification: Deterministic admission and execution boundaries',
-      }),
-    );
-    const result = canvas.getByLabelText('Fixture interaction result');
-    if (
-      !result.textContent?.includes('"selected":["admission"]') ||
-      result.textContent.includes('"target"')
-    )
-      throw new Error('Selection must not activate the row destination.');
-    await userEvent.click(
-      canvas.getByRole('button', {
-        name: 'Open specification: Deterministic admission and execution boundaries',
-      }),
-    );
-    if (!result.textContent?.includes('"specId":"admission"'))
-      throw new Error('Navigation must retain stable identity rather than the display key.');
-    const pr = canvas.getByRole('link', {
-      name: 'Open pull request #27 — Deterministic admission and execution boundaries',
-    });
-    if (pr.getAttribute('href') !== 'https://example.test/pull/27')
-      throw new Error('PR must preserve its explicit destination.');
-    if (!pr.querySelector('svg')) throw new Error('PR links must expose the branch icon.');
-    const metadata = pr.closest('[data-spec-metadata]')!;
-    if (
-      [...metadata.children].some(
-        (element) => Math.abs(element.getBoundingClientRect().height - 24) > 1,
-      )
-    )
-      throw new Error('PR and pills must share the compact metadata line height.');
-    if (firstTitle.closest('[data-spec-id]')!.getBoundingClientRect().width >= 672) {
-      const metadataBox = metadata.getBoundingClientRect();
-      const currentRowBox = firstTitle.closest('[data-spec-id]')!.getBoundingClientRect();
-      if (
-        Math.abs(
-          metadataBox.top + metadataBox.height / 2 - currentRowBox.top - currentRowBox.height / 2,
-        ) > 1
-      )
-        throw new Error('Wide metadata must be vertically centered in its row.');
-    }
-    await userEvent.click(
-      canvas.getByRole('button', {
-        name: 'Specification actions: Runtime authorization and project access policy',
-      }),
-    );
-    const menu = document.querySelector('[role="menu"]');
-    const open = [...(menu?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])].find(
-      (element) => element.textContent === 'Open specification',
-    );
-    if (!open) throw new Error('Row overflow must expose its independent menu.');
-    if (!open.querySelector('svg')) throw new Error('Open specification must expose its icon.');
-    await userEvent.click(open);
-    if (!result.textContent?.includes('"specId":"security"'))
-      throw new Error('Menu must act on its owning Spec.');
-  },
-};
 export const MetadataOverflow: Story = {
   args: {
     state: {
@@ -443,6 +342,186 @@ export const MetadataOverflow: Story = {
         ],
       },
     },
+  },
+  play: ({ canvas, canvasElement }) => {
+    canvas.getByText('3 PRs');
+    if (canvas.queryByRole('link', { name: /Open pull request/ }))
+      throw new Error('Multiple PRs must never choose a representative link.');
+    if (canvasElement.textContent?.includes('TASK-'))
+      throw new Error('Source-specific Task text must stay out of bounded rows.');
+  },
+};
+
+export const SearchDisclosure: Story = {
+  args: {
+    state: {
+      ...loaded,
+      projection: {
+        ...createSpecsFixture(),
+        items: [
+          ...createSpecsFixture().items,
+          ...Array.from({ length: 7 }, (_, index) =>
+            createSpecItem({ id: `draft-${index}`, title: `Planning draft ${index}` }),
+          ),
+        ],
+      },
+    },
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Collapse Requires attention group' }),
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Collapse Draft group' }));
+    const search = canvas.getByRole('textbox', { name: 'Search specs' });
+    await userEvent.type(search, 'Deterministic');
+    const forced = canvas.getByRole('button', {
+      name: 'Requires attention group expanded while search is active',
+    });
+    if (
+      forced.getAttribute('aria-expanded') !== 'true' ||
+      forced.getAttribute('aria-disabled') !== 'true'
+    )
+      throw new Error('Search must force accessible expanded, disabled disclosure.');
+    await userEvent.click(forced);
+    forced.focus();
+    await userEvent.keyboard('{Enter} ');
+    if (
+      !canvas
+        .getByRole('link', {
+          name: 'Open specification: Deterministic admission and execution boundaries',
+        })
+        .checkVisibility()
+    )
+      throw new Error('Search matches must remain visible.');
+    if (canvasElement.querySelectorAll('[data-spec-group-header]').length !== 1)
+      throw new Error('Zero-match groups must be omitted.');
+    const group = forced.closest('section')!;
+    if (!group.querySelector('[data-spec-group-header]')?.textContent?.includes('1'))
+      throw new Error('Filtered group counts must reflect matches.');
+    await userEvent.type(search, 'does-not-exist', {
+      initialSelectionStart: 0,
+      initialSelectionEnd: 100,
+    });
+    canvas.getByText('No matching specifications');
+    await userEvent.type(search, 'Runtime', { initialSelectionStart: 0, initialSelectionEnd: 100 });
+    canvas.getByRole('button', {
+      name: 'Requires attention group expanded while search is active',
+    });
+    await userEvent.clear(search);
+    canvas.getByRole('button', { name: 'Expand Requires attention group' });
+    canvas.getByRole('button', { name: 'Expand Draft group' });
+    canvas.getByRole('button', { name: 'Collapse Active group' });
+    canvas.getByRole('button', { name: 'Collapse Ready group' });
+  },
+};
+
+export const MissingKey: Story = {
+  args: {
+    state: {
+      ...loaded,
+      projection: {
+        ...createSpecsFixture(),
+        items: createSpecsFixture().items.map((item, index) => ({
+          ...item,
+          key: index === 1 ? undefined : item.key,
+        })),
+      },
+    },
+  },
+  play: Active.play,
+};
+
+export const ArchiveLifecycle: Story = {
+  args: {
+    state: {
+      ...loaded,
+      collection: 'archive',
+      projection: {
+        revision: 'lifecycle-fixture',
+        collection: 'archive',
+        groups: [],
+        items: [
+          createSpecItem({
+            id: 'completed',
+            title: 'Completed specification',
+            completedAt: '2026-09-22T14:00:00Z',
+            updatedAt: '2099-01-01T00:00:00Z',
+          }),
+          createSpecItem({
+            id: 'archived',
+            title: 'Archived specification',
+            archivedAt: '2026-09-25T09:00:00Z',
+          }),
+          createSpecItem({
+            id: 'both',
+            title: 'Completed then archived',
+            completedAt: '2026-09-22T14:00:00Z',
+            archivedAt: '2026-09-25T09:00:00Z',
+          }),
+          createSpecItem({
+            id: 'undated',
+            title: 'Imported historical specification',
+            updatedAt: '2099-01-01T00:00:00Z',
+          }),
+        ],
+      },
+    },
+  },
+  play: ({ canvasElement }) => {
+    const rows = canvasElement.querySelectorAll('[data-spec-id]');
+    if (
+      !rows[0]?.textContent?.includes('Completed Sep 22, 2026') ||
+      !rows[1]?.textContent?.includes('Archived Sep 25, 2026') ||
+      !rows[2]?.textContent?.includes('Completed Sep 22, 2026')
+    )
+      throw new Error('Authoritative lifecycle timestamps must drive Archive history.');
+    if (rows[3]?.querySelector('time') || !rows[3]?.textContent?.includes('Archived'))
+      throw new Error('Undated Archive membership must not invent completion/date.');
+    if (
+      canvasElement.textContent?.includes('2099') ||
+      canvasElement.querySelector('[data-spec-group-header]')
+    )
+      throw new Error('Archive must not use update timestamps or Active groups.');
+  },
+};
+
+export const Dense: Story = {
+  args: {
+    state: {
+      ...loaded,
+      projection: {
+        ...createSpecsFixture(),
+        items: Array.from({ length: 42 }, (_, index) =>
+          createSpecItem({
+            ...createSpecsFixture().items[index % 7]!,
+            id: `dense-${index}`,
+            title: `${createSpecsFixture().items[index % 7]!.title} — phase ${index + 1}`,
+          }),
+        ),
+      },
+    },
+  },
+};
+
+export const ConfiguredOrder: Story = {
+  args: {
+    state: {
+      ...loaded,
+      projection: {
+        ...createSpecsFixture(),
+        groups: [
+          { id: 'draft', order: 10 },
+          { id: 'active', order: 20 },
+        ],
+      },
+    },
+  },
+  play: ({ canvasElement }) => {
+    const groups = [...canvasElement.querySelectorAll('[data-spec-group-header] h2')].map(
+      (element) => element.textContent,
+    );
+    if (groups.join('|') !== 'Draft|Active')
+      throw new Error('Frontend must render server-supplied group availability and order.');
   },
 };
 export const ReadOnlyPreview: Story = {

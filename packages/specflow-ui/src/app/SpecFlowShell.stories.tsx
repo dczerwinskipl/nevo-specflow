@@ -3,6 +3,7 @@ import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
 import { RouterProvider, createMemoryHistory } from '@tanstack/react-router';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
+import { HttpClientError } from '@nevo/http-client';
 
 import type { AppLocale } from '../i18n';
 import { StoryLocalization } from '../i18n/StoryLocalization';
@@ -19,19 +20,29 @@ function RoutedApplication({
   authMode = 'local',
   locale = 'en',
   path = '/',
+  specsStatus,
 }: {
   authMode?: AuthMode;
   locale?: AppLocale;
   path?: '/' | '/ui-playground' | '/login';
+  specsStatus?: 401 | 403;
 }) {
   const router = useMemo(
     () =>
       createSpecFlowRouter(
         createMemoryHistory({ initialEntries: [path] }),
         storyAuthStore(authMode),
-        { sample: true, read: (collection) => Promise.resolve(createSpecsFixture(collection)) },
+        {
+          sample: true,
+          read: (collection) =>
+            specsStatus
+              ? Promise.reject(
+                  new HttpClientError('Status fixture', { kind: 'http', status: specsStatus }),
+                )
+              : Promise.resolve(createSpecsFixture(collection)),
+        },
       ),
-    [authMode, path],
+    [authMode, path, specsStatus],
   );
   return (
     <StoryLocalization locale={locale}>
@@ -56,6 +67,26 @@ export const AlreadyAuthenticatedLogin: Story = {
   args: { authMode: 'authenticated', path: '/login' },
 };
 export const RuntimeUnavailable: Story = { args: { authMode: 'unavailable' } };
+export const SpecsSessionExpired: Story = {
+  args: { authMode: 'authenticated', specsStatus: 401 },
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByRole('heading', { name: 'Welcome back' });
+    if (canvas.queryByText('Specs are unavailable'))
+      throw new Error('401 must enter authentication, not generic unavailability.');
+    if (canvasElement.querySelector('[data-product-navigation-header]'))
+      throw new Error('Authentication must be outside AppShell.');
+  },
+};
+export const SpecsForbidden: Story = {
+  args: { authMode: 'authenticated', specsStatus: 403 },
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByRole('heading', { name: 'Access denied' });
+    if (canvas.queryByText('Welcome back') || canvas.queryByText('Specs are unavailable'))
+      throw new Error('403 must be a distinct forbidden state.');
+    if (canvasElement.querySelector('[data-product-navigation-header]'))
+      throw new Error('Forbidden state must be outside AppShell.');
+  },
+};
 export const Polish: Story = { args: { locale: 'pl' } };
 export const LocalAccount: Story = {
   args: { authMode: 'local' },

@@ -19,6 +19,12 @@ describe('Specs overview HTTP integration', () => {
       expect(response.statusCode).toBe(200);
       expect(delay).toHaveBeenLastCalledWith(200);
       expect(response.json<SpecsOverviewProjection>().items).toHaveLength(6);
+      expect(response.json<SpecsOverviewProjection>().groups.map((group) => group.id)).toEqual([
+        'requires-attention',
+        'active',
+        'ready',
+        'draft',
+      ]);
     } finally {
       await app.close();
     }

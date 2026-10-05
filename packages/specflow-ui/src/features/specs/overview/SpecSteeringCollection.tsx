@@ -1,69 +1,85 @@
+import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-
-import {
-  steeringGroups,
-  type SpecRowSelection,
-  type SpecsOverviewProjection,
-  type SteeringTarget,
-} from './model';
+import { groupTranslationKey, type SpecsOverviewProjection, type SteeringTarget } from './model';
+import { activeRow, archiveRow } from './presentation';
 import { SpecListRow } from './SpecListRow';
 import { SpecGroupHeader } from './SpecGroupHeader';
 
 export function SpecSteeringCollection({
   projection,
   onOpenTarget,
-  selectionFor,
+  specificationHref,
+  query = '',
 }: {
   readonly projection: SpecsOverviewProjection;
   readonly onOpenTarget?: (target: SteeringTarget) => void;
-  readonly selectionFor?: (specId: string) => SpecRowSelection;
+  readonly specificationHref?: (id: string) => string;
+  readonly query?: string;
 }) {
   const { t } = useTranslation();
-  const groups =
-    projection.collection === 'archive'
-      ? [
-          {
-            kind: 'quiet' as const,
-            items: [...projection.items].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-          },
-        ]
-      : steeringGroups(projection.items);
-
-  return (
-    <div className="grid min-w-0 gap-2">
-      {groups.map((group) => (
-        <details
-          className="group/section min-w-0"
-          key={group.kind}
-          open
-          aria-label={
-            projection.collection === 'archive'
-              ? t('specs.archive')
-              : t(`specs.groups.${group.kind}`)
-          }
-        >
-          <SpecGroupHeader
-            label={
-              projection.collection === 'archive'
-                ? t('specs.archive')
-                : t(`specs.groups.${group.kind}`)
-            }
-            count={group.items.length}
-            kind={projection.collection === 'active' ? group.kind : undefined}
+  const id = useId();
+  // Search overrides only rendered disclosure. Normal state remains the immutable
+  // pre-search snapshot throughout every non-empty query, including zero matches.
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
+  const searching = query.trim().length > 0;
+  const items = projection.items.filter((item) =>
+    item.title.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()),
+  );
+  if (projection.collection === 'archive')
+    return (
+      <ul className="m-0 min-w-0 list-none divide-y divide-border-subtle p-0">
+        {items.map((item) => (
+          <SpecListRow
+            key={item.id}
+            item={archiveRow(item)}
+            specificationHref={specificationHref?.(item.id)}
+            onOpenTarget={onOpenTarget}
           />
-          <ul className="m-0 list-none divide-y divide-border-subtle p-0">
-            {group.items.map((item) => (
-              <SpecListRow
-                archived={projection.collection === 'archive'}
-                item={item}
-                key={item.id}
-                onOpenTarget={onOpenTarget}
-                selection={selectionFor?.(item.id)}
-              />
-            ))}
-          </ul>
-        </details>
-      ))}
+        ))}
+      </ul>
+    );
+  return (
+    <div className="grid min-w-0 gap-4">
+      {projection.groups.map((group) => {
+        const rows = items.filter((item) => item.groupId === group.id);
+        if (!rows.length) return null;
+        const expanded = searching || !collapsed.has(group.id);
+        const controls = id + '-' + group.id;
+        return (
+          <section className="min-w-0" key={group.id} aria-label={t(groupTranslationKey[group.id])}>
+            <SpecGroupHeader
+              label={t(groupTranslationKey[group.id])}
+              count={rows.length}
+              groupId={group.id}
+              expanded={expanded}
+              searching={searching}
+              controls={controls}
+              onToggle={() =>
+                setCollapsed((current) => {
+                  const next = new Set(current);
+                  if (next.has(group.id)) next.delete(group.id);
+                  else next.add(group.id);
+                  return next;
+                })
+              }
+            />
+            <ul
+              id={controls}
+              hidden={!expanded}
+              className="m-0 min-w-0 list-none divide-y divide-border-subtle p-0"
+            >
+              {rows.map((item) => (
+                <SpecListRow
+                  key={item.id}
+                  item={activeRow(item)}
+                  specificationHref={specificationHref?.(item.id)}
+                  onOpenTarget={onOpenTarget}
+                />
+              ))}
+            </ul>
+          </section>
+        );
+      })}
     </div>
   );
 }

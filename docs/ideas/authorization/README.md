@@ -47,6 +47,21 @@ Only the remaining integration work lives here.
    - use server-provided effective capabilities for visibility and interaction state;
    - keep backend enforcement authoritative.
 
+## Backend request authorization architecture (separate follow-up)
+
+Do not expand the provisional Specs mock endpoint into a declarative authorization framework.
+A separate design/implementation should cover:
+
+- a request authentication context;
+- declarative route authorization;
+- reusable capability guards/policies;
+- resource-scoped capabilities such as `spec.view`, `spec.archive`, and `spec.delete`;
+- centralized 401/403 mapping;
+- avoiding repeated manual cookie/AuthStore/access plumbing in every route.
+
+The exact capability taxonomy and resource policies require their own design; example names above
+are not newly implemented capabilities. Preserve per-item collection filtering where applicable.
+
 ## Already implemented
 
 The following are not ideas anymore:

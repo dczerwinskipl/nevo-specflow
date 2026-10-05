@@ -2,6 +2,37 @@ import { Type, type Static } from 'typebox';
 
 export const SpecsCollectionSchema = Type.Union([Type.Literal('active'), Type.Literal('archive')]);
 export type SpecsCollection = Static<typeof SpecsCollectionSchema>;
+export const SpecsOverviewGroupIdSchema = Type.Union([
+  Type.Literal('requires-attention'),
+  Type.Literal('active'),
+  Type.Literal('ready'),
+  Type.Literal('draft'),
+]);
+export type SpecsOverviewGroupId = Static<typeof SpecsOverviewGroupIdSchema>;
+export const SpecsOverviewGroupSchema = Type.Object({
+  id: SpecsOverviewGroupIdSchema,
+  order: Type.Integer(),
+});
+export type SpecsOverviewGroup = Static<typeof SpecsOverviewGroupSchema>;
+// Backend-decided aggregate facts. Rich evidence below remains inspection-only.
+export const SpecsOverviewSummarySchema = Type.Union([
+  Type.Object({
+    kind: Type.Literal('attention'),
+    reason: Type.Union([
+      Type.Literal('input'),
+      Type.Literal('decision'),
+      Type.Literal('review'),
+      Type.Literal('blocked'),
+      Type.Literal('approval'),
+    ]),
+    count: Type.Optional(Type.Integer({ minimum: 1 })),
+  }),
+  Type.Object({ kind: Type.Literal('active'), executionCount: Type.Integer({ minimum: 1 }) }),
+  Type.Object({ kind: Type.Literal('ready') }),
+  Type.Object({ kind: Type.Literal('draft') }),
+  Type.Object({ kind: Type.Literal('unavailable') }),
+]);
+export type SpecsOverviewSummary = Static<typeof SpecsOverviewSummarySchema>;
 export const SteeringKindSchema = Type.Union([
   Type.Literal('attention'),
   Type.Literal('ready'),
@@ -36,12 +67,17 @@ export type SpecSteeringSignal = Static<typeof SpecSteeringSignalSchema>;
 export const SpecSteeringItemProjectionSchema = Type.Object({
   id: Type.String(),
   title: Type.String(),
+  groupId: SpecsOverviewGroupIdSchema,
+  overviewSummary: SpecsOverviewSummarySchema,
+  concurrentWork: Type.Optional(Type.Object({ executionCount: Type.Integer({ minimum: 1 }) })),
   key: Type.Optional(Type.String()),
   pullRequests: Type.Optional(
     Type.Array(Type.Object({ number: Type.Integer(), url: Type.String() })),
   ),
   tags: Type.Optional(Type.Array(Type.String())),
   updatedAt: Type.String(),
+  completedAt: Type.Optional(Type.String()),
+  archivedAt: Type.Optional(Type.String()),
   progress: Type.Object({
     completed: Type.Integer({ minimum: 0 }),
     total: Type.Integer({ minimum: 0 }),
@@ -60,6 +96,7 @@ export type SpecSteeringItemProjection = Static<typeof SpecSteeringItemProjectio
 export const SpecsOverviewProjectionSchema = Type.Object({
   revision: Type.String(),
   collection: SpecsCollectionSchema,
+  groups: Type.Array(SpecsOverviewGroupSchema),
   sample: Type.Optional(Type.Boolean()),
   items: Type.Array(SpecSteeringItemProjectionSchema),
 });

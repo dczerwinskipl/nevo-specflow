@@ -1,4 +1,5 @@
 import type { AuthSessionResponse } from '@nevo/specflow-contracts/authentication';
+import { useEffect } from 'react';
 import {
   Outlet,
   createRootRouteWithContext,
@@ -17,6 +18,7 @@ import { SpecsOverview } from '../features/specs/overview/SpecsOverview';
 import { useSpecsOverview } from '../features/specs/overview/useSpecsOverview';
 import { defaultSpecsSource } from '../features/specs/overview/source';
 import type { SpecsOverviewSource } from '../features/specs/overview/model';
+import { SpecsAccessDenied } from '../features/specs/overview/SpecsAccessDenied';
 
 export interface SpecFlowRouterContext {
   readonly auth: AuthStore;
@@ -97,6 +99,12 @@ const appRoute = createRoute({
   component: AppRouteLayout,
 });
 
+const specsForbiddenRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/access-denied',
+  component: SpecsAccessDenied,
+});
+
 const specsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/',
@@ -115,6 +123,7 @@ const uiPlaygroundRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   loginRoute,
   runtimeUnavailableRoute,
+  specsForbiddenRoute,
   appRoute.addChildren([specsRoute, uiPlaygroundRoute]),
 ]);
 
@@ -131,10 +140,32 @@ export function createSpecFlowRouter(
 }
 
 function SpecsRouteScreen() {
-  const { specs } = specsRoute.useRouteContext();
+  const { specs, auth } = specsRoute.useRouteContext();
   const { collection } = specsRoute.useSearch();
   const navigate = specsRoute.useNavigate();
   const { state, refresh } = useSpecsOverview(specs, collection);
+  useEffect(() => {
+    if (state.errorStatus === 403) {
+      void navigate({ to: '/access-denied', replace: true });
+    } else if (state.errorStatus === 401) {
+      // Refresh the cached authentication context before the login guard runs.
+      void auth.refresh().then(
+        () =>
+          navigate({
+            to: '/login',
+            search: { returnTo: `/?collection=${collection}` },
+            replace: true,
+          }),
+        () =>
+          navigate({
+            to: '/runtime-unavailable',
+            search: { returnTo: `/?collection=${collection}` },
+            replace: true,
+          }),
+      );
+    }
+  }, [state.errorStatus, auth, navigate, collection]);
+  if (state.errorStatus === 401 || state.errorStatus === 403) return null;
   return (
     <SpecsOverview
       state={state}

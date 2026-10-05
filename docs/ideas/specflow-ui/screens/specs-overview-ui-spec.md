@@ -69,7 +69,7 @@ The overview should consume a backend/application projection designed for human 
 
 Frontend may:
 
-- group/sort already-semantic signals for presentation;
+- render backend-supplied group IDs/order and map a rich projection to bounded rows;
 - remember local filters/view selection;
 - derive purely visual counts from returned items.
 
@@ -104,13 +104,27 @@ Per Spec item:
 3. one bounded secondary line with progress, one dominant aggregate state summary, and at most one
    materially useful concurrent qualifier.
 
-Cross-group priority is `attention > in-progress > ready-idle`. Inside Requires attention,
-ordering should favor facts that prove the human is blocking useful progress; a live Session
-interaction waiting for response is normally stronger than a passive approval request.
+The default backend-derived Overview presentation groups are, in order:
 
-Ready and idle share the same low-priority group because neither represents current work or required
-human intervention. Their row summaries remain distinct: ready communicates an available operation;
-idle communicates no immediate useful action.
+1. **Requires attention** (`requires-attention`): any actionable human-attention condition belonging
+   to the Specification, a Task, Session, review, decision request, or blocker.
+2. **Active** (`active`): authoritative current execution or Session activity without higher-priority
+   human attention. This is not necessarily the Specification lifecycle status.
+3. **Ready** (`ready`): approved/ready for work, with no execution and no human attention.
+4. **Draft** (`draft`): still in preparation, before Ready.
+
+Precedence is `requires-attention > active > ready > draft`. Each Specification has exactly one
+backend-owned `groupId`; attention wins even when work is concurrent. Internal `working`, `quiet`,
+`issue`, and similar signals are not top-level groups.
+
+The backend supplies enabled standard IDs and their order through the collection's `groups` list.
+Project-owned `.nevo/config.yaml` may configure `specs.overview.groups` with `id` and numeric
+`order`; omitted configuration uses orders 10/20/30/40. A configured list enables only listed IDs.
+The frontend renders the supplied order and maps stable IDs to its normal i18n keys. English labels
+and generic rule expressions MUST NOT be put in YAML. Semantics remain backend-owned.
+
+The current mock returns predefined classifications and aggregate facts. This does not implement a
+production grouping engine. Replacing the sample with real projections must preserve this contract.
 
 Do not duplicate one Spec across several stacked list groups. One dominant semantic group owns the
 row. A lower-priority concurrent state may contribute at most one bounded, non-interactive qualifier
@@ -132,15 +146,16 @@ Avoid miniature detail screens inside rows.
 │               │     Runtime authorization and project access policy         │
 │               │     UI-1235   3 / 7 tasks   Agent input required            │
 │               │                                                            │
-│               │ ▾ ● In progress  1                                         │
+│               │ ▾ ● Active  1                                         │
 │               │     Provider diagnostics and replay               PR #31    │
 │               │     RT-104    2 / 8 tasks   Reviewer working on 3 tasks     │
 │               │                                                            │
-│               │ ▾ ○ Ready / idle  2                                        │
+│               │ ▾ ○ Ready / Draft  2                                        │
 │               │     Localization preferences                                │
 │               │     UI-1236   0 / 5 tasks   Ready to start                  │
+│               │ ▾ ○ Draft  1                                               │
 │               │     Navigation cleanup                                      │
-│               │     UI-1237   4 / 7 tasks   No immediate action             │
+│               │     UI-1237   4 / 7 tasks   In preparation             │
 └───────────────┴────────────────────────────────────────────────────────────┘
 ```
 
@@ -170,7 +185,7 @@ content axis.
 - Collection control: Active / Archive.
 - compact Search Specs control when the collection is large enough that scanning/grouping alone is
   insufficient; Archive should expect this earlier than Active because it grows monotonically.
-- Human-steering groups for Requires attention, In progress, and Ready / idle; each group uses the
+- Backend-derived groups for Requires attention, Active, Ready, and Draft; each group uses the
   disclosure behavior defined by the Spec steering contract.
 - Spec summary rows.
 - Optional create-spec action only when product contract exists.
@@ -245,8 +260,8 @@ group counts describe rows in the current filtered view rather than the unfilter
 - empty active: concise empty state with New specification action;
 - archive empty: concise local empty state;
 - requires attention: human intervention is actually required;
-- in progress: active agent/system progress without stealing attention;
-- ready / idle: low-priority neutral group; row summary distinguishes actionable Ready from Idle;
+- active: actual ongoing agent/system work without stealing attention;
+- ready: approved work without execution; draft: work still in preparation;
 - partial signal failure: keep Spec identity/list usable and mark unavailable projection locally;
 - stale/reconnecting transport: subtle connection feedback without rewriting canonical semantics.
 
@@ -310,7 +325,7 @@ Do not force the work queue into DataTable unless final content proves genuinely
 - dividers: \`border-divider\` / \`border-border-subtle\` only when whitespace is insufficient;
 - attention: strongest semantic marker/tone according to actual meaning, not decorative color;
 - in progress: restrained running/activity marker;
-- Ready / idle: neutral/subtle marker; row prose carries the ready-vs-idle distinction.
+- Ready: restrained success marker; Draft: neutral marker and preparation summary.
 
 ## 15. Local containment rules
 
@@ -333,8 +348,8 @@ Do not force the work queue into DataTable unless final content proves genuinely
 - rich concurrent source signals collapsing to one bounded row summary;
 - Spec-level attention;
 - in-progress batch;
-- ready inside Ready / idle;
-- idle/remediation-available inside Ready / idle;
+- Ready, distinct from Draft;
+- Draft in preparation;
 - long title and max trailing metadata;
 - ultra-wide layout;
 - Compact wrapping;
@@ -348,8 +363,8 @@ Do not force the work queue into DataTable unless final content proves genuinely
 ## 18. Acceptance criteria
 
 - requires-attention is reserved for human-blocking situations;
-- cross-group order is Requires attention -> In progress -> Ready / idle;
-- Ready and Idle share one low-priority group but remain distinguishable in row summary text;
+- default group order is Requires attention -> Active -> Ready -> Draft;
+- these groups are backend-derived presentation categories, not Specification lifecycle statuses;
 - a Spec appears once in the canonical Active queue;
 - Active Specs use the grouped steering presentation defined by the Spec steering contract;
 - the entire row always opens Specification;

@@ -15,12 +15,7 @@ import {
   WorkspaceHeader,
 } from '@nevo/ui';
 
-import type {
-  SpecRowSelection,
-  SpecsCollection,
-  SpecsOverviewState,
-  SteeringTarget,
-} from './model';
+import type { SpecsCollection, SpecsOverviewState, SteeringTarget } from './model';
 import { SpecSteeringCollection } from './SpecSteeringCollection';
 
 export interface SpecsOverviewProps {
@@ -31,7 +26,7 @@ export interface SpecsOverviewProps {
   readonly onCreate?: () => void;
   readonly onCreateSession?: () => void;
   readonly sample?: boolean;
-  readonly selectionFor?: (specId: string) => SpecRowSelection;
+  readonly specificationHref?: (specId: string) => string;
 }
 
 export function SpecsOverview({
@@ -42,7 +37,7 @@ export function SpecsOverview({
   onCreate,
   onCreateSession,
   sample = false,
-  selectionFor,
+  specificationHref,
 }: SpecsOverviewProps) {
   const { t } = useTranslation();
   const [search, setSearch] = useState({ collection: state.collection, value: '' });
@@ -129,7 +124,7 @@ export function SpecsOverview({
                   </Typography>
                 ) : null}
               </div>
-              {sample && !onOpenTarget ? (
+              {sample && !specificationHref ? (
                 <Typography className="text-content-secondary" variant="body-sm">
                   {t('specs.previewDescription')}
                 </Typography>
@@ -178,13 +173,16 @@ export function SpecsOverview({
                     </div>
                   ))}
                 </div>
-              ) : visible?.items.length ? (
+              ) : null}
+              {projection && !state.loading ? (
                 <SpecSteeringCollection
-                  projection={visible}
+                  projection={projection}
+                  query={term}
                   onOpenTarget={onOpenTarget}
-                  selectionFor={selectionFor}
+                  specificationHref={specificationHref}
                 />
-              ) : visible ? (
+              ) : null}
+              {visible && !visible.items.length && !state.loading ? (
                 <EmptyState
                   className="border-0"
                   title={t(

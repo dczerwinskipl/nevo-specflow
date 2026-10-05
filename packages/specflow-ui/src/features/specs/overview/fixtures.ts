@@ -26,6 +26,8 @@ export function createSpecItem(
   return {
     id: 'admission',
     title: 'Deterministic admission and execution boundaries',
+    groupId: 'draft',
+    overviewSummary: { kind: 'draft' },
     updatedAt: '2026-10-01T12:00:00Z',
     progress: { completed: 5, total: 9 },
     signals: [],
@@ -40,6 +42,7 @@ export function createSpecsFixture(
     return {
       revision: 'archive-fixture-1',
       collection,
+      groups: [],
       items: Array.from({ length: 18 }, (_, index) =>
         createSpecItem({
           id: `archive-${index}`,
@@ -50,6 +53,13 @@ export function createSpecsFixture(
               'Responsive application shell and workspace navigation',
             ][index % 3] + (index > 2 ? ` — phase ${index + 1}` : ''),
           updatedAt: `2026-09-${String(28 - index).padStart(2, '0')}T12:00:00Z`,
+          ...(index % 4 === 0
+            ? { completedAt: '2026-09-22T14:00:00Z' }
+            : index % 4 === 1
+              ? { archivedAt: '2026-09-25T09:00:00Z' }
+              : index % 4 === 2
+                ? { completedAt: '2026-09-22T14:00:00Z', archivedAt: '2026-09-25T09:00:00Z' }
+                : {}),
           progress: { completed: 8 + index, total: 8 + index },
         }),
       ),
@@ -57,9 +67,18 @@ export function createSpecsFixture(
   return {
     revision: 'active-fixture-1',
     collection,
+    groups: [
+      { id: 'requires-attention', order: 10 },
+      { id: 'active', order: 20 },
+      { id: 'ready', order: 30 },
+      { id: 'draft', order: 40 },
+    ],
     items: [
       createSpecItem({
         key: 'UI-1234',
+        groupId: 'requires-attention',
+        overviewSummary: { kind: 'attention', reason: 'input' },
+        concurrentWork: { executionCount: 1 },
         pullRequests: [{ number: 27, url: 'https://example.test/pull/27' }],
         tags: ['Auth'],
         signals: [
@@ -91,6 +110,8 @@ export function createSpecsFixture(
       }),
       createSpecItem({
         id: 'security',
+        groupId: 'requires-attention',
+        overviewSummary: { kind: 'attention', reason: 'decision' },
         key: 'RT-1235',
         tags: ['Runtime'],
         title: 'Runtime authorization and project access policy',
@@ -110,6 +131,8 @@ export function createSpecsFixture(
       }),
       createSpecItem({
         id: 'review',
+        groupId: 'requires-attention',
+        overviewSummary: { kind: 'attention', reason: 'review', count: 3 },
         key: 'CORE-1236',
         title: 'Review evidence and verification handover',
         progress: { completed: 6, total: 10 },
@@ -122,6 +145,8 @@ export function createSpecsFixture(
       }),
       createSpecItem({
         id: 'packaging',
+        groupId: 'ready',
+        overviewSummary: { kind: 'ready' },
         key: 'CORE-1237',
         tags: ['Core'],
         title: 'Single-artifact packaging and installation',
@@ -130,6 +155,8 @@ export function createSpecsFixture(
       }),
       createSpecItem({
         id: 'providers',
+        groupId: 'active',
+        overviewSummary: { kind: 'active', executionCount: 1 },
         key: 'RT-104',
         pullRequests: [{ number: 31, url: 'https://example.test/pull/31' }],
         tags: ['Provider'],
@@ -146,6 +173,8 @@ export function createSpecsFixture(
       }),
       createSpecItem({
         id: 'recovery',
+        groupId: 'ready',
+        overviewSummary: { kind: 'ready' },
         key: 'RT-105',
         tags: ['Provider'],
         title: 'Provider process recovery',
@@ -183,6 +212,7 @@ export function createLongContentFixture(): SpecsOverviewProjection {
         ...base.items[0],
         title:
           'Deterministic execution admission, crash recovery and cross-provider ownership reconciliation for distributed repository workspaces',
+        overviewSummary: { kind: 'attention', reason: 'decision' },
         signals: [
           signal(
             'admission',

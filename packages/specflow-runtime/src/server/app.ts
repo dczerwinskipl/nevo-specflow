@@ -51,7 +51,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
 
   await app.register(authFeature, {
     registerProtectedRoutes: (protectedApp, access) => {
-      protectedApp.register(specsOverviewRoutes, access);
+      protectedApp.register(specsOverviewRoutes, { ...access, groups: config.specsOverviewGroups });
     },
     auth: config.auth,
     ...(config.authorization ? { authorization: config.authorization } : {}),

@@ -3,8 +3,7 @@ import type { StatusTone } from '@nevo/ui';
 import type {
   SpecsCollection,
   SpecsOverviewProjection,
-  SpecSteeringItemProjection,
-  SteeringKind,
+  SpecsOverviewGroupId,
 } from '@nevo/specflow-contracts/specs-overview';
 export type {
   SpecsCollection,
@@ -13,12 +12,8 @@ export type {
   SpecSteeringSignal,
   SteeringKind,
   SteeringTarget,
+  SpecsOverviewGroupId,
 } from '@nevo/specflow-contracts/specs-overview';
-
-export interface SpecRowSelection {
-  readonly selected: boolean;
-  readonly onSelectedChange: (selected: boolean) => void;
-}
 
 export interface SpecsOverviewSource {
   readonly sample?: boolean;
@@ -31,36 +26,18 @@ export interface SpecsOverviewState {
   readonly loading: boolean;
   readonly refreshing: boolean;
   readonly error: boolean;
+  readonly errorStatus?: number;
 }
 
-export const steeringTone: Record<SteeringKind, StatusTone> = {
-  attention: 'attention',
-  ready: 'neutral',
-  working: 'info',
-  issue: 'neutral',
-  quiet: 'neutral',
+export const groupTone: Record<SpecsOverviewGroupId, StatusTone> = {
+  'requires-attention': 'attention',
+  active: 'info',
+  ready: 'success',
+  draft: 'neutral',
 };
-
-export function orderedSignals(item: SpecSteeringItemProjection) {
-  return [...item.signals].sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id));
-}
-
-export function steeringGroups(items: readonly SpecSteeringItemProjection[]) {
-  const groups: { kind: SteeringKind; items: SpecSteeringItemProjection[] }[] = [
-    { kind: 'attention', items: [] },
-    { kind: 'ready', items: [] },
-    { kind: 'working', items: [] },
-    { kind: 'quiet', items: [] },
-  ];
-  const sorted = [...items].sort(
-    (a, b) =>
-      (orderedSignals(b)[0]?.priority ?? 0) - (orderedSignals(a)[0]?.priority ?? 0) ||
-      a.id.localeCompare(b.id),
-  );
-  for (const item of sorted) {
-    const kind =
-      item.steeringAvailable === false ? 'quiet' : (orderedSignals(item)[0]?.kind ?? 'quiet');
-    groups.find((group) => group.kind === (kind === 'issue' ? 'quiet' : kind))!.items.push(item);
-  }
-  return groups.filter((group) => group.items.length > 0);
-}
+export const groupTranslationKey = {
+  'requires-attention': 'specs.groups.requiresAttention',
+  active: 'specs.groups.active',
+  ready: 'specs.groups.ready',
+  draft: 'specs.groups.draft',
+} as const satisfies Record<SpecsOverviewGroupId, string>;

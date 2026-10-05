@@ -33,7 +33,8 @@ surface belongs inside the application shell.
 Standalone routes:
 
 - `/login` renders authentication outside `AppShell`;
-- `/runtime-unavailable` renders bootstrap/recovery outside `AppShell`.
+- `/runtime-unavailable` renders bootstrap/recovery outside `AppShell`;
+- `/access-denied` renders explicit Specs forbidden failures outside `AppShell`.
 
 A pathless application layout owns `SpecFlowShell` and guards product routes. It asks the Runtime
 for `GET /api/auth/session` before entering the application. Required authentication redirects an
@@ -62,13 +63,16 @@ the previous collection immediately and ignores late results. The default source
 returns a deterministic, explicitly labelled sample catalogue, not repository or workflow state.
 It requires the real authentication session and filters every item using `spec.view` on the
 server-owned preview scope. The shared TypeBox contract lives in `@nevo/specflow-contracts/specs-overview`.
-Transport failures display the unavailable state rather than silently falling back to fixtures.
+Network/server failures display the unavailable state rather than silently falling back to fixtures.
+A normalized 401 refreshes the authentication context and re-enters the existing login flow; a 403
+renders the standalone Access denied screen. The backend supplies group IDs/order and aggregate
+summary facts; the feature mapper bounds rows before rendering and does not classify domain evidence.
 Development builds can still opt into isolated frontend fixtures using
 `VITE_SPECFLOW_SAMPLE_DATA=true`; normal builds and dogfooding use the HTTP source.
 
 The app intentionally does not expose creation or destination navigation before those capabilities
-exist. Product-level stories exercise distinct Specification/Task/Session intent through the
-`onOpenTarget` seam. The actual sample preview renders passive rows and explains this boundary.
+exist. Product-level stories exercise real Specification links with a provided href and optional
+navigation adapter. Task/Session targets are not separate row destinations. The actual sample preview renders passive rows and explains this boundary.
 
 The login and Runtime-recovery screens are product-owned compositions on Nevo UI's
 `StandaloneShell`. That shared shell owns the navigation-free application frame: AppBackground,

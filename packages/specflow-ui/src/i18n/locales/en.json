@@ -77,7 +77,6 @@
     "noResultsDescription": "Try another title or clear the search to see this collection.",
     "signalsUnavailable": "Steering information unavailable",
     "openSpec": "Open specification: {{title}}",
-    "selectSpec": "Select specification: {{title}}",
     "rowActions": "Specification actions: {{title}}",
     "createSession": "Create session",
     "openDetails": "Open specification",
@@ -95,11 +94,44 @@
     "execution_other": "{{role}} · {{count}} Tasks",
     "updated": "Updated {{date}}",
     "groups": {
-      "attention": "Requires attention",
+      "requiresAttention": "Requires attention",
+      "active": "Active",
       "ready": "Ready",
-      "working": "In progress",
-      "issue": "Other active",
-      "quiet": "Other active"
+      "draft": "Draft"
+    },
+    "collapseGroup": "Collapse {{label}} group",
+    "expandGroup": "Expand {{label}} group",
+    "groupSearchExpanded": "{{label}} group expanded while search is active",
+    "pullRequests": "{{count}} PRs",
+    "summary": {
+      "input": "Agent input required",
+      "decision": "Owner decision required",
+      "review_one": "Review required",
+      "review_other": "{{count}} Tasks require review",
+      "review_few": "{{count}} Tasks require review",
+      "review_many": "{{count}} Tasks require review",
+      "blocked": "Human intervention required",
+      "approval": "Specification approval required",
+      "active_one": "1 active session",
+      "active_other": "{{count}} active sessions",
+      "active_few": "{{count}} active sessions",
+      "active_many": "{{count}} active sessions",
+      "ready": "Ready to start",
+      "draft": "In preparation",
+      "unavailable": "Steering information unavailable",
+      "concurrent_one": "1 session active",
+      "concurrent_other": "{{count}} sessions active",
+      "concurrent_few": "{{count}} sessions active",
+      "concurrent_many": "{{count}} sessions active"
+    },
+    "history": {
+      "completed": "Completed {{date}}",
+      "archived": "Archived {{date}}",
+      "archivedWithoutDate": "Archived"
+    },
+    "forbidden": {
+      "title": "Access denied",
+      "description": "You do not have permission to view these specifications."
     }
   },
   "playground": {

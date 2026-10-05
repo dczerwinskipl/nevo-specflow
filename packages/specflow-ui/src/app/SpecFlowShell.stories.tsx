@@ -54,6 +54,23 @@ export const AlreadyAuthenticatedLogin: Story = {
 };
 export const RuntimeUnavailable: Story = { args: { authMode: 'unavailable' } };
 export const Polish: Story = { args: { locale: 'pl' } };
+export const LocalAccount: Story = {
+  args: { authMode: 'local' },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Open user menu for Local User' }),
+    );
+    const accountMenu = await waitFor(
+      () => document.querySelector<HTMLElement>('[role="menu"][aria-label="User menu"]'),
+      'Local account menu should open.',
+    );
+    if (accountMenu.textContent?.includes('Sign out')) {
+      throw new Error('Trusted local mode must not expose a meaningless sign-out action.');
+    }
+    await userEvent.keyboard('{Escape}');
+  },
+};
+
 export const AuthenticatedAccount: Story = {
   args: { authMode: 'authenticated' },
   play: async ({ canvas, userEvent }) => {
@@ -167,6 +184,12 @@ export const FigmaCapture: Story = {
     </DesignCaptureProvider>
   ),
   tags: ['!dev', '!autodocs'],
+  play: async ({ canvasElement }) => {
+    await waitFor(
+      () => canvasElement.querySelector<HTMLElement>('[data-design-layer="account-trigger"]'),
+      'Application shell capture should include the account trigger design layer.',
+    );
+  },
   parameters: {
     controls: { disable: true },
     designCapture: {

@@ -28,21 +28,21 @@ describe('LoginScreen', () => {
       />,
     );
 
-    const rootTag = openingTagFor(html, 'data-auth-layout="root"');
-    const bodyTag = openingTagFor(html, 'data-auth-layout="body"');
-    const mobileHeaderTag = openingTagFor(html, 'data-auth-layout="mobile-header"');
-    const mobileSelectorTag = openingTagFor(html, 'data-auth-layout="mobile-language-selector"');
-    const desktopHeaderTag = openingTagFor(html, 'data-auth-layout="desktop-header"');
-    const surfaceTag = openingTagFor(html, 'data-auth-layout="surface"');
+    const rootTag = openingTagFor(html, 'data-standalone-shell-region="root"');
+    const bodyTag = openingTagFor(html, 'data-standalone-shell-region="body"');
+    const mobileHeaderTag = openingTagFor(html, 'data-standalone-shell-region="mobile-header"');
+    const mobileSelectorTag = openingTagFor(html, 'aria-label="Change language"');
+    const desktopHeaderTag = openingTagFor(html, 'data-standalone-shell-region="desktop-header"');
+    const surfaceTag = openingTagFor(html, 'data-standalone-shell-region="surface"');
 
     expect(rootTag).toContain('bg-app-base');
-    expect(rootTag).toContain('standalone-auth-root');
-    expect(mobileHeaderTag).toContain('standalone-auth-mobile-header');
-    expect(mobileSelectorTag).toContain('standalone-auth-mobile-language');
-    expect(desktopHeaderTag).toContain('standalone-auth-desktop-header');
-    expect(bodyTag).toContain('standalone-auth-body');
+    expect(rootTag).toContain('standalone-shell-root');
+    expect(mobileHeaderTag).toContain('standalone-shell-mobile-header');
+    expect(mobileSelectorTag).toContain('Change language');
+    expect(desktopHeaderTag).toContain('standalone-shell-desktop-header');
+    expect(bodyTag).toContain('standalone-shell-body');
     expect(surfaceTag).toContain('workspace-surface-material');
-    expect(surfaceTag).toContain('standalone-auth-surface');
+    expect(surfaceTag).toContain('standalone-shell-surface');
     expect(surfaceTag).toContain('border-workspace-edge');
 
     expect(html).toContain('Welcome back');
@@ -69,8 +69,8 @@ describe('LoginScreen', () => {
       </DesignCaptureProvider>,
     );
 
-    const rootMarker = 'data-auth-layout="root"';
-    const surfaceMarker = 'data-auth-layout="surface"';
+    const rootMarker = 'data-standalone-shell-region="root"';
+    const surfaceMarker = 'data-standalone-shell-region="surface"';
     const rootTag = openingTagFor(html, rootMarker);
     const surfaceTag = openingTagFor(html, surfaceMarker);
 

@@ -111,21 +111,20 @@ Before opening a Specification, the screen should make these categories distingu
 REQUIRES ATTENTION
 Something is waiting on the human.
 
-READY
-The system can proceed when the human chooses to start/continue.
-
 IN PROGRESS
 Agent/runtime work is currently happening.
 
-OTHER ACTIVE / QUIET
-No immediate human action is required.
+READY / IDLE
+No work is currently active and no human intervention is required.
+Individual rows still say whether a useful operation is Ready or there is No immediate action.
 ```
 
 Issue/remediation is **not** a fifth top-level category by itself.
 
 - if an issue requires human intervention, project it as Requires attention with the concrete reason;
-- if a legal agent/system remediation path exists without human input, keep it under Working/Other
-  active and expose the remediation reason/path as supporting context.
+- if the agent/system is actively remediating without human input, keep it under In progress;
+- if remediation is merely available or nothing is progressing, keep it under Ready / idle and
+  expose the concise reason in the row summary.
 
 These are product projections, not persisted status values.
 
@@ -160,26 +159,27 @@ Cross-group priority is canonical and matches the steering-row contract:
 
 ```text
 1. requires attention
-2. ready
-3. working
-4. quiet / other active
+2. in progress
+3. ready / idle
 ```
 
 The semantic distinction is:
 
 - **Requires attention**: intended progress needs human input, decision, or intervention.
-- **Ready**: an operation is available if the human chooses to start/continue it, but nothing is
-  waiting on that human yet.
-- **Working**: the system/agent is actively progressing or remediating without human input.
-- **Quiet / other active**: no immediate useful action or active progress needs emphasis.
+- **In progress**: the system/agent is actively progressing or remediating without human input.
+- **Ready / idle**: no work is currently active and no human intervention is required. The row
+  summary still distinguishes Ready from Idle.
+
+Within Ready / idle, Ready rows sort before Idle rows by default because an available useful action is
+more actionable than a no-immediate-action state.
 
 A generic problem/blocked condition is not a separate priority tier. It moves into Requires attention
 only when authoritative semantics say the human must intervene; otherwise active remediation remains
-Working, and a non-progressing condition without immediate action remains Quiet.
+In progress, while available-but-not-running remediation or a no-progress state remains Ready / idle.
 
 Ordering **inside** a group is a separate concern. For example, within Requires attention an active
-Session waiting directly on the human may rank ahead of a passive approval request. Intra-group
-tie-breaks must not redefine the cross-group order above.
+Session waiting directly on the human may rank ahead of a passive approval request; within Ready /
+idle, Ready ranks ahead of Idle. Intra-group tie-breaks must not redefine the cross-group order above.
 
 ---
 

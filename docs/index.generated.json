@@ -953,7 +953,8 @@
       "related": [
         "design-system.implementation.react.component-guidelines",
         "design-system.principles.ui-ux-guidelines",
-        "engineering.shared.testing"
+        "engineering.shared.testing",
+        "engineering.repository.ci"
       ]
     },
     {
@@ -2022,7 +2023,7 @@
         "creating Storybook/Figma fixtures for Spec signals",
         "deciding how concurrent Spec/Task signals aggregate"
       ],
-      "summary": "Detailed product presentation contract for cross-Spec steering rows: queue priority / optional grouping, concurrent signals, direct context targets, active/archive behavior, payload-backed fixtures, data loading, and cardless list composition.",
+      "summary": "Detailed product presentation contract for the Specs steering list: semantic queue projection, strict row/group presentation models, stable visual grammar, responsive behavior, interaction, data loading, fixtures, and cardless list composition.",
       "related": [
         "ideas.specflow-ui.components",
         "ideas.specflow-ui.screens.specs-overview",

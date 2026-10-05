@@ -119,27 +119,36 @@ A full Session may have a route without having a sidebar entry.
 
 Specs are the primary work inventory.
 
-The first distinction is semantic:
+The cross-group distinction and priority are semantic:
 
 1. **Requires attention** — intended progress is waiting for human input/decision/intervention.
-2. **Ready** — an operation is available if the human chooses to start it, but nothing is waiting on
-   the human yet.
-3. **Working / other active** — useful progress/state without demanding a decision.
+2. **In progress** — the system/agent is actively progressing or remediating without human input.
+3. **Ready / idle** — no work is currently active and no human intervention is required. Row-level
+   summary text still distinguishes Ready from Idle.
 
-A Specification should appear once in the canonical work queue. If it has concurrent signals, the row
-shows the strongest human-facing signal plus concise additional signals rather than duplicating the
-same Spec across many stacked groups. Summary counters/tiles may count the same Spec in several
-categories because they are aggregates, not navigation lists.
+Within Ready / idle, Ready sorts ahead of Idle by default. A generic problem/blocked condition is not
+a separate tier. It belongs in Requires attention only when authoritative semantics require human
+intervention; otherwise active remediation is In progress, while merely available remediation or a
+non-progressing state remains Ready / idle.
 
-The Specification row/identity always opens the Specification. A concrete Task/issue signal may have
-its own explicit target. An aggregate such as "3 Tasks require review" must not guess which Task the
-user wants.
+A Specification should appear once in the canonical work queue. One dominant semantic group owns the
+row. If meaningful concurrent state exists, the row may show at most one bounded aggregate qualifier
+when omitting it would materially misrepresent what is happening; it does not expose raw signal
+collections or duplicate the same Spec across stacked groups. Summary counters/tiles may count the
+same Spec in several categories because they are aggregates, not navigation lists.
+
+The canonical Specification row always opens the owning Specification. Ordinary status/reason prose
+inside the overview row is non-interactive. Concrete Task/Session/evidence context becomes explicit
+after entering the Specification, and an aggregate such as "3 Tasks require review" never guesses a
+representative Task.
 
 Candidate collection views remain Active and Archive.
 
-Useful projections include identity/title, workflow meaning, attention, ready actions, current work,
-progress, errors requiring intervention, last meaningful activity, and relevant external
-change/release references.
+The collection/read model may retain identity/title, workflow meaning, attention, ready actions,
+current work, progress, errors requiring intervention, last meaningful activity, and relevant
+external change/release references. The canonical row does **not** mirror that full projection: its
+visible information budget is owned by the Spec steering contract. Activity remains available for
+future ordering/deeper history without automatically earning row space.
 
 ### Create Specification
 
@@ -627,7 +636,8 @@ Useful Activity facts include:
 
 Potential UI uses:
 
-- last meaningful activity on Specs overview;
+- future collection ordering/filtering or deeper Specs context, without making last-activity detail
+  part of the current canonical overview row;
 - recent "who changed what" context in Specification/Task;
 - deeper audit/history;
 - causal context around resume/handover.

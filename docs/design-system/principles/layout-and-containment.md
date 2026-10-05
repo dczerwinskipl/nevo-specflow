@@ -252,6 +252,100 @@ an independent contained object.
 
 Selection and hover are interaction states, not reasons for permanent Card chrome.
 
+### Scan-column rule
+
+Dense operational lists should be designed for **vertical comparison**, not as a sequence of
+independent mini-layouts. Before styling individual rows, identify the repeated semantic fields that
+the eye is expected to compare and place them on stable horizontal scan columns.
+
+A scan column is an alignment track, not necessarily a visible table column. It may be implemented
+with CSS Grid, aligned flex regions, or another layout mechanism, but the visual contract is the
+same: the same kind of information starts in the same place across sibling rows.
+
+Prefer a column when users repeatedly compare the same attribute down the collection, for example:
+
+- disclosure / selection / type affordance;
+- stable key or short identity;
+- primary title or label;
+- progress or compact state summary;
+- bounded trailing metadata or actions.
+
+Do **not** create a column merely because horizontal space is available. Narrative or irregular
+content belongs in the flexible content region instead of forcing every row into a spreadsheet.
+
+For a dense list, define the collection's scan grammar explicitly. A common shape is:
+
+```text
+[ utility ] [ semantic marker ] [ identity / primary content ........ ] [ bounded trailing ]
+[         ] [                 ] [ secondary summary / metadata ...... ]
+```
+
+The exact columns are product-specific, but these rules are general:
+
+- the leading utility gutter is fixed and owned by the collection;
+- repeated semantic columns keep the same start across sibling rows and states;
+- the primary content column is flexible, normally equivalent to `minmax(0, 1fr)`;
+- compact trailing columns size to bounded content instead of consuming an arbitrary percentage;
+- semantically related trailing metadata stays near the content it qualifies rather than being
+  pushed to the far edge of an ultra-wide surface;
+- a missing value does not cause later columns to slide left if that would break vertical scanning;
+- state changes content/emphasis inside the established tracks instead of inventing new columns;
+- do not use `justify-content: space-between` or an unbounded `1fr auto` split when it creates a
+  large dead zone between related values;
+- do not use fixed 50/50-style splits unless the product genuinely contains two equally important
+  reading regions.
+
+A useful test is: **if the user traces one attribute vertically through three or more rows, that
+attribute should normally have a stable scan column.**
+
+### Grouped lists with disclosure
+
+A grouped operational list is still one scanning system; it is not a stack of unrelated Accordion
+cards.
+
+The group header and its rows should share the same outer scan grid. Disclosure belongs in the
+utility gutter. A semantic marker may have its own fixed marker column when that column is reserved
+consistently, so adding colour/iconography to a header does not move the group label away from the
+row content axis.
+
+Example:
+
+```text
+[  ▾  ] [ ● ] Requires attention  3
+[     ] [   ] UI-1234  Deterministic admission...
+[     ] [   ] RT-1235  Runtime authorization...
+```
+
+If a product variant uses row selection, the checkbox occupies the existing utility track rather
+than creating new indentation:
+
+```text
+[  ▾  ] [ ● ] Requires attention  3
+[  □  ] [   ] UI-1234  Deterministic admission...
+[  □  ] [   ] RT-1235  Runtime authorization...
+```
+
+Group-level colour is useful when it improves scanning, but keep row content comparatively neutral.
+Do not repeat the same strong state colour in the header, every row, every badge, and every icon.
+
+The group boundary should be stronger than an ordinary row boundary, while rows inside the group
+remain visually regular.
+
+### Responsive collapse of scan columns
+
+Responsive design may merge columns, but it should not discard their semantic order.
+
+Prefer this sequence:
+
+1. keep the shared leading/content axis;
+2. move low-priority trailing metadata into the secondary line;
+3. merge secondary columns into a predictable compact line;
+4. omit tertiary metadata only when the owning product contract permits it;
+5. stack the primary title only when width pressure actually requires it.
+
+Do not let each row choose a different wrapping strategy based on its current state. Compact and
+Narrow layouts should remain recognizably the same collection grammar as Wide.
+
 ## State and colour
 
 Containment and colour are separate decisions.

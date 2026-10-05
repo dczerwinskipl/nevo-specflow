@@ -44,8 +44,8 @@ It does not own Task evidence, Session transcript, or detailed workflow inspecti
 - Notice an active Session question/permission/confirmation that is waiting on me.
 - Find ready work without confusing it with required attention.
 - See current agent work, including batch execution, without inventing one representative Task.
-- Open a Specification through a stable neutral row target.
-- Use an explicit signal target when I intentionally want to jump to a concrete Task/issue.
+- Open a Specification through one stable row target.
+- Understand the aggregate reason for a Spec's queue position without exposing Task-level navigation in the list.
 - Switch between Active and Archive collection views.
 - Create a Specification with only a title, optionally add initial description, and optionally
   continue directly into agent initialization.
@@ -54,13 +54,14 @@ It does not own Task evidence, Session transcript, or detailed workflow inspecti
 
 Global navigation -> Specs.
 
-The Specification row/identity always opens the Specification. Its destination does not change
-because a different issue becomes highest priority.
+The entire Specification row opens the Specification. Its destination does not change because a
+different issue becomes highest priority.
 
-A concrete signal may expose a separate explicit Task/issue target. An aggregate signal opens the
-Specification attention context rather than guessing one Task.
+Status/reason prose inside the row is summary information, not a competing navigation target.
+Task/Session-specific navigation appears after entering the Specification, where the responsible
+context can be explained without fragmenting the overview row.
 
-Opening context is navigation only; no workflow mutation occurs.
+Opening a Specification is navigation only; no workflow mutation occurs.
 
 ## 4. Data source / read-model ownership
 
@@ -98,17 +99,23 @@ Session-start capability rather than inventing a separate AI transport.
 
 Per Spec item:
 
-1. identity/title — neutral Specification target;
-2. strongest human-facing signal;
-3. count/aggregate when several same-category signals exist;
-4. at most one concise line of additional meaningful signals;
-5. compact progress/current-work metadata.
+1. identity/title — the row's primary target;
+2. compact trailing metadata such as one linked PR and at most two tags;
+3. one bounded secondary line with progress, one dominant aggregate state summary, and at most one
+   materially useful concurrent qualifier.
 
-Attention priority should favor facts that prove the human is blocking useful progress. A live
-Session interaction waiting for response is normally stronger than a passive ready-to-start action.
+Cross-group priority is `attention > in-progress > ready-idle`. Inside Requires attention,
+ordering should favor facts that prove the human is blocking useful progress; a live Session
+interaction waiting for response is normally stronger than a passive approval request.
 
-Do not duplicate one Spec across several stacked list groups. Summary counters may overlap because
-they are aggregates, not the canonical work queue.
+Ready and idle share the same low-priority group because neither represents current work or required
+human intervention. Their row summaries remain distinct: ready communicates an available operation;
+idle communicates no immediate useful action.
+
+Do not duplicate one Spec across several stacked list groups. One dominant semantic group owns the
+row. A lower-priority concurrent state may contribute at most one bounded, non-interactive qualifier
+when omitting it would materially misrepresent what is happening; raw signal collections and Task IDs
+remain outside the overview row.
 
 Avoid miniature detail screens inside rows.
 
@@ -119,21 +126,29 @@ Avoid miniature detail screens inside rows.
 │ Nevo SpecFlow │ Specs                                      [+ New spec]    │
 │               │ [ Active ] [ Archive ]                                     │
 │ Specs         │                                                            │
-│               │ Requires attention                                         │
-│ Settings      │ Spec A                 Agent asks for input          >      │
-│               │   TASK-03 review · +1 other signal                         │
-│               │ ───────────────────────────────────────────────────────     │
-│               │ Spec B                 Owner decision required       >      │
+│               │ ▾ ● Requires attention  2                                  │
+│ Settings      │     Deterministic admission and execution boundaries        │
+│               │     UI-1234   5 / 9 tasks   Owner decision required         │
+│               │     Runtime authorization and project access policy         │
+│               │     UI-1235   3 / 7 tasks   Agent input required            │
 │               │                                                            │
-│               │ Ready                                                      │
-│               │ Spec C                 2 Tasks ready to start        >      │
+│               │ ▾ ● In progress  1                                         │
+│               │     Provider diagnostics and replay               PR #31    │
+│               │     RT-104    2 / 8 tasks   Reviewer working on 3 tasks     │
 │               │                                                            │
-│               │ In progress / other active                                 │
-│               │ Spec D                 Reviewer · 3 Tasks            >      │
+│               │ ▾ ○ Ready / idle  2                                        │
+│               │     Localization preferences                                │
+│               │     UI-1236   0 / 5 tasks   Ready to start                  │
+│               │     Navigation cleanup                                      │
+│               │     UI-1237   4 / 7 tasks   No immediate action             │
 └───────────────┴────────────────────────────────────────────────────────────┘
 ```
 
-The same Spec appears once in the canonical list. Rows are borderless/list-first.
+The same Spec appears once in the canonical list. Rows are borderless/list-first. The outer list uses
+the shared utility/marker/content scan columns from the steering contract. Current Specs Overview has
+no Spec-selection checkbox or bulk action, so the row utility track remains empty while disclosure
+uses it in group headers. The semantic marker occupies its own fixed column and does not move the
+content axis.
 
 ## 8. Screen anatomy
 
@@ -141,7 +156,8 @@ The same Spec appears once in the canonical list. Rows are borderless/list-first
 - Collection control: Active / Archive.
 - compact Search Specs control when the collection is large enough that scanning/grouping alone is
   insufficient; Archive should expect this earlier than Active because it grows monotonically.
-- Human-steering groups or equivalent flat list with equally clear semantics.
+- Human-steering groups for Requires attention, In progress, and Ready / idle; each group uses the
+  disclosure behavior defined by the Spec steering contract.
 - Spec summary rows.
 - Optional create-spec action only when product contract exists.
 
@@ -155,25 +171,23 @@ Wide/Compact:
 
 Narrow:
 
-- same groups/signals;
-- compact row text may reduce tertiary metadata;
-- concrete Task signal remains directly tappable;
-- no critical signal hidden behind hover or secondary-only detail.
+- same group semantics and aggregate state summary;
+- compact row text may move or reduce tertiary metadata;
+- the whole Spec row remains the primary target;
+- Task IDs/raw per-Task signals stay out of the canonical row;
+- no critical aggregate state is hidden behind hover or secondary-only detail.
 
 ## 10. Interaction flows
 
-### Neutral Spec
+### Specification row
 
-Click row/title -> Specification.
+Click/activate the row -> Specification.
 
-### Explicit Task/issue signal
+The row's aggregate state summary is non-interactive prose. The user chooses the concrete Task,
+Session, evidence, or action after entering the Specification.
 
-Click explicit TASK-03 signal/action -> Specification with local TASK-03 detail opened when useful.
-This does not change the neutral row destination.
-
-### Aggregate signal
-
-"3 Tasks require review" -> Specification attention/task context; user chooses the concrete Task.
+A linked PR may remain a separate explicit nested target because it is a distinct external/contextual
+resource rather than another interpretation of the row destination.
 
 ### Create Specification
 
@@ -206,14 +220,19 @@ Active/Archive changes collection state, not workflow state.
 Search narrows the selected collection. Local filtering is fine for a bounded loaded set; server
 search follows shared debounce/cancellation rules when needed.
 
+The detailed Search × Active-group count × disclosure behavior is owned by
+[Spec steering UI spec](../components/spec-steering-ui-spec.md#search-group-counts-and-disclosure).
+In particular, a matching result must never remain hidden inside a previously collapsed group, and
+group counts describe rows in the current filtered view rather than the unfiltered collection.
+
 ## 11. States
 
 - loading: preserve header/filter geometry, restrained row skeletons;
 - empty active: concise empty state with New specification action;
 - archive empty: concise local empty state;
 - requires attention: human intervention is actually required;
-- ready: actionable but calm; do not style as alert;
-- working: active progress without stealing attention;
+- in progress: active agent/system progress without stealing attention;
+- ready / idle: low-priority neutral group; row summary distinguishes actionable Ready from Idle;
 - partial signal failure: keep Spec identity/list usable and mark unavailable projection locally;
 - stale/reconnecting transport: subtle connection feedback without rewriting canonical semantics.
 
@@ -273,11 +292,11 @@ Do not force the work queue into DataTable unless final content proves genuinely
 - titles: \`text-content-primary\`;
 - signal explanation: \`text-content-secondary\`;
 - tertiary metadata: \`text-content-muted\`;
-- row hover/selected: shared interaction tokens;
+- row hover/focus: shared interaction tokens;
 - dividers: \`border-divider\` / \`border-border-subtle\` only when whitespace is insufficient;
-- attention: semantic warning/info/error treatment according to actual meaning, not decorative color;
-- ready: visible but calmer than requires-attention;
-- working: running/activity tone without warning treatment.
+- attention: strongest semantic marker/tone according to actual meaning, not decorative color;
+- in progress: restrained running/activity marker;
+- Ready / idle: neutral/subtle marker; row prose carries the ready-vs-idle distinction.
 
 ## 15. Local containment rules
 
@@ -290,33 +309,45 @@ Do not force the work queue into DataTable unless final content proves genuinely
 
 ## 16. Accessibility / focus
 
-- row and nested signal targets must have distinct accessible names;
-- keyboard user can open neutral Spec or concrete actionable signal;
+- the row has one clear accessible name and activation target;
+- any explicitly allowed nested external/contextual control, such as a linked PR, has its own accessible name;
 - group semantics cannot rely on color alone;
 - focus after navigation follows product route/surface ownership.
 
 ## 17. Storybook scenarios
 
-- multiple concurrent attention signals on one Spec;
+- rich concurrent source signals collapsing to one bounded row summary;
 - Spec-level attention;
-- Task-ready;
-- active single Task;
-- active batch;
-- agent-remediable issue / other-active signal;
-- quiet;
+- in-progress batch;
+- ready inside Ready / idle;
+- idle/remediation-available inside Ready / idle;
+- long title and max trailing metadata;
+- ultra-wide layout;
+- Compact wrapping;
+- Narrow layout;
+- Active search with a matching previously-collapsed group;
+- Active search with no matches;
 - Active empty;
 - Archive populated;
-- Archive with many Specs + search;
-- narrow direct Task signal.
+- Archive with many Specs + search.
 
 ## 18. Acceptance criteria
 
 - requires-attention is reserved for human-blocking situations;
-- ready remains visually calmer and does not imply urgency;
+- cross-group order is Requires attention -> In progress -> Ready / idle;
+- Ready and Idle share one low-priority group but remain distinguishable in row summary text;
 - a Spec appears once in the canonical Active queue;
-- row/identity always opens Specification;
-- explicit signal targets may jump deeper without changing row semantics;
-- aggregate signals never invent a representative Task;
+- Active Specs use the grouped steering presentation defined by the Spec steering contract;
+- the entire row always opens Specification;
+- summary/status prose inside the row is non-interactive;
+- Task IDs and raw signal lists do not appear in the canonical row;
+- group header and row content share one stable content axis beside a fixed gutter, and any group
+  disclosure control follows the steering contract rather than acting as decorative iconography;
+- current Specs Overview does not expose unsupported Spec-selection checkboxes or bulk actions;
+- Search cannot hide matches inside collapsed groups and uses filtered group counts as defined by the
+  steering contract;
+- Archive uses bounded historical row semantics rather than Active steering state;
+- aggregate summaries never invent a representative Task;
 - batch remains batch-shaped;
 - no current-work language is derived from historical Session association;
 - New specification works with title only and does not require an initial prompt;
@@ -328,7 +359,5 @@ Do not force the work queue into DataTable unless final content proves genuinely
 - exact Active/Archive control;
 - exact ordering/tie-break inside multiple simultaneous **attention** signals beyond the known rule
   that an active Session waiting on a human is high urgency;
-- grouped semantic sections versus one flat ordered Active queue; both remain valid if they preserve
-  attention/ready/working semantics without duplicating Specs;
 - exact archive interaction;
 - exact realtime transport in new Runtime.

@@ -46,14 +46,16 @@ The target steering loop is:
 
 ```text
 overview
-  -> see that something requires attention or is ready
-  -> 1 click
-context + evidence + why the action exists
-  -> 2nd deliberate interaction
-deterministic action / human decision
+  -> see which Specification needs attention / is ready / is active
+  -> open Specification
+Specification
+  -> see the responsible Task(s), context, evidence, and why the action exists
+  -> open Task when Task-specific detail is needed
+  -> deliberate deterministic action / human decision
 ```
 
-The first click is for understanding. The second click may mutate workflow state.
+Navigation from the overview is for understanding, not mutation. A workflow mutation remains an
+explicit deliberate action after sufficient Specification/Task context is visible.
 
 The UI should not make the owner reconstruct state from YAML, raw gate output, provider events, or
 legacy lifecycle statuses.
@@ -109,61 +111,75 @@ Before opening a Specification, the screen should make these categories distingu
 REQUIRES ATTENTION
 Something is waiting on the human.
 
-READY
-The system can proceed when the human chooses to start/continue.
-
 IN PROGRESS
 Agent/runtime work is currently happening.
 
-OTHER ACTIVE / QUIET
-No immediate human action is required.
+READY / IDLE
+No work is currently active and no human intervention is required.
+Individual rows still say whether a useful operation is Ready or there is No immediate action.
 ```
 
 Issue/remediation is **not** a fifth top-level category by itself.
 
 - if an issue requires human intervention, project it as Requires attention with the concrete reason;
-- if a legal agent/system remediation path exists without human input, keep it under Working/Other
-  active and expose the remediation reason/path as supporting context.
+- if the agent/system is actively remediating without human input, keep it under In progress;
+- if remediation is merely available or nothing is progressing, keep it under Ready / idle and
+  expose the concise reason in the row summary.
 
 These are product projections, not persisted status values.
 
 ## 4.2 Minimum Specification summary
 
-| Information                         | Class                 | Evidence                                                                             | Why it matters                                                                                        |
-| ----------------------------------- | --------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| Specification title / identity      | Orientation           | Product direction                                                                    | User must know which change is being discussed.                                                       |
-| Active vs Archive                   | Orientation           | Old-repo deterministic evidence + product direction                                  | Determines whether this belongs to current work or history.                                           |
-| Current workflow step               | Orientation / Context | Product direction; Task equivalent exists in legacy deterministic flow               | Shows where the Spec is in its process.                                                               |
-| Semantic workflow status            | Orientation           | Current deterministic architecture concept; legacy implementation evidence for Tasks | More human-readable than raw step/state.                                                              |
-| Requires-human-attention projection | Requires attention    | Product direction                                                                    | Lets the overview act as a work queue.                                                                |
-| Reason attention is required        | Requires attention    | Product direction                                                                    | "Review TASK-03" is useful; a red dot alone is not.                                                   |
-| Ready next action                   | Ready                 | Legacy deterministic action inspection + product direction                           | Distinguishes ready-to-start from waiting-on-human.                                                   |
-| Active/running work summary         | Current activity      | Current Session semantics + product direction                                        | Shows that work is already happening and on what.                                                     |
-| Task progress summary               | Context               | Legacy dashboard evidence                                                            | Useful orientation without opening every Task.                                                        |
-| Issue/remediation summary           | Context               | Deterministic fail-closed model                                                      | Explains which intended action cannot proceed and whether another remediation path remains available. |
-| Last meaningful activity            | Context               | Candidate                                                                            | Helps scan stale vs active Specs; not a workflow truth.                                               |
+The canonical Specs-overview row has a deliberately small information budget:
 
-The overview should prefer a small number of meaningful projections over exposing every underlying
-status.
+- **Specification identity/title**: always visible and primary.
+- **Queue/group state**: communicated by the owning semantic group, not repeated as a heavy badge per
+  row.
+- **Dominant aggregate state reason**: one concise high-level summary with no Task IDs or raw signal
+  enumeration.
+- **Concurrent qualifier**: optional one bounded lower-priority aggregate only when omitting it would
+  materially misrepresent the row.
+- **Task progress**: compact `completed / total` summary when known.
+- **Linked PR**: optional one compact explicit control when useful.
+- **Scope tags**: optional, with at most two visible values.
+
+Current workflow step, raw semantic workflow status, individual Task signals, Session identity,
+provider/model/effort, detailed remediation paths, and last-activity detail remain available to the
+source projection or deeper surfaces but do not automatically earn space in the canonical row.
+
+The overview should expose a small number of meaningful aggregates rather than mirror every
+underlying status. The detailed presentation contract lives in
+[Spec steering collection and item UI spec](components/spec-steering-ui-spec.md).
 
 ## 4.3 Ordering principle
 
 **Product direction**
 
-Default ordering should make human work discoverable.
-
-A candidate priority is:
+Cross-group priority is canonical and matches the steering-row contract:
 
 ```text
 1. requires attention
-2. active work with a problem / blocked state
-3. ready to start or continue
-4. normal in-progress work
-5. quiet/completed active Specs
+2. in progress
+3. ready / idle
 ```
 
-This is not yet a final sort algorithm. It records the product priority that "I need to do something"
-must not be buried below passive status.
+The semantic distinction is:
+
+- **Requires attention**: intended progress needs human input, decision, or intervention.
+- **In progress**: the system/agent is actively progressing or remediating without human input.
+- **Ready / idle**: no work is currently active and no human intervention is required. The row
+  summary still distinguishes Ready from Idle.
+
+Within Ready / idle, Ready rows sort before Idle rows by default because an available useful action is
+more actionable than a no-immediate-action state.
+
+A generic problem/blocked condition is not a separate priority tier. It moves into Requires attention
+only when authoritative semantics say the human must intervene; otherwise active remediation remains
+In progress, while available-but-not-running remediation or a no-progress state remains Ready / idle.
+
+Ordering **inside** a group is a separate concern. For example, within Requires attention an active
+Session waiting directly on the human may rank ahead of a passive approval request; within Ready /
+idle, Ready ranks ahead of Idle. Intra-group tie-breaks must not redefine the cross-group order above.
 
 ---
 
@@ -783,10 +799,10 @@ yet.
 ```text
 Specs overview
   Spec A: REQUIRES ATTENTION
-  "TASK-03 requires review"
+  "3 Tasks require review"
 
 open Spec A
-  Task 03 highlighted as attention
+  responsible Tasks are identified and attention context is visible
 
 open Task 03
   - why review is required
@@ -799,17 +815,18 @@ open Task 03
   [Review / decision action]
 ```
 
-This is the reference "one click for context, second deliberate click for decision" flow.
+The overview deliberately stays aggregate. Task-specific context is exposed after entering the
+Specification; the final decision remains a separate deliberate interaction.
 
 ## 14.3 Agent is working
 
 ```text
 Specs overview
   Spec A: IN PROGRESS
-  "Reviewer working on TASK-03"
+  "Reviewer working on 3 Tasks"
 
 open Spec A
-  Task 03 shows current activity
+  authoritative execution scope identifies the participating Tasks
 
 open Task 03
   current Session/execution scope
@@ -822,8 +839,8 @@ or Open full session
   Full Session directly
 ```
 
-The "working on TASK-03" label is allowed only when current execution identity proves TASK-03 is in
-scope. A linked/historical Session alone is insufficient.
+The aggregate "Reviewer working on 3 Tasks" summary is allowed only when authoritative current
+execution scope proves that work is active. A linked/historical Session alone is insufficient.
 
 Working is not ready and is not requires-attention.
 
@@ -972,19 +989,28 @@ This is an information-depth proposal, not a pixel layout.
 
 ## Specs overview
 
-Keep:
+The canonical row budget is owned by
+[Spec steering collection and item UI spec](components/spec-steering-ui-spec.md) and matches
+[§4.2](#42-minimum-specification-summary):
 
-- Spec identity;
-- one strongest human-facing signal plus concise concurrent signals;
-- clear distinction between attention, ready, and working;
-- compact progress/current execution;
-- last/high-value activity where useful.
+- Spec identity/title;
+- optional bounded trailing metadata allowed by the steering contract;
+- compact Task progress when known;
+- one dominant aggregate state summary;
+- at most one bounded concurrent qualifier when omitting it would materially misrepresent the row.
 
 One canonical queue row per Specification. The whole row/identity always opens the Specification.
-Concrete signal controls may explicitly open a Task or issue target; aggregate signals never invent a
-representative Task.
+Ordinary status/reason prose in that row is non-interactive. Concrete Task, Session, evidence, and
+workflow context becomes explicit after entering the Specification; the overview never invents a
+representative Task or deep-links directly from dynamic summary state.
 
-Do not expose raw gates, attempt history, full findings, tool details, or raw diffs.
+Task IDs, raw signal collections, Session identity, arbitrary current-execution detail, workflow
+labels, provider/model data, timestamps/last-activity detail, raw gates, attempt history, full
+findings, tool details, and raw diffs do not automatically earn canonical row space.
+
+Activity remains a valid source/read-model and deeper-history concept. It may support future
+collection behavior, ordering, or deeper context without becoming part of the current row budget by
+default.
 
 ## Specification
 

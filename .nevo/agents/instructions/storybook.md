@@ -1,3 +1,5 @@
-For reusable UI work, query the repository documentation for the relevant UI technology together with `storybook` and `testing` before authoring or changing stories.
+For UI work that changes stories, screen composition, or visual behavior, query the repository documentation for the relevant UI technology together with `storybook` and `testing` before authoring or changing stories.
 
-Use Storybook as a verification surface where repository guidance requires it. Keep stories deterministic and representative of meaningful states rather than using them as a second product implementation.
+Use Storybook as a deterministic verification surface where repository guidance requires it. Keep stories representative of meaningful states rather than using them as a second product implementation. Visual verification must inspect the rendered output and follow the repository's responsive inspect/fix/re-render workflow; Storybook alone is insufficient when the behavior depends on the composed application shell.
+
+When a visually material change affects an existing story or screen with an accepted Chromatic baseline, use the available Chromatic diff as an additional regression signal. Local rendered inspection remains required and answers whether the current result is correct; the regression comparison helps detect unintended drift from an accepted surface. Resolve `engineering.repository.ci` for the authoritative Chromatic workflow. Do not treat Chromatic as a universal required/protected-branch check.

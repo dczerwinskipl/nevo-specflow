@@ -50,23 +50,25 @@ It does not freeze:
 It does freeze the intended **information order and navigation relationship** strongly enough to
 validate the product flow before visual design.
 
-The core steering loop remains:
+The core steering loop is:
 
 ```text
 Specs overview
   -> identify attention / ready / working
-  -> 1 click on the relevant signal
-  -> responsible decision context opens
-     - Task-specific signal => Specification + Task Secondary
-     - Spec-level signal => Specification context
-  -> deliberate action
+  -> open the owning Specification through the stable Spec row target
+Specification
+  -> make the responsible Task(s), Session, evidence, and workflow context explicit
+  -> open Task detail when Task-specific inspection is needed
+  -> deliberate workflow action
 ```
 
-A generic Specification click may still open the Specification normally, but an actionable
-summary should deep-link to the context that explains that signal instead of forcing the human to
-find the same Task again.
+The canonical Specs Overview row has one stable destination: the owning Specification. Dynamic
+attention/ready/working state changes the row summary and grouping, not its navigation target.
+Ordinary status/reason prose in the overview is non-interactive and never deep-links directly into
+Task Secondary.
 
-Opening that context is never itself the mutating workflow action.
+Opening Specification/Task context is navigation only and never performs the mutating workflow
+action.
 
 ---
 
@@ -146,88 +148,81 @@ Specs
 [ Active ] [ Archive ]
 
 Requires attention
-  Spec A        TASK-03 requires review
+  Spec A        3 Tasks require review
   Spec B        Owner decision required
 
-Ready
-  Spec C        Ready to start implementation
-
 In progress
-  Spec D        Reviewer working on TASK-05
+  Spec C        Reviewer working on 3 Tasks
 
-Other active
+Ready / idle
+  Spec D        Ready to start
   Spec E        No immediate action
-  Spec F        Waiting on normal workflow progression
+  Spec F        Agent remediation available
 ```
 
-This is a structural example, not a requirement to render literal grouped sections.
+This is the current structural contract for Specs Overview: Active Specs use grouped sections.
+The exact visual treatment of the headers remains a design concern, but flattening these groups is
+not an implementation-level alternative.
 
-The important rule is that **attention, ready, and working remain perceptibly different**.
+The important rule is that **Requires attention, In progress, and Ready / idle remain perceptibly
+different**, while Ready and Idle remain distinguishable through the row summary inside their shared
+low-priority group.
 
 A Specification can carry concurrent signals, for example one Task may require review while another
-Task is currently being executed. If the screen uses mutually exclusive groups, place the Spec by
-its highest-priority human-facing signal and preserve the other meaningful signals inside the item;
-do not silently discard them. Avoid duplicating the same Spec across several groups unless the UI is
-deliberately presenting independent projections rather than one canonical work queue.
-
-A flat list is still valid if the sort, labels, and hierarchy communicate those categories clearly.
+Task is currently being executed. Place the Spec according to the canonical cross-group priority
+`attention > in-progress > ready-idle`. The row keeps one dominant aggregate summary and may show at
+most one bounded lower-priority qualifier when omitting it would materially misrepresent current
+state. Do not duplicate the same Spec across several groups or expose raw signal collections.
 
 ## 3.3 Minimum information per Spec item
 
-Primary:
+The detailed row/group/presentation contract is owned by
+[Spec steering collection and item UI spec](components/spec-steering-ui-spec.md). This document only
+records the cross-surface information boundary.
 
-- Spec title / identity;
-- the most important current human-facing signal;
-- count/summary when multiple same-priority items exist;
-- short reason when attention or issue exists.
+The canonical overview row shows:
 
-A Specification can have multiple simultaneous Task-level signals. The overview may lead with one
-signal for scanability, but it must not imply that the remaining attention/ready items do not exist.
+- Spec identity/title;
+- compact Task progress when known;
+- one dominant aggregate human-facing state summary;
+- at most one bounded concurrent qualifier allowed by the steering-row presentation contract;
+- optional compact trailing metadata allowed by that contract.
+
+Task IDs, per-Task signal labels, raw Session/execution identifiers, and arbitrary lists of concurrent
+signals are not overview-row content. Multiplicity is preserved in the source projection and reduced
+to the dominant summary plus at most one explicit aggregate qualifier for scanning.
 
 Examples:
 
 ```text
 Spec A
-  3 Tasks require review
-  TASK-03 owner decision required
+  5 / 9 Tasks · 3 Tasks require review
 
 Spec B
-  2 Tasks ready
-  next: TASK-05
+  2 / 8 Tasks · Reviewer working on 3 Tasks
 ```
 
-The exact aggregation treatment is deferred; preserving multiplicity is not.
-
-Secondary/compact metadata:
-
-- workflow position;
-- Task progress;
-- current execution summary when authoritative;
-- last meaningful activity where useful.
-
-Avoid turning each Spec row into a dashboard card containing every status.
+The overview must not turn a Spec row into a miniature detail screen merely to prove that all source
+signals were preserved.
 
 ## 3.4 Interaction
 
-The neutral Spec row/identity always opens the Specification.
-
-More specific signals are separate explicit targets:
+The entire Spec row has one stable destination:
 
 ```text
-Spec row / title
+Spec row
   -> Specification
-
-TASK-03 requires review [open]
-  -> Specification + local TASK-03 detail
-
-3 Tasks require review [open]
-  -> Specification attention context; user chooses Task
 ```
 
-Do not change the destination of the whole row based on dynamic priority.
+Status/reason prose inside the row is non-interactive. The responsible Task, Session, evidence, and
+workflow action become explicit after entering the Specification.
 
-On narrow, an explicit Task target may push Task detail immediately; this is still local Secondary
-state and is not encoded as part of the Specification URL.
+A genuinely separate contextual resource such as a linked pull request may be an explicit nested
+control when the steering-row contract allows it; ordinary status text must not become a competing
+link.
+
+Do not change the destination of the whole row based on dynamic priority. On Narrow, activating the
+row still enters the Specification rather than pushing a Task detail directly.
 
 The overview never performs the final workflow mutation.
 
@@ -426,11 +421,11 @@ The UI must not enforce one global Attachments list as the only way to find evid
 Ready
 
 Spec A
-  TASK-03 ready to start
+  2 / 5 Tasks · Ready to start
 ```
 
-Selecting the ready signal opens Spec A with TASK-03 context already active. This is visible and
-convenient, but calmer than attention.
+Opening the row enters Spec A. The Specification surface then makes the ready Task(s) explicit. The
+overview stays visible and convenient but calmer than attention.
 
 ## 6.2 Specification Primary
 
@@ -483,23 +478,13 @@ The user learns the context before performing Start.
 In progress
 
 Spec A
-  Reviewer working on TASK-03
+  2 / 8 Tasks · Reviewer working on 3 Tasks
 ```
 
-Selecting the current-work signal opens Spec A with TASK-03 context already active.
+Opening the row enters Spec A, where the authoritative execution scope can identify the participating
+Tasks. The overview does not expose one representative Task.
 
-This wording is allowed only when authoritative current execution scope proves TASK-03 is part of
-the current execution.
-
-Historical Session association is insufficient.
-
-For a batch:
-
-```text
-Reviewer working on 3 Tasks
-```
-
-Do not invent one representative Task.
+Historical Session association is insufficient to produce the working summary.
 
 ## 7.2 Specification Primary
 
@@ -570,13 +555,14 @@ The Task surface does not embed a second full Session surface.
 Requires attention
 
 Spec A
-  TASK-03 requires review
+  5 / 9 Tasks · 3 Tasks require review
 ```
 
-Selecting the attention signal opens Spec A with TASK-03 review context already active. This is the
-reference one-click-to-context path.
+Opening the row enters Spec A. The Specification surface then exposes which concrete Task(s) require
+review and why.
 
-Attention state should say **what requires the human**, not merely "action required."
+Attention state should say **what requires the human** in aggregate, not merely "action required,"
+while keeping Task IDs out of the canonical overview row.
 
 ## 8.2 Specification Primary
 
@@ -653,7 +639,8 @@ Spec A
   Specification approval required
 ```
 
-Selecting the signal opens the Specification decision context directly.
+Opening the row enters the Specification, where the Specification-level decision context is made
+explicit.
 
 ## 9.2 Specification Primary
 
@@ -762,7 +749,7 @@ Tasks
 ...
 ```
 
-The attention/ready/current-work signal must be visible before opening Task.
+The aggregate attention/ready/current-work state must be visible before opening Task.
 
 ## Task
 
@@ -822,20 +809,21 @@ Before moving to component inventory or visual mockups, verify:
 2. Issue/remediation becomes attention only when the human is actually required.
 3. Multiple simultaneous attention/ready/current-work signals are preserved rather than collapsed
    into a false single state.
-4. A Task-specific explicit signal can open the responsible Task context in one interaction.
-5. That one-click interaction may route to the owning Specification and then initialize local Task
-   Secondary; the Task selection itself is not a URL/deep-link contract.
-6. A Spec-level signal opens the responsible Specification context without inventing a Task owner.
-7. A neutral Spec click still opens the Specification without inventing a Task selection.
-8. Opening Task/context does not mutate workflow.
-9. Task Secondary explains the current state before presenting a mutation.
-10. Evidence required for a human decision is reachable from Task without leaving the context.
-11. Optional evidence such as Handover, Session, or diff is not rendered as a required empty section.
-12. Current execution language uses authoritative execution scope, never historical Session binding.
-13. Batch execution remains visibly batch-shaped.
-14. A settled Turn can produce continue/resume or recovery state without pretending the Task is done.
-15. Narrow/mobile preserves discovery of attention/ready/current-work before Task detail is opened.
-16. Session access from Task uses Floating Session only on Wide and opens Full Session directly on
+4. The entire Specs-overview row opens the Specification; ordinary status prose is not a competing
+   Task/Session navigation target.
+5. The overview keeps Task IDs and raw concurrent signal lists out of the canonical row while
+   preserving their meaning as bounded aggregate summaries.
+6. A Spec-level action is represented without inventing a Task owner.
+7. Opening the Specification or Task/context does not mutate workflow.
+8. Task Secondary explains the current state before presenting a mutation.
+9. Evidence required for a human decision is reachable from Task without leaving the context.
+10. Optional evidence such as Handover, Session, or diff is not rendered as a required empty section.
+11. Current execution language uses authoritative execution scope, never historical Session binding.
+12. Batch execution remains visibly batch-shaped.
+13. A settled Turn can produce continue/resume or recovery state without pretending the Task is done.
+14. Narrow/mobile preserves discovery of aggregate attention/ready/current-work before Task detail is
+    opened.
+15. Session access from Task uses Floating Session only on Wide and opens Full Session directly on
     Compact/Narrow.
 
 The equivalent Full Session structure is captured in

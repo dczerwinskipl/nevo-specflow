@@ -56,7 +56,7 @@ It does not flatten Task detail, Session transcript, or raw workflow internals i
 
 Entry:
 
-- Specs Overview neutral Spec target;
+- Specs Overview canonical Spec row;
 - direct/deep link to Specification;
 - normal router Back from Full Session may return to this Specification; previously open Task
   Secondary is local state and is not reconstructed from the URL.
@@ -173,8 +173,11 @@ Wide/Compact:
 Narrow:
 
 - Specification first;
-- direct Task signal or Task row pushes Task detail;
+- Task row or another explicit Task control owned by the Specification pushes Task detail;
 - critical attention/ready/current-work remains visible before opening Task.
+
+Specs Overview itself does not push Task detail from dynamic summary state; it enters the
+Specification first.
 
 ## 10. Interaction flows
 

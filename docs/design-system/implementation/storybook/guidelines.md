@@ -14,6 +14,7 @@ related:
   - design-system.implementation.react.component-guidelines
   - design-system.principles.ui-ux-guidelines
   - engineering.shared.testing
+  - engineering.repository.ci
 ---
 
 # Storybook guidelines
@@ -72,9 +73,30 @@ errors against WCAG A/AA and best-practice rules.
 
 ## Verification workflow (before marking UI work done)
 
+Storybook is the preferred deterministic visual-development surface, but it is not a substitute for
+the composed application when the behavior under test depends on the application shell.
+
 1. Render every affected story with no backend using `pnpm storybook`.
 2. Build the complete catalog with `pnpm storybook:build`.
 3. Run Storybook interaction and accessibility checks with `pnpm test:storybook`.
-4. Inspect desktop and mobile (`375px`) viewports.
-5. Inspect computed styles when exact colors/spacing/animation matter — never claim
-   visual consistency from class names alone.
+4. Inspect every affected responsive mode, not just one desktop and one mobile size:
+   - representative desktop / Wide;
+   - Compact around the relevant workspace breakpoint where applicable;
+   - mobile at approximately `375px`;
+   - approximately `320px` for dense layouts or content that can plausibly overflow.
+5. Exercise realistic long and dense fixtures where labels, titles, metadata, repeated rows, or
+   action groups can stress the layout.
+6. Inspect the actual SpecFlow application as well when App Shell / AppWorkspace composition,
+   viewport-height ownership, scrolling, routing, sticky/fixed regions, or Primary/Secondary
+   behavior cannot be faithfully validated in an isolated story.
+7. Inspect computed styles and rendered dimensions when exact colors, spacing, sizing, overflow, or
+   animation matter — never claim visual consistency from class names alone.
+8. If visual inspection finds a defect, fix it and re-render the affected viewport. Perform the final
+   rendered pass after the last UI/CSS change.
+9. When a visually material change touches an existing story/screen with an accepted Chromatic
+   baseline, use the available Chromatic comparison as an additional regression signal. Local
+   rendered inspection answers "does this look correct now?"; the regression diff answers "did an
+   accepted surface drift unexpectedly?". Chromatic remains an informational/manual PR workflow, not
+   a universal protected-branch requirement. Follow
+   [Continuous integration](../../../engineering/repository/ci.md#visual-regression-with-chromatic)
+   for the authoritative workflow details.

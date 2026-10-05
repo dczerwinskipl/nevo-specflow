@@ -46,6 +46,33 @@ Primary / secondary / tertiary must be distinguishable at a glance. Repetition r
 emphasis — the tenth identical badge carries less signal than the first, so compress
 repeated content rather than repeating a heavy treatment.
 
+## Stable composition and repeated structures
+
+Repeated collections need a stable visual grammar. Before implementing a repeated row/item pattern,
+define the repeated unit, dominant scan direction, **scan columns/alignment tracks**, content start,
+primary/secondary line hierarchy, metadata budget, and responsive wrap/collapse rules. These are
+screen/pattern invariants, not per-state implementation choices.
+
+For dense operational lists, prefer columnar alignment when the user compares the same semantic field
+vertically across rows. The same kind of information should occupy the same scan column instead of
+drifting according to title length, state, or which optional metadata happens to be present. Keep the
+primary content track flexible and secondary/trailing tracks bounded; columns exist to reduce eye
+travel, not to fill the width. The detailed collection/grid rules live in
+[Layout and containment guidelines](layout-and-containment.md#scan-column-rule).
+
+Items belonging to the same collection should preserve the same skeleton across states unless their
+meaning genuinely requires a different structure. State can change copy, actions, and semantic
+emphasis; it should not arbitrarily move the title, introduce a new column, change indentation, or
+turn one item into a mini-dashboard while its neighbors remain rows.
+
+Keep logically related content inline while useful space exists. Responsive layouts should wrap or
+stack under actual pressure, not because an arbitrary fixed split reserves empty space elsewhere.
+Optional metadata should normally size to content while the primary information remains flexible.
+
+When an approved screen contract or visual reference defines these invariants, implementation should
+preserve them. Material deviations belong in the owning product UX contract, not as one-off CSS
+decisions.
+
 ## Typography
 
 Use **semantic typography tokens** (role-named: heading, body, label, metadata,
@@ -95,16 +122,60 @@ primary answer.
 
 ## Mandatory visual verification
 
+Rendered inspection is part of the definition of done for UI work. Passing tests and correct source
+code are not evidence that a composed screen looks correct.
+
 Before marking any UI task done:
 
-1. Render every affected story/screen without a backend.
-2. Run the component/interaction test suite.
-3. Inspect desktop **and** mobile viewports.
-4. When exact colours / spacing / animation matter, inspect **computed styles** on
-   rendered DOM — do not claim visual correctness from class names alone.
+1. Render every affected story/screen without a backend where deterministic fixtures can represent
+   the state.
+2. Run the relevant component, interaction, and accessibility tests.
+3. Inspect every responsive layout mode affected by the change. At minimum check:
+   - a representative desktop / Wide viewport;
+   - a Compact viewport around the relevant workspace breakpoint when the surface participates in
+     responsive workspace composition;
+   - mobile at approximately 375 px;
+   - approximately 320 px when controls, labels, metadata, or multi-column content make overflow
+     plausible.
+4. Use realistic fixtures, including long titles/labels and dense/repeated content where those cases
+   are possible. Conveniently short placeholder text is not sufficient visual coverage.
+5. Inspect the composed application, not only an isolated Storybook story, when correctness depends
+   on App Shell / AppWorkspace composition, viewport height, scrolling, routing, sticky/fixed
+   regions, or Primary/Secondary behavior.
+6. When exact colours, spacing, dimensions, overflow, or animation matter, inspect **computed
+   styles** and rendered element dimensions. Do not claim visual correctness from class names alone.
+
+During each rendered pass actively check:
+
+- **spacing and containment** — no accidental double padding, unexplained empty regions, overly
+  dense groups, inconsistent rhythm, unnecessary nested surfaces, or large unused areas caused by a
+  layout that merely technically fits;
+- **viewport use** — surfaces that are intended to fill the available application height do so, and
+  content does not stop at intrinsic height or become vertically clipped by mistake;
+- **overflow and text resilience** — no horizontal page overflow, clipped text, controls whose
+  labels escape their bounds, badges/metadata leaving containers, flex/grid children widening the
+  viewport, or destructive wrapping under realistic long content;
+- **responsive hierarchy** — Wide, Compact, and Narrow preserve the same primary answer and required
+  actions; Narrow does not retain desktop-only assumptions, and Back/Close affordances remain
+  available where the interaction model requires them;
+- **visual hierarchy** — primary content and actions are obvious, secondary actions are quieter,
+  metadata is distinguishable from narrative content, and repeated status/borders/cards/colour do
+  not add visual noise;
+- **important states** — inspect the meaningful states defined by the owning screen/component
+  contract, including loading, empty, unavailable/error, dense content, and exceptional attention
+  states when applicable.
+
+Visual review is iterative: **implement -> render -> inspect -> fix -> render again**. Fix visual
+problems that are reasonably within the task instead of only documenting them. The final rendered
+inspection must happen after the last UI/CSS change.
+
+When reporting verification, name the rendered surfaces and the actual viewport widths inspected
+rather than saying only that "desktop and mobile were checked".
 
 ## Anti-patterns
 
 Raw font-size/colour values in components; borders substituting for hierarchy; promoting
 technical inspection data to the summary level; treating "fits on screen" as "belongs on
-screen"; verifying UI from source instead of a rendered surface.
+screen"; state-specific bespoke row geometry; arbitrary fixed column splits for optional metadata;
+premature wrapping that leaves useful width empty; verifying UI from source instead of a rendered
+surface.

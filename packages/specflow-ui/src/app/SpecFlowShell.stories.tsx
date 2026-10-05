@@ -186,10 +186,23 @@ export const FigmaCapture: Story = {
   ),
   tags: ['!dev', '!autodocs'],
   play: async ({ canvasElement }) => {
-    await waitFor(
+    const accountTrigger = await waitFor(
       () => canvasElement.querySelector<HTMLElement>('[data-design-layer="account-trigger"]'),
       'Application shell capture should include the account trigger design layer.',
     );
+    const navigation = canvasElement.querySelector<HTMLElement>(
+      '[data-app-shell-region="navigation"]',
+    );
+    if (!navigation) throw new Error('Desktop application shell navigation must be present.');
+
+    const bottomGap =
+      navigation.getBoundingClientRect().bottom - accountTrigger.getBoundingClientRect().bottom;
+    if (bottomGap < 20) {
+      throw new Error('Desktop account trigger should retain visible bottom navigation padding.');
+    }
+    if (getComputedStyle(accountTrigger).alignItems !== 'center') {
+      throw new Error('Account avatar, label, and chevron must remain vertically centered.');
+    }
   },
   parameters: {
     controls: { disable: true },

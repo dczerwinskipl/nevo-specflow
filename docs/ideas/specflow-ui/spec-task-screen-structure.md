@@ -151,13 +151,11 @@ Requires attention
   Spec A        3 Tasks require review
   Spec B        Owner decision required
 
-Ready
-  Spec C        Ready to start
-
 In progress
-  Spec D        Reviewer working on 3 Tasks
+  Spec C        Reviewer working on 3 Tasks
 
-Other active
+Ready / idle
+  Spec D        Ready to start
   Spec E        No immediate action
   Spec F        Agent remediation available
 ```
@@ -166,14 +164,15 @@ This is the current structural contract for Specs Overview: Active Specs use gro
 The exact visual treatment of the headers remains a design concern, but flattening these groups is
 not an implementation-level alternative.
 
-The important rule is that **attention, ready, working, and quiet remain perceptibly different**.
+The important rule is that **Requires attention, In progress, and Ready / idle remain perceptibly
+different**, while Ready and Idle remain distinguishable through the row summary inside their shared
+low-priority group.
 
 A Specification can carry concurrent signals, for example one Task may require review while another
 Task is currently being executed. Place the Spec according to the canonical cross-group priority
-`attention > ready > working > quiet`. The row keeps one dominant aggregate summary and may show at
+`attention > in-progress > ready-idle`. The row keeps one dominant aggregate summary and may show at
 most one bounded lower-priority qualifier when omitting it would materially misrepresent current
-state. Do not
-duplicate the same Spec across several groups or expose raw signal collections.
+state. Do not duplicate the same Spec across several groups or expose raw signal collections.
 
 ## 3.3 Minimum information per Spec item
 

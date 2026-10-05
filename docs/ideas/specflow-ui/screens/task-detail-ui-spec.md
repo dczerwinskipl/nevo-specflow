@@ -51,8 +51,10 @@ It does not own global Specification navigation, Full Session layout, or raw pro
 Entry:
 
 - Task row from Specification;
-- concrete Task signal from Specs Overview after routing to the owning Specification;
-- Session Context -> Task detail.
+- explicit Task target from Session Context or another owning detail surface.
+
+Specs Overview does not deep-link directly to Task Detail from dynamic summary/status content; it
+first enters the owning Specification, where the concrete Task context becomes explicit.
 
 Task Detail is local Secondary/pushed-detail state. It is not a standalone URL/deep-link contract.
 

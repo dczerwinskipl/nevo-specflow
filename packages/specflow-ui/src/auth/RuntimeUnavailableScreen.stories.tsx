@@ -59,8 +59,14 @@ export const Mobile: Story = {
       throw new Error('Standalone recovery layout regions must be present.');
     }
 
-    if (mobileHeader.getBoundingClientRect().bottom > surface.getBoundingClientRect().top) {
-      throw new Error('Mobile auth header must not overlap the Runtime recovery surface.');
+    const rootRect = root.getBoundingClientRect();
+    const headerRect = mobileHeader.getBoundingClientRect();
+    const surfaceRect = surface.getBoundingClientRect();
+    if (Math.abs(headerRect.bottom - surfaceRect.top) > 1) {
+      throw new Error('Runtime recovery workspace must begin directly below the mobile header.');
+    }
+    if (surfaceRect.bottom < rootRect.bottom - 1) {
+      throw new Error('Runtime recovery workspace must fill the remaining viewport height.');
     }
     if (!mobileHeader.contains(mobileSelector)) {
       throw new Error('Mobile recovery language selection must belong to the auth header.');

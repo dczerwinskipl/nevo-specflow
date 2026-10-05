@@ -22,23 +22,29 @@ export function StandaloneAuthSurface({
       <AppBackground
         {...rootAttributes}
         brandPrimary={defaultNevoBrand.coreColor}
-        className="relative flex min-h-dvh w-full items-center justify-center px-4 py-6 text-content-primary sm:px-8 sm:py-10"
+        className="flex min-h-dvh w-full flex-col pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(1rem,env(safe-area-inset-top))] text-content-primary sm:pb-[max(2rem,env(safe-area-inset-bottom))] sm:pl-[max(2rem,env(safe-area-inset-left))] sm:pr-[max(2rem,env(safe-area-inset-right))] sm:pt-[max(1.5rem,env(safe-area-inset-top))]"
         data-auth-layout="root"
       >
         <div
-          className="absolute right-[max(1rem,env(safe-area-inset-right))] top-[max(1rem,env(safe-area-inset-top))] sm:right-8 sm:top-6"
+          className="flex shrink-0 justify-end"
+          data-auth-layout="language-selector"
           {...designLayerMetadata({ layer: 'language-selector' })}
         >
           <StandaloneLocaleMenu />
         </div>
-        <WorkspaceSurface
-          {...surfaceAttributes}
-          as="main"
-          className="w-full max-w-md rounded-surface border border-workspace-edge p-6 sm:p-8"
-          data-auth-layout="surface"
+        <div
+          className="flex flex-1 items-center justify-center py-4 sm:py-6"
+          data-auth-layout="body"
         >
-          {children}
-        </WorkspaceSurface>
+          <WorkspaceSurface
+            {...surfaceAttributes}
+            as="main"
+            className="w-full max-w-md rounded-surface border border-workspace-edge p-6 sm:p-8"
+            data-auth-layout="surface"
+          >
+            {children}
+          </WorkspaceSurface>
+        </div>
       </AppBackground>
     </DesignMetadataBoundary>
   );

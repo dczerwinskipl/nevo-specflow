@@ -213,6 +213,21 @@ jobs:
       - name: Generate canonical projections for PR #29
         shell: bash
         run: |
+          pnpm exec prettier --write \
+            .nevo/agents/definitions/ux-designer.yaml \
+            .nevo/agents/instructions/implementer-ui.md \
+            .nevo/agents/instructions/storybook.md \
+            .nevo/agents/instructions/ux-designer.md \
+            docs/design-system/implementation/storybook/guidelines.md \
+            docs/ideas/specflow-ui/components/spec-steering-ui-spec.md \
+            docs/ideas/specflow-ui/design-system-component-composition-gaps.md \
+            docs/ideas/specflow-ui/information-and-navigation-inventory.md \
+            docs/ideas/specflow-ui/navigation-and-route-model.md \
+            docs/ideas/specflow-ui/screens/specification-workspace-ui-spec.md \
+            docs/ideas/specflow-ui/screens/specs-overview-ui-spec.md \
+            docs/ideas/specflow-ui/screens/task-detail-ui-spec.md \
+            docs/ideas/specflow-ui/spec-task-information-hierarchy.md \
+            docs/ideas/specflow-ui/spec-task-screen-structure.md
           pnpm docs:check --write
           pnpm agents:build
           pnpm docs:check
@@ -223,6 +238,20 @@ jobs:
         with:
           name: pr29-generated-projections
           path: |
+            .nevo/agents/definitions/ux-designer.yaml
+            .nevo/agents/instructions/implementer-ui.md
+            .nevo/agents/instructions/storybook.md
+            .nevo/agents/instructions/ux-designer.md
+            docs/design-system/implementation/storybook/guidelines.md
+            docs/ideas/specflow-ui/components/spec-steering-ui-spec.md
+            docs/ideas/specflow-ui/design-system-component-composition-gaps.md
+            docs/ideas/specflow-ui/information-and-navigation-inventory.md
+            docs/ideas/specflow-ui/navigation-and-route-model.md
+            docs/ideas/specflow-ui/screens/specification-workspace-ui-spec.md
+            docs/ideas/specflow-ui/screens/specs-overview-ui-spec.md
+            docs/ideas/specflow-ui/screens/task-detail-ui-spec.md
+            docs/ideas/specflow-ui/spec-task-information-hierarchy.md
+            docs/ideas/specflow-ui/spec-task-screen-structure.md
             docs/index.generated.md
             docs/index.generated.json
             .agents/skills

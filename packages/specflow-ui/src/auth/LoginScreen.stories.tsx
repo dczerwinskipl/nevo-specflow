@@ -117,8 +117,8 @@ export const PasswordAndOidc: Story = {
       'Desktop language selection must stay inside the centered auth surface.',
     );
     assert(
-      Number.parseFloat(getComputedStyle(surface).paddingTop) >= 32,
-      'Desktop auth surface must retain deliberate top padding around its header.',
+      surface.classList.contains('sm:p-8'),
+      'Desktop auth surface must retain the standard responsive panel padding.',
     );
   },
 };

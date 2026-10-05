@@ -63,15 +63,11 @@ function assertStandaloneAuthLayout(canvasElement: HTMLElement) {
   const mobileHeader = canvasElement.querySelector<HTMLElement>(
     '[data-standalone-shell-region="mobile-header"]',
   );
-  const mobileSelector = mobileHeader?.querySelector<HTMLElement>(
-    '[aria-label="Change language"]',
-  );
+  const mobileSelector = mobileHeader?.querySelector<HTMLElement>('[aria-label="Change language"]');
   const surface = canvasElement.querySelector<HTMLElement>(
     '[data-standalone-shell-region="surface"]',
   );
-  const root = canvasElement.querySelector<HTMLElement>(
-    '[data-standalone-shell-region="root"]',
-  );
+  const root = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="root"]');
   assert(
     mobileHeader && mobileSelector && surface && root,
     'Standalone auth layout regions must be present.',
@@ -126,9 +122,7 @@ export const PasswordAndOidc: Story = {
       desktopHeader.querySelector('[aria-label="Change language"]'),
       'Desktop standalone header must expose the product language action.',
     );
-    const root = canvasElement.querySelector<HTMLElement>(
-      '[data-standalone-shell-region="root"]',
-    );
+    const root = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="root"]');
     assert(root, 'Desktop auth root must be present.');
 
     const rootRect = root.getBoundingClientRect();

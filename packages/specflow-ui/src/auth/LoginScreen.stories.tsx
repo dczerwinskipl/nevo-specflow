@@ -60,7 +60,9 @@ function assert(condition: unknown, message: string): asserts condition {
 }
 
 function assertStandaloneAuthLayout(canvasElement: HTMLElement) {
-  const mobileHeader = canvasElement.querySelector<HTMLElement>('[data-auth-layout="mobile-header"]');
+  const mobileHeader = canvasElement.querySelector<HTMLElement>(
+    '[data-auth-layout="mobile-header"]',
+  );
   const mobileSelector = canvasElement.querySelector<HTMLElement>(
     '[data-auth-layout="mobile-language-selector"]',
   );

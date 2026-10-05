@@ -271,10 +271,12 @@ SpecAttentionAggregate
 
 Responsibilities:
 
-- show attention vs ready vs current work without collapsing concurrent signals;
-- open a concrete Task signal into Specification + local Task Secondary in one user action;
-- route Spec-level decisions to Specification context;
-- preserve neutral Spec navigation separately from actionable signals.
+- show one dominant attention/ready/current-work group while preserving materially important
+  concurrent meaning through a bounded aggregate qualifier;
+- keep the whole Spec row as the stable navigation target to Specification;
+- keep ordinary row status/reason prose non-interactive;
+- expose concrete Task/evidence/action context after entering the Specification rather than
+  deep-linking from dynamic overview state.
 
 Build from Typography, StatusIndicator/Badge, Button/Link, Alert where appropriate, and normal
 semantic list/button markup.

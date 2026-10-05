@@ -190,6 +190,14 @@ export const FigmaCapture: Story = {
       () => canvasElement.querySelector<HTMLElement>('[data-design-layer="account-trigger"]'),
       'Application shell capture should include the account trigger design layer.',
     );
+    const header = canvasElement.querySelector<HTMLElement>(
+      '[data-product-navigation-header="true"]',
+    );
+    if (!header) throw new Error('Desktop product navigation header must be present.');
+    if (Number.parseFloat(getComputedStyle(header).paddingTop) < 20) {
+      throw new Error('Desktop product navigation header should retain the CRM-standard top gap.');
+    }
+
     const footer = canvasElement.querySelector<HTMLElement>(
       '[data-product-navigation-footer="true"]',
     );

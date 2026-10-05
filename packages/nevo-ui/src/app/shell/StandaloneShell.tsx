@@ -14,8 +14,10 @@ import {
 } from '../../components/foundations/Environment';
 import { cn } from '../../lib';
 
-export interface StandaloneShellProps
-  extends Omit<AppBackgroundProps, 'brandPrimary' | 'children'> {
+export interface StandaloneShellProps extends Omit<
+  AppBackgroundProps,
+  'brandPrimary' | 'children'
+> {
   brandPrimary?: string;
   mobileHeader?: ReactNode;
   desktopHeader?: ReactNode;
@@ -61,10 +63,7 @@ export function StandaloneShell({
           <WorkspaceSurface
             {...restSurfaceProps}
             as="main"
-            className={cn(
-              'standalone-shell-surface border border-workspace-edge',
-              surfaceClassName,
-            )}
+            className={cn('standalone-shell-surface border border-workspace-edge', surfaceClassName)}
             data-standalone-shell-region="surface"
           >
             <div

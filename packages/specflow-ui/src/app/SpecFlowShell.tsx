@@ -67,7 +67,11 @@ function ProductNavigation({
       style={{ paddingInline: APP_NAVIGATION_INLINE_PADDING }}
       {...designLayerMetadata({ layer: 'product-navigation' })}
     >
-      <div className="shrink-0 py-5 pr-12" {...designLayerMetadata({ layer: 'brand' })}>
+      <div
+        className="shrink-0 py-5 pr-12"
+        data-product-navigation-header="true"
+        {...designLayerMetadata({ layer: 'brand' })}
+      >
         <NevoBrandLogo {...defaultNevoBrand} product="SpecFlow" size="md" type="horizontal" />
       </div>
 

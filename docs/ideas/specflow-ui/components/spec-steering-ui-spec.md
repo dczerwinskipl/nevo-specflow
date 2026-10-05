@@ -112,7 +112,9 @@ The backend/application overview projection may remain rich enough to preserve s
   workflow,
   progress,
   signals[],
-  currentExecutions[]
+  currentExecutions[],
+  completedAt?,
+  archivedAt?
 }
 ```
 
@@ -128,10 +130,14 @@ Reference presentation contract:
 type SpecListGroupKind = 'attention' | 'ready' | 'working' | 'quiet';
 
 type SpecListStateSummary =
-  | { kind: 'attention'; reason: 'agent-input' | 'owner-decision' | 'review'; count?: number }
+  | {
+      kind: 'attention';
+      reason: 'agent-input' | 'owner-decision' | 'review' | 'spec-approval';
+      count?: number;
+    }
   | { kind: 'ready'; readyCount: number }
   | { kind: 'working'; role?: string; taskCount?: number }
-  | { kind: 'quiet' };
+  | { kind: 'quiet'; reason: 'no-immediate-action' | 'agent-remediation-available' };
 
 type SpecListConcurrentQualifier =
   | { kind: 'ready'; readyCount: number }
@@ -514,10 +520,11 @@ Rendered row remains bounded:
 Requires attention  1
 
 UI-1234  Deterministic admission
-5 / 9 tasks · 2 require attention · Reviewer working on 2 tasks
+5 / 9 tasks · Review required · Reviewer working on 2 tasks
 ```
 
-The ready signal remains preserved in the source projection and becomes explicit after entering the
+This is representable as `stateSummary: { kind: 'attention', reason: 'review', count: 1 }` plus one
+`working` qualifier. The ready signal remains preserved in the source projection and becomes explicit after entering the
 Specification. The overview does not concatenate it into a fourth fragment or imply that it is the
 dominant state.
 
@@ -529,6 +536,8 @@ UI-1234  Deterministic admission
 ```
 
 ### SS-04 — Spec-level attention
+
+`stateSummary: { kind: 'attention', reason: 'spec-approval' }`
 
 ```text
 UI-1235  Authorization policy
@@ -557,6 +566,8 @@ Do not choose a representative Task.
 
 ### SS-07 — issue/remediation without human attention
 
+`stateSummary: { kind: 'quiet', reason: 'agent-remediation-available' }`
+
 ```text
 Quiet  1
 
@@ -567,6 +578,8 @@ RT-105  Runtime recovery
 If owner intervention is required, the projection belongs in Requires attention instead.
 
 ### SS-08 — quiet
+
+`stateSummary: { kind: 'quiet', reason: 'no-immediate-action' }`
 
 ```text
 Quiet  1

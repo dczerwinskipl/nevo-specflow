@@ -73,11 +73,16 @@ function assertStandaloneAuthLayout(canvasElement: HTMLElement) {
     'Standalone auth layout regions must be present.',
   );
 
+  const rootRect = root.getBoundingClientRect();
   const headerRect = mobileHeader.getBoundingClientRect();
   const surfaceRect = surface.getBoundingClientRect();
   assert(
-    headerRect.bottom <= surfaceRect.top,
-    'Mobile auth header must remain above the authentication surface without overlap.',
+    Math.abs(headerRect.bottom - surfaceRect.top) <= 1,
+    'Mobile auth workspace must begin directly below the standard header without an extra gap.',
+  );
+  assert(
+    surfaceRect.bottom >= rootRect.bottom - 1,
+    'Mobile auth workspace must fill the remaining viewport height.',
   );
   assert(
     mobileHeader.contains(mobileSelector),

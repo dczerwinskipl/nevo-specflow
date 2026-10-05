@@ -431,34 +431,37 @@ wide/ultra-wide viewport MUST prove that title and trailing metadata still read 
 
 ## 8. Responsive behavior
 
-Wide:
+Wide preserves the full scan-column grammar:
 
 ```text
-[        ] UI-1234  Deterministic admission and execution boundaries     PR #27  Auth
-             5 / 9 tasks · Owner decision required
+[utility][marker][ Deterministic admission and execution boundaries ........ ][ PR #27  Auth ]
+                 [ UI-1234 ][ 5 / 9 tasks ][ Owner decision required ....... ]
 ```
 
-Compact:
+Compact preserves the leading/content axis and the secondary comparison columns, but may move
+trailing metadata into the secondary flow:
 
 ```text
-[        ] UI-1234  Deterministic admission and execution boundaries
-             5 / 9 tasks · Owner decision required · PR #27 · Auth
+[utility][marker][ Deterministic admission and execution boundaries ]
+                 [ UI-1234 ][ 5 / 9 tasks ][ Owner decision required ][ PR #27 · Auth ]
 ```
 
-Narrow:
+Narrow keeps the same semantic order while collapsing comparison columns into a compact reading
+sequence:
 
 ```text
-[        ] UI-1234
-    Deterministic admission and execution boundaries
-    5 / 9 tasks · Owner decision required
-    PR #27 · Auth
+[utility][marker][ Deterministic admission and execution boundaries ]
+                 [ UI-1234 · 5 / 9 tasks ]
+                 [ Owner decision required ]
+                 [ PR #27 · Auth ]
 ```
 
 Keep logically related content inline while useful width exists. Wrap because the viewport requires
 it, not because a fixed split reserves empty space elsewhere.
 
-Tertiary metadata may move below primary content or be omitted on Narrow, but the Spec identity and
-aggregate state summary remain visible.
+Responsive collapse must happen **consistently for the collection**, not independently per row state.
+Tertiary metadata may move below primary content or be omitted on Narrow, but Spec identity,
+progress, and aggregate state summary remain discoverable in the same semantic order.
 
 ## 9. Group headers and vertical rhythm
 
@@ -829,11 +832,12 @@ prove that `completedAt` wins when both authoritative completion and archive tim
 4. The entire Spec row has one stable destination: the Specification.
 5. Ordinary status/summary prose inside a row is non-interactive and is not styled as a link.
 6. Only explicitly allowed external/contextual controls such as a linked PR may coexist with the row target, using sibling interactive elements rather than invalid nested controls.
-7. Group header text and row identity share the same content start; the disclosure chevron and the
-   empty current-row gutter use one fixed gutter. Current Specs Overview exposes no row-selection
-   checkbox.
+7. Group headers and rows share one outer utility/marker/content grid: disclosure uses the utility
+   track, restrained group colour may use the fixed marker track, and labels/row identity share one
+   content axis. Current Specs Overview exposes no row-selection checkbox.
 8. All active rows preserve one primary-line + secondary-line skeleton and stable semantic scan
-   columns across states.
+   columns across states; key, progress, summary, and bounded trailing metadata do not drift because
+   another row has different content.
 9. The secondary line is bounded to progress + dominant aggregate summary + at most one explicit
    concurrent qualifier; it does not render Task IDs or raw signal lists.
 10. Active and Archive rows consume their strict bounded presentation models rather than raw

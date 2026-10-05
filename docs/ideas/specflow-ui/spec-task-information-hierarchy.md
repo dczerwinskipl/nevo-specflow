@@ -156,20 +156,30 @@ underlying status. The detailed presentation contract lives in
 
 **Product direction**
 
-Default ordering should make human work discoverable.
-
-A candidate priority is:
+Cross-group priority is canonical and matches the steering-row contract:
 
 ```text
 1. requires attention
-2. active work with a problem / blocked state
-3. ready to start or continue
-4. normal in-progress work
-5. quiet/completed active Specs
+2. ready
+3. working
+4. quiet / other active
 ```
 
-This is not yet a final sort algorithm. It records the product priority that "I need to do something"
-must not be buried below passive status.
+The semantic distinction is:
+
+- **Requires attention**: intended progress needs human input, decision, or intervention.
+- **Ready**: an operation is available if the human chooses to start/continue it, but nothing is
+  waiting on that human yet.
+- **Working**: the system/agent is actively progressing or remediating without human input.
+- **Quiet / other active**: no immediate useful action or active progress needs emphasis.
+
+A generic problem/blocked condition is not a separate priority tier. It moves into Requires attention
+only when authoritative semantics say the human must intervene; otherwise active remediation remains
+Working, and a non-progressing condition without immediate action remains Quiet.
+
+Ordering **inside** a group is a separate concern. For example, within Requires attention an active
+Session waiting directly on the human may rank ahead of a passive approval request. Intra-group
+tie-breaks must not redefine the cross-group order above.
 
 ---
 
@@ -979,20 +989,28 @@ This is an information-depth proposal, not a pixel layout.
 
 ## Specs overview
 
-Keep:
+The canonical row budget is owned by
+[Spec steering collection and item UI spec](components/spec-steering-ui-spec.md) and matches
+[§4.2](#42-minimum-specification-summary):
 
-- Spec identity;
-- one strongest human-facing signal plus concise concurrent signals;
-- clear distinction between attention, ready, and working;
-- compact progress/current execution;
-- last/high-value activity where useful.
+- Spec identity/title;
+- optional bounded trailing metadata allowed by the steering contract;
+- compact Task progress when known;
+- one dominant aggregate state summary;
+- at most one bounded concurrent qualifier when omitting it would materially misrepresent the row.
 
 One canonical queue row per Specification. The whole row/identity always opens the Specification.
 Ordinary status/reason prose in that row is non-interactive. Concrete Task, Session, evidence, and
 workflow context becomes explicit after entering the Specification; the overview never invents a
 representative Task or deep-links directly from dynamic summary state.
 
-Do not expose raw gates, attempt history, full findings, tool details, or raw diffs.
+Task IDs, raw signal collections, Session identity, arbitrary current-execution detail, workflow
+labels, provider/model data, timestamps/last-activity detail, raw gates, attempt history, full
+findings, tool details, and raw diffs do not automatically earn canonical row space.
+
+Activity remains a valid source/read-model and deeper-history concept. It may support future
+collection behavior, ordering, or deeper context without becoming part of the current row budget by
+default.
 
 ## Specification
 

@@ -122,14 +122,14 @@ Specs are the primary work inventory.
 The cross-group distinction and priority are semantic:
 
 1. **Requires attention** — intended progress is waiting for human input/decision/intervention.
-2. **Ready** — an operation is available if the human chooses to start it, but nothing is waiting on
-   the human yet.
-3. **Working** — the system/agent is actively progressing or remediating without human input.
-4. **Quiet / other active** — no immediate useful action or active progress needs emphasis.
+2. **In progress** — the system/agent is actively progressing or remediating without human input.
+3. **Ready / idle** — no work is currently active and no human intervention is required. Row-level
+   summary text still distinguishes Ready from Idle.
 
-A generic problem/blocked condition is not a separate tier. It belongs in Requires attention only
-when authoritative semantics require human intervention; otherwise active remediation is Working or
-a non-progressing condition is Quiet.
+Within Ready / idle, Ready sorts ahead of Idle by default. A generic problem/blocked condition is not
+a separate tier. It belongs in Requires attention only when authoritative semantics require human
+intervention; otherwise active remediation is In progress, while merely available remediation or a
+non-progressing state remains Ready / idle.
 
 A Specification should appear once in the canonical work queue. One dominant semantic group owns the
 row. If meaningful concurrent state exists, the row may show at most one bounded aggregate qualifier

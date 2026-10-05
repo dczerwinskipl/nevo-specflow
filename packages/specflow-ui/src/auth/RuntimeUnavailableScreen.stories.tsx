@@ -26,8 +26,22 @@ export const Default: Story = {
     const desktopSelector = canvasElement.querySelector<HTMLElement>(
       '[data-auth-layout="desktop-language-selector"]',
     );
-    if (!surface || !desktopSelector || !surface.contains(desktopSelector)) {
+    const root = canvasElement.querySelector<HTMLElement>('[data-auth-layout="root"]');
+    if (!surface || !desktopSelector || !root || !surface.contains(desktopSelector)) {
       throw new Error('Desktop recovery language selection must stay inside the auth surface.');
+    }
+
+    const rootRect = root.getBoundingClientRect();
+    const surfaceRect = surface.getBoundingClientRect();
+    if (surfaceRect.width > 449) {
+      throw new Error(`Desktop recovery surface should remain compact; received ${surfaceRect.width}px.`);
+    }
+    if (
+      Math.abs(
+        surfaceRect.left + surfaceRect.width / 2 - (rootRect.left + rootRect.width / 2),
+      ) > 2
+    ) {
+      throw new Error('Desktop recovery surface must remain horizontally centered.');
     }
   },
 };

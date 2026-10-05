@@ -142,7 +142,7 @@ The same Spec appears once in the canonical list. Rows are borderless/list-first
 - Collection control: Active / Archive.
 - compact Search Specs control when the collection is large enough that scanning/grouping alone is
   insufficient; Archive should expect this earlier than Active because it grows monotonically.
-- Human-steering groups or equivalent flat list with equally clear semantics.
+- Human-steering groups for requires-attention, ready, working, and quiet/other-active semantics.
 - Spec summary rows.
 - Optional create-spec action only when product contract exists.
 
@@ -315,6 +315,7 @@ Do not force the work queue into DataTable unless final content proves genuinely
 - requires-attention is reserved for human-blocking situations;
 - ready remains visually calmer and does not imply urgency;
 - a Spec appears once in the canonical Active queue;
+- Active Specs use the grouped steering presentation defined by the Spec steering contract;
 - the entire row always opens Specification;
 - summary/status prose inside the row is non-interactive;
 - Task IDs and raw signal lists do not appear in the canonical row;
@@ -331,7 +332,5 @@ Do not force the work queue into DataTable unless final content proves genuinely
 - exact Active/Archive control;
 - exact ordering/tie-break inside multiple simultaneous **attention** signals beyond the known rule
   that an active Session waiting on a human is high urgency;
-- grouped semantic sections versus one flat ordered Active queue; both remain valid if they preserve
-  attention/ready/working semantics without duplicating Specs;
 - exact archive interaction;
 - exact realtime transport in new Runtime.

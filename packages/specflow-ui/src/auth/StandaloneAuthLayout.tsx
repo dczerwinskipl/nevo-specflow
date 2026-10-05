@@ -5,6 +5,7 @@ import { AppBackground, Typography, WorkspaceSurface } from '@nevo/ui';
 
 import { defaultNevoBrand, NevoBrandLogo } from '../brand';
 import { StandaloneLocaleMenu } from '../i18n';
+import './StandaloneAuthLayout.css';
 
 type DesignAttributes = Readonly<Record<string, string>>;
 
@@ -22,17 +23,17 @@ export function StandaloneAuthSurface({
       <AppBackground
         {...rootAttributes}
         brandPrimary={defaultNevoBrand.coreColor}
-        className="flex h-dvh min-h-dvh w-full flex-col overflow-hidden text-content-primary sm:h-auto sm:overflow-visible sm:p-8"
+        className="standalone-auth-root text-content-primary"
         data-auth-layout="root"
       >
         <div
-          className="@container flex h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 items-center gap-2 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-[env(safe-area-inset-top)] sm:hidden"
+          className="standalone-auth-mobile-header"
           data-auth-layout="mobile-header"
           {...designLayerMetadata({ layer: 'mobile-auth-header' })}
         >
           <NevoBrandLogo brand="nevo" product="SpecFlow" size="sm" type="horizontal" />
           <div
-            className="ml-auto"
+            className="standalone-auth-mobile-language"
             data-auth-layout="mobile-language-selector"
             {...designLayerMetadata({ layer: 'language-selector' })}
           >
@@ -40,19 +41,14 @@ export function StandaloneAuthSurface({
           </div>
         </div>
 
-        <div
-          className="flex min-h-0 flex-1 items-stretch justify-stretch sm:items-center sm:justify-center"
-          data-auth-layout="body"
-        >
+        <div className="standalone-auth-body" data-auth-layout="body">
           <WorkspaceSurface
             {...surfaceAttributes}
             as="main"
-            className="h-full w-full overflow-y-auto rounded-t-surface border border-b-0 border-workspace-edge sm:h-auto sm:max-w-md sm:overflow-visible sm:rounded-surface sm:border-b sm:p-8"
+            className="standalone-auth-surface border border-workspace-edge"
             data-auth-layout="surface"
           >
-            <div className="mx-auto w-full max-w-md p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:max-w-none sm:p-0">
-              {children}
-            </div>
+            <div className="standalone-auth-content">{children}</div>
           </WorkspaceSurface>
         </div>
       </AppBackground>
@@ -68,9 +64,9 @@ export function StandaloneAuthHeader({
   readonly description: string;
 }) {
   return (
-    <div className="grid gap-5 sm:gap-6">
+    <div className="standalone-auth-screen-header">
       <div
-        className="hidden items-center justify-between gap-4 sm:flex"
+        className="standalone-auth-desktop-header"
         data-auth-layout="desktop-header"
         {...designLayerMetadata({ layer: 'desktop-auth-header' })}
       >

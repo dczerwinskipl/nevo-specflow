@@ -118,17 +118,17 @@ Avoid miniature detail screens inside rows.
 │ Nevo SpecFlow │ Specs                                      [+ New spec]    │
 │               │ [ Active ] [ Archive ]                                     │
 │ Specs         │                                                            │
-│               │ ▾  ● Requires attention  2                                 │
+│               │ ▾  Requires attention  2                                   │
 │ Settings      │ □  UI-1234  Deterministic admission          PR #27  Auth   │
 │               │              5 / 9 tasks · Owner decision required           │
 │               │ □  UI-1235  Runtime authorization                   Runtime │
 │               │              3 / 7 tasks · Agent input required              │
 │               │                                                            │
-│               │ ▾  ● Ready  1                                              │
+│               │ ▾  Ready  1                                                │
 │               │ □  UI-1236  Localization preferences                        │
 │               │              0 / 5 tasks · Ready to start                   │
 │               │                                                            │
-│               │ ▾  ● In progress  1                                        │
+│               │ ▾  In progress  1                                          │
 │               │ □  RT-104   Provider diagnostics             PR #31         │
 │               │              2 / 8 tasks · Reviewer working on 3 tasks      │
 └───────────────┴────────────────────────────────────────────────────────────┘
@@ -142,7 +142,8 @@ The same Spec appears once in the canonical list. Rows are borderless/list-first
 - Collection control: Active / Archive.
 - compact Search Specs control when the collection is large enough that scanning/grouping alone is
   insufficient; Archive should expect this earlier than Active because it grows monotonically.
-- Human-steering groups for requires-attention, ready, working, and quiet/other-active semantics.
+- Human-steering groups for requires-attention, ready, working, and quiet/other-active semantics;
+  each group uses the disclosure behavior defined by the Spec steering contract.
 - Spec summary rows.
 - Optional create-spec action only when product contract exists.
 
@@ -319,7 +320,8 @@ Do not force the work queue into DataTable unless final content proves genuinely
 - the entire row always opens Specification;
 - summary/status prose inside the row is non-interactive;
 - Task IDs and raw signal lists do not appear in the canonical row;
-- group header and row content share one stable content axis beside a fixed gutter;
+- group header and row content share one stable content axis beside a fixed gutter, and any group
+  disclosure control follows the steering contract rather than acting as decorative iconography;
 - aggregate summaries never invent a representative Task;
 - batch remains batch-shaped;
 - no current-work language is derived from historical Session association;

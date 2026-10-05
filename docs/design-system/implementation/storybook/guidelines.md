@@ -14,6 +14,7 @@ related:
   - design-system.implementation.react.component-guidelines
   - design-system.principles.ui-ux-guidelines
   - engineering.shared.testing
+  - engineering.repository.ci
 ---
 
 # Storybook guidelines
@@ -92,3 +93,10 @@ the composed application when the behavior under test depends on the application
    animation matter — never claim visual consistency from class names alone.
 8. If visual inspection finds a defect, fix it and re-render the affected viewport. Perform the final
    rendered pass after the last UI/CSS change.
+9. When a visually material change touches an existing story/screen with an accepted Chromatic
+   baseline, use the available Chromatic comparison as an additional regression signal. Local
+   rendered inspection answers "does this look correct now?"; the regression diff answers "did an
+   accepted surface drift unexpectedly?". Chromatic remains an informational/manual PR workflow, not
+   a universal protected-branch requirement. Follow
+   [Continuous integration](../../../engineering/repository/ci.md#visual-regression-with-chromatic)
+   for the authoritative workflow details.

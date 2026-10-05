@@ -26,11 +26,6 @@ export function AccountMenu({
 }) {
   const { t } = useTranslation();
   const userName = session.user?.name ?? t('account.localAccess');
-  const contextLabel = session.authenticated
-    ? t('account.signedIn')
-    : session.user
-      ? t('account.localIdentity')
-      : t('account.localAccess');
 
   return (
     <Menu>
@@ -38,28 +33,23 @@ export function AccountMenu({
         <button
           aria-label={t('account.openMenu', { name: userName })}
           className={cn(
-            'flex w-full cursor-pointer items-center gap-2 rounded-control border border-solid px-2 py-2 text-left',
+            'flex min-h-control-height-default w-full cursor-pointer items-center gap-2 rounded-control border border-solid px-2 text-left',
             actionVariantClasses.ghost,
             fastColorTransitionClassName,
           )}
           type="button"
           {...designLayerMetadata({ layer: 'account-trigger' })}
         >
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border-default bg-surface-selected text-label-sm text-content-primary">
+          <span className="flex size-control-height-inline shrink-0 items-center justify-center rounded-full border border-border-default bg-surface-selected text-label-sm text-content-primary">
             {userInitials(userName)}
           </span>
-          <span className="min-w-0 flex-1">
-            <Typography
-              as="span"
-              className="block truncate text-content-primary"
-              variant="label-sm"
-            >
-              {userName}
-            </Typography>
-            <Typography as="span" className="block truncate text-content-muted" variant="body-sm">
-              {contextLabel}
-            </Typography>
-          </span>
+          <Typography
+            as="span"
+            className="min-w-0 flex-1 truncate text-content-primary"
+            variant="label-sm"
+          >
+            {userName}
+          </Typography>
           <Icon name="chevron-down" size="sm" />
         </button>
       </MenuTrigger>
@@ -70,7 +60,9 @@ export function AccountMenu({
         {session.authenticated ? (
           <>
             <MenuSeparator />
-            <MenuItem onSelect={() => void onSignOut()}>{t('account.signOut')}</MenuItem>
+            <MenuItem leadingIcon="log-out" onSelect={() => void onSignOut()}>
+              {t('account.signOut')}
+            </MenuItem>
           </>
         ) : null}
       </MenuContent>

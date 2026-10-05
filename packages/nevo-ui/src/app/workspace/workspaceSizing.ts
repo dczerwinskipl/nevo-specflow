@@ -1,5 +1,6 @@
 export const APP_NAVIGATION_WIDTH = 260;
-export const APP_SHELL_GAP = 16;
+export const APP_SHELL_GAP = 8;
+export const APP_NAVIGATION_INLINE_PADDING = 16;
 export const WORKSPACE_SPLIT_MIN_WIDTH = 840;
 export const WORKSPACE_WIDE_DOMINANCE_MIN_WIDTH = 1080;
 export const WIDE_SHELL_MIN_WIDTH =

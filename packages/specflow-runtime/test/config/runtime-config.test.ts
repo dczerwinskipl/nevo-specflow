@@ -41,6 +41,26 @@ function loadFrom(cwd: string) {
   });
 }
 
+it('loads project-owned Overview group configuration through the existing YAML container', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'specflow-overview-config-'));
+  await mkdir(join(cwd, '.nevo/local'), { recursive: true });
+  await writeFile(
+    join(cwd, '.nevo/config.yaml'),
+    `${PROJECT_CONFIG}\nspecs:\n  overview:\n    groups:\n      - { id: draft, order: 20 }\n      - { id: active, order: 10 }\n`,
+    'utf8',
+  );
+  expect((await loadFrom(cwd)).config.specsOverviewGroups).toEqual([
+    { id: 'active', order: 10 },
+    { id: 'draft', order: 20 },
+  ]);
+  await writeFile(
+    join(cwd, '.nevo/local/config.yaml'),
+    'specs:\n  overview:\n    groups: []\n',
+    'utf8',
+  );
+  await expect(loadFrom(cwd)).rejects.toThrow('project-owned');
+});
+
 const LOCAL_PROJECT_POLICY_OVERRIDES = [
   `runtime:
   authentication:

@@ -198,6 +198,26 @@ export const LongLabels: Story = {
   args: { longLabels: true },
 };
 
+export const ViewportContainment: Story = {
+  args: { longLabels: true },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Record actions' }));
+    const menu = await waitFor(
+      () => document.querySelector<HTMLElement>('[role="menu"][data-side]'),
+      'Menu must finish positioning.',
+    );
+    assert(
+      getComputedStyle(menu).maxWidth !== 'none',
+      'Menu must constrain its preferred width to the available viewport.',
+    );
+    await waitFor(() => {
+      const bounds = menu.getBoundingClientRect();
+      return bounds.left >= 0 && bounds.right <= window.innerWidth && bounds.width > 0;
+    }, 'Menu must remain inside the viewport without horizontal overflow.');
+    await userEvent.keyboard('{Escape}');
+  },
+};
+
 export const RadioSelection: Story = {
   render: () => <MenuSelectionExample />,
   play: async ({ canvas, userEvent }) => {

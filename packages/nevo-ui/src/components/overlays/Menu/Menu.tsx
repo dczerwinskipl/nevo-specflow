@@ -55,7 +55,15 @@ export type MenuContentProps = ComponentPropsWithoutRef<typeof DropdownMenu.Cont
 
 export const MenuContent = forwardRef<ComponentRef<typeof DropdownMenu.Content>, MenuContentProps>(
   function MenuContent(
-    { align = 'start', children, className, container, sideOffset = 8, ...props },
+    {
+      align = 'start',
+      children,
+      className,
+      container,
+      collisionPadding = 8,
+      sideOffset = 8,
+      ...props
+    },
     ref,
   ) {
     const capture = useDesignMetadata('Menu');
@@ -64,7 +72,13 @@ export const MenuContent = forwardRef<ComponentRef<typeof DropdownMenu.Content>,
         <DropdownMenu.Content
           ref={ref}
           align={align}
-          className={cn('menu-content', floatingContentClassName, 'w-56', className)}
+          className={cn(
+            'menu-content',
+            floatingContentClassName,
+            'w-56 [&]:min-w-0 max-w-[var(--radix-dropdown-menu-content-available-width)]',
+            className,
+          )}
+          collisionPadding={collisionPadding}
           sideOffset={sideOffset}
           {...props}
           {...capture}
@@ -221,7 +235,7 @@ export const MenuLabel = forwardRef<
 >(function MenuLabel({ children, className, ...props }, ref) {
   return (
     <DropdownMenu.Label ref={ref} className={cn(floatingLabelClassName, className)} {...props}>
-      <Typography as="span" className="text-inherit" variant="section-label">
+      <Typography as="span" className="block min-w-0 truncate text-inherit" variant="section-label">
         {children}
       </Typography>
     </DropdownMenu.Label>

@@ -1,6 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+
+import { appI18n } from '../i18n';
 
 import { LoginScreenView, loginErrorMessage, oidcButtonVariant, safeReturnTo } from './LoginScreen';
 
@@ -15,6 +17,10 @@ function openingTagFor(markup: string, marker: string): string {
 }
 
 describe('LoginScreen', () => {
+  beforeEach(async () => {
+    await appI18n.changeLanguage('en');
+  });
+
   it('renders auth centered inside the same app/workspace material hierarchy as SpecFlow', () => {
     const html = renderToStaticMarkup(
       <LoginScreenView

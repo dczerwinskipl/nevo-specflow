@@ -17,6 +17,7 @@ import { mergeRuntimeConfigValues } from './merge';
 import { parseRuntimeConfig } from './parse';
 import type { LoadedRuntimeConfig } from './types';
 import { isRecord } from './value';
+import { parseOverviewGroups } from '../specs/overview/groups';
 
 export interface LoadRuntimeConfigOptions {
   readonly projectConfigPath: string;
@@ -36,6 +37,9 @@ export async function loadRuntimeConfig(
 
   const projectDocument = await readRequiredConfig(projectPath);
   const projectSource = runtimeSection(projectDocument, projectPath, true);
+  const specsOverviewGroups = parseOverviewGroups(
+    isRecord(projectDocument) ? projectDocument.specs : undefined,
+  );
   assertProjectRuntimeConfigOwnership(projectSource);
   validateProjectAuthorizationSource(projectSource);
 
@@ -46,6 +50,10 @@ export async function loadRuntimeConfig(
     localExists = await fileExists(localPath);
     if (localExists) {
       const localDocument = await readRequiredConfig(localPath);
+      if (isRecord(localDocument) && localDocument.specs !== undefined)
+        throw new RuntimeConfigError(
+          'Specs Overview configuration is project-owned and cannot be set locally.',
+        );
       localSource = runtimeSection(localDocument, localPath, false);
       if (localSource) {
         assertNoLocalAuthorization(localSource);
@@ -57,7 +65,7 @@ export async function loadRuntimeConfig(
   const merged = localSource ? mergeRuntimeConfigValues(projectSource, localSource) : projectSource;
 
   return {
-    config: parseRuntimeConfig(merged),
+    config: { ...parseRuntimeConfig(merged), specsOverviewGroups },
     sources: {
       project: projectPath,
       ...(localExists && localPath ? { local: localPath } : {}),

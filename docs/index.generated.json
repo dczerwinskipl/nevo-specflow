@@ -2706,6 +2706,22 @@
       ]
     },
     {
+      "id": "reference.api.specs-overview",
+      "type": "reference",
+      "title": "Specs Overview HTTP API",
+      "status": "current",
+      "file": "docs/reference/api/specs-overview.md",
+      "read_when": [
+        "connecting the Specs Overview UI to Runtime",
+        "verifying the backend sample catalogue and authentication boundary"
+      ],
+      "summary": "Provisional typed Specs Overview read endpoint with deterministic backend sample data, real session authentication and per-item spec.view filtering.",
+      "related": [
+        "architecture.runtime.authorization",
+        "product.specflow.ui.application-architecture"
+      ]
+    },
+    {
       "id": "reference.cli.nevo-specflow-contract",
       "type": "reference",
       "title": "nevo-specflow public CLI contract",

@@ -14,8 +14,24 @@
   transform-origin: var(--radix-dropdown-menu-content-transform-origin);
 }
 
+@keyframes overflow-menu-expand {
+  from {
+    clip-path: inset(
+      0 0 calc(100% - var(--overflow-menu-anchor-height))
+        calc(100% - var(--overflow-menu-anchor-width)) round var(--radius-composite)
+    );
+  }
+  to {
+    clip-path: inset(0 round var(--radius-composite));
+  }
+}
+
+.overflow-menu-content[data-state='open'] {
+  animation: overflow-menu-expand 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .menu-content {
+  .menu-content[data-state='open'] {
     animation: none;
   }
 }

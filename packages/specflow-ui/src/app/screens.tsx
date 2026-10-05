@@ -4,7 +4,6 @@ import {
   AppWorkspace,
   AppWorkspaceBody,
   Button,
-  Card,
   TextInput,
   Typography,
   WorkspaceHeader,
@@ -33,35 +32,6 @@ function Screen({ children, title }: { children: React.ReactNode; title: string 
         </AppContent>
       </AppWorkspace.Primary>
     </AppWorkspace>
-  );
-}
-
-export function HomeScreen() {
-  const { t } = useTranslation();
-
-  return (
-    <Screen title={t('home.title')}>
-      <div className="grid gap-2">
-        <Typography as="h1" variant="title-lg">
-          Nevo SpecFlow
-        </Typography>
-        <Typography className="max-w-2xl text-content-secondary" variant="body-lg">
-          {t('home.description')}
-        </Typography>
-      </div>
-      <Card>
-        <Card.Header>
-          <Typography as="h2" variant="title-sm">
-            {t('home.foundationTitle')}
-          </Typography>
-        </Card.Header>
-        <Card.Body>
-          <Typography className="text-content-secondary" variant="body-md">
-            {t('home.foundationDescription')}
-          </Typography>
-        </Card.Body>
-      </Card>
-    </Screen>
   );
 }
 

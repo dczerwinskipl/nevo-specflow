@@ -3,6 +3,7 @@ import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
 import { RouterProvider, createMemoryHistory } from '@tanstack/react-router';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
+import { HttpClientError } from '@nevo/http-client';
 
 import type { AppLocale } from '../i18n';
 import { StoryLocalization } from '../i18n/StoryLocalization';
@@ -10,26 +11,38 @@ import { StoryLocalization } from '../i18n/StoryLocalization';
 import type { AuthApi } from '../auth/api';
 import { createAuthStore } from '../auth/store';
 import { createSpecFlowRouter } from './router';
+import { createSpecsFixture } from '../features/specs/overview/fixtures';
 
 type AuthMode =
   'local' | 'required' | 'authenticated' | 'authenticated-refresh-failure' | 'unavailable';
 
-function RoutedApplication({
+export function RoutedApplication({
   authMode = 'local',
   locale = 'en',
   path = '/',
+  specsStatus,
 }: {
   authMode?: AuthMode;
   locale?: AppLocale;
-  path?: '/' | '/ui-playground' | '/login';
+  path?: string;
+  specsStatus?: 401 | 403;
 }) {
   const router = useMemo(
     () =>
       createSpecFlowRouter(
         createMemoryHistory({ initialEntries: [path] }),
         storyAuthStore(authMode),
+        {
+          sample: true,
+          read: (collection) =>
+            specsStatus
+              ? Promise.reject(
+                  new HttpClientError('Status fixture', { kind: 'http', status: specsStatus }),
+                )
+              : Promise.resolve(createSpecsFixture(collection)),
+        },
       ),
-    [authMode, path],
+    [authMode, path, specsStatus],
   );
   return (
     <StoryLocalization locale={locale}>
@@ -47,13 +60,33 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Home: Story = {};
+export const Specs: Story = {};
 export const Playground: Story = { args: { path: '/ui-playground' } };
 export const AuthenticationRequired: Story = { args: { authMode: 'required' } };
 export const AlreadyAuthenticatedLogin: Story = {
   args: { authMode: 'authenticated', path: '/login' },
 };
 export const RuntimeUnavailable: Story = { args: { authMode: 'unavailable' } };
+export const SpecsSessionExpired: Story = {
+  args: { authMode: 'authenticated', specsStatus: 401 },
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByRole('heading', { name: 'Welcome back' });
+    if (canvas.queryByText('Specs are unavailable'))
+      throw new Error('401 must enter authentication, not generic unavailability.');
+    if (canvasElement.querySelector('[data-product-navigation-header]'))
+      throw new Error('Authentication must be outside AppShell.');
+  },
+};
+export const SpecsForbidden: Story = {
+  args: { authMode: 'authenticated', specsStatus: 403 },
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByRole('heading', { name: 'Access denied' });
+    if (canvas.queryByText('Welcome back') || canvas.queryByText('Specs are unavailable'))
+      throw new Error('403 must be a distinct forbidden state.');
+    if (canvasElement.querySelector('[data-product-navigation-header]'))
+      throw new Error('Forbidden state must be outside AppShell.');
+  },
+};
 export const Polish: Story = { args: { locale: 'pl' } };
 export const LocalAccount: Story = {
   args: { authMode: 'local' },
@@ -123,11 +156,56 @@ export const LogoutRefreshFailure: Story = {
 };
 
 export const Navigation: Story = {
-  play: async ({ canvas, userEvent }) => {
-    await userEvent.click(await canvas.findByRole('link', { name: 'UI Playground' }));
-    await canvas.findByText(
-      'A neutral product-owned surface for checking Nevo UI composition inside the real app.',
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const rowLink = await canvas.findByRole('link', {
+      name: 'Open specification: Deterministic admission and execution boundaries',
+    });
+    if (rowLink.getAttribute('href') !== '/specs/admission?collection=active')
+      throw new Error('Production row must expose a stable owning Specification href.');
+    const nav = canvasElement.querySelector('nav[aria-label="Product navigation"]');
+    if (nav?.textContent?.includes('UI Playground'))
+      throw new Error('Development surfaces must not be in product navigation.');
+    const pr = canvas.getByRole('link', {
+      name: 'Open pull request #27 — Deterministic admission and execution boundaries',
+    });
+    if (rowLink.contains(pr) || pr.getAttribute('href') !== 'https://example.test/pull/27')
+      throw new Error('PR must remain a separate sibling destination.');
+    await userEvent.click(rowLink);
+    await canvas.findByRole('heading', { name: 'Specification' });
+    await canvas.findByText('Specification ID: admission');
+    const back = canvas.getByRole('link', { name: 'Back to Specs' });
+    if (back.getAttribute('href') !== '/?collection=active')
+      throw new Error('Specification Back must preserve Current collection.');
+    await userEvent.click(back);
+    await userEvent.click(
+      await canvas.findByRole('button', {
+        name: 'Specification actions: Deterministic admission and execution boundaries',
+      }),
     );
+    const open = await waitFor(
+      () =>
+        [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+          (item) => item.textContent?.trim() === 'Open specification',
+        ) ?? null,
+      'Row overflow must offer Specification navigation.',
+    );
+    if (open.getAttribute('aria-disabled') === 'true')
+      throw new Error('Open specification must be enabled in production composition.');
+    await userEvent.click(open);
+    await canvas.findByText('Specification ID: admission');
+    await userEvent.click(canvas.getByRole('link', { name: 'Back to Specs' }));
+    await userEvent.click(await canvas.findByRole('radio', { name: 'Archive' }));
+    const archive = await canvas.findByRole('link', {
+      name: 'Open specification: Canonical Session, Turn and Work model',
+    });
+    if (archive.getAttribute('href') !== '/specs/archive-0?collection=archive')
+      throw new Error('Archive must navigate to its own Specification with return context.');
+    await userEvent.click(archive);
+    await canvas.findByText('Specification ID: archive-0');
+    await userEvent.click(canvas.getByRole('link', { name: 'Back to Specs' }));
+    const selected = await canvas.findByRole('radio', { name: 'Archive' });
+    if (selected.getAttribute('aria-checked') !== 'true')
+      throw new Error('Returning from Archive Specification must restore Archive.');
   },
 };
 
@@ -142,8 +220,11 @@ export const MobileNavigation: Story = {
         ),
       'Opening compact navigation should mount the product navigation.',
     );
-    if (!navigation?.textContent?.includes('UI Playground')) {
-      throw new Error('Opening compact navigation should expose the product links.');
+    if (
+      !navigation.textContent?.includes('Specs') ||
+      navigation.textContent?.includes('UI Playground')
+    ) {
+      throw new Error('Compact product navigation should expose only implemented product areas.');
     }
     const accountTrigger = await waitFor(
       () =>
@@ -154,11 +235,11 @@ export const MobileNavigation: Story = {
     );
     if (!accountTrigger) throw new Error('Compact navigation account footer is missing.');
 
-    const playgroundLink = [...navigation.querySelectorAll<HTMLAnchorElement>('a')].find((link) =>
-      link.textContent?.includes('UI Playground'),
+    const specsLink = [...navigation.querySelectorAll<HTMLAnchorElement>('a')].find((link) =>
+      link.textContent?.includes('Specs'),
     );
-    if (!playgroundLink) throw new Error('Compact navigation should expose UI Playground.');
-    await userEvent.click(playgroundLink);
+    if (!specsLink) throw new Error('Compact navigation should expose Specs.');
+    await userEvent.click(specsLink);
     await waitFor(
       () =>
         canvasElement.ownerDocument.querySelector(
@@ -166,6 +247,14 @@ export const MobileNavigation: Story = {
         ) === null,
       'Selecting a route should close compact navigation.',
     );
+    await userEvent.click(
+      await canvas.findByRole('link', {
+        name: 'Open specification: Deterministic admission and execution boundaries',
+      }),
+    );
+    await canvas.findByText('Specification ID: admission');
+    await userEvent.click(canvas.getByRole('link', { name: 'Back to Specs' }));
+    await canvas.findByRole('radio', { name: 'Current' });
   },
 };
 
@@ -227,7 +316,7 @@ export const FigmaCapture: Story = {
     designCapture: {
       component: 'SpecFlowApplicationShell',
       title: 'Nevo SpecFlow — Application shell',
-      description: 'Initial desktop application shell with Home selected',
+      description: 'Desktop application shell with Specs selected',
       kind: 'screen',
       order: 200,
     },

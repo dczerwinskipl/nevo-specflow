@@ -184,7 +184,7 @@ Both `Tabs` and `SegmentedControl` exist.
 
 Potential consumers:
 
-- Active / Archive if the final screen chooses tabs;
+- Current / Archive collection tabs (internal Current identifier remains `active`);
 - local view/filter modes where semantics fit;
 - local view/filter modes where semantics fit.
 
@@ -271,8 +271,10 @@ SpecAttentionAggregate
 
 Responsibilities:
 
-- show one dominant Requires attention / In progress / Ready-or-idle group while preserving
+- render backend-supplied groups, defaulting to Requires attention / Active / Ready / Draft,
+  with priority `requires-attention > active > ready > draft`, while preserving
   materially important concurrent meaning through a bounded aggregate qualifier;
+- treat groups as Overview presentation categories, not Specification lifecycle statuses;
 - keep the whole Spec row as the stable navigation target to Specification;
 - keep ordinary row status/reason prose non-interactive;
 - expose concrete Task/evidence/action context after entering the Specification rather than

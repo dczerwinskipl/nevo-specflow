@@ -40,6 +40,7 @@ export const OnePrimary: Story = {
 
 export const PrimaryAndSecondaryActions: Story = {
   args: {
+    labels: { menuScope: 'Customers' },
     actions: [
       {
         id: 'create',
@@ -61,6 +62,22 @@ export const PrimaryAndSecondaryActions: Story = {
         onPress: () => undefined,
       },
     ],
+  },
+  play: async ({ canvas, userEvent }) => {
+    const trigger = canvas.getByRole('button', { name: 'More actions' });
+    await userEvent.click(trigger);
+    const menu = document.querySelector<HTMLElement>('[role="menu"]');
+    if (!menu || menu.querySelector('button'))
+      throw new Error('Overflow should contain only menu actions.');
+    if (menu.getBoundingClientRect().width > 192)
+      throw new Error('Short action menus must remain compact.');
+    if ([...menu.querySelectorAll('[role="menuitem"]')].some((item) => !item.querySelector('svg')))
+      throw new Error('Each menu action must expose its semantic icon.');
+    const style = getComputedStyle(menu);
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches && style.animationName !== 'none')
+      throw new Error('Reduced motion must disable menu reveal.');
+    await userEvent.keyboard('{Escape}');
+    if (document.querySelector('[role="menu"]')) throw new Error('Escape must dismiss actions.');
   },
 };
 

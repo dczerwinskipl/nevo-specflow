@@ -111,6 +111,10 @@ For MVP the candidate top-level areas are:
 
 A full Session may have a route without having a sidebar entry.
 
+The implemented increment currently has only Specs in persistent product navigation. Project
+Settings will appear when its real surface exists. UI Playground remains a direct development URL,
+not a normal product navigation item.
+
 ---
 
 ## 3. Specs collection
@@ -122,14 +126,15 @@ Specs are the primary work inventory.
 The cross-group distinction and priority are semantic:
 
 1. **Requires attention** — intended progress is waiting for human input/decision/intervention.
-2. **In progress** — the system/agent is actively progressing or remediating without human input.
-3. **Ready / idle** — no work is currently active and no human intervention is required. Row-level
-   summary text still distinguishes Ready from Idle.
+2. **Active** — a Session/execution is actually progressing without required human input.
+3. **Ready** — the Specification is prepared for execution; no work is running and no human is required.
+4. **Draft** — the Specification is still being prepared and has not reached Ready.
 
-Within Ready / idle, Ready sorts ahead of Idle by default. A generic problem/blocked condition is not
-a separate tier. It belongs in Requires attention only when authoritative semantics require human
-intervention; otherwise active remediation is In progress, while merely available remediation or a
-non-progressing state remains Ready / idle.
+Canonical priority is `requires-attention > active > ready > draft`. These are backend-derived
+Overview presentation groups, not Specification lifecycle statuses. A generic blocker is not a
+separate tier: it belongs in Requires attention only when authoritative semantics require a human.
+Actual remediation execution is Active; available remediation alone does not establish readiness.
+The backend supplies enabled standard IDs/order and frontend i18n supplies their labels.
 
 A Specification should appear once in the canonical work queue. One dominant semantic group owns the
 row. If meaningful concurrent state exists, the row may show at most one bounded aggregate qualifier
@@ -142,7 +147,7 @@ inside the overview row is non-interactive. Concrete Task/Session/evidence conte
 after entering the Specification, and an aggregate such as "3 Tasks require review" never guesses a
 representative Task.
 
-Candidate collection views remain Active and Archive.
+Collection views are Current and Archive; Current retains internal/API identifier `active`.
 
 The collection/read model may retain identity/title, workflow meaning, attention, ready actions,
 current work, progress, errors requiring intervention, last meaningful activity, and relevant
@@ -178,6 +183,12 @@ than infer them independently.
 **Product direction**
 
 Specification is a main workspace context.
+
+Current implementation: every Overview row and Open specification menu action navigates to the
+guarded `/specs/:specId` Primary route, with the collection retained for Back. This minimal surface
+explicitly labels unimplemented details and displays route identity only; it does not claim a
+Specification read capability or invent workflow mutations. The responsibilities below describe the
+full surface to be implemented later. Task/Session navigation belongs there, never in Overview rows.
 
 It owns or contextualizes:
 
@@ -722,7 +733,7 @@ Preferred steering loop:
 Specs Overview
   -> scan one canonical Spec row per Spec
   -> row click opens Specification
-  -> optional explicit issue/Task target can jump deeper
+  -> responsible Task/Session context becomes explicit inside Specification
   -> inspect context/evidence
   -> deliberate workflow action
 ```
@@ -749,7 +760,7 @@ Do not guess these during implementation:
    provider-failure transfer remains deferred.
 5. Exact human decisions each configured Human Step can request.
 6. Diff/change provenance across worktree/base branch/PR/MR sources.
-7. Active vs Archive persistence semantics.
+7. Current vs Archive persistence semantics.
 8. Configuration precedence/source-of-effective-value.
 9. Canonical current single/batch execution projection.
 10. Stable application projection for continue/remediation/recovery.

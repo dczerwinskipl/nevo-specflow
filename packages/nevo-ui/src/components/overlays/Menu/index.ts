@@ -9,6 +9,8 @@ export {
   MenuSeparator,
   MenuTrigger,
 } from './Menu';
+export { OverflowMenu } from './OverflowMenu';
+export type { OverflowMenuProps } from './OverflowMenu';
 export type {
   MenuContentProps,
   MenuItemProps,

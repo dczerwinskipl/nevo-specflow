@@ -1,9 +1,15 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+
+import { appI18n } from '../i18n';
 
 import { RuntimeUnavailableView } from './RuntimeUnavailableScreen';
 
 describe('RuntimeUnavailableScreen', () => {
+  beforeEach(async () => {
+    await appI18n.changeLanguage('en');
+  });
+
   it('uses the same standalone workspace shell as login', () => {
     const html = renderToStaticMarkup(<RuntimeUnavailableView />);
 

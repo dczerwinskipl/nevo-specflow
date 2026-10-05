@@ -33,7 +33,8 @@ surface belongs inside the application shell.
 Standalone routes:
 
 - `/login` renders authentication outside `AppShell`;
-- `/runtime-unavailable` renders bootstrap/recovery outside `AppShell`.
+- `/runtime-unavailable` renders bootstrap/recovery outside `AppShell`;
+- `/access-denied` renders explicit Specs forbidden failures outside `AppShell`.
 
 A pathless application layout owns `SpecFlowShell` and guards product routes. It asks the Runtime
 for `GET /api/auth/session` before entering the application. Required authentication redirects an
@@ -44,8 +45,42 @@ being treated as an unauthenticated user.
 
 The current product routes under the guarded layout remain:
 
-- `/` for the foundation home screen;
-- `/ui-playground` for a product-owned component/workspace integration screen.
+- `/` for the read-only Specs Overview (`?collection=active|archive`);
+- `/specs/:specId` for the owning Specification, with `?collection=active|archive` as parent return
+  context; the current increment is an explicitly labelled placeholder, not a Specification read API;
+- `/ui-playground` for a directly routable development/integration screen, not a persistent product
+  navigation item.
+
+## Specs Overview increment
+
+`src/features/specs/overview/` owns the typed collection projection, product steering rows,
+Current/Archive presentation, collection search, and loading/refresh/error composition. The
+screen follows the [Specs Overview contract](../../../ideas/specflow-ui/screens/specs-overview-ui-spec.md)
+and its shared steering contract. Signal priority, concrete targets, human attention, and current
+execution membership are supplied by the projection, not reconstructed from workflow lifecycle.
+
+`SpecsOverviewSource` is the transport seam; its reader is abortable and scoped to the selected
+collection. Refresh retains the last valid snapshot on failure, while a collection switch hides
+the previous collection immediately and ignores late results. The default source calls
+`GET /api/specs/overview?collection=active|archive` on the same Runtime origin. Runtime currently
+returns a deterministic, explicitly labelled sample catalogue, not repository or workflow state.
+It requires the real authentication session and filters every item using `spec.view` on the
+server-owned preview scope. The shared TypeBox contract lives in `@nevo/specflow-contracts/specs-overview`.
+Network/server failures display the unavailable state rather than silently falling back to fixtures.
+A normalized 401 refreshes the authentication context and re-enters the existing login flow; a 403
+renders the standalone Access denied screen. The backend supplies group IDs/order and aggregate
+summary facts; the feature mapper bounds rows before rendering and does not classify domain evidence.
+Development builds can still opt into isolated frontend fixtures using
+`VITE_SPECFLOW_SAMPLE_DATA=true`; normal builds and dogfooding use the HTTP source.
+
+The actual app supplies real Specification hrefs and router navigation to every Current and Archive
+row, including Open specification in row overflow. Normal activation uses the router; modifier clicks
+retain browser link behavior. The guarded `/specs/:specId` destination currently identifies only the
+requested route identity and explicitly explains that documents, Tasks and Sessions are not implemented.
+It does not claim the identity exists, fetch protected Specification detail, or invent workflow state.
+Its Back link returns to the originating collection; direct entry defaults to Current. Task/Session
+targets never replace the owning Specification destination. Creation and archive/delete mutations
+remain unsupported. Isolated non-navigable component fixtures are not the production route contract.
 
 The login and Runtime-recovery screens are product-owned compositions on Nevo UI's
 `StandaloneShell`. That shared shell owns the navigation-free application frame: AppBackground,
@@ -81,6 +116,10 @@ Locale resolution, persistence, stable-key rules, and CLI/UI ownership are defin
 ## Product navigation and account footer
 
 `SpecFlowShell` owns the product navigation composition. Its layout has three structural regions:
+
+Normal product navigation currently contains only Specs, also active while inside Specification.
+Project Settings earns an entry when its real surface exists. UI Playground remains available by
+direct URL for development, never as a persistent product entry.
 
 1. a non-scrolling brand header;
 2. a `min-height: 0`, flexible, vertically scrollable navigation body;

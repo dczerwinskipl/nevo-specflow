@@ -87,6 +87,10 @@ Project Settings
 Sessions, Tasks, Work, Files, Changes, workflow definitions, and artifacts may have routable/detail
 surfaces without becoming global navigation items.
 
+The implemented increment currently exposes only Specs in normal product navigation. Project
+Settings is not a placeholder sidebar item. `/ui-playground` is a directly routable development
+surface, not a product navigation entry.
+
 ## 4. Reachability matrix
 
 | Surface                   | Normal entry                                                                                                   | Representation                                            |
@@ -111,6 +115,12 @@ Task/issue deep links inside that row.
 A Specs Overview row always opens the Specification Primary. It must not redirect the user to
 whichever Task/issue happens to be highest priority at that moment, and ordinary status/reason prose
 inside that row is non-interactive.
+
+The current route is `/specs/:specId?collection=active|archive`; both Current and Archive rows and
+their Open specification menu action use it. The guarded destination is currently an explicitly
+labelled owned placeholder, without fabricated detail or mutations. Its parent Back link returns to
+the chosen collection (Current by default on direct entry). The full Task/Session behavior below is
+the next product direction, not a capability claimed by this placeholder.
 
 After entering the Specification, its Task collection and attention/current-work context make the
 responsible Task(s) explicit. Selecting a Task row there opens Task Detail. Other owning contexts
@@ -229,7 +239,7 @@ Workspace stack and is not encoded in product URLs.
 
 Routable state includes, as appropriate:
 
-- Specs collection / Active versus Archive;
+- Specs collection / Current versus Archive (internal Current identifier `active`);
 - selected Specification;
 - Full Session;
 - Project Settings and a stable Settings section.

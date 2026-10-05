@@ -10,6 +10,7 @@ import {
   MenuItem,
   MenuSeparator,
   MenuTrigger,
+  OverflowMenu,
 } from '../../components/overlays/Menu';
 import { cn } from '../../lib';
 
@@ -37,6 +38,7 @@ export interface WorkspaceHeaderProps {
 
 export interface WorkspaceHeaderLabels {
   moreActions: string;
+  menuScope?: string;
 }
 
 const defaultWorkspaceHeaderLabels: WorkspaceHeaderLabels = {
@@ -68,13 +70,47 @@ function WorkspaceActionMenu({
   className,
   label,
   navigationAction,
+  scope,
 }: {
   actions: readonly WorkspaceHeaderAction[];
   className?: string;
   label: string;
   navigationAction?: WorkspaceHeaderAction;
+  scope?: string;
 }) {
   if (actions.length === 0 && !navigationAction) return null;
+
+  const items = (
+    <>
+      {actions.map((action) => (
+        <MenuItem
+          disabled={action.disabled}
+          key={action.id}
+          leadingIcon={action.icon}
+          onSelect={action.onPress}
+          tone={action.tone ?? 'neutral'}
+        >
+          {action.label}
+        </MenuItem>
+      ))}
+      {navigationAction ? (
+        <>
+          {actions.length > 0 ? <MenuSeparator /> : null}
+          <MenuItem leadingIcon={navigationAction.icon} onSelect={navigationAction.onPress}>
+            {navigationAction.label}
+          </MenuItem>
+        </>
+      ) : null}
+    </>
+  );
+
+  if (scope) {
+    return (
+      <OverflowMenu className={className} label={scope} size="sm" triggerLabel={label}>
+        {items}
+      </OverflowMenu>
+    );
+  }
 
   return (
     <Menu>
@@ -87,26 +123,8 @@ function WorkspaceActionMenu({
           variant="ghost"
         />
       </MenuTrigger>
-      <MenuContent align="end">
-        {actions.map((action) => (
-          <MenuItem
-            disabled={action.disabled}
-            key={action.id}
-            leadingIcon={action.icon}
-            onSelect={action.onPress}
-            tone={action.tone ?? 'neutral'}
-          >
-            {action.label}
-          </MenuItem>
-        ))}
-        {navigationAction ? (
-          <>
-            {actions.length > 0 ? <MenuSeparator /> : null}
-            <MenuItem leadingIcon={navigationAction.icon} onSelect={navigationAction.onPress}>
-              {navigationAction.label}
-            </MenuItem>
-          </>
-        ) : null}
+      <MenuContent align="end" sideOffset={4} aria-label={label} className="w-auto">
+        {items}
       </MenuContent>
     </Menu>
   );
@@ -178,7 +196,11 @@ export function WorkspaceHeader({
       {resolved.directPrimary || resolved.overflow.length > 0 ? (
         <div className="flex shrink-0 items-center gap-1.5">
           {resolved.directPrimary ? <DirectPrimaryAction action={resolved.directPrimary} /> : null}
-          <WorkspaceActionMenu actions={resolved.overflow} label={labels.moreActions} />
+          <WorkspaceActionMenu
+            actions={resolved.overflow}
+            label={labels.moreActions}
+            scope={labels.menuScope}
+          />
         </div>
       ) : null}
     </div>
@@ -218,6 +240,7 @@ export function CompactWorkspaceActions({
       className={className}
       label={labels.moreActions}
       navigationAction={navigationAction}
+      scope={labels.menuScope}
     />
   );
 }

@@ -89,6 +89,11 @@ export const InteractionContract: Story = {
     assert(dialog.contains(document.activeElement), 'The calendar dialog should receive focus.');
     await userEvent.keyboard('{Escape}');
     assert(document.querySelector('[role="dialog"]') === null, 'Escape should close the calendar.');
+    // React Aria restores FocusScope focus on an animation frame after unmount.
+    // Keep the exact assertion, but observe the completed lifecycle rather than the key event.
+    for (let attempt = 0; document.activeElement !== trigger && attempt < 60; attempt += 1) {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    }
     assert(document.activeElement === trigger, 'The calendar should restore trigger focus.');
   },
 };

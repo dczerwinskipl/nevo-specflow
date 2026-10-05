@@ -283,7 +283,7 @@ function RuntimeSurfaceRegion({
     <div
       className={cn(
         'min-w-0 flex-none overflow-hidden outline-none',
-        'w-max max-w-full',
+        'w-max max-w-full group-data-[workspace-fit=available]/workspace:w-full',
         divider && 'border-l border-border-subtle',
       )}
       data-workspace-active="true"
@@ -582,7 +582,7 @@ function AppWorkspaceRoot({ children, labels: labelsProp, split = 'balanced' }: 
   return (
     <div
       className={cn(
-        'relative flex h-full max-w-full items-stretch overflow-hidden',
+        'group/workspace relative flex h-full max-w-full items-stretch overflow-hidden',
         state.mode === 'split' && navigationMode === 'drawer' && workspaceSurfaceClassName,
       )}
       data-layout={state.mode}

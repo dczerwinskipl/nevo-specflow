@@ -4,6 +4,7 @@ export {
   type AppNavigationMode,
   type AppShellProps,
 } from './shell/AppShell';
+export { StandaloneShell, type StandaloneShellProps } from './shell/StandaloneShell';
 export {
   AppContent,
   AppContentContainer,

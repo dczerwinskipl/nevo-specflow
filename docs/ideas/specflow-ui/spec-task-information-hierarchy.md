@@ -136,8 +136,10 @@ The canonical Specs-overview row has a deliberately small information budget:
 - **Specification identity/title**: always visible and primary.
 - **Queue/group state**: communicated by the owning semantic group, not repeated as a heavy badge per
   row.
-- **Aggregate state reason**: one concise high-level summary with no Task IDs or raw signal
+- **Dominant aggregate state reason**: one concise high-level summary with no Task IDs or raw signal
   enumeration.
+- **Concurrent qualifier**: optional one bounded lower-priority aggregate only when omitting it would
+  materially misrepresent the row.
 - **Task progress**: compact `completed / total` summary when known.
 - **Linked PR**: optional one compact explicit control when useful.
 - **Scope tags**: optional, with at most two visible values.

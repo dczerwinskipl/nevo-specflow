@@ -644,13 +644,15 @@ For Active:
 
 - `SpecListGroupModel.count` is the number of rows matching the current collection/filter in that
   group; collapse state never changes the count;
-- while Search is active, groups with zero matches are omitted;
-- groups containing matches are temporarily expanded so every result is discoverable;
-- entering Search snapshots the user's current local disclosure state without overwriting it;
-- changing the query recomputes visible rows/counts and temporary expansion, but does not mutate that
-  pre-search disclosure snapshot;
-- clearing Search restores the user's pre-search expanded/collapsed choices while the screen remains
-  mounted;
+- a **non-empty Search query** activates filtered-disclosure behavior;
+- while that query is non-empty, groups with zero matches are omitted and groups containing matches
+  are temporarily expanded so every result is discoverable;
+- the empty -> non-empty query transition snapshots the user's current local disclosure state without
+  overwriting it;
+- changing one non-empty query to another recomputes visible rows/counts and temporary expansion, but
+  does not mutate that pre-search disclosure snapshot;
+- clearing Search back to an empty query restores the user's pre-search expanded/collapsed choices
+  while the screen remains mounted;
 - a no-match result is a filtered empty state, not an empty Active collection.
 
 Archive has no Active semantic groups/disclosure. Search simply filters bounded

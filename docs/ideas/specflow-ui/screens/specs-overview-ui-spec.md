@@ -104,9 +104,13 @@ Per Spec item:
 3. one bounded secondary line with progress, one dominant aggregate state summary, and at most one
    materially useful concurrent qualifier.
 
-Cross-group priority is `attention > ready > working > quiet`. Inside Requires attention, ordering
-should favor facts that prove the human is blocking useful progress; a live Session interaction
-waiting for response is normally stronger than a passive approval request.
+Cross-group priority is `attention > in-progress > ready-idle`. Inside Requires attention,
+ordering should favor facts that prove the human is blocking useful progress; a live Session
+interaction waiting for response is normally stronger than a passive approval request.
+
+Ready and idle share the same low-priority group because neither represents current work or required
+human intervention. Their row summaries remain distinct: ready communicates an available operation;
+idle communicates no immediate useful action.
 
 Do not duplicate one Spec across several stacked list groups. One dominant semantic group owns the
 row. A lower-priority concurrent state may contribute at most one bounded, non-interactive qualifier
@@ -122,25 +126,29 @@ Avoid miniature detail screens inside rows.
 │ Nevo SpecFlow │ Specs                                      [+ New spec]    │
 │               │ [ Active ] [ Archive ]                                     │
 │ Specs         │                                                            │
-│               │ ▾  Requires attention  2                                   │
-│ Settings      │    UI-1234  Deterministic admission          PR #27  Auth   │
-│               │              5 / 9 tasks · Owner decision required           │
-│               │    UI-1235  Runtime authorization                   Runtime │
-│               │              3 / 7 tasks · Agent input required              │
+│               │ ▾ ● Requires attention  2                                  │
+│ Settings      │     Deterministic admission and execution boundaries        │
+│               │     UI-1234   5 / 9 tasks   Owner decision required         │
+│               │     Runtime authorization and project access policy         │
+│               │     UI-1235   3 / 7 tasks   Agent input required            │
 │               │                                                            │
-│               │ ▾  Ready  1                                                │
-│               │    UI-1236  Localization preferences                        │
-│               │              0 / 5 tasks · Ready to start                   │
+│               │ ▾ ● In progress  1                                         │
+│               │     Provider diagnostics and replay               PR #31    │
+│               │     RT-104    2 / 8 tasks   Reviewer working on 3 tasks     │
 │               │                                                            │
-│               │ ▾  In progress  1                                          │
-│               │    RT-104   Provider diagnostics             PR #31         │
-│               │              2 / 8 tasks · Reviewer working on 3 tasks      │
+│               │ ▾ ○ Ready / idle  2                                        │
+│               │     Localization preferences                                │
+│               │     UI-1236   0 / 5 tasks   Ready to start                  │
+│               │     Navigation cleanup                                      │
+│               │     UI-1237   4 / 7 tasks   No immediate action             │
 └───────────────┴────────────────────────────────────────────────────────────┘
 ```
 
-The same Spec appears once in the canonical list. Rows are borderless/list-first. The empty space
-before each Spec identity is the same fixed gutter used by the group disclosure control; current
-Specs Overview has no Spec-selection checkbox or bulk action.
+The same Spec appears once in the canonical list. Rows are borderless/list-first. The outer list uses
+the shared utility/marker/content scan columns from the steering contract. Current Specs Overview has
+no Spec-selection checkbox or bulk action, so the row utility track remains empty while disclosure
+uses it in group headers. The semantic marker occupies its own fixed column and does not move the
+content axis.
 
 ## 8. Screen anatomy
 
@@ -148,8 +156,8 @@ Specs Overview has no Spec-selection checkbox or bulk action.
 - Collection control: Active / Archive.
 - compact Search Specs control when the collection is large enough that scanning/grouping alone is
   insufficient; Archive should expect this earlier than Active because it grows monotonically.
-- Human-steering groups for requires-attention, ready, working, and quiet/other-active semantics;
-  each group uses the disclosure behavior defined by the Spec steering contract.
+- Human-steering groups for Requires attention, In progress, and Ready / idle; each group uses the
+  disclosure behavior defined by the Spec steering contract.
 - Spec summary rows.
 - Optional create-spec action only when product contract exists.
 
@@ -223,8 +231,8 @@ group counts describe rows in the current filtered view rather than the unfilter
 - empty active: concise empty state with New specification action;
 - archive empty: concise local empty state;
 - requires attention: human intervention is actually required;
-- ready: actionable but calm; do not style as alert;
-- working: active progress without stealing attention;
+- in progress: active agent/system progress without stealing attention;
+- ready / idle: low-priority neutral group; row summary distinguishes actionable Ready from Idle;
 - partial signal failure: keep Spec identity/list usable and mark unavailable projection locally;
 - stale/reconnecting transport: subtle connection feedback without rewriting canonical semantics.
 
@@ -286,9 +294,9 @@ Do not force the work queue into DataTable unless final content proves genuinely
 - tertiary metadata: \`text-content-muted\`;
 - row hover/focus: shared interaction tokens;
 - dividers: \`border-divider\` / \`border-border-subtle\` only when whitespace is insufficient;
-- attention: semantic warning/info/error treatment according to actual meaning, not decorative color;
-- ready: visible but calmer than requires-attention;
-- working: running/activity tone without warning treatment.
+- attention: strongest semantic marker/tone according to actual meaning, not decorative color;
+- in progress: restrained running/activity marker;
+- Ready / idle: neutral/subtle marker; row prose carries the ready-vs-idle distinction.
 
 ## 15. Local containment rules
 
@@ -310,9 +318,9 @@ Do not force the work queue into DataTable unless final content proves genuinely
 
 - rich concurrent source signals collapsing to one bounded row summary;
 - Spec-level attention;
-- ready;
-- active batch;
-- agent-remediable issue / quiet;
+- in-progress batch;
+- ready inside Ready / idle;
+- idle/remediation-available inside Ready / idle;
 - long title and max trailing metadata;
 - ultra-wide layout;
 - Compact wrapping;
@@ -326,7 +334,8 @@ Do not force the work queue into DataTable unless final content proves genuinely
 ## 18. Acceptance criteria
 
 - requires-attention is reserved for human-blocking situations;
-- ready remains visually calmer and does not imply urgency;
+- cross-group order is Requires attention -> In progress -> Ready / idle;
+- Ready and Idle share one low-priority group but remain distinguishable in row summary text;
 - a Spec appears once in the canonical Active queue;
 - Active Specs use the grouped steering presentation defined by the Spec steering contract;
 - the entire row always opens Specification;

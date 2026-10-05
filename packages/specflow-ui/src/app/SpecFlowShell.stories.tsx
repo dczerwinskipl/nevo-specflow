@@ -190,15 +190,17 @@ export const FigmaCapture: Story = {
       () => canvasElement.querySelector<HTMLElement>('[data-design-layer="account-trigger"]'),
       'Application shell capture should include the account trigger design layer.',
     );
-    const navigation = canvasElement.querySelector<HTMLElement>(
-      '[data-app-shell-region="navigation"]',
+    const footer = canvasElement.querySelector<HTMLElement>(
+      '[data-product-navigation-footer="true"]',
     );
-    if (!navigation) throw new Error('Desktop application shell navigation must be present.');
+    if (!footer) throw new Error('Desktop account footer must be present.');
+    if (!footer.contains(accountTrigger)) {
+      throw new Error('Account trigger must remain inside the fixed navigation footer.');
+    }
 
-    const bottomGap =
-      navigation.getBoundingClientRect().bottom - accountTrigger.getBoundingClientRect().bottom;
-    if (bottomGap < 20) {
-      throw new Error('Desktop account trigger should retain visible bottom navigation padding.');
+    const footerPaddingBottom = Number.parseFloat(getComputedStyle(footer).paddingBottom);
+    if (footerPaddingBottom < 24) {
+      throw new Error('Desktop account footer should retain at least 24px bottom padding.');
     }
     if (getComputedStyle(accountTrigger).alignItems !== 'center') {
       throw new Error('Account avatar, label, and chevron must remain vertically centered.');

@@ -31,6 +31,7 @@ export const iconNames = [
   'workflow',
   'list-checks',
   'settings',
+  'log-out',
 ] as const;
 
 export const iconSizes = ['sm', 'md'] as const;

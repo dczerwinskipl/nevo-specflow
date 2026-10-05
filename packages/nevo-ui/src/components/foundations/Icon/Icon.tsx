@@ -20,6 +20,7 @@ import {
   Info,
   LoaderCircle,
   ListChecks,
+  LogOut,
   Menu,
   MessageSquare,
   Minus,
@@ -73,6 +74,7 @@ export const iconRegistry = {
   workflow: Workflow,
   'list-checks': ListChecks,
   settings: Settings,
+  'log-out': LogOut,
 } satisfies Record<IconName, LucideIcon>;
 
 export const iconSizeClasses = {

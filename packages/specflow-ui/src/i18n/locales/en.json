@@ -1,0 +1,66 @@
+{
+  "common": {
+    "changeLanguage": "Change language",
+    "language": "Language",
+    "english": "English",
+    "polish": "Polski",
+    "retry": "Retry",
+    "retrying": "Retrying…"
+  },
+  "navigation": {
+    "product": "Product navigation",
+    "home": "Home",
+    "uiPlayground": "UI Playground",
+    "close": "Close navigation",
+    "title": "Application navigation",
+    "open": "Open navigation",
+    "back": "Back",
+    "closeSecondary": "Close secondary content"
+  },
+  "account": {
+    "localAccess": "Local access",
+    "openMenu": "Open user menu for {{name}}",
+    "signOut": "Sign out",
+    "menu": "User menu"
+  },
+  "auth": {
+    "loadingSignIn": "Loading sign in",
+    "login": {
+      "title": "Welcome back",
+      "description": "Access your SpecFlow workspace.",
+      "failed": "Sign in failed",
+      "openingProvider": "Opening {{provider}}…",
+      "continueWithProvider": "Continue with {{provider}}",
+      "or": "or",
+      "username": "Username",
+      "password": "Password",
+      "signingIn": "Signing in…",
+      "signIn": "Sign in"
+    },
+    "errors": {
+      "invalidCredentials": "Username or password is incorrect.",
+      "rateLimited": "Too many sign-in attempts. Try again later.",
+      "identityNotAllowed": "This identity is not allowed to access this SpecFlow project.",
+      "invalidOidcTransaction": "The sign-in request expired or is no longer valid. Start again.",
+      "oidcAuthenticationFailed": "The identity provider could not complete sign in. Try again.",
+      "providerUnavailable": "The identity provider is currently unavailable. Try again later.",
+      "serviceUnavailable": "SpecFlow could not complete sign in. Try again."
+    },
+    "runtimeUnavailable": {
+      "title": "Unable to connect",
+      "description": "SpecFlow Runtime did not respond. Make sure it is running and reachable, then try again."
+    }
+  },
+  "home": {
+    "title": "Home",
+    "description": "The product frontend boundary is ready for real SpecFlow features.",
+    "foundationTitle": "Migration foundation",
+    "foundationDescription": "Routing, the application shell, Nevo branding, and reusable Nevo UI are composed here without placeholder domain data."
+  },
+  "playground": {
+    "title": "UI Playground",
+    "description": "A neutral product-owned surface for checking Nevo UI composition inside the real app.",
+    "exampleValue": "Example value",
+    "continue": "Continue"
+  }
+}

@@ -1,0 +1,88 @@
+.standalone-shell-root {
+  display: flex;
+  width: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.standalone-shell-mobile-header {
+  display: flex;
+  height: calc(3.5rem + env(safe-area-inset-top));
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-top: env(safe-area-inset-top);
+  padding-right: max(0.75rem, env(safe-area-inset-right));
+  padding-left: max(0.75rem, env(safe-area-inset-left));
+}
+
+.standalone-shell-body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0%;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.standalone-shell-surface {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  border-bottom-width: 0;
+  border-radius: var(--radius-surface) var(--radius-surface) 0 0;
+}
+
+.standalone-shell-content {
+  width: 100%;
+  max-width: 28rem;
+  margin-inline: auto;
+  padding: 1.5rem;
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+}
+
+.standalone-shell-desktop-header {
+  display: none;
+}
+
+@media (min-width: 40rem) {
+  .standalone-shell-root {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+    padding: 2rem;
+  }
+
+  .standalone-shell-mobile-header {
+    display: none;
+  }
+
+  .standalone-shell-body {
+    align-items: center;
+    justify-content: center;
+  }
+
+  .standalone-shell-surface {
+    width: 100%;
+    max-width: 28rem;
+    height: auto;
+    overflow: visible;
+    border-bottom-width: 1px;
+    border-radius: var(--radius-surface);
+  }
+
+  .standalone-shell-content {
+    max-width: none;
+    padding: 2rem;
+  }
+
+  .standalone-shell-desktop-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+}

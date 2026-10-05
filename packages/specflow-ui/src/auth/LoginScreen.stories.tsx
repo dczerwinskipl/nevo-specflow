@@ -66,8 +66,12 @@ function assertStandaloneAuthLayout(canvasElement: HTMLElement) {
   const mobileSelector = mobileHeader?.querySelector<HTMLElement>(
     '[aria-label="Change language"]',
   );
-  const surface = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="surface"]');
-  const root = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="root"]');
+  const surface = canvasElement.querySelector<HTMLElement>(
+    '[data-standalone-shell-region="surface"]',
+  );
+  const root = canvasElement.querySelector<HTMLElement>(
+    '[data-standalone-shell-region="root"]',
+  );
   assert(
     mobileHeader && mobileSelector && surface && root,
     'Standalone auth layout regions must be present.',
@@ -107,7 +111,9 @@ export const PasswordAndSingleOidc: Story = {
 export const PasswordAndOidc: Story = {
   args: { loginMethods: mixed },
   play: ({ canvasElement }) => {
-    const surface = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="surface"]');
+    const surface = canvasElement.querySelector<HTMLElement>(
+      '[data-standalone-shell-region="surface"]',
+    );
     const desktopHeader = canvasElement.querySelector<HTMLElement>(
       '[data-standalone-shell-region="desktop-header"]',
     );
@@ -120,7 +126,9 @@ export const PasswordAndOidc: Story = {
       desktopHeader.querySelector('[aria-label="Change language"]'),
       'Desktop standalone header must expose the product language action.',
     );
-    const root = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="root"]');
+    const root = canvasElement.querySelector<HTMLElement>(
+      '[data-standalone-shell-region="root"]',
+    );
     assert(root, 'Desktop auth root must be present.');
 
     const rootRect = root.getBoundingClientRect();

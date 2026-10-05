@@ -22,7 +22,7 @@ export function StandaloneAuthSurface({
       <AppBackground
         {...rootAttributes}
         brandPrimary={defaultNevoBrand.coreColor}
-        className="flex min-h-dvh w-full flex-col text-content-primary sm:p-8"
+        className="flex h-dvh min-h-dvh w-full flex-col overflow-hidden text-content-primary sm:h-auto sm:overflow-visible sm:p-8"
         data-auth-layout="root"
       >
         <div

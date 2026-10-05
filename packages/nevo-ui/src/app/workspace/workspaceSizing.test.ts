@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  APP_NAVIGATION_INLINE_PADDING,
   APP_NAVIGATION_WIDTH,
   APP_SHELL_GAP,
   resolveSlotMaxWidth,
@@ -16,7 +17,8 @@ import {
 describe('responsive workspace thresholds', () => {
   it('keeps persistent navigation monotonic with split workspace capacity', () => {
     expect(APP_NAVIGATION_WIDTH).toBe(260);
-    expect(APP_SHELL_GAP).toBe(16);
+    expect(APP_NAVIGATION_INLINE_PADDING).toBe(16);
+    expect(APP_SHELL_GAP).toBe(8);
     expect(WORKSPACE_SPLIT_MIN_WIDTH).toBe(840);
     expect(WORKSPACE_WIDE_DOMINANCE_MIN_WIDTH).toBe(1080);
     expect(WIDE_SHELL_MIN_WIDTH).toBe(

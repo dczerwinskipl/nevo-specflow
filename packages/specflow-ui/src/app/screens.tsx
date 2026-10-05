@@ -9,10 +9,20 @@ import {
   Typography,
   WorkspaceHeader,
 } from '@nevo/ui';
+import { useTranslation } from 'react-i18next';
 
 function Screen({ children, title }: { children: React.ReactNode; title: string }) {
+  const { t } = useTranslation();
+
   return (
-    <AppWorkspace split="primary">
+    <AppWorkspace
+      labels={{
+        backToPrimary: t('navigation.back'),
+        closeSecondary: t('navigation.closeSecondary'),
+        openNavigation: t('navigation.open'),
+      }}
+      split="primary"
+    >
       <AppWorkspace.Primary header={<WorkspaceHeader title={title} />}>
         <AppContent>
           <AppWorkspaceBody>
@@ -27,26 +37,27 @@ function Screen({ children, title }: { children: React.ReactNode; title: string 
 }
 
 export function HomeScreen() {
+  const { t } = useTranslation();
+
   return (
-    <Screen title="Home">
+    <Screen title={t('home.title')}>
       <div className="grid gap-2">
         <Typography as="h1" variant="title-lg">
           Nevo SpecFlow
         </Typography>
         <Typography className="max-w-2xl text-content-secondary" variant="body-lg">
-          The product frontend boundary is ready for real SpecFlow features.
+          {t('home.description')}
         </Typography>
       </div>
       <Card>
         <Card.Header>
           <Typography as="h2" variant="title-sm">
-            Migration foundation
+            {t('home.foundationTitle')}
           </Typography>
         </Card.Header>
         <Card.Body>
           <Typography className="text-content-secondary" variant="body-md">
-            Routing, the application shell, Nevo branding, and reusable Nevo UI are composed here
-            without placeholder domain data.
+            {t('home.foundationDescription')}
           </Typography>
         </Card.Body>
       </Card>
@@ -55,14 +66,16 @@ export function HomeScreen() {
 }
 
 export function UiPlaygroundScreen() {
+  const { t } = useTranslation();
+
   return (
-    <Screen title="UI Playground">
+    <Screen title={t('playground.title')}>
       <Typography className="text-content-secondary" variant="body-md">
-        A neutral product-owned surface for checking Nevo UI composition inside the real app.
+        {t('playground.description')}
       </Typography>
       <div className="flex max-w-xl flex-wrap items-center gap-3">
-        <TextInput aria-label="Example value" defaultValue="SpecFlow" />
-        <Button>Continue</Button>
+        <TextInput aria-label={t('playground.exampleValue')} defaultValue="SpecFlow" />
+        <Button>{t('playground.continue')}</Button>
       </div>
     </Screen>
   );

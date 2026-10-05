@@ -4,6 +4,7 @@ import {
   defineFigmaExportProfile,
 } from '@nevo/figma-core/authoring';
 import { designSpecs as appDesignSpecs } from '../app/shell/AppShell.figma';
+import { designSpec as standaloneShellDesignSpec } from '../app/shell/StandaloneShell.figma';
 import { designSpecs as environmentDesignSpecs } from '../components/foundations/Environment/Environment.figma';
 import { designSpec as buttonDesignSpec } from '../components/actions/Button/Button.figma';
 import { designSpec as iconButtonDesignSpec } from '../components/actions/IconButton/IconButton.figma';
@@ -99,6 +100,7 @@ export const nevoUiDesignSystem = defineDesignSystem([
   progressDesignSpec,
   collapsibleDesignSpec,
   ...appDesignSpecs,
+  standaloneShellDesignSpec,
 ] as const);
 
 export const { componentRef, slot, variantProperty } = createComponentAuthoring(nevoUiDesignSystem);

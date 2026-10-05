@@ -702,13 +702,14 @@
       "read_when": [
         "adding a SpecFlow UI screen or route",
         "deciding whether UI code belongs in the product app or Nevo UI",
-        "changing the product shell or brand composition"
+        "changing the product shell, localization, account menu, or brand composition"
       ],
-      "summary": "The SpecFlow UI composition root, routing and authentication boundary, reusable Nevo UI boundary, and the intentionally minimal foundation screens.",
+      "summary": "The SpecFlow UI composition root, routing, authentication and localization boundaries, reusable Nevo UI boundary, navigation/account composition, and intentionally minimal foundation screens.",
       "related": [
         "design-system.principles.system-boundary",
         "design-system.implementation.ownership-and-tooling",
-        "product.specflow.ui.interaction-model"
+        "product.specflow.ui.interaction-model",
+        "product.shared.localization"
       ]
     },
     {
@@ -2519,13 +2520,14 @@
       "read_when": [
         "adding user-facing copy to the CLI or UI",
         "designing a message, label, or notification",
-        "planning the i18n runtime"
+        "changing locale selection or persistence"
       ],
-      "summary": "Localization is a standing product requirement. The first release may be English-only, but all user-facing copy must be localizable and must not be scattered as hard-coded strings. The i18n library and locale-loading design are chosen when the UI/CLI reaches that concern.",
+      "summary": "Localization is a standing product requirement. SpecFlow UI uses i18next with per-locale JSON catalogs, stable message keys, English fallback, browser-language detection, and an explicit persisted user preference. Reusable Nevo UI remains localization-agnostic.",
       "related": [
         "product.shared.vocabulary",
         "product.specflow.cli.interaction-model",
-        "product.specflow.ui.interaction-model"
+        "product.specflow.ui.interaction-model",
+        "product.specflow.ui.application-architecture"
       ]
     },
     {

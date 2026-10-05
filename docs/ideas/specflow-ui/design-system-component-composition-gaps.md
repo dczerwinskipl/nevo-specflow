@@ -472,7 +472,7 @@ The intended workspace split threshold is independent from navigation collapse.
 
 ```text
 WORKSPACE_SPLIT_MIN_WIDTH = 840
-WIDE_SHELL_MIN_WIDTH = 1116
+WIDE_SHELL_MIN_WIDTH = 1108
 ```
 
 but runtime `AppWorkspace` calls `supportsRuntimeWorkspaceSplit`, which currently requires:
@@ -501,8 +501,8 @@ This is reusable layout behavior and belongs in Nevo UI.
 Add/adjust stories/tests for:
 
 - below 840 -> Drawer + stacked;
-- 840–1115 -> Drawer + split;
-- 1116+ -> persistent navigation + split;
+- 840–1107 -> Drawer + split;
+- 1108+ -> persistent navigation + split;
 - runtime Secondary stack/back behavior in all three;
 - no regression to mobile workspace material/animation.
 

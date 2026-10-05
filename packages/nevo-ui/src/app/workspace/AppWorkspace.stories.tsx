@@ -230,8 +230,8 @@ export const GeometryContract: Story = {
       'Desktop navigation should remain 260px wide.',
     );
     assert(
-      Math.abs(workspaceRect.left - navigationRect.right - 16) < 1,
-      'Navigation and workspace should retain the 16px gap.',
+      Math.abs(workspaceRect.left - navigationRect.right - 8) < 1,
+      'Navigation and workspace should retain the compact 8px gap.',
     );
     assert(
       Math.abs(workspaceRect.top - shellRect.top - 16) < 1,
@@ -530,7 +530,7 @@ export const RuntimeFitContract: Story = {
     const workspaceRect = workspace.getBoundingClientRect();
     const layoutRect = layout.getBoundingClientRect();
     const workspaceStyle = getComputedStyle(workspace);
-    const availableWidth = shellRect.width - navigationRect.width - 16;
+    const availableWidth = shellRect.width - navigationRect.width - 8;
 
     assert(
       Math.abs(primary.getBoundingClientRect().width - 220) < 1,
@@ -549,8 +549,10 @@ export const RuntimeFitContract: Story = {
       'An inset navigation and workspace group should remain centered in the shell.',
     );
     assert(
-      workspaceStyle.borderTopRightRadius !== '0px' && workspaceStyle.borderRightWidth !== '0px',
-      'An inset workspace frame should restore its right edge and right-side rounding.',
+      workspaceStyle.borderTopRightRadius !== '0px' &&
+        workspaceStyle.borderBottomRightRadius === '0px' &&
+        workspaceStyle.borderRightWidth !== '0px',
+      'An inset workspace frame should restore its right edge with only the top-right corner rounded.',
     );
     assert(
       Math.abs(

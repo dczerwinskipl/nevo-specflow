@@ -18,6 +18,17 @@ export const designSpecs = [
     },
   }),
   defineDesignComponent({
+    component: 'MenuRadioItem',
+    description: 'Single-choice menu row with checked, unchecked, and disabled states.',
+    order: 33,
+    variants: { state: ['unchecked', 'checked', 'disabled'] },
+    defaults: { state: 'unchecked' },
+    slots: {
+      indicator: { kind: 'container', exposeVisibility: false },
+      label: { kind: 'text', propertyName: 'Label', defaultText: 'Radio item', required: true },
+    },
+  }),
+  defineDesignComponent({
     component: 'Menu',
     description: 'Floating action menu assembled from labels, items and separators.',
     order: 34,

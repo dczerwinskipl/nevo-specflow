@@ -45,7 +45,7 @@ describe('AppShell', () => {
       wide: false,
     });
     expect(resolveAppShellLayout(1400)).toEqual({
-      availableWidth: 1124,
+      availableWidth: 1132,
       navigationMode: 'persistent',
       workspaceMaterialOwner: 'shell',
       wide: true,

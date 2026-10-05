@@ -232,6 +232,14 @@ export const FigmaCapture: Story = {
       root.dataset.standaloneShellRegion === 'root',
       'Login Figma capture root must own the complete standalone auth surface.',
     );
+    assert(
+      root.dataset.designComponent === 'SpecFlowLoginScreen',
+      'Reusable StandaloneShell metadata must not overwrite screen capture identity.',
+    );
+    assert(
+      !root.querySelector('[data-design-component="StandaloneShell"]'),
+      'StandaloneShell must stay capture-transparent inside the product screen.',
+    );
 
     const content = root.querySelector<HTMLElement>('[data-design-slot="content"]');
     assert(content, 'Login Figma capture must expose its required content slot below the root.');

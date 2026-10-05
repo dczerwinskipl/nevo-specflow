@@ -50,23 +50,25 @@ It does not freeze:
 It does freeze the intended **information order and navigation relationship** strongly enough to
 validate the product flow before visual design.
 
-The core steering loop remains:
+The core steering loop is:
 
 ```text
 Specs overview
   -> identify attention / ready / working
-  -> 1 click on the relevant signal
-  -> responsible decision context opens
-     - Task-specific signal => Specification + Task Secondary
-     - Spec-level signal => Specification context
-  -> deliberate action
+  -> open the owning Specification through the stable Spec row target
+Specification
+  -> make the responsible Task(s), Session, evidence, and workflow context explicit
+  -> open Task detail when Task-specific inspection is needed
+  -> deliberate workflow action
 ```
 
-A generic Specification click may still open the Specification normally, but an actionable
-summary should deep-link to the context that explains that signal instead of forcing the human to
-find the same Task again.
+The canonical Specs Overview row has one stable destination: the owning Specification. Dynamic
+attention/ready/working state changes the row summary and grouping, not its navigation target.
+Ordinary status/reason prose in the overview is non-interactive and never deep-links directly into
+Task Secondary.
 
-Opening that context is never itself the mutating workflow action.
+Opening Specification/Task context is navigation only and never performs the mutating workflow
+action.
 
 ---
 

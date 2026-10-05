@@ -1,13 +1,25 @@
-import { useSyncExternalStore, type PropsWithChildren } from 'react';
+import { useMemo, useSyncExternalStore, type PropsWithChildren } from 'react';
 
 import { designLayerMetadata, designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
-import { AppShell, useAppNavigation } from '@nevo/ui';
-import { Link, useRouter } from '@tanstack/react-router';
+import {
+  APP_SHELL_GAP,
+  AppShell,
+  Separator,
+  SideNavigation,
+  useAppNavigation,
+  type NavigationAdapter,
+  type NavigationNode,
+} from '@nevo/ui';
+import { Link, useRouter, useRouterState } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 
 import type { AuthStore } from '../auth/store';
 import { defaultNevoBrand, NevoBrandLogo } from '../brand';
 import { AccountMenu } from './AccountMenu';
+
+interface NavigationTarget {
+  readonly to: '/' | '/ui-playground';
+}
 
 function ProductNavigation({
   auth,
@@ -18,47 +30,64 @@ function ProductNavigation({
 }) {
   const { t } = useTranslation();
   const { closeNavigation } = useAppNavigation();
+  const pathname = useRouterState({ select: (routerState) => routerState.location.pathname });
   const state = useSyncExternalStore(
     (listener) => auth.subscribe(listener),
     () => auth.getState(),
     () => auth.getState(),
   );
-  const linkClassName =
-    'block rounded-control px-3 py-2 text-content-secondary hover:bg-surface-hover hover:text-content-primary';
+
+  const navigationNodes = useMemo<readonly NavigationNode<NavigationTarget>[]>(
+    () => [
+      { key: 'home', label: t('navigation.home'), target: { to: '/' } },
+      {
+        key: 'ui-playground',
+        label: t('navigation.uiPlayground'),
+        target: { to: '/ui-playground' },
+      },
+    ],
+    [t],
+  );
+
+  const navigationAdapter = useMemo<NavigationAdapter<NavigationTarget>>(
+    () => ({
+      match: (node) => (node.target?.to === pathname ? 'active' : 'none'),
+      renderLink: ({ children, className, node }) => (
+        <Link className={className} to={node.target?.to ?? '/'} onClick={closeNavigation}>
+          {children}
+        </Link>
+      ),
+    }),
+    [closeNavigation, pathname],
+  );
 
   return (
     <div
       className="flex h-full min-h-0 flex-col"
+      style={{ paddingInline: APP_SHELL_GAP }}
       {...designLayerMetadata({ layer: 'product-navigation' })}
     >
-      <div className="shrink-0 px-3 pt-5 pr-12" {...designLayerMetadata({ layer: 'brand' })}>
+      <div
+        className="shrink-0 py-4 pr-12"
+        {...designLayerMetadata({ layer: 'brand' })}
+      >
         <NevoBrandLogo {...defaultNevoBrand} product="SpecFlow" size="md" type="horizontal" />
       </div>
-      <div
-        className="min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-8"
+
+      <Separator />
+
+      <SideNavigation
+        aria-label={t('navigation.product')}
+        adapter={navigationAdapter}
+        className="min-h-0 flex-1 overflow-y-auto py-4"
+        nodes={navigationNodes}
         {...designLayerMetadata({ layer: 'navigation-links' })}
-      >
-        <nav aria-label={t('navigation.product')} className="grid gap-1">
-          <Link
-            activeProps={{ className: `${linkClassName} bg-surface-selected` }}
-            className={linkClassName}
-            to="/"
-            onClick={closeNavigation}
-          >
-            {t('navigation.home')}
-          </Link>
-          <Link
-            activeProps={{ className: `${linkClassName} bg-surface-selected` }}
-            className={linkClassName}
-            to="/ui-playground"
-            onClick={closeNavigation}
-          >
-            {t('navigation.uiPlayground')}
-          </Link>
-        </nav>
-      </div>
+      />
+
+      <Separator />
+
       <div
-        className="shrink-0 border-t border-divider px-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3"
+        className="shrink-0 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2"
         {...designLayerMetadata({ layer: 'account-footer' })}
       >
         {state.status === 'ready' ? (

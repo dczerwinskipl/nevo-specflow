@@ -47,10 +47,14 @@ The current product routes under the guarded layout remain:
 - `/` for the foundation home screen;
 - `/ui-playground` for a product-owned component/workspace integration screen.
 
-The login screen is product-owned and composes existing Nevo UI fields, password input, buttons,
-alerts, separators and typography. It deliberately does not use `AppShell` or add a login-specific
-Card. OIDC instance names come from the Runtime session contract; password login remains one
-capability regardless of the number of configured password accounts.
+The login and Runtime-recovery screens are product-owned compositions on Nevo UI's
+`StandaloneShell`. That shared shell owns the navigation-free application frame: AppBackground,
+responsive header placement, the compact centered desktop WorkspaceSurface, the single mobile
+header plus full-height workspace sheet, safe-area spacing, and scroll ownership. SpecFlow owns the
+Nevo brand lockup, locale action, screen copy, authentication/recovery semantics, and form/actions.
+It deliberately does not use `AppShell` or add a login-specific Card. OIDC instance names come
+from the Runtime session contract; password login remains one capability regardless of the number
+of configured password accounts.
 
 Product screens compose `AppWorkspace`, `WorkspaceHeader`, and `AppContent` from Nevo UI. The
 runtime workspace connects compact screens to AppShell's drawer navigation and owns responsive

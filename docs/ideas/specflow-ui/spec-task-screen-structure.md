@@ -169,9 +169,10 @@ not an implementation-level alternative.
 The important rule is that **attention, ready, working, and quiet remain perceptibly different**.
 
 A Specification can carry concurrent signals, for example one Task may require review while another
-Task is currently being executed. Place the Spec in the group selected by its highest-priority
-human-facing signal. The row keeps one dominant aggregate summary and may show at most one bounded
-lower-priority qualifier when omitting it would materially misrepresent current state. Do not
+Task is currently being executed. Place the Spec according to the canonical cross-group priority
+`attention > ready > working > quiet`. The row keeps one dominant aggregate summary and may show at
+most one bounded lower-priority qualifier when omitting it would materially misrepresent current
+state. Do not
 duplicate the same Spec across several groups or expose raw signal collections.
 
 ## 3.3 Minimum information per Spec item

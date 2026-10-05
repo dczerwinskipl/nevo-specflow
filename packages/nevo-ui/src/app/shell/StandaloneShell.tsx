@@ -63,7 +63,10 @@ export function StandaloneShell({
           <WorkspaceSurface
             {...restSurfaceProps}
             as="main"
-            className={cn('standalone-shell-surface border border-workspace-edge', surfaceClassName)}
+            className={cn(
+              'standalone-shell-surface border border-workspace-edge',
+              surfaceClassName,
+            )}
             data-standalone-shell-region="surface"
           >
             <div

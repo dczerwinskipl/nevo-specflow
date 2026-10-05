@@ -133,14 +133,14 @@ These are product projections, not persisted status values.
 
 The canonical Specs-overview row has a deliberately small information budget:
 
-| Information                    | Class              | Overview treatment                                                                 |
-| ------------------------------ | ------------------ | ---------------------------------------------------------------------------------- |
-| Specification identity/title   | Orientation        | Always visible; primary row content.                                               |
-| Queue/group state              | Steering           | Communicated by the owning semantic group, not repeated as a heavy badge per row. |
-| Aggregate state reason         | Attention/activity | One concise high-level summary; no Task IDs or raw signal enumeration.            |
-| Task progress                  | Context            | Compact `completed / total` summary when known.                                   |
-| Linked PR                      | Context            | Optional one compact explicit control when useful.                                 |
-| Scope tags                     | Context            | Optional; at most two visible values.                                              |
+- **Specification identity/title**: always visible and primary.
+- **Queue/group state**: communicated by the owning semantic group, not repeated as a heavy badge per
+  row.
+- **Aggregate state reason**: one concise high-level summary with no Task IDs or raw signal
+  enumeration.
+- **Task progress**: compact `completed / total` summary when known.
+- **Linked PR**: optional one compact explicit control when useful.
+- **Scope tags**: optional, with at most two visible values.
 
 Current workflow step, raw semantic workflow status, individual Task signals, Session identity,
 provider/model/effort, detailed remediation paths, and last-activity detail remain available to the

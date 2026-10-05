@@ -212,9 +212,9 @@ export const FigmaCapture: Story = {
     if (!navigation) throw new Error('Desktop application shell navigation must be present.');
     const visibleBottomGap =
       navigation.getBoundingClientRect().bottom - accountTrigger.getBoundingClientRect().bottom;
-    if (visibleBottomGap < 20) {
+    if (visibleBottomGap < 14 || visibleBottomGap > 18) {
       throw new Error(
-        `Desktop account trigger should retain visible bottom space; received ${visibleBottomGap}px.`,
+        `Desktop account trigger should retain the compact 16px bottom gap; received ${visibleBottomGap}px.`,
       );
     }
 

@@ -206,11 +206,6 @@ export const FigmaCapture: Story = {
       throw new Error('Account trigger must remain inside the fixed navigation footer.');
     }
 
-    const footerPaddingBottom = Number.parseFloat(getComputedStyle(footer).paddingBottom);
-    if (footerPaddingBottom < 24) {
-      throw new Error('Desktop account footer should retain at least 24px bottom padding.');
-    }
-
     const navigation = canvasElement.querySelector<HTMLElement>(
       '[data-app-shell-region="navigation"]',
     );

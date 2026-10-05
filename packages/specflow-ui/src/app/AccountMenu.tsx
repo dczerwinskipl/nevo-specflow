@@ -33,19 +33,19 @@ export function AccountMenu({
         <button
           aria-label={t('account.openMenu', { name: userName })}
           className={cn(
-            'flex min-h-control-height-default w-full cursor-pointer items-center gap-2 rounded-control border border-solid px-2 text-left',
+            'flex h-control-height-default w-full cursor-pointer items-center gap-2 rounded-control border border-solid px-2 text-left',
             actionVariantClasses.ghost,
             fastColorTransitionClassName,
           )}
           type="button"
           {...designLayerMetadata({ layer: 'account-trigger' })}
         >
-          <span className="flex size-control-height-inline shrink-0 items-center justify-center rounded-full border border-border-default bg-surface-selected text-label-sm text-content-primary">
+          <span className="flex size-control-height-inline shrink-0 items-center justify-center rounded-full border border-border-default bg-surface-selected text-label-sm leading-none text-content-primary">
             {userInitials(userName)}
           </span>
           <Typography
             as="span"
-            className="min-w-0 flex-1 truncate text-content-primary"
+            className="min-w-0 flex-1 truncate leading-none text-content-primary"
             variant="label-sm"
           >
             {userName}

@@ -32,7 +32,7 @@ export type {
   AppWorkspaceShare,
   AppWorkspaceSplit,
 } from './workspace/workspaceSizing';
-export { APP_SHELL_GAP } from './workspace/workspaceSizing';
+export { APP_NAVIGATION_INLINE_PADDING, APP_SHELL_GAP } from './workspace/workspaceSizing';
 export * from './floating';
 export type {
   AppContentContainerSize,

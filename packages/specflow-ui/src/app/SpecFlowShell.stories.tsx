@@ -210,6 +210,19 @@ export const FigmaCapture: Story = {
     if (footerPaddingBottom < 24) {
       throw new Error('Desktop account footer should retain at least 24px bottom padding.');
     }
+
+    const navigation = canvasElement.querySelector<HTMLElement>(
+      '[data-app-shell-region="navigation"]',
+    );
+    if (!navigation) throw new Error('Desktop application shell navigation must be present.');
+    const visibleBottomGap =
+      navigation.getBoundingClientRect().bottom - accountTrigger.getBoundingClientRect().bottom;
+    if (visibleBottomGap < 20) {
+      throw new Error(
+        `Desktop account trigger should retain visible bottom space; received ${visibleBottomGap}px.`,
+      );
+    }
+
     if (getComputedStyle(accountTrigger).alignItems !== 'center') {
       throw new Error('Account avatar, label, and chevron must remain vertically centered.');
     }

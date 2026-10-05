@@ -29,12 +29,15 @@ describe('LoginScreen', () => {
     );
 
     const rootTag = openingTagFor(html, 'data-auth-layout="root"');
+    const bodyTag = openingTagFor(html, 'data-auth-layout="body"');
+    const selectorTag = openingTagFor(html, 'data-auth-layout="language-selector"');
     const surfaceTag = openingTagFor(html, 'data-auth-layout="surface"');
 
     expect(rootTag).toContain('bg-app-base');
-    expect(rootTag).toContain('items-center');
-    expect(rootTag).toContain('justify-center');
-    expect(rootTag).not.toContain('items-start');
+    expect(rootTag).toContain('flex-col');
+    expect(selectorTag).toContain('justify-end');
+    expect(bodyTag).toContain('items-center');
+    expect(bodyTag).toContain('justify-center');
     expect(surfaceTag).toContain('workspace-surface-material');
     expect(surfaceTag).toContain('rounded-surface');
     expect(surfaceTag).toContain('border-workspace-edge');

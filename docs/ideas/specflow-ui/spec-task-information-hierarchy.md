@@ -986,8 +986,9 @@ Keep:
 - last/high-value activity where useful.
 
 One canonical queue row per Specification. The whole row/identity always opens the Specification.
-Concrete signal controls may explicitly open a Task or issue target; aggregate signals never invent a
-representative Task.
+Ordinary status/reason prose in that row is non-interactive. Concrete Task, Session, evidence, and
+workflow context becomes explicit after entering the Specification; the overview never invents a
+representative Task or deep-links directly from dynamic summary state.
 
 Do not expose raw gates, attempt history, full findings, tool details, or raw diffs.
 

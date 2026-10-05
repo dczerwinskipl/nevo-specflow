@@ -22,13 +22,16 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   play: ({ canvasElement }) => {
-    const surface = canvasElement.querySelector<HTMLElement>('[data-auth-layout="surface"]');
-    const desktopSelector = canvasElement.querySelector<HTMLElement>(
-      '[data-auth-layout="desktop-language-selector"]',
+    const surface = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="surface"]');
+    const desktopHeader = canvasElement.querySelector<HTMLElement>(
+      '[data-standalone-shell-region="desktop-header"]',
     );
-    const root = canvasElement.querySelector<HTMLElement>('[data-auth-layout="root"]');
-    if (!surface || !desktopSelector || !root || !surface.contains(desktopSelector)) {
-      throw new Error('Desktop recovery language selection must stay inside the auth surface.');
+    const root = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="root"]');
+    if (!surface || !desktopHeader || !root || !surface.contains(desktopHeader)) {
+      throw new Error('Desktop recovery header must stay inside the standalone surface.');
+    }
+    if (!desktopHeader.querySelector('[aria-label="Change language"]')) {
+      throw new Error('Desktop recovery header must expose the product language action.');
     }
 
     const rootRect = root.getBoundingClientRect();
@@ -63,13 +66,13 @@ export const Mobile: Story = {
   parameters: { viewport: { defaultViewport: 'mobile1' } },
   play: ({ canvasElement }) => {
     const mobileHeader = canvasElement.querySelector<HTMLElement>(
-      '[data-auth-layout="mobile-header"]',
+      '[data-standalone-shell-region="mobile-header"]',
     );
-    const mobileSelector = canvasElement.querySelector<HTMLElement>(
-      '[data-auth-layout="mobile-language-selector"]',
+    const mobileSelector = mobileHeader?.querySelector<HTMLElement>(
+      '[aria-label="Change language"]',
     );
-    const surface = canvasElement.querySelector<HTMLElement>('[data-auth-layout="surface"]');
-    const root = canvasElement.querySelector<HTMLElement>('[data-auth-layout="root"]');
+    const surface = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="surface"]');
+    const root = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="root"]');
     if (!mobileHeader || !mobileSelector || !surface || !root) {
       throw new Error('Standalone recovery layout regions must be present.');
     }

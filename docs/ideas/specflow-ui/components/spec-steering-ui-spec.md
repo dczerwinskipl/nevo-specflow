@@ -178,7 +178,8 @@ interface ActiveSpecListRowModel {
 }
 
 type ArchiveSpecHistorySummary =
-  { kind: 'completed'; completedAt: string } | { kind: 'archived'; archivedAt: string };
+  | { kind: 'completed'; completedAt: string }
+  | { kind: 'archived'; archivedAt?: string };
 
 interface ArchiveSpecListRowModel {
   id: string;
@@ -515,11 +516,16 @@ The Archive mapper uses deterministic history precedence:
    `{ kind: 'completed', completedAt }`;
 2. otherwise, if authoritative `archivedAt` exists, emit
    `{ kind: 'archived', archivedAt }`;
-3. Archive collection membership by itself is not evidence of completion and MUST NOT be converted to
-   `kind: 'completed'`.
+3. otherwise, if the item belongs to the Archive collection, emit `{ kind: 'archived' }`.
 
-When both timestamps exist, completion wins because it describes the stronger historical lifecycle
-fact while Archive membership remains a collection/storage distinction.
+Archive membership by itself is evidence only of Archive membership. It MUST NOT be converted to
+`kind: 'completed'`, and the mapper MUST NOT synthesize a timestamp from the current time,
+`updatedAt`, last activity, or another unrelated field.
+
+When both lifecycle timestamps exist, completion wins because it describes the stronger historical
+lifecycle fact while Archive membership remains a collection/storage distinction. An archived item
+without an authoritative lifecycle timestamp renders neutral historical copy such as `Archived`
+without a date.
 
 Default:
 
@@ -694,6 +700,37 @@ Mapper result:
 
 The later `archivedAt` does not replace authoritative completion semantics.
 
+### SS-11 — archived source without lifecycle timestamp
+
+Source:
+
+```ts
+{
+  id: 'spec-x',
+  title: 'Legacy imported specification'
+}
+```
+
+Archive membership maps to:
+
+```ts
+{
+  id: 'spec-x',
+  title: 'Legacy imported specification',
+  history: { kind: 'archived' }
+}
+```
+
+Rendered row:
+
+```text
+Legacy imported specification
+Archived
+```
+
+No date is synthesized from the current time, `updatedAt`, last activity, or another unrelated
+field.
+
 ## 12. Hover, focus, disclosure, and optional future selection
 
 The whole row has one hover/focus treatment.
@@ -708,13 +745,16 @@ DOM guidance below remains conditional on such a product contract.
 Group disclosure is a real local interaction, not decorative iconography:
 
 - every rendered group starts expanded on first mount;
-- the gutter chevron is a semantic button that toggles only that group's rows;
-- the button exposes `aria-expanded` and an accessible name such as
+- when Search is empty, the gutter chevron is a semantic button that toggles only that group's rows;
+- in normal disclosure mode, the button exposes `aria-expanded` and an accessible name such as
   "Collapse Requires attention group" / "Expand Requires attention group";
-- native button keyboard behavior applies, including Enter/Space activation and visible focus;
+- in normal disclosure mode, native button keyboard behavior applies, including Enter/Space
+  activation and visible focus;
 - collapsed/expanded state is local presentation state, is not encoded in the URL or persisted to
   project settings, and is preserved only while the Specs Overview remains mounted;
-- collapsing a group does not change its count, ordering, underlying projection, or workflow state.
+- collapsing a group does not change its count, ordering, underlying projection, or workflow state;
+- the Search-specific forced-expanded mode below temporarily overrides toggling without mutating the
+  saved normal disclosure state.
 
 A small disclosure chevron (and any future selection control) may have a larger invisible hit target,
 but the visible gutter width stays stable.
@@ -728,15 +768,24 @@ For Active:
 
 - `SpecListGroupModel.count` is the number of rows matching the current collection/filter in that
   group; collapse state never changes the count;
+- when Search is empty, disclosure follows the normal toggle behavior above;
 - a **non-empty Search query** activates filtered-disclosure behavior;
-- while that query is non-empty, groups with zero matches are omitted and groups containing matches
-  are temporarily expanded so every result is discoverable;
+- while that query is non-empty, groups with zero matches are omitted and every group containing at
+  least one match is **forced expanded** so no matching result can be hidden;
+- while forced expansion is active, the visible disclosure control remains present for spatial
+  consistency but is non-toggleable: expose `aria-expanded="true"` and `aria-disabled="true"`,
+  and provide an accessible name that explains the temporary state, for example
+  "Requires attention group expanded while search is active";
+- pointer activation, Enter, and Space on that temporarily disabled disclosure control MUST NOT change
+  row visibility or mutate any disclosure state;
 - the empty -> non-empty query transition snapshots the user's current local disclosure state without
   overwriting it;
-- changing one non-empty query to another recomputes visible rows/counts and temporary expansion, but
-  does not mutate that pre-search disclosure snapshot;
-- clearing Search back to an empty query restores the user's pre-search expanded/collapsed choices
-  while the screen remains mounted;
+- activating the disabled control while Search is non-empty MUST NOT mutate that pre-search snapshot;
+- changing one non-empty query to another recomputes visible rows/counts and forced expansion, but
+  does not mutate the pre-search snapshot;
+- clearing Search back to an empty query removes the temporary disabled state and restores the exact
+  expanded/collapsed choices captured on the empty -> non-empty transition while the screen remains
+  mounted;
 - a no-match result is a filtered empty state, not an empty Active collection.
 
 Archive has no Active semantic groups/disclosure. Search simply filters bounded
@@ -804,6 +853,7 @@ spec-steering/remediation-available
 spec-steering/idle
 spec-steering/archive-row
 spec-steering/archive-completed-and-archived
+spec-steering/archive-without-lifecycle-timestamp
 spec-steering/long-title
 spec-steering/max-trailing-metadata
 spec-steering/multiple-pull-requests
@@ -819,9 +869,12 @@ spec-steering/empty-active
 The concurrent-signals story must prove that a rich source projection still renders a bounded
 secondary line rather than exposing all source details. The search/disclosure story starts with a
 collapsed group, activates Search for a matching row, proves forced expansion, proves that the visible
-disclosure control is `aria-disabled` and cannot collapse the matching result, then clears Search and
-proves exact restoration of the pre-search local disclosure state. The Archive precedence story must
-prove that `completedAt` wins when both authoritative completion and archive timestamps exist.
+disclosure control exposes `aria-expanded="true"` + `aria-disabled="true"` and cannot collapse the
+matching result by pointer, Enter, or Space, changes to another non-empty query without mutating the
+snapshot, then clears Search and proves exact restoration of the pre-search local disclosure state.
+Archive stories must prove both that `completedAt` wins when both authoritative lifecycle timestamps
+exist and that Archive membership without either timestamp maps to neutral `Archived` with no
+synthesized date.
 
 ## 18. Acceptance criteria
 
@@ -846,14 +899,15 @@ prove that `completedAt` wins when both authoritative completion and archive tim
     aggregate metadata, and visible tags are capped at two.
 12. Ultra-wide layout uses a full-width row surface with one bounded information rail, preventing a large dead zone between title and trailing metadata.
 13. Group spacing is visually stronger than row spacing: `groupGap > rowGap`.
-14. Group chevrons are real disclosure buttons: groups start expanded, expose accessible expanded
-    state, and preserve local collapse state only while the screen remains mounted.
-15. Search counts only filtered visible rows, omits zero-match groups, forces matching groups
-    expanded, makes their visible disclosure control non-toggleable/accessibly disabled, and restores
-    the exact pre-search disclosure snapshot after Search clears.
+14. Group chevrons are real disclosure buttons: with empty Search they toggle local state normally;
+    with non-empty Search, matching groups are forced expanded and their visible disclosure controls
+    are accessibly disabled/non-toggleable without mutating the saved normal disclosure state.
+15. Search counts only filtered visible rows, omits zero-match groups, and restores the exact
+    pre-search disclosure snapshot after Search clears.
 16. Batch execution remains batch-shaped and never invents a representative Task.
 17. Archive uses its historical bounded row model rather than Active steering state; authoritative
-    `completedAt` takes precedence over `archivedAt`, and Archive membership alone never implies
-    completion.
+    `completedAt` takes precedence over `archivedAt`, Archive membership alone never implies
+    completion, and an archived item with no authoritative lifecycle timestamp renders without a
+    synthesized date.
 18. Rows remain compact, cardless, scannable, and resilient at Wide, Compact, Narrow, long-title, and
     dense-metadata fixtures.

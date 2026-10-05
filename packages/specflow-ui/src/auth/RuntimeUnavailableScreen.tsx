@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import type { AuthStore } from './store';
 import { safeReturnTo } from './LoginScreen';
-import { StandaloneAuthHeader, StandaloneAuthSurface } from './StandaloneAuthLayout';
+import { SpecFlowStandaloneShell, StandaloneScreenHeader } from '../app/StandaloneScreenLayout';
 
 export function RuntimeUnavailableScreen({
   auth,
@@ -38,9 +38,9 @@ export function RuntimeUnavailableView({
   const { t } = useTranslation();
 
   return (
-    <StandaloneAuthSurface>
+    <SpecFlowStandaloneShell>
       <div className="grid w-full gap-8">
-        <StandaloneAuthHeader
+        <StandaloneScreenHeader
           description={t('auth.runtimeUnavailable.description')}
           title={t('auth.runtimeUnavailable.title')}
         />
@@ -48,6 +48,6 @@ export function RuntimeUnavailableView({
           {retrying ? t('common.retrying') : t('common.retry')}
         </Button>
       </div>
-    </StandaloneAuthSurface>
+    </SpecFlowStandaloneShell>
   );
 }

@@ -36,10 +36,6 @@ export const Polish: Story = {
 
 export const Mobile: Story = {
   parameters: { viewport: { defaultViewport: 'mobile1' } },
-};
-
-export const SmallMobile: Story = {
-  parameters: { viewport: { defaultViewport: 'mobile1' } },
   play: ({ canvasElement }) => {
     const selector = canvasElement.querySelector<HTMLElement>(
       '[data-auth-layout="language-selector"]',

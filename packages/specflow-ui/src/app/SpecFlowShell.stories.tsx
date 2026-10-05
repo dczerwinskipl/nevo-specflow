@@ -11,7 +11,7 @@ import type { AuthApi } from '../auth/api';
 import { createAuthStore } from '../auth/store';
 import { createSpecFlowRouter } from './router';
 
-type AuthMode = 'local' | 'required' | 'authenticated' | 'unavailable';
+type AuthMode = 'local' | 'required' | 'authenticated' | 'authenticated-refresh-failure' | 'unavailable';
 
 function RoutedApplication({
   authMode = 'local',
@@ -69,6 +69,38 @@ export const AuthenticatedAccount: Story = {
       throw new Error('Account menu should expose both language choices as radio items.');
     }
     await userEvent.keyboard('{Escape}');
+  },
+};
+
+export const LogoutSuccess: Story = {
+  args: { authMode: 'authenticated' },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'Open user menu for Demo' }));
+    const signOut = await waitFor(
+      () =>
+        [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) =>
+          item.textContent?.includes('Sign out'),
+        ) ?? null,
+      'Authenticated account menu should expose sign out.',
+    );
+    await userEvent.click(signOut);
+    await canvas.findByRole('heading', { name: 'Welcome back' });
+  },
+};
+
+export const LogoutRefreshFailure: Story = {
+  args: { authMode: 'authenticated-refresh-failure' },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'Open user menu for Demo' }));
+    const signOut = await waitFor(
+      () =>
+        [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) =>
+          item.textContent?.includes('Sign out'),
+        ) ?? null,
+      'Authenticated account menu should expose sign out.',
+    );
+    await userEvent.click(signOut);
+    await canvas.findByRole('heading', { name: 'Unable to connect' });
   },
 };
 
@@ -156,35 +188,48 @@ function storyAuthStore(mode: AuthMode) {
 
   const session: AuthSessionResponse =
     mode === 'required'
-      ? {
-          authenticationRequired: true,
-          authenticated: false,
-          loginMethods: {
-            password: { enabled: true },
-            oidc: [{ id: 'company', name: 'Company SSO' }],
-          },
-        }
-      : mode === 'authenticated'
-        ? {
-            authenticationRequired: true,
-            authenticated: true,
-            user: { id: 'demo', name: 'Demo' },
-            authenticatedWith: { kind: 'password' },
-            loginMethods: { password: { enabled: true }, oidc: [] },
-          }
-        : {
-            authenticationRequired: false,
-            authenticated: false,
-            user: { id: 'local-user', name: 'Local User' },
-            loginMethods: { password: { enabled: false }, oidc: [] },
-          };
+      ? loginRequiredSession
+      : mode === 'authenticated' || mode === 'authenticated-refresh-failure'
+        ? authenticatedSession
+        : localSession;
 
-  return createAuthStore(fakeApi(), session);
+  return createAuthStore(
+    fakeApi(
+      mode === 'authenticated-refresh-failure'
+        ? { getSession: () => Promise.reject(new Error('Runtime unavailable after logout')) }
+        : undefined,
+    ),
+    session,
+  );
 }
+
+const loginRequiredSession: AuthSessionResponse = {
+  authenticationRequired: true,
+  authenticated: false,
+  loginMethods: {
+    password: { enabled: true },
+    oidc: [{ id: 'company', name: 'Company SSO' }],
+  },
+};
+
+const authenticatedSession: AuthSessionResponse = {
+  authenticationRequired: true,
+  authenticated: true,
+  user: { id: 'demo', name: 'Demo' },
+  authenticatedWith: { kind: 'password' },
+  loginMethods: { password: { enabled: true }, oidc: [] },
+};
+
+const localSession: AuthSessionResponse = {
+  authenticationRequired: false,
+  authenticated: false,
+  user: { id: 'local-user', name: 'Local User' },
+  loginMethods: { password: { enabled: false }, oidc: [] },
+};
 
 function fakeApi(overrides: Partial<AuthApi> = {}): AuthApi {
   return {
-    getSession: () => Promise.reject(new Error('Story should use its initial session')),
+    getSession: () => Promise.resolve(loginRequiredSession),
     loginWithPassword: () => Promise.reject(new Error('not configured')),
     startOidc: () => Promise.reject(new Error('not configured')),
     logout: () => Promise.resolve(),

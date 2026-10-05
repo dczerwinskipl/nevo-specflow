@@ -93,7 +93,7 @@ surfaces without becoming global navigation items.
 | ------------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
 | Specs Overview            | global Specs / default product entry                                                                           | Primary                                                   |
 | Specification             | Specification row/identity or stable route                                                                     | Primary                                                   |
-| Task Detail               | Task row or explicit Task-specific signal                                                                      | Secondary on split layouts; pushed local detail on narrow |
+| Task Detail               | Task row from Specification or explicit Task target from another owning context                                | Secondary on split layouts; pushed local detail on narrow |
 | Floating Session          | existing-Session conversation target on Wide only                                                              | floating presentation outside AppWorkspace stack          |
 | Full Session              | existing Session target on Compact/Narrow; explicit full-session action; Floating Session header; stable route | main Primary + optional Secondary                         |
 | Session Context           | Full Session Context action/default split entry                                                                | Secondary or pushed local detail                          |
@@ -102,17 +102,20 @@ surfaces without becoming global navigation items.
 
 The table defines reachability, not exact route strings.
 
-A product row/identity keeps a stable neutral destination. Dynamic state must not silently change the
-meaning of the row itself. More specific destinations are exposed through explicit signal/actions.
+A product row/identity keeps a stable neutral destination. For Specs Overview specifically, the
+canonical Spec row always enters the owning Specification; dynamic summary state does not introduce
+Task/issue deep links inside that row.
 
 ## 5. Specification and Task navigation
 
-A Specification row/identity always opens the Specification Primary. It must not redirect the user
-to whichever Task/issue happens to be highest priority at that moment.
+A Specs Overview row always opens the Specification Primary. It must not redirect the user to
+whichever Task/issue happens to be highest priority at that moment, and ordinary status/reason prose
+inside that row is non-interactive.
 
-A concrete Task signal may expose a separate explicit target to Task Detail. When several issues are
-aggregated, the UI opens the Specification/attention context rather than guessing which individual
-issue the user intended to resolve.
+After entering the Specification, its Task collection and attention/current-work context make the
+responsible Task(s) explicit. Selecting a Task row there opens Task Detail. Other owning contexts
+such as Session Context may also expose an explicit Task target, but Specs Overview does not bypass
+the Specification by deep-linking from dynamic summary state.
 
 On a split-capable layout:
 

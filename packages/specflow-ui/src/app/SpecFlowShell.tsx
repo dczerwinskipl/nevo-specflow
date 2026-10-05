@@ -90,7 +90,7 @@ function ProductNavigation({
       <div
         className="shrink-0 pt-4"
         data-product-navigation-footer="true"
-        style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}
+        style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
         {...designLayerMetadata({ layer: 'account-footer' })}
       >
         {state.status === 'ready' ? (

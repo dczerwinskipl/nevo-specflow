@@ -84,7 +84,7 @@ function ProductNavigation({
       <Separator />
 
       <div
-        className="shrink-0 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2"
+        className="shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2"
         {...designLayerMetadata({ layer: 'account-footer' })}
       >
         {state.status === 'ready' ? (

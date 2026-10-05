@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { DesignMetadataBoundary } from '@nevo/figma-capture/metadata';
 import { Typography, StandaloneShell } from '@nevo/ui';
 
 import { defaultNevoBrand, NevoBrandLogo } from '../brand';
@@ -17,25 +18,27 @@ export function SpecFlowStandaloneShell({
   readonly surfaceAttributes?: DesignAttributes;
 }) {
   return (
-    <StandaloneShell
-      {...rootAttributes}
-      brandPrimary={defaultNevoBrand.coreColor}
-      desktopHeader={
-        <>
-          <NevoBrandLogo brand="nevo" product="SpecFlow" size="lg" type="horizontal" />
-          <StandaloneLocaleMenu />
-        </>
-      }
-      mobileHeader={
-        <>
-          <NevoBrandLogo brand="nevo" product="SpecFlow" size="sm" type="horizontal" />
-          <StandaloneLocaleMenu />
-        </>
-      }
-      surfaceProps={surfaceAttributes}
-    >
-      {children}
-    </StandaloneShell>
+    <DesignMetadataBoundary excludeComponents={['StandaloneShell']}>
+      <StandaloneShell
+        {...rootAttributes}
+        brandPrimary={defaultNevoBrand.coreColor}
+        desktopHeader={
+          <>
+            <NevoBrandLogo brand="nevo" product="SpecFlow" size="lg" type="horizontal" />
+            <StandaloneLocaleMenu />
+          </>
+        }
+        mobileHeader={
+          <>
+            <NevoBrandLogo brand="nevo" product="SpecFlow" size="sm" type="horizontal" />
+            <StandaloneLocaleMenu />
+          </>
+        }
+        surfaceProps={surfaceAttributes}
+      >
+        {children}
+      </StandaloneShell>
+    </DesignMetadataBoundary>
   );
 }
 

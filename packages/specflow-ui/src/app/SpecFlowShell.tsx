@@ -63,7 +63,7 @@ function ProductNavigation({
 
   return (
     <div
-      className="flex h-full min-h-0 flex-col"
+      className="flex min-h-0 flex-1 flex-col"
       style={{ paddingInline: APP_NAVIGATION_INLINE_PADDING }}
       {...designLayerMetadata({ layer: 'product-navigation' })}
     >

@@ -285,6 +285,36 @@ export const RadioItemStateCapture: Story = {
       <MenuRadioItemMatrix />
     </DesignCaptureProvider>
   ),
+  play: async ({ canvasElement }) => {
+    const documentRoot = canvasElement.ownerDocument;
+    const checked = await waitFor(
+      () => documentRoot.querySelector<HTMLElement>('[data-design-source-id="checked"]') ?? null,
+      'Checked menu radio item should render for design capture.',
+    );
+    const unchecked = documentRoot.querySelector<HTMLElement>(
+      '[data-design-source-id="unchecked"]',
+    );
+    const disabled = documentRoot.querySelector<HTMLElement>('[data-design-source-id="disabled"]');
+
+    assert(
+      checked.dataset.state === 'checked',
+      'Radix should mark the selected radio item checked.',
+    );
+    assert(
+      checked.dataset.designPropState === 'checked',
+      'Design metadata should match the checked Radix state.',
+    );
+    assert(unchecked?.dataset.state === 'unchecked', 'Radix should mark the other item unchecked.');
+    assert(
+      unchecked?.dataset.designPropState === 'unchecked',
+      'Design metadata should match the unchecked Radix state.',
+    );
+    assert(disabled?.hasAttribute('data-disabled'), 'Disabled radio item should remain disabled.');
+    assert(
+      disabled?.dataset.designPropState === 'disabled',
+      'Design metadata should preserve the disabled radio state.',
+    );
+  },
   tags: ['!dev', '!autodocs'],
   parameters: {
     controls: { disable: true },

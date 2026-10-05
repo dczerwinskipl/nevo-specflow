@@ -12,11 +12,7 @@ import { createAuthStore } from '../auth/store';
 import { createSpecFlowRouter } from './router';
 
 type AuthMode =
-  | 'local'
-  | 'required'
-  | 'authenticated'
-  | 'authenticated-refresh-failure'
-  | 'unavailable';
+  'local' | 'required' | 'authenticated' | 'authenticated-refresh-failure' | 'unavailable';
 
 function RoutedApplication({
   authMode = 'local',

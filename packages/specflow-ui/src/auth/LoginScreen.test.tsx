@@ -36,19 +36,14 @@ describe('LoginScreen', () => {
     const surfaceTag = openingTagFor(html, 'data-auth-layout="surface"');
 
     expect(rootTag).toContain('bg-app-base');
-    expect(rootTag).toContain('flex-col');
-    expect(mobileHeaderTag).toContain('sm:hidden');
-    expect(mobileHeaderTag).toContain('h-[calc(3.5rem+env(safe-area-inset-top))]');
-    expect(mobileSelectorTag).toContain('ml-auto');
-    expect(desktopHeaderTag).toContain('sm:flex');
-    expect(desktopHeaderTag).toContain('justify-between');
-    expect(bodyTag).toContain('items-center');
-    expect(bodyTag).toContain('justify-center');
+    expect(rootTag).toContain('standalone-auth-root');
+    expect(mobileHeaderTag).toContain('standalone-auth-mobile-header');
+    expect(mobileSelectorTag).toContain('standalone-auth-mobile-language');
+    expect(desktopHeaderTag).toContain('standalone-auth-desktop-header');
+    expect(bodyTag).toContain('standalone-auth-body');
     expect(surfaceTag).toContain('workspace-surface-material');
-    expect(surfaceTag).toContain('rounded-t-surface');
-    expect(surfaceTag).toContain('sm:rounded-surface');
+    expect(surfaceTag).toContain('standalone-auth-surface');
     expect(surfaceTag).toContain('border-workspace-edge');
-    expect(surfaceTag).toContain('sm:p-8');
 
     expect(html).toContain('Welcome back');
     expect(html).toContain('Access your SpecFlow workspace.');

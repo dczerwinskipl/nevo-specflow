@@ -8,13 +8,13 @@ describe('RuntimeUnavailableScreen', () => {
     const html = renderToStaticMarkup(<RuntimeUnavailableView />);
 
     expect(html).toContain('bg-app-base');
-    expect(html).toContain('standalone-auth-root');
-    expect(html).toContain('standalone-auth-mobile-header');
-    expect(html).toContain('standalone-auth-body');
+    expect(html).toContain('standalone-shell-root');
+    expect(html).toContain('standalone-shell-mobile-header');
+    expect(html).toContain('standalone-shell-body');
     expect(html).toContain('workspace-surface-material');
-    expect(html).toContain('standalone-auth-surface');
+    expect(html).toContain('standalone-shell-surface');
     expect(html).toContain('border-workspace-edge');
-    expect(html).toContain('standalone-auth-desktop-header');
+    expect(html).toContain('standalone-shell-desktop-header');
     expect(html).toContain('Unable to connect');
     expect(html).toContain('SpecFlow Runtime did not respond.');
     expect(html).toContain('Retry');

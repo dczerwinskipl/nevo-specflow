@@ -122,22 +122,24 @@ Avoid miniature detail screens inside rows.
 │               │ [ Active ] [ Archive ]                                     │
 │ Specs         │                                                            │
 │               │ ▾  Requires attention  2                                   │
-│ Settings      │ □  UI-1234  Deterministic admission          PR #27  Auth   │
+│ Settings      │    UI-1234  Deterministic admission          PR #27  Auth   │
 │               │              5 / 9 tasks · Owner decision required           │
-│               │ □  UI-1235  Runtime authorization                   Runtime │
+│               │    UI-1235  Runtime authorization                   Runtime │
 │               │              3 / 7 tasks · Agent input required              │
 │               │                                                            │
 │               │ ▾  Ready  1                                                │
-│               │ □  UI-1236  Localization preferences                        │
+│               │    UI-1236  Localization preferences                        │
 │               │              0 / 5 tasks · Ready to start                   │
 │               │                                                            │
 │               │ ▾  In progress  1                                          │
-│               │ □  RT-104   Provider diagnostics             PR #31         │
+│               │    RT-104   Provider diagnostics             PR #31         │
 │               │              2 / 8 tasks · Reviewer working on 3 tasks      │
 └───────────────┴────────────────────────────────────────────────────────────┘
 ```
 
-The same Spec appears once in the canonical list. Rows are borderless/list-first.
+The same Spec appears once in the canonical list. Rows are borderless/list-first. The empty space
+before each Spec identity is the same fixed gutter used by the group disclosure control; current
+Specs Overview has no Spec-selection checkbox or bulk action.
 
 ## 8. Screen anatomy
 
@@ -209,6 +211,11 @@ Active/Archive changes collection state, not workflow state.
 Search narrows the selected collection. Local filtering is fine for a bounded loaded set; server
 search follows shared debounce/cancellation rules when needed.
 
+The detailed Search × Active-group count × disclosure behavior is owned by
+[Spec steering UI spec](../components/spec-steering-ui-spec.md#search-group-counts-and-disclosure).
+In particular, a matching result must never remain hidden inside a previously collapsed group, and
+group counts describe rows in the current filtered view rather than the unfiltered collection.
+
 ## 11. States
 
 - loading: preserve header/filter geometry, restrained row skeletons;
@@ -276,7 +283,7 @@ Do not force the work queue into DataTable unless final content proves genuinely
 - titles: \`text-content-primary\`;
 - signal explanation: \`text-content-secondary\`;
 - tertiary metadata: \`text-content-muted\`;
-- row hover/selected: shared interaction tokens;
+- row hover/focus: shared interaction tokens;
 - dividers: \`border-divider\` / \`border-border-subtle\` only when whitespace is insufficient;
 - attention: semantic warning/info/error treatment according to actual meaning, not decorative color;
 - ready: visible but calmer than requires-attention;
@@ -309,7 +316,8 @@ Do not force the work queue into DataTable unless final content proves genuinely
 - ultra-wide layout;
 - Compact wrapping;
 - Narrow layout;
-- bulk selection gutter alignment;
+- Active search with a matching previously-collapsed group;
+- Active search with no matches;
 - Active empty;
 - Archive populated;
 - Archive with many Specs + search.
@@ -325,6 +333,10 @@ Do not force the work queue into DataTable unless final content proves genuinely
 - Task IDs and raw signal lists do not appear in the canonical row;
 - group header and row content share one stable content axis beside a fixed gutter, and any group
   disclosure control follows the steering contract rather than acting as decorative iconography;
+- current Specs Overview does not expose unsupported Spec-selection checkboxes or bulk actions;
+- Search cannot hide matches inside collapsed groups and uses filtered group counts as defined by the
+  steering contract;
+- Archive uses bounded historical row semantics rather than Active steering state;
 - aggregate summaries never invent a representative Task;
 - batch remains batch-shaped;
 - no current-work language is derived from historical Session association;

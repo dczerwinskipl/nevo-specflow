@@ -76,11 +76,14 @@ describe('LoginScreen', () => {
 
     expect(rootTag).toContain('data-design-component="SpecFlowLoginScreen"');
     expect(rootTag).toContain('data-design-capture="true"');
+    expect(rootTag).not.toContain('data-design-component="StandaloneShell"');
     expect(rootTag).not.toContain('data-design-slot="content"');
     expect(rootTag).toContain('bg-app-base');
 
     expect(surfaceTag).toContain('data-design-slot="content"');
     expect(surfaceTag).toContain('workspace-surface-material');
+    expect(surfaceTag).not.toContain('data-design-component="WorkspaceSurface"');
+    expect(html).not.toContain('data-design-component="StandaloneShell"');
     expect(html.indexOf(rootMarker)).toBeLessThan(html.indexOf(surfaceMarker));
   });
 

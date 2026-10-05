@@ -101,13 +101,16 @@ Per Spec item:
 
 1. identity/title — the row's primary target;
 2. compact trailing metadata such as one linked PR and at most two tags;
-3. one bounded secondary line with progress plus an aggregate human-facing state summary.
+3. one bounded secondary line with progress, one dominant aggregate state summary, and at most one
+   materially useful concurrent qualifier.
 
 Attention priority should favor facts that prove the human is blocking useful progress. A live
 Session interaction waiting for response is normally stronger than a passive ready-to-start action.
 
-Do not duplicate one Spec across several stacked list groups. Summary counters may overlap because
-they are aggregates, not the canonical work queue.
+Do not duplicate one Spec across several stacked list groups. One dominant semantic group owns the
+row. A lower-priority concurrent state may contribute at most one bounded, non-interactive qualifier
+when omitting it would materially misrepresent what is happening; raw signal collections and Task IDs
+remain outside the overview row.
 
 Avoid miniature detail screens inside rows.
 

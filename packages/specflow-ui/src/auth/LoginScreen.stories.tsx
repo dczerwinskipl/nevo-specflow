@@ -116,9 +116,20 @@ export const PasswordAndOidc: Story = {
       surface.contains(desktopSelector),
       'Desktop language selection must stay inside the centered auth surface.',
     );
+    const root = canvasElement.querySelector<HTMLElement>('[data-auth-layout="root"]');
+    assert(root, 'Desktop auth root must be present.');
+
+    const rootRect = root.getBoundingClientRect();
+    const surfaceRect = surface.getBoundingClientRect();
     assert(
-      surface.classList.contains('sm:p-8'),
-      'Desktop auth surface must retain the standard responsive panel padding.',
+      surfaceRect.width <= 449,
+      `Desktop auth surface should remain compact; received ${surfaceRect.width}px.`,
+    );
+    assert(
+      Math.abs(
+        surfaceRect.left + surfaceRect.width / 2 - (rootRect.left + rootRect.width / 2),
+      ) <= 2,
+      'Desktop auth surface must remain horizontally centered.',
     );
   },
 };

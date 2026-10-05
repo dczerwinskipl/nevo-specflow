@@ -45,8 +45,8 @@ export function StandaloneShell({
       <AppBackground
         brandPrimary={brandPrimary}
         className={cn('standalone-shell-root', className)}
-        {...capture}
         {...props}
+        {...capture}
         data-standalone-shell-region="root"
       >
         {mobileHeader ? (

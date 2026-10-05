@@ -2,7 +2,7 @@ import { useMemo, useSyncExternalStore, type PropsWithChildren } from 'react';
 
 import { designLayerMetadata, designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import {
-  APP_SHELL_GAP,
+  APP_NAVIGATION_INLINE_PADDING,
   AppShell,
   Separator,
   SideNavigation,
@@ -64,7 +64,7 @@ function ProductNavigation({
   return (
     <div
       className="flex h-full min-h-0 flex-col"
-      style={{ paddingInline: APP_SHELL_GAP }}
+      style={{ paddingInline: APP_NAVIGATION_INLINE_PADDING }}
       {...designLayerMetadata({ layer: 'product-navigation' })}
     >
       <div className="shrink-0 py-4 pr-12" {...designLayerMetadata({ layer: 'brand' })}>
@@ -84,7 +84,7 @@ function ProductNavigation({
       <Separator />
 
       <div
-        className="shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2"
+        className="shrink-0 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4"
         {...designLayerMetadata({ layer: 'account-footer' })}
       >
         {state.status === 'ready' ? (

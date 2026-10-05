@@ -1,6 +1,9 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
+  createContext,
   forwardRef,
+  useContext,
+  useState,
   type ComponentPropsWithoutRef,
   type ComponentRef,
   type ReactNode,
@@ -20,7 +23,31 @@ import { Typography } from '../../foundations/Typography';
 export const Menu = DropdownMenu.Root;
 export const MenuTrigger = DropdownMenu.Trigger;
 export const MenuGroup = DropdownMenu.Group;
-export const MenuRadioGroup = DropdownMenu.RadioGroup;
+
+const MenuRadioValueContext = createContext<string | undefined>(undefined);
+
+export const MenuRadioGroup = forwardRef<
+  ComponentRef<typeof DropdownMenu.RadioGroup>,
+  ComponentPropsWithoutRef<typeof DropdownMenu.RadioGroup>
+>(function MenuRadioGroup({ defaultValue, onValueChange, value, ...props }, ref) {
+  const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);
+  const selectedValue = value ?? uncontrolledValue;
+
+  return (
+    <MenuRadioValueContext.Provider value={selectedValue}>
+      <DropdownMenu.RadioGroup
+        ref={ref}
+        defaultValue={defaultValue}
+        value={value}
+        onValueChange={(nextValue) => {
+          if (value === undefined) setUncontrolledValue(nextValue);
+          onValueChange?.(nextValue);
+        }}
+        {...props}
+      />
+    </MenuRadioValueContext.Provider>
+  );
+});
 
 export type MenuContentProps = ComponentPropsWithoutRef<typeof DropdownMenu.Content> & {
   container?: HTMLElement | null;
@@ -153,14 +180,25 @@ export interface MenuRadioItemProps extends Omit<
 export const MenuRadioItem = forwardRef<
   ComponentRef<typeof DropdownMenu.RadioItem>,
   MenuRadioItemProps
->(function MenuRadioItem({ children, className, ...props }, ref) {
+>(function MenuRadioItem({ children, className, disabled, value, ...props }, ref) {
+  const selectedValue = useContext(MenuRadioValueContext);
+  const capture = useDesignMetadata('MenuRadioItem', {
+    state: disabled ? 'disabled' : selectedValue === value ? 'checked' : 'unchecked',
+  });
+
   return (
     <DropdownMenu.RadioItem
       ref={ref}
       className={cn(menuItemVariants({ tone: 'neutral' }), className)}
+      disabled={disabled}
+      value={value}
       {...props}
+      {...capture}
     >
-      <span className="inline-flex size-icon-sm shrink-0 items-center justify-center">
+      <span
+        className="inline-flex size-icon-sm shrink-0 items-center justify-center"
+        {...designSlot('MenuRadioItem', 'indicator')}
+      >
         <DropdownMenu.ItemIndicator>
           <Icon name="check" size="sm" />
         </DropdownMenu.ItemIndicator>
@@ -168,6 +206,7 @@ export const MenuRadioItem = forwardRef<
       <Typography
         as="span"
         className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-current"
+        {...designSlot('MenuRadioItem', 'label')}
         variant="body-sm"
       >
         {children}

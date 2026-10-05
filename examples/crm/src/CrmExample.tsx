@@ -7,7 +7,7 @@ import {
   AppWorkspace,
   AppWorkspaceBody,
   AppWorkspaceProvider,
-  APP_SHELL_GAP,
+  APP_NAVIGATION_INLINE_PADDING,
   WorkspaceHeader,
   useAppNavigation,
   useWorkspace,
@@ -177,7 +177,7 @@ function CrmNavigation() {
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col" style={{ paddingInline: APP_SHELL_GAP }}>
+    <div className="flex h-full min-h-0 flex-col" style={{ paddingInline: APP_NAVIGATION_INLINE_PADDING }}>
       <div className="border-b border-border-subtle py-5">
         <Typography as="div" variant="title-md">
           Acme CRM

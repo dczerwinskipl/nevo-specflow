@@ -178,8 +178,7 @@ interface ActiveSpecListRowModel {
 }
 
 type ArchiveSpecHistorySummary =
-  | { kind: 'completed'; completedAt: string }
-  | { kind: 'archived'; archivedAt?: string };
+  { kind: 'completed'; completedAt: string } | { kind: 'archived'; archivedAt?: string };
 
 interface ArchiveSpecListRowModel {
   id: string;
@@ -343,10 +342,10 @@ A suitable nested information-rail grid is conceptually:
 
 ```css
 grid-template-columns:
-  max-content            /* key */
-  max-content            /* progress */
-  minmax(0, 1fr)         /* state summary / flexible title span */
-  max-content;           /* bounded trailing metadata */
+  max-content /* key */
+  max-content /* progress */
+  minmax(0, 1fr) /* state summary / flexible title span */
+  max-content; /* bounded trailing metadata */
 ```
 
 Exact widths/gaps remain token-driven, but semantic fields MUST keep their scan column across sibling

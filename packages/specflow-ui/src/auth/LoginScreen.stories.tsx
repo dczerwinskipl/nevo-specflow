@@ -60,18 +60,26 @@ function assert(condition: unknown, message: string): asserts condition {
 }
 
 function assertStandaloneAuthLayout(canvasElement: HTMLElement) {
-  const selector = canvasElement.querySelector<HTMLElement>(
-    '[data-auth-layout="language-selector"]',
+  const mobileHeader = canvasElement.querySelector<HTMLElement>('[data-auth-layout="mobile-header"]');
+  const mobileSelector = canvasElement.querySelector<HTMLElement>(
+    '[data-auth-layout="mobile-language-selector"]',
   );
   const surface = canvasElement.querySelector<HTMLElement>('[data-auth-layout="surface"]');
   const root = canvasElement.querySelector<HTMLElement>('[data-auth-layout="root"]');
-  assert(selector && surface && root, 'Standalone auth layout regions must be present.');
+  assert(
+    mobileHeader && mobileSelector && surface && root,
+    'Standalone auth layout regions must be present.',
+  );
 
-  const selectorRect = selector.getBoundingClientRect();
+  const headerRect = mobileHeader.getBoundingClientRect();
   const surfaceRect = surface.getBoundingClientRect();
   assert(
-    selectorRect.bottom <= surfaceRect.top,
-    'Locale selector must remain above the authentication surface without overlap.',
+    headerRect.bottom <= surfaceRect.top,
+    'Mobile auth header must remain above the authentication surface without overlap.',
+  );
+  assert(
+    mobileHeader.contains(mobileSelector),
+    'Mobile language selection must belong to the mobile auth header.',
   );
   assert(
     root.scrollWidth <= root.clientWidth + 1,
@@ -85,7 +93,20 @@ export const MultipleOidc: Story = { args: { loginMethods: multipleOidc } };
 export const PasswordAndSingleOidc: Story = {
   args: { loginMethods: passwordAndSingleOidc },
 };
-export const PasswordAndOidc: Story = { args: { loginMethods: mixed } };
+export const PasswordAndOidc: Story = {
+  args: { loginMethods: mixed },
+  play: ({ canvasElement }) => {
+    const surface = canvasElement.querySelector<HTMLElement>('[data-auth-layout="surface"]');
+    const desktopSelector = canvasElement.querySelector<HTMLElement>(
+      '[data-auth-layout="desktop-language-selector"]',
+    );
+    assert(surface && desktopSelector, 'Desktop auth language selector must be present.');
+    assert(
+      surface.contains(desktopSelector),
+      'Desktop language selection must stay inside the centered auth surface.',
+    );
+  },
+};
 
 export const InvalidCredentials: Story = {
   args: {
@@ -128,6 +149,10 @@ export const Mobile: Story = {
     assert(
       canvasElement.querySelectorAll('button').length >= 4,
       'Small mobile login should render both OIDC actions, password submit, and locale control.',
+    );
+    assert(
+      canvasElement.textContent?.includes('English'),
+      'Standalone locale control should expose a visible language name instead of only a code.',
     );
   },
 };

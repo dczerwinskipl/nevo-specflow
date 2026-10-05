@@ -177,7 +177,10 @@ function CrmNavigation() {
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col" style={{ paddingInline: APP_NAVIGATION_INLINE_PADDING }}>
+    <div
+      className="flex h-full min-h-0 flex-col"
+      style={{ paddingInline: APP_NAVIGATION_INLINE_PADDING }}
+    >
       <div className="border-b border-border-subtle py-5">
         <Typography as="div" variant="title-md">
           Acme CRM

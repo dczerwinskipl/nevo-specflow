@@ -136,7 +136,7 @@
   },
   "specification": {
     "title": "Specyfikacja",
-    "backToSpecs": "Wróć do Specs",
+    "backToSpecs": "Wróć do specyfikacji",
     "placeholderTitle": "Szczegóły specyfikacji nie są jeszcze zaimplementowane",
     "placeholderDescription": "Otwarta została właściwa specyfikacja. Dokumenty, zadania i sesje będą dostępne tutaj w kolejnym etapie. Nie wykonano żadnej akcji workflow.",
     "identity": "ID specyfikacji: {{id}}"

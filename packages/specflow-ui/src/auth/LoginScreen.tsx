@@ -18,7 +18,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { appI18n } from '../i18n';
-import { StandaloneAuthHeader, StandaloneAuthSurface } from './StandaloneAuthLayout';
+import { SpecFlowStandaloneShell, StandaloneScreenHeader } from '../app/StandaloneScreenLayout';
 import { authErrorCode } from './api';
 import type { AuthStore } from './store';
 
@@ -42,11 +42,11 @@ export function LoginScreen({ auth, initialError, returnTo = '/' }: LoginScreenP
 
   if (state.status !== 'ready') {
     return (
-      <StandaloneAuthSurface>
+      <SpecFlowStandaloneShell>
         <div className="flex justify-center py-12">
           <Spinner label={t('auth.loadingSignIn')} />
         </div>
-      </StandaloneAuthSurface>
+      </SpecFlowStandaloneShell>
     );
   }
 
@@ -128,12 +128,12 @@ export function LoginScreenView({
   };
 
   return (
-    <StandaloneAuthSurface
+    <SpecFlowStandaloneShell
       rootAttributes={capture}
       surfaceAttributes={designSlot('SpecFlowLoginScreen', 'content')}
     >
       <div className="grid w-full gap-8">
-        <StandaloneAuthHeader
+        <StandaloneScreenHeader
           description={t('auth.login.description')}
           title={t('auth.login.title')}
         />
@@ -214,7 +214,7 @@ export function LoginScreenView({
           </form>
         ) : null}
       </div>
-    </StandaloneAuthSurface>
+    </SpecFlowStandaloneShell>
   );
 }
 

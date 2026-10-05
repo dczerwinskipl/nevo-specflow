@@ -92,6 +92,10 @@ function assertStandaloneAuthLayout(canvasElement: HTMLElement) {
     root.scrollWidth <= root.clientWidth + 1,
     'Standalone auth layout must not introduce horizontal overflow on small screens.',
   );
+  assert(
+    root.scrollHeight <= root.clientHeight + 1,
+    'Tall mobile login must keep scrolling inside the workspace instead of growing the viewport.',
+  );
 }
 
 export const PasswordOnly: Story = { args: { loginMethods: passwordOnly } };
@@ -111,6 +115,10 @@ export const PasswordAndOidc: Story = {
     assert(
       surface.contains(desktopSelector),
       'Desktop language selection must stay inside the centered auth surface.',
+    );
+    assert(
+      Number.parseFloat(getComputedStyle(surface).paddingTop) >= 32,
+      'Desktop auth surface must retain deliberate top padding around its header.',
     );
   },
 };

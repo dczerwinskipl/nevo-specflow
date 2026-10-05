@@ -126,14 +126,16 @@ The first distinction is semantic:
    the human yet.
 3. **Working / other active** — useful progress/state without demanding a decision.
 
-A Specification should appear once in the canonical work queue. If it has concurrent signals, the row
-shows the strongest human-facing signal plus concise additional signals rather than duplicating the
-same Spec across many stacked groups. Summary counters/tiles may count the same Spec in several
-categories because they are aggregates, not navigation lists.
+A Specification should appear once in the canonical work queue. One dominant semantic group owns the
+row. If meaningful concurrent state exists, the row may show at most one bounded aggregate qualifier
+when omitting it would materially misrepresent what is happening; it does not expose raw signal
+collections or duplicate the same Spec across stacked groups. Summary counters/tiles may count the
+same Spec in several categories because they are aggregates, not navigation lists.
 
-The Specification row/identity always opens the Specification. A concrete Task/issue signal may have
-its own explicit target. An aggregate such as "3 Tasks require review" must not guess which Task the
-user wants.
+The canonical Specification row always opens the owning Specification. Ordinary status/reason prose
+inside the overview row is non-interactive. Concrete Task/Session/evidence context becomes explicit
+after entering the Specification, and an aggregate such as "3 Tasks require review" never guesses a
+representative Task.
 
 Candidate collection views remain Active and Archive.
 

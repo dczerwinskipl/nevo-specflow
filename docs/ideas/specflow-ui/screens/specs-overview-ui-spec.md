@@ -44,8 +44,8 @@ It does not own Task evidence, Session transcript, or detailed workflow inspecti
 - Notice an active Session question/permission/confirmation that is waiting on me.
 - Find ready work without confusing it with required attention.
 - See current agent work, including batch execution, without inventing one representative Task.
-- Open a Specification through a stable neutral row target.
-- Use an explicit signal target when I intentionally want to jump to a concrete Task/issue.
+- Open a Specification through one stable row target.
+- Understand the aggregate reason for a Spec's queue position without exposing Task-level navigation in the list.
 - Switch between Active and Archive collection views.
 - Create a Specification with only a title, optionally add initial description, and optionally
   continue directly into agent initialization.
@@ -54,13 +54,14 @@ It does not own Task evidence, Session transcript, or detailed workflow inspecti
 
 Global navigation -> Specs.
 
-The Specification row/identity always opens the Specification. Its destination does not change
-because a different issue becomes highest priority.
+The entire Specification row opens the Specification. Its destination does not change because a
+different issue becomes highest priority.
 
-A concrete signal may expose a separate explicit Task/issue target. An aggregate signal opens the
-Specification attention context rather than guessing one Task.
+Status/reason prose inside the row is summary information, not a competing navigation target.
+Task/Session-specific navigation appears after entering the Specification, where the responsible
+context can be explained without fragmenting the overview row.
 
-Opening context is navigation only; no workflow mutation occurs.
+Opening a Specification is navigation only; no workflow mutation occurs.
 
 ## 4. Data source / read-model ownership
 
@@ -98,11 +99,9 @@ Session-start capability rather than inventing a separate AI transport.
 
 Per Spec item:
 
-1. identity/title — neutral Specification target;
-2. strongest human-facing signal;
-3. count/aggregate when several same-category signals exist;
-4. at most one concise line of additional meaningful signals;
-5. compact progress/current-work metadata.
+1. identity/title — the row's primary target;
+2. compact trailing metadata such as one linked PR and at most two tags;
+3. one bounded secondary line with progress plus an aggregate human-facing state summary.
 
 Attention priority should favor facts that prove the human is blocking useful progress. A live
 Session interaction waiting for response is normally stronger than a passive ready-to-start action.
@@ -119,17 +118,19 @@ Avoid miniature detail screens inside rows.
 │ Nevo SpecFlow │ Specs                                      [+ New spec]    │
 │               │ [ Active ] [ Archive ]                                     │
 │ Specs         │                                                            │
-│               │ Requires attention                                         │
-│ Settings      │ Spec A                 Agent asks for input          >      │
-│               │   TASK-03 review · +1 other signal                         │
-│               │ ───────────────────────────────────────────────────────     │
-│               │ Spec B                 Owner decision required       >      │
+│               │ ▾  ● Requires attention  2                                 │
+│ Settings      │ □  UI-1234  Deterministic admission          PR #27  Auth   │
+│               │              5 / 9 tasks · Owner decision required           │
+│               │ □  UI-1235  Runtime authorization                   Runtime │
+│               │              3 / 7 tasks · Agent input required              │
 │               │                                                            │
-│               │ Ready                                                      │
-│               │ Spec C                 2 Tasks ready to start        >      │
+│               │ ▾  ● Ready  1                                              │
+│               │ □  UI-1236  Localization preferences                        │
+│               │              0 / 5 tasks · Ready to start                   │
 │               │                                                            │
-│               │ In progress / other active                                 │
-│               │ Spec D                 Reviewer · 3 Tasks            >      │
+│               │ ▾  ● In progress  1                                        │
+│               │ □  RT-104   Provider diagnostics             PR #31         │
+│               │              2 / 8 tasks · Reviewer working on 3 tasks      │
 └───────────────┴────────────────────────────────────────────────────────────┘
 ```
 
@@ -155,25 +156,23 @@ Wide/Compact:
 
 Narrow:
 
-- same groups/signals;
-- compact row text may reduce tertiary metadata;
-- concrete Task signal remains directly tappable;
-- no critical signal hidden behind hover or secondary-only detail.
+- same group semantics and aggregate state summary;
+- compact row text may move or reduce tertiary metadata;
+- the whole Spec row remains the primary target;
+- Task IDs/raw per-Task signals stay out of the canonical row;
+- no critical aggregate state is hidden behind hover or secondary-only detail.
 
 ## 10. Interaction flows
 
-### Neutral Spec
+### Specification row
 
-Click row/title -> Specification.
+Click/activate the row -> Specification.
 
-### Explicit Task/issue signal
+The row's aggregate state summary is non-interactive prose. The user chooses the concrete Task,
+Session, evidence, or action after entering the Specification.
 
-Click explicit TASK-03 signal/action -> Specification with local TASK-03 detail opened when useful.
-This does not change the neutral row destination.
-
-### Aggregate signal
-
-"3 Tasks require review" -> Specification attention/task context; user chooses the concrete Task.
+A linked PR may remain a separate explicit nested target because it is a distinct external/contextual
+resource rather than another interpretation of the row destination.
 
 ### Create Specification
 
@@ -290,33 +289,37 @@ Do not force the work queue into DataTable unless final content proves genuinely
 
 ## 16. Accessibility / focus
 
-- row and nested signal targets must have distinct accessible names;
-- keyboard user can open neutral Spec or concrete actionable signal;
+- the row has one clear accessible name and activation target;
+- any explicitly allowed nested external/contextual control, such as a linked PR, has its own accessible name;
 - group semantics cannot rely on color alone;
 - focus after navigation follows product route/surface ownership.
 
 ## 17. Storybook scenarios
 
-- multiple concurrent attention signals on one Spec;
+- rich concurrent source signals collapsing to one bounded row summary;
 - Spec-level attention;
-- Task-ready;
-- active single Task;
+- ready;
 - active batch;
-- agent-remediable issue / other-active signal;
-- quiet;
+- agent-remediable issue / quiet;
+- long title and max trailing metadata;
+- ultra-wide layout;
+- Compact wrapping;
+- Narrow layout;
+- bulk selection gutter alignment;
 - Active empty;
 - Archive populated;
-- Archive with many Specs + search;
-- narrow direct Task signal.
+- Archive with many Specs + search.
 
 ## 18. Acceptance criteria
 
 - requires-attention is reserved for human-blocking situations;
 - ready remains visually calmer and does not imply urgency;
 - a Spec appears once in the canonical Active queue;
-- row/identity always opens Specification;
-- explicit signal targets may jump deeper without changing row semantics;
-- aggregate signals never invent a representative Task;
+- the entire row always opens Specification;
+- summary/status prose inside the row is non-interactive;
+- Task IDs and raw signal lists do not appear in the canonical row;
+- group header and row content share one stable content axis beside a fixed gutter;
+- aggregate summaries never invent a representative Task;
 - batch remains batch-shaped;
 - no current-work language is derived from historical Session association;
 - New specification works with title only and does not require an initial prompt;

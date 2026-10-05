@@ -139,7 +139,7 @@ function SpecsRouteScreen() {
     <SpecsOverview
       state={state}
       onRefresh={refresh}
-      sample={specs.sample}
+      sample={state.projection?.sample ?? specs.sample}
       onCollectionChange={(value) => void navigate({ search: { collection: value } })}
     />
   );

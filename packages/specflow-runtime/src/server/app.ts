@@ -10,6 +10,7 @@ import type { RuntimeConfig } from '../config/types';
 import { serializeRuntimeRequest } from './logging';
 import { isRequestAtPublicOrigin } from './origin';
 import { registerRuntimeWebApp, type RuntimeWebApp } from './web-app';
+import { specsOverviewRoutes } from '../specs/overview/http';
 
 export interface RuntimeAppDependencies {
   readonly auth?: AuthFeatureDependencies;
@@ -49,6 +50,9 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   await app.register(cookie);
 
   await app.register(authFeature, {
+    registerProtectedRoutes: (protectedApp, access) => {
+      protectedApp.register(specsOverviewRoutes, access);
+    },
     auth: config.auth,
     ...(config.authorization ? { authorization: config.authorization } : {}),
     ...(config.server.publicOrigin ? { publicOrigin: config.server.publicOrigin } : {}),

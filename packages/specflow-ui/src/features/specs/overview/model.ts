@@ -1,48 +1,23 @@
 import type { StatusTone } from '@nevo/ui';
 
-export type SpecsCollection = 'active' | 'archive';
-export type SteeringKind = 'attention' | 'ready' | 'working' | 'issue' | 'quiet';
-export type SteeringTarget =
-  | { readonly kind: 'specification'; readonly specId: string }
-  | { readonly kind: 'task'; readonly specId: string; readonly taskId: string }
-  | { readonly kind: 'session'; readonly specId: string; readonly sessionId: string };
-
-export interface SpecSteeringSignal {
-  readonly id: string;
-  readonly kind: SteeringKind;
-  readonly label: string;
-  readonly reason?: string;
-  readonly attentionReason?: 'input' | 'decision' | 'review' | 'blocked';
-  readonly priority: number;
-  readonly target: SteeringTarget;
-}
-
-export interface SpecSteeringItemProjection {
-  readonly id: string;
-  readonly title: string;
-  readonly key?: string;
-  readonly pullRequests?: readonly { readonly number: number; readonly url: string }[];
-  readonly tags?: readonly string[];
-  readonly updatedAt: string;
-  readonly progress: { readonly completed: number; readonly total: number };
-  readonly signals: readonly SpecSteeringSignal[];
-  readonly currentExecutions: readonly {
-    readonly sessionId: string;
-    readonly agentRole: string;
-    readonly taskIds: readonly string[];
-  }[];
-  readonly steeringAvailable?: boolean;
-}
+import type {
+  SpecsCollection,
+  SpecsOverviewProjection,
+  SpecSteeringItemProjection,
+  SteeringKind,
+} from '@nevo/specflow-contracts/specs-overview';
+export type {
+  SpecsCollection,
+  SpecsOverviewProjection,
+  SpecSteeringItemProjection,
+  SpecSteeringSignal,
+  SteeringKind,
+  SteeringTarget,
+} from '@nevo/specflow-contracts/specs-overview';
 
 export interface SpecRowSelection {
   readonly selected: boolean;
   readonly onSelectedChange: (selected: boolean) => void;
-}
-
-export interface SpecsOverviewProjection {
-  readonly revision: string;
-  readonly collection: SpecsCollection;
-  readonly items: readonly SpecSteeringItemProjection[];
 }
 
 export interface SpecsOverviewSource {

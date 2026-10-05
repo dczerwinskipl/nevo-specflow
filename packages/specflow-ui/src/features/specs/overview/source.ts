@@ -1,7 +1,8 @@
 import type { SpecsOverviewSource } from './model';
+import { createHttpClient, type HttpClient } from '@nevo/http-client';
+import type { SpecsOverviewProjection } from '@nevo/specflow-contracts/specs-overview';
 
-// Until the Runtime owns a steering projection, callers inject a source at the app boundary.
-// Missing capability must never look like an empty project or fabricated live work.
+// Kept as an explicit unavailable source for integration fixtures.
 export const unavailableSpecsSource: SpecsOverviewSource = {
   read: () => Promise.reject(new Error('Specs overview projection is not configured.')),
 };
@@ -17,5 +18,17 @@ export function defaultSpecsSource(): SpecsOverviewSource {
       },
     };
   }
-  return unavailableSpecsSource;
+  return createRuntimeSpecsSource();
+}
+
+export function createRuntimeSpecsSource(
+  client: HttpClient = createHttpClient(),
+): SpecsOverviewSource {
+  return {
+    read: (collection, signal) =>
+      client.get<SpecsOverviewProjection>('/api/specs/overview', {
+        params: { collection },
+        signal,
+      }),
+  };
 }

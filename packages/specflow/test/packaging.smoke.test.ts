@@ -340,6 +340,14 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
       expect(await clientRoute.text()).toContain('<div id="root"></div>');
 
       const response = await fetch(`http://127.0.0.1:${port}/api/auth/session`);
+      const specs = await fetch(`http://127.0.0.1:${port}/api/specs/overview?collection=active`);
+      expect(specs.status).toBe(200);
+      expect(specs.headers.get('cache-control')).toBe('no-store');
+      expect(await specs.json()).toMatchObject({
+        revision: 'backend-sample-active-1',
+        collection: 'active',
+        sample: true,
+      });
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual({
         authenticationRequired: false,

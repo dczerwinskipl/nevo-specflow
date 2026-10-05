@@ -13,6 +13,8 @@ import { sessionRoutes } from './authentication/session/http';
 import type { AuthStore } from './authentication/session/state';
 import { InMemoryAuthStore } from './authentication/session/store';
 import { capabilityRoutes } from './authorization/capabilities/http';
+import type { CapabilityRoutesOptions } from './authorization/capabilities/http';
+import type { FastifyInstance } from 'fastify';
 import { createSpecFlowAuthorization } from './authorization/composition';
 import type { RuntimeAuthorizationConfig } from './authorization/config';
 import { authCookieNames, authCookieOptions } from './http/cookies';
@@ -26,6 +28,10 @@ export interface AuthFeatureDependencies {
 }
 
 export interface AuthFeatureOptions {
+  readonly registerProtectedRoutes?: (
+    app: FastifyInstance,
+    access: CapabilityRoutesOptions,
+  ) => void;
   readonly auth: RuntimeAuthConfig;
   readonly authorization?: RuntimeAuthorizationConfig;
   readonly publicOrigin?: string;
@@ -51,6 +57,7 @@ export const authFeature: FastifyPluginAsync<AuthFeatureOptions> = async (app, o
 
   app.register(sessionRoutes, { auth: options.auth, store, cookieNames, cookieOptions });
   app.register(capabilityRoutes, { auth: options.auth, authorization, store, cookieNames });
+  options.registerProtectedRoutes?.(app, { auth: options.auth, authorization, store, cookieNames });
 
   if (options.auth.providers.password.enabled) {
     app.register(passwordRoutes, {

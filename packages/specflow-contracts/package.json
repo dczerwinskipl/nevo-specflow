@@ -14,6 +14,10 @@
       "types": "./dist/spec/authorization.d.ts",
       "default": "./dist/spec/authorization.js"
     },
+    "./specs-overview": {
+      "types": "./dist/spec/overview.d.ts",
+      "default": "./dist/spec/overview.js"
+    },
     "./session": {
       "types": "./dist/session/authorization.d.ts",
       "default": "./dist/session/authorization.js"

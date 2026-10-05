@@ -190,7 +190,9 @@ The current foundation provides:
 - effective-subject resolution;
 - the capability discovery HTTP endpoint.
 
-Concrete domain enforcement, authorization-aware collection filtering, row capability projection,
-and SpecFlow UI integration are not part of the current implementation. The remaining work is tracked
+The provisional Specs overview endpoint filters its backend sample catalogue by per-item
+`spec.view` using server-owned scopes. This verifies the HTTP/session/authorization path but is not
+enforcement over real repository Specs. Concrete domain enforcement, row capability projection,
+and broader SpecFlow UI capability integration remain outside this increment. The remaining work is tracked
 as a non-authoritative implementation backlog in
 [authorization follow-ups](../../../ideas/authorization/README.md).

@@ -57,10 +57,14 @@ execution membership are supplied by the projection, not reconstructed from work
 
 `SpecsOverviewSource` is the transport seam; its reader is abortable and scoped to the selected
 collection. Refresh retains the last valid snapshot on failure, while a collection switch hides
-the previous collection immediately and ignores late results. No Runtime Specs endpoint is
-invented by this increment. Without a configured source the product displays an explicit
-unavailable state. Development builds can opt into deterministic sample projections using
-`VITE_SPECFLOW_SAMPLE_DATA=true`; the sample is labelled and does not bypass Runtime authentication.
+the previous collection immediately and ignores late results. The default source calls
+`GET /api/specs/overview?collection=active|archive` on the same Runtime origin. Runtime currently
+returns a deterministic, explicitly labelled sample catalogue, not repository or workflow state.
+It requires the real authentication session and filters every item using `spec.view` on the
+server-owned preview scope. The shared TypeBox contract lives in `@nevo/specflow-contracts/specs-overview`.
+Transport failures display the unavailable state rather than silently falling back to fixtures.
+Development builds can still opt into isolated frontend fixtures using
+`VITE_SPECFLOW_SAMPLE_DATA=true`; normal builds and dogfooding use the HTTP source.
 
 The app intentionally does not expose creation or destination navigation before those capabilities
 exist. Product-level stories exercise distinct Specification/Task/Session intent through the

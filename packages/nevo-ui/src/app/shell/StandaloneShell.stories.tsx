@@ -147,6 +147,24 @@ export const CanonicalCapture: Story = {
     </DesignCaptureProvider>
   ),
   tags: ['!dev', '!autodocs'],
+  play: ({ canvasElement }) => {
+    const root = canvasElement.querySelector<HTMLElement>(
+      '[data-design-capture="true"][data-design-component="StandaloneShell"]',
+    );
+    assert(root, 'StandaloneShell capture must own its reusable capture root.');
+    assert(
+      root.querySelector('[data-design-slot="mobileHeader"]'),
+      'StandaloneShell capture must retain its mobile header slot.',
+    );
+    assert(
+      root.querySelector('[data-design-slot="desktopHeader"]'),
+      'StandaloneShell capture must retain its desktop header slot.',
+    );
+    assert(
+      root.querySelector('[data-design-slot="content"]'),
+      'StandaloneShell capture must retain its content slot.',
+    );
+  },
   parameters: {
     controls: { disable: true },
     designCapture: {

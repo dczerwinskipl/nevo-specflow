@@ -3,7 +3,6 @@ import {
   createContext,
   forwardRef,
   useContext,
-  useState,
   type ComponentPropsWithoutRef,
   type ComponentRef,
   type ReactNode,
@@ -29,22 +28,10 @@ const MenuRadioValueContext = createContext<string | undefined>(undefined);
 export const MenuRadioGroup = forwardRef<
   ComponentRef<typeof DropdownMenu.RadioGroup>,
   ComponentPropsWithoutRef<typeof DropdownMenu.RadioGroup>
->(function MenuRadioGroup({ defaultValue, onValueChange, value, ...props }, ref) {
-  const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);
-  const selectedValue = value ?? uncontrolledValue;
-
+>(function MenuRadioGroup({ value, ...props }, ref) {
   return (
-    <MenuRadioValueContext.Provider value={selectedValue}>
-      <DropdownMenu.RadioGroup
-        ref={ref}
-        defaultValue={defaultValue}
-        value={value}
-        onValueChange={(nextValue) => {
-          if (value === undefined) setUncontrolledValue(nextValue);
-          onValueChange?.(nextValue);
-        }}
-        {...props}
-      />
+    <MenuRadioValueContext.Provider value={value}>
+      <DropdownMenu.RadioGroup ref={ref} value={value} {...props} />
     </MenuRadioValueContext.Provider>
   );
 });

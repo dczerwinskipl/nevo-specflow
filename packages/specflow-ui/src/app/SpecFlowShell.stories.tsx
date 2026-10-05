@@ -11,7 +11,12 @@ import type { AuthApi } from '../auth/api';
 import { createAuthStore } from '../auth/store';
 import { createSpecFlowRouter } from './router';
 
-type AuthMode = 'local' | 'required' | 'authenticated' | 'authenticated-refresh-failure' | 'unavailable';
+type AuthMode =
+  | 'local'
+  | 'required'
+  | 'authenticated'
+  | 'authenticated-refresh-failure'
+  | 'unavailable';
 
 function RoutedApplication({
   authMode = 'local',

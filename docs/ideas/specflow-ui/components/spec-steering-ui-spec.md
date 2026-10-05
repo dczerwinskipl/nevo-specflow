@@ -462,6 +462,18 @@ Group by attention / ready / working / quiet.
 Historical browsing dominates. Archive uses `ArchiveSpecListRowModel`; it does not reuse
 `ActiveSpecListRowModel.stateSummary` or map historical completion to `quiet`.
 
+The Archive mapper uses deterministic history precedence:
+
+1. if authoritative `completedAt` exists, emit
+   `{ kind: 'completed', completedAt }`;
+2. otherwise, if authoritative `archivedAt` exists, emit
+   `{ kind: 'archived', archivedAt }`;
+3. Archive collection membership by itself is not evidence of completion and MUST NOT be converted to
+   `kind: 'completed'`.
+
+When both timestamps exist, completion wins because it describes the stronger historical lifecycle
+fact while Archive membership remains a collection/storage distinction.
+
 Default:
 
 ```text
@@ -610,6 +622,31 @@ Previous workflow hardening
 The localized date label is derived from the semantic history field; Archive does not fake an Active
 `quiet` summary to render completion.
 
+### SS-10 — archived source with completion and archive timestamps
+
+Source:
+
+```ts
+{
+  id: 'spec-y',
+  title: 'Authentication hardening',
+  completedAt: '2026-09-22T14:00:00Z',
+  archivedAt: '2026-09-25T09:00:00Z'
+}
+```
+
+Mapper result:
+
+```ts
+{
+  id: 'spec-y',
+  title: 'Authentication hardening',
+  history: { kind: 'completed', completedAt: '2026-09-22T14:00:00Z' }
+}
+```
+
+The later `archivedAt` does not replace authoritative completion semantics.
+
 ## 12. Hover, focus, disclosure, and optional future selection
 
 The whole row has one hover/focus treatment.
@@ -719,6 +756,7 @@ spec-steering/batch-working
 spec-steering/remediation
 spec-steering/quiet
 spec-steering/archive-row
+spec-steering/archive-completed-and-archived
 spec-steering/long-title
 spec-steering/max-trailing-metadata
 spec-steering/multiple-pull-requests
@@ -733,8 +771,10 @@ spec-steering/empty-active
 
 The concurrent-signals story must prove that a rich source projection still renders a bounded
 secondary line rather than exposing all source details. The search/disclosure story starts with a
-collapsed group, activates Search for a matching row, proves temporary expansion and filtered counts,
-then clears Search and proves restoration of the pre-search local disclosure state.
+collapsed group, activates Search for a matching row, proves forced expansion, proves that the visible
+disclosure control is `aria-disabled` and cannot collapse the matching result, then clears Search and
+proves exact restoration of the pre-search local disclosure state. The Archive precedence story must
+prove that `completedAt` wins when both authoritative completion and archive timestamps exist.
 
 ## 18. Acceptance criteria
 
@@ -758,9 +798,12 @@ then clears Search and proves restoration of the pre-search local disclosure sta
 13. Group spacing is visually stronger than row spacing: `groupGap > rowGap`.
 14. Group chevrons are real disclosure buttons: groups start expanded, expose accessible expanded
     state, and preserve local collapse state only while the screen remains mounted.
-15. Search counts only filtered visible rows, omits zero-match groups, temporarily expands matching
-    groups, and restores pre-search disclosure state after Search clears.
+15. Search counts only filtered visible rows, omits zero-match groups, forces matching groups
+    expanded, makes their visible disclosure control non-toggleable/accessibly disabled, and restores
+    the exact pre-search disclosure snapshot after Search clears.
 16. Batch execution remains batch-shaped and never invents a representative Task.
-17. Archive uses its historical bounded row model rather than Active steering state.
+17. Archive uses its historical bounded row model rather than Active steering state; authoritative
+    `completedAt` takes precedence over `archivedAt`, and Archive membership alone never implies
+    completion.
 18. Rows remain compact, cardless, scannable, and resilient at Wide, Compact, Narrow, long-title, and
     dense-metadata fixtures.

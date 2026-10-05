@@ -15,8 +15,10 @@ import {
   TextInput,
   Typography,
 } from '@nevo/ui';
+import { useTranslation } from 'react-i18next';
 
-import { StandaloneAuthHeader, StandaloneAuthSurface } from './StandaloneAuthLayout';
+import { appI18n } from '../i18n';
+import { SpecFlowStandaloneShell, StandaloneScreenHeader } from '../app/StandaloneScreenLayout';
 import { authErrorCode } from './api';
 import type { AuthStore } from './store';
 
@@ -27,6 +29,7 @@ export interface LoginScreenProps {
 }
 
 export function LoginScreen({ auth, initialError, returnTo = '/' }: LoginScreenProps) {
+  const { t } = useTranslation();
   const state = useSyncExternalStore(
     (listener) => auth.subscribe(listener),
     () => auth.getState(),
@@ -34,18 +37,16 @@ export function LoginScreen({ auth, initialError, returnTo = '/' }: LoginScreenP
   );
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | undefined>(
-    initialError ? loginErrorMessage(initialError) : undefined,
-  );
+  const [errorCode, setErrorCode] = useState<string | undefined>(initialError);
   const [pending, setPending] = useState<string | undefined>();
 
   if (state.status !== 'ready') {
     return (
-      <StandaloneAuthSurface>
+      <SpecFlowStandaloneShell>
         <div className="flex justify-center py-12">
-          <Spinner label="Loading sign in" />
+          <Spinner label={t('auth.loadingSignIn')} />
         </div>
-      </StandaloneAuthSurface>
+      </SpecFlowStandaloneShell>
     );
   }
 
@@ -54,32 +55,32 @@ export function LoginScreen({ auth, initialError, returnTo = '/' }: LoginScreenP
   }
 
   const submitPassword = async () => {
-    setError(undefined);
+    setErrorCode(undefined);
     setPending('password');
     try {
       await auth.loginWithPassword(username, password);
       window.location.assign(safeReturnTo(returnTo));
     } catch (caught) {
-      setError(loginErrorMessage(authErrorCode(caught) ?? 'service_unavailable'));
+      setErrorCode(authErrorCode(caught) ?? 'service_unavailable');
       setPending(undefined);
     }
   };
 
   const startOidc = async (providerId: string) => {
-    setError(undefined);
+    setErrorCode(undefined);
     setPending(`oidc:${providerId}`);
     try {
       const authorizationUrl = await auth.startOidc(providerId, safeReturnTo(returnTo));
       window.location.assign(authorizationUrl);
     } catch (caught) {
-      setError(loginErrorMessage(authErrorCode(caught) ?? 'provider_unavailable'));
+      setErrorCode(authErrorCode(caught) ?? 'provider_unavailable');
       setPending(undefined);
     }
   };
 
   return (
     <LoginScreenView
-      error={error}
+      error={errorCode ? t(loginErrorKey(errorCode)) : undefined}
       loginMethods={state.session.loginMethods}
       password={password}
       pending={pending}
@@ -115,6 +116,7 @@ export function LoginScreenView({
   pending,
   username = '',
 }: LoginScreenViewProps) {
+  const { t } = useTranslation();
   const capture = useDesignMetadata('SpecFlowLoginScreen');
   const hasOidc = loginMethods.oidc.length > 0;
   const hasPassword = loginMethods.password.enabled;
@@ -126,15 +128,18 @@ export function LoginScreenView({
   };
 
   return (
-    <StandaloneAuthSurface
+    <SpecFlowStandaloneShell
       rootAttributes={capture}
       surfaceAttributes={designSlot('SpecFlowLoginScreen', 'content')}
     >
       <div className="grid w-full gap-8">
-        <StandaloneAuthHeader description="Access your SpecFlow workspace." title="Welcome back" />
+        <StandaloneScreenHeader
+          description={t('auth.login.description')}
+          title={t('auth.login.title')}
+        />
 
         {error ? (
-          <Alert role="alert" tone="danger" title="Sign in failed">
+          <Alert role="alert" tone="danger" title={t('auth.login.failed')}>
             {error}
           </Alert>
         ) : null}
@@ -155,8 +160,8 @@ export function LoginScreenView({
                 >
                   <span className="block whitespace-normal break-words text-center">
                     {providerPending
-                      ? `Opening ${provider.name}…`
-                      : `Continue with ${provider.name}`}
+                      ? t('auth.login.openingProvider', { provider: provider.name })
+                      : t('auth.login.continueWithProvider', { provider: provider.name })}
                   </span>
                 </Button>
               );
@@ -168,7 +173,7 @@ export function LoginScreenView({
           <div className="flex items-center gap-3" aria-hidden="true">
             <Separator className="flex-1" />
             <Typography className="text-content-muted" variant="body-sm">
-              or
+              {t('auth.login.or')}
             </Typography>
             <Separator className="flex-1" />
           </div>
@@ -178,7 +183,7 @@ export function LoginScreenView({
           <form className="grid gap-8" onSubmit={handleSubmit}>
             <div className="grid gap-4">
               <Field>
-                <Field.Label>Username</Field.Label>
+                <Field.Label>{t('auth.login.username')}</Field.Label>
                 <TextInput
                   autoComplete="username"
                   disabled={busy}
@@ -188,7 +193,7 @@ export function LoginScreenView({
                 />
               </Field>
               <Field>
-                <Field.Label>Password</Field.Label>
+                <Field.Label>{t('auth.login.password')}</Field.Label>
                 <PasswordInput
                   autoComplete="current-password"
                   disabled={busy}
@@ -204,12 +209,12 @@ export function LoginScreenView({
               type="submit"
               width="full"
             >
-              {pending === 'password' ? 'Signing in…' : 'Sign in'}
+              {pending === 'password' ? t('auth.login.signingIn') : t('auth.login.signIn')}
             </Button>
           </form>
         ) : null}
       </div>
-    </StandaloneAuthSurface>
+    </SpecFlowStandaloneShell>
   );
 }
 
@@ -228,24 +233,28 @@ export function safeReturnTo(value: string | undefined): string {
   }
 }
 
-export function loginErrorMessage(code: string): string {
+export function loginErrorKey(code: string) {
   switch (code) {
     case 'invalid_credentials':
-      return 'Username or password is incorrect.';
+      return 'auth.errors.invalidCredentials';
     case 'rate_limited':
-      return 'Too many sign-in attempts. Try again later.';
+      return 'auth.errors.rateLimited';
     case 'identity_not_allowed':
-      return 'This identity is not allowed to access this SpecFlow project.';
+      return 'auth.errors.identityNotAllowed';
     case 'invalid_oidc_transaction':
-      return 'The sign-in request expired or is no longer valid. Start again.';
+      return 'auth.errors.invalidOidcTransaction';
     case 'oidc_authentication_failed':
-      return 'The identity provider could not complete sign in. Try again.';
+      return 'auth.errors.oidcAuthenticationFailed';
     case 'provider_unavailable':
-      return 'The identity provider is currently unavailable. Try again later.';
+      return 'auth.errors.providerUnavailable';
     case 'service_unavailable':
     default:
-      return 'SpecFlow could not complete sign in. Try again.';
+      return 'auth.errors.serviceUnavailable';
   }
+}
+
+export function loginErrorMessage(code: string): string {
+  return appI18n.t(loginErrorKey(code));
 }
 
 export function unauthenticatedSession(loginMethods: AuthLoginMethods): AuthSessionResponse {

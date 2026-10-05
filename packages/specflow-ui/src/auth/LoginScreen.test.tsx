@@ -28,15 +28,21 @@ describe('LoginScreen', () => {
       />,
     );
 
-    const rootTag = openingTagFor(html, 'data-auth-layout="root"');
-    const surfaceTag = openingTagFor(html, 'data-auth-layout="surface"');
+    const rootTag = openingTagFor(html, 'data-standalone-shell-region="root"');
+    const bodyTag = openingTagFor(html, 'data-standalone-shell-region="body"');
+    const mobileHeaderTag = openingTagFor(html, 'data-standalone-shell-region="mobile-header"');
+    const mobileSelectorTag = openingTagFor(html, 'aria-label="Change language"');
+    const desktopHeaderTag = openingTagFor(html, 'data-standalone-shell-region="desktop-header"');
+    const surfaceTag = openingTagFor(html, 'data-standalone-shell-region="surface"');
 
     expect(rootTag).toContain('bg-app-base');
-    expect(rootTag).toContain('items-center');
-    expect(rootTag).toContain('justify-center');
-    expect(rootTag).not.toContain('items-start');
+    expect(rootTag).toContain('standalone-shell-root');
+    expect(mobileHeaderTag).toContain('standalone-shell-mobile-header');
+    expect(mobileSelectorTag).toContain('Change language');
+    expect(desktopHeaderTag).toContain('standalone-shell-desktop-header');
+    expect(bodyTag).toContain('standalone-shell-body');
     expect(surfaceTag).toContain('workspace-surface-material');
-    expect(surfaceTag).toContain('rounded-surface');
+    expect(surfaceTag).toContain('standalone-shell-surface');
     expect(surfaceTag).toContain('border-workspace-edge');
 
     expect(html).toContain('Welcome back');
@@ -63,18 +69,21 @@ describe('LoginScreen', () => {
       </DesignCaptureProvider>,
     );
 
-    const rootMarker = 'data-auth-layout="root"';
-    const surfaceMarker = 'data-auth-layout="surface"';
+    const rootMarker = 'data-standalone-shell-region="root"';
+    const surfaceMarker = 'data-standalone-shell-region="surface"';
     const rootTag = openingTagFor(html, rootMarker);
     const surfaceTag = openingTagFor(html, surfaceMarker);
 
     expect(rootTag).toContain('data-design-component="SpecFlowLoginScreen"');
     expect(rootTag).toContain('data-design-capture="true"');
+    expect(rootTag).not.toContain('data-design-component="StandaloneShell"');
     expect(rootTag).not.toContain('data-design-slot="content"');
     expect(rootTag).toContain('bg-app-base');
 
     expect(surfaceTag).toContain('data-design-slot="content"');
     expect(surfaceTag).toContain('workspace-surface-material');
+    expect(surfaceTag).not.toContain('data-design-component="WorkspaceSurface"');
+    expect(html).not.toContain('data-design-component="StandaloneShell"');
     expect(html.indexOf(rootMarker)).toBeLessThan(html.indexOf(surfaceMarker));
   });
 

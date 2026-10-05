@@ -89,11 +89,7 @@ const appRoute = createRoute({
       });
     }
   },
-  component: () => (
-    <SpecFlowShell>
-      <Outlet />
-    </SpecFlowShell>
-  ),
+  component: AppRouteLayout,
 });
 
 const homeRoute = createRoute({
@@ -158,6 +154,15 @@ export async function resolveLoginAccess(
   return !session.authenticationRequired || session.authenticated
     ? { kind: 'app', returnTo: safeTarget }
     : { kind: 'allow' };
+}
+
+function AppRouteLayout() {
+  const { auth } = appRoute.useRouteContext();
+  return (
+    <SpecFlowShell auth={auth}>
+      <Outlet />
+    </SpecFlowShell>
+  );
 }
 
 function LoginRouteScreen() {

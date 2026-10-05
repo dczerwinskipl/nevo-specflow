@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import './design-system/brand-environment.generated.css';
 @import './app/workspace/AppWorkspace.css';
+@import './app/shell/StandaloneShell.css';
 @import './components/data/DataTable/DataTable.css';
 @import './components/forms/shared/textControl.css';
 @import './components/forms/Select/Select.css';

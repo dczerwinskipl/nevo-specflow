@@ -9,6 +9,8 @@ import {
   MenuGroup,
   MenuItem,
   MenuLabel,
+  MenuRadioGroup,
+  MenuRadioItem,
   MenuSeparator,
   MenuTrigger,
 } from './Menu';
@@ -119,6 +121,55 @@ function MenuItemMatrix() {
   );
 }
 
+function MenuRadioItemMatrix() {
+  return (
+    <div className="flex min-h-96 items-center justify-center bg-canvas p-8">
+      <Menu modal={false} open>
+        <MenuTrigger asChild>
+          <Button variant="secondary">Radio states</Button>
+        </MenuTrigger>
+        <MenuContent
+          aria-label="Menu radio item states"
+          onCloseAutoFocus={(event) => event.preventDefault()}
+        >
+          <MenuRadioGroup value="checked">
+            <MenuRadioItem data-design-source-id="unchecked" value="unchecked">
+              Unchecked
+            </MenuRadioItem>
+            <MenuRadioItem data-design-source-id="checked" value="checked">
+              Checked
+            </MenuRadioItem>
+            <MenuRadioItem data-design-source-id="disabled" disabled value="disabled">
+              Disabled
+            </MenuRadioItem>
+          </MenuRadioGroup>
+        </MenuContent>
+      </Menu>
+    </div>
+  );
+}
+
+function MenuSelectionExample() {
+  const [language, setLanguage] = useState('en');
+
+  return (
+    <div className="flex min-h-64 items-center justify-center bg-canvas p-8">
+      <Menu>
+        <MenuTrigger asChild>
+          <Button variant="secondary">Language</Button>
+        </MenuTrigger>
+        <MenuContent aria-label="Language">
+          <MenuLabel>Language</MenuLabel>
+          <MenuRadioGroup value={language} onValueChange={setLanguage}>
+            <MenuRadioItem value="en">English</MenuRadioItem>
+            <MenuRadioItem value="pl">Polski</MenuRadioItem>
+          </MenuRadioGroup>
+        </MenuContent>
+      </Menu>
+    </div>
+  );
+}
+
 const meta = {
   title: 'Nevo UI/Overlays/Menu',
   component: MenuExample,
@@ -145,6 +196,34 @@ export const Actions: Story = {};
 
 export const LongLabels: Story = {
   args: { longLabels: true },
+};
+
+export const RadioSelection: Story = {
+  render: () => <MenuSelectionExample />,
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Language' }));
+    const polish = await waitFor(
+      () =>
+        [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find((item) =>
+          item.textContent?.includes('Polski'),
+        ) ?? null,
+      'Radio menu items should render with menuitemradio semantics.',
+    );
+    await userEvent.click(polish);
+    await userEvent.click(canvas.getByRole('button', { name: 'Language' }));
+    const selectedPolish = await waitFor(
+      () =>
+        [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find((item) =>
+          item.textContent?.includes('Polski'),
+        ) ?? null,
+      'The menu should reopen with the selected radio item.',
+    );
+    assert(
+      selectedPolish.getAttribute('aria-checked') === 'true',
+      'Selecting a radio item should persist the checked state.',
+    );
+    await userEvent.keyboard('{Escape}');
+  },
 };
 
 export const InteractionContract: Story = {
@@ -196,6 +275,55 @@ export const ItemStateCapture: Story = {
       description: 'Compact neutral and destructive actions across interaction states',
       kind: 'component',
       order: 32,
+    },
+  },
+};
+
+export const RadioItemStateCapture: Story = {
+  render: () => (
+    <DesignCaptureProvider captureComponents={['MenuRadioItem']}>
+      <MenuRadioItemMatrix />
+    </DesignCaptureProvider>
+  ),
+  play: async ({ canvasElement }) => {
+    const documentRoot = canvasElement.ownerDocument;
+    const checked = await waitFor(
+      () => documentRoot.querySelector<HTMLElement>('[data-design-source-id="checked"]') ?? null,
+      'Checked menu radio item should render for design capture.',
+    );
+    const unchecked = documentRoot.querySelector<HTMLElement>(
+      '[data-design-source-id="unchecked"]',
+    );
+    const disabled = documentRoot.querySelector<HTMLElement>('[data-design-source-id="disabled"]');
+
+    assert(
+      checked.dataset.state === 'checked',
+      'Radix should mark the selected radio item checked.',
+    );
+    assert(
+      checked.dataset.designPropState === 'checked',
+      'Design metadata should match the checked Radix state.',
+    );
+    assert(unchecked?.dataset.state === 'unchecked', 'Radix should mark the other item unchecked.');
+    assert(
+      unchecked?.dataset.designPropState === 'unchecked',
+      'Design metadata should match the unchecked Radix state.',
+    );
+    assert(disabled?.hasAttribute('data-disabled'), 'Disabled radio item should remain disabled.');
+    assert(
+      disabled?.dataset.designPropState === 'disabled',
+      'Design metadata should preserve the disabled radio state.',
+    );
+  },
+  tags: ['!dev', '!autodocs'],
+  parameters: {
+    controls: { disable: true },
+    designCapture: {
+      component: 'MenuRadioItem',
+      title: 'Menu radio item',
+      description: 'Single-choice menu rows across unchecked, checked, and disabled states',
+      kind: 'component',
+      order: 33,
     },
   },
 };

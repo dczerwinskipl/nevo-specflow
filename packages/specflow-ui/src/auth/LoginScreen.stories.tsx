@@ -61,13 +61,13 @@ function assert(condition: unknown, message: string): asserts condition {
 
 function assertStandaloneAuthLayout(canvasElement: HTMLElement) {
   const mobileHeader = canvasElement.querySelector<HTMLElement>(
-    '[data-auth-layout="mobile-header"]',
+    '[data-standalone-shell-region="mobile-header"]',
   );
-  const mobileSelector = canvasElement.querySelector<HTMLElement>(
-    '[data-auth-layout="mobile-language-selector"]',
+  const mobileSelector = mobileHeader?.querySelector<HTMLElement>(
+    '[aria-label="Change language"]',
   );
-  const surface = canvasElement.querySelector<HTMLElement>('[data-auth-layout="surface"]');
-  const root = canvasElement.querySelector<HTMLElement>('[data-auth-layout="root"]');
+  const surface = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="surface"]');
+  const root = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="root"]');
   assert(
     mobileHeader && mobileSelector && surface && root,
     'Standalone auth layout regions must be present.',
@@ -107,16 +107,20 @@ export const PasswordAndSingleOidc: Story = {
 export const PasswordAndOidc: Story = {
   args: { loginMethods: mixed },
   play: ({ canvasElement }) => {
-    const surface = canvasElement.querySelector<HTMLElement>('[data-auth-layout="surface"]');
-    const desktopSelector = canvasElement.querySelector<HTMLElement>(
-      '[data-auth-layout="desktop-language-selector"]',
+    const surface = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="surface"]');
+    const desktopHeader = canvasElement.querySelector<HTMLElement>(
+      '[data-standalone-shell-region="desktop-header"]',
     );
-    assert(surface && desktopSelector, 'Desktop auth language selector must be present.');
+    assert(surface && desktopHeader, 'Desktop standalone header must be present.');
     assert(
-      surface.contains(desktopSelector),
-      'Desktop language selection must stay inside the centered auth surface.',
+      surface.contains(desktopHeader),
+      'Desktop standalone header must stay inside the centered auth surface.',
     );
-    const root = canvasElement.querySelector<HTMLElement>('[data-auth-layout="root"]');
+    assert(
+      desktopHeader.querySelector('[aria-label="Change language"]'),
+      'Desktop standalone header must expose the product language action.',
+    );
+    const root = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="root"]');
     assert(root, 'Desktop auth root must be present.');
 
     const rootRect = root.getBoundingClientRect();
@@ -223,7 +227,7 @@ export const FigmaCapture: Story = {
     );
     assert(root, 'Login Figma capture must expose a screen-level capture root.');
     assert(
-      root.dataset.authLayout === 'root',
+      root.dataset.standaloneShellRegion === 'root',
       'Login Figma capture root must own the complete standalone auth surface.',
     );
 
@@ -231,7 +235,7 @@ export const FigmaCapture: Story = {
     assert(content, 'Login Figma capture must expose its required content slot below the root.');
     assert(content !== root, 'Login Figma content slot must be a descendant of the capture root.');
     assert(
-      content.dataset.authLayout === 'surface',
+      content.dataset.standaloneShellRegion === 'surface',
       'Login Figma content slot must include the workspace material surface.',
     );
     assert(

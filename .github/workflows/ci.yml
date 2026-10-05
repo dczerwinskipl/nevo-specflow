@@ -203,11 +203,14 @@ jobs:
 
   projection-generation:
     name: projection generation
-    if: github.event_name == 'pull_request' && github.head_ref == 'chore/ui-visual-verification'
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'chore/ui-visual-verification'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d342e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
       - uses: ./.github/actions/setup
       - name: Generate canonical projections for PR #29
@@ -257,3 +260,33 @@ jobs:
             .agents/skills
             .claude/skills
           if-no-files-found: error
+      - name: Commit generated outputs
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "Generated outputs already current"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            .nevo/agents/definitions/ux-designer.yaml \
+            .nevo/agents/instructions/implementer-ui.md \
+            .nevo/agents/instructions/storybook.md \
+            .nevo/agents/instructions/ux-designer.md \
+            docs/design-system/implementation/storybook/guidelines.md \
+            docs/ideas/specflow-ui/components/spec-steering-ui-spec.md \
+            docs/ideas/specflow-ui/design-system-component-composition-gaps.md \
+            docs/ideas/specflow-ui/information-and-navigation-inventory.md \
+            docs/ideas/specflow-ui/navigation-and-route-model.md \
+            docs/ideas/specflow-ui/screens/specification-workspace-ui-spec.md \
+            docs/ideas/specflow-ui/screens/specs-overview-ui-spec.md \
+            docs/ideas/specflow-ui/screens/task-detail-ui-spec.md \
+            docs/ideas/specflow-ui/spec-task-information-hierarchy.md \
+            docs/ideas/specflow-ui/spec-task-screen-structure.md \
+            docs/index.generated.md \
+            docs/index.generated.json \
+            .agents/skills \
+            .claude/skills
+          git commit -m "chore(repo): regenerate docs and agent projections"
+          git push origin HEAD:${{ github.head_ref }}

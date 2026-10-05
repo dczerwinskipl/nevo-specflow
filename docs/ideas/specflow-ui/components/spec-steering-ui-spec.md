@@ -168,8 +168,7 @@ interface ActiveSpecListRowModel {
 }
 
 type ArchiveSpecHistorySummary =
-  | { kind: 'completed'; completedAt: string }
-  | { kind: 'archived'; archivedAt: string };
+  { kind: 'completed'; completedAt: string } | { kind: 'archived'; archivedAt: string };
 
 interface ArchiveSpecListRowModel {
   id: string;

@@ -43,6 +43,7 @@ export function StandaloneShell({
       <AppBackground
         brandPrimary={brandPrimary}
         className={cn('standalone-shell-root', className)}
+        data-standalone-shell-region="root"
         {...props}
         {...capture}
       >

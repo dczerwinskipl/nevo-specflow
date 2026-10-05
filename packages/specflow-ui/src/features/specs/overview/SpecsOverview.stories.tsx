@@ -1,8 +1,20 @@
 import { useMemo, useRef, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { AppShell, Separator, Typography } from '@nevo/ui';
+import { AppShell, Typography } from '@nevo/ui';
+import {
+  Outlet,
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from '@tanstack/react-router';
+import type { AuthSessionResponse } from '@nevo/specflow-contracts/authentication';
 
-import { NevoBrandLogo, defaultNevoBrand } from '../../../brand';
+import { SpecFlowShell } from '../../../app/SpecFlowShell';
+import { UiPlaygroundScreen } from '../../../app/screens';
+import { LoginScreen } from '../../../auth/LoginScreen';
+import { createAuthStore } from '../../../auth/store';
 import { StoryLocalization } from '../../../i18n/StoryLocalization';
 import type { AppLocale } from '../../../i18n';
 import { createLongContentFixture, createSpecItem, createSpecsFixture } from './fixtures';
@@ -73,47 +85,105 @@ function OverviewFixture({
   locale?: AppLocale;
   interactive?: boolean;
 }) {
+  const router = useMemo(() => {
+    const signedIn: AuthSessionResponse = {
+      authenticationRequired: true,
+      authenticated: true,
+      user: { id: 'demo', name: 'Demo' },
+      authenticatedWith: { kind: 'password' },
+      loginMethods: { password: { enabled: true }, oidc: [] },
+    };
+    const signedOut: AuthSessionResponse = {
+      authenticationRequired: true,
+      authenticated: false,
+      loginMethods: signedIn.loginMethods,
+    };
+    let session: AuthSessionResponse = signedIn;
+    const auth = createAuthStore(
+      {
+        getSession: () => Promise.resolve(session),
+        loginWithPassword: () => {
+          session = signedIn;
+          return Promise.resolve(session);
+        },
+        startOidc: () => Promise.reject(new Error('OIDC is not enabled in this fixture.')),
+        logout: () => {
+          session = signedOut;
+          return Promise.resolve();
+        },
+      },
+      session,
+    );
+    // Router/auth are deterministic story providers; navigation itself is the real product shell.
+    const root = createRootRoute({ component: Outlet });
+    const overview = createRoute({
+      getParentRoute: () => root,
+      path: '/',
+      component: () => (
+        <SpecFlowShell auth={auth}>
+          <OverviewFixtureContent state={state} interactive={interactive} />
+        </SpecFlowShell>
+      ),
+    });
+    const login = createRoute({
+      getParentRoute: () => root,
+      path: '/login',
+      component: () => <LoginScreen auth={auth} />,
+    });
+    const playground = createRoute({
+      getParentRoute: () => root,
+      path: '/ui-playground',
+      component: () => (
+        <SpecFlowShell auth={auth}>
+          <UiPlaygroundScreen />
+        </SpecFlowShell>
+      ),
+    });
+    return createRouter({
+      routeTree: root.addChildren([overview, login, playground]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    });
+  }, [state, interactive]);
+  return (
+    <StoryLocalization locale={locale}>
+      <RouterProvider router={router} />
+    </StoryLocalization>
+  );
+}
+
+function OverviewFixtureContent({
+  state,
+  interactive,
+}: {
+  state: SpecsOverviewState;
+  interactive: boolean;
+}) {
   const [collectionOverride, setCollectionOverride] = useState<SpecsOverviewState>();
   const [target, setTarget] = useState<SteeringTarget>();
   const [refreshes, setRefreshes] = useState(0);
   const [sessionStarts, setSessionStarts] = useState(0);
   return (
-    <StoryLocalization locale={locale}>
-      <div className="h-dvh w-full">
-        <AppShell
-          brandPrimary={defaultNevoBrand.coreColor}
-          navigation={
-            <div className="grid content-start gap-4 p-4">
-              <NevoBrandLogo {...defaultNevoBrand} product="SpecFlow" type="horizontal" size="md" />
-              <Separator />
-              <Typography variant="label-sm">
-                {locale === 'pl' ? 'Specyfikacje' : 'Specs'}
-              </Typography>
-            </div>
-          }
-        >
-          <SpecsOverview
-            state={collectionOverride ?? state}
-            onCollectionChange={(collection) =>
-              setCollectionOverride({
-                collection,
-                projection: createSpecsFixture(collection),
-                loading: false,
-                refreshing: false,
-                error: false,
-              })
-            }
-            onRefresh={() => setRefreshes((count) => count + 1)}
-            onCreateSession={interactive ? () => setSessionStarts((count) => count + 1) : undefined}
-            onOpenTarget={interactive ? setTarget : undefined}
-            specificationHref={interactive ? (id) => `/specs/${id}` : undefined}
-          />
-          <output className="sr-only" aria-label="Fixture interaction result">
-            {JSON.stringify({ target, refreshes, sessionStarts })}
-          </output>
-        </AppShell>
-      </div>
-    </StoryLocalization>
+    <>
+      <SpecsOverview
+        state={collectionOverride ?? state}
+        onCollectionChange={(collection) =>
+          setCollectionOverride({
+            collection,
+            projection: createSpecsFixture(collection),
+            loading: false,
+            refreshing: false,
+            error: false,
+          })
+        }
+        onRefresh={() => setRefreshes((count) => count + 1)}
+        onCreateSession={interactive ? () => setSessionStarts((count) => count + 1) : undefined}
+        onOpenTarget={interactive ? setTarget : undefined}
+        specificationHref={interactive ? (id) => `/specs/${id}` : undefined}
+      />
+      <output className="sr-only" aria-label="Fixture interaction result">
+        {JSON.stringify({ target, refreshes, sessionStarts })}
+      </output>
+    </>
   );
 }
 
@@ -135,6 +205,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Active: Story = {
   play: async ({ canvas, canvasElement, userEvent }) => {
+    await canvas.findByRole('heading', { name: 'Requires attention' });
     const headings = [...canvasElement.querySelectorAll('[data-spec-group-header] h2')];
     if (
       headings.map((element) => element.textContent).join('|') !==
@@ -159,6 +230,9 @@ export const Active: Story = {
     );
     if (progressEdges.some((left) => Math.abs(left - progressEdges[0]!) > 1))
       throw new Error('Progress scan column drift.');
+    const secondary = canvasElement.querySelector<HTMLElement>('[data-spec-secondary]');
+    if (!secondary || window.getComputedStyle(secondary).columnGap !== '8px')
+      throw new Error('Secondary fields should use compact token spacing.');
     const destination = canvas.getByRole('link', {
       name: 'Open specification: Deterministic admission and execution boundaries',
     });
@@ -181,6 +255,21 @@ export const Active: Story = {
     )
       throw new Error('Normal disclosure should collapse.');
     await userEvent.click(canvas.getByRole('button', { name: 'Expand Requires attention group' }));
+  },
+};
+
+export const AccountNavigation: Story = {
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'Open user menu for Demo' }));
+    const menu = document.querySelector<HTMLElement>('[role="menu"][aria-label="User menu"]');
+    if (menu?.querySelectorAll('[role="menuitemradio"]').length !== 2)
+      throw new Error('Overview navigation must expose the real account and locale menu.');
+    const signOut = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) =>
+      item.textContent?.includes('Sign out'),
+    );
+    if (!signOut) throw new Error('Authenticated Overview must expose sign out.');
+    await userEvent.click(signOut);
+    await canvas.findByRole('heading', { name: 'Welcome back' });
   },
 };
 

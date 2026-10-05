@@ -73,7 +73,7 @@ export function SpecListRow({ item, specificationHref, onOpenTarget }: SpecListR
             <Typography
               as="div"
               variant="body-sm"
-              className="grid min-w-0 grid-cols-[calc(var(--spacing)*22)_minmax(0,1fr)] items-baseline gap-x-3 text-content-muted @xl/spec-row:grid-cols-[calc(var(--spacing)*22)_calc(var(--spacing)*26)_minmax(0,1fr)]"
+              className="grid min-w-0 grid-cols-[calc(var(--spacing)*18)_minmax(0,1fr)] items-baseline gap-x-2 text-content-muted @xl/spec-row:grid-cols-[calc(var(--spacing)*18)_calc(var(--spacing)*18)_minmax(0,1fr)]"
               data-spec-secondary
             >
               <span className="min-w-0 [overflow-wrap:anywhere]" data-spec-key>

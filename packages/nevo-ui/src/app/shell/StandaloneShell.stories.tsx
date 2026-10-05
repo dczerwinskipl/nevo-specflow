@@ -63,7 +63,9 @@ function assert(condition: unknown, message: string): asserts condition {
 
 export const Desktop: Story = {
   play: ({ canvasElement }) => {
-    const root = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="body"]');
+    const root = canvasElement.querySelector<HTMLElement>(
+      '[data-standalone-shell-region="body"]',
+    );
     const surface = canvasElement.querySelector<HTMLElement>(
       '[data-standalone-shell-region="surface"]',
     );
@@ -73,7 +75,10 @@ export const Desktop: Story = {
     const desktopHeader = canvasElement.querySelector<HTMLElement>(
       '[data-standalone-shell-region="desktop-header"]',
     );
-    assert(root && surface && mobileHeader && desktopHeader, 'Standalone shell regions must render.');
+    assert(
+      root && surface && mobileHeader && desktopHeader,
+      'Standalone shell regions must render.',
+    );
 
     const rootRect = root.getBoundingClientRect();
     const surfaceRect = surface.getBoundingClientRect();
@@ -82,7 +87,10 @@ export const Desktop: Story = {
     );
     assert(surfaceRect.width <= 449, 'Desktop standalone surface must remain compact.');
     assert(centerDelta <= 2, 'Desktop standalone surface must remain horizontally centered.');
-    assert(getComputedStyle(mobileHeader).display === 'none', 'Mobile header must hide on desktop.');
+    assert(
+      getComputedStyle(mobileHeader).display === 'none',
+      'Mobile header must hide on desktop.',
+    );
     assert(
       getComputedStyle(desktopHeader).display === 'flex',
       'Desktop header must render inside the compact surface.',
@@ -105,7 +113,10 @@ export const Mobile: Story = {
     const desktopHeader = canvasElement.querySelector<HTMLElement>(
       '[data-standalone-shell-region="desktop-header"]',
     );
-    assert(shell && mobileHeader && surface && desktopHeader, 'Standalone shell regions must render.');
+    assert(
+      shell && mobileHeader && surface && desktopHeader,
+      'Standalone shell regions must render.',
+    );
 
     const shellRect = shell.getBoundingClientRect();
     const headerRect = mobileHeader.getBoundingClientRect();
@@ -118,8 +129,14 @@ export const Mobile: Story = {
       surfaceRect.bottom >= shellRect.bottom - 1,
       'Mobile workspace sheet must fill the remaining shell height.',
     );
-    assert(getComputedStyle(mobileHeader).display === 'flex', 'Mobile header must be visible.');
-    assert(getComputedStyle(desktopHeader).display === 'none', 'Desktop header must hide on mobile.');
+    assert(
+      getComputedStyle(mobileHeader).display === 'flex',
+      'Mobile header must be visible.',
+    );
+    assert(
+      getComputedStyle(desktopHeader).display === 'none',
+      'Desktop header must hide on mobile.',
+    );
   },
 };
 

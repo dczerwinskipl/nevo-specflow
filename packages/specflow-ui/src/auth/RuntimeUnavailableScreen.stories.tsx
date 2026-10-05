@@ -28,9 +28,7 @@ export const Default: Story = {
     const desktopHeader = canvasElement.querySelector<HTMLElement>(
       '[data-standalone-shell-region="desktop-header"]',
     );
-    const root = canvasElement.querySelector<HTMLElement>(
-      '[data-standalone-shell-region="root"]',
-    );
+    const root = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="root"]');
     if (!surface || !desktopHeader || !root || !surface.contains(desktopHeader)) {
       throw new Error('Desktop recovery header must stay inside the standalone surface.');
     }
@@ -75,7 +73,9 @@ export const Mobile: Story = {
     const mobileSelector = mobileHeader?.querySelector<HTMLElement>(
       '[aria-label="Change language"]',
     );
-    const surface = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="surface"]');
+    const surface = canvasElement.querySelector<HTMLElement>(
+      '[data-standalone-shell-region="surface"]',
+    );
     const root = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="root"]');
     if (!mobileHeader || !mobileSelector || !surface || !root) {
       throw new Error('Standalone recovery layout regions must be present.');

@@ -1,3 +1,3 @@
-For reusable UI work, query the repository documentation for the relevant UI technology together with `storybook` and `testing` before authoring or changing stories.
+For UI work that changes stories, screen composition, or visual behavior, query the repository documentation for the relevant UI technology together with `storybook` and `testing` before authoring or changing stories.
 
-Use Storybook as a verification surface where repository guidance requires it. Keep stories deterministic and representative of meaningful states rather than using them as a second product implementation.
+Use Storybook as a deterministic verification surface where repository guidance requires it. Keep stories representative of meaningful states rather than using them as a second product implementation. Visual verification must inspect the rendered output and follow the repository's responsive inspect/fix/re-render workflow; Storybook alone is insufficient when the behavior depends on the composed application shell.

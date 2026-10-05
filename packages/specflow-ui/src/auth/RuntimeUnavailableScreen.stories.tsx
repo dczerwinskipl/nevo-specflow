@@ -74,5 +74,8 @@ export const Mobile: Story = {
     if (root.scrollWidth > root.clientWidth + 1) {
       throw new Error('Runtime recovery must not introduce horizontal overflow on small screens.');
     }
+    if (root.scrollHeight > root.clientHeight + 1) {
+      throw new Error('Runtime recovery must remain constrained to the mobile viewport.');
+    }
   },
 };

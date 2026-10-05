@@ -18,7 +18,7 @@ import { defaultNevoBrand, NevoBrandLogo } from '../brand';
 import { AccountMenu } from './AccountMenu';
 
 interface NavigationTarget {
-  readonly to: '/' | '/ui-playground';
+  readonly to: '/';
 }
 
 function ProductNavigation({
@@ -38,22 +38,23 @@ function ProductNavigation({
   );
 
   const navigationNodes = useMemo<readonly NavigationNode<NavigationTarget>[]>(
-    () => [
-      { key: 'specs', label: t('navigation.specs'), target: { to: '/' } },
-      {
-        key: 'ui-playground',
-        label: t('navigation.uiPlayground'),
-        target: { to: '/ui-playground' },
-      },
-    ],
+    () => [{ key: 'specs', label: t('navigation.specs'), target: { to: '/' } }],
     [t],
   );
 
   const navigationAdapter = useMemo<NavigationAdapter<NavigationTarget>>(
     () => ({
-      match: (node) => (node.target?.to === pathname ? 'active' : 'none'),
+      match: (node) =>
+        node.target?.to === '/' && (pathname === '/' || pathname.startsWith('/specs/'))
+          ? 'active'
+          : 'none',
       renderLink: ({ children, className, node }) => (
-        <Link className={className} to={node.target?.to ?? '/'} onClick={closeNavigation}>
+        <Link
+          className={className}
+          to={node.target?.to ?? '/'}
+          search={{ collection: 'active' }}
+          onClick={closeNavigation}
+        >
           {children}
         </Link>
       ),

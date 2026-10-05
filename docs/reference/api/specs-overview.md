@@ -37,8 +37,12 @@ The provisional endpoint adds a non-blocking 200 ms response delay to expose loa
 It is not repository discovery, persistent Specs, live workflow execution or a mutation API.
 Sample entries deliberately omit external PR URLs rather than linking fictional pull requests.
 
-The UI MUST label this response as sample data. Detail navigation, creation and archive/delete
-remain unavailable until their product capabilities are implemented.
+The UI MUST label this response as sample data. Current and Archive rows navigate through real hrefs
+to the guarded owning `/specs/:specId?collection=active|archive` application surface; row overflow
+Open specification is enabled. The minimal destination is explicitly a placeholder with route
+identity and a parent-collection Back link, not a new Specification detail endpoint or proof that an
+arbitrary route identity exists. Documents, Task/Session detail, creation and archive/delete remain
+unimplemented. Navigation never performs a workflow mutation.
 
 ## Overview configuration
 

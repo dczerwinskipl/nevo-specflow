@@ -56,7 +56,7 @@ SpecSteeringCollection
 ├── Current
 │   └── SpecListGroup
 │       ├── SpecListGroupHeader
-│       └── ActiveSpecListRow
+│       └── CurrentSpecListRow
 └── Archive
     └── ArchiveSpecListRow
 ```
@@ -169,7 +169,7 @@ interface SpecListTrailingMetadata {
   tags?: SpecListTagTuple;
 }
 
-interface ActiveSpecListRowModel {
+interface CurrentSpecListRowModel {
   id: string;
   key?: string;
   title: string;
@@ -202,7 +202,7 @@ interface SpecListGroupModel {
   kind: SpecListGroupKind;
   label: string;
   count: number;
-  items: readonly ActiveSpecListRowModel[];
+  items: readonly CurrentSpecListRowModel[];
 }
 ```
 
@@ -210,7 +210,7 @@ The type names are illustrative, but the constraints are normative:
 
 - Current and Archive row inputs are separate bounded presentation models, not the raw overview
   projection;
-- `ActiveSpecListRowModel.groupId` is backend-owned; row summaries do not determine classification;
+- `CurrentSpecListRowModel.groupId` is backend-owned; row summaries do not determine classification;
 - same-category multiplicity is represented by the dominant summary's count, never by repeating raw
   signals;
 - `qualifier` is optional and may represent **one** materially useful concurrent lower-priority
@@ -223,7 +223,7 @@ The type names are illustrative, but the constraints are normative:
   component never constructs provider URLs;
 - `pullRequests.kind: 'multiple'` renders bounded non-interactive metadata such as `3 PRs`; opening
   the Spec exposes the individual links;
-- Archive rows use `ArchiveSpecListRowModel.history` instead of Active steering state; the UI formats
+- Archive rows use `ArchiveSpecListRowModel.history` instead of Current steering state; the UI formats
   the authoritative `completedAt` / `archivedAt` timestamp for display and does not invent
   historical prose from unrelated fields;
 - Task IDs and per-Task signal labels are forbidden in the canonical Specs list row;
@@ -505,7 +505,7 @@ Render the backend-supplied groups; defaults are Requires attention / Active / R
 ### Archive
 
 Historical browsing dominates. Archive uses `ArchiveSpecListRowModel`; it does not reuse
-`ActiveSpecListRowModel.stateSummary` or map historical completion to `quiet`.
+`CurrentSpecListRowModel.stateSummary` or map historical completion to `quiet`.
 
 The Archive mapper uses deterministic history precedence:
 
@@ -546,7 +546,7 @@ Search/filter becomes more important in Archive because the collection grows mon
 ## 11. Payload-backed fixtures
 
 Fixtures SHOULD retain rich source projection data where useful, but each story must assert or expose
-the bounded presentation model produced for its collection: `ActiveSpecListRowModel` for Current
+the bounded presentation model produced for its collection: `CurrentSpecListRowModel` for Current
 steering stories and `ArchiveSpecListRowModel` for Archive stories.
 
 ### SS-01 — attention
@@ -658,7 +658,7 @@ Previous workflow hardening
 12 / 12 tasks · Completed Sep 24
 ```
 
-The localized date label is derived from the semantic history field; Archive does not fake an Active
+The localized date label is derived from the semantic history field; Archive does not fake a Current
 `quiet` summary to render completion.
 
 ### SS-10 — archived source with completion and archive timestamps
@@ -896,7 +896,7 @@ synthesized date.
 15. Search counts only filtered visible rows, omits zero-match groups, and restores the exact
     pre-search disclosure snapshot after Search clears.
 16. Batch execution remains batch-shaped and never invents a representative Task.
-17. Archive uses its historical bounded row model rather than Active steering state; authoritative
+17. Archive uses its historical bounded row model rather than Current steering state; authoritative
     `completedAt` takes precedence over `archivedAt`, Archive membership alone never implies
     completion, and an archived item with no authoritative lifecycle timestamp renders without a
     synthesized date.

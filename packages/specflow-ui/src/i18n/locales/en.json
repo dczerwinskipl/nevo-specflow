@@ -57,7 +57,7 @@
     "archive": "Archive",
     "collection": "Specification collection",
     "sample": "Sample data",
-    "previewDescription": "Preview of specification steering. Opening specifications and their related details will become available as those surfaces are implemented.",
+    "previewDescription": "Isolated non-navigable component preview. The application supplies Specification links.",
     "create": "New specification",
     "refresh": "Refresh",
     "refreshing": "Refreshing…",
@@ -133,6 +133,13 @@
       "title": "Access denied",
       "description": "You do not have permission to view these specifications."
     }
+  },
+  "specification": {
+    "title": "Specification",
+    "backToSpecs": "Back to Specs",
+    "placeholderTitle": "Specification details are not implemented yet",
+    "placeholderDescription": "You have opened the owning Specification. Documents, Tasks and Sessions will become available here in a later increment. No workflow action has been performed.",
+    "identity": "Specification ID: {{id}}"
   },
   "playground": {
     "title": "UI Playground",

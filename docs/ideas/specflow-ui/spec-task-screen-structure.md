@@ -152,7 +152,7 @@ Requires attention
   Spec B        Owner decision required
 
 Active
-  Spec C        Reviewer working on 3 Tasks
+  Spec C        1 active session
 
 Ready
   Spec D        Ready to start
@@ -200,7 +200,7 @@ Spec A
   5 / 9 Tasks · 3 Tasks require review
 
 Spec B
-  2 / 8 Tasks · Reviewer working on 3 Tasks
+  2 / 8 Tasks · 1 active session
 ```
 
 The overview must not turn a Spec row into a miniature detail screen merely to prove that all source
@@ -479,7 +479,7 @@ The user learns the context before performing Start.
 Active
 
 Spec A
-  2 / 8 Tasks · Reviewer working on 3 Tasks
+  2 / 8 Tasks · 1 active session
 ```
 
 Opening the row enters Spec A, where the authoritative execution scope can identify the participating

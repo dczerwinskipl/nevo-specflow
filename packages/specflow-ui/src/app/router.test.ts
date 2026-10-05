@@ -1,9 +1,11 @@
 import type { AuthSessionResponse } from '@nevo/specflow-contracts/authentication';
 import { describe, expect, it } from 'vitest';
+import { createMemoryHistory } from '@tanstack/react-router';
 
 import type { AuthApi } from '../auth/api';
 import { createAuthStore } from '../auth/store';
-import { resolveAppAccess, resolveLoginAccess } from './router';
+import { createSpecFlowRouter, resolveAppAccess, resolveLoginAccess } from './router';
+import { createSpecsFixture } from '../features/specs/overview/fixtures';
 
 const noAuth: AuthSessionResponse = {
   authenticationRequired: false,
@@ -27,6 +29,34 @@ const authenticated: AuthSessionResponse = {
 };
 
 describe('SpecFlow router access policy', () => {
+  it.each(['active', 'archive'] as const)(
+    'reaches the owned Specification directly and preserves the %s collection identifier',
+    async (collection) => {
+      const router = createSpecFlowRouter(
+        createMemoryHistory({ initialEntries: [`/specs/admission?collection=${collection}`] }),
+        storeWith(authenticated),
+        { read: (value) => Promise.resolve(createSpecsFixture(value)) },
+      );
+      await router.load();
+      const match = router.state.matches.find((item) => item.routeId === '/_app/specs/$specId');
+      expect(match?.status).toBe('success');
+      expect(match?.params).toEqual({ specId: 'admission' });
+      expect(match?.search).toEqual({ collection });
+    },
+  );
+
+  it('preserves the Specification deep link through authentication', async () => {
+    const returnTo = '/specs/admission?collection=archive';
+    await expect(resolveAppAccess(storeWith(loginRequired), returnTo)).resolves.toEqual({
+      kind: 'login',
+      returnTo,
+    });
+    await expect(resolveLoginAccess(storeWith(authenticated), returnTo)).resolves.toEqual({
+      kind: 'app',
+      returnTo,
+    });
+  });
+
   it('allows trusted local mode into app routes without a login screen', async () => {
     await expect(resolveAppAccess(storeWith(noAuth), '/ui-playground')).resolves.toEqual({
       kind: 'allow',

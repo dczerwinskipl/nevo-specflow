@@ -111,6 +111,10 @@ For MVP the candidate top-level areas are:
 
 A full Session may have a route without having a sidebar entry.
 
+The implemented increment currently has only Specs in persistent product navigation. Project
+Settings will appear when its real surface exists. UI Playground remains a direct development URL,
+not a normal product navigation item.
+
 ---
 
 ## 3. Specs collection
@@ -179,6 +183,12 @@ than infer them independently.
 **Product direction**
 
 Specification is a main workspace context.
+
+Current implementation: every Overview row and Open specification menu action navigates to the
+guarded `/specs/:specId` Primary route, with the collection retained for Back. This minimal surface
+explicitly labels unimplemented details and displays route identity only; it does not claim a
+Specification read capability or invent workflow mutations. The responsibilities below describe the
+full surface to be implemented later. Task/Session navigation belongs there, never in Overview rows.
 
 It owns or contextualizes:
 

@@ -19,6 +19,7 @@ import { useSpecsOverview } from '../features/specs/overview/useSpecsOverview';
 import { defaultSpecsSource } from '../features/specs/overview/source';
 import type { SpecsOverviewSource } from '../features/specs/overview/model';
 import { SpecsAccessDenied } from '../features/specs/overview/SpecsAccessDenied';
+import { SpecificationSurface } from '../features/specs/SpecificationSurface';
 
 export interface SpecFlowRouterContext {
   readonly auth: AuthStore;
@@ -120,11 +121,20 @@ const uiPlaygroundRoute = createRoute({
   component: UiPlaygroundScreen,
 });
 
+const specificationRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/specs/$specId',
+  validateSearch: (search: Record<string, unknown>) => ({
+    collection: search.collection === 'archive' ? ('archive' as const) : ('active' as const),
+  }),
+  component: SpecificationRouteScreen,
+});
+
 const routeTree = rootRoute.addChildren([
   loginRoute,
   runtimeUnavailableRoute,
   specsForbiddenRoute,
-  appRoute.addChildren([specsRoute, uiPlaygroundRoute]),
+  appRoute.addChildren([specsRoute, specificationRoute, uiPlaygroundRoute]),
 ]);
 
 export function createSpecFlowRouter(
@@ -172,6 +182,29 @@ function SpecsRouteScreen() {
       onRefresh={refresh}
       sample={state.projection?.sample ?? specs.sample}
       onCollectionChange={(value) => void navigate({ search: { collection: value } })}
+      specificationHref={(specId) =>
+        `/specs/${encodeURIComponent(specId)}?collection=${collection}`
+      }
+      onOpenTarget={(target) =>
+        void navigate({
+          to: '/specs/$specId',
+          params: { specId: target.specId },
+          search: { collection },
+        })
+      }
+    />
+  );
+}
+
+function SpecificationRouteScreen() {
+  const { specId } = specificationRoute.useParams();
+  const { collection } = specificationRoute.useSearch();
+  const navigate = specificationRoute.useNavigate();
+  return (
+    <SpecificationSurface
+      specId={specId}
+      overviewHref={`/?collection=${collection}`}
+      onBack={() => void navigate({ to: '/', search: { collection } })}
     />
   );
 }

@@ -46,7 +46,10 @@ being treated as an unauthenticated user.
 The current product routes under the guarded layout remain:
 
 - `/` for the read-only Specs Overview (`?collection=active|archive`);
-- `/ui-playground` for a product-owned component/workspace integration screen.
+- `/specs/:specId` for the owning Specification, with `?collection=active|archive` as parent return
+  context; the current increment is an explicitly labelled placeholder, not a Specification read API;
+- `/ui-playground` for a directly routable development/integration screen, not a persistent product
+  navigation item.
 
 ## Specs Overview increment
 
@@ -70,9 +73,14 @@ summary facts; the feature mapper bounds rows before rendering and does not clas
 Development builds can still opt into isolated frontend fixtures using
 `VITE_SPECFLOW_SAMPLE_DATA=true`; normal builds and dogfooding use the HTTP source.
 
-The app intentionally does not expose creation or destination navigation before those capabilities
-exist. Product-level stories exercise real Specification links with a provided href and optional
-navigation adapter. Task/Session targets are not separate row destinations. The actual sample preview renders passive rows and explains this boundary.
+The actual app supplies real Specification hrefs and router navigation to every Current and Archive
+row, including Open specification in row overflow. Normal activation uses the router; modifier clicks
+retain browser link behavior. The guarded `/specs/:specId` destination currently identifies only the
+requested route identity and explicitly explains that documents, Tasks and Sessions are not implemented.
+It does not claim the identity exists, fetch protected Specification detail, or invent workflow state.
+Its Back link returns to the originating collection; direct entry defaults to Current. Task/Session
+targets never replace the owning Specification destination. Creation and archive/delete mutations
+remain unsupported. Isolated non-navigable component fixtures are not the production route contract.
 
 The login and Runtime-recovery screens are product-owned compositions on Nevo UI's
 `StandaloneShell`. That shared shell owns the navigation-free application frame: AppBackground,
@@ -108,6 +116,10 @@ Locale resolution, persistence, stable-key rules, and CLI/UI ownership are defin
 ## Product navigation and account footer
 
 `SpecFlowShell` owns the product navigation composition. Its layout has three structural regions:
+
+Normal product navigation currently contains only Specs, also active while inside Specification.
+Project Settings earns an entry when its real surface exists. UI Playground remains available by
+direct URL for development, never as a persistent product entry.
 
 1. a non-scrolling brand header;
 2. a `min-height: 0`, flexible, vertically scrollable navigation body;

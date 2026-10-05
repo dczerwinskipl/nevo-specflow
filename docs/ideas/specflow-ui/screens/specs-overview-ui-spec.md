@@ -97,7 +97,10 @@ the table refer to real repository Specs/workflow data, not the sample endpoint.
 authentication and per-item `spec.view` filtering, marks responses `sample: true`, and intentionally
 retains 200 ms latency for loading/refresh verification. See
 [Specs Overview API](../../../reference/api/specs-overview.md) for the discriminated Current/Archive
-source contracts and access semantics. Sample detail navigation and mutations remain unavailable.
+source contracts and access semantics. Navigation is real: every Current/Archive row and its Open
+specification menu action enters `/specs/:specId`, preserving the collection as parent return context.
+This increment provides an explicitly labelled Specification placeholder, not document/Task/Session
+details or a Specification read API. Creation and archive/delete mutations remain unavailable.
 
 Creation and collection reads are separate application capabilities. Creating a Specification does not
 require starting an agent Session; create-and-start composes Specification creation with the common
@@ -383,7 +386,7 @@ Do not force the work queue into DataTable unless final content proves genuinely
 - current Specs Overview does not expose unsupported Spec-selection checkboxes or bulk actions;
 - Search cannot hide matches inside collapsed groups and uses filtered group counts as defined by the
   steering contract;
-- Archive uses bounded historical row semantics rather than Active steering state;
+- Archive uses bounded historical row semantics rather than Current steering state;
 - aggregate summaries never invent a representative Task;
 - batch remains batch-shaped;
 - no current-work language is derived from historical Session association;

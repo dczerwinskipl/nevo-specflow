@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { createSpecItem, createSpecsFixture, createArchiveItem } from './fixtures';
-import { activeRow, archiveRow } from './presentation';
+import { currentRow, archiveRow } from './presentation';
 import { groupTranslationKey } from './model';
 
 describe('Specs Overview presentation boundary', () => {
   it('preserves backend classification and bounded concurrent work without leaking evidence', () => {
     const source = createSpecsFixture().items[0]!;
-    const row = activeRow(source);
+    const row = currentRow(source);
     expect(row.groupId).toBe('requires-attention');
     expect(row.summary).toEqual({ kind: 'attention', reason: 'input' });
     expect(row.qualifier).toEqual({ executionCount: 1 });
@@ -14,7 +14,7 @@ describe('Specs Overview presentation boundary', () => {
     expect(row).not.toHaveProperty('currentExecutions');
     expect(JSON.stringify(row)).not.toContain('TASK-');
     expect(
-      activeRow({
+      currentRow({
         ...source,
         groupId: 'draft',
         overviewSummary: { kind: 'draft' },
@@ -31,18 +31,18 @@ describe('Specs Overview presentation boundary', () => {
     });
   });
   it('does not interpret unavailable evidence as calm state or reclassify the row', () => {
-    const row = activeRow({ ...createSpecsFixture().items[0]!, steeringAvailable: false });
+    const row = currentRow({ ...createSpecsFixture().items[0]!, steeringAvailable: false });
     expect(row.summary).toEqual({ kind: 'unavailable' });
     expect(row.groupId).toBe('requires-attention');
   });
   it('links exactly one PR but never chooses a representative for several', () => {
-    const single = activeRow(createSpecsFixture().items[0]!);
+    const single = currentRow(createSpecsFixture().items[0]!);
     expect(single.pullRequests).toEqual({
       kind: 'single',
       number: 27,
       href: 'https://example.test/pull/27',
     });
-    const multiple = activeRow(
+    const multiple = currentRow(
       createSpecItem({
         pullRequests: [1, 2, 3].map((number) => ({
           number,

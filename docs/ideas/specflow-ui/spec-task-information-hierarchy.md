@@ -843,8 +843,9 @@ or Open full session
   Full Session directly
 ```
 
-The aggregate "Reviewer working on 3 Tasks" summary is allowed only when authoritative current
-execution scope proves that work is active. A linked/historical Session alone is insufficient.
+The Overview aggregate "1 active session" requires authoritative current execution; a linked or
+historical Session alone is insufficient. Agent role and participating Task scope become explicit
+inside Specification rather than extending the canonical Overview row.
 
 Working is not ready and is not requires-attention.
 

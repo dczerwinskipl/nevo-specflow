@@ -92,6 +92,13 @@ Project
 A Full Session is a first-class workspace and may have its own URL, but Sessions are not a global
 sidebar area while they remain owned by/spec-driven from Specifications.
 
+The implemented increment has only Specs in global navigation; Project Settings awaits a real
+surface. UI Playground is development-only direct navigation. Every Current/Archive Overview row
+uses a real owning Specification link at `/specs/:specId`, including Open specification in overflow.
+The current destination is an explicitly labelled placeholder with a Back link to the originating
+collection, not fabricated document, Task, Session or workflow detail. Navigation is real even while
+those details and mutations remain unimplemented.
+
 Changes, pull requests, documentation, files, Work details, and similar concepts are contextual
 surfaces until a proven independent human task justifies promoting them into global navigation.
 

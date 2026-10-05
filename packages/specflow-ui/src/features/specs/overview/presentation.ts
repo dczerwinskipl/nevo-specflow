@@ -18,7 +18,7 @@ interface RowIdentity {
   readonly omittedTags: number;
   readonly pullRequests?: PullRequests;
 }
-export interface ActiveSpecRowModel extends RowIdentity {
+export interface CurrentSpecRowModel extends RowIdentity {
   readonly collection: 'active';
   readonly groupId: SpecsOverviewGroupId;
   readonly summary: SpecsOverviewSummary;
@@ -29,7 +29,7 @@ export interface ArchiveSpecRowModel extends RowIdentity {
   readonly history:
     { kind: 'completed'; timestamp: string } | { kind: 'archived'; timestamp?: string };
 }
-export type SpecRowModel = ActiveSpecRowModel | ArchiveSpecRowModel;
+export type SpecRowModel = CurrentSpecRowModel | ArchiveSpecRowModel;
 
 function identity(item: SpecOverviewIdentity): RowIdentity {
   const [first, second] = item.tags ?? [];
@@ -51,7 +51,7 @@ function identity(item: SpecOverviewIdentity): RowIdentity {
           : undefined,
   };
 }
-export function activeRow(item: SpecSteeringItemProjection): ActiveSpecRowModel {
+export function currentRow(item: SpecSteeringItemProjection): CurrentSpecRowModel {
   return {
     ...identity(item),
     collection: 'active',

@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { groupTranslationKey, type SpecsOverviewProjection, type SteeringTarget } from './model';
-import { activeRow, archiveRow } from './presentation';
+import { currentRow, archiveRow } from './presentation';
 import { SpecListRow } from './SpecListRow';
 import { SpecGroupHeader } from './SpecGroupHeader';
 
@@ -67,7 +67,7 @@ export function SpecSteeringCollection({
               {rows.map((item) => (
                 <SpecListRow
                   key={item.id}
-                  item={activeRow(item)}
+                  item={currentRow(item)}
                   specificationHref={specificationHref?.(item.id)}
                   onOpenTarget={onOpenTarget}
                 />

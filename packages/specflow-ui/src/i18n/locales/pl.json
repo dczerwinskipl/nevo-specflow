@@ -57,7 +57,7 @@
     "archive": "Archiwum",
     "collection": "Kolekcja specyfikacji",
     "sample": "Dane przykładowe",
-    "previewDescription": "Podgląd listy specyfikacji i sygnałów. Otwieranie specyfikacji oraz powiązanych szczegółów będzie dostępne wraz z wdrożeniem kolejnych ekranów.",
+    "previewDescription": "Izolowany podgląd komponentu bez nawigacji. Aplikacja udostępnia linki do specyfikacji.",
     "create": "Nowa specyfikacja",
     "refresh": "Odśwież",
     "refreshing": "Odświeżanie…",
@@ -133,6 +133,13 @@
       "title": "Brak dostępu",
       "description": "Nie masz uprawnień do przeglądania tych specyfikacji."
     }
+  },
+  "specification": {
+    "title": "Specyfikacja",
+    "backToSpecs": "Wróć do Specs",
+    "placeholderTitle": "Szczegóły specyfikacji nie są jeszcze zaimplementowane",
+    "placeholderDescription": "Otwarta została właściwa specyfikacja. Dokumenty, zadania i sesje będą dostępne tutaj w kolejnym etapie. Nie wykonano żadnej akcji workflow.",
+    "identity": "ID specyfikacji: {{id}}"
   },
   "playground": {
     "title": "UI Playground",

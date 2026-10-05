@@ -69,33 +69,44 @@ Tabs or SegmentedControl for Active/Archive, EmptyState, and Skeleton.
 
 Do not create a generic DashboardCard abstraction.
 
-The group header and every row share one **fixed leading/disclosure gutter** and one **content
-start**. The gutter is owned by the list pattern, not by callers.
+The collection follows the shared
+[scan-column rule](../../../design-system/principles/layout-and-containment.md#scan-column-rule).
+Group headers and rows are one scanning system, not independently composed blocks.
+
+The outer list grid owns three stable tracks:
+
+```text
+[ utility gutter ] [ semantic marker ] [ content ................................ ]
+```
 
 Conceptually:
 
 ```text
-[ gutter ] [ content ------------------------------------------------------ ]
-
-[   v    ] Requires attention  3
-[        ] UI-1234  Deterministic admission...              PR #27  Auth
-[        ] UI-1235  Runtime authorization...                        Runtime
+[      ▾       ] [ ● ] Requires attention  3
+[              ] [   ] UI-1234  Deterministic admission...        PR #27  Auth
+[              ] [   ] UI-1235  Runtime authorization...                  Runtime
 ```
 
-The group label and row identity text start on the same vertical axis. A chevron or future
-row-selection control MUST NOT shift that axis. Current Specs Overview rows have no selection
-checkbox or bulk-Spec action; their gutter stays visually empty. The current pattern does not place a separate leading status marker in front of the
-group label because that would create a second content start. Semantic group tone may use the header
-surface, text/accent treatment, or a marker that does not consume horizontal space before the label.
+The disclosure control occupies the utility gutter. Current Specs Overview rows have no selection
+checkbox or bulk-Spec action, so that row track is empty; a future selection variant would reuse the
+same track rather than introducing new indentation.
 
-Implementations SHOULD realize this with one shared layout contract, for example a two-column grid:
+The semantic marker has its own fixed scan column. It may carry restrained group colour, which keeps
+group scanning fast without shifting the group label or colouring every row. Rows reserve the same
+marker track even when they do not render a marker.
+
+The group label and row identity therefore start on the same **content axis** after both leading
+tracks. Implementations SHOULD realize this with one shared outer grid, for example:
 
 ```css
-grid-template-columns: var(--spec-list-gutter) minmax(0, 1fr);
+grid-template-columns:
+  var(--spec-list-utility-gutter)
+  var(--spec-list-marker-column)
+  minmax(0, 1fr);
 ```
 
-The exact token/value for the gutter belongs to the owning implementation/design-system scale, but
-group and row MUST use the same value. Do not recreate the gutter independently in each state.
+The exact token values belong to the owning implementation/design-system scale, but group and row
+MUST use the same template. Do not recreate the leading columns independently in each state.
 
 ## 3. Source projection versus presentation model
 
@@ -127,7 +138,7 @@ metadata.
 Reference presentation contract:
 
 ```ts
-type SpecListGroupKind = 'attention' | 'ready' | 'working' | 'quiet';
+type SpecListGroupKind = 'attention' | 'in-progress' | 'ready-idle';
 
 type SpecListStateSummary =
   | {
@@ -135,14 +146,13 @@ type SpecListStateSummary =
       reason: 'agent-input' | 'owner-decision' | 'review' | 'spec-approval';
       count?: number;
     }
+  | { kind: 'in-progress'; role?: string; taskCount?: number }
   | { kind: 'ready'; readyCount: number }
-  | { kind: 'working'; role?: string; taskCount?: number }
-  | { kind: 'quiet'; reason: 'no-immediate-action' | 'agent-remediation-available' };
+  | { kind: 'idle'; reason: 'no-immediate-action' | 'agent-remediation-available' };
 
 type SpecListConcurrentQualifier =
-  | { kind: 'ready'; readyCount: number }
-  | { kind: 'working'; role?: string; taskCount?: number }
-  | { kind: 'remediation'; reason: 'agent-remediation-available' };
+  | { kind: 'in-progress'; role?: string; taskCount?: number }
+  | { kind: 'ready'; readyCount: number };
 
 type SpecListPullRequestSummary =
   { kind: 'single'; number: number; href: string } | { kind: 'multiple'; count: number };
@@ -195,13 +205,14 @@ The type names are illustrative, but the constraints are normative:
 - Active and Archive row inputs are separate bounded presentation models, not the raw overview
   projection;
 - `ActiveSpecListRowModel.stateSummary.kind` is the dominant semantic state and determines the one
-  group that owns the Active row;
+  group that owns the Active row through the mapping below;
 - same-category multiplicity is represented by the dominant summary's count, never by repeating raw
   signals;
 - `qualifier` is optional and may represent **one** materially useful concurrent lower-priority
   state; it is aggregate, non-interactive, and never contains Task IDs;
-- when attention, ready, and working coexist, current authoritative work is normally a more useful
-  qualifier than merely-ready work because it changes the interpretation of what is happening now;
+- when attention, ready, and in-progress state coexist, authoritative current work is normally a more
+  useful qualifier than merely-ready work because it changes the interpretation of what is happening
+  now;
 - tags are capped at two visible values;
 - `pullRequests.kind: 'single'` renders one explicit PR link using the provided `href`; the
   component never constructs provider URLs;
@@ -220,30 +231,46 @@ presentation contract deliberately rather than exposing raw source arrays or a g
 
 One Spec appears in **one canonical Active queue position**.
 
-The semantic groups are:
+The current Active collection has three semantic groups:
 
 ```text
 requires attention
-ready
-working
-quiet / other active
+in progress
+ready / idle
 ```
+
+Cross-group priority is:
+
+```text
+attention > in-progress > ready-idle
+```
+
+The row-state mapping is deterministic:
+
+- `attention` -> Requires attention;
+- `in-progress` -> In progress;
+- `ready` and `idle` -> Ready / idle.
+
+Ready and idle remain distinct **row summaries** inside the same low-priority group. Ready means a
+useful operation is available if the human chooses to start/continue it. Idle means no immediate
+useful action or active progress needs emphasis. Within Ready / idle, ready rows sort ahead of idle
+rows unless a more specific product ordering rule is introduced later.
 
 For the current Specs Overview, use grouped sections. A future flat queue is a separate design
 decision and must not be introduced as an implementation convenience.
 
 An "issue" is not automatically its own human-attention category. If the issue requires owner
-intervention, it contributes an attention summary. If the agent/system can remediate it without the
-human, keep it in working/quiet with an appropriate aggregate reason.
+intervention, it contributes an attention summary. If the agent/system is actively remediating it
+without human input, it belongs in In progress. If remediation is merely available or nothing is
+currently progressing, it remains in Ready / idle with the appropriate row summary.
 
 Within Requires attention, an active Session interaction waiting for the human is normally the
 strongest signal. Beyond that, the application/read model should provide semantic priority rather
 than the frontend reverse-engineering urgency from raw statuses.
 
-Do not duplicate one Spec into Attention + Ready + Working rows. The dominant group follows the
-human-steering priority `attention > ready > working > quiet`. Lower-priority concurrent state stays
-in the source projection and may contribute at most one bounded `qualifier` when omitting it would
-materially misrepresent the row. The qualifier never changes the row's group or navigation target.
+Do not duplicate one Spec across groups. Lower-priority concurrent state stays in the source
+projection and may contribute at most one bounded `qualifier` when omitting it would materially
+misrepresent the row. The qualifier never changes the row's group or navigation target.
 
 ## 5. Interaction model and affordance budget
 
@@ -289,28 +316,45 @@ Agent asks for input         // second competing row navigation target
 The row summary may say what is happening, but opening the responsible Task/Session happens after
 entering the Specification, where that context can be explained properly.
 
-## 6. Row anatomy and information budget
+## 6. Row anatomy, scan columns, and information budget
 
-Every active Spec row uses the same two-level skeleton.
+Every active Spec row uses the same two-level skeleton and the same nested scan columns.
 
-Wide example:
-
-```text
-[        ] UI-1234  Deterministic admission and execution boundaries     PR #27  Auth
-             5 / 9 tasks · Owner decision required
-```
-
-Another state:
+Wide conceptual shape:
 
 ```text
-[        ] RT-104   Provider diagnostics and replay                      Runtime
-             2 / 8 tasks · Reviewer working on 3 tasks
+[utility][marker][ Deterministic admission and execution boundaries ........ ][ PR #27  Auth ]
+                 [ UI-1234 ][ 5 / 9 tasks ][ Owner decision required ....... ]
 ```
+
+Another state uses the same columns:
+
+```text
+[utility][marker][ Provider diagnostics and replay ......................... ][ Runtime ]
+                 [ RT-104  ][ 2 / 8 tasks ][ Reviewer working on 3 tasks ... ]
+```
+
+The title spans the secondary identity/progress/summary tracks, while trailing metadata occupies one
+bounded trailing track. On the secondary line, key, progress, and state summary align vertically
+across rows so the eye can compare them without re-parsing every item.
+
+A suitable nested information-rail grid is conceptually:
+
+```css
+grid-template-columns:
+  max-content            /* key */
+  max-content            /* progress */
+  minmax(0, 1fr)         /* state summary / flexible title span */
+  max-content;           /* bounded trailing metadata */
+```
+
+Exact widths/gaps remain token-driven, but semantic fields MUST keep their scan column across sibling
+rows. Optional values do not cause later columns to drift left.
 
 Hierarchy:
 
-1. primary line: optional human-readable key + title + compact trailing metadata;
-2. secondary line: task progress + one concise aggregate state summary;
+1. primary line: title spanning the main reading columns + compact trailing metadata;
+2. secondary line: stable key column + progress column + one concise aggregate state-summary column;
 3. no third signal/detail line in the normal list row.
 
 The secondary line has a strict budget:
@@ -455,7 +499,7 @@ Use design-system spacing tokens rather than scattering literal pixel values.
 
 Steering semantics dominate.
 
-Group by attention / ready / working / quiet.
+Group by Requires attention / In progress / Ready / idle.
 
 ### Archive
 
@@ -488,8 +532,8 @@ Spec Y
 ...
 ```
 
-Do not force archived Specs into Requires attention / Ready / Working groups based on stale
-historical signals.
+Do not force archived Specs into Requires attention / In progress / Ready / idle groups based on
+stale historical signals.
 
 Search/filter becomes more important in Archive because the collection grows monotonically.
 
@@ -512,14 +556,14 @@ UI-1234  Deterministic admission
 
 No `TASK-03` appears in the canonical row.
 
-### SS-02 — concurrent attention + ready + working
+### SS-02 — concurrent attention + ready + in-progress
 
 Source may contain several signals:
 
 ```text
 attention: TASK-03 requires review
 ready: TASK-05 ready
-working: Reviewer on TASK-02/TASK-03
+in-progress: Reviewer on TASK-02/TASK-03
 ```
 
 The mapper chooses `attention` as the dominant group/summary and one materially useful concurrent
@@ -535,7 +579,7 @@ UI-1234  Deterministic admission
 ```
 
 This is representable as `stateSummary: { kind: 'attention', reason: 'review', count: 1 }` plus one
-`working` qualifier. The ready signal remains preserved in the source projection and becomes explicit after entering the
+`in-progress` qualifier. The ready signal remains preserved in the source projection and becomes explicit after entering the
 Specification. The overview does not concatenate it into a fourth fragment or imply that it is the
 dominant state.
 
@@ -555,16 +599,16 @@ UI-1235  Authorization policy
 3 / 7 tasks · Specification approval required
 ```
 
-### SS-05 — ready
+### SS-05 — ready inside Ready / idle
 
 ```text
-Ready  1
+Ready / idle  2
 
 UI-1236  Localization preferences
 0 / 5 tasks · Ready to start
 ```
 
-### SS-06 — batch working
+### SS-06 — batch in progress
 
 ```text
 In progress  1
@@ -575,12 +619,12 @@ RT-104  Provider diagnostics and replay
 
 Do not choose a representative Task.
 
-### SS-07 — issue/remediation without human attention
+### SS-07 — available remediation inside Ready / idle
 
-`stateSummary: { kind: 'quiet', reason: 'agent-remediation-available' }`
+`stateSummary: { kind: 'idle', reason: 'agent-remediation-available' }`
 
 ```text
-Quiet  1
+Ready / idle  2
 
 RT-105  Runtime recovery
 4 / 7 tasks · Agent remediation available
@@ -588,12 +632,12 @@ RT-105  Runtime recovery
 
 If owner intervention is required, the projection belongs in Requires attention instead.
 
-### SS-08 — quiet
+### SS-08 — idle inside Ready / idle
 
-`stateSummary: { kind: 'quiet', reason: 'no-immediate-action' }`
+`stateSummary: { kind: 'idle', reason: 'no-immediate-action' }`
 
 ```text
-Quiet  1
+Ready / idle  2
 
 UI-1237  Navigation cleanup
 4 / 7 tasks · No immediate action
@@ -728,9 +772,9 @@ Keep visible rows while refreshing.
 - state summary: secondary text with restrained semantic tone where useful;
 - progress/trailing metadata: muted/secondary;
 - dividers subtle;
-- attention stronger than ready;
-- working uses running/activity tone;
-- quiet neutral;
+- attention carries the strongest semantic tone;
+- in-progress uses a restrained running/activity tone;
+- Ready / idle remains neutral/subtle, with row prose distinguishing ready from idle;
 - group semantics cannot rely on color alone;
 - no decorative different strong background per group.
 
@@ -751,10 +795,10 @@ Required:
 spec-steering/attention
 spec-steering/concurrent-source-signals-bounded-row
 spec-steering/spec-attention
-spec-steering/ready
-spec-steering/batch-working
-spec-steering/remediation
-spec-steering/quiet
+spec-steering/ready-idle
+spec-steering/batch-in-progress
+spec-steering/remediation-available
+spec-steering/idle
 spec-steering/archive-row
 spec-steering/archive-completed-and-archived
 spec-steering/long-title
@@ -780,14 +824,16 @@ prove that `completedAt` wins when both authoritative completion and archive tim
 
 1. A Spec appears once in the canonical Active queue.
 2. Requires attention means human intervention is actually needed.
-3. Ready work remains separate from attention.
+3. Cross-group priority is `attention > in-progress > ready-idle`; ready and idle remain distinct row
+   summaries within the same Ready / idle group.
 4. The entire Spec row has one stable destination: the Specification.
 5. Ordinary status/summary prose inside a row is non-interactive and is not styled as a link.
 6. Only explicitly allowed external/contextual controls such as a linked PR may coexist with the row target, using sibling interactive elements rather than invalid nested controls.
 7. Group header text and row identity share the same content start; the disclosure chevron and the
    empty current-row gutter use one fixed gutter. Current Specs Overview exposes no row-selection
    checkbox.
-8. All active rows preserve one primary-line + secondary-line skeleton across states.
+8. All active rows preserve one primary-line + secondary-line skeleton and stable semantic scan
+   columns across states.
 9. The secondary line is bounded to progress + dominant aggregate summary + at most one explicit
    concurrent qualifier; it does not render Task IDs or raw signal lists.
 10. Active and Archive rows consume their strict bounded presentation models rather than raw

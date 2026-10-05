@@ -63,9 +63,7 @@ function assert(condition: unknown, message: string): asserts condition {
 
 export const Desktop: Story = {
   play: ({ canvasElement }) => {
-    const root = canvasElement.querySelector<HTMLElement>(
-      '[data-standalone-shell-region="body"]',
-    );
+    const root = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="body"]');
     const surface = canvasElement.querySelector<HTMLElement>(
       '[data-standalone-shell-region="surface"]',
     );
@@ -101,9 +99,7 @@ export const Desktop: Story = {
 export const Mobile: Story = {
   parameters: { viewport: { defaultViewport: 'mobile1' } },
   play: ({ canvasElement }) => {
-    const shell = canvasElement.querySelector<HTMLElement>(
-      '[data-standalone-shell-region="root"]',
-    );
+    const shell = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="root"]');
     const mobileHeader = canvasElement.querySelector<HTMLElement>(
       '[data-standalone-shell-region="mobile-header"]',
     );
@@ -129,10 +125,7 @@ export const Mobile: Story = {
       surfaceRect.bottom >= shellRect.bottom - 1,
       'Mobile workspace sheet must fill the remaining shell height.',
     );
-    assert(
-      getComputedStyle(mobileHeader).display === 'flex',
-      'Mobile header must be visible.',
-    );
+    assert(getComputedStyle(mobileHeader).display === 'flex', 'Mobile header must be visible.');
     assert(
       getComputedStyle(desktopHeader).display === 'none',
       'Desktop header must hide on mobile.',

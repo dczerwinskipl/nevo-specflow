@@ -71,13 +71,15 @@ Conceptually:
 ```text
 [ gutter ] [ content ------------------------------------------------------ ]
 
-[   v    ] [ status marker ] Requires attention  3
+[   v    ] Requires attention  3
 [   □    ] UI-1234  Deterministic admission...              PR #27  Auth
 [   □    ] UI-1235  Runtime authorization...                        Runtime
 ```
 
 The group label and row identity text start on the same vertical axis. A chevron or checkbox MUST NOT
-shift that axis.
+shift that axis. The current pattern does not place a separate leading status marker in front of the
+group label because that would create a second content start. Semantic group tone may use the header
+surface, text/accent treatment, or a marker that does not consume horizontal space before the label.
 
 Implementations SHOULD realize this with one shared layout contract, for example a two-column grid:
 
@@ -206,6 +208,22 @@ Allowed nested interactive exceptions are limited to genuinely different externa
 resources whose destination is obvious independently of the row, for example a linked pull request.
 Such controls must be explicit compact controls/chips and must not visually compete with the row.
 
+The DOM contract MUST remain valid when selection or nested controls exist:
+
+- `SpecListRow` root is a non-interactive list/container element;
+- the Specification navigation target is a real semantic link and owns the row's primary hit area;
+- the selection checkbox and linked-PR control are sibling interactive elements, never descendants
+  of that link/button;
+- activating the checkbox or PR MUST NOT trigger Specification navigation;
+- keyboard focus order is predictable: selection control when present, Specification target, then
+  any allowed trailing interactive control;
+- do not implement a clickable row by wrapping `<input>`, `<button>`, or another `<a>` inside
+  one outer `<a>`/`<button>`.
+
+A stretched-link technique MAY make the Specification link cover the otherwise non-interactive row
+surface, provided sibling controls remain independently clickable/focusable and sit above that hit
+layer.
+
 Forbidden examples in the canonical list:
 
 ```text
@@ -280,12 +298,11 @@ to opposite edges of an ultra-wide workspace.
 Do not use an unbounded `1fr auto` arrangement that leaves a very large dead zone between title and
 trailing metadata.
 
-Use one of these equivalent constraints:
-
-- cap the information rail with a rational design-system/product max width while the row surface
-  remains full width; or
-- use a grid/flex strategy where trailing metadata stays adjacent to the title region and remaining
-  workspace width becomes neutral trailing space.
+Use one shared pattern: the row surface remains full width, while the inner information rail is
+bounded by a product/design-system max inline size and stays anchored to the content start. The rail
+may shrink to `100%` on smaller viewports, but it MUST NOT expand indefinitely on ultra-wide
+screens. Trailing metadata belongs inside that same rail, so any width beyond the rail becomes neutral
+space after the related title/metadata cluster.
 
 Conceptually:
 
@@ -300,7 +317,8 @@ not:
 | gutter | UI-1234 Title.................... huge dead zone .............. PR #27 |
 ```
 
-The exact max-width/token is an implementation/design-system decision, but visual verification on a
+The exact max-inline-size token remains an implementation/design-system decision, but there is one
+geometry family: full-width row surface + bounded information rail. Visual verification on a
 wide/ultra-wide viewport MUST prove that title and trailing metadata still read as one row.
 
 ## 8. Responsive behavior
@@ -341,9 +359,11 @@ Groups are full-width list sections, not Cards.
 A group header contains:
 
 - disclosure chevron in the shared gutter;
-- optional semantic status marker;
-- group label;
+- group label starting at the shared content axis;
 - count.
+
+Semantic tone may use restrained color/surface treatment, but it MUST NOT insert a new leading column
+that moves the group label away from the Spec-key/title axis.
 
 Use semantic color sparingly. The group may use a subtle surface or divider treatment, but do not
 turn every status group into a strongly colored block.
@@ -586,7 +606,7 @@ secondary line rather than exposing all source details.
 3. Ready work remains separate from attention.
 4. The entire Spec row has one stable destination: the Specification.
 5. Ordinary status/summary prose inside a row is non-interactive and is not styled as a link.
-6. Only explicitly allowed external/contextual controls such as a linked PR may be nested targets.
+6. Only explicitly allowed external/contextual controls such as a linked PR may coexist with the row target, using sibling interactive elements rather than invalid nested controls.
 7. Group header text and row identity share the same content start; chevrons/checkboxes remain in one
    fixed gutter.
 8. All active rows preserve one primary-line + secondary-line skeleton across states.
@@ -595,7 +615,7 @@ secondary line rather than exposing all source details.
 10. The visual row consumes a strict presentation model rather than raw `signals[]` /
     `currentExecutions[]`.
 11. Visible tags are capped at two and PR metadata is compact.
-12. Ultra-wide layout does not create a large dead zone between title and trailing metadata.
+12. Ultra-wide layout uses a full-width row surface with one bounded information rail, preventing a large dead zone between title and trailing metadata.
 13. Group spacing is visually stronger than row spacing: `groupGap > rowGap`.
 14. Batch execution remains batch-shaped and never invents a representative Task.
 15. Archive reads historically, not like stale Active steering.

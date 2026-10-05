@@ -5,7 +5,6 @@ description: Designs and reviews product UI composition contracts grounded in pr
 selection:
   modes:
     - explicit
-    - automatic
 knowledge:
   required:
     - architecture.principles.normative-language

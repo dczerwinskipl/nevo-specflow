@@ -1,5 +1,9 @@
 import type { AuthSessionResponse } from '@nevo/specflow-contracts/authentication';
+import { designLayerMetadata } from '@nevo/figma-capture/metadata';
 import {
+  actionVariantClasses,
+  cn,
+  fastColorTransitionClassName,
   Icon,
   Menu,
   MenuContent,
@@ -33,8 +37,13 @@ export function AccountMenu({
       <MenuTrigger asChild>
         <button
           aria-label={t('account.openMenu', { name: userName })}
-          className="flex w-full cursor-pointer items-center gap-2 rounded-control border border-transparent bg-transparent px-2 py-2 text-left text-content-secondary transition-colors hover:bg-surface-hover hover:text-content-primary"
+          className={cn(
+            'flex w-full cursor-pointer items-center gap-2 rounded-control border border-solid px-2 py-2 text-left',
+            actionVariantClasses.ghost,
+            fastColorTransitionClassName,
+          )}
           type="button"
+          {...designLayerMetadata({ layer: 'account-trigger' })}
         >
           <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border-default bg-surface-selected text-label-sm text-content-primary">
             {userInitials(userName)}

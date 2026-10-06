@@ -37,10 +37,10 @@ describe('Specs Overview presentation boundary', () => {
 
   it('maps stable Current section IDs to frontend-owned translations', () => {
     expect(sectionTranslationKey).toEqual({
-      'requires-attention': 'specs.sections.requiresAttention',
-      active: 'specs.sections.active',
-      ready: 'specs.sections.ready',
-      draft: 'specs.sections.draft',
+      'requires-attention': 'specifications.sections.requiresAttention',
+      active: 'specifications.sections.active',
+      ready: 'specifications.sections.ready',
+      draft: 'specifications.sections.draft',
     });
   });
 

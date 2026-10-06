@@ -64,7 +64,7 @@ export const Semantic: Story = {
 
 export const DesignCapture: Story = {
   render: () => <IconMatrix />,
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     designCapture: {

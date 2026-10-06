@@ -1,4 +1,3 @@
-import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import type {
   ArchivedSpecOverviewItem,
   ArchiveSpecsOverview,
@@ -17,11 +16,6 @@ export interface GetArchiveOverviewDependencies {
 export async function getArchiveOverview(
   dependencies: GetArchiveOverviewDependencies,
 ): Promise<ArchiveSpecsOverview> {
-  dependencies.authorization.requireCapabilityInAnyScope({
-    resource: SpecCapabilities,
-    capability: SpecCapabilities.capabilities.View,
-  });
-
   const snapshot = await dependencies.repository.readArchive();
   const items = filterAuthorizedSpecs(dependencies.authorization, snapshot.items).map(
     toOverviewItem,

@@ -134,7 +134,7 @@ function WorkspaceCaptureFixture() {
 
 export const CanonicalCapture: Story = {
   render: () => <WorkspaceCaptureFixture />,
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     a11y: { test: 'off' },
     controls: { disable: true },
@@ -202,7 +202,7 @@ export const GeometryContract: Story = {
       />
     </AppShell>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   parameters: {
     // Geometry-only fixture renders another complete application landmark tree.
     // Public AppShell stories retain the accessibility scan.
@@ -266,7 +266,7 @@ export const MediumDominanceContract: Story = {
       />
     </AppShell>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   parameters: {
     a11y: { test: 'off' },
   },
@@ -306,7 +306,7 @@ export const MediumSurfaceContract: Story = {
       </AppWorkspace>
     </AppShell>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   parameters: {
     a11y: { test: 'off' },
   },
@@ -354,7 +354,7 @@ export const NarrowSurfaceContract: Story = {
       </AppWorkspace>
     </AppShell>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   parameters: {
     a11y: { test: 'off' },
   },
@@ -448,7 +448,7 @@ function DismissibleDefaultSecondaryFixture() {
 
 export const DismissibleDefaultSecondaryContract: Story = {
   render: () => <DismissibleDefaultSecondaryFixture />,
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   parameters: {
     a11y: { test: 'off' },
   },
@@ -519,7 +519,7 @@ export const RuntimeFitContract: Story = {
       </AppWorkspace>
     </AppShell>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   parameters: {
     a11y: { test: 'off' },
   },

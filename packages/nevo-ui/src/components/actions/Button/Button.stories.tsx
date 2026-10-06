@@ -195,6 +195,23 @@ export const Disabled: Story = {
 
 export const VariantCapture: Story = {
   render: () => <ButtonMatrix />,
+  tags: ['capture', '!autodocs'],
+  parameters: {
+    controls: { disable: true },
+    layout: 'fullscreen',
+    designCapture: {
+      component: 'Button',
+      title: 'Button',
+      description: 'Nevo-inspired semantic variants',
+      kind: 'component',
+      order: 10,
+    },
+  },
+};
+
+export const VariantCaptureContract: Story = {
+  render: () => <ButtonMatrix />,
+  tags: ['contract', '!autodocs'],
   play: async ({ canvasElement }) => {
     const captures = Array.from(
       canvasElement.querySelectorAll<HTMLElement>(
@@ -218,17 +235,5 @@ export const VariantCapture: Story = {
     for (const expectedId of expectedIds) {
       assert(sourceIds.includes(expectedId), `Button capture is missing '${expectedId}'.`);
     }
-  },
-  tags: ['!dev', '!autodocs'],
-  parameters: {
-    controls: { disable: true },
-    layout: 'fullscreen',
-    designCapture: {
-      component: 'Button',
-      title: 'Button',
-      description: 'Nevo-inspired semantic variants',
-      kind: 'component',
-      order: 10,
-    },
   },
 };

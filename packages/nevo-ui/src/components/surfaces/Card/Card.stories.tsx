@@ -54,7 +54,7 @@ export const CanonicalCapture: Story = {
       <CardExample data-design-canonical="true" data-design-source-id="default" />
     </DesignCaptureProvider>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     designCapture: {

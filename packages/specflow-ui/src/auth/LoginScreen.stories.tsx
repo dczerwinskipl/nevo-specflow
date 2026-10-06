@@ -106,6 +106,8 @@ export const PasswordAndSingleOidc: Story = {
 };
 export const PasswordAndOidc: Story = {
   args: { loginMethods: mixed },
+  tags: ['visual'],
+  parameters: { chromatic: { disableSnapshot: false } },
   play: ({ canvasElement }) => {
     const surface = canvasElement.querySelector<HTMLElement>(
       '[data-standalone-shell-region="surface"]',
@@ -173,7 +175,11 @@ export const Polish: Story = {
 
 export const Mobile: Story = {
   args: { loginMethods: mixed },
-  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  tags: ['visual'],
+  parameters: {
+    viewport: { defaultViewport: 'mobile1' },
+    chromatic: { disableSnapshot: false },
+  },
   play: ({ canvasElement }) => {
     assertStandaloneAuthLayout(canvasElement);
     assert(
@@ -222,7 +228,32 @@ export const FigmaCapture: Story = {
       />
     </DesignCaptureProvider>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
+  parameters: {
+    controls: { disable: true },
+    designCapture: {
+      component: 'SpecFlowLoginScreen',
+      title: 'Nevo SpecFlow — Login',
+      description: 'Standalone mixed-method login screen',
+      kind: 'screen',
+      order: 210,
+    },
+  },
+};
+
+export const FigmaCaptureContract: Story = {
+  render: () => (
+    <DesignCaptureProvider captureComponents={['SpecFlowLoginScreen']}>
+      <LoginScreenView
+        loginMethods={mixed}
+        onOidc={() => undefined}
+        onPasswordChange={() => undefined}
+        onPasswordSubmit={() => undefined}
+        onUsernameChange={() => undefined}
+      />
+    </DesignCaptureProvider>
+  ),
+  tags: ['contract', '!autodocs'],
   play: ({ canvasElement }) => {
     const root = canvasElement.querySelector<HTMLElement>(
       '[data-design-capture="true"][data-design-component="SpecFlowLoginScreen"]',
@@ -252,15 +283,5 @@ export const FigmaCapture: Story = {
       content.dataset.designComponent === undefined,
       'Login Figma content slot must remain structural instead of projecting WorkspaceSurface as an empty nested component.',
     );
-  },
-  parameters: {
-    controls: { disable: true },
-    designCapture: {
-      component: 'SpecFlowLoginScreen',
-      title: 'Nevo SpecFlow — Login',
-      description: 'Standalone mixed-method login screen',
-      kind: 'screen',
-      order: 210,
-    },
   },
 };

@@ -247,7 +247,7 @@ export const RadioSelection: Story = {
 };
 
 export const InteractionContract: Story = {
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   play: async ({ canvas, userEvent }) => {
     const trigger = canvas.getByRole('button', { name: 'Record actions' });
     trigger.focus();
@@ -286,7 +286,7 @@ export const ItemStateCapture: Story = {
       <MenuItemMatrix />
     </DesignCaptureProvider>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     designCapture: {
@@ -305,6 +305,26 @@ export const RadioItemStateCapture: Story = {
       <MenuRadioItemMatrix />
     </DesignCaptureProvider>
   ),
+  tags: ['capture', '!autodocs'],
+  parameters: {
+    controls: { disable: true },
+    designCapture: {
+      component: 'MenuRadioItem',
+      title: 'Menu radio item',
+      description: 'Single-choice menu rows across unchecked, checked, and disabled states',
+      kind: 'component',
+      order: 33,
+    },
+  },
+};
+
+export const RadioItemStateCaptureContract: Story = {
+  render: () => (
+    <DesignCaptureProvider captureComponents={['MenuRadioItem']}>
+      <MenuRadioItemMatrix />
+    </DesignCaptureProvider>
+  ),
+  tags: ['contract', '!autodocs'],
   play: async ({ canvasElement }) => {
     const documentRoot = canvasElement.ownerDocument;
     const checked = await waitFor(
@@ -335,17 +355,6 @@ export const RadioItemStateCapture: Story = {
       'Design metadata should preserve the disabled radio state.',
     );
   },
-  tags: ['!dev', '!autodocs'],
-  parameters: {
-    controls: { disable: true },
-    designCapture: {
-      component: 'MenuRadioItem',
-      title: 'Menu radio item',
-      description: 'Single-choice menu rows across unchecked, checked, and disabled states',
-      kind: 'component',
-      order: 33,
-    },
-  },
 };
 
 export const CanonicalCapture: Story = {
@@ -354,7 +363,7 @@ export const CanonicalCapture: Story = {
       <MenuExample canonical />
     </DesignCaptureProvider>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     designCapture: {

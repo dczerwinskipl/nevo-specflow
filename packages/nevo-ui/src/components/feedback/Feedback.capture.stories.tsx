@@ -17,7 +17,7 @@ import {
 
 const meta = {
   title: 'Nevo UI/Feedback/Design Capture',
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: { controls: { disable: true }, layout: 'fullscreen' },
 } satisfies Meta;
 

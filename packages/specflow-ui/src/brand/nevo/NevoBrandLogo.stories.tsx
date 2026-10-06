@@ -44,6 +44,8 @@ export const Types: Story = {
 };
 
 export const Compact: Story = {
+  tags: ['visual'],
+  parameters: { chromatic: { disableSnapshot: false } },
   render: () => (
     <div className="flex items-center gap-8">
       <NevoBrandLogo brand="nevo" product="SpecFlow" size="sm" type="horizontal" />
@@ -102,7 +104,7 @@ export const Monochrome: Story = {
 };
 
 export const DesignCapture: Story = {
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   render: () => (
     <div className="grid gap-8">
       {(['brand', 'monochrome'] as const).flatMap((appearance) =>

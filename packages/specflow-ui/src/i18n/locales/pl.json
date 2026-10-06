@@ -9,7 +9,7 @@
   },
   "navigation": {
     "product": "Nawigacja produktu",
-    "specs": "Specyfikacje",
+    "specifications": "Specyfikacje",
     "uiPlayground": "UI Playground",
     "close": "Zamknij nawigację",
     "title": "Nawigacja aplikacji",
@@ -51,7 +51,20 @@
       "description": "SpecFlow Runtime nie odpowiada. Upewnij się, że działa i jest osiągalny, a następnie spróbuj ponownie."
     }
   },
-  "specs": {
+  "specification": {
+    "title": "Specyfikacja",
+    "backToSpecifications": "Wróć do specyfikacji",
+    "placeholderTitle": "Szczegóły specyfikacji nie są jeszcze zaimplementowane",
+    "placeholderDescription": "Otwarta została właściwa specyfikacja. Dokumenty, zadania i sesje będą dostępne tutaj w kolejnym etapie. Nie wykonano żadnej akcji workflow.",
+    "identity": "ID specyfikacji: {{id}}"
+  },
+  "playground": {
+    "title": "UI Playground",
+    "description": "Neutralny ekran produktu do sprawdzania kompozycji Nevo UI we właściwej aplikacji.",
+    "exampleValue": "Przykładowa wartość",
+    "continue": "Kontynuuj"
+  },
+  "specifications": {
     "title": "Specyfikacje",
     "current": "Bieżące",
     "archive": "Archiwum",
@@ -134,18 +147,5 @@
       "title": "Brak dostępu",
       "description": "Nie masz uprawnień do przeglądania tych specyfikacji."
     }
-  },
-  "specification": {
-    "title": "Specyfikacja",
-    "backToSpecs": "Wróć do specyfikacji",
-    "placeholderTitle": "Szczegóły specyfikacji nie są jeszcze zaimplementowane",
-    "placeholderDescription": "Otwarta została właściwa specyfikacja. Dokumenty, zadania i sesje będą dostępne tutaj w kolejnym etapie. Nie wykonano żadnej akcji workflow.",
-    "identity": "ID specyfikacji: {{id}}"
-  },
-  "playground": {
-    "title": "UI Playground",
-    "description": "Neutralny ekran produktu do sprawdzania kompozycji Nevo UI we właściwej aplikacji.",
-    "exampleValue": "Przykładowa wartość",
-    "continue": "Kontynuuj"
   }
 }

@@ -33,6 +33,7 @@
     "docs:check": "pnpm --filter nevo-repo-docs build && node tools/docs/dist/bin.js check",
     "docs:adr": "pnpm --filter nevo-repo-docs build && node tools/docs/dist/bin.js adr",
     "storybook": "pnpm --filter nevo-repo-storybook dev",
+    "storybook:browsers:install": "pnpm --filter nevo-repo-storybook exec playwright install chromium",
     "storybook:build": "pnpm --filter nevo-repo-storybook build",
     "chromatic": "pnpm --filter nevo-repo-storybook chromatic",
     "test:storybook": "pnpm --filter nevo-repo-storybook test",

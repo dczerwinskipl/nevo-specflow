@@ -15,20 +15,27 @@ export function SpecRowSummary({ item }: { readonly item: SpecRowModel }) {
         }).format(new Date(history.timestamp))
       : undefined;
     return history.timestamp ? (
-      <time dateTime={history.timestamp}>{t(`specs.history.${history.kind}`, { date })}</time>
+      <time dateTime={history.timestamp}>
+        {t(`specifications.history.${history.kind}`, { date })}
+      </time>
     ) : (
-      <span>{t('specs.history.archivedWithoutDate')}</span>
+      <span>{t('specifications.history.archivedWithoutDate')}</span>
     );
   }
   const summary = item.summary;
   const text =
     summary.kind === 'attention'
-      ? t(summary.reason ? `specs.summary.${summary.reason}` : 'specs.summary.attention', {
-          count: summary.count ?? 1,
-        })
+      ? t(
+          summary.reason
+            ? `specifications.summary.${summary.reason}`
+            : 'specifications.summary.attention',
+          {
+            count: summary.count ?? 1,
+          },
+        )
       : summary.kind === 'active'
-        ? t('specs.summary.active', { count: summary.executionCount })
-        : t(`specs.summary.${summary.kind}`);
+        ? t('specifications.summary.active', { count: summary.executionCount })
+        : t(`specifications.summary.${summary.kind}`);
   return (
     <span className="text-content-secondary [overflow-wrap:anywhere]" data-spec-reason>
       {summary.kind === 'attention' ? (
@@ -46,7 +53,10 @@ export function SpecRowSummary({ item }: { readonly item: SpecRowModel }) {
       ) : null}
       <span>{text}</span>
       {item.qualifier ? (
-        <span> · {t('specs.summary.concurrent', { count: item.qualifier.executionCount })}</span>
+        <span>
+          {' '}
+          · {t('specifications.summary.concurrent', { count: item.qualifier.executionCount })}
+        </span>
       ) : null}
     </span>
   );

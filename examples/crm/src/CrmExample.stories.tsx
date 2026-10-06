@@ -71,7 +71,7 @@ export const FigmaCapture: Story = {
       <CrmExample height={900} initialCustomerId="northstar" width={1400} />
     </DesignCaptureProvider>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     designCapture: {

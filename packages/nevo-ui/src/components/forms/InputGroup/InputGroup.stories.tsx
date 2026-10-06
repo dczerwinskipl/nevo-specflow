@@ -124,7 +124,7 @@ export const CompositionCapture: Story = {
       </StoryWidth>
     </DesignCaptureProvider>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     layout: 'fullscreen',

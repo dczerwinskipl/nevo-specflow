@@ -12,7 +12,7 @@ import {
 
 const meta = {
   title: 'Nevo UI/Navigation/SideNavigation',
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   parameters: { controls: { disable: true } },
 } satisfies Meta;
 

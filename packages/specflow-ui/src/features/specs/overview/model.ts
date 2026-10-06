@@ -44,8 +44,8 @@ export const sectionTone: Record<CurrentSpecSectionId, StatusTone> = {
 };
 
 export const sectionTranslationKey = {
-  'requires-attention': 'specs.sections.requiresAttention',
-  active: 'specs.sections.active',
-  ready: 'specs.sections.ready',
-  draft: 'specs.sections.draft',
+  'requires-attention': 'specifications.sections.requiresAttention',
+  active: 'specifications.sections.active',
+  ready: 'specifications.sections.ready',
+  draft: 'specifications.sections.draft',
 } as const satisfies Record<CurrentSpecSectionId, string>;

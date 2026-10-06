@@ -66,7 +66,7 @@ function StatusIndicatorCapture() {
 
 export const VariantCapture: Story = {
   render: () => <StatusIndicatorCapture />,
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     layout: 'fullscreen',

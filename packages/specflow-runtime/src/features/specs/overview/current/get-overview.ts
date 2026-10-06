@@ -1,4 +1,3 @@
-import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import type {
   CurrentSpecOverviewItem,
   CurrentSpecSectionId,
@@ -20,11 +19,6 @@ export interface GetCurrentOverviewDependencies {
 export async function getCurrentOverview(
   dependencies: GetCurrentOverviewDependencies,
 ): Promise<CurrentSpecsOverview> {
-  dependencies.authorization.requireCapabilityInAnyScope({
-    resource: SpecCapabilities,
-    capability: SpecCapabilities.capabilities.View,
-  });
-
   const snapshot = await dependencies.repository.readCurrent();
   const visible = filterAuthorizedSpecs(dependencies.authorization, snapshot.items);
   const items = visible

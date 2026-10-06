@@ -8,7 +8,7 @@
   "scripts": {
     "build": "storybook build --output-dir dist",
     "build-storybook": "storybook build --output-dir dist",
-    "chromatic": "chromatic --exit-zero-on-changes",
+    "chromatic": "chromatic --exit-zero-on-changes --only-changed --externals \"packages/nevo-ui/src/**/*.css\" --externals \"packages/specflow-ui/src/**/*.css\" --externals \"examples/**/*.css\" --externals \"tools/storybook/.storybook/**/*\" --externals \"pnpm-lock.yaml\"",
     "dev": "storybook dev -p 6006",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run --project=storybook"

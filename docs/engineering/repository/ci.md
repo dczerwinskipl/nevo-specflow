@@ -80,6 +80,12 @@ Pull requests do not publish Storybook automatically. Run **Actions → Chromati
 for the PR branch when visual review is useful. Pushes to `main` always publish automatically so
 the shared baseline stays current. Repeated manual runs on the same branch cancel the older run.
 
+Visual snapshots are opt-in through the Storybook `visual` profile. Capture/tooling stories do not
+consume snapshots. Chromatic runs with TurboSnap, so ordinary source changes re-test only visual
+stories reachable from the changed dependency graph. Changes to shared UI/Product CSS, Storybook
+configuration, or `pnpm-lock.yaml` deliberately disable the optimization and re-test every visual
+baseline.
+
 The workflow skips cleanly when the secret is unavailable. `chromatic` remains informational and
 is not a protected-branch required check.
 

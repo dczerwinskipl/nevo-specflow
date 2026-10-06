@@ -125,7 +125,7 @@ export const KeyboardInteraction: Story = {
 
 export const VariantCapture: Story = {
   render: () => <IconButtonMatrix />,
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     layout: 'fullscreen',

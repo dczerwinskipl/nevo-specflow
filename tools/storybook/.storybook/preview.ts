@@ -12,6 +12,7 @@ const preview: Preview = {
       ],
     },
     controls: { expanded: true },
+    chromatic: { disableSnapshot: true },
     options: {
       storySort: {
         order: [

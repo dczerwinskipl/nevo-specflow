@@ -44,6 +44,7 @@ pnpm install --frozen-lockfile
 | `pnpm docs:check`                   | Validate docs and generated index.                                                   |
 | `pnpm product:pack`                 | Create the installable product tarball.                                              |
 | `pnpm dogfood:install`              | Install and smoke the real tarball globally.                                         |
+| `pnpm storybook:browsers:install`   | Install local Chromium used by Storybook browser tests.                              |
 
 `format:check` is intentionally read-only. A check command must never repair the working tree.
 

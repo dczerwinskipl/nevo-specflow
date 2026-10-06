@@ -79,7 +79,7 @@ function assert(condition: unknown, message: string): asserts condition {
 
 export const InteractionContract: Story = {
   ...Default,
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   play: async ({ canvas, userEvent }) => {
     const trigger = canvas.getByRole('button', { name: 'Open dialog' });
     trigger.focus();

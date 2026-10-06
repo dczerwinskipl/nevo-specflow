@@ -60,7 +60,10 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Specs: Story = {};
+export const Specs: Story = {
+  tags: ['visual'],
+  parameters: { chromatic: { disableSnapshot: false } },
+};
 export const Playground: Story = { args: { path: '/ui-playground' } };
 export const AuthenticationRequired: Story = { args: { authMode: 'required' } };
 export const AlreadyAuthenticatedLogin: Story = {
@@ -71,7 +74,7 @@ export const SpecsSessionExpired: Story = {
   args: { authMode: 'authenticated', specsStatus: 401 },
   play: async ({ canvas, canvasElement }) => {
     await canvas.findByRole('heading', { name: 'Welcome back' });
-    if (canvas.queryByText('Specs are unavailable'))
+    if (canvas.queryByText('Specifications are unavailable'))
       throw new Error('401 must enter authentication, not generic unavailability.');
     if (canvasElement.querySelector('[data-product-navigation-header]'))
       throw new Error('Authentication must be outside AppShell.');
@@ -81,7 +84,7 @@ export const SpecsForbidden: Story = {
   args: { authMode: 'authenticated', specsStatus: 403 },
   play: async ({ canvas, canvasElement }) => {
     await canvas.findByRole('heading', { name: 'Access denied' });
-    if (canvas.queryByText('Welcome back') || canvas.queryByText('Specs are unavailable'))
+    if (canvas.queryByText('Welcome back') || canvas.queryByText('Specifications are unavailable'))
       throw new Error('403 must be a distinct forbidden state.');
     if (canvasElement.querySelector('[data-product-navigation-header]'))
       throw new Error('Forbidden state must be outside AppShell.');
@@ -173,7 +176,7 @@ export const Navigation: Story = {
     await userEvent.click(rowLink);
     await canvas.findByRole('heading', { name: 'Specification' });
     await canvas.findByText('Specification ID: admission');
-    const back = canvas.getByRole('link', { name: 'Back to Specs' });
+    const back = canvas.getByRole('link', { name: 'Back to Specifications' });
     if (back.getAttribute('href') !== '/?collection=current')
       throw new Error('Specification Back must preserve Current collection.');
     await userEvent.click(back);
@@ -193,7 +196,7 @@ export const Navigation: Story = {
       throw new Error('Open specification must be enabled in production composition.');
     await userEvent.click(open);
     await canvas.findByText('Specification ID: admission');
-    await userEvent.click(canvas.getByRole('link', { name: 'Back to Specs' }));
+    await userEvent.click(canvas.getByRole('link', { name: 'Back to Specifications' }));
     await userEvent.click(await canvas.findByRole('radio', { name: 'Archive' }));
     const archive = await canvas.findByRole('link', {
       name: 'Open specification: Canonical Session, Turn and Work model',
@@ -202,7 +205,7 @@ export const Navigation: Story = {
       throw new Error('Archive must navigate to its own Specification with return context.');
     await userEvent.click(archive);
     await canvas.findByText('Specification ID: archive-0');
-    await userEvent.click(canvas.getByRole('link', { name: 'Back to Specs' }));
+    await userEvent.click(canvas.getByRole('link', { name: 'Back to Specifications' }));
     const selected = await canvas.findByRole('radio', { name: 'Archive' });
     if (selected.getAttribute('aria-checked') !== 'true')
       throw new Error('Returning from Archive Specification must restore Archive.');
@@ -221,7 +224,7 @@ export const MobileNavigation: Story = {
       'Opening compact navigation should mount the product navigation.',
     );
     if (
-      !navigation.textContent?.includes('Specs') ||
+      !navigation.textContent?.includes('Specifications') ||
       navigation.textContent?.includes('UI Playground')
     ) {
       throw new Error('Compact product navigation should expose only implemented product areas.');
@@ -236,9 +239,9 @@ export const MobileNavigation: Story = {
     if (!accountTrigger) throw new Error('Compact navigation account footer is missing.');
 
     const specsLink = [...navigation.querySelectorAll<HTMLAnchorElement>('a')].find((link) =>
-      link.textContent?.includes('Specs'),
+      link.textContent?.includes('Specifications'),
     );
-    if (!specsLink) throw new Error('Compact navigation should expose Specs.');
+    if (!specsLink) throw new Error('Compact navigation should expose Specifications.');
     await userEvent.click(specsLink);
     await waitFor(
       () =>
@@ -253,7 +256,7 @@ export const MobileNavigation: Story = {
       }),
     );
     await canvas.findByText('Specification ID: admission');
-    await userEvent.click(canvas.getByRole('link', { name: 'Back to Specs' }));
+    await userEvent.click(canvas.getByRole('link', { name: 'Back to Specifications' }));
     await canvas.findByRole('radio', { name: 'Current' });
   },
 };
@@ -273,44 +276,7 @@ export const FigmaCapture: Story = {
       <RoutedApplication />
     </DesignCaptureProvider>
   ),
-  tags: ['!dev', '!autodocs'],
-  play: async ({ canvasElement }) => {
-    const accountTrigger = await waitFor(
-      () => canvasElement.querySelector<HTMLElement>('[data-design-layer="account-trigger"]'),
-      'Application shell capture should include the account trigger design layer.',
-    );
-    const header = canvasElement.querySelector<HTMLElement>(
-      '[data-product-navigation-header="true"]',
-    );
-    if (!header) throw new Error('Desktop product navigation header must be present.');
-    if (Number.parseFloat(getComputedStyle(header).paddingTop) < 20) {
-      throw new Error('Desktop product navigation header should retain the CRM-standard top gap.');
-    }
-
-    const footer = canvasElement.querySelector<HTMLElement>(
-      '[data-product-navigation-footer="true"]',
-    );
-    if (!footer) throw new Error('Desktop account footer must be present.');
-    if (!footer.contains(accountTrigger)) {
-      throw new Error('Account trigger must remain inside the fixed navigation footer.');
-    }
-
-    const navigation = canvasElement.querySelector<HTMLElement>(
-      '[data-app-shell-region="navigation"]',
-    );
-    if (!navigation) throw new Error('Desktop application shell navigation must be present.');
-    const visibleBottomGap =
-      navigation.getBoundingClientRect().bottom - accountTrigger.getBoundingClientRect().bottom;
-    if (visibleBottomGap < 14 || visibleBottomGap > 18) {
-      throw new Error(
-        `Desktop account trigger should retain the compact 16px bottom gap; received ${visibleBottomGap}px.`,
-      );
-    }
-
-    if (getComputedStyle(accountTrigger).alignItems !== 'center') {
-      throw new Error('Account avatar, label, and chevron must remain vertically centered.');
-    }
-  },
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     designCapture: {
@@ -380,3 +346,49 @@ function fakeApi(overrides: Partial<AuthApi> = {}): AuthApi {
     ...overrides,
   };
 }
+
+export const FigmaCaptureContract: Story = {
+  render: () => (
+    <DesignCaptureProvider captureComponents={['SpecFlowApplicationShell']}>
+      <RoutedApplication />
+    </DesignCaptureProvider>
+  ),
+  tags: ['contract', '!autodocs'],
+  play: async ({ canvasElement }) => {
+    const accountTrigger = await waitFor(
+      () => canvasElement.querySelector<HTMLElement>('[data-design-layer="account-trigger"]'),
+      'Application shell capture should include the account trigger design layer.',
+    );
+    const header = canvasElement.querySelector<HTMLElement>(
+      '[data-product-navigation-header="true"]',
+    );
+    if (!header) throw new Error('Desktop product navigation header must be present.');
+    if (Number.parseFloat(getComputedStyle(header).paddingTop) < 20) {
+      throw new Error('Desktop product navigation header should retain the CRM-standard top gap.');
+    }
+
+    const footer = canvasElement.querySelector<HTMLElement>(
+      '[data-product-navigation-footer="true"]',
+    );
+    if (!footer) throw new Error('Desktop account footer must be present.');
+    if (!footer.contains(accountTrigger)) {
+      throw new Error('Account trigger must remain inside the fixed navigation footer.');
+    }
+
+    const navigation = canvasElement.querySelector<HTMLElement>(
+      '[data-app-shell-region="navigation"]',
+    );
+    if (!navigation) throw new Error('Desktop application shell navigation must be present.');
+    const visibleBottomGap =
+      navigation.getBoundingClientRect().bottom - accountTrigger.getBoundingClientRect().bottom;
+    if (visibleBottomGap < 14 || visibleBottomGap > 18) {
+      throw new Error(
+        `Desktop account trigger should retain the compact 16px bottom gap; received ${visibleBottomGap}px.`,
+      );
+    }
+
+    if (getComputedStyle(accountTrigger).alignItems !== 'center') {
+      throw new Error('Account avatar, label, and chevron must remain vertically centered.');
+    }
+  },
+};

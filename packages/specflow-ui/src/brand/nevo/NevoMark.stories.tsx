@@ -38,6 +38,18 @@ export const LargeDisplay: Story = {
   args: { size: 'lg' },
 };
 
+export const VisualScale: Story = {
+  tags: ['visual'],
+  parameters: { chromatic: { disableSnapshot: false } },
+  render: () => (
+    <div className="flex items-end gap-8">
+      {sizes.map((size) => (
+        <NevoMark key={size} palette={defaultPalette} size={size} variant="brand" />
+      ))}
+    </div>
+  ),
+};
+
 export const LightSurface: Story = {
   args: { variant: 'monochrome' },
   decorators: [
@@ -144,7 +156,7 @@ function NevoMarkDesignCapture() {
 
 export const DesignCapture: Story = {
   render: () => <NevoMarkDesignCapture />,
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     designCapture: {

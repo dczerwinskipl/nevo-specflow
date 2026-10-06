@@ -14,7 +14,7 @@ type Story = StoryObj<typeof meta>;
 export const Current: Story = {
   play: async ({ canvas, userEvent }) => {
     await canvas.findByText('Specification ID: admission');
-    const back = canvas.getByRole('link', { name: 'Back to Specs' });
+    const back = canvas.getByRole('link', { name: 'Back to Specifications' });
     const icon = back.querySelector('svg')?.getBoundingClientRect();
     const label = back.querySelector('[data-spec-back-label]')?.getBoundingClientRect();
     if (!icon || !label || Math.abs(icon.y + icon.height / 2 - label.y - label.height / 2) > 1)
@@ -29,7 +29,7 @@ export const Archive: Story = {
   args: { path: '/specs/archive-0?collection=archive' },
   play: async ({ canvas, userEvent }) => {
     await canvas.findByText('Specification ID: archive-0');
-    await userEvent.click(canvas.getByRole('link', { name: 'Back to Specs' }));
+    await userEvent.click(canvas.getByRole('link', { name: 'Back to Specifications' }));
     const archive = await canvas.findByRole('radio', { name: 'Archive' });
     if (archive.getAttribute('aria-checked') !== 'true')
       throw new Error('Archive Specification must return to Archive.');

@@ -108,7 +108,7 @@ async function waitFor<T>(read: () => T | null | false, message: string): Promis
 export const Interactive: Story = {};
 
 export const InteractionContract: Story = {
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   play: async ({ canvas, userEvent }) => {
     const trigger = canvas.getByRole('button', { name: 'View activity' });
 
@@ -154,7 +154,7 @@ export const CanonicalCapture: Story = {
       <DrawerExample canonical />
     </DesignCaptureProvider>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     designCapture: {

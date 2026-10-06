@@ -5,10 +5,10 @@ title: Specs Overview HTTP API
 status: current
 read_when:
   - connecting the Specs Overview UI to Runtime
-  - verifying the backend sample catalogue and authentication boundary
+  - verifying Specs collection authorization and response contracts
 summary: >
-  Provisional typed Specs Overview read endpoint with deterministic backend sample data,
-  real session authentication and per-item spec.view filtering.
+  Typed Current/Archive Specs Overview read endpoint with feature-owned classification,
+  real session authentication, and per-item spec.view filtering.
 related:
   - architecture.runtime.authorization
   - product.specflow.ui.application-architecture
@@ -16,98 +16,145 @@ related:
 
 # Specs Overview HTTP API
 
-`GET /api/specs/overview?collection=active|archive` reads a collection. Omitted `collection`
-defaults to `active`; unsupported values and additional query fields return `400`.
-User-facing tabs are **Current | Archive**; `active` is only the internal/API Current identifier.
+`GET /api/specs/overview?collection=current|archive` reads one Specs Overview collection.
+Omitted `collection` defaults to `current`. Unsupported values and additional query fields
+return `400`.
 
-The response schema and inferred types are owned by `@nevo/specflow-contracts/specs-overview`.
-The envelope is discriminated by `collection`: Current (`active`) contains steering items with
-backend-owned `groupId`, `overviewSummary`, optional bounded `concurrentWork`, rich `signals` and
-`currentExecutions`. Archive (`archive`) contains separate historical items with identity, progress,
-optional `completedAt` / `archivedAt`, tags and PR references, and an empty `groups` array. Archive
-items MUST NOT fabricate steering fields or a Ready group. Both collections map into their own
-bounded row models. Frontend presentation MUST NOT reconstruct grouping or domain state.
+The response schema is owned by `@nevo/specflow-contracts/specs/overview`.
 
-## Provisional data
+## Current
 
-Runtime currently returns a fixed catalogue with `sample: true` and stable
-`backend-sample-active-1` / `backend-sample-archive-1` revisions. This data is shipped with the
-product so dogfooding can exercise real HTTP, login, refresh and collection switching.
-The provisional endpoint adds a non-blocking 200 ms response delay to expose loading/refresh states.
-It is not repository discovery, persistent Specs, live workflow execution or a mutation API.
-Sample entries deliberately omit external PR URLs rather than linking fictional pull requests.
+Current is the operational read model:
 
-The UI MUST label this response as sample data. Current and Archive rows navigate through real hrefs
-to the guarded owning `/specs/:specId?collection=active|archive` application surface; row overflow
-Open specification is enabled. The minimal destination is explicitly a placeholder with route
-identity and a parent-collection Back link, not a new Specification detail endpoint or proof that an
-arbitrary route identity exists. Documents, Task/Session detail, creation and archive/delete remain
-unimplemented. Navigation never performs a workflow mutation.
+```ts
+{
+  revision: string;
+  collection: 'current';
+  sections: ('requires-attention' | 'active' | 'ready' | 'draft')[];
+  items: CurrentSpecOverviewItem[];
+}
+```
 
-## Overview configuration
+Each item has one backend-owned `classification`:
 
-The default backend-derived Overview presentation groups are, in order:
+```ts
+{ section: 'requires-attention', reason?, count? }
+{ section: 'active' }
+{ section: 'ready' }
+{ section: 'draft' }
+```
 
-1. **Requires attention** (`requires-attention`): any actionable human-attention condition belonging
-   to the Specification, a Task, Session, review, decision request, or blocker.
-2. **Active** (`active`): authoritative current execution or Session activity without higher-priority
-   human attention. This is not necessarily the Specification lifecycle status.
-3. **Ready** (`ready`): approved/ready for work, with no execution and no human attention.
-4. **Draft** (`draft`): still in preparation, before Ready.
+The section list is ordered, and `classification` is the single authoritative top-level
+classification for each Current item.
 
-Precedence is `requires-attention > active > ready > draft`. Each Specification has exactly one
-backend-owned `groupId`; attention wins even when work is concurrent. Internal `working`, `quiet`,
-`issue`, and similar signals are not top-level groups.
+Current classification precedence is:
 
-The backend supplies enabled standard IDs and their order through the collection's `groups` list.
-Project-owned `.nevo/config.yaml` may configure `specs.overview.groups` with `id` and numeric
-`order`; omitted configuration uses orders 10/20/30/40. A configured list enables only listed IDs.
-The frontend renders the supplied order and maps stable IDs to its normal i18n keys. English labels
-and generic rule expressions MUST NOT be put in YAML. Semantics remain backend-owned.
+```text
+requires-attention > active > ready > draft
+```
 
-The current mock returns predefined classifications and aggregate facts. This does not implement a
-production grouping engine. Replacing the sample with real projections must preserve this contract.
+- **Requires attention**: an authoritative human-attention signal exists. A known semantic reason
+  such as input, decision, review, blocked, or approval is included when available; the reason is
+  not required for the signal to remain human-blocking.
+- **Active**: no higher-priority attention exists and at least one current execution exists.
+- **Ready**: no attention or execution exists and the Spec is ready for work.
+- **Draft**: the Spec is still being prepared.
 
-Example committed project configuration:
+Signals and current executions remain available as bounded evidence. Consumers do not reclassify a
+Spec from raw signals.
+
+Project configuration may choose and order Current sections:
 
 ```yaml
 specs:
   overview:
-    groups:
-      - { id: requires-attention, order: 10 }
-      - { id: active, order: 20 }
-      - { id: ready, order: 30 }
-      - { id: draft, order: 40 }
+    current:
+      sections:
+        - requires-attention
+        - active
+        - ready
+        - draft
 ```
 
-This is project policy, not a workstation-local override. Unknown IDs, duplicate IDs, labels, and
-rule-expression fields are rejected. Archive remains a flat historical collection, independent of
-enabled Current groups. Completion timestamps win archive timestamps; missing lifecycle timestamps
-render neutral Archived without inventing a date from updatedAt.
+Omitted configuration uses the order above. Duplicate or unknown section ids are rejected.
+
+## Archive
+
+Archive is a separate historical read model:
+
+```ts
+{
+  revision: string;
+  collection: 'archive';
+  items: ArchivedSpecOverviewItem[];
+}
+```
+
+Archive has no Current sections, classification, signals, or current executions. Historical items
+may expose authoritative `completedAt` and `archivedAt` timestamps. Consumers must not invent
+Current state for archived Specs.
+
+## Repository boundary
+
+The `SpecsOverviewRepository` port is defined in
+`features/specs/overview/repository/read-repository.ts`. It does not return HTTP DTOs. Its
+`repository/model.ts` records are internal read facts and evidence used by Overview operations.
+For Current, facts such as `readyForWork`, attention signals, and current executions are mapped
+through `classifyCurrentSpec()`; the repository does not persist or return the final
+`classification`.
+
+Current and Archive are read independently:
+
+```ts
+readCurrent();
+readArchive();
+```
+
+The Overview use cases then apply authorization, Current classification where applicable, and
+mapping to the public transport contract. The current fixed catalogue is a sample `SpecsOverviewRepository` adapter,
+not a property of the public API, so responses do not expose a `sample` field.
 
 ## Access
 
-Required authentication without a valid browser session returns `401` with
-`{"error":"authentication_required"}`. Logout revokes access through the same session store
-used by the authentication endpoints. Successful and authentication-denied responses set
-`Cache-Control: no-store`.
+When authentication is required, a request without a valid browser session returns `401`:
 
-Each item is filtered through `spec.view` using the server-owned scope
-`{ projectId: "specflow-preview", specId: item.id }`. No project/scope input is trusted from
-the client. Global viewer/developer/admin assignments apply normally; a viewer assigned only
-to a specific preview Spec sees only that item. A user with no matching grant receives an
-empty visible collection, not unauthorized item metadata.
+```json
+{ "error": "authentication_required" }
+```
 
-Trusted local mode retains the existing access-control semantics: a configured local user
-requires matching assignments; no local user means access control is disabled. This endpoint
-does not weaken or modify project authentication/authorization policy.
+An authenticated subject with no `spec.view` capability in any assigned scope receives `403`:
 
-To allow a test user to see the sample catalogue, use a project-owned assignment for
-`projectId: specflow-preview` (or an existing global assignment). Password credentials remain
-workstation-local according to the existing configuration contract.
+```json
+{ "error": "forbidden" }
+```
 
-This collection deliberately uses per-item `spec.view` filtering: lack of a grant produces an empty
-200 collection, not a fabricated collection-level 403. UI transport handling distinguishes normalized
-401 (refresh authentication context and enter the existing login flow), 403 (standalone Access denied),
-and network/server failures (unavailable/retry). Larger route authorization architecture is deferred
-in [Authorization follow-ups](../../ideas/authorization/README.md).
+A subject that possesses `spec.view` in at least one scope may enter the collection. Rows are then
+filtered independently using the server-owned target scope:
+
+```ts
+{
+  specId: item.id;
+}
+```
+
+Therefore a scoped subject may legitimately receive `200` with an empty `items` list when none of
+the Specs visible to that subject belong to the requested Current/Archive collection.
+
+The client does not provide authorization scope. Runtime derives the per-row scope from the
+authoritative Spec identifier.
+
+Trusted-local mode keeps the same authorization semantics. If access control is disabled, registered
+capabilities are available. If a local subject is configured, its assignments are evaluated normally.
+
+Successful and authorization-denied responses use `Cache-Control: no-store`.
+
+## UI handling
+
+The UI treats `current` and `archive` as distinct projections while sharing one collection
+switcher and one HTTP source.
+
+Current renders the ordered `sections`; Archive renders a flat historical list. Search filters the
+selected projection without changing backend classification or archive lifecycle facts.
+
+A `401` re-enters the existing authentication flow, `403` maps to the standalone access-denied
+surface, and network/server failures remain retryable Runtime-unavailable states.

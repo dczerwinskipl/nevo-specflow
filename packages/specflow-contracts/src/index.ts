@@ -29,21 +29,33 @@ export type {
   PasswordLoginErrorResponse,
   PasswordLoginRequest,
 } from './authentication';
+
 export {
-  AuthorizationCapabilitiesRequestSchema,
-  AuthorizationCapabilitiesResponseSchema,
+  AuthenticationRequiredErrorResponseSchema,
   AuthorizationErrorResponseSchema,
-  AuthorizationResourceQuerySchema,
+  AuthorizationForbiddenErrorResponseSchema,
   AuthorizationScopeSchema,
-  SpecFlowAuthorizationResourceNameSchema,
+  capabilityProjectionSchema,
 } from './authorization';
 export type {
-  AuthorizationCapabilitiesRequest,
-  AuthorizationCapabilitiesResponse,
+  AuthenticationRequiredErrorResponse,
   AuthorizationErrorResponse,
-  AuthorizationResourceQuery,
-  SpecFlowAuthorizationResourceName,
+  AuthorizationForbiddenErrorResponse,
+  AuthorizationScope,
+  CapabilityProjection,
+  WithCapabilities,
 } from './authorization';
-export { SessionAuthorization } from './session/authorization';
-export { SettingsAuthorization } from './settings/authorization';
-export { SpecAuthorization } from './spec/authorization';
+
+export {
+  createCapabilityDiscoveryRequestSchema,
+  createCapabilityDiscoveryResponseSchema,
+} from './authorization/capability-discovery';
+export type {
+  CapabilityDiscoveryRequest,
+  CapabilityDiscoveryResponse,
+  CapabilityDiscoveryResponseFor,
+} from './authorization/capability-discovery';
+
+export { SessionCapabilities } from './sessions';
+export { SettingsCapabilities } from './settings';
+export { SpecCapabilities } from './specs';

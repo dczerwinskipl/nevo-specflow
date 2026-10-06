@@ -161,23 +161,23 @@ Draft
   Spec E        In preparation
 ```
 
-This is the current structural contract for Specs Overview: Current Specs use grouped sections.
-The exact visual treatment of the headers remains a design concern, but flattening these groups is
+This is the current structural contract for Specs Overview: Current Specs use ordered sections.
+The exact visual treatment of the headers remains a design concern, but flattening these sections is
 not an implementation-level alternative.
 
 Requires attention, Active, Ready and Draft remain perceptibly different. These are backend-derived
-Overview presentation groups, not Specification lifecycle statuses. Active requires actual current
+Overview presentation sections, not Specification lifecycle statuses. Active requires actual current
 execution, Ready requires preparation/readiness, and Draft is still being prepared.
 
 A Specification can carry concurrent signals, for example one Task may require review while another
-Task is currently being executed. Place the Spec according to the canonical cross-group priority
+Task is currently being executed. Place the Spec according to the canonical cross-section priority
 `requires-attention > active > ready > draft`. The row keeps one dominant aggregate summary and may show at
 most one bounded lower-priority qualifier when omitting it would materially misrepresent current
-state. Do not duplicate the same Spec across several groups or expose raw signal collections.
+state. Do not duplicate the same Spec across several sections or expose raw signal collections.
 
 ## 3.3 Minimum information per Spec item
 
-The detailed row/group/presentation contract is owned by
+The detailed row/section/presentation contract is owned by
 [Spec steering collection and item UI spec](components/spec-steering-ui-spec.md). This document only
 records the cross-surface information boundary.
 

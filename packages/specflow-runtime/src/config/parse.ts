@@ -1,7 +1,9 @@
-import { parseAuthConfig } from '../auth/authentication/config/parse';
-import { validateAuthRuntimeContext } from '../auth/authentication/config/runtime-policy';
-import { parseAuthorizationConfig } from '../auth/authorization/config';
-import { RuntimeConfigError } from './error';
+import {
+  parseAuthenticationConfig,
+  parseAuthorizationConfig,
+  validateAuthenticationRuntimeContext,
+} from '../features/auth';
+import { RuntimeConfigError } from './parsing/runtime-config-error';
 import type { RuntimeConfig } from './types';
 import {
   boolean,
@@ -10,7 +12,7 @@ import {
   onlyKeys,
   optionalNonEmptyString,
   record,
-} from './value';
+} from './parsing/value-parsers';
 
 const ROOT_KEYS = new Set(['server', 'authentication', 'authorization']);
 const SERVER_KEYS = new Set(['host', 'port', 'publicOrigin', 'tls']);
@@ -67,13 +69,13 @@ export function parseRuntimeConfig(value: unknown): RuntimeConfig {
     }
   }
 
-  const auth = parseAuthConfig(root.authentication);
+  const authentication = parseAuthenticationConfig(root.authentication);
   const authorization = parseAuthorizationConfig(
     root.authorization,
-    new Set(Object.keys(auth.users)),
+    new Set(Object.keys(authentication.users)),
   );
 
-  validateAuthRuntimeContext(auth, {
+  validateAuthenticationRuntimeContext(authentication, {
     bindHost: host,
     tlsEnabled,
     ...(publicOrigin ? { publicOrigin } : {}),
@@ -90,7 +92,7 @@ export function parseRuntimeConfig(value: unknown): RuntimeConfig {
         ...(keyFile ? { keyFile } : {}),
       },
     },
-    auth,
+    authentication,
     ...(root.authorization === undefined ? {} : { authorization }),
   };
 }

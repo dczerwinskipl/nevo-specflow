@@ -1,13 +1,14 @@
-import type { SpecsOverviewProjection, SpecOverviewIdentity } from './model';
+import type { SpecOverviewItem, SpecsOverview } from './model';
 
-/** One filtered projection owns rows, group counts and the no-results decision. */
-export function filterSpecsOverview(
-  projection: SpecsOverviewProjection,
-  query: string,
-): SpecsOverviewProjection {
+export function filterSpecsOverview(projection: SpecsOverview, query: string): SpecsOverview {
   const term = query.trim().toLowerCase();
-  const matches = (item: SpecOverviewIdentity) => item.title.toLowerCase().includes(term);
-  if (projection.collection === 'archive')
+  if (!term) return projection;
+
+  const matches = (item: SpecOverviewItem) => item.title.toLowerCase().includes(term);
+
+  if (projection.collection === 'archive') {
     return { ...projection, items: projection.items.filter(matches) };
+  }
+
   return { ...projection, items: projection.items.filter(matches) };
 }

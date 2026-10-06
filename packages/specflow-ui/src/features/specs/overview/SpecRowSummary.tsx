@@ -23,7 +23,9 @@ export function SpecRowSummary({ item }: { readonly item: SpecRowModel }) {
   const summary = item.summary;
   const text =
     summary.kind === 'attention'
-      ? t(`specs.summary.${summary.reason}`, { count: summary.count ?? 1 })
+      ? t(summary.reason ? `specs.summary.${summary.reason}` : 'specs.summary.attention', {
+          count: summary.count ?? 1,
+        })
       : summary.kind === 'active'
         ? t('specs.summary.active', { count: summary.executionCount })
         : t(`specs.summary.${summary.kind}`);

@@ -45,7 +45,17 @@ runtime:
     assignments:
       - userId: demo-user
         role: admin
-        scope: {}
       - userId: developer@example.com
         role: developer
-        scope: {}
+
+# Optional feature-owned Specs presentation policy.
+# Omit this section to use: requires-attention, active, ready, draft.
+specs:
+  overview:
+    current:
+      # Section order is presentation order. Omit a section to hide it from Current.
+      sections:
+        - requires-attention
+        - active
+        - ready
+        - draft

@@ -1,15 +1,17 @@
 # Workflows
 
-| Workflow                                             | Trigger                                 | Purpose                                                                                                     |
-| ---------------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| [`ci.yml`](ci.yml)                                   | PRs; pushes to `main`, `release/v*`     | Quality/typecheck/test/build, dependency review on PRs, and installed-product smoke on Linux/Windows/macOS. |
-| [`chromatic.yml`](chromatic.yml)                     | Manual; pushes to `main`                | Publish the shared Storybook and run visual regression tests when its project token is available.           |
-| [`codeql.yml`](codeql.yml)                           | PRs; protected-branch pushes; weekly    | CodeQL analysis for JavaScript/TypeScript.                                                                  |
-| [`pr-title.yml`](pr-title.yml)                       | PR opened / edited / synced             | Conventional Commits check on the PR title.                                                                 |
-| [`dependabot-pr-title.yml`](dependabot-pr-title.yml) | `workflow_run` after failed PR-title CI | Safely normalize Dependabot's generated title and re-run the title check.                                   |
-| [`release.yml`](release.yml)                         | `workflow_dispatch` on `release/v*`     | Resolve candidate, build it once, smoke the same tarball on 3 OSes, then tag/attest/upload and advance.     |
-| [`cut-release-line.yml`](cut-release-line.yml)       | `workflow_dispatch`                     | Cut a release line and open/hand off the main-bump PR.                                                      |
-| [`promote-release.yml`](promote-release.yml)         | `workflow_dispatch` on `release/v*`     | Open the channel-promotion PR.                                                                              |
+| Workflow                                             | Trigger                                      | Purpose                                                                                                     |
+| ---------------------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| [`ci.yml`](ci.yml)                                   | Manual; PRs; pushes to `main`, `release/v*`  | Quality/typecheck/test/build, dependency review on PRs, and installed-product smoke on Linux/Windows/macOS. |
+| [`chromatic.yml`](chromatic.yml)                     | Manual; pushes to `main`                     | Publish the shared Storybook and run visual regression tests when its project token is available.           |
+| [`codeql.yml`](codeql.yml)                           | Manual; PRs; protected-branch pushes; weekly | CodeQL analysis for JavaScript/TypeScript.                                                                  |
+| [`pr-title.yml`](pr-title.yml)                       | PR opened / edited / synced                  | Conventional Commits check on the PR title.                                                                 |
+| [`dependabot-pr-title.yml`](dependabot-pr-title.yml) | `workflow_run` after failed PR-title CI      | Safely normalize Dependabot's generated title and re-run the title check.                                   |
+| [`release.yml`](release.yml)                         | `workflow_dispatch` on `release/v*`          | Resolve candidate, build it once, smoke the same tarball on 3 OSes, then tag/attest/upload and advance.     |
+| [`cut-release-line.yml`](cut-release-line.yml)       | `workflow_dispatch`                          | Cut a release line and open/hand off the main-bump PR.                                                      |
+| [`promote-release.yml`](promote-release.yml)         | `workflow_dispatch` on `release/v*`          | Open the channel-promotion PR.                                                                              |
+
+Draft pull requests intentionally skip the expensive required checks in CI and CodeQL. The workflows still run and publish skipped required jobs, so repository rules remain satisfied for the draft state without consuming the full test/build matrix. Marking a pull request **Ready for review** triggers the full required pipeline on the same HEAD; converting it back to draft cancels any superseded PR run through the existing concurrency policy. CI and CodeQL also support manual `workflow_dispatch`, so a draft branch can be fully validated on demand without changing PR state. The PR-title check continues to run for drafts because it is cheap and gives immediate metadata feedback.
 
 Workflows use least-privilege permissions. No privileged workflow checks out and executes
 untrusted pull-request code. Release planning only reads checks/PR state; write and OIDC/attestation

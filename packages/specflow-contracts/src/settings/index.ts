@@ -1,0 +1,1 @@
+export { SettingsCapabilities } from './capabilities';

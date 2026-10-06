@@ -15,15 +15,15 @@ import {
   WorkspaceHeader,
 } from '@nevo/ui';
 
-import type { SpecsCollection, SpecsOverviewState, SteeringTarget } from './model';
-import { SpecSteeringCollection } from './SpecSteeringCollection';
+import type { SpecsCollection, SpecsOverviewState, CurrentSpecTarget } from './model';
+import { SpecsOverviewCollection } from './SpecsOverviewCollection';
 import { filterSpecsOverview } from './search';
 
 export interface SpecsOverviewProps {
   readonly state: SpecsOverviewState;
   readonly onCollectionChange: (collection: SpecsCollection) => void;
   readonly onRefresh: () => void;
-  readonly onOpenTarget?: (target: SteeringTarget) => void;
+  readonly onOpenTarget?: (target: CurrentSpecTarget) => void;
   readonly onCreate?: () => void;
   readonly onCreateSession?: () => void;
   readonly sample?: boolean;
@@ -107,7 +107,9 @@ export function SpecsOverview({
                   value={state.collection}
                   onValueChange={(value) => onCollectionChange(value as SpecsCollection)}
                 >
-                  <SegmentedControl.Item value="active">{t('specs.current')}</SegmentedControl.Item>
+                  <SegmentedControl.Item value="current">
+                    {t('specs.current')}
+                  </SegmentedControl.Item>
                   <SegmentedControl.Item value="archive">
                     {t('specs.archive')}
                   </SegmentedControl.Item>
@@ -169,7 +171,7 @@ export function SpecsOverview({
                 </div>
               ) : null}
               {visible && !state.loading ? (
-                <SpecSteeringCollection
+                <SpecsOverviewCollection
                   projection={visible}
                   searching={term.trim().length > 0}
                   onOpenTarget={onOpenTarget}
@@ -182,14 +184,14 @@ export function SpecsOverview({
                   title={t(
                     term
                       ? 'specs.noResults'
-                      : state.collection === 'active'
+                      : state.collection === 'current'
                         ? 'specs.emptyCurrent'
                         : 'specs.emptyArchive',
                   )}
                   description={t(
                     term
                       ? 'specs.noResultsDescription'
-                      : state.collection === 'active'
+                      : state.collection === 'current'
                         ? 'specs.emptyCurrentDescription'
                         : 'specs.emptyArchiveDescription',
                   )}
@@ -201,7 +203,7 @@ export function SpecsOverview({
                       >
                         {t('specs.clearSearch')}
                       </Button>
-                    ) : onCreate && state.collection === 'active' ? (
+                    ) : onCreate && state.collection === 'current' ? (
                       <Button leadingIcon="plus" onClick={onCreate}>
                         {t('specs.create')}
                       </Button>

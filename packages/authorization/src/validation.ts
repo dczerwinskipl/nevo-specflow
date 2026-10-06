@@ -1,7 +1,10 @@
 import { AuthorizationConfigurationError } from './errors';
 import type { Scope, Subject } from './types';
 
-const IDENTIFIER_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9_-]*$/u;
+export const IDENTIFIER_SEGMENT_PATTERN = '^[A-Za-z0-9][A-Za-z0-9_-]*$';
+export const SCOPE_VALUE_PATTERN = '\\S';
+
+const IDENTIFIER_SEGMENT = new RegExp(IDENTIFIER_SEGMENT_PATTERN, 'u');
 
 export function assertNonEmpty(value: string, name: string): void {
   if (value.trim() === '') {
@@ -24,7 +27,7 @@ export function validateSubject(subject: Subject, path: string): void {
 
 export function validateScope(scope: Scope, path: string): void {
   for (const [key, value] of Object.entries(scope)) {
-    assertNonEmpty(key, `${path} key`);
+    assertIdentifierSegment(key, `${path} key`);
     assertNonEmpty(value, `${path}.${key}`);
   }
 }

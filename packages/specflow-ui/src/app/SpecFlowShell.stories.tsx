@@ -160,7 +160,7 @@ export const Navigation: Story = {
     const rowLink = await canvas.findByRole('link', {
       name: 'Open specification: Deterministic admission and execution boundaries',
     });
-    if (rowLink.getAttribute('href') !== '/specs/admission?collection=active')
+    if (rowLink.getAttribute('href') !== '/specs/admission?collection=current')
       throw new Error('Production row must expose a stable owning Specification href.');
     const nav = canvasElement.querySelector('nav[aria-label="Product navigation"]');
     if (nav?.textContent?.includes('UI Playground'))
@@ -174,7 +174,7 @@ export const Navigation: Story = {
     await canvas.findByRole('heading', { name: 'Specification' });
     await canvas.findByText('Specification ID: admission');
     const back = canvas.getByRole('link', { name: 'Back to Specs' });
-    if (back.getAttribute('href') !== '/?collection=active')
+    if (back.getAttribute('href') !== '/?collection=current')
       throw new Error('Specification Back must preserve Current collection.');
     await userEvent.click(back);
     await userEvent.click(

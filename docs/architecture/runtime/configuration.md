@@ -51,11 +51,41 @@ Current shape:
 runtime:
   server: ...
   authentication: ...
+  authorization: ...
+
+specs:
+  overview:
+    current:
+      sections:
+        - requires-attention
+        - active
+        - ready
+        - draft
 ```
 
-Runtime owns everything inside the `runtime` subtree. Within Runtime, authentication owns `authentication` and Runtime
-server composition owns `server`. Runtime initialization (`initRuntime`) owns their prompts,
-defaults, project/local split, password hashing, secret policy, merge rules, and validation.
+Runtime infrastructure owns composition and file loading, while feature modules own the meaning of
+their configuration. Auth owns `runtime.authentication` and `runtime.authorization`; server
+composition owns `runtime.server`; Specs owns the top-level `specs` namespace.
+
+Configuration dependencies flow in one direction:
+
+```text
+config/parsing primitives
+        ↓
+feature-owned configuration
+        ↓
+Runtime config composition/loading
+```
+
+`config/parsing/` contains only low-level configuration parsing support such as
+`RuntimeConfigError` and reusable value parsers. Feature configuration depends on those primitives,
+not on Runtime config loading or composition. Feature configuration parsers are exposed through each
+Runtime feature boundary and invoked by the configuration composition layer. Infrastructure must not
+reproduce feature-specific validation.
+
+Runtime initialization (`initRuntime`) owns Auth/server setup prompts, defaults, project/local
+split, password hashing, secret policy, merge rules, and effective-config validation. Specs Overview
+section configuration is optional project policy and defaults to the standard Current section order.
 
 The product initializer calls `initRuntime`, wraps its contribution under `runtime`, and writes
 the aggregate documents without reconstructing Runtime settings.
@@ -83,6 +113,9 @@ Current ownership is explicit:
 - `authentication`: project owns `mode`, `users`, provider `enabled`, and OIDC
   `issuer`/`clientId`/`allowedEmails`; local owns `localUserId`, password `accounts`, and
   OIDC `clientSecret`.
+- `authorization`: project-owned role assignments; workstation-local authorization is rejected.
+- `specs.overview.current.sections`: project-owned ordered Current Overview sections; local Specs
+  configuration is rejected.
 
 A local file that attempts to set project-owned policy is rejected before composition. Likewise,
 project config cannot contain local-owned credentials or workstation-specific TLS paths.

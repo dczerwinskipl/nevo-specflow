@@ -25,20 +25,20 @@ import {
 } from './fixtures';
 import type {
   SpecsCollection,
-  SpecsOverviewProjection,
+  SpecsOverview as SpecsOverviewData,
   SpecsOverviewSource,
   SpecsOverviewState,
-  SteeringTarget,
+  CurrentSpecTarget,
 } from './model';
 import { SpecsOverview } from './SpecsOverview';
 import { useSpecsOverview } from './useSpecsOverview';
 
 function SourceLifecycleFixture() {
-  const [collection, setCollection] = useState<SpecsCollection>('active');
+  const [collection, setCollection] = useState<SpecsCollection>('current');
   const pending = useRef<
     {
       collection: SpecsCollection;
-      resolve: (value: SpecsOverviewProjection) => void;
+      resolve: (value: SpecsOverviewData) => void;
       reject: (error: Error) => void;
     }[]
   >([]);
@@ -67,7 +67,7 @@ function SourceLifecycleFixture() {
         </AppShell>
       </div>
       <div className="flex gap-4 p-4" aria-label="Source test controls">
-        <button type="button" onClick={() => settle('active')}>
+        <button type="button" onClick={() => settle('current')}>
           Resolve Current
         </button>
         <button type="button" onClick={() => settle('archive')}>
@@ -164,7 +164,7 @@ function OverviewFixtureContent({
   interactive: boolean;
 }) {
   const [collectionOverride, setCollectionOverride] = useState<SpecsOverviewState>();
-  const [target, setTarget] = useState<SteeringTarget>();
+  const [target, setTarget] = useState<CurrentSpecTarget>();
   const [refreshes, setRefreshes] = useState(0);
   const [sessionStarts, setSessionStarts] = useState(0);
   return (
@@ -193,7 +193,7 @@ function OverviewFixtureContent({
 }
 
 const loaded: SpecsOverviewState = {
-  collection: 'active',
+  collection: 'current',
   projection: createSpecsFixture(),
   loading: false,
   refreshing: false,
@@ -215,7 +215,7 @@ export const Current: Story = {
     canvas.getByRole('radio', { name: 'Archive' });
     if (canvas.getByRole('button', { name: 'Specs actions' }).textContent?.trim())
       throw new Error('Header overflow should visibly contain only the ellipsis icon.');
-    const headings = [...canvasElement.querySelectorAll('[data-spec-group-header] h2')];
+    const headings = [...canvasElement.querySelectorAll('[data-spec-section-header] h2')];
     if (
       headings.map((element) => element.textContent).join('|') !==
       'Requires attention|Active|Ready|Draft'
@@ -230,7 +230,7 @@ export const Current: Story = {
     canvas.getByText(/1 session active/);
     canvas.getByText('1 active session');
     const edges = [
-      ...canvasElement.querySelectorAll('[data-spec-title], [data-spec-group-header] h2'),
+      ...canvasElement.querySelectorAll('[data-spec-title], [data-spec-section-header] h2'),
     ].map((el) => el.getBoundingClientRect().left);
     if (edges.some((left) => Math.abs(left - edges[0]!) > 1))
       throw new Error('Shared content axis drift.');
@@ -264,15 +264,17 @@ export const Current: Story = {
     )
       throw new Error('Specification navigation must preserve identity.');
     await userEvent.click(
-      canvas.getByRole('button', { name: 'Collapse Requires attention group' }),
+      canvas.getByRole('button', { name: 'Collapse Requires attention section' }),
     );
     if (
       canvas
-        .getByRole('button', { name: 'Expand Requires attention group' })
+        .getByRole('button', { name: 'Expand Requires attention section' })
         .getAttribute('aria-expanded') !== 'false'
     )
       throw new Error('Normal disclosure should collapse.');
-    await userEvent.click(canvas.getByRole('button', { name: 'Expand Requires attention group' }));
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Expand Requires attention section' }),
+    );
   },
 };
 
@@ -342,7 +344,7 @@ export const ReadyAndDraft: Story = {
   },
 };
 export const Loading: Story = {
-  args: { state: { collection: 'active', loading: true, refreshing: false, error: false } },
+  args: { state: { collection: 'current', loading: true, refreshing: false, error: false } },
 };
 export const EmptyCurrent: Story = {
   args: { state: { ...loaded, projection: { ...loaded.projection!, items: [] } } },
@@ -357,24 +359,10 @@ export const EmptyArchive: Story = {
   },
 };
 export const Unavailable: Story = {
-  args: { state: { collection: 'active', loading: false, refreshing: false, error: true } },
+  args: { state: { collection: 'current', loading: false, refreshing: false, error: true } },
 };
 export const Refreshing: Story = { args: { state: { ...loaded, refreshing: true } } };
 export const RefreshFailure: Story = { args: { state: { ...loaded, error: true } } };
-export const PartialSignalFailure: Story = {
-  args: {
-    state: {
-      ...loaded,
-      projection: {
-        ...loaded.projection!,
-        items: [
-          createSpecItem({ ...createSpecsFixture().items[0]!, steeringAvailable: false }),
-          ...createSpecsFixture().items.slice(1),
-        ],
-      },
-    },
-  },
-};
 export const Archive: Story = {
   args: { state: { ...loaded, collection: 'archive', projection: createSpecsFixture('archive') } },
   play: async ({ canvas, userEvent }) => {
@@ -395,7 +383,7 @@ export const CollectionSwitch: Story = {
     await userEvent.click(canvas.getByRole('radio', { name: 'Archive' }));
     canvas.getByRole('textbox', { name: 'Search specs' });
     if (canvas.queryByText('Requires attention'))
-      throw new Error('Active signals cannot leak into Archive.');
+      throw new Error('Current signals cannot leak into Archive.');
     await userEvent.click(canvas.getByRole('radio', { name: 'Current' }));
     canvas.getByText('Requires attention');
     await userEvent.click(canvas.getByRole('button', { name: 'Specs actions' }));
@@ -476,13 +464,13 @@ export const SearchDisclosure: Story = {
   },
   play: async ({ canvas, canvasElement, userEvent }) => {
     await userEvent.click(
-      canvas.getByRole('button', { name: 'Collapse Requires attention group' }),
+      canvas.getByRole('button', { name: 'Collapse Requires attention section' }),
     );
-    await userEvent.click(canvas.getByRole('button', { name: 'Collapse Draft group' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Collapse Draft section' }));
     const search = canvas.getByRole('textbox', { name: 'Search specs' });
     await userEvent.type(search, 'Deterministic');
     const forced = canvas.getByRole('button', {
-      name: 'Requires attention group expanded while search is active',
+      name: 'Requires attention section expanded while search is active',
     });
     if (
       forced.getAttribute('aria-expanded') !== 'true' ||
@@ -500,11 +488,11 @@ export const SearchDisclosure: Story = {
         .checkVisibility()
     )
       throw new Error('Search matches must remain visible.');
-    if (canvasElement.querySelectorAll('[data-spec-group-header]').length !== 1)
-      throw new Error('Zero-match groups must be omitted.');
-    const group = forced.closest('section')!;
-    if (!group.querySelector('[data-spec-group-header]')?.textContent?.includes('1'))
-      throw new Error('Filtered group counts must reflect matches.');
+    if (canvasElement.querySelectorAll('[data-spec-section-header]').length !== 1)
+      throw new Error('Zero-match sections must be omitted.');
+    const section = forced.closest('section')!;
+    if (!section.querySelector('[data-spec-section-header]')?.textContent?.includes('1'))
+      throw new Error('Filtered section counts must reflect matches.');
     await userEvent.type(search, 'does-not-exist', {
       initialSelectionStart: 0,
       initialSelectionEnd: 100,
@@ -512,13 +500,13 @@ export const SearchDisclosure: Story = {
     canvas.getByText('No matching specifications');
     await userEvent.type(search, 'Runtime', { initialSelectionStart: 0, initialSelectionEnd: 100 });
     canvas.getByRole('button', {
-      name: 'Requires attention group expanded while search is active',
+      name: 'Requires attention section expanded while search is active',
     });
     await userEvent.clear(search);
-    canvas.getByRole('button', { name: 'Expand Requires attention group' });
-    canvas.getByRole('button', { name: 'Expand Draft group' });
-    canvas.getByRole('button', { name: 'Collapse Active group' });
-    canvas.getByRole('button', { name: 'Collapse Ready group' });
+    canvas.getByRole('button', { name: 'Expand Requires attention section' });
+    canvas.getByRole('button', { name: 'Expand Draft section' });
+    canvas.getByRole('button', { name: 'Collapse Active section' });
+    canvas.getByRole('button', { name: 'Collapse Ready section' });
   },
 };
 
@@ -546,7 +534,6 @@ export const ArchiveLifecycle: Story = {
       projection: {
         revision: 'lifecycle-fixture',
         collection: 'archive',
-        groups: [],
         items: [
           createArchiveItem({
             id: 'completed',
@@ -586,9 +573,9 @@ export const ArchiveLifecycle: Story = {
       throw new Error('Undated Archive membership must not invent completion/date.');
     if (
       canvasElement.textContent?.includes('2099') ||
-      canvasElement.querySelector('[data-spec-group-header]')
+      canvasElement.querySelector('[data-spec-section-header]')
     )
-      throw new Error('Archive must not use update timestamps or Active groups.');
+      throw new Error('Archive must not use update timestamps or Current sections.');
   },
 };
 
@@ -616,22 +603,20 @@ export const ConfiguredOrder: Story = {
       ...loaded,
       projection: {
         ...createSpecsFixture(),
-        groups: [
-          { id: 'draft', order: 10 },
-          { id: 'active', order: 20 },
-        ],
+        sections: ['draft', 'active'],
         items: createSpecsFixture().items.filter(
-          (item) => item.groupId === 'draft' || item.groupId === 'active',
+          (item) =>
+            item.classification.section === 'draft' || item.classification.section === 'active',
         ),
       },
     },
   },
   play: ({ canvasElement }) => {
-    const groups = [...canvasElement.querySelectorAll('[data-spec-group-header] h2')].map(
+    const sections = [...canvasElement.querySelectorAll('[data-spec-section-header] h2')].map(
       (element) => element.textContent,
     );
-    if (groups.join('|') !== 'Draft|Active')
-      throw new Error('Frontend must render server-supplied group availability and order.');
+    if (sections.join('|') !== 'Draft|Active')
+      throw new Error('Frontend must render server-supplied section availability and order.');
   },
 };
 export const ReadOnlyPreview: Story = {
@@ -658,7 +643,7 @@ export const SourceLifecycle: Story = {
     await userEvent.click(canvas.getByRole('radio', { name: 'Archive' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Resolve Current' }));
     if (canvas.queryByText('Requires attention'))
-      throw new Error('A late Active response must not leak into Archive.');
+      throw new Error('A late Current response must not leak into Archive.');
     await userEvent.click(canvas.getByRole('button', { name: 'Resolve Archive' }));
     await canvas.findByText('Canonical Session, Turn and Work model');
     await userEvent.click(canvas.getByRole('button', { name: 'Specs actions' }));

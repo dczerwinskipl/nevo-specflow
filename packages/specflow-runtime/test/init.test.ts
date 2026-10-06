@@ -103,7 +103,7 @@ describe('Runtime project initialization', () => {
         users: { demo: { name: 'Demo User' } },
       },
       authorization: {
-        assignments: [{ userId: 'demo', role: 'admin', scope: {} }],
+        assignments: [{ userId: 'demo', role: 'admin' }],
       },
     });
     expect(contribution.localConfig).toMatchObject({
@@ -155,7 +155,7 @@ describe('Runtime project initialization', () => {
     });
     expect(contribution.projectConfig).toMatchObject({
       authorization: {
-        assignments: [{ userId: 'demo', role: 'admin', scope: {} }],
+        assignments: [{ userId: 'demo', role: 'admin' }],
       },
     });
   });
@@ -166,7 +166,7 @@ describe('Runtime project initialization', () => {
 
     expect(contribution.projectConfig).toMatchObject({
       authorization: {
-        assignments: [{ userId: 'demo-user', role: 'admin', scope: {} }],
+        assignments: [{ userId: 'demo-user', role: 'admin' }],
       },
     });
     expect(ui.notes.join('\n')).toMatch(/at least one administrator is required/i);
@@ -191,8 +191,8 @@ describe('Runtime project initialization', () => {
     expect(contribution.projectConfig).toMatchObject({
       authorization: {
         assignments: [
-          { userId: '10', role: 'admin', scope: {} },
-          { userId: '2', role: 'developer', scope: {} },
+          { userId: '10', role: 'admin' },
+          { userId: '2', role: 'developer' },
         ],
       },
     });
@@ -214,7 +214,7 @@ describe('Runtime project initialization', () => {
     expect(contribution.projectConfig).toMatchObject({
       authentication: { users: { __new__: { name: 'Sentinel User' } } },
       authorization: {
-        assignments: [{ userId: '__new__', role: 'admin', scope: {} }],
+        assignments: [{ userId: '__new__', role: 'admin' }],
       },
     });
     expect(contribution.localConfig).toMatchObject({
@@ -271,7 +271,7 @@ describe('Runtime project initialization', () => {
         },
       },
       authorization: {
-        assignments: [{ userId: 'demo@example.com', role: 'admin', scope: {} }],
+        assignments: [{ userId: 'demo@example.com', role: 'admin' }],
       },
     });
     expect(contribution.summary).toContain('SpecFlow: http://127.0.0.1:4318');
@@ -318,8 +318,8 @@ describe('Runtime project initialization', () => {
       },
       authorization: {
         assignments: [
-          { userId: 'demo', role: 'admin', scope: {} },
-          { userId: 'demo@example.com', role: 'developer', scope: {} },
+          { userId: 'demo', role: 'admin' },
+          { userId: 'demo@example.com', role: 'developer' },
         ],
       },
     });

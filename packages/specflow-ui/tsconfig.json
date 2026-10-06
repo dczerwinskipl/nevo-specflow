@@ -19,7 +19,9 @@
       "@nevo/figma-core/*": ["../figma-core/src/*"],
       "@nevo/http-client": ["../http-client/src/index.ts"],
       "@nevo/specflow-contracts": ["../specflow-contracts/src/index.ts"],
-      "@nevo/specflow-contracts/specs-overview": ["../specflow-contracts/src/spec/overview.ts"],
+      "@nevo/specflow-contracts/specs/overview": [
+        "../specflow-contracts/src/specs/overview/index.ts"
+      ],
       "@nevo/specflow-contracts/*": ["../specflow-contracts/src/*"],
       "@nevo/ui": ["../nevo-ui/src/index.ts"],
       "@nevo/ui/*": ["../nevo-ui/src/*"]

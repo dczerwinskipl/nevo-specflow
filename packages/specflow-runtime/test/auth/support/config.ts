@@ -6,7 +6,7 @@ export const PASSWORD_HASH =
 export function passwordConfig(): RuntimeConfig {
   return {
     server: { host: '127.0.0.1', port: 4318, tls: { enabled: false } },
-    auth: {
+    authentication: {
       mode: 'required',
       users: { 'demo-user': { name: 'Demo User' } },
       providers: {
@@ -33,7 +33,7 @@ export function oidcConfig(
       publicOrigin: 'https://specflow.example.test:4318',
       tls: { enabled: true, certFile: 'cert.pem', keyFile: 'key.pem' },
     },
-    auth: {
+    authentication: {
       mode: 'required',
       users: { 'demo-user': { name: 'Demo User' } },
       providers: {
@@ -58,7 +58,7 @@ export function oidcConfig(
 export function noAuthConfig(): RuntimeConfig {
   return {
     server: { host: '127.0.0.1', port: 4318, tls: { enabled: false } },
-    auth: {
+    authentication: {
       mode: 'none',
       localUserId: 'demo-user',
       users: { 'demo-user': { name: 'Demo User' } },

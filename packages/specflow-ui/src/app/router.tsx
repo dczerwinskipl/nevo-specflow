@@ -110,7 +110,7 @@ const specsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/',
   validateSearch: (search: Record<string, unknown>) => ({
-    collection: search.collection === 'archive' ? ('archive' as const) : ('active' as const),
+    collection: search.collection === 'archive' ? ('archive' as const) : ('current' as const),
   }),
   component: SpecsRouteScreen,
 });
@@ -125,7 +125,7 @@ const specificationRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/specs/$specId',
   validateSearch: (search: Record<string, unknown>) => ({
-    collection: search.collection === 'archive' ? ('archive' as const) : ('active' as const),
+    collection: search.collection === 'archive' ? ('archive' as const) : ('current' as const),
   }),
   component: SpecificationRouteScreen,
 });
@@ -180,7 +180,7 @@ function SpecsRouteScreen() {
     <SpecsOverview
       state={state}
       onRefresh={refresh}
-      sample={state.projection?.sample ?? specs.sample}
+      sample={specs.sample}
       onCollectionChange={(value) => void navigate({ search: { collection: value } })}
       specificationHref={(specId) =>
         `/specs/${encodeURIComponent(specId)}?collection=${collection}`

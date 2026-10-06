@@ -60,6 +60,51 @@ The composition root:
 3. starts externally reachable adapters only when their dependencies are ready;
 4. owns shutdown in reverse dependency order.
 
+### Runtime feature modules
+
+Product capabilities are composed as Runtime feature modules under
+`packages/specflow-runtime/src/features/<feature-name>/`. Infrastructure such as server startup,
+configuration loading, CLI adapters, and Runtime lifecycle remains outside that tree.
+
+Each feature exposes its Runtime-facing surface from its own `index.ts`. Code outside a feature
+uses that boundary instead of importing internal sub-slices. A feature may split recursively when
+behavior is materially different; for example Specs Overview owns independent
+`overview/current/` and `overview/archive/` read use cases while sharing an Overview-owned
+repository port and visibility policy.
+
+Feature modules may contribute:
+
+- authorization resources/capabilities owned by that feature;
+- route/application registration;
+- replaceable dependencies exposed intentionally for composition or tests.
+
+Product role policy is not feature-owned. The Runtime composition root maps the collected
+capabilities into the configured product roles and passes that policy to Auth.
+
+Cross-cutting Auth does not import Specs, Sessions, Settings, or another product feature to discover
+their capabilities. The composition root creates the product features, collects their capability
+catalogue, defines the product role policy, then supplies both to Auth. Capability-discovery
+validation is built from the same injected resource catalogue.
+
+Dependency direction is therefore:
+
+```text
+feature contracts / capability declarations
+              ↓
+        product features
+              ↓
+      Runtime composition
+        ↙             ↘
+      Auth       feature registration
+```
+
+A product feature may consume Auth's public request-authorization boundary. Auth MUST NOT depend
+back on the feature implementation merely to learn which product capabilities exist.
+
+Feature-local ports and adapters stay with the capability that owns them. Do not create root
+technical buckets such as a generic `repositories/` folder when the port exists only for one
+sub-capability.
+
 ## One lifecycle owner
 
 Every process, server, timer, listener, stream, connection, registry entry, or other

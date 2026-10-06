@@ -1,36 +1,47 @@
 import type {
-  SpecSteeringItemProjection,
-  SpecArchiveItemProjection,
-  CurrentSpecsOverviewProjection,
-  ArchiveSpecsOverviewProjection,
-  SpecSteeringSignal,
+  ArchivedSpecOverviewItem,
+  ArchiveSpecsOverview,
+  CurrentSpecOverviewItem,
+  CurrentSpecsOverview,
+  CurrentSpecSignal,
+  CurrentSpecSignalKind,
+  CurrentSpecTarget,
   SpecsCollection,
-  SpecsOverviewProjection,
-  SteeringKind,
-  SteeringTarget,
+  SpecsOverview,
 } from './model';
 
-const specTarget = (specId: string): SteeringTarget => ({ kind: 'specification', specId });
+const specTarget = (specId: string): CurrentSpecTarget => ({ kind: 'specification', specId });
+
 function signal(
   specId: string,
   id: string,
-  kind: SteeringKind,
+  kind: CurrentSpecSignalKind,
   label: string,
   priority: number,
-  target: SteeringTarget = specTarget(specId),
+  target: CurrentSpecTarget = specTarget(specId),
   reason?: string,
-  attentionReason?: SpecSteeringSignal['attentionReason'],
-): SpecSteeringSignal {
-  return { id, kind, label, priority, target, reason, attentionReason };
+  attentionReason?: CurrentSpecSignal['attentionReason'],
+  count?: number,
+): CurrentSpecSignal {
+  return {
+    id,
+    kind,
+    label,
+    priority,
+    target,
+    ...(reason ? { reason } : {}),
+    ...(attentionReason ? { attentionReason } : {}),
+    ...(count ? { count } : {}),
+  };
 }
+
 export function createSpecItem(
-  overrides: Partial<SpecSteeringItemProjection> = {},
-): SpecSteeringItemProjection {
+  overrides: Partial<CurrentSpecOverviewItem> = {},
+): CurrentSpecOverviewItem {
   return {
     id: 'admission',
     title: 'Deterministic admission and execution boundaries',
-    groupId: 'draft',
-    overviewSummary: { kind: 'draft' },
+    classification: { section: 'draft' },
     updatedAt: '2026-10-01T12:00:00Z',
     progress: { completed: 5, total: 9 },
     signals: [],
@@ -38,9 +49,10 @@ export function createSpecItem(
     ...overrides,
   };
 }
+
 export function createArchiveItem(
-  overrides: Partial<SpecArchiveItemProjection> = {},
-): SpecArchiveItemProjection {
+  overrides: Partial<ArchivedSpecOverviewItem> = {},
+): ArchivedSpecOverviewItem {
   return {
     id: 'archive-spec',
     title: 'Archived specification',
@@ -49,17 +61,15 @@ export function createArchiveItem(
     ...overrides,
   };
 }
-export function createSpecsFixture(collection?: 'active'): CurrentSpecsOverviewProjection;
-export function createSpecsFixture(collection: 'archive'): ArchiveSpecsOverviewProjection;
-export function createSpecsFixture(collection: SpecsCollection): SpecsOverviewProjection;
-export function createSpecsFixture(
-  collection: SpecsCollection = 'active',
-): SpecsOverviewProjection {
-  if (collection === 'archive')
+
+export function createSpecsFixture(collection?: 'current'): CurrentSpecsOverview;
+export function createSpecsFixture(collection: 'archive'): ArchiveSpecsOverview;
+export function createSpecsFixture(collection: SpecsCollection): SpecsOverview;
+export function createSpecsFixture(collection: SpecsCollection = 'current'): SpecsOverview {
+  if (collection === 'archive') {
     return {
       revision: 'archive-fixture-1',
       collection,
-      groups: [],
       items: Array.from({ length: 18 }, (_, index) =>
         createArchiveItem({
           id: `archive-${index}`,
@@ -75,27 +85,25 @@ export function createSpecsFixture(
             : index % 4 === 1
               ? { archivedAt: '2026-09-25T09:00:00Z' }
               : index % 4 === 2
-                ? { completedAt: '2026-09-22T14:00:00Z', archivedAt: '2026-09-25T09:00:00Z' }
+                ? {
+                    completedAt: '2026-09-22T14:00:00Z',
+                    archivedAt: '2026-09-25T09:00:00Z',
+                  }
                 : {}),
           progress: { completed: 8 + index, total: 8 + index },
         }),
       ),
     };
+  }
+
   return {
-    revision: 'active-fixture-1',
+    revision: 'current-fixture-1',
     collection,
-    groups: [
-      { id: 'requires-attention', order: 10 },
-      { id: 'active', order: 20 },
-      { id: 'ready', order: 30 },
-      { id: 'draft', order: 40 },
-    ],
+    sections: ['requires-attention', 'active', 'ready', 'draft'],
     items: [
       createSpecItem({
         key: 'UI-1234',
-        groupId: 'requires-attention',
-        overviewSummary: { kind: 'attention', reason: 'input' },
-        concurrentWork: { executionCount: 1 },
+        classification: { section: 'requires-attention', reason: 'input' },
         pullRequests: [{ number: 27, url: 'https://example.test/pull/27' }],
         tags: ['Auth'],
         signals: [
@@ -127,8 +135,7 @@ export function createSpecsFixture(
       }),
       createSpecItem({
         id: 'security',
-        groupId: 'requires-attention',
-        overviewSummary: { kind: 'attention', reason: 'decision' },
+        classification: { section: 'requires-attention', reason: 'decision' },
         key: 'RT-1235',
         tags: ['Runtime'],
         title: 'Runtime authorization and project access policy',
@@ -148,22 +155,27 @@ export function createSpecsFixture(
       }),
       createSpecItem({
         id: 'review',
-        groupId: 'requires-attention',
-        overviewSummary: { kind: 'attention', reason: 'review', count: 3 },
+        classification: { section: 'requires-attention', reason: 'review', count: 3 },
         key: 'CORE-1236',
         title: 'Review evidence and verification handover',
         progress: { completed: 6, total: 10 },
         signals: [
-          {
-            ...signal('review', 'aggregate', 'attention', '3 Tasks require review', 95),
-            attentionReason: 'review',
-          },
+          signal(
+            'review',
+            'aggregate',
+            'attention',
+            '3 Tasks require review',
+            95,
+            specTarget('review'),
+            undefined,
+            'review',
+            3,
+          ),
         ],
       }),
       createSpecItem({
         id: 'packaging',
-        groupId: 'ready',
-        overviewSummary: { kind: 'ready' },
+        classification: { section: 'ready' },
         key: 'CORE-1237',
         tags: ['Core'],
         title: 'Single-artifact packaging and installation',
@@ -172,8 +184,7 @@ export function createSpecsFixture(
       }),
       createSpecItem({
         id: 'providers',
-        groupId: 'active',
-        overviewSummary: { kind: 'active', executionCount: 1 },
+        classification: { section: 'active' },
         key: 'RT-104',
         pullRequests: [{ number: 31, url: 'https://example.test/pull/31' }],
         tags: ['Provider'],
@@ -190,8 +201,7 @@ export function createSpecsFixture(
       }),
       createSpecItem({
         id: 'recovery',
-        groupId: 'ready',
-        overviewSummary: { kind: 'ready' },
+        classification: { section: 'ready' },
         key: 'RT-105',
         tags: ['Provider'],
         title: 'Provider process recovery',
@@ -210,6 +220,7 @@ export function createSpecsFixture(
       }),
       createSpecItem({
         id: 'localization',
+        classification: { section: 'draft' },
         key: 'UI-1238',
         tags: ['UI'],
         title: 'Localization and account preferences',
@@ -220,7 +231,7 @@ export function createSpecsFixture(
   };
 }
 
-export function createLongContentFixture(): CurrentSpecsOverviewProjection {
+export function createLongContentFixture(): CurrentSpecsOverview {
   const base = createSpecsFixture();
   return {
     ...base,
@@ -229,7 +240,7 @@ export function createLongContentFixture(): CurrentSpecsOverviewProjection {
         ...base.items[0],
         title:
           'Deterministic execution admission, crash recovery and cross-provider ownership reconciliation for distributed repository workspaces',
-        overviewSummary: { kind: 'attention', reason: 'decision' },
+        classification: { section: 'requires-attention', reason: 'decision' },
         signals: [
           signal(
             'admission',

@@ -13,8 +13,8 @@ read_when:
   - implementing SpecFlow UI capability discovery
   - checking the current authorization HTTP contract
 summary: >
-  Exact current Runtime capability-discovery endpoint. The server derives the subject, accepts an
-  explicit resource name and scope, and returns effective capabilities for that resource only.
+  Runtime capability discovery derives the current subject, accepts a resource and optional required
+  scope, and returns a boolean action projection for that exact authorization target.
 related:
   - architecture.runtime.authorization
   - reference.configuration.authorization
@@ -28,8 +28,8 @@ related:
 POST /api/authorization/capabilities
 ```
 
-The request does not contain a subject. Runtime derives the effective subject from the current authentication
-mode and session.
+The request does not contain a subject. Runtime derives the effective subject from the current
+authentication mode and session.
 
 ### Request
 
@@ -38,7 +38,6 @@ mode and session.
   "resource": {
     "name": "spec",
     "scope": {
-      "projectId": "P1",
       "specId": "S1"
     }
   }
@@ -53,7 +52,10 @@ session
 settings
 ```
 
-`scope` is an object of non-empty string keys and values.
+`scope` is optional. Omitting it means `{}`, the global required scope.
+
+Scope is a domain-neutral object whose keys are safe identifier segments and whose values contain
+at least one non-whitespace character. The current API does not require a `projectId` or any other parent chain.
 
 ### Success response
 
@@ -62,34 +64,32 @@ settings
   "resource": {
     "name": "spec",
     "scope": {
-      "projectId": "P1",
       "specId": "S1"
     }
   },
-  "capabilities": ["spec.view", "spec.create", "spec.manage"]
+  "capabilities": {
+    "view": true,
+    "create": false,
+    "manage": true
+  }
 }
 ```
 
-Only capabilities registered for the requested resource are returned.
+The endpoint always returns every registered action for the requested resource as a boolean.
+Runtime builds request/response validation from the feature resources supplied by the composition
+root, so Auth does not maintain a second hard-coded resource catalogue. Consumers that know a
+feature resource definition can use `CapabilityDiscoveryResponseFor<typeof ResourceCapabilities>`
+to retain that resource's exact action keys.
 
-For a spec-scoped viewer, the same request can return:
+A capability is `true` when at least one assignment granting it has a possessed scope that covers
+the requested scope.
 
-```json
-{
-  "resource": {
-    "name": "spec",
-    "scope": {
-      "projectId": "P1",
-      "specId": "S1"
-    }
-  },
-  "capabilities": ["spec.view"]
-}
-```
+For example, a global assignment (`scope: {}` or omitted scope) can satisfy a request for
+`{ "specId": "S1" }`. The reverse is intentionally false: an assignment limited to
+`{ "specId": "S1" }` does not satisfy a request with omitted/global scope.
 
-A project-level request does not implicitly discover more-specific assignments. For example, a user
-who has only `viewer` at `{ projectId: "P1", specId: "S1" }` receives no capabilities for
-`{ projectId: "P1" }`.
+A missing capability is a normal `200` result with `false`; capability discovery itself does not
+return `403` for denied actions.
 
 ### Authentication required
 
@@ -109,21 +109,23 @@ The endpoint sets `Cache-Control: no-store`.
 
 ### Disabled access control
 
-When `authentication.mode=none` has no `localUserId`, Runtime access control is disabled. The endpoint
-returns all registered capabilities for the requested resource.
+When `authentication.mode=none` has no `localUserId`, Runtime access control is disabled.
 
-For resource `spec`, that is currently:
+Every registered action for the requested resource is returned as `true`:
 
-```text
-spec.view
-spec.create
-spec.manage
+```json
+{
+  "capabilities": {
+    "view": true,
+    "create": true,
+    "manage": true
+  }
+}
 ```
 
 ## Trust boundary
 
-This endpoint is for capability discovery, primarily for UI behavior.
+This endpoint is a UI capability helper.
 
-The request scope is client supplied and is not a canonical authorization scope for later backend
-enforcement. Operations on an existing domain resource rebuild the scope from trusted server-side
-data before checking authorization.
+Its client-supplied scope is not an enforcement authority. A backend operation builds its required
+scope independently, using trusted domain data when relationships between identifiers matter.

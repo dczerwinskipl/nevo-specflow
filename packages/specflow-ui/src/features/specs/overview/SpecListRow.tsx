@@ -11,19 +11,19 @@ import {
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { SpecRowModel } from './presentation';
-import type { SteeringTarget } from './model';
+import type { CurrentSpecTarget } from './model';
 import { scanGrid } from './geometry';
 import { SpecRowSummary } from './SpecRowSummary';
 
 export interface SpecListRowProps {
   readonly item: SpecRowModel;
   readonly specificationHref?: string;
-  readonly onOpenTarget?: (target: SteeringTarget) => void;
+  readonly onOpenTarget?: (target: CurrentSpecTarget) => void;
 }
 
 export function SpecListRow({ item, specificationHref, onOpenTarget }: SpecListRowProps) {
   const { t } = useTranslation();
-  const target: SteeringTarget = { kind: 'specification', specId: item.id };
+  const target: CurrentSpecTarget = { kind: 'specification', specId: item.id };
   const pr = item.pullRequests;
   return (
     <li

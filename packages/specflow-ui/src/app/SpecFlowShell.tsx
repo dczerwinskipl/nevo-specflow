@@ -52,7 +52,7 @@ function ProductNavigation({
         <Link
           className={className}
           to={node.target?.to ?? '/'}
-          search={{ collection: 'active' }}
+          search={{ collection: 'current' }}
           onClick={closeNavigation}
         >
           {children}

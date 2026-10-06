@@ -1,0 +1,1 @@
+export { SessionCapabilities } from './capabilities';

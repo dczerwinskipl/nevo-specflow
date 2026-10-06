@@ -45,8 +45,8 @@ being treated as an unauthenticated user.
 
 The current product routes under the guarded layout remain:
 
-- `/` for the read-only Specs Overview (`?collection=active|archive`);
-- `/specs/:specId` for the owning Specification, with `?collection=active|archive` as parent return
+- `/` for the read-only Specs Overview (`?collection=current|archive`);
+- `/specs/:specId` for the owning Specification, with `?collection=current|archive` as parent return
   context; the current increment is an explicitly labelled placeholder, not a Specification read API;
 - `/ui-playground` for a directly routable development/integration screen, not a persistent product
   navigation item.
@@ -62,14 +62,10 @@ execution membership are supplied by the projection, not reconstructed from work
 `SpecsOverviewSource` is the transport seam; its reader is abortable and scoped to the selected
 collection. Refresh retains the last valid snapshot on failure, while a collection switch hides
 the previous collection immediately and ignores late results. The default source calls
-`GET /api/specs/overview?collection=active|archive` on the same Runtime origin. Runtime currently
-returns a deterministic, explicitly labelled sample catalogue, not repository or workflow state.
-It requires the real authentication session and filters every item using `spec.view` on the
-server-owned preview scope. The shared TypeBox contract lives in `@nevo/specflow-contracts/specs-overview`.
+`GET /api/specs/overview?collection=current|archive` on the same Runtime origin. Runtime currently reads through a sample `SpecsOverviewRepository` adapter, not persistent repository/workflow state. The adapter is an implementation detail; the public response has no sample marker. Requests use the real authentication session and Runtime filters every item using server-owned `spec.view` scope. The shared TypeBox contract lives in `@nevo/specflow-contracts/specs/overview`.
 Network/server failures display the unavailable state rather than silently falling back to fixtures.
 A normalized 401 refreshes the authentication context and re-enters the existing login flow; a 403
-renders the standalone Access denied screen. The backend supplies group IDs/order and aggregate
-summary facts; the feature mapper bounds rows before rendering and does not classify domain evidence.
+renders the standalone Access denied screen. For Current, Runtime supplies ordered section IDs and one backend-owned classification per Spec. The feature mapper bounds rich evidence into row presentation without reclassifying it.
 Development builds can still opt into isolated frontend fixtures using
 `VITE_SPECFLOW_SAMPLE_DATA=true`; normal builds and dogfooding use the HTTP source.
 

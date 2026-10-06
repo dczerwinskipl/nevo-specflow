@@ -3,37 +3,40 @@ import { describe, expect, it } from 'vitest';
 import { defineResource } from './resource';
 
 describe('defineResource', () => {
-  it('qualifies feature-owned capability ids', () => {
+  it('qualifies feature-owned capability ids while preserving action ids', () => {
     const resource = defineResource({
       name: 'order',
-      capabilities: {
+      actions: {
         View: 'view',
         Manage: 'manage',
       },
     });
 
-    expect(resource).toMatchObject({
+    expect(resource).toEqual({
       name: 'order',
+      actions: {
+        View: 'view',
+        Manage: 'manage',
+      },
       capabilities: {
         View: 'order.view',
         Manage: 'order.manage',
       },
     });
-    expect(resource.capabilityIds).toEqual(['order.view', 'order.manage']);
   });
 
   it('rejects invalid resource and capability segments', () => {
     expect(() =>
       defineResource({
         name: 'order.item',
-        capabilities: { View: 'view' },
+        actions: { View: 'view' },
       }),
     ).toThrowError(/Resource name must contain only letters/);
 
     expect(() =>
       defineResource({
         name: 'order',
-        capabilities: { View: 'item.view' },
+        actions: { View: 'item.view' },
       }),
     ).toThrowError(/Capability action 'View' must contain only letters/);
   });
@@ -42,7 +45,7 @@ describe('defineResource', () => {
     expect(() =>
       defineResource({
         name: 'order',
-        capabilities: {
+        actions: {
           View: 'view',
           Read: 'view',
         },
@@ -54,14 +57,14 @@ describe('defineResource', () => {
     expect(() =>
       defineResource({
         name: ' order',
-        capabilities: { View: 'view' },
+        actions: { View: 'view' },
       }),
     ).toThrowError(/must contain only letters/);
 
     expect(() =>
       defineResource({
         name: 'order',
-        capabilities: { View: 'view details' },
+        actions: { View: 'view details' },
       }),
     ).toThrowError(/must contain only letters/);
   });

@@ -5,9 +5,19 @@
     "paths": {
       "@nevo/authorization": ["../authorization/src/index.ts"],
       "@nevo/specflow-contracts": ["../specflow-contracts/src/index.ts"],
-      "@nevo/specflow-contracts/specs-overview": ["../specflow-contracts/src/spec/overview.ts"],
-      "@nevo/specflow-contracts/authorization": ["../specflow-contracts/src/authorization.ts"],
-      "@nevo/specflow-contracts/authentication": ["../specflow-contracts/src/authentication.ts"]
+      "@nevo/specflow-contracts/specs": ["../specflow-contracts/src/specs/index.ts"],
+      "@nevo/specflow-contracts/specs/overview": [
+        "../specflow-contracts/src/specs/overview/index.ts"
+      ],
+      "@nevo/specflow-contracts/authorization": [
+        "../specflow-contracts/src/authorization/index.ts"
+      ],
+      "@nevo/specflow-contracts/authentication": ["../specflow-contracts/src/authentication.ts"],
+      "@nevo/specflow-contracts/sessions": ["../specflow-contracts/src/sessions/index.ts"],
+      "@nevo/specflow-contracts/settings": ["../specflow-contracts/src/settings/index.ts"],
+      "@nevo/specflow-contracts/authorization/capability-discovery": [
+        "../specflow-contracts/src/authorization/capability-discovery.ts"
+      ]
     }
   },
   "include": ["src/**/*.ts", "test/**/*.ts"]

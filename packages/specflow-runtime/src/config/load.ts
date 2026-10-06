@@ -4,11 +4,9 @@ import { isAbsolute } from 'node:path';
 
 import { parse } from 'yaml';
 
-import {
-  assertNoLocalAuthorization,
-  validateProjectAuthorizationSource,
-} from '../auth/authorization/config-source';
-import { RuntimeConfigError } from './error';
+import { assertNoLocalAuthorization, validateProjectAuthorizationSource } from '../features/auth';
+import { parseSpecsFeatureConfig } from '../features/specs';
+import { RuntimeConfigError } from './parsing/runtime-config-error';
 import {
   assertLocalRuntimeConfigOwnership,
   assertProjectRuntimeConfigOwnership,
@@ -16,8 +14,7 @@ import {
 import { mergeRuntimeConfigValues } from './merge';
 import { parseRuntimeConfig } from './parse';
 import type { LoadedRuntimeConfig } from './types';
-import { isRecord } from './value';
-import { parseOverviewGroups } from '../specs/overview/groups';
+import { isRecord } from './parsing/value-parsers';
 
 export interface LoadRuntimeConfigOptions {
   readonly projectConfigPath: string;
@@ -37,7 +34,7 @@ export async function loadRuntimeConfig(
 
   const projectDocument = await readRequiredConfig(projectPath);
   const projectSource = runtimeSection(projectDocument, projectPath, true);
-  const specsOverviewGroups = parseOverviewGroups(
+  const specs = parseSpecsFeatureConfig(
     isRecord(projectDocument) ? projectDocument.specs : undefined,
   );
   assertProjectRuntimeConfigOwnership(projectSource);
@@ -50,10 +47,12 @@ export async function loadRuntimeConfig(
     localExists = await fileExists(localPath);
     if (localExists) {
       const localDocument = await readRequiredConfig(localPath);
-      if (isRecord(localDocument) && localDocument.specs !== undefined)
+      if (isRecord(localDocument) && localDocument.specs !== undefined) {
         throw new RuntimeConfigError(
           'Specs Overview configuration is project-owned and cannot be set locally.',
         );
+      }
+
       localSource = runtimeSection(localDocument, localPath, false);
       if (localSource) {
         assertNoLocalAuthorization(localSource);
@@ -65,7 +64,7 @@ export async function loadRuntimeConfig(
   const merged = localSource ? mergeRuntimeConfigValues(projectSource, localSource) : projectSource;
 
   return {
-    config: { ...parseRuntimeConfig(merged), specsOverviewGroups },
+    config: { ...parseRuntimeConfig(merged), specs },
     sources: {
       project: projectPath,
       ...(localExists && localPath ? { local: localPath } : {}),

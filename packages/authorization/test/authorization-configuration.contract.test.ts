@@ -4,7 +4,7 @@ import { AuthorizationConfigurationError, createAuthorization, defineResource } 
 
 const Order = defineResource({
   name: 'order',
-  capabilities: {
+  actions: {
     View: 'view',
   },
 });
@@ -52,30 +52,30 @@ describe('authorization configuration', () => {
         resources: [
           {
             name: 'order',
+            actions: { Manage: 'manage' },
             capabilities: { Manage: 'tenant.manage' },
-            capabilityIds: ['tenant.manage'],
           },
         ],
         roles: {},
         assignments: [],
       }),
-    ).toThrowError(/Capability 'tenant.manage' does not belong to resource 'order'/);
+    ).toThrowError(/must equal 'order.manage'/);
   });
 
-  it('rejects manually constructed resource definitions whose capability views drift', () => {
+  it('rejects manually constructed resource definitions whose action and capability keys drift', () => {
     expect(() =>
       createAuthorization({
         resources: [
           {
             name: 'order',
-            capabilities: { View: 'order.view' },
-            capabilityIds: ['order.manage'],
+            actions: { View: 'view' },
+            capabilities: { Manage: 'order.manage' },
           },
         ],
         roles: {},
         assignments: [],
       }),
-    ).toThrowError(/capabilities and capabilityIds must contain the same unique capability ids/);
+    ).toThrowError(/actions and capabilities must contain the same keys/);
   });
 
   it('snapshots caller-owned assignments at construction time', () => {

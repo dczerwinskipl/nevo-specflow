@@ -10,29 +10,33 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./spec": {
-      "types": "./dist/spec/authorization.d.ts",
-      "default": "./dist/spec/authorization.js"
-    },
-    "./specs-overview": {
-      "types": "./dist/spec/overview.d.ts",
-      "default": "./dist/spec/overview.js"
-    },
-    "./session": {
-      "types": "./dist/session/authorization.d.ts",
-      "default": "./dist/session/authorization.js"
-    },
     "./settings": {
-      "types": "./dist/settings/authorization.d.ts",
-      "default": "./dist/settings/authorization.js"
+      "types": "./dist/settings/index.d.ts",
+      "default": "./dist/settings/index.js"
     },
     "./authorization": {
-      "types": "./dist/authorization.d.ts",
-      "default": "./dist/authorization.js"
+      "types": "./dist/authorization/index.d.ts",
+      "default": "./dist/authorization/index.js"
     },
     "./authentication": {
       "types": "./dist/authentication.d.ts",
       "default": "./dist/authentication.js"
+    },
+    "./specs": {
+      "types": "./dist/specs/index.d.ts",
+      "default": "./dist/specs/index.js"
+    },
+    "./specs/overview": {
+      "types": "./dist/specs/overview/index.d.ts",
+      "default": "./dist/specs/overview/index.js"
+    },
+    "./sessions": {
+      "types": "./dist/sessions/index.d.ts",
+      "default": "./dist/sessions/index.js"
+    },
+    "./authorization/capability-discovery": {
+      "types": "./dist/authorization/capability-discovery.d.ts",
+      "default": "./dist/authorization/capability-discovery.js"
     }
   },
   "files": [

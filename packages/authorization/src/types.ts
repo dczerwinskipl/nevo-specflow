@@ -32,6 +32,12 @@ export interface CanInput extends ResolveCapabilitiesInput {
   readonly capability: CapabilityId;
 }
 
+export interface HasCapabilityInAnyScopeInput {
+  readonly subject: Subject;
+  readonly resource: ResourceName;
+  readonly capability: CapabilityId;
+}
+
 export interface AuthorizationDefinition {
   readonly resources: readonly ResourceDefinition[];
   readonly roles: Readonly<Record<RoleId, readonly CapabilityId[]>>;
@@ -41,11 +47,12 @@ export interface AuthorizationDefinition {
 export interface Authorization {
   resolveCapabilities(input: ResolveCapabilitiesInput): ResolveCapabilitiesResult;
   can(input: CanInput): boolean;
+  hasCapabilityInAnyScope(input: HasCapabilityInAnyScopeInput): boolean;
   resourceCapabilities(resourceName: ResourceName): readonly CapabilityId[];
 }
 
 export interface ResourceDefinition {
   readonly name: ResourceName;
+  readonly actions: Readonly<Record<string, string>>;
   readonly capabilities: Readonly<Record<string, CapabilityId>>;
-  readonly capabilityIds: readonly CapabilityId[];
 }

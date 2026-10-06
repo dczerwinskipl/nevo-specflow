@@ -116,7 +116,7 @@ A Specs Overview row always opens the Specification Primary. It must not redirec
 whichever Task/issue happens to be highest priority at that moment, and ordinary status/reason prose
 inside that row is non-interactive.
 
-The current route is `/specs/:specId?collection=active|archive`; both Current and Archive rows and
+The current route is `/specs/:specId?collection=current|archive`; both Current and Archive rows and
 their Open specification menu action use it. The guarded destination is currently an explicitly
 labelled owned placeholder, without fabricated detail or mutations. Its parent Back link returns to
 the chosen collection (Current by default on direct entry). The full Task/Session behavior below is
@@ -239,7 +239,7 @@ Workspace stack and is not encoded in product URLs.
 
 Routable state includes, as appropriate:
 
-- Specs collection / Current versus Archive (internal Current identifier `active`);
+- Specs collection / Current versus Archive (`current` / `archive`);
 - selected Specification;
 - Full Session;
 - Project Settings and a stable Settings section.

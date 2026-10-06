@@ -93,6 +93,94 @@ over central technical buckets such as `feature/routes/`, `feature/services/`, o
 shared adapter concern may stay at the feature root, but provider/operation-specific transport code
 belongs beside the operation it adapts.
 
+## Runtime feature boundaries
+
+Runtime product capabilities live under `src/features/<feature-name>/`. Infrastructure and
+composition concerns such as `server/`, `config/`, `init/`, and `cli/` remain outside that
+tree.
+
+Each feature exposes its Runtime-facing production surface through
+`src/features/<feature-name>/index.ts`. Feature composition lives in `feature.ts`; `index.ts`
+is the public boundary and should not grow into the implementation module itself. Production code
+outside the feature imports that boundary rather than reaching into the feature's internal sub-slices. Cross-feature production dependencies
+use the target feature's public boundary.
+
+Focused unit tests belong beside the internal module they verify. Package-level integration tests
+may use explicit internal test seams when the purpose of the test is to exercise composition or an
+adapter boundary that cannot be reached through the feature's production surface without obscuring
+the scenario. Such imports are test-only and must not become production dependencies.
+
+Prefer:
+
+```text
+src/
+  features/
+    auth/
+      index.ts
+      feature.ts
+      authentication/
+      authorization/
+    specs/
+      index.ts
+      feature.ts
+      overview/
+        current/
+        archive/
+        repository/
+    sessions/
+      index.ts
+      feature.ts
+    settings/
+      index.ts
+      feature.ts
+    runtime-feature.ts
+  config/
+    parsing/
+  server/
+  init/
+```
+
+A feature owns the authorization resource definitions and capabilities it exposes. Cross-cutting
+authorization evaluates them but does not import product feature definitions. The Runtime composition root collects feature authorization
+resource definitions, defines the product role-to-capability policy, and injects both into Auth. Product
+features do not depend on global role names merely to publish their capabilities.
+
+A sub-slice should make materially different behavior visible in the path. For example, Specs
+Overview uses `overview/current/` and `overview/archive/` because they are different read models
+and use cases. Do not force unrelated variants into one envelope merely to share a transport path.
+
+`index.ts` is special. At `features/<feature>/index.ts` it is the public feature boundary.
+Inside an internal folder, use `index.ts` only when that folder intentionally exposes a
+sub-boundary consumed from outside the sub-slice. If a file merely defines one port or operation,
+name that responsibility directly, for example `repository/read-repository.ts`.
+
+Generic filenames such as `endpoint.ts`, `model.ts`, or `configuration.ts` are appropriate when
+their directory already provides unambiguous context. Prefer responsibility names over
+transport-only names such as a bare `http.ts`.
+
+### Runtime backend naming
+
+Runtime backend directories and TypeScript module filenames use lowercase kebab-case. Paths describe
+modules and ownership; TypeScript identifiers follow normal language conventions.
+
+Prefer:
+
+```text
+features/specs/overview/current/get-overview.ts
+features/auth/authentication/password-login/verify-credentials.ts
+features/auth/authorization/capability-discovery/endpoint.ts
+```
+
+with exported identifiers such as `getCurrentOverview`, `SpecCapabilities`, and
+`AuthenticationRequiredError`.
+
+Do not repeat directory context in filenames when the path already makes the responsibility clear.
+For example, prefer `overview/current/get-overview.ts` over
+`overview/current/get-current-specs-overview.ts`.
+
+This convention applies to Runtime/backend modules in this architecture. UI component filename
+casing is a separate repository convention and is not defined by this rule.
+
 ## TypeScript imports in product packages
 
 Code under `packages/**` uses TypeScript's bundler resolution. Relative TypeScript

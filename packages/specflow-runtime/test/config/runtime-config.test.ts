@@ -41,21 +41,21 @@ function loadFrom(cwd: string) {
   });
 }
 
-it('loads project-owned Overview group configuration through the existing YAML container', async () => {
+it('loads project-owned Current Overview sections in declared order', async () => {
   const cwd = await mkdtemp(join(tmpdir(), 'specflow-overview-config-'));
   await mkdir(join(cwd, '.nevo/local'), { recursive: true });
   await writeFile(
     join(cwd, '.nevo/config.yaml'),
-    `${PROJECT_CONFIG}\nspecs:\n  overview:\n    groups:\n      - { id: draft, order: 20 }\n      - { id: active, order: 10 }\n`,
+    `${PROJECT_CONFIG}\nspecs:\n  overview:\n    current:\n      sections:\n        - draft\n        - active\n`,
     'utf8',
   );
-  expect((await loadFrom(cwd)).config.specsOverviewGroups).toEqual([
-    { id: 'active', order: 10 },
-    { id: 'draft', order: 20 },
+  expect((await loadFrom(cwd)).config.specs?.overview.current.sections).toEqual([
+    'draft',
+    'active',
   ]);
   await writeFile(
     join(cwd, '.nevo/local/config.yaml'),
-    'specs:\n  overview:\n    groups: []\n',
+    'specs:\n  overview:\n    current:\n      sections: []\n',
     'utf8',
   );
   await expect(loadFrom(cwd)).rejects.toThrow('project-owned');
@@ -166,7 +166,7 @@ describe('runtime configuration', () => {
         port: 4318,
         tls: { enabled: false },
       },
-      auth: {
+      authentication: {
         mode: 'none',
         users: {},
         providers: {
@@ -179,7 +179,7 @@ describe('runtime configuration', () => {
 
   it('validates a fully configured required-auth setup', () => {
     expect(parseRuntimeConfig(requiredAuthConfig())).toMatchObject({
-      auth: {
+      authentication: {
         mode: 'required',
         users: {
           'demo-user': { name: 'Demo User' },
@@ -295,7 +295,7 @@ describe('runtime configuration', () => {
       }),
     ).toMatchObject({
       server: { host: '127.0.0.1' },
-      auth: { mode: 'required' },
+      authentication: { mode: 'required' },
     });
   });
 
@@ -319,7 +319,7 @@ describe('runtime configuration', () => {
         publicOrigin: 'http://localhost:4318',
         tls: { enabled: false },
       },
-      auth: { mode: 'required' },
+      authentication: { mode: 'required' },
     });
   });
 
@@ -534,7 +534,7 @@ describe('runtime configuration', () => {
 
     const loaded = await loadFrom(cwd);
 
-    expect(loaded.config.auth.localUserId).toBe('demo-user');
+    expect(loaded.config.authentication.localUserId).toBe('demo-user');
     expect(loaded.sources.project).toBe(join(cwd, '.nevo/config.yaml'));
     expect(loaded.sources.local).toBe(join(cwd, '.nevo/local/config.yaml'));
   });
@@ -627,7 +627,7 @@ describe('runtime configuration', () => {
 
     const loaded = await loadFrom(cwd);
 
-    expect(loaded.config.auth.providers.password.accounts.demo?.userId).toBe('demo-user');
+    expect(loaded.config.authentication.providers.password.accounts.demo?.userId).toBe('demo-user');
   });
 
   it('fails closed when the required project config is missing', async () => {

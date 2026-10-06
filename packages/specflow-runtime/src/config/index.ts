@@ -1,17 +1,15 @@
 export type {
-  AuthMode,
-  RuntimeAuthConfig,
+  AuthenticationMode,
+  RuntimeAuthenticationConfig,
+  RuntimeAuthorizationAssignmentConfig,
+  RuntimeAuthorizationConfig,
   RuntimeOidcProviderConfig,
   RuntimeOidcProvidersConfig,
   RuntimePasswordAccountConfig,
   RuntimePasswordProviderConfig,
   RuntimeUserConfig,
-} from '../auth/authentication/config/model';
-export type {
-  RuntimeAuthorizationAssignmentConfig,
-  RuntimeAuthorizationConfig,
-} from '../auth/authorization/config';
-export { RuntimeConfigError } from './error';
+} from '../features/auth';
+export { RuntimeConfigError } from './parsing/runtime-config-error';
 export { loadRuntimeConfig, type LoadRuntimeConfigOptions } from './load';
 export { mergeRuntimeConfigValues } from './merge';
 export { parseRuntimeConfig } from './parse';

@@ -1,6 +1,5 @@
-import type { RuntimeAuthConfig } from '../auth/authentication/config/model';
-import type { RuntimeAuthorizationConfig } from '../auth/authorization/config';
-import type { SpecsOverviewGroup } from '@nevo/specflow-contracts/specs-overview';
+import type { RuntimeAuthenticationConfig, RuntimeAuthorizationConfig } from '../features/auth';
+import type { SpecsFeatureConfig } from '../features/specs';
 
 export interface RuntimeServerTlsConfig {
   readonly enabled: boolean;
@@ -17,9 +16,9 @@ export interface RuntimeServerConfig {
 
 export interface RuntimeConfig {
   readonly server: RuntimeServerConfig;
-  readonly auth: RuntimeAuthConfig;
+  readonly authentication: RuntimeAuthenticationConfig;
   readonly authorization?: RuntimeAuthorizationConfig;
-  readonly specsOverviewGroups?: readonly SpecsOverviewGroup[];
+  readonly specs?: SpecsFeatureConfig;
 }
 
 export interface LoadedRuntimeConfig {

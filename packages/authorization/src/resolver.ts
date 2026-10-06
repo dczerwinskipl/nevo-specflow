@@ -1,11 +1,12 @@
 import { AuthorizationConfigurationError } from './errors';
 import { createAuthorizationRegistry } from './registry';
-import { scopeMatches } from './scope';
+import { scopeCovers } from './scope';
 import { subjectsEqual } from './subject';
 import type {
   Authorization,
   AuthorizationDefinition,
   CapabilityId,
+  HasCapabilityInAnyScopeInput,
   ResolveCapabilitiesInput,
   ResolveCapabilitiesResult,
 } from './types';
@@ -17,6 +18,15 @@ export function createAuthorization(definition: AuthorizationDefinition): Author
     definition.roles,
     definition.assignments,
   );
+
+  const assertCapabilityResource = (resourceName: string, capability: CapabilityId): void => {
+    const resourceCapabilities = registry.capabilitiesForResource(resourceName);
+    if (!resourceCapabilities.includes(capability)) {
+      throw new AuthorizationConfigurationError(
+        `Capability '${capability}' does not belong to resource '${resourceName}'.`,
+      );
+    }
+  };
 
   const resolveCapabilities = (input: ResolveCapabilitiesInput): ResolveCapabilitiesResult => {
     validateSubject(input.subject, 'subject');
@@ -30,7 +40,7 @@ export function createAuthorization(definition: AuthorizationDefinition): Author
         continue;
       }
 
-      if (!scopeMatches(assignment.scope, input.resource.scope)) {
+      if (!scopeCovers(assignment.scope, input.resource.scope)) {
         continue;
       }
 
@@ -44,20 +54,26 @@ export function createAuthorization(definition: AuthorizationDefinition): Author
     return { capabilities: [...effective] };
   };
 
+  const hasCapabilityInAnyScope = (input: HasCapabilityInAnyScopeInput): boolean => {
+    validateSubject(input.subject, 'subject');
+    assertCapabilityResource(input.resource, input.capability);
+
+    return registry.assignments.some(
+      (assignment) =>
+        subjectsEqual(assignment.subject, input.subject) &&
+        registry.capabilitiesForRole(assignment.role).includes(input.capability),
+    );
+  };
+
   return {
     resolveCapabilities,
 
     can(input) {
-      const resourceCapabilities = registry.capabilitiesForResource(input.resource.name);
-
-      if (!resourceCapabilities.includes(input.capability)) {
-        throw new AuthorizationConfigurationError(
-          `Capability '${input.capability}' does not belong to resource '${input.resource.name}'.`,
-        );
-      }
-
+      assertCapabilityResource(input.resource.name, input.capability);
       return resolveCapabilities(input).capabilities.includes(input.capability);
     },
+
+    hasCapabilityInAnyScope,
 
     resourceCapabilities(resourceName) {
       return [...registry.capabilitiesForResource(resourceName)];

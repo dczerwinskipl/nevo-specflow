@@ -4,8 +4,8 @@ import { createMemoryHistory } from '@tanstack/react-router';
 
 import type { AuthApi } from '../auth/api';
 import { createAuthStore } from '../auth/store';
-import { createSpecFlowRouter, resolveAppAccess, resolveLoginAccess } from './router';
 import { createSpecsFixture } from '../features/specs/overview/fixtures';
+import { createSpecFlowRouter, resolveAppAccess, resolveLoginAccess } from './router';
 
 const noAuth: AuthSessionResponse = {
   authenticationRequired: false,
@@ -29,7 +29,7 @@ const authenticated: AuthSessionResponse = {
 };
 
 describe('SpecFlow router access policy', () => {
-  it.each(['active', 'archive'] as const)(
+  it.each(['current', 'archive'] as const)(
     'reaches the owned Specification directly and preserves the %s collection identifier',
     async (collection) => {
       const router = createSpecFlowRouter(

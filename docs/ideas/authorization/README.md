@@ -13,8 +13,9 @@ read_when:
   - implementing authorization beyond the current foundation
   - adding authorization to SpecFlow domain endpoints or UI
 summary: >
-  Remaining authorization integration work after the scoped authorization foundation: domain
-  enforcement, collection filtering, per-row capabilities, and UI consumption.
+  Remaining authorization integration work after the request/scoped authorization foundation:
+  concrete domain enforcement, persistence-side collection filtering, product DTO projection, and
+  UI consumption.
 related:
   - architecture.runtime.authorization
   - reference.api.authorization
@@ -26,51 +27,48 @@ related:
 The authorization foundation is implemented and documented in
 [Runtime authorization](../../architecture/runtime/auth/authorization.md).
 
-Only the remaining integration work lives here.
+Only remaining product/persistence integration work lives here.
 
 ## Remaining
 
-1. **Domain enforcement**
-   - apply capability checks to concrete SpecFlow domain operations as those endpoints are added or
-     migrated;
-   - construct enforcement scope from trusted backend/domain data.
+1. **Concrete domain enforcement**
+   - apply `requireCapability(...)` or `request.authz.require(...)` to real SpecFlow domain
+     operations as those endpoints are added or migrated;
+   - construct required scope from trusted backend/domain data whenever client identifiers do not
+     prove the relevant relationship.
 
-2. **Authorization-aware collections**
-   - filter specs and sessions by row-level `view` capability;
-   - do not introduce a collection-level `spec.list` permission.
+2. **Persistence-side collection filtering**
+   - add a bounded grant-resolution API when a real persistent collection query needs it;
+   - translate effective grant scopes in the repository/persistence adapter rather than teaching
+     `@nevo/authorization` SQL, storage, or domain hierarchy;
+   - keep per-item `view` semantics; do not introduce a collection-level `spec.list` permission.
 
-3. **Per-row capabilities**
-   - include effective capabilities on row/read-model DTOs where the UI needs row-specific actions.
+3. **Product DTO capability projection**
+   - use `request.authz.withCapabilities(...)` on read models where the UI needs row/detail actions;
+   - name projection targets by read-model meaning so the same authorization resource may appear at
+     different scopes.
 
 4. **SpecFlow UI consumption**
-   - add thin query/hooks/helpers over `@nevo/specflow-contracts`;
-   - use server-provided effective capabilities for visibility and interaction state;
-   - keep backend enforcement authoritative.
-
-## Backend request authorization architecture (separate follow-up)
-
-Do not expand the provisional Specs mock endpoint into a declarative authorization framework.
-A separate design/implementation should cover:
-
-- a request authentication context;
-- declarative route authorization;
-- reusable capability guards/policies;
-- resource-scoped capabilities such as `spec.view`, `spec.archive`, and `spec.delete`;
-- centralized 401/403 mapping;
-- avoiding repeated manual cookie/AuthStore/access plumbing in every route.
-
-The exact capability taxonomy and resource policies require their own design; example names above
-are not newly implemented capabilities. Preserve per-item collection filtering where applicable.
+   - consume server-provided boolean capability projections for visibility and interaction state;
+   - keep backend enforcement authoritative;
+   - introduce domain action projections separately when availability depends on workflow/domain
+     state in addition to authorization.
 
 ## Already implemented
 
-The following are not ideas anymore:
+The following are foundation rather than ideas:
 
-- `@nevo/authorization`;
-- `@nevo/specflow-contracts` authorization definitions and shared HTTP types;
+- `@nevo/authorization` generic resources, roles, assignments, and directional scope coverage;
+- feature-owned SpecFlow resource/capability definitions;
 - Runtime `viewer`, `developer`, and `admin` role composition;
-- project-owned scoped assignments;
-- canonical project-user and assignment-scope validation;
+- optional domain-neutral assignment scopes with omitted scope meaning global `{}`;
 - auth-mode/effective-subject resolution;
-- `POST /api/authorization/capabilities`;
+- request-scoped `request.authz`;
+- declarative `requireCapability(...)` and imperative `request.authz.require(...)`;
+- centralized authorization 401/403 mapping;
+- `POST /api/authorization/capabilities` boolean UI projection;
+- request-local capability resolution caching;
+- in-memory `filterByCapability(...)`;
+- typed named-target `withCapabilities(...)`;
+- Specs Overview filtering through the request authorization facade;
 - generic resource/capability invariant validation.

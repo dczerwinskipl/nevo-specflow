@@ -1,7 +1,9 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
   push:
     branches:
       - main
@@ -25,7 +27,7 @@ env:
 jobs:
   dependency-review:
     name: dependency review
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -37,6 +39,7 @@ jobs:
 
   quality:
     name: quality
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -60,6 +63,7 @@ jobs:
 
   test-plan:
     name: plan tests
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
@@ -136,7 +140,7 @@ jobs:
     needs:
       - test-plan
       - package-test
-    if: always()
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
     steps:
       - name: Verify tests
@@ -160,6 +164,7 @@ jobs:
 
   packaged-product:
     name: product smoke (${{ matrix.os }})
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -176,7 +181,7 @@ jobs:
   verify-product-smoke:
     name: product smoke
     needs: packaged-product
-    if: always()
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
     steps:
       - name: Verify product smoke matrix
@@ -192,6 +197,7 @@ jobs:
 
   build:
     name: build
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

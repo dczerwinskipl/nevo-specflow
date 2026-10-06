@@ -6,7 +6,7 @@ const meta = {
   title: 'SpecFlow/Screens/Specification',
   component: RoutedApplication,
   parameters: { layout: 'fullscreen' },
-  args: { path: '/specs/admission?collection=active' },
+  args: { path: '/specs/admission?collection=current' },
 } satisfies Meta<typeof RoutedApplication>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -22,9 +22,7 @@ export const Current: Story = {
     await userEvent.click(back);
     const current = await canvas.findByRole('radio', { name: 'Current' });
     if (current.getAttribute('aria-checked') !== 'true')
-      throw new Error(
-        'Current Specification must return to Current, without renaming active API state.',
-      );
+      throw new Error('Current Specification must return to the Current collection.');
   },
 };
 export const Archive: Story = {

@@ -130,14 +130,12 @@ The cross-group distinction and priority are semantic:
 3. **Ready** — the Specification is prepared for execution; no work is running and no human is required.
 4. **Draft** — the Specification is still being prepared and has not reached Ready.
 
-Canonical priority is `requires-attention > active > ready > draft`. These are backend-derived
-Overview presentation groups, not Specification lifecycle statuses. A generic blocker is not a
+Canonical priority is `requires-attention > active > ready > draft`. These are backend-derived Current Overview sections, not Specification lifecycle statuses. A generic blocker is not a
 separate tier: it belongs in Requires attention only when authoritative semantics require a human.
 Actual remediation execution is Active; available remediation alone does not establish readiness.
-The backend supplies enabled standard IDs/order and frontend i18n supplies their labels.
+The backend supplies the ordered enabled section IDs and frontend i18n supplies their labels.
 
-A Specification should appear once in the canonical work queue. One dominant semantic group owns the
-row. If meaningful concurrent state exists, the row may show at most one bounded aggregate qualifier
+A Specification should appear once in the canonical work queue. One dominant backend classification assigns the row to one section. If meaningful concurrent state exists, the row may show at most one bounded aggregate qualifier
 when omitting it would materially misrepresent what is happening; it does not expose raw signal
 collections or duplicate the same Spec across stacked groups. Summary counters/tiles may count the
 same Spec in several categories because they are aggregates, not navigation lists.
@@ -147,7 +145,7 @@ inside the overview row is non-interactive. Concrete Task/Session/evidence conte
 after entering the Specification, and an aggregate such as "3 Tasks require review" never guesses a
 representative Task.
 
-Collection views are Current and Archive; Current retains internal/API identifier `active`.
+Collection views and API identifiers are `current` and `archive`.
 
 The collection/read model may retain identity/title, workflow meaning, attention, ready actions,
 current work, progress, errors requiring intervention, last meaningful activity, and relevant

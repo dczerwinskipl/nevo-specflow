@@ -54,7 +54,7 @@ Callbacks use `/api/auth/oidc/:providerId/callback`; provider mismatch fails clo
 failures return the browser to the standalone login route with a stable error code instead of
 rendering provider/API JSON.
 
-Authorization resolves what the canonical user may do for an explicit resource in an explicit scope.
+Authorization resolves what the canonical user may do for an explicit resource in a required scope; omitted scope means the global `{}` target.
 Project initialization assigns a role to every canonical user it creates so a fresh authenticated or
 trusted-local project does not start with a valid identity and zero capabilities. The first canonical
 user defaults to `admin`, later users default to `developer`, and setup requires at least one

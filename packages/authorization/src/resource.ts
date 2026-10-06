@@ -4,33 +4,34 @@ import { assertIdentifierSegment } from './validation';
 
 type CapabilityMap = Readonly<Record<string, string>>;
 
-type QualifiedCapabilities<Name extends string, Capabilities extends CapabilityMap> = Readonly<{
-  [Key in keyof Capabilities]: `${Name}.${Extract<Capabilities[Key], string>}`;
+type QualifiedCapabilities<Name extends string, Actions extends CapabilityMap> = Readonly<{
+  [Key in keyof Actions]: `${Name}.${Extract<Actions[Key], string>}`;
 }>;
 
 export interface DefinedResource<
   Name extends string,
-  Capabilities extends CapabilityMap,
+  Actions extends CapabilityMap,
 > extends ResourceDefinition {
   readonly name: Name;
-  readonly capabilities: QualifiedCapabilities<Name, Capabilities>;
+  readonly actions: Actions;
+  readonly capabilities: QualifiedCapabilities<Name, Actions>;
 }
 
-export interface DefineResourceInput<Name extends string, Capabilities extends CapabilityMap> {
+export interface DefineResourceInput<Name extends string, Actions extends CapabilityMap> {
   readonly name: Name;
-  readonly capabilities: Capabilities;
+  readonly actions: Actions;
 }
 
-export function defineResource<const Name extends string, const Capabilities extends CapabilityMap>(
-  input: DefineResourceInput<Name, Capabilities>,
-): DefinedResource<Name, Capabilities> {
+export function defineResource<const Name extends string, const Actions extends CapabilityMap>(
+  input: DefineResourceInput<Name, Actions>,
+): DefinedResource<Name, Actions> {
   assertIdentifierSegment(input.name, 'Resource name');
 
+  const actions = Object.assign({}, input.actions);
   const capabilities: Record<string, CapabilityId> = {};
-  const capabilityIds: CapabilityId[] = [];
   const seen = new Set<CapabilityId>();
 
-  for (const [key, action] of Object.entries(input.capabilities)) {
+  for (const [key, action] of Object.entries(input.actions)) {
     assertIdentifierSegment(action, `Capability action '${key}'`);
 
     const capability = `${input.name}.${action}`;
@@ -42,12 +43,11 @@ export function defineResource<const Name extends string, const Capabilities ext
 
     seen.add(capability);
     capabilities[key] = capability;
-    capabilityIds.push(capability);
   }
 
   return {
     name: input.name,
-    capabilities: capabilities as QualifiedCapabilities<Name, Capabilities>,
-    capabilityIds,
+    actions,
+    capabilities: capabilities as QualifiedCapabilities<Name, Actions>,
   };
 }

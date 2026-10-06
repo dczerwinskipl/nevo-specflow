@@ -1,6 +1,7 @@
-import type { SpecsOverviewSource } from './model';
 import { createHttpClient, type HttpClient } from '@nevo/http-client';
-import type { SpecsOverviewProjection } from '@nevo/specflow-contracts/specs-overview';
+import type { SpecsOverview } from '@nevo/specflow-contracts/specs/overview';
+
+import type { SpecsOverviewSource } from './model';
 
 // Kept as an explicit unavailable source for integration fixtures.
 export const unavailableSpecsSource: SpecsOverviewSource = {
@@ -18,6 +19,7 @@ export function defaultSpecsSource(): SpecsOverviewSource {
       },
     };
   }
+
   return createRuntimeSpecsSource();
 }
 
@@ -26,7 +28,7 @@ export function createRuntimeSpecsSource(
 ): SpecsOverviewSource {
   return {
     read: (collection, signal) =>
-      client.get<SpecsOverviewProjection>('/api/specs/overview', {
+      client.get<SpecsOverview>('/api/specs/overview', {
         params: { collection },
         signal,
       }),

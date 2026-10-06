@@ -524,7 +524,7 @@
         "enforcing access to specs, sessions, or settings",
         "exposing effective capabilities to the UI"
       ],
-      "summary": "SpecFlow authorization uses feature-owned resources and capabilities, Runtime-owned flat roles, project-owned scoped role assignments, canonical user identities, and explicit resource scopes. The generic resolver remains unaware of SpecFlow hierarchy and transport concerns.",
+      "summary": "SpecFlow authorization uses feature-owned resources and capabilities, Runtime-owned flat roles, subject role assignments with optional domain-neutral scopes, canonical user identities, and request-bound enforcement. The generic resolver remains unaware of SpecFlow hierarchy and transport concerns.",
       "related": [
         "docs.architecture-runtime-auth-readme",
         "architecture.runtime.ownership-and-lifecycle",
@@ -1300,7 +1300,7 @@
         "implementing authorization beyond the current foundation",
         "adding authorization to SpecFlow domain endpoints or UI"
       ],
-      "summary": "Remaining authorization integration work after the scoped authorization foundation: domain enforcement, collection filtering, per-row capabilities, and UI consumption.",
+      "summary": "Remaining authorization integration work after the request/scoped authorization foundation: concrete domain enforcement, persistence-side collection filtering, product DTO projection, and UI consumption.",
       "related": [
         "architecture.runtime.authorization",
         "reference.api.authorization",
@@ -2019,11 +2019,11 @@
       "status": "draft",
       "file": "docs/ideas/specflow-ui/components/spec-steering-ui-spec.md",
       "read_when": [
-        "implementing Specs Overview steering groups/items",
+        "implementing Specs Overview steering sections/items",
         "creating Storybook/Figma fixtures for Spec signals",
         "deciding how concurrent Spec/Task signals aggregate"
       ],
-      "summary": "Detailed product presentation contract for the Specs steering list: semantic queue projection, strict row/group presentation models, stable visual grammar, responsive behavior, interaction, data loading, fixtures, and cardless list composition.",
+      "summary": "Detailed product presentation contract for the Specs steering list: semantic queue projection, strict row/section presentation models, stable visual grammar, responsive behavior, interaction, data loading, fixtures, and cardless list composition.",
       "related": [
         "ideas.specflow-ui.components",
         "ideas.specflow-ui.screens.specs-overview",
@@ -2693,7 +2693,7 @@
         "implementing SpecFlow UI capability discovery",
         "checking the current authorization HTTP contract"
       ],
-      "summary": "Exact current Runtime capability-discovery endpoint. The server derives the subject, accepts an explicit resource name and scope, and returns effective capabilities for that resource only.",
+      "summary": "Runtime capability discovery derives the current subject, accepts a resource and optional required scope, and returns a boolean action projection for that exact authorization target.",
       "related": [
         "architecture.runtime.authorization",
         "reference.configuration.authorization"
@@ -2713,9 +2713,9 @@
       "file": "docs/reference/api/specs-overview.md",
       "read_when": [
         "connecting the Specs Overview UI to Runtime",
-        "verifying the backend sample catalogue and authentication boundary"
+        "verifying Specs collection authorization and response contracts"
       ],
-      "summary": "Provisional typed Specs Overview read endpoint with deterministic backend sample data, real session authentication and per-item spec.view filtering.",
+      "summary": "Typed Current/Archive Specs Overview read endpoint with feature-owned classification, real session authentication, and per-item spec.view filtering.",
       "related": [
         "architecture.runtime.authorization",
         "product.specflow.ui.application-architecture"
@@ -2750,7 +2750,7 @@
         "checking valid roles or assignment scopes",
         "diagnosing Runtime authorization startup failures"
       ],
-      "summary": "Exact current SpecFlow authorization configuration: project-only role assignments reference project authentication.users ids, use one of three built-in roles, and use canonical scope parent chains.",
+      "summary": "SpecFlow authorization assigns built-in roles to configured users. Assignment scope is optional, domain-neutral, and defaults to global access for the capabilities in the assigned role.",
       "related": [
         "architecture.runtime.authorization",
         "reference.api.authorization"

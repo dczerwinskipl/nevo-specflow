@@ -93,15 +93,15 @@
     "execution_many": "{{role}} · {{count}} zadań",
     "execution_other": "{{role}} · {{count}} zadań",
     "updated": "Aktualizacja: {{date}}",
-    "groups": {
+    "sections": {
       "requiresAttention": "Wymaga uwagi",
       "active": "W toku",
       "ready": "Gotowe",
       "draft": "Szkice"
     },
-    "collapseGroup": "Zwiń grupę {{label}}",
-    "expandGroup": "Rozwiń grupę {{label}}",
-    "groupSearchExpanded": "Grupa {{label}} rozwinięta podczas wyszukiwania",
+    "collapseSection": "Zwiń sekcję {{label}}",
+    "expandSection": "Rozwiń sekcję {{label}}",
+    "sectionSearchExpanded": "Sekcja {{label}} rozwinięta podczas wyszukiwania",
     "pullRequests": "{{count}} PR",
     "summary": {
       "input": "Agent potrzebuje odpowiedzi",
@@ -122,7 +122,8 @@
       "concurrent_one": "1 sesja w toku",
       "concurrent_few": "{{count}} sesje w toku",
       "concurrent_many": "{{count}} sesji w toku",
-      "concurrent_other": "{{count}} sesji w toku"
+      "concurrent_other": "{{count}} sesji w toku",
+      "attention": "Wymagana uwaga człowieka"
     },
     "history": {
       "completed": "Ukończono {{date}}",

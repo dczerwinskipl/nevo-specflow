@@ -93,15 +93,15 @@
     "execution_many": "{{role}} · {{count}} Tasks",
     "execution_other": "{{role}} · {{count}} Tasks",
     "updated": "Updated {{date}}",
-    "groups": {
+    "sections": {
       "requiresAttention": "Requires attention",
       "active": "Active",
       "ready": "Ready",
       "draft": "Draft"
     },
-    "collapseGroup": "Collapse {{label}} group",
-    "expandGroup": "Expand {{label}} group",
-    "groupSearchExpanded": "{{label}} group expanded while search is active",
+    "collapseSection": "Collapse {{label}} section",
+    "expandSection": "Expand {{label}} section",
+    "sectionSearchExpanded": "{{label}} section expanded while search is active",
     "pullRequests": "{{count}} PRs",
     "summary": {
       "input": "Agent input required",
@@ -122,7 +122,8 @@
       "concurrent_one": "1 session active",
       "concurrent_other": "{{count}} sessions active",
       "concurrent_few": "{{count}} sessions active",
-      "concurrent_many": "{{count}} sessions active"
+      "concurrent_many": "{{count}} sessions active",
+      "attention": "Human attention required"
     },
     "history": {
       "completed": "Completed {{date}}",

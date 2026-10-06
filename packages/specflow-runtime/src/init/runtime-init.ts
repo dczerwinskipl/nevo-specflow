@@ -1,9 +1,10 @@
-import { initAuth, type AuthInitOptions } from '../auth/authentication/init';
 import {
   assertNoLocalAuthorization,
+  createAuthorizationSetup,
+  setupAuthentication,
+  type AuthenticationSetupOptions,
   validateProjectAuthorizationSource,
-} from '../auth/authorization/config-source';
-import { createAuthorizationSetup } from '../auth/authorization/init';
+} from '../features/auth';
 import { mergeRuntimeConfigValues } from '../config/merge';
 import {
   assertLocalRuntimeConfigOwnership,
@@ -18,19 +19,19 @@ const LOCAL_PRODUCT_ORIGIN = `http://${LOCAL_RUNTIME_HOST}:${String(LOCAL_RUNTIM
 
 export interface RuntimeInitOptions {
   readonly ui: RuntimeSetupUi;
-  readonly hashPassword?: AuthInitOptions['hashPassword'];
+  readonly hashPassword?: AuthenticationSetupOptions['hashPassword'];
 }
 
 export async function initRuntime(options: RuntimeInitOptions): Promise<RuntimeInitContribution> {
   const authorizationSetup = createAuthorizationSetup(options.ui);
-  const auth = await initAuth({
+  const authentication = await setupAuthentication({
     ui: options.ui,
     onUserCreated: (userId, user) => authorizationSetup.addUser(userId, user),
     ...(options.hashPassword ? { hashPassword: options.hashPassword } : {}),
   });
   const authorization = await authorizationSetup.finish();
 
-  const publicOrigin = auth.requiresPublicOrigin ? LOCAL_PRODUCT_ORIGIN : undefined;
+  const publicOrigin = authentication.requiresPublicOrigin ? LOCAL_PRODUCT_ORIGIN : undefined;
   const server: Record<string, unknown> = {
     host: LOCAL_RUNTIME_HOST,
     port: LOCAL_RUNTIME_PORT,
@@ -40,17 +41,21 @@ export async function initRuntime(options: RuntimeInitOptions): Promise<RuntimeI
 
   const projectConfig = {
     server,
-    authentication: auth.projectAuth,
+    authentication: authentication.projectAuthentication,
     authorization: authorization.projectAuthorization,
   };
-  const localConfig = { authentication: auth.localAuth };
+  const localConfig = { authentication: authentication.localAuthentication };
 
   validateGeneratedRuntimeConfig(projectConfig, localConfig);
 
   return {
     projectConfig,
     localConfig,
-    summary: [`SpecFlow: ${LOCAL_PRODUCT_ORIGIN}`, ...auth.summary, ...authorization.summary],
+    summary: [
+      `SpecFlow: ${LOCAL_PRODUCT_ORIGIN}`,
+      ...authentication.summary,
+      ...authorization.summary,
+    ],
   };
 }
 

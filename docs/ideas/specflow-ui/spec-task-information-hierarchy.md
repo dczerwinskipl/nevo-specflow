@@ -173,17 +173,16 @@ The semantic distinction is:
 - **Ready**: the Specification is prepared for execution with no current work or human intervention.
 - **Draft**: the Specification is still being prepared and is not yet Ready.
 
-The collection tabs are Current and Archive. Current retains internal/API identifier `active`.
-Overview groups are backend-derived presentation categories, not Specification lifecycle statuses;
-the backend supplies enabled IDs and order, and frontend i18n owns their standard labels.
+The collection tabs and API identifiers are `current` and `archive`.
+Current Overview sections are backend-derived presentation categories, not Specification lifecycle statuses; each Spec has one backend-owned classification and the backend supplies enabled section IDs in display order. Frontend i18n owns their standard labels.
 
 A generic problem/blocked condition is not a separate priority tier. It moves into Requires attention
 only when authoritative semantics say the human must intervene; otherwise active remediation remains
 Active, while available-but-not-running remediation uses authoritative Ready or Draft classification.
 
-Ordering **inside** a group is a separate concern. For example, within Requires attention an active
+Ordering **inside** a section is a separate concern. For example, within Requires attention an active
 Session waiting directly on the human may rank ahead of a passive approval request.
-Intra-group tie-breaks must not redefine `requires-attention > active > ready > draft`.
+Intra-section tie-breaks must not redefine `requires-attention > active > ready > draft`.
 
 ---
 

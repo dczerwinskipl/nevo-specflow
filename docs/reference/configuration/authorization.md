@@ -13,8 +13,8 @@ read_when:
   - checking valid roles or assignment scopes
   - diagnosing Runtime authorization startup failures
 summary: >
-  Exact current SpecFlow authorization configuration: project-only role assignments reference
-  project authentication.users ids, use one of three built-in roles, and use canonical scope parent chains.
+  SpecFlow authorization assigns built-in roles to configured users. Assignment scope is optional,
+  domain-neutral, and defaults to global access for the capabilities in the assigned role.
 related:
   - architecture.runtime.authorization
   - reference.api.authorization
@@ -22,12 +22,14 @@ related:
 
 # Authorization configuration
 
-Authorization policy is project configuration under `runtime.authorization` in `.nevo/config.yaml`.
+Authorization policy is configuration under `runtime.authorization` in `.nevo/config.yaml`.
 
 `.nevo/local/config.yaml` must not contain a `runtime.authorization` section. Runtime rejects a
 local authorization section during config loading.
 
 ## Shape
+
+The normal current configuration is global and does not need a scope:
 
 ```yaml
 runtime:
@@ -35,41 +37,57 @@ runtime:
     assignments:
       - userId: demo-user
         role: developer
-        scope:
-          projectId: P1
 ```
 
-Each assignment has exactly:
+Each assignment has:
 
-- `userId`: canonical project `runtime.authentication.users.<userId>` key;
+- `userId`: canonical `runtime.authentication.users.<userId>` key;
 - `role`: one of `viewer`, `developer`, `admin`;
-- `scope`: canonical assignment scope.
+- optional `scope`: non-empty string dimensions limiting where that role applies.
 
-`userId` must exist in the project `runtime.authentication.users` section. A user introduced only by local config
-does not satisfy this requirement.
+`userId` must exist in the configured `runtime.authentication.users` section. A user introduced
+only by local config cannot be referenced by an authorization assignment.
 
-## Valid scopes
+## Scope
 
-The accepted assignment scope shapes are:
+Omitted scope is equivalent to:
 
-```text
-{}
-{ projectId }
-{ projectId, specId }
-{ projectId, specId, sessionId }
+```yaml
+scope: {}
 ```
 
-All values are non-empty strings.
+and means global access for the capabilities in that role.
 
-The following are rejected because they omit canonical parents:
+Scope keys are deliberately domain-neutral but must be safe identifier segments: letters, digits,
+`_`, and `-`, starting with a letter or digit. This rejects prototype-sensitive or ambiguous object
+keys. For example, if a future deployment introduces a workspace dimension:
 
-```text
-{ specId }
-{ sessionId }
-{ projectId, sessionId }
+```yaml
+- userId: demo-user
+  role: admin
+  scope:
+    workspaceId: W1
 ```
 
-An empty scope is global.
+that assignment applies to required scopes inside `W1`, such as
+`{ workspaceId: W1, specId: S1 }`, but it does not satisfy a global `{}` requirement.
+
+Multiple bounded areas are represented by multiple assignments:
+
+```yaml
+- userId: demo-user
+  role: admin
+  scope:
+    workspaceId: W1
+
+- userId: demo-user
+  role: admin
+  scope:
+    workspaceId: W2
+```
+
+SpecFlow does not currently impose a `projectId -> specId -> sessionId` scope hierarchy and does
+not support wildcard scope values. Values must be non-empty strings.
 
 ## Current roles
 
@@ -78,16 +96,17 @@ An empty scope is global.
   `session.manage`;
 - `admin`: developer capabilities plus `settings.view`, `settings.manage`.
 
-The role definitions are application code in Runtime. Configuration assigns those roles; it does not
-define or extend them.
+Roles contain capabilities only. Scope belongs to the assignment, not to the role.
 
-There is no role inheritance in the authorization resolver and no wildcard capability.
+There is no role inheritance, deny model, wildcard capability, or precedence rule in the
+authorization resolver. Capabilities from matching assignments are unioned.
 
 ## Authentication mode interaction
 
 `runtime.authentication.mode=required` uses the authenticated session user's canonical id.
 
-`runtime.authentication.mode=none` with `runtime.authentication.localUserId` uses that canonical configured user id.
+`runtime.authentication.mode=none` with `runtime.authentication.localUserId` uses that canonical
+configured user id.
 
-`runtime.authentication.mode=none` without `runtime.authentication.localUserId` disables Runtime access control rather than creating
-an anonymous zero-permission user.
+`runtime.authentication.mode=none` without `runtime.authentication.localUserId` disables Runtime
+access control rather than creating an anonymous zero-permission user.

@@ -30,4 +30,4 @@ function aborted(signal: AbortSignal): Promise<void> {
   );
 }
 
-export { createAuthCommand, type AuthCommandContext } from '../auth/cli';
+export { createAuthCommand, type AuthCommandContext } from '../features/auth';

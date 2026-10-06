@@ -14,12 +14,12 @@ tags:
   - working
   - issue
 read_when:
-  - implementing Specs Overview steering groups/items
+  - implementing Specs Overview steering sections/items
   - creating Storybook/Figma fixtures for Spec signals
   - deciding how concurrent Spec/Task signals aggregate
 summary: >
   Detailed product presentation contract for the Specs steering list: semantic queue projection,
-  strict row/group presentation models, stable visual grammar, responsive behavior, interaction,
+  strict row/section presentation models, stable visual grammar, responsive behavior, interaction,
   data loading, fixtures, and cardless list composition.
 related:
   - ideas.specflow-ui.components
@@ -52,13 +52,13 @@ one of them to summary-level information.
 Product-owned composition:
 
 ```text
-SpecSteeringCollection
+SpecsOverviewCollection
 ├── Current
-│   └── SpecListGroup
-│       ├── SpecListGroupHeader
-│       └── CurrentSpecListRow
+│   └── section
+│       ├── SpecSectionHeader
+│       └── SpecListRow (Current row model)
 └── Archive
-    └── ArchiveSpecListRow
+    └── SpecListRow (Archive row model)
 ```
 
 Current and Archive may share low-level visual primitives, but their bounded presentation semantics are
@@ -71,7 +71,7 @@ Do not create a generic DashboardCard abstraction.
 
 The collection follows the shared
 [scan-column rule](../../../design-system/principles/layout-and-containment.md#scan-column-rule).
-Group headers and rows are one scanning system, not independently composed blocks.
+Section headers and rows are one scanning system, not independently composed blocks.
 
 The outer list grid owns three stable tracks:
 
@@ -91,11 +91,11 @@ The disclosure control occupies the utility gutter. Current Specs Overview rows 
 checkbox or bulk-Spec action, so that row track is empty; a future selection variant would reuse the
 same track rather than introducing new indentation.
 
-The semantic marker has its own fixed scan column. It may carry restrained group colour, which keeps
-group scanning fast without shifting the group label or colouring every row. Rows reserve the same
+The semantic marker has its own fixed scan column. It may carry restrained section colour, which keeps
+section scanning fast without shifting the section label or colouring every row. Rows reserve the same
 marker track even when they do not render a marker.
 
-The group label and row identity therefore start on the same **content axis** after both leading
+The section label and row identity therefore start on the same **content axis** after both leading
 tracks. Implementations SHOULD realize this with one shared outer grid, for example:
 
 ```css
@@ -105,7 +105,7 @@ grid-template-columns:
   minmax(0, 1fr);
 ```
 
-The exact token values belong to the owning implementation/design-system scale, but group and row
+The exact token values belong to the owning implementation/design-system scale, but section and row
 MUST use the same template. Do not recreate the leading columns independently in each state.
 
 ## 3. Source projection versus presentation model
@@ -119,9 +119,7 @@ The backend/application overview projection may remain rich enough to preserve s
   key?,
   updatedAt,
   progress,
-  groupId,
-  overviewSummary,
-  concurrentWork?,
+  classification,
   pullRequests?,
   tags?,
   signals[],
@@ -131,11 +129,12 @@ The backend/application overview projection may remain rich enough to preserve s
 
 That rich projection MUST NOT be passed directly to `SpecListRow`.
 
-The transport envelope is discriminated by collection. Current (`active`) requires the backend
-classification and steering facts above. Archive uses a separate historical source item with
-identity/progress/metadata and optional authoritative `completedAt` / `archivedAt`, but no Current
-`groupId`, `overviewSummary`, `signals`, or `currentExecutions`. Its `groups` list is empty. Archive
-MUST NOT fabricate Ready or other steering state to satisfy the Current source schema.
+The transport envelope is discriminated by collection. Current (`current`) carries one
+backend-owned `classification`, rich evidence, and the ordered `sections` list. Archive uses a
+separate historical source item with identity/progress/metadata and optional authoritative
+`completedAt` / `archivedAt`, but no Current `classification`, `signals`,
+`currentExecutions`, or `sections`. Archive MUST NOT fabricate Ready or other steering state to
+satisfy the Current source schema.
 
 A feature-owned mapper converts it to a bounded presentation model before rendering. The visual row
 does not receive raw `signals[]`, raw `currentExecutions[]`, Task IDs, or arbitrary arrays of
@@ -144,7 +143,7 @@ metadata.
 Reference presentation contract:
 
 ```ts
-type SpecListGroupKind = 'requires-attention' | 'active' | 'ready' | 'draft';
+type CurrentSpecSectionId = 'requires-attention' | 'active' | 'ready' | 'draft';
 
 type SpecListStateSummary =
   | {
@@ -154,8 +153,7 @@ type SpecListStateSummary =
     }
   | { kind: 'active'; executionCount: number }
   | { kind: 'ready' }
-  | { kind: 'draft' }
-  | { kind: 'unavailable' };
+  | { kind: 'draft' };
 
 type SpecListConcurrentQualifier = { executionCount: number };
 
@@ -177,7 +175,7 @@ interface CurrentSpecListRowModel {
     completed: number;
     total: number;
   };
-  groupId: SpecListGroupKind; // backend-owned classification
+  sectionId: CurrentSpecSectionId; // derived from backend-owned classification.section
   stateSummary: SpecListStateSummary;
   qualifier?: SpecListConcurrentQualifier;
   trailing?: SpecListTrailingMetadata;
@@ -198,8 +196,8 @@ interface ArchiveSpecListRowModel {
   trailing?: SpecListTrailingMetadata;
 }
 
-interface SpecListGroupModel {
-  kind: SpecListGroupKind;
+interface SpecListSectionModel {
+  kind: SpecListSectionKind;
   label: string;
   count: number;
   items: readonly CurrentSpecListRowModel[];
@@ -210,7 +208,7 @@ The type names are illustrative, but the constraints are normative:
 
 - Current and Archive row inputs are separate bounded presentation models, not the raw overview
   projection;
-- `CurrentSpecListRowModel.groupId` is backend-owned; row summaries do not determine classification;
+- `CurrentSpecListRowModel.sectionId` is backend-owned; row summaries do not determine classification;
 - same-category multiplicity is represented by the dominant summary's count, never by repeating raw
   signals;
 - `qualifier` is optional and may represent **one** materially useful concurrent lower-priority
@@ -232,11 +230,11 @@ The type names are illustrative, but the constraints are normative:
 If product requirements later need another summary fact, extend the corresponding Current or Archive
 presentation contract deliberately rather than exposing raw source arrays or a generic metadata bag.
 
-## 4. Primary queue ordering and grouping
+## 4. Primary queue ordering and sections
 
 One Spec appears in **one canonical Current queue position**.
 
-The default backend-derived Overview presentation groups are, in order:
+The default backend-derived Current sections are, in order:
 
 1. **Requires attention** (`requires-attention`): any actionable human-attention condition belonging
    to the Specification, a Task, Session, review, decision request, or blocker.
@@ -245,26 +243,26 @@ The default backend-derived Overview presentation groups are, in order:
 3. **Ready** (`ready`): approved/ready for work, with no execution and no human attention.
 4. **Draft** (`draft`): still in preparation, before Ready.
 
-Precedence is `requires-attention > active > ready > draft`. Each Specification has exactly one
-backend-owned `groupId`; attention wins even when work is concurrent. Internal `working`, `quiet`,
-`issue`, and similar signals are not top-level groups.
+Precedence is `requires-attention > active > ready > draft`. Each Current Specification has one
+backend-owned `classification.section`; attention wins even when work is concurrent. Internal
+`working`, `quiet`, `issue`, and similar signals are evidence, not top-level sections.
 
-The backend supplies enabled standard IDs and their order through the collection's `groups` list.
-Project-owned `.nevo/config.yaml` may configure `specs.overview.groups` with `id` and numeric
-`order`; omitted configuration uses orders 10/20/30/40. A configured list enables only listed IDs.
+The backend supplies enabled section IDs in display order through the Current projection's
+`sections` list. Project-owned `.nevo/config.yaml` may configure
+`specs.overview.current.sections` as an ordered list. A configured list enables only listed IDs.
 The frontend renders the supplied order and maps stable IDs to its normal i18n keys. English labels
 and generic rule expressions MUST NOT be put in YAML. Semantics remain backend-owned.
 
-The current mock returns predefined classifications and aggregate facts. This does not implement a
-production grouping engine. Replacing the sample with real projections must preserve this contract.
+The sample repository supplies read records and Runtime derives Current classification from them.
+Replacing the sample with persistent repository data must preserve this contract.
 
 Within Requires attention, an active Session interaction waiting for the human is normally the
 strongest signal. Beyond that, the application/read model should provide semantic priority rather
 than the frontend reverse-engineering urgency from raw statuses.
 
-Do not duplicate one Spec across groups. Lower-priority concurrent state stays in the source
+Do not duplicate one Spec across sections. Lower-priority concurrent state stays in the source
 projection and may contribute at most one bounded `qualifier` when omitting it would materially
-misrepresent the row. The qualifier never changes the row's group or navigation target.
+misrepresent the row. The qualifier never changes the row's section or navigation target.
 
 ## 5. Interaction model and affordance budget
 
@@ -461,35 +459,35 @@ Responsive collapse must happen **consistently for the collection**, not indepen
 Tertiary metadata may move below primary content or be omitted on Narrow, but Spec identity,
 progress, and aggregate state summary remain discoverable in the same semantic order.
 
-## 9. Group headers and vertical rhythm
+## 9. Section headers and vertical rhythm
 
-Groups are full-width list sections, not Cards.
+Current sections are full-width list sections, not Cards.
 
-A group header contains:
+A section header contains:
 
 - disclosure chevron in the shared gutter;
-- group label starting at the shared content axis;
+- section label starting at the shared content axis;
 - count.
 
 Semantic tone may use restrained color/surface treatment, but it MUST NOT insert a new leading column
-that moves the group label away from the Spec-key/title axis.
+that moves the section label away from the Spec-key/title axis.
 
-Use semantic color sparingly. The group may use a subtle surface or divider treatment, but do not
-turn every status group into a strongly colored block.
+Use semantic color sparingly. The section may use a subtle surface or divider treatment, but do not
+turn every status section into a strongly colored block.
 
-Spacing ownership belongs to the group/list pattern:
+Spacing ownership belongs to the section/list pattern:
 
 - rows do not invent outer margins per state;
 - row-to-row separation uses the row rhythm owned by the list;
-- separation between status groups MUST use a larger semantic spacing token than separation between
-  rows within one group;
-- the visual gap after/before a group header must make the group boundary clearly stronger than a
+- separation between status sections MUST use a larger semantic spacing token than separation between
+  rows within one section;
+- the visual gap after/before a section header must make the section boundary clearly stronger than a
   normal row boundary.
 
 Normative relationship:
 
 ```text
-groupGap > rowGap
+sectionGap > rowGap
 ```
 
 Use design-system spacing tokens rather than scattering literal pixel values.
@@ -500,7 +498,7 @@ Use design-system spacing tokens rather than scattering literal pixel values.
 
 Steering semantics dominate.
 
-Render the backend-supplied groups; defaults are Requires attention / Active / Ready / Draft.
+Render the backend-supplied Current sections; defaults are Requires attention / Active / Ready / Draft.
 
 ### Archive
 
@@ -538,7 +536,7 @@ Spec Y
 ...
 ```
 
-Do not force archived Specs into Current Overview presentation groups based on
+Do not force archived Specs into Current Overview presentation sections based on
 stale historical signals.
 
 Search/filter becomes more important in Archive because the collection grows monotonically.
@@ -572,7 +570,7 @@ ready: TASK-05 ready
 active: Reviewer on TASK-02/TASK-03
 ```
 
-The backend supplies `requires-attention` as the group, an attention summary, and one materially
+The backend supplies `requires-attention` as the section, an attention summary, and one materially
 useful concurrent-work aggregate. The mapper preserves these decisions; it does not classify raw
 signals. Current authoritative work occupies the qualifier slot rather than merely-ready work.
 
@@ -726,46 +724,46 @@ tokens. Resting rows keep subtle dividers; do not add another separator system o
 title on whole-row hover. Explicit PR links retain their independent link affordance.
 
 Current Specs Overview does **not** expose Spec multi-select or bulk-Spec actions. Its row gutter is
-empty while group headers use that same gutter for disclosure.
+empty while section headers use that same gutter for disclosure.
 
 If a future product variant gains an actual selection capability and authoritative bulk actions, its
 selection control occupies the existing fixed gutter and must not shift title alignment. The generic
 DOM guidance below remains conditional on such a product contract.
 
-Group disclosure is a real local interaction, not decorative iconography:
+Section disclosure is a real local interaction, not decorative iconography:
 
-- every rendered group starts expanded on first mount;
-- when Search is empty, the gutter chevron is a semantic button that toggles only that group's rows;
+- every rendered section starts expanded on first mount;
+- when Search is empty, the gutter chevron is a semantic button that toggles only that section's rows;
 - in normal disclosure mode, the button exposes `aria-expanded` and an accessible name such as
-  "Collapse Requires attention group" / "Expand Requires attention group";
+  "Collapse Requires attention section" / "Expand Requires attention section";
 - in normal disclosure mode, native button keyboard behavior applies, including Enter/Space
   activation and visible focus;
 - collapsed/expanded state is local presentation state, is not encoded in the URL or persisted to
   project settings, and is preserved only while the Specs Overview remains mounted;
-- collapsing a group does not change its count, ordering, underlying projection, or workflow state;
+- collapsing a section does not change its count, ordering, underlying projection, or workflow state;
 - the Search-specific forced-expanded mode below temporarily overrides toggling without mutating the
   saved normal disclosure state.
 
 A small disclosure chevron (and any future selection control) may have a larger invisible hit target,
 but the visible gutter width stays stable.
 
-### Search, group counts, and disclosure
+### Search, section counts, and disclosure
 
 Search narrows the selected collection and must never leave a matching result hidden only because the
-user previously collapsed its Current-collection group.
+user previously collapsed its Current section.
 
 For Current:
 
-- `SpecListGroupModel.count` is the number of rows matching the current collection/filter in that
-  group; collapse state never changes the count;
+- `SpecListSectionModel.count` is the number of rows matching the current collection/filter in that
+  section; collapse state never changes the count;
 - when Search is empty, disclosure follows the normal toggle behavior above;
 - a **non-empty Search query** activates filtered-disclosure behavior;
-- while that query is non-empty, groups with zero matches are omitted and every group containing at
+- while that query is non-empty, sections with zero matches are omitted and every section containing at
   least one match is **forced expanded** so no matching result can be hidden;
 - while forced expansion is active, the visible disclosure control remains present for spatial
   consistency but is non-toggleable: expose `aria-expanded="true"` and `aria-disabled="true"`,
   and provide an accessible name that explains the temporary state, for example
-  "Requires attention group expanded while search is active";
+  "Requires attention section expanded while search is active";
 - pointer activation, Enter, and Space on that temporarily disabled disclosure control MUST NOT change
   row visibility or mutate any disclosure state;
 - the empty -> non-empty query transition snapshots the user's current local disclosure state without
@@ -778,7 +776,7 @@ For Current:
   mounted;
 - a no-match result is a filtered empty state, not an empty Current collection.
 
-Archive has no Current semantic groups/disclosure. Search simply filters bounded
+Archive has no Current semantic sections/disclosure. Search simply filters bounded
 `ArchiveSpecListRowModel` rows; no-match Archive search is likewise distinct from an empty Archive
 collection.
 
@@ -789,7 +787,7 @@ turning ordinary metadata text into buttons.
 
 Use one collection projection for the selected Current/Archive collection.
 
-One feature-owned filtered view MUST feed rendered rows, group counts, and the no-results state.
+One feature-owned filtered view MUST feed rendered rows, section counts, and the no-results state.
 Do not implement independent Search matching rules in the screen and collection renderer.
 
 A Spec/Task semantic event should update/invalidate only affected item(s) where possible.
@@ -811,7 +809,7 @@ Keep visible rows while refreshing.
 
 ## 15. Visual/token contract
 
-- group heading: clear but not oversized;
+- section heading: clear but not oversized;
 - identity/title: primary text;
 - key: secondary/metadata treatment, visible but quieter than title;
 - state summary: secondary text with restrained semantic tone where useful;
@@ -820,13 +818,13 @@ Keep visible rows while refreshing.
 - attention carries the strongest semantic tone;
 - active uses a restrained running/activity tone;
 - Ready uses restrained success tone; Draft uses neutral tone and preparation prose;
-- group semantics cannot rely on color alone;
-- no decorative different strong background per group.
+- section semantics cannot rely on color alone;
+- no decorative different strong background per section.
 
 ## 16. Containment rules
 
 - no Card per Spec;
-- no Card around each group;
+- no Card around each section;
 - no nested signal Cards;
 - no chip/badge for every available signal;
 - use text hierarchy, spacing, alignment, subtle surfaces, and dividers;
@@ -860,7 +858,7 @@ spec-steering/empty-current
 
 The concurrent-signals story must prove that a rich source projection still renders a bounded
 secondary line rather than exposing all source details. The search/disclosure story starts with a
-collapsed group, activates Search for a matching row, proves forced expansion, proves that the visible
+collapsed section, activates Search for a matching row, proves forced expansion, proves that the visible
 disclosure control exposes `aria-expanded="true"` + `aria-disabled="true"` and cannot collapse the
 matching result by pointer, Enter, or Space, changes to another non-empty query without mutating the
 snapshot, then clears Search and proves exact restoration of the pre-search local disclosure state.
@@ -872,12 +870,12 @@ synthesized date.
 
 1. A Spec appears once in the canonical Current queue.
 2. Requires attention means human intervention is actually needed.
-3. Default group order is `requires-attention > active > ready > draft`, backend-owned and configuration-driven, not derived from row signals in React.
+3. Default section order is `requires-attention > active > ready > draft`, backend-owned and configuration-driven, not derived from row signals in React.
 4. The entire Spec row has one stable destination: the Specification.
 5. Ordinary status/summary prose inside a row is non-interactive and is not styled as a link.
 6. Only explicitly allowed external/contextual controls such as a linked PR may coexist with the row target, using sibling interactive elements rather than invalid nested controls.
-7. Group headers and rows share one outer utility/marker/content grid: disclosure uses the utility
-   track, restrained group colour may use the fixed marker track, and labels/row identity share one
+7. Section headers and rows share one outer utility/marker/content grid: disclosure uses the utility
+   track, restrained section colour may use the fixed marker track, and labels/row identity share one
    content axis. Current Specs Overview exposes no row-selection checkbox.
 8. All Current rows preserve one primary-line + secondary-line skeleton and stable semantic scan
    columns across states; key, progress, summary, and bounded trailing metadata do not drift because
@@ -889,11 +887,11 @@ synthesized date.
 11. One linked PR is an explicit link with a provided href; multiple PRs render as non-interactive
     aggregate metadata, and visible tags are capped at two.
 12. Ultra-wide layout uses a full-width row surface with one bounded information rail, preventing a large dead zone between title and trailing metadata.
-13. Group spacing is visually stronger than row spacing: `groupGap > rowGap`.
-14. Group chevrons are real disclosure buttons: with empty Search they toggle local state normally;
-    with non-empty Search, matching groups are forced expanded and their visible disclosure controls
+13. Section spacing is visually stronger than row spacing: `sectionGap > rowGap`.
+14. Section chevrons are real disclosure buttons: with empty Search they toggle local state normally;
+    with non-empty Search, matching sections are forced expanded and their visible disclosure controls
     are accessibly disabled/non-toggleable without mutating the saved normal disclosure state.
-15. Search counts only filtered visible rows, omits zero-match groups, and restores the exact
+15. Search counts only filtered visible rows, omits zero-match sections, and restores the exact
     pre-search disclosure snapshot after Search clears.
 16. Batch execution remains batch-shaped and never invents a representative Task.
 17. Archive uses its historical bounded row model rather than Current steering state; authoritative

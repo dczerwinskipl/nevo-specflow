@@ -1,20 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
-import { SessionAuthorization, SettingsAuthorization, SpecAuthorization } from '../src/index';
+import { SessionCapabilities, SettingsCapabilities, SpecCapabilities } from '../src/index';
 
 describe('SpecFlow authorization contracts', () => {
   it('defines stable feature-owned resource and capability ids', () => {
-    expect(SpecAuthorization.capabilities).toEqual({
+    expect(SpecCapabilities.capabilities).toEqual({
       View: 'spec.view',
       Create: 'spec.create',
       Manage: 'spec.manage',
     });
-    expect(SessionAuthorization.capabilities).toEqual({
+    expect(SessionCapabilities.capabilities).toEqual({
       Create: 'session.create',
       View: 'session.view',
       Manage: 'session.manage',
     });
-    expect(SettingsAuthorization.capabilities).toEqual({
+    expect(SettingsCapabilities.capabilities).toEqual({
       View: 'settings.view',
       Manage: 'settings.manage',
     });

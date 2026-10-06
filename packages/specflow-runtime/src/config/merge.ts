@@ -1,6 +1,6 @@
-import { AUTH_CONFIG_REPLACE_PATHS } from '../auth/authentication/config/merge-policy';
+import { AUTHENTICATION_CONFIG_REPLACE_PATHS } from '../features/auth';
 
-const REPLACE_PATHS = new Set<string>(AUTH_CONFIG_REPLACE_PATHS);
+const REPLACE_PATHS = new Set<string>(AUTHENTICATION_CONFIG_REPLACE_PATHS);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);

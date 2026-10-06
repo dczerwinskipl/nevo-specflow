@@ -6,8 +6,11 @@ import { Command } from 'commander';
 import { describe, expect, it } from 'vitest';
 
 import { createAuthCommand, createStartCommand } from '../src/cli/command';
-import { isSupportedPasswordHash, verifyPassword } from '../src/auth/authentication/password/hash';
-import { PASSWORD_MAX_LENGTH } from '../src/auth/authentication/password/policy';
+import {
+  isSupportedPasswordHash,
+  verifyPassword,
+} from '../src/features/auth/authentication/password-login/hash';
+import { PASSWORD_MAX_LENGTH } from '../src/features/auth/authentication/password-login/policy';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -122,7 +125,7 @@ describe('Runtime CLI adapters', () => {
     const core = readFileSync(join(here, '..', 'src', 'index.ts'), 'utf8');
     expect(core).not.toMatch(/['"]commander['"]/);
     const adapter = readFileSync(join(here, '..', 'src', 'cli', 'command.ts'), 'utf8');
-    const authAdapter = readFileSync(join(here, '..', 'src', 'auth', 'cli.ts'), 'utf8');
+    const authAdapter = readFileSync(join(here, '..', 'src', 'features', 'auth', 'cli.ts'), 'utf8');
     expect(adapter).toMatch(/from 'commander'/);
     expect(authAdapter).toMatch(/from 'commander'/);
   });

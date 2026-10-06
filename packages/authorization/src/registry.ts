@@ -23,7 +23,7 @@ export function createAuthorizationRegistry(
   const capabilityOwners = new Map<CapabilityId, ResourceName>();
 
   for (const resource of resources) {
-    validateResourceDefinition(resource);
+    const resourceCapabilities = validateResourceDefinition(resource);
 
     if (resourcesByName.has(resource.name)) {
       throw new AuthorizationConfigurationError(
@@ -31,7 +31,7 @@ export function createAuthorizationRegistry(
       );
     }
 
-    for (const capability of resource.capabilityIds) {
+    for (const capability of resourceCapabilities) {
       const existingOwner = capabilityOwners.get(capability);
       if (existingOwner) {
         throw new AuthorizationConfigurationError(
@@ -41,7 +41,7 @@ export function createAuthorizationRegistry(
       capabilityOwners.set(capability, resource.name);
     }
 
-    resourcesByName.set(resource.name, [...resource.capabilityIds]);
+    resourcesByName.set(resource.name, resourceCapabilities);
   }
 
   const roles = new Map<RoleId, readonly CapabilityId[]>();
@@ -100,30 +100,49 @@ export function createAuthorizationRegistry(
   };
 }
 
-function validateResourceDefinition(resource: ResourceDefinition): void {
+function validateResourceDefinition(resource: ResourceDefinition): readonly CapabilityId[] {
   assertIdentifierSegment(resource.name, 'Resource name');
 
-  const mappedCapabilities = Object.values(resource.capabilities);
-  const capabilityIds = [...resource.capabilityIds];
-
+  const actionKeys = Object.keys(resource.actions);
+  const capabilityKeys = Object.keys(resource.capabilities);
   if (
-    mappedCapabilities.length !== capabilityIds.length ||
-    new Set(mappedCapabilities).size !== mappedCapabilities.length ||
-    new Set(capabilityIds).size !== capabilityIds.length ||
-    mappedCapabilities.some((capability) => !capabilityIds.includes(capability)) ||
-    capabilityIds.some((capability) => !mappedCapabilities.includes(capability))
+    actionKeys.length !== capabilityKeys.length ||
+    actionKeys.some((key) => !Object.hasOwn(resource.capabilities, key)) ||
+    capabilityKeys.some((key) => !Object.hasOwn(resource.actions, key))
   ) {
     throw new AuthorizationConfigurationError(
-      `Resource '${resource.name}' capabilities and capabilityIds must contain the same unique capability ids.`,
+      `Resource '${resource.name}' actions and capabilities must contain the same keys.`,
     );
   }
 
-  const prefix = `${resource.name}.`;
-  for (const capability of capabilityIds) {
-    if (!capability.startsWith(prefix) || capability.length === prefix.length) {
+  const capabilities: CapabilityId[] = [];
+  const seen = new Set<CapabilityId>();
+
+  for (const key of actionKeys) {
+    const action = resource.actions[key];
+    const capability = resource.capabilities[key];
+    if (action === undefined || capability === undefined) {
       throw new AuthorizationConfigurationError(
-        `Capability '${capability}' does not belong to resource '${resource.name}'.`,
+        `Resource '${resource.name}' has an incomplete capability definition for '${key}'.`,
       );
     }
+
+    assertIdentifierSegment(action, `Capability action '${key}'`);
+    const expected = `${resource.name}.${action}`;
+    if (capability !== expected) {
+      throw new AuthorizationConfigurationError(
+        `Capability '${capability}' must equal '${expected}' for resource '${resource.name}'.`,
+      );
+    }
+    if (seen.has(capability)) {
+      throw new AuthorizationConfigurationError(
+        `Resource '${resource.name}' defines duplicate capability '${capability}'.`,
+      );
+    }
+
+    seen.add(capability);
+    capabilities.push(capability);
   }
+
+  return capabilities;
 }

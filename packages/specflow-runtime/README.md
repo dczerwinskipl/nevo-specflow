@@ -19,72 +19,82 @@ maintaining a second server-only schema surface.
 
 ## Architecture conventions
 
-Runtime is organized by cohesive capability. A feature owns its configuration model and
-invariants, application operations, transport adapters, provider integrations, and feature-local
-state. Cross-feature/server code composes those boundaries rather than reimplementing policy.
-
-A vertical slice is not a flat directory. Larger capabilities are split again by cohesive
-sub-capability so the HTTP adapter, application operation, policy, and state/provider code for one
-behavior stay near each other.
-
-Authentication and authorization form one Runtime **Auth** feature:
+Runtime separates product features from infrastructure and composition:
 
 ```text
-src/auth/
-  feature.ts                  # Auth composition root
-  http/
-    cookies.ts                # genuinely shared HTTP concern
-    rate-limit.ts             # Fastify source/IP throttling
-  authentication/
-    config/
-      model.ts
-      parse.ts
-      ownership.ts
-      runtime-policy.ts
-    password/
-      authenticate.ts
-      account-throttle.ts
-      login.ts
-      http.ts
-    oidc/
-      client.ts
-      discovery.ts
-      errors.ts
-      login.ts
-      http.ts
-    session/
-      model.ts
-      state.ts
-      errors.ts
-      store.ts
-      policy.ts
-      access.ts
-      http.ts
-  authorization/
-    capabilities/
-      resolve.ts
-      http.ts
-    composition.ts
-    config.ts
-    roles.ts
+src/
+  features/
+    auth/
+      index.ts
+      feature.ts
+      authentication/
+        configuration/
+        password-login/
+        oidc-login/
+        session/
+        store/
+      authorization/
+        configuration/
+        capability-discovery/
+        request-context.ts
+        request-authorization.ts
+        guards.ts
+    specs/
+      index.ts
+      feature.ts
+      overview/
+        endpoint.ts
+        filter-authorized-specs.ts
+        current/
+          configuration.ts
+          classify-spec.ts
+          get-overview.ts
+        archive/
+          get-overview.ts
+        repository/
+          read-repository.ts
+          model.ts
+          sample-repository.ts
+    sessions/
+      index.ts
+      feature.ts
+    settings/
+      index.ts
+      feature.ts
+    runtime-feature.ts
+  config/
+    parsing/
+      runtime-config-error.ts
+      value-parsers.ts
+  server/
+  init/
+  cli/
 ```
 
-`auth/feature.ts` creates feature-owned state/providers and mounts sub-capability adapters.
-Provider-specific routes are registered only when the provider is enabled, so an adapter never
-receives an impossible half-configured provider state. HTTP adapters translate request/response
-concerns only; application decisions live in operations such as password/OIDC login and capability
-resolution.
+`features/<name>/index.ts` is the Runtime-facing feature boundary. `feature.ts` owns feature
+composition and registration. Infrastructure and other features import the public `index.ts`
+surface instead of reaching into implementation sub-slices.
+
+Features own the authorization resource definitions they expose through their feature boundary. Runtime
+composition creates the enabled feature modules, collects those resource definitions, defines the
+product role policy from their capabilities, and injects both into Auth. Product
+features therefore do not need to know global role ids, while Authorization evaluates product
+capabilities without importing Specs, Sessions, or Settings.
+
+HTTP endpoints are thin transport adapters. Application behavior lives in named operations beside
+the capability they serve. Specs Overview is intentionally split into `current` and `archive`
+sub-slices because they have different read models and behavior even though they share one HTTP
+endpoint.
+
+Replaceable effects/state use narrow capability contracts. Specs Overview uses `SpecsOverviewRepository` as its read port; the current sample catalogue is only its default adapter. Repository models are internal
+to the Specs feature and do not reuse HTTP response DTOs.
+
+Authentication and authorization are one Runtime Auth feature. Shared Auth HTTP concerns such as
+cookies and source throttling remain feature-local, while request authorization is installed before
+other product features register their routes.
 
 Fastify route schemas are the request-validation boundary. TypeBox schemas are owned by
-`@nevo/specflow-contracts`, Fastify/AJV validates them before handlers execute, and response schemas
-bound the serialized output.
-
-Replaceable effects/state use narrow capability contracts. `AuthStore` is the session/OIDC-state
-port and `InMemoryAuthStore` is the default adapter.
-
-The root `src/config/` layer owns loading and composing the `runtime` subtree. Auth-specific
-configuration follows the same internal split: model, parsing, project/local ownership, merge policy,
-and runtime-context policy are separate responsibilities.
+`@nevo/specflow-contracts`, and response schemas bound serialized output.
 
 ## Configuration
 
@@ -202,7 +212,7 @@ Registered only when the corresponding login method/provider instance is enabled
 
 Sessions and pending OIDC transactions are server-side, bounded, and expiring. Capacity is
 fail-closed: a full store returns a controlled HTTP 503 and never evicts live authentication state.
-The `AuthStore` exposes the effective immutable session policy, and cookie lifetime is derived from
+The `AuthenticationStore` exposes the effective immutable store policy, and cookie lifetime is derived from
 that same policy so injected stores cannot drift from HTTP TTLs. Cookie names are scoped by Runtime
 server port, preventing two local Runtime instances on the same hostname but different ports from
 overwriting each other's session/OIDC cookies. `GET /api/auth/session` and capability discovery

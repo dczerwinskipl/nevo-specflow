@@ -118,7 +118,7 @@ async function nextFrame() {
 
 const meta = {
   title: 'Nevo UI/Internal/Workspace/Focus restoration',
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   parameters: {
     a11y: { test: 'off' },
   },

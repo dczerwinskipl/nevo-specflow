@@ -4,7 +4,7 @@ import { SegmentedControl } from './SegmentedControl';
 
 const meta = {
   title: 'Nevo UI/Forms/SegmentedControl',
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: { controls: { disable: true } },
 } satisfies Meta;
 

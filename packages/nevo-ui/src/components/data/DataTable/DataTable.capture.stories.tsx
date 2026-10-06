@@ -59,7 +59,7 @@ function CaptureTable({
 
 const meta = {
   title: 'Nevo UI/Data/DataTable/Design Capture',
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: { controls: { disable: true }, layout: 'fullscreen' },
 } satisfies Meta;
 

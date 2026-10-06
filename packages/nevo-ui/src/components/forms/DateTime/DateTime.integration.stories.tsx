@@ -204,7 +204,7 @@ async function commitImmediateDone(
 
 const meta = {
   title: 'Nevo UI/Internal/DateTime/Radix compatibility',
-  tags: ['!dev', '!autodocs'],
+  tags: ['integration', '!autodocs'],
   parameters: {
     docs: {
       description: {

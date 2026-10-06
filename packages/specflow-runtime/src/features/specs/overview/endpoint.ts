@@ -4,12 +4,14 @@ import {
   AuthenticationRequiredErrorResponseSchema,
   AuthorizationForbiddenErrorResponseSchema,
 } from '@nevo/specflow-contracts/authorization';
+import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import {
   SpecsOverviewQuerySchema,
   SpecsOverviewSchema,
   type CurrentSpecSectionId,
 } from '@nevo/specflow-contracts/specs/overview';
 
+import { requireCapabilityInAnyScope } from '../../auth';
 import type { SpecsOverviewRepository } from './repository/read-repository';
 import { getArchiveOverview } from './archive/get-overview';
 import { getCurrentOverview } from './current/get-overview';
@@ -27,6 +29,10 @@ export const specsOverviewEndpoint: FastifyPluginCallback<SpecsOverviewEndpointO
   app.withTypeProvider<TypeBoxTypeProvider>().get(
     '/api/specs/overview',
     {
+      preHandler: requireCapabilityInAnyScope({
+        resource: SpecCapabilities,
+        capability: SpecCapabilities.capabilities.View,
+      }),
       schema: {
         querystring: SpecsOverviewQuerySchema,
         response: {

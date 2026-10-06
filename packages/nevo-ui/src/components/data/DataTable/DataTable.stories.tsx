@@ -342,7 +342,7 @@ export const InteractiveContent: Story = { render: () => <InteractiveRows /> };
 
 export const InteractionContract: Story = {
   render: () => <InteractiveRows />,
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   play: async ({ canvas, canvasElement, userEvent }) => {
     const firstRow = canvas.getByText('C-1000').closest('tr');
     assert(firstRow, 'The fixture should expose its first data row.');
@@ -390,7 +390,7 @@ export const InteractionContract: Story = {
 
 export const StateAndGeometryContract: Story = {
   render: () => <Example withRowActions />,
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Sort by Customer' }));
     assert(
@@ -444,7 +444,7 @@ export const OverflowContract: Story = {
       <DataTable columns={wideColumns} data={customers.slice(0, 3)} />
     </div>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   play: async ({ canvas }) => {
     const scroll = canvas.getByText('Customer ID').closest('.data-table-scroll');
     const table = scroll?.querySelector('table');

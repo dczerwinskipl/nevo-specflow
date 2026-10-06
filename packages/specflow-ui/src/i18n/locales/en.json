@@ -9,7 +9,7 @@
   },
   "navigation": {
     "product": "Product navigation",
-    "specs": "Specs",
+    "specifications": "Specifications",
     "uiPlayground": "UI Playground",
     "close": "Close navigation",
     "title": "Application navigation",
@@ -51,8 +51,21 @@
       "description": "SpecFlow Runtime did not respond. Make sure it is running and reachable, then try again."
     }
   },
-  "specs": {
-    "title": "Specs",
+  "specification": {
+    "title": "Specification",
+    "backToSpecifications": "Back to Specifications",
+    "placeholderTitle": "Specification details are not implemented yet",
+    "placeholderDescription": "You have opened the owning Specification. Documents, Tasks and Sessions will become available here in a later increment. No workflow action has been performed.",
+    "identity": "Specification ID: {{id}}"
+  },
+  "playground": {
+    "title": "UI Playground",
+    "description": "A neutral product-owned surface for checking Nevo UI composition inside the real app.",
+    "exampleValue": "Example value",
+    "continue": "Continue"
+  },
+  "specifications": {
+    "title": "Specifications",
     "current": "Current",
     "archive": "Archive",
     "collection": "Specification collection",
@@ -61,13 +74,13 @@
     "create": "New specification",
     "refresh": "Refresh",
     "refreshing": "Refreshing…",
-    "moreActions": "Specs actions",
-    "search": "Search specs",
+    "moreActions": "Specification actions",
+    "search": "Search specifications",
     "clearSearch": "Clear search",
     "loading": "Loading specifications",
-    "unavailable": "Specs are unavailable",
+    "unavailable": "Specifications are unavailable",
     "unavailableDescription": "The specification overview is not available from this Runtime yet.",
-    "refreshFailed": "Could not refresh specs",
+    "refreshFailed": "Could not refresh specifications",
     "refreshFailedDescription": "Showing the last loaded collection. Try again to get the latest state.",
     "emptyCurrent": "No current specifications",
     "emptyCurrentDescription": "Current specifications will appear here, from drafts to ready work, active execution and items requiring your attention.",
@@ -134,18 +147,5 @@
       "title": "Access denied",
       "description": "You do not have permission to view these specifications."
     }
-  },
-  "specification": {
-    "title": "Specification",
-    "backToSpecs": "Back to Specs",
-    "placeholderTitle": "Specification details are not implemented yet",
-    "placeholderDescription": "You have opened the owning Specification. Documents, Tasks and Sessions will become available here in a later increment. No workflow action has been performed.",
-    "identity": "Specification ID: {{id}}"
-  },
-  "playground": {
-    "title": "UI Playground",
-    "description": "A neutral product-owned surface for checking Nevo UI composition inside the real app.",
-    "exampleValue": "Example value",
-    "continue": "Continue"
   }
 }

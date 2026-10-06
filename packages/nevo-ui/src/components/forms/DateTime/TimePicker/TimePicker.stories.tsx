@@ -131,7 +131,7 @@ function assert(condition: unknown, message: string): asserts condition {
 
 export const ControlledStateContract: Story = {
   render: () => <ControlledStateFixture />,
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   play: async ({ canvas, canvasElement, userEvent }) => {
     canvas.getByRole('button', { name: 'Set open external time' }).click();
     const cancel = await findDocumentButton('Cancel');
@@ -171,7 +171,7 @@ function UncontrolledStateFixture() {
 
 export const UncontrolledStateContract: Story = {
   render: () => <UncontrolledStateFixture />,
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   play: async ({ canvas, canvasElement, userEvent }) => {
     const done = await findDocumentButton('Done');
     assert(done, 'defaultOpen should open an uncontrolled picker.');
@@ -216,7 +216,7 @@ export const CanonicalCapture: Story = {
       </div>
     </DesignCaptureProvider>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     designCapture: {

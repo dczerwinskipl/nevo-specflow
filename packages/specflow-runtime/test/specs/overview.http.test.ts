@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type {
   ArchiveSpecsOverview,
   CurrentSpecsOverview,
@@ -143,7 +143,12 @@ describe('Specs overview HTTP integration', () => {
       userId: 'demo-user',
       authenticatedWith: { kind: 'password' },
     });
-    const app = await createRuntimeApp(config, { auth: { store } });
+    const readCurrent = vi.fn(() => Promise.reject(new Error('repository must not be read')));
+    const readArchive = vi.fn(() => Promise.reject(new Error('repository must not be read')));
+    const app = await createRuntimeApp(config, {
+      auth: { store },
+      specs: { overviewRepository: { readCurrent, readArchive } },
+    });
 
     try {
       const response = await app.inject({
@@ -155,6 +160,8 @@ describe('Specs overview HTTP integration', () => {
 
       expect(response.statusCode).toBe(403);
       expect(response.json()).toEqual({ error: 'forbidden' });
+      expect(readCurrent).not.toHaveBeenCalled();
+      expect(readArchive).not.toHaveBeenCalled();
     } finally {
       await app.close();
     }

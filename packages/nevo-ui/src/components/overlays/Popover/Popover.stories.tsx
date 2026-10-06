@@ -71,7 +71,7 @@ async function waitFor<T>(read: () => T | null | false, message: string): Promis
 export const FormContent: Story = {};
 
 export const InteractionContract: Story = {
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   play: async ({ canvas, userEvent }) => {
     const trigger = canvas.getByRole('button', { name: 'Edit owner' });
     trigger.focus();
@@ -100,7 +100,7 @@ export const CanonicalCapture: Story = {
       <PopoverExample canonical />
     </DesignCaptureProvider>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     designCapture: {

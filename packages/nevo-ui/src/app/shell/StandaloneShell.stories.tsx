@@ -146,7 +146,33 @@ export const CanonicalCapture: Story = {
       </StandaloneShell>
     </DesignCaptureProvider>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
+  parameters: {
+    controls: { disable: true },
+    designCapture: {
+      component: 'StandaloneShell',
+      title: 'Standalone shell',
+      description: 'Navigation-free application frame with compact desktop surface',
+      kind: 'component',
+      order: 22,
+    },
+  },
+};
+
+export const CanonicalCaptureContract: Story = {
+  render: () => (
+    <DesignCaptureProvider captureComponents={['StandaloneShell']}>
+      <StandaloneShell
+        data-design-canonical="true"
+        data-design-source-id="desktop"
+        desktopHeader={<HeaderFixture />}
+        mobileHeader={<HeaderFixture />}
+      >
+        <ContentFixture />
+      </StandaloneShell>
+    </DesignCaptureProvider>
+  ),
+  tags: ['contract', '!autodocs'],
   play: ({ canvasElement }) => {
     const root = canvasElement.querySelector<HTMLElement>(
       '[data-design-capture="true"][data-design-component="StandaloneShell"]',
@@ -164,15 +190,5 @@ export const CanonicalCapture: Story = {
       root.querySelector('[data-design-slot="content"]'),
       'StandaloneShell capture must retain its content slot.',
     );
-  },
-  parameters: {
-    controls: { disable: true },
-    designCapture: {
-      component: 'StandaloneShell',
-      title: 'Standalone shell',
-      description: 'Navigation-free application frame with compact desktop surface',
-      kind: 'component',
-      order: 22,
-    },
   },
 };

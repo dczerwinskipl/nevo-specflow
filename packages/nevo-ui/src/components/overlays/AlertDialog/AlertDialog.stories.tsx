@@ -53,7 +53,7 @@ function assert(condition: unknown, message: string): asserts condition {
 
 export const InteractionContract: Story = {
   ...Destructive,
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   play: async ({ canvas, userEvent }) => {
     const trigger = canvas.getByRole('button', { name: 'Delete' });
     await userEvent.click(trigger);

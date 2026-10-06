@@ -209,11 +209,13 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Current: Story = {
+  tags: ['visual'],
+  parameters: { chromatic: { disableSnapshot: false } },
   play: async ({ canvas, canvasElement, userEvent }) => {
     await canvas.findByRole('heading', { name: 'Requires attention' });
     canvas.getByRole('radio', { name: 'Current' });
     canvas.getByRole('radio', { name: 'Archive' });
-    if (canvas.getByRole('button', { name: 'Specs actions' }).textContent?.trim())
+    if (canvas.getByRole('button', { name: 'Specification actions' }).textContent?.trim())
       throw new Error('Header overflow should visibly contain only the ellipsis icon.');
     const headings = [...canvasElement.querySelectorAll('[data-spec-section-header] h2')];
     if (
@@ -365,8 +367,10 @@ export const Refreshing: Story = { args: { state: { ...loaded, refreshing: true 
 export const RefreshFailure: Story = { args: { state: { ...loaded, error: true } } };
 export const Archive: Story = {
   args: { state: { ...loaded, collection: 'archive', projection: createSpecsFixture('archive') } },
+  tags: ['visual'],
+  parameters: { chromatic: { disableSnapshot: false } },
   play: async ({ canvas, userEvent }) => {
-    const search = canvas.getByRole('textbox', { name: 'Search specs' });
+    const search = canvas.getByRole('textbox', { name: 'Search specifications' });
     await userEvent.type(search, 'canonical');
     if (canvas.queryByText('Requires attention'))
       throw new Error('Archive must remain historical.');
@@ -381,12 +385,12 @@ export const Archive: Story = {
 export const CollectionSwitch: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('radio', { name: 'Archive' }));
-    canvas.getByRole('textbox', { name: 'Search specs' });
+    canvas.getByRole('textbox', { name: 'Search specifications' });
     if (canvas.queryByText('Requires attention'))
       throw new Error('Current signals cannot leak into Archive.');
     await userEvent.click(canvas.getByRole('radio', { name: 'Current' }));
     canvas.getByText('Requires attention');
-    await userEvent.click(canvas.getByRole('button', { name: 'Specs actions' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Specification actions' }));
     const refresh = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
       (item) => item.textContent === 'Refresh',
     );
@@ -395,7 +399,7 @@ export const CollectionSwitch: Story = {
     await userEvent.click(refresh);
     if (!canvas.getByLabelText('Fixture interaction result').textContent?.includes('"refreshes":1'))
       throw new Error('Refresh must notify the collection owner.');
-    await userEvent.click(canvas.getByRole('button', { name: 'Specs actions' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Specification actions' }));
     const createSession = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
       (item) => item.textContent === 'Create session',
     );
@@ -467,7 +471,7 @@ export const SearchDisclosure: Story = {
       canvas.getByRole('button', { name: 'Collapse Requires attention section' }),
     );
     await userEvent.click(canvas.getByRole('button', { name: 'Collapse Draft section' }));
-    const search = canvas.getByRole('textbox', { name: 'Search specs' });
+    const search = canvas.getByRole('textbox', { name: 'Search specifications' });
     await userEvent.type(search, 'Deterministic');
     const forced = canvas.getByRole('button', {
       name: 'Requires attention section expanded while search is active',
@@ -622,7 +626,7 @@ export const ConfiguredOrder: Story = {
 export const ReadOnlyPreview: Story = {
   args: { interactive: false },
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(canvas.getByRole('button', { name: 'Specs actions' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Specification actions' }));
     const createSession = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
       (item) => item.textContent === 'Create session',
     );
@@ -633,7 +637,11 @@ export const ReadOnlyPreview: Story = {
 };
 export const Mobile: Story = {
   ...LongContent,
-  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  tags: ['visual'],
+  parameters: {
+    viewport: { defaultViewport: 'mobile1' },
+    chromatic: { disableSnapshot: false },
+  },
 };
 
 export const SourceLifecycle: Story = {
@@ -646,7 +654,7 @@ export const SourceLifecycle: Story = {
       throw new Error('A late Current response must not leak into Archive.');
     await userEvent.click(canvas.getByRole('button', { name: 'Resolve Archive' }));
     await canvas.findByText('Canonical Session, Turn and Work model');
-    await userEvent.click(canvas.getByRole('button', { name: 'Specs actions' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Specification actions' }));
     const refresh = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
       (item) => item.textContent === 'Refresh',
     );

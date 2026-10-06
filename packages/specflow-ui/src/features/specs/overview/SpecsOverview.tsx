@@ -63,17 +63,17 @@ export function SpecsOverview({
       <AppWorkspace.Primary
         header={
           <WorkspaceHeader
-            title={t('specs.title')}
+            title={t('specifications.title')}
             labels={{
-              moreActions: t('specs.moreActions'),
-              menuScope: t('specs.title'),
+              moreActions: t('specifications.moreActions'),
+              menuScope: t('specifications.title'),
             }}
             actions={[
               ...(onCreate
                 ? [
                     {
                       id: 'create',
-                      label: t('specs.create'),
+                      label: t('specifications.create'),
                       icon: 'plus' as const,
                       primary: true,
                       onPress: onCreate,
@@ -83,14 +83,14 @@ export function SpecsOverview({
               {
                 id: 'create-session',
                 icon: 'chat-plus',
-                label: t('specs.createSession'),
+                label: t('specifications.createSession'),
                 disabled: !onCreateSession,
                 onPress: () => onCreateSession?.(),
               },
               {
                 id: 'refresh',
                 icon: 'refresh',
-                label: busy ? t('specs.refreshing') : t('specs.refresh'),
+                label: busy ? t('specifications.refreshing') : t('specifications.refresh'),
                 disabled: busy,
                 onPress: onRefresh,
               },
@@ -103,32 +103,32 @@ export function SpecsOverview({
             <AppContentContainer align="start" className="grid gap-4" size="full">
               <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
                 <SegmentedControl
-                  aria-label={t('specs.collection')}
+                  aria-label={t('specifications.collection')}
                   value={state.collection}
                   onValueChange={(value) => onCollectionChange(value as SpecsCollection)}
                 >
                   <SegmentedControl.Item value="current">
-                    {t('specs.current')}
+                    {t('specifications.current')}
                   </SegmentedControl.Item>
                   <SegmentedControl.Item value="archive">
-                    {t('specs.archive')}
+                    {t('specifications.archive')}
                   </SegmentedControl.Item>
                 </SegmentedControl>
                 {sample ? (
                   <Typography className="text-content-muted" variant="body-sm">
-                    {t('specs.sample')}
+                    {t('specifications.sample')}
                   </Typography>
                 ) : null}
               </div>
               {sample && !specificationHref ? (
                 <Typography className="text-content-secondary" variant="body-sm">
-                  {t('specs.previewDescription')}
+                  {t('specifications.previewDescription')}
                 </Typography>
               ) : null}
               {searchable ? (
                 <TextInput
-                  aria-label={t('specs.search')}
-                  placeholder={t('specs.search')}
+                  aria-label={t('specifications.search')}
+                  placeholder={t('specifications.search')}
                   value={term}
                   onChange={(event) =>
                     setSearch({ collection: state.collection, value: event.target.value })
@@ -138,20 +138,22 @@ export function SpecsOverview({
               ) : null}
               {state.refreshing ? (
                 <Typography role="status" variant="body-sm" className="text-content-muted">
-                  {t('specs.refreshing')}
+                  {t('specifications.refreshing')}
                 </Typography>
               ) : null}
               {state.error ? (
                 <Alert
                   role="alert"
                   tone={projection ? 'attention' : 'danger'}
-                  title={t(projection ? 'specs.refreshFailed' : 'specs.unavailable')}
+                  title={t(
+                    projection ? 'specifications.refreshFailed' : 'specifications.unavailable',
+                  )}
                 >
                   <p>
                     {t(
                       projection
-                        ? 'specs.refreshFailedDescription'
-                        : 'specs.unavailableDescription',
+                        ? 'specifications.refreshFailedDescription'
+                        : 'specifications.unavailableDescription',
                     )}
                   </p>
                   <Button className="mt-3" onClick={onRefresh} disabled={busy} variant="secondary">
@@ -160,7 +162,7 @@ export function SpecsOverview({
                 </Alert>
               ) : null}
               {state.loading ? (
-                <div aria-label={t('specs.loading')} role="status" className="grid gap-6">
+                <div aria-label={t('specifications.loading')} role="status" className="grid gap-6">
                   {Array.from({ length: 4 }, (_, index) => (
                     <div aria-hidden="true" className="grid gap-3" key={index}>
                       <Skeleton className="h-5 w-3/5" />
@@ -183,17 +185,17 @@ export function SpecsOverview({
                   className="border-0"
                   title={t(
                     term
-                      ? 'specs.noResults'
+                      ? 'specifications.noResults'
                       : state.collection === 'current'
-                        ? 'specs.emptyCurrent'
-                        : 'specs.emptyArchive',
+                        ? 'specifications.emptyCurrent'
+                        : 'specifications.emptyArchive',
                   )}
                   description={t(
                     term
-                      ? 'specs.noResultsDescription'
+                      ? 'specifications.noResultsDescription'
                       : state.collection === 'current'
-                        ? 'specs.emptyCurrentDescription'
-                        : 'specs.emptyArchiveDescription',
+                        ? 'specifications.emptyCurrentDescription'
+                        : 'specifications.emptyArchiveDescription',
                   )}
                   actions={
                     term ? (
@@ -201,11 +203,11 @@ export function SpecsOverview({
                         variant="secondary"
                         onClick={() => setSearch({ collection: state.collection, value: '' })}
                       >
-                        {t('specs.clearSearch')}
+                        {t('specifications.clearSearch')}
                       </Button>
                     ) : onCreate && state.collection === 'current' ? (
                       <Button leadingIcon="plus" onClick={onCreate}>
-                        {t('specs.create')}
+                        {t('specifications.create')}
                       </Button>
                     ) : undefined
                   }

@@ -58,7 +58,7 @@ export const Playground: Story = {};
 
 export const DesignCapture: Story = {
   render: () => <TypographyMatrix />,
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     designCapture: {

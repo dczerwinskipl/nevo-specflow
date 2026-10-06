@@ -3,7 +3,7 @@ import { SegmentedControl } from './SegmentedControl';
 
 const meta = {
   title: 'Nevo UI/Forms/SegmentedControl',
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   parameters: { controls: { disable: true }, layout: 'centered' },
 } satisfies Meta;
 

@@ -5,7 +5,7 @@ import { activeNestedAdapter, navigationNodes, rootIcons } from './SideNavigatio
 
 const meta = {
   title: 'Nevo UI/Navigation/SideNavigation',
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: { controls: { disable: true }, layout: 'fullscreen' },
 } satisfies Meta;
 

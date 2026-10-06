@@ -50,7 +50,7 @@ export function SpecificationSurface({ specId, overviewHref, onBack }: Specifica
               >
                 <span className="inline-flex items-center gap-2">
                   <Icon name="arrow-right" size="sm" className="rotate-180" />
-                  <span data-spec-back-label>{t('specification.backToSpecs')}</span>
+                  <span data-spec-back-label>{t('specification.backToSpecifications')}</span>
                 </span>
               </Link>
               <div className="grid min-w-0 gap-2">

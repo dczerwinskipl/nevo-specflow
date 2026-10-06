@@ -102,7 +102,7 @@ export const CanonicalCapture: Story = {
       </AppBackground>
     </DesignCaptureProvider>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     designCapture: {

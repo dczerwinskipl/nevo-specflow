@@ -237,7 +237,7 @@ export const Controlled: Story = {
 
 export const InteractionContract: Story = {
   render: () => <ControlledSelect />,
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   play: async ({ canvas, userEvent }) => {
     const trigger = canvas.getByRole('combobox', { name: 'Status' });
     trigger.focus();
@@ -285,7 +285,7 @@ export const StateCapture: Story = {
       </StorySurface>
     </DesignCaptureProvider>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     layout: 'fullscreen',
@@ -306,7 +306,7 @@ export const ItemStateCapture: Story = {
       <SelectItemMatrix />
     </DesignCaptureProvider>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     layout: 'fullscreen',

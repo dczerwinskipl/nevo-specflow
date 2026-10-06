@@ -37,10 +37,10 @@ export function SpecSectionHeader({
         aria-controls={controls}
         aria-label={t(
           searching
-            ? 'specs.sectionSearchExpanded'
+            ? 'specifications.sectionSearchExpanded'
             : expanded
-              ? 'specs.collapseSection'
-              : 'specs.expandSection',
+              ? 'specifications.collapseSection'
+              : 'specifications.expandSection',
           { label },
         )}
         onClick={() => {

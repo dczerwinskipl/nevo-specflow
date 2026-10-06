@@ -28,7 +28,8 @@ export function requireCapability<R extends ResourceDefinition>(input: {
 export function requireCapabilityInAnyScope<R extends ResourceDefinition>(
   input: AuthorizationAnyScopeCapabilityCheck<R>,
 ) {
-  return (request: FastifyRequest): void => {
+  return (request: FastifyRequest): Promise<void> => {
     request.authz.requireCapabilityInAnyScope(input);
+    return Promise.resolve();
   };
 }

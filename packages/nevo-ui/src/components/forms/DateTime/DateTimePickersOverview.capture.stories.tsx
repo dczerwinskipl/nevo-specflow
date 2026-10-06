@@ -161,7 +161,7 @@ function DateTimePickersOverview({ pattern }: { pattern: Pattern }) {
 const meta = {
   title: 'Nevo UI/Internal/DateTime/Overview capture',
   component: DateTimePickersOverview,
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     layout: 'centered',

@@ -5,7 +5,7 @@ import { TabsExample } from './Tabs.storyFixtures';
 
 const meta = {
   title: 'Nevo UI/Navigation/Tabs',
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   parameters: { controls: { disable: true } },
 } satisfies Meta;
 

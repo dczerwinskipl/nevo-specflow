@@ -236,7 +236,7 @@ function InteractionExample() {
 
 export const InteractionContract: Story = {
   render: () => <InteractionExample />,
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   play: async ({ canvas, userEvent }) => {
     const editor = canvas.getByRole('textbox', { name: 'Contract editor' });
     if (!(editor instanceof HTMLTextAreaElement)) throw new Error('Expected a textarea.');
@@ -318,7 +318,7 @@ function MessageComposerCapture() {
 
 export const CanonicalCapture: Story = {
   render: () => <MessageComposerCapture />,
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     layout: 'fullscreen',

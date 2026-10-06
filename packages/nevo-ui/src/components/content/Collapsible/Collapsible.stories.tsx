@@ -63,7 +63,7 @@ function CollapsibleCapture() {
 
 export const VariantCapture: Story = {
   render: () => <CollapsibleCapture />,
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     layout: 'fullscreen',

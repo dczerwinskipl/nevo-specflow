@@ -79,7 +79,7 @@ export const InteractionContract: Story = {
       <DatePicker {...args} pickerPresentation="desktop" />
     </div>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   play: async ({ canvas, userEvent }) => {
     const trigger = canvas.getByRole('button');
     trigger.focus();
@@ -122,7 +122,7 @@ export const CanonicalCapture: Story = {
       </div>
     </DesignCaptureProvider>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     designCapture: {

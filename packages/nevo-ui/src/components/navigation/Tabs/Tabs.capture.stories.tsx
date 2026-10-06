@@ -5,7 +5,7 @@ import { Panel } from './Tabs.storyFixtures';
 
 const meta = {
   title: 'Nevo UI/Navigation/Tabs',
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: { controls: { disable: true }, layout: 'fullscreen' },
 } satisfies Meta;
 

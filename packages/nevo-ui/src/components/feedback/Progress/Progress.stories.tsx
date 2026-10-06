@@ -70,7 +70,7 @@ function ProgressCapture() {
 
 export const CanonicalCapture: Story = {
   render: () => <ProgressCapture />,
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     layout: 'fullscreen',

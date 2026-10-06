@@ -149,7 +149,7 @@ export const Controlled: Story = {
 
 export const StateCapture: Story = {
   render: () => <TextInputMatrix />,
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     layout: 'fullscreen',

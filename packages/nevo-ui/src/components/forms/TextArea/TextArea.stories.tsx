@@ -113,7 +113,7 @@ export const Invalid: Story = {
 
 export const StateCapture: Story = {
   render: () => <TextAreaMatrix />,
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     layout: 'fullscreen',

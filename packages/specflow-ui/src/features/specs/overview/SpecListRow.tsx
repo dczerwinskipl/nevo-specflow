@@ -50,7 +50,7 @@ export function SpecListRow({ item, specificationHref, onOpenTarget }: SpecListR
                   href={specificationHref}
                   data-focus-ring="delegated"
                   className="pointer-events-auto static cursor-pointer outline-none after:absolute after:inset-0 after:rounded-control focus-visible:after:outline-2 focus-visible:after:outline-focus-ring"
-                  aria-label={t('specs.openSpec', { title: item.title })}
+                  aria-label={t('specifications.openSpec', { title: item.title })}
                   onClick={(event) => {
                     if (
                       onOpenTarget &&
@@ -80,7 +80,7 @@ export function SpecListRow({ item, specificationHref, onOpenTarget }: SpecListR
               <span className="min-w-0 [overflow-wrap:anywhere]" data-spec-key>
                 {item.key}
               </span>
-              <span data-spec-progress>{t('specs.progress', item.progress)}</span>
+              <span data-spec-progress>{t('specifications.progress', item.progress)}</span>
               <div className="col-span-2 min-w-0 @xl/spec-row:col-span-1" data-spec-summary>
                 <SpecRowSummary item={item} />
               </div>
@@ -95,7 +95,10 @@ export function SpecListRow({ item, specificationHref, onOpenTarget }: SpecListR
                 <Link
                   className="pointer-events-auto relative z-10 inline-flex min-h-6 items-center rounded-control-inline"
                   href={pr.href}
-                  aria-label={t('specs.openPullRequest', { number: pr.number, title: item.title })}
+                  aria-label={t('specifications.openPullRequest', {
+                    number: pr.number,
+                    title: item.title,
+                  })}
                 >
                   <span className="inline-flex items-center gap-1 underline decoration-current/50">
                     <Icon name="branch" size="sm" />
@@ -104,7 +107,7 @@ export function SpecListRow({ item, specificationHref, onOpenTarget }: SpecListR
                 </Link>
               ) : pr?.kind === 'multiple' ? (
                 <span className="inline-flex min-h-6 items-center">
-                  {t('specs.pullRequests', { count: pr.count })}
+                  {t('specifications.pullRequests', { count: pr.count })}
                 </span>
               ) : null}
               {item.tags.map((tag) => (
@@ -121,7 +124,7 @@ export function SpecListRow({ item, specificationHref, onOpenTarget }: SpecListR
         <div className="relative z-10 self-center">
           <OverflowMenu
             label={item.key ?? item.title}
-            triggerLabel={t('specs.rowActions', { title: item.title })}
+            triggerLabel={t('specifications.rowActions', { title: item.title })}
           >
             <MenuItem
               leadingIcon="file"
@@ -131,14 +134,14 @@ export function SpecListRow({ item, specificationHref, onOpenTarget }: SpecListR
                 else if (specificationHref) window.location.assign(specificationHref);
               }}
             >
-              {t('specs.openDetails')}
+              {t('specifications.openDetails')}
             </MenuItem>
             <MenuSeparator />
             <MenuItem disabled leadingIcon="archive">
-              {t('specs.archiveUnavailable')}
+              {t('specifications.archiveUnavailable')}
             </MenuItem>
             <MenuItem disabled leadingIcon="trash" tone="danger">
-              {t('specs.deleteUnavailable')}
+              {t('specifications.deleteUnavailable')}
             </MenuItem>
           </OverflowMenu>
         </div>

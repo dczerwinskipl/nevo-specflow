@@ -61,7 +61,7 @@ export const CanonicalCapture: Story = {
       </AppShell>
     </DesignCaptureProvider>
   ),
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     designCapture: {
@@ -108,7 +108,7 @@ function assert(condition: unknown, message: string): asserts condition {
 
 export const ResponsiveContract: Story = {
   render: () => <ResponsiveFixture />,
-  tags: ['!dev', '!autodocs'],
+  tags: ['contract', '!autodocs'],
   parameters: { a11y: { test: 'off' } },
   play: async ({ canvas, canvasElement, userEvent }) => {
     const shell = canvasElement.querySelector<HTMLElement>('[data-responsive-shell]');

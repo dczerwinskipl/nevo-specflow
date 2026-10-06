@@ -134,7 +134,7 @@ export const CompleteComposition: Story = {
 
 export const StateCapture: Story = {
   render: () => <FieldMatrix />,
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: {
     controls: { disable: true },
     layout: 'fullscreen',

@@ -10,8 +10,8 @@ export function SpecsAccessDenied() {
     <SpecFlowStandaloneShell>
       <div role="alert" className="grid w-full gap-8">
         <StandaloneScreenHeader
-          title={t('specs.forbidden.title')}
-          description={t('specs.forbidden.description')}
+          title={t('specifications.forbidden.title')}
+          description={t('specifications.forbidden.description')}
         />
       </div>
     </SpecFlowStandaloneShell>

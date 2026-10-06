@@ -6,7 +6,7 @@ import { Switch } from './Switch';
 
 const meta = {
   title: 'Nevo UI/Forms/Design Capture',
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: { controls: { disable: true }, layout: 'fullscreen' },
 } satisfies Meta;
 

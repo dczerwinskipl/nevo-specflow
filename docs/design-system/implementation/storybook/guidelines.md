@@ -47,6 +47,34 @@ the package organization, such as `Foundations`, `Actions`, `Forms`, `Navigation
   helper.
 - Mobile variants spread the base story and add a viewport parameter.
 
+## Story profiles
+
+Stories have different jobs; do not make every Storybook entry a browser test and a visual baseline.
+
+| Profile     | Tag           | Sidebar           | Chromium                           | Chromatic snapshot | Use                                                   |
+| ----------- | ------------- | ----------------- | ---------------------------------- | ------------------ | ----------------------------------------------------- |
+| Showcase    | none          | visible           | only when it has a `play` function | no                 | Human inspection and Controls.                        |
+| Visual      | `visual`      | visible           | yes                                | yes                | Small, stable regression baseline.                    |
+| Contract    | `contract`    | hidden by default | yes                                | no                 | Interaction, accessibility, or geometry contract.     |
+| Integration | `integration` | hidden by default | yes                                | no                 | Multi-component compatibility behavior.               |
+| Capture     | `capture`     | hidden by default | no                                 | no                 | Figma/design capture and other tooling-only fixtures. |
+
+A `play` function receives Storybook's built-in `play-fn` tag automatically and therefore remains
+part of the Chromium suite unless the story is also tagged `capture`. This preserves behavioral
+coverage without running every showcase variant in Playwright.
+
+Chromatic snapshots are opt-in at project level. A `visual` story must explicitly set
+`parameters.chromatic.disableSnapshot = false`. Keep the visual set intentionally small and prefer
+representative component states and composed product screens over exhaustive variant grids.
+
+Capture, contract, and integration tags are excluded from the sidebar by default. They remain
+available locally through the Storybook tag filter.
+
+Capture stories must stay fixture-only and **must not define assertion-bearing `play` functions**.
+When a capture fixture has browser-verifiable invariants, reuse the same render fixture from a
+paired `contract` story and keep the assertions there. This keeps capture rendering out of Chromium
+without silently dropping contract coverage.
+
 See [shared testing](../../../engineering/shared/testing.md#test-and-story-placement) for the
 repository-wide placement rule.
 
@@ -78,7 +106,9 @@ the composed application when the behavior under test depends on the application
 
 1. Render every affected story with no backend using `pnpm storybook`.
 2. Build the complete catalog with `pnpm storybook:build`.
-3. Run Storybook interaction and accessibility checks with `pnpm test:storybook`.
+3. Install Chromium once per local Playwright environment with `pnpm storybook:browsers:install`,
+   then run the selected interaction, visual-smoke, contract, integration, and accessibility checks
+   with `pnpm test:storybook`.
 4. Inspect every affected responsive mode, not just one desktop and one mobile size:
    - representative desktop / Wide;
    - Compact around the relevant workspace breakpoint where applicable;
@@ -93,10 +123,12 @@ the composed application when the behavior under test depends on the application
    animation matter — never claim visual consistency from class names alone.
 8. If visual inspection finds a defect, fix it and re-render the affected viewport. Perform the final
    rendered pass after the last UI/CSS change.
-9. When a visually material change touches an existing story/screen with an accepted Chromatic
-   baseline, use the available Chromatic comparison as an additional regression signal. Local
-   rendered inspection answers "does this look correct now?"; the regression diff answers "did an
-   accepted surface drift unexpectedly?". Chromatic remains an informational/manual PR workflow, not
-   a universal protected-branch requirement. Follow
+9. When a visually material change touches an existing `visual` story/screen with an accepted
+   Chromatic baseline, use the available comparison as an additional regression signal. Chromatic
+   uses TurboSnap: normal source changes re-snapshot only affected visual stories, while global CSS,
+   Storybook configuration, and the lockfile force a full visual re-test. Local rendered inspection
+   answers "does this look correct now?"; the regression diff answers "did an accepted surface drift
+   unexpectedly?". Chromatic remains an informational/manual PR workflow, not a universal
+   protected-branch requirement. Follow
    [Continuous integration](../../../engineering/repository/ci.md#visual-regression-with-chromatic)
    for the authoritative workflow details.

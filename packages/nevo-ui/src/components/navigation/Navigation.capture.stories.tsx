@@ -5,7 +5,7 @@ import { Pagination } from './Pagination';
 
 const meta = {
   title: 'Nevo UI/Navigation/Design Capture',
-  tags: ['!dev', '!autodocs'],
+  tags: ['capture', '!autodocs'],
   parameters: { controls: { disable: true }, layout: 'fullscreen' },
 } satisfies Meta;
 

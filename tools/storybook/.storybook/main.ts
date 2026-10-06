@@ -8,6 +8,11 @@ const config: StorybookConfig = {
     '../../../packages/specflow-ui/src/**/*.stories.@(js|jsx|mjs|ts|tsx)',
     '../../../examples/*/src/**/*.stories.@(js|jsx|mjs|ts|tsx)',
   ],
+  tags: {
+    capture: { defaultFilterSelection: 'exclude' },
+    contract: { defaultFilterSelection: 'exclude' },
+    integration: { defaultFilterSelection: 'exclude' },
+  },
   addons: ['@storybook/addon-docs', '@storybook/addon-a11y', '@storybook/addon-vitest'],
   framework: '@storybook/react-vite',
   viteFinal: (config) =>

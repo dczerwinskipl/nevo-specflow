@@ -303,6 +303,46 @@ The exact columns are product-specific, but these rules are general:
 A useful test is: **if the user traces one attribute vertically through three or more rows, that
 attribute should normally have a stable scan column.**
 
+### Shared adaptive track sizing
+
+Stable columns do not require every bounded field to have one hard-coded width. When sibling rows
+share comparable fields such as keys, counts, progress, or compact metadata, the collection should
+own their geometry and let those tracks adapt together within explicit bounds.
+
+Prefer this model:
+
+```text
+collection-owned track
+  -> grows enough for representative sibling content
+  -> stops at a semantic maximum
+  -> remaining pressure is handled by the field's defined wrap/clip/ellipsis policy
+```
+
+Do not let every row independently choose its own auto-sized columns when vertical comparison
+matters. Where the platform/layout permits it, a parent grid plus shared tracks or `subgrid` is a
+good implementation mechanism. Equivalent implementations are valid when they preserve the same
+collection-wide geometry.
+
+Use fixed widths for truly fixed affordances such as checkbox/disclosure gutters, markers, and
+bounded action slots. For data-bearing columns:
+
+- prefer bounded adaptive sizing such as `minmax(...)` / `fit-content(...)` over an arbitrary
+  fixed width when normal values vary materially;
+- do not use unbounded `max-content` when one pathological value would reserve excessive space for
+  every row;
+- define overflow policy per semantic field instead of applying one global truncation rule;
+- stable identifiers and compact counts should normally remain one line and may ellipsize after their
+  budget is exhausted;
+- primary titles may wrap when that preserves meaning without destroying row rhythm;
+- longer narrative/state summaries may move to an additional line only according to one
+  collection-wide responsive rule, not independently per state;
+- trailing tags/badges should have explicit visible-count and width budgets rather than expanding the
+  entire rail.
+
+Stress-test the collection with mixed short and intentionally extreme valid values. The goal is not
+only zero horizontal overflow: sibling rows must still expose the same scan axes after the stress
+content is introduced.
+
 ### Grouped lists with disclosure
 
 A grouped operational list is still one scanning system; it is not a stack of unrelated Accordion

@@ -1,7 +1,7 @@
 version: 1
 id: nevo-agents:ux-designer
 name: UX Designer
-description: Designs and reviews product UI composition contracts grounded in product semantics, established patterns, and responsive behavior without taking over implementation.
+description: Designs and reviews implementation-ready product UX contracts grounded in user goals, product evidence, established patterns, and responsive behavior without taking over implementation.
 selection:
   modes:
     - explicit
@@ -15,10 +15,39 @@ knowledge:
 instructions:
   - id: role
     title: UX designer role
-    source: ../instructions/ux-designer.md
+    source: ../instructions/ux-designer-role.md
     required: true
     applies: always
     delivery: inline
+  - id: workflow
+    title: UX design workflow
+    description: Operating sequence from context resolution and discovery through flow, hierarchy, specification, validation, and self-review.
+    source: ../instructions/ux-designer-workflow.md
+    required: true
+    applies: always
+    delivery: inline
+  - id: discovery
+    title: UX discovery
+    description: Evidence gathering, requirement clarification, uncertainty handling, and owner questions.
+    source: ../instructions/ux-discovery.md
+    required: true
+    applies: always
+    delivery: inline
+  - id: decision-rules
+    title: UX decision rules
+    description: General reasoning rules for turning product evidence into a coherent UX contract.
+    source: ../instructions/ux-decision-rules.md
+    required: true
+    applies: always
+    delivery: auto
+  - id: review
+    title: UX review
+    description: Review procedure for existing UX contracts, mocks, rendered screens, and implemented surfaces.
+    source: ../instructions/ux-review.md
+    required: true
+    applies:
+      when: reviewing or refining an existing UX contract, mock, rendered screen, or implementation
+    delivery: auto
   - id: repository-knowledge
     title: Repository knowledge
     description: How to discover and load project-specific product, interaction, and design guidance before designing.

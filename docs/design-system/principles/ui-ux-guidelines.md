@@ -46,6 +46,35 @@ Primary / secondary / tertiary must be distinguishable at a glance. Repetition r
 emphasis — the tenth identical badge carries less signal than the first, so compress
 repeated content rather than repeating a heavy treatment.
 
+Design the hierarchy from the user's **first scan**, not from the shape of the backend model or from
+how much horizontal space is available. Before composing a screen, write down the small ordered set
+of questions the user should answer without opening deeper detail. For each question, decide:
+
+1. whether it is primary, secondary, tertiary, or deliberately hidden behind inspection;
+2. where it belongs in the reading/scan order;
+3. how much information it is allowed to consume;
+4. whether it changes normal visual emphasis when it requires immediate human attention.
+
+A useful design sequence is:
+
+```text
+user question
+  -> priority
+  -> placement in scan/reading order
+  -> visual weight
+  -> information budget
+  -> deeper detail target when needed
+```
+
+Semantic importance and permanent visual weight are not the same thing. A fact can be important to
+the domain while still being quiet in the normal view. Conversely, an exceptional condition that
+requires the user now may temporarily become the strongest region without changing the underlying
+information architecture.
+
+Do not infer hierarchy from DTO field order, object nesting, the number of available fields, or a
+generic dashboard convention. When product semantics do not establish which information should win
+the first scan, the decision belongs to the owning product/UX contract rather than implementation.
+
 ## Stable composition and repeated structures
 
 Repeated collections need a stable visual grammar. Before implementing a repeated row/item pattern,
@@ -108,6 +137,19 @@ summary level. (The specific level model for SpecFlow UI's AI Work view is in
 One obvious primary interaction per surface. Icon semantics must be consistent and
 learnable. A small icon still needs a comfortably large hit target.
 
+For surface-level actions, prefer one visible primary action when the header has useful space and move
+secondary actions into overflow. Constrained headers may move all actions into overflow rather than
+compressing the title or creating several equally strong buttons.
+
+Selection should normally change **action emphasis, not layout geometry**. If a collection reserves a
+selection gutter or an action region, keep those anchors stable while selection changes which actions
+are enabled or promoted. A selected-count label may remain absent at zero and appear only when it
+communicates useful state.
+
+A decision action may appear both as a convenient surface/header action and again at the natural end
+of a deliberate evidence-reading flow when both affordances invoke the same authoritative command
+and share pending/disabled state. Do not duplicate ordinary actions merely to fill space.
+
 ## Loading and live state
 
 Give immediate feedback on an action. A "busy" indicator is shown only when something is
@@ -138,7 +180,10 @@ Before marking any UI task done:
    - approximately 320 px when controls, labels, metadata, or multi-column content make overflow
      plausible.
 4. Use realistic fixtures, including long titles/labels and dense/repeated content where those cases
-   are possible. Conveniently short placeholder text is not sufficient visual coverage.
+   are possible. Conveniently short placeholder text is not sufficient visual coverage. For repeated
+   operational collections, include at least one stress fixture that mixes very short rows with
+   intentionally extreme but valid keys, titles, counts, summaries, and trailing metadata. Verify
+   that the collection remains vertically scannable rather than merely avoiding overflow.
 5. Inspect the composed application, not only an isolated Storybook story, when correctness depends
    on App Shell / AppWorkspace composition, viewport height, scrolling, routing, sticky/fixed
    regions, or Primary/Secondary behavior.

@@ -170,17 +170,44 @@ Record the observed gap, the reason for the decision, the owning layer, and whet
 
 A standalone HTML mock or other lightweight prototype is design evidence, not production component authority. When it cannot use the real design-system component, keep its tokens, proportions, interaction meaning, and known behavior aligned with the real component where practical, and label deliberate approximations or proposed changes explicitly.
 
-### 10. Resolve material open decisions
+### 10. Close material decisions
 
-Before claiming the design is implementation-ready, surface all remaining decisions that could materially change the contract.
+Apply the decision states and closure rules from the UX decision rules.
 
-Ask the owner rather than inventing an answer.
+Audit every material decision that could change the in-scope contract. Persist resolved choices in their owning durable contract, remove resolved questions from Open questions, and represent deferred or blocked decisions according to the canonical decision rules.
 
-If the owner explicitly chooses to defer a decision, mark the affected part as unresolved and prevent downstream work from treating it as settled.
+Ask the owner when material input is still required rather than inventing an answer. Do not treat affected scope as implementation-ready while a required decision remains blocked.
 
-### 11. Produce the durable UX contract
+### 11. Produce the durable UX handoff
 
-When the work creates or materially changes a screen/product UX contract, update the authoritative documentation using the repository documentation rules.
+When the work creates or materially changes a screen/product UX contract, update the durable documentation using the repository documentation rules.
+
+The handoff must make the resolved product decisions and implementation dependencies explicit enough that downstream planning does not need to reconstruct them from conversation history, mocks, or agent memory.
+
+For every material decision reached during the work:
+
+- persist the selected behavior in the owning contract;
+- remove it from Open questions once resolved;
+- preserve rejected alternatives only as clearly labelled rationale/history when useful.
+
+For every material implementation dependency discovered during UX work, record the required
+capability/result and route it to the owning planning discipline rather than inventing its technical
+solution inside UX.
+
+For missing backend/application capability, follow the UX data-requirements instruction: assess the
+gap, present the likely cost/scope to the owner, and let the owner choose whether backend planning
+belongs in the current specification/work scope or should be split.
+
+When the owner keeps bounded backend planning in the current scope, load/apply the reusable
+backend-planning instruction in the same conversation. When the owner splits it, keep the requirement
+and dependency explicit until an authoritative exact contract exists.
+
+In either case, the UX/product contract keeps the product requirement, integration status, stable
+reference to the exact contract, and the user-visible scenarios that implementation examples/fixtures
+must cover. It does not copy endpoint schemas or payload catalogues from the reference owner.
+
+Do not assign a concrete person, agent instance, or execution order when that belongs to later
+deterministic planning/orchestration.
 
 For an implementation-ready screen specification, use `docs/templates/ui-screen-spec-template.md` as the structural starting point unless the owning documentation defines a stricter format.
 
@@ -203,5 +230,9 @@ Before handoff, verify:
 - deeper information does not dominate the summary;
 - states and recovery are coherent;
 - responsive behavior preserves meaning;
-- unresolved product decisions are explicit;
+- every material decision reached during the work, including explicit owner choices from conversation or rendered review, is persisted in the owning durable contract;
+- every explicit owner choice is represented by one normative in-scope behavior;
+- every material backend gap has an owner-visible scope decision, and every MVP remote-data dependency has a stable reference to its authoritative exact contract plus representative UX scenario coverage before production integration handoff;
+- rejected/exploratory alternatives are not still phrased as viable implementation choices;
+- unresolved product decisions are explicit and outside any scope called implementation-ready;
 - the design has not drifted into implementation convenience or generic dashboard conventions.

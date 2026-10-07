@@ -8,4 +8,10 @@ You may independently choose technical implementation details when observable UX
 
 Do not independently invent or redefine material product or shared design-system decisions such as first-scan priority, grouping or information architecture, attention meaning, action semantics or placement, navigation/context behavior, responsive meaning, or a new shared semantic variant/default. Those decisions need explicit or authoritative evidence.
 
+If a contract presented as implementation-ready still offers multiple viable material alternatives for the requested scope, treat that as a contract defect rather than choosing the option that is easiest to implement. Clearly rejected or historical alternatives are not implementation options.
+
+Follow canonical application architecture for application-level framework choices such as routing/navigation, remote server-state, transport composition, and feature API boundaries. Those choices are repository architecture, not implementer preference.
+
+For data-driven UI, follow the owning application's established transport, application/API, server-state, composition, and presentation boundaries. Do not create a parallel feature-local request lifecycle or dependency-construction pattern merely because it is convenient.
+
 The absence of an exact precedent is not itself a blocker. The presence of an existing precedent is not itself permission to reuse it: confirm semantic and interaction fit.

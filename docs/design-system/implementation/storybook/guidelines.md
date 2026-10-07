@@ -86,6 +86,11 @@ Build scenario data with **typed fixture factories**, not inline state trees cop
 across stories. Stories consume the canonical UI model; raw provider protocol payloads
 are forbidden in fixtures.
 
+Fixtures are deterministic test/development inputs to an owned presentation boundary. Production
+components must not import them or silently fall back to them when application data is unavailable.
+When the behavior under test includes the real query/application composition path, use an integration
+story with the required provider/network seam rather than adding fixture branches to production code.
+
 ## State strategy
 
 1. **Args first** — presentational components are driven by top-level `args` +

@@ -9,25 +9,24 @@ import {
   type RouterHistory,
 } from '@tanstack/react-router';
 
-import { createAuthStore, type AuthStore } from '../auth/store';
+import type { AuthStore } from '../auth/store';
 import { LoginScreen, safeReturnTo } from '../auth/LoginScreen';
 import { RuntimeUnavailableScreen } from '../auth/RuntimeUnavailableScreen';
 import { SpecFlowShell } from './SpecFlowShell';
 import { UiPlaygroundScreen } from './screens';
 import { SpecsOverview } from '../features/specs/overview/SpecsOverview';
 import { useSpecsOverview } from '../features/specs/overview/useSpecsOverview';
-import { defaultSpecsSource } from '../features/specs/overview/source';
-import type { SpecsOverviewSource } from '../features/specs/overview/model';
 import { SpecsAccessDenied } from '../features/specs/overview/SpecsAccessDenied';
 import { SpecificationSurface } from '../features/specs/SpecificationSurface';
 import type { SpecFlowServices } from '../services';
 import type { SpecificationWorkspaceView } from '../features/specs/workspace/model';
+import { defaultSpecsSource } from '../features/specs/overview/source';
+import type { SpecsOverviewSource } from '../features/specs/overview/model';
+import { createSpecFlowAppServices, type SpecFlowAppServices } from './dependencies';
 
-export interface SpecFlowRouterContext {
-  readonly auth: AuthStore;
-  readonly specs: SpecsOverviewSource;
+export type SpecFlowRouterContext = SpecFlowAppServices & {
   readonly services?: SpecFlowServices;
-}
+};
 
 export type AppAccessDecision =
   | { readonly kind: 'allow' }
@@ -150,25 +149,34 @@ const routeTree = rootRoute.addChildren([
 
 export function createSpecFlowRouter(
   history?: RouterHistory,
-  servicesOrAuth?: SpecFlowServices | AuthStore,
+  servicesOrAuth: SpecFlowAppServices | SpecFlowServices | AuthStore = createSpecFlowAppServices(),
   specs?: SpecsOverviewSource,
 ) {
   let auth: AuthStore;
   let specsSource: SpecsOverviewSource;
   let services: SpecFlowServices | undefined;
 
-  if (servicesOrAuth && 'http' in servicesOrAuth) {
+  if ('http' in servicesOrAuth && 'specsOverviewApi' in servicesOrAuth) {
     services = servicesOrAuth;
     auth = services.authStore;
     specsSource = defaultSpecsSource(services.specsOverviewApi);
+  } else if ('specs' in servicesOrAuth && 'auth' in servicesOrAuth) {
+    auth = servicesOrAuth.auth;
+    specsSource = servicesOrAuth.specs;
   } else {
-    auth = servicesOrAuth ?? createAuthStore();
+    auth = servicesOrAuth;
     specsSource = specs ?? defaultSpecsSource();
   }
 
+  const context: SpecFlowRouterContext = {
+    auth,
+    specs: specsSource,
+    ...(services ? { services } : {}),
+  };
+
   return createRouter({
     routeTree,
-    context: { auth, specs: specsSource, services },
+    context,
     ...(history ? { history } : {}),
   });
 }

@@ -157,6 +157,19 @@ Define the implementation-relevant UX invariants, including where applicable:
 
 Apply authoritative design-system rules instead of copying them into the product contract.
 
+Before treating a rendered mock, prototype, or screen proposal as implementation-ready, reconcile every materially visible region with the actual design system and established product compositions. Inspect the relevant component source and rendered Storybook behavior when available, then record a component and ownership map.
+
+For any material mismatch between the proposed UX and an existing design-system component, make the decision explicit rather than letting the mock silently redefine the component. Resolve the mismatch as one of:
+
+- reuse the existing component as-is;
+- change the existing design-system component because its reusable contract should change;
+- add a reusable variant or extension because both behaviors are valid shared cases;
+- keep a product-owned composition built from lower-level primitives because the difference is product-specific.
+
+Record the observed gap, the reason for the decision, the owning layer, and whether implementation is blocked until that decision is applied. If the correct choice is not established, keep it unresolved and ask the owner rather than leaving it for the implementer to infer.
+
+A standalone HTML mock or other lightweight prototype is design evidence, not production component authority. When it cannot use the real design-system component, keep its tokens, proportions, interaction meaning, and known behavior aligned with the real component where practical, and label deliberate approximations or proposed changes explicitly.
+
 ### 10. Resolve material open decisions
 
 Before claiming the design is implementation-ready, surface all remaining decisions that could materially change the contract.

@@ -1,0 +1,289 @@
+import type {
+  ActivityEvent,
+  AttentionItem,
+  DocumentItem,
+  RepoContext,
+  SessionSummary,
+  SpecificationScenario,
+  SpecificationWorkspaceData,
+  TaskGroup,
+} from './model';
+
+export const defaultTaskGroups: readonly TaskGroup[] = [
+  {
+    id: 'implementation',
+    name: 'Implementacja',
+    tasks: [
+      {
+        id: 'TASK-03',
+        title: 'Obsługa odświeżania uprawnień w długotrwałej sesji użytkownika',
+        status: 'Weryfikacja',
+        additionalInfo: 'Wymaga decyzji',
+        group: 'implementation',
+      },
+      {
+        id: 'TASK-04',
+        title: 'Komunikat o wygasającym dostępie',
+        status: 'Implementacja',
+        additionalInfo: 'Agent pracuje',
+        group: 'implementation',
+      },
+      {
+        id: 'TASK-05',
+        title: 'Przywrócenie kontekstu po ponownym zalogowaniu',
+        status: 'Gotowe',
+        additionalInfo: 'Czeka na TASK-03',
+        group: 'implementation',
+      },
+    ],
+  },
+  {
+    id: 'verification',
+    name: 'Weryfikacja i domknięcie',
+    tasks: [
+      {
+        id: 'TASK-06',
+        title: 'Scenariusze integracyjne dla równoległych żądań odświeżających token dostępu',
+        status: 'Przygotowanie',
+        additionalInfo: 'Draft',
+        group: 'verification',
+      },
+      {
+        id: 'TASK-07',
+        title: 'Przegląd dokumentacji i uzgodnienie warunków wdrożenia',
+        status: 'Review',
+        additionalInfo: 'Gotowe do pracy',
+        group: 'verification',
+      },
+    ],
+  },
+  {
+    id: 'done',
+    name: 'Ukończone',
+    tasks: [
+      {
+        id: 'TASK-01',
+        title: 'Model uprawnień',
+        status: 'Ukończone',
+        additionalInfo: 'Model przyjęty',
+        group: 'done',
+      },
+      {
+        id: 'TASK-02',
+        title: 'Kontrakt odświeżania sesji',
+        status: 'Ukończone',
+        additionalInfo: 'Kontrakt API',
+        group: 'done',
+      },
+    ],
+  },
+];
+
+export const defaultDocuments: readonly DocumentItem[] = [
+  {
+    id: 'spec',
+    title: 'Specyfikacja',
+    kind: 'Główny opis zmiany',
+    summary: 'Główny dokument specyfikacji opisujący zachowanie i kryteria.',
+  },
+  {
+    id: 'auth',
+    title: 'Obszar: uwierzytelnianie',
+    kind: 'Kontekst obszaru',
+    summary: 'Architektura i wymagania bezpieczeństwa modułu sesji.',
+  },
+  {
+    id: 'api',
+    title: 'Obszar: API i kompatybilność klientów',
+    kind: 'Kontekst obszaru',
+    summary: 'Kontrakty żądań i nagłówków uwierzytelniających.',
+  },
+  {
+    id: 'architecture',
+    title: 'Draft architektury odświeżania sesji i rozstrzygania równoległych żądań',
+    kind: 'Propozycja architektury',
+    summary: 'Szczegółowy model synchronizacji wątków klienta.',
+  },
+  {
+    id: 'requirements',
+    title: 'Kryteria akceptacji i scenariusze brzegowe',
+    kind: 'Wymagania',
+    summary: 'Zestawienie testów i warunków brzegowych.',
+  },
+];
+
+export const defaultSessions: readonly SessionSummary[] = [
+  {
+    id: 'recent',
+    title: 'Implementacja odświeżania sesji',
+    meta: 'Agent pracuje · 3 taski · 5 min temu',
+  },
+  {
+    id: 'review',
+    title: 'Przegląd scenariuszy bezpieczeństwa',
+    meta: 'Czeka na Twoją odpowiedź · review · 10 min temu',
+  },
+  {
+    id: 'scope',
+    title: 'Dopracowanie zakresu i dokumentów',
+    meta: 'Zakończona · rozmowa o specyfikacji · 1 godz. temu',
+  },
+  {
+    id: 'api-compat',
+    title: 'Rozszerzenie scenariuszy API o zgodność ze starszym klientem',
+    meta: 'Zakończona · rozmowa o specyfikacji · 2 godz. temu',
+  },
+];
+
+export const defaultActivityEvents: readonly ActivityEvent[] = [
+  {
+    id: 'act-1',
+    time: '5 min temu',
+    title: 'Rozpoczęto wykonanie TASK-04',
+    description: 'Implementer · bieżąca sesja',
+    type: 'task',
+    targetId: 'TASK-04',
+  },
+  {
+    id: 'act-2',
+    time: '10 min temu',
+    title: 'Agent poprosił o doprecyzowanie zakresu',
+    description: 'Sesja review czeka na odpowiedź',
+    type: 'session',
+    targetId: 'review',
+  },
+  {
+    id: 'act-3',
+    time: '20 min temu',
+    title: 'Zakończono review TASK-03',
+    description: 'Pozostała decyzja właściciela',
+    type: 'task',
+    targetId: 'TASK-03',
+  },
+  {
+    id: 'act-4',
+    time: '35 min temu',
+    title: 'Dodano TASK-05 do zakresu',
+    description: 'Rozmowa o rozszerzeniu specyfikacji',
+    type: 'task',
+    targetId: 'TASK-05',
+  },
+  {
+    id: 'act-5',
+    time: '1 godz. temu',
+    title: 'Zaktualizowano draft architektury',
+    description: 'Dokumenty tej specyfikacji',
+    type: 'doc',
+    targetId: 'architecture',
+  },
+];
+
+export function createSpecificationWorkspaceFixture(
+  scenario: SpecificationScenario = 'working',
+  specId = 'UI-1234',
+): SpecificationWorkspaceData {
+  const isPreparing = scenario === 'preparing';
+  const isEmpty = scenario === 'empty';
+  const hasGit = scenario !== 'no-git' && !isEmpty;
+  const hasExtensions = scenario === 'extensions';
+
+  const attentionItems: AttentionItem[] = [];
+
+  if (!isEmpty && !isPreparing) {
+    attentionItems.push({
+      id: 'att-task',
+      kind: 'task',
+      title: 'TASK-03 · Rozstrzygnij zachowanie po cofnięciu uprawnień',
+      reason: 'Review wymaga decyzji właściciela',
+      actionLabel: 'Podgląd taska',
+      targetId: 'TASK-03',
+    });
+    attentionItems.push({
+      id: 'att-session',
+      kind: 'session',
+      title: 'Sesja „Przegląd scenariuszy bezpieczeństwa”',
+      reason: 'Agent czeka na odpowiedź dotyczącą zakresu',
+      actionLabel: 'Otwórz sesję',
+      targetId: 'review',
+    });
+
+    if (scenario === 'git-conflict') {
+      attentionItems.push({
+        id: 'att-git',
+        kind: 'git',
+        title: 'Worktree ma nierozwiązane konflikty',
+        reason: '2 pliki · potrzebna reakcja przed dalszą integracją',
+        actionLabel: 'Sprawdź konflikty',
+      });
+    }
+  }
+
+  let repoContext: RepoContext | undefined;
+  if (hasGit) {
+    repoContext = {
+      branch: 'feature/session-refresh',
+      baseBranch: 'main',
+      uncommittedCount: scenario === 'git-unknown' ? 0 : 4,
+      syncStatus:
+        scenario === 'git-unknown'
+          ? 'Brak danych'
+          : scenario === 'git-conflict'
+            ? '1 commit przed upstream · 2 za'
+            : '1 commit przed upstream',
+      conflictStatus:
+        scenario === 'git-unknown'
+          ? 'nieznane'
+          : scenario === 'git-conflict'
+            ? '2 pliki z nierozwiązanymi konfliktami'
+            : 'Brak konfliktów lokalnych',
+      linkedPr: {
+        number: 128,
+        title: 'Odświeżanie sesji i zachowanie kontekstu',
+      },
+      isDirty: scenario !== 'git-unknown',
+      freshness:
+        scenario === 'git-unknown' ? 'unknown' : scenario === 'git-stale' ? 'stale' : 'fresh',
+    };
+  }
+
+  const taskGroups: readonly TaskGroup[] = isEmpty
+    ? []
+    : isPreparing
+      ? [
+          {
+            id: 'preparation',
+            name: 'Przygotowanie do review',
+            tasks: defaultTaskGroups.flatMap((g) => g.tasks),
+          },
+        ]
+      : defaultTaskGroups;
+
+  const activityEvents: readonly ActivityEvent[] = isEmpty
+    ? [
+        {
+          id: 'act-init',
+          time: 'Teraz',
+          title: 'Utworzono specyfikację',
+          description: 'Scaffold gotowy do uzupełnienia',
+        },
+      ]
+    : defaultActivityEvents;
+
+  return {
+    id: specId,
+    title: 'Odświeżanie sesji i zachowanie kontekstu użytkownika',
+    intro:
+      'Utrzymać kontekst pracy po odświeżeniu sesji, bez ponownego logowania i utraty rozpoczętych operacji.',
+    isEmpty,
+    isPreparing,
+    hasGit,
+    hasExtensions,
+    attentionItems,
+    repoContext,
+    resumeSession: isEmpty ? undefined : defaultSessions[0],
+    taskGroups,
+    documents: isEmpty ? [] : defaultDocuments,
+    sessions: isEmpty ? [] : defaultSessions,
+    activityEvents,
+  };
+}

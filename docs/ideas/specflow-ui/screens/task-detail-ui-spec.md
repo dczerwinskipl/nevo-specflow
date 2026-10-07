@@ -21,6 +21,12 @@ related:
 
 # Task Detail UI spec
 
+The owner refined presentation during Specification UX review: row activation opens a short
+description/metadata preview; a distinct trailing action or preview action opens Full Task as a
+main surface. The complete screen draft is currently kept in the ignored local planning area.
+The decision/evidence inventory below remains input for Full Task, not a requirement to put it all
+in preview. Earlier inspector-only/deep-link statements describe the previous proposal.
+
 ## 1. Purpose and ownership
 
 Task Detail answers within seconds:

@@ -25,6 +25,7 @@ export const Current: Story = {
       throw new Error('Current Specification must return to the Current collection.');
   },
 };
+
 export const Archive: Story = {
   args: { path: '/specs/archive-0?collection=archive' },
   play: async ({ canvas, userEvent }) => {
@@ -35,8 +36,34 @@ export const Archive: Story = {
       throw new Error('Archive Specification must return to Archive.');
   },
 };
+
+export const EmptyPreparation: Story = {
+  args: { path: '/specs/empty-scaffold?scenario=empty' },
+};
+
+export const PreparingTasks: Story = {
+  args: { path: '/specs/preparing-spec?scenario=preparing' },
+};
+
+export const GitConflicts: Story = {
+  args: { path: '/specs/conflict-spec?scenario=git-conflict' },
+};
+
+export const NoGit: Story = {
+  args: { path: '/specs/no-git-spec?scenario=no-git' },
+};
+
+export const Documents: Story = {
+  args: { path: '/specs/docs-spec?view=documents' },
+};
+
+export const FullTask: Story = {
+  args: { path: '/specs/admission?task=TASK-03' },
+};
+
 export const NarrowLongIdentity: Story = {
   args: { path: `/specs/${'long-identity-'.repeat(16)}` },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
+
 export const Polish: Story = { args: { locale: 'pl' } };

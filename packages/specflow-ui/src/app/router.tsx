@@ -20,6 +20,10 @@ import { defaultSpecsSource } from '../features/specs/overview/source';
 import type { SpecsOverviewSource } from '../features/specs/overview/model';
 import { SpecsAccessDenied } from '../features/specs/overview/SpecsAccessDenied';
 import { SpecificationSurface } from '../features/specs/SpecificationSurface';
+import type {
+  SpecificationScenario,
+  SpecificationWorkspaceView,
+} from '../features/specs/workspace/model';
 
 export interface SpecFlowRouterContext {
   readonly auth: AuthStore;
@@ -124,8 +128,20 @@ const uiPlaygroundRoute = createRoute({
 const specificationRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/specs/$specId',
-  validateSearch: (search: Record<string, unknown>) => ({
-    collection: search.collection === 'archive' ? ('archive' as const) : ('current' as const),
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): {
+    collection: 'current' | 'archive';
+    scenario?: SpecificationScenario;
+    view?: SpecificationWorkspaceView;
+    task?: string;
+  } => ({
+    collection: search.collection === 'archive' ? 'archive' : 'current',
+    ...(typeof search.scenario === 'string'
+      ? { scenario: search.scenario as SpecificationScenario }
+      : {}),
+    ...(typeof search.view === 'string' ? { view: search.view as SpecificationWorkspaceView } : {}),
+    ...(typeof search.task === 'string' ? { task: search.task } : {}),
   }),
   component: SpecificationRouteScreen,
 });
@@ -198,13 +214,16 @@ function SpecsRouteScreen() {
 
 function SpecificationRouteScreen() {
   const { specId } = specificationRoute.useParams();
-  const { collection } = specificationRoute.useSearch();
+  const { collection, scenario, view, task } = specificationRoute.useSearch();
   const navigate = specificationRoute.useNavigate();
   return (
     <SpecificationSurface
       specId={specId}
       overviewHref={`/?collection=${collection}`}
       onBack={() => void navigate({ to: '/', search: { collection } })}
+      scenario={scenario}
+      initialView={view}
+      initialTask={task}
     />
   );
 }

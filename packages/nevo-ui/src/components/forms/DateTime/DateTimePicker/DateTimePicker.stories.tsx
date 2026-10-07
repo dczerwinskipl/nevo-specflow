@@ -39,10 +39,8 @@ export const MobileOpen: Story = {
     defaultOpen: true,
     pickerPresentation: 'mobile',
   },
-  parameters: {
-    viewport: { defaultViewport: 'mobile2' },
-    layout: 'fullscreen',
-  },
+  globals: { viewport: { value: 'mobile2', isRotated: false } },
+  parameters: { layout: 'fullscreen' },
 };
 
 export const MinuteStep5: Story = {

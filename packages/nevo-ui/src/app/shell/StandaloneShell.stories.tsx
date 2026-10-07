@@ -97,7 +97,7 @@ export const Desktop: Story = {
 };
 
 export const Mobile: Story = {
-  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: ({ canvasElement }) => {
     const shell = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="root"]');
     const mobileHeader = canvasElement.querySelector<HTMLElement>(

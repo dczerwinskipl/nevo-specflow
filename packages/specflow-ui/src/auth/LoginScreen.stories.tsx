@@ -108,6 +108,11 @@ export const PasswordAndOidc: Story = {
   args: { loginMethods: mixed },
   tags: ['visual'],
   parameters: { chromatic: { disableSnapshot: false } },
+};
+
+export const PasswordAndOidcContract: Story = {
+  args: { loginMethods: mixed },
+  tags: ['contract', '!autodocs'],
   play: ({ canvasElement }) => {
     const surface = canvasElement.querySelector<HTMLElement>(
       '[data-standalone-shell-region="surface"]',
@@ -176,10 +181,14 @@ export const Polish: Story = {
 export const Mobile: Story = {
   args: { loginMethods: mixed },
   tags: ['visual'],
-  parameters: {
-    viewport: { defaultViewport: 'mobile1' },
-    chromatic: { disableSnapshot: false },
-  },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  parameters: { chromatic: { disableSnapshot: false } },
+};
+
+export const MobileContract: Story = {
+  args: { loginMethods: mixed },
+  tags: ['contract', '!autodocs'],
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: ({ canvasElement }) => {
     assertStandaloneAuthLayout(canvasElement);
     assert(
@@ -200,7 +209,7 @@ export const MobileLongOidcName: Story = {
       oidc: [{ id: 'northwind', name: 'Northwind Workforce Identity SSO' }],
     },
   },
-  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
 
 export const MobileSimilarLongOidcNames: Story = {
@@ -213,7 +222,7 @@ export const MobileSimilarLongOidcNames: Story = {
       ],
     },
   },
-  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
 
 export const FigmaCapture: Story = {

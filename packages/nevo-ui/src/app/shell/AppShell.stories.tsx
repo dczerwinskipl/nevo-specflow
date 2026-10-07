@@ -361,7 +361,7 @@ function ShellInteractionFixture({
 
 export const MobileLongWorkspace: Story = {
   render: () => <ShellInteractionFixture width={390} />,
-  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
 
 export const MobileHeaderExpanded: Story = {
@@ -436,10 +436,10 @@ export const SecondaryStackDesktop: Story = {
 
 export const SecondaryStackMobile: Story = {
   render: () => <ShellInteractionFixture width={390} />,
-  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
 
 export const CombinedMobileStress: Story = {
   render: () => <ShellInteractionFixture combined width={390} />,
-  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
 };

@@ -65,7 +65,7 @@ export const Polish: Story = {
 };
 
 export const Mobile: Story = {
-  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: ({ canvasElement }) => {
     const mobileHeader = canvasElement.querySelector<HTMLElement>(
       '[data-standalone-shell-region="mobile-header"]',

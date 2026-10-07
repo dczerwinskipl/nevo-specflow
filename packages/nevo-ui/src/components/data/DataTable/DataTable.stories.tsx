@@ -325,9 +325,7 @@ export const MobileWideTable: Story = {
       <DataTable columns={wideColumns} data={customers.slice(0, 6)} />
     </div>
   ),
-  parameters: {
-    viewport: { defaultViewport: 'mobile1' },
-  },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
 
 export const LongContent: Story = {

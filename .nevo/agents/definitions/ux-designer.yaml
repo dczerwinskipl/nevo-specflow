@@ -5,6 +5,7 @@ description: Designs and reviews implementation-ready product UX contracts groun
 selection:
   modes:
     - explicit
+    - automatic
 knowledge:
   required:
     - architecture.principles.normative-language

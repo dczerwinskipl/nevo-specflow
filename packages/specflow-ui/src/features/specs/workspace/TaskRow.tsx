@@ -1,4 +1,12 @@
-import { Checkbox, cn, fastColorTransitionClassName, Icon, MenuItem, OverflowMenu } from '@nevo/ui';
+import {
+  Checkbox,
+  cn,
+  fastColorTransitionClassName,
+  Icon,
+  MenuItem,
+  OverflowMenu,
+  Typography,
+} from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { getTaskStatePresentation, type TaskItem } from './model';
 import { scanGrid } from '../overview/geometry';
@@ -48,23 +56,35 @@ export function TaskRow({
         <span aria-hidden="true" />
 
         {/* Col 3: content rail */}
-        <div className="flex min-w-0 flex-col gap-y-0.5 pr-2">
+        <div className="pointer-events-none flex min-w-0 flex-col gap-y-1 pr-2">
           {/* Line 1: Task title button */}
-          <button
-            type="button"
-            onClick={() => onPreview(task.id)}
-            className="block w-full text-left font-medium text-body-sm text-content-primary hover:text-accent-primary focus-visible:outline-2 focus-visible:outline-focus-ring [overflow-wrap:anywhere]"
-            data-task={task.id}
+          <Typography
+            as="h4"
+            variant="title-sm"
+            className="min-w-0 text-content-primary [overflow-wrap:anywhere]"
+            data-task-title
           >
-            {task.title}
-          </button>
+            <button
+              type="button"
+              onClick={() => onPreview(task.id)}
+              className="pointer-events-auto block w-full text-left hover:text-accent-primary focus-visible:outline-2 focus-visible:outline-focus-ring"
+              data-task={task.id}
+            >
+              {task.title}
+            </button>
+          </Typography>
 
           {/* Line 2: Stable secondary columns */}
-          <div
-            className="grid min-w-0 grid-cols-[calc(var(--spacing)*20)_calc(var(--spacing)*28)_minmax(0,1fr)] items-center gap-x-2 text-body-sm text-content-muted"
+          <Typography
+            as="div"
+            variant="body-sm"
+            className="grid min-w-0 grid-cols-[calc(var(--spacing)*18)_calc(var(--spacing)*24)_minmax(0,1fr)] items-baseline gap-x-2 text-content-muted"
             data-task-secondary
           >
-            <span className="font-mono text-content-secondary" data-task-key>
+            <span
+              className="min-w-0 font-mono text-content-secondary [overflow-wrap:anywhere]"
+              data-task-key
+            >
               {task.id}
             </span>
             <span className="truncate text-content-secondary" data-task-status>
@@ -84,7 +104,7 @@ export function TaskRow({
                 {task.additionalInfo ?? ''}
               </span>
             </div>
-          </div>
+          </Typography>
         </div>
 
         {/* Col 4: bounded action */}

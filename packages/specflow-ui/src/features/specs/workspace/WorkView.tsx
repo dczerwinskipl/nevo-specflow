@@ -10,6 +10,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import type { SpecificationWorkspaceData, TaskGroup } from './model';
 import { TaskRow } from './TaskRow';
+import { SessionMetaLine } from './SessionMetaLine';
 import { scanGrid } from '../overview/geometry';
 
 export interface WorkViewProps {
@@ -195,10 +196,10 @@ export function WorkView({
             {data.attentionItems.map((item) => (
               <div
                 key={item.id}
-                className="flex flex-col gap-2 py-2.5 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="flex size-4 shrink-0 items-center justify-center text-status-attention">
+                <div className="flex items-start gap-2.5 min-w-0">
+                  <span className="flex size-4 shrink-0 items-center justify-center text-status-attention mt-1">
                     {item.kind === 'task' ? (
                       <Icon name="triangle-alert" size="sm" />
                     ) : item.kind === 'session' ? (
@@ -207,11 +208,21 @@ export function WorkView({
                       <Icon name="branch" size="sm" />
                     )}
                   </span>
-                  <div className="min-w-0">
-                    <div className="font-medium text-body-sm text-content-primary [overflow-wrap:anywhere]">
+                  <div className="min-w-0 flex-1">
+                    <Typography
+                      as="h3"
+                      variant="title-sm"
+                      className="min-w-0 text-content-primary [overflow-wrap:anywhere]"
+                    >
                       {item.title}
-                    </div>
-                    <div className="text-body-xs text-content-muted">{item.reason}</div>
+                    </Typography>
+                    <Typography
+                      as="div"
+                      variant="body-sm"
+                      className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-2 text-content-muted"
+                    >
+                      <span className="font-medium text-status-attention">{item.reason}</span>
+                    </Typography>
                   </div>
                 </div>
 
@@ -360,28 +371,37 @@ export function WorkView({
           >
             <div className={cn(scanGrid, 'w-full max-w-content-standard items-center')}>
               <span aria-hidden="true" />
-              <div className="flex h-control-height-default items-center justify-center">
-                <Icon name="loader" size="sm" className="text-accent-primary animate-spin" />
+              <span aria-hidden="true" />
+              <div className="pointer-events-none flex min-w-0 flex-col gap-x-4 gap-y-1 pr-2 sm:flex-row sm:items-center">
+                <div className="min-w-0 flex-1">
+                  <Typography
+                    as="h3"
+                    variant="title-sm"
+                    className="min-w-0 text-content-primary [overflow-wrap:anywhere]"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onOpenSession(data.resumeSession!.id)}
+                      className="pointer-events-auto block w-full text-left hover:text-accent-primary focus-visible:outline-2 focus-visible:outline-focus-ring"
+                    >
+                      {data.resumeSession.title}
+                    </button>
+                  </Typography>
+                  <Typography as="div" variant="body-sm" className="mt-0.5">
+                    <SessionMetaLine meta={data.resumeSession.meta} />
+                  </Typography>
+                </div>
+                <div className="pointer-events-auto shrink-0 self-start sm:self-center">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => onOpenSession(data.resumeSession!.id)}
+                  >
+                    {t('specification.openSessionAction')}
+                  </Button>
+                </div>
               </div>
-              <div className="flex min-w-0 flex-col gap-y-0.5 pr-2">
-                <button
-                  type="button"
-                  onClick={() => onOpenSession(data.resumeSession!.id)}
-                  className="block w-full text-left font-medium text-body-sm text-content-primary hover:text-accent-primary focus-visible:outline-2 focus-visible:outline-focus-ring [overflow-wrap:anywhere]"
-                >
-                  {data.resumeSession.title}
-                </button>
-                <div className="text-body-sm text-content-muted">{data.resumeSession.meta}</div>
-              </div>
-              <div className="flex items-center justify-end">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => onOpenSession(data.resumeSession!.id)}
-                >
-                  {t('specification.openSessionAction')}
-                </Button>
-              </div>
+              <span aria-hidden="true" />
             </div>
           </div>
 

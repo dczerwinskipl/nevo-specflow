@@ -88,6 +88,12 @@ raw provider payloads.
 Semantic elements and roles; keyboard operable; hit targets comfortable; layout holds
 at mobile and desktop widths.
 
+When a row exposes a primary navigation or activation target together with independent controls,
+do not create invalid nested interactive elements. Keep those controls as separate focusable targets,
+and activating one must not also trigger the row's primary action. A non-interactive structural row
+with sibling navigation/control targets is the normal composition; an equivalent implementation is
+acceptable only when DOM semantics, focus behavior, and independent activation remain valid.
+
 ## Testing
 
 Follow the [shared testing guidance](../../../engineering/shared/testing.md): focused unit,

@@ -65,6 +65,8 @@ Follow the repository's canonical UI/UX, testing, and Storybook guidance instead
 
 Rendered inspection is part of completion. Use the explicit render -> inspect -> fix -> render-again loop for affected responsive modes and realistic stress content. Inspect the composed application when correctness depends on App Shell/AppWorkspace, viewport height, scrolling, routing, sticky/fixed behavior, or Primary/Secondary composition. Perform the final rendered pass after the last UI/CSS change.
 
+Do not modify or bypass authentication guards, authorization checks, capabilities, or product access-control policy merely to make UI verification easier. Use supported repository verification seams and configured development/authentication modes instead.
+
 Verify changed behavior at the narrowest stable boundary first, then run the broader checks required by the repository.
 
 Keep the completion handoff concise and evidence-based:

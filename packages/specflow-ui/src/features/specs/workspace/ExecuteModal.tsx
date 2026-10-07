@@ -55,7 +55,7 @@ export function ExecuteModal({
                 : t('specification.executeGenericBlockedNotice')}
             </div>
           ) : hasWarning ? (
-            <div className="rounded-control bg-status-warning/10 p-3 text-body-xs text-status-warning border border-status-warning/20">
+            <div className="rounded-control bg-status-attention/10 p-3 text-body-xs text-status-attention border border-status-attention/20">
               {warningText ?? t('specification.executeWarningNotice')}
             </div>
           ) : null}

@@ -184,19 +184,19 @@ Changes inspection must distinguish uncommitted work from comparison to the conf
 were disjoint or silently call all current worktree changes this Specification's changes. Exact
 attribution remains a capability/read-model question.
 
-### Navigation alternatives to exercise
+### Specification-local navigation model (Owner decision)
 
-| Alternative                                    | Benefit                                                                                               | Failure mode / limit                                                                                                                       |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| One long main workspace with all sections      | Low navigation cost for a small scope; immediate overview                                             | Document collections, Sessions and plugins make the page grow; deep work competes with steering and lower sections become hard to discover |
-| Specification-local horizontal tabs            | Clear separation for a small number of frequently used destinations                                   | Long/custom labels and growing plugin sections pressure Compact/Narrow; overflow can hide important destinations                           |
-| Specification-local contextual menu/navigation | Scales to variable collections and installed capabilities; keeps Specification identity as the parent | Must distinguish project navigation from Spec-local navigation; another permanent rail can constrain split workspace width                 |
+The owner decision settles **Specification-local contextual navigation** for the Specification Workspace:
 
-Recommended hypothesis: combine a bounded main work view with Specification-local destinations.
-Compare tabs and contextual navigation using the same inventory and realistic content before
-choosing the control. Quick Task/evidence inspection can still use Secondary; an extended document
-reading or Changes task need not be forced into that inspector simply because it is available.
-Do not introduce a third simultaneous workspace content pane.
+- **Decided model**: Specification-local contextual navigation. On Wide, it provides discoverable Specification-local navigation without a horizontal tab strip and without an extra permanent width-consuming rail; on Compact/Narrow, it collapses into a contextual view selector.
+- **Historical alternative (rejected)**: Specification-local horizontal tabs / SegmentedControl strip. Rejected because:
+  - the number of local destinations can grow and capability/plugin sections may appear;
+  - labels can be long or dynamic;
+  - horizontal tabs scale poorly on Compact/Narrow and horizontal overflow can hide important destinations;
+  - local navigation must remain clearly subordinate to global product navigation;
+  - a permanent third rail inside the workspace would consume vital content width.
+
+Quick Task/evidence inspection uses Secondary; extended document reading or Changes inspection uses its dedicated local view. Do not introduce a third simultaneous workspace content pane.
 
 ### Candidate contribution rules to validate
 
@@ -865,7 +865,7 @@ These are draft design inputs, not yet an authoritative Specification screen con
 
 The later UX Designer exercise should explicitly resolve or validate:
 
-- full Specification-local destination inventory and tab versus contextual-navigation composition;
+- capability-provided local destination inventory beyond core views;
 - document collection/reading flow, including parent Back and preserved work-view context;
 - whether Sessions remains contextual Secondary or becomes a Specification-local main destination;
 - summary placement/information budgets for capability-provided sections and their detail targets;

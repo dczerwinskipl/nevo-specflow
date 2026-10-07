@@ -92,7 +92,7 @@ An application-level `QueryClient` is initialized at the composition root (`App.
 
 - Server reads, caching, invalidation, loading, error, and mutation lifecycle are owned by TanStack Query.
 - Query keys are defined canonically per feature (`specificationKeys`, `specsOverviewKeys`).
-- Local UI state (active tab, selected task, inspector drawer open/close, dialog visibility) remains local React state.
+- Local UI state (active local view, selected task, inspector drawer open/close, dialog visibility) remains local React state.
 
 ### Separation of screen composition and presentation
 

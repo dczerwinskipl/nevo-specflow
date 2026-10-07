@@ -4,10 +4,17 @@ import {
   AppContentContainer,
   AppWorkspace,
   AppWorkspaceBody,
+  Button,
   Icon,
   Link,
-  SegmentedControl,
+  Menu,
+  MenuContent,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuTrigger,
   WorkspaceHeader,
+  cn,
+  type IconName,
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { SpecificationWorkspaceData, SpecificationWorkspaceView } from './model';
@@ -21,6 +28,15 @@ import { ActivityHistory } from './ActivityHistory';
 import { TaskPreview } from './TaskPreview';
 import { ExecuteModal } from './ExecuteModal';
 import { NewConversationModal } from './NewConversationModal';
+
+const viewIcons: Record<SpecificationWorkspaceView, IconName> = {
+  work: 'list-checks',
+  documents: 'file',
+  sessions: 'chat',
+  changes: 'workflow',
+  repository: 'branch',
+  task: 'list-checks',
+};
 
 export interface SpecificationWorkspaceProps {
   readonly specId: string;
@@ -196,28 +212,99 @@ export function SpecificationWorkspace({
                   </span>
                 </div>
 
-                {/* Local View Selector / Tabs */}
+                {/* Specification-local Contextual Navigation */}
                 {currentView !== 'task' ? (
                   <div className="border-b border-border-subtle pb-3">
-                    <SegmentedControl
-                      value={currentView}
-                      onValueChange={(val) => {
-                        setCurrentView(val as SpecificationWorkspaceView);
-                        setActiveDocId(null);
-                      }}
+                    {/* Wide: Specification-local contextual navigation */}
+                    <nav
                       aria-label={t('specification.viewsAriaLabel')}
+                      className="hidden md:flex flex-wrap items-center gap-1"
                     >
-                      {availableViews.map(([id, label]) => (
-                        <SegmentedControl.Item key={id} value={id}>
-                          {label}
-                          {id === 'documents' && data.documents.length > 0 ? (
-                            <span className="ml-1.5 text-body-xs text-content-muted">
-                              ({data.documents.length})
+                      {availableViews.map(([id, label]) => {
+                        const isActive = currentView === id;
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            aria-current={isActive ? 'page' : undefined}
+                            onClick={() => {
+                              setCurrentView(id);
+                              setActiveDocId(null);
+                            }}
+                            className={cn(
+                              'inline-flex items-center gap-2 rounded-control px-3 py-1.5 text-body-sm font-medium transition-colors cursor-pointer',
+                              isActive
+                                ? 'bg-surface-selected text-content-primary'
+                                : 'text-content-secondary hover:bg-surface-hover hover:text-content-primary',
+                            )}
+                          >
+                            <Icon
+                              name={viewIcons[id]}
+                              size="sm"
+                              className={isActive ? 'text-content-primary' : 'text-content-muted'}
+                            />
+                            <span>{label}</span>
+                            {id === 'documents' && data.documents.length > 0 ? (
+                              <span className="rounded-badge bg-surface-subtle px-1.5 py-0.5 text-body-xs text-content-muted">
+                                {data.documents.length}
+                              </span>
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </nav>
+
+                    {/* Compact / Narrow: Collapsed current-view selector */}
+                    <div className="flex md:hidden items-center">
+                      <Menu>
+                        <MenuTrigger asChild>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            leadingIcon={viewIcons[currentView]}
+                            trailingIcon="chevron-down"
+                            aria-label={t('specification.currentViewSelector', {
+                              view:
+                                availableViews.find(([id]) => id === currentView)?.[1] ??
+                                currentView,
+                            })}
+                          >
+                            <span className="font-medium">
+                              {availableViews.find(([id]) => id === currentView)?.[1] ??
+                                currentView}
+                              {currentView === 'documents' && data.documents.length > 0 ? (
+                                <span className="ml-1.5 text-content-muted">
+                                  ({data.documents.length})
+                                </span>
+                              ) : null}
                             </span>
-                          ) : null}
-                        </SegmentedControl.Item>
-                      ))}
-                    </SegmentedControl>
+                          </Button>
+                        </MenuTrigger>
+                        <MenuContent align="start">
+                          <MenuRadioGroup
+                            value={currentView}
+                            onValueChange={(val) => {
+                              setCurrentView(val as SpecificationWorkspaceView);
+                              setActiveDocId(null);
+                            }}
+                          >
+                            {availableViews.map(([id, label]) => (
+                              <MenuRadioItem key={id} value={id}>
+                                <span className="inline-flex items-center gap-2">
+                                  <Icon name={viewIcons[id]} size="sm" />
+                                  <span>{label}</span>
+                                  {id === 'documents' && data.documents.length > 0 ? (
+                                    <span className="text-body-xs text-content-muted">
+                                      ({data.documents.length})
+                                    </span>
+                                  ) : null}
+                                </span>
+                              </MenuRadioItem>
+                            ))}
+                          </MenuRadioGroup>
+                        </MenuContent>
+                      </Menu>
+                    </div>
                   </div>
                 ) : null}
 

@@ -84,15 +84,15 @@ export function WorkView({
       {data.attentionItems.length > 0 ? (
         <section
           aria-labelledby="attention-heading"
-          className="rounded-control border-l-2 border-status-warning bg-surface-subtle p-4"
+          className="rounded-control border-l-2 border-status-attention bg-surface-subtle p-4"
         >
-          <div className="flex items-center gap-2 text-status-warning">
+          <div className="flex items-center gap-2 text-status-attention">
             <Icon name="triangle-alert" size="sm" />
             <Typography
               as="h2"
               variant="title-sm"
               id="attention-heading"
-              className="font-semibold text-content-primary"
+              className="font-semibold text-status-attention"
             >
               {t('specification.requiresAttention')}{' '}
               <span className="text-body-xs font-normal text-content-muted">
@@ -170,7 +170,7 @@ export function WorkView({
           </div>
 
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body-xs text-content-secondary">
-            <span className={cn(data.repoContext.isDirty && 'text-status-warning')}>
+            <span className={cn(data.repoContext.isDirty && 'text-status-attention')}>
               {data.repoContext.freshness === 'unknown'
                 ? t('specification.gitLocalChangesUnknown')
                 : t('specification.uncommittedFilesCount', {

@@ -74,6 +74,7 @@
     "viewChanges": "Changes",
     "viewRepository": "Repository",
     "viewsAriaLabel": "Specification views",
+    "currentViewSelector": "Current view: {{view}}",
     "selectTask": "Select {{id}}",
     "openTaskNewWindow": "Open in new window",
     "openTaskNewWindowNamed": "Open {{id}} in new window",

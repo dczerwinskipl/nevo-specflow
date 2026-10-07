@@ -74,6 +74,7 @@
     "viewChanges": "Zmiany",
     "viewRepository": "Repozytorium",
     "viewsAriaLabel": "Widoki specyfikacji",
+    "currentViewSelector": "Bieżący widok: {{view}}",
     "selectTask": "Wybierz {{id}}",
     "openTaskNewWindow": "Otwórz w nowym oknie",
     "openTaskNewWindowNamed": "Otwórz {{id}} w nowym oknie",

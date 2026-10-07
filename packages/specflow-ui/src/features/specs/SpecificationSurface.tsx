@@ -101,7 +101,7 @@ function SpecificationSurfaceConnected({
                   role="alert"
                   className="rounded-control border border-border-default bg-surface-subtle p-6 grid gap-3 max-w-content-standard"
                 >
-                  <div className="flex items-center gap-2 text-status-warning">
+                  <div className="flex items-center gap-2 text-status-attention">
                     <Icon name="triangle-alert" size="sm" />
                     <Typography
                       as="h2"

@@ -68,10 +68,12 @@ Detail, Full Session, Project Settings.
 
 ## Product hierarchy
 
-The local Specification UX draft explores a proposed local view layer inside one
-Specification: Work, Documents, Sessions and available contextual capability destinations. These
-are Spec-owned views, not new global product areas. Its contextual navigation recommendation is
-under product review; the implemented global navigation and placeholder remain as described below.
+Inside one Specification, the owner decision establishes Specification-local contextual
+navigation for Spec-owned destinations (Work, Documents, Sessions, Changes, Repository). These
+are Spec-owned contextual views, not new global product areas. On Wide, local contextual
+navigation avoids a horizontal tab strip and avoids an extra permanent rail; on Compact/Narrow,
+it collapses into a contextual view selector. The implemented global product navigation remains
+deliberately small as described below.
 
 The owner-refined Specification design separates short Task preview in Secondary from explicit
 Full Task promotion into a main surface. Work defaults to Specification history in Secondary. This

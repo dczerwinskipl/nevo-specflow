@@ -164,7 +164,7 @@ export function SpecificationWorkspace({
             />
           }
         >
-          <AppContent>
+          <AppContent className="w-content-xwide max-w-full">
             <AppWorkspaceBody className="py-6">
               <AppContentContainer align="start" size="full" className="grid gap-6">
                 {/* Back to Specifications link (preserves test contract) */}

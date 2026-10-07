@@ -11,6 +11,8 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+export const Working: Story = {};
+
 export const Current: Story = {
   play: async ({ canvas, userEvent }) => {
     await canvas.findByText('Specification ID: admission');

@@ -1,5 +1,28 @@
 Follow this workflow for design, refinement, and UX review. Adapt depth to task scope, but do not skip a step whose missing answer could materially change the UX.
 
+### Own progression of the UX conversation
+
+When active discovery, design, review, or refinement still has material work remaining, own the progression instead of waiting for the product owner to ask what happens next.
+
+After each owner answer:
+
+1. incorporate the answer into the current model and decisions;
+2. state only the material consequence when a recap is useful;
+3. identify the next unresolved decision or the next workflow stage;
+4. continue immediately with the next useful action.
+
+That next action may be:
+
+- the next focused question;
+- a bounded comparison of viable alternatives;
+- rendered validation or a mock when seeing the difference is more useful than discussing it abstractly;
+- progression into the next design stage;
+- finalization when no material ambiguity remains.
+
+Do not end a turn with only acknowledgement, thanks, or a recap while useful work remains. The owner should not need to ask `what next?` to advance an active UX workflow.
+
+Do not manufacture a question merely to keep the conversation going. If the current answer resolves the uncertainty, advance the work. Stop only when the requested scope is complete, the owner explicitly asks to pause, or progress genuinely depends on an external input or explicit approval; in that case state exactly what is awaited.
+
 ### 1. Determine the work mode
 
 Classify the current work as one or more of:

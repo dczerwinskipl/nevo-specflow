@@ -48,7 +48,10 @@ After inspecting evidence:
 2. group only closely related questions;
 3. ask the smallest useful set, normally one to three questions;
 4. incorporate the answer;
-5. repeat only while material ambiguity remains.
+5. immediately choose the next discovery action or advance to the next workflow stage;
+6. repeat only while material ambiguity remains.
+
+Treat an owner answer as continuation of the active discovery flow, not as a natural stopping point. Do not hand control back with only acknowledgement or summary while another material question, alternative comparison, rendered validation, or next workflow stage is ready to proceed.
 
 Prefer a concrete trade-off question over an abstract preference question.
 

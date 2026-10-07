@@ -41,78 +41,91 @@ export function FullTaskView({ task, specKey, onBack, onOpenSession }: FullTaskV
       </div>
 
       <article className="grid gap-6 border-t border-border-subtle pt-6 leading-relaxed text-content-secondary">
-        <div>
-          <Typography as="h2" variant="title-sm" className="font-medium text-content-primary">
-            {t('specification.taskFullPurposeHeading')}
-          </Typography>
-          <p className="mt-1 text-body-sm">{t('specification.taskFullPurposeContent')}</p>
-        </div>
-
-        <div>
-          <Typography as="h2" variant="title-sm" className="font-medium text-content-primary">
-            {t('specification.taskFullAcceptanceHeading')}
-          </Typography>
-          <ul className="mt-1.5 list-disc pl-5 text-body-sm grid gap-1">
-            <li>{t('specification.taskFullAcceptanceItem1')}</li>
-            <li>{t('specification.taskFullAcceptanceItem2')}</li>
-            <li>{t('specification.taskFullAcceptanceItem3')}</li>
-          </ul>
-        </div>
-
-        <div>
-          <Typography as="h2" variant="title-sm" className="font-medium text-content-primary">
-            {t('specification.taskFullWorkflowHeading')}
-          </Typography>
-          <p className="mt-1 text-body-sm">
-            {t('specification.taskFullWorkflowContent', { status: task.status })}
-          </p>
-        </div>
-
-        <div>
-          <Typography as="h2" variant="title-sm" className="font-medium text-content-primary">
-            {t('specification.taskFullEvidenceHeading')}
-          </Typography>
-          <div className="mt-2 flex flex-wrap gap-4 text-body-sm">
-            <button
-              type="button"
-              className="text-left font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring"
-            >
-              {t('specification.taskFullReviewSummary')}
-            </button>
-            <button
-              type="button"
-              className="text-left font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring"
-            >
-              {t('specification.taskFullVerificationResult')}
-            </button>
-          </div>
-        </div>
-
-        {onOpenSession ? (
+        {task.purpose ? (
           <div>
             <Typography as="h2" variant="title-sm" className="font-medium text-content-primary">
-              {t('specification.taskFullRelatedSessionsHeading')}
+              {t('specification.taskFullPurposeHeading')}
             </Typography>
-            <div className="mt-2">
-              <button
-                type="button"
-                onClick={() => onOpenSession('review')}
-                className="text-left text-body-sm font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring"
-              >
-                {t('specification.taskFullSecurityReviewSession')}
-              </button>
+            <p className="mt-1 text-body-sm">{task.purpose}</p>
+          </div>
+        ) : null}
+
+        {task.acceptanceCriteria && task.acceptanceCriteria.length > 0 ? (
+          <div>
+            <Typography as="h2" variant="title-sm" className="font-medium text-content-primary">
+              {t('specification.taskFullAcceptanceHeading')}
+            </Typography>
+            <ul className="mt-1.5 list-disc pl-5 text-body-sm grid gap-1">
+              {task.acceptanceCriteria.map((item, idx) => (
+                <li key={idx}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        {task.workflow ? (
+          <div>
+            <Typography as="h2" variant="title-sm" className="font-medium text-content-primary">
+              {t('specification.taskFullWorkflowHeading')}
+            </Typography>
+            <p className="mt-1 text-body-sm">{task.workflow}</p>
+          </div>
+        ) : null}
+
+        {task.evidence && task.evidence.length > 0 ? (
+          <div>
+            <Typography as="h2" variant="title-sm" className="font-medium text-content-primary">
+              {t('specification.taskFullEvidenceHeading')}
+            </Typography>
+            <div className="mt-2 flex flex-wrap gap-4 text-body-sm">
+              {task.evidence.map((item, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    if (item.href) window.open(item.href, '_blank', 'noopener,noreferrer');
+                  }}
+                  className="text-left font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring"
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
           </div>
         ) : null}
 
-        <div>
-          <Typography as="h2" variant="title-sm" className="font-medium text-content-primary">
-            {t('specification.taskFullHistoryHeading')}
-          </Typography>
-          <p className="mt-1 text-body-xs text-content-muted">
-            {t('specification.taskFullHistoryContent')}
-          </p>
-        </div>
+        {onOpenSession && task.relatedSessions && task.relatedSessions.length > 0 ? (
+          <div>
+            <Typography as="h2" variant="title-sm" className="font-medium text-content-primary">
+              {t('specification.taskFullRelatedSessionsHeading')}
+            </Typography>
+            <div className="mt-2 grid gap-2">
+              {task.relatedSessions.map((session) => (
+                <button
+                  key={session.id}
+                  type="button"
+                  onClick={() => onOpenSession(session.id)}
+                  className="w-fit text-left text-body-sm font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring"
+                >
+                  {session.title}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {task.history && task.history.length > 0 ? (
+          <div>
+            <Typography as="h2" variant="title-sm" className="font-medium text-content-primary">
+              {t('specification.taskFullHistoryHeading')}
+            </Typography>
+            <div className="mt-1 text-body-xs text-content-muted grid gap-1">
+              {task.history.map((h, idx) => (
+                <p key={idx}>{h}</p>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </article>
     </div>
   );

@@ -52,14 +52,10 @@ export function WorkView({
     });
   };
 
-  const completedCount = data.taskGroups
-    .flatMap((g) => g.tasks)
-    .filter(
-      (task) =>
-        task.status.toLowerCase().includes('ukończon') ||
-        task.status.toLowerCase().includes('done'),
-    ).length;
-  const totalTasks = data.taskGroups.flatMap((g) => g.tasks).length;
+  const completedCount =
+    data.completedTasksCount ??
+    data.taskGroups.flatMap((g) => g.tasks).filter((task) => task.lifecycle === 'completed').length;
+  const totalTasks = data.totalTasksCount ?? data.taskGroups.flatMap((g) => g.tasks).length;
 
   return (
     <div className="grid max-w-content-standard gap-8 py-2">

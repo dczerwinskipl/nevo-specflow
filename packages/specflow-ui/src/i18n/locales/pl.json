@@ -7,7 +7,9 @@
     "retry": "Spróbuj ponownie",
     "retrying": "Ponawianie…",
     "cancel": "Anuluj",
-    "open": "Otwórz"
+    "open": "Otwórz",
+    "loading": "Ładowanie…",
+    "unknown": "Nieznane"
   },
   "navigation": {
     "product": "Nawigacja produktu",
@@ -59,6 +61,13 @@
     "placeholderTitle": "Szczegóły specyfikacji nie są jeszcze zaimplementowane",
     "placeholderDescription": "Otwarta została właściwa specyfikacja. Dokumenty, zadania i sesje będą dostępne tutaj w kolejnym etapie. Nie wykonano żadnej akcji workflow.",
     "identity": "ID specyfikacji: {{id}}",
+    "loadingWorkspace": "Ładowanie specyfikacji {{id}}…",
+    "unavailableTitle": "Specyfikacja jest niedostępna",
+    "unavailableDescription": "Obszar roboczy specyfikacji nie jest jeszcze wspierany przez Runtime lub nie mógł zostać załadowany.",
+    "notFoundTitle": "Nie znaleziono specyfikacji",
+    "notFoundDescription": "Specyfikacja {{id}} nie została znaleziona.",
+    "executeGenericBlockedNotice": "Wybrane zadania nie mogą zostać uruchomione w tej chwili.",
+    "noChangesNotice": "Brak zarejestrowanych zmienionych plików w tym widoku.",
     "viewWork": "Praca",
     "viewDocuments": "Dokumenty",
     "viewSessions": "Sesje",

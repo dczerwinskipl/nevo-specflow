@@ -33,7 +33,19 @@ import type {
 import { SpecsOverview } from './SpecsOverview';
 import { useSpecsOverview } from './useSpecsOverview';
 
+import { QueryClientProvider } from '@tanstack/react-query';
+import { createSpecFlowQueryClient } from '../../../app/queryClient';
+
 function SourceLifecycleFixture() {
+  const queryClient = useMemo(() => createSpecFlowQueryClient(), []);
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SourceLifecycleComponent />
+    </QueryClientProvider>
+  );
+}
+
+function SourceLifecycleComponent() {
   const [collection, setCollection] = useState<SpecsCollection>('current');
   const pending = useRef<
     {

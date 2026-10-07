@@ -17,27 +17,34 @@ export function RepositoryView({ repoContext, onGoToChanges }: RepositoryViewPro
         ? `#${repoContext.linkedPr.number} · ${repoContext.linkedPr.title} · ${t('specification.repoPrOpen')}`
         : t('specification.repoNone'),
     ],
-    [t('specification.repoFactOtherPrs'), '#119 · Model uprawnień · scalony'],
+    [
+      t('specification.repoFactOtherPrs'),
+      repoContext?.otherPrs && repoContext.otherPrs.length > 0
+        ? repoContext.otherPrs.map((pr) => `#${pr.number} · ${pr.title} · ${pr.status}`).join('; ')
+        : t('specification.repoNone'),
+    ],
     [
       t('specification.repoFactLocalConflicts'),
       repoContext?.conflictStatus ?? t('specification.repoNoConflicts'),
     ],
     [t('specification.repoFactIntegrationStatus'), t('specification.repoNotChecked')],
-    [t('specification.repoFactRepository'), 'crm'],
+    [t('specification.repoFactRepository'), repoContext?.repositoryName ?? t('common.unknown')],
     [t('specification.repoFactContext'), t('specification.repoFactWorktreeDesc')],
-    [t('specification.repoFactBranch'), repoContext?.branch ?? 'feature/session-refresh'],
-    [t('specification.repoFactBaseBranch'), repoContext?.baseBranch ?? 'main'],
+    [t('specification.repoFactBranch'), repoContext?.branch ?? t('common.unknown')],
+    [t('specification.repoFactBaseBranch'), repoContext?.baseBranch ?? t('common.unknown')],
     [
       t('specification.repoFactLocalState'),
       repoContext?.freshness === 'unknown'
         ? t('specification.gitLocalChangesUnknown')
-        : t('specification.uncommittedFilesCount', { count: repoContext?.uncommittedCount ?? 4 }),
+        : typeof repoContext?.uncommittedCount === 'number'
+          ? t('specification.uncommittedFilesCount', { count: repoContext.uncommittedCount })
+          : t('common.unknown'),
     ],
     [
       t('specification.repoFactSync'),
       repoContext?.freshness === 'unknown'
         ? t('specification.gitSyncUnknown')
-        : (repoContext?.syncStatus ?? '1 commit przed upstream'),
+        : (repoContext?.syncStatus ?? t('common.unknown')),
     ],
   ];
 

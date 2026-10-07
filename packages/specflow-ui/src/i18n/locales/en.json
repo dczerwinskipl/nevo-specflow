@@ -7,7 +7,9 @@
     "retry": "Retry",
     "retrying": "Retrying…",
     "cancel": "Cancel",
-    "open": "Open"
+    "open": "Open",
+    "loading": "Loading…",
+    "unknown": "Unknown"
   },
   "navigation": {
     "product": "Product navigation",
@@ -59,6 +61,13 @@
     "placeholderTitle": "Specification details are not implemented yet",
     "placeholderDescription": "You have opened the owning Specification. Documents, Tasks and Sessions will become available here in a later increment. No workflow action has been performed.",
     "identity": "Specification ID: {{id}}",
+    "loadingWorkspace": "Loading specification {{id}}…",
+    "unavailableTitle": "Specification is unavailable",
+    "unavailableDescription": "The specification workspace is not supported by Runtime yet or could not be loaded.",
+    "notFoundTitle": "Specification not found",
+    "notFoundDescription": "Specification {{id}} could not be found.",
+    "executeGenericBlockedNotice": "Selected tasks cannot be executed at this time.",
+    "noChangesNotice": "No changed files recorded for this view.",
     "viewWork": "Work",
     "viewDocuments": "Documents",
     "viewSessions": "Sessions",

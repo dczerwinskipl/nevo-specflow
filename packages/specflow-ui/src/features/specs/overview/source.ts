@@ -1,36 +1,52 @@
-import { createHttpClient, type HttpClient } from '@nevo/http-client';
-import type { SpecsOverview } from '@nevo/specflow-contracts/specs/overview';
+import type { HttpClient } from '@nevo/http-client';
 
 import type { SpecsOverviewSource } from './model';
+import {
+  createFixtureSpecsOverviewApi,
+  createRuntimeSpecsOverviewApi,
+  type SpecsOverviewApi,
+} from './api';
+
+export type { SpecsOverviewApi };
 
 // Kept as an explicit unavailable source for integration fixtures.
 export const unavailableSpecsSource: SpecsOverviewSource = {
   read: () => Promise.reject(new Error('Specs overview projection is not configured.')),
 };
 
-export function defaultSpecsSource(): SpecsOverviewSource {
-  if (import.meta.env.DEV && import.meta.env.VITE_SPECFLOW_SAMPLE_DATA === 'true') {
+export function defaultSpecsSource(
+  clientOrApi?: HttpClient | SpecsOverviewApi,
+): SpecsOverviewSource {
+  if (clientOrApi && 'getOverview' in clientOrApi) {
     return {
-      sample: true,
-      read: async (collection, signal) => {
-        const { createSpecsFixture } = await import('./fixtures');
-        signal.throwIfAborted();
-        return createSpecsFixture(collection);
-      },
+      sample: clientOrApi.sample,
+      read: (collection, signal) => clientOrApi.getOverview(collection, signal),
     };
   }
 
-  return createRuntimeSpecsSource();
+  if (import.meta.env.DEV && import.meta.env.VITE_SPECFLOW_SAMPLE_DATA === 'true') {
+    const fixtureApi = createFixtureSpecsOverviewApi();
+    return {
+      sample: true,
+      read: (collection, signal) => fixtureApi.getOverview(collection, signal),
+    };
+  }
+
+  if (clientOrApi) {
+    return createRuntimeSpecsSource(clientOrApi);
+  }
+
+  return {
+    read: async (collection, signal) => {
+      const { createHttpClient } = await import('@nevo/http-client');
+      return createRuntimeSpecsSource(createHttpClient()).read(collection, signal);
+    },
+  };
 }
 
-export function createRuntimeSpecsSource(
-  client: HttpClient = createHttpClient(),
-): SpecsOverviewSource {
+export function createRuntimeSpecsSource(client: HttpClient): SpecsOverviewSource {
+  const api = createRuntimeSpecsOverviewApi(client);
   return {
-    read: (collection, signal) =>
-      client.get<SpecsOverview>('/api/specs/overview', {
-        params: { collection },
-        signal,
-      }),
+    read: (collection, signal) => api.getOverview(collection, signal),
   };
 }

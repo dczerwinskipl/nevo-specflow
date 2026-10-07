@@ -11,10 +11,16 @@ import { StoryLocalization } from '../i18n/StoryLocalization';
 import type { AuthApi } from '../auth/api';
 import { createAuthStore } from '../auth/store';
 import { createSpecFlowRouter } from './router';
-import { createSpecsFixture } from '../features/specs/overview/fixtures';
 
 type AuthMode =
   'local' | 'required' | 'authenticated' | 'authenticated-refresh-failure' | 'unavailable';
+
+import { QueryClientProvider } from '@tanstack/react-query';
+import { createSpecFlowQueryClient } from './queryClient';
+import { createSpecFlowServices, SpecFlowServicesProvider } from '../services';
+import { createFixtureSpecificationApi } from '../features/specs/api';
+import type { SpecsOverviewApi } from '../features/specs/overview/api';
+import { createFixtureSpecsOverviewApi } from '../features/specs/overview/api';
 
 export function RoutedApplication({
   authMode = 'local',
@@ -27,27 +33,39 @@ export function RoutedApplication({
   path?: string;
   specsStatus?: 401 | 403;
 }) {
+  const queryClient = useMemo(() => createSpecFlowQueryClient(), []);
+  const auth = useMemo(() => storyAuthStore(authMode), [authMode]);
+
+  const services = useMemo(() => {
+    const specsOverviewApi: SpecsOverviewApi = specsStatus
+      ? {
+          getOverview: () =>
+            Promise.reject(
+              new HttpClientError('Status fixture', { kind: 'http', status: specsStatus }),
+            ),
+        }
+      : createFixtureSpecsOverviewApi();
+
+    return createSpecFlowServices({
+      authStore: auth,
+      specsOverviewApi,
+      specificationApi: createFixtureSpecificationApi(),
+    });
+  }, [auth, specsStatus]);
+
   const router = useMemo(
-    () =>
-      createSpecFlowRouter(
-        createMemoryHistory({ initialEntries: [path] }),
-        storyAuthStore(authMode),
-        {
-          sample: true,
-          read: (collection) =>
-            specsStatus
-              ? Promise.reject(
-                  new HttpClientError('Status fixture', { kind: 'http', status: specsStatus }),
-                )
-              : Promise.resolve(createSpecsFixture(collection)),
-        },
-      ),
-    [authMode, path, specsStatus],
+    () => createSpecFlowRouter(createMemoryHistory({ initialEntries: [path] }), services),
+    [path, services],
   );
+
   return (
-    <StoryLocalization locale={locale}>
-      <RouterProvider router={router} />
-    </StoryLocalization>
+    <QueryClientProvider client={queryClient}>
+      <SpecFlowServicesProvider services={services}>
+        <StoryLocalization locale={locale}>
+          <RouterProvider router={router} />
+        </StoryLocalization>
+      </SpecFlowServicesProvider>
+    </QueryClientProvider>
   );
 }
 

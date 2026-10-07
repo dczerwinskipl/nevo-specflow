@@ -47,9 +47,61 @@ The current product routes under the guarded layout remain:
 
 - `/` for the read-only Specs Overview (`?collection=current|archive`);
 - `/specs/:specId` for the owning Specification, with `?collection=current|archive` as parent return
-  context; the current increment is an explicitly labelled placeholder, not a Specification read API;
+  context; loads server state via TanStack Query and renders the Specification Workspace;
 - `/ui-playground` for a directly routable development/integration screen, not a persistent product
   navigation item.
+
+## Application services and server-state architecture
+
+SpecFlow UI establishes a clear data-boundary hierarchy:
+
+```text
+Runtime HTTP contracts
+        ↓
+Feature API adapters (`SpecificationApi`, `SpecsOverviewApi`)
+        ↓
+TanStack Query query/mutation definitions
+        ↓
+Feature hooks (`useSpecificationWorkspace`, `useSpecsOverview`)
+        ↓
+UI projection / presentation models
+        ↓
+Screen composition (`SpecificationSurfaceConnected`, `SpecsRouteScreen`)
+        ↓
+Presentational components (`SpecificationWorkspace`, `WorkView`, `SpecsOverview`)
+```
+
+### Application services boundary (`SpecFlowServices`)
+
+The browser/application-level HTTP transport (`HttpClient`) is created once at the application composition root.
+Feature APIs are composed from this boundary via `SpecFlowServicesProvider` and `useSpecFlowServices()`:
+
+- `SpecFlowServices` groups:
+  - `http`: canonical browser HTTP client;
+  - `authApi`: authentication transport;
+  - `authStore`: application session store;
+  - `specsOverviewApi`: collection overview endpoints;
+  - `specificationApi`: specification workspace endpoints (`getSpecificationWorkspace`).
+
+Component code never instantiates ad-hoc transport clients and does not know arbitrary endpoint URLs.
+
+### Server state via TanStack Query
+
+`@tanstack/react-query` is the canonical server-state mechanism.
+An application-level `QueryClient` is initialized at the composition root (`App.tsx`) via `QueryClientProvider client={defaultQueryClient}`.
+
+- Server reads, caching, invalidation, loading, error, and mutation lifecycle are owned by TanStack Query.
+- Query keys are defined canonically per feature (`specificationKeys`, `specsOverviewKeys`).
+- Local UI state (active tab, selected task, inspector drawer open/close, dialog visibility) remains local React state.
+
+### Separation of screen composition and presentation
+
+Production screens (`SpecificationSurfaceConnected`) own data fetching, loading spinners, and honest error/unavailable states.
+Presentational components (`SpecificationWorkspace`, `WorkView`, `TaskRow`, `DocumentsView`, `SessionsView`, `RepositoryView`, `ChangesView`, `FullTaskView`) receive structured data and callbacks via typed props:
+
+- **No fixture fallback in production**: Production screens never fall back silently to fixture domain data (`dataProp ?? createFixture(...)`). When backend endpoints are unavailable, an honest unavailable state is displayed.
+- **No fixture scenarios in route search**: Query parameters like `?scenario=...` are forbidden in production routes. Scenario-driven fixtures are restricted to Storybook and unit tests where fixtures are injected explicitly via props or fixture API adapters.
+- **No fabricated domain logic**: Execution readiness, completion counts, file changes, and repository status are consumed as typed semantic fields from authoritative models, never fabricated by matching task IDs or parsing localized UI text.
 
 ## Specs Overview increment
 

@@ -50,41 +50,33 @@ export function DocumentsView({
           </div>
 
           <div className="grid gap-3 pt-2">
-            <Typography as="h2" variant="title-sm" className="font-medium text-content-primary">
-              {t('specification.docPurposeHeading')}
-            </Typography>
-            <p className="text-body-sm">{t('specification.docPurposeContent')}</p>
+            {activeDoc.summary ? (
+              <p className="text-body-sm text-content-secondary">{activeDoc.summary}</p>
+            ) : null}
 
-            <Typography
-              as="h2"
-              variant="title-sm"
-              className="font-medium text-content-primary pt-2"
-            >
-              {t('specification.docAssumptionsHeading')}
-            </Typography>
-            <p className="text-body-sm">{t('specification.docAssumptionsContent')}</p>
-
-            <Typography
-              as="h2"
-              variant="title-sm"
-              className="font-medium text-content-primary pt-2"
-            >
-              {t('specification.docAcceptanceHeading')}
-            </Typography>
-            <ul className="list-disc pl-5 text-body-sm grid gap-1.5">
-              <li>{t('specification.docAcceptanceItem1')}</li>
-              <li>{t('specification.docAcceptanceItem2')}</li>
-              <li>{t('specification.docAcceptanceItem3')}</li>
-            </ul>
-
-            <Typography
-              as="h2"
-              variant="title-sm"
-              className="font-medium text-content-primary pt-2"
-            >
-              {t('specification.docOpenDecisionsHeading')}
-            </Typography>
-            <p className="text-body-sm">{t('specification.docOpenDecisionsContent')}</p>
+            {activeDoc.sections && activeDoc.sections.length > 0 ? (
+              activeDoc.sections.map((section, idx) => (
+                <div key={idx} className="grid gap-1">
+                  <Typography
+                    as="h2"
+                    variant="title-sm"
+                    className="font-medium text-content-primary pt-2"
+                  >
+                    {section.heading}
+                  </Typography>
+                  {section.content ? <p className="text-body-sm">{section.content}</p> : null}
+                  {section.items && section.items.length > 0 ? (
+                    <ul className="list-disc pl-5 text-body-sm grid gap-1.5">
+                      {section.items.map((item, itemIdx) => (
+                        <li key={itemIdx}>{item}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ))
+            ) : activeDoc.content ? (
+              <p className="text-body-sm whitespace-pre-wrap">{activeDoc.content}</p>
+            ) : null}
           </div>
         </article>
       </div>

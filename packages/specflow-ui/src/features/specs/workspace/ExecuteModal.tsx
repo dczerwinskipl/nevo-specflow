@@ -11,22 +11,30 @@ import {
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 
+import type { TaskExecutionReadiness } from './model';
+
 export interface ExecuteModalProps {
   readonly open: boolean;
   readonly selectedTasks: readonly string[];
+  readonly executionReadiness?: TaskExecutionReadiness;
   readonly onClose: () => void;
   readonly onExecute: (agent: string) => void;
 }
 
-export function ExecuteModal({ open, selectedTasks, onClose, onExecute }: ExecuteModalProps) {
+export function ExecuteModal({
+  open,
+  selectedTasks,
+  executionReadiness,
+  onClose,
+  onExecute,
+}: ExecuteModalProps) {
   const { t } = useTranslation();
   const [agent, setAgent] = useState('Implementer');
 
-  const blocked = selectedTasks.filter((id) =>
-    ['TASK-01', 'TASK-02', 'TASK-03', 'TASK-04', 'TASK-06'].includes(id),
-  );
-  const isBlocked = blocked.length > 0;
-  const hasWarning = selectedTasks.includes('TASK-05') && !isBlocked;
+  const isBlocked = executionReadiness ? !executionReadiness.canExecute : false;
+  const blocked = executionReadiness?.blockers ?? [];
+  const hasWarning = executionReadiness ? (executionReadiness.warnings?.length ?? 0) > 0 : false;
+  const warningText = executionReadiness?.warnings?.join('; ');
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
@@ -42,11 +50,13 @@ export function ExecuteModal({ open, selectedTasks, onClose, onExecute }: Execut
 
           {isBlocked ? (
             <div className="rounded-control bg-status-danger/10 p-3 text-body-xs text-status-danger border border-status-danger/20">
-              {t('specification.executeBlockedNotice', { tasks: blocked.join(', ') })}
+              {blocked.length > 0
+                ? t('specification.executeBlockedNotice', { tasks: blocked.join(', ') })
+                : t('specification.executeGenericBlockedNotice')}
             </div>
           ) : hasWarning ? (
             <div className="rounded-control bg-status-warning/10 p-3 text-body-xs text-status-warning border border-status-warning/20">
-              {t('specification.executeWarningNotice')}
+              {warningText ?? t('specification.executeWarningNotice')}
             </div>
           ) : null}
 

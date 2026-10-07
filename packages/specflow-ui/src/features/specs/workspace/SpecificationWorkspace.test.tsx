@@ -4,13 +4,16 @@ import { AppShell } from '@nevo/ui';
 import { appI18n, LocalizationProvider } from '../../../i18n';
 import { SpecificationWorkspace } from './SpecificationWorkspace';
 
+import { createSpecificationWorkspaceFixture } from './fixtures';
+
 function renderWorkspaceMarkup(
   props: Partial<React.ComponentProps<typeof SpecificationWorkspace>> = {},
 ) {
+  const data = props.data ?? createSpecificationWorkspaceFixture('working', 'UI-1234');
   return renderToStaticMarkup(
     <LocalizationProvider>
       <AppShell navigation={<div>Nav</div>}>
-        <SpecificationWorkspace specId="UI-1234" {...props} />
+        <SpecificationWorkspace specId="UI-1234" data={data} {...props} />
       </AppShell>
     </LocalizationProvider>,
   );
@@ -56,14 +59,18 @@ describe('SpecificationWorkspace', () => {
   });
 
   it('omits repository context and extra views in no-git scenario', () => {
-    const markup = renderWorkspaceMarkup({ scenario: 'no-git' });
+    const markup = renderWorkspaceMarkup({
+      data: createSpecificationWorkspaceFixture('no-git', 'UI-1234'),
+    });
 
     expect(markup).not.toContain('feature/session-refresh');
     expect(markup).not.toContain('PR #128');
   });
 
   it('renders empty scenario with preparation banner and no task list', () => {
-    const markup = renderWorkspaceMarkup({ scenario: 'empty' });
+    const markup = renderWorkspaceMarkup({
+      data: createSpecificationWorkspaceFixture('empty', 'UI-1234'),
+    });
 
     expect(markup).toContain('Przygotuj specyfikację do realizacji');
     expect(markup).toContain('Rozpocznij rozmowę');
@@ -71,7 +78,9 @@ describe('SpecificationWorkspace', () => {
   });
 
   it('renders preparing scenario with notice and tasks in preparation', () => {
-    const markup = renderWorkspaceMarkup({ scenario: 'preparing' });
+    const markup = renderWorkspaceMarkup({
+      data: createSpecificationWorkspaceFixture('preparing', 'UI-1234'),
+    });
 
     expect(markup).toContain('Taski są jeszcze w przygotowaniu');
     expect(markup).toContain('Przygotowanie do review');
@@ -79,7 +88,9 @@ describe('SpecificationWorkspace', () => {
   });
 
   it('renders git-conflict scenario with conflict attention item', () => {
-    const markup = renderWorkspaceMarkup({ scenario: 'git-conflict' });
+    const markup = renderWorkspaceMarkup({
+      data: createSpecificationWorkspaceFixture('git-conflict', 'UI-1234'),
+    });
 
     expect(markup).toContain('Worktree ma nierozwiązane konflikty');
     expect(markup).toContain('Sprawdź konflikty');

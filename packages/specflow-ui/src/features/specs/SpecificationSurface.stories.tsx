@@ -40,19 +40,19 @@ export const Archive: Story = {
 };
 
 export const EmptyPreparation: Story = {
-  args: { path: '/specs/empty-scaffold?scenario=empty' },
+  args: { path: '/specs/empty-scaffold' },
 };
 
 export const PreparingTasks: Story = {
-  args: { path: '/specs/preparing-spec?scenario=preparing' },
+  args: { path: '/specs/preparing-spec' },
 };
 
 export const GitConflicts: Story = {
-  args: { path: '/specs/conflict-spec?scenario=git-conflict' },
+  args: { path: '/specs/conflict-spec' },
 };
 
 export const NoGit: Story = {
-  args: { path: '/specs/no-git-spec?scenario=no-git' },
+  args: { path: '/specs/no-git-spec' },
 };
 
 export const Documents: Story = {

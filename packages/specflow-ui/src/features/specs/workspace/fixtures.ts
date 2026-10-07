@@ -18,22 +18,41 @@ export const defaultTaskGroups: readonly TaskGroup[] = [
         id: 'TASK-03',
         title: 'Obsługa odświeżania uprawnień w długotrwałej sesji użytkownika',
         status: 'Weryfikacja',
+        lifecycle: 'blocked',
         additionalInfo: 'Wymaga decyzji',
         group: 'implementation',
+        purpose:
+          'Preserve user context after session refresh and handle permission changes explicitly, without losing initiated operations.',
+        acceptanceCriteria: [
+          'Form content remains accessible.',
+          'Permission change does not automatically approve new operation.',
+          'Concurrent requests respect shared refresh result.',
+        ],
+        workflow:
+          'Sample task projection: Weryfikacja. Available actions and requirements originate from backend.',
+        evidence: [{ label: 'Review summary →' }, { label: 'Verification result →' }],
+        relatedSessions: [{ id: 'review', title: 'Security scenarios review →' }],
+        history: ['Scope preparation → execution → review; sample events.'],
       },
       {
         id: 'TASK-04',
         title: 'Komunikat o wygasającym dostępie',
         status: 'Implementacja',
+        lifecycle: 'in_progress',
         additionalInfo: 'Agent pracuje',
         group: 'implementation',
+        purpose: 'Wyświetlanie użytkownikowi powiadomienia o zbliżającym się wygaśnięciu sesji.',
+        acceptanceCriteria: ['Ostrzeżenie pojawia się na 60 sekund przed wygaśnięciem.'],
       },
       {
         id: 'TASK-05',
         title: 'Przywrócenie kontekstu po ponownym zalogowaniu',
         status: 'Gotowe',
+        lifecycle: 'pending',
         additionalInfo: 'Czeka na TASK-03',
         group: 'implementation',
+        purpose:
+          'Automatyczne przywrócenie otwartych formularzy i widoków po ponownym uwierzytelnieniu.',
       },
     ],
   },
@@ -45,6 +64,7 @@ export const defaultTaskGroups: readonly TaskGroup[] = [
         id: 'TASK-06',
         title: 'Scenariusze integracyjne dla równoległych żądań odświeżających token dostępu',
         status: 'Przygotowanie',
+        lifecycle: 'pending',
         additionalInfo: 'Draft',
         group: 'verification',
       },
@@ -52,6 +72,7 @@ export const defaultTaskGroups: readonly TaskGroup[] = [
         id: 'TASK-07',
         title: 'Przegląd dokumentacji i uzgodnienie warunków wdrożenia',
         status: 'Review',
+        lifecycle: 'pending',
         additionalInfo: 'Gotowe do pracy',
         group: 'verification',
       },
@@ -65,6 +86,7 @@ export const defaultTaskGroups: readonly TaskGroup[] = [
         id: 'TASK-01',
         title: 'Model uprawnień',
         status: 'Ukończone',
+        lifecycle: 'completed',
         additionalInfo: 'Model przyjęty',
         group: 'done',
       },
@@ -72,6 +94,7 @@ export const defaultTaskGroups: readonly TaskGroup[] = [
         id: 'TASK-02',
         title: 'Kontrakt odświeżania sesji',
         status: 'Ukończone',
+        lifecycle: 'completed',
         additionalInfo: 'Kontrakt API',
         group: 'done',
       },
@@ -85,6 +108,30 @@ export const defaultDocuments: readonly DocumentItem[] = [
     title: 'Specyfikacja',
     kind: 'Główny opis zmiany',
     summary: 'Główny dokument specyfikacji opisujący zachowanie i kryteria.',
+    sections: [
+      {
+        heading: 'Cel i zakres',
+        content:
+          'Utrzymać kontekst pracy po odświeżeniu sesji, bez ponownego logowania i utraty rozpoczętych operacji.',
+      },
+      {
+        heading: 'Kluczowe założenia',
+        content: 'Brak utraty wprowadzonych danych formularzy w przypadku utraty połączenia.',
+      },
+      {
+        heading: 'Kryteria akceptacji',
+        items: [
+          'Sesja odnawia się w tle bez przeładowywania widoku.',
+          'Wszystkie aktywne drafty są zachowywane w pamięci podręcznej.',
+          'W przypadku unieważnienia uprawnień użytkownik otrzymuje czytelny komunikat.',
+        ],
+      },
+      {
+        heading: 'Otwarte decyzje',
+        content:
+          'Rozstrzygnięcie zachowania równoległych żądań po utracie uprawnień administracyjnych.',
+      },
+    ],
   },
   {
     id: 'auth',
@@ -221,9 +268,10 @@ export function createSpecificationWorkspaceFixture(
   let repoContext: RepoContext | undefined;
   if (hasGit) {
     repoContext = {
+      repositoryName: 'crm',
       branch: 'feature/session-refresh',
       baseBranch: 'main',
-      uncommittedCount: scenario === 'git-unknown' ? 0 : 4,
+      uncommittedCount: scenario === 'git-unknown' ? undefined : 4,
       syncStatus:
         scenario === 'git-unknown'
           ? 'Brak danych'
@@ -240,6 +288,13 @@ export function createSpecificationWorkspaceFixture(
         number: 128,
         title: 'Odświeżanie sesji i zachowanie kontekstu',
       },
+      otherPrs: [
+        {
+          number: 119,
+          title: 'Model uprawnień',
+          status: 'scalony',
+        },
+      ],
       isDirty: scenario !== 'git-unknown',
       freshness:
         scenario === 'git-unknown' ? 'unknown' : scenario === 'git-stale' ? 'stale' : 'fresh',
@@ -269,6 +324,19 @@ export function createSpecificationWorkspaceFixture(
       ]
     : defaultActivityEvents;
 
+  const changes = hasGit
+    ? {
+        base: [
+          'src/auth/refreshSession.ts',
+          'src/auth/refreshSession.integration.test.ts',
+          'src/ui/SessionExpiredNotice.tsx',
+          'docs/areas/authentication.md',
+        ],
+        uncommitted: ['src/auth/refreshSession.ts', 'src/ui/SessionExpiredNotice.tsx'],
+        mr: ['src/auth/refreshSession.ts', 'src/auth/refreshSession.integration.test.ts'],
+      }
+    : undefined;
+
   return {
     id: specId,
     title: 'Odświeżanie sesji i zachowanie kontekstu użytkownika',
@@ -285,5 +353,13 @@ export function createSpecificationWorkspaceFixture(
     documents: isEmpty ? [] : defaultDocuments,
     sessions: isEmpty ? [] : defaultSessions,
     activityEvents,
+    completedTasksCount: isEmpty ? 0 : 2,
+    totalTasksCount: isEmpty ? 0 : 7,
+    executionReadiness: {
+      canExecute: false,
+      blockers: ['TASK-03 · Review wymaga decyzji właściciela'],
+      warnings: ['TASK-05 wymaga potwierdzenia architektury'],
+    },
+    changes,
   };
 }

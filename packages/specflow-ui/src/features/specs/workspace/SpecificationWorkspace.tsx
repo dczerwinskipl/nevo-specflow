@@ -10,12 +10,7 @@ import {
   WorkspaceHeader,
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type {
-  SpecificationScenario,
-  SpecificationWorkspaceData,
-  SpecificationWorkspaceView,
-} from './model';
-import { createSpecificationWorkspaceFixture } from './fixtures';
+import type { SpecificationWorkspaceData, SpecificationWorkspaceView } from './model';
 import { WorkView } from './WorkView';
 import { DocumentsView } from './DocumentsView';
 import { SessionsView } from './SessionsView';
@@ -29,29 +24,32 @@ import { NewConversationModal } from './NewConversationModal';
 
 export interface SpecificationWorkspaceProps {
   readonly specId: string;
+  readonly data: SpecificationWorkspaceData;
   readonly overviewHref?: string;
   readonly onBack?: () => void;
-  readonly scenario?: SpecificationScenario;
   readonly initialView?: SpecificationWorkspaceView;
   readonly initialTask?: string;
-  readonly data?: SpecificationWorkspaceData;
+  readonly onRefresh?: () => void | Promise<void>;
+  readonly onExecute?: (agent: string, tasks: readonly string[]) => void | Promise<void>;
+  readonly onNewConversation?: (agent: string) => void | Promise<void>;
+  readonly onOpenSession?: (sessionId: string) => void;
+  readonly onDiff?: (file: string) => void;
 }
 
 export function SpecificationWorkspace({
   specId,
+  data,
   overviewHref,
   onBack,
-  scenario = 'working',
   initialView = 'work',
   initialTask,
-  data: dataProp,
+  onRefresh,
+  onExecute,
+  onNewConversation,
+  onOpenSession,
+  onDiff,
 }: SpecificationWorkspaceProps) {
   const { t } = useTranslation();
-
-  const data = useMemo(
-    () => dataProp ?? createSpecificationWorkspaceFixture(scenario, specId),
-    [dataProp, scenario, specId],
-  );
 
   const [currentView, setCurrentView] = useState<SpecificationWorkspaceView>(
     initialTask ? 'task' : initialView,
@@ -64,7 +62,6 @@ export function SpecificationWorkspace({
   const [docOrigin, setDocOrigin] = useState<'work' | 'documents'>('documents');
   const [changesSource, setChangesSource] = useState<'base' | 'uncommitted' | 'mr'>('base');
   const [activeModal, setActiveModal] = useState<'execute' | 'conversation' | null>(null);
-  const [notification, setNotification] = useState<string | null>(null);
 
   const availableViews: [SpecificationWorkspaceView, string][] = useMemo(() => {
     const list: [SpecificationWorkspaceView, string][] = [
@@ -118,11 +115,6 @@ export function SpecificationWorkspace({
     setCurrentView('changes');
   };
 
-  const handleOpenSession = (sessionId: string) => {
-    setNotification(t('specification.sessionOpenedNotification', { id: sessionId }));
-    setTimeout(() => setNotification(null), 3000);
-  };
-
   const previewTask = useMemo(() => {
     if (!previewTaskId) return null;
     return data.taskGroups.flatMap((g) => g.tasks).find((t) => t.id === previewTaskId) ?? null;
@@ -150,17 +142,20 @@ export function SpecificationWorkspace({
           header={
             <WorkspaceHeader
               title={headerTitle}
-              actions={[
-                {
-                  id: 'refresh',
-                  icon: 'refresh',
-                  label: t('specifications.refresh'),
-                  onPress: () => {
-                    setNotification(t('specification.refreshedNotification'));
-                    setTimeout(() => setNotification(null), 3000);
-                  },
-                },
-              ]}
+              actions={
+                onRefresh
+                  ? [
+                      {
+                        id: 'refresh',
+                        icon: 'refresh',
+                        label: t('specifications.refresh'),
+                        onPress: () => {
+                          void onRefresh();
+                        },
+                      },
+                    ]
+                  : []
+              }
             />
           }
         >
@@ -233,7 +228,7 @@ export function SpecificationWorkspace({
                     selectedTasks={selectedTasks}
                     onSelectTask={handleSelectTask}
                     onPreviewTask={handlePreviewTask}
-                    onOpenSession={handleOpenSession}
+                    onOpenSession={(id) => onOpenSession?.(id)}
                     onOpenSessionsView={() => setCurrentView('sessions')}
                     onOpenDoc={(docId) => handleOpenDoc(docId, 'work')}
                     onOpenDocumentsView={() => setCurrentView('documents')}
@@ -260,17 +255,15 @@ export function SpecificationWorkspace({
                 ) : currentView === 'sessions' ? (
                   <SessionsView
                     sessions={data.sessions}
-                    onOpenSession={handleOpenSession}
+                    onOpenSession={(id) => onOpenSession?.(id)}
                     onNewConversation={() => setActiveModal('conversation')}
                   />
                 ) : currentView === 'changes' ? (
                   <ChangesView
                     currentSource={changesSource}
+                    changes={data.changes}
                     onSourceChange={setChangesSource}
-                    onDiff={(file) => {
-                      setNotification(t('specification.diffNotification', { file }));
-                      setTimeout(() => setNotification(null), 3000);
-                    }}
+                    onDiff={(file) => onDiff?.(file)}
                   />
                 ) : currentView === 'repository' ? (
                   <RepositoryView
@@ -282,7 +275,7 @@ export function SpecificationWorkspace({
                     task={fullTask}
                     specKey={specId}
                     onBack={handleBackFromFullTask}
-                    onOpenSession={handleOpenSession}
+                    onOpenSession={(id) => onOpenSession?.(id)}
                   />
                 ) : null}
               </AppContentContainer>
@@ -317,7 +310,7 @@ export function SpecificationWorkspace({
                 isExplicit={explicitHistory}
                 onClose={() => setExplicitHistory(false)}
                 onOpenTask={handlePreviewTask}
-                onOpenSession={handleOpenSession}
+                onOpenSession={(id) => onOpenSession?.(id)}
                 onOpenDoc={(docId) => handleOpenDoc(docId, 'work')}
               />
             )}
@@ -329,16 +322,11 @@ export function SpecificationWorkspace({
       <ExecuteModal
         open={activeModal === 'execute'}
         selectedTasks={Array.from(selectedTasks)}
+        executionReadiness={data.executionReadiness}
         onClose={() => setActiveModal(null)}
         onExecute={(agent) => {
           setActiveModal(null);
-          setNotification(
-            t('specification.executeStartedNotification', {
-              agent,
-              count: selectedTasks.size,
-            }),
-          );
-          setTimeout(() => setNotification(null), 3000);
+          void onExecute?.(agent, Array.from(selectedTasks));
         }}
       />
 
@@ -347,20 +335,9 @@ export function SpecificationWorkspace({
         onClose={() => setActiveModal(null)}
         onStart={(agent) => {
           setActiveModal(null);
-          setNotification(t('specification.conversationStartedNotification', { agent }));
-          setTimeout(() => setNotification(null), 3000);
+          void onNewConversation?.(agent);
         }}
       />
-
-      {/* Toast Notification */}
-      {notification ? (
-        <div
-          role="status"
-          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-control border border-border-default bg-surface-raised px-4 py-2.5 text-body-sm text-content-primary shadow-lg"
-        >
-          {notification}
-        </div>
-      ) : null}
     </>
   );
 }

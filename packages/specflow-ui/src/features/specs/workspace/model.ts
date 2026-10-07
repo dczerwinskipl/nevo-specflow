@@ -11,12 +11,37 @@ export type SpecificationScenario =
   | 'git-stale'
   | 'extensions';
 
+export type TaskLifecycle = 'pending' | 'in_progress' | 'completed' | 'blocked';
+
+export interface TaskExecutionReadiness {
+  readonly canExecute: boolean;
+  readonly blockers?: readonly string[];
+  readonly warnings?: readonly string[];
+}
+
+export interface TaskEvidence {
+  readonly label: string;
+  readonly href?: string;
+}
+
+export interface TaskRelatedSession {
+  readonly id: string;
+  readonly title: string;
+}
+
 export interface TaskItem {
   readonly id: string;
   readonly title: string;
   readonly status: string;
+  readonly lifecycle?: TaskLifecycle;
   readonly additionalInfo?: string;
   readonly group: string;
+  readonly purpose?: string;
+  readonly acceptanceCriteria?: readonly string[];
+  readonly workflow?: string;
+  readonly evidence?: readonly TaskEvidence[];
+  readonly relatedSessions?: readonly TaskRelatedSession[];
+  readonly history?: readonly string[];
 }
 
 export interface TaskGroup {
@@ -25,12 +50,19 @@ export interface TaskGroup {
   readonly tasks: readonly TaskItem[];
 }
 
+export interface DocumentSection {
+  readonly heading: string;
+  readonly content?: string;
+  readonly items?: readonly string[];
+}
+
 export interface DocumentItem {
   readonly id: string;
   readonly title: string;
   readonly kind: string;
   readonly summary?: string;
   readonly content?: string;
+  readonly sections?: readonly DocumentSection[];
 }
 
 export interface SessionSummary {
@@ -49,15 +81,21 @@ export interface AttentionItem {
 }
 
 export interface RepoContext {
-  readonly branch: string;
-  readonly baseBranch: string;
-  readonly uncommittedCount: number;
-  readonly syncStatus: string;
-  readonly conflictStatus: string;
+  readonly branch?: string;
+  readonly baseBranch?: string;
+  readonly uncommittedCount?: number;
+  readonly syncStatus?: string;
+  readonly conflictStatus?: string;
+  readonly repositoryName?: string;
   readonly linkedPr?: {
     readonly number: number;
     readonly title: string;
   };
+  readonly otherPrs?: readonly {
+    readonly number: number;
+    readonly title: string;
+    readonly status: string;
+  }[];
   readonly isDirty?: boolean;
   readonly freshness?: 'fresh' | 'stale' | 'unknown';
 }
@@ -69,6 +107,12 @@ export interface ActivityEvent {
   readonly description: string;
   readonly type?: 'task' | 'session' | 'doc';
   readonly targetId?: string;
+}
+
+export interface SpecificationChangesData {
+  readonly base?: readonly string[];
+  readonly uncommitted?: readonly string[];
+  readonly mr?: readonly string[];
 }
 
 export interface SpecificationWorkspaceData {
@@ -86,4 +130,8 @@ export interface SpecificationWorkspaceData {
   readonly documents: readonly DocumentItem[];
   readonly sessions: readonly SessionSummary[];
   readonly activityEvents: readonly ActivityEvent[];
+  readonly completedTasksCount?: number;
+  readonly totalTasksCount?: number;
+  readonly executionReadiness?: TaskExecutionReadiness;
+  readonly changes?: SpecificationChangesData;
 }

@@ -20,14 +20,13 @@ import { defaultSpecsSource } from '../features/specs/overview/source';
 import type { SpecsOverviewSource } from '../features/specs/overview/model';
 import { SpecsAccessDenied } from '../features/specs/overview/SpecsAccessDenied';
 import { SpecificationSurface } from '../features/specs/SpecificationSurface';
-import type {
-  SpecificationScenario,
-  SpecificationWorkspaceView,
-} from '../features/specs/workspace/model';
+import type { SpecFlowServices } from '../services';
+import type { SpecificationWorkspaceView } from '../features/specs/workspace/model';
 
 export interface SpecFlowRouterContext {
   readonly auth: AuthStore;
   readonly specs: SpecsOverviewSource;
+  readonly services?: SpecFlowServices;
 }
 
 export type AppAccessDecision =
@@ -132,14 +131,10 @@ const specificationRoute = createRoute({
     search: Record<string, unknown>,
   ): {
     collection: 'current' | 'archive';
-    scenario?: SpecificationScenario;
     view?: SpecificationWorkspaceView;
     task?: string;
   } => ({
     collection: search.collection === 'archive' ? 'archive' : 'current',
-    ...(typeof search.scenario === 'string'
-      ? { scenario: search.scenario as SpecificationScenario }
-      : {}),
     ...(typeof search.view === 'string' ? { view: search.view as SpecificationWorkspaceView } : {}),
     ...(typeof search.task === 'string' ? { task: search.task } : {}),
   }),
@@ -155,12 +150,25 @@ const routeTree = rootRoute.addChildren([
 
 export function createSpecFlowRouter(
   history?: RouterHistory,
-  auth: AuthStore = createAuthStore(),
-  specs: SpecsOverviewSource = defaultSpecsSource(),
+  servicesOrAuth?: SpecFlowServices | AuthStore,
+  specs?: SpecsOverviewSource,
 ) {
+  let auth: AuthStore;
+  let specsSource: SpecsOverviewSource;
+  let services: SpecFlowServices | undefined;
+
+  if (servicesOrAuth && 'http' in servicesOrAuth) {
+    services = servicesOrAuth;
+    auth = services.authStore;
+    specsSource = defaultSpecsSource(services.specsOverviewApi);
+  } else {
+    auth = servicesOrAuth ?? createAuthStore();
+    specsSource = specs ?? defaultSpecsSource();
+  }
+
   return createRouter({
     routeTree,
-    context: { auth, specs },
+    context: { auth, specs: specsSource, services },
     ...(history ? { history } : {}),
   });
 }
@@ -214,14 +222,13 @@ function SpecsRouteScreen() {
 
 function SpecificationRouteScreen() {
   const { specId } = specificationRoute.useParams();
-  const { collection, scenario, view, task } = specificationRoute.useSearch();
+  const { collection, view, task } = specificationRoute.useSearch();
   const navigate = specificationRoute.useNavigate();
   return (
     <SpecificationSurface
       specId={specId}
       overviewHref={`/?collection=${collection}`}
       onBack={() => void navigate({ to: '/', search: { collection } })}
-      scenario={scenario}
       initialView={view}
       initialTask={task}
     />

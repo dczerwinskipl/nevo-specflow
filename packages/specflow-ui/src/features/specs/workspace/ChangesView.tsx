@@ -1,21 +1,19 @@
 import { Button, SegmentedControl, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 
+import type { SpecificationChangesData } from './model';
+
 export interface ChangesViewProps {
   readonly currentSource: 'base' | 'uncommitted' | 'mr';
+  readonly changes?: SpecificationChangesData;
   readonly onSourceChange: (source: 'base' | 'uncommitted' | 'mr') => void;
   readonly onDiff: (file: string) => void;
 }
 
-const sampleFiles = [
-  'src/auth/refreshSession.ts',
-  'src/auth/refreshSession.integration.test.ts',
-  'src/ui/SessionExpiredNotice.tsx',
-  'docs/areas/authentication.md',
-];
-
-export function ChangesView({ currentSource, onSourceChange, onDiff }: ChangesViewProps) {
+export function ChangesView({ currentSource, changes, onSourceChange, onDiff }: ChangesViewProps) {
   const { t } = useTranslation();
+
+  const files = (changes ? changes[currentSource] : undefined) ?? [];
 
   return (
     <div className="grid max-w-content-standard gap-6 py-2">
@@ -52,18 +50,24 @@ export function ChangesView({ currentSource, onSourceChange, onDiff }: ChangesVi
             : t('specification.changesPrDescription')}
       </Typography>
 
-      <div className="divide-y divide-border-subtle">
-        {sampleFiles.map((file) => (
-          <div key={file} className="flex items-center justify-between gap-4 py-3">
-            <span className="font-mono text-body-sm text-content-primary [overflow-wrap:anywhere]">
-              {file}
-            </span>
-            <Button variant="secondary" size="sm" onClick={() => onDiff(file)}>
-              {t('specification.diffAction')}
-            </Button>
-          </div>
-        ))}
-      </div>
+      {files.length > 0 ? (
+        <div className="divide-y divide-border-subtle">
+          {files.map((file) => (
+            <div key={file} className="flex items-center justify-between gap-4 py-3">
+              <span className="font-mono text-body-sm text-content-primary [overflow-wrap:anywhere]">
+                {file}
+              </span>
+              <Button variant="secondary" size="sm" onClick={() => onDiff(file)}>
+                {t('specification.diffAction')}
+              </Button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-control border border-border-subtle bg-surface-subtle p-4 text-body-sm text-content-muted">
+          {t('specification.noChangesNotice')}
+        </div>
+      )}
     </div>
   );
 }

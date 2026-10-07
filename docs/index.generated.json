@@ -701,15 +701,41 @@
       "file": "docs/product/specflow/ui/application-architecture.md",
       "read_when": [
         "adding a SpecFlow UI screen or route",
+        "adding or changing remote data access, server-state, mutations, or application services",
+        "deciding how product navigation or route state is represented",
         "deciding whether UI code belongs in the product app or Nevo UI",
         "changing the product shell, localization, account menu, or brand composition"
       ],
-      "summary": "The SpecFlow UI composition root, routing, authentication and localization boundaries, reusable Nevo UI boundary, navigation/account composition, and intentionally minimal foundation screens.",
+      "summary": "The SpecFlow UI composition root, routing, remote-data and authentication boundaries, reusable Nevo UI boundary, navigation/account composition, and application-level framework decisions.",
       "related": [
         "design-system.principles.system-boundary",
         "design-system.implementation.ownership-and-tooling",
         "product.specflow.ui.interaction-model",
+        "product.specflow.ui.data-loading-and-integration",
         "product.shared.localization"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.data-loading-and-integration",
+      "type": "architecture",
+      "title": "SpecFlow UI data, loading and integration contract",
+      "status": "current",
+      "file": "docs/product/specflow/ui/data-loading-and-integration.md",
+      "read_when": [
+        "designing a data-driven SpecFlow UI surface",
+        "deciding which facts belong in one read model or load independently",
+        "defining loading, refresh, invalidation or failure behavior",
+        "checking whether an existing API/read model can support a UI contract",
+        "implementing a new SpecFlow UI query, mutation or integration"
+      ],
+      "summary": "Product-level rules for turning UX information needs into coherent read-model boundaries, integration readiness, loading/refresh behavior, and independently loadable detail without prescribing endpoint URLs from UX.",
+      "related": [
+        "adr.0007-documentation-architecture-and-taxonomy",
+        "docs.reference-readme",
+        "product.specflow.ui.application-architecture",
+        "product.specflow.ui.interaction-model",
+        "design-system.implementation.react.component-guidelines",
+        "design-system.implementation.storybook.guidelines"
       ]
     },
     {
@@ -976,6 +1002,36 @@
       ]
     },
     {
+      "id": "design-system.principles.information-row-hierarchy",
+      "type": "engineering",
+      "title": "Information row hierarchy",
+      "status": "current",
+      "file": "docs/design-system/principles/information-row-hierarchy.md",
+      "read_when": [
+        "designing or implementing repeated informational or operational rows",
+        "deciding whether a repeated item needs a Card or a new visual treatment",
+        "reviewing consistency between lists of different entity types"
+      ],
+      "summary": "Semantic hierarchy for repeated information rows: primary and secondary information, optional semantic supporting information, utility/trailing affordance roles, consistent interaction language, and the rule that different entity semantics do not justify visual reinvention by default.",
+      "related": [
+        "design-system.principles.ui-ux-guidelines",
+        "design-system.principles.layout-and-containment",
+        "design-system.principles.system-boundary"
+      ],
+      "scope": "nevo-ui",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "list",
+        "rows",
+        "hierarchy",
+        "typography",
+        "scanning",
+        "interaction"
+      ]
+    },
+    {
       "id": "design-system.principles.layout-and-containment",
       "type": "engineering",
       "title": "Layout and containment guidelines",
@@ -989,6 +1045,7 @@
       "summary": "Borderless-first rules for grouping and containment. Start with typography, spacing, alignment and separators; use Cards and stronger surfaces only when an independently meaningful object or exceptional interaction genuinely needs containment.",
       "related": [
         "design-system.principles.ui-ux-guidelines",
+        "design-system.principles.information-row-hierarchy",
         "design-system.principles.system-boundary",
         "design-system.implementation.react.component-guidelines",
         "design-system.implementation.tailwind.styling-guidelines"
@@ -1008,6 +1065,7 @@
       ],
       "summary": "Portable engineering rules for building UI: validate the composed screen, semantic typography/color/spacing tokens, information hierarchy, progressive disclosure, and mandatory visual self-review. Product-specific UX (AI sessions, SpecFlow UI screens) is under product/specflow/ui/.",
       "related": [
+        "design-system.principles.information-row-hierarchy",
         "design-system.principles.layout-and-containment",
         "design-system.implementation.react.component-guidelines",
         "design-system.implementation.tailwind.styling-guidelines",
@@ -2081,11 +2139,11 @@
       "status": "draft",
       "file": "docs/ideas/specflow-ui/data-loading-refresh-and-eventing.md",
       "read_when": [
-        "implementing a SpecFlow UI read model or query",
-        "adding realtime events, polling, batching, refresh, or prefetch",
-        "deciding whether multiple fields belong in one response/query"
+        "exploring realtime event coalescing, cursors, or reconnect behavior",
+        "evaluating prefetch, batching-window, polling, cache-tuning, or observability ideas",
+        "preserving migration evidence for advanced data-delivery behavior not yet promoted"
       ],
-      "summary": "Shared UI data contract for coherent read models, targeted caching/invalidation, ordered event application, render coalescing, batch reads, refresh semantics, and avoiding both over-fetching and hundreds of tiny realtime UI updates.",
+      "summary": "Non-authoritative exploration of advanced SpecFlow UI eventing, prefetch, batching-window, polling, cache-tuning, observability, and migration ideas beyond the canonical data/loading rules.",
       "related": [
         "ideas.specflow-ui.screens",
         "architecture.runtime.ownership-and-lifecycle",

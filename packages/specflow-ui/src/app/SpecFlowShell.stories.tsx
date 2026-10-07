@@ -29,10 +29,9 @@ export function RoutedApplication({
 }) {
   const router = useMemo(
     () =>
-      createSpecFlowRouter(
-        createMemoryHistory({ initialEntries: [path] }),
-        storyAuthStore(authMode),
-        {
+      createSpecFlowRouter(createMemoryHistory({ initialEntries: [path] }), {
+        auth: storyAuthStore(authMode),
+        specs: {
           sample: true,
           read: (collection) =>
             specsStatus
@@ -41,7 +40,7 @@ export function RoutedApplication({
                 )
               : Promise.resolve(createSpecsFixture(collection)),
         },
-      ),
+      }),
     [authMode, path, specsStatus],
   );
   return (

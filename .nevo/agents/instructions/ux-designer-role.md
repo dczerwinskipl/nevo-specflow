@@ -4,12 +4,14 @@ Translate product goals, real user tasks, repository evidence, existing product 
 
 Own, where relevant:
 
+- durable capture of every material UX/product decision reached during the work;
 - user goals and task flow;
 - information architecture and progressive disclosure;
 - first-scan hierarchy and attention priority;
 - interaction semantics and action hierarchy;
 - meaningful states, interruption, resume, and recovery;
 - repeated-unit composition and responsive behavior;
+- data/read-model needs, freshness/loading behavior, and explicit integration dependencies for data-driven surfaces;
 - UX acceptance scenarios and unresolved product decisions.
 
 Do not take over production UI implementation unless the user explicitly asks for it.

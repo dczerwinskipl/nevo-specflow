@@ -5,15 +5,18 @@ title: SpecFlow UI application architecture
 status: current
 read_when:
   - adding a SpecFlow UI screen or route
+  - adding or changing remote data access, server-state, mutations, or application services
+  - deciding how product navigation or route state is represented
   - deciding whether UI code belongs in the product app or Nevo UI
   - changing the product shell, localization, account menu, or brand composition
 summary: >
-  The SpecFlow UI composition root, routing, authentication and localization boundaries, reusable
-  Nevo UI boundary, navigation/account composition, and intentionally minimal foundation screens.
+  The SpecFlow UI composition root, routing, remote-data and authentication boundaries, reusable
+  Nevo UI boundary, navigation/account composition, and application-level framework decisions.
 related:
   - design-system.principles.system-boundary
   - design-system.implementation.ownership-and-tooling
   - product.specflow.ui.interaction-model
+  - product.specflow.ui.data-loading-and-integration
   - product.shared.localization
 ---
 
@@ -25,23 +28,87 @@ authentication UI, and product-specific interaction decisions. It consumes reusa
 `@nevo/ui` and remains part of the single local product composed by `@nevo/specflow`; it is not
 an independently deployed `apps/*` host.
 
-## Runtime composition
+## Normative application architecture
 
-`src/app/router.tsx` owns the TanStack Router tree. The root itself is neutral because not every
-surface belongs inside the application shell.
+### Routing and navigation
 
-Standalone routes:
+TanStack Router is the canonical routing and product-navigation mechanism for SpecFlow UI.
 
-- `/login` renders authentication outside `AppShell`;
-- `/runtime-unavailable` renders bootstrap/recovery outside `AppShell`;
-- `/access-denied` renders explicit Specs forbidden failures outside `AppShell`.
+Route-worthy state, route params/search, deep links, guarded navigation, and browser-compatible links
+MUST use the router rather than introducing a parallel routing/history mechanism.
 
-A pathless application layout owns `SpecFlowShell` and guards product routes. It asks the Runtime
-for `GET /api/auth/session` before entering the application. Required authentication redirects an
-unauthenticated user to `/login` with a local `returnTo`; trusted local mode enters directly.
+Local workspace state that is explicitly defined as non-route state remains owned by the workspace
+interaction model.
+
+### Application services and transport
+
+The browser application composition root owns shared Runtime-facing services and the application-scoped
+HTTP transport.
+
+SpecFlow UI MUST compose one application-scoped `HttpClient` and use it to construct typed
+application/feature APIs and stores. Feature API factories MUST require their transport dependency
+explicitly rather than silently constructing another transport.
+
+The raw `HttpClient` MUST NOT be exposed as a general React/component dependency. New Runtime
+capabilities should be represented by narrow typed feature/application APIs constructed from the shared
+transport at application composition.
+
+Tests MAY inject explicit clients or fake typed APIs at the same construction seams.
+
+### Remote server state
+
+TanStack Query is the canonical server-state mechanism for ordinary remote SpecFlow feature data.
+
+New remote feature reads and mutations MUST use feature-owned TanStack Query definitions for query
+keys, request lifecycle, cache behavior, invalidation, and mutation state. Screen composition consumes
+that server state and passes bounded UI-facing models/callbacks into presentation components.
+
+SpecFlow UI MUST use one application-scoped QueryClient lifecycle/provider for product feature state.
+A feature MUST NOT create an independent QueryClient or introduce a parallel ad-hoc request/cache
+lifecycle for ordinary remote feature state.
+
+Authentication bootstrap is a deliberate exception to ordinary feature server-state ownership:
+router guards need session state before normal feature rendering, so a dedicated authentication store
+MAY own bootstrap session state while still using the application-scoped HTTP transport.
+
+### Fixture boundary
+
+Fixtures are allowed for Storybook/tests and explicit development/demo modes, but they are alternate
+inputs at a deliberate test/development seam.
+
+A normal production route/surface MUST NOT use fixture/example data as its authoritative source or
+silent fallback when production data is unavailable. Production composition surfaces real unavailable
+or error state instead.
+
+## Current implementation and migration state
+
+The current router tree is owned by the application routing composition. The root is neutral because
+not every surface belongs inside the application shell.
+
+Standalone routes currently include:
+
+- `/login` for authentication outside `AppShell`;
+- `/runtime-unavailable` for bootstrap/recovery outside `AppShell`;
+- `/access-denied` for explicit Specs forbidden failures outside `AppShell`.
+
+A pathless application layout currently owns `SpecFlowShell` and guards product routes. It asks the
+Runtime for `GET /api/auth/session` before entering the application. Required authentication redirects
+an unauthenticated user to `/login` with a local `returnTo`; trusted local mode enters directly.
 An authenticated visit to `/login` returns to the requested app surface. Failure to load Runtime
 authentication state is a distinct bootstrap failure and routes to the recovery screen rather than
 being treated as an unauthenticated user.
+
+`createSpecFlowAppServices()` is the current composition factory for shared Runtime-facing services.
+It creates the application HTTP client and constructs the current typed services from that transport.
+This symbol is an implementation mapping, not the architectural identity of the composition boundary.
+
+TanStack Query has been selected as the normative remote server-state architecture, but the current
+codebase has not yet introduced the application QueryClient/provider. The first query-backed product
+feature MUST add that provider at the application composition root rather than creating a feature-local
+QueryClient.
+
+Existing pre-Query request lifecycles are migration debt and MUST NOT be treated as architectural
+precedent for new remote feature work.
 
 The current product routes under the guarded layout remain:
 
@@ -59,7 +126,7 @@ screen follows the [Specs Overview contract](../../../ideas/specflow-ui/screens/
 and its shared steering contract. Signal priority, concrete targets, human attention, and current
 execution membership are supplied by the projection, not reconstructed from workflow lifecycle.
 
-`SpecsOverviewSource` is the transport seam; its reader is abortable and scoped to the selected
+`SpecsOverviewSource` is the current transitional transport seam; its reader is abortable and scoped to the selected
 collection. Refresh retains the last valid snapshot on failure, while a collection switch hides
 the previous collection immediately and ignores late results. The default source calls
 `GET /api/specs/overview?collection=current|archive` on the same Runtime origin. Runtime currently reads through a sample `SpecsOverviewRepository` adapter, not persistent repository/workflow state. The adapter is an implementation detail; the public response has no sample marker. Requests use the real authentication session and Runtime filters every item using server-owned `spec.view` scope. The shared TypeBox contract lives in `@nevo/specflow-contracts/specs/overview`.

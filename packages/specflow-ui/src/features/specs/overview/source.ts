@@ -1,4 +1,4 @@
-import { createHttpClient, type HttpClient } from '@nevo/http-client';
+import type { HttpClient } from '@nevo/http-client';
 import type { SpecsOverview } from '@nevo/specflow-contracts/specs/overview';
 
 import type { SpecsOverviewSource } from './model';
@@ -8,7 +8,7 @@ export const unavailableSpecsSource: SpecsOverviewSource = {
   read: () => Promise.reject(new Error('Specs overview projection is not configured.')),
 };
 
-export function defaultSpecsSource(): SpecsOverviewSource {
+export function defaultSpecsSource(client: HttpClient): SpecsOverviewSource {
   if (import.meta.env.DEV && import.meta.env.VITE_SPECFLOW_SAMPLE_DATA === 'true') {
     return {
       sample: true,
@@ -20,12 +20,10 @@ export function defaultSpecsSource(): SpecsOverviewSource {
     };
   }
 
-  return createRuntimeSpecsSource();
+  return createRuntimeSpecsSource(client);
 }
 
-export function createRuntimeSpecsSource(
-  client: HttpClient = createHttpClient(),
-): SpecsOverviewSource {
+export function createRuntimeSpecsSource(client: HttpClient): SpecsOverviewSource {
   return {
     read: (collection, signal) =>
       client.get<SpecsOverview>('/api/specs/overview', {

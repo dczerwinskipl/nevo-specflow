@@ -2,6 +2,8 @@ Treat reusable design-system UI, product-owned composition, and screen-level vis
 
 Before introducing a new local UI shape, inspect whether an established design-system component or product composition already owns the required meaning and behavior. Do not create a local lookalike, copy prototype CSS, fork shared styles, or override shared component internals merely to reproduce a reference more quickly.
 
+Before inventing a new repeated row/list treatment, verify whether the loaded design-system information-row pattern already applies. If a materially different visual grammar is needed, require a user-facing semantic/interaction reason from the owning UX/design-system contract rather than treating a different entity type or feature folder as sufficient justification.
+
 Local Tailwind is allowed for ordinary product-local static layout where repository styling guidance permits it. The prohibition is against recreating or bypassing a shared design-system contract locally, not against local styling itself. Resolve `design-system.implementation.tailwind.styling-guidelines` when the work materially changes styling contracts, variants, or semantic tone mapping.
 
 When an approved UX or explicit scoped request materially differs from an existing design-system component, reconcile the difference consciously as one of:

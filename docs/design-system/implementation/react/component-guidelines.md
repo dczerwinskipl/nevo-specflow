@@ -64,6 +64,9 @@ is hard to test because of unrelated effects.
 - **Visual components** take props and render. No data fetching, no routing knowledge.
 - **Container components / feature hooks** own data access and orchestration, and keep
   it visible — don't bury a fetch three hooks deep.
+- Presentation consumes authoritative UI-facing facts and callbacks. It does not manufacture
+  domain/application state when input is missing or infer workflow, permission, readiness, or
+  attention semantics from identifiers, localized labels, or arbitrary display strings.
 
 ## Hooks
 
@@ -75,6 +78,10 @@ a `useEverything` catch-all. A hook that does five unrelated things is five hook
 Transform raw/protocol data into a UI-facing model at a boundary that follows the
 feature's change boundary. Stories and components consume the canonical UI model, never
 raw provider payloads.
+
+Fixture data and production data should converge on that same presentation model/boundary where
+practical. A production component must not silently manufacture or import fixture data as a fallback
+for a missing application dependency.
 
 ## State and effects
 

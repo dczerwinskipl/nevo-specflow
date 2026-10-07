@@ -34,8 +34,10 @@ describe('SpecFlow router access policy', () => {
     async (collection) => {
       const router = createSpecFlowRouter(
         createMemoryHistory({ initialEntries: [`/specs/admission?collection=${collection}`] }),
-        storeWith(authenticated),
-        { read: (value) => Promise.resolve(createSpecsFixture(value)) },
+        {
+          auth: storeWith(authenticated),
+          specs: { read: (value) => Promise.resolve(createSpecsFixture(value)) },
+        },
       );
       await router.load();
       const match = router.state.matches.find((item) => item.routeId === '/_app/specs/$specId');

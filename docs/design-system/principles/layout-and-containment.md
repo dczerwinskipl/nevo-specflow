@@ -13,6 +13,7 @@ summary: >
   meaningful object or exceptional interaction genuinely needs containment.
 related:
   - design-system.principles.ui-ux-guidelines
+  - design-system.principles.information-row-hierarchy
   - design-system.principles.system-boundary
   - design-system.implementation.react.component-guidelines
   - design-system.implementation.tailwind.styling-guidelines

@@ -18,6 +18,8 @@ Review the rendered/composed product when available, not only source code or iso
 
 Use current documentation and approved references to distinguish intended behavior from accidental implementation.
 
+When explicit owner decisions are available, verify that the durable contract actually preserves them. Treat a decision that was dropped, materially weakened, or reopened as an alternative after it had been resolved as a contract defect.
+
 ### Classify findings
 
 Classify material issues as one of:
@@ -33,16 +35,17 @@ Do not disguise a contract problem as a CSS tweak.
 
 Check:
 
-1. first scan and information priority;
-2. task flow and discoverability of the next action;
-3. grouping and progressive disclosure;
-4. state changes, interruption, and recovery;
-5. action semantics and consequential decisions;
-6. context preservation and Back/detail behavior;
-7. responsive preservation of meaning;
-8. information density and repeated-unit rhythm;
-9. accessibility-relevant interaction semantics;
-10. stress/edge scenarios that can materially break the experience.
+1. decision closure: resolved owner choices are normative and rejected alternatives are no longer viable;
+2. first scan and information priority;
+3. task flow and discoverability of the next action;
+4. grouping and progressive disclosure;
+5. state changes, interruption, and recovery;
+6. action semantics and consequential decisions;
+7. context preservation and Back/detail behavior;
+8. responsive preservation of meaning;
+9. information density and repeated-unit rhythm;
+10. accessibility-relevant interaction semantics;
+11. stress/edge scenarios that can materially break the experience.
 
 ### Avoid review-driven redesign
 

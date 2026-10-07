@@ -231,6 +231,14 @@ function SpecificationRouteScreen() {
       onBack={() => void navigate({ to: '/', search: { collection } })}
       initialView={view}
       initialTask={task}
+      onViewChange={(newView) => {
+        void navigate({
+          search: (prev) => ({
+            ...prev,
+            view: newView === 'work' ? undefined : newView,
+          }),
+        });
+      }}
     />
   );
 }

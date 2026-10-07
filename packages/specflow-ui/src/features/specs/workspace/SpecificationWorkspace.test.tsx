@@ -127,19 +127,11 @@ describe('SpecificationWorkspace', () => {
     expect(markup).toContain('src/auth/refreshSession.ts');
   });
 
-  it('renders Specification-local contextual navigation and collapsed view selector', () => {
+  it('renders Specification header eyebrow with back link and specification identity', () => {
     const markup = renderWorkspaceMarkup();
 
-    // Contextual navigation on Wide
-    expect(markup).toContain('aria-label="Widoki specyfikacji"');
-    expect(markup).toContain('aria-current="page"');
-    expect(markup).toContain('Praca');
-    expect(markup).toContain('Dokumenty');
-    expect(markup).toContain('Sesje');
-    expect(markup).toContain('Zmiany');
-    expect(markup).toContain('Repozytorium');
-
-    // Contextual view selector on Compact / Narrow
-    expect(markup).toContain('aria-label="Bieżący widok: Praca"');
+    expect(markup).toContain('data-spec-back-label');
+    expect(markup).toContain('data-spec-identity');
+    expect(markup).toContain('ID specyfikacji: UI-1234');
   });
 });

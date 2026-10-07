@@ -1,20 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   AppContent,
   AppContentContainer,
   AppWorkspace,
   AppWorkspaceBody,
-  Button,
   Icon,
   Link,
-  Menu,
-  MenuContent,
-  MenuRadioGroup,
-  MenuRadioItem,
-  MenuTrigger,
   WorkspaceHeader,
-  cn,
-  type IconName,
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { SpecificationWorkspaceData, SpecificationWorkspaceView } from './model';
@@ -29,15 +21,6 @@ import { TaskPreview } from './TaskPreview';
 import { ExecuteModal } from './ExecuteModal';
 import { NewConversationModal } from './NewConversationModal';
 
-const viewIcons: Record<SpecificationWorkspaceView, IconName> = {
-  work: 'list-checks',
-  documents: 'file',
-  sessions: 'chat',
-  changes: 'workflow',
-  repository: 'branch',
-  task: 'list-checks',
-};
-
 export interface SpecificationWorkspaceProps {
   readonly specId: string;
   readonly data: SpecificationWorkspaceData;
@@ -45,6 +28,7 @@ export interface SpecificationWorkspaceProps {
   readonly onBack?: () => void;
   readonly initialView?: SpecificationWorkspaceView;
   readonly initialTask?: string;
+  readonly onViewChange?: (view: SpecificationWorkspaceView) => void;
   readonly onRefresh?: () => void | Promise<void>;
   readonly onExecute?: (agent: string, tasks: readonly string[]) => void | Promise<void>;
   readonly onNewConversation?: (agent: string) => void | Promise<void>;
@@ -59,6 +43,7 @@ export function SpecificationWorkspace({
   onBack,
   initialView = 'work',
   initialTask,
+  onViewChange,
   onRefresh,
   onExecute,
   onNewConversation,
@@ -79,18 +64,23 @@ export function SpecificationWorkspace({
   const [changesSource, setChangesSource] = useState<'base' | 'uncommitted' | 'mr'>('base');
   const [activeModal, setActiveModal] = useState<'execute' | 'conversation' | null>(null);
 
-  const availableViews: [SpecificationWorkspaceView, string][] = useMemo(() => {
-    const list: [SpecificationWorkspaceView, string][] = [
-      ['work', t('specification.viewWork')],
-      ['documents', t('specification.viewDocuments')],
-      ['sessions', t('specification.viewSessions')],
-    ];
-    if (data.hasGit) {
-      list.push(['changes', t('specification.viewChanges')]);
-      list.push(['repository', t('specification.viewRepository')]);
+  useEffect(() => {
+    if (initialView) {
+      setCurrentView(initialView);
     }
-    return list;
-  }, [data.hasGit, t]);
+  }, [initialView]);
+
+  useEffect(() => {
+    if (initialTask) {
+      setFullTaskId(initialTask);
+      setCurrentView('task');
+    }
+  }, [initialTask]);
+
+  const handleViewChange = (view: SpecificationWorkspaceView) => {
+    setCurrentView(view);
+    onViewChange?.(view);
+  };
 
   const handleSelectTask = (taskId: string, selected: boolean) => {
     setSelectedTasks((prev) => {
@@ -111,24 +101,24 @@ export function SpecificationWorkspace({
 
   const handleOpenFullTask = (taskId: string) => {
     setFullTaskId(taskId);
-    setCurrentView('task');
+    handleViewChange('task');
     setPreviewTaskId(null);
   };
 
   const handleBackFromFullTask = () => {
     setFullTaskId(null);
-    setCurrentView('work');
+    handleViewChange('work');
   };
 
   const handleOpenDoc = (docId: string, origin: 'work' | 'documents' = 'work') => {
     setActiveDocId(docId);
     setDocOrigin(origin);
-    setCurrentView('documents');
+    handleViewChange('documents');
   };
 
   const handleOpenChanges = (source: 'base' | 'uncommitted' | 'mr') => {
     setChangesSource(source);
-    setCurrentView('changes');
+    handleViewChange('changes');
   };
 
   const previewTask = useMemo(() => {
@@ -178,135 +168,48 @@ export function SpecificationWorkspace({
           <AppContent className="w-content-xwide max-w-full">
             <AppWorkspaceBody className="py-6">
               <AppContentContainer align="start" size="full" className="grid gap-6">
-                {/* Back to Specifications link (preserves test contract) */}
+                {/* Eyebrow: Spec / ${specId} with back link */}
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                  {overviewHref ? (
-                    <Link
-                      href={overviewHref}
-                      className="w-fit"
-                      onClick={(event) => {
-                        if (
-                          onBack &&
-                          event.button === 0 &&
-                          !event.metaKey &&
-                          !event.ctrlKey &&
-                          !event.shiftKey &&
-                          !event.altKey
-                        ) {
-                          event.preventDefault();
-                          onBack();
-                        }
-                      }}
-                    >
-                      <span className="inline-flex items-center gap-2 text-body-sm font-medium">
-                        <Icon name="arrow-right" size="sm" className="rotate-180" />
+                  <div className="flex items-center gap-1.5 text-body-sm text-content-muted">
+                    {overviewHref ? (
+                      <Link
+                        href={overviewHref}
+                        className="w-fit"
+                        onClick={(event) => {
+                          if (
+                            onBack &&
+                            event.button === 0 &&
+                            !event.metaKey &&
+                            !event.ctrlKey &&
+                            !event.shiftKey &&
+                            !event.altKey
+                          ) {
+                            event.preventDefault();
+                            onBack();
+                          }
+                        }}
+                      >
+                        <span className="inline-flex items-center gap-1.5 font-medium text-content-secondary hover:text-content-primary">
+                          <Icon name="arrow-right" size="sm" className="rotate-180" />
+                          <span data-spec-back-label>
+                            {t('specification.backToSpecifications')}
+                          </span>
+                        </span>
+                      </Link>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 font-medium text-content-secondary">
                         <span data-spec-back-label>{t('specification.backToSpecifications')}</span>
                       </span>
-                    </Link>
-                  ) : (
-                    <span />
-                  )}
+                    )}
 
-                  <span data-spec-identity className="font-mono text-body-xs text-content-muted">
-                    {t('specification.identity', { id: specId })}
-                  </span>
-                </div>
-
-                {/* Specification-local Contextual Navigation */}
-                {currentView !== 'task' ? (
-                  <div className="border-b border-border-subtle pb-3">
-                    {/* Wide: Specification-local contextual navigation */}
-                    <nav
-                      aria-label={t('specification.viewsAriaLabel')}
-                      className="hidden md:flex flex-wrap items-center gap-1"
-                    >
-                      {availableViews.map(([id, label]) => {
-                        const isActive = currentView === id;
-                        return (
-                          <button
-                            key={id}
-                            type="button"
-                            aria-current={isActive ? 'page' : undefined}
-                            onClick={() => {
-                              setCurrentView(id);
-                              setActiveDocId(null);
-                            }}
-                            className={cn(
-                              'inline-flex items-center gap-2 rounded-control px-3 py-1.5 text-body-sm font-medium transition-colors cursor-pointer',
-                              isActive
-                                ? 'bg-surface-selected text-content-primary'
-                                : 'text-content-secondary hover:bg-surface-hover hover:text-content-primary',
-                            )}
-                          >
-                            <Icon
-                              name={viewIcons[id]}
-                              size="sm"
-                              className={isActive ? 'text-content-primary' : 'text-content-muted'}
-                            />
-                            <span>{label}</span>
-                            {id === 'documents' && data.documents.length > 0 ? (
-                              <span className="rounded-badge bg-surface-subtle px-1.5 py-0.5 text-body-xs text-content-muted">
-                                {data.documents.length}
-                              </span>
-                            ) : null}
-                          </button>
-                        );
-                      })}
-                    </nav>
-
-                    {/* Compact / Narrow: Collapsed current-view selector */}
-                    <div className="flex md:hidden items-center">
-                      <Menu>
-                        <MenuTrigger asChild>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            leadingIcon={viewIcons[currentView]}
-                            trailingIcon="chevron-down"
-                            aria-label={t('specification.currentViewSelector', {
-                              view:
-                                availableViews.find(([id]) => id === currentView)?.[1] ??
-                                currentView,
-                            })}
-                          >
-                            <span className="font-medium">
-                              {availableViews.find(([id]) => id === currentView)?.[1] ??
-                                currentView}
-                              {currentView === 'documents' && data.documents.length > 0 ? (
-                                <span className="ml-1.5 text-content-muted">
-                                  ({data.documents.length})
-                                </span>
-                              ) : null}
-                            </span>
-                          </Button>
-                        </MenuTrigger>
-                        <MenuContent align="start">
-                          <MenuRadioGroup
-                            value={currentView}
-                            onValueChange={(val) => {
-                              setCurrentView(val as SpecificationWorkspaceView);
-                              setActiveDocId(null);
-                            }}
-                          >
-                            {availableViews.map(([id, label]) => (
-                              <MenuRadioItem key={id} value={id}>
-                                <span className="inline-flex items-center gap-2">
-                                  <Icon name={viewIcons[id]} size="sm" />
-                                  <span>{label}</span>
-                                  {id === 'documents' && data.documents.length > 0 ? (
-                                    <span className="text-body-xs text-content-muted">
-                                      ({data.documents.length})
-                                    </span>
-                                  ) : null}
-                                </span>
-                              </MenuRadioItem>
-                            ))}
-                          </MenuRadioGroup>
-                        </MenuContent>
-                      </Menu>
-                    </div>
+                    <span aria-hidden="true" className="text-content-muted">
+                      /
+                    </span>
+                    <span data-spec-identity className="font-mono text-body-xs text-content-muted">
+                      {t('specification.identity', { id: specId })}
+                    </span>
                   </div>
-                ) : null}
+                </div>
 
                 {/* View Content */}
                 {currentView === 'work' ? (
@@ -316,11 +219,11 @@ export function SpecificationWorkspace({
                     onSelectTask={handleSelectTask}
                     onPreviewTask={handlePreviewTask}
                     onOpenSession={(id) => onOpenSession?.(id)}
-                    onOpenSessionsView={() => setCurrentView('sessions')}
+                    onOpenSessionsView={() => handleViewChange('sessions')}
                     onOpenDoc={(docId) => handleOpenDoc(docId, 'work')}
-                    onOpenDocumentsView={() => setCurrentView('documents')}
+                    onOpenDocumentsView={() => handleViewChange('documents')}
                     onOpenChanges={handleOpenChanges}
-                    onOpenRepository={() => setCurrentView('repository')}
+                    onOpenRepository={() => handleViewChange('repository')}
                     onOpenHistory={() => setExplicitHistory(true)}
                     onNewConversation={() => setActiveModal('conversation')}
                     onExecuteSelected={() => setActiveModal('execute')}
@@ -334,7 +237,7 @@ export function SpecificationWorkspace({
                     onSelectDoc={(id) => setActiveDocId(id)}
                     onBackToOrigin={() => {
                       if (docOrigin === 'work') {
-                        setCurrentView('work');
+                        handleViewChange('work');
                       }
                       setActiveDocId(null);
                     }}

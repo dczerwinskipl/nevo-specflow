@@ -1,6 +1,7 @@
-import { Button, Typography } from '@nevo/ui';
+import { Button, cn, fastColorTransitionClassName, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { SessionSummary } from './model';
+import { scanGrid } from '../overview/geometry';
 
 export interface SessionsViewProps {
   readonly sessions: readonly SessionSummary[];
@@ -23,22 +24,37 @@ export function SessionsView({ sessions, onOpenSession, onNewConversation }: Ses
         </Button>
       </div>
 
-      <div className="divide-y divide-border-subtle">
+      <ul className="divide-y divide-border-subtle">
         {sessions.map((session) => (
-          <div key={session.id} className="flex items-center justify-between gap-4 py-4">
-            <div className="min-w-0">
-              <div className="font-medium text-content-primary [overflow-wrap:anywhere]">
-                {session.title}
+          <li
+            key={session.id}
+            className={cn(
+              '@container/session-row group relative min-h-14 min-w-0 rounded-control py-2 hover:bg-surface-hover',
+              fastColorTransitionClassName,
+            )}
+          >
+            <div className={cn(scanGrid, 'w-full max-w-content-standard items-center')}>
+              <span aria-hidden="true" />
+              <span aria-hidden="true" />
+              <div className="flex min-w-0 flex-col gap-y-0.5 pr-2">
+                <button
+                  type="button"
+                  onClick={() => onOpenSession(session.id)}
+                  className="block w-full text-left font-medium text-body-sm text-content-primary hover:text-accent-primary focus-visible:outline-2 focus-visible:outline-focus-ring [overflow-wrap:anywhere]"
+                >
+                  {session.title}
+                </button>
+                <div className="text-body-sm text-content-muted">{session.meta}</div>
               </div>
-              <div className="text-body-xs text-content-muted">{session.meta}</div>
+              <div className="flex items-center justify-end">
+                <Button variant="secondary" size="sm" onClick={() => onOpenSession(session.id)}>
+                  {t('common.open')}
+                </Button>
+              </div>
             </div>
-
-            <Button variant="secondary" size="sm" onClick={() => onOpenSession(session.id)}>
-              {t('common.open')}
-            </Button>
-          </div>
+          </li>
         ))}
-      </div>
+      </ul>
 
       <Typography variant="body-sm" className="text-content-muted">
         {t('specification.sessionsFutureNotice')}

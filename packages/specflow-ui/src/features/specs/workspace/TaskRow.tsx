@@ -1,14 +1,7 @@
-import {
-  Checkbox,
-  cn,
-  fastColorTransitionClassName,
-  Icon,
-  MenuItem,
-  OverflowMenu,
-  Typography,
-} from '@nevo/ui';
+import { Checkbox, cn, fastColorTransitionClassName, Icon, MenuItem, OverflowMenu } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { TaskItem } from './model';
+import { getTaskStatePresentation, type TaskItem } from './model';
+import { scanGrid } from '../overview/geometry';
 
 export interface TaskRowProps {
   readonly task: TaskItem;
@@ -28,80 +21,89 @@ export function TaskRow({
   fullTaskHref,
 }: TaskRowProps) {
   const { t } = useTranslation();
+  const statePresentation = getTaskStatePresentation(task);
 
   return (
-    <div
+    <li
       data-row-task={task.id}
       className={cn(
-        'group grid grid-cols-[24px_minmax(0,1fr)_auto] items-start gap-2.5 border-b border-border-subtle py-3.5',
+        '@container/task-row group relative min-h-14 min-w-0 rounded-control py-2',
+        'border-b border-border-subtle hover:bg-surface-hover',
         selected && 'bg-surface-selected/40',
         fastColorTransitionClassName,
       )}
     >
-      <div className="pt-1">
-        <Checkbox
-          aria-label={t('specification.selectTask', { id: task.id })}
-          checked={selected}
-          disabled={isPreparing}
-          onCheckedChange={(checked) => onSelect(task.id, Boolean(checked))}
-        />
-      </div>
+      <div className={cn(scanGrid, 'w-full max-w-content-standard items-center')} data-task-rail>
+        {/* Col 1: utility gutter (32px): Checkbox */}
+        <div className="flex h-control-height-default w-full items-center justify-center">
+          <Checkbox
+            aria-label={t('specification.selectTask', { id: task.id })}
+            checked={selected}
+            disabled={isPreparing}
+            onCheckedChange={(checked) => onSelect(task.id, Boolean(checked))}
+          />
+        </div>
 
-      <div className="min-w-0">
-        <button
-          type="button"
-          onClick={() => onPreview(task.id)}
-          className="block w-full text-left font-medium text-content-primary hover:text-accent-primary focus-visible:outline-2 focus-visible:outline-focus-ring focus-visible:outline-offset-2 [overflow-wrap:anywhere]"
-          data-task={task.id}
-        >
-          {task.title}
-        </button>
+        {/* Col 2: semantic marker (16px) */}
+        <span aria-hidden="true" />
 
-        <Typography
-          as="div"
-          variant="body-sm"
-          className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-content-muted"
-        >
-          <span className="font-mono text-content-secondary" data-task-key>
-            {task.id}
-          </span>
-          <span className="text-content-secondary" data-task-status>
-            {task.status}
-          </span>
-          {task.additionalInfo ? (
-            <span className="text-content-muted" data-task-additional>
-              {task.additionalInfo}
-            </span>
-          ) : null}
-        </Typography>
-      </div>
-
-      <div className="flex items-center gap-1">
-        <a
-          href={fullTaskHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex size-8 items-center justify-center rounded-control text-content-secondary hover:bg-surface-hover hover:text-content-primary focus-visible:outline-2 focus-visible:outline-focus-ring"
-          title={t('specification.openTaskNewWindow')}
-          aria-label={t('specification.openTaskNewWindowNamed', { id: task.id })}
-        >
-          <Icon name="open-full" size="sm" />
-        </a>
-
-        <OverflowMenu
-          label={task.id}
-          triggerLabel={t('specification.taskActionsNamed', { id: task.id })}
-        >
-          <MenuItem
-            leadingIcon="open-full"
-            onSelect={() => {
-              window.open(fullTaskHref, '_blank', 'noopener,noreferrer');
-            }}
+        {/* Col 3: content rail */}
+        <div className="flex min-w-0 flex-col gap-y-0.5 pr-2">
+          {/* Line 1: Task title button */}
+          <button
+            type="button"
+            onClick={() => onPreview(task.id)}
+            className="block w-full text-left font-medium text-body-sm text-content-primary hover:text-accent-primary focus-visible:outline-2 focus-visible:outline-focus-ring [overflow-wrap:anywhere]"
+            data-task={task.id}
           >
-            {t('specification.openTaskNewWindow')}
-          </MenuItem>
-        </OverflowMenu>
+            {task.title}
+          </button>
+
+          {/* Line 2: Stable secondary columns */}
+          <div
+            className="grid min-w-0 grid-cols-[calc(var(--spacing)*20)_calc(var(--spacing)*28)_minmax(0,1fr)] items-center gap-x-2 text-body-sm text-content-muted"
+            data-task-secondary
+          >
+            <span className="font-mono text-content-secondary" data-task-key>
+              {task.id}
+            </span>
+            <span className="truncate text-content-secondary" data-task-status>
+              {task.status}
+            </span>
+            <div className="flex min-w-0 items-center gap-1.5 truncate" data-task-additional>
+              {statePresentation.icon && (
+                <span className="flex size-4 shrink-0 items-center justify-center">
+                  <Icon
+                    name={statePresentation.icon}
+                    size="sm"
+                    className={cn('shrink-0', statePresentation.iconClassName)}
+                  />
+                </span>
+              )}
+              <span className={cn('truncate', statePresentation.textClassName)}>
+                {task.additionalInfo ?? ''}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Col 4: bounded action */}
+        <div className="relative z-10 self-center">
+          <OverflowMenu
+            label={task.id}
+            triggerLabel={t('specification.taskActionsNamed', { id: task.id })}
+          >
+            <MenuItem
+              leadingIcon="open-full"
+              onSelect={() => {
+                window.open(fullTaskHref, '_blank', 'noopener,noreferrer');
+              }}
+            >
+              {t('specification.openTaskNewWindow')}
+            </MenuItem>
+          </OverflowMenu>
+        </div>
       </div>
-    </div>
+    </li>
   );
 }

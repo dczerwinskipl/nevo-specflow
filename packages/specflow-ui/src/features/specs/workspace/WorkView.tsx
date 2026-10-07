@@ -1,8 +1,16 @@
 import { useState } from 'react';
-import { Button, cn, Icon, Typography } from '@nevo/ui';
+import {
+  Button,
+  cn,
+  fastColorTransitionClassName,
+  Icon,
+  StatusIndicator,
+  Typography,
+} from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { SpecificationWorkspaceData } from './model';
+import type { SpecificationWorkspaceData, TaskGroup } from './model';
 import { TaskRow } from './TaskRow';
+import { scanGrid } from '../overview/geometry';
 
 export interface WorkViewProps {
   readonly data: SpecificationWorkspaceData;
@@ -19,6 +27,86 @@ export interface WorkViewProps {
   readonly onNewConversation: () => void;
   readonly onExecuteSelected: () => void;
   readonly fullTaskHref: (taskId: string) => string;
+}
+
+function getGroupTone(group: TaskGroup): 'attention' | 'info' | 'neutral' | 'success' {
+  if (
+    group.tasks.some((t) => {
+      const info = t.additionalInfo?.toLowerCase();
+      return (
+        t.lifecycle === 'blocked' ||
+        (info ? info.includes('wymaga decyzji') || info.includes('decision') : false)
+      );
+    })
+  ) {
+    return 'attention';
+  }
+  if (
+    group.tasks.some((t) => {
+      const info = t.additionalInfo?.toLowerCase();
+      return (
+        t.lifecycle === 'in_progress' ||
+        (info ? info.includes('agent pracuje') || info.includes('working') : false)
+      );
+    })
+  ) {
+    return 'info';
+  }
+  if (group.tasks.length > 0 && group.tasks.every((t) => t.lifecycle === 'completed')) {
+    return 'success';
+  }
+  return 'neutral';
+}
+
+function TaskGroupHeader({
+  name,
+  count,
+  isCollapsed,
+  tone,
+  onToggle,
+}: {
+  readonly name: string;
+  readonly count: number;
+  readonly isCollapsed: boolean;
+  readonly tone: 'attention' | 'info' | 'neutral' | 'success';
+  readonly onToggle: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div
+      className={cn(
+        scanGrid,
+        'min-h-control-height-default items-center rounded-control bg-surface-control',
+      )}
+      data-spec-section-header
+    >
+      <button
+        type="button"
+        className="flex h-control-height-default w-full cursor-pointer items-center justify-center rounded-control outline-none hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-focus-ring"
+        aria-expanded={!isCollapsed}
+        aria-label={t(
+          isCollapsed ? 'specifications.expandSection' : 'specifications.collapseSection',
+          { label: name },
+        )}
+        onClick={onToggle}
+      >
+        <Icon
+          className={cn('text-content-muted transition-transform', !isCollapsed && 'rotate-90')}
+          name="chevron-right"
+          size="sm"
+        />
+      </button>
+      <StatusIndicator tone={tone} />
+      <div className="flex min-w-0 items-baseline gap-2 pr-3">
+        <Typography as="h3" variant="label-sm" className="font-semibold text-content-primary">
+          {name}
+        </Typography>
+        <Typography variant="body-sm" className="text-content-muted">
+          {count}
+        </Typography>
+      </div>
+    </div>
+  );
 }
 
 export function WorkView({
@@ -87,7 +175,9 @@ export function WorkView({
           className="rounded-control border-l-2 border-status-attention bg-surface-subtle p-4"
         >
           <div className="flex items-center gap-2 text-status-attention">
-            <Icon name="triangle-alert" size="sm" />
+            <span className="flex size-4 shrink-0 items-center justify-center">
+              <Icon name="triangle-alert" size="sm" />
+            </span>
             <Typography
               as="h2"
               variant="title-sm"
@@ -107,10 +197,10 @@ export function WorkView({
                 key={item.id}
                 className="flex flex-col gap-2 py-2.5 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div className="flex items-start gap-2.5 min-w-0">
-                  <span className="mt-0.5 shrink-0 text-content-secondary">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="flex size-4 shrink-0 items-center justify-center text-status-attention">
                     {item.kind === 'task' ? (
-                      <Icon name="list-checks" size="sm" />
+                      <Icon name="triangle-alert" size="sm" />
                     ) : item.kind === 'session' ? (
                       <Icon name="chat" size="sm" />
                     ) : (
@@ -118,7 +208,7 @@ export function WorkView({
                     )}
                   </span>
                   <div className="min-w-0">
-                    <div className="font-medium text-content-primary [overflow-wrap:anywhere]">
+                    <div className="font-medium text-body-sm text-content-primary [overflow-wrap:anywhere]">
                       {item.title}
                     </div>
                     <div className="text-body-xs text-content-muted">{item.reason}</div>
@@ -151,7 +241,9 @@ export function WorkView({
       {data.hasGit && data.repoContext ? (
         <section aria-labelledby="repo-heading" className="grid gap-2">
           <div className="flex items-center gap-2">
-            <Icon name="branch" size="sm" className="text-content-muted" />
+            <span className="flex size-4 shrink-0 items-center justify-center text-content-muted">
+              <Icon name="branch" size="sm" />
+            </span>
             <Typography
               as="h2"
               variant="title-sm"
@@ -247,7 +339,9 @@ export function WorkView({
       {!data.isEmpty && data.resumeSession ? (
         <section aria-labelledby="resume-heading" className="grid gap-2">
           <div className="flex items-center gap-2">
-            <Icon name="chat" size="sm" className="text-content-muted" />
+            <span className="flex size-4 shrink-0 items-center justify-center text-content-muted">
+              <Icon name="chat" size="sm" />
+            </span>
             <Typography
               as="h2"
               variant="title-sm"
@@ -258,26 +352,40 @@ export function WorkView({
             </Typography>
           </div>
 
-          <button
-            type="button"
-            onClick={() => onOpenSession(data.resumeSession!.id)}
-            className="flex w-full items-center justify-between gap-4 rounded-control border border-border-subtle bg-surface-subtle p-3 text-left hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-focus-ring"
-            aria-label={t('specification.openSessionNamed', { title: data.resumeSession.title })}
+          <div
+            className={cn(
+              '@container/session-row group relative min-h-14 min-w-0 rounded-control py-2 hover:bg-surface-hover',
+              fastColorTransitionClassName,
+            )}
           >
-            <div className="min-w-0">
-              <div className="font-medium text-content-primary [overflow-wrap:anywhere]">
-                {data.resumeSession.title}
+            <div className={cn(scanGrid, 'w-full max-w-content-standard items-center')}>
+              <span aria-hidden="true" />
+              <div className="flex h-control-height-default items-center justify-center">
+                <Icon name="loader" size="sm" className="text-accent-primary animate-spin" />
               </div>
-              <div className="mt-0.5 text-body-xs text-content-muted">
-                {data.resumeSession.meta}
+              <div className="flex min-w-0 flex-col gap-y-0.5 pr-2">
+                <button
+                  type="button"
+                  onClick={() => onOpenSession(data.resumeSession!.id)}
+                  className="block w-full text-left font-medium text-body-sm text-content-primary hover:text-accent-primary focus-visible:outline-2 focus-visible:outline-focus-ring [overflow-wrap:anywhere]"
+                >
+                  {data.resumeSession.title}
+                </button>
+                <div className="text-body-sm text-content-muted">{data.resumeSession.meta}</div>
+              </div>
+              <div className="flex items-center justify-end">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => onOpenSession(data.resumeSession!.id)}
+                >
+                  {t('specification.openSessionAction')}
+                </Button>
               </div>
             </div>
-            <span className="shrink-0 text-body-sm font-medium text-accent-primary">
-              {t('specification.openSessionAction')}
-            </span>
-          </button>
+          </div>
 
-          <div className="mt-1 flex flex-wrap items-center gap-4 text-body-xs">
+          <div className="flex flex-wrap items-center gap-4 border-t border-border-subtle pt-2 text-body-xs">
             <button
               type="button"
               onClick={onOpenSessionsView}
@@ -310,7 +418,9 @@ export function WorkView({
           className="rounded-control border-l-2 border-primary bg-primary/5 p-4"
         >
           <div className="flex items-center gap-2 text-accent-primary">
-            <Icon name="chat" size="sm" />
+            <span className="flex size-4 shrink-0 items-center justify-center">
+              <Icon name="chat" size="sm" />
+            </span>
             <Typography
               as="h2"
               variant="title-sm"
@@ -343,7 +453,9 @@ export function WorkView({
         <section aria-labelledby="tasks-heading" className="border-t border-border-subtle pt-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <Icon name="list-checks" size="sm" className="text-content-muted" />
+              <span className="flex size-4 shrink-0 items-center justify-center text-content-muted">
+                <Icon name="list-checks" size="sm" />
+              </span>
               <Typography
                 as="h2"
                 variant="title-sm"
@@ -363,18 +475,14 @@ export function WorkView({
             </div>
 
             <div className="flex items-center gap-3">
-              <span className="min-w-20 text-body-xs text-content-muted text-right">
-                {selectedTasks.size > 0
-                  ? t('specification.selectedTasksCount', { count: selectedTasks.size })
-                  : ''}
-              </span>
-              <div className="w-40 flex justify-end">
-                {selectedTasks.size > 0 ? (
-                  <Button size="sm" onClick={onExecuteSelected}>
-                    {t('specification.executeWithAgent')}
-                  </Button>
-                ) : null}
-              </div>
+              {selectedTasks.size > 0 ? (
+                <span className="text-body-xs text-content-muted">
+                  {t('specification.selectedTasksCount', { count: selectedTasks.size })}
+                </span>
+              ) : null}
+              <Button size="sm" disabled={selectedTasks.size === 0} onClick={onExecuteSelected}>
+                {t('specification.executeWithAgent')}
+              </Button>
             </div>
           </div>
 
@@ -389,24 +497,17 @@ export function WorkView({
               const isCollapsed = collapsedGroups.has(group.id);
 
               return (
-                <div key={group.id} className="grid">
-                  <button
-                    type="button"
-                    onClick={() => toggleGroup(group.id)}
-                    className="flex w-full items-center gap-2 py-2 text-left text-body-xs font-medium text-content-secondary hover:text-content-primary focus-visible:outline-2 focus-visible:outline-focus-ring"
-                    aria-expanded={!isCollapsed}
-                  >
-                    <Icon
-                      name={isCollapsed ? 'chevron-right' : 'chevron-down'}
-                      size="sm"
-                      className="text-content-muted"
-                    />
-                    <span>{group.name}</span>
-                    <span className="text-content-muted font-normal">{group.tasks.length}</span>
-                  </button>
+                <div key={group.id} className="grid gap-1">
+                  <TaskGroupHeader
+                    name={group.name}
+                    count={group.tasks.length}
+                    isCollapsed={isCollapsed}
+                    tone={getGroupTone(group)}
+                    onToggle={() => toggleGroup(group.id)}
+                  />
 
                   {!isCollapsed ? (
-                    <div>
+                    <ul className="grid">
                       {group.tasks.map((task) => (
                         <TaskRow
                           key={task.id}
@@ -418,7 +519,7 @@ export function WorkView({
                           fullTaskHref={fullTaskHref(task.id)}
                         />
                       ))}
-                    </div>
+                    </ul>
                   ) : null}
                 </div>
               );
@@ -434,7 +535,9 @@ export function WorkView({
           className="border-t border-border-subtle pt-6"
         >
           <div className="flex items-center gap-2">
-            <Icon name="file" size="sm" className="text-content-muted" />
+            <span className="flex size-4 shrink-0 items-center justify-center text-content-muted">
+              <Icon name="file" size="sm" />
+            </span>
             <Typography
               as="h2"
               variant="title-sm"
@@ -477,7 +580,9 @@ export function WorkView({
           className="border-t border-border-subtle pt-6"
         >
           <div className="flex items-center gap-2">
-            <Icon name="workflow" size="sm" className="text-content-muted" />
+            <span className="flex size-4 shrink-0 items-center justify-center text-content-muted">
+              <Icon name="workflow" size="sm" />
+            </span>
             <Typography
               as="h2"
               variant="title-sm"

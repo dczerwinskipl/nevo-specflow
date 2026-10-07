@@ -1,3 +1,5 @@
+import type { IconName } from '@nevo/ui';
+
 export type SpecificationWorkspaceView =
   'work' | 'documents' | 'sessions' | 'changes' | 'repository' | 'task';
 
@@ -134,4 +136,65 @@ export interface SpecificationWorkspaceData {
   readonly totalTasksCount?: number;
   readonly executionReadiness?: TaskExecutionReadiness;
   readonly changes?: SpecificationChangesData;
+}
+
+export interface TaskStatePresentation {
+  readonly icon?: IconName;
+  readonly iconClassName?: string;
+  readonly textClassName?: string;
+}
+
+export function getTaskStatePresentation(task: TaskItem): TaskStatePresentation {
+  const info = task.additionalInfo?.toLowerCase() ?? '';
+  const status = task.status.toLowerCase();
+
+  if (
+    task.lifecycle === 'blocked' ||
+    info.includes('wymaga decyzji') ||
+    info.includes('decision') ||
+    info.includes('uwagi')
+  ) {
+    return {
+      icon: 'triangle-alert',
+      iconClassName: 'text-status-attention',
+      textClassName: 'text-status-attention font-medium',
+    };
+  }
+
+  if (
+    task.lifecycle === 'in_progress' ||
+    info.includes('agent pracuje') ||
+    info.includes('working')
+  ) {
+    return {
+      icon: 'loader',
+      iconClassName: 'text-accent-primary animate-spin',
+      textClassName: 'text-accent-primary font-medium',
+    };
+  }
+
+  if (
+    task.lifecycle === 'completed' ||
+    status.includes('ukończone') ||
+    status.includes('completed')
+  ) {
+    return {
+      icon: 'circle-check',
+      iconClassName: 'text-status-success',
+      textClassName: 'text-content-secondary',
+    };
+  }
+
+  if (info.includes('czeka') || info.includes('waiting')) {
+    return {
+      icon: 'clock',
+      iconClassName: 'text-content-muted',
+      textClassName: 'text-content-muted',
+    };
+  }
+
+  return {
+    iconClassName: 'text-content-muted',
+    textClassName: 'text-content-muted',
+  };
 }

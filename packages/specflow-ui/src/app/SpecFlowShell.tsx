@@ -1,4 +1,4 @@
-import { useMemo, useSyncExternalStore, type PropsWithChildren } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore, type PropsWithChildren } from 'react';
 
 import { designLayerMetadata, designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import {
@@ -7,6 +7,7 @@ import {
   Separator,
   SideNavigation,
   useAppNavigation,
+  type IconName,
   type NavigationAdapter,
   type NavigationNode,
 } from '@nevo/ui';
@@ -15,10 +16,16 @@ import { useTranslation } from 'react-i18next';
 
 import type { AuthStore } from '../auth/store';
 import { defaultNevoBrand, NevoBrandLogo } from '../brand';
+import type { SpecificationWorkspaceView } from '../features/specs/workspace/model';
 import { AccountMenu } from './AccountMenu';
 
 interface NavigationTarget {
-  readonly to: '/';
+  readonly to: '/' | '/specs/$specId';
+  readonly params?: { readonly specId: string };
+  readonly search?: {
+    readonly collection?: 'current' | 'archive';
+    readonly view?: SpecificationWorkspaceView;
+  };
 }
 
 function ProductNavigation({
@@ -31,35 +38,164 @@ function ProductNavigation({
   const { t } = useTranslation();
   const { closeNavigation } = useAppNavigation();
   const pathname = useRouterState({ select: (routerState) => routerState.location.pathname });
+  const search = useRouterState({
+    select: (routerState) =>
+      routerState.location.search as {
+        readonly collection?: 'current' | 'archive';
+        readonly view?: string;
+      },
+  });
+  const specMatch = /^\/specs\/([^/]+)/.exec(pathname);
+  const activeSpecId = specMatch?.[1] ? decodeURIComponent(specMatch[1]) : null;
+  const activeView = search?.view ?? 'work';
+  const collection = search?.collection ?? 'current';
+
   const state = useSyncExternalStore(
     (listener) => auth.subscribe(listener),
     () => auth.getState(),
     () => auth.getState(),
   );
 
-  const navigationNodes = useMemo<readonly NavigationNode<NavigationTarget>[]>(
-    () => [{ key: 'specs', label: t('navigation.specifications'), target: { to: '/' } }],
-    [t],
+  const [expandedKeys, setExpandedKeys] = useState<readonly string[]>(() =>
+    activeSpecId ? [`spec-${activeSpecId}`] : [],
   );
+
+  useEffect(() => {
+    if (activeSpecId) {
+      setExpandedKeys((prev) =>
+        prev.includes(`spec-${activeSpecId}`) ? prev : [...prev, `spec-${activeSpecId}`],
+      );
+    }
+  }, [activeSpecId]);
+
+  const navigationNodes = useMemo<readonly NavigationNode<NavigationTarget>[]>(() => {
+    const rootNodes: NavigationNode<NavigationTarget>[] = [
+      {
+        key: 'specs',
+        label: t('navigation.specifications'),
+        target: { to: '/', search: { collection } },
+      },
+    ];
+
+    if (activeSpecId) {
+      rootNodes.push({
+        key: `spec-${activeSpecId}`,
+        label: activeSpecId,
+        target: {
+          to: '/specs/$specId',
+          params: { specId: activeSpecId },
+          search: { collection, view: 'work' },
+        },
+        children: [
+          {
+            key: `spec-view-work`,
+            label: t('specification.viewWork'),
+            target: {
+              to: '/specs/$specId',
+              params: { specId: activeSpecId },
+              search: { collection, view: 'work' },
+            },
+          },
+          {
+            key: `spec-view-documents`,
+            label: `${t('specification.viewDocuments')} 5`,
+            target: {
+              to: '/specs/$specId',
+              params: { specId: activeSpecId },
+              search: { collection, view: 'documents' },
+            },
+          },
+          {
+            key: `spec-view-sessions`,
+            label: t('specification.viewSessions'),
+            target: {
+              to: '/specs/$specId',
+              params: { specId: activeSpecId },
+              search: { collection, view: 'sessions' },
+            },
+          },
+          {
+            key: `spec-view-changes`,
+            label: t('specification.viewChanges'),
+            target: {
+              to: '/specs/$specId',
+              params: { specId: activeSpecId },
+              search: { collection, view: 'changes' },
+            },
+          },
+          {
+            key: `spec-view-repository`,
+            label: t('specification.viewRepository'),
+            target: {
+              to: '/specs/$specId',
+              params: { specId: activeSpecId },
+              search: { collection, view: 'repository' },
+            },
+          },
+        ],
+      });
+    }
+
+    return rootNodes;
+  }, [activeSpecId, collection, t]);
+
+  const rootIcons = useMemo(() => {
+    const icons: Record<string, IconName> = {
+      specs: 'workflow',
+    };
+    if (activeSpecId) {
+      icons[`spec-${activeSpecId}`] = 'file';
+    }
+    return icons;
+  }, [activeSpecId]);
 
   const navigationAdapter = useMemo<NavigationAdapter<NavigationTarget>>(
     () => ({
-      match: (node) =>
-        node.target?.to === '/' && (pathname === '/' || pathname.startsWith('/specs/'))
-          ? 'active'
-          : 'none',
-      renderLink: ({ children, className, node }) => (
-        <Link
-          className={className}
-          to={node.target?.to ?? '/'}
-          search={{ collection: 'current' }}
-          onClick={closeNavigation}
-        >
-          {children}
-        </Link>
-      ),
+      match: (node) => {
+        if (node.key === 'specs') {
+          return pathname === '/' ? 'active' : 'none';
+        }
+        if (node.key === `spec-view-${activeView}`) {
+          return 'active';
+        }
+        if (node.key === `spec-${activeSpecId}`) {
+          return 'ancestor';
+        }
+        return 'none';
+      },
+      renderLink: ({ children, className, node }) => {
+        if (!node.target) {
+          return <span className={className}>{children}</span>;
+        }
+        if (node.target.to === '/') {
+          return (
+            <Link
+              className={className}
+              to="/"
+              search={{ collection: node.target.search?.collection ?? 'current' }}
+              onClick={closeNavigation}
+            >
+              {children}
+            </Link>
+          );
+        }
+        return (
+          <Link
+            className={className}
+            to="/specs/$specId"
+            params={node.target.params!}
+            search={{
+              collection: node.target.search?.collection ?? collection,
+              view: node.target.search?.view,
+            }}
+            onClick={closeNavigation}
+          >
+            {children}
+          </Link>
+        );
+      },
     }),
-    [closeNavigation, pathname],
+    [closeNavigation, pathname, activeSpecId, activeView, collection],
   );
 
   return (
@@ -74,6 +210,7 @@ function ProductNavigation({
         {...designLayerMetadata({ layer: 'brand' })}
       >
         <NevoBrandLogo {...defaultNevoBrand} product="SpecFlow" size="md" type="horizontal" />
+        <div className="mt-1 pl-7 text-body-xs text-content-muted">crm</div>
       </div>
 
       <Separator />
@@ -83,6 +220,9 @@ function ProductNavigation({
         adapter={navigationAdapter}
         className="min-h-0 flex-1 overflow-y-auto py-4"
         nodes={navigationNodes}
+        rootIcons={rootIcons}
+        expandedKeys={expandedKeys}
+        onExpandedKeysChange={setExpandedKeys}
         {...designLayerMetadata({ layer: 'navigation-links' })}
       />
 

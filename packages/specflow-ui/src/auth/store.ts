@@ -1,6 +1,6 @@
 import type { AuthSessionResponse } from '@nevo/specflow-contracts/authentication';
 
-import { createBrowserAuthApi, type AuthApi } from './api';
+import type { AuthApi } from './api';
 
 export type AuthStoreState =
   | { readonly status: 'idle' }
@@ -18,10 +18,7 @@ export interface AuthStore {
   logout(): Promise<void>;
 }
 
-export function createAuthStore(
-  api: AuthApi = createBrowserAuthApi(),
-  initialSession?: AuthSessionResponse,
-): AuthStore {
+export function createAuthStore(api: AuthApi, initialSession?: AuthSessionResponse): AuthStore {
   let state: AuthStoreState = initialSession
     ? { status: 'ready', session: initialSession }
     : { status: 'idle' };

@@ -16,7 +16,7 @@ Canonical profile: `nevo-agents:implementer-ui`.
 Before starting work, load these exact stable document IDs. They are profile requirements and must not be replaced by lexical discovery:
 
 ```bash
-pnpm docs:get architecture.principles.normative-language engineering.shared.code-organization engineering.shared.testing design-system.principles.system-boundary design-system.principles.ui-ux-guidelines design-system.principles.layout-and-containment design-system.implementation.react.component-guidelines design-system.implementation.storybook.guidelines
+pnpm docs:get architecture.principles.normative-language engineering.shared.code-organization engineering.shared.testing design-system.principles.system-boundary design-system.principles.ui-ux-guidelines design-system.principles.information-row-hierarchy design-system.principles.layout-and-containment design-system.implementation.react.component-guidelines design-system.implementation.storybook.guidelines
 ```
 
 ## Implementer role
@@ -39,6 +39,12 @@ You may independently choose technical implementation details when observable UX
 
 Do not independently invent or redefine material product or shared design-system decisions such as first-scan priority, grouping or information architecture, attention meaning, action semantics or placement, navigation/context behavior, responsive meaning, or a new shared semantic variant/default. Those decisions need explicit or authoritative evidence.
 
+If a contract presented as implementation-ready still offers multiple viable material alternatives for the requested scope, treat that as a contract defect rather than choosing the option that is easiest to implement. Clearly rejected or historical alternatives are not implementation options.
+
+Follow canonical application architecture for application-level framework choices such as routing/navigation, remote server-state, transport composition, and feature API boundaries. Those choices are repository architecture, not implementer preference.
+
+For data-driven UI, follow the owning application's established transport, application/API, server-state, composition, and presentation boundaries. Do not create a parallel feature-local request lifecycle or dependency-construction pattern merely because it is convenient.
+
 The absence of an exact precedent is not itself a blocker. The presence of an existing precedent is not itself permission to reuse it: confirm semantic and interaction fit.
 
 ## UI implementation workflow
@@ -49,9 +55,31 @@ Adapt the depth of this workflow to the uncertainty and blast radius of the task
 
 Start from the explicit task and identify the exact observable change being requested.
 
-Resolve any applicable owning product/screen contract and repository guidance. If no formal UX contract exists, use the existing product composition and behavior as the baseline outside the requested change rather than treating the surface as open for redesign.
+Resolve any applicable owning product/screen contract and repository guidance. Draft/ideas material is evidence only; use the durable implementation-facing contract and explicit current owner decisions for the requested scope.
+
+If no formal UX contract exists, use the existing product composition and behavior as the baseline outside the requested change rather than treating the surface as open for redesign.
 
 If the task and an existing durable contract appear to disagree, determine whether the task is an explicit scoped owner decision that changes the contract or whether the conflict is accidental. Do not silently choose whichever source is easier to implement.
+
+When a contract is presented as implementation-ready, check that material in-scope alternatives have actually been closed and that material implementation dependencies are explicit enough to route the work.
+
+If required work has no clear owning layer/workstream, sequencing relationship, or handoff condition, surface that planning gap instead of silently absorbing unrelated application/API/design-system work into the UI implementation. A remaining `A vs B` decision for navigation, attention, hierarchy, action semantics, responsive behavior, containment, or shared ownership is a contract defect, not implementation-level freedom. Do not reopen clearly rejected/history alternatives either.
+
+### Establish the delivery target
+
+Before implementing a new screen, major region, or materially data-driven surface, classify what is being delivered:
+
+- **presentation/mock only** — Storybook/prototype/design validation; production routing and authoritative application behavior are intentionally out of scope;
+- **production feature** — the normal product route/surface must use authoritative application data and real actions;
+- **both** — build the reusable presentation surface and wire the production composition explicitly.
+
+Do not infer `presentation/mock only` merely because backend capability is missing.
+
+If the work is reachable from normal product routing, treat it as production scope unless the current task/contract explicitly says the route itself is a development/demo surface.
+
+For production scope, identify the authoritative data/action path before claiming the feature complete. Missing API/read-model/backend capability may block production integration while still allowing independent presentation work, but fixture/example data MUST NOT become the normal production source or fallback.
+
+Record any intentional split between completed presentation work and still-pending production integration in the handoff.
 
 ### Reduce uncertainty before choosing
 
@@ -80,9 +108,32 @@ If repository discovery leaves uncertainty, classify it before acting:
 
 Do not ask the owner to resolve information that can reasonably be established from repository documentation, established rendered patterns, component contracts, or neighboring implementation. Do not use a generic frontend convention merely because repository discovery takes more effort.
 
-When a material decision remains unresolved, ask only for that decision after discovery. State the relevant evidence, the real alternatives, and a recommended default when evidence supports one. Do not replace discovery with a generic question such as how the user wants the page laid out.
+When a material decision remains unresolved, ask only for that decision after discovery. This applies whether the alternatives were explicitly left in a specification or became apparent while inspecting/rendering the implementation. If two or more materially different user-facing outcomes remain plausible after repository discovery, do not select one silently.
+
+State the relevant evidence, the real alternatives, and a recommended default when evidence supports one. Do not replace discovery with a generic question such as how the user wants the page laid out. Technical alternatives that preserve the same decided observable UX remain implementer discretion and do not require owner input.
 
 A blocker in one region does not automatically block independent implementation work. Continue unrelated work when doing so cannot pre-commit or conceal the unresolved decision.
+
+### Resolve production integration evidence
+
+When production scope consumes remote, persisted, live, or otherwise authoritative application data,
+resolve the owning application's canonical architecture and data/integration guidance through
+repository knowledge before implementing the integration.
+
+Verify that the implementation-facing product/screen contract points to the authoritative exact
+API/read-model/command/event contract required by the production path.
+
+If that exact contract is missing, incomplete, or still under backend planning, surface the dependency
+instead of designing the backend contract as incidental UI work. Independent presentation/mock work
+may continue only when it is explicitly within scope and does not conceal the missing production
+integration.
+
+Use the owning project/design-system rules to verify the production path, test/fixture seam, semantic
+mapping, loading/refresh behavior, and responsibility-boundary tests. Do not restate or replace those
+rules in the implementation.
+
+A presentation/mock render proves presentation behavior. Production completion additionally requires
+verification through the real application integration path.
 
 ### Plan proportionally
 
@@ -126,6 +177,8 @@ Keep the completion handoff concise and evidence-based:
 Treat reusable design-system UI, product-owned composition, and screen-level visual behavior as separate responsibilities. Reuse follows semantic and interaction fit, not visual resemblance or repeated markup alone.
 
 Before introducing a new local UI shape, inspect whether an established design-system component or product composition already owns the required meaning and behavior. Do not create a local lookalike, copy prototype CSS, fork shared styles, or override shared component internals merely to reproduce a reference more quickly.
+
+Before inventing a new repeated row/list treatment, verify whether the loaded design-system information-row pattern already applies. If a materially different visual grammar is needed, require a user-facing semantic/interaction reason from the owning UX/design-system contract rather than treating a different entity type or feature folder as sufficient justification.
 
 Local Tailwind is allowed for ordinary product-local static layout where repository styling guidance permits it. The prohibition is against recreating or bypassing a shared design-system contract locally, not against local styling itself. Resolve `design-system.implementation.tailwind.styling-guidelines` when the work materially changes styling contracts, variants, or semantic tone mapping.
 

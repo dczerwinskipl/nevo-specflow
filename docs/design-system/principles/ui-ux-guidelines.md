@@ -14,6 +14,7 @@ summary: >
   mandatory visual self-review. Product-specific UX (AI sessions, SpecFlow UI screens) is
   under product/specflow/ui/.
 related:
+  - design-system.principles.information-row-hierarchy
   - design-system.principles.layout-and-containment
   - design-system.implementation.react.component-guidelines
   - design-system.implementation.tailwind.styling-guidelines
@@ -77,30 +78,15 @@ the first scan, the decision belongs to the owning product/UX contract rather th
 
 ## Stable composition and repeated structures
 
-Repeated collections need a stable visual grammar. Before implementing a repeated row/item pattern,
-define the repeated unit, dominant scan direction, **scan columns/alignment tracks**, content start,
-primary/secondary line hierarchy, metadata budget, and responsive wrap/collapse rules. These are
-screen/pattern invariants, not per-state implementation choices.
+Repeated informational/operational items use the canonical
+`design-system.principles.information-row-hierarchy` pattern for primary/secondary/supporting
+information and interaction treatment.
 
-For dense operational lists, prefer columnar alignment when the user compares the same semantic field
-vertically across rows. The same kind of information should occupy the same scan column instead of
-drifting according to title length, state, or which optional metadata happens to be present. Keep the
-primary content track flexible and secondary/trailing tracks bounded; columns exist to reduce eye
-travel, not to fill the width. The detailed collection/grid rules live in
-[Layout and containment guidelines](layout-and-containment.md#scan-column-rule).
+Collection-level scan columns, utility gutters, grouped-list geometry, containment, and responsive
+collapse are governed by `design-system.principles.layout-and-containment`.
 
-Items belonging to the same collection should preserve the same skeleton across states unless their
-meaning genuinely requires a different structure. State can change copy, actions, and semantic
-emphasis; it should not arbitrarily move the title, introduce a new column, change indentation, or
-turn one item into a mini-dashboard while its neighbors remain rows.
-
-Keep logically related content inline while useful space exists. Responsive layouts should wrap or
-stack under actual pressure, not because an arbitrary fixed split reserves empty space elsewhere.
-Optional metadata should normally size to content while the primary information remains flexible.
-
-When an approved screen contract or visual reference defines these invariants, implementation should
-preserve them. Material deviations belong in the owning product UX contract, not as one-off CSS
-decisions.
+Product UX owns which facts occupy those semantic slots. A different entity type is not, by itself, a
+reason to invent a different visual grammar.
 
 ## Typography
 

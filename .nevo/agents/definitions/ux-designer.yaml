@@ -10,6 +10,7 @@ knowledge:
   required:
     - architecture.principles.normative-language
     - design-system.principles.ui-ux-guidelines
+    - design-system.principles.information-row-hierarchy
     - design-system.principles.layout-and-containment
     - design-system.principles.system-boundary
     - product.specflow.ui.interaction-model
@@ -34,6 +35,22 @@ instructions:
     required: true
     applies: always
     delivery: inline
+  - id: data-requirements
+    title: UX data requirements
+    description: Data/read-model needs, integration readiness, freshness, loading, refresh, and failure ownership for data-driven UI.
+    source: ../instructions/ux-data-requirements.md
+    required: true
+    applies:
+      when: designing or refining a UI surface backed by remote, persisted, live, or otherwise authoritative application data
+    delivery: auto
+  - id: backend-planning
+    title: Backend planning
+    description: On-demand same-conversation planning for missing or insufficient backend/application capability after the owner chooses to include it in the current scope.
+    source: ../instructions/backend-planning.md
+    required: true
+    applies:
+      when: the UX workflow has identified missing or insufficient backend/application capability and the owner explicitly chooses to plan it in the current specification/work scope
+    delivery: auto
   - id: decision-rules
     title: UX decision rules
     description: General reasoning rules for turning product evidence into a coherent UX contract.

@@ -6,6 +6,18 @@ into an implementation-ready screen specification. Delete sections that genuinel
 The screen specification is the UX/product contract for implementation. Draft ideas are evidence and
 input, not requirements by themselves.
 
+Calling a specification implementation-ready means its current implementation scope is decision-complete
+and dependency-complete. Every material implementation-relevant decision reached during discovery,
+conversation, rendered review, or alternative comparison must be represented in the durable contract
+before handoff.
+
+Lifecycle/status/approval mechanics are owned by the surrounding workflow. This template records the
+decisions and dependencies that workflow needs; it does not define or infer workflow state from document
+status.
+
+Material alternatives may be explored while designing, but once a choice is made the selected behavior
+must be written normatively and rejected alternatives must not remain viable implementation options.
+
 ## 1. Purpose and ownership
 
 State the job of the screen in user terms.
@@ -221,20 +233,40 @@ Include as applicable:
 For repeated collections, acceptance must verify stable scan axes and rhythm, not merely absence of
 horizontal overflow.
 
-## 15. Data/read-model ownership
+## 15. Data/read-model, freshness, and loading requirements
 
-Only after the UX contract is clear, describe which facts come from:
+Describe the user-facing data requirements after the UX contract is clear:
 
-- backend/application projection;
-- route state;
-- local UI state;
-- derived bounded presentation model.
+- which authoritative facts the surface needs;
+- which facts must be interpreted together as one coherent user state;
+- which detail is intentionally lazy, pageable, or independently loadable;
+- which facts are route/local UI state rather than remote authoritative state;
+- which semantics the frontend must not infer;
+- freshness, loading, refresh, pending, and independent-failure behavior required by the owning
+  canonical product/data rules.
 
-State facts the frontend must not infer.
+Do not restate the repository's general loading/query policy here. Record only the screen-specific
+decisions and link to the canonical rule that owns the general behavior.
 
-## 16. API availability and migration evidence
+## 16. Integration readiness and authoritative contract references
 
-Describe required read/write capabilities and current availability.
+For every required remote data group:
+
+- record its integration readiness using the owning project's canonical readiness model;
+- name the missing capability in product terms when integration is incomplete;
+- link to the stable authoritative API/read-model/command/event reference contract when it exists;
+- record the owner's inline-vs-separate backend-planning choice when material backend planning was
+  required;
+- name the representative user-visible scenarios/states that contract examples or implementation
+  fixtures must cover.
+
+Exact endpoint paths, request/query schemas, response fields, command payloads, protocol/event shapes,
+error catalogues, and example payloads belong in their authoritative reference/code-owned contract.
+Do not copy that catalogue into the screen specification.
+
+If the required exact contract does not yet exist, production integration for that data group remains
+dependent on backend planning. UX/visual work may continue where safe, but the screen spec should
+carry the requirement and later link the resulting authoritative contract rather than absorbing it.
 
 Migration evidence from old repositories is evidence, not an automatic target contract.
 
@@ -245,6 +277,14 @@ Write checks that are observable in the composed UI and preserve the important U
 ## 18. Open questions
 
 List unresolved product decisions explicitly.
+
+An implementation-ready specification must not contain an open question that can materially change
+its current implementation scope. Such a question either keeps the affected scope non-ready, or is
+explicitly deferred outside that scope while the contract states which current behavior remains in force.
+
+When an owner decision resolves a previously listed question, remove it from this section and encode
+the selected behavior in the owning section of the specification. Rejected alternatives may remain only
+as clearly labelled rationale/history, never as choices left to implementation.
 
 Questions that affect hierarchy, grouping, attention, action placement, navigation, or responsive
 behavior are blockers for the relevant part of implementation. Do not silently resolve them in

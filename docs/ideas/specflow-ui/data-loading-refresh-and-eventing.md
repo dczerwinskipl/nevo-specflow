@@ -16,13 +16,12 @@ tags:
   - invalidation
   - performance
 read_when:
-  - implementing a SpecFlow UI read model or query
-  - adding realtime events, polling, batching, refresh, or prefetch
-  - deciding whether multiple fields belong in one response/query
+  - exploring realtime event coalescing, cursors, or reconnect behavior
+  - evaluating prefetch, batching-window, polling, cache-tuning, or observability ideas
+  - preserving migration evidence for advanced data-delivery behavior not yet promoted
 summary: >
-  Shared UI data contract for coherent read models, targeted caching/invalidation, ordered event
-  application, render coalescing, batch reads, refresh semantics, and avoiding both over-fetching
-  and hundreds of tiny realtime UI updates.
+  Non-authoritative exploration of advanced SpecFlow UI eventing, prefetch, batching-window,
+  polling, cache-tuning, observability, and migration ideas beyond the canonical data/loading rules.
 related:
   - ideas.specflow-ui.screens
   - architecture.runtime.ownership-and-lifecycle
@@ -30,6 +29,17 @@ related:
 ---
 
 # SpecFlow UI data loading, refresh, batching, and eventing
+
+> Canonical approved rules for UX data requirements, integration readiness, loading, refresh,
+> coherent read-model boundaries, and basic batching now live in
+> `product.specflow.ui.data-loading-and-integration`. This ideas document remains non-authoritative
+> exploration for deeper eventing, tuning, prefetch, batching-window, observability, and migration
+> details that have not all been promoted.
+>
+> **Interpretation:** everything below is candidate design/evaluation material unless it explicitly
+> references an authoritative current document. Words such as "should", "must", or "do not" describe
+> the current proposal, not a normative repository requirement. Promote accepted rules to their
+> canonical owner instead of treating this file as authority.
 
 ## 1. Goal
 
@@ -74,7 +84,7 @@ A screen-level projection may contain lightweight references to those independen
 
 ## 3. Revision and scope identity
 
-Every mutable screen/read-model response SHOULD expose a stable revision or equivalent validator.
+Current proposal: mutable screen/read-model responses expose a stable revision or equivalent validator.
 
 Illustrative:
 
@@ -130,7 +140,7 @@ A burst of 300 provider/runtime events must not cause 300 independent React cach
 
 But events also must not be "debounced" by dropping intermediate semantic transitions.
 
-Required model:
+Candidate model:
 
 ```text
 transport event stream
@@ -146,7 +156,7 @@ batch/transaction so observers do not render an impossible intermediate combinat
 
 ### 5.1 Coalescing window
 
-Default recommendation for high-frequency Session/Work updates:
+Current tuning candidate for high-frequency Session/Work updates:
 
 - collect ordinary streaming/progress events for roughly one animation frame or a small window
   (about 16–50 ms);
@@ -302,7 +312,7 @@ max batch size ~= 15
 
 Those values are useful evidence, not frozen new-product constants.
 
-The new implementation SHOULD make batching window and maximum batch size configurable.
+Current proposal: make batching window and maximum batch size configurable.
 
 ### 8.3 Do not batch unrelated data blindly
 
@@ -425,7 +435,7 @@ Do not show multiple refresh icons with unclear scope.
 
 Deduplicate identical in-flight queries.
 
-An explicit Refresh MAY cancel and replace the previous fetch for the same resource if safe.
+A candidate Refresh implementation may cancel and replace the previous fetch for the same resource if safe.
 
 Do not start parallel identical fetches that race to write the same cache.
 
@@ -532,7 +542,7 @@ Prefer:
 - slow safety refresh measured in minutes where missing an event would leave important stale data;
 - short polling only for a deliberately tiny projection where events add more complexity than value.
 
-Never poll large document/history/diff payloads every few seconds.
+Current recommendation: avoid polling large document/history/diff payloads every few seconds.
 
 ---
 
@@ -577,7 +587,7 @@ an impossible mixed state.
 
 ## 18. Observability requirements
 
-Development diagnostics SHOULD make it possible to see:
+Proposed development diagnostics would make it possible to see:
 
 - query key/resource identity;
 - snapshot revision;
@@ -592,7 +602,7 @@ These diagnostics belong in development tooling/logging, not ordinary end-user U
 
 ---
 
-## 19. Acceptance criteria
+## 19. Proposed evaluation criteria
 
 1. A burst of realtime events does not create one React render/cache write per raw event.
 2. Ordered events are never dropped merely because rendering is coalesced.

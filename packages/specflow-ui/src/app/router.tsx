@@ -9,22 +9,18 @@ import {
   type RouterHistory,
 } from '@tanstack/react-router';
 
-import { createAuthStore, type AuthStore } from '../auth/store';
+import type { AuthStore } from '../auth/store';
 import { LoginScreen, safeReturnTo } from '../auth/LoginScreen';
 import { RuntimeUnavailableScreen } from '../auth/RuntimeUnavailableScreen';
 import { SpecFlowShell } from './SpecFlowShell';
 import { UiPlaygroundScreen } from './screens';
 import { SpecsOverview } from '../features/specs/overview/SpecsOverview';
 import { useSpecsOverview } from '../features/specs/overview/useSpecsOverview';
-import { defaultSpecsSource } from '../features/specs/overview/source';
-import type { SpecsOverviewSource } from '../features/specs/overview/model';
 import { SpecsAccessDenied } from '../features/specs/overview/SpecsAccessDenied';
 import { SpecificationSurface } from '../features/specs/SpecificationSurface';
+import { createSpecFlowAppServices, type SpecFlowAppServices } from './dependencies';
 
-export interface SpecFlowRouterContext {
-  readonly auth: AuthStore;
-  readonly specs: SpecsOverviewSource;
-}
+export type SpecFlowRouterContext = SpecFlowAppServices;
 
 export type AppAccessDecision =
   | { readonly kind: 'allow' }
@@ -139,12 +135,11 @@ const routeTree = rootRoute.addChildren([
 
 export function createSpecFlowRouter(
   history?: RouterHistory,
-  auth: AuthStore = createAuthStore(),
-  specs: SpecsOverviewSource = defaultSpecsSource(),
+  services: SpecFlowAppServices = createSpecFlowAppServices(),
 ) {
   return createRouter({
     routeTree,
-    context: { auth, specs },
+    context: services,
     ...(history ? { history } : {}),
   });
 }

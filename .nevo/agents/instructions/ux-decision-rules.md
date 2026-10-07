@@ -59,6 +59,22 @@ For each option identify trade-offs and failure modes.
 
 Do not produce variants as decoration or to avoid recommending a choice.
 
+### Close material decisions
+
+Every material decision in the current implementation scope must end in one of these states:
+
+- **resolved** — one behavior is selected and written normatively into the owning contract;
+- **deferred** — the decision is explicitly outside the current implementation scope and the contract states which behavior remains in force now;
+- **blocked** — owner/evidence input is still required, so the affected scope is not implementation-ready.
+
+Alternatives are temporary discovery artifacts. Once authoritative evidence or an explicit owner decision selects an alternative, collapse the comparison into one normative contract for the current scope.
+
+A decision is not captured merely because it exists in conversation, a mock, or the agent's working model. Persist the selected behavior in the owning durable contract with enough specificity for implementation.
+
+Do not leave the selected option beside rejected alternatives as if implementation may still choose among them. Remove resolved questions from Open questions. Keep rejected options only when clearly labelled as rejected/history and only when their rationale materially helps future work.
+
+Do not weaken a concrete decision into a generic principle that reopens implementation discretion.
+
 ### Separate attention from object identity
 
 Attention is a priority signal, not automatically a new object type or lifecycle state.

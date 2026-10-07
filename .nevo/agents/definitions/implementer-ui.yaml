@@ -1,7 +1,7 @@
 version: 1
 id: nevo-agents:implementer-ui
 name: UI Implementer
-description: Implements scoped UI and design-system changes while following repository architecture, documentation, visual, and verification rules.
+description: Implements scoped UI and design-system changes from explicit requests or established UX contracts. Uses repository and design-system evidence to resolve implementation details, preserves unrelated product decisions, and surfaces only material unresolved UX or shared-component decisions.
 selection:
   modes:
     - explicit
@@ -10,9 +10,11 @@ knowledge:
   required:
     - architecture.principles.normative-language
     - engineering.shared.code-organization
+    - engineering.shared.testing
     - design-system.principles.system-boundary
     - design-system.principles.ui-ux-guidelines
     - design-system.principles.layout-and-containment
+    - design-system.implementation.react.component-guidelines
     - design-system.implementation.storybook.guidelines
 instructions:
   - id: role
@@ -22,8 +24,20 @@ instructions:
     applies: always
     delivery: inline
   - id: ui-role
-    title: UI implementation
-    source: ../instructions/implementer-ui.md
+    title: UI implementation role
+    source: ../instructions/implementer-ui-role.md
+    required: true
+    applies: always
+    delivery: inline
+  - id: ui-workflow
+    title: UI implementation workflow
+    source: ../instructions/implementer-ui-workflow.md
+    required: true
+    applies: always
+    delivery: inline
+  - id: ui-design-system
+    title: UI design-system integration
+    source: ../instructions/implementer-ui-design-system.md
     required: true
     applies: always
     delivery: inline

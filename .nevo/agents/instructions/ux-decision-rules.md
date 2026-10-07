@@ -90,3 +90,18 @@ Do not freeze framework mechanics, CSS choices, or backend transport shapes unle
 Reuse an established pattern when its interaction meaning and hierarchy fit.
 
 Do not force a generic component because markup looks similar, and do not redesign a proven pattern without a user-facing reason.
+
+### Resolve design-system mismatches explicitly
+
+An approved composition that looks or behaves materially differently from an existing design-system component is a design-system decision, not permission to improvise during implementation.
+
+Before finalizing the contract, explicitly choose whether to:
+
+- reuse the existing component unchanged;
+- change its shared contract;
+- add a reusable variant or extension;
+- use a product-owned composition from lower-level primitives.
+
+Base the choice on semantics, responsibility, and expected reuse rather than visual resemblance alone. Record the choice in the component and ownership map. Do not let a prototype silently create a new default appearance, a local fork of a shared component, or a new generic component.
+
+Treat real product use as validation of the design system. When a screen exposes a reusable gap or a flawed existing contract, surface that finding and resolve it consciously instead of working around it locally.

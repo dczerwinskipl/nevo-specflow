@@ -213,7 +213,7 @@ export const Navigation: Story = {
 };
 
 export const MobileNavigation: Story = {
-  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: async ({ canvas, canvasElement, userEvent }) => {
     await userEvent.click(await canvas.findByRole('button', { name: 'Open navigation' }));
     const navigation = await waitFor(

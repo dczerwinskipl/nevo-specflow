@@ -211,6 +211,10 @@ type Story = StoryObj<typeof meta>;
 export const Current: Story = {
   tags: ['visual'],
   parameters: { chromatic: { disableSnapshot: false } },
+};
+
+export const CurrentContract: Story = {
+  tags: ['contract', '!autodocs'],
   play: async ({ canvas, canvasElement, userEvent }) => {
     await canvas.findByRole('heading', { name: 'Requires attention' });
     canvas.getByRole('radio', { name: 'Current' });
@@ -369,6 +373,11 @@ export const Archive: Story = {
   args: { state: { ...loaded, collection: 'archive', projection: createSpecsFixture('archive') } },
   tags: ['visual'],
   parameters: { chromatic: { disableSnapshot: false } },
+};
+
+export const ArchiveContract: Story = {
+  args: { state: { ...loaded, collection: 'archive', projection: createSpecsFixture('archive') } },
+  tags: ['contract', '!autodocs'],
   play: async ({ canvas, userEvent }) => {
     const search = canvas.getByRole('textbox', { name: 'Search specifications' });
     await userEvent.type(search, 'canonical');
@@ -382,6 +391,7 @@ export const Archive: Story = {
     canvas.getByText('Canonical Session, Turn and Work model');
   },
 };
+
 export const CollectionSwitch: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('radio', { name: 'Archive' }));
@@ -527,7 +537,7 @@ export const MissingKey: Story = {
       },
     },
   },
-  play: Current.play,
+  play: CurrentContract.play,
 };
 
 export const ArchiveLifecycle: Story = {
@@ -638,10 +648,8 @@ export const ReadOnlyPreview: Story = {
 export const Mobile: Story = {
   ...LongContent,
   tags: ['visual'],
-  parameters: {
-    viewport: { defaultViewport: 'mobile1' },
-    chromatic: { disableSnapshot: false },
-  },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  parameters: { chromatic: { disableSnapshot: false } },
 };
 
 export const SourceLifecycle: Story = {

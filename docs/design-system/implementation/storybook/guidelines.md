@@ -45,7 +45,7 @@ the package organization, such as `Foundations`, `Actions`, `Forms`, `Navigation
 - Component/feature-owned fixtures and test helpers stay with that component or vertical slice.
   Introduce a shared `test-utils/` area only when multiple independent slices genuinely reuse the
   helper.
-- Mobile variants spread the base story and add a viewport parameter.
+- Mobile variants use Storybook 10 `globals.viewport` (for example `mobile1`) so local Storybook, Chromium, and Chromatic render the same viewport.
 
 ## Story profiles
 
@@ -65,7 +65,9 @@ coverage without running every showcase variant in Playwright.
 
 Chromatic snapshots are opt-in at project level. A `visual` story must explicitly set
 `parameters.chromatic.disableSnapshot = false`. Keep the visual set intentionally small and prefer
-representative component states and composed product screens over exhaustive variant grids.
+representative component states and composed product screens over exhaustive variant grids. Visual
+stories are render baselines, not interaction tests: they must not carry assertion-bearing `play`
+functions. Put behavioral assertions in a paired `contract` story that reuses the same scenario.
 
 Capture, contract, and integration tags are excluded from the sidebar by default. They remain
 available locally through the Storybook tag filter.

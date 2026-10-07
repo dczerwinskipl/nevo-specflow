@@ -63,10 +63,8 @@ export const MobileOpen: Story = {
     minuteStep: 5,
     pickerPresentation: 'mobile',
   },
-  parameters: {
-    viewport: { defaultViewport: 'mobile2' },
-    layout: 'fullscreen',
-  },
+  globals: { viewport: { value: 'mobile2', isRotated: false } },
+  parameters: { layout: 'fullscreen' },
 };
 
 export const Invalid: Story = { args: { invalid: true } };

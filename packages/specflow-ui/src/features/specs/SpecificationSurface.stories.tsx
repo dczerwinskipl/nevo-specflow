@@ -37,6 +37,6 @@ export const Archive: Story = {
 };
 export const NarrowLongIdentity: Story = {
   args: { path: `/specs/${'long-identity-'.repeat(16)}` },
-  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
 export const Polish: Story = { args: { locale: 'pl' } };

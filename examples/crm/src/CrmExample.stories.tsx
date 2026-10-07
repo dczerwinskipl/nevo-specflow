@@ -62,7 +62,7 @@ export const CompactCustomerSelected: Story = {
 
 export const Mobile: Story = {
   render: () => <CrmExample width={390} />,
-  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
 };
 
 export const FigmaCapture: Story = {

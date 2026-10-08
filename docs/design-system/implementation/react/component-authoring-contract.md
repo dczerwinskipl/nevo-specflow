@@ -87,6 +87,17 @@ that they already own.
   its representation. Tokens, typography, and icons MAY instead be design resources.
 - Runtime-only/headless behavior MUST NOT invent a visual Figma component. Application screens and
   application-owned patterns are exported only from the owning application's profile.
+- Runtime icons accept a curated semantic `IconName` or **any directly imported Lucide icon component**
+  (`IconGlyph`). Prefer static Lucide imports for arbitrary product icons (for example,
+  `import { AlarmClock } from 'lucide-react'`, then `<Icon name={AlarmClock} />` or
+  `<Button leadingIcon={AlarmClock} />`). No icon-by-icon design-system code changes are
+  required. Avoid importing the entire Lucide namespace or dynamic icon loaders for static
+  product UI; tree-shaking should retain only imported glyphs.
+- The finite `iconNames` list remains **only** the curated set of exported Figma icon assets
+  and the matching Storybook design-capture matrix. It is not a runtime allowlist.
+  Direct Lucide components render with the same DS sizing/accessibility but have no Figma asset
+  reference until deliberately registered. Consumers needing standalone Lucide imports should
+  declare `lucide-react` as their own dependency.
 - Machine identity (`component`, variant stable ID, resource reference, slot key, or nested `key`)
   MUST remain independent from human-facing `displayName`/layer names. Renaming a Figma layer MUST
   NOT change reconciliation identity. Important materialized layers SHOULD have semantic names;

@@ -11,6 +11,7 @@ export const iconNames = [
   'chevron-right',
   'chevron-down',
   'check',
+  'save',
   'inbox',
   'folder',
   'archive',

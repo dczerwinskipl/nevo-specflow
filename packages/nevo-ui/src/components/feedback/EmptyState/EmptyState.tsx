@@ -1,11 +1,11 @@
 import { forwardRef, type HTMLAttributes, type ReactNode } from 'react';
 import { cn } from '../../../lib';
 import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
-import { Icon, type IconName } from '../../foundations/Icon';
+import { Icon, type IconGlyph } from '../../foundations/Icon';
 export interface EmptyStateProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
   title: ReactNode;
   description?: ReactNode;
-  icon?: IconName;
+  icon?: IconGlyph;
   actions?: ReactNode;
 }
 export const EmptyState = forwardRef<HTMLDivElement, EmptyStateProps>(function EmptyState(

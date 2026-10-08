@@ -6,7 +6,7 @@ import {
   fastColorTransitionClassName,
 } from '../../../design-system/interactionRecipes';
 import { cn } from '../../../lib';
-import { Icon, type IconName } from '../../foundations/Icon';
+import { Icon, type IconGlyph } from '../../foundations/Icon';
 
 export const iconButtonDefaults = { variant: 'ghost', size: 'md' } as const;
 
@@ -33,7 +33,7 @@ export interface IconButtonProps
     Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label' | 'children'>,
     VariantProps<typeof iconButtonVariants> {
   'aria-label': string;
-  icon: IconName;
+  icon: IconGlyph;
 }
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(

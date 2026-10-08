@@ -144,7 +144,10 @@ export const InteractionContract: Story = {
       () => document.querySelector('[role="dialog"]') === null,
       'The close action should close the Drawer from the keyboard.',
     );
-    assert(document.activeElement === trigger, 'Closing should restore focus to the trigger.');
+    await waitFor(
+      () => (document.activeElement === trigger ? trigger : null),
+      'Closing should restore focus to the trigger.',
+    );
   },
 };
 

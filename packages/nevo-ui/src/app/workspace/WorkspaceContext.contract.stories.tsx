@@ -1,208 +1,385 @@
-import { useRef } from 'react';
+import { useCallback, useState, useSyncExternalStore } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { AppShell } from '../shell/AppShell';
+import { AppWorkspace } from './AppWorkspace';
 import { WorkspaceHeader } from './WorkspaceHeader';
-import { AppWorkspaceProvider, useWorkspace } from './WorkspaceContext';
+import { defineSecondaryStack } from './SecondaryStack';
+import {
+  AppWorkspaceProvider,
+  useSecondaryLeaveGuard,
+  useSecondaryNavigation,
+  useSecondaryStack,
+} from './WorkspaceContext';
 
-function FocusRestorationFixture() {
-  const workspace = useWorkspace();
-  const resolveGuard = useRef<((allow: boolean) => void) | null>(null);
-
-  return (
-    <div className="grid max-w-sm gap-3 p-6">
-      <button
-        type="button"
-        onClick={() => {
-          void workspace.setSecondary(
-            { content: <div>Initial secondary</div> },
-            {
-              beforeClose: () =>
-                new Promise<boolean>((resolve) => {
-                  resolveGuard.current = resolve;
-                }),
-            },
-          );
-        }}
-      >
-        Open initial secondary
-      </button>
-      <button
-        type="button"
-        onClick={() => void workspace.setSecondary({ content: <div>Replacement secondary</div> })}
-      >
-        Replace secondary
-      </button>
-      <button type="button">Focus while guard is pending</button>
-      <button type="button" onClick={() => resolveGuard.current?.(true)}>
-        Allow replacement
-      </button>
-      <button type="button" onClick={() => void workspace.closeSecondary()}>
-        Close replacement
-      </button>
-      <div data-secondary-state>{workspace.secondary?.surface.content}</div>
-    </div>
-  );
+interface Pages {
+  first: Record<never, never>;
+  second: Record<never, never>;
+  guarded: Record<never, never>;
 }
 
-function StackFixture() {
-  const workspace = useWorkspace();
+function FirstScreen() {
+  const navigation = useSecondaryStack<Pages>();
   return (
-    <div className="grid max-w-sm gap-3 p-6">
-      <button
-        type="button"
-        onClick={() =>
-          void workspace.pushSecondary({
-            header: (
-              <WorkspaceHeader
-                actions={[
-                  {
-                    id: 'level-one-action',
-                    label: 'Level one action',
-                    icon: 'plus',
-                    primary: true,
-                    onPress: () => undefined,
-                  },
-                ]}
-                title="Layer one"
-              />
-            ),
-            content: <div>Stack level 1</div>,
-          })
-        }
-      >
-        Push level 1
-      </button>
-      <button
-        type="button"
-        onClick={() =>
-          void workspace.pushSecondary({
-            header: (
-              <WorkspaceHeader
-                actions={[
-                  {
-                    id: 'level-two-action',
-                    label: 'Level two action',
-                    icon: 'plus',
-                    primary: true,
-                    onPress: () => undefined,
-                  },
-                ]}
-                title="Layer two"
-              />
-            ),
-            content: <div>Stack level 2</div>,
-          })
-        }
-      >
+    <div>
+      <p>Stack level 1</p>
+      <button type="button" onClick={() => void navigation.navTo('second')}>
         Push level 2
       </button>
-      <button type="button" onClick={() => void workspace.popSecondary()}>
-        Pop level
+    </div>
+  );
+}
+function SecondScreen() {
+  return <p>Stack level 2</p>;
+}
+function GuardedScreen() {
+  const [allow, setAllow] = useState(false);
+  useSecondaryLeaveGuard(useCallback(() => allow, [allow]));
+  return (
+    <div>
+      <p>Protected editor</p>
+      <button type="button" onClick={() => setAllow(true)}>
+        Allow exit
       </button>
-      <button type="button" onClick={() => void workspace.closeSecondary()}>
-        Close stack
-      </button>
-      <output data-depth>{workspace.secondaryDepth}</output>
-      <div data-secondary-header>{workspace.secondary?.surface.header}</div>
-      <div data-secondary-state>{workspace.secondary?.surface.content}</div>
     </div>
   );
 }
 
-function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) throw new Error(message);
-}
+const demoStack = defineSecondaryStack<Record<never, never>, string, Pages>({
+  id: 'workspace-contract',
+  initial: 'first',
+  useData: () => ({ status: 'ready', data: 'contract' }),
+  screens: {
+    first: { title: 'Layer one', component: FirstScreen },
+    second: { title: 'Layer two', component: SecondScreen },
+    guarded: { title: 'Protected editor', component: GuardedScreen },
+  },
+});
+const guardedStack = defineSecondaryStack<
+  Record<never, never>,
+  string,
+  { guarded: Record<never, never> }
+>({
+  id: 'guarded-contract',
+  initial: 'guarded',
+  useData: () => ({ status: 'ready', data: 'contract' }),
+  screens: {
+    guarded: { title: 'Protected editor', component: GuardedScreen },
+  },
+});
 
-async function nextFrame() {
-  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+function ContractWorkspace() {
+  const navigation = useSecondaryNavigation();
+  return (
+    <AppShell navigation={<div>Navigation</div>} style={{ height: 600, width: 1280 }}>
+      <AppWorkspace split="primary">
+        <AppWorkspace.Primary header="Primary">
+          <div className="grid gap-3 p-5">
+            <button type="button" onClick={() => void navigation.open(demoStack, {})}>
+              Open first secondary
+            </button>
+            <button type="button" onClick={() => void navigation.open(guardedStack, {})}>
+              Open guarded secondary
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                void navigation.canLeaveScope().then((allowed) => {
+                  const output = document.querySelector('[data-route-leave-result]');
+                  if (output) output.textContent = allowed ? 'route allowed' : 'route blocked';
+                })
+              }
+            >
+              Check route leave
+            </button>
+            <output data-route-leave-result />
+          </div>
+        </AppWorkspace.Primary>
+        <AppWorkspace.Secondary header="Default">
+          <p>Default secondary content</p>
+        </AppWorkspace.Secondary>
+      </AppWorkspace>
+    </AppShell>
+  );
 }
 
 const meta = {
-  title: 'Nevo UI/Internal/Workspace/Focus restoration',
+  title: 'Nevo UI/Internal/Workspace/Navigation contracts',
   tags: ['contract', '!autodocs'],
-  parameters: {
-    a11y: { test: 'off' },
-  },
+  parameters: { a11y: { test: 'off' } },
 } satisfies Meta;
-
 export default meta;
 type Story = StoryObj;
 
-export const ReplacementPreservesInitiatingFocus: Story = {
+function assert(value: unknown, message: string): asserts value {
+  if (!value) throw new Error(message);
+}
+
+async function frame() {
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+}
+
+export const PushPopAndFocus: Story = {
   render: () => (
     <AppWorkspaceProvider>
-      <FocusRestorationFixture />
+      <ContractWorkspace />
     </AppWorkspaceProvider>
   ),
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(canvas.getByRole('button', { name: 'Open initial secondary' }));
-    assert(canvas.getByText('Initial secondary'), 'The initial secondary should be open.');
-
-    const replace = canvas.getByRole('button', { name: 'Replace secondary' });
-    await userEvent.click(replace);
-    await userEvent.click(canvas.getByRole('button', { name: 'Focus while guard is pending' }));
-    await userEvent.click(canvas.getByRole('button', { name: 'Allow replacement' }));
-
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      if (canvas.queryByText('Replacement secondary')) break;
-      await nextFrame();
-    }
-    assert(canvas.queryByText('Replacement secondary'), 'The replacement secondary should open.');
-
-    await userEvent.click(canvas.getByRole('button', { name: 'Close replacement' }));
-    await nextFrame();
+    await userEvent.click(canvas.getByRole('button', { name: 'Open first secondary' }));
+    assert(canvas.getByText('Stack level 1'), 'First page must appear');
+    const push = canvas.getByRole('button', { name: 'Push level 2' });
+    await userEvent.click(push);
+    assert(canvas.getByText('Stack level 2'), 'Second page must appear');
+    await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
+    await frame();
+    assert(canvas.getByText('Stack level 1'), 'Back must restore the previous page');
     assert(
-      document.activeElement === replace,
-      'Closing the replacement should restore focus to the control that initiated replacement.',
+      document.activeElement?.textContent === 'Push level 2',
+      'Back must restore focus to the initiating control',
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Close secondary content' }));
+    assert(canvas.getByText('Default secondary content'), 'Close must reveal default Secondary');
+  },
+};
+
+export const GuardBlocksCloseAndReplacement: Story = {
+  render: () => (
+    <AppWorkspaceProvider>
+      <ContractWorkspace />
+    </AppWorkspaceProvider>
+  ),
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Open guarded secondary' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Check route leave' }));
+    assert(canvas.getByText('route blocked'), 'An ordinary route change must respect the guard');
+    await userEvent.click(canvas.getByRole('button', { name: 'Close secondary content' }));
+    assert(
+      canvas.getByRole('heading', { name: 'Protected editor' }),
+      'The guard must prevent closing',
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Open first secondary' }));
+    assert(
+      canvas.getByRole('heading', { name: 'Protected editor' }),
+      'The guard must prevent replacement',
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Allow exit' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Check route leave' }));
+    assert(canvas.getByText('route allowed'), 'An allowed route may leave');
+    await userEvent.click(canvas.getByRole('button', { name: 'Close secondary content' }));
+    assert(canvas.getByText('Default secondary content'), 'A passing guard must allow closing');
+  },
+};
+
+interface EditableSnapshot {
+  status: 'ready' | 'error' | 'unavailable' | 'access-denied';
+  value: string;
+}
+function createEditableSource() {
+  let snapshot: EditableSnapshot = { status: 'ready', value: 'Original draft' };
+  const listeners = new Set<() => void>();
+  return {
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    getSnapshot: () => snapshot,
+    setAvailable: (available: boolean) => {
+      snapshot = { ...snapshot, status: available ? 'ready' : 'error' };
+      for (const listener of listeners) listener();
+    },
+    setStatus: (status: EditableSnapshot['status']) => {
+      snapshot = { ...snapshot, status };
+      for (const listener of listeners) listener();
+    },
+  };
+}
+type EditableSource = ReturnType<typeof createEditableSource>;
+interface EditorPages {
+  details: Record<never, never>;
+}
+let editorMountId = 0;
+
+function PersistentEditor() {
+  const [mount] = useState(() => ++editorMountId);
+  const [draft, setDraft] = useState('Original draft');
+  const [allow, setAllow] = useState(false);
+  useSecondaryLeaveGuard(useCallback(() => !draft.endsWith('!') || allow, [draft, allow]));
+  return (
+    <div>
+      <input aria-label="Draft" onChange={(e) => setDraft(e.target.value)} value={draft} />
+      <output data-editor-mount>{mount}</output>
+      <button type="button" onClick={() => setAllow(true)}>
+        Allow editor exit
+      </button>
+    </div>
+  );
+}
+function createEditableStack(source: EditableSource) {
+  function useEditorData() {
+    const data = useSyncExternalStore(source.subscribe, source.getSnapshot, source.getSnapshot);
+    return data.status === 'ready'
+      ? { status: 'ready' as const, data: data.value }
+      : { status: data.status, message: 'Editing data unavailable.' };
+  }
+  return defineSecondaryStack<Record<never, never>, string, EditorPages>({
+    id: 'editable-status-contract',
+    initial: 'details',
+    useData: useEditorData,
+    screens: {
+      details: {
+        title: 'Persistent editor',
+        component: PersistentEditor,
+        preserveOnDataLoss: true,
+      },
+    },
+  });
+}
+
+function EditableContractFixture() {
+  const [source] = useState(createEditableSource);
+  const [stack] = useState(() => createEditableStack(source));
+  const navigation = useSecondaryNavigation();
+  return (
+    <AppShell navigation={<div>Navigation</div>} style={{ height: 600, width: 1280 }}>
+      <AppWorkspace split="primary">
+        <AppWorkspace.Primary header="Primary">
+          <div className="grid gap-3 p-5">
+            <button type="button" onClick={() => void navigation.open(stack, {})}>
+              Open editor
+            </button>
+            <button type="button" onClick={() => source.setAvailable(false)}>
+              Make data unavailable
+            </button>
+            <button type="button" onClick={() => source.setAvailable(true)}>
+              Restore data
+            </button>
+            <button type="button" onClick={() => source.setStatus('access-denied')}>
+              Revoke access
+            </button>
+          </div>
+        </AppWorkspace.Primary>
+        <AppWorkspace.Secondary header="Default">
+          <p>Default secondary content</p>
+        </AppWorkspace.Secondary>
+      </AppWorkspace>
+    </AppShell>
+  );
+}
+
+export const EditorDraftSurvivesDataLoss: Story = {
+  render: () => (
+    <AppWorkspaceProvider>
+      <EditableContractFixture />
+    </AppWorkspaceProvider>
+  ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Open editor' }));
+    const original = canvasElement.querySelector('[data-editor-mount]')?.textContent;
+    assert(original, 'Editor must mount');
+    const draft = canvas.getByRole('textbox', { name: 'Draft' });
+    await userEvent.clear(draft);
+    await userEvent.type(draft, 'Changed!');
+    await userEvent.click(canvas.getByRole('button', { name: 'Make data unavailable' }));
+    assert(canvas.getByText('Editing data unavailable.'), 'Unavailable state must be visible');
+    await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
+    assert(
+      canvas.getByText('Editing data unavailable.'),
+      'Dirty hidden editor guard must still block Back',
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Restore data' }));
+    assert(
+      canvas.getByRole<HTMLInputElement>('textbox', { name: 'Draft' }).value === 'Changed!',
+      'Draft must survive',
+    );
+    assert(
+      canvasElement.querySelector('[data-editor-mount]')?.textContent === original,
+      'Editor must not remount',
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Allow editor exit' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
+    assert(canvas.getByText('Default secondary content'), 'Allowed exit closes the flow');
+  },
+};
+
+export const RevokedAccessDiscardsEditor: Story = {
+  render: () => (
+    <AppWorkspaceProvider>
+      <EditableContractFixture />
+    </AppWorkspaceProvider>
+  ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Open editor' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Revoke access' }));
+    assert(
+      canvas.getByRole('alert').textContent?.includes('Editing data unavailable.'),
+      'Denied state must be explained',
+    );
+    assert(
+      !canvasElement.querySelector('input[aria-label="Draft"]'),
+      'Denied data must unmount the editor',
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
+    assert(
+      canvas.getByText('Default secondary content'),
+      'Revocation disposes previous leave guard',
     );
   },
 };
 
-export const PushAndPopRemainNavigationState: Story = {
+let sharedHostCount = 0;
+interface SharedHostPages {
+  details: Record<never, never>;
+}
+const sharedHostStack = defineSecondaryStack<
+  Record<never, never>,
+  { instance: number },
+  SharedHostPages
+>({
+  id: 'one-shared-data-host',
+  initial: 'details',
+  useData: () => {
+    const [instance] = useState(() => ++sharedHostCount);
+    return { status: 'ready', data: { instance } };
+  },
+  screens: {
+    details: {
+      title: 'Shared data',
+      header: ({ data }) => <WorkspaceHeader headingLevel={2} title={`Host ${data.instance}`} />,
+      component: ({ data }) => <p data-host-content>{`Host ${data.instance}`}</p>,
+    },
+  },
+});
+function SharedHostWorkspace() {
+  const navigation = useSecondaryNavigation();
+  return (
+    <AppShell navigation={<div>Navigation</div>} style={{ height: 600, width: 1280 }}>
+      <AppWorkspace split="primary">
+        <AppWorkspace.Primary header="Primary">
+          <button type="button" onClick={() => void navigation.open(sharedHostStack, {})}>
+            Open shared host
+          </button>
+        </AppWorkspace.Primary>
+        <AppWorkspace.Secondary header="Default">Default activity</AppWorkspace.Secondary>
+      </AppWorkspace>
+    </AppShell>
+  );
+}
+export const HeaderAndBodyShareOneDataHost: Story = {
   render: () => (
     <AppWorkspaceProvider>
-      <StackFixture />
+      <SharedHostWorkspace />
     </AppWorkspaceProvider>
   ),
   play: async ({ canvas, canvasElement, userEvent }) => {
-    await userEvent.click(canvas.getByRole('button', { name: 'Push level 1' }));
-    const pushLevelTwo = canvas.getByRole('button', { name: 'Push level 2' });
-    await userEvent.click(pushLevelTwo);
-    assert(canvas.getByText('Stack level 2'), 'The top stack entry should be authoritative.');
-    assert(canvas.getByRole('heading', { name: 'Layer two' }), 'Layer two should own its header.');
+    await userEvent.click(canvas.getByRole('button', { name: 'Open shared host' }));
+    const body = canvasElement.querySelector('[data-host-content]');
+    assert(body, 'Shared data content should be mounted');
+    const header = canvas.getByRole('heading', { name: /^Host \d+$/ });
     assert(
-      canvas.getByRole('button', { name: 'Level two action' }),
-      'Layer two should own its action set.',
-    );
-    assert(
-      canvasElement.querySelector('[data-depth]')?.textContent === '2',
-      'The stack should contain two entries.',
-    );
-
-    await userEvent.click(canvas.getByRole('button', { name: 'Pop level' }));
-    await nextFrame();
-    assert(canvas.getByText('Stack level 1'), 'Back should reveal the previous stack entry.');
-    assert(
-      canvas.getByRole('heading', { name: 'Layer one' }),
-      'Back should restore layer one header.',
-    );
-    assert(
-      canvas.getByRole('button', { name: 'Level one action' }),
-      'Back should restore the previous action set.',
-    );
-    assert(
-      canvasElement.querySelector('[data-depth]')?.textContent === '1',
-      'Popping should remove exactly one entry.',
-    );
-    assert(
-      document.activeElement === pushLevelTwo,
-      'Back should restore focus to the control that pushed the popped layer.',
-    );
-
-    await userEvent.click(canvas.getByRole('button', { name: 'Close stack' }));
-    await nextFrame();
-    assert(
-      canvasElement.querySelector('[data-depth]')?.textContent === '0',
-      'Closing should clear the local stack.',
+      body.textContent === header.textContent,
+      'Header and content must share the same data instance',
     );
   },
 };

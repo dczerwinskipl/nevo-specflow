@@ -10,7 +10,8 @@ import {
   AppWorkspaceHeader,
   AppWorkspaceSlots,
 } from './AppWorkspace';
-import { AppWorkspaceProvider, useWorkspace } from './WorkspaceContext';
+import { AppWorkspaceProvider, useSecondaryNavigation } from './WorkspaceContext';
+import { defineSecondaryStack } from './SecondaryStack';
 
 function Region({ label }: { label: string }) {
   return (
@@ -396,8 +397,28 @@ export const NarrowSurfaceContract: Story = {
   },
 };
 
+const defaultDetailStack = defineSecondaryStack<
+  Record<never, never>,
+  string,
+  { detail: Record<never, never> }
+>({
+  id: 'default-secondary-detail',
+  initial: 'detail',
+  useData: () => ({ status: 'ready', data: 'Runtime task detail' }),
+  screens: {
+    detail: {
+      title: 'Task detail',
+      component: ({ data }) => (
+        <div className="w-[320px] p-4">
+          <Typography variant="body-sm">{data}</Typography>
+        </div>
+      ),
+    },
+  },
+});
+
 function DismissibleDefaultSecondaryContent() {
-  const workspace = useWorkspace();
+  const navigation = useSecondaryNavigation();
   const [contextOpen, setContextOpen] = useState(true);
 
   return (
@@ -418,16 +439,7 @@ function DismissibleDefaultSecondaryContent() {
             <Typography variant="body-sm">Default context content</Typography>
             <Button
               variant="secondary"
-              onClick={() =>
-                void workspace.pushSecondary({
-                  header: 'Task detail',
-                  content: (
-                    <div className="w-[320px] p-4">
-                      <Typography variant="body-sm">Runtime task detail</Typography>
-                    </div>
-                  ),
-                })
-              }
+              onClick={() => void navigation.open(defaultDetailStack, {})}
             >
               Open task detail
             </Button>

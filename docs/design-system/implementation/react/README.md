@@ -18,3 +18,4 @@ React implementation conventions for Nevo SpecFlow UI. Visual/design rules are i
 | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | [Component guidelines](component-guidelines.md)                 | Small focused components, composition over configuration, feature-local ownership, hooks, state placement, testing.    |
 | [Component authoring contract](component-authoring-contract.md) | Public API, refs, state, fields, localization, styling, accessibility, stories, tests, Figma, and the artifact matrix. |
+| [Secondary navigation](secondary-navigation.md)                 | In-memory contextual screen stack, live data, Back/Close, guard and canonical React usage.                             |

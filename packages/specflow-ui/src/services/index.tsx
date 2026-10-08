@@ -8,29 +8,44 @@ import {
   createRuntimeSpecsOverviewApi,
   type SpecsOverviewApi,
 } from '../features/specs/overview/api';
+import type { SpecsOverviewSource } from '../features/specs/overview/model';
+import { defaultSpecsSource } from '../features/specs/overview/source';
 import {
   createFixtureSpecificationApi,
-  createRuntimeSpecificationApi,
+  createUnavailableSpecificationApi,
   type SpecificationApi,
 } from '../features/specs/api';
 
-export interface SpecFlowServices {
+export interface SpecFlowAppServices {
   readonly http: HttpClient;
   readonly authApi: AuthApi;
   readonly authStore: AuthStore;
+  readonly auth: AuthStore;
   readonly specsOverviewApi: SpecsOverviewApi;
+  readonly specsSource: SpecsOverviewSource;
+  readonly specs: SpecsOverviewSource;
   readonly specificationApi: SpecificationApi;
 }
+
+export type SpecFlowServices = SpecFlowAppServices;
 
 export interface SpecFlowServicesOptions {
   readonly http?: HttpClient;
   readonly authApi?: AuthApi;
   readonly authStore?: AuthStore;
   readonly specsOverviewApi?: SpecsOverviewApi;
+  readonly specsSource?: SpecsOverviewSource;
   readonly specificationApi?: SpecificationApi;
 }
 
-export function createSpecFlowServices(options: SpecFlowServicesOptions = {}): SpecFlowServices {
+export function createSpecFlowAppServices(
+  optionsOrClient: SpecFlowServicesOptions | HttpClient = {},
+): SpecFlowAppServices {
+  const options: SpecFlowServicesOptions =
+    'get' in optionsOrClient && 'post' in optionsOrClient
+      ? { http: optionsOrClient }
+      : optionsOrClient;
+
   const http = options.http ?? createHttpClient();
   const authApi = options.authApi ?? createBrowserAuthApi(http);
   const authStore = options.authStore ?? createAuthStore(authApi);
@@ -41,20 +56,27 @@ export function createSpecFlowServices(options: SpecFlowServicesOptions = {}): S
     options.specsOverviewApi ??
     (useSampleData ? createFixtureSpecsOverviewApi() : createRuntimeSpecsOverviewApi(http));
 
+  const specsSource = options.specsSource ?? defaultSpecsSource(specsOverviewApi);
+
   const specificationApi =
     options.specificationApi ??
-    (useSampleData ? createFixtureSpecificationApi() : createRuntimeSpecificationApi(http));
+    (useSampleData ? createFixtureSpecificationApi() : createUnavailableSpecificationApi());
 
   return {
     http,
     authApi,
     authStore,
+    auth: authStore,
     specsOverviewApi,
+    specsSource,
+    specs: specsSource,
     specificationApi,
   };
 }
 
-export const defaultSpecFlowServices: SpecFlowServices = createSpecFlowServices();
+export const createSpecFlowServices = createSpecFlowAppServices;
+
+export const defaultSpecFlowServices: SpecFlowAppServices = createSpecFlowAppServices();
 
 const SpecFlowServicesContext = createContext<SpecFlowServices>(defaultSpecFlowServices);
 

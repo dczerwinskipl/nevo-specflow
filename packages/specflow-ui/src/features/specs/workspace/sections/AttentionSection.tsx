@@ -1,0 +1,93 @@
+import { Button, Icon, Typography } from '@nevo/ui';
+import { useTranslation } from 'react-i18next';
+import type { AttentionItem } from '../model';
+import { useWorkspaceRuntime } from '../WorkspaceContext';
+
+export interface AttentionSectionProps {
+  readonly items: readonly AttentionItem[];
+}
+
+export function AttentionSection({ items }: AttentionSectionProps) {
+  const { t } = useTranslation();
+  const runtime = useWorkspaceRuntime();
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <section
+      aria-labelledby="attention-heading"
+      className="rounded-control border-l-2 border-status-attention bg-surface-subtle p-4"
+    >
+      <div className="flex items-center gap-2 text-status-attention">
+        <span className="flex size-4 shrink-0 items-center justify-center">
+          <Icon name="triangle-alert" size="sm" />
+        </span>
+        <Typography
+          as="h2"
+          variant="title-sm"
+          id="attention-heading"
+          className="font-semibold text-status-attention"
+        >
+          {t('specification.requiresAttention')}{' '}
+          <span className="text-body-xs font-normal text-content-muted">{items.length}</span>
+        </Typography>
+      </div>
+
+      <div className="mt-3 divide-y divide-border-subtle">
+        {items.map((item) => (
+          <div
+            key={item.id}
+            className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div className="flex items-start gap-2.5 min-w-0">
+              <span className="flex size-4 shrink-0 items-center justify-center text-status-attention mt-1">
+                {item.kind === 'task' ? (
+                  <Icon name="triangle-alert" size="sm" />
+                ) : item.kind === 'session' ? (
+                  <Icon name="chat" size="sm" />
+                ) : (
+                  <Icon name="branch" size="sm" />
+                )}
+              </span>
+              <div className="min-w-0 flex-1">
+                <Typography
+                  as="h3"
+                  variant="title-sm"
+                  className="min-w-0 text-content-primary [overflow-wrap:anywhere]"
+                >
+                  {item.title}
+                </Typography>
+                <Typography
+                  as="div"
+                  variant="body-sm"
+                  className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-2 text-content-muted"
+                >
+                  <span className="font-medium text-status-attention">{item.reason}</span>
+                </Typography>
+              </div>
+            </div>
+
+            <Button
+              variant="secondary"
+              size="sm"
+              className="self-start sm:self-center shrink-0"
+              onClick={() => {
+                if (item.kind === 'task' && item.targetId) {
+                  runtime.previewTask(item.targetId);
+                } else if (item.kind === 'session' && item.targetId) {
+                  runtime.openSession(item.targetId);
+                } else if (item.kind === 'git') {
+                  runtime.openRepository();
+                }
+              }}
+            >
+              {item.actionLabel}
+            </Button>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}

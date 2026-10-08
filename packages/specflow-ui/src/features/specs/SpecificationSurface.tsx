@@ -58,7 +58,10 @@ function SpecificationSurfaceConnected({
   onDiff,
 }: SpecificationSurfaceProps) {
   const { t } = useTranslation();
-  const { data, isLoading, isError, errorStatus, refetch } = useSpecificationWorkspace(specId);
+  const { data, isLoading, isError, errorStatus, isMissingCapability, refetch } =
+    useSpecificationWorkspace(specId);
+
+  const isDomainNotFound = errorStatus === 404 && !isMissingCapability;
 
   if (isError) {
     return (
@@ -110,14 +113,14 @@ function SpecificationSurfaceConnected({
                       variant="title-sm"
                       className="font-semibold text-content-primary"
                     >
-                      {errorStatus === 404
+                      {isDomainNotFound
                         ? t('specification.notFoundTitle')
                         : t('specification.unavailableTitle')}
                     </Typography>
                   </div>
 
                   <Typography variant="body-sm" className="text-content-secondary">
-                    {errorStatus === 404
+                    {isDomainNotFound
                       ? t('specification.notFoundDescription', { id: specId })
                       : t('specification.unavailableDescription', { id: specId })}
                   </Typography>

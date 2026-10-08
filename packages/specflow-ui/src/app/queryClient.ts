@@ -9,6 +9,7 @@ export function createSpecFlowQueryClient(): QueryClient {
       queries: {
         staleTime: 1000 * 30, // 30 seconds
         retry: false,
+        retryOnMount: false,
         refetchOnWindowFocus: false,
       },
       mutations: {

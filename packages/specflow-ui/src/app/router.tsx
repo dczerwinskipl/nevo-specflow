@@ -18,15 +18,17 @@ import { SpecsOverview } from '../features/specs/overview/SpecsOverview';
 import { useSpecsOverview } from '../features/specs/overview/useSpecsOverview';
 import { SpecsAccessDenied } from '../features/specs/overview/SpecsAccessDenied';
 import { SpecificationSurface } from '../features/specs/SpecificationSurface';
-import type { SpecFlowServices } from '../services';
+import { useSpecificationWorkspace } from '../features/specs/useSpecificationWorkspace';
+import { defaultSpecFlowServices } from '../services';
 import type { SpecificationWorkspaceView } from '../features/specs/workspace/model';
-import { defaultSpecsSource } from '../features/specs/overview/source';
 import type { SpecsOverviewSource } from '../features/specs/overview/model';
 import { createSpecFlowAppServices, type SpecFlowAppServices } from './dependencies';
 
-export type SpecFlowRouterContext = SpecFlowAppServices & {
-  readonly services?: SpecFlowServices;
-};
+export interface SpecFlowRouterContext {
+  readonly services: SpecFlowAppServices;
+  readonly auth: AuthStore;
+  readonly specs: SpecsOverviewSource;
+}
 
 export type AppAccessDecision =
   | { readonly kind: 'allow' }
@@ -149,29 +151,37 @@ const routeTree = rootRoute.addChildren([
 
 export function createSpecFlowRouter(
   history?: RouterHistory,
-  servicesOrAuth: SpecFlowAppServices | SpecFlowServices | AuthStore = createSpecFlowAppServices(),
+  servicesOrAuth:
+    | SpecFlowAppServices
+    | AuthStore
+    | {
+        readonly auth: AuthStore;
+        readonly specs?: SpecsOverviewSource;
+      } = createSpecFlowAppServices(),
   specs?: SpecsOverviewSource,
 ) {
-  let auth: AuthStore;
-  let specsSource: SpecsOverviewSource;
-  let services: SpecFlowServices | undefined;
+  let services: SpecFlowAppServices;
 
-  if ('http' in servicesOrAuth && 'specsOverviewApi' in servicesOrAuth) {
+  if ('http' in servicesOrAuth && 'specificationApi' in servicesOrAuth) {
     services = servicesOrAuth;
-    auth = services.authStore;
-    specsSource = defaultSpecsSource(services.specsOverviewApi);
-  } else if ('specs' in servicesOrAuth && 'auth' in servicesOrAuth) {
-    auth = servicesOrAuth.auth;
-    specsSource = servicesOrAuth.specs;
+  } else if ('auth' in servicesOrAuth) {
+    services = createSpecFlowAppServices({
+      authStore: servicesOrAuth.auth,
+      specsSource: servicesOrAuth.specs,
+    });
+  } else if ('ensureSession' in servicesOrAuth) {
+    services = createSpecFlowAppServices({
+      authStore: servicesOrAuth,
+      specsSource: specs,
+    });
   } else {
-    auth = servicesOrAuth;
-    specsSource = specs ?? defaultSpecsSource();
+    services = createSpecFlowAppServices();
   }
 
   const context: SpecFlowRouterContext = {
-    auth,
-    specs: specsSource,
-    ...(services ? { services } : {}),
+    services,
+    auth: services.authStore,
+    specs: services.specsSource,
   };
 
   return createRouter({
@@ -231,7 +241,33 @@ function SpecsRouteScreen() {
 function SpecificationRouteScreen() {
   const { specId } = specificationRoute.useParams();
   const { collection, view, task } = specificationRoute.useSearch();
+  const { services, auth } = specificationRoute.useRouteContext();
   const navigate = specificationRoute.useNavigate();
+  const { errorStatus } = useSpecificationWorkspace(specId, services.specificationApi);
+
+  useEffect(() => {
+    if (errorStatus === 403) {
+      void navigate({ to: '/access-denied', replace: true });
+    } else if (errorStatus === 401) {
+      void auth.refresh().then(
+        () =>
+          navigate({
+            to: '/login',
+            search: { returnTo: `/specs/${encodeURIComponent(specId)}?collection=${collection}` },
+            replace: true,
+          }),
+        () =>
+          navigate({
+            to: '/runtime-unavailable',
+            search: { returnTo: `/specs/${encodeURIComponent(specId)}?collection=${collection}` },
+            replace: true,
+          }),
+      );
+    }
+  }, [errorStatus, auth, navigate, specId, collection]);
+
+  if (errorStatus === 401 || errorStatus === 403) return null;
+
   return (
     <SpecificationSurface
       specId={specId}
@@ -251,7 +287,7 @@ function SpecificationRouteScreen() {
   );
 }
 
-export const router = createSpecFlowRouter();
+export const router = createSpecFlowRouter(undefined, defaultSpecFlowServices);
 
 export async function resolveAppAccess(
   auth: AuthStore,

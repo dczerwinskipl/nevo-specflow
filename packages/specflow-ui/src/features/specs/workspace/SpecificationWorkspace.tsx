@@ -20,6 +20,7 @@ import { ActivityHistory } from './ActivityHistory';
 import { TaskPreview } from './TaskPreview';
 import { ExecuteModal } from './ExecuteModal';
 import { NewConversationModal } from './NewConversationModal';
+import { WorkspaceProvider, type WorkspaceRuntime } from './WorkspaceContext';
 
 export interface SpecificationWorkspaceProps {
   readonly specId: string;
@@ -58,11 +59,14 @@ export function SpecificationWorkspace({
   const [fullTaskId, setFullTaskId] = useState<string | null>(initialTask ?? null);
   const [previewTaskId, setPreviewTaskId] = useState<string | null>(null);
   const [explicitHistory, setExplicitHistory] = useState(false);
-  const [selectedTasks, setSelectedTasks] = useState<ReadonlySet<string>>(new Set());
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [docOrigin, setDocOrigin] = useState<'work' | 'documents'>('documents');
   const [changesSource, setChangesSource] = useState<'base' | 'uncommitted' | 'mr'>('base');
-  const [activeModal, setActiveModal] = useState<'execute' | 'conversation' | null>(null);
+
+  // Explicit boolean dialog flags instead of union string modal state
+  const [executeDialogOpen, setExecuteDialogOpen] = useState(false);
+  const [conversationDialogOpen, setConversationDialogOpen] = useState(false);
+  const [tasksToExecute, setTasksToExecute] = useState<readonly string[]>([]);
 
   useEffect(() => {
     if (initialView) {
@@ -80,18 +84,6 @@ export function SpecificationWorkspace({
   const handleViewChange = (view: SpecificationWorkspaceView) => {
     setCurrentView(view);
     onViewChange?.(view);
-  };
-
-  const handleSelectTask = (taskId: string, selected: boolean) => {
-    setSelectedTasks((prev) => {
-      const next = new Set(prev);
-      if (selected) {
-        next.add(taskId);
-      } else {
-        next.delete(taskId);
-      }
-      return next;
-    });
   };
 
   const handlePreviewTask = (taskId: string) => {
@@ -116,10 +108,32 @@ export function SpecificationWorkspace({
     handleViewChange('documents');
   };
 
-  const handleOpenChanges = (source: 'base' | 'uncommitted' | 'mr') => {
+  const handleOpenChanges = (source: 'base' | 'uncommitted' | 'mr' = 'base') => {
     setChangesSource(source);
     handleViewChange('changes');
   };
+
+  const runtime: WorkspaceRuntime = useMemo(
+    () => ({
+      previewTask: handlePreviewTask,
+      openTask: handleOpenFullTask,
+      openSession: (id) => onOpenSession?.(id),
+      openSessionsView: () => handleViewChange('sessions'),
+      openDoc: (docId, origin = 'work') => handleOpenDoc(docId, origin),
+      openDocumentsView: () => handleViewChange('documents'),
+      openRepository: () => handleViewChange('repository'),
+      openChanges: handleOpenChanges,
+      openHistory: () => setExplicitHistory(true),
+      startConversation: (_agent) => setConversationDialogOpen(true),
+      executeTasks: (taskIds, _agent) => {
+        setTasksToExecute(taskIds);
+        setExecuteDialogOpen(true);
+      },
+      refresh: () => onRefresh?.(),
+      fullTaskHref: (taskId) => `#/specs/${specId}?task=${taskId}`,
+    }),
+    [specId, onOpenSession, onRefresh],
+  );
 
   const previewTask = useMemo(() => {
     if (!previewTaskId) return null;
@@ -135,7 +149,7 @@ export function SpecificationWorkspace({
     currentView === 'task' && fullTask ? `Task / ${fullTask.id}` : t('specification.title');
 
   return (
-    <>
+    <WorkspaceProvider runtime={runtime}>
       <AppWorkspace
         split="primary"
         labels={{
@@ -213,22 +227,7 @@ export function SpecificationWorkspace({
 
                 {/* View Content */}
                 {currentView === 'work' ? (
-                  <WorkView
-                    data={data}
-                    selectedTasks={selectedTasks}
-                    onSelectTask={handleSelectTask}
-                    onPreviewTask={handlePreviewTask}
-                    onOpenSession={(id) => onOpenSession?.(id)}
-                    onOpenSessionsView={() => handleViewChange('sessions')}
-                    onOpenDoc={(docId) => handleOpenDoc(docId, 'work')}
-                    onOpenDocumentsView={() => handleViewChange('documents')}
-                    onOpenChanges={handleOpenChanges}
-                    onOpenRepository={() => handleViewChange('repository')}
-                    onOpenHistory={() => setExplicitHistory(true)}
-                    onNewConversation={() => setActiveModal('conversation')}
-                    onExecuteSelected={() => setActiveModal('execute')}
-                    fullTaskHref={(taskId) => `#/specs/${specId}?task=${taskId}`}
-                  />
+                  <WorkView data={data} />
                 ) : currentView === 'documents' ? (
                   <DocumentsView
                     documents={data.documents}
@@ -246,7 +245,7 @@ export function SpecificationWorkspace({
                   <SessionsView
                     sessions={data.sessions}
                     onOpenSession={(id) => onOpenSession?.(id)}
-                    onNewConversation={() => setActiveModal('conversation')}
+                    onNewConversation={() => setConversationDialogOpen(true)}
                   />
                 ) : currentView === 'changes' ? (
                   <ChangesView
@@ -308,26 +307,26 @@ export function SpecificationWorkspace({
         </AppWorkspace.Secondary>
       </AppWorkspace>
 
-      {/* Modals */}
+      {/* Explicit Dialogs */}
       <ExecuteModal
-        open={activeModal === 'execute'}
-        selectedTasks={Array.from(selectedTasks)}
+        open={executeDialogOpen}
+        selectedTasks={Array.from(tasksToExecute)}
         executionReadiness={data.executionReadiness}
-        onClose={() => setActiveModal(null)}
+        onClose={() => setExecuteDialogOpen(false)}
         onExecute={(agent) => {
-          setActiveModal(null);
-          void onExecute?.(agent, Array.from(selectedTasks));
+          setExecuteDialogOpen(false);
+          void onExecute?.(agent, Array.from(tasksToExecute));
         }}
       />
 
       <NewConversationModal
-        open={activeModal === 'conversation'}
-        onClose={() => setActiveModal(null)}
+        open={conversationDialogOpen}
+        onClose={() => setConversationDialogOpen(false)}
         onStart={(agent) => {
-          setActiveModal(null);
+          setConversationDialogOpen(false);
           void onNewConversation?.(agent);
         }}
       />
-    </>
+    </WorkspaceProvider>
   );
 }

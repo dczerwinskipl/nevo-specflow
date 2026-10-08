@@ -15,6 +15,7 @@ export interface UseSpecificationWorkspaceResult {
   readonly status: 'pending' | 'error' | 'success';
   readonly error: unknown;
   readonly errorStatus: number | undefined;
+  readonly isMissingCapability: boolean;
   readonly refetch: () => Promise<unknown>;
 }
 
@@ -31,6 +32,23 @@ export function useSpecificationWorkspace(
     enabled: Boolean(specId),
   });
 
+  const isMissingCapability = Boolean(
+    query.error &&
+    typeof query.error === 'object' &&
+    'integrationState' in query.error &&
+    (query.error as { integrationState?: unknown }).integrationState === 'api-needed',
+  );
+
+  const errorStatus =
+    query.error && isHttpClientError(query.error)
+      ? query.error.status
+      : query.error &&
+          typeof query.error === 'object' &&
+          'status' in query.error &&
+          typeof (query.error as { status?: unknown }).status === 'number'
+        ? (query.error as { status: number }).status
+        : undefined;
+
   return {
     data: query.data,
     isLoading: query.isLoading,
@@ -39,7 +57,8 @@ export function useSpecificationWorkspace(
     isError: query.isError,
     status: query.status,
     error: query.error,
-    errorStatus: query.error && isHttpClientError(query.error) ? query.error.status : undefined,
+    errorStatus,
+    isMissingCapability,
     refetch: query.refetch,
   };
 }

@@ -4,12 +4,12 @@ import { RouterProvider } from '@tanstack/react-router';
 import { defaultQueryClient } from './app/queryClient';
 import { router } from './app/router';
 import { LocalizationProvider } from './i18n';
-import { SpecFlowServicesProvider } from './services';
+import { defaultSpecFlowServices, SpecFlowServicesProvider } from './services';
 
 export function App() {
   return (
     <QueryClientProvider client={defaultQueryClient}>
-      <SpecFlowServicesProvider>
+      <SpecFlowServicesProvider services={defaultSpecFlowServices}>
         <LocalizationProvider>
           <RouterProvider router={router} />
         </LocalizationProvider>

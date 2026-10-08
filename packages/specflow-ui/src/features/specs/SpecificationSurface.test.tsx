@@ -5,7 +5,11 @@ import { appI18n, LocalizationProvider } from '../../i18n';
 import { createSpecFlowQueryClient } from '../../app/queryClient';
 import { createSpecFlowServices, SpecFlowServicesProvider } from '../../services';
 import { SpecificationSurface } from './SpecificationSurface';
-import { createFixtureSpecificationApi, type SpecificationApi } from './api';
+import {
+  createFixtureSpecificationApi,
+  SpecificationWorkspaceUnavailableError,
+  type SpecificationApi,
+} from './api';
 import { specificationKeys } from './queries';
 import { createSpecificationWorkspaceFixture } from './workspace/fixtures';
 
@@ -51,12 +55,65 @@ describe('SpecificationSurface', () => {
     expect(markup).toContain('Ładowanie specyfikacji spec-missing');
   });
 
-  it('shows honest unavailable state when specification API fails / is not yet backed', () => {
-    const markup = renderWithProviders(<SpecificationSurface specId="spec-missing" />);
+  it('shows honest unavailable state when specification API fails / capability is missing', () => {
+    const queryClient = createSpecFlowQueryClient();
+    const services = createSpecFlowServices();
+    const query = queryClient.getQueryCache().build(queryClient, {
+      queryKey: specificationKeys.detail('spec-missing'),
+    });
+    query.setState({
+      status: 'error',
+      error: new SpecificationWorkspaceUnavailableError('spec-missing'),
+      fetchStatus: 'idle',
+      errorUpdateCount: 1,
+    });
 
-    // Initial query state shows loading without fabricated domain state
-    expect(markup).not.toContain('Odświeżanie sesji i zachowanie kontekstu użytkownika');
-    expect(markup).toContain('Ładowanie specyfikacji spec-missing');
+    const markup = renderToStaticMarkup(
+      <QueryClientProvider client={queryClient}>
+        <SpecFlowServicesProvider services={services}>
+          <LocalizationProvider>
+            <AppShell navigation={<div>Nav</div>}>
+              <SpecificationSurface specId="spec-missing" />
+            </AppShell>
+          </LocalizationProvider>
+        </SpecFlowServicesProvider>
+      </QueryClientProvider>,
+    );
+
+    // Shows honest unavailable state, not false 404 "not found"
+    expect(markup).toContain('Specyfikacja jest niedostępna');
+    expect(markup).not.toContain('Nie znaleziono specyfikacji');
+  });
+
+  it('renders genuine not found only when API returns 404 domain error', () => {
+    const queryClient = createSpecFlowQueryClient();
+    const domainNotFoundError = new Error('Not found');
+    (domainNotFoundError as unknown as Record<string, unknown>).status = 404;
+
+    const services = createSpecFlowServices();
+    const query = queryClient.getQueryCache().build(queryClient, {
+      queryKey: specificationKeys.detail('spec-404'),
+    });
+    query.setState({
+      status: 'error',
+      error: domainNotFoundError,
+      fetchStatus: 'idle',
+      errorUpdateCount: 1,
+    });
+
+    const markup = renderToStaticMarkup(
+      <QueryClientProvider client={queryClient}>
+        <SpecFlowServicesProvider services={services}>
+          <LocalizationProvider>
+            <AppShell navigation={<div>Nav</div>}>
+              <SpecificationSurface specId="spec-404" />
+            </AppShell>
+          </LocalizationProvider>
+        </SpecFlowServicesProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(markup).toContain('Nie znaleziono specyfikacji');
   });
 
   it('allows fixture API injection explicitly in test/fixture environments', async () => {

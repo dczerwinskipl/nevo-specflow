@@ -1,0 +1,31 @@
+name: Temporary Secondary Agent Skill Export
+
+on:
+  push:
+    branches:
+      - feature/workspace-secondary-stack-navigation
+    paths:
+      - .github/workflows/secondary-agent-skill-export.yml
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - name: Rebuild agent projections
+        run: pnpm agents:build
+      - name: Export updated projections
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          for (const path of [
+            '.agents/skills/nevo-agents-implementer-ui/SKILL.md',
+            '.claude/skills/nevo-agents-implementer-ui/SKILL.md',
+          ]) {
+            console.log('SECONDARY_AGENT_SKILL:' + path + ':' + readFileSync(path).toString('base64'));
+          }
+          NODE

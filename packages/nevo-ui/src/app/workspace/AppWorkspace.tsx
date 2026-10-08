@@ -84,7 +84,6 @@ interface WorkspaceSecondaryPresentation {
   surface: AppWorkspaceSurface;
   key: string;
   canStack: boolean;
-  returnsToDefault?: boolean;
   transition?: WorkspaceTransition;
   onClose?: () => void | Promise<unknown>;
   onBack?: () => void | Promise<unknown>;
@@ -490,10 +489,9 @@ function AppWorkspaceRoot({ children, labels: labelsProp, split = 'balanced' }: 
         surface: runtimeSecondary.surface,
         key: `runtime-${runtimeSecondary.instanceKey}`,
         canStack: true,
-        returnsToDefault: defaultSecondaryOpen,
         transition: workspace?.transition,
-        onClose: defaultSecondaryOpen ? undefined : workspace?.closeSecondary,
-        onBack: workspace?.canGoBack ? workspace.popSecondary : workspace?.closeSecondary,
+        onClose: workspace?.close,
+        onBack: workspace?.back,
       }
     : defaultSecondaryOpen && defaultSecondary
       ? {
@@ -534,7 +532,7 @@ function AppWorkspaceRoot({ children, labels: labelsProp, split = 'balanced' }: 
     secondaryPresentation?.onBack &&
     (state.mode === 'stacked' ||
       workspace?.canGoBack ||
-      (state.mode === 'split' && secondaryPresentation.returnsToDefault)) ? (
+      (state.mode === 'split' && secondaryPresentation.canStack)) ? (
       <BackAction label={labels.backToPrimary} onBack={secondaryPresentation.onBack} />
     ) : undefined;
   const secondaryCloseAction = secondaryPresentation?.onClose ? (

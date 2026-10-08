@@ -1,0 +1,41 @@
+name: Temporary Secondary Hardening Export
+
+on:
+  push:
+    branches:
+      - feature/workspace-secondary-stack-navigation
+    paths:
+      - .github/workflows/secondary-hardening-export.yml
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Format changed code and regenerate docs
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+          const files = execFileSync('git', ['diff', '--name-only', 'origin/main...HEAD'], { encoding: 'utf8' }).trim().split('\n')
+            .filter(file => /\.(ts|tsx|md)$/.test(file));
+          if (files.length) execFileSync('pnpm', ['exec', 'prettier', '--write', ...files], { stdio: 'inherit' });
+          NODE
+          pnpm docs:check --write
+          pnpm agents:build
+      - name: Export changed files
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          import { execFileSync } from 'node:child_process';
+          const files = execFileSync('git', ['diff', '--name-only'], { encoding: 'utf8' }).trim().split('\n').filter(Boolean);
+          for (const path of files) {
+            console.log('SECONDARY_HARDENED:' + path + ':' + readFileSync(path).toString('base64'));
+          }
+          console.log('SECONDARY_HARDENED_COUNT:' + files.length);
+          NODE

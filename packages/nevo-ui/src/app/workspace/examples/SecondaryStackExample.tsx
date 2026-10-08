@@ -1,6 +1,6 @@
 import { useState, useSyncExternalStore } from 'react';
 import { AppContent, AppWorkspace, AppWorkspaceProvider, Button, WorkspaceHeader, useSecondaryNavigation } from '../../index';
-import { AppShell } from '../shell/AppShell';
+import { AppShell } from '../../shell/AppShell';
 import { createDemoStore, type DemoStore } from './DemoStore';
 import { createDemoStacks, type DemoStacks } from './createDemoStacks';
 

@@ -6,7 +6,7 @@ export interface TaskPreviewProps {
   readonly task: TaskItem;
   readonly groups: readonly TaskGroup[];
   readonly specKey: string;
-  readonly onClose: () => void;
+  readonly onClose?: () => void;
   readonly onOpenFull: (taskId: string) => void;
 }
 
@@ -35,13 +35,15 @@ export function TaskPreview({ task, groups, specKey, onClose, onOpenFull }: Task
           </Typography>
         </div>
 
-        <IconButton
-          icon="close"
-          size="sm"
-          variant="ghost"
-          onClick={onClose}
-          aria-label={t('specification.closeTaskPreview')}
-        />
+        {onClose ? (
+          <IconButton
+            icon="close"
+            size="sm"
+            variant="ghost"
+            onClick={onClose}
+            aria-label={t('specification.closeTaskPreview')}
+          />
+        ) : null}
       </div>
 
       <Typography variant="body-sm" className="text-content-secondary">

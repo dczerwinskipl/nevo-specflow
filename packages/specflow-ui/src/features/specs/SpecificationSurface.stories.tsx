@@ -24,6 +24,53 @@ export const Working: Story = {
   },
 };
 
+export const TaskPreviewFlow: Story = {
+  args: { path: '/specs/admission?collection=current' },
+  play: async ({ canvas, userEvent }) => {
+    await canvas.findByText('Specification ID: admission', {}, { timeout: 10000 });
+
+    const taskElement = await canvas.findByText(
+      /Obsługa odświeżania uprawnień w długotrwałej sesji użytkownika/i,
+    );
+    await userEvent.click(taskElement);
+
+    const taskMatches = await canvas.findAllByText('TASK-03', {}, { timeout: 5000 });
+    if (taskMatches.length < 2) throw new Error('Expected TASK-03 in both row and preview');
+
+    const closeBtn = await canvas.findByRole('button', { name: /Close secondary content/i });
+    await userEvent.click(closeBtn);
+
+    const historyElements = await canvas.findAllByText(/Activity history/i, {}, { timeout: 5000 });
+    if (historyElements.length === 0) throw new Error('Expected Activity history after closing');
+  },
+};
+
+export const FullTaskPromotionFlow: Story = {
+  args: { path: '/specs/admission?collection=current' },
+  play: async ({ canvas, userEvent }) => {
+    await canvas.findByText('Specification ID: admission', {}, { timeout: 10000 });
+
+    const taskElement = await canvas.findByText(
+      /Obsługa odświeżania uprawnień w długotrwałej sesji użytkownika/i,
+    );
+    await userEvent.click(taskElement);
+
+    const fullTaskButtons = await canvas.findAllByText(/Full task view/i);
+    if (fullTaskButtons.length === 0)
+      throw new Error('Expected Full task view action in task preview');
+    await userEvent.click(fullTaskButtons[0]);
+
+    await canvas.findByRole('heading', { name: /Task \/ TASK-03/i }, { timeout: 5000 });
+
+    const backBtn = await canvas.findByRole('button', {
+      name: /Back to specification|Wróć do specyfikacji/i,
+    });
+    await userEvent.click(backBtn);
+
+    await canvas.findByText('Specification ID: admission', {}, { timeout: 5000 });
+  },
+};
+
 export const Current: Story = {
   play: async ({ canvas }) => {
     await canvas.findByText('Specification ID: admission', {}, { timeout: 5000 });

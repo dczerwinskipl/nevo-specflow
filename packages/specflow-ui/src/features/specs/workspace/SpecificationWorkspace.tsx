@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import {
   Alert,
   AppContent,
@@ -10,7 +10,7 @@ import {
   Icon,
   Link,
   Typography,
-  useWorkspace,
+  useSecondaryNavigation,
   WorkspaceHeader,
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
@@ -22,10 +22,15 @@ import { ChangesView } from './ChangesView';
 import { RepositoryView } from './RepositoryView';
 import { FullTaskView } from './FullTaskView';
 import { ActivityHistory } from './ActivityHistory';
-import { TaskPreview } from './TaskPreview';
 import { ExecuteModal } from './ExecuteModal';
 import { NewConversationModal } from './NewConversationModal';
 import { WorkspaceProvider, type WorkspaceRuntime } from './WorkspaceContext';
+import {
+  SpecificationSecondaryDataContext,
+  taskPreviewStack,
+  historyStack,
+  type SpecificationSecondaryContextValue,
+} from './specificationSecondaryStack';
 
 export interface SpecificationWorkspaceProps {
   readonly specId: string;
@@ -51,7 +56,7 @@ export interface SpecificationWorkspaceProps {
 
 export function SpecificationWorkspace(props: SpecificationWorkspaceProps) {
   return (
-    <AppWorkspaceProvider>
+    <AppWorkspaceProvider scopeKey={props.specId}>
       <SpecificationWorkspaceInner {...props} />
     </AppWorkspaceProvider>
   );
@@ -74,7 +79,7 @@ function SpecificationWorkspaceInner({
   onDiff,
 }: SpecificationWorkspaceProps) {
   const { t } = useTranslation();
-  const workspace = useWorkspace();
+  const secondaryNavigation = useSecondaryNavigation();
 
   const [currentView, setCurrentView] = useState<SpecificationWorkspaceView>(
     initialView === 'task' || initialTask ? 'task' : initialView,
@@ -82,8 +87,6 @@ function SpecificationWorkspaceInner({
   const [fullTaskId, setFullTaskId] = useState<string | null>(
     initialView === 'task' || initialTask ? (initialTask ?? null) : null,
   );
-  const [previewTaskId, setPreviewTaskId] = useState<string | null>(null);
-  const [explicitHistory, setExplicitHistory] = useState(false);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [docOrigin, setDocOrigin] = useState<'work' | 'documents'>('documents');
   const [changesSource, setChangesSource] = useState<'base' | 'uncommitted' | 'mr'>('base');
@@ -103,140 +106,83 @@ function SpecificationWorkspaceInner({
     }
   }, [initialView, initialTask]);
 
-  const workspaceRef = useRef(workspace);
-  workspaceRef.current = workspace;
+  const navigateToView = useCallback(
+    (nextView: SpecificationWorkspaceView, nextTaskId: string | null = null) => {
+      setCurrentView(nextView);
+      setFullTaskId(nextTaskId);
+      if (onNavigateView) {
+        onNavigateView({ view: nextView, taskId: nextTaskId });
+      } else {
+        onViewChange?.(nextView);
+        onTaskChange?.(nextTaskId);
+      }
+    },
+    [onNavigateView, onViewChange, onTaskChange],
+  );
 
-  const prevSpecIdRef = useRef(specId);
-  useEffect(() => {
-    if (prevSpecIdRef.current !== specId) {
-      prevSpecIdRef.current = specId;
-      setPreviewTaskId(null);
-      setExplicitHistory(false);
-      void workspaceRef.current.closeSecondary();
-    }
-  }, [specId]);
+  const handleViewChange = useCallback(
+    (view: SpecificationWorkspaceView) => {
+      navigateToView(view, null);
+    },
+    [navigateToView],
+  );
 
-  const navigateToView = (
-    nextView: SpecificationWorkspaceView,
-    nextTaskId: string | null = null,
-  ) => {
-    setCurrentView(nextView);
-    setFullTaskId(nextTaskId);
-    if (onNavigateView) {
-      onNavigateView({ view: nextView, taskId: nextTaskId });
-    } else {
-      onViewChange?.(nextView);
-      onTaskChange?.(nextTaskId);
-    }
-  };
+  const handlePreviewTask = useCallback(
+    (taskId: string) => {
+      void secondaryNavigation.open(taskPreviewStack, { specId, taskId });
+    },
+    [secondaryNavigation, specId],
+  );
 
-  const handleViewChange = (view: SpecificationWorkspaceView) => {
-    navigateToView(view, null);
-  };
+  const handleOpenHistory = useCallback(() => {
+    void secondaryNavigation.open(historyStack, { specId });
+  }, [secondaryNavigation, specId]);
 
-  const handlePreviewTask = (taskId: string) => {
-    setPreviewTaskId(taskId);
-    setExplicitHistory(false);
-  };
+  const handleOpenFullTask = useCallback(
+    (taskId: string) => {
+      void secondaryNavigation.close();
+      navigateToView('task', taskId);
+    },
+    [secondaryNavigation, navigateToView],
+  );
 
-  const handleOpenFullTask = (taskId: string) => {
-    navigateToView('task', taskId);
-    setPreviewTaskId(null);
-    void workspace.closeSecondary();
-  };
-
-  const handleBackFromFullTask = () => {
+  const handleBackFromFullTask = useCallback(() => {
     navigateToView('work', null);
-  };
+  }, [navigateToView]);
 
-  const handleOpenDoc = (docId: string, origin: 'work' | 'documents' = 'work') => {
-    setActiveDocId(docId);
-    setDocOrigin(origin);
-    navigateToView('documents', null);
-  };
+  const handleOpenDoc = useCallback(
+    (docId: string, origin: 'work' | 'documents' = 'work') => {
+      setActiveDocId(docId);
+      setDocOrigin(origin);
+      navigateToView('documents', null);
+    },
+    [navigateToView],
+  );
 
-  const handleOpenChanges = (source: 'base' | 'uncommitted' | 'mr' = 'base') => {
-    setChangesSource(source);
-    navigateToView('changes', null);
-  };
+  const handleOpenChanges = useCallback(
+    (source: 'base' | 'uncommitted' | 'mr' = 'base') => {
+      setChangesSource(source);
+      navigateToView('changes', null);
+    },
+    [navigateToView],
+  );
 
   const fullTask = useMemo(() => {
     if (!fullTaskId) return null;
     return data.taskGroups.flatMap((g) => g.tasks).find((t) => t.id === fullTaskId) ?? null;
   }, [data.taskGroups, fullTaskId]);
 
-  const previewTask = useMemo(() => {
-    if (!previewTaskId) return null;
-    return data.taskGroups.flatMap((g) => g.tasks).find((t) => t.id === previewTaskId) ?? null;
-  }, [data.taskGroups, previewTaskId]);
-
-  // Synchronize runtime secondary with previewTask and explicitHistory
-  useEffect(() => {
-    if (previewTask) {
-      void workspaceRef.current.setSecondary(
-        {
-          header: <WorkspaceHeader as="h2" title={t('specification.taskPreviewTitle')} />,
-          content: (
-            <AppContent>
-              <TaskPreview
-                task={previewTask}
-                groups={data.taskGroups}
-                specKey={specId}
-                onClose={() => {
-                  setPreviewTaskId(null);
-                  void workspaceRef.current.closeSecondary();
-                }}
-                onOpenFull={(taskId) => {
-                  setPreviewTaskId(null);
-                  void workspaceRef.current.closeSecondary();
-                  handleOpenFullTask(taskId);
-                }}
-              />
-            </AppContent>
-          ),
-        },
-        {
-          onClose: () => {
-            setPreviewTaskId(null);
-          },
-        },
-      );
-    } else if (explicitHistory) {
-      void workspaceRef.current.setSecondary(
-        {
-          header: <WorkspaceHeader as="h2" title={t('specification.activityHistory')} />,
-          content: (
-            <AppContent>
-              <ActivityHistory
-                events={data.activityEvents}
-                isExplicit={true}
-                onClose={() => {
-                  setExplicitHistory(false);
-                  void workspaceRef.current.closeSecondary();
-                }}
-                onOpenTask={handlePreviewTask}
-                onOpenSession={onOpenSession}
-                onOpenDoc={(docId) => handleOpenDoc(docId, 'work')}
-              />
-            </AppContent>
-          ),
-        },
-        {
-          onClose: () => {
-            setExplicitHistory(false);
-          },
-        },
-      );
-    }
-  }, [
-    previewTask,
-    explicitHistory,
-    specId,
-    t,
-    data.taskGroups,
-    data.activityEvents,
-    onOpenSession,
-  ]);
+  const secondaryContextValue: SpecificationSecondaryContextValue = useMemo(
+    () => ({
+      specId,
+      data,
+      openFullTask: handleOpenFullTask,
+      openSession: onOpenSession,
+      openDoc: (docId) => handleOpenDoc(docId, 'work'),
+      previewTask: handlePreviewTask,
+    }),
+    [specId, data, handleOpenFullTask, onOpenSession, handleOpenDoc, handlePreviewTask],
+  );
 
   const runtime: WorkspaceRuntime = useMemo(
     () => ({
@@ -248,7 +194,7 @@ function SpecificationWorkspaceInner({
       openDocumentsView: () => handleViewChange('documents'),
       openRepository: () => handleViewChange('repository'),
       openChanges: handleOpenChanges,
-      openHistory: () => setExplicitHistory(true),
+      openHistory: handleOpenHistory,
       startConversation: (_agent) => setConversationDialogOpen(true),
       executeTasks: (taskIds, _agent) => {
         setTasksToExecute(taskIds);
@@ -268,232 +214,221 @@ function SpecificationWorkspaceInner({
         return `/specs/${encodeURIComponent(specId)}?${params.toString()}`;
       },
     }),
-    [specId, overviewHref, onOpenSession, onRefresh, onExecute, onNewConversation],
+    [
+      handlePreviewTask,
+      handleOpenFullTask,
+      onOpenSession,
+      handleViewChange,
+      handleOpenDoc,
+      handleOpenChanges,
+      handleOpenHistory,
+      onRefresh,
+      onExecute,
+      onNewConversation,
+      overviewHref,
+      specId,
+    ],
   );
 
   const headerTitle =
     currentView === 'task' && fullTask ? `Task / ${fullTask.id}` : t('specification.title');
 
   return (
-    <WorkspaceProvider runtime={runtime}>
-      <AppWorkspace
-        split="primary"
-        labels={{
-          backToPrimary: t('navigation.back'),
-          closeSecondary: t('navigation.closeSecondary'),
-          openNavigation: t('navigation.open'),
-        }}
-      >
-        <AppWorkspace.Primary
-          header={
-            <WorkspaceHeader
-              title={headerTitle}
-              actions={
-                onRefresh
-                  ? [
-                      {
-                        id: 'refresh',
-                        icon: 'refresh',
-                        label: t('specifications.refresh'),
-                        onPress: () => {
-                          void onRefresh();
-                        },
-                      },
-                    ]
-                  : []
-              }
-            />
-          }
+    <SpecificationSecondaryDataContext.Provider value={secondaryContextValue}>
+      <WorkspaceProvider runtime={runtime}>
+        <AppWorkspace
+          split="primary"
+          labels={{
+            backToPrimary: t('navigation.back'),
+            closeSecondary: t('navigation.closeSecondary'),
+            openNavigation: t('navigation.open'),
+          }}
         >
-          <AppContent className="w-content-xwide max-w-full">
-            <AppWorkspaceBody className="py-6">
-              <AppContentContainer align="start" size="full" className="grid gap-6">
-                {/* Eyebrow: Spec / ${specId} with back link */}
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex items-center gap-1.5 text-body-sm text-content-muted">
-                    {overviewHref ? (
-                      <Link
-                        href={overviewHref}
-                        className="w-fit"
-                        onClick={(event) => {
-                          if (
-                            onBack &&
-                            event.button === 0 &&
-                            !event.metaKey &&
-                            !event.ctrlKey &&
-                            !event.shiftKey &&
-                            !event.altKey
-                          ) {
-                            event.preventDefault();
-                            onBack();
-                          }
-                        }}
-                      >
-                        <span className="inline-flex items-center gap-1.5 font-medium text-content-secondary hover:text-content-primary">
-                          <Icon name="arrow-right" size="sm" className="rotate-180" />
+          <AppWorkspace.Primary
+            header={
+              <WorkspaceHeader
+                title={headerTitle}
+                actions={
+                  onRefresh
+                    ? [
+                        {
+                          id: 'refresh',
+                          icon: 'refresh',
+                          label: t('specifications.refresh'),
+                          onPress: () => {
+                            void onRefresh();
+                          },
+                        },
+                      ]
+                    : []
+                }
+              />
+            }
+          >
+            <AppContent className="w-content-xwide max-w-full">
+              <AppWorkspaceBody className="py-6">
+                <AppContentContainer align="start" size="full" className="grid gap-6">
+                  {/* Eyebrow: Spec / ${specId} with back link */}
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-1.5 text-body-sm text-content-muted">
+                      {overviewHref ? (
+                        <Link
+                          href={overviewHref}
+                          className="w-fit"
+                          onClick={(event) => {
+                            if (
+                              onBack &&
+                              event.button === 0 &&
+                              !event.metaKey &&
+                              !event.ctrlKey &&
+                              !event.shiftKey &&
+                              !event.altKey
+                            ) {
+                              event.preventDefault();
+                              onBack();
+                            }
+                          }}
+                        >
+                          <span className="inline-flex items-center gap-1.5 font-medium text-content-secondary hover:text-content-primary">
+                            <Icon name="arrow-right" size="sm" className="rotate-180" />
+                            <span data-spec-back-label>
+                              {t('specification.backToSpecifications')}
+                            </span>
+                          </span>
+                        </Link>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 font-medium text-content-secondary">
                           <span data-spec-back-label>
                             {t('specification.backToSpecifications')}
                           </span>
                         </span>
-                      </Link>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 font-medium text-content-secondary">
-                        <span data-spec-back-label>{t('specification.backToSpecifications')}</span>
+                      )}
+
+                      <span aria-hidden="true" className="text-content-muted">
+                        /
                       </span>
-                    )}
-
-                    <span aria-hidden="true" className="text-content-muted">
-                      /
-                    </span>
-                    <span data-spec-identity className="font-mono text-body-xs text-content-muted">
-                      {t('specification.identity', { id: specId })}
-                    </span>
+                      <span
+                        data-spec-identity
+                        className="font-mono text-body-xs text-content-muted"
+                      >
+                        {t('specification.identity', { id: specId })}
+                      </span>
+                    </div>
                   </div>
-                </div>
 
-                {/* View Content */}
-                {currentView === 'work' ? (
-                  <WorkView data={data} />
-                ) : currentView === 'documents' ? (
-                  <DocumentsView
-                    documents={data.documents}
-                    activeDocId={activeDocId}
-                    docOrigin={docOrigin}
-                    onSelectDoc={(id) => setActiveDocId(id)}
-                    onBackToOrigin={() => {
-                      if (docOrigin === 'work') {
-                        handleViewChange('work');
-                      }
-                      setActiveDocId(null);
-                    }}
-                  />
-                ) : currentView === 'sessions' ? (
-                  <SessionsView
-                    sessions={data.sessions}
-                    onOpenSession={onOpenSession}
-                    onNewConversation={
-                      onNewConversation ? () => setConversationDialogOpen(true) : undefined
-                    }
-                  />
-                ) : currentView === 'changes' ? (
-                  <ChangesView
-                    currentSource={changesSource}
-                    changes={data.changes}
-                    onSourceChange={setChangesSource}
-                    onDiff={onDiff}
-                  />
-                ) : currentView === 'repository' ? (
-                  <RepositoryView
-                    repoContext={data.repoContext}
-                    onGoToChanges={() => navigateToView('changes', null)}
-                  />
-                ) : currentView === 'task' ? (
-                  fullTask ? (
-                    <FullTaskView
-                      task={fullTask}
-                      specKey={specId}
-                      onBack={handleBackFromFullTask}
-                      onOpenSession={onOpenSession}
+                  {/* View Content */}
+                  {currentView === 'work' ? (
+                    <WorkView data={data} />
+                  ) : currentView === 'documents' ? (
+                    <DocumentsView
+                      documents={data.documents}
+                      activeDocId={activeDocId}
+                      docOrigin={docOrigin}
+                      onSelectDoc={(id) => setActiveDocId(id)}
+                      onBackToOrigin={() => {
+                        if (docOrigin === 'work') {
+                          handleViewChange('work');
+                        }
+                        setActiveDocId(null);
+                      }}
                     />
-                  ) : (
-                    <Alert
-                      role="alert"
-                      tone="attention"
-                      title={t('specification.taskNotFoundTitle')}
-                      className="max-w-content-standard"
-                    >
-                      <Typography variant="body-sm" className="text-content-secondary">
-                        {t('specification.taskNotFoundDescription', {
-                          taskId: fullTaskId ?? '',
-                        })}
-                      </Typography>
-                      <div className="mt-3 flex items-center gap-3">
-                        <Button variant="secondary" size="sm" onClick={handleBackFromFullTask}>
-                          {t('specification.backToTasks')}
-                        </Button>
-                      </div>
-                    </Alert>
-                  )
-                ) : null}
-              </AppContentContainer>
-            </AppWorkspaceBody>
-          </AppContent>
-        </AppWorkspace.Primary>
+                  ) : currentView === 'sessions' ? (
+                    <SessionsView
+                      sessions={data.sessions}
+                      onOpenSession={onOpenSession}
+                      onNewConversation={
+                        onNewConversation ? () => setConversationDialogOpen(true) : undefined
+                      }
+                    />
+                  ) : currentView === 'changes' ? (
+                    <ChangesView
+                      currentSource={changesSource}
+                      changes={data.changes}
+                      onSourceChange={setChangesSource}
+                      onDiff={onDiff}
+                    />
+                  ) : currentView === 'repository' ? (
+                    <RepositoryView
+                      repoContext={data.repoContext}
+                      onGoToChanges={() => navigateToView('changes', null)}
+                    />
+                  ) : currentView === 'task' ? (
+                    fullTask ? (
+                      <FullTaskView
+                        task={fullTask}
+                        specKey={specId}
+                        onBack={handleBackFromFullTask}
+                        onOpenSession={onOpenSession}
+                      />
+                    ) : (
+                      <Alert
+                        role="alert"
+                        tone="attention"
+                        title={t('specification.taskNotFoundTitle')}
+                        className="max-w-content-standard"
+                      >
+                        <Typography variant="body-sm" className="text-content-secondary">
+                          {t('specification.taskNotFoundDescription', {
+                            taskId: fullTaskId ?? '',
+                          })}
+                        </Typography>
+                        <div className="mt-3 flex items-center gap-3">
+                          <Button variant="secondary" size="sm" onClick={handleBackFromFullTask}>
+                            {t('specification.backToTasks')}
+                          </Button>
+                        </div>
+                      </Alert>
+                    )
+                  ) : null}
+                </AppContentContainer>
+              </AppWorkspaceBody>
+            </AppContent>
+          </AppWorkspace.Primary>
 
-        {/* Secondary Panel: Defaults to Activity History, replaced by Task Preview when activated */}
-        <AppWorkspace.Secondary
-          header={
-            <WorkspaceHeader
-              as="h2"
-              title={
-                previewTask
-                  ? t('specification.taskPreviewTitle')
-                  : t('specification.activityHistory')
-              }
-            />
-          }
-        >
-          <AppContent>
-            {previewTask ? (
-              <TaskPreview
-                task={previewTask}
-                groups={data.taskGroups}
-                specKey={specId}
-                onClose={() => {
-                  setPreviewTaskId(null);
-                  void workspace.closeSecondary();
-                }}
-                onOpenFull={(taskId) => {
-                  setPreviewTaskId(null);
-                  void workspace.closeSecondary();
-                  handleOpenFullTask(taskId);
-                }}
-              />
-            ) : (
+          {/* Declarative base Secondary: Activity History shown on split-capable layouts */}
+          <AppWorkspace.Secondary
+            header={<WorkspaceHeader as="h2" title={t('specification.activityHistory')} />}
+          >
+            <AppContent>
               <ActivityHistory
                 events={data.activityEvents}
-                isExplicit={explicitHistory}
-                onClose={() => {
-                  setExplicitHistory(false);
-                  void workspace.closeSecondary();
-                }}
                 onOpenTask={handlePreviewTask}
                 onOpenSession={onOpenSession}
                 onOpenDoc={(docId) => handleOpenDoc(docId, 'work')}
               />
-            )}
-          </AppContent>
-        </AppWorkspace.Secondary>
-      </AppWorkspace>
+            </AppContent>
+          </AppWorkspace.Secondary>
+        </AppWorkspace>
 
-      {/* Explicit Dialogs */}
-      <ExecuteModal
-        open={executeDialogOpen}
-        selectedTasks={Array.from(tasksToExecute)}
-        executionReadiness={data.executionReadiness}
-        onClose={() => setExecuteDialogOpen(false)}
-        onExecute={
-          onExecute
-            ? (agent) => {
-                setExecuteDialogOpen(false);
-                void onExecute(agent, Array.from(tasksToExecute));
-              }
-            : undefined
-        }
-      />
+        {/* Explicit Dialogs */}
+        <ExecuteModal
+          open={executeDialogOpen}
+          selectedTasks={Array.from(tasksToExecute)}
+          executionReadiness={data.executionReadiness}
+          onClose={() => setExecuteDialogOpen(false)}
+          onExecute={
+            onExecute
+              ? (agent) => {
+                  setExecuteDialogOpen(false);
+                  void onExecute(agent, Array.from(tasksToExecute));
+                }
+              : undefined
+          }
+        />
 
-      <NewConversationModal
-        open={conversationDialogOpen}
-        onClose={() => setConversationDialogOpen(false)}
-        onStart={
-          onNewConversation
-            ? (agent) => {
-                setConversationDialogOpen(false);
-                void onNewConversation(agent);
-              }
-            : undefined
-        }
-      />
-    </WorkspaceProvider>
+        <NewConversationModal
+          open={conversationDialogOpen}
+          onClose={() => setConversationDialogOpen(false)}
+          onStart={
+            onNewConversation
+              ? (agent) => {
+                  setConversationDialogOpen(false);
+                  void onNewConversation(agent);
+                }
+              : undefined
+          }
+        />
+      </WorkspaceProvider>
+    </SpecificationSecondaryDataContext.Provider>
   );
 }

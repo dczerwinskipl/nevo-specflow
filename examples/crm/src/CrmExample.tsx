@@ -16,6 +16,7 @@ import {
   AppWorkspaceProvider,
   APP_NAVIGATION_INLINE_PADDING,
   WorkspaceHeader,
+  WorkspaceHeaderIdentity,
   useAppNavigation,
   useSecondaryNavigation,
   useSecondaryStack,
@@ -23,8 +24,6 @@ import {
   defineSecondaryStack,
   type SecondaryData,
   type SecondaryScreenProps,
-  type WorkspaceHeaderAction,
-  type WorkspaceHeaderProps,
 } from '@nevo/ui';
 import {
   Badge,
@@ -340,19 +339,9 @@ function CustomerEditor({
   );
 }
 
-function CustomerDetailsHeader({
-  customer,
-  actions,
-  labels,
-}: {
-  customer: Customer;
-  actions?: readonly WorkspaceHeaderAction[];
-  labels?: WorkspaceHeaderProps['labels'];
-}) {
+function CustomerDetailsHeader({ customer }: { customer: Customer }) {
   return (
     <WorkspaceHeader
-      actions={actions}
-      labels={labels}
       headingLevel={2}
       status={
         <Badge className="shrink-0" tone={statusTone[customer.status]}>
@@ -446,13 +435,18 @@ interface CustomerSidebarData {
 
 function CustomerSidebarHeader({
   data,
-  actions,
-  labels,
-}: SecondaryScreenProps<CustomerSidebarData, CustomerPages['editor']> & {
-  actions: readonly WorkspaceHeaderAction[];
-  labels?: WorkspaceHeaderProps['labels'];
-}) {
-  return <CustomerDetailsHeader customer={data.customer} actions={actions} labels={labels} />;
+}: SecondaryScreenProps<CustomerSidebarData, CustomerPages['editor']>) {
+  return (
+    <WorkspaceHeaderIdentity
+      headingLevel={2}
+      status={
+        <Badge className="shrink-0" tone={statusTone[data.customer.status]}>
+          {data.customer.status}
+        </Badge>
+      }
+      title={data.customer.company}
+    />
+  );
 }
 
 function CustomerEditorScreen({

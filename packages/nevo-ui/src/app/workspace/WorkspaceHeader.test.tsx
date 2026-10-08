@@ -44,7 +44,6 @@ describe('WorkspaceHeader actions', () => {
     expect((markup.match(/aria-label="New customer"/g) ?? []).length).toBe(1);
   });
 
-
   it('selects at most one non-danger primary and preserves disabled semantics', () => {
     const resolved = resolveWorkspaceHeaderActions(actions);
 

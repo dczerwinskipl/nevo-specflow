@@ -155,8 +155,10 @@ function DirectPrimaryAction({ action }: { action: WorkspaceHeaderAction }) {
   );
 }
 
-export interface WorkspaceHeaderIdentityProps
-  extends Pick<WorkspaceHeaderProps, 'icon' | 'status' | 'subtitle' | 'title' | 'headingLevel'> {}
+export interface WorkspaceHeaderIdentityProps extends Pick<
+  WorkspaceHeaderProps,
+  'icon' | 'status' | 'subtitle' | 'title' | 'headingLevel'
+> {}
 
 /** Product-owned heading content; the workspace owns its surrounding action chrome. */
 export function WorkspaceHeaderIdentity({

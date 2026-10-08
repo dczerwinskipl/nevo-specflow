@@ -245,7 +245,9 @@ export function CompactWorkspaceActions({
     : getWorkspaceHeaderLabels(header);
   return (
     <WorkspaceActionMenu
-      actions={resolveWorkspaceHeaderActions(actions ?? getWorkspaceHeaderActions(header), true).overflow}
+      actions={
+        resolveWorkspaceHeaderActions(actions ?? getWorkspaceHeaderActions(header), true).overflow
+      }
       className={className}
       label={labels.moreActions}
       navigationAction={navigationAction}

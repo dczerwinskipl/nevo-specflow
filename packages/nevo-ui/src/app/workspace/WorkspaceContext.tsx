@@ -130,9 +130,10 @@ function ScreenDataHost({ entry, children }: PropsWithChildren<{ entry: Secondar
   const result = entry.definition.useData(entry.rootParams);
   const page = entry.definition.screens[entry.page];
   if (!page) throw new Error(`Unknown Secondary screen: ${entry.page}`);
-  const actions = result.status === 'ready'
-    ? (page.actions?.({ data: result.data, params: entry.params }) ?? [])
-    : [];
+  const actions =
+    result.status === 'ready'
+      ? (page.actions?.({ data: result.data, params: entry.params }) ?? [])
+      : [];
   return (
     <ScreenDataContext.Provider value={{ result, actions, actionLabels: page.actionLabels }}>
       {children}
@@ -267,10 +268,19 @@ function HeaderOutlet({ entry }: { entry: SecondaryEntry }) {
   const page = entry.definition.screens[entry.page];
   if (!page) throw new Error(`Unknown Secondary screen: ${entry.page}`);
   if (result.status !== 'ready' || !page.header) {
-    return <WorkspaceHeader headingLevel={2} title={page.title} actions={actions} labels={actionLabels} />;
+    return (
+      <WorkspaceHeader
+        headingLevel={2}
+        title={page.title}
+        actions={actions}
+        labels={actionLabels}
+      />
+    );
   }
   const Header = page.header;
-  return <Header data={result.data} params={entry.params} actions={actions} labels={actionLabels} />;
+  return (
+    <Header data={result.data} params={entry.params} actions={actions} labels={actionLabels} />
+  );
 }
 
 function CompactScreenActions({

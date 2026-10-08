@@ -31,7 +31,9 @@ function createSource() {
   return {
     subscribe: (listener: () => void) => {
       listeners.add(listener);
-      return () => { listeners.delete(listener); };
+      return () => {
+        listeners.delete(listener);
+      };
     },
     getSnapshot: () => snapshot,
     recordAction: (action: string) => {
@@ -91,9 +93,25 @@ function createInspectorStack(source: Source) {
         component: InspectorContent,
         actionLabels: { moreActions: 'Screen actions', menuScope: 'Editor' },
         actions: ({ data }) => [
-          { id: 'save', label: 'Save', icon: 'save', primary: true, onPress: () => data.recordAction('Save') },
-          { id: 'refresh', label: 'Refresh', icon: 'refresh-cw', onPress: () => data.recordAction('Refresh') },
-          { id: 'open-full', label: 'Open full view', icon: 'external-link', onPress: () => data.recordAction('Open full view') },
+          {
+            id: 'save',
+            label: 'Save',
+            icon: 'save',
+            primary: true,
+            onPress: () => data.recordAction('Save'),
+          },
+          {
+            id: 'refresh',
+            label: 'Refresh',
+            icon: 'refresh-cw',
+            onPress: () => data.recordAction('Refresh'),
+          },
+          {
+            id: 'open-full',
+            label: 'Open full view',
+            icon: 'external-link',
+            onPress: () => data.recordAction('Open full view'),
+          },
         ],
       },
     },
@@ -142,12 +160,12 @@ function assert(value: unknown, message: string): asserts value {
 }
 
 async function settleFrame() {
-  await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }
 
 function findMenuItem(container: Document, label: string) {
-  return Array.from(container.querySelectorAll<HTMLElement>('[role="menuitem"]')).find(
-    element => element.textContent?.includes(label),
+  return Array.from(container.querySelectorAll<HTMLElement>('[role="menuitem"]')).find((element) =>
+    element.textContent?.includes(label),
   );
 }
 
@@ -155,16 +173,28 @@ export const DesktopCustomHeaderActions: Story = {
   args: { width: 1400 },
   play: async ({ canvas, canvasElement, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Open editor' }));
-    assert(canvas.getByRole('heading', { name: 'Record revision 1' }), 'Custom header should render');
+    assert(
+      canvas.getByRole('heading', { name: 'Record revision 1' }),
+      'Custom header should render',
+    );
     const mount = canvasElement.querySelector('[data-header-test-mount]')?.textContent;
     await userEvent.click(canvas.getByRole('button', { name: 'Save' }));
-    assert(canvasElement.querySelector('[data-header-test-action]')?.textContent === 'Save', 'Desktop primary action must execute');
+    assert(
+      canvasElement.querySelector('[data-header-test-action]')?.textContent === 'Save',
+      'Desktop primary action must execute',
+    );
     await userEvent.click(canvas.getByRole('button', { name: 'Screen actions' }));
     const refresh = findMenuItem(canvasElement.ownerDocument, 'Refresh');
     assert(refresh, 'Refresh should be in desktop overflow');
     await userEvent.click(refresh);
-    assert(canvasElement.querySelector('[data-header-test-version]')?.textContent === '2', 'Desktop refresh should resolve current data');
-    assert(canvasElement.querySelector('[data-header-test-mount]')?.textContent === mount, 'Header action refresh must not remount content');
+    assert(
+      canvasElement.querySelector('[data-header-test-version]')?.textContent === '2',
+      'Desktop refresh should resolve current data',
+    );
+    assert(
+      canvasElement.querySelector('[data-header-test-mount]')?.textContent === mount,
+      'Header action refresh must not remount content',
+    );
   },
 };
 
@@ -183,7 +213,10 @@ export const MobileCollapsedCustomHeaderActions: Story = {
     viewport.dispatchEvent(new Event('scroll', { bubbles: true }));
     await settleFrame();
     await settleFrame();
-    assert(canvasElement.querySelector('[data-header-covered="true"]'), 'Scrolling should collapse the mobile header');
+    assert(
+      canvasElement.querySelector('[data-header-covered="true"]'),
+      'Scrolling should collapse the mobile header',
+    );
     const trigger = canvasElement.querySelector<HTMLButtonElement>(
       '.mobile-floating-navigation:not([aria-hidden="true"]) button[aria-label="Screen actions"]',
     );
@@ -196,20 +229,35 @@ export const MobileCollapsedCustomHeaderActions: Story = {
     const save = findMenuItem(doc, 'Save');
     assert(save, 'Save action must be available');
     await userEvent.click(save);
-    assert(canvasElement.querySelector('[data-header-test-action]')?.textContent === 'Save', 'Compact Save must execute');
+    assert(
+      canvasElement.querySelector('[data-header-test-action]')?.textContent === 'Save',
+      'Compact Save must execute',
+    );
 
     await userEvent.click(trigger);
     const refresh = findMenuItem(doc, 'Refresh');
     assert(refresh, 'Refresh action must be available');
     await userEvent.click(refresh);
-    assert(canvasElement.querySelector('[data-header-test-version]')?.textContent === '2', 'Compact Refresh must use current data');
-    assert(canvasElement.querySelector('[data-header-test-mount]')?.textContent === mount, 'Refreshing must not remount the editor');
+    assert(
+      canvasElement.querySelector('[data-header-test-version]')?.textContent === '2',
+      'Compact Refresh must use current data',
+    );
+    assert(
+      canvasElement.querySelector('[data-header-test-mount]')?.textContent === mount,
+      'Refreshing must not remount the editor',
+    );
 
     await userEvent.click(trigger);
     const openFull = findMenuItem(doc, 'Open full view');
     assert(openFull, 'Open full view must be available');
     await userEvent.click(openFull);
-    assert(canvasElement.querySelector('[data-header-test-action]')?.textContent === 'Open full view', 'Compact Open full view must execute');
-    assert(canvas.getByRole('button', { name: 'Back' }), 'Back must remain available after custom actions');
+    assert(
+      canvasElement.querySelector('[data-header-test-action]')?.textContent === 'Open full view',
+      'Compact Open full view must execute',
+    );
+    assert(
+      canvas.getByRole('button', { name: 'Back' }),
+      'Back must remain available after custom actions',
+    );
   },
 };

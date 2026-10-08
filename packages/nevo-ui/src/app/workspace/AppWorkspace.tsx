@@ -431,67 +431,69 @@ function MobileRuntimeSurfaceRegion({
     >
       <SurfaceBoundary surface={surface}>
         <ScrollArea
-        className="mobile-workspace-scroll-area h-full"
-        contentClassName="min-h-full"
-        direction="vertical"
-        onScroll={(event) => updateHeaderCovered(event.currentTarget.scrollTop)}
-        startEdge={headerCovered ? 'auto' : 'hidden'}
-        viewportClassName="mobile-workspace-scroll"
-        viewportRef={viewportRef}
-      >
-        <div className="workspace-stack relative min-h-full min-w-0 overflow-hidden">
-          <div
-            className="workspace-stack__layer workspace-stack__layer--current flex min-h-full flex-col"
-            data-workspace-layer={instanceKey}
-          >
-            <>
-              {showHeader ? (
-                <div
-                  aria-hidden={headerCovered || undefined}
-                  className="@container flex h-14 shrink-0 items-center gap-2 px-3"
-                  inert={headerCovered ? true : undefined}
-                  ref={headerRef}
-                >
-                  {leadingAction}
-                  <div className="min-w-0 flex-1">{surface.header}</div>
-                  {trailingAction}
-                </div>
-              ) : null}
+          className="mobile-workspace-scroll-area h-full"
+          contentClassName="min-h-full"
+          direction="vertical"
+          onScroll={(event) => updateHeaderCovered(event.currentTarget.scrollTop)}
+          startEdge={headerCovered ? 'auto' : 'hidden'}
+          viewportClassName="mobile-workspace-scroll"
+          viewportRef={viewportRef}
+        >
+          <div className="workspace-stack relative min-h-full min-w-0 overflow-hidden">
+            <div
+              className="workspace-stack__layer workspace-stack__layer--current flex min-h-full flex-col"
+              data-workspace-layer={instanceKey}
+            >
+              <>
+                {showHeader ? (
+                  <div
+                    aria-hidden={headerCovered || undefined}
+                    className="@container flex h-14 shrink-0 items-center gap-2 px-3"
+                    inert={headerCovered ? true : undefined}
+                    ref={headerRef}
+                  >
+                    {leadingAction}
+                    <div className="min-w-0 flex-1">{surface.header}</div>
+                    {trailingAction}
+                  </div>
+                ) : null}
 
-              <div className="mobile-workspace-sheet flex-1">
-                <div
-                  className={cn(
-                    workspaceSurfaceClassName,
-                    'mobile-workspace-surface min-h-full overflow-hidden rounded-t-surface border border-b-0 border-workspace-edge',
-                  )}
-                >
-                  <AppContentScrollProvider>
-                    <div className="min-h-full">{surface.content}</div>
-                  </AppContentScrollProvider>
+                <div className="mobile-workspace-sheet flex-1">
+                  <div
+                    className={cn(
+                      workspaceSurfaceClassName,
+                      'mobile-workspace-surface min-h-full overflow-hidden rounded-t-surface border border-b-0 border-workspace-edge',
+                    )}
+                  >
+                    <AppContentScrollProvider>
+                      <div className="min-h-full">{surface.content}</div>
+                    </AppContentScrollProvider>
+                  </div>
                 </div>
-              </div>
-            </>
+              </>
+            </div>
           </div>
-        </div>
-      </ScrollArea>
+        </ScrollArea>
 
-      <div
-        aria-hidden={!headerCovered || undefined}
-        className="mobile-floating-navigation"
-        inert={!headerCovered ? true : undefined}
-      >
-        {leadingAction}
-        {surface.renderCompactActions
-          ? surface.renderCompactActions({
+        <div
+          aria-hidden={!headerCovered || undefined}
+          className="mobile-floating-navigation"
+          inert={!headerCovered ? true : undefined}
+        >
+          {leadingAction}
+          {surface.renderCompactActions ? (
+            surface.renderCompactActions({
               className: 'mobile-floating-navigation__control',
               navigationAction: compactNavigationAction,
             })
-          : <CompactWorkspaceActions
+          ) : (
+            <CompactWorkspaceActions
               className="mobile-floating-navigation__control"
               header={surface.header}
               navigationAction={compactNavigationAction}
-            />}
-      </div>
+            />
+          )}
+        </div>
       </SurfaceBoundary>
     </div>
   );

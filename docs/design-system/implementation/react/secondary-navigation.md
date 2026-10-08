@@ -82,7 +82,7 @@ A screen may declare an optional `header` component in its definition; it receiv
 automatic navigation buttons. Default Secondary retains its existing declarative header.
 
 For ordinary **application route changes**, the application router's blocking adapter must
-await `useSecondaryNavigation().canLeaveScope()` *before* committing navigation. This
+await `useSecondaryNavigation().canLeaveScope()` _before_ committing navigation. This
 checks the active page's leave guard but does not change the Secondary stack. Once
 the route transition has been approved, changing the provider's `scopeKey` invalidates
 its flow. Forced context invalidation (logout, revoked global permissions, destroyed

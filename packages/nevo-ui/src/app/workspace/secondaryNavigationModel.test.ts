@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { isCurrentEntry, popEntry, pushEntry, replaceEntry, startFlow } from './secondaryNavigationModel';
+import {
+  isCurrentEntry,
+  popEntry,
+  pushEntry,
+  replaceEntry,
+  startFlow,
+} from './secondaryNavigationModel';
 
 const entry = (instanceKey: number) => ({ instanceKey });
 

@@ -12,7 +12,14 @@ import {
 
 import type { ComponentType, ReactNode } from 'react';
 import type { AppWorkspaceSurface } from './workspaceSurface';
-import { isCurrentEntry, popEntry, pushEntry, replaceEntry, startFlow, type SecondaryFlowModel } from './secondaryNavigationModel';
+import {
+  isCurrentEntry,
+  popEntry,
+  pushEntry,
+  replaceEntry,
+  startFlow,
+  type SecondaryFlowModel,
+} from './secondaryNavigationModel';
 import { WorkspaceHeader } from './WorkspaceHeader';
 import type {
   SecondaryData,
@@ -210,7 +217,9 @@ function ScreenOutlet({
 
   // Editors may opt in: keep the existing mounted draft and leave guard alive, but
   // do not display stale data or enable editing while the source is unavailable.
-  const preserve = screen.preserveOnDataLoss && lastReady.current !== null &&
+  const preserve =
+    screen.preserveOnDataLoss &&
+    lastReady.current !== null &&
     (result.status === 'ready' || result.status === 'loading' || result.status === 'error');
   const Component = screen.component;
   const visible = result.status === 'ready';
@@ -470,9 +479,8 @@ export function AppWorkspaceProvider({
           instanceKey: ++counter.current,
           returnFocusTo: getActiveElement(),
         };
-        const next = kind === 'replace'
-          ? replaceEntry(previous, nextEntry)
-          : pushEntry(previous, nextEntry);
+        const next =
+          kind === 'replace' ? replaceEntry(previous, nextEntry) : pushEntry(previous, nextEntry);
         publish(next, kind, previous);
         if (kind === 'replace') guards.current.delete(current.instanceKey);
         return true;
@@ -496,11 +504,14 @@ export function AppWorkspaceProvider({
     return id && top ? navigate('close', id, top.instanceKey) : Promise.resolve(true);
   }, [navigate]);
 
-  const canLeaveScope = useCallback(() =>
-    queue(async () => {
-      if (!mounted.current || currentScope.current !== scopeKey) return false;
-      return passesGuard(flowRef.current);
-    }), [queue, passesGuard, scopeKey]);
+  const canLeaveScope = useCallback(
+    () =>
+      queue(async () => {
+        if (!mounted.current || currentScope.current !== scopeKey) return false;
+        return passesGuard(flowRef.current);
+      }),
+    [queue, passesGuard, scopeKey],
+  );
 
   const value = useMemo<WorkspaceContextValue>(
     () => ({
@@ -530,7 +541,11 @@ export function AppWorkspaceProvider({
 export function useSecondaryNavigation() {
   const workspace = useWorkspace();
   return useMemo(
-    () => ({ open: workspace.open, close: workspace.close, canLeaveScope: workspace.canLeaveScope }),
+    () => ({
+      open: workspace.open,
+      close: workspace.close,
+      canLeaveScope: workspace.canLeaveScope,
+    }),
     [workspace.open, workspace.close, workspace.canLeaveScope],
   );
 }

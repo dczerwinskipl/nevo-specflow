@@ -33,9 +33,7 @@ export function replaceEntry<TEntry>(
 export function popEntry<TEntry>(
   flow: SecondaryFlowModel<TEntry>,
 ): SecondaryFlowModel<TEntry> | null {
-  return flow.entries.length > 1
-    ? { ...flow, entries: flow.entries.slice(0, -1) }
-    : null;
+  return flow.entries.length > 1 ? { ...flow, entries: flow.entries.slice(0, -1) } : null;
 }
 
 export function isCurrentEntry<TEntry extends { instanceKey: number }>(

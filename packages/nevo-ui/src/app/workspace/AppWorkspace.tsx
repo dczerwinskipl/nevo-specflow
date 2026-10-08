@@ -89,7 +89,13 @@ interface WorkspaceSecondaryPresentation {
   onBack?: () => void | Promise<unknown>;
 }
 
-function SurfaceBoundary({ surface, children }: { surface: AppWorkspaceSurface; children: ReactNode }) {
+function SurfaceBoundary({
+  surface,
+  children,
+}: {
+  surface: AppWorkspaceSurface;
+  children: ReactNode;
+}) {
   return surface.wrap ? surface.wrap(children) : children;
 }
 
@@ -301,19 +307,19 @@ function RuntimeSurfaceRegion({
       <div className="workspace-stack relative h-full min-h-0 min-w-0 overflow-hidden">
         <div className="flex h-full min-h-0 flex-col" data-workspace-layer={instanceKey}>
           <SurfaceBoundary surface={surface}>
-          {showHeader ? (
-            <div
-              className={cn(
-                '@container flex h-14 shrink-0 items-center gap-2',
-                'border-b border-border-subtle px-4',
-              )}
-            >
-              {leadingAction}
-              <div className="min-w-0 flex-1">{surface.header}</div>
-              {trailingAction}
-            </div>
-          ) : null}
-          <div className="min-h-0 flex-1 overflow-hidden">{surface.content}</div>
+            {showHeader ? (
+              <div
+                className={cn(
+                  '@container flex h-14 shrink-0 items-center gap-2',
+                  'border-b border-border-subtle px-4',
+                )}
+              >
+                {leadingAction}
+                <div className="min-w-0 flex-1">{surface.header}</div>
+                {trailingAction}
+              </div>
+            ) : null}
+            <div className="min-h-0 flex-1 overflow-hidden">{surface.content}</div>
           </SurfaceBoundary>
         </div>
       </div>
@@ -438,31 +444,31 @@ function MobileRuntimeSurfaceRegion({
             data-workspace-layer={instanceKey}
           >
             <SurfaceBoundary surface={surface}>
-            {showHeader ? (
-              <div
-                aria-hidden={headerCovered || undefined}
-                className="@container flex h-14 shrink-0 items-center gap-2 px-3"
-                inert={headerCovered ? true : undefined}
-                ref={headerRef}
-              >
-                {leadingAction}
-                <div className="min-w-0 flex-1">{surface.header}</div>
-                {trailingAction}
-              </div>
-            ) : null}
+              {showHeader ? (
+                <div
+                  aria-hidden={headerCovered || undefined}
+                  className="@container flex h-14 shrink-0 items-center gap-2 px-3"
+                  inert={headerCovered ? true : undefined}
+                  ref={headerRef}
+                >
+                  {leadingAction}
+                  <div className="min-w-0 flex-1">{surface.header}</div>
+                  {trailingAction}
+                </div>
+              ) : null}
 
-            <div className="mobile-workspace-sheet flex-1">
-              <div
-                className={cn(
-                  workspaceSurfaceClassName,
-                  'mobile-workspace-surface min-h-full overflow-hidden rounded-t-surface border border-b-0 border-workspace-edge',
-                )}
-              >
-                <AppContentScrollProvider>
-                  <div className="min-h-full">{surface.content}</div>
-                </AppContentScrollProvider>
+              <div className="mobile-workspace-sheet flex-1">
+                <div
+                  className={cn(
+                    workspaceSurfaceClassName,
+                    'mobile-workspace-surface min-h-full overflow-hidden rounded-t-surface border border-b-0 border-workspace-edge',
+                  )}
+                >
+                  <AppContentScrollProvider>
+                    <div className="min-h-full">{surface.content}</div>
+                  </AppContentScrollProvider>
+                </div>
               </div>
-            </div>
             </SurfaceBoundary>
           </div>
         </div>

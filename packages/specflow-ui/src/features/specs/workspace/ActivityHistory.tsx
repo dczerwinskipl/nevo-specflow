@@ -1,4 +1,4 @@
-import { Button, Icon, Typography } from '@nevo/ui';
+import { Button, Icon, Timeline, type TimelineTone, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { ActivityEvent } from './model';
 
@@ -53,8 +53,8 @@ export function ActivityHistory({
         ) : null}
       </div>
 
-      <ol className="relative m-0 list-none border-l border-border-subtle pl-4">
-        {events.map((event) => {
+      <Timeline size="md">
+        {events.map((event, index) => {
           const hasAction = Boolean(event.type && event.targetId);
 
           const handleTargetClick = () => {
@@ -67,38 +67,40 @@ export function ActivityHistory({
             }
           };
 
+          const titleNode = hasAction ? (
+            <button
+              type="button"
+              onClick={handleTargetClick}
+              className="text-left text-content-primary hover:text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring [overflow-wrap:anywhere]"
+              aria-label={
+                event.type === 'task'
+                  ? t('specification.previewTaskAria', { title: event.title })
+                  : event.type === 'session'
+                    ? t('specification.openSessionAria', { title: event.title })
+                    : t('specification.readDocAria', { title: event.title })
+              }
+            >
+              {event.title}
+            </button>
+          ) : (
+            <span className="[overflow-wrap:anywhere]">{event.title}</span>
+          );
+
+          const tone: TimelineTone =
+            event.type === 'session' ? 'info' : event.type === 'task' ? 'neutral' : 'neutral';
+
           return (
-            <li key={event.id} className="relative pb-5 pl-3">
-              <span
-                aria-hidden="true"
-                className="absolute -left-[1.3125rem] top-1.5 size-2 rounded-full bg-border-strong"
+            <Timeline.Item key={event.id}>
+              <Timeline.Marker tone={tone} active={index === 0} />
+              <Timeline.Content
+                title={titleNode}
+                time={event.time}
+                description={event.description}
               />
-              <div className="text-body-xs text-content-muted">{event.time}</div>
-              <div className="mt-0.5 font-medium text-content-primary">
-                {hasAction ? (
-                  <button
-                    type="button"
-                    onClick={handleTargetClick}
-                    className="text-left text-content-primary hover:text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring [overflow-wrap:anywhere]"
-                    aria-label={
-                      event.type === 'task'
-                        ? t('specification.previewTaskAria', { title: event.title })
-                        : event.type === 'session'
-                          ? t('specification.openSessionAria', { title: event.title })
-                          : t('specification.readDocAria', { title: event.title })
-                    }
-                  >
-                    {event.title}
-                  </button>
-                ) : (
-                  <span className="[overflow-wrap:anywhere]">{event.title}</span>
-                )}
-              </div>
-              <p className="mt-1 text-body-xs text-content-muted">{event.description}</p>
-            </li>
+            </Timeline.Item>
           );
         })}
-      </ol>
+      </Timeline>
     </aside>
   );
 }

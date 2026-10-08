@@ -1,4 +1,4 @@
-import { Icon, Typography } from '@nevo/ui';
+import { Icon, Timeline, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { TaskItem } from './model';
 
@@ -119,11 +119,14 @@ export function FullTaskView({ task, specKey, onBack, onOpenSession }: FullTaskV
             <Typography as="h2" variant="title-sm" className="font-medium text-content-primary">
               {t('specification.taskFullHistoryHeading')}
             </Typography>
-            <div className="mt-1 text-body-xs text-content-muted grid gap-1">
+            <Timeline size="sm" className="mt-3">
               {task.history.map((h, idx) => (
-                <p key={idx}>{h}</p>
+                <Timeline.Item key={idx}>
+                  <Timeline.Marker tone="neutral" />
+                  <Timeline.Content title={h} />
+                </Timeline.Item>
               ))}
-            </div>
+            </Timeline>
           </div>
         ) : null}
       </article>

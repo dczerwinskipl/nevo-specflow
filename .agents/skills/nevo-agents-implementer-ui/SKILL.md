@@ -16,7 +16,7 @@ Canonical profile: `nevo-agents:implementer-ui`.
 Before starting work, load these exact stable document IDs. They are profile requirements and must not be replaced by lexical discovery:
 
 ```bash
-pnpm docs:get architecture.principles.normative-language engineering.shared.code-organization engineering.shared.testing design-system.principles.system-boundary design-system.principles.ui-ux-guidelines design-system.principles.information-row-hierarchy design-system.principles.layout-and-containment design-system.implementation.react.component-guidelines design-system.implementation.storybook.guidelines
+pnpm docs:get architecture.principles.normative-language engineering.shared.code-organization engineering.shared.testing design-system.principles.system-boundary design-system.principles.ui-ux-guidelines design-system.principles.information-hierarchy design-system.principles.layout-and-containment design-system.implementation.react.component-guidelines design-system.implementation.storybook.guidelines
 ```
 
 ## Implementer role
@@ -176,9 +176,29 @@ Keep the completion handoff concise and evidence-based:
 
 Treat reusable design-system UI, product-owned composition, and screen-level visual behavior as separate responsibilities. Reuse follows semantic and interaction fit, not visual resemblance or repeated markup alone.
 
-Before introducing a new local UI shape, inspect whether an established design-system component or product composition already owns the required meaning and behavior. Do not create a local lookalike, copy prototype CSS, fork shared styles, or override shared component internals merely to reproduce a reference more quickly.
+Before introducing a new local UI shape, perform semantic component/pattern discovery.
 
-Before inventing a new repeated row/list treatment, verify whether the loaded design-system information-row pattern already applies. If a materially different visual grammar is needed, require a user-facing semantic/interaction reason from the owning UX/design-system contract rather than treating a different entity type or feature folder as sufficient justification.
+Start from any stable patterns/components referenced by the UX contract, but do not assume that the
+handoff found every reusable capability. Independently inspect canonical design-system guidance,
+public exports, representative stories, and meaningful consumers for the responsibility being
+implemented.
+
+Use this preference order:
+
+1. reuse the established component/pattern as-is when it satisfies the required semantics;
+2. compose existing primitives/patterns when the product-specific arrangement differs but the shared
+   responsibilities already exist;
+3. extend the shared owner when the missing behavior is itself a reusable design-system capability;
+4. create a product-local custom structure only when existing patterns cannot satisfy a material
+   semantic or interaction requirement.
+
+Do not create a local lookalike, copy prototype CSS, fork shared styles, or override shared component
+internals merely to reproduce a reference more quickly. Absence of a pattern reference in the UX
+contract is not permission to skip discovery.
+
+Before inventing a new repeated row/list treatment, resolve the canonical information hierarchy and
+row pattern. A materially different grammar requires a user-facing semantic/interaction reason from
+the owning UX/design-system contract; a different entity type or feature folder is not sufficient.
 
 Local Tailwind is allowed for ordinary product-local static layout where repository styling guidance permits it. The prohibition is against recreating or bypassing a shared design-system contract locally, not against local styling itself. Resolve `design-system.implementation.tailwind.styling-guidelines` when the work materially changes styling contracts, variants, or semantic tone mapping.
 

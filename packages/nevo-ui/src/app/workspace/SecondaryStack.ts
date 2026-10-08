@@ -15,13 +15,8 @@ export interface SecondaryScreenProps<TData, TParams extends object> {
 
 export interface SecondaryScreenDefinition<TData, TParams extends object> {
   title: string;
-  /** Optional header component; resolved against the same live data as the page. */
-  header?: ComponentType<
-    SecondaryScreenProps<TData, TParams> & {
-      actions: readonly WorkspaceHeaderAction[];
-      labels?: Partial<WorkspaceHeaderLabels>;
-    }
-  >;
+  /** Product-only header content. The workspace renders declared actions automatically. */
+  header?: ComponentType<SecondaryScreenProps<TData, TParams>>;
   /** Pure action metadata, resolved against the same live data as Header and Content. */
   actions?: (props: SecondaryScreenProps<TData, TParams>) => readonly WorkspaceHeaderAction[];
   actionLabels?: Partial<WorkspaceHeaderLabels>;

@@ -33,7 +33,7 @@ export function ActivityHistory({
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <Typography
-            as="h2"
+            as="h3"
             variant="title-sm"
             className="flex items-center gap-2 text-content-primary"
           >

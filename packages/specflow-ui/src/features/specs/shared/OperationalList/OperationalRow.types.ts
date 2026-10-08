@@ -32,7 +32,7 @@ export interface OperationalRowProps {
   readonly leading?: ReactNode;
   readonly interactive?: boolean;
   readonly selected?: boolean;
-  readonly titleAs?: 'h2' | 'h3' | 'h4';
+  readonly titleAs?: 'h2' | 'h3' | 'h4' | 'h5' | 'span';
   readonly className?: string;
   readonly dataAttributes?: Record<string, string | undefined>;
 }

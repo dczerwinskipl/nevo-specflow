@@ -50,7 +50,7 @@ export function RepositoryView({ repoContext, onGoToChanges }: RepositoryViewPro
 
   return (
     <div className="grid max-w-content-standard gap-6 py-2">
-      <Typography as="h1" variant="title-md" className="font-semibold text-content-primary">
+      <Typography as="h2" variant="title-md" className="font-semibold text-content-primary">
         {t('specification.repositoryHeading')}
       </Typography>
 

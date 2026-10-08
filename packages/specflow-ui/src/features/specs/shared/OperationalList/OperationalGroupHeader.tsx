@@ -18,6 +18,7 @@ export interface OperationalGroupHeaderProps {
   readonly className?: string;
   readonly selectable?: boolean;
   readonly ariaDisabled?: boolean;
+  readonly headingTag?: 'h2' | 'h3' | 'h4' | 'span';
 }
 
 export function OperationalGroupHeader({
@@ -31,6 +32,7 @@ export function OperationalGroupHeader({
   className,
   selectable = false,
   ariaDisabled = false,
+  headingTag = 'h2',
 }: OperationalGroupHeaderProps) {
   const listContext = useOptionalInformationListContext();
   const effectiveSelectable = selectable || (listContext?.selectable ?? false);
@@ -71,7 +73,11 @@ export function OperationalGroupHeader({
             <StatusIndicator tone={tone} />
           </div>
         ) : null}
-        <Typography as="h2" variant="label-sm" className="font-semibold text-content-primary">
+        <Typography
+          as={headingTag}
+          variant="label-sm"
+          className="font-semibold text-content-primary"
+        >
           {label}
         </Typography>
         {count !== undefined ? (

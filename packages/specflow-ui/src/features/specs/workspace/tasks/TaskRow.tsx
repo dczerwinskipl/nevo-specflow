@@ -51,6 +51,7 @@ export function TaskRow({
 
   return (
     <OperationalRow
+      titleAs="h5"
       primary={task.title}
       onPrimaryClick={() => onPreview(task.id)}
       primaryAriaLabel={task.title}

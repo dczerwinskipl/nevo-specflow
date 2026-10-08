@@ -1,8 +1,9 @@
-import { Icon, InformationList, Typography } from '@nevo/ui';
+import { Button, InformationList } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { OperationalRow } from '../../shared/OperationalList';
 import type { SessionSummary } from '../model';
 import { useWorkspaceRuntime } from '../WorkspaceContext';
+import { WorkspaceSection } from './WorkspaceSection';
 
 export interface ResumeSessionSectionProps {
   readonly session: SessionSummary;
@@ -12,26 +13,32 @@ export function ResumeSessionSection({ session }: ResumeSessionSectionProps) {
   const { t } = useTranslation();
   const runtime = useWorkspaceRuntime();
 
+  const isSessionOpenable = runtime.canOpenSession !== false;
+
   return (
-    <section aria-labelledby="resume-heading" className="grid gap-2">
-      <div className="flex items-center gap-2">
-        <span className="flex size-4 shrink-0 items-center justify-center text-content-muted">
-          <Icon name="chat" size="sm" />
-        </span>
-        <Typography
-          as="h2"
-          variant="title-sm"
-          id="resume-heading"
-          className="font-semibold text-content-primary"
-        >
-          {t('specification.continueSessionHeading')}
-        </Typography>
-      </div>
+    <WorkspaceSection aria-labelledby="resume-heading">
+      <WorkspaceSection.Header
+        id="resume-heading"
+        title={t('specification.continueSessionHeading')}
+        icon="chat"
+        actions={
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={!runtime.canStartConversation}
+            title={!runtime.canStartConversation ? t('common.notImplemented') : undefined}
+            onClick={() => runtime.startConversation()}
+          >
+            {t('specification.newConversation')}
+          </Button>
+        }
+      />
 
       <InformationList>
         <OperationalRow
+          titleAs="h4"
           primary={session.title}
-          onPrimaryClick={() => runtime.openSession(session.id)}
+          onPrimaryClick={isSessionOpenable ? () => runtime.openSession(session.id) : undefined}
           compactFacts={[session.taskCount ?? '', session.age ?? '']}
           supporting={
             session.activity
@@ -48,7 +55,7 @@ export function ResumeSessionSection({ session }: ResumeSessionSectionProps) {
         />
       </InformationList>
 
-      <div className="flex flex-wrap items-center gap-4 border-t border-border-subtle pt-2 text-body-xs">
+      <WorkspaceSection.Footer>
         <button
           type="button"
           onClick={runtime.openSessionsView}
@@ -56,23 +63,7 @@ export function ResumeSessionSection({ session }: ResumeSessionSectionProps) {
         >
           {t('specification.allSessionsLink')}
         </button>
-        <button
-          type="button"
-          disabled={!runtime.canStartConversation}
-          title={!runtime.canStartConversation ? t('common.notImplemented') : undefined}
-          onClick={() => runtime.startConversation()}
-          className="font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {t('specification.newConversation')}
-        </button>
-        <button
-          type="button"
-          onClick={runtime.openHistory}
-          className="font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring lg:hidden"
-        >
-          {t('specification.activityHistoryLink')}
-        </button>
-      </div>
-    </section>
+      </WorkspaceSection.Footer>
+    </WorkspaceSection>
   );
 }

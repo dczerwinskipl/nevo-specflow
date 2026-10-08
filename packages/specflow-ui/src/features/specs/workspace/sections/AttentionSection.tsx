@@ -25,8 +25,8 @@ export function AttentionSection({ items }: AttentionSectionProps) {
           <Icon name="triangle-alert" size="sm" />
         </span>
         <Typography
-          as="h2"
-          variant="title-sm"
+          as="h3"
+          variant="section-label"
           id="attention-heading"
           className="font-semibold text-status-attention"
         >
@@ -36,57 +36,63 @@ export function AttentionSection({ items }: AttentionSectionProps) {
       </div>
 
       <div className="mt-3 divide-y divide-border-subtle">
-        {items.map((item) => (
-          <div
-            key={item.id}
-            className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="flex items-start gap-2.5 min-w-0">
-              <span className="flex size-4 shrink-0 items-center justify-center text-status-attention mt-1">
-                {item.kind === 'task' ? (
-                  <Icon name="triangle-alert" size="sm" />
-                ) : item.kind === 'session' ? (
-                  <Icon name="chat" size="sm" />
-                ) : (
-                  <Icon name="branch" size="sm" />
-                )}
-              </span>
-              <div className="min-w-0 flex-1">
-                <Typography
-                  as="h3"
-                  variant="title-sm"
-                  className="min-w-0 text-content-primary [overflow-wrap:anywhere]"
-                >
-                  {item.title}
-                </Typography>
-                <Typography
-                  as="div"
-                  variant="body-sm"
-                  className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-2 text-content-muted"
-                >
-                  <span className="font-medium text-status-attention">{item.reason}</span>
-                </Typography>
-              </div>
-            </div>
+        {items.map((item) => {
+          const isSessionDisabled = item.kind === 'session' && runtime.canOpenSession === false;
 
-            <Button
-              variant="secondary"
-              size="sm"
-              className="self-start sm:self-center shrink-0"
-              onClick={() => {
-                if (item.kind === 'task' && item.targetId) {
-                  runtime.previewTask(item.targetId);
-                } else if (item.kind === 'session' && item.targetId) {
-                  runtime.openSession(item.targetId);
-                } else if (item.kind === 'git') {
-                  runtime.openRepository();
-                }
-              }}
+          return (
+            <div
+              key={item.id}
+              className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
             >
-              {item.actionLabel}
-            </Button>
-          </div>
-        ))}
+              <div className="flex items-start gap-2.5 min-w-0">
+                <span className="flex size-4 shrink-0 items-center justify-center text-status-attention mt-1">
+                  {item.kind === 'task' ? (
+                    <Icon name="triangle-alert" size="sm" />
+                  ) : item.kind === 'session' ? (
+                    <Icon name="chat" size="sm" />
+                  ) : (
+                    <Icon name="branch" size="sm" />
+                  )}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <Typography
+                    as="h4"
+                    variant="title-sm"
+                    className="min-w-0 text-content-primary [overflow-wrap:anywhere]"
+                  >
+                    {item.title}
+                  </Typography>
+                  <Typography
+                    as="div"
+                    variant="body-sm"
+                    className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-2 text-content-muted"
+                  >
+                    <span className="font-medium text-status-attention">{item.reason}</span>
+                  </Typography>
+                </div>
+              </div>
+
+              <Button
+                variant="secondary"
+                size="sm"
+                className="self-start sm:self-center shrink-0"
+                disabled={isSessionDisabled}
+                title={isSessionDisabled ? t('common.notImplemented') : undefined}
+                onClick={() => {
+                  if (item.kind === 'task' && item.targetId) {
+                    runtime.previewTask(item.targetId);
+                  } else if (item.kind === 'session' && item.targetId) {
+                    runtime.openSession(item.targetId);
+                  } else if (item.kind === 'git') {
+                    runtime.openRepository();
+                  }
+                }}
+              >
+                {item.actionLabel}
+              </Button>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

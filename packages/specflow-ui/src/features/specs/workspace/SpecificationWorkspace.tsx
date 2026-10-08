@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import {
   Alert,
   AppContent,
@@ -103,11 +103,18 @@ function SpecificationWorkspaceInner({
     }
   }, [initialView, initialTask]);
 
+  const workspaceRef = useRef(workspace);
+  workspaceRef.current = workspace;
+
+  const prevSpecIdRef = useRef(specId);
   useEffect(() => {
-    setPreviewTaskId(null);
-    setExplicitHistory(false);
-    void workspace.closeSecondary();
-  }, [specId, workspace]);
+    if (prevSpecIdRef.current !== specId) {
+      prevSpecIdRef.current = specId;
+      setPreviewTaskId(null);
+      setExplicitHistory(false);
+      void workspaceRef.current.closeSecondary();
+    }
+  }, [specId]);
 
   const navigateToView = (
     nextView: SpecificationWorkspaceView,
@@ -166,9 +173,9 @@ function SpecificationWorkspaceInner({
   // Synchronize runtime secondary with previewTask and explicitHistory
   useEffect(() => {
     if (previewTask) {
-      void workspace.setSecondary(
+      void workspaceRef.current.setSecondary(
         {
-          header: <WorkspaceHeader title={t('specification.taskPreviewTitle')} />,
+          header: <WorkspaceHeader as="h2" title={t('specification.taskPreviewTitle')} />,
           content: (
             <AppContent>
               <TaskPreview
@@ -177,11 +184,11 @@ function SpecificationWorkspaceInner({
                 specKey={specId}
                 onClose={() => {
                   setPreviewTaskId(null);
-                  void workspace.closeSecondary();
+                  void workspaceRef.current.closeSecondary();
                 }}
                 onOpenFull={(taskId) => {
                   setPreviewTaskId(null);
-                  void workspace.closeSecondary();
+                  void workspaceRef.current.closeSecondary();
                   handleOpenFullTask(taskId);
                 }}
               />
@@ -195,9 +202,9 @@ function SpecificationWorkspaceInner({
         },
       );
     } else if (explicitHistory) {
-      void workspace.setSecondary(
+      void workspaceRef.current.setSecondary(
         {
-          header: <WorkspaceHeader title={t('specification.activityHistory')} />,
+          header: <WorkspaceHeader as="h2" title={t('specification.activityHistory')} />,
           content: (
             <AppContent>
               <ActivityHistory
@@ -205,7 +212,7 @@ function SpecificationWorkspaceInner({
                 isExplicit={true}
                 onClose={() => {
                   setExplicitHistory(false);
-                  void workspace.closeSecondary();
+                  void workspaceRef.current.closeSecondary();
                 }}
                 onOpenTask={handlePreviewTask}
                 onOpenSession={onOpenSession}
@@ -226,7 +233,6 @@ function SpecificationWorkspaceInner({
     explicitHistory,
     specId,
     t,
-    workspace,
     data.taskGroups,
     data.activityEvents,
     onOpenSession,
@@ -251,6 +257,7 @@ function SpecificationWorkspaceInner({
       refresh: () => onRefresh?.(),
       canExecute: Boolean(onExecute),
       canStartConversation: Boolean(onNewConversation),
+      canOpenSession: Boolean(onOpenSession),
       fullTaskHref: (taskId) => {
         const params = new URLSearchParams();
         if (overviewHref?.includes('collection=archive')) {
@@ -417,6 +424,7 @@ function SpecificationWorkspaceInner({
         <AppWorkspace.Secondary
           header={
             <WorkspaceHeader
+              as="h2"
               title={
                 previewTask
                   ? t('specification.taskPreviewTitle')

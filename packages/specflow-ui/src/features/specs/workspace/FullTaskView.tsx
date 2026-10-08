@@ -28,7 +28,7 @@ export function FullTaskView({ task, specKey, onBack, onOpenSession }: FullTaskV
           {task.id} · {specKey}
         </p>
         <Typography
-          as="h1"
+          as="h2"
           variant="title-md"
           className="mt-1 font-semibold text-content-primary [overflow-wrap:anywhere]"
         >
@@ -43,7 +43,7 @@ export function FullTaskView({ task, specKey, onBack, onOpenSession }: FullTaskV
       <article className="grid gap-6 border-t border-border-subtle pt-6 leading-relaxed text-content-secondary">
         {task.purpose ? (
           <div>
-            <Typography as="h2" variant="title-sm" className="font-medium text-content-primary">
+            <Typography as="h3" variant="title-sm" className="font-medium text-content-primary">
               {t('specification.taskFullPurposeHeading')}
             </Typography>
             <p className="mt-1 text-body-sm">{task.purpose}</p>
@@ -52,7 +52,7 @@ export function FullTaskView({ task, specKey, onBack, onOpenSession }: FullTaskV
 
         {task.acceptanceCriteria && task.acceptanceCriteria.length > 0 ? (
           <div>
-            <Typography as="h2" variant="title-sm" className="font-medium text-content-primary">
+            <Typography as="h3" variant="title-sm" className="font-medium text-content-primary">
               {t('specification.taskFullAcceptanceHeading')}
             </Typography>
             <ul className="mt-1.5 list-disc pl-5 text-body-sm grid gap-1">
@@ -65,7 +65,7 @@ export function FullTaskView({ task, specKey, onBack, onOpenSession }: FullTaskV
 
         {task.workflow ? (
           <div>
-            <Typography as="h2" variant="title-sm" className="font-medium text-content-primary">
+            <Typography as="h3" variant="title-sm" className="font-medium text-content-primary">
               {t('specification.taskFullWorkflowHeading')}
             </Typography>
             <p className="mt-1 text-body-sm">{task.workflow}</p>
@@ -74,7 +74,7 @@ export function FullTaskView({ task, specKey, onBack, onOpenSession }: FullTaskV
 
         {task.evidence && task.evidence.length > 0 ? (
           <div>
-            <Typography as="h2" variant="title-sm" className="font-medium text-content-primary">
+            <Typography as="h3" variant="title-sm" className="font-medium text-content-primary">
               {t('specification.taskFullEvidenceHeading')}
             </Typography>
             <div className="mt-2 flex flex-wrap gap-4 text-body-sm">
@@ -96,7 +96,7 @@ export function FullTaskView({ task, specKey, onBack, onOpenSession }: FullTaskV
 
         {onOpenSession && task.relatedSessions && task.relatedSessions.length > 0 ? (
           <div>
-            <Typography as="h2" variant="title-sm" className="font-medium text-content-primary">
+            <Typography as="h3" variant="title-sm" className="font-medium text-content-primary">
               {t('specification.taskFullRelatedSessionsHeading')}
             </Typography>
             <div className="mt-2 grid gap-2">
@@ -116,7 +116,7 @@ export function FullTaskView({ task, specKey, onBack, onOpenSession }: FullTaskV
 
         {task.history && task.history.length > 0 ? (
           <div>
-            <Typography as="h2" variant="title-sm" className="font-medium text-content-primary">
+            <Typography as="h3" variant="title-sm" className="font-medium text-content-primary">
               {t('specification.taskFullHistoryHeading')}
             </Typography>
             <Timeline size="sm" className="mt-3">

@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Button, Icon, InformationList, Typography } from '@nevo/ui';
+import { Button, InformationList, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { TaskExecutionReadiness, TaskGroup } from '../model';
 import { useWorkspaceRuntime } from '../WorkspaceContext';
+import { WorkspaceSection } from '../sections/WorkspaceSection';
 import { getGroupTone } from './presentation';
 import { TaskGroupHeader } from './TaskGroupHeader';
 import { TaskRow } from './TaskRow';
@@ -57,65 +58,58 @@ export function TasksSection({
     taskGroups.flatMap((g) => g.tasks).filter((task) => task.lifecycle === 'completed').length;
   const totalTasks = totalTasksCount ?? taskGroups.flatMap((g) => g.tasks).length;
 
-  return (
-    <section aria-labelledby="tasks-heading" className="border-t border-border-subtle pt-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="flex size-4 shrink-0 items-center justify-center text-content-muted">
-            <Icon name="list-checks" size="sm" />
-          </span>
-          <Typography
-            as="h2"
-            variant="title-sm"
-            id="tasks-heading"
-            className="font-semibold text-content-primary"
-          >
-            {t('specification.tasksHeading')}{' '}
-            <span className="text-body-xs font-normal text-content-muted">
-              {isPreparing
-                ? t('specification.tasksInPreparation', { count: totalTasks })
-                : t('specification.tasksProgressCount', {
-                    completed: completedCount,
-                    total: totalTasks,
-                  })}
-            </span>
-          </Typography>
-        </div>
+  const countLabel = isPreparing
+    ? t('specification.tasksInPreparation', { count: totalTasks })
+    : t('specification.tasksProgressCount', {
+        completed: completedCount,
+        total: totalTasks,
+      });
 
-        <div className="flex items-center gap-3">
-          {selectedTasks.size > 0 ? (
-            <span className="text-body-xs text-content-muted">
-              {t('specification.selectedTasksCount', { count: selectedTasks.size })}
-            </span>
-          ) : null}
-          <Button
-            size="sm"
-            disabled={
-              selectedTasks.size === 0 ||
-              runtime.canExecute === false ||
-              executionReadiness?.canExecute === false
-            }
-            title={
-              runtime.canExecute === false
-                ? t('common.notImplemented')
-                : executionReadiness?.canExecute === false
-                  ? executionReadiness.blockers?.[0]
-                  : undefined
-            }
-            onClick={() => runtime.executeTasks(Array.from(selectedTasks))}
-          >
-            {t('specification.executeWithAgent')}
-          </Button>
-        </div>
-      </div>
+  const isExecutionDisabled =
+    runtime.canExecute === false || executionReadiness?.canExecute === false;
+
+  const executionTitle =
+    runtime.canExecute === false
+      ? t('common.notImplemented')
+      : executionReadiness?.canExecute === false
+        ? executionReadiness.blockers?.[0]
+        : undefined;
+
+  return (
+    <WorkspaceSection aria-labelledby="tasks-heading">
+      <WorkspaceSection.Header
+        id="tasks-heading"
+        title={t('specification.tasksHeading')}
+        icon="list-checks"
+        count={countLabel}
+        actions={
+          selectedTasks.size > 0 ? (
+            <div className="flex items-center gap-3">
+              <span className="text-body-xs text-content-muted">
+                {t('specification.selectedTasksCount', { count: selectedTasks.size })}
+              </span>
+              <Button
+                size="sm"
+                disabled={isExecutionDisabled}
+                title={executionTitle}
+                onClick={() => runtime.executeTasks(Array.from(selectedTasks))}
+              >
+                {selectedTasks.size === 1
+                  ? t('specification.executeSingleTask')
+                  : t('specification.executeMultipleTasks', { count: selectedTasks.size })}
+              </Button>
+            </div>
+          ) : null
+        }
+      />
 
       {isPreparing ? (
-        <Typography variant="body-sm" className="mt-2 text-content-secondary">
+        <Typography variant="body-sm" className="text-content-secondary">
           {t('specification.tasksPreparingNotice')}
         </Typography>
       ) : null}
 
-      <div className="mt-4 grid gap-4">
+      <div className="grid gap-4">
         {taskGroups.map((group) => {
           const isCollapsed = collapsedGroups.has(group.id);
           const groupControlsId = `task-group-${group.id}`;
@@ -150,6 +144,6 @@ export function TasksSection({
           );
         })}
       </div>
-    </section>
+    </WorkspaceSection>
   );
 }

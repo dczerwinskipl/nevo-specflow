@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Button, Icon, MarkdownDocument, TextInput, Typography } from '@nevo/ui';
+import { Button, Icon, InformationList, MarkdownDocument, TextInput, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
+import { OperationalRow } from '../shared/OperationalList';
 import type { DocumentItem } from './model';
 
 export interface DocumentsViewProps {
@@ -41,7 +42,7 @@ export function DocumentsView({
 
         <article className="grid gap-4 leading-relaxed text-content-secondary">
           <div>
-            <Typography as="h1" variant="title-md" className="font-semibold text-content-primary">
+            <Typography as="h2" variant="title-md" className="font-semibold text-content-primary">
               {activeDoc.title}
             </Typography>
             <p className="mt-1 text-body-xs text-content-muted">
@@ -58,7 +59,7 @@ export function DocumentsView({
               activeDoc.sections.map((section, idx) => (
                 <div key={idx} className="grid gap-1">
                   <Typography
-                    as="h2"
+                    as="h3"
                     variant="title-sm"
                     className="font-medium text-content-primary pt-2"
                   >
@@ -90,7 +91,7 @@ export function DocumentsView({
   return (
     <div className="grid max-w-content-standard gap-6 py-2">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <Typography as="h1" variant="title-md" className="font-semibold text-content-primary">
+        <Typography as="h2" variant="title-md" className="font-semibold text-content-primary">
           {t('specification.documentsHeading')}
         </Typography>
         <TextInput
@@ -108,22 +109,22 @@ export function DocumentsView({
           : t('specification.noDocumentsNotice')}
       </Typography>
 
-      <div className="divide-y divide-border-subtle">
+      <InformationList>
         {filtered.map((doc) => (
-          <div key={doc.id} className="flex items-center justify-between gap-4 py-4">
-            <div className="min-w-0">
-              <div className="font-medium text-content-primary [overflow-wrap:anywhere]">
-                {doc.title}
-              </div>
-              <div className="text-body-xs text-content-muted">{doc.kind} · Markdown</div>
-            </div>
-
-            <Button variant="secondary" size="sm" onClick={() => onSelectDoc(doc.id)}>
-              {t('specification.readDocumentAction')}
-            </Button>
-          </div>
+          <OperationalRow
+            key={doc.id}
+            titleAs="h3"
+            primary={doc.title}
+            onPrimaryClick={() => onSelectDoc(doc.id)}
+            compactFacts={[`${doc.kind} · Markdown`]}
+            trailing={
+              <Button variant="secondary" size="sm" onClick={() => onSelectDoc(doc.id)}>
+                {t('specification.readDocumentAction')}
+              </Button>
+            }
+          />
         ))}
-      </div>
+      </InformationList>
     </div>
   );
 }

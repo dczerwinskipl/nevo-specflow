@@ -1,4 +1,4 @@
-import { Button, Icon, Typography } from '@nevo/ui';
+import { Button, IconButton, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { TaskGroup, TaskItem } from './model';
 
@@ -27,7 +27,7 @@ export function TaskPreview({ task, groups, specKey, onClose, onOpenFull }: Task
             {task.id}
           </Typography>
           <Typography
-            as="h2"
+            as="h3"
             variant="title-sm"
             className="mt-1 font-semibold text-content-primary [overflow-wrap:anywhere]"
           >
@@ -35,14 +35,13 @@ export function TaskPreview({ task, groups, specKey, onClose, onOpenFull }: Task
           </Typography>
         </div>
 
-        <button
-          type="button"
+        <IconButton
+          icon="close"
+          size="sm"
+          variant="ghost"
           onClick={onClose}
-          className="inline-flex size-8 shrink-0 items-center justify-center rounded-control text-content-secondary hover:bg-surface-hover hover:text-content-primary focus-visible:outline-2 focus-visible:outline-focus-ring"
           aria-label={t('specification.closeTaskPreview')}
-        >
-          <Icon name="close" size="sm" />
-        </button>
+        />
       </div>
 
       <Typography variant="body-sm" className="text-content-secondary">

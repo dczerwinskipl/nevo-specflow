@@ -17,6 +17,7 @@ export interface WorkspaceRuntime {
   readonly fullTaskHref: (taskId: string) => string;
   readonly canExecute?: boolean;
   readonly canStartConversation?: boolean;
+  readonly canOpenSession?: boolean;
 }
 
 const WorkspaceRuntimeContext = createContext<WorkspaceRuntime | null>(null);
@@ -64,6 +65,7 @@ export function createFakeWorkspaceRuntime(
     fullTaskHref: (taskId) => `/specs/fake?view=task&task=${taskId}`,
     canExecute: true,
     canStartConversation: true,
+    canOpenSession: true,
     ...overrides,
   };
 }

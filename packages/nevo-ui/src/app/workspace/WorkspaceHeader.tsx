@@ -28,6 +28,7 @@ export interface WorkspaceHeaderAction {
 
 export interface WorkspaceHeaderProps {
   actions?: readonly WorkspaceHeaderAction[];
+  as?: 'h1' | 'h2' | 'h3' | 'h4' | 'span';
   className?: string;
   icon?: IconName;
   labels?: Partial<WorkspaceHeaderLabels>;
@@ -155,6 +156,7 @@ function DirectPrimaryAction({ action }: { action: WorkspaceHeaderAction }) {
 
 export function WorkspaceHeader({
   actions = [],
+  as = 'h1',
   className,
   icon,
   labels: labelsProp,
@@ -175,7 +177,7 @@ export function WorkspaceHeader({
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-2">
             <Typography
-              as="h1"
+              as={as}
               className="min-w-0 truncate outline-none"
               data-workspace-header-title="true"
               tabIndex={-1}

@@ -214,7 +214,7 @@ function ScreenOutlet({
   );
 }
 
-function HeaderOutlet({ flow, entry }: { flow: SecondaryFlow; entry: SecondaryEntry }) {
+function HeaderOutlet({ entry }: { entry: SecondaryEntry }) {
   const result = entry.definition.useData(entry.rootParams);
   const page = entry.definition.screens[entry.page];
   if (!page) throw new Error(`Unknown Secondary screen: ${entry.page}`);
@@ -237,7 +237,7 @@ function publicEntry(
     instanceKey: entry.instanceKey,
     surface: {
       header: page.header ? (
-        <HeaderOutlet flow={flow} entry={entry} />
+        <HeaderOutlet entry={entry} />
       ) : (
         <WorkspaceHeader headingLevel={2} title={page.title} />
       ),

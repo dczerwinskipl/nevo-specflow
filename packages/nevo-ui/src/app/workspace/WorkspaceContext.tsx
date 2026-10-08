@@ -12,6 +12,7 @@ import {
 
 import type { ComponentType, ReactNode } from 'react';
 import type { AppWorkspaceSurface } from './workspaceSurface';
+import { isCurrentEntry, popEntry, pushEntry, replaceEntry, startFlow, type SecondaryFlowModel } from './secondaryNavigationModel';
 import { WorkspaceHeader } from './WorkspaceHeader';
 import type {
   SecondaryData,
@@ -52,11 +53,7 @@ interface SecondaryEntry {
   returnFocusTo: WorkspaceFocusTarget | null;
 }
 
-interface SecondaryFlow {
-  id: number;
-  scopeKey?: string | number;
-  entries: readonly SecondaryEntry[];
-}
+type SecondaryFlow = SecondaryFlowModel<SecondaryEntry>;
 
 export interface WorkspaceSecondaryState {
   surface: AppWorkspaceSurface;
@@ -81,6 +78,8 @@ export interface WorkspaceContextValue {
   ) => Promise<boolean>;
   back: () => Promise<boolean>;
   close: () => Promise<boolean>;
+  /** Application route blockers may call this before an ordinary route change. */
+  canLeaveScope: () => Promise<boolean>;
 }
 
 type LeaveGuard = () => boolean | Promise<boolean>;
@@ -415,11 +414,7 @@ export function AppWorkspaceProvider({
           instanceKey: ++counter.current,
           returnFocusTo: getActiveElement(),
         };
-        const next: SecondaryFlow = {
-          id: ++counter.current,
-          scopeKey,
-          entries: [entry],
-        };
+        const next = startFlow(++counter.current, entry, scopeKey);
         guards.current.clear();
         publish(next, previous ? 'replace' : 'push', previous);
         return true;
@@ -437,8 +432,7 @@ export function AppWorkspaceProvider({
           !previous ||
           previous.scopeKey !== scopeKey ||
           !current ||
-          previous.id !== flowId ||
-          current.instanceKey !== entryKey
+          !isCurrentEntry(previous, flowId, entryKey)
         ) {
           return false; // Stale callbacks cannot mutate a newer flow or page.
         }
@@ -456,11 +450,10 @@ export function AppWorkspaceProvider({
           return true;
         }
         if (kind === 'back') {
-          const nextEntries = previous.entries.slice(0, -1);
-          const next = { ...previous, entries: nextEntries };
+          const next = popEntry(previous);
           publish(next, 'pop', previous);
           guards.current.delete(current.instanceKey);
-          restoreFocus(current.returnFocusTo, nextEntries.at(-1)?.instanceKey ?? null);
+          restoreFocus(current.returnFocusTo, next?.entries.at(-1)?.instanceKey ?? null);
           return true;
         }
         if (!target) throw new Error('Secondary navigation target is required.');
@@ -477,11 +470,10 @@ export function AppWorkspaceProvider({
           instanceKey: ++counter.current,
           returnFocusTo: getActiveElement(),
         };
-        const entries =
-          kind === 'replace'
-            ? [...previous.entries.slice(0, -1), nextEntry]
-            : [...previous.entries, nextEntry];
-        publish({ ...previous, entries }, kind, previous);
+        const next = kind === 'replace'
+          ? replaceEntry(previous, nextEntry)
+          : pushEntry(previous, nextEntry);
+        publish(next, kind, previous);
         if (kind === 'replace') guards.current.delete(current.instanceKey);
         return true;
       }),
@@ -504,6 +496,12 @@ export function AppWorkspaceProvider({
     return id && top ? navigate('close', id, top.instanceKey) : Promise.resolve(true);
   }, [navigate]);
 
+  const canLeaveScope = useCallback(() =>
+    queue(async () => {
+      if (!mounted.current || currentScope.current !== scopeKey) return false;
+      return passesGuard(flowRef.current);
+    }), [queue, passesGuard, scopeKey]);
+
   const value = useMemo<WorkspaceContextValue>(
     () => ({
       secondary: currentSurface(visibleFlow),
@@ -520,8 +518,9 @@ export function AppWorkspaceProvider({
       open,
       back,
       close,
+      canLeaveScope,
     }),
-    [visibleFlow, transition, open, back, close, currentSurface],
+    [visibleFlow, transition, open, back, close, canLeaveScope, currentSurface],
   );
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
@@ -531,8 +530,8 @@ export function AppWorkspaceProvider({
 export function useSecondaryNavigation() {
   const workspace = useWorkspace();
   return useMemo(
-    () => ({ open: workspace.open, close: workspace.close }),
-    [workspace.open, workspace.close],
+    () => ({ open: workspace.open, close: workspace.close, canLeaveScope: workspace.canLeaveScope }),
+    [workspace.open, workspace.close, workspace.canLeaveScope],
   );
 }
 

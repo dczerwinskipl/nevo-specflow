@@ -400,7 +400,7 @@ function createBlankCustomer(): Customer {
 }
 
 function createCustomerStore() {
-  let snapshot: readonly Customer[] = initialCustomers;
+  let snapshot: Customer[] = initialCustomers;
   const listeners = new Set<() => void>();
   return {
     subscribe: (listener: () => void) => {

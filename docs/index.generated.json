@@ -965,6 +965,23 @@
       ]
     },
     {
+      "id": "design-system.implementation.react.secondary-navigation",
+      "type": "engineering",
+      "title": "Secondary navigation",
+      "status": "current",
+      "file": "docs/design-system/implementation/react/secondary-navigation.md",
+      "read_when": [
+        "adding a contextual Secondary inspector to a workspace",
+        "navigating between nested inspector screens",
+        "debugging data refreshes, remounts or default Secondary behavior"
+      ],
+      "summary": "Product-neutral in-memory Secondary screen catalogues and lifecycle, distinct from route navigation.",
+      "related": [
+        "design-system.principles.system-boundary",
+        "product.specflow.ui.interaction-model"
+      ]
+    },
+    {
       "id": "design-system.implementation.storybook.guidelines",
       "type": "engineering",
       "title": "Storybook guidelines",

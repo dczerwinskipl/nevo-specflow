@@ -22,12 +22,9 @@ export {
 } from './workspace/AppWorkspace';
 export {
   AppWorkspaceProvider,
-  useWorkspace,
   useSecondaryNavigation,
   useSecondaryStack,
   useSecondaryLeaveGuard,
-  type WorkspaceContextValue,
-  type WorkspaceSecondaryState,
 } from './workspace/WorkspaceContext';
 export {
   defineSecondaryStack,

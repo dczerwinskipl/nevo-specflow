@@ -350,7 +350,7 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
         const next: SecondaryFlow = {
           id: ++counter.current,
           definition: runtime,
-          rootParams: params,
+          rootParams: { ...params },
           entries: [entry],
         };
         guards.current.clear();
@@ -389,7 +389,7 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
         }
         const nextEntry: SecondaryEntry = {
           page,
-          params: params ?? {},
+          params: { ...params },
           instanceKey: ++counter.current,
           returnFocusTo: getActiveElement(),
         };

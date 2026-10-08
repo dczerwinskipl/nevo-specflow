@@ -549,7 +549,7 @@ function CrmScreen({ initialCustomerId }: { initialCustomerId?: string }) {
                 const customer = createBlankCustomer();
                 saveCustomer(customer);
                 void openCustomer(customer);
-              }
+              }}
             />
           }
         >

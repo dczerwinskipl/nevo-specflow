@@ -377,7 +377,11 @@ export function AppWorkspaceProvider({
       queue(async () => {
         if (!mounted.current || currentScope.current !== scopeKey) return false;
         const previous = flowRef.current?.scopeKey === scopeKey ? flowRef.current : null;
-        if (!(await passesGuard(previous)) || !mounted.current || currentScope.current !== scopeKey) {
+        if (
+          !(await passesGuard(previous)) ||
+          !mounted.current ||
+          currentScope.current !== scopeKey
+        ) {
           return false;
         }
         // Type erasure is confined to the infrastructure boundary; the public signature is typed.
@@ -420,7 +424,11 @@ export function AppWorkspaceProvider({
         ) {
           return false; // Stale callbacks cannot mutate a newer flow or page.
         }
-        if (!(await passesGuard(previous)) || !mounted.current || currentScope.current !== scopeKey) {
+        if (
+          !(await passesGuard(previous)) ||
+          !mounted.current ||
+          currentScope.current !== scopeKey
+        ) {
           return false;
         }
         if (kind === 'close' || (kind === 'back' && previous.entries.length === 1)) {

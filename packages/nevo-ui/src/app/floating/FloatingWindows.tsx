@@ -15,7 +15,7 @@ import { IconButton } from '../../components/actions/IconButton';
 import { Icon } from '../../components/foundations/Icon';
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '../../components/overlays/Menu';
 import { fastColorTransitionClassName } from '../../design-system/interactionRecipes';
-import type { IconName } from '../../design-system/resources';
+import type { IconGlyph } from '../../components/foundations/Icon';
 import { cn } from '../../lib';
 import {
   resolveFloatingWindowLayout,
@@ -60,7 +60,7 @@ export interface FloatingWindowHostProps extends HTMLAttributes<HTMLDivElement> 
   labels?: Partial<FloatingWindowHostLabels>;
   maxVisible?: number;
   /** Icon rendered by the generic overflow hub. */
-  overflowIcon?: IconName;
+  overflowIcon?: IconGlyph;
 }
 
 export function FloatingWindowHost({

@@ -41,6 +41,8 @@ import {
   type WorkspaceHeaderProps,
 } from './WorkspaceHeader';
 
+export { WorkspaceHeaderIdentity } from './WorkspaceHeader';
+
 export interface AppWorkspaceLabels {
   backToPrimary: string;
   closeSecondary: string;

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   AppContent,
@@ -81,12 +81,29 @@ function SpecificationWorkspaceInner({
   const { t } = useTranslation();
   const secondaryNavigation = useSecondaryNavigation();
 
-  const [currentView, setCurrentView] = useState<SpecificationWorkspaceView>(
+  // When onNavigateView is provided (e.g. by TanStack Router integration),
+  // route parameters (initialView / initialTask) are the single source of truth.
+  // For standalone fixtures/stories without onNavigateView, fall back to local state.
+  const isControlled = Boolean(onNavigateView);
+  const [uncontrolledView, setUncontrolledView] = useState<SpecificationWorkspaceView>(
     initialView === 'task' || initialTask ? 'task' : initialView,
   );
-  const [fullTaskId, setFullTaskId] = useState<string | null>(
+  const [uncontrolledTaskId, setUncontrolledTaskId] = useState<string | null>(
     initialView === 'task' || initialTask ? (initialTask ?? null) : null,
   );
+
+  const currentView: SpecificationWorkspaceView = isControlled
+    ? initialView === 'task' || initialTask
+      ? 'task'
+      : initialView
+    : uncontrolledView;
+
+  const fullTaskId: string | null = isControlled
+    ? initialView === 'task' || initialTask
+      ? (initialTask ?? null)
+      : null
+    : uncontrolledTaskId;
+
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [docOrigin, setDocOrigin] = useState<'work' | 'documents'>('documents');
   const [changesSource, setChangesSource] = useState<'base' | 'uncommitted' | 'mr'>('base');
@@ -96,23 +113,13 @@ function SpecificationWorkspaceInner({
   const [conversationDialogOpen, setConversationDialogOpen] = useState(false);
   const [tasksToExecute, setTasksToExecute] = useState<readonly string[]>([]);
 
-  useEffect(() => {
-    if (initialView === 'task' || initialTask) {
-      setCurrentView('task');
-      setFullTaskId(initialTask ?? null);
-    } else {
-      setCurrentView(initialView);
-      setFullTaskId(null);
-    }
-  }, [initialView, initialTask]);
-
   const navigateToView = useCallback(
     (nextView: SpecificationWorkspaceView, nextTaskId: string | null = null) => {
-      setCurrentView(nextView);
-      setFullTaskId(nextTaskId);
       if (onNavigateView) {
         onNavigateView({ view: nextView, taskId: nextTaskId });
       } else {
+        setUncontrolledView(nextView);
+        setUncontrolledTaskId(nextTaskId);
         onViewChange?.(nextView);
         onTaskChange?.(nextTaskId);
       }
@@ -318,7 +325,7 @@ function SpecificationWorkspaceInner({
 
                   {/* View Content */}
                   {currentView === 'work' ? (
-                    <WorkView data={data} />
+                    <WorkView specId={specId} data={data} />
                   ) : currentView === 'documents' ? (
                     <DocumentsView
                       documents={data.documents}

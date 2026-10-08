@@ -56,9 +56,11 @@ export const FullTaskPromotionFlow: Story = {
     await userEvent.click(taskElement);
 
     const fullTaskButtons = await canvas.findAllByText(/Full task view/i);
-    if (fullTaskButtons.length === 0)
+    const firstButton = fullTaskButtons[0];
+    if (!firstButton) {
       throw new Error('Expected Full task view action in task preview');
-    await userEvent.click(fullTaskButtons[0]);
+    }
+    await userEvent.click(firstButton);
 
     await canvas.findByRole('heading', { name: /Task \/ TASK-03/i }, { timeout: 5000 });
 

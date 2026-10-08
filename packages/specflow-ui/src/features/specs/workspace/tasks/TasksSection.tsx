@@ -9,6 +9,7 @@ import { TaskGroupHeader } from './TaskGroupHeader';
 import { TaskRow } from './TaskRow';
 
 export interface TasksSectionProps {
+  readonly specId?: string;
   readonly taskGroups: readonly TaskGroup[];
   readonly isPreparing?: boolean;
   readonly totalTasksCount?: number;
@@ -17,6 +18,7 @@ export interface TasksSectionProps {
 }
 
 export function TasksSection({
+  specId,
   taskGroups,
   isPreparing = false,
   totalTasksCount,
@@ -28,6 +30,13 @@ export function TasksSection({
 
   const [selectedTasks, setSelectedTasks] = useState<ReadonlySet<string>>(new Set());
   const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(new Set());
+  const [prevSpecId, setPrevSpecId] = useState(specId);
+
+  if (specId !== prevSpecId) {
+    setPrevSpecId(specId);
+    setSelectedTasks(new Set());
+    setCollapsedGroups(new Set());
+  }
 
   const handleSelectTask = (taskId: string, selected: boolean) => {
     setSelectedTasks((prev) => {

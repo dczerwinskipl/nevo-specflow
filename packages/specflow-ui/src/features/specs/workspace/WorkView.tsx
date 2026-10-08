@@ -11,6 +11,7 @@ import {
 import { TasksSection } from './tasks';
 
 export interface WorkViewProps {
+  readonly specId?: string;
   readonly data: SpecificationWorkspaceData;
 }
 
@@ -18,7 +19,7 @@ export interface WorkViewProps {
  * Specification Workspace work view composition root.
  * Coordinates section layout without monolithic state management.
  */
-export function WorkView({ data }: WorkViewProps) {
+export function WorkView({ specId, data }: WorkViewProps) {
   return (
     <div className="divide-y divide-border-subtle max-w-content-standard">
       <div className="pb-6">
@@ -57,6 +58,8 @@ export function WorkView({ data }: WorkViewProps) {
       {!data.isEmpty ? (
         <div className="py-6">
           <TasksSection
+            key={specId}
+            specId={specId}
             taskGroups={data.taskGroups}
             isPreparing={data.isPreparing}
             totalTasksCount={data.totalTasksCount}

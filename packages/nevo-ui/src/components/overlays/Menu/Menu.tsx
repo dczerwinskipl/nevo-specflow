@@ -16,7 +16,7 @@ import {
   floatingSeparatorClassName,
 } from '../../../design-system/floatingRecipes';
 import { cn } from '../../../lib';
-import { Icon, type IconName } from '../../foundations/Icon';
+import { Icon, type IconGlyph } from '../../foundations/Icon';
 import { Typography } from '../../foundations/Typography';
 
 export const Menu = DropdownMenu.Root;
@@ -118,7 +118,7 @@ export interface MenuItemProps
     Omit<ComponentPropsWithoutRef<typeof DropdownMenu.Item>, 'children'>,
     Pick<VariantProps<typeof menuItemVariants>, 'tone'> {
   children: ReactNode;
-  leadingIcon?: IconName;
+  leadingIcon?: IconGlyph;
   shortcut?: ReactNode;
 }
 

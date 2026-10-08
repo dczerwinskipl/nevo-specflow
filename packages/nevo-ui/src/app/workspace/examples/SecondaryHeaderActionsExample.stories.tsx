@@ -96,7 +96,7 @@ function createInspectorStack(source: Source) {
           {
             id: 'save',
             label: 'Save',
-            icon: 'check',
+            icon: 'save',
             primary: true,
             onPress: () => data.recordAction('Save'),
           },

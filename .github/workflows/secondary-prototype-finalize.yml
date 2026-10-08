@@ -1,0 +1,44 @@
+name: Temporary Secondary Prototype Validation Export
+
+on:
+  push:
+    branches:
+      - feature/workspace-secondary-stack-navigation
+    paths:
+      - .github/workflows/secondary-prototype-finalize.yml
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Format changed source and documentation
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+          const files = execFileSync('git', ['diff', '--name-only', 'origin/main...HEAD'], { encoding: 'utf8' }).trim().split('\n')
+            .filter(path => /\.(tsx?|md|json)$/.test(path) && !path.includes('index.generated'));
+          if (files.length) execFileSync('pnpm', ['exec', 'prettier', '--write', ...files], { stdio: 'inherit' });
+          NODE
+      - name: Regenerate canonical projections
+        run: |
+          pnpm docs:check --write
+          pnpm agents:build
+      - name: Export modified files for GitHub-only application
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+          import { readFileSync } from 'node:fs';
+          const paths = execFileSync('git', ['diff', '--name-only'], { encoding: 'utf8' }).trim().split('\n').filter(Boolean);
+          for (const path of paths) {
+            console.log('SECONDARY_FINAL_EXPORT:' + path + ':' + readFileSync(path).toString('base64'));
+          }
+          console.log('SECONDARY_FINAL_COUNT:' + paths.length);
+          NODE

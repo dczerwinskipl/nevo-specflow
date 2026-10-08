@@ -77,9 +77,20 @@ even when the three modules use independent data subscriptions.
 `close` clears the runtime flow. Asynchronous callbacks from disposed screens cannot operate
 on a newer flow.
 
-A screen may declare an optional `header` component in its definition; it receives the same live
-`{ data, params }` as the screen and controls the product header, while AppWorkspace owns the
-automatic navigation buttons. Default Secondary retains its existing declarative header.
+A screen may declare an optional `header` component in its definition. The screen
+catalogue also declares `actions: ({ data, params }) => WorkspaceHeaderAction[]` and optionally
+`actionLabels`. The action declaration is **pure** (no hooks, no side effects) and is evaluated
+from the same live `useData` result as Header and Content. A custom Header receives
+`{ data, params, actions, labels }` and must forward the supplied actions/labels to
+`WorkspaceHeader`, rather than defining private actions inside its JSX. The workspace's
+compact mobile controls receive these explicitly declared actions via the runtime surface
+contract, not by inspecting React elements or invoking `useData` a second time.
+
+`AppWorkspace` continues to own the system Back/Close controls. When the mobile header
+scrolls out of view, the entire declared action set moves to the floating overflow menu;
+system Back stays outside it and Close may appear alongside the product actions.
+Actions are unavailable while `useData` is not `ready`, avoiding stale callbacks after data
+loss. Default Secondary retains its independent declarative header.
 
 For ordinary **application route changes**, the application router's blocking adapter must
 await `useSecondaryNavigation().canLeaveScope()` _before_ committing navigation. This
@@ -166,6 +177,8 @@ The canonical Storybook examples in
 and `CrossFeatureNavigationExample.stories.tsx` exercise deep Todo navigation,
 Task → Changes → File across independent modules, scoped invalidation, refresh
 without remounts, unavailable nested events/root entities and mobile Back.
+`SecondaryHeaderActionsExample.stories.tsx` verifies declarative Save/Refresh/Open full view
+actions on desktop and collapsed mobile headers.
 `WorkspaceContext.contract.stories.tsx` covers a shared header/body data source,
 retention of a hidden editable draft during temporary failures, and its disposal on revoked access. The CRM example provides an independent
 consumer. Keep every legacy runtime-node navigation API removed from code, tests and exports.

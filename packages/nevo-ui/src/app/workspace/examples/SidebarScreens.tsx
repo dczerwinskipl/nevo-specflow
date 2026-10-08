@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { Button, useSecondaryStack, type SecondaryScreenProps } from '../../index';
+import { Button } from '../../../components';
+import { useSecondaryStack, type SecondaryScreenProps } from '../../index';
 import type { Todo, User, Item } from './DemoStore';
 
 export type TodoPages = { details: Record<never, never>; history: Record<never, never>; event: { eventId: string } };

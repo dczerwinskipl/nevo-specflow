@@ -338,9 +338,9 @@ function SharedHostWorkspace() {
 }
 export const HeaderAndBodyShareOneDataHost: Story = {
   render: () => <AppWorkspaceProvider><SharedHostWorkspace /></AppWorkspaceProvider>,
-  play: async ({ canvas, userEvent }) => {
+  play: async ({ canvas, canvasElement, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Open shared host' }));
-    const body = canvas.getByText(/^Host \d+$/);
+    const body = canvasElement.querySelector('[data-host-content]');
     const header = canvas.getByRole('heading', { name: /^Host \d+$/ });
     assert(body.textContent === header.textContent, 'Header and content must share the same data instance');
   },

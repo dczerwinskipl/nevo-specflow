@@ -264,7 +264,7 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
     [],
   );
 
-  const navigateRef = useRef<NavigationCommand>(async () => false);
+  const navigateRef = useRef<NavigationCommand>(() => Promise.resolve(false));
 
   const currentSurface = useCallback(
     (current: SecondaryFlow | null) => {

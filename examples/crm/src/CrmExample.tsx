@@ -1,4 +1,4 @@
-import { useMemo, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { useCallback, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 
 import {
   AppContent,
@@ -12,6 +12,7 @@ import {
   useAppNavigation,
   useSecondaryNavigation,
   useSecondaryStack,
+  useSecondaryLeaveGuard,
   defineSecondaryStack,
   type SecondaryData,
   type SecondaryScreenProps,
@@ -215,16 +216,20 @@ function CustomerEditor({
   customer,
   onSave,
   onCancel,
+  onDraftChange,
 }: {
   customer: Customer;
   onSave: (customer: Customer) => void;
   onCancel: () => void;
+  onDraftChange?: (draft: Customer) => void;
 }) {
 
   const [draft, setDraft] = useState(customer);
 
   const update = <Key extends keyof Customer>(key: Key, value: Customer[Key]) => {
-    setDraft((current) => ({ ...current, [key]: value }));
+    const next = { ...draft, [key]: value };
+    setDraft(next);
+    onDraftChange?.(next);
   };
 
   return (
@@ -420,6 +425,11 @@ function createCustomerStack(store: CustomerStore) {
   }
   function Editor({ data }: SecondaryScreenProps<Customer, CustomerPages['editor']>) {
     const navigation = useSecondaryStack<CustomerPages>();
+    const dirty = useRef(false);
+    useSecondaryLeaveGuard(useCallback(
+      () => !dirty.current || window.confirm('Discard unsaved customer changes?'),
+      [],
+    ));
     return <div>
       <div className="p-4">
         <Button size="sm" variant="secondary" onClick={() => void navigation.navTo('billing')}>
@@ -428,7 +438,8 @@ function createCustomerStack(store: CustomerStore) {
       </div>
       <CustomerEditor
         customer={data}
-        onSave={store.save}
+        onDraftChange={(draft) => { dirty.current = JSON.stringify(draft) !== JSON.stringify(data); }}
+        onSave={(customer) => { dirty.current = false; store.save(customer); }}
         onCancel={() => void navigation.close()}
       />
     </div>;

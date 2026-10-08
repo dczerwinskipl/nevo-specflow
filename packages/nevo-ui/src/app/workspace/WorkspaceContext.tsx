@@ -217,7 +217,7 @@ function HeaderOutlet({ flow, entry }: { flow: SecondaryFlow; entry: SecondaryEn
   const page = entry.definition.screens[entry.page];
   if (!page) throw new Error(`Unknown Secondary screen: ${entry.page}`);
   if (result.status !== 'ready' || !page.header) {
-    return <WorkspaceHeader title={page.title} />;
+    return <WorkspaceHeader headingLevel={2} title={page.title} />;
   }
   const Header = page.header;
   return <Header data={result.data} params={entry.params} />;
@@ -237,7 +237,7 @@ function publicEntry(
       header: page.header ? (
         <HeaderOutlet flow={flow} entry={entry} />
       ) : (
-        <WorkspaceHeader title={page.title} />
+        <WorkspaceHeader headingLevel={2} title={page.title} />
       ),
       content: (
         <ScreenOutlet flow={flow} entry={entry} navigate={navigate} registerGuard={registerGuard} />

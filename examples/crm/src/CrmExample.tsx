@@ -341,6 +341,7 @@ function CustomerEditor({
 function CustomerDetailsHeader({ customer }: { customer: Customer }) {
   return (
     <WorkspaceHeader
+      headingLevel={2}
       status={
         <Badge className="shrink-0" tone={statusTone[customer.status]}>
           {customer.status}
@@ -496,6 +497,7 @@ function createCustomerStack(store: CustomerStore) {
         title: 'Customer details',
         header: CustomerSidebarHeader,
         component: CustomerEditorScreen,
+        preserveOnDataLoss: true,
       },
       billing: { title: 'Billing history', component: CustomerBillingScreen },
     },

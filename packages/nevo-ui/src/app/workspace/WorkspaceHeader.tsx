@@ -34,6 +34,8 @@ export interface WorkspaceHeaderProps {
   status?: ReactNode;
   subtitle?: ReactNode;
   title: ReactNode;
+  /** Primary defaults to h1; contextual Secondary headers use h2. */
+  headingLevel?: 1 | 2;
 }
 
 export interface WorkspaceHeaderLabels {
@@ -161,6 +163,7 @@ export function WorkspaceHeader({
   status,
   subtitle,
   title,
+  headingLevel = 1,
 }: WorkspaceHeaderProps) {
   const resolved = resolveWorkspaceHeaderActions(actions);
   const labels = { ...defaultWorkspaceHeaderLabels, ...labelsProp };
@@ -175,7 +178,7 @@ export function WorkspaceHeader({
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-2">
             <Typography
-              as="h1"
+              as={headingLevel === 2 ? 'h2' : 'h1'}
               className="min-w-0 truncate outline-none"
               data-workspace-header-title="true"
               tabIndex={-1}

@@ -1,7 +1,7 @@
 import { forwardRef } from 'react';
 import { tv, type VariantProps } from 'tailwind-variants/lite';
 import { cn } from '../../../lib';
-import { Icon, type IconName } from '../../foundations/Icon';
+import { Icon, type IconGlyph } from '../../foundations/Icon';
 import { useTimelineSize } from './timelineContext';
 
 export const timelineMarkerVariants = tv({
@@ -62,7 +62,7 @@ export type TimelineTone = NonNullable<VariantProps<typeof timelineMarkerVariant
 export interface TimelineMarkerProps {
   active?: boolean;
   className?: string;
-  icon?: IconName;
+  icon?: IconGlyph;
   iconClassName?: string;
   tone?: TimelineTone;
 }

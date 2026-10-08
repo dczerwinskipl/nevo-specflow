@@ -23,10 +23,19 @@ export {
 export {
   AppWorkspaceProvider,
   useWorkspace,
+  useSecondaryNavigation,
+  useSecondaryStack,
+  useSecondaryLeaveGuard,
   type WorkspaceContextValue,
-  type WorkspaceSecondaryOptions,
   type WorkspaceSecondaryState,
 } from './workspace/WorkspaceContext';
+export {
+  defineSecondaryStack,
+  type SecondaryData,
+  type SecondaryScreenProps,
+  type SecondaryStackDefinition,
+  type SecondaryStackActions,
+} from './workspace/SecondaryStack';
 export type { AppWorkspaceSurface } from './workspace/workspaceSurface';
 export type {
   AppWorkspaceSplitMode,

@@ -24,7 +24,7 @@ Product routes remain owned by the application router. This is not the global na
 - `AppWorkspace.Primary` renders the main work surface.
 - `AppWorkspace.Secondary` is the optional declarative base shown on split-capable layouts.
 - A runtime Secondary flow temporarily takes precedence over the declarative base.
-- `AppWorkspaceProvider` owns one active flow and its array of page descriptors.
+- `AppWorkspaceProvider` owns one active flow and its array of page descriptors. Pass `scopeKey={specId}` (or the owning route identity) when the provider stays mounted while the route context changes; a changed scope clears the transient flow immediately.
 - Feature code defines available pages in `defineSecondaryStack`, usually in a separate module.
 - A page descriptor contains a page name, small page-specific identifiers and an instance key. Do not store React elements or cached domain snapshots in navigation state.
 - `useData(rootParams)` resolves current data in a stable host. A refresh updates rendered props without a navigation transition.
@@ -67,7 +67,11 @@ void stack.close();
 ```
 
 `open` always discards the prior flow and starts from its registered initial page.
-`navTo` pushes a page within the active flow; `replace` changes only the top page.
+`navTo('history')` pushes a page inside the current catalogue. Alternatively,
+`navTo(changesStack, { id: changeId })` pushes the **initial screen of another module**
+without discarding the current flow. Back then returns from File to Changes to Task,
+even when the three modules use independent data subscriptions.
+`replace` changes only the top page within its current catalogue.
 `back` pops a page, and on the root closes the runtime flow.
 `close` clears the runtime flow. Asynchronous callbacks from disposed screens cannot operate
 on a newer flow.
@@ -78,6 +82,12 @@ automatic navigation buttons. Default Secondary retains its existing declarative
 
 `useSecondaryLeaveGuard` optionally registers a guard for the active page. Navigation checks
 the guard before replacing, popping or closing that page; denied transitions leave the state intact.
+For an editable screen with a local draft, opt into `preserveOnDataLoss: true` in its
+screen definition. Once a ready result has mounted, the screen and its guard remain
+mounted but hidden/inert during `loading`, `unavailable`, and `error`; a visible status
+message takes its place. The application must still decide whether saving stale data
+is allowed once the source recovers. Do **not** enable this option for sensitive editors
+which must immediately discard content when authorization is revoked.
 Avoid synchronizing two owners of the Secondary with effects in product screens.
 
 ## Refresh and missing data
@@ -107,9 +117,16 @@ position instead of the global hamburger. On desktop/split, Back and Close are p
 workspace header. Default Secondary is not part of the runtime page stack.
 
 Browser history/Back interception and serialization of transient pages are **out of scope**.
-The current implementation only preserves the mounted active page across ordinary `ready`
-data refreshes; returning to a popped page may mount it anew. Switching to loading,
-unavailable or error intentionally replaces the active page content without navigating.
+The current implementation preserves the mounted active page across ordinary `ready`
+refreshes. Without `preserveOnDataLoss`, non-ready states replace the screen content
+and can discard its local draft or leave guard. A previous screen reached via Back is
+mounted afresh unless the product stores its state outside that component. This prototype
+does not persist offscreen screen-local state or intercept browser/system Back.
+
+Stack catalogue types constrain `navTo` for each declared set of pages, but the generic
+`useSecondaryStack<TPages>()` parameter is currently asserted by the caller and is
+not tied statically to its rendered catalogue. The runtime rejects unknown screen names.
+Do not claim full end-to-end catalogue-type inference.
 
 ## Agent checklist
 
@@ -125,8 +142,11 @@ unavailable or error intentionally replaces the active page content without navi
 
 ## Verification
 
-The canonical Storybook examples at
+The canonical Storybook examples in
 `packages/nevo-ui/src/app/workspace/examples/SecondaryStackExample.stories.tsx`
-exercise deep Todo navigation, switching to User, refreshing data without remounts,
-unavailable nested events/root entities and mobile Back. The CRM example provides an independent
+and `CrossFeatureNavigationExample.stories.tsx` exercise deep Todo navigation,
+Task → Changes → File across independent modules, scoped invalidation, refresh
+without remounts, unavailable nested events/root entities and mobile Back.
+`WorkspaceContext.contract.stories.tsx` covers guarding a hidden editable draft
+during temporary data loss. The CRM example provides an independent
 consumer. Keep every legacy runtime-node navigation API removed from code, tests and exports.

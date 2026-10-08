@@ -110,7 +110,9 @@ Current `AppWorkspace` provides:
 - stacked narrow presentation;
 - split emphasis modes: `primary | balanced | secondary`.
 
-See [the current Secondary navigation contract](../../design-system/implementation/react/secondary-navigation.md) for the supported runtime API. The original API inventory below was written during migration and is historical evidence.\n\nThis already fits most of:
+See [the current Secondary navigation contract](../../design-system/implementation/react/secondary-navigation.md) for the supported runtime API. The original API inventory below was written during migration and is historical evidence.
+
+This already fits most of:
 
 - Specification Primary -> Task Secondary;
 - Full Session Primary -> default Context / user-selected detail Secondary;

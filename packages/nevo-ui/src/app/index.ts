@@ -13,6 +13,7 @@ export {
   AppWorkspaceHeader,
   AppWorkspaceSlots,
   WorkspaceHeader,
+  WorkspaceHeaderIdentity,
   type AppWorkspaceProps,
   type AppWorkspaceSlot,
   type AppWorkspaceSlotsProps,

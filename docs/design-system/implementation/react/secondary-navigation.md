@@ -79,12 +79,13 @@ on a newer flow.
 
 A screen may declare an optional `header` component in its definition. The screen
 catalogue also declares `actions: ({ data, params }) => WorkspaceHeaderAction[]` and optionally
-`actionLabels`. The action declaration is **pure** (no hooks, no side effects) and is evaluated
-from the same live `useData` result as Header and Content. A custom Header receives
-`{ data, params, actions, labels }` and must forward the supplied actions/labels to
-`WorkspaceHeader`, rather than defining private actions inside its JSX. The workspace's
-compact mobile controls receive these explicitly declared actions via the runtime surface
-contract, not by inspecting React elements or invoking `useData` a second time.
+`actionLabels`. The action declaration is **pure** (no hooks, no side effects) and uses
+the same live `useData` result as Header and Content. A custom Header receives only
+`{ data, params }` and renders **product content only**, for example a
+`WorkspaceHeaderIdentity` with title, status and subtitle. It must not render its own
+`WorkspaceHeader`, Back/Close, or duplicate page actions. `AppWorkspace` automatically
+renders the shared header frame and injects actions in both desktop and collapsed mobile
+without requiring custom headers to forward props or inspecting React elements.
 
 `AppWorkspace` continues to own the system Back/Close controls. When the mobile header
 scrolls out of view, the entire declared action set moves to the floating overflow menu;

@@ -1,7 +1,7 @@
 import { useId, type ReactNode } from 'react';
 import { cn } from '../../../lib';
 import { IconButton } from '../../actions/IconButton';
-import { Icon, type IconName } from '../../foundations/Icon';
+import { Icon, type IconGlyph } from '../../foundations/Icon';
 import { Typography } from '../../foundations/Typography';
 import { useNavigationNode } from '../NavigationCore';
 import {
@@ -10,7 +10,7 @@ import {
   type SideNavigationItemState,
 } from './sideNavigation.styles';
 
-export type SideNavigationRootIcons = Readonly<Record<string, IconName | undefined>>;
+export type SideNavigationRootIcons = Readonly<Record<string, IconGlyph | undefined>>;
 
 export interface SideNavigationMessages {
   collapse: (label: string) => string;

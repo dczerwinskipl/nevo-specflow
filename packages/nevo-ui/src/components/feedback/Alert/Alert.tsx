@@ -3,7 +3,7 @@ import { tv } from 'tailwind-variants/lite';
 import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import type { StatusTone } from '../../../design-system/statusTone';
 import { cn } from '../../../lib';
-import { Icon, type IconName } from '../../foundations/Icon';
+import { Icon, type IconGlyph, type IconName } from '../../foundations/Icon';
 
 export const alertVariants = tv({
   base: 'rounded-composite border px-4 py-3',
@@ -23,7 +23,7 @@ export interface AlertProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'
   title?: ReactNode;
   actions?: ReactNode;
   /** Override the semantic tone icon. Pass null to intentionally hide it. */
-  icon?: IconName | null;
+  icon?: IconGlyph | null;
   tone?: StatusTone;
 }
 const toneIcons = {

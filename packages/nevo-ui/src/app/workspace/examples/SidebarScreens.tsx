@@ -3,13 +3,13 @@ import { Button } from '../../../components';
 import { useSecondaryStack, type SecondaryScreenProps } from '../../index';
 import type { Todo, User, Item } from './DemoStore';
 
-export type TodoPages = {
+export interface TodoPages {
   details: Record<never, never>;
   history: Record<never, never>;
   event: { eventId: string };
 };
-export type UserPages = { details: Record<never, never> };
-export type ItemPages = { details: Record<never, never> };
+export interface UserPages { details: Record<never, never> };
+export interface ItemPages { details: Record<never, never> };
 let mountSequence = 0;
 
 function Mounted({ children }: { children: ReactNode }) {

@@ -53,6 +53,40 @@ describe('SpecFlow router access policy', () => {
     },
   );
 
+  it('reaches a specific task view directly via search parameters', async () => {
+    const router = createSpecFlowRouter(
+      createMemoryHistory({
+        initialEntries: ['/specs/admission?collection=current&view=task&task=TASK-03'],
+      }),
+      createSpecFlowAppServices({
+        authStore: storeWith(authenticated),
+        specsSource: { read: (value) => Promise.resolve(createSpecsFixture(value)) },
+      }),
+    );
+    await router.load();
+    const match = router.state.matches.find((item) => item.routeId === '/_app/specs/$specId');
+    expect(match?.status).toBe('success');
+    expect(match?.params).toEqual({ specId: 'admission' });
+    expect(match?.search).toEqual({ collection: 'current', view: 'task', task: 'TASK-03' });
+  });
+
+  it('reaches documents view directly via search parameters', async () => {
+    const router = createSpecFlowRouter(
+      createMemoryHistory({
+        initialEntries: ['/specs/admission?collection=current&view=documents'],
+      }),
+      createSpecFlowAppServices({
+        authStore: storeWith(authenticated),
+        specsSource: { read: (value) => Promise.resolve(createSpecsFixture(value)) },
+      }),
+    );
+    await router.load();
+    const match = router.state.matches.find((item) => item.routeId === '/_app/specs/$specId');
+    expect(match?.status).toBe('success');
+    expect(match?.params).toEqual({ specId: 'admission' });
+    expect(match?.search).toEqual({ collection: 'current', view: 'documents' });
+  });
+
   it('normalizes search parameters: strips task when view is documents', () => {
     const validated = validateSpecificationSearch({
       collection: 'current',

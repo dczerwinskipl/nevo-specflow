@@ -45,6 +45,31 @@ export const TaskPreviewFlow: Story = {
   },
 };
 
+export const NestedHistoryTaskPreviewFlow: Story = {
+  args: { path: '/specs/admission?collection=current' },
+  play: async ({ canvas, userEvent }) => {
+    await canvas.findByText('Specification ID: admission', {}, { timeout: 10000 });
+
+    // Click task in activity history (TASK-04 event)
+    const historyTaskEvent = await canvas.findByRole('button', {
+      name: /Rozpoczęto wykonanie TASK-04/i,
+    });
+    await userEvent.click(historyTaskEvent);
+
+    // Confirm Task Preview opens in secondary
+    await canvas.findByRole('heading', { name: /Task preview/i }, { timeout: 5000 });
+    const task4Matches = await canvas.findAllByText('TASK-04', {}, { timeout: 5000 });
+    if (task4Matches.length < 2) throw new Error('Expected TASK-04 in row and preview');
+
+    // Press Back in secondary stack
+    const backBtn = await canvas.findByRole('button', { name: /Back/i });
+    await userEvent.click(backBtn);
+
+    // Confirm Activity History is restored
+    await canvas.findByText(/This specification/i, {}, { timeout: 5000 });
+  },
+};
+
 export const FullTaskPromotionFlow: Story = {
   args: { path: '/specs/admission?collection=current' },
   play: async ({ canvas, userEvent }) => {
@@ -114,11 +139,42 @@ export const Documents: Story = {
 
 export const FullTask: Story = {
   args: { path: '/specs/admission?task=TASK-03' },
+  play: async ({ canvas }) => {
+    await canvas.findByRole('heading', { name: /Task \/ TASK-03/i }, { timeout: 5000 });
+    await canvas.findByText('TASK-03 · admission', {}, { timeout: 5000 });
+    await canvas.findByText(
+      /Obsługa odświeżania uprawnień w długotrwałej sesji użytkownika/i,
+      {},
+      { timeout: 5000 },
+    );
+  },
 };
 
 export const NarrowLongIdentity: Story = {
   args: { path: `/specs/${'long-identity-'.repeat(16)}` },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
+};
+
+export const MobileTaskPreviewFlow: Story = {
+  args: { path: '/specs/admission?collection=current' },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    await canvas.findByText('Specification ID: admission', {}, { timeout: 10000 });
+
+    const taskElement = await canvas.findByText(
+      /Obsługa odświeżania uprawnień w długotrwałej sesji użytkownika/i,
+    );
+    await userEvent.click(taskElement);
+
+    // In mobile stacked layout, secondary transitions in and provides Back action
+    await canvas.findByRole('heading', { name: /Task preview/i }, { timeout: 5000 });
+
+    const backBtn = await canvas.findByRole('button', { name: /Back/i });
+    await userEvent.click(backBtn);
+
+    // After back, primary is restored
+    await canvas.findByText('Specification ID: admission', {}, { timeout: 5000 });
+  },
 };
 
 export const Polish: Story = { args: { locale: 'pl' } };

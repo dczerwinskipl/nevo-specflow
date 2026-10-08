@@ -67,10 +67,19 @@ export interface DocumentItem {
   readonly sections?: readonly DocumentSection[];
 }
 
+export interface SessionActivity {
+  readonly label: string;
+  readonly tone?: 'attention' | 'info' | 'neutral' | 'success';
+  readonly icon?: IconName;
+}
+
 export interface SessionSummary {
   readonly id: string;
   readonly title: string;
-  readonly meta: string;
+  readonly meta?: string;
+  readonly taskCount?: string;
+  readonly age?: string;
+  readonly activity?: SessionActivity;
 }
 
 export interface AttentionItem {

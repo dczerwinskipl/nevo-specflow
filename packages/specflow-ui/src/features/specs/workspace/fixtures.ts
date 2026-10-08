@@ -163,21 +163,49 @@ export const defaultSessions: readonly SessionSummary[] = [
   {
     id: 'recent',
     title: 'Implementacja odświeżania sesji',
+    taskCount: '3 taski',
+    age: '5 min temu',
+    activity: {
+      label: 'Agent pracuje',
+      tone: 'info',
+      icon: 'loader',
+    },
     meta: 'Agent pracuje · 3 taski · 5 min temu',
   },
   {
     id: 'review',
     title: 'Przegląd scenariuszy bezpieczeństwa',
+    taskCount: 'review',
+    age: '10 min temu',
+    activity: {
+      label: 'Czeka na Twoją odpowiedź',
+      tone: 'attention',
+      icon: 'triangle-alert',
+    },
     meta: 'Czeka na Twoją odpowiedź · review · 10 min temu',
   },
   {
     id: 'scope',
     title: 'Dopracowanie zakresu i dokumentów',
+    taskCount: 'rozmowa o specyfikacji',
+    age: '1 godz. temu',
+    activity: {
+      label: 'Zakończona',
+      tone: 'neutral',
+      icon: 'circle-check',
+    },
     meta: 'Zakończona · rozmowa o specyfikacji · 1 godz. temu',
   },
   {
     id: 'api-compat',
     title: 'Rozszerzenie scenariuszy API o zgodność ze starszym klientem',
+    taskCount: 'rozmowa o specyfikacji',
+    age: '2 godz. temu',
+    activity: {
+      label: 'Zakończona',
+      tone: 'neutral',
+      icon: 'circle-check',
+    },
     meta: 'Zakończona · rozmowa o specyfikacji · 2 godz. temu',
   },
 ];

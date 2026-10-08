@@ -1,17 +1,10 @@
 import { useState } from 'react';
-import {
-  Button,
-  cn,
-  fastColorTransitionClassName,
-  Icon,
-  StatusIndicator,
-  Typography,
-} from '@nevo/ui';
+import { Button, cn, Icon, InformationList, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { SpecificationWorkspaceData, TaskGroup } from './model';
 import { TaskRow } from './TaskRow';
-import { SessionMetaLine } from './SessionMetaLine';
-import { scanGrid } from '../overview/geometry';
+import { parseSessionMeta } from './SessionMetaLine';
+import { OperationalGroupHeader, OperationalRow } from '../shared/OperationalList';
 
 export interface WorkViewProps {
   readonly data: SpecificationWorkspaceData;
@@ -74,39 +67,18 @@ function TaskGroupHeader({
 }) {
   const { t } = useTranslation();
   return (
-    <div
-      className={cn(
-        scanGrid,
-        'min-h-control-height-default items-center rounded-control bg-surface-control',
+    <OperationalGroupHeader
+      label={name}
+      count={count}
+      tone={tone}
+      expanded={!isCollapsed}
+      ariaLabel={t(
+        isCollapsed ? 'specifications.expandSection' : 'specifications.collapseSection',
+        { label: name },
       )}
-      data-spec-section-header
-    >
-      <button
-        type="button"
-        className="flex h-control-height-default w-full cursor-pointer items-center justify-center rounded-control outline-none hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-focus-ring"
-        aria-expanded={!isCollapsed}
-        aria-label={t(
-          isCollapsed ? 'specifications.expandSection' : 'specifications.collapseSection',
-          { label: name },
-        )}
-        onClick={onToggle}
-      >
-        <Icon
-          className={cn('text-content-muted transition-transform', !isCollapsed && 'rotate-90')}
-          name="chevron-right"
-          size="sm"
-        />
-      </button>
-      <StatusIndicator tone={tone} />
-      <div className="flex min-w-0 items-baseline gap-2 pr-3">
-        <Typography as="h3" variant="label-sm" className="font-semibold text-content-primary">
-          {name}
-        </Typography>
-        <Typography variant="body-sm" className="text-content-muted">
-          {count}
-        </Typography>
-      </div>
-    </div>
+      onToggle={onToggle}
+      selectable
+    />
   );
 }
 
@@ -363,47 +335,42 @@ export function WorkView({
             </Typography>
           </div>
 
-          <div
-            className={cn(
-              '@container/session-row group relative min-h-14 min-w-0 rounded-control py-2 hover:bg-surface-hover',
-              fastColorTransitionClassName,
-            )}
-          >
-            <div className={cn(scanGrid, 'w-full max-w-content-standard items-center')}>
-              <span aria-hidden="true" />
-              <span aria-hidden="true" />
-              <div className="pointer-events-none flex min-w-0 flex-col gap-x-4 gap-y-1 pr-2 sm:flex-row sm:items-center">
-                <div className="min-w-0 flex-1">
-                  <Typography
-                    as="h3"
-                    variant="title-sm"
-                    className="min-w-0 text-content-primary [overflow-wrap:anywhere]"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => onOpenSession(data.resumeSession!.id)}
-                      className="pointer-events-auto block w-full text-left hover:text-accent-primary focus-visible:outline-2 focus-visible:outline-focus-ring"
-                    >
-                      {data.resumeSession.title}
-                    </button>
-                  </Typography>
-                  <Typography as="div" variant="body-sm" className="mt-0.5">
-                    <SessionMetaLine meta={data.resumeSession.meta} />
-                  </Typography>
-                </div>
-                <div className="pointer-events-auto shrink-0 self-start sm:self-center">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => onOpenSession(data.resumeSession!.id)}
-                  >
-                    {t('specification.openSessionAction')}
-                  </Button>
-                </div>
-              </div>
-              <span aria-hidden="true" />
-            </div>
-          </div>
+          <InformationList>
+            <OperationalRow
+              primary={data.resumeSession.title}
+              onPrimaryClick={() => onOpenSession(data.resumeSession!.id)}
+              compactFacts={[
+                data.resumeSession.taskCount ??
+                  (!data.resumeSession.activity && data.resumeSession.meta
+                    ? (parseSessionMeta(data.resumeSession.meta).context ?? '')
+                    : ''),
+                data.resumeSession.age ??
+                  (!data.resumeSession.activity && data.resumeSession.meta
+                    ? (parseSessionMeta(data.resumeSession.meta).time ?? '')
+                    : ''),
+              ]}
+              supporting={
+                data.resumeSession.activity
+                  ? {
+                      text: data.resumeSession.activity.label,
+                      tone: data.resumeSession.activity.tone,
+                      icon: data.resumeSession.activity.icon,
+                      iconClassName:
+                        data.resumeSession.activity.icon === 'loader' ? 'animate-spin' : undefined,
+                    }
+                  : data.resumeSession.meta
+                    ? {
+                        text: parseSessionMeta(data.resumeSession.meta).status,
+                        icon: parseSessionMeta(data.resumeSession.meta).presentation.icon,
+                        iconClassName: parseSessionMeta(data.resumeSession.meta).presentation
+                          .iconClassName,
+                        textClassName: parseSessionMeta(data.resumeSession.meta).presentation
+                          .textClassName,
+                      }
+                    : undefined
+              }
+            />
+          </InformationList>
 
           <div className="flex flex-wrap items-center gap-4 border-t border-border-subtle pt-2 text-body-xs">
             <button
@@ -527,7 +494,7 @@ export function WorkView({
                   />
 
                   {!isCollapsed ? (
-                    <ul className="grid">
+                    <InformationList selectable>
                       {group.tasks.map((task) => (
                         <TaskRow
                           key={task.id}
@@ -539,7 +506,7 @@ export function WorkView({
                           fullTaskHref={fullTaskHref(task.id)}
                         />
                       ))}
-                    </ul>
+                    </InformationList>
                   ) : null}
                 </div>
               );

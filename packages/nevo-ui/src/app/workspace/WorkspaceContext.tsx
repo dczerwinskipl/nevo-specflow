@@ -290,7 +290,6 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
         : null;
     },
     // navigate is stable; the callback is resolved when invoked, not during render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [registerGuard],
   );
 

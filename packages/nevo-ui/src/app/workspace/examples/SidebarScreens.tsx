@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Button } from '../../../components';
-import { useSecondaryStack, type SecondaryScreenProps } from '../../index';
+import { AppContent, AppWorkspaceBody, useSecondaryStack, type SecondaryScreenProps } from '../../index';
 import type { Todo, User, Item } from './DemoStore';
 
 export interface TodoPages {
@@ -19,10 +19,14 @@ let mountSequence = 0;
 function Mounted({ children }: { children: ReactNode }) {
   const [instance] = useState(() => ++mountSequence);
   return (
-    <div data-screen-mount={instance}>
-      {children}
-      <small>Mount #{instance}</small>
-    </div>
+    <AppContent className="w-content-narrow max-w-full">
+      <AppWorkspaceBody>
+        <div data-screen-mount={instance}>
+          {children}
+          <small>Mount #{instance}</small>
+        </div>
+      </AppWorkspaceBody>
+    </AppContent>
   );
 }
 

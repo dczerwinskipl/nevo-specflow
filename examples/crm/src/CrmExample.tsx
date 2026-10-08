@@ -415,47 +415,50 @@ function createCustomerStore() {
 type CustomerStore = ReturnType<typeof createCustomerStore>;
 type CustomerPages = { editor: Record<never, never>; billing: Record<never, never> };
 
+type CustomerSidebarData = { customer: Customer; save: (customer: Customer) => void };
+
+function CustomerEditorScreen({ data }: SecondaryScreenProps<CustomerSidebarData, CustomerPages['editor']>) {
+  const navigation = useSecondaryStack<CustomerPages>();
+  const dirty = useRef(false);
+  useSecondaryLeaveGuard(useCallback(
+    () => !dirty.current || window.confirm('Discard unsaved customer changes?'),
+    [],
+  ));
+  return <div>
+    <div className="p-4">
+      <Button size="sm" variant="secondary" onClick={() => void navigation.navTo('billing')}>
+        Billing history
+      </Button>
+    </div>
+    <CustomerEditor
+      customer={data.customer}
+      onDraftChange={(draft) => { dirty.current = JSON.stringify(draft) !== JSON.stringify(data.customer); }}
+      onSave={(customer) => { dirty.current = false; data.save(customer); }}
+      onCancel={() => void navigation.close()}
+    />
+  </div>;
+}
+function CustomerBillingScreen({ data }: SecondaryScreenProps<CustomerSidebarData, CustomerPages['billing']>) {
+  return <div className="grid gap-3 p-4">
+    <Typography variant="title-sm">Billing history</Typography>
+    <Typography variant="body-sm">{data.customer.company}</Typography>
+    <Typography variant="body-sm">Annual value: {data.customer.annualValue}</Typography>
+  </div>;
+}
+
 function createCustomerStack(store: CustomerStore) {
-  function useCustomerData({ id }: { id: string }): SecondaryData<Customer> {
+  function useCustomerData({ id }: { id: string }): SecondaryData<CustomerSidebarData> {
     const customers = useSyncExternalStore(store.subscribe, store.getSnapshot);
     const customer = customers.find(value => value.id === id);
     return customer
-      ? { status: 'ready', data: customer }
+      ? { status: 'ready', data: { customer, save: store.save } }
       : { status: 'unavailable', message: 'This customer is no longer available.' };
   }
-  function Editor({ data }: SecondaryScreenProps<Customer, CustomerPages['editor']>) {
-    const navigation = useSecondaryStack<CustomerPages>();
-    const dirty = useRef(false);
-    useSecondaryLeaveGuard(useCallback(
-      () => !dirty.current || window.confirm('Discard unsaved customer changes?'),
-      [],
-    ));
-    return <div>
-      <div className="p-4">
-        <Button size="sm" variant="secondary" onClick={() => void navigation.navTo('billing')}>
-          Billing history
-        </Button>
-      </div>
-      <CustomerEditor
-        customer={data}
-        onDraftChange={(draft) => { dirty.current = JSON.stringify(draft) !== JSON.stringify(data); }}
-        onSave={(customer) => { dirty.current = false; store.save(customer); }}
-        onCancel={() => void navigation.close()}
-      />
-    </div>;
-  }
-  function Billing({ data }: SecondaryScreenProps<Customer, CustomerPages['billing']>) {
-    return <div className="grid gap-3 p-4">
-      <Typography variant="title-sm">Billing history</Typography>
-      <Typography variant="body-sm">{data.company}</Typography>
-      <Typography variant="body-sm">Annual value: {data.annualValue}</Typography>
-    </div>;
-  }
-  return defineSecondaryStack<{ id: string }, Customer, CustomerPages>({
+  return defineSecondaryStack<{ id: string }, CustomerSidebarData, CustomerPages>({
     id: 'crm-customer', initial: 'editor', useData: useCustomerData,
     screens: {
-      editor: { title: 'Customer details', component: Editor },
-      billing: { title: 'Billing history', component: Billing },
+      editor: { title: 'Customer details', component: CustomerEditorScreen },
+      billing: { title: 'Billing history', component: CustomerBillingScreen },
     },
   });
 }

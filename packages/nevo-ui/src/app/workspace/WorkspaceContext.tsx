@@ -104,6 +104,18 @@ interface ActiveScreenNavigation {
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
 const ScreenNavigationContext = createContext<ActiveScreenNavigation | null>(null);
+const ScreenDataContext = createContext<SecondaryData<unknown> | null>(null);
+
+function ScreenDataHost({ entry, children }: PropsWithChildren<{ entry: SecondaryEntry }>) {
+  const result = entry.definition.useData(entry.rootParams);
+  return <ScreenDataContext.Provider value={result}>{children}</ScreenDataContext.Provider>;
+}
+
+function useScreenData() {
+  const result = useContext(ScreenDataContext);
+  if (!result) throw new Error('Secondary screen must be rendered inside ScreenDataHost');
+  return result;
+}
 
 function getActiveElement(): WorkspaceFocusTarget | null {
   if (typeof document === 'undefined' || !(document.activeElement instanceof HTMLElement)) {
@@ -162,11 +174,13 @@ function ScreenOutlet({
   registerGuard: ActiveScreenNavigation['registerGuard'];
 }) {
   // A different flow gets a different host. A refetch within one entry never changes this host.
-  const result = entry.definition.useData(entry.rootParams);
+  const result = useScreenData();
   const screen = entry.definition.screens[entry.page];
   const lastReady = useRef<{ status: 'ready'; data: unknown } | null>(null);
   if (result.status === 'ready') {
     lastReady.current = result;
+  } else if (result.status === 'unavailable' || result.status === 'access-denied') {
+    lastReady.current = null;
   }
   const navigation = useMemo<ActiveScreenNavigation>(
     () => ({ flowId: flow.id, entryKey: entry.instanceKey, navigate, registerGuard }),
@@ -180,6 +194,8 @@ function ScreenOutlet({
     notice = <div role="status">Loading…</div>;
   } else if (result.status === 'unavailable') {
     notice = <div role="status">{result.message ?? 'This item is no longer available.'}</div>;
+  } else if (result.status === 'access-denied') {
+    notice = <div role="alert">{result.message ?? 'Access to this item has been revoked.'}</div>;
   } else if (result.status === 'error') {
     notice = (
       <div role="alert">
@@ -195,7 +211,8 @@ function ScreenOutlet({
 
   // Editors may opt in: keep the existing mounted draft and leave guard alive, but
   // do not display stale data or enable editing while the source is unavailable.
-  const preserve = screen.preserveOnDataLoss && lastReady.current !== null;
+  const preserve = screen.preserveOnDataLoss && lastReady.current !== null &&
+    (result.status === 'ready' || result.status === 'loading' || result.status === 'error');
   const Component = screen.component;
   const visible = result.status === 'ready';
   const data = visible ? result.data : lastReady.current?.data;
@@ -215,7 +232,7 @@ function ScreenOutlet({
 }
 
 function HeaderOutlet({ entry }: { entry: SecondaryEntry }) {
-  const result = entry.definition.useData(entry.rootParams);
+  const result = useScreenData();
   const page = entry.definition.screens[entry.page];
   if (!page) throw new Error(`Unknown Secondary screen: ${entry.page}`);
   if (result.status !== 'ready' || !page.header) {
@@ -236,6 +253,7 @@ function publicEntry(
   return {
     instanceKey: entry.instanceKey,
     surface: {
+      wrap: (children) => <ScreenDataHost entry={entry}>{children}</ScreenDataHost>,
       header: page.header ? (
         <HeaderOutlet entry={entry} />
       ) : (

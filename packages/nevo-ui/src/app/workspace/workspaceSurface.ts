@@ -4,4 +4,6 @@ import type { ReactNode } from 'react';
 export interface AppWorkspaceSurface {
   header?: ReactNode;
   content: ReactNode;
+  /** Internal lifecycle wrapper shared by header and content. */
+  wrap?: (children: ReactNode) => ReactNode;
 }

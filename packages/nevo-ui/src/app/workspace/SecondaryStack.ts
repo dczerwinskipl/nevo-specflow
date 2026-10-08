@@ -4,7 +4,8 @@ export type SecondaryData<T> =
   | { status: 'loading' }
   | { status: 'ready'; data: T }
   | { status: 'unavailable'; message?: ReactNode }
-  | { status: 'error'; message?: ReactNode; retry?: () => void };
+  | { status: 'error'; message?: ReactNode; retry?: () => void }
+  | { status: 'access-denied'; message?: ReactNode };
 
 export interface SecondaryScreenProps<TData, TParams extends object> {
   data: TData;
@@ -16,7 +17,7 @@ export interface SecondaryScreenDefinition<TData, TParams extends object> {
   /** Optional header component; resolved against the same live data as the page. */
   header?: ComponentType<SecondaryScreenProps<TData, TParams>>;
   component: ComponentType<SecondaryScreenProps<TData, TParams>>;
-  /** Keep an already mounted editor hidden (not disposed) while its data is unavailable. */
+  /** Keep an editor through loading or network errors; missing or denied content always unmounts. */
   preserveOnDataLoss?: boolean;
 }
 

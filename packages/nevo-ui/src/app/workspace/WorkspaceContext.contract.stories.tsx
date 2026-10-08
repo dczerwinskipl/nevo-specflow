@@ -154,7 +154,7 @@ export const GuardBlocksCloseAndReplacement: Story = {
 };
 
 interface EditableSnapshot {
-  status: 'ready' | 'unavailable';
+  status: 'ready' | 'error' | 'unavailable' | 'access-denied';
   value: string;
 }
 function createEditableSource() {
@@ -169,7 +169,11 @@ function createEditableSource() {
     },
     getSnapshot: () => snapshot,
     setAvailable: (available: boolean) => {
-      snapshot = { ...snapshot, status: available ? 'ready' : 'unavailable' };
+      snapshot = { ...snapshot, status: available ? 'ready' : 'error' };
+      for (const listener of listeners) listener();
+    },
+    setStatus: (status: EditableSnapshot['status']) => {
+      snapshot = { ...snapshot, status };
       for (const listener of listeners) listener();
     },
   };
@@ -200,7 +204,7 @@ function createEditableStack(source: EditableSource) {
     const data = useSyncExternalStore(source.subscribe, source.getSnapshot, source.getSnapshot);
     return data.status === 'ready'
       ? { status: 'ready' as const, data: data.value }
-      : { status: 'unavailable' as const, message: 'Editing data unavailable.' };
+      : { status: data.status, message: 'Editing data unavailable.' };
   }
   return defineSecondaryStack<Record<never, never>, string, EditorPages>({
     id: 'editable-status-contract',
@@ -233,6 +237,9 @@ function EditableContractFixture() {
             </button>
             <button type="button" onClick={() => source.setAvailable(true)}>
               Restore data
+            </button>
+            <button type="button" onClick={() => source.setStatus('access-denied')}>
+              Revoke access
             </button>
           </div>
         </AppWorkspace.Primary>
@@ -276,5 +283,17 @@ export const EditorDraftSurvivesDataLoss: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Allow editor exit' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
     assert(canvas.getByText('Default secondary content'), 'Allowed exit closes the flow');
+  },
+};
+
+export const RevokedAccessDiscardsEditor: Story = {
+  render: () => <AppWorkspaceProvider><EditableContractFixture /></AppWorkspaceProvider>,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Open editor' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Revoke access' }));
+    assert(canvas.getByRole('alert').textContent?.includes('Editing data unavailable.'), 'Denied state must be explained');
+    assert(!canvasElement.querySelector('input[aria-label="Draft"]'), 'Denied data must unmount the editor');
+    await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
+    assert(canvas.getByText('Default secondary content'), 'Revocation disposes previous leave guard');
   },
 };

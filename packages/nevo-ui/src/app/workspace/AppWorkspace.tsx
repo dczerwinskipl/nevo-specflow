@@ -89,6 +89,10 @@ interface WorkspaceSecondaryPresentation {
   onBack?: () => void | Promise<unknown>;
 }
 
+function SurfaceBoundary({ surface, children }: { surface: AppWorkspaceSurface; children: ReactNode }) {
+  return surface.wrap ? surface.wrap(children) : children;
+}
+
 interface WorkspaceLayoutState {
   mode: 'split' | 'stacked';
   showSecondary: boolean;
@@ -296,6 +300,7 @@ function RuntimeSurfaceRegion({
     >
       <div className="workspace-stack relative h-full min-h-0 min-w-0 overflow-hidden">
         <div className="flex h-full min-h-0 flex-col" data-workspace-layer={instanceKey}>
+          <SurfaceBoundary surface={surface}>
           {showHeader ? (
             <div
               className={cn(
@@ -309,6 +314,7 @@ function RuntimeSurfaceRegion({
             </div>
           ) : null}
           <div className="min-h-0 flex-1 overflow-hidden">{surface.content}</div>
+          </SurfaceBoundary>
         </div>
       </div>
     </div>
@@ -431,6 +437,7 @@ function MobileRuntimeSurfaceRegion({
             className="workspace-stack__layer workspace-stack__layer--current flex min-h-full flex-col"
             data-workspace-layer={instanceKey}
           >
+            <SurfaceBoundary surface={surface}>
             {showHeader ? (
               <div
                 aria-hidden={headerCovered || undefined}
@@ -456,6 +463,7 @@ function MobileRuntimeSurfaceRegion({
                 </AppContentScrollProvider>
               </div>
             </div>
+            </SurfaceBoundary>
           </div>
         </div>
       </ScrollArea>

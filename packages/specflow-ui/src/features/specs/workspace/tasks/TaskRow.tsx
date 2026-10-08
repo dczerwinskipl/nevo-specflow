@@ -25,12 +25,18 @@ export function TaskRow({
   const statePresentation = getTaskStatePresentation(task);
 
   const leading = (
-    <Checkbox
-      aria-label={t('specification.selectTask', { id: task.id })}
-      checked={selected}
-      disabled={isPreparing}
-      onCheckedChange={(checked) => onSelect(task.id, Boolean(checked))}
-    />
+    <div
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      className="flex items-center justify-center"
+    >
+      <Checkbox
+        aria-label={t('specification.selectTask', { id: task.id })}
+        checked={selected}
+        disabled={isPreparing}
+        onCheckedChange={(checked) => onSelect(task.id, Boolean(checked))}
+      />
+    </div>
   );
 
   const trailing = (
@@ -51,7 +57,7 @@ export function TaskRow({
 
   return (
     <OperationalRow
-      titleAs="h5"
+      titleAs="span"
       primary={task.title}
       onPrimaryClick={() => onPreview(task.id)}
       primaryAriaLabel={task.title}

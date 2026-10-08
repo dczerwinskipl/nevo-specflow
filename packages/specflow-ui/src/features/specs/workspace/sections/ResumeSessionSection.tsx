@@ -1,4 +1,4 @@
-import { Button, InformationList } from '@nevo/ui';
+import { InformationList, MenuItem, OverflowMenu } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { OperationalRow } from '../../shared/OperationalList';
 import type { SessionSummary } from '../model';
@@ -22,21 +22,26 @@ export function ResumeSessionSection({ session }: ResumeSessionSectionProps) {
         title={t('specification.continueSessionHeading')}
         icon="chat"
         actions={
-          <Button
-            size="sm"
-            variant="secondary"
+          <OverflowMenu
+            label={t('specification.continueSessionHeading')}
+            triggerLabel={t('specification.sessionActions')}
             disabled={!runtime.canStartConversation}
             title={!runtime.canStartConversation ? t('common.notImplemented') : undefined}
-            onClick={() => runtime.startConversation()}
           >
-            {t('specification.newConversation')}
-          </Button>
+            <MenuItem
+              leadingIcon="plus"
+              disabled={!runtime.canStartConversation}
+              onSelect={() => runtime.startConversation()}
+            >
+              {t('specification.newConversation')}
+            </MenuItem>
+          </OverflowMenu>
         }
       />
 
       <InformationList>
         <OperationalRow
-          titleAs="h4"
+          titleAs="span"
           primary={session.title}
           onPrimaryClick={isSessionOpenable ? () => runtime.openSession(session.id) : undefined}
           compactFacts={[session.taskCount ?? '', session.age ?? '']}
@@ -56,13 +61,9 @@ export function ResumeSessionSection({ session }: ResumeSessionSectionProps) {
       </InformationList>
 
       <WorkspaceSection.Footer>
-        <button
-          type="button"
-          onClick={runtime.openSessionsView}
-          className="font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring"
-        >
+        <WorkspaceSection.Continuation onClick={runtime.openSessionsView}>
           {t('specification.allSessionsLink')}
-        </button>
+        </WorkspaceSection.Continuation>
       </WorkspaceSection.Footer>
     </WorkspaceSection>
   );

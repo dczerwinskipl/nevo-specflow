@@ -18,11 +18,6 @@ export function RepositorySection({ repoContext }: RepositorySectionProps) {
         id="repo-heading"
         title={t('specification.repositoryHeading')}
         icon="branch"
-        actions={
-          <Button size="sm" variant="ghost" onClick={() => runtime.openChanges('base')}>
-            {t('specification.changesLink')}
-          </Button>
-        }
       />
 
       <div className="grid gap-2">
@@ -91,6 +86,12 @@ export function RepositorySection({ repoContext }: RepositorySectionProps) {
           </div>
         ) : null}
       </div>
+
+      <WorkspaceSection.Footer>
+        <WorkspaceSection.Continuation onClick={() => runtime.openChanges('base')}>
+          {t('specification.viewChanges')}
+        </WorkspaceSection.Continuation>
+      </WorkspaceSection.Footer>
     </WorkspaceSection>
   );
 }

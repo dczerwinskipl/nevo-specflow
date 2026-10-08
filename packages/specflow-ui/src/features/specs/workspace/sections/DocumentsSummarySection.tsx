@@ -34,13 +34,9 @@ export function DocumentsSummarySection({ documents }: DocumentsSummarySectionPr
       </div>
 
       <WorkspaceSection.Footer>
-        <button
-          type="button"
-          onClick={runtime.openDocumentsView}
-          className="font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring"
-        >
+        <WorkspaceSection.Continuation onClick={runtime.openDocumentsView}>
           {t('specification.allDocumentsLink')}
-        </button>
+        </WorkspaceSection.Continuation>
       </WorkspaceSection.Footer>
     </WorkspaceSection>
   );

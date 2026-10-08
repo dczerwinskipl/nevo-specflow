@@ -11,7 +11,18 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Working: Story = {};
+export const Working: Story = {
+  play: async ({ canvas, userEvent }) => {
+    await canvas.findByText('Specification ID: admission', {}, { timeout: 5000 });
+    const checkboxes = await canvas.findAllByRole('checkbox');
+    const firstCheckbox = checkboxes[0];
+    if (firstCheckbox) {
+      await userEvent.click(firstCheckbox);
+      await canvas.findByText('1 selected', {}, { timeout: 2000 });
+      await userEvent.click(firstCheckbox);
+    }
+  },
+};
 
 export const Current: Story = {
   play: async ({ canvas }) => {

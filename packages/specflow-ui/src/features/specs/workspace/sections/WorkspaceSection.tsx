@@ -56,6 +56,54 @@ export function WorkspaceSectionHeader({
   );
 }
 
+export interface WorkspaceSectionContinuationProps {
+  readonly children: ReactNode;
+  readonly onClick?: (event: React.MouseEvent) => void;
+  readonly href?: string;
+  readonly trailingIcon?: IconName;
+  readonly className?: string;
+  readonly ariaLabel?: string;
+}
+
+export function WorkspaceSectionContinuation({
+  children,
+  onClick,
+  href,
+  trailingIcon = 'arrow-right',
+  className,
+  ariaLabel,
+}: WorkspaceSectionContinuationProps) {
+  const content = (
+    <>
+      <span>{children}</span>
+      {trailingIcon ? (
+        <span className="flex size-4 shrink-0 items-center justify-center transition-transform group-hover:translate-x-0.5">
+          <Icon name={trailingIcon} size="sm" className="size-3.5" />
+        </span>
+      ) : null}
+    </>
+  );
+
+  const sharedClassName = cn(
+    'group inline-flex items-center gap-1.5 text-body-xs font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring rounded-control-inline py-1 px-1 -ml-1 transition-colors',
+    className,
+  );
+
+  if (href) {
+    return (
+      <a href={href} onClick={onClick} className={sharedClassName} aria-label={ariaLabel}>
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <button type="button" onClick={onClick} className={sharedClassName} aria-label={ariaLabel}>
+      {content}
+    </button>
+  );
+}
+
 export interface WorkspaceSectionFooterProps {
   readonly children: ReactNode;
   readonly className?: string;
@@ -63,7 +111,7 @@ export interface WorkspaceSectionFooterProps {
 
 export function WorkspaceSectionFooter({ children, className }: WorkspaceSectionFooterProps) {
   if (!children) return null;
-  return <div className={cn('pt-1 text-body-xs', className)}>{children}</div>;
+  return <div className={cn('pt-1.5 text-body-xs', className)}>{children}</div>;
 }
 
 export function WorkspaceSection({
@@ -87,3 +135,5 @@ export function WorkspaceSection({
 
 WorkspaceSection.Header = WorkspaceSectionHeader;
 WorkspaceSection.Footer = WorkspaceSectionFooter;
+WorkspaceSection.Continuation = WorkspaceSectionContinuation;
+WorkspaceSection.ContinuationLink = WorkspaceSectionContinuation;

@@ -53,6 +53,8 @@ describe('InformationList', () => {
     );
 
     expect(withLeading).toContain('w-control-height-compact');
+    expect(withLeading).toContain('relative');
+    expect(withLeading).toContain('z-10');
     expect(withLeading).toContain('type="checkbox"');
   });
 

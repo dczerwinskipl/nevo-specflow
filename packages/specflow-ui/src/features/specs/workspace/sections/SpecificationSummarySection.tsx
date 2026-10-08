@@ -20,7 +20,7 @@ export function SpecificationSummarySection({
 
   return (
     <div>
-      <Typography as="h2" variant="title-md" className="font-semibold text-content-primary">
+      <Typography as="h2" variant="title-lg" className="font-semibold text-content-primary">
         {title}
       </Typography>
       {!isEmpty && intro ? (

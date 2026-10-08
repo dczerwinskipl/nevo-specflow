@@ -18,20 +18,22 @@ export function AttentionSection({ items }: AttentionSectionProps) {
   return (
     <section
       aria-labelledby="attention-heading"
-      className="rounded-control border-l-2 border-status-attention bg-surface-subtle p-4"
+      className="rounded-control border border-border-subtle bg-surface-subtle p-4"
     >
-      <div className="flex items-center gap-2 text-status-attention">
-        <span className="flex size-4 shrink-0 items-center justify-center">
-          <Icon name="triangle-alert" size="sm" />
+      <div className="flex items-center gap-2">
+        <span className="flex size-4 shrink-0 items-center justify-center text-content-muted">
+          <Icon name="clock" size="sm" />
         </span>
         <Typography
           as="h3"
           variant="section-label"
           id="attention-heading"
-          className="font-semibold text-status-attention"
+          className="font-semibold text-content-primary"
         >
           {t('specification.requiresAttention')}{' '}
-          <span className="text-body-xs font-normal text-content-muted">{items.length}</span>
+          <span className="text-body-xs font-normal normal-case tracking-normal text-content-muted">
+            {items.length}
+          </span>
         </Typography>
       </div>
 
@@ -45,9 +47,9 @@ export function AttentionSection({ items }: AttentionSectionProps) {
               className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="flex items-start gap-2.5 min-w-0">
-                <span className="flex size-4 shrink-0 items-center justify-center text-status-attention mt-1">
+                <span className="flex size-4 shrink-0 items-center justify-center text-content-secondary mt-1">
                   {item.kind === 'task' ? (
-                    <Icon name="triangle-alert" size="sm" />
+                    <Icon name="list-checks" size="sm" />
                   ) : item.kind === 'session' ? (
                     <Icon name="chat" size="sm" />
                   ) : (
@@ -56,18 +58,18 @@ export function AttentionSection({ items }: AttentionSectionProps) {
                 </span>
                 <div className="min-w-0 flex-1">
                   <Typography
-                    as="h4"
+                    as="span"
                     variant="title-sm"
-                    className="min-w-0 text-content-primary [overflow-wrap:anywhere]"
+                    className="block min-w-0 font-medium text-content-primary [overflow-wrap:anywhere]"
                   >
                     {item.title}
                   </Typography>
                   <Typography
                     as="div"
                     variant="body-sm"
-                    className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-2 text-content-muted"
+                    className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-2 text-content-secondary"
                   >
-                    <span className="font-medium text-status-attention">{item.reason}</span>
+                    <span>{item.reason}</span>
                   </Typography>
                 </div>
               </div>

@@ -22,7 +22,7 @@ export function OperationalRow({
   leading,
   interactive = false,
   selected = false,
-  titleAs = 'h3',
+  titleAs = 'span',
   className,
   dataAttributes = {},
 }: OperationalRowProps) {

@@ -55,8 +55,34 @@ describe('SpecificationWorkspace', () => {
     expect(markup).toContain('Repozytorium');
     expect(markup).toContain('feature/session-refresh');
     expect(markup).toContain('PR #128');
-    expect(markup).toContain('Przegląd PR →');
-    expect(markup).toContain('Zmiany →');
+    expect(markup).toContain('Przegląd PR');
+    expect(markup).toContain('Wszystkie zmiany');
+  });
+
+  it('renders correct heading outline and specification title-lg hierarchy', () => {
+    const markup = renderWorkspaceMarkup();
+
+    // h1 page identity
+    expect(markup).toContain('<h1');
+    expect(markup).toContain('Specyfikacja');
+
+    // h2 concrete specification title with text-title-lg
+    expect(markup).toContain(
+      '<h2 class="font-sans text-title-lg font-semibold text-content-primary">Odświeżanie sesji i zachowanie kontekstu użytkownika</h2>',
+    );
+
+    // h3 major workspace sections
+    expect(markup).toContain('<h3');
+    expect(markup).toContain('text-section-label');
+    expect(markup).toContain('Repozytorium');
+    expect(markup).toContain('Taski');
+
+    // h4 for task groups
+    expect(markup).toContain('<h4');
+    expect(markup).toContain('Implementacja');
+
+    // Task items use span, not forced to h5
+    expect(markup).not.toContain('<h5');
   });
 
   it('omits repository context and extra views in no-git scenario', () => {

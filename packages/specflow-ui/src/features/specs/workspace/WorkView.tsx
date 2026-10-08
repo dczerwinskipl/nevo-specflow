@@ -20,39 +20,63 @@ export interface WorkViewProps {
  */
 export function WorkView({ data }: WorkViewProps) {
   return (
-    <div className="grid max-w-content-standard gap-8 py-2">
-      <SpecificationSummarySection
-        title={data.title}
-        intro={data.intro}
-        isEmpty={data.isEmpty}
-        mainDocumentId={data.mainDocumentId}
-      />
+    <div className="divide-y divide-border-subtle max-w-content-standard">
+      <div className="pb-6">
+        <SpecificationSummarySection
+          title={data.title}
+          intro={data.intro}
+          isEmpty={data.isEmpty}
+          mainDocumentId={data.mainDocumentId}
+        />
+      </div>
 
-      {data.attentionItems.length > 0 ? <AttentionSection items={data.attentionItems} /> : null}
+      {data.attentionItems.length > 0 ? (
+        <div className="py-6">
+          <AttentionSection items={data.attentionItems} />
+        </div>
+      ) : null}
 
       {data.hasGit && data.repoContext ? (
-        <RepositorySection repoContext={data.repoContext} />
+        <div className="py-6">
+          <RepositorySection repoContext={data.repoContext} />
+        </div>
       ) : null}
 
       {!data.isEmpty && data.resumeSession ? (
-        <ResumeSessionSection session={data.resumeSession} />
+        <div className="py-6">
+          <ResumeSessionSection session={data.resumeSession} />
+        </div>
       ) : null}
 
-      {data.isEmpty ? <PreparationSection /> : null}
+      {data.isEmpty ? (
+        <div className="py-6">
+          <PreparationSection />
+        </div>
+      ) : null}
 
       {!data.isEmpty ? (
-        <TasksSection
-          taskGroups={data.taskGroups}
-          isPreparing={data.isPreparing}
-          totalTasksCount={data.totalTasksCount}
-          completedTasksCount={data.completedTasksCount}
-          executionReadiness={data.executionReadiness}
-        />
+        <div className="py-6">
+          <TasksSection
+            taskGroups={data.taskGroups}
+            isPreparing={data.isPreparing}
+            totalTasksCount={data.totalTasksCount}
+            completedTasksCount={data.completedTasksCount}
+            executionReadiness={data.executionReadiness}
+          />
+        </div>
       ) : null}
 
-      {!data.isEmpty ? <DocumentsSummarySection documents={data.documents} /> : null}
+      {!data.isEmpty ? (
+        <div className="py-6">
+          <DocumentsSummarySection documents={data.documents} />
+        </div>
+      ) : null}
 
-      {data.hasExtensions ? <ExtensionsSection /> : null}
+      {data.hasExtensions ? (
+        <div className="py-6">
+          <ExtensionsSection />
+        </div>
+      ) : null}
     </div>
   );
 }

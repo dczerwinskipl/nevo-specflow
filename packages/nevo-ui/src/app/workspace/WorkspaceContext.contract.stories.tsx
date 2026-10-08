@@ -375,6 +375,7 @@ export const HeaderAndBodyShareOneDataHost: Story = {
   play: async ({ canvas, canvasElement, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Open shared host' }));
     const body = canvasElement.querySelector('[data-host-content]');
+    assert(body, 'Shared data content should be mounted');
     const header = canvas.getByRole('heading', { name: /^Host \d+$/ });
     assert(
       body.textContent === header.textContent,

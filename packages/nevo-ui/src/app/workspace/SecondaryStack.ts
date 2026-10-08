@@ -1,4 +1,5 @@
 import type { ComponentType, ReactNode } from 'react';
+import type { WorkspaceHeaderAction, WorkspaceHeaderLabels } from './WorkspaceHeader';
 
 export type SecondaryData<T> =
   | { status: 'loading' }
@@ -15,7 +16,15 @@ export interface SecondaryScreenProps<TData, TParams extends object> {
 export interface SecondaryScreenDefinition<TData, TParams extends object> {
   title: string;
   /** Optional header component; resolved against the same live data as the page. */
-  header?: ComponentType<SecondaryScreenProps<TData, TParams>>;
+  header?: ComponentType<
+    SecondaryScreenProps<TData, TParams> & {
+      actions: readonly WorkspaceHeaderAction[];
+      labels?: Partial<WorkspaceHeaderLabels>;
+    }
+  >;
+  /** Pure action metadata, resolved against the same live data as Header and Content. */
+  actions?: (props: SecondaryScreenProps<TData, TParams>) => readonly WorkspaceHeaderAction[];
+  actionLabels?: Partial<WorkspaceHeaderLabels>;
   component: ComponentType<SecondaryScreenProps<TData, TParams>>;
   /** Keep an editor through loading or network errors; missing or denied content always unmounts. */
   preserveOnDataLoss?: boolean;

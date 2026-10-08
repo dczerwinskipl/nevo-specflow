@@ -20,7 +20,8 @@ import {
   startFlow,
   type SecondaryFlowModel,
 } from './secondaryNavigationModel';
-import { WorkspaceHeader } from './WorkspaceHeader';
+import { CompactWorkspaceActions, WorkspaceHeader } from './WorkspaceHeader';
+import type { WorkspaceHeaderAction, WorkspaceHeaderLabels } from './WorkspaceHeader';
 import type {
   SecondaryData,
   SecondaryPageArgs,
@@ -30,8 +31,15 @@ import type {
 
 interface RuntimePage {
   title: string;
+  actions?: (props: { data: unknown; params: object }) => readonly WorkspaceHeaderAction[];
+  actionLabels?: Partial<WorkspaceHeaderLabels>;
   preserveOnDataLoss?: boolean;
-  header?: ComponentType<{ data: unknown; params: object }>;
+  header?: ComponentType<{
+    data: unknown;
+    params: object;
+    actions: readonly WorkspaceHeaderAction[];
+    labels?: Partial<WorkspaceHeaderLabels>;
+  }>;
   component: ComponentType<{ data: unknown; params: object }>;
 }
 
@@ -110,17 +118,32 @@ interface ActiveScreenNavigation {
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
 const ScreenNavigationContext = createContext<ActiveScreenNavigation | null>(null);
-const ScreenDataContext = createContext<SecondaryData<unknown> | null>(null);
+interface ScreenResolvedData {
+  result: SecondaryData<unknown>;
+  actions: readonly WorkspaceHeaderAction[];
+  actionLabels?: Partial<WorkspaceHeaderLabels>;
+}
+
+const ScreenDataContext = createContext<ScreenResolvedData | null>(null);
 
 function ScreenDataHost({ entry, children }: PropsWithChildren<{ entry: SecondaryEntry }>) {
   const result = entry.definition.useData(entry.rootParams);
-  return <ScreenDataContext.Provider value={result}>{children}</ScreenDataContext.Provider>;
+  const page = entry.definition.screens[entry.page];
+  if (!page) throw new Error(`Unknown Secondary screen: ${entry.page}`);
+  const actions = result.status === 'ready'
+    ? (page.actions?.({ data: result.data, params: entry.params }) ?? [])
+    : [];
+  return (
+    <ScreenDataContext.Provider value={{ result, actions, actionLabels: page.actionLabels }}>
+      {children}
+    </ScreenDataContext.Provider>
+  );
 }
 
 function useScreenData() {
-  const result = useContext(ScreenDataContext);
-  if (!result) throw new Error('Secondary screen must be rendered inside ScreenDataHost');
-  return result;
+  const resolved = useContext(ScreenDataContext);
+  if (!resolved) throw new Error('Secondary screen must be rendered inside ScreenDataHost');
+  return resolved;
 }
 
 function getActiveElement(): WorkspaceFocusTarget | null {
@@ -180,7 +203,7 @@ function ScreenOutlet({
   registerGuard: ActiveScreenNavigation['registerGuard'];
 }) {
   // A different flow gets a different host. A refetch within one entry never changes this host.
-  const result = useScreenData();
+  const { result } = useScreenData();
   const screen = entry.definition.screens[entry.page];
   const lastReady = useRef<{ status: 'ready'; data: unknown } | null>(null);
   if (result.status === 'ready') {
@@ -240,14 +263,32 @@ function ScreenOutlet({
 }
 
 function HeaderOutlet({ entry }: { entry: SecondaryEntry }) {
-  const result = useScreenData();
+  const { result, actions, actionLabels } = useScreenData();
   const page = entry.definition.screens[entry.page];
   if (!page) throw new Error(`Unknown Secondary screen: ${entry.page}`);
   if (result.status !== 'ready' || !page.header) {
-    return <WorkspaceHeader headingLevel={2} title={page.title} />;
+    return <WorkspaceHeader headingLevel={2} title={page.title} actions={actions} labels={actionLabels} />;
   }
   const Header = page.header;
-  return <Header data={result.data} params={entry.params} />;
+  return <Header data={result.data} params={entry.params} actions={actions} labels={actionLabels} />;
+}
+
+function CompactScreenActions({
+  className,
+  navigationAction,
+}: {
+  className?: string;
+  navigationAction?: WorkspaceHeaderAction;
+}) {
+  const { actions, actionLabels } = useScreenData();
+  return (
+    <CompactWorkspaceActions
+      actions={actions}
+      labels={actionLabels}
+      className={className}
+      navigationAction={navigationAction}
+    />
+  );
 }
 
 function publicEntry(
@@ -262,11 +303,8 @@ function publicEntry(
     instanceKey: entry.instanceKey,
     surface: {
       wrap: (children) => <ScreenDataHost entry={entry}>{children}</ScreenDataHost>,
-      header: page.header ? (
-        <HeaderOutlet entry={entry} />
-      ) : (
-        <WorkspaceHeader headingLevel={2} title={page.title} />
-      ),
+      header: <HeaderOutlet entry={entry} />,
+      renderCompactActions: (props) => <CompactScreenActions {...props} />,
       content: (
         <ScreenOutlet flow={flow} entry={entry} navigate={navigate} registerGuard={registerGuard} />
       ),

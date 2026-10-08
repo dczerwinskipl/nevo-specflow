@@ -230,16 +230,22 @@ export function getWorkspaceHeaderLabels(node: ReactNode): WorkspaceHeaderLabels
 export function CompactWorkspaceActions({
   className,
   header,
+  actions,
+  labels: actionLabels,
   navigationAction,
 }: {
   className?: string;
-  header: ReactNode;
+  header?: ReactNode;
+  actions?: readonly WorkspaceHeaderAction[];
+  labels?: Partial<WorkspaceHeaderLabels>;
   navigationAction?: WorkspaceHeaderAction;
 }) {
-  const labels = getWorkspaceHeaderLabels(header);
+  const labels = actionLabels
+    ? { ...defaultWorkspaceHeaderLabels, ...actionLabels }
+    : getWorkspaceHeaderLabels(header);
   return (
     <WorkspaceActionMenu
-      actions={resolveWorkspaceHeaderActions(getWorkspaceHeaderActions(header), true).overflow}
+      actions={resolveWorkspaceHeaderActions(actions ?? getWorkspaceHeaderActions(header), true).overflow
       className={className}
       label={labels.moreActions}
       navigationAction={navigationAction}

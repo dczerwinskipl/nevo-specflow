@@ -429,7 +429,8 @@ function MobileRuntimeSurfaceRegion({
         zIndex: runtime.surface === 'secondary' ? (runtime.motion.phase === 'idle' ? 10 : 20) : 0,
       }}
     >
-      <ScrollArea
+      <SurfaceBoundary surface={surface}>
+        <ScrollArea
         className="mobile-workspace-scroll-area h-full"
         contentClassName="min-h-full"
         direction="vertical"
@@ -443,7 +444,7 @@ function MobileRuntimeSurfaceRegion({
             className="workspace-stack__layer workspace-stack__layer--current flex min-h-full flex-col"
             data-workspace-layer={instanceKey}
           >
-            <SurfaceBoundary surface={surface}>
+            <>
               {showHeader ? (
                 <div
                   aria-hidden={headerCovered || undefined}
@@ -469,7 +470,7 @@ function MobileRuntimeSurfaceRegion({
                   </AppContentScrollProvider>
                 </div>
               </div>
-            </SurfaceBoundary>
+            </>
           </div>
         </div>
       </ScrollArea>
@@ -480,12 +481,18 @@ function MobileRuntimeSurfaceRegion({
         inert={!headerCovered ? true : undefined}
       >
         {leadingAction}
-        <CompactWorkspaceActions
-          className="mobile-floating-navigation__control"
-          header={surface.header}
-          navigationAction={compactNavigationAction}
-        />
+        {surface.renderCompactActions
+          ? surface.renderCompactActions({
+              className: 'mobile-floating-navigation__control',
+              navigationAction: compactNavigationAction,
+            })
+          : <CompactWorkspaceActions
+              className="mobile-floating-navigation__control"
+              header={surface.header}
+              navigationAction={compactNavigationAction}
+            />}
       </div>
+      </SurfaceBoundary>
     </div>
   );
 }

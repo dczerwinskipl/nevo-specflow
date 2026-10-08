@@ -23,6 +23,8 @@ import {
   defineSecondaryStack,
   type SecondaryData,
   type SecondaryScreenProps,
+  type WorkspaceHeaderAction,
+  type WorkspaceHeaderProps,
 } from '@nevo/ui';
 import {
   Badge,
@@ -338,9 +340,19 @@ function CustomerEditor({
   );
 }
 
-function CustomerDetailsHeader({ customer }: { customer: Customer }) {
+function CustomerDetailsHeader({
+  customer,
+  actions,
+  labels,
+}: {
+  customer: Customer;
+  actions?: readonly WorkspaceHeaderAction[];
+  labels?: WorkspaceHeaderProps['labels'];
+}) {
   return (
     <WorkspaceHeader
+      actions={actions}
+      labels={labels}
       headingLevel={2}
       status={
         <Badge className="shrink-0" tone={statusTone[customer.status]}>
@@ -434,8 +446,13 @@ interface CustomerSidebarData {
 
 function CustomerSidebarHeader({
   data,
-}: SecondaryScreenProps<CustomerSidebarData, CustomerPages['editor']>) {
-  return <CustomerDetailsHeader customer={data.customer} />;
+  actions,
+  labels,
+}: SecondaryScreenProps<CustomerSidebarData, CustomerPages['editor']> & {
+  actions: readonly WorkspaceHeaderAction[];
+  labels?: WorkspaceHeaderProps['labels'];
+}) {
+  return <CustomerDetailsHeader customer={data.customer} actions={actions} labels={labels} />;
 }
 
 function CustomerEditorScreen({

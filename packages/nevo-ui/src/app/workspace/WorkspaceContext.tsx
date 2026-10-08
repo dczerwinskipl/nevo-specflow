@@ -20,7 +20,7 @@ import {
   startFlow,
   type SecondaryFlowModel,
 } from './secondaryNavigationModel';
-import { CompactWorkspaceActions, WorkspaceHeader } from './WorkspaceHeader';
+import { CompactWorkspaceActions, WorkspaceHeader, WorkspaceHeaderFrame } from './WorkspaceHeader';
 import type { WorkspaceHeaderAction, WorkspaceHeaderLabels } from './WorkspaceHeader';
 import type {
   SecondaryData,
@@ -34,12 +34,7 @@ interface RuntimePage {
   actions?: (props: { data: unknown; params: object }) => readonly WorkspaceHeaderAction[];
   actionLabels?: Partial<WorkspaceHeaderLabels>;
   preserveOnDataLoss?: boolean;
-  header?: ComponentType<{
-    data: unknown;
-    params: object;
-    actions: readonly WorkspaceHeaderAction[];
-    labels?: Partial<WorkspaceHeaderLabels>;
-  }>;
+  header?: ComponentType<{ data: unknown; params: object }>;
   component: ComponentType<{ data: unknown; params: object }>;
 }
 
@@ -279,7 +274,11 @@ function HeaderOutlet({ entry }: { entry: SecondaryEntry }) {
   }
   const Header = page.header;
   return (
-    <Header data={result.data} params={entry.params} actions={actions} labels={actionLabels} />
+    <WorkspaceHeaderFrame
+      actions={actions}
+      labels={actionLabels}
+      content={<Header data={result.data} params={entry.params} />}
+    />
   );
 }
 

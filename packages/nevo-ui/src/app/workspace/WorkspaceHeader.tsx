@@ -2,7 +2,7 @@ import { isValidElement, type ReactElement, type ReactNode } from 'react';
 
 import { Button } from '../../components/actions/Button';
 import { IconButton } from '../../components/actions/IconButton';
-import { Icon, type IconName } from '../../components/foundations/Icon';
+import { Icon, type IconGlyph } from '../../components/foundations/Icon';
 import { Typography } from '../../components/foundations/Typography';
 import {
   Menu,
@@ -19,7 +19,7 @@ export type WorkspaceHeaderActionTone = 'neutral' | 'danger';
 export interface WorkspaceHeaderAction {
   id: string;
   label: string;
-  icon?: IconName;
+  icon?: IconGlyph;
   primary?: boolean;
   disabled?: boolean;
   tone?: WorkspaceHeaderActionTone;
@@ -29,7 +29,7 @@ export interface WorkspaceHeaderAction {
 export interface WorkspaceHeaderProps {
   actions?: readonly WorkspaceHeaderAction[];
   className?: string;
-  icon?: IconName;
+  icon?: IconGlyph;
   labels?: Partial<WorkspaceHeaderLabels>;
   status?: ReactNode;
   subtitle?: ReactNode;

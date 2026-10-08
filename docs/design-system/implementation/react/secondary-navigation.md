@@ -1,6 +1,6 @@
 ---
 id: design-system.implementation.react.secondary-navigation
-type: architecture
+type: engineering
 title: Secondary navigation
 status: current
 read_when:
@@ -31,8 +31,13 @@ Product routes remain owned by the application router. This is not the global na
 
 ## Consumer API
 
+Define a catalogue outside the Primary React component, alongside its screen modules. The
+Primary imports only the catalogue and calls `open`; the screen itself imports only the
+navigation hook and its page types. The stack does not require an additional feature-owned
+React Context. The public declaration is in `@nevo/ui`.
+
 ```tsx
-type TodoPages = {
+interface TodoPages {
   details: Record<never, never>;
   history: Record<never, never>;
   event: { eventId: string };
@@ -67,6 +72,10 @@ void stack.close();
 `close` clears the runtime flow. Asynchronous callbacks from disposed screens cannot operate
 on a newer flow.
 
+A screen may declare an optional `header` component in its definition; it receives the same live
+`{ data, params }` as the screen and controls the product header, while AppWorkspace owns the
+automatic navigation buttons. Default Secondary retains its existing declarative header.
+
 `useSecondaryLeaveGuard` optionally registers a guard for the active page. Navigation checks
 the guard before replacing, popping or closing that page; denied transitions leave the state intact.
 Avoid synchronizing two owners of the Secondary with effects in product screens.
@@ -74,6 +83,11 @@ Avoid synchronizing two owners of the Secondary with effects in product screens.
 ## Refresh and missing data
 
 The screen host always invokes the stack's `useData` hook while active.
+Do not call navigation operations when data changes. `useData` MUST be a normal React hook
+whose identity remains stable within one registered stack (TanStack Query, store subscriptions,
+or equivalent). The optional header also consumes the same hook independently; it should read
+the same shared query/store rather than issuing unrelated writes or impure fetches.
+Do not define screen components or hook factories inside a rerendering React component.
 Its discriminated result is one of `loading`, `ready`, `unavailable` or `error`.
 No result automatically navigates away. Ordinary refetches should retain a `ready` result when
 the previous usable data remains available, then update the `data` prop.
@@ -93,6 +107,21 @@ position instead of the global hamburger. On desktop/split, Back and Close are p
 workspace header. Default Secondary is not part of the runtime page stack.
 
 Browser history/Back interception and serialization of transient pages are **out of scope**.
+The current implementation only preserves the mounted active page across ordinary `ready`
+data refreshes; returning to a popped page may mount it anew. Switching to loading,
+unavailable or error intentionally replaces the active page content without navigating.
+
+## Agent checklist
+
+1. Read this document and `design-system.implementation.react.component-guidelines`.
+2. Keep feature stack catalogue, screen components, and Primary list in separate modules when substantial.
+3. Open with the root entity ID from Primary, not with a React node or stale domain object.
+4. Use `navTo(page, { childId })` for contextual depth. Read the current entity from `useData`.
+5. Treat missing nested records as a screen state, not navigation.
+6. Render no custom Back or Close button when the workspace already provides the action.
+7. Add Storybook interaction cases for root replacement, Back/Close, refresh without remount,
+   and unavailable entities. Confirm narrow stacked and wide split.
+8. Do not call removed `setSecondary/pushSecondary/popSecondary/closeSecondary` APIs.
 
 ## Verification
 

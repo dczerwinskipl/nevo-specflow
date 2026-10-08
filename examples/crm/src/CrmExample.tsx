@@ -454,6 +454,7 @@ function CustomerEditorScreen({
         onSave={(customer) => {
           dirty.current = false;
           data.save(customer);
+          void navigation.close();
         }}
         onCancel={() => void navigation.close()}
       />

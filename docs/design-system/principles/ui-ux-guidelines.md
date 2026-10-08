@@ -14,6 +14,7 @@ summary: >
   mandatory visual self-review. Product-specific UX (AI sessions, SpecFlow UI screens) is
   under product/specflow/ui/.
 related:
+  - design-system.principles.information-hierarchy
   - design-system.principles.information-row-hierarchy
   - design-system.principles.layout-and-containment
   - design-system.implementation.react.component-guidelines
@@ -43,44 +44,38 @@ related:
 
 ## Information hierarchy
 
-Primary / secondary / tertiary must be distinguishable at a glance. Repetition reduces
-emphasis — the tenth identical badge carries less signal than the first, so compress
-repeated content rather than repeating a heavy treatment.
+The canonical semantic roles and default typography/emphasis mapping live in
+`design-system.principles.information-hierarchy`.
 
-Design the hierarchy from the user's **first scan**, not from the shape of the backend model or from
-how much horizontal space is available. Before composing a screen, write down the small ordered set
-of questions the user should answer without opening deeper detail. For each question, decide:
+Design the hierarchy from the user's **first scan**, not from the shape of the backend model, feature
+folder, entity type, or available screen space.
 
-1. whether it is primary, secondary, tertiary, or deliberately hidden behind inspection;
-2. where it belongs in the reading/scan order;
-3. how much information it is allowed to consume;
-4. whether it changes normal visual emphasis when it requires immediate human attention.
+Before composing a screen:
 
-A useful design sequence is:
+1. write down the small ordered set of questions the user should answer without opening deeper detail;
+2. map the facts that answer those questions to the canonical structural/content/supporting roles;
+3. keep the same role visually consistent across features, modals, lists, summaries, and detail views;
+4. use semantic attention tone only when a fact changes interpretation/action now;
+5. keep actions as actual interaction affordances rather than styled information text.
 
-```text
-user question
-  -> priority
-  -> placement in scan/reading order
-  -> visual weight
-  -> information budget
-  -> deeper detail target when needed
-```
+Do not use heading/label typography merely to make an ordinary value look important. A branch name,
+Task title, Session title, Specification title, identifier, state, timestamp, or comment gets its
+treatment from its semantic information role.
 
 Semantic importance and permanent visual weight are not the same thing. A fact can be important to
 the domain while still being quiet in the normal view. Conversely, an exceptional condition that
-requires the user now may temporarily become the strongest region without changing the underlying
-information architecture.
+requires the user now may temporarily receive semantic emphasis without changing the underlying
+information role.
 
 Do not infer hierarchy from DTO field order, object nesting, the number of available fields, or a
-generic dashboard convention. When product semantics do not establish which information should win
-the first scan, the decision belongs to the owning product/UX contract rather than implementation.
+generic dashboard convention. When product semantics do not establish the role, the decision belongs
+to the owning product/UX contract rather than implementation.
 
 ## Stable composition and repeated structures
 
-Repeated informational/operational items use the canonical
-`design-system.principles.information-row-hierarchy` pattern for primary/secondary/supporting
-information and interaction treatment.
+Repeated informational/operational items preserve the semantic roles from
+`design-system.principles.information-hierarchy` and use the row-specific interaction rules from
+`design-system.principles.information-row-hierarchy`.
 
 Collection-level scan columns, utility gutters, grouped-list geometry, containment, and responsive
 collapse are governed by `design-system.principles.layout-and-containment`.
@@ -90,10 +85,13 @@ reason to invent a different visual grammar.
 
 ## Typography
 
-Use **semantic typography tokens** (role-named: heading, body, label, metadata,
-narrative), never raw font sizes scattered through components. Readability before
-density. Narrative prose and dense metadata (counts, timestamps, ids) get visibly
-different treatments.
+Use the semantic information roles from `design-system.principles.information-hierarchy` for
+ordinary structured product information. Do not select a different raw typography variant locally
+when an established information role already owns that meaning.
+
+Raw typography tokens remain available to design-system/component authors for genuinely new reusable
+patterns, prose/document rendering, and cases explicitly outside the structured-information grammar.
+Readability comes before density.
 
 ## Colour
 
@@ -109,6 +107,26 @@ reaching for borders and boxes.
 
 Detailed Card, surface, nesting, row/list, and borderless-first rules live in
 [Layout and containment guidelines](layout-and-containment.md).
+
+## Established pattern discovery
+
+Before inventing a new visual structure, identify the closest established product or design-system
+pattern by **semantic responsibility**, not by markup similarity or component name.
+
+For material regions and repeated structures:
+
+1. inspect canonical design-system/product guidance;
+2. inspect public component/pattern exports and representative stories/consumers when useful;
+3. reuse the established pattern when it satisfies the intended semantics and interaction;
+4. prefer composition over an existing pattern before adding another primitive;
+5. extend the reusable owner when the missing capability is itself reusable;
+6. create a product-local custom structure only when established patterns cannot satisfy a material
+   semantic/interaction requirement.
+
+A missing reference in a UX spec is not permission to skip discovery.
+
+When UX intentionally departs from an established pattern, the product contract should state the
+user-facing reason. Implementation file paths are not durable pattern references.
 
 ## Progressive disclosure
 

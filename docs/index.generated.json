@@ -1002,6 +1002,36 @@
       ]
     },
     {
+      "id": "design-system.principles.information-hierarchy",
+      "type": "engineering",
+      "title": "Semantic information hierarchy",
+      "status": "current",
+      "file": "docs/design-system/principles/information-hierarchy.md",
+      "read_when": [
+        "designing or implementing any product UI that presents structured information",
+        "deciding how a fact should be emphasized or which typography role it should use",
+        "reviewing typography consistency across different entities or surfaces"
+      ],
+      "summary": "Canonical semantic roles for ordinary structured product information and their default typography/emphasis treatment. Roles follow semantic responsibility in context rather than entity type, while component-owned and specialized typography contracts remain authoritative for the structures they own.",
+      "related": [
+        "design-system.principles.ui-ux-guidelines",
+        "design-system.principles.information-row-hierarchy",
+        "design-system.principles.layout-and-containment",
+        "design-system.principles.system-boundary"
+      ],
+      "scope": "nevo-ui",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "hierarchy",
+        "typography",
+        "semantics",
+        "information",
+        "actions"
+      ]
+    },
+    {
       "id": "design-system.principles.information-row-hierarchy",
       "type": "engineering",
       "title": "Information row hierarchy",
@@ -1009,11 +1039,12 @@
       "file": "docs/design-system/principles/information-row-hierarchy.md",
       "read_when": [
         "designing or implementing repeated informational or operational rows",
-        "deciding whether a repeated item needs a Card or a new visual treatment",
-        "reviewing consistency between lists of different entity types"
+        "deciding whether a repeated item needs a different row treatment",
+        "reviewing consistency between repeated items of different entity types"
       ],
-      "summary": "Semantic hierarchy for repeated information rows: primary and secondary information, optional semantic supporting information, utility/trailing affordance roles, consistent interaction language, and the rule that different entity semantics do not justify visual reinvention by default.",
+      "summary": "Row-specific semantic and interaction rules for repeated information: apply the canonical information roles consistently, keep utility/trailing affordances recognizable, and do not invent a new row grammar solely because the entity type changes.",
       "related": [
+        "design-system.principles.information-hierarchy",
         "design-system.principles.ui-ux-guidelines",
         "design-system.principles.layout-and-containment",
         "design-system.principles.system-boundary"
@@ -1026,7 +1057,6 @@
         "list",
         "rows",
         "hierarchy",
-        "typography",
         "scanning",
         "interaction"
       ]
@@ -1065,6 +1095,7 @@
       ],
       "summary": "Portable engineering rules for building UI: validate the composed screen, semantic typography/color/spacing tokens, information hierarchy, progressive disclosure, and mandatory visual self-review. Product-specific UX (AI sessions, SpecFlow UI screens) is under product/specflow/ui/.",
       "related": [
+        "design-system.principles.information-hierarchy",
         "design-system.principles.information-row-hierarchy",
         "design-system.principles.layout-and-containment",
         "design-system.implementation.react.component-guidelines",

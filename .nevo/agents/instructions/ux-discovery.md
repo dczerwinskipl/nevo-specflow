@@ -38,6 +38,27 @@ Focus on the smallest set of facts that can change UX correctness:
 - consequences of misunderstanding or choosing the wrong action;
 - which behaviors are product requirements versus implementation details.
 
+### Discover established patterns
+
+For every material surface, collection, navigation structure, history/activity presentation, or
+repeated interaction:
+
+1. identify the closest established product/design-system pattern or component when one exists;
+2. inspect its documented semantics and representative rendered behavior;
+3. record the stable pattern/component name or canonical document reference in the UX handoff;
+4. use that established pattern as the default unless a material user-facing reason requires a
+   departure;
+5. record that reason when deliberately departing.
+
+Search by semantic responsibility, not only by an exact component name.
+
+Do not encode implementation file paths, JSX structure, or import syntax into the UX contract.
+Pattern/component references express intended reusable behavior and visual language; implementation
+still owns the concrete integration.
+
+If no established pattern fits, mark the missing reusable capability or product-owned composition
+explicitly instead of silently inventing one in the mock.
+
 ### Ask progressively
 
 Do not begin with a long generic questionnaire.

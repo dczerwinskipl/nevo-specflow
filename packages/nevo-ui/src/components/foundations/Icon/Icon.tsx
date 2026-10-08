@@ -96,7 +96,7 @@ export const iconSizeClasses = {
 type IconAccessibilityProps =
   { decorative?: true; 'aria-label'?: never } | { decorative: false; 'aria-label': string };
 
-export type IconProps = Omit<SVGAttributes<SVGSVGElement>, 'children' | 'aria-label'> &
+export type IconProps = Omit<SVGAttributes<SVGSVGElement>, 'children' | 'aria-label' | 'name'> &
   IconAccessibilityProps & {
     name: IconGlyph;
     size?: IconSize;

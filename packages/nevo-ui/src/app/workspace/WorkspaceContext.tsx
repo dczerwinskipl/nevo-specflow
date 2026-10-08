@@ -9,11 +9,49 @@ import {
   type PropsWithChildren,
 } from 'react';
 
+import type { ComponentType, ReactNode } from 'react';
 import type { AppWorkspaceSurface } from './workspaceSurface';
+import { WorkspaceHeader } from './WorkspaceHeader';
+import type {
+  SecondaryData,
+  SecondaryPageArgs,
+  SecondaryStackActions,
+  SecondaryStackDefinition,
+} from './SecondaryStack';
 
-export interface WorkspaceSecondaryOptions {
-  beforeClose?: () => boolean | Promise<boolean>;
-  onClose?: () => void;
+interface RuntimePage {
+  title: string;
+  component: ComponentType<{ data: unknown; params: object }>;
+}
+
+interface RuntimeDefinition {
+  id: string;
+  initial: string;
+  useData: (params: object) => SecondaryData<unknown>;
+  screens: Record<string, RuntimePage>;
+}
+
+interface WorkspaceFocusTarget {
+  element: HTMLElement;
+  ariaLabel: string | null;
+  layerKey: string | null;
+  name: string | null;
+  tagName: string;
+  text: string;
+}
+
+interface SecondaryEntry {
+  page: string;
+  params: object;
+  instanceKey: number;
+  returnFocusTo: WorkspaceFocusTarget | null;
+}
+
+interface SecondaryFlow {
+  id: number;
+  definition: RuntimeDefinition;
+  rootParams: object;
+  entries: readonly SecondaryEntry[];
 }
 
 export interface WorkspaceSecondaryState {
@@ -28,46 +66,43 @@ export interface WorkspaceTransition {
   outgoing: WorkspaceSecondaryState | null;
 }
 
-type WorkspaceSecondaryInternalState = WorkspaceSecondaryState & {
-  beforeClose?: () => boolean | Promise<boolean>;
-  onClose?: () => void;
-  returnFocusTo: WorkspaceFocusTarget | null;
-};
-
-interface WorkspaceFocusTarget {
-  element: HTMLElement;
-  ariaLabel: string | null;
-  layerKey: string | null;
-  name: string | null;
-  tagName: string;
-  text: string;
-}
-
 export interface WorkspaceContextValue {
   secondary: WorkspaceSecondaryState | null;
-  secondaryStack: readonly WorkspaceSecondaryState[];
   secondaryDepth: number;
   canGoBack: boolean;
   transition: WorkspaceTransition;
-  setSecondary: (
-    surface: AppWorkspaceSurface,
-    options?: WorkspaceSecondaryOptions,
-  ) => Promise<boolean>;
-  pushSecondary: (
-    surface: AppWorkspaceSurface,
-    options?: WorkspaceSecondaryOptions,
-  ) => Promise<boolean>;
-  popSecondary: () => Promise<boolean>;
-  closeSecondary: () => Promise<boolean>;
+  open: <
+    TRoot extends object,
+    TData,
+    TPages extends { [K in keyof TPages]: object },
+  >(definition: SecondaryStackDefinition<TRoot, TData, TPages>, params: TRoot) => Promise<boolean>;
+  back: () => Promise<boolean>;
+  close: () => Promise<boolean>;
+}
+
+type LeaveGuard = () => boolean | Promise<boolean>;
+type NavigationCommand = (
+  kind: 'push' | 'replace' | 'back' | 'close',
+  flowId: number,
+  entryKey: number,
+  page?: string,
+  params?: object,
+) => Promise<boolean>;
+
+interface ActiveScreenNavigation {
+  flowId: number;
+  entryKey: number;
+  navigate: NavigationCommand;
+  registerGuard: (entryKey: number, guard: LeaveGuard) => () => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
+const ScreenNavigationContext = createContext<ActiveScreenNavigation | null>(null);
 
 function getActiveElement(): WorkspaceFocusTarget | null {
   if (typeof document === 'undefined' || !(document.activeElement instanceof HTMLElement)) {
     return null;
   }
-
   const element = document.activeElement;
   return {
     element,
@@ -109,193 +144,290 @@ function resolveFocusTarget(target: WorkspaceFocusTarget) {
   });
 }
 
+function ScreenOutlet({
+  flow,
+  entry,
+  navigate,
+  registerGuard,
+}: {
+  flow: SecondaryFlow;
+  entry: SecondaryEntry;
+  navigate: NavigationCommand;
+  registerGuard: ActiveScreenNavigation['registerGuard'];
+}) {
+  // A different flow gets a different host. A refetch within one entry never changes this host.
+  const result = flow.definition.useData(flow.rootParams);
+  const screen = flow.definition.screens[entry.page];
+  const navigation = useMemo<ActiveScreenNavigation>(
+    () => ({ flowId: flow.id, entryKey: entry.instanceKey, navigate, registerGuard }),
+    [flow.id, entry.instanceKey, navigate, registerGuard],
+  );
+
+  if (!screen) throw new Error(`Unknown Secondary screen: ${entry.page}`);
+
+  let content: ReactNode;
+  if (result.status === 'loading') {
+    content = <div role="status">Loading…</div>;
+  } else if (result.status === 'unavailable') {
+    content = <div role="status">{result.message ?? 'This item is no longer available.'}</div>;
+  } else if (result.status === 'error') {
+    content = (
+      <div role="alert">
+        <p>{result.message ?? 'Unable to load this item.'}</p>
+        {result.retry ? (
+          <button type="button" onClick={result.retry}>Retry</button>
+        ) : null}
+      </div>
+    );
+  } else {
+    const Component = screen.component;
+    content = <Component data={result.data} params={entry.params} />;
+  }
+
+  return (
+    <ScreenNavigationContext.Provider value={navigation}>
+      {content}
+    </ScreenNavigationContext.Provider>
+  );
+}
+
+function publicEntry(
+  flow: SecondaryFlow,
+  entry: SecondaryEntry,
+  navigate: NavigationCommand,
+  registerGuard: ActiveScreenNavigation['registerGuard'],
+): WorkspaceSecondaryState {
+  const page = flow.definition.screens[entry.page];
+  if (!page) throw new Error(`Unknown Secondary screen: ${entry.page}`);
+  return {
+    instanceKey: entry.instanceKey,
+    surface: {
+      header: <WorkspaceHeader as="h2" title={page.title} />,
+      content: (
+        <ScreenOutlet
+          flow={flow}
+          entry={entry}
+          navigate={navigate}
+          registerGuard={registerGuard}
+        />
+      ),
+    },
+  };
+}
+
 export function AppWorkspaceProvider({ children }: PropsWithChildren) {
-  const [stack, setStackState] = useState<WorkspaceSecondaryInternalState[]>([]);
+  const [flow, setFlow] = useState<SecondaryFlow | null>(null);
+  const flowRef = useRef<SecondaryFlow | null>(null);
+  const counter = useRef(0);
+  const revision = useRef(0);
+  const mounted = useRef(true);
+  const guards = useRef(new Map<number, LeaveGuard>());
+  const pending = useRef<Promise<unknown>>(Promise.resolve());
   const [transition, setTransition] = useState<WorkspaceTransition>({
     action: 'close',
     revision: 0,
     incoming: null,
     outgoing: null,
   });
-  const stackRef = useRef<WorkspaceSecondaryInternalState[]>([]);
-  const nextInstanceKey = useRef(0);
-  const transitionRevision = useRef(0);
-  const mountedRef = useRef(true);
 
   useEffect(() => {
-    mountedRef.current = true;
+    mounted.current = true;
     return () => {
-      mountedRef.current = false;
-      stackRef.current = [];
+      mounted.current = false;
+      flowRef.current = null;
+      guards.current.clear();
     };
   }, []);
 
-  const publishStack = useCallback((next: WorkspaceSecondaryInternalState[]) => {
-    stackRef.current = next;
-    setStackState(next);
+  const registerGuard = useCallback((entryKey: number, guard: LeaveGuard) => {
+    guards.current.set(entryKey, guard);
+    return () => {
+      if (guards.current.get(entryKey) === guard) guards.current.delete(entryKey);
+    };
   }, []);
 
-  const publishTransition = useCallback(
-    (
-      action: WorkspaceTransition['action'],
-      outgoing: WorkspaceSecondaryInternalState | undefined,
-      incoming: WorkspaceSecondaryInternalState | undefined,
-    ) => {
-      transitionRevision.current += 1;
-      setTransition({
-        action,
-        revision: transitionRevision.current,
-        outgoing: outgoing
-          ? { surface: outgoing.surface, instanceKey: outgoing.instanceKey }
-          : null,
-        incoming: incoming
-          ? { surface: incoming.surface, instanceKey: incoming.instanceKey }
-          : null,
-      });
-    },
-    [],
-  );
-
-  const createEntry = useCallback(
-    (
-      surface: AppWorkspaceSurface,
-      options?: WorkspaceSecondaryOptions,
-      returnFocusTo = getActiveElement(),
-    ) => {
-      nextInstanceKey.current += 1;
-      return {
-        surface,
-        instanceKey: nextInstanceKey.current,
-        beforeClose: options?.beforeClose,
-        onClose: options?.onClose,
-        returnFocusTo,
-      } satisfies WorkspaceSecondaryInternalState;
-    },
-    [],
-  );
-
-  const passesCloseGuard = useCallback(
-    async (current: WorkspaceSecondaryInternalState) =>
-      current.beforeClose ? current.beforeClose() : true,
-    [],
-  );
-
-  const isCurrentTop = useCallback(
-    (current: WorkspaceSecondaryInternalState) =>
-      mountedRef.current && stackRef.current.at(-1)?.instanceKey === current.instanceKey,
-    [],
-  );
-
-  const restoreFocus = useCallback((target: WorkspaceFocusTarget | null, expectedDepth: number) => {
+  const restoreFocus = useCallback((target: WorkspaceFocusTarget | null, expectedKey: number | null) => {
     if (!target || typeof requestAnimationFrame !== 'function') return;
-
     let attempts = 0;
-    const focusWhenLayerIsVisible = () => {
-      if (!mountedRef.current || stackRef.current.length !== expectedDepth) return;
-
+    const tryFocus = () => {
+      if (!mounted.current) return;
+      const active = flowRef.current?.entries.at(-1)?.instanceKey ?? null;
+      if (active !== expectedKey) return;
       const element = resolveFocusTarget(target);
       if (element) {
         element.focus();
         if (document.activeElement === element) return;
       }
-
       attempts += 1;
-      if (attempts < 4) requestAnimationFrame(focusWhenLayerIsVisible);
+      if (attempts < 4) requestAnimationFrame(tryFocus);
     };
-
-    requestAnimationFrame(focusWhenLayerIsVisible);
+    requestAnimationFrame(tryFocus);
   }, []);
 
-  const setSecondary = useCallback(
-    async (surface: AppWorkspaceSurface, options?: WorkspaceSecondaryOptions) => {
-      if (!mountedRef.current) return false;
-      const returnFocusTo = getActiveElement();
-      const current = stackRef.current.at(-1);
+  const navigateRef = useRef<NavigationCommand>(async () => false);
 
-      if (current) {
-        if (!(await passesCloseGuard(current)) || !isCurrentTop(current)) return false;
-        current.onClose?.();
-        if (!isCurrentTop(current)) return false;
+  const currentSurface = useCallback(
+    (current: SecondaryFlow | null) => {
+      const entry = current?.entries.at(-1);
+      return current && entry ? publicEntry(current, entry, (...args) => navigateRef.current(...args), registerGuard) : null;
+    },
+    // navigate is stable; the callback is resolved when invoked, not during render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [registerGuard],
+  );
+
+  const publish = useCallback(
+    (
+      next: SecondaryFlow | null,
+      action: WorkspaceTransition['action'],
+      previous: SecondaryFlow | null,
+    ) => {
+      const outgoing = currentSurface(previous);
+      const incoming = currentSurface(next);
+      flowRef.current = next;
+      setFlow(next);
+      revision.current += 1;
+      setTransition({
+        action,
+        revision: revision.current,
+        incoming,
+        outgoing,
+      });
+    },
+    [currentSurface],
+  );
+
+  const queue = useCallback((operation: () => Promise<boolean>) => {
+    const result = pending.current.then(operation, operation);
+    pending.current = result.then(() => undefined, () => undefined);
+    return result;
+  }, []);
+
+  const passesGuard = useCallback(async (previous: SecondaryFlow | null) => {
+    const key = previous?.entries.at(-1)?.instanceKey;
+    const guard = key === undefined ? undefined : guards.current.get(key);
+    return guard ? await guard() : true;
+  }, []);
+
+  const open = useCallback<WorkspaceContextValue['open']>((definition, params) =>
+    queue(async () => {
+      if (!mounted.current) return false;
+      const previous = flowRef.current;
+      if (!(await passesGuard(previous)) || !mounted.current) return false;
+      // Type erasure is confined to the infrastructure boundary; the public signature is typed.
+      const runtime = definition as unknown as RuntimeDefinition;
+      if (!runtime.screens[runtime.initial]) {
+        throw new Error(`Unknown initial Secondary screen: ${runtime.initial}`);
       }
-
-      const next = createEntry(surface, options, returnFocusTo);
-      publishStack(current ? [...stackRef.current.slice(0, -1), next] : [next]);
-      publishTransition(current ? 'replace' : 'push', current, next);
+      const entry: SecondaryEntry = {
+        page: runtime.initial,
+        params: {},
+        instanceKey: ++counter.current,
+        returnFocusTo: getActiveElement(),
+      };
+      const next: SecondaryFlow = {
+        id: ++counter.current,
+        definition: runtime,
+        rootParams: params,
+        entries: [entry],
+      };
+      guards.current.clear();
+      publish(next, previous ? 'replace' : 'push', previous);
       return true;
-    },
-    [createEntry, isCurrentTop, passesCloseGuard, publishStack, publishTransition],
-  );
+    }), [passesGuard, publish, queue]);
 
-  const pushSecondary = useCallback(
-    (surface: AppWorkspaceSurface, options?: WorkspaceSecondaryOptions) => {
-      if (!mountedRef.current) return Promise.resolve(false);
-      const current = stackRef.current.at(-1);
-      const next = createEntry(surface, options);
-      publishStack([...stackRef.current, next]);
-      publishTransition('push', current, next);
-      return Promise.resolve(true);
-    },
-    [createEntry, publishStack, publishTransition],
-  );
+  const navigate = useCallback<NavigationCommand>((kind, flowId, entryKey, page, params) =>
+    queue(async () => {
+      if (!mounted.current) return false;
+      const previous = flowRef.current;
+      const current = previous?.entries.at(-1);
+      if (!previous || !current || previous.id !== flowId || current.instanceKey !== entryKey) {
+        return false; // Stale callbacks cannot mutate a newer flow or page.
+      }
+      if (!(await passesGuard(previous)) || !mounted.current) return false;
+      if (kind === 'close' || (kind === 'back' && previous.entries.length === 1)) {
+        publish(null, 'close', previous);
+        guards.current.clear();
+        restoreFocus(previous.entries[0]?.returnFocusTo ?? null, null);
+        return true;
+      }
+      if (kind === 'back') {
+        const nextEntries = previous.entries.slice(0, -1);
+        const next = { ...previous, entries: nextEntries };
+        publish(next, 'pop', previous);
+        guards.current.delete(current.instanceKey);
+        restoreFocus(current.returnFocusTo, nextEntries.at(-1)?.instanceKey ?? null);
+        return true;
+      }
+      if (!page || !previous.definition.screens[page]) {
+        throw new Error(`Unknown Secondary screen: ${page ?? '<none>'}`);
+      }
+      const nextEntry: SecondaryEntry = {
+        page,
+        params: params ?? {},
+        instanceKey: ++counter.current,
+        returnFocusTo: getActiveElement(),
+      };
+      const entries = kind === 'replace'
+        ? [...previous.entries.slice(0, -1), nextEntry]
+        : [...previous.entries, nextEntry];
+      publish({ ...previous, entries }, kind, previous);
+      if (kind === 'replace') guards.current.delete(current.instanceKey);
+      return true;
+    }), [passesGuard, publish, queue, restoreFocus]);
 
-  const popSecondary = useCallback(async () => {
-    const current = stackRef.current.at(-1);
-    if (!current) return mountedRef.current;
-    if (!(await passesCloseGuard(current)) || !isCurrentTop(current)) return false;
+  navigateRef.current = navigate;
 
-    const nextStack = stackRef.current.slice(0, -1);
-    const incoming = nextStack.at(-1);
-    publishStack(nextStack);
-    publishTransition('pop', current, incoming);
-    current.onClose?.();
-    restoreFocus(current.returnFocusTo, nextStack.length);
-    return true;
-  }, [isCurrentTop, passesCloseGuard, publishStack, publishTransition, restoreFocus]);
+  const back = useCallback(() => {
+    const top = flowRef.current?.entries.at(-1);
+    const id = flowRef.current?.id;
+    return id && top ? navigate('back', id, top.instanceKey) : Promise.resolve(true);
+  }, [navigate]);
 
-  const closeSecondary = useCallback(async () => {
-    const current = stackRef.current.at(-1);
-    if (!current) return mountedRef.current;
-    if (!(await passesCloseGuard(current)) || !isCurrentTop(current)) return false;
+  const close = useCallback(() => {
+    const top = flowRef.current?.entries.at(-1);
+    const id = flowRef.current?.id;
+    return id && top ? navigate('close', id, top.instanceKey) : Promise.resolve(true);
+  }, [navigate]);
 
-    const rootFocusTarget = stackRef.current[0]?.returnFocusTo ?? current.returnFocusTo;
-    const closing = [...stackRef.current].reverse();
-    publishStack([]);
-    publishTransition('close', current, undefined);
-    closing.forEach((entry) => entry.onClose?.());
-    restoreFocus(rootFocusTarget, 0);
-    return true;
-  }, [isCurrentTop, passesCloseGuard, publishStack, publishTransition, restoreFocus]);
-
-  const publicStack = useMemo<WorkspaceSecondaryState[]>(
-    () => stack.map(({ surface, instanceKey }) => ({ surface, instanceKey })),
-    [stack],
-  );
-  const publicSecondary = publicStack.at(-1) ?? null;
-
-  const value = useMemo<WorkspaceContextValue>(
-    () => ({
-      secondary: publicSecondary,
-      secondaryStack: publicStack,
-      secondaryDepth: publicStack.length,
-      canGoBack: publicStack.length > 1,
-      transition,
-      setSecondary,
-      pushSecondary,
-      popSecondary,
-      closeSecondary,
-    }),
-    [
-      closeSecondary,
-      popSecondary,
-      publicSecondary,
-      publicStack,
-      pushSecondary,
-      setSecondary,
-      transition,
-    ],
-  );
+  const value = useMemo<WorkspaceContextValue>(() => ({
+    secondary: currentSurface(flow),
+    secondaryDepth: flow?.entries.length ?? 0,
+    canGoBack: (flow?.entries.length ?? 0) > 1,
+    transition,
+    open,
+    back,
+    close,
+  }), [flow, transition, open, back, close, currentSurface]);
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
+}
+
+/** Open an entirely new contextual flow from Primary, a toolbar or another feature component. */
+export function useSecondaryNavigation() {
+  const workspace = useWorkspace();
+  return useMemo(() => ({ open: workspace.open, close: workspace.close }), [workspace.open, workspace.close]);
+}
+
+/** Navigate within the flow that mounted this screen. Old callbacks cannot affect a new flow. */
+export function useSecondaryStack<TPages extends { [K in keyof TPages]: object }>(): SecondaryStackActions<TPages> {
+  const screen = useContext(ScreenNavigationContext);
+  if (!screen) throw new Error('useSecondaryStack must be used inside a Secondary screen');
+  return useMemo(() => ({
+    navTo: <K extends keyof TPages & string>(page: K, ...args: SecondaryPageArgs<TPages, K>) =>
+      screen.navigate('push', screen.flowId, screen.entryKey, page, args[0]),
+    replace: <K extends keyof TPages & string>(page: K, ...args: SecondaryPageArgs<TPages, K>) =>
+      screen.navigate('replace', screen.flowId, screen.entryKey, page, args[0]),
+    back: () => screen.navigate('back', screen.flowId, screen.entryKey),
+    close: () => screen.navigate('close', screen.flowId, screen.entryKey),
+  }), [screen]);
+}
+
+/** Optional navigation guard. It protects the active page's unsaved edits. */
+export function useSecondaryLeaveGuard(guard: LeaveGuard) {
+  const screen = useContext(ScreenNavigationContext);
+  if (!screen) throw new Error('useSecondaryLeaveGuard must be used inside a Secondary screen');
+  useEffect(() => screen.registerGuard(screen.entryKey, guard), [screen, guard]);
 }
 
 export function useWorkspace() {

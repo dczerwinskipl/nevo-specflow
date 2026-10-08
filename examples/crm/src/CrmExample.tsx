@@ -493,10 +493,10 @@ function CrmScreen({ initialCustomerId }: { initialCustomerId?: string }) {
   const navigation = useSecondaryNavigation();
   const [store] = useState(createCustomerStore);
   const customers = useSyncExternalStore(
-      store.subscribe,
-      store.getSnapshot,
-      store.getSnapshot,
-    );
+    store.subscribe,
+    store.getSnapshot,
+    store.getSnapshot,
+  );
   const [customerStack] = useState(() => createCustomerStack(store));
   const [defaultOpen, setDefaultOpen] = useState(true);
   const [query, setQuery] = useState('');

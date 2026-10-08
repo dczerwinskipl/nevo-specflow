@@ -41,7 +41,7 @@ interface TodoPages {
   details: Record<never, never>;
   history: Record<never, never>;
   event: { eventId: string };
-};
+}
 
 const todoStack = defineSecondaryStack<{ id: string }, Todo, TodoPages>({
   id: 'todo',

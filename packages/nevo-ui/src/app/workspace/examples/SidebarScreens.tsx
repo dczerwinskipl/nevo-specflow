@@ -7,9 +7,13 @@ export interface TodoPages {
   details: Record<never, never>;
   history: Record<never, never>;
   event: { eventId: string };
-};
-export interface UserPages { details: Record<never, never> };
-export interface ItemPages { details: Record<never, never> };
+}
+export interface UserPages {
+  details: Record<never, never>;
+}
+export interface ItemPages {
+  details: Record<never, never>;
+}
 let mountSequence = 0;
 
 function Mounted({ children }: { children: ReactNode }) {

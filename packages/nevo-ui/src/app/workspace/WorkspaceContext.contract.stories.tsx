@@ -14,7 +14,7 @@ interface Pages {
   first: Record<never, never>;
   second: Record<never, never>;
   guarded: Record<never, never>;
-};
+}
 
 function FirstScreen() {
   const navigation = useSecondaryStack<Pages>();
@@ -138,9 +138,15 @@ export const GuardBlocksCloseAndReplacement: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Open guarded secondary' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Close secondary content' }));
-    assert(canvas.getByRole('heading', { name: 'Protected editor' }), 'The guard must prevent closing');
+    assert(
+      canvas.getByRole('heading', { name: 'Protected editor' }),
+      'The guard must prevent closing',
+    );
     await userEvent.click(canvas.getByRole('button', { name: 'Open first secondary' }));
-    assert(canvas.getByRole('heading', { name: 'Protected editor' }), 'The guard must prevent replacement');
+    assert(
+      canvas.getByRole('heading', { name: 'Protected editor' }),
+      'The guard must prevent replacement',
+    );
     await userEvent.click(canvas.getByRole('button', { name: 'Allow exit' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Close secondary content' }));
     assert(canvas.getByText('Default secondary content'), 'A passing guard must allow closing');

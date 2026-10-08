@@ -15,31 +15,19 @@ import {
 /** Pages are registered independently of Primary, and the data hook lives in the stack host. */
 export function createDemoStacks(store: DemoStore) {
   function useTodoData({ id }: { id: string }): SecondaryData<Todo> {
-    const snapshot = useSyncExternalStore(
-      store.subscribe,
-      store.getSnapshot,
-      store.getSnapshot,
-    );
+    const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
     const todo = snapshot.todos.find((value) => value.id === id);
     return todo
       ? { status: 'ready', data: todo }
       : { status: 'unavailable', message: 'Todo no longer available.' };
   }
   function useUserData({ id }: { id: string }): SecondaryData<User> {
-    const snapshot = useSyncExternalStore(
-      store.subscribe,
-      store.getSnapshot,
-      store.getSnapshot,
-    );
+    const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
     const user = snapshot.users.find((value) => value.id === id);
     return user ? { status: 'ready', data: user } : { status: 'unavailable' };
   }
   function useItemData({ id }: { id: string }): SecondaryData<Item> {
-    const snapshot = useSyncExternalStore(
-      store.subscribe,
-      store.getSnapshot,
-      store.getSnapshot,
-    );
+    const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
     const item = snapshot.items.find((value) => value.id === id);
     return item ? { status: 'ready', data: item } : { status: 'unavailable' };
   }

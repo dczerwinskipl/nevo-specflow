@@ -421,9 +421,15 @@ function createCustomerStore() {
 }
 
 type CustomerStore = ReturnType<typeof createCustomerStore>;
-interface CustomerPages { editor: Record<never, never>; billing: Record<never, never> };
+interface CustomerPages {
+  editor: Record<never, never>;
+  billing: Record<never, never>;
+}
 
-interface CustomerSidebarData { customer: Customer; save: (customer: Customer) => void };
+interface CustomerSidebarData {
+  customer: Customer;
+  save: (customer: Customer) => void;
+}
 
 function CustomerSidebarHeader({
   data,
@@ -475,11 +481,7 @@ function CustomerBillingScreen({
 
 function createCustomerStack(store: CustomerStore) {
   function useCustomerData({ id }: { id: string }): SecondaryData<CustomerSidebarData> {
-    const customers = useSyncExternalStore(
-      store.subscribe,
-      store.getSnapshot,
-      store.getSnapshot,
-    );
+    const customers = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
     const customer = customers.find((value) => value.id === id);
     return customer
       ? { status: 'ready', data: { customer, save: store.save } }
@@ -490,7 +492,11 @@ function createCustomerStack(store: CustomerStore) {
     initial: 'editor',
     useData: useCustomerData,
     screens: {
-      editor: { title: 'Customer details', header: CustomerSidebarHeader, component: CustomerEditorScreen },
+      editor: {
+        title: 'Customer details',
+        header: CustomerSidebarHeader,
+        component: CustomerEditorScreen,
+      },
       billing: { title: 'Billing history', component: CustomerBillingScreen },
     },
   });
@@ -499,11 +505,7 @@ function createCustomerStack(store: CustomerStore) {
 function CrmScreen({ initialCustomerId }: { initialCustomerId?: string }) {
   const navigation = useSecondaryNavigation();
   const [store] = useState(createCustomerStore);
-  const customers = useSyncExternalStore(
-    store.subscribe,
-    store.getSnapshot,
-    store.getSnapshot,
-  );
+  const customers = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
   const [customerStack] = useState(() => createCustomerStack(store));
   const [defaultOpen, setDefaultOpen] = useState(true);
   const [query, setQuery] = useState('');

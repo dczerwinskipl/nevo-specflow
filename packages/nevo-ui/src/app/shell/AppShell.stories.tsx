@@ -177,7 +177,7 @@ interface ShellPages {
   customer: Record<never, never>;
   billing: Record<never, never>;
   invoice: Record<never, never>;
-};
+}
 
 function StackLevel({ level }: { level: number }) {
   const navigation = useSecondaryStack<ShellPages>();

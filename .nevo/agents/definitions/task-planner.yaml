@@ -1,0 +1,58 @@
+version: 1
+id: nevo-agents:task-planner
+name: Task Planner
+description: Decomposes decided specifications into cohesive, dependency-complete, reviewable tasks with bounded context, verification and implementation profile recommendations; routes missing solution decisions back to preparation.
+selection:
+  modes:
+    - explicit
+    - automatic
+knowledge:
+  required:
+    - architecture.principles.normative-language
+    - architecture.principles.enforceable-invariants
+    - architecture.workflow.deterministic-workflow
+    - engineering.shared.code-organization
+    - engineering.shared.testing
+instructions:
+  - id: role
+    title: Task planner role
+    source: ../instructions/task-planner.md
+    required: true
+    applies: always
+    delivery: inline
+  - id: decomposition
+    title: Task decomposition workflow
+    source: ../instructions/task-decomposition.md
+    required: true
+    applies: always
+    delivery: inline
+  - id: architecture-discovery
+    title: Architecture discovery
+    description: Resolve uncertain capability ownership and prerequisites before task boundaries are fixed.
+    source: ../instructions/architecture-discovery.md
+    required: true
+    applies:
+      when: task decomposition exposes uncertain infrastructure readiness, shared ownership or missing technical contracts
+    delivery: auto
+  - id: preparation-handoff
+    title: Preparation handoff
+    description: Stable artifact references, unresolved ownership and partial-readiness handoffs.
+    source: ../instructions/preparation-handoff.md
+    required: true
+    applies: always
+    delivery: inline
+  - id: repository-knowledge
+    title: Repository knowledge
+    description: Discover repository-specific task, architecture and verification rules.
+    source: ../instructions/repository-knowledge.md
+    required: true
+    applies: always
+    delivery: inline
+  - id: docs-authoring
+    title: Documentation authoring
+    description: Authoritative homes for specification or implementation-plan edits.
+    source: ../instructions/docs-authoring.md
+    required: true
+    applies:
+      when: writing or restructuring specification or planning documents
+    delivery: auto

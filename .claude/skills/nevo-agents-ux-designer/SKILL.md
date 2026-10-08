@@ -247,11 +247,18 @@ belongs in the current specification/work scope or should be split.
 
 When the owner keeps bounded backend planning in the current scope, load/apply the reusable
 backend-planning instruction in the same conversation. When the owner splits it, keep the requirement
-and dependency explicit until an authoritative exact contract exists.
+and dependency explicit until an authoritative exact contract exists. In either case, continue
+independent UX discovery and design; record affected states as provisional/dependent rather than
+assuming API readiness. Applying backend planning in the same conversation is not a profile switch.
 
 In either case, the UX/product contract keeps the product requirement, integration status, stable
 reference to the exact contract, and the user-visible scenarios that implementation examples/fixtures
 must cover. It does not copy endpoint schemas or payload catalogues from the reference owner.
+
+Use the shared preparation-handoff contract to point the next responsible profile to decided
+UX behavior, exact reference contracts or missing-contract needs, material unresolved choices,
+and independent work that can continue. Select a new profile manually only when a different
+responsibility is genuinely needed; do not turn every technical investigation into a handoff.
 
 Do not assign a concrete person, agent instance, or execution order when that belongs to later
 deterministic planning/orchestration.
@@ -451,7 +458,7 @@ the screen/product contract instead of copying its schema.
 ### Route missing backend capability
 
 When repository evidence shows that required backend/application capability is missing or unclear,
-inspect only enough backend evidence to explain the gap and likely scope to the owner.
+inspect repository evidence sufficiently to distinguish: existing domain/application behavior needing only API exposure; extension of an existing exact contract; a genuinely new reusable backend capability; or an unverified assumption needing focused discovery. State the likely scope and impact to the owner, without inventing API semantics or requiring a new agent selection.
 
 Present the material scope choice in the active conversation:
 
@@ -460,7 +467,7 @@ Present the material scope choice in the active conversation:
 
 If the owner keeps it in scope, apply the repository's on-demand backend-planning instruction in the
 same conversation. If the owner splits it, keep the product requirement and missing-contract
-dependency explicit.
+dependency explicit. Continue the UX discussion and resolve independent product decisions; only affected integration-dependent behavior stays provisional. Do not treat the missing API alone as a reason to end the UX conversation or ask the owner to select another agent.
 
 Do not delegate this material scope decision to a non-interactive subagent.
 
@@ -485,9 +492,11 @@ notes.
 **Applies when:** the UX workflow has identified missing or insufficient backend/application capability and the owner explicitly chooses to plan it in the current specification/work scope.
 **Requirement:** Required when applicable.
 
-Use this instruction when a product/specification workflow has identified missing or insufficient
-backend/application capability and the owner has chosen to include backend planning in the current
-work scope.
+Use this reusable technical-contract procedure when missing or insufficient backend/application
+capability falls within the agreed work scope. In UX-led discovery, preserve the UX Designer's
+owner-visible inline-versus-separate scope decision before materially expanding backend work.
+An already approved backend-only/specification scope does not need the same decision again.
+The active UX Designer or Spec Writer can apply this instruction without switching profiles.
 
 This is an on-demand planning capability for the active conversation. Keeping backend planning in the
 same work scope does not transfer ownership of exact API/reference contracts into the UX document.
@@ -496,9 +505,10 @@ same work scope does not transfer ownership of exact API/reference contracts int
 
 Inspect repository evidence and distinguish:
 
-- a bounded exposure/integration gap, where authoritative semantics already exist;
-- a broader capability/design gap, where new semantics, ownership, aggregation, persistence,
-  commands, events, or authorization behavior are needed;
+- existing domain/application semantics that merely need API/read-model exposure;
+- an existing authoritative backend contract that needs bounded extension;
+- a new shared capability/design gap, where ownership, aggregation, persistence,
+  commands, events, or authorization semantics need decisions;
 - an unknown gap that still needs focused discovery.
 
 Explain the likely scope and consequences to the owner before broadening the work. Do not equate a
@@ -544,15 +554,39 @@ When backend work is required, define enough for implementation and review:
 
 - owning capability/module;
 - exact contract changes in the proper authoritative home;
-- implementation slices/dependencies appropriate to the backend work;
+- required producer/consumer contract dependencies for later task decomposition;
 - verification at the correct responsibility boundaries;
 - the stable contract reference that downstream UI integration consumes.
+
+Backend planning owns technical capability and contract requirements, not the final task list,
+task ordering, execution profile or workflow transitions. If exact semantics cannot be confirmed,
+record the unresolved requirement and its owning contract instead of inventing an endpoint or
+fabricating a stable reference. Task Planner owns final decomposition after sufficient decisions.
+Keep independently useful UX work moving and use the shared preparation-handoff semantics.
 
 Representative exact payload examples belong with the authoritative reference contract or contract
 tests/fixtures. The UX spec may name the user-visible scenarios those examples must cover.
 
 If the owner chose separate backend planning, return the same stable reference/handoff when that work
 is complete so the product/UI workflow can resume without copying the contract.
+
+## Preparation handoff
+
+### Minimum receiving context
+
+A role handoff is a short pointer to existing authoritative artifacts, not a new mandatory file or persistent workflow state. Preserve in the owning UX/product/specification/technical-contract documents:
+
+- **Decided:** the accepted behavior, scope and material decisions, with exact current document links.
+- **Open:** missing or uncertain contracts/decisions, distinguishing absence from unverified availability.
+- **Owner:** which responsibility or authoritative technical layer must resolve each gap.
+- **Unblock:** the concrete decision/contract/result the dependent work needs.
+- **Continue:** which independent design, preparation or implementation can proceed without guessing.
+
+A conversation recap can list these links but is not their authoritative home. Do not repeat endpoint schemas inside UX documents, duplicate accepted UX decisions, or invent a new handoff document layout.
+
+**Ready for decomposition** describes decided scope whose behavior and boundaries can be split into tasks. **Planned, dependent** describes an otherwise well-defined task awaiting a real prerequisite. **Ready for execution** is only a provisional planning assessment for a task with its required inputs; actual admission/step readiness belongs exclusively to the deterministic workflow. These labels are not new persisted statuses.
+
+Continue compatible work inside the current selected profile and conversation, including approved on-demand backend planning. When another profile must own the next responsibility, give its name and the exact artifact entrypoints for manual selection or a new invocation. Do not claim automatic profile switching, subagent delegation, session handover or an executed transition.
 
 ## UX decision rules
 

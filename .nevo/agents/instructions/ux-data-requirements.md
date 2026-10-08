@@ -29,7 +29,7 @@ the screen/product contract instead of copying its schema.
 ### Route missing backend capability
 
 When repository evidence shows that required backend/application capability is missing or unclear,
-inspect only enough backend evidence to explain the gap and likely scope to the owner.
+inspect repository evidence sufficiently to distinguish: existing domain/application behavior needing only API exposure; extension of an existing exact contract; a genuinely new reusable backend capability; or an unverified assumption needing focused discovery. State the likely scope and impact to the owner, without inventing API semantics or requiring a new agent selection.
 
 Present the material scope choice in the active conversation:
 
@@ -38,7 +38,7 @@ Present the material scope choice in the active conversation:
 
 If the owner keeps it in scope, apply the repository's on-demand backend-planning instruction in the
 same conversation. If the owner splits it, keep the product requirement and missing-contract
-dependency explicit.
+dependency explicit. Continue the UX discussion and resolve independent product decisions; only affected integration-dependent behavior stays provisional. Do not treat the missing API alone as a reason to end the UX conversation or ask the owner to select another agent.
 
 Do not delegate this material scope decision to a non-interactive subagent.
 

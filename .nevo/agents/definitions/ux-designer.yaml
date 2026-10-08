@@ -51,6 +51,13 @@ instructions:
     applies:
       when: the UX workflow has identified missing or insufficient backend/application capability and the owner explicitly chooses to plan it in the current specification/work scope
     delivery: auto
+  - id: preparation-handoff
+    title: Preparation handoff
+    description: Stable artifact references, unresolved ownership and partial-readiness handoffs.
+    source: ../instructions/preparation-handoff.md
+    required: true
+    applies: always
+    delivery: inline
   - id: decision-rules
     title: UX decision rules
     description: General reasoning rules for turning product evidence into a coherent UX contract.

@@ -200,11 +200,18 @@ belongs in the current specification/work scope or should be split.
 
 When the owner keeps bounded backend planning in the current scope, load/apply the reusable
 backend-planning instruction in the same conversation. When the owner splits it, keep the requirement
-and dependency explicit until an authoritative exact contract exists.
+and dependency explicit until an authoritative exact contract exists. In either case, continue
+independent UX discovery and design; record affected states as provisional/dependent rather than
+assuming API readiness. Applying backend planning in the same conversation is not a profile switch.
 
 In either case, the UX/product contract keeps the product requirement, integration status, stable
 reference to the exact contract, and the user-visible scenarios that implementation examples/fixtures
 must cover. It does not copy endpoint schemas or payload catalogues from the reference owner.
+
+Use the shared preparation-handoff contract to point the next responsible profile to decided
+UX behavior, exact reference contracts or missing-contract needs, material unresolved choices,
+and independent work that can continue. Select a new profile manually only when a different
+responsibility is genuinely needed; do not turn every technical investigation into a handoff.
 
 Do not assign a concrete person, agent instance, or execution order when that belongs to later
 deterministic planning/orchestration.

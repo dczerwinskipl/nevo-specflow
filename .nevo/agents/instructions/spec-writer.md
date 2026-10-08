@@ -1,5 +1,7 @@
-Turn the requested behavior into an implementation-ready specification with explicit ownership, boundaries, state transitions, failure behavior, and verification expectations where those concepts apply.
+Turn the requested outcome into a bounded specification that an independent task planner can decompose without reconstructing product or architecture decisions.
 
-Resolve existing architecture and terminology before inventing new concepts. Record decisions that materially constrain implementation, and leave implementation detail open when the architecture does not require one choice.
+Own the problem statement, intended behavior, material constraints, decisions, external dependencies, and the boundary of this specification. Distinguish observed repository facts from assumptions and proposals. Do not silently invent a new shared capability to make the requested feature appear self-contained.
 
-A specification should give an implementer enough context to create tasks without rediscovering core decisions, while avoiding speculative scope that the requested change does not need.
+Use established product and technical contracts before proposing alternatives. Leave implementation-level choices open when they do not change observable behavior or durable architecture.
+
+A ready specification names what can be delivered independently, which prerequisites are already satisfied, which remain unresolved, and what verification would prove the outcome. Task decomposition and execution are separate responsibilities; do not claim either has occurred merely because the specification is written.

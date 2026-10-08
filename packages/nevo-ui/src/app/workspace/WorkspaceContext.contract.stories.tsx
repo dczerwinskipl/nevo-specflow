@@ -2,6 +2,7 @@ import { useCallback, useState, useSyncExternalStore } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { AppShell } from '../shell/AppShell';
 import { AppWorkspace } from './AppWorkspace';
+import { WorkspaceHeader } from './WorkspaceHeader';
 import { defineSecondaryStack } from './SecondaryStack';
 import {
   AppWorkspaceProvider,
@@ -79,6 +80,11 @@ function ContractWorkspace() {
             <button type="button" onClick={() => void navigation.open(guardedStack, {})}>
               Open guarded secondary
             </button>
+            <button type="button" onClick={() => void navigation.canLeaveScope().then(allowed => {
+              const output = document.querySelector('[data-route-leave-result]');
+              if (output) output.textContent = allowed ? 'route allowed' : 'route blocked';
+            })}>Check route leave</button>
+            <output data-route-leave-result />
           </div>
         </AppWorkspace.Primary>
         <AppWorkspace.Secondary header="Default">
@@ -137,6 +143,8 @@ export const GuardBlocksCloseAndReplacement: Story = {
   ),
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Open guarded secondary' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Check route leave' }));
+    assert(canvas.getByText('route blocked'), 'An ordinary route change must respect the guard');
     await userEvent.click(canvas.getByRole('button', { name: 'Close secondary content' }));
     assert(
       canvas.getByRole('heading', { name: 'Protected editor' }),
@@ -148,6 +156,8 @@ export const GuardBlocksCloseAndReplacement: Story = {
       'The guard must prevent replacement',
     );
     await userEvent.click(canvas.getByRole('button', { name: 'Allow exit' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Check route leave' }));
+    assert(canvas.getByText('route allowed'), 'An allowed route may leave');
     await userEvent.click(canvas.getByRole('button', { name: 'Close secondary content' }));
     assert(canvas.getByText('Default secondary content'), 'A passing guard must allow closing');
   },
@@ -295,5 +305,43 @@ export const RevokedAccessDiscardsEditor: Story = {
     assert(!canvasElement.querySelector('input[aria-label="Draft"]'), 'Denied data must unmount the editor');
     await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
     assert(canvas.getByText('Default secondary content'), 'Revocation disposes previous leave guard');
+  },
+};
+
+let sharedHostCount = 0;
+interface SharedHostPages { details: Record<never, never> }
+const sharedHostStack = defineSecondaryStack<Record<never, never>, { instance: number }, SharedHostPages>({
+  id: 'one-shared-data-host',
+  initial: 'details',
+  useData: () => {
+    const [instance] = useState(() => ++sharedHostCount);
+    return { status: 'ready', data: { instance } };
+  },
+  screens: {
+    details: {
+      title: 'Shared data',
+      header: ({ data }) => <WorkspaceHeader headingLevel={2} title={`Host ${data.instance}`} />,
+      component: ({ data }) => <p data-host-content>{`Host ${data.instance}`}</p>,
+    },
+  },
+});
+function SharedHostWorkspace() {
+  const navigation = useSecondaryNavigation();
+  return <AppShell navigation={<div>Navigation</div>} style={{ height: 600, width: 1280 }}>
+    <AppWorkspace split="primary">
+      <AppWorkspace.Primary header="Primary">
+        <button type="button" onClick={() => void navigation.open(sharedHostStack, {})}>Open shared host</button>
+      </AppWorkspace.Primary>
+      <AppWorkspace.Secondary header="Default">Default activity</AppWorkspace.Secondary>
+    </AppWorkspace>
+  </AppShell>;
+}
+export const HeaderAndBodyShareOneDataHost: Story = {
+  render: () => <AppWorkspaceProvider><SharedHostWorkspace /></AppWorkspaceProvider>,
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Open shared host' }));
+    const body = canvas.getByText(/^Host \d+$/);
+    const header = canvas.getByRole('heading', { name: /^Host \d+$/ });
+    assert(body.textContent === header.textContent, 'Header and content must share the same data instance');
   },
 };

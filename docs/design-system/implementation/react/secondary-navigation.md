@@ -27,7 +27,8 @@ Product routes remain owned by the application router. This is not the global na
 - `AppWorkspaceProvider` owns one active flow and its array of page descriptors. Pass `scopeKey={specId}` (or the owning route identity) when the provider stays mounted while the route context changes; a changed scope clears the transient flow immediately.
 - Feature code defines available pages in `defineSecondaryStack`, usually in a separate module.
 - A page descriptor contains a page name, small page-specific identifiers and an instance key. Do not store React elements or cached domain snapshots in navigation state.
-- `useData(rootParams)` resolves current data in a stable host. A refresh updates rendered props without a navigation transition.
+- `useData(rootParams)` resolves current data **once per mounted entry** in a stable host; the header and content consume the same result. A refresh updates rendered props without a navigation transition.
+- The pure `secondaryNavigationModel.ts` handles start/push/replace/pop and stale-entry invariants; the provider owns async guards, focus, scheduling and presentation.
 
 ## Consumer API
 
@@ -80,14 +81,30 @@ A screen may declare an optional `header` component in its definition; it receiv
 `{ data, params }` as the screen and controls the product header, while AppWorkspace owns the
 automatic navigation buttons. Default Secondary retains its existing declarative header.
 
+For ordinary **application route changes**, the application router's blocking adapter must
+await `useSecondaryNavigation().canLeaveScope()` *before* committing navigation. This
+checks the active page's leave guard but does not change the Secondary stack. Once
+the route transition has been approved, changing the provider's `scopeKey` invalidates
+its flow. Forced context invalidation (logout, revoked global permissions, destroyed
+workspace scope) intentionally bypasses leave guards and removes the flow.
+Do not treat the `scopeKey` change itself as an ordinary guarded user navigation.
+Browser/system Back implementation belongs in that router adapter, not inside feature screens.
+
 `useSecondaryLeaveGuard` optionally registers a guard for the active page. Navigation checks
 the guard before replacing, popping or closing that page; denied transitions leave the state intact.
 For an editable screen with a local draft, opt into `preserveOnDataLoss: true` in its
-screen definition. Once a ready result has mounted, the screen and its guard remain
-mounted but hidden/inert during `loading`, `unavailable`, and `error`; a visible status
-message takes its place. The application must still decide whether saving stale data
-is allowed once the source recovers. Do **not** enable this option for sensitive editors
-which must immediately discard content when authorization is revoked.
+screen definition. Once ready, the screen and its leave guard remain mounted but
+hidden/inert during temporary `loading` or `error`, with a visible status message.
+`unavailable` represents a confirmed missing entity; `access-denied` represents lost
+permission. Both always dispose the screen and its local draft, regardless of this
+flag. The feature still owns its authoritative data and permission invalidation;
+it must map confirmed authorization loss to `access-denied` rather than a generic
+network error. Hidden/inert is not an acceptable protection for revoked data.
+
+This retention option applies **only to the current screen**. After Back, earlier
+entries retain identifiers but can remount. If scroll, filters or an unsaved form must
+survive Back, the product should explicitly own that state outside the unmounted page,
+scoped to the flow. Full offscreen React subtree retention is intentionally deferred.
 Avoid synchronizing two owners of the Secondary with effects in product screens.
 
 ## Refresh and missing data
@@ -95,10 +112,11 @@ Avoid synchronizing two owners of the Secondary with effects in product screens.
 The screen host always invokes the stack's `useData` hook while active.
 Do not call navigation operations when data changes. `useData` MUST be a normal React hook
 whose identity remains stable within one registered stack (TanStack Query, store subscriptions,
-or equivalent). The optional header also consumes the same hook independently; it should read
-the same shared query/store rather than issuing unrelated writes or impure fetches.
+or equivalent). The optional header and screen consume one resolved result from an internal host,
+not separate hook calls. Use a pure subscription or stable data hook: no data snapshots
+in navigation entries.
 Do not define screen components or hook factories inside a rerendering React component.
-Its discriminated result is one of `loading`, `ready`, `unavailable` or `error`.
+Its discriminated result is one of `loading`, `ready`, `unavailable`, `error` or `access-denied`.
 No result automatically navigates away. Ordinary refetches should retain a `ready` result when
 the previous usable data remains available, then update the `data` prop.
 
@@ -119,7 +137,8 @@ workspace header. Default Secondary is not part of the runtime page stack.
 Browser history/Back interception and serialization of transient pages are **out of scope**.
 The current implementation preserves the mounted active page across ordinary `ready`
 refreshes. Without `preserveOnDataLoss`, non-ready states replace the screen content
-and can discard its local draft or leave guard. A previous screen reached via Back is
+and can discard its local draft or leave guard. `access-denied` and `unavailable`
+always unmount current content, even if retention is enabled. A previous screen reached via Back is
 mounted afresh unless the product stores its state outside that component. This prototype
 does not persist offscreen screen-local state or intercept browser/system Back.
 
@@ -147,6 +166,18 @@ The canonical Storybook examples in
 and `CrossFeatureNavigationExample.stories.tsx` exercise deep Todo navigation,
 Task → Changes → File across independent modules, scoped invalidation, refresh
 without remounts, unavailable nested events/root entities and mobile Back.
-`WorkspaceContext.contract.stories.tsx` covers guarding a hidden editable draft
-during temporary data loss. The CRM example provides an independent
+`WorkspaceContext.contract.stories.tsx` covers a shared header/body data source,
+retention of a hidden editable draft during temporary failures, and its disposal on revoked access. The CRM example provides an independent
 consumer. Keep every legacy runtime-node navigation API removed from code, tests and exports.
+
+## Cross-feature composition
+
+Independent modules export their screen catalogues (or factories) and accept only the
+navigation capabilities they need. Wire Task → Changes → File at the application
+composition root rather than importing all modules into one catalogue; use lazy
+callbacks for cyclic connections if necessary. Do not add a global registry or
+new feature contexts simply to navigate between these modules.
+
+The public generic `useSecondaryStack<Pages>()` currently relies on the caller's
+asserted page type, as noted above. Keep the runtime unknown-page check; complete
+static catalogue coupling is a separate follow-up, not a prerequisite for this flow.

@@ -7,8 +7,10 @@
     "retry": "Spróbuj ponownie",
     "retrying": "Ponawianie…",
     "cancel": "Anuluj",
+    "close": "Zamknij",
     "open": "Otwórz",
     "loading": "Ładowanie…",
+    "notImplemented": "Niezaimplementowane",
     "unknown": "Nieznane"
   },
   "navigation": {

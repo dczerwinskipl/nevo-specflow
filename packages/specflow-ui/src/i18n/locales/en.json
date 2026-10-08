@@ -7,8 +7,10 @@
     "retry": "Retry",
     "retrying": "Retrying…",
     "cancel": "Cancel",
+    "close": "Close",
     "open": "Open",
     "loading": "Loading…",
+    "notImplemented": "Not implemented",
     "unknown": "Unknown"
   },
   "navigation": {

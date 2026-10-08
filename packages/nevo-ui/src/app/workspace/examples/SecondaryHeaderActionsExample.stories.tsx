@@ -6,12 +6,11 @@ import {
   AppWorkspace,
   AppWorkspaceProvider,
   WorkspaceHeader,
+  WorkspaceHeaderIdentity,
   defineSecondaryStack,
   useSecondaryNavigation,
   type SecondaryData,
   type SecondaryScreenProps,
-  type WorkspaceHeaderAction,
-  type WorkspaceHeaderProps,
 } from '../../index';
 import { AppShell } from '../../shell/AppShell';
 
@@ -47,22 +46,9 @@ function createSource() {
 }
 type Source = ReturnType<typeof createSource>;
 
-function InspectorHeader({
-  data,
-  actions,
-  labels,
-}: SecondaryScreenProps<HeaderData, EditorPages['details']> & {
-  actions: readonly WorkspaceHeaderAction[];
-  labels?: WorkspaceHeaderProps['labels'];
-}) {
-  return (
-    <WorkspaceHeader
-      actions={actions}
-      labels={labels}
-      headingLevel={2}
-      title={`Record revision ${data.version}`}
-    />
-  );
+function InspectorHeader({ data }: SecondaryScreenProps<HeaderData, EditorPages['details']>) {
+  // This product header knows nothing about navigation actions or overflow.
+  return <WorkspaceHeaderIdentity headingLevel={2} title={`Record revision ${data.version}`} />;
 }
 
 function InspectorContent({ data }: SecondaryScreenProps<HeaderData, EditorPages['details']>) {

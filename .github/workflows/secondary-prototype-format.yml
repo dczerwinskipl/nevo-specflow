@@ -33,7 +33,9 @@ jobs:
             packages/nevo-ui/src/app/workspace/examples/SidebarScreens.tsx \
             packages/nevo-ui/src/app/workspace/examples/createDemoStacks.ts \
             docs/design-system/implementation/react/secondary-navigation.md \
-            docs/ideas/specflow-ui/design-system-component-composition-gaps.md
+            docs/ideas/specflow-ui/design-system-component-composition-gaps.md \
+            docs/design-system/implementation/react/README.md \
+            .nevo/agents/instructions/implementer-ui-design-system.md
       - name: Export formatted file contents to job log
         run: |
           node --input-type=module <<'NODE'
@@ -46,3 +48,4 @@ jobs:
           }
           console.log('SECONDARY_FORMAT_COUNT:' + changed.length);
           NODE
+# Temporary formatter run including agent guidance.

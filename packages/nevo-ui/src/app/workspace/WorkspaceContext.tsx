@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -376,7 +377,7 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
       return true;
     }), [passesGuard, publish, queue, restoreFocus]);
 
-  navigateRef.current = navigate;
+  useLayoutEffect(() => { navigateRef.current = navigate; }, [navigate]);
 
   const back = useCallback(() => {
     const top = flowRef.current?.entries.at(-1);

@@ -96,20 +96,20 @@ function createInspectorStack(source: Source) {
           {
             id: 'save',
             label: 'Save',
-            icon: 'save',
+            icon: 'check',
             primary: true,
             onPress: () => data.recordAction('Save'),
           },
           {
             id: 'refresh',
             label: 'Refresh',
-            icon: 'refresh-cw',
+            icon: 'refresh',
             onPress: () => data.recordAction('Refresh'),
           },
           {
             id: 'open-full',
             label: 'Open full view',
-            icon: 'external-link',
+            icon: 'open-full',
             onPress: () => data.recordAction('Open full view'),
           },
         ],

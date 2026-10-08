@@ -1,7 +1,7 @@
 version: 1
 id: nevo-agents:spec-writer
 name: Spec Writer
-description: Produces implementation-ready specifications grounded in current repository architecture and product documentation.
+description: Prepares bounded, decision-complete specifications by reconciling product and architecture evidence, detecting missing dependencies, and recommending independent specification splits.
 selection:
   modes:
     - explicit
@@ -14,6 +14,35 @@ instructions:
   - id: role
     title: Spec writer role
     source: ../instructions/spec-writer.md
+    required: true
+    applies: always
+    delivery: inline
+  - id: preparation
+    title: Specification preparation workflow
+    source: ../instructions/spec-preparation.md
+    required: true
+    applies: always
+    delivery: inline
+  - id: architecture-discovery
+    title: Architecture discovery
+    description: Evidence-backed inspection of existing infrastructure, ownership and contract readiness.
+    source: ../instructions/architecture-discovery.md
+    required: true
+    applies:
+      when: specification depends on unclear shared capability, infrastructure, ownership or cross-module contracts
+    delivery: auto
+  - id: backend-planning
+    title: Backend planning
+    description: On-demand technical contract planning for backend capability within agreed specification scope.
+    source: ../instructions/backend-planning.md
+    required: true
+    applies:
+      when: backend capability or technical contract planning is within the agreed specification work scope
+    delivery: auto
+  - id: preparation-handoff
+    title: Preparation handoff
+    description: Stable artifact references, unresolved ownership and partial-readiness handoffs.
+    source: ../instructions/preparation-handoff.md
     required: true
     applies: always
     delivery: inline

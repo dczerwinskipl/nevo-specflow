@@ -1,6 +1,8 @@
-Use this instruction when a product/specification workflow has identified missing or insufficient
-backend/application capability and the owner has chosen to include backend planning in the current
-work scope.
+Use this reusable technical-contract procedure when missing or insufficient backend/application
+capability falls within the agreed work scope. In UX-led discovery, preserve the UX Designer's
+owner-visible inline-versus-separate scope decision before materially expanding backend work.
+An already approved backend-only/specification scope does not need the same decision again.
+The active UX Designer or Spec Writer can apply this instruction without switching profiles.
 
 This is an on-demand planning capability for the active conversation. Keeping backend planning in the
 same work scope does not transfer ownership of exact API/reference contracts into the UX document.
@@ -9,9 +11,10 @@ same work scope does not transfer ownership of exact API/reference contracts int
 
 Inspect repository evidence and distinguish:
 
-- a bounded exposure/integration gap, where authoritative semantics already exist;
-- a broader capability/design gap, where new semantics, ownership, aggregation, persistence,
-  commands, events, or authorization behavior are needed;
+- existing domain/application semantics that merely need API/read-model exposure;
+- an existing authoritative backend contract that needs bounded extension;
+- a new shared capability/design gap, where ownership, aggregation, persistence,
+  commands, events, or authorization semantics need decisions;
 - an unknown gap that still needs focused discovery.
 
 Explain the likely scope and consequences to the owner before broadening the work. Do not equate a
@@ -57,9 +60,15 @@ When backend work is required, define enough for implementation and review:
 
 - owning capability/module;
 - exact contract changes in the proper authoritative home;
-- implementation slices/dependencies appropriate to the backend work;
+- required producer/consumer contract dependencies for later task decomposition;
 - verification at the correct responsibility boundaries;
 - the stable contract reference that downstream UI integration consumes.
+
+Backend planning owns technical capability and contract requirements, not the final task list,
+task ordering, execution profile or workflow transitions. If exact semantics cannot be confirmed,
+record the unresolved requirement and its owning contract instead of inventing an endpoint or
+fabricating a stable reference. Task Planner owns final decomposition after sufficient decisions.
+Keep independently useful UX work moving and use the shared preparation-handoff semantics.
 
 Representative exact payload examples belong with the authoritative reference contract or contract
 tests/fixtures. The UX spec may name the user-visible scenarios those examples must cover.

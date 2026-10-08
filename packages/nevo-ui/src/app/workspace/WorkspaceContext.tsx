@@ -22,6 +22,7 @@ import type {
 
 interface RuntimePage {
   title: string;
+  preserveOnDataLoss?: boolean;
   header?: ComponentType<{ data: unknown; params: object }>;
   component: ComponentType<{ data: unknown; params: object }>;
 }
@@ -43,6 +44,8 @@ interface WorkspaceFocusTarget {
 }
 
 interface SecondaryEntry {
+  definition: RuntimeDefinition;
+  rootParams: object;
   page: string;
   params: object;
   instanceKey: number;
@@ -51,8 +54,7 @@ interface SecondaryEntry {
 
 interface SecondaryFlow {
   id: number;
-  definition: RuntimeDefinition;
-  rootParams: object;
+  scopeKey?: string | number;
   entries: readonly SecondaryEntry[];
 }
 
@@ -82,12 +84,15 @@ export interface WorkspaceContextValue {
 }
 
 type LeaveGuard = () => boolean | Promise<boolean>;
+type NavigationTarget =
+  | { kind: 'page'; page: string; params?: object }
+  | { kind: 'stack'; definition: RuntimeDefinition; rootParams: object };
+
 type NavigationCommand = (
   kind: 'push' | 'replace' | 'back' | 'close',
   flowId: number,
   entryKey: number,
-  page?: string,
-  params?: object,
+  target?: NavigationTarget,
 ) => Promise<boolean>;
 
 interface ActiveScreenNavigation {
@@ -157,8 +162,12 @@ function ScreenOutlet({
   registerGuard: ActiveScreenNavigation['registerGuard'];
 }) {
   // A different flow gets a different host. A refetch within one entry never changes this host.
-  const result = flow.definition.useData(flow.rootParams);
-  const screen = flow.definition.screens[entry.page];
+  const result = entry.definition.useData(entry.rootParams);
+  const screen = entry.definition.screens[entry.page];
+  const lastReady = useRef<{ status: 'ready'; data: unknown } | null>(null);
+  if (result.status === 'ready') {
+    lastReady.current = result;
+  }
   const navigation = useMemo<ActiveScreenNavigation>(
     () => ({ flowId: flow.id, entryKey: entry.instanceKey, navigate, registerGuard }),
     [flow.id, entry.instanceKey, navigate, registerGuard],
@@ -166,37 +175,46 @@ function ScreenOutlet({
 
   if (!screen) throw new Error(`Unknown Secondary screen: ${entry.page}`);
 
-  let content: ReactNode;
+  let notice: ReactNode = null;
   if (result.status === 'loading') {
-    content = <div role="status">Loading…</div>;
+    notice = <div role="status">Loading…</div>;
   } else if (result.status === 'unavailable') {
-    content = <div role="status">{result.message ?? 'This item is no longer available.'}</div>;
+    notice = <div role="status">{result.message ?? 'This item is no longer available.'}</div>;
   } else if (result.status === 'error') {
-    content = (
+    notice = (
       <div role="alert">
         <p>{result.message ?? 'Unable to load this item.'}</p>
         {result.retry ? (
-          <button type="button" onClick={result.retry}>
-            Retry
-          </button>
+          <button type="button" onClick={result.retry}>Retry</button>
         ) : null}
       </div>
     );
-  } else {
-    const Component = screen.component;
-    content = <Component data={result.data} params={entry.params} />;
   }
+
+  // Editors may opt in: keep the existing mounted draft and leave guard alive, but
+  // do not display stale data or enable editing while the source is unavailable.
+  const preserve = screen.preserveOnDataLoss && lastReady.current !== null;
+  const Component = screen.component;
+  const visible = result.status === 'ready';
+  const data = visible ? result.data : lastReady.current?.data;
 
   return (
     <ScreenNavigationContext.Provider value={navigation}>
-      {content}
+      {notice}
+      {preserve ? (
+        <div hidden={!visible} inert={!visible}>
+          <Component data={data} params={entry.params} />
+        </div>
+      ) : visible ? (
+        <Component data={result.data} params={entry.params} />
+      ) : null}
     </ScreenNavigationContext.Provider>
   );
 }
 
 function HeaderOutlet({ flow, entry }: { flow: SecondaryFlow; entry: SecondaryEntry }) {
-  const result = flow.definition.useData(flow.rootParams);
-  const page = flow.definition.screens[entry.page];
+  const result = entry.definition.useData(entry.rootParams);
+  const page = entry.definition.screens[entry.page];
   if (!page) throw new Error(`Unknown Secondary screen: ${entry.page}`);
   if (result.status !== 'ready' || !page.header) {
     return <WorkspaceHeader title={page.title} />;
@@ -211,7 +229,7 @@ function publicEntry(
   navigate: NavigationCommand,
   registerGuard: ActiveScreenNavigation['registerGuard'],
 ): WorkspaceSecondaryState {
-  const page = flow.definition.screens[entry.page];
+  const page = entry.definition.screens[entry.page];
   if (!page) throw new Error(`Unknown Secondary screen: ${entry.page}`);
   return {
     instanceKey: entry.instanceKey,
@@ -228,8 +246,12 @@ function publicEntry(
   };
 }
 
-export function AppWorkspaceProvider({ children }: PropsWithChildren) {
+export function AppWorkspaceProvider({
+  children,
+  scopeKey,
+}: PropsWithChildren<{ scopeKey?: string | number }>) {
   const [flow, setFlow] = useState<SecondaryFlow | null>(null);
+  const visibleFlow = flow?.scopeKey === scopeKey ? flow : null;
   const flowRef = useRef<SecondaryFlow | null>(null);
   const counter = useRef(0);
   const revision = useRef(0);
@@ -251,6 +273,18 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
       guards.current.clear();
     };
   }, []);
+
+  // Route/owner scope invalidation is not a user-initiated close: clear even if
+  // the old screen has a leave guard. No stale screen may affect the new scope.
+  useLayoutEffect(() => {
+    if (flowRef.current && flowRef.current.scopeKey !== scopeKey) {
+      flowRef.current = null;
+      guards.current.clear();
+      setFlow(null);
+      revision.current += 1;
+      setTransition({ action: 'close', revision: revision.current, incoming: null, outgoing: null });
+    }
+  }, [scopeKey]);
 
   const registerGuard = useCallback((entryKey: number, guard: LeaveGuard) => {
     guards.current.set(entryKey, guard);
@@ -333,7 +367,7 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
     (definition, params) =>
       queue(async () => {
         if (!mounted.current) return false;
-        const previous = flowRef.current;
+        const previous = flowRef.current?.scopeKey === scopeKey ? flowRef.current : null;
         if (!(await passesGuard(previous)) || !mounted.current) return false;
         // Type erasure is confined to the infrastructure boundary; the public signature is typed.
         const runtime = definition as unknown as RuntimeDefinition;
@@ -341,6 +375,8 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
           throw new Error(`Unknown initial Secondary screen: ${runtime.initial}`);
         }
         const entry: SecondaryEntry = {
+          definition: runtime,
+          rootParams: { ...params },
           page: runtime.initial,
           params: {},
           instanceKey: ++counter.current,
@@ -348,24 +384,24 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
         };
         const next: SecondaryFlow = {
           id: ++counter.current,
-          definition: runtime,
-          rootParams: { ...params },
+          scopeKey,
           entries: [entry],
         };
         guards.current.clear();
         publish(next, previous ? 'replace' : 'push', previous);
         return true;
       }),
-    [passesGuard, publish, queue],
+    [passesGuard, publish, queue, scopeKey],
   );
 
   const navigate = useCallback<NavigationCommand>(
-    (kind, flowId, entryKey, page, params) =>
+    (kind, flowId, entryKey, target) =>
       queue(async () => {
         if (!mounted.current) return false;
         const previous = flowRef.current;
         const current = previous?.entries.at(-1);
-        if (!previous || !current || previous.id !== flowId || current.instanceKey !== entryKey) {
+        if (!previous || previous.scopeKey !== scopeKey || !current ||
+          previous.id !== flowId || current.instanceKey !== entryKey) {
           return false; // Stale callbacks cannot mutate a newer flow or page.
         }
         if (!(await passesGuard(previous)) || !mounted.current) return false;
@@ -383,12 +419,17 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
           restoreFocus(current.returnFocusTo, nextEntries.at(-1)?.instanceKey ?? null);
           return true;
         }
-        if (!page || !previous.definition.screens[page]) {
-          throw new Error(`Unknown Secondary screen: ${page ?? '<none>'}`);
+        if (!target) throw new Error('Secondary navigation target is required.');
+        const definition = target.kind === 'stack' ? target.definition : current.definition;
+        const page = target.kind === 'stack' ? definition.initial : target.page;
+        if (!definition.screens[page]) {
+          throw new Error(`Unknown Secondary screen: ${page}`);
         }
         const nextEntry: SecondaryEntry = {
+          definition,
+          rootParams: target.kind === 'stack' ? { ...target.rootParams } : current.rootParams,
           page,
-          params: { ...params },
+          params: target.kind === 'stack' ? {} : { ...target.params },
           instanceKey: ++counter.current,
           returnFocusTo: getActiveElement(),
         };
@@ -400,7 +441,7 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
         if (kind === 'replace') guards.current.delete(current.instanceKey);
         return true;
       }),
-    [passesGuard, publish, queue, restoreFocus],
+    [passesGuard, publish, queue, restoreFocus, scopeKey],
   );
 
   useLayoutEffect(() => {
@@ -421,15 +462,20 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
 
   const value = useMemo<WorkspaceContextValue>(
     () => ({
-      secondary: currentSurface(flow),
-      secondaryDepth: flow?.entries.length ?? 0,
-      canGoBack: (flow?.entries.length ?? 0) > 1,
-      transition,
+      secondary: currentSurface(visibleFlow),
+      secondaryDepth: visibleFlow?.entries.length ?? 0,
+      canGoBack: (visibleFlow?.entries.length ?? 0) > 1,
+      transition: visibleFlow ? transition : {
+        action: 'close',
+        revision: transition.revision,
+        incoming: null,
+        outgoing: null,
+      },
       open,
       back,
       close,
     }),
-    [flow, transition, open, back, close, currentSurface],
+    [visibleFlow, transition, open, back, close, currentSurface],
   );
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;

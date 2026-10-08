@@ -16,6 +16,8 @@ export interface SecondaryScreenDefinition<TData, TParams extends object> {
   /** Optional header component; resolved against the same live data as the page. */
   header?: ComponentType<SecondaryScreenProps<TData, TParams>>;
   component: ComponentType<SecondaryScreenProps<TData, TParams>>;
+  /** Keep an already mounted editor hidden (not disposed) while its data is unavailable. */
+  preserveOnDataLoss?: boolean;
 }
 
 export type SecondaryScreenMap<TData, TPages extends { [K in keyof TPages]: object }> = {
@@ -51,6 +53,11 @@ export type SecondaryPageArgs<TPages, K extends keyof TPages> = keyof TPages[K] 
   : [params: TPages[K]];
 
 export interface SecondaryStackActions<TPages extends { [K in keyof TPages]: object }> {
+  /** Push the initial screen of another module into the same Back stack. */
+  navTo<TRoot extends object, TData, TTargetPages extends { [K in keyof TTargetPages]: object }>(
+    stack: SecondaryStackDefinition<TRoot, TData, TTargetPages>,
+    params: TRoot,
+  ): Promise<boolean>;
   navTo<K extends keyof TPages & string>(
     page: K,
     ...args: SecondaryPageArgs<TPages, K>

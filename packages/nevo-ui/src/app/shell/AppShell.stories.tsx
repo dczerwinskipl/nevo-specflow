@@ -10,7 +10,11 @@ import {
   AppWorkspaceBody,
   WorkspaceHeader,
 } from '../workspace/AppWorkspace';
-import { AppWorkspaceProvider, useSecondaryNavigation, useSecondaryStack } from '../workspace/WorkspaceContext';
+import {
+  AppWorkspaceProvider,
+  useSecondaryNavigation,
+  useSecondaryStack,
+} from '../workspace/WorkspaceContext';
 import { defineSecondaryStack } from '../workspace/SecondaryStack';
 
 const meta = {
@@ -198,11 +202,7 @@ function StackLevel({ level }: { level: number }) {
   );
 }
 
-const shellDemoStack = defineSecondaryStack<
-  { id: string },
-  { id: string },
-  ShellPages
->({
+const shellDemoStack = defineSecondaryStack<{ id: string }, { id: string }, ShellPages>({
   id: 'shell-customer',
   initial: 'customer',
   useData: ({ id }) => ({ status: 'ready', data: { id } }),

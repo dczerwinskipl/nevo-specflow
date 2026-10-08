@@ -18,10 +18,14 @@ type Pages = {
 
 function FirstScreen() {
   const navigation = useSecondaryStack<Pages>();
-  return <div>
-    <p>Stack level 1</p>
-    <button type="button" onClick={() => void navigation.navTo('second')}>Push level 2</button>
-  </div>;
+  return (
+    <div>
+      <p>Stack level 1</p>
+      <button type="button" onClick={() => void navigation.navTo('second')}>
+        Push level 2
+      </button>
+    </div>
+  );
 }
 function SecondScreen() {
   return <p>Stack level 2</p>;
@@ -29,10 +33,14 @@ function SecondScreen() {
 function GuardedScreen() {
   const [allow, setAllow] = useState(false);
   useSecondaryLeaveGuard(useCallback(() => allow, [allow]));
-  return <div>
-    <p>Protected editor</p>
-    <button type="button" onClick={() => setAllow(true)}>Allow exit</button>
-  </div>;
+  return (
+    <div>
+      <p>Protected editor</p>
+      <button type="button" onClick={() => setAllow(true)}>
+        Allow exit
+      </button>
+    </div>
+  );
 }
 
 const demoStack = defineSecondaryStack<Record<never, never>, string, Pages>({
@@ -45,7 +53,11 @@ const demoStack = defineSecondaryStack<Record<never, never>, string, Pages>({
     guarded: { title: 'Protected editor', component: GuardedScreen },
   },
 });
-const guardedStack = defineSecondaryStack<Record<never, never>, string, { guarded: Record<never, never> }>({
+const guardedStack = defineSecondaryStack<
+  Record<never, never>,
+  string,
+  { guarded: Record<never, never> }
+>({
   id: 'guarded-contract',
   initial: 'guarded',
   useData: () => ({ status: 'ready', data: 'contract' }),
@@ -56,17 +68,25 @@ const guardedStack = defineSecondaryStack<Record<never, never>, string, { guarde
 
 function ContractWorkspace() {
   const navigation = useSecondaryNavigation();
-  return <AppShell navigation={<div>Navigation</div>} style={{ height: 600, width: 1280 }}>
-    <AppWorkspace split="primary">
-      <AppWorkspace.Primary header="Primary">
-        <div className="grid gap-3 p-5">
-          <button type="button" onClick={() => void navigation.open(demoStack, {})}>Open first secondary</button>
-          <button type="button" onClick={() => void navigation.open(guardedStack, {})}>Open guarded secondary</button>
-        </div>
-      </AppWorkspace.Primary>
-      <AppWorkspace.Secondary header="Default"><p>Default secondary content</p></AppWorkspace.Secondary>
-    </AppWorkspace>
-  </AppShell>;
+  return (
+    <AppShell navigation={<div>Navigation</div>} style={{ height: 600, width: 1280 }}>
+      <AppWorkspace split="primary">
+        <AppWorkspace.Primary header="Primary">
+          <div className="grid gap-3 p-5">
+            <button type="button" onClick={() => void navigation.open(demoStack, {})}>
+              Open first secondary
+            </button>
+            <button type="button" onClick={() => void navigation.open(guardedStack, {})}>
+              Open guarded secondary
+            </button>
+          </div>
+        </AppWorkspace.Primary>
+        <AppWorkspace.Secondary header="Default">
+          <p>Default secondary content</p>
+        </AppWorkspace.Secondary>
+      </AppWorkspace>
+    </AppShell>
+  );
 }
 
 const meta = {
@@ -82,11 +102,15 @@ function assert(value: unknown, message: string): asserts value {
 }
 
 async function frame() {
-  await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }
 
 export const PushPopAndFocus: Story = {
-  render: () => <AppWorkspaceProvider><ContractWorkspace /></AppWorkspaceProvider>,
+  render: () => (
+    <AppWorkspaceProvider>
+      <ContractWorkspace />
+    </AppWorkspaceProvider>
+  ),
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Open first secondary' }));
     assert(canvas.getByText('Stack level 1'), 'First page must appear');
@@ -96,14 +120,21 @@ export const PushPopAndFocus: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
     await frame();
     assert(canvas.getByText('Stack level 1'), 'Back must restore the previous page');
-    assert(document.activeElement?.textContent === 'Push level 2', 'Back must restore focus to the initiating control');
+    assert(
+      document.activeElement?.textContent === 'Push level 2',
+      'Back must restore focus to the initiating control',
+    );
     await userEvent.click(canvas.getByRole('button', { name: 'Close secondary content' }));
     assert(canvas.getByText('Default secondary content'), 'Close must reveal default Secondary');
   },
 };
 
 export const GuardBlocksCloseAndReplacement: Story = {
-  render: () => <AppWorkspaceProvider><ContractWorkspace /></AppWorkspaceProvider>,
+  render: () => (
+    <AppWorkspaceProvider>
+      <ContractWorkspace />
+    </AppWorkspaceProvider>
+  ),
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Open guarded secondary' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Close secondary content' }));

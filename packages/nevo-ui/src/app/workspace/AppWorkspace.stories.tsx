@@ -408,7 +408,11 @@ const defaultDetailStack = defineSecondaryStack<
   screens: {
     detail: {
       title: 'Task detail',
-      component: ({ data }) => <div className="w-[320px] p-4"><Typography variant="body-sm">{data}</Typography></div>,
+      component: ({ data }) => (
+        <div className="w-[320px] p-4">
+          <Typography variant="body-sm">{data}</Typography>
+        </div>
+      ),
     },
   },
 });

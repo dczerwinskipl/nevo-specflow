@@ -72,11 +72,10 @@ export interface WorkspaceContextValue {
   secondaryDepth: number;
   canGoBack: boolean;
   transition: WorkspaceTransition;
-  open: <
-    TRoot extends object,
-    TData,
-    TPages extends { [K in keyof TPages]: object },
-  >(definition: SecondaryStackDefinition<TRoot, TData, TPages>, params: TRoot) => Promise<boolean>;
+  open: <TRoot extends object, TData, TPages extends { [K in keyof TPages]: object }>(
+    definition: SecondaryStackDefinition<TRoot, TData, TPages>,
+    params: TRoot,
+  ) => Promise<boolean>;
   back: () => Promise<boolean>;
   close: () => Promise<boolean>;
 }
@@ -176,7 +175,9 @@ function ScreenOutlet({
       <div role="alert">
         <p>{result.message ?? 'Unable to load this item.'}</p>
         {result.retry ? (
-          <button type="button" onClick={result.retry}>Retry</button>
+          <button type="button" onClick={result.retry}>
+            Retry
+          </button>
         ) : null}
       </div>
     );
@@ -205,12 +206,7 @@ function publicEntry(
     surface: {
       header: <WorkspaceHeader title={page.title} />,
       content: (
-        <ScreenOutlet
-          flow={flow}
-          entry={entry}
-          navigate={navigate}
-          registerGuard={registerGuard}
-        />
+        <ScreenOutlet flow={flow} entry={entry} navigate={navigate} registerGuard={registerGuard} />
       ),
     },
   };
@@ -247,30 +243,35 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
-  const restoreFocus = useCallback((target: WorkspaceFocusTarget | null, expectedKey: number | null) => {
-    if (!target || typeof requestAnimationFrame !== 'function') return;
-    let attempts = 0;
-    const tryFocus = () => {
-      if (!mounted.current) return;
-      const active = flowRef.current?.entries.at(-1)?.instanceKey ?? null;
-      if (active !== expectedKey) return;
-      const element = resolveFocusTarget(target);
-      if (element) {
-        element.focus();
-        if (document.activeElement === element) return;
-      }
-      attempts += 1;
-      if (attempts < 4) requestAnimationFrame(tryFocus);
-    };
-    requestAnimationFrame(tryFocus);
-  }, []);
+  const restoreFocus = useCallback(
+    (target: WorkspaceFocusTarget | null, expectedKey: number | null) => {
+      if (!target || typeof requestAnimationFrame !== 'function') return;
+      let attempts = 0;
+      const tryFocus = () => {
+        if (!mounted.current) return;
+        const active = flowRef.current?.entries.at(-1)?.instanceKey ?? null;
+        if (active !== expectedKey) return;
+        const element = resolveFocusTarget(target);
+        if (element) {
+          element.focus();
+          if (document.activeElement === element) return;
+        }
+        attempts += 1;
+        if (attempts < 4) requestAnimationFrame(tryFocus);
+      };
+      requestAnimationFrame(tryFocus);
+    },
+    [],
+  );
 
   const navigateRef = useRef<NavigationCommand>(async () => false);
 
   const currentSurface = useCallback(
     (current: SecondaryFlow | null) => {
       const entry = current?.entries.at(-1);
-      return current && entry ? publicEntry(current, entry, (...args) => navigateRef.current(...args), registerGuard) : null;
+      return current && entry
+        ? publicEntry(current, entry, (...args) => navigateRef.current(...args), registerGuard)
+        : null;
     },
     // navigate is stable; the callback is resolved when invoked, not during render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -300,7 +301,10 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
 
   const queue = useCallback((operation: () => Promise<boolean>) => {
     const result = pending.current.then(operation, operation);
-    pending.current = result.then(() => undefined, () => undefined);
+    pending.current = result.then(
+      () => undefined,
+      () => undefined,
+    );
     return result;
   }, []);
 
@@ -310,74 +314,83 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
     return guard ? await guard() : true;
   }, []);
 
-  const open = useCallback<WorkspaceContextValue['open']>((definition, params) =>
-    queue(async () => {
-      if (!mounted.current) return false;
-      const previous = flowRef.current;
-      if (!(await passesGuard(previous)) || !mounted.current) return false;
-      // Type erasure is confined to the infrastructure boundary; the public signature is typed.
-      const runtime = definition as unknown as RuntimeDefinition;
-      if (!runtime.screens[runtime.initial]) {
-        throw new Error(`Unknown initial Secondary screen: ${runtime.initial}`);
-      }
-      const entry: SecondaryEntry = {
-        page: runtime.initial,
-        params: {},
-        instanceKey: ++counter.current,
-        returnFocusTo: getActiveElement(),
-      };
-      const next: SecondaryFlow = {
-        id: ++counter.current,
-        definition: runtime,
-        rootParams: params,
-        entries: [entry],
-      };
-      guards.current.clear();
-      publish(next, previous ? 'replace' : 'push', previous);
-      return true;
-    }), [passesGuard, publish, queue]);
-
-  const navigate = useCallback<NavigationCommand>((kind, flowId, entryKey, page, params) =>
-    queue(async () => {
-      if (!mounted.current) return false;
-      const previous = flowRef.current;
-      const current = previous?.entries.at(-1);
-      if (!previous || !current || previous.id !== flowId || current.instanceKey !== entryKey) {
-        return false; // Stale callbacks cannot mutate a newer flow or page.
-      }
-      if (!(await passesGuard(previous)) || !mounted.current) return false;
-      if (kind === 'close' || (kind === 'back' && previous.entries.length === 1)) {
-        publish(null, 'close', previous);
+  const open = useCallback<WorkspaceContextValue['open']>(
+    (definition, params) =>
+      queue(async () => {
+        if (!mounted.current) return false;
+        const previous = flowRef.current;
+        if (!(await passesGuard(previous)) || !mounted.current) return false;
+        // Type erasure is confined to the infrastructure boundary; the public signature is typed.
+        const runtime = definition as unknown as RuntimeDefinition;
+        if (!runtime.screens[runtime.initial]) {
+          throw new Error(`Unknown initial Secondary screen: ${runtime.initial}`);
+        }
+        const entry: SecondaryEntry = {
+          page: runtime.initial,
+          params: {},
+          instanceKey: ++counter.current,
+          returnFocusTo: getActiveElement(),
+        };
+        const next: SecondaryFlow = {
+          id: ++counter.current,
+          definition: runtime,
+          rootParams: params,
+          entries: [entry],
+        };
         guards.current.clear();
-        restoreFocus(previous.entries[0]?.returnFocusTo ?? null, null);
+        publish(next, previous ? 'replace' : 'push', previous);
         return true;
-      }
-      if (kind === 'back') {
-        const nextEntries = previous.entries.slice(0, -1);
-        const next = { ...previous, entries: nextEntries };
-        publish(next, 'pop', previous);
-        guards.current.delete(current.instanceKey);
-        restoreFocus(current.returnFocusTo, nextEntries.at(-1)?.instanceKey ?? null);
-        return true;
-      }
-      if (!page || !previous.definition.screens[page]) {
-        throw new Error(`Unknown Secondary screen: ${page ?? '<none>'}`);
-      }
-      const nextEntry: SecondaryEntry = {
-        page,
-        params: params ?? {},
-        instanceKey: ++counter.current,
-        returnFocusTo: getActiveElement(),
-      };
-      const entries = kind === 'replace'
-        ? [...previous.entries.slice(0, -1), nextEntry]
-        : [...previous.entries, nextEntry];
-      publish({ ...previous, entries }, kind, previous);
-      if (kind === 'replace') guards.current.delete(current.instanceKey);
-      return true;
-    }), [passesGuard, publish, queue, restoreFocus]);
+      }),
+    [passesGuard, publish, queue],
+  );
 
-  useLayoutEffect(() => { navigateRef.current = navigate; }, [navigate]);
+  const navigate = useCallback<NavigationCommand>(
+    (kind, flowId, entryKey, page, params) =>
+      queue(async () => {
+        if (!mounted.current) return false;
+        const previous = flowRef.current;
+        const current = previous?.entries.at(-1);
+        if (!previous || !current || previous.id !== flowId || current.instanceKey !== entryKey) {
+          return false; // Stale callbacks cannot mutate a newer flow or page.
+        }
+        if (!(await passesGuard(previous)) || !mounted.current) return false;
+        if (kind === 'close' || (kind === 'back' && previous.entries.length === 1)) {
+          publish(null, 'close', previous);
+          guards.current.clear();
+          restoreFocus(previous.entries[0]?.returnFocusTo ?? null, null);
+          return true;
+        }
+        if (kind === 'back') {
+          const nextEntries = previous.entries.slice(0, -1);
+          const next = { ...previous, entries: nextEntries };
+          publish(next, 'pop', previous);
+          guards.current.delete(current.instanceKey);
+          restoreFocus(current.returnFocusTo, nextEntries.at(-1)?.instanceKey ?? null);
+          return true;
+        }
+        if (!page || !previous.definition.screens[page]) {
+          throw new Error(`Unknown Secondary screen: ${page ?? '<none>'}`);
+        }
+        const nextEntry: SecondaryEntry = {
+          page,
+          params: params ?? {},
+          instanceKey: ++counter.current,
+          returnFocusTo: getActiveElement(),
+        };
+        const entries =
+          kind === 'replace'
+            ? [...previous.entries.slice(0, -1), nextEntry]
+            : [...previous.entries, nextEntry];
+        publish({ ...previous, entries }, kind, previous);
+        if (kind === 'replace') guards.current.delete(current.instanceKey);
+        return true;
+      }),
+    [passesGuard, publish, queue, restoreFocus],
+  );
+
+  useLayoutEffect(() => {
+    navigateRef.current = navigate;
+  }, [navigate]);
 
   const back = useCallback(() => {
     const top = flowRef.current?.entries.at(-1);
@@ -391,15 +404,18 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
     return id && top ? navigate('close', id, top.instanceKey) : Promise.resolve(true);
   }, [navigate]);
 
-  const value = useMemo<WorkspaceContextValue>(() => ({
-    secondary: currentSurface(flow),
-    secondaryDepth: flow?.entries.length ?? 0,
-    canGoBack: (flow?.entries.length ?? 0) > 1,
-    transition,
-    open,
-    back,
-    close,
-  }), [flow, transition, open, back, close, currentSurface]);
+  const value = useMemo<WorkspaceContextValue>(
+    () => ({
+      secondary: currentSurface(flow),
+      secondaryDepth: flow?.entries.length ?? 0,
+      canGoBack: (flow?.entries.length ?? 0) > 1,
+      transition,
+      open,
+      back,
+      close,
+    }),
+    [flow, transition, open, back, close, currentSurface],
+  );
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }
@@ -407,21 +423,29 @@ export function AppWorkspaceProvider({ children }: PropsWithChildren) {
 /** Open an entirely new contextual flow from Primary, a toolbar or another feature component. */
 export function useSecondaryNavigation() {
   const workspace = useWorkspace();
-  return useMemo(() => ({ open: workspace.open, close: workspace.close }), [workspace.open, workspace.close]);
+  return useMemo(
+    () => ({ open: workspace.open, close: workspace.close }),
+    [workspace.open, workspace.close],
+  );
 }
 
 /** Navigate within the flow that mounted this screen. Old callbacks cannot affect a new flow. */
-export function useSecondaryStack<TPages extends { [K in keyof TPages]: object }>(): SecondaryStackActions<TPages> {
+export function useSecondaryStack<
+  TPages extends { [K in keyof TPages]: object },
+>(): SecondaryStackActions<TPages> {
   const screen = useContext(ScreenNavigationContext);
   if (!screen) throw new Error('useSecondaryStack must be used inside a Secondary screen');
-  return useMemo(() => ({
-    navTo: <K extends keyof TPages & string>(page: K, ...args: SecondaryPageArgs<TPages, K>) =>
-      screen.navigate('push', screen.flowId, screen.entryKey, page, args[0]),
-    replace: <K extends keyof TPages & string>(page: K, ...args: SecondaryPageArgs<TPages, K>) =>
-      screen.navigate('replace', screen.flowId, screen.entryKey, page, args[0]),
-    back: () => screen.navigate('back', screen.flowId, screen.entryKey),
-    close: () => screen.navigate('close', screen.flowId, screen.entryKey),
-  }), [screen]);
+  return useMemo(
+    () => ({
+      navTo: <K extends keyof TPages & string>(page: K, ...args: SecondaryPageArgs<TPages, K>) =>
+        screen.navigate('push', screen.flowId, screen.entryKey, page, args[0]),
+      replace: <K extends keyof TPages & string>(page: K, ...args: SecondaryPageArgs<TPages, K>) =>
+        screen.navigate('replace', screen.flowId, screen.entryKey, page, args[0]),
+      back: () => screen.navigate('back', screen.flowId, screen.entryKey),
+      close: () => screen.navigate('close', screen.flowId, screen.entryKey),
+    }),
+    [screen],
+  );
 }
 
 /** Optional navigation guard. It protects the active page's unsaved edits. */

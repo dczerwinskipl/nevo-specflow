@@ -1,4 +1,11 @@
-import { useCallback, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+} from 'react';
 
 import {
   AppContent,
@@ -223,7 +230,6 @@ function CustomerEditor({
   onCancel: () => void;
   onDraftChange?: (draft: Customer) => void;
 }) {
-
   const [draft, setDraft] = useState(customer);
 
   const update = <Key extends keyof Customer>(key: Key, value: Customer[Key]) => {
@@ -399,13 +405,15 @@ function createCustomerStore() {
   return {
     subscribe: (listener: () => void) => {
       listeners.add(listener);
-      return () => { listeners.delete(listener); };
+      return () => {
+        listeners.delete(listener);
+      };
     },
     getSnapshot: () => snapshot,
     save: (customer: Customer) => {
-      const exists = snapshot.some(item => item.id === customer.id);
+      const exists = snapshot.some((item) => item.id === customer.id);
       snapshot = exists
-        ? snapshot.map(item => item.id === customer.id ? customer : item)
+        ? snapshot.map((item) => (item.id === customer.id ? customer : item))
         : [customer, ...snapshot];
       for (const listener of listeners) listener();
     },
@@ -417,45 +425,59 @@ type CustomerPages = { editor: Record<never, never>; billing: Record<never, neve
 
 type CustomerSidebarData = { customer: Customer; save: (customer: Customer) => void };
 
-function CustomerEditorScreen({ data }: SecondaryScreenProps<CustomerSidebarData, CustomerPages['editor']>) {
+function CustomerEditorScreen({
+  data,
+}: SecondaryScreenProps<CustomerSidebarData, CustomerPages['editor']>) {
   const navigation = useSecondaryStack<CustomerPages>();
   const dirty = useRef(false);
-  useSecondaryLeaveGuard(useCallback(
-    () => !dirty.current || window.confirm('Discard unsaved customer changes?'),
-    [],
-  ));
-  return <div>
-    <div className="p-4">
-      <Button size="sm" variant="secondary" onClick={() => void navigation.navTo('billing')}>
-        Billing history
-      </Button>
+  useSecondaryLeaveGuard(
+    useCallback(() => !dirty.current || window.confirm('Discard unsaved customer changes?'), []),
+  );
+  return (
+    <div>
+      <div className="p-4">
+        <Button size="sm" variant="secondary" onClick={() => void navigation.navTo('billing')}>
+          Billing history
+        </Button>
+      </div>
+      <CustomerEditor
+        customer={data.customer}
+        onDraftChange={(draft) => {
+          dirty.current = JSON.stringify(draft) !== JSON.stringify(data.customer);
+        }}
+        onSave={(customer) => {
+          dirty.current = false;
+          data.save(customer);
+        }}
+        onCancel={() => void navigation.close()}
+      />
     </div>
-    <CustomerEditor
-      customer={data.customer}
-      onDraftChange={(draft) => { dirty.current = JSON.stringify(draft) !== JSON.stringify(data.customer); }}
-      onSave={(customer) => { dirty.current = false; data.save(customer); }}
-      onCancel={() => void navigation.close()}
-    />
-  </div>;
+  );
 }
-function CustomerBillingScreen({ data }: SecondaryScreenProps<CustomerSidebarData, CustomerPages['billing']>) {
-  return <div className="grid gap-3 p-4">
-    <Typography variant="title-sm">Billing history</Typography>
-    <Typography variant="body-sm">{data.customer.company}</Typography>
-    <Typography variant="body-sm">Annual value: {data.customer.annualValue}</Typography>
-  </div>;
+function CustomerBillingScreen({
+  data,
+}: SecondaryScreenProps<CustomerSidebarData, CustomerPages['billing']>) {
+  return (
+    <div className="grid gap-3 p-4">
+      <Typography variant="title-sm">Billing history</Typography>
+      <Typography variant="body-sm">{data.customer.company}</Typography>
+      <Typography variant="body-sm">Annual value: {data.customer.annualValue}</Typography>
+    </div>
+  );
 }
 
 function createCustomerStack(store: CustomerStore) {
   function useCustomerData({ id }: { id: string }): SecondaryData<CustomerSidebarData> {
     const customers = useSyncExternalStore(store.subscribe, store.getSnapshot);
-    const customer = customers.find(value => value.id === id);
+    const customer = customers.find((value) => value.id === id);
     return customer
       ? { status: 'ready', data: { customer, save: store.save } }
       : { status: 'unavailable', message: 'This customer is no longer available.' };
   }
   return defineSecondaryStack<{ id: string }, CustomerSidebarData, CustomerPages>({
-    id: 'crm-customer', initial: 'editor', useData: useCustomerData,
+    id: 'crm-customer',
+    initial: 'editor',
+    useData: useCustomerData,
     screens: {
       editor: { title: 'Customer details', component: CustomerEditorScreen },
       billing: { title: 'Billing history', component: CustomerBillingScreen },
@@ -588,7 +610,11 @@ function CrmScreen({ initialCustomerId }: { initialCustomerId?: string }) {
           }
         >
           {initialCustomer ? (
-            <CustomerEditor customer={initialCustomer} onSave={saveCustomer} onCancel={() => setDefaultOpen(false)} />
+            <CustomerEditor
+              customer={initialCustomer}
+              onSave={saveCustomer}
+              onCancel={() => setDefaultOpen(false)}
+            />
           ) : (
             <NoCustomerSelected />
           )}

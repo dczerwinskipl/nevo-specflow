@@ -44,8 +44,9 @@ export function defineSecondaryStack<
 }
 
 /** A page with no parameters can be opened without passing an empty object. */
-export type SecondaryPageArgs<TPages, K extends keyof TPages> =
-  keyof TPages[K] extends never ? [params?: TPages[K]] : [params: TPages[K]];
+export type SecondaryPageArgs<TPages, K extends keyof TPages> = keyof TPages[K] extends never
+  ? [params?: TPages[K]]
+  : [params: TPages[K]];
 
 export interface SecondaryStackActions<TPages extends { [K in keyof TPages]: object }> {
   navTo<K extends keyof TPages & string>(

@@ -15,7 +15,9 @@ function assert(condition: unknown, message: string): asserts condition {
 }
 
 function currentSecondary(root: HTMLElement) {
-  return root.querySelector<HTMLElement>('[data-workspace-surface="secondary"][data-workspace-active="true"]');
+  return root.querySelector<HTMLElement>(
+    '[data-workspace-surface="secondary"][data-workspace-active="true"]',
+  );
 }
 
 export const DesktopDeepNavigationAndRefresh: Story = {
@@ -26,18 +28,33 @@ export const DesktopDeepNavigationAndRefresh: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Open e1' }));
     let secondary = currentSecondary(canvasElement);
     assert(secondary, 'The event inspector should be active');
-    const instance = secondary.querySelector('[data-screen-mount]')?.getAttribute('data-screen-mount');
+    const instance = secondary
+      .querySelector('[data-screen-mount]')
+      ?.getAttribute('data-screen-mount');
     const before = secondary.querySelector('[data-updated-at]')?.textContent;
     await userEvent.click(canvas.getByRole('button', { name: 'Refresh data' }));
     secondary = currentSecondary(canvasElement);
     assert(secondary, 'The same inspector should stay active after refetch');
-    assert(secondary.querySelector('[data-updated-at]')?.textContent !== before, 'The active inspector must receive new data');
-    assert(secondary.querySelector('[data-screen-mount]')?.getAttribute('data-screen-mount') === instance, 'Refetch must not remount the active inspector');
+    assert(
+      secondary.querySelector('[data-updated-at]')?.textContent !== before,
+      'The active inspector must receive new data',
+    );
+    assert(
+      secondary.querySelector('[data-screen-mount]')?.getAttribute('data-screen-mount') ===
+        instance,
+      'Refetch must not remount the active inspector',
+    );
     await userEvent.click(canvas.getByRole('button', { name: 'Remove Event e1' }));
-    assert(secondary.textContent?.includes('This history entry is no longer available.'), 'Missing nested item must be reported');
+    assert(
+      secondary.textContent?.includes('This history entry is no longer available.'),
+      'Missing nested item must be reported',
+    );
     await userEvent.click(canvas.getByRole('button', { name: 'Anna' }));
     secondary = currentSecondary(canvasElement);
-    assert(secondary?.textContent?.includes('Anna'), 'Opening User must replace the entire Todo flow');
+    assert(
+      secondary?.textContent?.includes('Anna'),
+      'Opening User must replace the entire Todo flow',
+    );
     await userEvent.click(canvas.getByRole('button', { name: 'Close secondary content' }));
     assert(canvas.getByText(/Default Secondary/), 'Closing must return to declarative Secondary');
   },
@@ -51,14 +68,23 @@ export const NarrowBackAndMissingEntity: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Open e1' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
     let secondary = currentSecondary(canvasElement);
-    assert(secondary?.textContent?.includes('Todo history'), 'Mobile Back should pop the event page');
+    assert(
+      secondary?.textContent?.includes('Todo history'),
+      'Mobile Back should pop the event page',
+    );
     await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
     secondary = currentSecondary(canvasElement);
     assert(secondary?.textContent?.includes('Review navigation'), 'Mobile Back should pop to root');
     await userEvent.click(canvas.getByRole('button', { name: 'Remove Todo t1' }));
     secondary = currentSecondary(canvasElement);
-    assert(secondary?.textContent?.includes('Todo no longer available.'), 'Missing root entity must not close navigation');
+    assert(
+      secondary?.textContent?.includes('Todo no longer available.'),
+      'Missing root entity must not close navigation',
+    );
     await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
-    assert(canvas.getByRole('button', { name: 'Open navigation' }), 'Primary should regain its hamburger when the flow closes');
+    assert(
+      canvas.getByRole('button', { name: 'Open navigation' }),
+      'Primary should regain its hamburger when the flow closes',
+    );
   },
 };

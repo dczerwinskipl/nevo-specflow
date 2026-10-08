@@ -65,9 +65,9 @@ function createDemoStore() {
   };
 }
 type DemoStore = ReturnType<typeof createDemoStore>;
-type TodoPages = { details: Record<string, never>; history: Record<string, never>; event: { eventId: string } };
-type UserPages = { details: Record<string, never> };
-type ItemPages = { details: Record<string, never> };
+type TodoPages = { details: Record<never, never>; history: Record<never, never>; event: { eventId: string } };
+type UserPages = { details: Record<never, never> };
+type ItemPages = { details: Record<never, never> };
 let mountSequence = 0;
 
 function Mounted({ children }: { children: ReactNode }) {

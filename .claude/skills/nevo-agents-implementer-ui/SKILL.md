@@ -219,6 +219,8 @@ A standalone mock or prototype may define accepted composition, hierarchy, relat
 
 Preserve stable repeated structures and established responsive semantics unless the requested or owning UX intent explicitly changes them. Validate both the isolated component where useful and the composed product surface where the shared component's real context can expose design-system gaps.
 
+When implementing or reviewing an AppWorkspace contextual Secondary, discover and read `design-system.implementation.react.secondary-navigation` before introducing local navigation state, imperative effects or a custom sidebar stack. Treat that document as the implementation contract; use its example modules as the canonical reference. Do not apply it to unrelated global Drawer/navigation or full routable screens.
+
 ## Repository knowledge
 
 Use repository documentation as the source of project-specific rules. At the beginning of work, and again when the work enters a new technical or operational area, identify the relevant technologies and activities and query them together:

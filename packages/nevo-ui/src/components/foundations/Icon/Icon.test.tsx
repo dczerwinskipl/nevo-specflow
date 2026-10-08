@@ -18,7 +18,6 @@ describe('Icon', () => {
     expect(button).toContain('<svg');
   });
 
-
   it('renders the registered Save glyph with its design resource identity', () => {
     const markup = renderToStaticMarkup(<Icon name="save" />);
     expect(markup).toContain('<svg');

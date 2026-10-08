@@ -116,7 +116,9 @@ export function Icon({
   const capture = useDesignMetadata(
     'Icon',
     {},
-    registered ? { assetRef: iconAssetRef(name, size), assetRepresentation: 'svg-mask' } : undefined,
+    registered
+      ? { assetRef: iconAssetRef(name, size), assetRepresentation: 'svg-mask' }
+      : undefined,
   );
   return (
     <Glyph

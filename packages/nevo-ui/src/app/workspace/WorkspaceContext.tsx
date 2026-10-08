@@ -258,6 +258,7 @@ export function AppWorkspaceProvider({
   const counter = useRef(0);
   const revision = useRef(0);
   const mounted = useRef(true);
+  const currentScope = useRef(scopeKey);
   const guards = useRef(new Map<number, LeaveGuard>());
   const pending = useRef<Promise<unknown>>(Promise.resolve());
   const [transition, setTransition] = useState<WorkspaceTransition>({
@@ -279,6 +280,7 @@ export function AppWorkspaceProvider({
   // Route/owner scope invalidation is not a user-initiated close: clear even if
   // the old screen has a leave guard. No stale screen may affect the new scope.
   useLayoutEffect(() => {
+    currentScope.current = scopeKey;
     if (flowRef.current && flowRef.current.scopeKey !== scopeKey) {
       flowRef.current = null;
       guards.current.clear();
@@ -373,9 +375,11 @@ export function AppWorkspaceProvider({
   const open = useCallback<WorkspaceContextValue['open']>(
     (definition, params) =>
       queue(async () => {
-        if (!mounted.current) return false;
+        if (!mounted.current || currentScope.current !== scopeKey) return false;
         const previous = flowRef.current?.scopeKey === scopeKey ? flowRef.current : null;
-        if (!(await passesGuard(previous)) || !mounted.current) return false;
+        if (!(await passesGuard(previous)) || !mounted.current || currentScope.current !== scopeKey) {
+          return false;
+        }
         // Type erasure is confined to the infrastructure boundary; the public signature is typed.
         const runtime = definition as unknown as RuntimeDefinition;
         if (!runtime.screens[runtime.initial]) {
@@ -404,7 +408,7 @@ export function AppWorkspaceProvider({
   const navigate = useCallback<NavigationCommand>(
     (kind, flowId, entryKey, target) =>
       queue(async () => {
-        if (!mounted.current) return false;
+        if (!mounted.current || currentScope.current !== scopeKey) return false;
         const previous = flowRef.current;
         const current = previous?.entries.at(-1);
         if (
@@ -416,7 +420,9 @@ export function AppWorkspaceProvider({
         ) {
           return false; // Stale callbacks cannot mutate a newer flow or page.
         }
-        if (!(await passesGuard(previous)) || !mounted.current) return false;
+        if (!(await passesGuard(previous)) || !mounted.current || currentScope.current !== scopeKey) {
+          return false;
+        }
         if (kind === 'close' || (kind === 'back' && previous.entries.length === 1)) {
           publish(null, 'close', previous);
           guards.current.clear();

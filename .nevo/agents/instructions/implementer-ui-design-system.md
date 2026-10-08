@@ -42,3 +42,5 @@ For a product-owned composition, use supported primitives and semantic tokens wi
 A standalone mock or prototype may define accepted composition, hierarchy, relative emphasis, and interaction intent when the owning contract says so. It is design evidence, not authority for production component APIs, DOM structure, CSS/Tailwind implementation, tokens, or new shared variants.
 
 Preserve stable repeated structures and established responsive semantics unless the requested or owning UX intent explicitly changes them. Validate both the isolated component where useful and the composed product surface where the shared component's real context can expose design-system gaps.
+
+When implementing or reviewing an AppWorkspace contextual Secondary, discover and read `design-system.implementation.react.secondary-navigation` before introducing local navigation state, imperative effects or a custom sidebar stack. Treat that document as the implementation contract; use its example modules as the canonical reference. Do not apply it to unrelated global Drawer/navigation or full routable screens.

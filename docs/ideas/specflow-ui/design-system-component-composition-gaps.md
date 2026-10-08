@@ -103,12 +103,14 @@ Current `AppWorkspace` provides:
 - Primary;
 - optional static/default Secondary;
 - runtime Secondary;
-- runtime `setSecondary`, `pushSecondary`, `popSecondary`, `closeSecondary`;
+- an in-memory Secondary screen stack (the historical node-based runtime API was replaced by `defineSecondaryStack` / `useSecondaryNavigation`);
 - local Secondary stack;
 - focus restoration;
 - Back/Close chrome;
 - stacked narrow presentation;
 - split emphasis modes: `primary | balanced | secondary`.
+
+See [the current Secondary navigation contract](../../design-system/implementation/react/secondary-navigation.md) for the supported runtime API. The original API inventory below was written during migration and is historical evidence.
 
 This already fits most of:
 

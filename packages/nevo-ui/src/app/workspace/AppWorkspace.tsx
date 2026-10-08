@@ -41,6 +41,8 @@ import {
   type WorkspaceHeaderProps,
 } from './WorkspaceHeader';
 
+export { WorkspaceHeaderIdentity } from './WorkspaceHeader';
+
 export interface AppWorkspaceLabels {
   backToPrimary: string;
   closeSecondary: string;
@@ -84,10 +86,19 @@ interface WorkspaceSecondaryPresentation {
   surface: AppWorkspaceSurface;
   key: string;
   canStack: boolean;
-  returnsToDefault?: boolean;
   transition?: WorkspaceTransition;
   onClose?: () => void | Promise<unknown>;
   onBack?: () => void | Promise<unknown>;
+}
+
+function SurfaceBoundary({
+  surface,
+  children,
+}: {
+  surface: AppWorkspaceSurface;
+  children: ReactNode;
+}) {
+  return surface.wrap ? surface.wrap(children) : children;
 }
 
 interface WorkspaceLayoutState {
@@ -297,19 +308,21 @@ function RuntimeSurfaceRegion({
     >
       <div className="workspace-stack relative h-full min-h-0 min-w-0 overflow-hidden">
         <div className="flex h-full min-h-0 flex-col" data-workspace-layer={instanceKey}>
-          {showHeader ? (
-            <div
-              className={cn(
-                '@container flex h-14 shrink-0 items-center gap-2',
-                'border-b border-border-subtle px-4',
-              )}
-            >
-              {leadingAction}
-              <div className="min-w-0 flex-1">{surface.header}</div>
-              {trailingAction}
-            </div>
-          ) : null}
-          <div className="min-h-0 flex-1 overflow-hidden">{surface.content}</div>
+          <SurfaceBoundary surface={surface}>
+            {showHeader ? (
+              <div
+                className={cn(
+                  '@container flex h-14 shrink-0 items-center gap-2',
+                  'border-b border-border-subtle px-4',
+                )}
+              >
+                {leadingAction}
+                <div className="min-w-0 flex-1">{surface.header}</div>
+                {trailingAction}
+              </div>
+            ) : null}
+            <div className="min-h-0 flex-1 overflow-hidden">{surface.content}</div>
+          </SurfaceBoundary>
         </div>
       </div>
     </div>
@@ -418,61 +431,72 @@ function MobileRuntimeSurfaceRegion({
         zIndex: runtime.surface === 'secondary' ? (runtime.motion.phase === 'idle' ? 10 : 20) : 0,
       }}
     >
-      <ScrollArea
-        className="mobile-workspace-scroll-area h-full"
-        contentClassName="min-h-full"
-        direction="vertical"
-        onScroll={(event) => updateHeaderCovered(event.currentTarget.scrollTop)}
-        startEdge={headerCovered ? 'auto' : 'hidden'}
-        viewportClassName="mobile-workspace-scroll"
-        viewportRef={viewportRef}
-      >
-        <div className="workspace-stack relative min-h-full min-w-0 overflow-hidden">
-          <div
-            className="workspace-stack__layer workspace-stack__layer--current flex min-h-full flex-col"
-            data-workspace-layer={instanceKey}
-          >
-            {showHeader ? (
-              <div
-                aria-hidden={headerCovered || undefined}
-                className="@container flex h-14 shrink-0 items-center gap-2 px-3"
-                inert={headerCovered ? true : undefined}
-                ref={headerRef}
-              >
-                {leadingAction}
-                <div className="min-w-0 flex-1">{surface.header}</div>
-                {trailingAction}
-              </div>
-            ) : null}
+      <SurfaceBoundary surface={surface}>
+        <ScrollArea
+          className="mobile-workspace-scroll-area h-full"
+          contentClassName="min-h-full"
+          direction="vertical"
+          onScroll={(event) => updateHeaderCovered(event.currentTarget.scrollTop)}
+          startEdge={headerCovered ? 'auto' : 'hidden'}
+          viewportClassName="mobile-workspace-scroll"
+          viewportRef={viewportRef}
+        >
+          <div className="workspace-stack relative min-h-full min-w-0 overflow-hidden">
+            <div
+              className="workspace-stack__layer workspace-stack__layer--current flex min-h-full flex-col"
+              data-workspace-layer={instanceKey}
+            >
+              <>
+                {showHeader ? (
+                  <div
+                    aria-hidden={headerCovered || undefined}
+                    className="@container flex h-14 shrink-0 items-center gap-2 px-3"
+                    inert={headerCovered ? true : undefined}
+                    ref={headerRef}
+                  >
+                    {leadingAction}
+                    <div className="min-w-0 flex-1">{surface.header}</div>
+                    {trailingAction}
+                  </div>
+                ) : null}
 
-            <div className="mobile-workspace-sheet flex-1">
-              <div
-                className={cn(
-                  workspaceSurfaceClassName,
-                  'mobile-workspace-surface min-h-full overflow-hidden rounded-t-surface border border-b-0 border-workspace-edge',
-                )}
-              >
-                <AppContentScrollProvider>
-                  <div className="min-h-full">{surface.content}</div>
-                </AppContentScrollProvider>
-              </div>
+                <div className="mobile-workspace-sheet flex-1">
+                  <div
+                    className={cn(
+                      workspaceSurfaceClassName,
+                      'mobile-workspace-surface min-h-full overflow-hidden rounded-t-surface border border-b-0 border-workspace-edge',
+                    )}
+                  >
+                    <AppContentScrollProvider>
+                      <div className="min-h-full">{surface.content}</div>
+                    </AppContentScrollProvider>
+                  </div>
+                </div>
+              </>
             </div>
           </div>
-        </div>
-      </ScrollArea>
+        </ScrollArea>
 
-      <div
-        aria-hidden={!headerCovered || undefined}
-        className="mobile-floating-navigation"
-        inert={!headerCovered ? true : undefined}
-      >
-        {leadingAction}
-        <CompactWorkspaceActions
-          className="mobile-floating-navigation__control"
-          header={surface.header}
-          navigationAction={compactNavigationAction}
-        />
-      </div>
+        <div
+          aria-hidden={!headerCovered || undefined}
+          className="mobile-floating-navigation"
+          inert={!headerCovered ? true : undefined}
+        >
+          {leadingAction}
+          {surface.renderCompactActions ? (
+            surface.renderCompactActions({
+              className: 'mobile-floating-navigation__control',
+              navigationAction: compactNavigationAction,
+            })
+          ) : (
+            <CompactWorkspaceActions
+              className="mobile-floating-navigation__control"
+              header={surface.header}
+              navigationAction={compactNavigationAction}
+            />
+          )}
+        </div>
+      </SurfaceBoundary>
     </div>
   );
 }
@@ -490,10 +514,9 @@ function AppWorkspaceRoot({ children, labels: labelsProp, split = 'balanced' }: 
         surface: runtimeSecondary.surface,
         key: `runtime-${runtimeSecondary.instanceKey}`,
         canStack: true,
-        returnsToDefault: defaultSecondaryOpen,
         transition: workspace?.transition,
-        onClose: defaultSecondaryOpen ? undefined : workspace?.closeSecondary,
-        onBack: workspace?.canGoBack ? workspace.popSecondary : workspace?.closeSecondary,
+        onClose: workspace?.close,
+        onBack: workspace?.back,
       }
     : defaultSecondaryOpen && defaultSecondary
       ? {
@@ -534,7 +557,7 @@ function AppWorkspaceRoot({ children, labels: labelsProp, split = 'balanced' }: 
     secondaryPresentation?.onBack &&
     (state.mode === 'stacked' ||
       workspace?.canGoBack ||
-      (state.mode === 'split' && secondaryPresentation.returnsToDefault)) ? (
+      (state.mode === 'split' && secondaryPresentation.canStack)) ? (
       <BackAction label={labels.backToPrimary} onBack={secondaryPresentation.onBack} />
     ) : undefined;
   const secondaryCloseAction = secondaryPresentation?.onClose ? (

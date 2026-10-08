@@ -28,6 +28,7 @@ import {
   Minus,
   Plus,
   RefreshCw,
+  Save,
   Search,
   Settings,
   SquareArrowOutUpRight,
@@ -44,6 +45,9 @@ import { cn } from '../../../lib';
 
 export type { IconName, IconSize } from '../../../design-system/resources';
 
+/** A curated DS name or any statically imported Lucide icon component. */
+export type IconGlyph = IconName | LucideIcon;
+
 export const iconRegistry = {
   search: Search,
   plus: Plus,
@@ -58,6 +62,7 @@ export const iconRegistry = {
   'chevron-right': ChevronRight,
   'chevron-down': ChevronDown,
   check: Check,
+  save: Save,
   inbox: Inbox,
   folder: Folder,
   archive: Archive,
@@ -91,9 +96,9 @@ export const iconSizeClasses = {
 type IconAccessibilityProps =
   { decorative?: true; 'aria-label'?: never } | { decorative: false; 'aria-label': string };
 
-export type IconProps = Omit<SVGAttributes<SVGSVGElement>, 'children' | 'aria-label'> &
+export type IconProps = Omit<SVGAttributes<SVGSVGElement>, 'children' | 'aria-label' | 'name'> &
   IconAccessibilityProps & {
-    name: IconName;
+    name: IconGlyph;
     size?: IconSize;
   };
 
@@ -105,14 +110,15 @@ export function Icon({
   'aria-label': ariaLabel,
   ...props
 }: IconProps) {
-  const Glyph = iconRegistry[name];
+  const registered = typeof name === 'string';
+  const Glyph = registered ? iconRegistry[name] : name;
+  // Custom Lucide icons are renderable, but only registered glyphs are Figma assets.
   const capture = useDesignMetadata(
     'Icon',
     {},
-    {
-      assetRef: iconAssetRef(name, size),
-      assetRepresentation: 'svg-mask',
-    },
+    registered
+      ? { assetRef: iconAssetRef(name, size), assetRepresentation: 'svg-mask' }
+      : undefined,
   );
   return (
     <Glyph

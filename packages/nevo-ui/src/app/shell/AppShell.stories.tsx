@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
-import { Badge, Button, ScrollArea, Typography } from '../../components';
+import { Button, ScrollArea, Typography } from '../../components';
 import { AppShell } from './AppShell';
 import { AppShellNavigationFixture, AppShellWorkspaceFixture } from './AppShell.storyFixtures';
 import {
@@ -10,7 +10,12 @@ import {
   AppWorkspaceBody,
   WorkspaceHeader,
 } from '../workspace/AppWorkspace';
-import { AppWorkspaceProvider, useWorkspace } from '../workspace/WorkspaceContext';
+import {
+  AppWorkspaceProvider,
+  useSecondaryNavigation,
+  useSecondaryStack,
+} from '../workspace/WorkspaceContext';
+import { defineSecondaryStack } from '../workspace/SecondaryStack';
 
 const meta = {
   title: 'Nevo UI/Layout/AppShell',
@@ -168,8 +173,14 @@ function RecordList({ count = 28 }: { count?: number }) {
   );
 }
 
+interface ShellPages {
+  customer: Record<never, never>;
+  billing: Record<never, never>;
+  invoice: Record<never, never>;
+}
+
 function StackLevel({ level }: { level: number }) {
-  const workspace = useWorkspace();
+  const navigation = useSecondaryStack<ShellPages>();
   const nextLevel = level + 1;
   const nextTitle = nextLevel === 2 ? 'Billing' : 'Invoice #INV-2048';
   return (
@@ -177,51 +188,10 @@ function StackLevel({ level }: { level: number }) {
       <AppWorkspaceBody>
         <div className="grid gap-4">
           <Typography className="text-content-secondary" variant="body-sm">
-            This layer owns its header, actions and content as one local navigation entry.
+            This layer is a declaratively registered contextual screen.
           </Typography>
           {level < 3 ? (
-            <Button
-              onClick={() =>
-                void workspace.pushSecondary(
-                  {
-                    header: (
-                      <WorkspaceHeader
-                        actions={
-                          nextLevel === 2
-                            ? [
-                                {
-                                  id: 'download-invoice',
-                                  label: 'Download invoice',
-                                  icon: 'file',
-                                  primary: true,
-                                  onPress: () => undefined,
-                                },
-                                {
-                                  id: 'retry-payment',
-                                  label: 'Retry payment',
-                                  icon: 'loader',
-                                  onPress: () => undefined,
-                                },
-                              ]
-                            : [
-                                {
-                                  id: 'download',
-                                  label: 'Download',
-                                  icon: 'file',
-                                  onPress: () => undefined,
-                                },
-                              ]
-                        }
-                        subtitle={nextLevel === 2 ? 'Orbit Finance' : 'Billing'}
-                        title={nextTitle}
-                      />
-                    ),
-                    content: <StackLevel level={nextLevel} />,
-                  },
-                  { onClose: () => undefined },
-                )
-              }
-            >
+            <Button onClick={() => void navigation.navTo(nextLevel === 2 ? 'billing' : 'invoice')}>
               Open {nextTitle}
             </Button>
           ) : null}
@@ -232,40 +202,20 @@ function StackLevel({ level }: { level: number }) {
   );
 }
 
+const shellDemoStack = defineSecondaryStack<{ id: string }, { id: string }, ShellPages>({
+  id: 'shell-customer',
+  initial: 'customer',
+  useData: ({ id }) => ({ status: 'ready', data: { id } }),
+  screens: {
+    customer: { title: 'Orbit Finance', component: () => <StackLevel level={1} /> },
+    billing: { title: 'Billing', component: () => <StackLevel level={2} /> },
+    invoice: { title: 'Invoice #INV-2048', component: () => <StackLevel level={3} /> },
+  },
+});
+
 function InteractiveWorkspace({ combined = false }: { combined?: boolean }) {
-  const workspace = useWorkspace();
-  const openCustomer = () =>
-    void workspace.pushSecondary({
-      header: (
-        <WorkspaceHeader
-          actions={[
-            {
-              id: 'duplicate-customer',
-              label: 'Duplicate',
-              icon: 'file',
-              onPress: () => undefined,
-            },
-            {
-              id: 'archive-customer',
-              label: 'Archive',
-              icon: 'archive',
-              onPress: () => undefined,
-            },
-            {
-              id: 'delete-customer',
-              label: 'Delete',
-              icon: 'trash',
-              tone: 'danger',
-              onPress: () => undefined,
-            },
-          ]}
-          status={<Badge tone="success">Active</Badge>}
-          subtitle="Enterprise account"
-          title="Orbit Finance"
-        />
-      ),
-      content: <StackLevel level={1} />,
-    });
+  const navigation = useSecondaryNavigation();
+  const openCustomer = () => void navigation.open(shellDemoStack, { id: 'orbit' });
 
   return (
     <AppWorkspace split="primary">

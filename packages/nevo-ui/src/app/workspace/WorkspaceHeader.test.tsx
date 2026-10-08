@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   WorkspaceHeader,
+  WorkspaceHeaderFrame,
+  WorkspaceHeaderIdentity,
   resolveWorkspaceHeaderActions,
   type WorkspaceHeaderAction,
 } from './WorkspaceHeader';
@@ -28,6 +30,20 @@ const actions: WorkspaceHeaderAction[] = [
 ];
 
 describe('WorkspaceHeader actions', () => {
+  it('automatically renders declared actions beside custom identity exactly once', () => {
+    const markup = renderToStaticMarkup(
+      <WorkspaceHeaderFrame
+        content={<WorkspaceHeaderIdentity headingLevel={2} title="Inspector" />}
+        actions={actions}
+      />,
+    );
+
+    expect(markup).toContain('data-workspace-header="true"');
+    expect(markup).toContain('<h2');
+    expect(markup).toContain('aria-label="New customer"');
+    expect((markup.match(/aria-label="New customer"/g) ?? []).length).toBe(1);
+  });
+
   it('selects at most one non-danger primary and preserves disabled semantics', () => {
     const resolved = resolveWorkspaceHeaderActions(actions);
 

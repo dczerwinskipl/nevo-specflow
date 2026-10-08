@@ -13,6 +13,7 @@ export {
   AppWorkspaceHeader,
   AppWorkspaceSlots,
   WorkspaceHeader,
+  WorkspaceHeaderIdentity,
   type AppWorkspaceProps,
   type AppWorkspaceSlot,
   type AppWorkspaceSlotsProps,
@@ -22,11 +23,17 @@ export {
 } from './workspace/AppWorkspace';
 export {
   AppWorkspaceProvider,
-  useWorkspace,
-  type WorkspaceContextValue,
-  type WorkspaceSecondaryOptions,
-  type WorkspaceSecondaryState,
+  useSecondaryNavigation,
+  useSecondaryStack,
+  useSecondaryLeaveGuard,
 } from './workspace/WorkspaceContext';
+export {
+  defineSecondaryStack,
+  type SecondaryData,
+  type SecondaryScreenProps,
+  type SecondaryStackDefinition,
+  type SecondaryStackActions,
+} from './workspace/SecondaryStack';
 export type { AppWorkspaceSurface } from './workspace/workspaceSurface';
 export type {
   AppWorkspaceSplitMode,

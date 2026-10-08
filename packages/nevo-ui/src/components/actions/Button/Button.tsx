@@ -6,7 +6,7 @@ import {
   fastColorTransitionClassName,
 } from '../../../design-system/interactionRecipes';
 import { cn } from '../../../lib';
-import { Icon, type IconName } from '../../foundations/Icon';
+import { Icon, type IconGlyph } from '../../foundations/Icon';
 import { Typography, type TypographyVariant } from '../../foundations/Typography';
 
 export const buttonDefaults = { variant: 'primary', size: 'md', width: 'content' } as const;
@@ -40,8 +40,8 @@ const labelTypographyBySize = {
 
 export interface ButtonProps
   extends ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
-  leadingIcon?: IconName;
-  trailingIcon?: IconName;
+  leadingIcon?: IconGlyph;
+  trailingIcon?: IconGlyph;
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(

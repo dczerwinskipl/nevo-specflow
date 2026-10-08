@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { AlarmClock, CloudCog } from 'lucide-react';
 import { objectKeys } from '@nevo/figma-core/authoring';
 import { iconNames } from '../../../design-system/resources';
 import { Icon, iconRegistry, iconSizeClasses, type IconName, type IconSize } from './Icon';
+import { Button } from '../../actions/Button';
+import { IconButton } from '../../actions/IconButton';
 
 const names = objectKeys(iconRegistry);
 const designNames = iconNames;
@@ -75,4 +78,15 @@ export const DesignCapture: Story = {
       order: 0,
     },
   },
+};
+
+/** Consumers can import any Lucide icon without extending the Figma asset catalogue. */
+export const LucideDirectImports: Story = {
+  render: () => (
+    <div className="flex items-center gap-4 p-4">
+      <Icon aria-label="Scheduled" decorative={false} name={AlarmClock} />
+      <Button leadingIcon={AlarmClock}>Schedule</Button>
+      <IconButton aria-label="Cloud configuration" icon={CloudCog} />
+    </div>
+  ),
 };

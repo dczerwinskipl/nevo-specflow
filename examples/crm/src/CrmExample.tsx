@@ -468,7 +468,11 @@ function CustomerBillingScreen({
 
 function createCustomerStack(store: CustomerStore) {
   function useCustomerData({ id }: { id: string }): SecondaryData<CustomerSidebarData> {
-    const customers = useSyncExternalStore(\n      store.subscribe,\n      store.getSnapshot,\n      store.getSnapshot,\n    );
+    const customers = useSyncExternalStore(
+      store.subscribe,
+      store.getSnapshot,
+      store.getSnapshot,
+    );
     const customer = customers.find((value) => value.id === id);
     return customer
       ? { status: 'ready', data: { customer, save: store.save } }
@@ -488,7 +492,11 @@ function createCustomerStack(store: CustomerStore) {
 function CrmScreen({ initialCustomerId }: { initialCustomerId?: string }) {
   const navigation = useSecondaryNavigation();
   const [store] = useState(createCustomerStore);
-  const customers = useSyncExternalStore(\n      store.subscribe,\n      store.getSnapshot,\n      store.getSnapshot,\n    );
+  const customers = useSyncExternalStore(
+      store.subscribe,
+      store.getSnapshot,
+      store.getSnapshot,
+    );
   const [customerStack] = useState(() => createCustomerStack(store));
   const [defaultOpen, setDefaultOpen] = useState(true);
   const [query, setQuery] = useState('');

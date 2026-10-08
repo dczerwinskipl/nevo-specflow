@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useState, useSyncExternalStore, type CSSProperties } from 'react';
 
 import {
   AppContent,
@@ -10,7 +10,11 @@ import {
   APP_NAVIGATION_INLINE_PADDING,
   WorkspaceHeader,
   useAppNavigation,
-  useWorkspace,
+  useSecondaryNavigation,
+  useSecondaryStack,
+  defineSecondaryStack,
+  type SecondaryData,
+  type SecondaryScreenProps,
 } from '@nevo/ui';
 import {
   Badge,
@@ -210,11 +214,13 @@ function CrmNavigation() {
 function CustomerEditor({
   customer,
   onSave,
+  onCancel,
 }: {
   customer: Customer;
   onSave: (customer: Customer) => void;
+  onCancel: () => void;
 }) {
-  const workspace = useWorkspace();
+
   const [draft, setDraft] = useState(customer);
 
   const update = <Key extends keyof Customer>(key: Key, value: Customer[Key]) => {
@@ -303,13 +309,13 @@ function CustomerEditor({
             </Field>
           </div>
           <div className="flex flex-wrap justify-end gap-2 border-t border-border-subtle pt-4">
-            <Button onClick={() => void workspace.closeSecondary()} variant="ghost">
+            <Button onClick={() => void onCancel()} variant="ghost">
               Cancel
             </Button>
             <Button
               onClick={() => {
                 onSave(draft);
-                void workspace.closeSecondary();
+                void onCancel();
               }}
             >
               Save changes
@@ -382,9 +388,76 @@ function createBlankCustomer(): Customer {
   };
 }
 
+function createCustomerStore() {
+  let snapshot: readonly Customer[] = initialCustomers;
+  const listeners = new Set<() => void>();
+  return {
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => { listeners.delete(listener); };
+    },
+    getSnapshot: () => snapshot,
+    save: (customer: Customer) => {
+      const exists = snapshot.some(item => item.id === customer.id);
+      snapshot = exists
+        ? snapshot.map(item => item.id === customer.id ? customer : item)
+        : [customer, ...snapshot];
+      for (const listener of listeners) listener();
+    },
+  };
+}
+
+type CustomerStore = ReturnType<typeof createCustomerStore>;
+type CustomerPages = { editor: Record<never, never>; billing: Record<never, never> };
+
+function createCustomerStack(store: CustomerStore) {
+  function useCustomerData({ id }: { id: string }): SecondaryData<Customer> {
+    const customers = useSyncExternalStore(store.subscribe, store.getSnapshot);
+    const customer = customers.find(value => value.id === id);
+    return customer
+      ? { status: 'ready', data: customer }
+      : { status: 'unavailable', message: 'This customer is no longer available.' };
+  }
+  function Editor({ data }: SecondaryScreenProps<Customer, CustomerPages['editor']>) {
+    const navigation = useSecondaryStack<CustomerPages>();
+    return <div>
+      <div className="p-4">
+        <Button size="sm" variant="secondary" onClick={() => void navigation.navTo('billing')}>
+          Billing history
+        </Button>
+      </div>
+      <CustomerEditor
+        customer={data}
+        onSave={(customer) => {
+          store.save(customer);
+          void navigation.close();
+        }}
+        onCancel={() => void navigation.close()}
+      />
+    </div>;
+  }
+  function Billing({ data }: SecondaryScreenProps<Customer, CustomerPages['billing']>) {
+    return <div className="grid gap-3 p-4">
+      <Typography variant="title-sm">Billing history</Typography>
+      <Typography variant="body-sm">{data.company}</Typography>
+      <Typography variant="body-sm">Annual value: {data.annualValue}</Typography>
+    </div>;
+  }
+  return defineSecondaryStack<{ id: string }, Customer, CustomerPages>({
+    id: 'crm-customer', initial: 'editor', useData: useCustomerData,
+    screens: {
+      editor: { title: 'Customer details', component: Editor },
+      billing: { title: 'Billing history', component: Billing },
+    },
+  });
+}
+
 function CrmScreen({ initialCustomerId }: { initialCustomerId?: string }) {
-  const workspace = useWorkspace();
-  const [customers, setCustomers] = useState(initialCustomers);
+  const navigation = useSecondaryNavigation();
+  const [store] = useState(createCustomerStore);
+  const customers = useSyncExternalStore(store.subscribe, store.getSnapshot);
+  const [customerStack] = useState(() => createCustomerStack(store));
+  const [defaultOpen, setDefaultOpen] = useState(true);
   const [query, setQuery] = useState('');
   const initialCustomer = initialCustomerId
     ? customers.find((customer) => customer.id === initialCustomerId)
@@ -447,21 +520,8 @@ function CrmScreen({ initialCustomerId }: { initialCustomerId?: string }) {
     [],
   );
 
-  const saveCustomer = (customer: Customer) => {
-    setCustomers((current) => {
-      const exists = current.some((item) => item.id === customer.id);
-      return exists
-        ? current.map((item) => (item.id === customer.id ? customer : item))
-        : [customer, ...current];
-    });
-  };
-
-  const openCustomer = async (customer: Customer) => {
-    await workspace.setSecondary({
-      header: <CustomerDetailsHeader customer={customer} />,
-      content: <CustomerEditor customer={customer} onSave={saveCustomer} />,
-    });
-  };
+  const saveCustomer = store.save;
+  const openCustomer = (customer: Customer) => navigation.open(customerStack, { id: customer.id });
 
   return (
     <AppShell
@@ -474,7 +534,11 @@ function CrmScreen({ initialCustomerId }: { initialCustomerId?: string }) {
           header={
             <CustomersHeader
               count={filteredCustomers.length}
-              onAdd={() => void openCustomer(createBlankCustomer())}
+              onAdd={() => {
+                const customer = createBlankCustomer();
+                saveCustomer(customer);
+                void openCustomer(customer);
+              }
             />
           }
         >
@@ -506,12 +570,14 @@ function CrmScreen({ initialCustomerId }: { initialCustomerId?: string }) {
           </AppContent>
         </AppWorkspace.Primary>
         <AppWorkspace.Secondary
+          open={defaultOpen}
+          onOpenChange={setDefaultOpen}
           header={
             initialCustomer ? <CustomerDetailsHeader customer={initialCustomer} /> : undefined
           }
         >
           {initialCustomer ? (
-            <CustomerEditor customer={initialCustomer} onSave={saveCustomer} />
+            <CustomerEditor customer={initialCustomer} onSave={saveCustomer} onCancel={() => setDefaultOpen(false)} />
           ) : (
             <NoCustomerSelected />
           )}

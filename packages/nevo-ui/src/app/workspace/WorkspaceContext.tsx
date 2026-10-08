@@ -203,7 +203,7 @@ function publicEntry(
   return {
     instanceKey: entry.instanceKey,
     surface: {
-      header: <WorkspaceHeader as="h2" title={page.title} />,
+      header: <WorkspaceHeader title={page.title} />,
       content: (
         <ScreenOutlet
           flow={flow}

@@ -1,0 +1,31 @@
+name: Temporary Lucide Formatting Export
+on:
+  push:
+    branches:
+      - feature/workspace-secondary-stack-navigation
+    paths:
+      - .github/workflows/secondary-lucide-format.yml
+permissions:
+  contents: read
+jobs:
+  format-export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - name: Format Lucide changes
+        run: |
+          pnpm exec prettier --write \
+            packages/nevo-ui/src/components/foundations/Icon/Icon.tsx \
+            packages/nevo-ui/src/components/foundations/Icon/Icon.test.tsx \
+            packages/nevo-ui/src/components/foundations/Icon/Icon.stories.tsx \
+            docs/design-system/implementation/react/component-authoring-contract.md
+      - name: Export formatting changes
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+          import { readFileSync } from 'node:fs';
+          const files = execFileSync('git', ['diff', '--name-only'], { encoding: 'utf8' }).trim().split('\n').filter(Boolean);
+          for (const path of files) console.log('LUCIDE_FORMAT_FILE:' + path + ':' + readFileSync(path).toString('base64'));
+          console.log('LUCIDE_FORMAT_COUNT:' + files.length);
+          NODE

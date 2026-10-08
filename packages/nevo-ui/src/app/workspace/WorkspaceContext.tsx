@@ -22,6 +22,7 @@ import type {
 
 interface RuntimePage {
   title: string;
+  header?: ComponentType<{ data: unknown; params: object }>;
   component: ComponentType<{ data: unknown; params: object }>;
 }
 
@@ -193,6 +194,17 @@ function ScreenOutlet({
   );
 }
 
+function HeaderOutlet({ flow, entry }: { flow: SecondaryFlow; entry: SecondaryEntry }) {
+  const result = flow.definition.useData(flow.rootParams);
+  const page = flow.definition.screens[entry.page];
+  if (!page) throw new Error(`Unknown Secondary screen: ${entry.page}`);
+  if (result.status !== 'ready' || !page.header) {
+    return <WorkspaceHeader title={page.title} />;
+  }
+  const Header = page.header;
+  return <Header data={result.data} params={entry.params} />;
+}
+
 function publicEntry(
   flow: SecondaryFlow,
   entry: SecondaryEntry,
@@ -204,7 +216,11 @@ function publicEntry(
   return {
     instanceKey: entry.instanceKey,
     surface: {
-      header: <WorkspaceHeader title={page.title} />,
+      header: page.header ? (
+        <HeaderOutlet flow={flow} entry={entry} />
+      ) : (
+        <WorkspaceHeader title={page.title} />
+      ),
       content: (
         <ScreenOutlet flow={flow} entry={entry} navigate={navigate} registerGuard={registerGuard} />
       ),

@@ -49,6 +49,8 @@ export const DesktopDeepNavigationAndRefresh: Story = {
       secondary.textContent?.includes('This history entry is no longer available.'),
       'Missing nested item must be reported',
     );
+    await userEvent.click(canvas.getByRole('button', { name: 'Remove Todo t1' }));
+    assert(secondary.textContent?.includes('Todo no longer available.'), 'A missing root entity must not close Secondary');
     await userEvent.click(canvas.getByRole('button', { name: 'Anna' }));
     secondary = currentSecondary(canvasElement);
     assert(
@@ -75,16 +77,9 @@ export const NarrowBackAndMissingEntity: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
     secondary = currentSecondary(canvasElement);
     assert(secondary?.textContent?.includes('Review navigation'), 'Mobile Back should pop to root');
-    await userEvent.click(canvas.getByRole('button', { name: 'Remove Todo t1' }));
-    secondary = currentSecondary(canvasElement);
-    assert(
-      secondary?.textContent?.includes('Todo no longer available.'),
-      'Missing root entity must not close navigation',
-    );
     await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
-    assert(
-      canvas.getByRole('button', { name: 'Open navigation' }),
-      'Primary should regain its hamburger when the flow closes',
-    );
+    assert(canvas.getByRole('button', { name: 'Open navigation' }), 'Primary should regain its hamburger when the flow closes');
+    await userEvent.click(canvas.getByRole('button', { name: 'Remove Todo t1' }));
+    assert(canvas.queryByRole('button', { name: 'Review navigation' }) === null, 'The removed todo should disappear from Primary');
   },
 };

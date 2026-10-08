@@ -425,6 +425,12 @@ interface CustomerPages { editor: Record<never, never>; billing: Record<never, n
 
 interface CustomerSidebarData { customer: Customer; save: (customer: Customer) => void };
 
+function CustomerSidebarHeader({
+  data,
+}: SecondaryScreenProps<CustomerSidebarData, CustomerPages['editor']>) {
+  return <CustomerDetailsHeader customer={data.customer} />;
+}
+
 function CustomerEditorScreen({
   data,
 }: SecondaryScreenProps<CustomerSidebarData, CustomerPages['editor']>) {
@@ -483,7 +489,7 @@ function createCustomerStack(store: CustomerStore) {
     initial: 'editor',
     useData: useCustomerData,
     screens: {
-      editor: { title: 'Customer details', component: CustomerEditorScreen },
+      editor: { title: 'Customer details', header: CustomerSidebarHeader, component: CustomerEditorScreen },
       billing: { title: 'Billing history', component: CustomerBillingScreen },
     },
   });

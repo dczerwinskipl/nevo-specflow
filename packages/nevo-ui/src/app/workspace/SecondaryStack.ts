@@ -13,6 +13,8 @@ export interface SecondaryScreenProps<TData, TParams extends object> {
 
 export interface SecondaryScreenDefinition<TData, TParams extends object> {
   title: string;
+  /** Optional header component; resolved against the same live data as the page. */
+  header?: ComponentType<SecondaryScreenProps<TData, TParams>>;
   component: ComponentType<SecondaryScreenProps<TData, TParams>>;
 }
 

@@ -173,7 +173,7 @@ function RecordList({ count = 28 }: { count?: number }) {
   );
 }
 
-type ShellPages = {
+interface ShellPages {
   customer: Record<never, never>;
   billing: Record<never, never>;
   invoice: Record<never, never>;

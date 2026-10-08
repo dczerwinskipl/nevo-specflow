@@ -70,8 +70,6 @@ export function createSpecFlowAppServices(
   };
 }
 
-export const createSpecFlowServices = createSpecFlowAppServices;
-
 export const defaultSpecFlowServices: SpecFlowAppServices = createSpecFlowAppServices();
 
 const SpecFlowServicesContext = createContext<SpecFlowServices>(defaultSpecFlowServices);

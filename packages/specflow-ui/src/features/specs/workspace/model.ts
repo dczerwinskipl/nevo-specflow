@@ -122,26 +122,22 @@ export interface BaseActivityEvent {
 }
 
 export interface TaskActivityEvent extends BaseActivityEvent {
-  readonly type?: 'task';
-  readonly kind?: 'task';
+  readonly kind: 'task';
   readonly targetId: string;
 }
 
 export interface SessionActivityEvent extends BaseActivityEvent {
-  readonly type?: 'session';
-  readonly kind?: 'session';
+  readonly kind: 'session';
   readonly targetId: string;
 }
 
 export interface DocumentActivityEvent extends BaseActivityEvent {
-  readonly type?: 'doc';
-  readonly kind?: 'doc';
+  readonly kind: 'doc';
   readonly targetId: string;
 }
 
 export interface InformationalActivityEvent extends BaseActivityEvent {
-  readonly type?: 'info';
-  readonly kind?: 'info';
+  readonly kind: 'info';
   readonly targetId?: string;
 }
 

@@ -217,7 +217,7 @@ export const defaultActivityEvents: readonly ActivityEvent[] = [
     time: '5 min temu',
     title: 'Rozpoczęto wykonanie TASK-04',
     description: 'Implementer · bieżąca sesja',
-    type: 'task',
+    kind: 'task',
     targetId: 'TASK-04',
   },
   {
@@ -225,7 +225,7 @@ export const defaultActivityEvents: readonly ActivityEvent[] = [
     time: '10 min temu',
     title: 'Agent poprosił o doprecyzowanie zakresu',
     description: 'Sesja review czeka na odpowiedź',
-    type: 'session',
+    kind: 'session',
     targetId: 'review',
   },
   {
@@ -233,7 +233,7 @@ export const defaultActivityEvents: readonly ActivityEvent[] = [
     time: '20 min temu',
     title: 'Zakończono review TASK-03',
     description: 'Pozostała decyzja właściciela',
-    type: 'task',
+    kind: 'task',
     targetId: 'TASK-03',
   },
   {
@@ -241,7 +241,7 @@ export const defaultActivityEvents: readonly ActivityEvent[] = [
     time: '35 min temu',
     title: 'Dodano TASK-05 do zakresu',
     description: 'Rozmowa o rozszerzeniu specyfikacji',
-    type: 'task',
+    kind: 'task',
     targetId: 'TASK-05',
   },
   {
@@ -249,7 +249,7 @@ export const defaultActivityEvents: readonly ActivityEvent[] = [
     time: '1 godz. temu',
     title: 'Zaktualizowano draft architektury',
     description: 'Dokumenty tej specyfikacji',
-    type: 'doc',
+    kind: 'doc',
     targetId: 'architecture',
   },
 ];
@@ -349,6 +349,7 @@ export function createSpecificationWorkspaceFixture(
           time: 'Teraz',
           title: 'Utworzono specyfikację',
           description: 'Scaffold gotowy do uzupełnienia',
+          kind: 'info',
         },
       ]
     : defaultActivityEvents;

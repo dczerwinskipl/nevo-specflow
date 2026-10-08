@@ -17,7 +17,7 @@ type AuthMode =
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createSpecFlowQueryClient } from './queryClient';
-import { createSpecFlowServices, SpecFlowServicesProvider } from '../services';
+import { createSpecFlowAppServices, SpecFlowServicesProvider } from '../services';
 import { createFixtureSpecificationApi } from '../features/specs/api';
 import type { SpecsOverviewApi } from '../features/specs/overview/api';
 import { createFixtureSpecsOverviewApi } from '../features/specs/overview/api';
@@ -46,7 +46,7 @@ export function RoutedApplication({
         }
       : createFixtureSpecsOverviewApi();
 
-    return createSpecFlowServices({
+    return createSpecFlowAppServices({
       authStore: auth,
       specsOverviewApi,
       specificationApi: createFixtureSpecificationApi(),

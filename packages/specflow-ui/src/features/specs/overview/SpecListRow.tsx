@@ -99,7 +99,7 @@ export function SpecListRow({ item, specificationHref, onOpenTarget }: SpecListR
       }
       primaryAriaLabel={t('specifications.openSpec', { title: item.title })}
       compactFacts={[
-        { text: item.key, mono: true, dataAttributes: { 'data-spec-key': 'true' } },
+        { text: item.key ?? '', mono: true, dataAttributes: { 'data-spec-key': 'true' } },
         {
           text: t('specifications.progress', item.progress),
           dataAttributes: { 'data-spec-progress': 'true' },

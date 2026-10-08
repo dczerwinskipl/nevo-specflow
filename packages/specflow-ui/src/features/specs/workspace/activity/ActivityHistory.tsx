@@ -1,7 +1,6 @@
 import { Button, Icon, Timeline, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { ActivityEvent } from '../model';
-import { normalizeActivityEvent } from './model';
 import { TaskActivityItem } from './TaskActivityItem';
 import { SessionActivityItem } from './SessionActivityItem';
 import { DocumentActivityItem } from './DocumentActivityItem';
@@ -59,8 +58,7 @@ export function ActivityHistory({
       </div>
 
       <Timeline size="md">
-        {events.map((rawEvent, index) => {
-          const event = normalizeActivityEvent(rawEvent);
+        {events.map((event, index) => {
           const active = index === 0;
 
           switch (event.kind) {
@@ -94,7 +92,8 @@ export function ActivityHistory({
             case 'info':
               return <InformationalActivityItem key={event.id} event={event} active={active} />;
             default: {
-              void event;
+              const _exhaustive: never = event;
+              void _exhaustive;
               return null;
             }
           }

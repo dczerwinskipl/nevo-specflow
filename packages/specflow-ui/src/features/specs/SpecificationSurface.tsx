@@ -24,6 +24,10 @@ export interface SpecificationSurfaceProps {
   readonly initialTask?: string;
   readonly onViewChange?: (view: SpecificationWorkspaceView) => void;
   readonly onTaskChange?: (taskId: string | null) => void;
+  readonly onNavigateView?: (target: {
+    view: SpecificationWorkspaceView;
+    taskId?: string | null;
+  }) => void;
   readonly data?: SpecificationWorkspaceData;
   readonly onRefresh?: () => void | Promise<void>;
   readonly onExecute?: (agent: string, tasks: readonly string[]) => void | Promise<void>;
@@ -53,6 +57,7 @@ function SpecificationSurfaceConnected({
   initialTask,
   onViewChange,
   onTaskChange,
+  onNavigateView,
   onRefresh,
   onExecute,
   onNewConversation,
@@ -186,6 +191,7 @@ function SpecificationSurfaceConnected({
       initialTask={initialTask}
       onViewChange={onViewChange}
       onTaskChange={onTaskChange}
+      onNavigateView={onNavigateView}
       onRefresh={onRefresh ?? (() => void refetch())}
       onExecute={onExecute}
       onNewConversation={onNewConversation}

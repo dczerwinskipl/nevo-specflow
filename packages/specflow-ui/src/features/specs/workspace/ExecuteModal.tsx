@@ -20,7 +20,7 @@ export interface ExecuteModalProps {
   readonly onExecute?: (agent: string) => void;
 }
 
-export function ExecuteModal({ open, onClose }: ExecuteModalProps) {
+export function ExecuteModal({ open, selectedTasks, onClose, onExecute }: ExecuteModalProps) {
   const { t } = useTranslation();
 
   return (
@@ -31,15 +31,26 @@ export function ExecuteModal({ open, onClose }: ExecuteModalProps) {
         </DialogHeader>
 
         <DialogBody className="py-4">
-          <Typography variant="body-sm" className="text-content-muted">
-            {t('common.notImplemented')}
-          </Typography>
+          {onExecute ? (
+            <Typography variant="body-sm" className="text-content-secondary">
+              {t('specification.selectedTasksCount', { count: selectedTasks.length })}
+            </Typography>
+          ) : (
+            <Typography variant="body-sm" className="text-content-muted">
+              {t('common.notImplemented')}
+            </Typography>
+          )}
         </DialogBody>
 
         <DialogFooter>
           <Button variant="secondary" onClick={onClose}>
             {t('common.close')}
           </Button>
+          {onExecute ? (
+            <Button variant="primary" onClick={() => onExecute('agent')}>
+              {t('specification.executeWithAgent')}
+            </Button>
+          ) : null}
         </DialogFooter>
       </DialogContent>
     </Dialog>

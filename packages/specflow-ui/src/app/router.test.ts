@@ -5,6 +5,7 @@ import { createMemoryHistory } from '@tanstack/react-router';
 import type { AuthApi } from '../auth/api';
 import { createAuthStore } from '../auth/store';
 import { createSpecsFixture } from '../features/specs/overview/fixtures';
+import { createSpecFlowAppServices } from '../services';
 import { createSpecFlowRouter, resolveAppAccess, resolveLoginAccess } from './router';
 
 const noAuth: AuthSessionResponse = {
@@ -34,10 +35,10 @@ describe('SpecFlow router access policy', () => {
     async (collection) => {
       const router = createSpecFlowRouter(
         createMemoryHistory({ initialEntries: [`/specs/admission?collection=${collection}`] }),
-        {
-          auth: storeWith(authenticated),
-          specs: { read: (value) => Promise.resolve(createSpecsFixture(value)) },
-        },
+        createSpecFlowAppServices({
+          authStore: storeWith(authenticated),
+          specsSource: { read: (value) => Promise.resolve(createSpecsFixture(value)) },
+        }),
       );
       await router.load();
       const match = router.state.matches.find((item) => item.routeId === '/_app/specs/$specId');

@@ -15,6 +15,8 @@ export interface WorkspaceRuntime {
   readonly executeTasks: (taskIds: readonly string[], agent?: string) => void;
   readonly refresh: () => void | Promise<void>;
   readonly fullTaskHref: (taskId: string) => string;
+  readonly canExecute?: boolean;
+  readonly canStartConversation?: boolean;
 }
 
 const WorkspaceRuntimeContext = createContext<WorkspaceRuntime | null>(null);
@@ -60,6 +62,8 @@ export function createFakeWorkspaceRuntime(
     executeTasks: noop,
     refresh: noop,
     fullTaskHref: (taskId) => `/specs/fake?view=task&task=${taskId}`,
+    canExecute: true,
+    canStartConversation: true,
     ...overrides,
   };
 }

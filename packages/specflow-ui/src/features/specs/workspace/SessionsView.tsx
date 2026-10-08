@@ -5,7 +5,7 @@ import { OperationalRow } from '../shared/OperationalList';
 
 export interface SessionsViewProps {
   readonly sessions: readonly SessionSummary[];
-  readonly onOpenSession: (id: string) => void;
+  readonly onOpenSession?: (id: string) => void;
   readonly onNewConversation: () => void;
 }
 
@@ -43,7 +43,7 @@ export function SessionsView({ sessions, onOpenSession, onNewConversation }: Ses
             <OperationalRow
               key={session.id}
               primary={session.title}
-              onPrimaryClick={() => onOpenSession(session.id)}
+              onPrimaryClick={onOpenSession ? () => onOpenSession(session.id) : undefined}
               compactFacts={compactFacts}
               supporting={supporting}
             />

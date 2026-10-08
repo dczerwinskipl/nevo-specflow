@@ -1,6 +1,5 @@
 import { createRoute, createRouter, type RouterHistory } from '@tanstack/react-router';
 
-import type { AuthStore } from '../auth/store';
 import { authRoutes, loginRoute, runtimeUnavailableRoute } from '../auth/routes';
 import {
   resolveAppAccess,
@@ -16,7 +15,6 @@ import {
   specificationRoute,
   specsForbiddenRoute,
 } from '../features/specs/routes';
-import type { SpecsOverviewSource } from '../features/specs/overview/model';
 import { defaultSpecFlowServices } from '../services';
 import { createSpecFlowAppServices, type SpecFlowAppServices } from './dependencies';
 import { UiPlaygroundScreen } from './screens';
@@ -52,41 +50,8 @@ export const routeTree = rootRoute.addChildren([
 
 export function createSpecFlowRouter(
   history?: RouterHistory,
-  servicesOrAuth:
-    | SpecFlowAppServices
-    | AuthStore
-    | {
-        readonly authStore?: AuthStore;
-        readonly auth?: AuthStore;
-        readonly specsSource?: SpecsOverviewSource;
-        readonly specs?: SpecsOverviewSource;
-      } = createSpecFlowAppServices(),
-  specs?: SpecsOverviewSource,
+  services: SpecFlowAppServices = createSpecFlowAppServices(),
 ) {
-  let services: SpecFlowAppServices;
-
-  if ('http' in servicesOrAuth && 'specificationApi' in servicesOrAuth) {
-    services = servicesOrAuth;
-  } else if ('authStore' in servicesOrAuth || 'auth' in servicesOrAuth) {
-    const raw = servicesOrAuth as {
-      authStore?: AuthStore;
-      auth?: AuthStore;
-      specsSource?: SpecsOverviewSource;
-      specs?: SpecsOverviewSource;
-    };
-    services = createSpecFlowAppServices({
-      authStore: raw.authStore ?? raw.auth,
-      specsSource: raw.specsSource ?? raw.specs,
-    });
-  } else if ('ensureSession' in servicesOrAuth) {
-    services = createSpecFlowAppServices({
-      authStore: servicesOrAuth,
-      specsSource: specs,
-    });
-  } else {
-    services = createSpecFlowAppServices();
-  }
-
   const context: SpecFlowRouterContext = {
     services,
     auth: services.authStore,

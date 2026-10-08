@@ -194,12 +194,15 @@ Development builds can still opt into isolated frontend fixtures using
 
 The actual app supplies real Specification hrefs and router navigation to every Current and Archive
 row, including Open specification in row overflow. Normal activation uses the router; modifier clicks
-retain browser link behavior. The guarded `/specs/:specId` destination currently identifies only the
-requested route identity and explicitly explains that documents, Tasks and Sessions are not implemented.
-It does not claim the identity exists, fetch protected Specification detail, or invent workflow state.
-Its Back link returns to the originating collection; direct entry defaults to Current. Task/Session
-targets never replace the owning Specification destination. Creation and archive/delete mutations
-remain unsupported. Isolated non-navigable component fixtures are not the production route contract.
+retain browser link behavior. The guarded `/specs/:specId` destination renders the Specification
+Workspace (`SpecificationSurfaceConnected`). In production, it queries the workspace read-model via
+TanStack Query and displays honest unavailable/missing-capability states when the backend runtime
+workspace endpoint is not yet implemented, or the workspace view when backed by runtime data or explicit
+fixtures. View state (`?view=...`) and deep-linked tasks (`?task=...`) are synchronized atomically via
+TanStack Router search parameters, while local transient states remain in workspace state. Its Back link
+returns to the originating collection; direct entry defaults to Current. Creation and archive/delete
+mutations remain unsupported. Isolated non-navigable component fixtures are not the production route
+contract.
 
 The login and Runtime-recovery screens are product-owned compositions on Nevo UI's
 `StandaloneShell`. That shared shell owns the navigation-free application frame: AppBackground,

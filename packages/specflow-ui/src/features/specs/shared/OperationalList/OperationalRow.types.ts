@@ -30,10 +30,8 @@ export interface OperationalRowProps {
   readonly metadata?: ReactNode;
   readonly trailing?: ReactNode;
   readonly leading?: ReactNode;
-  readonly marker?: ReactNode;
   readonly interactive?: boolean;
   readonly selected?: boolean;
-  readonly selectable?: boolean;
   readonly titleAs?: 'h2' | 'h3' | 'h4';
   readonly className?: string;
   readonly dataAttributes?: Record<string, string | undefined>;

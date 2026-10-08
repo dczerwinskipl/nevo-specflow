@@ -1,4 +1,4 @@
-import { Icon, InformationList, Typography, cn, useOptionalInformationListContext } from '@nevo/ui';
+import { Icon, InformationList, Typography, cn } from '@nevo/ui';
 import type { OperationalRowProps, SemanticSupporting } from './OperationalRow.types';
 
 function isSemanticSupporting(value: unknown): value is SemanticSupporting {
@@ -20,16 +20,12 @@ export function OperationalRow({
   metadata,
   trailing,
   leading,
-  marker,
   interactive = false,
   selected = false,
-  selectable,
   titleAs = 'h3',
   className,
   dataAttributes = {},
 }: OperationalRowProps) {
-  const listContext = useOptionalInformationListContext();
-  const isSelectable = selectable ?? listContext?.selectable ?? false;
   const isRowInteractive = interactive || Boolean(primaryHref) || Boolean(onPrimaryClick);
 
   const primaryContent = primaryHref ? (
@@ -110,16 +106,7 @@ export function OperationalRow({
     );
   };
 
-  const leadingSlot = leading ? (
-    <InformationList.Leading>{leading}</InformationList.Leading>
-  ) : isSelectable ? (
-    <InformationList.Leading aria-hidden="true" />
-  ) : null;
-
-  const markerSlot =
-    marker && typeof marker !== 'boolean' ? (
-      <div className="flex size-4 shrink-0 items-center justify-center">{marker}</div>
-    ) : null;
+  const leadingSlot = leading ? <InformationList.Leading>{leading}</InformationList.Leading> : null;
 
   return (
     <InformationList.Item
@@ -129,7 +116,6 @@ export function OperationalRow({
       {...dataAttributes}
     >
       {leadingSlot}
-      {markerSlot}
 
       <InformationList.Content>
         <div className="pointer-events-none flex min-w-0 flex-1 flex-col gap-x-4 gap-y-1 @3xl/info-row:flex-row @3xl/info-row:items-center">

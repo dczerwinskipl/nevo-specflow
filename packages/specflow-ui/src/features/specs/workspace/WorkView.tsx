@@ -12,20 +12,6 @@ import { TasksSection } from './tasks';
 
 export interface WorkViewProps {
   readonly data: SpecificationWorkspaceData;
-  // Optional legacy props maintained for interface compatibility
-  readonly selectedTasks?: ReadonlySet<string>;
-  readonly onSelectTask?: (taskId: string, selected: boolean) => void;
-  readonly onPreviewTask?: (taskId: string) => void;
-  readonly onOpenSession?: (sessionId: string) => void;
-  readonly onOpenSessionsView?: () => void;
-  readonly onOpenDoc?: (docId: string) => void;
-  readonly onOpenDocumentsView?: () => void;
-  readonly onOpenChanges?: (source: 'base' | 'uncommitted' | 'mr') => void;
-  readonly onOpenRepository?: () => void;
-  readonly onOpenHistory?: () => void;
-  readonly onNewConversation?: () => void;
-  readonly onExecuteSelected?: () => void;
-  readonly fullTaskHref?: (taskId: string) => string;
 }
 
 /**
@@ -39,7 +25,7 @@ export function WorkView({ data }: WorkViewProps) {
         title={data.title}
         intro={data.intro}
         isEmpty={data.isEmpty}
-        mainDocumentId={data.mainDocumentId ?? data.documents[0]?.id}
+        mainDocumentId={data.mainDocumentId}
       />
 
       {data.attentionItems.length > 0 ? <AttentionSection items={data.attentionItems} /> : null}
@@ -60,6 +46,7 @@ export function WorkView({ data }: WorkViewProps) {
           isPreparing={data.isPreparing}
           totalTasksCount={data.totalTasksCount}
           completedTasksCount={data.completedTasksCount}
+          executionReadiness={data.executionReadiness}
         />
       ) : null}
 

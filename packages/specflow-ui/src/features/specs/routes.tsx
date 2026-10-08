@@ -23,6 +23,19 @@ export const specsRoute = createRoute({
   component: SpecsRouteScreen,
 });
 
+const VALID_VIEWS: ReadonlySet<SpecificationWorkspaceView> = new Set([
+  'work',
+  'documents',
+  'sessions',
+  'changes',
+  'repository',
+  'task',
+]);
+
+function isValidView(view: unknown): view is SpecificationWorkspaceView {
+  return typeof view === 'string' && VALID_VIEWS.has(view as SpecificationWorkspaceView);
+}
+
 export const specificationRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/specs/$specId',
@@ -34,8 +47,8 @@ export const specificationRoute = createRoute({
     task?: string;
   } => ({
     collection: search.collection === 'archive' ? 'archive' : 'current',
-    ...(typeof search.view === 'string' ? { view: search.view as SpecificationWorkspaceView } : {}),
-    ...(typeof search.task === 'string' ? { task: search.task } : {}),
+    ...(isValidView(search.view) ? { view: search.view } : {}),
+    ...(typeof search.task === 'string' && search.task.length > 0 ? { task: search.task } : {}),
   }),
   component: SpecificationRouteScreen,
 });
@@ -126,21 +139,12 @@ function SpecificationRouteScreen() {
       onBack={() => void navigate({ to: '/', search: { collection } })}
       initialView={view}
       initialTask={task}
-      onViewChange={(newView) => {
+      onNavigateView={({ view: nextView, taskId: nextTaskId }) => {
         void navigate({
           search: (prev) => ({
             ...prev,
-            view: newView === 'work' ? undefined : newView,
-            task: newView === 'task' ? prev.task : undefined,
-          }),
-        });
-      }}
-      onTaskChange={(newTaskId) => {
-        void navigate({
-          search: (prev) => ({
-            ...prev,
-            view: newTaskId ? 'task' : undefined,
-            task: newTaskId ?? undefined,
+            view: nextView === 'work' ? undefined : nextView,
+            task: nextView === 'task' ? (nextTaskId ?? undefined) : undefined,
           }),
         });
       }}

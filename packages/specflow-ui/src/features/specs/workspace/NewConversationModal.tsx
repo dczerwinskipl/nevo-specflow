@@ -16,7 +16,7 @@ export interface NewConversationModalProps {
   readonly onStart?: (agent: string) => void;
 }
 
-export function NewConversationModal({ open, onClose }: NewConversationModalProps) {
+export function NewConversationModal({ open, onClose, onStart }: NewConversationModalProps) {
   const { t } = useTranslation();
 
   return (
@@ -36,6 +36,11 @@ export function NewConversationModal({ open, onClose }: NewConversationModalProp
           <Button variant="secondary" onClick={onClose}>
             {t('common.close')}
           </Button>
+          {onStart ? (
+            <Button variant="primary" onClick={() => onStart('default')}>
+              {t('specification.newConversation')}
+            </Button>
+          ) : null}
         </DialogFooter>
       </DialogContent>
     </Dialog>

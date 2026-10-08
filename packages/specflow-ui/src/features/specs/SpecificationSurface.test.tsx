@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { appI18n, LocalizationProvider } from '../../i18n';
 import { createSpecFlowQueryClient } from '../../app/queryClient';
-import { createSpecFlowServices, SpecFlowServicesProvider } from '../../services';
+import { createSpecFlowAppServices, SpecFlowServicesProvider } from '../../services';
 import { SpecificationSurface } from './SpecificationSurface';
 import {
   createFixtureSpecificationApi,
@@ -25,7 +25,7 @@ describe('SpecificationSurface', () => {
     servicesOverride?: { specificationApi?: SpecificationApi },
   ) {
     const queryClient = createSpecFlowQueryClient();
-    const services = createSpecFlowServices(servicesOverride);
+    const services = createSpecFlowAppServices(servicesOverride);
     return renderToStaticMarkup(
       <QueryClientProvider client={queryClient}>
         <SpecFlowServicesProvider services={services}>
@@ -57,7 +57,7 @@ describe('SpecificationSurface', () => {
 
   it('shows honest unavailable state when specification API fails / capability is missing', () => {
     const queryClient = createSpecFlowQueryClient();
-    const services = createSpecFlowServices();
+    const services = createSpecFlowAppServices();
     const query = queryClient.getQueryCache().build(queryClient, {
       queryKey: specificationKeys.detail('spec-missing'),
     });
@@ -90,7 +90,7 @@ describe('SpecificationSurface', () => {
     const domainNotFoundError = new Error('Not found');
     (domainNotFoundError as unknown as Record<string, unknown>).status = 404;
 
-    const services = createSpecFlowServices();
+    const services = createSpecFlowAppServices();
     const query = queryClient.getQueryCache().build(queryClient, {
       queryKey: specificationKeys.detail('spec-404'),
     });
@@ -118,7 +118,7 @@ describe('SpecificationSurface', () => {
 
   it('allows fixture API injection explicitly in test/fixture environments', async () => {
     const queryClient = createSpecFlowQueryClient();
-    const services = createSpecFlowServices({
+    const services = createSpecFlowAppServices({
       specificationApi: createFixtureSpecificationApi('working'),
     });
 

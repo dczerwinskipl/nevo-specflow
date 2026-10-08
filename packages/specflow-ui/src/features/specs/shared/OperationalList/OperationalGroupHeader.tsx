@@ -65,13 +65,12 @@ export function OperationalGroupHeader({
         </button>
       </div>
 
-      {tone ? (
-        <div className="flex size-4 shrink-0 items-center justify-center">
-          <StatusIndicator tone={tone} />
-        </div>
-      ) : null}
-
-      <div className="flex min-w-0 items-baseline gap-2 pr-3">
+      <div className="flex min-w-0 flex-1 items-center gap-2 pr-3">
+        {tone ? (
+          <div className="flex size-4 shrink-0 items-center justify-center">
+            <StatusIndicator tone={tone} />
+          </div>
+        ) : null}
         <Typography as="h2" variant="label-sm" className="font-semibold text-content-primary">
           {label}
         </Typography>

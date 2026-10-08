@@ -8,6 +8,7 @@ import {
   Button,
   Icon,
   Link,
+  Typography,
   useWorkspace,
   WorkspaceHeader,
 } from '@nevo/ui';
@@ -34,6 +35,10 @@ export interface SpecificationWorkspaceProps {
   readonly initialTask?: string;
   readonly onViewChange?: (view: SpecificationWorkspaceView) => void;
   readonly onTaskChange?: (taskId: string | null) => void;
+  readonly onNavigateView?: (target: {
+    view: SpecificationWorkspaceView;
+    taskId?: string | null;
+  }) => void;
   readonly onRefresh?: () => void | Promise<void>;
   readonly onExecute?: (agent: string, tasks: readonly string[]) => void | Promise<void>;
   readonly onNewConversation?: (agent: string) => void | Promise<void>;
@@ -58,6 +63,7 @@ function SpecificationWorkspaceInner({
   initialTask,
   onViewChange,
   onTaskChange,
+  onNavigateView,
   onRefresh,
   onExecute,
   onNewConversation,
@@ -83,25 +89,31 @@ function SpecificationWorkspaceInner({
   const [tasksToExecute, setTasksToExecute] = useState<readonly string[]>([]);
 
   useEffect(() => {
-    if (initialView) {
-      setCurrentView(initialView);
-    }
-  }, [initialView]);
-
-  useEffect(() => {
     if (initialTask) {
       setFullTaskId(initialTask);
       setCurrentView('task');
+    } else {
+      setFullTaskId(null);
+      setCurrentView(initialView);
     }
-  }, [initialTask]);
+  }, [initialView, initialTask]);
+
+  const navigateToView = (
+    nextView: SpecificationWorkspaceView,
+    nextTaskId: string | null = null,
+  ) => {
+    setCurrentView(nextView);
+    setFullTaskId(nextTaskId);
+    if (onNavigateView) {
+      onNavigateView({ view: nextView, taskId: nextTaskId });
+    } else {
+      onViewChange?.(nextView);
+      onTaskChange?.(nextTaskId);
+    }
+  };
 
   const handleViewChange = (view: SpecificationWorkspaceView) => {
-    setCurrentView(view);
-    if (view !== 'task') {
-      setFullTaskId(null);
-      onTaskChange?.(null);
-    }
-    onViewChange?.(view);
+    navigateToView(view, null);
   };
 
   const handlePreviewTask = (taskId: string) => {
@@ -110,28 +122,24 @@ function SpecificationWorkspaceInner({
   };
 
   const handleOpenFullTask = (taskId: string) => {
-    setFullTaskId(taskId);
-    handleViewChange('task');
+    navigateToView('task', taskId);
     setPreviewTaskId(null);
-    onTaskChange?.(taskId);
     void workspace.closeSecondary();
   };
 
   const handleBackFromFullTask = () => {
-    setFullTaskId(null);
-    handleViewChange('work');
-    onTaskChange?.(null);
+    navigateToView('work', null);
   };
 
   const handleOpenDoc = (docId: string, origin: 'work' | 'documents' = 'work') => {
     setActiveDocId(docId);
     setDocOrigin(origin);
-    handleViewChange('documents');
+    navigateToView('documents', null);
   };
 
   const handleOpenChanges = (source: 'base' | 'uncommitted' | 'mr' = 'base') => {
     setChangesSource(source);
-    handleViewChange('changes');
+    navigateToView('changes', null);
   };
 
   const fullTask = useMemo(() => {
@@ -221,6 +229,8 @@ function SpecificationWorkspaceInner({
         setExecuteDialogOpen(true);
       },
       refresh: () => onRefresh?.(),
+      canExecute: Boolean(onExecute),
+      canStartConversation: Boolean(onNewConversation),
       fullTaskHref: (taskId) => {
         const params = new URLSearchParams();
         if (overviewHref?.includes('collection=archive')) {
@@ -231,7 +241,7 @@ function SpecificationWorkspaceInner({
         return `/specs/${encodeURIComponent(specId)}?${params.toString()}`;
       },
     }),
-    [specId, overviewHref, onOpenSession, onRefresh],
+    [specId, overviewHref, onOpenSession, onRefresh, onExecute, onNewConversation],
   );
 
   const headerTitle =
@@ -346,7 +356,7 @@ function SpecificationWorkspaceInner({
                 ) : currentView === 'repository' ? (
                   <RepositoryView
                     repoContext={data.repoContext}
-                    onGoToChanges={() => setCurrentView('changes')}
+                    onGoToChanges={() => navigateToView('changes', null)}
                   />
                 ) : currentView === 'task' ? (
                   fullTask ? (
@@ -440,19 +450,27 @@ function SpecificationWorkspaceInner({
         selectedTasks={Array.from(tasksToExecute)}
         executionReadiness={data.executionReadiness}
         onClose={() => setExecuteDialogOpen(false)}
-        onExecute={(agent) => {
-          setExecuteDialogOpen(false);
-          void onExecute?.(agent, Array.from(tasksToExecute));
-        }}
+        onExecute={
+          onExecute
+            ? (agent) => {
+                setExecuteDialogOpen(false);
+                void onExecute(agent, Array.from(tasksToExecute));
+              }
+            : undefined
+        }
       />
 
       <NewConversationModal
         open={conversationDialogOpen}
         onClose={() => setConversationDialogOpen(false)}
-        onStart={(agent) => {
-          setConversationDialogOpen(false);
-          void onNewConversation?.(agent);
-        }}
+        onStart={
+          onNewConversation
+            ? (agent) => {
+                setConversationDialogOpen(false);
+                void onNewConversation(agent);
+              }
+            : undefined
+        }
       />
     </WorkspaceProvider>
   );

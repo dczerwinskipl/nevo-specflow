@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button, Icon, InformationList, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { TaskGroup } from '../model';
+import type { TaskExecutionReadiness, TaskGroup } from '../model';
 import { useWorkspaceRuntime } from '../WorkspaceContext';
 import { getGroupTone } from './presentation';
 import { TaskGroupHeader } from './TaskGroupHeader';
@@ -12,6 +12,7 @@ export interface TasksSectionProps {
   readonly isPreparing?: boolean;
   readonly totalTasksCount?: number;
   readonly completedTasksCount?: number;
+  readonly executionReadiness?: TaskExecutionReadiness;
 }
 
 export function TasksSection({
@@ -19,6 +20,7 @@ export function TasksSection({
   isPreparing = false,
   totalTasksCount,
   completedTasksCount,
+  executionReadiness,
 }: TasksSectionProps) {
   const { t } = useTranslation();
   const runtime = useWorkspaceRuntime();
@@ -88,7 +90,18 @@ export function TasksSection({
           ) : null}
           <Button
             size="sm"
-            disabled={selectedTasks.size === 0}
+            disabled={
+              selectedTasks.size === 0 ||
+              runtime.canExecute === false ||
+              executionReadiness?.canExecute === false
+            }
+            title={
+              runtime.canExecute === false
+                ? t('common.notImplemented')
+                : executionReadiness?.canExecute === false
+                  ? executionReadiness.blockers?.[0]
+                  : undefined
+            }
             onClick={() => runtime.executeTasks(Array.from(selectedTasks))}
           >
             {t('specification.executeWithAgent')}

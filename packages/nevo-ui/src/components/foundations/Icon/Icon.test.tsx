@@ -11,7 +11,6 @@ describe('Icon', () => {
     expect(iconAssetRef('save', 'md')).toBe('Icon/save/md');
   });
 
-
   it('separates decorative and semantic icon accessibility', () => {
     const decorative = renderToStaticMarkup(<Icon name="branch" />);
     const semantic = renderToStaticMarkup(

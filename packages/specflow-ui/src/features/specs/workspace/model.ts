@@ -72,6 +72,7 @@ export interface SessionActivity {
   readonly label: string;
   readonly tone?: 'attention' | 'info' | 'neutral' | 'success';
   readonly icon?: IconName;
+  readonly animate?: boolean;
 }
 
 export interface SessionSummary {
@@ -174,14 +175,17 @@ export interface SpecificationWorkspaceData {
 
 export interface TaskStatePresentation {
   readonly icon?: IconName;
+  readonly tone?: 'attention' | 'info' | 'neutral' | 'success';
   readonly iconClassName?: string;
   readonly textClassName?: string;
+  readonly animate?: boolean;
 }
 
 export function getTaskStatePresentation(task: TaskItem): TaskStatePresentation {
   if (task.lifecycle === 'blocked' || task.attention) {
     return {
       icon: 'triangle-alert',
+      tone: 'attention',
       iconClassName: 'text-status-attention',
       textClassName: 'text-status-attention font-medium',
     };
@@ -190,20 +194,24 @@ export function getTaskStatePresentation(task: TaskItem): TaskStatePresentation 
   if (task.lifecycle === 'in_progress') {
     return {
       icon: 'loader',
+      tone: 'info',
       iconClassName: 'text-accent-primary animate-spin',
       textClassName: 'text-accent-primary font-medium',
+      animate: true,
     };
   }
 
   if (task.lifecycle === 'completed') {
     return {
       icon: 'circle-check',
+      tone: 'success',
       iconClassName: 'text-status-success',
       textClassName: 'text-content-secondary',
     };
   }
 
   return {
+    tone: 'neutral',
     iconClassName: 'text-content-muted',
     textClassName: 'text-content-muted',
   };

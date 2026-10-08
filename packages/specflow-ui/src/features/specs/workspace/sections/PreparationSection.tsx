@@ -28,7 +28,12 @@ export function PreparationSection() {
         {t('specification.prepareSpecificationDescription')}
       </Typography>
       <div className="mt-4 flex flex-wrap items-center gap-4">
-        <Button leadingIcon="chat" onClick={() => runtime.startConversation()}>
+        <Button
+          leadingIcon="chat"
+          disabled={!runtime.canStartConversation}
+          title={!runtime.canStartConversation ? t('common.notImplemented') : undefined}
+          onClick={() => runtime.startConversation()}
+        >
           {t('specification.startConversation')}
         </Button>
         <button

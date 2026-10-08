@@ -33,7 +33,9 @@ export interface SpecificationWorkspaceProps {
   readonly onBack?: () => void;
   readonly initialView?: SpecificationWorkspaceView;
   readonly initialTask?: string;
+  /** @deprecated Use onNavigateView instead */
   readonly onViewChange?: (view: SpecificationWorkspaceView) => void;
+  /** @deprecated Use onNavigateView instead */
   readonly onTaskChange?: (taskId: string | null) => void;
   readonly onNavigateView?: (target: {
     view: SpecificationWorkspaceView;
@@ -74,9 +76,11 @@ function SpecificationWorkspaceInner({
   const workspace = useWorkspace();
 
   const [currentView, setCurrentView] = useState<SpecificationWorkspaceView>(
-    initialTask ? 'task' : initialView,
+    initialView === 'task' || initialTask ? 'task' : initialView,
   );
-  const [fullTaskId, setFullTaskId] = useState<string | null>(initialTask ?? null);
+  const [fullTaskId, setFullTaskId] = useState<string | null>(
+    initialView === 'task' || initialTask ? (initialTask ?? null) : null,
+  );
   const [previewTaskId, setPreviewTaskId] = useState<string | null>(null);
   const [explicitHistory, setExplicitHistory] = useState(false);
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
@@ -89,14 +93,20 @@ function SpecificationWorkspaceInner({
   const [tasksToExecute, setTasksToExecute] = useState<readonly string[]>([]);
 
   useEffect(() => {
-    if (initialTask) {
-      setFullTaskId(initialTask);
+    if (initialView === 'task' || initialTask) {
       setCurrentView('task');
+      setFullTaskId(initialTask ?? null);
     } else {
-      setFullTaskId(null);
       setCurrentView(initialView);
+      setFullTaskId(null);
     }
   }, [initialView, initialTask]);
+
+  useEffect(() => {
+    setPreviewTaskId(null);
+    setExplicitHistory(false);
+    void workspace.closeSecondary();
+  }, [specId, workspace]);
 
   const navigateToView = (
     nextView: SpecificationWorkspaceView,
@@ -197,7 +207,7 @@ function SpecificationWorkspaceInner({
                   void workspace.closeSecondary();
                 }}
                 onOpenTask={handlePreviewTask}
-                onOpenSession={(id) => onOpenSession?.(id)}
+                onOpenSession={onOpenSession}
                 onOpenDoc={(docId) => handleOpenDoc(docId, 'work')}
               />
             </AppContent>
@@ -210,7 +220,16 @@ function SpecificationWorkspaceInner({
         },
       );
     }
-  }, [previewTask, explicitHistory, specId, t]);
+  }, [
+    previewTask,
+    explicitHistory,
+    specId,
+    t,
+    workspace,
+    data.taskGroups,
+    data.activityEvents,
+    onOpenSession,
+  ]);
 
   const runtime: WorkspaceRuntime = useMemo(
     () => ({
@@ -343,15 +362,17 @@ function SpecificationWorkspaceInner({
                 ) : currentView === 'sessions' ? (
                   <SessionsView
                     sessions={data.sessions}
-                    onOpenSession={(id) => onOpenSession?.(id)}
-                    onNewConversation={() => setConversationDialogOpen(true)}
+                    onOpenSession={onOpenSession}
+                    onNewConversation={
+                      onNewConversation ? () => setConversationDialogOpen(true) : undefined
+                    }
                   />
                 ) : currentView === 'changes' ? (
                   <ChangesView
                     currentSource={changesSource}
                     changes={data.changes}
                     onSourceChange={setChangesSource}
-                    onDiff={(file) => onDiff?.(file)}
+                    onDiff={onDiff}
                   />
                 ) : currentView === 'repository' ? (
                   <RepositoryView
@@ -364,7 +385,7 @@ function SpecificationWorkspaceInner({
                       task={fullTask}
                       specKey={specId}
                       onBack={handleBackFromFullTask}
-                      onOpenSession={(id) => onOpenSession?.(id)}
+                      onOpenSession={onOpenSession}
                     />
                   ) : (
                     <div
@@ -436,7 +457,7 @@ function SpecificationWorkspaceInner({
                   void workspace.closeSecondary();
                 }}
                 onOpenTask={handlePreviewTask}
-                onOpenSession={(id) => onOpenSession?.(id)}
+                onOpenSession={onOpenSession}
                 onOpenDoc={(docId) => handleOpenDoc(docId, 'work')}
               />
             )}

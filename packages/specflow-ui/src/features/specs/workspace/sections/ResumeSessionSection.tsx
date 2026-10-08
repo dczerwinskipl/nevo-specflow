@@ -37,9 +37,9 @@ export function ResumeSessionSection({ session }: ResumeSessionSectionProps) {
             session.activity
               ? {
                   text: session.activity.label,
-                  tone: session.activity.tone,
+                  tone: session.activity.tone ?? 'neutral',
                   icon: session.activity.icon,
-                  iconClassName: session.activity.icon === 'loader' ? 'animate-spin' : undefined,
+                  iconClassName: session.activity.animate ? 'animate-spin' : undefined,
                 }
               : session.meta
                 ? { text: session.meta }
@@ -58,8 +58,10 @@ export function ResumeSessionSection({ session }: ResumeSessionSectionProps) {
         </button>
         <button
           type="button"
+          disabled={!runtime.canStartConversation}
+          title={!runtime.canStartConversation ? t('common.notImplemented') : undefined}
           onClick={() => runtime.startConversation()}
-          className="font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring"
+          className="font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {t('specification.newConversation')}
         </button>

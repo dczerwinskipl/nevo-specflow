@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Icon, TextInput, Typography } from '@nevo/ui';
+import { Button, Icon, MarkdownDocument, TextInput, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { DocumentItem } from './model';
 
@@ -64,7 +64,7 @@ export function DocumentsView({
                   >
                     {section.heading}
                   </Typography>
-                  {section.content ? <p className="text-body-sm">{section.content}</p> : null}
+                  {section.content ? <MarkdownDocument source={section.content} /> : null}
                   {section.items && section.items.length > 0 ? (
                     <ul className="list-disc pl-5 text-body-sm grid gap-1.5">
                       {section.items.map((item, itemIdx) => (
@@ -75,7 +75,7 @@ export function DocumentsView({
                 </div>
               ))
             ) : activeDoc.content ? (
-              <p className="text-body-sm whitespace-pre-wrap">{activeDoc.content}</p>
+              <MarkdownDocument source={activeDoc.content} />
             ) : null}
           </div>
         </article>

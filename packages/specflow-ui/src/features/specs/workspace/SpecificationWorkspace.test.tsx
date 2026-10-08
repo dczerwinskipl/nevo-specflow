@@ -1,8 +1,9 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppShell } from '@nevo/ui';
 import { appI18n, LocalizationProvider } from '../../../i18n';
 import { SpecificationWorkspace } from './SpecificationWorkspace';
+import { DocumentsView } from './DocumentsView';
 
 import { createSpecificationWorkspaceFixture } from './fixtures';
 
@@ -133,5 +134,51 @@ describe('SpecificationWorkspace', () => {
     expect(markup).toContain('data-spec-back-label');
     expect(markup).toContain('data-spec-identity');
     expect(markup).toContain('ID specyfikacji: UI-1234');
+  });
+
+  it('renders honest capabilities: disabled conversation action when onNewConversation is not provided', () => {
+    const markup = renderWorkspaceMarkup({
+      onNewConversation: undefined,
+    });
+
+    // In ResumeSessionSection, button should be disabled and have title "Niezaimplementowane"
+    expect(markup).toContain('disabled=""');
+    expect(markup).toContain('Niezaimplementowane');
+  });
+
+  it('renders honest capabilities: does not render diff button when onDiff is not provided', () => {
+    const markup = renderWorkspaceMarkup({
+      initialView: 'changes',
+      onDiff: undefined,
+    });
+
+    expect(markup).not.toContain('Pokaż diff');
+  });
+
+  it('renders markdown content in document detail view using MarkdownDocument', () => {
+    const markup = renderToStaticMarkup(
+      <LocalizationProvider>
+        <DocumentsView
+          documents={[
+            {
+              id: 'doc-spec',
+              title: 'Główna specyfikacja',
+              kind: 'spec',
+              content: '### Szczegóły techniczne\n\nTo jest **sformatowany** tekst markdown.',
+            },
+          ]}
+          activeDocId="doc-spec"
+          docOrigin="documents"
+          onSelectDoc={vi.fn()}
+          onBackToOrigin={vi.fn()}
+        />
+      </LocalizationProvider>,
+    );
+
+    expect(markup).toContain('Główna specyfikacja');
+    expect(markup).toContain('Szczegóły techniczne');
+    expect(markup).toContain(
+      '<strong class="font-semibold text-content-primary">sformatowany</strong>',
+    );
   });
 });

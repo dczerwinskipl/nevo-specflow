@@ -46,9 +46,10 @@ export function createUnavailableSpecificationApi(
 }
 
 /**
- * Constructs a SpecificationApi that calls the planned runtime endpoint.
- * Note: `/api/specs/:specId/workspace` is not yet available in the backend runtime.
- * Once implemented in runtime, this adapter will connect to the real service.
+ * Prototype adapter for planned backend runtime endpoint.
+ * WARNING: The backend runtime endpoint `/api/specs/:specId/workspace` is not yet implemented
+ * and must not be treated as an authoritative runtime contract. Production services compose
+ * `createUnavailableSpecificationApi()` by default until the runtime capability is officially delivered.
  */
 export function createRuntimeSpecificationApi(client: HttpClient): SpecificationApi {
   return {

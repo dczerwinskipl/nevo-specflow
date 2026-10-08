@@ -6,7 +6,12 @@ import type { AuthApi } from '../auth/api';
 import { createAuthStore } from '../auth/store';
 import { createSpecsFixture } from '../features/specs/overview/fixtures';
 import { createSpecFlowAppServices } from '../services';
-import { createSpecFlowRouter, resolveAppAccess, resolveLoginAccess } from './router';
+import {
+  createSpecFlowRouter,
+  resolveAppAccess,
+  resolveLoginAccess,
+  validateSpecificationSearch,
+} from './router';
 
 const noAuth: AuthSessionResponse = {
   authenticationRequired: false,
@@ -47,6 +52,29 @@ describe('SpecFlow router access policy', () => {
       expect(match?.search).toEqual({ collection });
     },
   );
+
+  it('normalizes search parameters: strips task when view is documents', () => {
+    const validated = validateSpecificationSearch({
+      collection: 'current',
+      view: 'documents',
+      task: 'TASK-03',
+    });
+    expect(validated).toEqual({ collection: 'current', view: 'documents' });
+  });
+
+  it('normalizes search parameters: sets view=task when task is present without view', () => {
+    const validated = validateSpecificationSearch({
+      task: 'TASK-03',
+    });
+    expect(validated).toEqual({ collection: 'current', view: 'task', task: 'TASK-03' });
+  });
+
+  it('normalizes search parameters: allows view=task without task id', () => {
+    const validated = validateSpecificationSearch({
+      view: 'task',
+    });
+    expect(validated).toEqual({ collection: 'current', view: 'task' });
+  });
 
   it('preserves the Specification deep link through authentication', async () => {
     const returnTo = '/specs/admission?collection=archive';

@@ -36,20 +36,43 @@ function isValidView(view: unknown): view is SpecificationWorkspaceView {
   return typeof view === 'string' && VALID_VIEWS.has(view as SpecificationWorkspaceView);
 }
 
+export function validateSpecificationSearch(search: Record<string, unknown>): {
+  collection: 'current' | 'archive';
+  view?: SpecificationWorkspaceView;
+  task?: string;
+} {
+  const collection = search.collection === 'archive' ? 'archive' : 'current';
+  const rawView = isValidView(search.view) ? search.view : undefined;
+  const rawTask =
+    typeof search.task === 'string' && search.task.trim().length > 0
+      ? search.task.trim()
+      : undefined;
+
+  let view: SpecificationWorkspaceView | undefined;
+  let task: string | undefined;
+
+  if (rawView === 'task') {
+    view = 'task';
+    task = rawTask;
+  } else if (rawView && rawView !== 'work') {
+    view = rawView;
+    task = undefined;
+  } else if (rawTask) {
+    view = 'task';
+    task = rawTask;
+  }
+
+  return {
+    collection,
+    ...(view ? { view } : {}),
+    ...(task ? { task } : {}),
+  };
+}
+
 export const specificationRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/specs/$specId',
-  validateSearch: (
-    search: Record<string, unknown>,
-  ): {
-    collection: 'current' | 'archive';
-    view?: SpecificationWorkspaceView;
-    task?: string;
-  } => ({
-    collection: search.collection === 'archive' ? 'archive' : 'current',
-    ...(isValidView(search.view) ? { view: search.view } : {}),
-    ...(typeof search.task === 'string' && search.task.length > 0 ? { task: search.task } : {}),
-  }),
+  validateSearch: validateSpecificationSearch,
   component: SpecificationRouteScreen,
 });
 

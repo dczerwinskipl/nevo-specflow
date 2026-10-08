@@ -59,14 +59,7 @@ export function TaskRow({
         task.additionalInfo
           ? {
               text: task.additionalInfo,
-              tone:
-                statePresentation.icon === 'triangle-alert'
-                  ? 'attention'
-                  : statePresentation.icon === 'loader'
-                    ? 'info'
-                    : statePresentation.icon === 'circle-check'
-                      ? 'success'
-                      : undefined,
+              tone: statePresentation.tone,
               icon: statePresentation.icon,
               iconClassName: statePresentation.iconClassName,
               textClassName: statePresentation.textClassName,

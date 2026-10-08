@@ -13,6 +13,7 @@ import {
   specsRootRoutes,
   specsRoute,
   specificationRoute,
+  validateSpecificationSearch,
   specsForbiddenRoute,
 } from '../features/specs/routes';
 import { defaultSpecFlowServices } from '../services';
@@ -27,6 +28,7 @@ export {
   runtimeUnavailableRoute,
   specsRoute,
   specificationRoute,
+  validateSpecificationSearch,
   specsForbiddenRoute,
   resolveAppAccess,
   resolveLoginAccess,

@@ -6,7 +6,7 @@ import { OperationalRow } from '../shared/OperationalList';
 export interface SessionsViewProps {
   readonly sessions: readonly SessionSummary[];
   readonly onOpenSession?: (id: string) => void;
-  readonly onNewConversation: () => void;
+  readonly onNewConversation?: () => void;
 }
 
 export function SessionsView({ sessions, onOpenSession, onNewConversation }: SessionsViewProps) {
@@ -19,7 +19,12 @@ export function SessionsView({ sessions, onOpenSession, onNewConversation }: Ses
           {t('specification.sessionsOfThisSpec')}
         </Typography>
 
-        <Button leadingIcon="chat-plus" onClick={onNewConversation}>
+        <Button
+          leadingIcon="chat-plus"
+          disabled={!onNewConversation}
+          title={!onNewConversation ? t('common.notImplemented') : undefined}
+          onClick={onNewConversation}
+        >
           {t('specification.newConversation')}
         </Button>
       </div>
@@ -29,9 +34,9 @@ export function SessionsView({ sessions, onOpenSession, onNewConversation }: Ses
           const supporting = session.activity
             ? {
                 text: session.activity.label,
-                tone: session.activity.tone,
+                tone: session.activity.tone ?? 'neutral',
                 icon: session.activity.icon,
-                iconClassName: session.activity.icon === 'loader' ? 'animate-spin' : undefined,
+                iconClassName: session.activity.animate ? 'animate-spin' : undefined,
               }
             : session.meta
               ? { text: session.meta }

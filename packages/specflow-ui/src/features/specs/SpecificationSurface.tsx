@@ -22,7 +22,9 @@ export interface SpecificationSurfaceProps {
   readonly onBack?: () => void;
   readonly initialView?: SpecificationWorkspaceView;
   readonly initialTask?: string;
+  /** @deprecated Use onNavigateView instead */
   readonly onViewChange?: (view: SpecificationWorkspaceView) => void;
+  /** @deprecated Use onNavigateView instead */
   readonly onTaskChange?: (taskId: string | null) => void;
   readonly onNavigateView?: (target: {
     view: SpecificationWorkspaceView;

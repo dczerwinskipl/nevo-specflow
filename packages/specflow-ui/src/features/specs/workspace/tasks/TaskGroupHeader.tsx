@@ -6,6 +6,7 @@ export interface TaskGroupHeaderProps {
   readonly count: number;
   readonly isCollapsed: boolean;
   readonly tone: 'attention' | 'info' | 'neutral' | 'success';
+  readonly controlsId?: string;
   readonly onToggle: () => void;
 }
 
@@ -14,6 +15,7 @@ export function TaskGroupHeader({
   count,
   isCollapsed,
   tone,
+  controlsId,
   onToggle,
 }: TaskGroupHeaderProps) {
   const { t } = useTranslation();
@@ -24,6 +26,7 @@ export function TaskGroupHeader({
       count={count}
       tone={tone}
       expanded={!isCollapsed}
+      controlsId={controlsId}
       ariaLabel={t(
         isCollapsed ? 'specifications.expandSection' : 'specifications.collapseSection',
         { label: name },

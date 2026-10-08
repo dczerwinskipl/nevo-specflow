@@ -170,6 +170,7 @@ export const defaultSessions: readonly SessionSummary[] = [
       label: 'Agent pracuje',
       tone: 'info',
       icon: 'loader',
+      animate: true,
     },
     meta: 'Agent pracuje · 3 taski · 5 min temu',
   },

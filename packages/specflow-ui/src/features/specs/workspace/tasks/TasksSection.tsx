@@ -118,6 +118,7 @@ export function TasksSection({
       <div className="mt-4 grid gap-4">
         {taskGroups.map((group) => {
           const isCollapsed = collapsedGroups.has(group.id);
+          const groupControlsId = `task-group-${group.id}`;
 
           return (
             <div key={group.id} className="grid gap-1">
@@ -126,11 +127,12 @@ export function TasksSection({
                 count={group.tasks.length}
                 isCollapsed={isCollapsed}
                 tone={getGroupTone(group)}
+                controlsId={groupControlsId}
                 onToggle={() => toggleGroup(group.id)}
               />
 
               {!isCollapsed ? (
-                <InformationList selectable>
+                <InformationList selectable id={groupControlsId}>
                   {group.tasks.map((task) => (
                     <TaskRow
                       key={task.id}

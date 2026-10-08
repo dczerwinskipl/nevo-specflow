@@ -512,7 +512,7 @@ export function useSecondaryStack<
   if (!screen) throw new Error('useSecondaryStack must be used inside a Secondary screen');
   return useMemo(
     () => ({
-      navTo: ((pageOrStack: unknown, params?: object) => {
+      navTo: (pageOrStack: unknown, params?: object) => {
         const target: NavigationTarget =
           typeof pageOrStack === 'string'
             ? { kind: 'page', page: pageOrStack, params }
@@ -522,7 +522,7 @@ export function useSecondaryStack<
                 rootParams: params ?? {},
               };
         return screen.navigate('push', screen.flowId, screen.entryKey, target);
-      }) as SecondaryStackActions<TPages>['navTo'],
+      },
       replace: <K extends keyof TPages & string>(page: K, ...args: SecondaryPageArgs<TPages, K>) =>
         screen.navigate('replace', screen.flowId, screen.entryKey, {
           kind: 'page',

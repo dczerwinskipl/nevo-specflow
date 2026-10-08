@@ -23,7 +23,7 @@ function CrossFeaturePrimary({ sources }: { sources: CrossFeatureSources }) {
 
   return (
     <AppWorkspace split="primary">
-      <AppWorkspace.Primary header={<WorkspaceHeader title="Specification workbench" />}>
+      <AppWorkspace.Primary header={<WorkspaceHeader title="Project workbench" />}>
         <AppContent>
           <div className="flex flex-wrap gap-2 p-5">
             <Button onClick={() => void navigation.open(taskStack, { id: 'task-1' })}>
@@ -51,7 +51,7 @@ export function CrossFeatureNavigationExample({ width = 1400 }: { width?: number
         type="button"
         onClick={() => setScopeKey((s) => (s === 'spec-A' ? 'spec-B' : 'spec-A'))}
       >
-        Switch specification scope ({scopeKey})
+        Switch project scope ({scopeKey})
       </button>
       <AppWorkspaceProvider scopeKey={scopeKey}>
         <AppShell

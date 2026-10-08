@@ -36,7 +36,7 @@ export const TaskChangesFileAndScope: Story = {
     assert(canvas.getByText(/Changes: Changed files/), 'Back must return to Changes module');
     await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
     assert(canvas.getByText(/Task: Implement navigation/), 'Back must return to Task module');
-    await userEvent.click(canvas.getByRole('button', { name: /Switch specification scope/ }));
+    await userEvent.click(canvas.getByRole('button', { name: /Switch project scope/ }));
     assert(canvas.getByText('Default activity panel'), 'Switching scope clears runtime Secondary');
     assert(
       canvasElement.querySelectorAll('[data-cross-feature-mount]').length === 0,

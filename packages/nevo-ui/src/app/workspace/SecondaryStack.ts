@@ -43,12 +43,6 @@ export function defineSecondaryStack<
   return definition;
 }
 
-export type SecondaryPages<T> =
-  T extends SecondaryStackDefinition<object, unknown, infer TPages> ? TPages : never;
-
-export type SecondaryRoot<T> =
-  T extends SecondaryStackDefinition<infer TRoot, unknown, never> ? TRoot : never;
-
 /** A page with no parameters can be opened without passing an empty object. */
 export type SecondaryPageArgs<TPages, K extends keyof TPages> =
   keyof TPages[K] extends never ? [params?: TPages[K]] : [params: TPages[K]];

@@ -27,11 +27,13 @@ function createSource<T extends { updatedAt: string }>(initial: T): ExampleSourc
   const listeners = new Set<() => void>();
   return {
     getSnapshot: () => value,
-    subscribe: listener => {
+    subscribe: (listener) => {
       listeners.add(listener);
-      return () => { listeners.delete(listener); };
+      return () => {
+        listeners.delete(listener);
+      };
     },
-    refresh: revision => {
+    refresh: (revision) => {
       value = { ...value, updatedAt: `revision ${revision}` };
       for (const listener of listeners) listener();
     },
@@ -39,17 +41,28 @@ function createSource<T extends { updatedAt: string }>(initial: T): ExampleSourc
 }
 export function createCrossFeatureSources() {
   const task = createSource<TaskRecord>({
-    id: 'task-1', title: 'Implement navigation', changeId: 'change-1', updatedAt: 'revision 1',
+    id: 'task-1',
+    title: 'Implement navigation',
+    changeId: 'change-1',
+    updatedAt: 'revision 1',
   });
   const changes = createSource<ChangeRecord>({
-    id: 'change-1', title: 'Changed files', fileId: 'file-1', updatedAt: 'revision 1',
+    id: 'change-1',
+    title: 'Changed files',
+    fileId: 'file-1',
+    updatedAt: 'revision 1',
   });
   const file = createSource<FileRecord>({
-    id: 'file-1', path: 'src/components/App.tsx', content: 'Updated UI component', updatedAt: 'revision 1',
+    id: 'file-1',
+    path: 'src/components/App.tsx',
+    content: 'Updated UI component',
+    updatedAt: 'revision 1',
   });
   let revision = 1;
   return {
-    task, changes, file,
+    task,
+    changes,
+    file,
     refresh: () => {
       revision += 1;
       task.refresh(revision);

@@ -1,10 +1,17 @@
 import { useSyncExternalStore } from 'react';
 import { Button } from '../../../components';
-import { defineSecondaryStack, useSecondaryStack, type SecondaryData, type SecondaryScreenProps } from '../../index';
+import {
+  defineSecondaryStack,
+  useSecondaryStack,
+  type SecondaryData,
+  type SecondaryScreenProps,
+} from '../../index';
 import type { ChangeRecord, ExampleSource } from './CrossFeatureSources';
 import type { createFileStack } from './FileStackExample';
 
-interface ChangesPages { details: Record<never, never> }
+interface ChangesPages {
+  details: Record<never, never>;
+}
 
 export function createChangesStack(
   source: ExampleSource<ChangeRecord>,
@@ -12,13 +19,15 @@ export function createChangesStack(
 ) {
   function ChangesDetails({ data }: SecondaryScreenProps<ChangeRecord, ChangesPages['details']>) {
     const navigation = useSecondaryStack<ChangesPages>();
-    return <div className="grid gap-3 p-4">
-      <p>Changes: {data.title}</p>
-      <output data-change-updated>{data.updatedAt}</output>
-      <Button onClick={() => void navigation.navTo(fileStack, { id: data.fileId })}>
-        Inspect changed file
-      </Button>
-    </div>;
+    return (
+      <div className="grid gap-3 p-4">
+        <p>Changes: {data.title}</p>
+        <output data-change-updated>{data.updatedAt}</output>
+        <Button onClick={() => void navigation.navTo(fileStack, { id: data.fileId })}>
+          Inspect changed file
+        </Button>
+      </div>
+    );
   }
 
   function useChanges({ id }: { id: string }): SecondaryData<ChangeRecord> {

@@ -163,7 +163,9 @@ function createEditableSource() {
   return {
     subscribe: (listener: () => void) => {
       listeners.add(listener);
-      return () => { listeners.delete(listener); };
+      return () => {
+        listeners.delete(listener);
+      };
     },
     getSnapshot: () => snapshot,
     setAvailable: (available: boolean) => {
@@ -173,7 +175,9 @@ function createEditableSource() {
   };
 }
 type EditableSource = ReturnType<typeof createEditableSource>;
-interface EditorPages { details: Record<never, never> }
+interface EditorPages {
+  details: Record<never, never>;
+}
 let editorMountId = 0;
 
 function PersistentEditor() {
@@ -183,9 +187,11 @@ function PersistentEditor() {
   useSecondaryLeaveGuard(useCallback(() => !draft.endsWith('!') || allow, [draft, allow]));
   return (
     <div>
-      <input aria-label="Draft" onChange={e => setDraft(e.target.value)} value={draft} />
+      <input aria-label="Draft" onChange={(e) => setDraft(e.target.value)} value={draft} />
       <output data-editor-mount>{mount}</output>
-      <button type="button" onClick={() => setAllow(true)}>Allow editor exit</button>
+      <button type="button" onClick={() => setAllow(true)}>
+        Allow editor exit
+      </button>
     </div>
   );
 }
@@ -219,19 +225,31 @@ function EditableContractFixture() {
       <AppWorkspace split="primary">
         <AppWorkspace.Primary header="Primary">
           <div className="grid gap-3 p-5">
-            <button type="button" onClick={() => void navigation.open(stack, {})}>Open editor</button>
-            <button type="button" onClick={() => source.setAvailable(false)}>Make data unavailable</button>
-            <button type="button" onClick={() => source.setAvailable(true)}>Restore data</button>
+            <button type="button" onClick={() => void navigation.open(stack, {})}>
+              Open editor
+            </button>
+            <button type="button" onClick={() => source.setAvailable(false)}>
+              Make data unavailable
+            </button>
+            <button type="button" onClick={() => source.setAvailable(true)}>
+              Restore data
+            </button>
           </div>
         </AppWorkspace.Primary>
-        <AppWorkspace.Secondary header="Default"><p>Default secondary content</p></AppWorkspace.Secondary>
+        <AppWorkspace.Secondary header="Default">
+          <p>Default secondary content</p>
+        </AppWorkspace.Secondary>
       </AppWorkspace>
     </AppShell>
   );
 }
 
 export const EditorDraftSurvivesDataLoss: Story = {
-  render: () => <AppWorkspaceProvider><EditableContractFixture /></AppWorkspaceProvider>,
+  render: () => (
+    <AppWorkspaceProvider>
+      <EditableContractFixture />
+    </AppWorkspaceProvider>
+  ),
   play: async ({ canvas, canvasElement, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: 'Open editor' }));
     const original = canvasElement.querySelector('[data-editor-mount]')?.textContent;
@@ -242,10 +260,19 @@ export const EditorDraftSurvivesDataLoss: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Make data unavailable' }));
     assert(canvas.getByText('Editing data unavailable.'), 'Unavailable state must be visible');
     await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
-    assert(canvas.getByText('Editing data unavailable.'), 'Dirty hidden editor guard must still block Back');
+    assert(
+      canvas.getByText('Editing data unavailable.'),
+      'Dirty hidden editor guard must still block Back',
+    );
     await userEvent.click(canvas.getByRole('button', { name: 'Restore data' }));
-    assert(canvas.getByRole<HTMLInputElement>('textbox', { name: 'Draft' }).value === 'Changed!', 'Draft must survive');
-    assert(canvasElement.querySelector('[data-editor-mount]')?.textContent === original, 'Editor must not remount');
+    assert(
+      canvas.getByRole<HTMLInputElement>('textbox', { name: 'Draft' }).value === 'Changed!',
+      'Draft must survive',
+    );
+    assert(
+      canvasElement.querySelector('[data-editor-mount]')?.textContent === original,
+      'Editor must not remount',
+    );
     await userEvent.click(canvas.getByRole('button', { name: 'Allow editor exit' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
     assert(canvas.getByText('Default secondary content'), 'Allowed exit closes the flow');

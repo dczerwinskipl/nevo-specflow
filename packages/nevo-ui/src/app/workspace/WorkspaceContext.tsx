@@ -185,7 +185,9 @@ function ScreenOutlet({
       <div role="alert">
         <p>{result.message ?? 'Unable to load this item.'}</p>
         {result.retry ? (
-          <button type="button" onClick={result.retry}>Retry</button>
+          <button type="button" onClick={result.retry}>
+            Retry
+          </button>
         ) : null}
       </div>
     );
@@ -282,7 +284,12 @@ export function AppWorkspaceProvider({
       guards.current.clear();
       setFlow(null);
       revision.current += 1;
-      setTransition({ action: 'close', revision: revision.current, incoming: null, outgoing: null });
+      setTransition({
+        action: 'close',
+        revision: revision.current,
+        incoming: null,
+        outgoing: null,
+      });
     }
   }, [scopeKey]);
 
@@ -400,8 +407,13 @@ export function AppWorkspaceProvider({
         if (!mounted.current) return false;
         const previous = flowRef.current;
         const current = previous?.entries.at(-1);
-        if (!previous || previous.scopeKey !== scopeKey || !current ||
-          previous.id !== flowId || current.instanceKey !== entryKey) {
+        if (
+          !previous ||
+          previous.scopeKey !== scopeKey ||
+          !current ||
+          previous.id !== flowId ||
+          current.instanceKey !== entryKey
+        ) {
           return false; // Stale callbacks cannot mutate a newer flow or page.
         }
         if (!(await passesGuard(previous)) || !mounted.current) return false;
@@ -465,12 +477,14 @@ export function AppWorkspaceProvider({
       secondary: currentSurface(visibleFlow),
       secondaryDepth: visibleFlow?.entries.length ?? 0,
       canGoBack: (visibleFlow?.entries.length ?? 0) > 1,
-      transition: visibleFlow ? transition : {
-        action: 'close',
-        revision: transition.revision,
-        incoming: null,
-        outgoing: null,
-      },
+      transition: visibleFlow
+        ? transition
+        : {
+            action: 'close',
+            revision: transition.revision,
+            incoming: null,
+            outgoing: null,
+          },
       open,
       back,
       close,
@@ -499,9 +513,14 @@ export function useSecondaryStack<
   return useMemo(
     () => ({
       navTo: ((pageOrStack: unknown, params?: object) => {
-        const target: NavigationTarget = typeof pageOrStack === 'string'
-          ? { kind: 'page', page: pageOrStack, params }
-          : { kind: 'stack', definition: pageOrStack as RuntimeDefinition, rootParams: params ?? {} };
+        const target: NavigationTarget =
+          typeof pageOrStack === 'string'
+            ? { kind: 'page', page: pageOrStack, params }
+            : {
+                kind: 'stack',
+                definition: pageOrStack as RuntimeDefinition,
+                rootParams: params ?? {},
+              };
         return screen.navigate('push', screen.flowId, screen.entryKey, target);
       }) as SecondaryStackActions<TPages>['navTo'],
       replace: <K extends keyof TPages & string>(page: K, ...args: SecondaryPageArgs<TPages, K>) =>

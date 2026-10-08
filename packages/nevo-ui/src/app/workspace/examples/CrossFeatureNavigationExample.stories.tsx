@@ -24,14 +24,23 @@ export const TaskChangesFileAndScope: Story = {
     const mountId = canvasElement.querySelector('[data-cross-feature-mount]')?.textContent;
     assert(value && mountId, 'File page must be mounted with live data');
     await userEvent.click(canvas.getByRole('button', { name: 'Refresh three sources' }));
-    assert(canvasElement.querySelector('[data-cross-feature-updated]')?.textContent !== value, 'File receives fresh props');
-    assert(canvasElement.querySelector('[data-cross-feature-mount]')?.textContent === mountId, 'Refresh must not remount');
+    assert(
+      canvasElement.querySelector('[data-cross-feature-updated]')?.textContent !== value,
+      'File receives fresh props',
+    );
+    assert(
+      canvasElement.querySelector('[data-cross-feature-mount]')?.textContent === mountId,
+      'Refresh must not remount',
+    );
     await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
     assert(canvas.getByText(/Changes: Changed files/), 'Back must return to Changes module');
     await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
     assert(canvas.getByText(/Task: Implement navigation/), 'Back must return to Task module');
     await userEvent.click(canvas.getByRole('button', { name: /Switch specification scope/ }));
     assert(canvas.getByText('Default activity panel'), 'Switching scope clears runtime Secondary');
-    assert(canvasElement.querySelectorAll('[data-cross-feature-mount]').length === 0, 'Old scope must not remain mounted');
+    assert(
+      canvasElement.querySelectorAll('[data-cross-feature-mount]').length === 0,
+      'Old scope must not remain mounted',
+    );
   },
 };

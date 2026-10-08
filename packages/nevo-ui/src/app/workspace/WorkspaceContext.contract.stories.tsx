@@ -10,7 +10,7 @@ import {
   useSecondaryStack,
 } from './WorkspaceContext';
 
-type Pages = {
+interface Pages {
   first: Record<never, never>;
   second: Record<never, never>;
   guarded: Record<never, never>;

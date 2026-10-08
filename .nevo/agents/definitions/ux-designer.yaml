@@ -10,7 +10,7 @@ knowledge:
   required:
     - architecture.principles.normative-language
     - design-system.principles.ui-ux-guidelines
-    - design-system.principles.information-row-hierarchy
+    - design-system.principles.information-hierarchy
     - design-system.principles.layout-and-containment
     - design-system.principles.system-boundary
     - product.specflow.ui.interaction-model

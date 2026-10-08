@@ -13,7 +13,7 @@ knowledge:
     - engineering.shared.testing
     - design-system.principles.system-boundary
     - design-system.principles.ui-ux-guidelines
-    - design-system.principles.information-row-hierarchy
+    - design-system.principles.information-hierarchy
     - design-system.principles.layout-and-containment
     - design-system.implementation.react.component-guidelines
     - design-system.implementation.storybook.guidelines

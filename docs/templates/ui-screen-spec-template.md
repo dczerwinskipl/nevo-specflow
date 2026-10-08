@@ -67,15 +67,20 @@ Do not turn every status into an attention surface.
 
 Describe the normal reading/scan order.
 
-For every major region and repeated item, define:
+Map material facts to the canonical semantic roles from
+`design-system.principles.information-hierarchy`. For every major region and repeated item, define
+when relevant:
 
+- section/group structural labels;
 - primary information;
 - secondary information;
-- tertiary/optional information;
+- supporting information;
+- semantic supporting information;
 - information deliberately omitted at this level;
+- actions/navigation as affordances rather than information text;
 - maximum visible metadata/signals where a strict budget is useful.
 
-A rich source model does not justify a rich summary.
+Do not invent feature-specific typography roles. A rich source model does not justify a rich summary.
 
 ## 5. Composition invariants
 
@@ -181,13 +186,21 @@ For each state say:
 
 Avoid state-specific mini-layouts unless the state genuinely changes the user's task.
 
-## 11. Component and ownership map
+## 11. Established patterns and ownership map
 
-Map regions to:
+For every material region/structure, identify when available:
 
-- existing Nevo UI primitives;
-- product-owned compositions;
-- missing reusable capability candidates.
+- established design-system pattern/component;
+- established neighboring product composition;
+- product-owned composition;
+- missing reusable capability candidate;
+- intentional departure from an established pattern, with the user-facing reason.
+
+Use stable component/pattern names or canonical document references, not implementation file paths or
+import syntax.
+
+These references are the intended starting point, not permission for implementation to skip its own
+semantic component discovery.
 
 Do not create a design-system abstraction only because two pieces of markup currently look similar.
 

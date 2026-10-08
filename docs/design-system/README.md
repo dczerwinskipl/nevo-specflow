@@ -15,6 +15,7 @@ This area owns reusable Nevo UI knowledge. SpecFlow-specific UX belongs under
 
 - [Nevo UI system boundary](principles/system-boundary.md)
 - [UI/UX principles](principles/ui-ux-guidelines.md)
+- [Semantic information hierarchy](principles/information-hierarchy.md)
 - [Information row hierarchy](principles/information-row-hierarchy.md)
 - [Layout and containment](principles/layout-and-containment.md)
 - [Code-to-Figma projection](figma/code-to-figma-projection.md)

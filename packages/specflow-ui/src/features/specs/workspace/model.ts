@@ -36,6 +36,7 @@ export interface TaskItem {
   readonly title: string;
   readonly status: string;
   readonly lifecycle?: TaskLifecycle;
+  readonly attention?: boolean;
   readonly additionalInfo?: string;
   readonly group: string;
   readonly purpose?: string;
@@ -111,14 +112,41 @@ export interface RepoContext {
   readonly freshness?: 'fresh' | 'stale' | 'unknown';
 }
 
-export interface ActivityEvent {
+export type ActivityEventKind = 'task' | 'session' | 'doc' | 'info';
+
+export interface BaseActivityEvent {
   readonly id: string;
   readonly time: string;
   readonly title: string;
   readonly description: string;
-  readonly type?: 'task' | 'session' | 'doc';
+}
+
+export interface TaskActivityEvent extends BaseActivityEvent {
+  readonly type?: 'task';
+  readonly kind?: 'task';
+  readonly targetId: string;
+}
+
+export interface SessionActivityEvent extends BaseActivityEvent {
+  readonly type?: 'session';
+  readonly kind?: 'session';
+  readonly targetId: string;
+}
+
+export interface DocumentActivityEvent extends BaseActivityEvent {
+  readonly type?: 'doc';
+  readonly kind?: 'doc';
+  readonly targetId: string;
+}
+
+export interface InformationalActivityEvent extends BaseActivityEvent {
+  readonly type?: 'info';
+  readonly kind?: 'info';
   readonly targetId?: string;
 }
+
+export type ActivityEvent =
+  TaskActivityEvent | SessionActivityEvent | DocumentActivityEvent | InformationalActivityEvent;
 
 export interface SpecificationChangesData {
   readonly base?: readonly string[];
@@ -130,6 +158,7 @@ export interface SpecificationWorkspaceData {
   readonly id: string;
   readonly title: string;
   readonly intro: string;
+  readonly mainDocumentId?: string;
   readonly isEmpty?: boolean;
   readonly isPreparing?: boolean;
   readonly hasGit?: boolean;
@@ -154,15 +183,7 @@ export interface TaskStatePresentation {
 }
 
 export function getTaskStatePresentation(task: TaskItem): TaskStatePresentation {
-  const info = task.additionalInfo?.toLowerCase() ?? '';
-  const status = task.status.toLowerCase();
-
-  if (
-    task.lifecycle === 'blocked' ||
-    info.includes('wymaga decyzji') ||
-    info.includes('decision') ||
-    info.includes('uwagi')
-  ) {
+  if (task.lifecycle === 'blocked' || task.attention) {
     return {
       icon: 'triangle-alert',
       iconClassName: 'text-status-attention',
@@ -170,11 +191,7 @@ export function getTaskStatePresentation(task: TaskItem): TaskStatePresentation 
     };
   }
 
-  if (
-    task.lifecycle === 'in_progress' ||
-    info.includes('agent pracuje') ||
-    info.includes('working')
-  ) {
+  if (task.lifecycle === 'in_progress') {
     return {
       icon: 'loader',
       iconClassName: 'text-accent-primary animate-spin',
@@ -182,23 +199,11 @@ export function getTaskStatePresentation(task: TaskItem): TaskStatePresentation 
     };
   }
 
-  if (
-    task.lifecycle === 'completed' ||
-    status.includes('ukończone') ||
-    status.includes('completed')
-  ) {
+  if (task.lifecycle === 'completed') {
     return {
       icon: 'circle-check',
       iconClassName: 'text-status-success',
       textClassName: 'text-content-secondary',
-    };
-  }
-
-  if (info.includes('czeka') || info.includes('waiting')) {
-    return {
-      icon: 'clock',
-      iconClassName: 'text-content-muted',
-      textClassName: 'text-content-muted',
     };
   }
 

@@ -1,4 +1,4 @@
-import { Button, Icon, Typography } from '@nevo/ui';
+import { Icon, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 
 export function ExtensionsSection() {
@@ -20,18 +20,10 @@ export function ExtensionsSection() {
         </Typography>
       </div>
 
-      <div className="mt-3 flex items-center justify-between rounded-control border border-border-subtle bg-surface-subtle p-3">
-        <div>
-          <div className="font-medium text-content-primary">
-            {t('specification.continuousIntegration')}
-          </div>
-          <div className="text-body-xs text-content-muted">
-            {t('specification.lastCheckPassed')}
-          </div>
-        </div>
-        <Button size="sm" variant="secondary">
-          {t('common.open')}
-        </Button>
+      <div className="mt-3 rounded-control border border-border-subtle bg-surface-subtle p-4">
+        <Typography variant="body-sm" className="text-content-muted">
+          {t('specification.extensionsNotice')}
+        </Typography>
       </div>
     </section>
   );

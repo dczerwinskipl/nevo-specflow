@@ -1,4 +1,11 @@
-import { Icon, StatusIndicator, Typography, cn, type StatusTone } from '@nevo/ui';
+import {
+  Icon,
+  StatusIndicator,
+  Typography,
+  cn,
+  useOptionalInformationListContext,
+  type StatusTone,
+} from '@nevo/ui';
 
 export interface OperationalGroupHeaderProps {
   readonly label: string;
@@ -10,6 +17,7 @@ export interface OperationalGroupHeaderProps {
   readonly ariaLabel?: string;
   readonly className?: string;
   readonly selectable?: boolean;
+  readonly ariaDisabled?: boolean;
 }
 
 export function OperationalGroupHeader({
@@ -21,8 +29,12 @@ export function OperationalGroupHeader({
   controlsId,
   ariaLabel,
   className,
-  selectable: _selectable = false,
+  selectable = false,
+  ariaDisabled = false,
 }: OperationalGroupHeaderProps) {
+  const listContext = useOptionalInformationListContext();
+  const effectiveSelectable = selectable || (listContext?.selectable ?? false);
+
   return (
     <div
       className={cn(
@@ -30,16 +42,20 @@ export function OperationalGroupHeader({
         className,
       )}
       data-spec-section-header
+      data-selectable={effectiveSelectable ? 'true' : undefined}
     >
       {/* Utility slot: 32px to align chevron with checkboxes when selectable */}
       <div className="flex size-8 shrink-0 items-center justify-center">
         <button
           type="button"
-          className="flex h-control-height-default w-full cursor-pointer items-center justify-center rounded-control outline-none hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-focus-ring"
+          className="flex h-control-height-default w-full cursor-pointer items-center justify-center rounded-control outline-none hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-focus-ring aria-disabled:cursor-default"
           aria-expanded={expanded}
+          aria-disabled={ariaDisabled ? 'true' : undefined}
           aria-controls={controlsId}
           aria-label={ariaLabel}
-          onClick={onToggle}
+          onClick={() => {
+            if (!ariaDisabled) onToggle();
+          }}
         >
           <Icon
             className={cn('text-content-muted transition-transform', expanded && 'rotate-90')}

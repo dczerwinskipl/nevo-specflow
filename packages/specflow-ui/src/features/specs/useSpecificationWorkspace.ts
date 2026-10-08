@@ -1,6 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
+import { useContext } from 'react';
+import { useQuery, QueryClientContext } from '@tanstack/react-query';
 import { isHttpClientError } from '@nevo/http-client';
 
+import { defaultQueryClient } from '../../app/queryClient';
 import { useSpecFlowServices } from '../../services';
 import type { SpecificationApi } from './api';
 import { specificationKeys } from './queries';
@@ -25,12 +27,16 @@ export function useSpecificationWorkspace(
 ): UseSpecificationWorkspaceResult {
   const services = useSpecFlowServices();
   const activeApi = api ?? services.specificationApi;
+  const contextClient = useContext(QueryClientContext);
 
-  const query = useQuery({
-    queryKey: specificationKeys.detail(specId),
-    queryFn: ({ signal }) => activeApi.getSpecificationWorkspace(specId, signal),
-    enabled: Boolean(specId),
-  });
+  const query = useQuery(
+    {
+      queryKey: specificationKeys.detail(specId),
+      queryFn: ({ signal }) => activeApi.getSpecificationWorkspace(specId, signal),
+      enabled: Boolean(specId),
+    },
+    contextClient ?? defaultQueryClient,
+  );
 
   const isMissingCapability = Boolean(
     query.error &&

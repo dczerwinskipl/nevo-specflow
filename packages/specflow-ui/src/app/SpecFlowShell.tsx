@@ -19,6 +19,8 @@ import { defaultNevoBrand, NevoBrandLogo } from '../brand';
 import type { SpecificationWorkspaceView } from '../features/specs/workspace/model';
 import { AccountMenu } from './AccountMenu';
 
+import { useSpecificationWorkspace } from '../features/specs/useSpecificationWorkspace';
+
 interface NavigationTarget {
   readonly to: '/' | '/specs/$specId';
   readonly params?: { readonly specId: string };
@@ -50,6 +52,8 @@ function ProductNavigation({
   const activeView = search?.view ?? 'work';
   const collection = search?.collection ?? 'current';
 
+  const { data: specData } = useSpecificationWorkspace(activeSpecId ?? '');
+
   const state = useSyncExternalStore(
     (listener) => auth.subscribe(listener),
     () => auth.getState(),
@@ -78,6 +82,13 @@ function ProductNavigation({
     ];
 
     if (activeSpecId) {
+      const docCount = specData?.documents.length;
+      const docsLabel =
+        docCount !== undefined
+          ? `${t('specification.viewDocuments')} ${docCount}`
+          : t('specification.viewDocuments');
+      const hasGit = specData?.hasGit !== false;
+
       rootNodes.push({
         key: `spec-${activeSpecId}`,
         label: activeSpecId,
@@ -98,7 +109,7 @@ function ProductNavigation({
           },
           {
             key: `spec-view-documents`,
-            label: `${t('specification.viewDocuments')} 5`,
+            label: docsLabel,
             target: {
               to: '/specs/$specId',
               params: { specId: activeSpecId },
@@ -114,30 +125,34 @@ function ProductNavigation({
               search: { collection, view: 'sessions' },
             },
           },
-          {
-            key: `spec-view-changes`,
-            label: t('specification.viewChanges'),
-            target: {
-              to: '/specs/$specId',
-              params: { specId: activeSpecId },
-              search: { collection, view: 'changes' },
-            },
-          },
-          {
-            key: `spec-view-repository`,
-            label: t('specification.viewRepository'),
-            target: {
-              to: '/specs/$specId',
-              params: { specId: activeSpecId },
-              search: { collection, view: 'repository' },
-            },
-          },
+          ...(hasGit
+            ? [
+                {
+                  key: `spec-view-changes`,
+                  label: t('specification.viewChanges'),
+                  target: {
+                    to: '/specs/$specId' as const,
+                    params: { specId: activeSpecId },
+                    search: { collection, view: 'changes' as const },
+                  },
+                },
+                {
+                  key: `spec-view-repository`,
+                  label: t('specification.viewRepository'),
+                  target: {
+                    to: '/specs/$specId' as const,
+                    params: { specId: activeSpecId },
+                    search: { collection, view: 'repository' as const },
+                  },
+                },
+              ]
+            : []),
         ],
       });
     }
 
     return rootNodes;
-  }, [activeSpecId, collection, t]);
+  }, [activeSpecId, collection, specData, t]);
 
   const rootIcons = useMemo(() => {
     const icons: Record<string, IconName> = {
@@ -210,7 +225,6 @@ function ProductNavigation({
         {...designLayerMetadata({ layer: 'brand' })}
       >
         <NevoBrandLogo {...defaultNevoBrand} product="SpecFlow" size="md" type="horizontal" />
-        <div className="mt-1 pl-7 text-body-xs text-content-muted">crm</div>
       </div>
 
       <Separator />

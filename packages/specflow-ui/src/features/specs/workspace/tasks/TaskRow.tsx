@@ -74,7 +74,6 @@ export function TaskRow({
           : undefined
       }
       leading={leading}
-      marker={true}
       trailing={trailing}
       selected={selected}
       dataAttributes={{

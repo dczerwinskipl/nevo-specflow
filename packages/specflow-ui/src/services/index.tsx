@@ -20,10 +20,8 @@ export interface SpecFlowAppServices {
   readonly http: HttpClient;
   readonly authApi: AuthApi;
   readonly authStore: AuthStore;
-  readonly auth: AuthStore;
   readonly specsOverviewApi: SpecsOverviewApi;
   readonly specsSource: SpecsOverviewSource;
-  readonly specs: SpecsOverviewSource;
   readonly specificationApi: SpecificationApi;
 }
 
@@ -66,10 +64,8 @@ export function createSpecFlowAppServices(
     http,
     authApi,
     authStore,
-    auth: authStore,
     specsOverviewApi,
     specsSource,
-    specs: specsSource,
     specificationApi,
   };
 }

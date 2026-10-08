@@ -1,4 +1,4 @@
-import { Icon, InformationList, Typography, cn } from '@nevo/ui';
+import { Icon, InformationList, Typography, cn, useOptionalInformationListContext } from '@nevo/ui';
 import type { OperationalRowProps, SemanticSupporting } from './OperationalRow.types';
 
 function isSemanticSupporting(value: unknown): value is SemanticSupporting {
@@ -17,14 +17,19 @@ export function OperationalRow({
   primaryAriaLabel,
   compactFacts = [],
   supporting,
+  metadata,
   trailing,
   leading,
   marker,
   interactive = false,
   selected = false,
+  selectable,
+  titleAs = 'h3',
   className,
   dataAttributes = {},
 }: OperationalRowProps) {
+  const listContext = useOptionalInformationListContext();
+  const isSelectable = selectable ?? listContext?.selectable ?? false;
   const isRowInteractive = interactive || Boolean(primaryHref) || Boolean(onPrimaryClick);
 
   const primaryContent = primaryHref ? (
@@ -97,10 +102,24 @@ export function OperationalRow({
     if (fact === undefined) return null;
     const text = typeof fact === 'string' ? fact : fact.text;
     const isMono = typeof fact === 'object' && fact.mono;
+    const attrs = typeof fact === 'object' ? fact.dataAttributes : undefined;
     return (
-      <span className={cn('truncate text-content-secondary', isMono && 'font-mono')}>{text}</span>
+      <span className={cn('truncate text-content-secondary', isMono && 'font-mono')} {...attrs}>
+        {text}
+      </span>
     );
   };
+
+  const leadingSlot = leading ? (
+    <InformationList.Leading>{leading}</InformationList.Leading>
+  ) : isSelectable ? (
+    <InformationList.Leading aria-hidden="true" />
+  ) : null;
+
+  const markerSlot =
+    marker && typeof marker !== 'boolean' ? (
+      <div className="flex size-4 shrink-0 items-center justify-center">{marker}</div>
+    ) : null;
 
   return (
     <InformationList.Item
@@ -109,35 +128,44 @@ export function OperationalRow({
       className={className}
       {...dataAttributes}
     >
-      {leading ? <InformationList.Leading>{leading}</InformationList.Leading> : null}
-      {marker ? (
-        <div className="flex size-4 shrink-0 items-center justify-center">
-          {marker === true ? <span aria-hidden="true" className="size-4 shrink-0" /> : marker}
-        </div>
-      ) : null}
+      {leadingSlot}
+      {markerSlot}
 
       <InformationList.Content>
-        {/* Line 1: Primary title single line */}
-        <Typography as="h3" variant="title-sm" className="flex min-w-0 text-content-primary">
-          {primaryContent}
-        </Typography>
+        <div className="pointer-events-none flex min-w-0 flex-1 flex-col gap-x-4 gap-y-1 @3xl/info-row:flex-row @3xl/info-row:items-center">
+          <div className="min-w-0 flex-1">
+            {/* Line 1: Primary title single line */}
+            <Typography
+              as={titleAs}
+              variant="title-sm"
+              className="flex min-w-0 text-content-primary"
+              data-spec-title="true"
+            >
+              {primaryContent}
+            </Typography>
 
-        {/* Line 2: Compact facts + supporting */}
-        {compactFacts.length > 0 || supportingContent ? (
-          <Typography
-            as="div"
-            variant="body-sm"
-            className={cn(secondaryGridClass, 'text-content-muted')}
-          >
-            {renderFact(fact1)}
-            {renderFact(fact2)}
-            {supportingContent && (
-              <div className={cn('min-w-0 truncate', hasTwoFacts ? 'col-span-1' : 'col-span-1')}>
-                {supportingContent}
-              </div>
-            )}
-          </Typography>
-        ) : null}
+            {/* Line 2: Compact facts + supporting */}
+            {compactFacts.length > 0 || supportingContent ? (
+              <Typography
+                as="div"
+                variant="body-sm"
+                className={cn(secondaryGridClass, 'text-content-muted')}
+                data-spec-secondary="true"
+              >
+                {renderFact(fact1)}
+
+                {renderFact(fact2)}
+                {supportingContent && <div className="min-w-0 truncate">{supportingContent}</div>}
+              </Typography>
+            ) : null}
+          </div>
+
+          {metadata ? (
+            <div className="flex min-w-0 max-w-full shrink-0 flex-wrap items-center gap-x-2 gap-y-1 text-body-sm text-content-secondary">
+              {metadata}
+            </div>
+          ) : null}
+        </div>
       </InformationList.Content>
 
       {trailing ? <InformationList.Trailing>{trailing}</InformationList.Trailing> : null}

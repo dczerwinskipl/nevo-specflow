@@ -24,8 +24,8 @@ describe('SpecFlow application services', () => {
     const services = createSpecFlowAppServices(client);
     const signal = new AbortController().signal;
 
-    await expect(services.auth.ensureSession()).resolves.toEqual(localSession);
-    await expect(services.specs.read('archive', signal)).resolves.toEqual(projection);
+    await expect(services.authStore.ensureSession()).resolves.toEqual(localSession);
+    await expect(services.specsSource.read('archive', signal)).resolves.toEqual(projection);
 
     expect(get).toHaveBeenNthCalledWith(1, '/api/auth/session');
     expect(get).toHaveBeenNthCalledWith(2, '/api/specs/overview', {

@@ -35,7 +35,12 @@ export interface WorkViewProps {
 export function WorkView({ data }: WorkViewProps) {
   return (
     <div className="grid max-w-content-standard gap-8 py-2">
-      <SpecificationSummarySection title={data.title} intro={data.intro} isEmpty={data.isEmpty} />
+      <SpecificationSummarySection
+        title={data.title}
+        intro={data.intro}
+        isEmpty={data.isEmpty}
+        mainDocumentId={data.mainDocumentId ?? data.documents[0]?.id}
+      />
 
       {data.attentionItems.length > 0 ? <AttentionSection items={data.attentionItems} /> : null}
 

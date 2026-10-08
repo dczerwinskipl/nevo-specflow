@@ -19,6 +19,7 @@ export const defaultTaskGroups: readonly TaskGroup[] = [
         title: 'Obsługa odświeżania uprawnień w długotrwałej sesji użytkownika',
         status: 'Weryfikacja',
         lifecycle: 'blocked',
+        attention: true,
         additionalInfo: 'Wymaga decyzji',
         group: 'implementation',
         purpose:

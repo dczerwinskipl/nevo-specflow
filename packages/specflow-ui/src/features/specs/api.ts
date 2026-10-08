@@ -27,6 +27,11 @@ export class SpecificationWorkspaceUnavailableError extends Error {
   }
 }
 
+/**
+ * Returns an unavailable SpecificationApi indicating that the backend runtime
+ * workspace read-model endpoint (`/api/specs/:specId/workspace`) is not yet implemented.
+ * This is the production default until the backend runtime workspace capability is built.
+ */
 export function createUnavailableSpecificationApi(
   reason = 'Specification workspace read-model needed: endpoint /api/specs/:specId/workspace is not implemented in runtime.',
 ): SpecificationApi {
@@ -40,6 +45,11 @@ export function createUnavailableSpecificationApi(
   };
 }
 
+/**
+ * Constructs a SpecificationApi that calls the planned runtime endpoint.
+ * Note: `/api/specs/:specId/workspace` is not yet available in the backend runtime.
+ * Once implemented in runtime, this adapter will connect to the real service.
+ */
 export function createRuntimeSpecificationApi(client: HttpClient): SpecificationApi {
   return {
     getSpecificationWorkspace: (specId, signal) =>

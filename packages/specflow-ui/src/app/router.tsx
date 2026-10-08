@@ -56,7 +56,9 @@ export function createSpecFlowRouter(
     | SpecFlowAppServices
     | AuthStore
     | {
-        readonly auth: AuthStore;
+        readonly authStore?: AuthStore;
+        readonly auth?: AuthStore;
+        readonly specsSource?: SpecsOverviewSource;
         readonly specs?: SpecsOverviewSource;
       } = createSpecFlowAppServices(),
   specs?: SpecsOverviewSource,
@@ -65,10 +67,16 @@ export function createSpecFlowRouter(
 
   if ('http' in servicesOrAuth && 'specificationApi' in servicesOrAuth) {
     services = servicesOrAuth;
-  } else if ('auth' in servicesOrAuth) {
+  } else if ('authStore' in servicesOrAuth || 'auth' in servicesOrAuth) {
+    const raw = servicesOrAuth as {
+      authStore?: AuthStore;
+      auth?: AuthStore;
+      specsSource?: SpecsOverviewSource;
+      specs?: SpecsOverviewSource;
+    };
     services = createSpecFlowAppServices({
-      authStore: servicesOrAuth.auth,
-      specsSource: servicesOrAuth.specs,
+      authStore: raw.authStore ?? raw.auth,
+      specsSource: raw.specsSource ?? raw.specs,
     });
   } else if ('ensureSession' in servicesOrAuth) {
     services = createSpecFlowAppServices({

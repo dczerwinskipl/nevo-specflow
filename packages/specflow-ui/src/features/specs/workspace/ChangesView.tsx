@@ -7,7 +7,7 @@ export interface ChangesViewProps {
   readonly currentSource: 'base' | 'uncommitted' | 'mr';
   readonly changes?: SpecificationChangesData;
   readonly onSourceChange: (source: 'base' | 'uncommitted' | 'mr') => void;
-  readonly onDiff: (file: string) => void;
+  readonly onDiff?: (file: string) => void;
 }
 
 export function ChangesView({ currentSource, changes, onSourceChange, onDiff }: ChangesViewProps) {
@@ -57,9 +57,11 @@ export function ChangesView({ currentSource, changes, onSourceChange, onDiff }: 
               <span className="font-mono text-body-sm text-content-primary [overflow-wrap:anywhere]">
                 {file}
               </span>
-              <Button variant="secondary" size="sm" onClick={() => onDiff(file)}>
-                {t('specification.diffAction')}
-              </Button>
+              {onDiff ? (
+                <Button variant="secondary" size="sm" onClick={() => onDiff(file)}>
+                  {t('specification.diffAction')}
+                </Button>
+              ) : null}
             </div>
           ))}
         </div>

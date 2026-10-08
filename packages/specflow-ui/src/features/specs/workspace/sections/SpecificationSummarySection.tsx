@@ -6,12 +6,14 @@ export interface SpecificationSummarySectionProps {
   readonly title: string;
   readonly intro?: string;
   readonly isEmpty?: boolean;
+  readonly mainDocumentId?: string;
 }
 
 export function SpecificationSummarySection({
   title,
   intro,
   isEmpty = false,
+  mainDocumentId,
 }: SpecificationSummarySectionProps) {
   const { t } = useTranslation();
   const runtime = useWorkspaceRuntime();
@@ -26,13 +28,15 @@ export function SpecificationSummarySection({
           <Typography variant="body-md" className="text-content-secondary">
             {intro}
           </Typography>
-          <button
-            type="button"
-            onClick={() => runtime.openDoc('spec')}
-            className="w-fit text-left text-body-sm font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring"
-          >
-            {t('specification.readSpecificationLink')}
-          </button>
+          {mainDocumentId ? (
+            <button
+              type="button"
+              onClick={() => runtime.openDoc(mainDocumentId)}
+              className="w-fit text-left text-body-sm font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring"
+            >
+              {t('specification.readSpecificationLink')}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>

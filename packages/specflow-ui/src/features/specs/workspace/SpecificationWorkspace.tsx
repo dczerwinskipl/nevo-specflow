@@ -4,8 +4,11 @@ import {
   AppContentContainer,
   AppWorkspace,
   AppWorkspaceBody,
+  AppWorkspaceProvider,
+  Button,
   Icon,
   Link,
+  useWorkspace,
   WorkspaceHeader,
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
@@ -30,6 +33,7 @@ export interface SpecificationWorkspaceProps {
   readonly initialView?: SpecificationWorkspaceView;
   readonly initialTask?: string;
   readonly onViewChange?: (view: SpecificationWorkspaceView) => void;
+  readonly onTaskChange?: (taskId: string | null) => void;
   readonly onRefresh?: () => void | Promise<void>;
   readonly onExecute?: (agent: string, tasks: readonly string[]) => void | Promise<void>;
   readonly onNewConversation?: (agent: string) => void | Promise<void>;
@@ -37,7 +41,15 @@ export interface SpecificationWorkspaceProps {
   readonly onDiff?: (file: string) => void;
 }
 
-export function SpecificationWorkspace({
+export function SpecificationWorkspace(props: SpecificationWorkspaceProps) {
+  return (
+    <AppWorkspaceProvider>
+      <SpecificationWorkspaceInner {...props} />
+    </AppWorkspaceProvider>
+  );
+}
+
+function SpecificationWorkspaceInner({
   specId,
   data,
   overviewHref,
@@ -45,6 +57,7 @@ export function SpecificationWorkspace({
   initialView = 'work',
   initialTask,
   onViewChange,
+  onTaskChange,
   onRefresh,
   onExecute,
   onNewConversation,
@@ -52,6 +65,7 @@ export function SpecificationWorkspace({
   onDiff,
 }: SpecificationWorkspaceProps) {
   const { t } = useTranslation();
+  const workspace = useWorkspace();
 
   const [currentView, setCurrentView] = useState<SpecificationWorkspaceView>(
     initialTask ? 'task' : initialView,
@@ -83,6 +97,10 @@ export function SpecificationWorkspace({
 
   const handleViewChange = (view: SpecificationWorkspaceView) => {
     setCurrentView(view);
+    if (view !== 'task') {
+      setFullTaskId(null);
+      onTaskChange?.(null);
+    }
     onViewChange?.(view);
   };
 
@@ -95,11 +113,14 @@ export function SpecificationWorkspace({
     setFullTaskId(taskId);
     handleViewChange('task');
     setPreviewTaskId(null);
+    onTaskChange?.(taskId);
+    void workspace.closeSecondary();
   };
 
   const handleBackFromFullTask = () => {
     setFullTaskId(null);
     handleViewChange('work');
+    onTaskChange?.(null);
   };
 
   const handleOpenDoc = (docId: string, origin: 'work' | 'documents' = 'work') => {
@@ -112,6 +133,76 @@ export function SpecificationWorkspace({
     setChangesSource(source);
     handleViewChange('changes');
   };
+
+  const fullTask = useMemo(() => {
+    if (!fullTaskId) return null;
+    return data.taskGroups.flatMap((g) => g.tasks).find((t) => t.id === fullTaskId) ?? null;
+  }, [data.taskGroups, fullTaskId]);
+
+  const previewTask = useMemo(() => {
+    if (!previewTaskId) return null;
+    return data.taskGroups.flatMap((g) => g.tasks).find((t) => t.id === previewTaskId) ?? null;
+  }, [data.taskGroups, previewTaskId]);
+
+  // Synchronize runtime secondary with previewTask and explicitHistory
+  useEffect(() => {
+    if (previewTask) {
+      void workspace.setSecondary(
+        {
+          header: <WorkspaceHeader title={t('specification.taskPreviewTitle')} />,
+          content: (
+            <AppContent>
+              <TaskPreview
+                task={previewTask}
+                groups={data.taskGroups}
+                specKey={specId}
+                onClose={() => {
+                  setPreviewTaskId(null);
+                  void workspace.closeSecondary();
+                }}
+                onOpenFull={(taskId) => {
+                  setPreviewTaskId(null);
+                  void workspace.closeSecondary();
+                  handleOpenFullTask(taskId);
+                }}
+              />
+            </AppContent>
+          ),
+        },
+        {
+          onClose: () => {
+            setPreviewTaskId(null);
+          },
+        },
+      );
+    } else if (explicitHistory) {
+      void workspace.setSecondary(
+        {
+          header: <WorkspaceHeader title={t('specification.activityHistory')} />,
+          content: (
+            <AppContent>
+              <ActivityHistory
+                events={data.activityEvents}
+                isExplicit={true}
+                onClose={() => {
+                  setExplicitHistory(false);
+                  void workspace.closeSecondary();
+                }}
+                onOpenTask={handlePreviewTask}
+                onOpenSession={(id) => onOpenSession?.(id)}
+                onOpenDoc={(docId) => handleOpenDoc(docId, 'work')}
+              />
+            </AppContent>
+          ),
+        },
+        {
+          onClose: () => {
+            setExplicitHistory(false);
+          },
+        },
+      );
+    }
+  }, [previewTask, explicitHistory, specId, t]);
 
   const runtime: WorkspaceRuntime = useMemo(
     () => ({
@@ -130,20 +221,18 @@ export function SpecificationWorkspace({
         setExecuteDialogOpen(true);
       },
       refresh: () => onRefresh?.(),
-      fullTaskHref: (taskId) => `#/specs/${specId}?task=${taskId}`,
+      fullTaskHref: (taskId) => {
+        const params = new URLSearchParams();
+        if (overviewHref?.includes('collection=archive')) {
+          params.set('collection', 'archive');
+        }
+        params.set('view', 'task');
+        params.set('task', taskId);
+        return `/specs/${encodeURIComponent(specId)}?${params.toString()}`;
+      },
     }),
-    [specId, onOpenSession, onRefresh],
+    [specId, overviewHref, onOpenSession, onRefresh],
   );
-
-  const previewTask = useMemo(() => {
-    if (!previewTaskId) return null;
-    return data.taskGroups.flatMap((g) => g.tasks).find((t) => t.id === previewTaskId) ?? null;
-  }, [data.taskGroups, previewTaskId]);
-
-  const fullTask = useMemo(() => {
-    if (!fullTaskId) return null;
-    return data.taskGroups.flatMap((g) => g.tasks).find((t) => t.id === fullTaskId) ?? null;
-  }, [data.taskGroups, fullTaskId]);
 
   const headerTitle =
     currentView === 'task' && fullTask ? `Task / ${fullTask.id}` : t('specification.title');
@@ -259,13 +348,41 @@ export function SpecificationWorkspace({
                     repoContext={data.repoContext}
                     onGoToChanges={() => setCurrentView('changes')}
                   />
-                ) : currentView === 'task' && fullTask ? (
-                  <FullTaskView
-                    task={fullTask}
-                    specKey={specId}
-                    onBack={handleBackFromFullTask}
-                    onOpenSession={(id) => onOpenSession?.(id)}
-                  />
+                ) : currentView === 'task' ? (
+                  fullTask ? (
+                    <FullTaskView
+                      task={fullTask}
+                      specKey={specId}
+                      onBack={handleBackFromFullTask}
+                      onOpenSession={(id) => onOpenSession?.(id)}
+                    />
+                  ) : (
+                    <div
+                      role="alert"
+                      className="rounded-control border border-border-default bg-surface-subtle p-6 grid gap-3 max-w-content-standard"
+                    >
+                      <div className="flex items-center gap-2 text-status-attention">
+                        <Icon name="triangle-alert" size="sm" />
+                        <Typography
+                          as="h2"
+                          variant="title-sm"
+                          className="font-semibold text-content-primary"
+                        >
+                          {t('specification.taskNotFoundTitle')}
+                        </Typography>
+                      </div>
+                      <Typography variant="body-sm" className="text-content-secondary">
+                        {t('specification.taskNotFoundDescription', {
+                          taskId: fullTaskId ?? '',
+                        })}
+                      </Typography>
+                      <div className="mt-2 flex items-center gap-3">
+                        <Button variant="secondary" size="sm" onClick={handleBackFromFullTask}>
+                          {t('specification.backToTasks')}
+                        </Button>
+                      </div>
+                    </div>
+                  )
                 ) : null}
               </AppContentContainer>
             </AppWorkspaceBody>
@@ -290,14 +407,24 @@ export function SpecificationWorkspace({
                 task={previewTask}
                 groups={data.taskGroups}
                 specKey={specId}
-                onClose={() => setPreviewTaskId(null)}
-                onOpenFull={handleOpenFullTask}
+                onClose={() => {
+                  setPreviewTaskId(null);
+                  void workspace.closeSecondary();
+                }}
+                onOpenFull={(taskId) => {
+                  setPreviewTaskId(null);
+                  void workspace.closeSecondary();
+                  handleOpenFullTask(taskId);
+                }}
               />
             ) : (
               <ActivityHistory
                 events={data.activityEvents}
                 isExplicit={explicitHistory}
-                onClose={() => setExplicitHistory(false)}
+                onClose={() => {
+                  setExplicitHistory(false);
+                  void workspace.closeSecondary();
+                }}
                 onOpenTask={handlePreviewTask}
                 onOpenSession={(id) => onOpenSession?.(id)}
                 onOpenDoc={(docId) => handleOpenDoc(docId, 'work')}

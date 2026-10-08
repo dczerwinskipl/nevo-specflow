@@ -2,7 +2,6 @@ import { Icon, InformationList, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { OperationalRow } from '../../shared/OperationalList';
 import type { SessionSummary } from '../model';
-import { parseSessionMeta } from '../SessionMetaLine';
 import { useWorkspaceRuntime } from '../WorkspaceContext';
 
 export interface ResumeSessionSectionProps {
@@ -33,16 +32,7 @@ export function ResumeSessionSection({ session }: ResumeSessionSectionProps) {
         <OperationalRow
           primary={session.title}
           onPrimaryClick={() => runtime.openSession(session.id)}
-          compactFacts={[
-            session.taskCount ??
-              (!session.activity && session.meta
-                ? (parseSessionMeta(session.meta).context ?? '')
-                : ''),
-            session.age ??
-              (!session.activity && session.meta
-                ? (parseSessionMeta(session.meta).time ?? '')
-                : ''),
-          ]}
+          compactFacts={[session.taskCount ?? '', session.age ?? '']}
           supporting={
             session.activity
               ? {
@@ -52,12 +42,7 @@ export function ResumeSessionSection({ session }: ResumeSessionSectionProps) {
                   iconClassName: session.activity.icon === 'loader' ? 'animate-spin' : undefined,
                 }
               : session.meta
-                ? {
-                    text: parseSessionMeta(session.meta).status,
-                    icon: parseSessionMeta(session.meta).presentation.icon,
-                    iconClassName: parseSessionMeta(session.meta).presentation.iconClassName,
-                    textClassName: parseSessionMeta(session.meta).presentation.textClassName,
-                  }
+                ? { text: session.meta }
                 : undefined
           }
         />

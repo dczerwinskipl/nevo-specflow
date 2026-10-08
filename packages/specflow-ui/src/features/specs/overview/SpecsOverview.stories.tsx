@@ -247,11 +247,16 @@ export const CurrentContract: Story = {
     canvas.getByText('Agent input required');
     canvas.getByText(/1 session active/);
     canvas.getByText('1 active session');
-    const edges = [
-      ...canvasElement.querySelectorAll('[data-spec-title], [data-spec-section-header] h2'),
-    ].map((el) => el.getBoundingClientRect().left);
-    if (edges.some((left) => Math.abs(left - edges[0]!) > 1))
-      throw new Error('Shared content axis drift.');
+    const titleEdges = [...canvasElement.querySelectorAll('[data-spec-title]')].map(
+      (el) => el.getBoundingClientRect().left,
+    );
+    if (titleEdges.some((left) => Math.abs(left - titleEdges[0]!) > 1))
+      throw new Error('Specification title axis drift.');
+    const headerEdges = [...canvasElement.querySelectorAll('[data-spec-section-header] h2')].map(
+      (el) => el.getBoundingClientRect().left,
+    );
+    if (headerEdges.some((left) => Math.abs(left - headerEdges[0]!) > 1))
+      throw new Error('Section header axis drift.');
     const progressEdges = [...canvasElement.querySelectorAll('[data-spec-progress]')].map(
       (el) => el.getBoundingClientRect().left,
     );

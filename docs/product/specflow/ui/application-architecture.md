@@ -102,10 +102,9 @@ being treated as an unauthenticated user.
 It creates the application HTTP client and constructs the current typed services from that transport.
 This symbol is an implementation mapping, not the architectural identity of the composition boundary.
 
-TanStack Query has been selected as the normative remote server-state architecture, but the current
-codebase has not yet introduced the application QueryClient/provider. The first query-backed product
-feature MUST add that provider at the application composition root rather than creating a feature-local
-QueryClient.
+TanStack Query is the canonical remote server-state architecture. The application-level
+`QueryClientProvider` is initialized at the application composition root (`App.tsx`) using
+`defaultQueryClient`, providing a shared query cache across all features and routes.
 
 Existing pre-Query request lifecycles are migration debt and MUST NOT be treated as architectural
 precedent for new remote feature work.
@@ -148,7 +147,12 @@ Feature APIs are composed from this boundary via `SpecFlowServicesProvider` and 
   - `authApi`: authentication transport;
   - `authStore`: application session store;
   - `specsOverviewApi`: collection overview endpoints;
-  - `specificationApi`: specification workspace endpoints (`getSpecificationWorkspace`).
+  - `specsSource`: collection overview data source;
+  - `specificationApi`: specification workspace endpoints (`getSpecificationWorkspace`). Note: the backend
+    runtime workspace read-model (`/api/specs/:specId/workspace`) is not yet implemented in runtime;
+    production services compose `createUnavailableSpecificationApi()` by default and render honest
+    unavailable/missing capability states, while explicit development/test fixtures opt in via
+    `createFixtureSpecificationApi()`.
 
 Component code never instantiates ad-hoc transport clients and does not know arbitrary endpoint URLs.
 

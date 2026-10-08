@@ -1,7 +1,6 @@
 import { Button, InformationList, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { SessionSummary } from './model';
-import { parseSessionMeta } from './SessionMetaLine';
 import { OperationalRow } from '../shared/OperationalList';
 
 export interface SessionsViewProps {
@@ -27,8 +26,6 @@ export function SessionsView({ sessions, onOpenSession, onNewConversation }: Ses
 
       <InformationList>
         {sessions.map((session) => {
-          const metaParsed =
-            !session.activity && session.meta ? parseSessionMeta(session.meta) : null;
           const supporting = session.activity
             ? {
                 text: session.activity.label,
@@ -36,19 +33,11 @@ export function SessionsView({ sessions, onOpenSession, onNewConversation }: Ses
                 icon: session.activity.icon,
                 iconClassName: session.activity.icon === 'loader' ? 'animate-spin' : undefined,
               }
-            : metaParsed
-              ? {
-                  text: metaParsed.status,
-                  icon: metaParsed.presentation.icon,
-                  iconClassName: metaParsed.presentation.iconClassName,
-                  textClassName: metaParsed.presentation.textClassName,
-                }
+            : session.meta
+              ? { text: session.meta }
               : undefined;
 
-          const compactFacts: [string, string] = [
-            session.taskCount ?? metaParsed?.context ?? '',
-            session.age ?? metaParsed?.time ?? '',
-          ];
+          const compactFacts: [string, string] = [session.taskCount ?? '', session.age ?? ''];
 
           return (
             <OperationalRow

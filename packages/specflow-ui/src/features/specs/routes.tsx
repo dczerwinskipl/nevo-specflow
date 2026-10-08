@@ -131,6 +131,16 @@ function SpecificationRouteScreen() {
           search: (prev) => ({
             ...prev,
             view: newView === 'work' ? undefined : newView,
+            task: newView === 'task' ? prev.task : undefined,
+          }),
+        });
+      }}
+      onTaskChange={(newTaskId) => {
+        void navigate({
+          search: (prev) => ({
+            ...prev,
+            view: newTaskId ? 'task' : undefined,
+            task: newTaskId ?? undefined,
           }),
         });
       }}

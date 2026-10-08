@@ -59,7 +59,7 @@ export function createFakeWorkspaceRuntime(
     startConversation: noop,
     executeTasks: noop,
     refresh: noop,
-    fullTaskHref: (taskId) => `#/specs/fake?task=${taskId}`,
+    fullTaskHref: (taskId) => `/specs/fake?view=task&task=${taskId}`,
     ...overrides,
   };
 }

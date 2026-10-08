@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useSyncExternalStore } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { AppShell } from '../shell/AppShell';
 import { AppWorkspace } from './AppWorkspace';
@@ -150,5 +150,104 @@ export const GuardBlocksCloseAndReplacement: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Allow exit' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Close secondary content' }));
     assert(canvas.getByText('Default secondary content'), 'A passing guard must allow closing');
+  },
+};
+
+interface EditableSnapshot {
+  status: 'ready' | 'unavailable';
+  value: string;
+}
+function createEditableSource() {
+  let snapshot: EditableSnapshot = { status: 'ready', value: 'Original draft' };
+  const listeners = new Set<() => void>();
+  return {
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => { listeners.delete(listener); };
+    },
+    getSnapshot: () => snapshot,
+    setAvailable: (available: boolean) => {
+      snapshot = { ...snapshot, status: available ? 'ready' : 'unavailable' };
+      for (const listener of listeners) listener();
+    },
+  };
+}
+type EditableSource = ReturnType<typeof createEditableSource>;
+interface EditorPages { details: Record<never, never> }
+let editorMountId = 0;
+
+function PersistentEditor() {
+  const [mount] = useState(() => ++editorMountId);
+  const [draft, setDraft] = useState('Original draft');
+  const [allow, setAllow] = useState(false);
+  useSecondaryLeaveGuard(useCallback(() => !draft.endsWith('!') || allow, [draft, allow]));
+  return (
+    <div>
+      <input aria-label="Draft" onChange={e => setDraft(e.target.value)} value={draft} />
+      <output data-editor-mount>{mount}</output>
+      <button type="button" onClick={() => setAllow(true)}>Allow editor exit</button>
+    </div>
+  );
+}
+function createEditableStack(source: EditableSource) {
+  function useEditorData() {
+    const data = useSyncExternalStore(source.subscribe, source.getSnapshot, source.getSnapshot);
+    return data.status === 'ready'
+      ? { status: 'ready' as const, data: data.value }
+      : { status: 'unavailable' as const, message: 'Editing data unavailable.' };
+  }
+  return defineSecondaryStack<Record<never, never>, string, EditorPages>({
+    id: 'editable-status-contract',
+    initial: 'details',
+    useData: useEditorData,
+    screens: {
+      details: {
+        title: 'Persistent editor',
+        component: PersistentEditor,
+        preserveOnDataLoss: true,
+      },
+    },
+  });
+}
+
+function EditableContractFixture() {
+  const [source] = useState(createEditableSource);
+  const [stack] = useState(() => createEditableStack(source));
+  const navigation = useSecondaryNavigation();
+  return (
+    <AppShell navigation={<div>Navigation</div>} style={{ height: 600, width: 1280 }}>
+      <AppWorkspace split="primary">
+        <AppWorkspace.Primary header="Primary">
+          <div className="grid gap-3 p-5">
+            <button type="button" onClick={() => void navigation.open(stack, {})}>Open editor</button>
+            <button type="button" onClick={() => source.setAvailable(false)}>Make data unavailable</button>
+            <button type="button" onClick={() => source.setAvailable(true)}>Restore data</button>
+          </div>
+        </AppWorkspace.Primary>
+        <AppWorkspace.Secondary header="Default"><p>Default secondary content</p></AppWorkspace.Secondary>
+      </AppWorkspace>
+    </AppShell>
+  );
+}
+
+export const EditorDraftSurvivesDataLoss: Story = {
+  render: () => <AppWorkspaceProvider><EditableContractFixture /></AppWorkspaceProvider>,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Open editor' }));
+    const original = canvasElement.querySelector('[data-editor-mount]')?.textContent;
+    assert(original, 'Editor must mount');
+    const draft = canvas.getByRole('textbox', { name: 'Draft' });
+    await userEvent.clear(draft);
+    await userEvent.type(draft, 'Changed!');
+    await userEvent.click(canvas.getByRole('button', { name: 'Make data unavailable' }));
+    assert(canvas.getByText('Editing data unavailable.'), 'Unavailable state must be visible');
+    await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
+    assert(canvas.getByText('Editing data unavailable.'), 'Dirty hidden editor guard must still block Back');
+    await userEvent.click(canvas.getByRole('button', { name: 'Restore data' }));
+    assert(canvas.getByRole<HTMLInputElement>('textbox', { name: 'Draft' }).value === 'Changed!', 'Draft must survive');
+    assert(canvasElement.querySelector('[data-editor-mount]')?.textContent === original, 'Editor must not remount');
+    await userEvent.click(canvas.getByRole('button', { name: 'Allow editor exit' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Back' }));
+    assert(canvas.getByText('Default secondary content'), 'Allowed exit closes the flow');
   },
 };

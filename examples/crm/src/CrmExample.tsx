@@ -428,10 +428,7 @@ function createCustomerStack(store: CustomerStore) {
       </div>
       <CustomerEditor
         customer={data}
-        onSave={(customer) => {
-          store.save(customer);
-          void navigation.close();
-        }}
+        onSave={store.save}
         onCancel={() => void navigation.close()}
       />
     </div>;

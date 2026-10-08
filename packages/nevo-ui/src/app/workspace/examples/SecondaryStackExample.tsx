@@ -13,7 +13,7 @@ import { createDemoStacks, type DemoStacks } from './createDemoStacks';
 
 function EntityLists({ store, stacks }: { store: DemoStore; stacks: DemoStacks }) {
   const navigation = useSecondaryNavigation();
-  const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
+  const snapshot = useSyncExternalStore(\n    store.subscribe,\n    store.getSnapshot,\n    store.getSnapshot,\n  );
   return (
     <div className="grid gap-5 p-5">
       <div className="flex flex-wrap gap-2">

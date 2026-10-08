@@ -1,0 +1,41 @@
+name: Temporary Secondary Header Format
+
+on:
+  push:
+    branches:
+      - feature/workspace-secondary-stack-navigation
+    paths:
+      - .github/workflows/secondary-header-actions-format.yml
+
+permissions:
+  contents: read
+
+jobs:
+  format-export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - name: Format secondary header changes
+        run: |
+          pnpm exec prettier --write \
+            packages/nevo-ui/src/app/workspace/SecondaryStack.ts \
+            packages/nevo-ui/src/app/workspace/workspaceSurface.ts \
+            packages/nevo-ui/src/app/workspace/WorkspaceContext.tsx \
+            packages/nevo-ui/src/app/workspace/WorkspaceHeader.tsx \
+            packages/nevo-ui/src/app/workspace/AppWorkspace.tsx \
+            packages/nevo-ui/src/app/workspace/examples/SecondaryHeaderActionsExample.stories.tsx \
+            examples/crm/src/CrmExample.tsx \
+            docs/design-system/implementation/react/secondary-navigation.md
+      - name: Export modified sources to log
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+          import { readFileSync } from 'node:fs';
+          const paths = execFileSync('git', ['diff', '--name-only'], { encoding: 'utf8' })
+            .trim().split('\n').filter(Boolean);
+          for (const path of paths) {
+            console.log('HEADER_FORMAT_FILE:' + path + ':' + readFileSync(path).toString('base64'));
+          }
+          console.log('HEADER_FORMAT_COUNT:' + paths.length);
+          NODE

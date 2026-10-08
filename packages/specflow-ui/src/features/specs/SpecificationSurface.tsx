@@ -1,4 +1,5 @@
 import {
+  Alert,
   AppContent,
   AppContentContainer,
   AppWorkspace,
@@ -111,30 +112,23 @@ function SpecificationSurfaceConnected({
                   </Link>
                 ) : null}
 
-                <div
+                <Alert
                   role="alert"
-                  className="rounded-control border border-border-default bg-surface-subtle p-6 grid gap-3 max-w-content-standard"
+                  tone="attention"
+                  title={
+                    isDomainNotFound
+                      ? t('specification.notFoundTitle')
+                      : t('specification.unavailableTitle')
+                  }
+                  className="max-w-content-standard"
                 >
-                  <div className="flex items-center gap-2 text-status-attention">
-                    <Icon name="triangle-alert" size="sm" />
-                    <Typography
-                      as="h2"
-                      variant="title-sm"
-                      className="font-semibold text-content-primary"
-                    >
-                      {isDomainNotFound
-                        ? t('specification.notFoundTitle')
-                        : t('specification.unavailableTitle')}
-                    </Typography>
-                  </div>
-
                   <Typography variant="body-sm" className="text-content-secondary">
                     {isDomainNotFound
                       ? t('specification.notFoundDescription', { id: specId })
                       : t('specification.unavailableDescription', { id: specId })}
                   </Typography>
 
-                  <div className="mt-2 flex items-center gap-3">
+                  <div className="mt-3 flex items-center gap-3">
                     <Button variant="secondary" size="sm" onClick={() => void refetch()}>
                       {t('common.retry')}
                     </Button>
@@ -144,7 +138,7 @@ function SpecificationSurfaceConnected({
                       </Button>
                     ) : null}
                   </div>
-                </div>
+                </Alert>
               </AppContentContainer>
             </AppWorkspaceBody>
           </AppContent>

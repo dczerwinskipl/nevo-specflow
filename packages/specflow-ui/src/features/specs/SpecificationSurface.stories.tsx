@@ -3,7 +3,7 @@ import { RoutedApplication } from '../../app/SpecFlowShell.stories';
 
 // The real router and account/navigation shell, not a substitute detail fixture.
 const meta = {
-  title: 'SpecFlow/Screens/Specification',
+  title: 'SpecFlow/Screens/Specification Workspace',
   component: RoutedApplication,
   parameters: { layout: 'fullscreen' },
   args: { path: '/specs/admission?collection=current' },

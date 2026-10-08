@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import {
+  Alert,
   AppContent,
   AppContentContainer,
   AppWorkspace,
@@ -388,31 +389,23 @@ function SpecificationWorkspaceInner({
                       onOpenSession={onOpenSession}
                     />
                   ) : (
-                    <div
+                    <Alert
                       role="alert"
-                      className="rounded-control border border-border-default bg-surface-subtle p-6 grid gap-3 max-w-content-standard"
+                      tone="attention"
+                      title={t('specification.taskNotFoundTitle')}
+                      className="max-w-content-standard"
                     >
-                      <div className="flex items-center gap-2 text-status-attention">
-                        <Icon name="triangle-alert" size="sm" />
-                        <Typography
-                          as="h2"
-                          variant="title-sm"
-                          className="font-semibold text-content-primary"
-                        >
-                          {t('specification.taskNotFoundTitle')}
-                        </Typography>
-                      </div>
                       <Typography variant="body-sm" className="text-content-secondary">
                         {t('specification.taskNotFoundDescription', {
                           taskId: fullTaskId ?? '',
                         })}
                       </Typography>
-                      <div className="mt-2 flex items-center gap-3">
+                      <div className="mt-3 flex items-center gap-3">
                         <Button variant="secondary" size="sm" onClick={handleBackFromFullTask}>
                           {t('specification.backToTasks')}
                         </Button>
                       </div>
-                    </div>
+                    </Alert>
                   )
                 ) : null}
               </AppContentContainer>

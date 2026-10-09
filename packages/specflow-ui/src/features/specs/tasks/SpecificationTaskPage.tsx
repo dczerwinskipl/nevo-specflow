@@ -10,7 +10,7 @@ import {
   WorkspaceHeader,
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import { FullTaskView } from '../workspace/FullTaskView';
+import { FullTaskView } from './FullTaskView';
 import { mapFullTaskResponse } from './model';
 import type { useSpecificationTask } from './useSpecificationTask';
 

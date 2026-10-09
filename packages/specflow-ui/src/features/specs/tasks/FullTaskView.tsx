@@ -1,7 +1,7 @@
 import { Icon, Timeline, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { FullTaskData } from '../tasks/model';
-import { taskStatusLabel } from './status-labels';
+import type { FullTaskData } from './model';
+import { taskStatusLabel } from '../workspace/status-labels';
 
 export interface FullTaskViewProps {
   readonly task: FullTaskData;

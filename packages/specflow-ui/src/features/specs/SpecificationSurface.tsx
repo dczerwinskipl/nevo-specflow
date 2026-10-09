@@ -19,7 +19,6 @@ import type { SpecificationWorkspaceData, SpecificationWorkspaceView } from './w
 import { SpecificationWorkspace } from './workspace/SpecificationWorkspace';
 import { useSpecificationWorkspace } from './useSpecificationWorkspace';
 import { SpecificationDocumentContent } from './connected/SpecificationDocumentContent';
-import { SpecificationTaskContent } from './connected/SpecificationTaskContent';
 
 export interface SpecificationSurfaceProps {
   readonly specId: string;
@@ -205,9 +204,6 @@ function SpecificationSurfaceConnected({
       onDiff={onDiff}
       refreshFailed={isError && Boolean(data)}
       renderDocument={(doc) => <SpecificationDocumentContent specId={specId} documentId={doc.id} />}
-      renderTask={(task, back) => (
-        <SpecificationTaskContent specId={specId} task={task} onBack={back} />
-      )}
     />
   );
 }

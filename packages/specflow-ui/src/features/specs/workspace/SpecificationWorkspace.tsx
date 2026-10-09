@@ -25,7 +25,7 @@ import { DocumentsView } from './DocumentsView';
 import { SessionsView } from './SessionsView';
 import { ChangesView } from './ChangesView';
 import { RepositoryView } from './RepositoryView';
-import { FullTaskView } from './FullTaskView';
+import { FullTaskView } from '../tasks/FullTaskView';
 import { ActivityHistory } from './ActivityHistory';
 import { ExecuteModal } from './ExecuteModal';
 import { NewConversationModal } from './NewConversationModal';
@@ -60,7 +60,6 @@ export interface SpecificationWorkspaceProps {
   readonly onOpenSession?: (sessionId: string) => void;
   readonly onDiff?: (file: string) => void;
   readonly renderDocument?: (doc: DocumentItem) => ReactNode;
-  readonly renderTask?: (task: TaskItem, onBack: () => void) => ReactNode;
   readonly refreshFailed?: boolean;
 }
 
@@ -88,7 +87,6 @@ function SpecificationWorkspaceInner({
   onOpenSession,
   onDiff,
   renderDocument,
-  renderTask,
   refreshFailed,
 }: SpecificationWorkspaceProps) {
   const { t } = useTranslation();
@@ -372,16 +370,12 @@ function SpecificationWorkspaceInner({
                     />
                   ) : currentView === 'task' ? (
                     fullTask ? (
-                      renderTask ? (
-                        renderTask(fullTask, handleBackFromFullTask)
-                      ) : (
-                        <FullTaskView
-                          task={fullTask}
-                          specKey={specId}
-                          onBack={handleBackFromFullTask}
-                          onOpenSession={onOpenSession}
-                        />
-                      )
+                      <FullTaskView
+                        task={fullTask}
+                        specKey={specId}
+                        onBack={handleBackFromFullTask}
+                        onOpenSession={onOpenSession}
+                      />
                     ) : (
                       <Alert
                         role="alert"

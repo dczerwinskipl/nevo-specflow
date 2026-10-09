@@ -188,12 +188,12 @@ export const Polish: Story = { args: { locale: 'pl' } };
 
 /**
  * Deliberately bypasses cache seeding. Exercises typed API -> Query ->
- * mapWorkspaceResponse -> routed Workspace -> lazy Task and document reads.
+ * independent routed Full Task, without requiring a Workspace Task list.
  */
 export const ApiDtoToTaskScreen: Story = {
-  args: { path: '/specs/api-integration?task=TASK-01', integrationDto: true },
+  args: { path: '/specs/api-integration/tasks/TASK-01', integrationDto: true },
   play: async ({ canvas }) => {
-    await canvas.findByText('Specification ID: api-integration', {}, { timeout: 10000 });
+    await canvas.findByRole('heading', { name: 'Task / TASK-01' }, { timeout: 10000 });
     await canvas.findByRole(
       'heading',
       { name: 'Fresh task detail from Runtime API' },

@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useEffect, useRef } from 'react';
 import {
   AppContent,
   defineSecondaryStack,
@@ -22,6 +22,8 @@ export interface SpecificationSecondaryContextValue {
   readonly openSession?: (sessionId: string) => void;
   readonly openDoc?: (docId: string) => void;
   readonly previewTask: (taskId: string) => void;
+  /** The route owns authentication recovery; Preview never navigates itself. */
+  readonly onTaskUnauthorized?: (retry: () => void) => void;
 }
 
 export const SpecificationSecondaryDataContext =
@@ -46,14 +48,50 @@ export function useTaskPreviewData({
   const listTask = context?.data.taskGroups.flatMap((g) => g.tasks).find((t) => t.id === taskId);
   // Attention/Activity may reference a Task absent from the current Workspace projection.
   const detail = useSpecificationTask(specId, taskId, undefined, Boolean(context) && !listTask);
+  const handledUnauthorized = useRef<string | null>(null);
+  const onTaskUnauthorized = context?.onTaskUnauthorized;
+  const detailStatus = detail.errorStatus;
+  const retryDetail = detail.refetch;
+  const isMissingFromList = !listTask;
+  useEffect(() => {
+    if (detail.isSuccess) handledUnauthorized.current = null;
+  }, [detail.isSuccess]);
+  useEffect(() => {
+    if (!context || !isMissingFromList || detailStatus !== 401 || !onTaskUnauthorized) return;
+    const identity = `${specId}:${taskId}`;
+    if (handledUnauthorized.current === identity) return;
+    handledUnauthorized.current = identity;
+    // One automatic auth recovery per failed lookup. Do not loop on repeated 401 responses.
+    onTaskUnauthorized(() => {
+      void retryDetail();
+    });
+  }, [context, detailStatus, isMissingFromList, onTaskUnauthorized, retryDetail, specId, taskId]);
+
   if (!context) return { status: 'loading' };
   if (!listTask && detail.isPending) return { status: 'loading' };
-  if (!listTask && (detail.isError || detail.data?.task.id !== taskId)) {
+  if (!listTask && detail.isError) {
+    return taskPreviewFailure(
+      detailStatus,
+      detail.isTaskNotFound,
+      taskId,
+      () => {
+        if (detailStatus === 401 && onTaskUnauthorized) {
+          onTaskUnauthorized(() => {
+            void retryDetail();
+          });
+        } else {
+          void retryDetail();
+        }
+      },
+    );
+  }
+  if (!listTask && detail.data?.task.id !== taskId) {
     return {
-      status: 'unavailable',
-      message: detail.isTaskNotFound
-        ? appI18n.t('specification.taskNotFoundDescription', { taskId })
-        : appI18n.t('specification.unavailableDescription', { id: taskId }),
+      status: 'error',
+      message: appI18n.t('specification.taskPreviewLoadFailed'),
+      retry: () => {
+        void retryDetail();
+      },
     };
   }
   const task: TaskItem = listTask ?? {
@@ -76,6 +114,34 @@ export function useTaskPreviewData({
       groups: context.data.taskGroups,
       openFullTask: context.openFullTask,
     },
+  };
+}
+
+/** Map the Runtime Task error into the existing Secondary Stack states. */
+export function taskPreviewFailure(
+  httpStatus: number | undefined,
+  isTaskNotFound: boolean,
+  taskId: string,
+  retry: () => void,
+): SecondaryData<TaskPreviewSecondaryData> {
+  if (httpStatus === 403) {
+    return { status: 'access-denied', message: appI18n.t('specification.taskPreviewAccessDenied') };
+  }
+  if (httpStatus === 404 && isTaskNotFound) {
+    return {
+      status: 'unavailable',
+      message: appI18n.t('specification.taskNotFoundDescription', { taskId }),
+    };
+  }
+  return {
+    status: 'error',
+    message:
+      httpStatus === 401
+        ? appI18n.t('specification.taskPreviewSessionExpired')
+        : httpStatus === 503
+          ? appI18n.t('specification.taskPreviewSourceUnavailable')
+          : appI18n.t('specification.taskPreviewLoadFailed'),
+    retry,
   };
 }
 

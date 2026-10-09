@@ -36,6 +36,7 @@ export interface SpecificationSurfaceProps {
   readonly onExecute?: (agent: string, tasks: readonly string[]) => void | Promise<void>;
   readonly onNewConversation?: (agent: string) => void | Promise<void>;
   readonly onOpenSession?: (sessionId: string) => void;
+  readonly onTaskUnauthorized?: (retry: () => void) => void;
   readonly onDiff?: (file: string) => void;
 }
 
@@ -63,6 +64,7 @@ function SpecificationSurfaceConnected({
   onExecute,
   onNewConversation,
   onOpenSession,
+  onTaskUnauthorized,
   onDiff,
 }: SpecificationSurfaceProps) {
   const { t } = useTranslation();
@@ -194,6 +196,7 @@ function SpecificationSurfaceConnected({
       onExecute={onExecute}
       onNewConversation={onNewConversation}
       onOpenSession={onOpenSession}
+      onTaskUnauthorized={onTaskUnauthorized}
       onDiff={onDiff}
       refreshFailed={isError && Boolean(data)}
       renderDocument={(doc) => <SpecificationDocumentContent specId={specId} documentId={doc.id} />}

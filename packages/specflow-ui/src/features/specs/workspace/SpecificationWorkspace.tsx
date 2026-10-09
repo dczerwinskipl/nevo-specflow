@@ -47,6 +47,7 @@ export interface SpecificationWorkspaceProps {
   readonly onExecute?: (agent: string, tasks: readonly string[]) => void | Promise<void>;
   readonly onNewConversation?: (agent: string) => void | Promise<void>;
   readonly onOpenSession?: (sessionId: string) => void;
+  readonly onTaskUnauthorized?: (retry: () => void) => void;
   readonly onDiff?: (file: string) => void;
   readonly renderDocument?: (doc: DocumentItem) => ReactNode;
   readonly refreshFailed?: boolean;
@@ -72,6 +73,7 @@ function SpecificationWorkspaceInner({
   onExecute,
   onNewConversation,
   onOpenSession,
+  onTaskUnauthorized,
   onDiff,
   renderDocument,
   refreshFailed,
@@ -161,8 +163,9 @@ function SpecificationWorkspaceInner({
       openSession: onOpenSession,
       openDoc: (docId) => handleOpenDoc(docId, 'work'),
       previewTask: handlePreviewTask,
+      onTaskUnauthorized,
     }),
-    [specId, data, handleOpenFullTask, onOpenSession, handleOpenDoc, handlePreviewTask],
+    [specId, data, handleOpenFullTask, onOpenSession, handleOpenDoc, handlePreviewTask, onTaskUnauthorized],
   );
 
   const runtime: WorkspaceRuntime = useMemo(

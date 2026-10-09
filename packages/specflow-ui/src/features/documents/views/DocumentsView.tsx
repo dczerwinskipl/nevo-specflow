@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { Button, Icon, InformationList, MarkdownDocument, TextInput, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import { OperationalRow } from '../shared/OperationalList';
-import type { DocumentItem } from './model';
+import { OperationalRow } from '../../specs/shared/OperationalList';
+import type { DocumentItem } from '../../specs/workspace/model';
 
 export interface DocumentsViewProps {
   readonly documents: readonly DocumentItem[];

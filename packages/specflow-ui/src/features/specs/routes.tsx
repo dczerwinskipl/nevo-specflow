@@ -202,20 +202,19 @@ function SpecificationRouteScreen() {
           },
         });
       }}
-      onNavigateView={({ view: nextView, taskId: nextTaskId }) => {
-        if (nextView === 'task' && nextTaskId) {
-          void navigate({
-            to: '/specs/$specId/tasks/$taskId',
-            params: { specId, taskId: nextTaskId },
-            search: { collection },
-          });
-          return;
-        }
+      onOpenTask={(taskId) => {
+        void navigate({
+          to: '/specs/$specId/tasks/$taskId',
+          params: { specId, taskId },
+          search: { collection },
+        });
+      }}
+      onNavigateView={({ view: nextView }) => {
         void navigate({
           search: (prev) => ({
             ...prev,
             view: nextView === 'work' ? undefined : nextView,
-            task: nextView === 'task' ? (nextTaskId ?? undefined) : undefined,
+            task: undefined,
           }),
         });
       }}

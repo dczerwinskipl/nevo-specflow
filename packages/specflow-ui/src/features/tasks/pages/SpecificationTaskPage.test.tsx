@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { createSpecFlowQueryClient } from '../../../app/queryClient';
 import { LocalizationProvider } from '../../../i18n';
 import { createSpecFlowAppServices, SpecFlowServicesProvider } from '../../../services';
-import { specificationKeys } from '../../specs/queries';
+import { taskKeys } from '../queries';
 import { mapFullTaskResponse } from '../model';
 import { SpecificationTaskPage } from './SpecificationTaskPage';
 import { useSpecificationTask } from '../useSpecificationTask';
@@ -28,7 +28,7 @@ function renderTask(options: { error?: HttpClientError; seedDetail?: boolean } =
   const queryClient = createSpecFlowQueryClient();
   if (options.error) {
     const query = queryClient.getQueryCache().build(queryClient, {
-      queryKey: specificationKeys.task(specId, taskId),
+      queryKey: taskKeys.detail(specId, taskId),
     });
     query.setState({
       status: 'error',
@@ -37,7 +37,7 @@ function renderTask(options: { error?: HttpClientError; seedDetail?: boolean } =
       errorUpdateCount: 1,
     });
   } else if (options.seedDetail !== false) {
-    queryClient.setQueryData(specificationKeys.task(specId, taskId), detail);
+    queryClient.setQueryData(taskKeys.detail(specId, taskId), detail);
   }
   function TaskHarness() {
     const taskState = useSpecificationTask(specId, taskId);

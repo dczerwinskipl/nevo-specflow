@@ -1,16 +1,20 @@
 import { Button, cn } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { RepoContext } from '../model';
-import { useWorkspaceRuntime } from '../WorkspaceContext';
-import { WorkspaceSection } from './WorkspaceSection';
+import type { RepoContext } from '../../../specs/workspace/model';
+import { WorkspaceSection } from '../../../specs/workspace/sections/WorkspaceSection';
 
 export interface RepositorySectionProps {
   readonly repoContext: RepoContext;
+  readonly onOpenChanges: (source: 'base' | 'uncommitted' | 'mr') => void;
+  readonly onRefresh: () => void | Promise<void>;
 }
 
-export function RepositorySection({ repoContext }: RepositorySectionProps) {
+export function RepositorySection({
+  repoContext,
+  onOpenChanges,
+  onRefresh,
+}: RepositorySectionProps) {
   const { t } = useTranslation();
-  const runtime = useWorkspaceRuntime();
 
   return (
     <WorkspaceSection aria-labelledby="repo-heading">
@@ -63,7 +67,7 @@ export function RepositorySection({ repoContext }: RepositorySectionProps) {
               <span className="font-medium text-content-primary">{repoContext.linkedPr.title}</span>
             </div>
 
-            <Button size="sm" variant="secondary" onClick={() => runtime.openChanges('mr')}>
+            <Button size="sm" variant="secondary" onClick={() => onOpenChanges('mr')}>
               {t('specification.prReviewLink')}
             </Button>
           </div>
@@ -78,7 +82,7 @@ export function RepositorySection({ repoContext }: RepositorySectionProps) {
             </span>
             <button
               type="button"
-              onClick={() => void runtime.refresh()}
+              onClick={() => void onRefresh()}
               className="font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring"
             >
               {t('common.retry')}
@@ -88,7 +92,7 @@ export function RepositorySection({ repoContext }: RepositorySectionProps) {
       </div>
 
       <WorkspaceSection.Footer>
-        <WorkspaceSection.Continuation onClick={() => runtime.openChanges('base')}>
+        <WorkspaceSection.Continuation onClick={() => onOpenChanges('base')}>
           {t('specification.viewChanges')}
         </WorkspaceSection.Continuation>
       </WorkspaceSection.Footer>

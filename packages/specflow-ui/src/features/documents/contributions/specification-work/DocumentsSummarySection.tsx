@@ -1,15 +1,19 @@
 import { useTranslation } from 'react-i18next';
-import type { DocumentItem } from '../model';
-import { useWorkspaceRuntime } from '../WorkspaceContext';
-import { WorkspaceSection } from './WorkspaceSection';
+import type { DocumentItem } from '../../../specs/workspace/model';
+import { WorkspaceSection } from '../../../specs/workspace/sections/WorkspaceSection';
 
 export interface DocumentsSummarySectionProps {
   readonly documents: readonly DocumentItem[];
+  readonly onOpenDocument: (id: string) => void;
+  readonly onOpenDocumentsView: () => void;
 }
 
-export function DocumentsSummarySection({ documents }: DocumentsSummarySectionProps) {
+export function DocumentsSummarySection({
+  documents,
+  onOpenDocument,
+  onOpenDocumentsView,
+}: DocumentsSummarySectionProps) {
   const { t } = useTranslation();
-  const runtime = useWorkspaceRuntime();
 
   return (
     <WorkspaceSection aria-labelledby="documents-summary-heading">
@@ -25,7 +29,7 @@ export function DocumentsSummarySection({ documents }: DocumentsSummarySectionPr
           <button
             key={doc.id}
             type="button"
-            onClick={() => runtime.openDoc(doc.id)}
+            onClick={() => onOpenDocument(doc.id)}
             className="font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring"
           >
             {doc.title}
@@ -34,7 +38,7 @@ export function DocumentsSummarySection({ documents }: DocumentsSummarySectionPr
       </div>
 
       <WorkspaceSection.Footer>
-        <WorkspaceSection.Continuation onClick={runtime.openDocumentsView}>
+        <WorkspaceSection.Continuation onClick={onOpenDocumentsView}>
           {t('specification.allDocumentsLink')}
         </WorkspaceSection.Continuation>
       </WorkspaceSection.Footer>

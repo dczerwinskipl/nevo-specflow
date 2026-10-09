@@ -21,6 +21,7 @@ import { builtInUiModuleRegistry } from './ui-modules/builtInUiModules';
 import { UiModulesProvider } from './ui-modules/UiModulesProvider';
 import { createSpecFlowAppServices, SpecFlowServicesProvider } from '../services';
 import { specificationKeys } from '../features/specs/queries';
+import { taskKeys } from '../features/tasks/queries';
 import {
   createSpecificationWorkspaceFixture,
   type SpecificationScenario,
@@ -87,7 +88,7 @@ export function RoutedApplication({
       query.setQueryData(specificationKeys.detail(id), fixture);
       for (const group of fixture.taskGroups) {
         for (const task of group.tasks) {
-          query.setQueryData(specificationKeys.task(id, task.id), {
+          query.setQueryData(taskKeys.detail(id, task.id), {
             task: {
               id: task.id,
               title: task.title,

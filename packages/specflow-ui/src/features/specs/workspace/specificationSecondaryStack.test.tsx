@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { createSpecFlowQueryClient } from '../../../app/queryClient';
 import { createSpecFlowAppServices, SpecFlowServicesProvider } from '../../../services';
-import { specificationKeys } from '../queries';
+import { taskKeys } from '../../tasks/queries';
 import { createSpecificationWorkspaceFixture } from '../../../../test-support/specs/workspace/fixtures';
 import {
   SpecificationSecondaryDataContext,
@@ -22,7 +22,7 @@ function PreviewStatus() {
 describe('Task preview by identity', () => {
   it('uses the Task detail API/cache when a Task is missing from Workspace groups', () => {
     const queryClient = createSpecFlowQueryClient();
-    queryClient.setQueryData(specificationKeys.task(specId, taskId), {
+    queryClient.setQueryData(taskKeys.detail(specId, taskId), {
       task: {
         id: taskId,
         title: 'Referenced outside Task list',

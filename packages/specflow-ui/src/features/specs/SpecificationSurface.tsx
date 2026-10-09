@@ -25,12 +25,8 @@ export interface SpecificationSurfaceProps {
   readonly overviewHref?: string;
   readonly onBack?: () => void;
   readonly initialView?: SpecificationWorkspaceView;
-  /** @deprecated Use onNavigateView instead */
-  readonly onViewChange?: (view: SpecificationWorkspaceView) => void;
-  readonly onNavigateView?: (target: {
-    view: SpecificationWorkspaceView | 'task';
-    taskId?: string | null;
-  }) => void;
+  readonly onNavigateView?: (target: { view: SpecificationWorkspaceView }) => void;
+  readonly onOpenTask?: (taskId: string) => void;
   readonly data?: SpecificationWorkspaceData;
   readonly onRefresh?: () => void | Promise<void>;
   readonly onExecute?: (agent: string, tasks: readonly string[]) => void | Promise<void>;
@@ -58,8 +54,8 @@ function SpecificationSurfaceConnected({
   overviewHref,
   onBack,
   initialView,
-  onViewChange,
   onNavigateView,
+  onOpenTask,
   onRefresh,
   onExecute,
   onNewConversation,
@@ -190,8 +186,8 @@ function SpecificationSurfaceConnected({
       overviewHref={overviewHref}
       onBack={onBack}
       initialView={initialView}
-      onViewChange={onViewChange}
       onNavigateView={onNavigateView}
+      onOpenTask={onOpenTask}
       onRefresh={onRefresh ?? refreshWorkspace}
       onExecute={onExecute}
       onNewConversation={onNewConversation}

@@ -11,7 +11,7 @@ export interface SpecificationWorkSectionContext {
 }
 
 export interface SpecificationWorkSectionContribution extends UiContribution {
-  readonly slot: 'main' | 'related';
+  readonly slot: 'context' | 'main' | 'related';
   readonly isVisible?: (context: SpecificationWorkSectionContext) => boolean;
   readonly Component: ComponentType<SpecificationWorkSectionContext>;
 }

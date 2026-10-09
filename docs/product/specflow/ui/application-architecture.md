@@ -124,12 +124,36 @@ Storybook provide their own registry explicitly.
 
 Specification owns its implemented point in
 `features/specs/extensions/specificationWorkSections.ts`. Its
-`specification.work.sections` contributions contain an ID, `main` or `related` slot,
+`specification.work.sections` contributions contain an ID, `context`, `main` or `related` slot,
 optional visibility rule and React Component. The host filters by slot and renders the
 component through JSX. Other hosts (such as a future Project Settings screen) may define
 different typed contribution contracts without modifying generic registry infrastructure.
 Tasks registers its work contribution in `features/tasks/uiModule.tsx`; WorkView does not
 import the Tasks implementation.
+
+### Specification feature contributions (stacked migration)
+
+The next UI composition increment, stacked on #45, adds two other **Specs-owned** extension
+points without changing the generic registry:
+
+- `specification.views`: Git owns `repository` and `changes`, Sessions owns `sessions`,
+  and Documents owns `documents`. The host chooses a registered component by view ID,
+  validates section availability and preserves router-owned URL/search state. Full Task
+  remains a separate canonical route; old `?view=task&task=...` links only redirect.
+- `specification.attention.items`: Tasks, Sessions and Git select/present Runtime attention
+  items, with feature-specific actions and icons. Specification owns the combined
+  Requires Attention surface and preserves the order of the Runtime aggregate. Requests
+  with no registered handler remain visible without an action instead of being dropped.
+
+Git, Sessions and Documents also own their `specification.work.sections` contributions.
+Their Work links invoke the same host navigation actions as the full views; they never
+instantiate an independent Workspace HTTP client. `SpecificationSummarySection`,
+`PreparationSection`, the attention container and Activity History remain host-owned
+cross-feature coordination for now.
+
+The host extension contexts still include transitional aggregate Workspace data and
+semantic actions; the migration does not imply new per-feature backend endpoints,
+dynamic plugin installation or independent React Query caches.
 
 ### Transitional context and future plugins
 

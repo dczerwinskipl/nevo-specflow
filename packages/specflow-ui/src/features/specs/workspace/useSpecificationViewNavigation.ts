@@ -4,7 +4,6 @@ import type { SpecificationWorkspaceView } from './model';
 export interface UseSpecificationViewNavigationOptions {
   readonly initialView?: SpecificationWorkspaceView;
   readonly onNavigateView?: (target: { view: SpecificationWorkspaceView }) => void;
-  readonly onViewChange?: (view: SpecificationWorkspaceView) => void;
 }
 
 export interface UseSpecificationViewNavigationResult {
@@ -17,7 +16,6 @@ export interface UseSpecificationViewNavigationResult {
 export function useSpecificationViewNavigation({
   initialView = 'work',
   onNavigateView,
-  onViewChange,
 }: UseSpecificationViewNavigationOptions): UseSpecificationViewNavigationResult {
   const [uncontrolledView, setUncontrolledView] = useState<SpecificationWorkspaceView>(initialView);
   const currentView = onNavigateView ? initialView : uncontrolledView;
@@ -28,10 +26,9 @@ export function useSpecificationViewNavigation({
         onNavigateView({ view });
       } else {
         setUncontrolledView(view);
-        onViewChange?.(view);
       }
     },
-    [onNavigateView, onViewChange],
+    [onNavigateView],
   );
 
   return { currentView, navigateToView, handleViewChange: navigateToView };

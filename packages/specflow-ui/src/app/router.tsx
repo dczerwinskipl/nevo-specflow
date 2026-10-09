@@ -18,6 +18,7 @@ import {
   specsForbiddenRoute,
 } from '../features/specs/routes';
 import { defaultSpecFlowServices } from '../services';
+import { taskAppRoutes } from '../features/tasks/routes';
 import { createSpecFlowAppServices, type SpecFlowAppServices } from './dependencies';
 import { UiPlaygroundScreen } from './screens';
 import { rootRoute, appRoute, type SpecFlowRouterContext } from './router/root';
@@ -49,7 +50,7 @@ export const uiPlaygroundRoute = createRoute({
 export const routeTree = rootRoute.addChildren([
   ...authRoutes,
   ...specsRootRoutes,
-  appRoute.addChildren([...specsAppRoutes, uiPlaygroundRoute]),
+  appRoute.addChildren([...specsAppRoutes, ...taskAppRoutes, uiPlaygroundRoute]),
 ]);
 
 export function createSpecFlowRouter(

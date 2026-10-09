@@ -14,3 +14,7 @@ production and integration surfaces use typed Runtime APIs; do not add fixture f
 Future feature settings (e.g., lane/status rules) are **not implemented**. When introduced,
 backend validation/configuration belongs to the feature's Runtime ownership, and UI contributes
 to a Project Settings extension point rather than becoming a hardcoded part of Work.
+
+The canonical `/specs/:specId/tasks/:taskId` route is declared by `tasks/routes.tsx` and
+registered by the application router. Task detail uses `TaskApi` and `taskKeys` through
+the shared services/QueryClient composition; `specs` does not own its endpoint.

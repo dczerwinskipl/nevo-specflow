@@ -46,10 +46,10 @@ describe('typed UI extension registry', () => {
 
   it('inserts independent sections without altering the Work host', () => {
     const data = createSpecificationWorkspaceFixture('working', 'SPEC-21');
-    const registry = createUiRegistry([specificationWorkSections], [
-      moduleWithSection('first', 'related'),
-      moduleWithSection('second', 'related'),
-    ]);
+    const registry = createUiRegistry(
+      [specificationWorkSections],
+      [moduleWithSection('first', 'related'), moduleWithSection('second', 'related')],
+    );
     const markup = renderToStaticMarkup(
       <UiModulesProvider modules={registry}>
         <LocalizationProvider>
@@ -70,33 +70,36 @@ describe('typed UI extension registry', () => {
   });
 
   it('registers one module across two differently typed extension points', () => {
-    const registry = createUiRegistry([specificationWorkSections, testPanels], [
-      {
-        id: 'example.combined',
-        contributions: [
-          contributeTo(specificationWorkSections, {
-            id: 'example.combined.work',
-            slot: 'main',
-            Component: () => <section>Work</section>,
-          }),
-          contributeTo(testPanels, {
-            id: 'example.combined.panel',
-            panelKey: 'git',
-            canClose: false,
-          }),
-        ],
-      },
-      {
-        id: 'example.other',
-        contributions: [
-          contributeTo(testPanels, {
-            id: 'example.other.panel',
-            panelKey: 'task',
-            canClose: true,
-          }),
-        ],
-      },
-    ]);
+    const registry = createUiRegistry(
+      [specificationWorkSections, testPanels],
+      [
+        {
+          id: 'example.combined',
+          contributions: [
+            contributeTo(specificationWorkSections, {
+              id: 'example.combined.work',
+              slot: 'main',
+              Component: () => <section>Work</section>,
+            }),
+            contributeTo(testPanels, {
+              id: 'example.combined.panel',
+              panelKey: 'git',
+              canClose: false,
+            }),
+          ],
+        },
+        {
+          id: 'example.other',
+          contributions: [
+            contributeTo(testPanels, {
+              id: 'example.other.panel',
+              panelKey: 'task',
+              canClose: true,
+            }),
+          ],
+        },
+      ],
+    );
 
     expect(registry.get(specificationWorkSections)[0]?.slot).toBe('main');
     expect(registry.get(testPanels).map(({ panelKey }) => panelKey)).toEqual(['git', 'task']);
@@ -149,11 +152,14 @@ describe('typed UI extension registry', () => {
   });
 
   it('preserves registration order and leaves slot filtering to Specification', () => {
-    const registry = createUiRegistry([specificationWorkSections], [
-      moduleWithSection('main-1', 'main'),
-      moduleWithSection('related-1', 'related'),
-      moduleWithSection('main-2', 'main'),
-    ]);
+    const registry = createUiRegistry(
+      [specificationWorkSections],
+      [
+        moduleWithSection('main-1', 'main'),
+        moduleWithSection('related-1', 'related'),
+        moduleWithSection('main-2', 'main'),
+      ],
+    );
     const contributions = registry.get(specificationWorkSections);
     expect(contributions.map((c) => c.id)).toEqual([
       'example.main-1.section',

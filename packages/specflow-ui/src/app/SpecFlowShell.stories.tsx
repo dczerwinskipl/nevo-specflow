@@ -18,22 +18,107 @@ type AuthMode =
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createSpecFlowQueryClient } from './queryClient';
 import { createSpecFlowAppServices, SpecFlowServicesProvider } from '../services';
-import { createFixtureSpecificationApi } from '../features/specs/api';
+import { specificationKeys } from '../features/specs/queries';
+import {
+  createSpecificationWorkspaceFixture,
+  type SpecificationScenario,
+} from '../../test-support/specs/workspace/fixtures';
+import { createSpecsFixture } from '../../test-support/specs/overview/fixtures';
 import type { SpecsOverviewApi } from '../features/specs/overview/api';
-import { createFixtureSpecsOverviewApi } from '../features/specs/overview/api';
+import { createFixtureSpecsOverviewApi } from '../../test-support/specs/overview/api';
+import { createWorkspaceIntegrationApi } from '../../test-support/specs/workspace/api';
 
 export function RoutedApplication({
   authMode = 'local',
   locale = 'en',
   path = '/',
   specsStatus,
+  integrationDto = false,
 }: {
   authMode?: AuthMode;
   locale?: AppLocale;
   path?: string;
   specsStatus?: 401 | 403;
+  integrationDto?: boolean;
 }) {
-  const queryClient = useMemo(() => createSpecFlowQueryClient(), []);
+  const queryClient = useMemo(() => {
+    const query = createSpecFlowQueryClient();
+    query.setQueryDefaults(specificationKeys.all, { staleTime: Infinity });
+    const listedSpecifications = [
+      ...createSpecsFixture().items,
+      ...createSpecsFixture('archive').items,
+    ];
+    const knownIds = [
+      ...listedSpecifications.map((item) => item.id),
+      'archive-0',
+      'admission',
+      'empty-scaffold',
+      'preparing-spec',
+      'conflict-spec',
+      'no-git-spec',
+      'docs-spec',
+    ];
+    for (const id of integrationDto ? [] : new Set(knownIds)) {
+      const scenario: SpecificationScenario = id.includes('empty')
+        ? 'empty'
+        : id.includes('preparing')
+          ? 'preparing'
+          : id.includes('conflict')
+            ? 'git-conflict'
+            : id.includes('no-git')
+              ? 'no-git'
+              : 'working';
+      const source = listedSpecifications.find((item) => item.id === id);
+      const prepared = createSpecificationWorkspaceFixture(scenario, id);
+      // Routed Storybook navigation must preserve the identity opened from Overview.
+      // Pure component scenarios still exercise their independent rich fixtures.
+      const fixture = source
+        ? {
+            ...prepared,
+            title: source.title,
+            intro: source.title,
+          }
+        : prepared;
+      query.setQueryData(specificationKeys.detail(id), fixture);
+      for (const group of fixture.taskGroups) {
+        for (const task of group.tasks) {
+          query.setQueryData(specificationKeys.task(id, task.id), {
+            task: {
+              id: task.id,
+              title: task.title,
+              status: {
+                id: task.lifecycle ?? 'pending',
+                label: task.status,
+                lifecycle: task.lifecycle ?? 'pending',
+              },
+            },
+            purpose: task.purpose,
+            acceptanceCriteria: task.acceptanceCriteria ?? [],
+            workflow: task.workflow,
+          });
+        }
+      }
+      for (const doc of fixture.documents) {
+        query.setQueryData(specificationKeys.document(id, doc.id), {
+          id: doc.id,
+          title: doc.title,
+          content:
+            doc.content ??
+            (doc.sections ?? [])
+              .map((section) =>
+                [
+                  '# ' + section.heading,
+                  section.content ?? '',
+                  ...(section.items ?? []).map((item) => '- ' + item),
+                ].join('\n\n'),
+              )
+              .join('\n\n'),
+          revision: 'story-fixture',
+        });
+      }
+    }
+    return query;
+  }, [integrationDto]);
   const auth = useMemo(() => storyAuthStore(authMode), [authMode]);
 
   const services = useMemo(() => {
@@ -48,10 +133,11 @@ export function RoutedApplication({
 
     return createSpecFlowAppServices({
       authStore: auth,
+      runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode: 'demo' }) },
       specsOverviewApi,
-      specificationApi: createFixtureSpecificationApi(),
+      ...(integrationDto ? { specificationApi: createWorkspaceIntegrationApi() } : {}),
     });
-  }, [auth, specsStatus]);
+  }, [auth, specsStatus, integrationDto]);
 
   const router = useMemo(
     () => createSpecFlowRouter(createMemoryHistory({ initialEntries: [path] }), services),

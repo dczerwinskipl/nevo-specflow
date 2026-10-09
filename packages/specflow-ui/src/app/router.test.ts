@@ -4,7 +4,7 @@ import { createMemoryHistory } from '@tanstack/react-router';
 
 import type { AuthApi } from '../auth/api';
 import { createAuthStore } from '../auth/store';
-import { createSpecsFixture } from '../features/specs/overview/fixtures';
+import { createSpecsFixture } from '../../test-support/specs/overview/fixtures';
 import { createSpecFlowAppServices } from '../services';
 import {
   createSpecFlowRouter,
@@ -42,7 +42,7 @@ describe('SpecFlow router access policy', () => {
         createMemoryHistory({ initialEntries: [`/specs/admission?collection=${collection}`] }),
         createSpecFlowAppServices({
           authStore: storeWith(authenticated),
-          specsSource: { read: (value) => Promise.resolve(createSpecsFixture(value)) },
+          specsOverviewApi: { getOverview: (value) => Promise.resolve(createSpecsFixture(value)) },
         }),
       );
       await router.load();
@@ -60,7 +60,7 @@ describe('SpecFlow router access policy', () => {
       }),
       createSpecFlowAppServices({
         authStore: storeWith(authenticated),
-        specsSource: { read: (value) => Promise.resolve(createSpecsFixture(value)) },
+        specsOverviewApi: { getOverview: (value) => Promise.resolve(createSpecsFixture(value)) },
       }),
     );
     await router.load();
@@ -77,7 +77,7 @@ describe('SpecFlow router access policy', () => {
       }),
       createSpecFlowAppServices({
         authStore: storeWith(authenticated),
-        specsSource: { read: (value) => Promise.resolve(createSpecsFixture(value)) },
+        specsOverviewApi: { getOverview: (value) => Promise.resolve(createSpecsFixture(value)) },
       }),
     );
     await router.load();

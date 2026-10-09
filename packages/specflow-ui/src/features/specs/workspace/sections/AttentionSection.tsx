@@ -74,24 +74,32 @@ export function AttentionSection({ items }: AttentionSectionProps) {
                 </div>
               </div>
 
-              <Button
-                variant="secondary"
-                size="sm"
-                className="self-start sm:self-center shrink-0"
-                disabled={isSessionDisabled}
-                title={isSessionDisabled ? t('common.notImplemented') : undefined}
-                onClick={() => {
-                  if (item.kind === 'task' && item.targetId) {
-                    runtime.previewTask(item.targetId);
-                  } else if (item.kind === 'session' && item.targetId) {
-                    runtime.openSession(item.targetId);
-                  } else if (item.kind === 'git') {
-                    runtime.openRepository();
-                  }
-                }}
-              >
-                {item.actionLabel}
-              </Button>
+              {item.kind !== 'specification' ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="self-start sm:self-center shrink-0"
+                  disabled={isSessionDisabled}
+                  title={isSessionDisabled ? t('common.notImplemented') : undefined}
+                  onClick={() => {
+                    if (item.kind === 'task' && item.targetId) {
+                      runtime.previewTask(item.targetId);
+                    } else if (item.kind === 'session' && item.targetId) {
+                      runtime.openSession(item.targetId);
+                    } else if (item.kind === 'git') {
+                      runtime.openRepository();
+                    }
+                  }}
+                >
+                  {item.actionCode === 'session'
+                    ? t('specification.openSessionAction')
+                    : item.actionCode === 'task'
+                      ? t('specification.attentionViewTask')
+                      : item.actionCode === 'git'
+                        ? t('specification.viewRepository')
+                        : item.actionLabel}
+                </Button>
+              ) : null}
             </div>
           );
         })}

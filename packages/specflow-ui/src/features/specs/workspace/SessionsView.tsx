@@ -1,6 +1,7 @@
 import { Button, InformationList, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { SessionSummary } from './model';
+import { sessionActivityLabel } from './status-labels';
 import { OperationalRow } from '../shared/OperationalList';
 
 export interface SessionsViewProps {
@@ -33,7 +34,7 @@ export function SessionsView({ sessions, onOpenSession, onNewConversation }: Ses
         {sessions.map((session) => {
           const supporting = session.activity
             ? {
-                text: session.activity.label,
+                text: sessionActivityLabel(session, t),
                 tone: session.activity.tone ?? 'neutral',
                 icon: session.activity.icon,
                 iconClassName: session.activity.animate ? 'animate-spin' : undefined,

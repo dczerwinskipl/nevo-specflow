@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { createRoute } from '@tanstack/react-router';
 import { appRoute, rootRoute } from '../../app/router/root';
 import { SpecsOverview } from './overview/SpecsOverview';
@@ -77,7 +78,11 @@ export const specificationRoute = createRoute({
 });
 
 function SpecsRouteScreen() {
-  const { specs, auth } = specsRoute.useRouteContext();
+  const { specs, auth, services } = specsRoute.useRouteContext();
+  const runtimeInfo = useQuery({
+    queryKey: ['runtime-info'],
+    queryFn: ({ signal }) => services.runtimeInfoApi.getInfo(signal),
+  });
   const { collection } = specsRoute.useSearch();
   const navigate = specsRoute.useNavigate();
   const { state, refresh } = useSpecsOverview(specs, collection);
@@ -109,7 +114,7 @@ function SpecsRouteScreen() {
     <SpecsOverview
       state={state}
       onRefresh={refresh}
-      sample={specs.sample}
+      sample={runtimeInfo.data?.dataMode === 'demo'}
       onCollectionChange={(value) => void navigate({ search: { collection: value } })}
       specificationHref={(specId) =>
         `/specs/${encodeURIComponent(specId)}?collection=${collection}`

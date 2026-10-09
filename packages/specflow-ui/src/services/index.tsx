@@ -2,26 +2,19 @@ import { createContext, useContext, type ReactNode } from 'react';
 import { createHttpClient, type HttpClient } from '@nevo/http-client';
 
 import { createBrowserAuthApi, type AuthApi } from '../auth/api';
+import { createRuntimeInfoApi, type RuntimeInfoApi } from './runtimeInfoApi';
 import { createAuthStore, type AuthStore } from '../auth/store';
 import {
-  createFixtureSpecsOverviewApi,
   createRuntimeSpecsOverviewApi,
   type SpecsOverviewApi,
 } from '../features/specs/overview/api';
-import type { SpecsOverviewSource } from '../features/specs/overview/model';
-import { defaultSpecsSource } from '../features/specs/overview/source';
-import {
-  createFixtureSpecificationApi,
-  createUnavailableSpecificationApi,
-  type SpecificationApi,
-} from '../features/specs/api';
+import { createRuntimeSpecificationApi, type SpecificationApi } from '../features/specs/api';
 
 export interface SpecFlowAppServices {
-  readonly http: HttpClient;
+  readonly runtimeInfoApi: RuntimeInfoApi;
   readonly authApi: AuthApi;
   readonly authStore: AuthStore;
   readonly specsOverviewApi: SpecsOverviewApi;
-  readonly specsSource: SpecsOverviewSource;
   readonly specificationApi: SpecificationApi;
 }
 
@@ -29,10 +22,10 @@ export type SpecFlowServices = SpecFlowAppServices;
 
 export interface SpecFlowServicesOptions {
   readonly http?: HttpClient;
+  readonly runtimeInfoApi?: RuntimeInfoApi;
   readonly authApi?: AuthApi;
   readonly authStore?: AuthStore;
   readonly specsOverviewApi?: SpecsOverviewApi;
-  readonly specsSource?: SpecsOverviewSource;
   readonly specificationApi?: SpecificationApi;
 }
 
@@ -48,24 +41,15 @@ export function createSpecFlowAppServices(
   const authApi = options.authApi ?? createBrowserAuthApi(http);
   const authStore = options.authStore ?? createAuthStore(authApi);
 
-  const useSampleData = import.meta.env.DEV && import.meta.env.VITE_SPECFLOW_SAMPLE_DATA === 'true';
+  const specsOverviewApi = options.specsOverviewApi ?? createRuntimeSpecsOverviewApi(http);
 
-  const specsOverviewApi =
-    options.specsOverviewApi ??
-    (useSampleData ? createFixtureSpecsOverviewApi() : createRuntimeSpecsOverviewApi(http));
-
-  const specsSource = options.specsSource ?? defaultSpecsSource(specsOverviewApi);
-
-  const specificationApi =
-    options.specificationApi ??
-    (useSampleData ? createFixtureSpecificationApi() : createUnavailableSpecificationApi());
+  const specificationApi = options.specificationApi ?? createRuntimeSpecificationApi(http);
 
   return {
-    http,
+    runtimeInfoApi: options.runtimeInfoApi ?? createRuntimeInfoApi(http),
     authApi,
     authStore,
     specsOverviewApi,
-    specsSource,
     specificationApi,
   };
 }

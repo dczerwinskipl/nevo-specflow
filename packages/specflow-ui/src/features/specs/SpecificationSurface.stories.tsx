@@ -178,3 +178,36 @@ export const MobileTaskPreviewFlow: Story = {
 };
 
 export const Polish: Story = { args: { locale: 'pl' } };
+
+/**
+ * Deliberately bypasses cache seeding. Exercises typed API -> Query ->
+ * mapWorkspaceResponse -> routed Workspace -> lazy Task and document reads.
+ */
+export const ApiDtoToTaskScreen: Story = {
+  args: { path: '/specs/api-integration?task=TASK-01', integrationDto: true },
+  play: async ({ canvas }) => {
+    await canvas.findByText('Specification ID: api-integration', {}, { timeout: 10000 });
+    await canvas.findByRole(
+      'heading',
+      { name: 'Fresh task detail from Runtime API' },
+      { timeout: 10000 },
+    );
+    await canvas.findByText('Latest acceptance criterion', {}, { timeout: 10000 });
+  },
+};
+
+export const ApiDtoToDocumentScreen: Story = {
+  args: { path: '/specs/api-integration?view=documents', integrationDto: true },
+  play: async ({ canvas, userEvent }) => {
+    await canvas.findByText('Specification ID: api-integration', {}, { timeout: 10000 });
+    const button = await canvas.findByRole('button', { name: 'Read' }, { timeout: 10000 });
+    await userEvent.click(button);
+    await canvas.findByRole(
+      'heading',
+      {
+        name: 'Document content from Runtime detail API',
+      },
+      { timeout: 10000 },
+    );
+  },
+};

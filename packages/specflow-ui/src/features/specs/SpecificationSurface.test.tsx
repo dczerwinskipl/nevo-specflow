@@ -5,13 +5,9 @@ import { appI18n, LocalizationProvider } from '../../i18n';
 import { createSpecFlowQueryClient } from '../../app/queryClient';
 import { createSpecFlowAppServices, SpecFlowServicesProvider } from '../../services';
 import { SpecificationSurface } from './SpecificationSurface';
-import {
-  createFixtureSpecificationApi,
-  SpecificationWorkspaceUnavailableError,
-  type SpecificationApi,
-} from './api';
+import { HttpClientError } from '@nevo/http-client';
 import { specificationKeys } from './queries';
-import { createSpecificationWorkspaceFixture } from './workspace/fixtures';
+import { createSpecificationWorkspaceFixture } from '../../../test-support/specs/workspace/fixtures';
 
 import { AppShell } from '@nevo/ui';
 
@@ -22,7 +18,7 @@ describe('SpecificationSurface', () => {
 
   function renderWithProviders(
     component: React.ReactElement,
-    servicesOverride?: { specificationApi?: SpecificationApi },
+    servicesOverride?: Parameters<typeof createSpecFlowAppServices>[0],
   ) {
     const queryClient = createSpecFlowQueryClient();
     const services = createSpecFlowAppServices(servicesOverride);
@@ -63,7 +59,11 @@ describe('SpecificationSurface', () => {
     });
     query.setState({
       status: 'error',
-      error: new SpecificationWorkspaceUnavailableError('spec-missing'),
+      error: new HttpClientError('Unavailable', {
+        kind: 'http',
+        status: 503,
+        data: { error: 'specification_source_unavailable' },
+      }),
       fetchStatus: 'idle',
       errorUpdateCount: 1,
     });
@@ -87,8 +87,11 @@ describe('SpecificationSurface', () => {
 
   it('renders genuine not found only when API returns 404 domain error', () => {
     const queryClient = createSpecFlowQueryClient();
-    const domainNotFoundError = new Error('Not found');
-    (domainNotFoundError as unknown as Record<string, unknown>).status = 404;
+    const domainNotFoundError = new HttpClientError('Not found', {
+      kind: 'http',
+      status: 404,
+      data: { error: 'specification_not_found' },
+    });
 
     const services = createSpecFlowAppServices();
     const query = queryClient.getQueryCache().build(queryClient, {
@@ -116,17 +119,14 @@ describe('SpecificationSurface', () => {
     expect(markup).toContain('Nie znaleziono specyfikacji');
   });
 
-  it('allows fixture API injection explicitly in test/fixture environments', async () => {
+  it('renders seeded presentation data in isolated component tests', () => {
     const queryClient = createSpecFlowQueryClient();
-    const services = createSpecFlowAppServices({
-      specificationApi: createFixtureSpecificationApi('working'),
-    });
+    const services = createSpecFlowAppServices();
 
-    // Prime query client cache to test successful data rendering via query
-    await queryClient.prefetchQuery({
-      queryKey: specificationKeys.detail('spec-123'),
-      queryFn: () => services.specificationApi.getSpecificationWorkspace('spec-123'),
-    });
+    queryClient.setQueryData(
+      specificationKeys.detail('spec-123'),
+      createSpecificationWorkspaceFixture('working', 'spec-123'),
+    );
 
     const markup = renderToStaticMarkup(
       <QueryClientProvider client={queryClient}>

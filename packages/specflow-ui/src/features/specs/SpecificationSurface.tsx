@@ -12,10 +12,14 @@ import {
   WorkspaceHeader,
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
+import { specificationKeys } from './queries';
 
 import type { SpecificationWorkspaceData, SpecificationWorkspaceView } from './workspace/model';
 import { SpecificationWorkspace } from './workspace/SpecificationWorkspace';
 import { useSpecificationWorkspace } from './useSpecificationWorkspace';
+import { SpecificationDocumentContent } from './connected/SpecificationDocumentContent';
+import { SpecificationTaskContent } from './connected/SpecificationTaskContent';
 
 export interface SpecificationSurfaceProps {
   readonly specId: string;
@@ -68,12 +72,11 @@ function SpecificationSurfaceConnected({
   onDiff,
 }: SpecificationSurfaceProps) {
   const { t } = useTranslation();
-  const { data, isLoading, isError, errorStatus, isMissingCapability, refetch } =
+  const queryClient = useQueryClient();
+  const { data, isLoading, isError, errorStatus, isDomainNotFound, refetch } =
     useSpecificationWorkspace(specId);
 
-  const isDomainNotFound = errorStatus === 404 && !isMissingCapability;
-
-  if (isError) {
+  if (isError && (!data || errorStatus === 401 || errorStatus === 403)) {
     return (
       <AppWorkspace
         split="primary"
@@ -177,6 +180,13 @@ function SpecificationSurfaceConnected({
     );
   }
 
+  const refreshWorkspace = async () => {
+    await queryClient.invalidateQueries({
+      queryKey: specificationKeys.spec(specId),
+      refetchType: 'active',
+    });
+  };
+
   return (
     <SpecificationWorkspace
       specId={specId}
@@ -188,11 +198,16 @@ function SpecificationSurfaceConnected({
       onViewChange={onViewChange}
       onTaskChange={onTaskChange}
       onNavigateView={onNavigateView}
-      onRefresh={onRefresh ?? (() => void refetch())}
+      onRefresh={onRefresh ?? refreshWorkspace}
       onExecute={onExecute}
       onNewConversation={onNewConversation}
       onOpenSession={onOpenSession}
       onDiff={onDiff}
+      refreshFailed={isError && Boolean(data)}
+      renderDocument={(doc) => <SpecificationDocumentContent specId={specId} documentId={doc.id} />}
+      renderTask={(task, back) => (
+        <SpecificationTaskContent specId={specId} task={task} onBack={back} />
+      )}
     />
   );
 }

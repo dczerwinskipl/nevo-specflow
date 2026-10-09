@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import {
   Alert,
   AppContent,
@@ -14,7 +14,12 @@ import {
   WorkspaceHeader,
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { SpecificationWorkspaceData, SpecificationWorkspaceView } from './model';
+import type {
+  DocumentItem,
+  TaskItem,
+  SpecificationWorkspaceData,
+  SpecificationWorkspaceView,
+} from './model';
 import { WorkView } from './WorkView';
 import { DocumentsView } from './DocumentsView';
 import { SessionsView } from './SessionsView';
@@ -54,6 +59,9 @@ export interface SpecificationWorkspaceProps {
   readonly onNewConversation?: (agent: string) => void | Promise<void>;
   readonly onOpenSession?: (sessionId: string) => void;
   readonly onDiff?: (file: string) => void;
+  readonly renderDocument?: (doc: DocumentItem) => ReactNode;
+  readonly renderTask?: (task: TaskItem, onBack: () => void) => ReactNode;
+  readonly refreshFailed?: boolean;
 }
 
 export function SpecificationWorkspace(props: SpecificationWorkspaceProps) {
@@ -79,6 +87,9 @@ function SpecificationWorkspaceInner({
   onNewConversation,
   onOpenSession,
   onDiff,
+  renderDocument,
+  renderTask,
+  refreshFailed,
 }: SpecificationWorkspaceProps) {
   const { t } = useTranslation();
   const secondaryNavigation = useSecondaryNavigation();
@@ -299,12 +310,37 @@ function SpecificationWorkspaceInner({
                     </div>
                   </div>
 
+                  {refreshFailed ? (
+                    <Alert
+                      tone="attention"
+                      role="status"
+                      title={t('specification.unavailableTitle')}
+                    >
+                      {t('specification.unavailableDescription', { id: specId })}
+                    </Alert>
+                  ) : null}
+
                   {/* View Content */}
                   {currentView === 'work' ? (
                     <WorkView specId={specId} data={data} />
+                  ) : currentView !== 'task' &&
+                    data.sectionAvailability?.[
+                      currentView === 'documents' ? 'documents' : currentView
+                    ] !== undefined &&
+                    data.sectionAvailability?.[
+                      currentView === 'documents' ? 'documents' : currentView
+                    ] !== 'available' ? (
+                    <Alert
+                      tone="attention"
+                      role="status"
+                      title={t('specification.unavailableTitle')}
+                    >
+                      {t('specification.unavailableDescription', { id: specId })}
+                    </Alert>
                   ) : currentView === 'documents' ? (
                     <DocumentsView
                       documents={data.documents}
+                      renderContent={renderDocument}
                       activeDocId={activeDocId}
                       docOrigin={docOrigin}
                       onSelectDoc={(id) => setActiveDocId(id)}
@@ -337,12 +373,16 @@ function SpecificationWorkspaceInner({
                     />
                   ) : currentView === 'task' ? (
                     fullTask ? (
-                      <FullTaskView
-                        task={fullTask}
-                        specKey={specId}
-                        onBack={handleBackFromFullTask}
-                        onOpenSession={onOpenSession}
-                      />
+                      renderTask ? (
+                        renderTask(fullTask, handleBackFromFullTask)
+                      ) : (
+                        <FullTaskView
+                          task={fullTask}
+                          specKey={specId}
+                          onBack={handleBackFromFullTask}
+                          onOpenSession={onOpenSession}
+                        />
+                      )
                     ) : (
                       <Alert
                         role="alert"

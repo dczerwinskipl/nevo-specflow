@@ -5,7 +5,7 @@ import { appI18n, LocalizationProvider } from '../../../i18n';
 import { SpecificationWorkspace } from './SpecificationWorkspace';
 import { DocumentsView } from './DocumentsView';
 
-import { createSpecificationWorkspaceFixture } from './fixtures';
+import { createSpecificationWorkspaceFixture } from '../../../../test-support/specs/workspace/fixtures';
 
 function renderWorkspaceMarkup(
   props: Partial<React.ComponentProps<typeof SpecificationWorkspace>> = {},

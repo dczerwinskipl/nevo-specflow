@@ -3,20 +3,12 @@ import type { IconName } from '@nevo/ui';
 export type SpecificationWorkspaceView =
   'work' | 'documents' | 'sessions' | 'changes' | 'repository' | 'task';
 
-export type SpecificationScenario =
-  | 'working'
-  | 'empty'
-  | 'preparing'
-  | 'no-git'
-  | 'git-conflict'
-  | 'git-unknown'
-  | 'git-stale'
-  | 'extensions';
-
 export type TaskLifecycle = 'pending' | 'in_progress' | 'completed' | 'blocked';
 
 export interface TaskExecutionReadiness {
   readonly canExecute: boolean;
+  /** Backend-owned semantic unavailability reason, not translated cache text. */
+  readonly reasonCode?: string;
   readonly blockers?: readonly string[];
   readonly warnings?: readonly string[];
 }
@@ -35,6 +27,7 @@ export interface TaskItem {
   readonly id: string;
   readonly title: string;
   readonly status: string;
+  readonly statusCode?: TaskLifecycle;
   readonly lifecycle?: TaskLifecycle;
   readonly attention?: boolean;
   readonly additionalInfo?: string;
@@ -82,14 +75,16 @@ export interface SessionSummary {
   readonly taskCount?: string;
   readonly age?: string;
   readonly activity?: SessionActivity;
+  readonly activityCode?: 'active' | 'attention';
 }
 
 export interface AttentionItem {
   readonly id: string;
-  readonly kind: 'task' | 'session' | 'git';
+  readonly kind: 'task' | 'session' | 'git' | 'specification';
   readonly title: string;
   readonly reason: string;
   readonly actionLabel: string;
+  readonly actionCode?: 'task' | 'session' | 'git' | 'specification';
   readonly targetId?: string;
 }
 
@@ -151,7 +146,12 @@ export interface SpecificationChangesData {
   readonly mr?: readonly string[];
 }
 
+export type SpecificationSectionId =
+  'attention' | 'tasks' | 'documents' | 'sessions' | 'activity' | 'repository' | 'changes';
+export type SpecificationSectionState = 'available' | 'unavailable' | 'forbidden';
+
 export interface SpecificationWorkspaceData {
+  readonly sectionAvailability?: Partial<Record<SpecificationSectionId, SpecificationSectionState>>;
   readonly id: string;
   readonly title: string;
   readonly intro: string;

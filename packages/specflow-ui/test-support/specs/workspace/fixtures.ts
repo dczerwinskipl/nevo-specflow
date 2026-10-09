@@ -4,10 +4,19 @@ import type {
   DocumentItem,
   RepoContext,
   SessionSummary,
-  SpecificationScenario,
   SpecificationWorkspaceData,
   TaskGroup,
-} from './model';
+} from '../../../src/features/specs/workspace/model';
+
+export type SpecificationScenario =
+  | 'working'
+  | 'empty'
+  | 'preparing'
+  | 'no-git'
+  | 'git-conflict'
+  | 'git-unknown'
+  | 'git-stale'
+  | 'extensions';
 
 export const defaultTaskGroups: readonly TaskGroup[] = [
   {

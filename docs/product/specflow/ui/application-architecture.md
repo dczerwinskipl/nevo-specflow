@@ -153,11 +153,11 @@ SpecFlow UI establishes a clear data-boundary hierarchy:
 ```text
 Runtime HTTP contracts
         ↓
-Feature API adapters (`SpecificationApi`, `SpecsOverviewApi`)
+Feature API adapters (`SpecificationApi`, `TaskApi`, `SpecsOverviewApi`)
         ↓
 TanStack Query query/mutation definitions
         ↓
-Feature hooks (`useSpecificationWorkspace`, `useSpecsOverview`)
+Feature hooks (`useSpecificationWorkspace`, `useSpecificationTask`, `useSpecsOverview`)
         ↓
 UI projection / presentation models
         ↓
@@ -172,10 +172,12 @@ The browser/application-level HTTP transport (`HttpClient`) is created once at t
 Feature APIs are composed from this boundary via `SpecFlowServicesProvider` and `useSpecFlowServices()`:
 
 - `SpecFlowServices` exposes `authApi`, `authStore`, `specsOverviewApi`,
-  `specificationApi` and `runtimeInfoApi`. The one shared `HttpClient` stays private
+  `specificationApi`, `taskApi` and `runtimeInfoApi`. The one shared `HttpClient` stays private
   to the composition root.
-- `SpecificationApi` reads the real Workspace, Task and document endpoints from Runtime.
-  Missing project-side read sources produce explicit unavailable responses, never browser fixtures.
+- `SpecificationApi` reads the real Workspace and document endpoints from Runtime, while
+  feature-owned `TaskApi` reads Task detail through its own typed adapter and query keys.
+  Both use the shared application HTTP client, and missing project-side sources produce
+  explicit unavailable responses rather than browser fixtures.
 - Storybook/test fixtures live under `test-support` and must not be imported by production UI.
 
 Component code never instantiates ad-hoc transport clients and does not know arbitrary endpoint URLs.

@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Button, InformationList, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { TaskExecutionReadiness, TaskGroup } from '../../../specs/workspace/model';
-import { useWorkspaceRuntime } from '../../../specs/workspace/WorkspaceContext';
+import type { TaskExecutionReadiness, TaskGroup } from '../../model';
 import { WorkspaceSection } from '../../../specs/workspace/sections/WorkspaceSection';
 import { getGroupTone } from './presentation';
 import { TaskGroupHeader } from './TaskGroupHeader';
@@ -14,6 +13,10 @@ export interface TasksSectionProps {
   readonly totalTasksCount?: number;
   readonly completedTasksCount?: number;
   readonly executionReadiness?: TaskExecutionReadiness;
+  readonly onPreviewTask: (taskId: string) => void;
+  readonly fullTaskHref: (taskId: string) => string;
+  readonly onExecuteTasks: (taskIds: readonly string[]) => void;
+  readonly canExecute: boolean;
 }
 
 export function TasksSection({
@@ -22,9 +25,12 @@ export function TasksSection({
   totalTasksCount,
   completedTasksCount,
   executionReadiness,
+  onPreviewTask,
+  fullTaskHref,
+  onExecuteTasks,
+  canExecute,
 }: TasksSectionProps) {
   const { t } = useTranslation();
-  const runtime = useWorkspaceRuntime();
 
   const [selectedTasks, setSelectedTasks] = useState<ReadonlySet<string>>(new Set());
   const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(new Set());
@@ -66,10 +72,10 @@ export function TasksSection({
       });
 
   const isExecutionDisabled =
-    runtime.canExecute === false || executionReadiness?.canExecute === false;
+    canExecute === false || executionReadiness?.canExecute === false;
 
   const executionTitle =
-    runtime.canExecute === false
+    canExecute === false
       ? t('common.notImplemented')
       : executionReadiness?.canExecute === false
         ? executionReadiness.reasonCode === 'not_implemented'
@@ -96,7 +102,7 @@ export function TasksSection({
                 size="sm"
                 disabled={isExecutionDisabled}
                 title={executionTitle}
-                onClick={() => runtime.executeTasks(Array.from(selectedTasks))}
+                onClick={() => onExecuteTasks(Array.from(selectedTasks))}
               >
                 {selectedTasks.size === 1
                   ? t('specification.executeSingleTask')
@@ -138,8 +144,8 @@ export function TasksSection({
                       selected={selectedTasks.has(task.id)}
                       isPreparing={isPreparing}
                       onSelect={handleSelectTask}
-                      onPreview={runtime.previewTask}
-                      fullTaskHref={runtime.fullTaskHref(task.id)}
+                      onPreview={onPreviewTask}
+                      fullTaskHref={fullTaskHref(task.id)}
                     />
                   ))}
                 </InformationList>

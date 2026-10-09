@@ -1,5 +1,6 @@
 import { Alert } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
+import { useWorkspaceRuntime } from './WorkspaceContext';
 import type { SpecificationWorkspaceData } from './model';
 import {
   SpecificationSummarySection,
@@ -23,6 +24,7 @@ export interface WorkViewProps {
  */
 export function WorkView({ specId, data }: WorkViewProps) {
   const { t } = useTranslation();
+  const runtime = useWorkspaceRuntime();
   return (
     <div className="divide-y divide-border-subtle max-w-content-standard">
       <div className="pb-6">
@@ -69,6 +71,10 @@ export function WorkView({ specId, data }: WorkViewProps) {
             totalTasksCount={data.totalTasksCount}
             completedTasksCount={data.completedTasksCount}
             executionReadiness={data.executionReadiness}
+            onPreviewTask={runtime.previewTask}
+            fullTaskHref={runtime.fullTaskHref}
+            onExecuteTasks={runtime.executeTasks}
+            canExecute={runtime.canExecute !== false}
           />
         </div>
       ) : null}

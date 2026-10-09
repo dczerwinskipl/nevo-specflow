@@ -89,65 +89,58 @@ of which product surface displays it. Tasks, Documents, Git and Sessions may con
 Specification Work, Project Settings or other surfaces. The host owns placement, navigation,
 responsive layouts and extension-point behavior; it does not become the owner of those features.
 
-Tasks currently owns `features/tasks/pages` (independent Full Task route/API/Query),
-`features/tasks/inspectors` (Task Preview) and
-`features/tasks/contributions/specification-work` (the Work section). Specification
-owns Workspace, routing composition, Secondary stack and its aggregate read model. UI
-contribution registration does not change the backend resource ownership.
+- `features/tasks/` owns Full Task, Task Preview presentation, and Task-group/row controls.
+  `features/specs/` owns Specification routing, Workspace composition and Secondary stack
+  navigation. The existing aggregate Workspace projection remains an explicit migration seam.
+- The existing backend `RuntimeFeature` is a separate composition boundary from `UiModule`.
+  HTTP contracts connect those layers; neither UI modules nor plugins instantiate independent
+  application HTTP transports or QueryClient lifecycles.
+- Configuration of Git branch/push policy, Task lane/status settings, runtime module discovery,
+  and dynamic third-party code loading are **out of scope**.
 
-### UI module extension contract
+Task presentation is colocated under `features/tasks/pages`, Task Preview presentation under
+`features/tasks/inspectors`, and the Work contribution under
+`features/tasks/contributions/specification-work`. The aggregate Workspace data and actions
+are a transitional host-owned adapter, not a standard public contract for other features.
 
-The static composition has five distinct concepts:
+### Typed UI extension registry
 
-- **UiModule** is a feature-owned group of registered UI contributions, with a stable module ID.
-- **UiExtensionPoint<T>** is a typed token and contract *owned by the receiving host*. Define a new
-  point next to the host, not in generic registry infrastructure.
-- **UiContribution** has a stable contribution ID and the data/component shape specified by its
-  extension point. A single module may contribute to several differently typed points.
-- **UiRegistry** validates registrations and provides typed `registry.get(extensionPoint)` lookups.
-  It knows only IDs and exact point-token identity; it does not know feature models, slot semantics,
-  authorization, routers, or React layout.
-- **Host** defines the point's context, filters and renders contributions, owns placement, presentation,
-  error isolation and recovery. A host may use a different contract than Specification Work.
+A **UiModule** is a feature-owned group of UI contributions. A **UiContribution** has a stable
+identity and a contract belonging to a **UiExtensionPoint**. A **UiRegistry** validates registration
+and offers typed `registry.get(extensionPoint)` lookup. A **host** owns the extension-point
+definition, data context, placement, filtering, rendering, and error recovery. Generic registry
+infrastructure must not import feature models, layout slots, or domain actions.
 
-`app/ui-modules/contracts.ts` defines `defineUiExtensionPoint<T>()`, `contributeTo(point, contribution)`
-and the generic module identity. `app/ui-modules/registry.ts` composes a known list of supported point
-definitions and statically imported modules, rejecting unknown or conflicting point definitions, duplicate
-module IDs and globally duplicated contribution IDs. Registrations preserve order; lookup returns read-only
-snapshots. The application composition root declares the supported points and modules in
-`app/ui-modules/builtInUiModules.ts` and passes the registry through `UiModulesProvider`.
-Tests and Storybook inject a registry explicitly; the provider does not import built-ins.
+A host declares a typed point through `defineUiExtensionPoint<T>()`. A feature uses
+`contributeTo(point, contribution)` to register a point-specific contract. Registration and
+lookup preserve its TypeScript type. No central union of all contribution contracts is required.
+The registry checks point identities and duplicate module/contribution IDs, and preserves module
+registration order with read-only lookup results.
 
-The first real point is owned by `features/specs/extensions/specificationWorkSections.ts`:
-`specification.work.sections`. Its contribution contract specifies `id`, `slot`
-(`main` or `related`), optional `isVisible` and a React `Component` accepting
-`SpecificationWorkSectionContext`. Specification Work filters by slot and renders JSX components,
-so contributions use normal hooks and lifecycle. Slot order and layout belong to the host, not
-to the registry. A new built-in contribution to Work imports this point, registers it with
-`contributeTo(specificationWorkSections, ...)` in its own `uiModule.tsx`, and is added
-to the module list in the application composition root. Neither the host nor the registry
-imports the feature implementation.
+Application composition explicitly declares supported extension points and statically imported
+built-in modules in `app/ui-modules/builtInUiModules.ts`. It passes the resulting registry through
+`UiModulesProvider`. The generic provider does not import production built-ins; tests and
+Storybook provide their own registry explicitly.
 
-Another host, such as Project Settings, can define a *different* typed point beside its surface,
-add the point to application composition, and receive its own contribution shape from any UI module.
-No registry change or central product-specific union is needed. Do not create unused extension-point
-definitions until a host actually requires them.
+Specification owns its implemented point in
+`features/specs/extensions/specificationWorkSections.ts`. Its
+`specification.work.sections` contributions contain an ID, `main` or `related` slot,
+optional visibility rule and React Component. The host filters by slot and renders the
+component through JSX. Other hosts (such as a future Project Settings screen) may define
+different typed contribution contracts without modifying generic registry infrastructure.
+Tasks registers its work contribution in `features/tasks/uiModule.tsx`; WorkView does not
+import the Tasks implementation.
 
-### Transitional boundaries and future plugins
+### Transitional context and future plugins
 
-`SpecificationWorkSectionContext` currently includes the full `SpecificationWorkspaceData`
-aggregate and `WorkspaceRuntime` semantic actions. This is a **transitional Specs-owned adapter**,
-not an approved public contract for all modules. `TasksSection` already receives narrow props and
-callbacks; new features should not copy its aggregate dependency uncritically. Review context ownership
-before introducing the second real feature, and avoid independent Workspace/Task API duplication.
+The current `SpecificationWorkSectionContext` includes aggregate `SpecificationWorkspaceData`
+and `WorkspaceRuntime` semantic actions. That is **transitional**, and must not be copied into
+unrelated host contracts. Internally, `TasksSection` already uses narrow props and callbacks.
 
-The generic registry does not implement discovery, installation, enablement, dynamic JavaScript
-loading, permissions, server-managed schema UI or persistence. Future multi-part SpecFlow plugins
-may optionally supply `UiModule` declarations along with independently designed Runtime features,
-CLI commands, workflow steps and YAML configuration. The broader plugin contract remains **undecided**.
-Existing backend `RuntimeFeature` is a separate composition boundary, not an alias for `UiModule`.
-Access and authorization remain enforced by Runtime APIs, not by contribution visibility. Neither
-a contribution nor a plugin creates its own HTTP transport or QueryClient.
+This static UI registry is not a full plugin system: there is no dynamic discovery, installation,
+remote loading, grant model, YAML configuration, or Runtime/CLI registry. Future multi-part
+SpecFlow plugins may optionally supply UiModules, but their Runtime, CLI, workflow and configuration
+contracts remain **undecided**. Runtime endpoints, not contribution visibility, enforce access.
 
 ### Obsolete Extensions placeholder
 

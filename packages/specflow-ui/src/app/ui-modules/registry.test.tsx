@@ -11,12 +11,7 @@ import {
 } from '../../features/specs/workspace/WorkspaceContext';
 import { builtInUiModuleRegistry } from './builtInUiModules';
 import { UiModulesProvider } from './UiModulesProvider';
-import {
-  contributeTo,
-  defineUiExtensionPoint,
-  type UiContribution,
-  type UiModule,
-} from './contracts';
+import { contributeTo, defineUiExtensionPoint, type UiContribution, type UiModule } from './contracts';
 import { createUiRegistry } from './registry';
 
 interface TestPanelContribution extends UiContribution {
@@ -115,9 +110,8 @@ describe('typed UI extension registry', () => {
 
   it('rejects unknown or conflicting extension points', () => {
     const conflict = defineUiExtensionPoint<TestPanelContribution>('specification.work.sections');
-    expect(() => createUiRegistry([specificationWorkSections, conflict], [])).toThrow(
-      'extension point id',
-    );
+    const duplicatePoints = () => createUiRegistry([specificationWorkSections, conflict], []);
+    expect(duplicatePoints).toThrow('extension point id');
 
     const unknownModule: UiModule = {
       id: 'unknown.module',
@@ -146,9 +140,8 @@ describe('typed UI extension registry', () => {
     expect(() => createUiRegistry([specificationWorkSections], [conflictingModule])).toThrow(
       'Unknown or conflicting',
     );
-    expect(() => createUiRegistry([specificationWorkSections], []).get(conflict)).toThrow(
-      'Unknown or conflicting',
-    );
+    const conflictingLookup = () => createUiRegistry([specificationWorkSections], []).get(conflict);
+    expect(conflictingLookup).toThrow('Unknown or conflicting');
   });
 
   it('preserves registration order and leaves slot filtering to Specification', () => {

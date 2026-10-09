@@ -2812,6 +2812,23 @@
       ]
     },
     {
+      "id": "reference.api.specification-workspace",
+      "type": "reference",
+      "title": "Specification Workspace HTTP API",
+      "status": "current",
+      "file": "docs/reference/api/specification-workspace.md",
+      "read_when": [
+        "implementing or consuming the Specification Workspace API",
+        "validating Workspace authentication and feature availability"
+      ],
+      "summary": "Typed Specification Workspace, document and Task read endpoints with explicit Runtime data source, authorization and independent detail loading.",
+      "related": [
+        "reference.api.specs-overview",
+        "architecture.runtime.authorization",
+        "product.specflow.ui.data-loading-and-integration"
+      ]
+    },
+    {
       "id": "reference.api.specs-overview",
       "type": "reference",
       "title": "Specs Overview HTTP API",

@@ -1,12 +1,22 @@
+import { QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from '@tanstack/react-router';
 
+import { defaultQueryClient } from './app/queryClient';
+import { AuthQueryCacheBoundary } from './app/AuthQueryCacheBoundary';
 import { router } from './app/router';
 import { LocalizationProvider } from './i18n';
+import { defaultSpecFlowServices, SpecFlowServicesProvider } from './services';
 
 export function App() {
   return (
-    <LocalizationProvider>
-      <RouterProvider router={router} />
-    </LocalizationProvider>
+    <QueryClientProvider client={defaultQueryClient}>
+      <SpecFlowServicesProvider services={defaultSpecFlowServices}>
+        <AuthQueryCacheBoundary auth={defaultSpecFlowServices.authStore}>
+          <LocalizationProvider>
+            <RouterProvider router={router} />
+          </LocalizationProvider>
+        </AuthQueryCacheBoundary>
+      </SpecFlowServicesProvider>
+    </QueryClientProvider>
   );
 }

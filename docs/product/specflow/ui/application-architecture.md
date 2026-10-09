@@ -73,8 +73,10 @@ MAY own bootstrap session state while still using the application-scoped HTTP tr
 
 ### Fixture boundary
 
-Fixtures are allowed for Storybook/tests and explicit development/demo modes, but they are alternate
-inputs at a deliberate test/development seam.
+Fixtures are permitted only in test-support, Storybook and explicit network-mocking test/dev harnesses.
+A production UI module MUST NOT import a fixture, select mock data using Vite environment variables,
+or implement a fixture-backed API adapter. Runtime Demo Mode is an explicit backend data source,
+not a second frontend data-access mode.
 
 A normal production route/surface MUST NOT use fixture/example data as its authoritative source or
 silent fallback when production data is unavailable. Production composition surfaces real unavailable
@@ -102,10 +104,9 @@ being treated as an unauthenticated user.
 It creates the application HTTP client and constructs the current typed services from that transport.
 This symbol is an implementation mapping, not the architectural identity of the composition boundary.
 
-TanStack Query has been selected as the normative remote server-state architecture, but the current
-codebase has not yet introduced the application QueryClient/provider. The first query-backed product
-feature MUST add that provider at the application composition root rather than creating a feature-local
-QueryClient.
+TanStack Query is the canonical remote server-state architecture. The application-level
+`QueryClientProvider` is initialized at the application composition root (`App.tsx`) using
+`defaultQueryClient`, providing a shared query cache across all features and routes.
 
 Existing pre-Query request lifecycles are migration debt and MUST NOT be treated as architectural
 precedent for new remote feature work.
@@ -114,9 +115,61 @@ The current product routes under the guarded layout remain:
 
 - `/` for the read-only Specs Overview (`?collection=current|archive`);
 - `/specs/:specId` for the owning Specification, with `?collection=current|archive` as parent return
-  context; the current increment is an explicitly labelled placeholder, not a Specification read API;
+  context; loads server state via TanStack Query and renders the Specification Workspace;
 - `/ui-playground` for a directly routable development/integration screen, not a persistent product
   navigation item.
+
+## Application services and server-state architecture
+
+SpecFlow UI establishes a clear data-boundary hierarchy:
+
+```text
+Runtime HTTP contracts
+        ↓
+Feature API adapters (`SpecificationApi`, `SpecsOverviewApi`)
+        ↓
+TanStack Query query/mutation definitions
+        ↓
+Feature hooks (`useSpecificationWorkspace`, `useSpecsOverview`)
+        ↓
+UI projection / presentation models
+        ↓
+Screen composition (`SpecificationSurfaceConnected`, `SpecsRouteScreen`)
+        ↓
+Presentational components (`SpecificationWorkspace`, `WorkView`, `SpecsOverview`)
+```
+
+### Application services boundary (`SpecFlowServices`)
+
+The browser/application-level HTTP transport (`HttpClient`) is created once at the application composition root.
+Feature APIs are composed from this boundary via `SpecFlowServicesProvider` and `useSpecFlowServices()`:
+
+- `SpecFlowServices` exposes `authApi`, `authStore`, `specsOverviewApi`,
+  `specificationApi` and `runtimeInfoApi`. The one shared `HttpClient` stays private
+  to the composition root.
+- `SpecificationApi` reads the real Workspace, Task and document endpoints from Runtime.
+  Missing project-side read sources produce explicit unavailable responses, never browser fixtures.
+- Storybook/test fixtures live under `test-support` and must not be imported by production UI.
+
+Component code never instantiates ad-hoc transport clients and does not know arbitrary endpoint URLs.
+
+### Server state via TanStack Query
+
+`@tanstack/react-query` is the canonical server-state mechanism.
+An application-level `QueryClient` is initialized at the composition root (`App.tsx`) via `QueryClientProvider client={defaultQueryClient}`.
+
+- Server reads, caching, invalidation, loading, error, and mutation lifecycle are owned by TanStack Query.
+- Query keys are defined canonically per feature (`specificationKeys`, `specsOverviewKeys`).
+- Local UI state (active local view, selected task, inspector drawer open/close, dialog visibility) remains local React state.
+
+### Separation of screen composition and presentation
+
+Production screens (`SpecificationSurfaceConnected`) own data fetching, loading spinners, and honest error/unavailable states.
+Presentational components (`SpecificationWorkspace`, `WorkView`, `TaskRow`, `DocumentsView`, `SessionsView`, `RepositoryView`, `ChangesView`, `FullTaskView`) receive structured data and callbacks via typed props:
+
+- **No fixture fallback in production**: Production screens never fall back silently to fixture domain data (`dataProp ?? createFixture(...)`). When backend endpoints are unavailable, an honest unavailable state is displayed.
+- **No fixture scenarios in route search**: Query parameters like `?scenario=...` are forbidden in production routes. Scenario-driven fixtures are restricted to Storybook and tests, including test-owned typed API adapters and network interception.
+- **No fabricated domain logic**: Execution readiness, completion counts, file changes, and repository status are consumed as typed semantic fields from authoritative models, never fabricated by matching task IDs or parsing localized UI text.
 
 ## Specs Overview increment
 
@@ -126,24 +179,21 @@ screen follows the [Specs Overview contract](../../../ideas/specflow-ui/screens/
 and its shared steering contract. Signal priority, concrete targets, human attention, and current
 execution membership are supplied by the projection, not reconstructed from workflow lifecycle.
 
-`SpecsOverviewSource` is the current transitional transport seam; its reader is abortable and scoped to the selected
-collection. Refresh retains the last valid snapshot on failure, while a collection switch hides
-the previous collection immediately and ignores late results. The default source calls
-`GET /api/specs/overview?collection=current|archive` on the same Runtime origin. Runtime currently reads through a sample `SpecsOverviewRepository` adapter, not persistent repository/workflow state. The adapter is an implementation detail; the public response has no sample marker. Requests use the real authentication session and Runtime filters every item using server-owned `spec.view` scope. The shared TypeBox contract lives in `@nevo/specflow-contracts/specs/overview`.
-Network/server failures display the unavailable state rather than silently falling back to fixtures.
-A normalized 401 refreshes the authentication context and re-enters the existing login flow; a 403
-renders the standalone Access denied screen. For Current, Runtime supplies ordered section IDs and one backend-owned classification per Spec. The feature mapper bounds rich evidence into row presentation without reclassifying it.
-Development builds can still opt into isolated frontend fixtures using
-`VITE_SPECFLOW_SAMPLE_DATA=true`; normal builds and dogfooding use the HTTP source.
+The `SpecsOverviewApi` reads `GET /api/specs/overview?collection=current|archive`.
+The Runtime owns overview classification, signal priority and scoped `spec.view` filtering.
+Normal project mode never silently substitutes demonstration data; the operator can explicitly
+start Runtime with `--demo`. `GET /api/runtime/info` is the source for the UI demo indicator.
+The TypeBox contract belongs to `@nevo/specflow-contracts/specs/overview`.
 
-The actual app supplies real Specification hrefs and router navigation to every Current and Archive
-row, including Open specification in row overflow. Normal activation uses the router; modifier clicks
-retain browser link behavior. The guarded `/specs/:specId` destination currently identifies only the
-requested route identity and explicitly explains that documents, Tasks and Sessions are not implemented.
-It does not claim the identity exists, fetch protected Specification detail, or invent workflow state.
-Its Back link returns to the originating collection; direct entry defaults to Current. Task/Session
-targets never replace the owning Specification destination. Creation and archive/delete mutations
-remain unsupported. Isolated non-navigable component fixtures are not the production route contract.
+Network failures display an unavailable state without a fixture fallback. HTTP 401 enters
+session recovery; 403 produces the standalone access-denied experience. Refresh retains the last
+permitted projection on transient failures; collection changes hide the previous collection.
+The application provides real Specification URLs for Current and Archive records. The guarded
+`/specs/:specId` route reads the Runtime Workspace projection and separately loads Markdown
+documents and Task detail through real HTTP, while unknown sources remain explicitly unavailable.
+Creation, execution and archive/delete commands are not implemented by this increment.
+URL search owns main view and explicit full Task navigation; local Secondary navigation and
+selection remain in local workspace state.
 
 The login and Runtime-recovery screens are product-owned compositions on Nevo UI's
 `StandaloneShell`. That shared shell owns the navigation-free application frame: AppBackground,
@@ -242,3 +292,27 @@ expose `aria-busy`.
 
 Screen changes MUST be reviewed at desktop and mobile widths and represented in the shared Storybook
 when a stable screen state exists.
+
+## Specification Workspace Runtime integration
+
+The ordinary route uses `SpecificationApi` backed by a single app-scoped
+`HttpClient`; the server owns the concrete `/api/specs/:specId/workspace`
+endpoint and scoped authorization. Transport DTOs in
+`@nevo/specflow-contracts/specs/workspace` are mapped by the feature to the
+presentation-oriented `SpecificationWorkspaceData` model. The UI does not
+select repositories or resolve host filesystem paths.
+
+`GET /api/runtime/info` provides `dataMode` for environment identification.
+Demo is enabled by the operator at Runtime startup (`nevo-specflow start
+--demo`), not via browser configuration. Feature sections distinguish an
+authoritatively empty collection from an unavailable/forbidden source.
+
+The present Runtime increment has a demonstration source and integration tests but does not
+claim a completed project-side Specification read adapter. Multi-project and
+multi-worktree ownership remain separate future capabilities.
+
+Workspace refresh invalidates the Specification query prefix (snapshot, Tasks, documents and
+changes) rather than only re-fetching the initial snapshot. A failed detail load exposes Retry.
+The feature caches semantic lifecycle/status codes, not labels in a particular locale;
+product presentation resolves those codes using the current i18next locale. A single
+`recommendedSessionId` originates in Runtime; UI does not assume the first Session is preferred.

@@ -68,6 +68,19 @@ Detail, Full Session, Project Settings.
 
 ## Product hierarchy
 
+Inside one Specification, the owner decision establishes Specification-local contextual
+navigation for Spec-owned destinations (Work, Documents, Sessions, Changes, Repository). These
+are Spec-owned contextual views, not new global product areas. On Wide, local contextual
+navigation avoids a horizontal tab strip and avoids an extra permanent rail; on Compact/Narrow,
+it collapses into a contextual view selector. The implemented global product navigation remains
+deliberately small as described below.
+
+The owner-refined Specification design separates short Task preview in Secondary from explicit
+Full Task promotion into a main surface. Work defaults to Specification history in Secondary. This
+is proposed next-screen behavior, not a capability of the implemented placeholder. Follow that
+local design draft rather than treating the earlier inspector-only Task hierarchy below as a
+prohibition on explicit promotion.
+
 For the current spec-driven MVP, global product navigation stays deliberately small. The default
 product entry is Specs Overview:
 
@@ -95,9 +108,10 @@ sidebar area while they remain owned by/spec-driven from Specifications.
 The implemented increment has only Specs in global navigation; Project Settings awaits a real
 surface. UI Playground is development-only direct navigation. Every Current/Archive Overview row
 uses a real owning Specification link at `/specs/:specId`, including Open specification in overflow.
-The current destination is an explicitly labelled placeholder with a Back link to the originating
-collection, not fabricated document, Task, Session or workflow detail. Navigation is real even while
-those details and mutations remain unimplemented.
+The Specification destination is an actual Workspace connected to the Runtime read API.
+Work, Documents and Task details use typed projections; absent project read sources are shown
+as unavailable rather than fabricated content. Runtime does not yet implement the workflow
+mutations or the full Session conversation surface.
 
 Changes, pull requests, documentation, files, Work details, and similar concepts are contextual
 surfaces until a proven independent human task justifies promoting them into global navigation.

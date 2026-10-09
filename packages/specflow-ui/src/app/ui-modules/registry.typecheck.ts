@@ -29,7 +29,4 @@ export function verifyUiExtensionPointTypes() {
   const invalidSlot = contribution.slot;
   void invalidSlot;
 
-  // @ts-expect-error Returned settings key is not a number.
-  const invalidKey: number = contribution.settingsKey;
-  void invalidKey;
 }

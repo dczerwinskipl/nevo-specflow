@@ -1,7 +1,7 @@
 import { Button, IconButton, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { TaskGroup, TaskItem } from '../../specs/workspace/model';
-import { taskStatusLabel } from '../../specs/workspace/status-labels';
+import type { TaskGroup, TaskItem } from '../model';
+import { taskStatusLabel } from '../status';
 
 export interface TaskPreviewProps {
   readonly task: TaskItem;

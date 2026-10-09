@@ -80,14 +80,14 @@ export const specificationRoute = createRoute({
     // Old Full Task search links still reach the resource, without loading the Workspace list.
     if (search.view === 'task') {
       if (search.task) {
-        throw redirect({
+        return redirect({
           to: '/specs/$specId/tasks/$taskId',
           params: { specId: params.specId, taskId: search.task },
           search: { collection: search.collection },
           replace: true,
         });
       }
-      throw redirect({
+      return redirect({
         to: '/specs/$specId',
         params: { specId: params.specId },
         search: { collection: search.collection },

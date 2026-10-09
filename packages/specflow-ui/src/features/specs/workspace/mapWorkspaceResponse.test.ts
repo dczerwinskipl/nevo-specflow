@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { appI18n } from '../../../i18n';
 import { createWorkspaceIntegrationApi } from '../../../../test-support/specs/workspace/api';
 import { mapWorkspaceResponse } from './mapWorkspaceResponse';
-import { taskStatusLabel } from './status-labels';
+import { taskStatusLabel } from '../../tasks/status';
 
 describe('Workspace response mapping', () => {
   it('stores semantic statuses independently of locale and translates on rendering', async () => {

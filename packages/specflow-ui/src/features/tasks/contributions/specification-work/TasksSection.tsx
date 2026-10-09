@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Button, InformationList, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { TaskExecutionReadiness, TaskGroup } from '../model';
-import { useWorkspaceRuntime } from '../WorkspaceContext';
-import { WorkspaceSection } from '../sections/WorkspaceSection';
+import type { TaskExecutionReadiness, TaskGroup } from '../../../specs/workspace/model';
+import { useWorkspaceRuntime } from '../../../specs/workspace/WorkspaceContext';
+import { WorkspaceSection } from '../../../specs/workspace/sections/WorkspaceSection';
 import { getGroupTone } from './presentation';
 import { TaskGroupHeader } from './TaskGroupHeader';
 import { TaskRow } from './TaskRow';

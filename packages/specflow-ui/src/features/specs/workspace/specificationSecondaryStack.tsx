@@ -11,8 +11,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { appI18n } from '../../../i18n';
 import type { ActivityEvent, SpecificationWorkspaceData, TaskGroup, TaskItem } from './model';
-import { TaskPreview } from './TaskPreview';
-import { useSpecificationTask } from '../tasks/useSpecificationTask';
+import { TaskPreview } from '../../tasks/inspectors/TaskPreview';
+import { useSpecificationTask } from '../../tasks/useSpecificationTask';
 import { ActivityHistory } from './ActivityHistory';
 
 export interface SpecificationSecondaryContextValue {

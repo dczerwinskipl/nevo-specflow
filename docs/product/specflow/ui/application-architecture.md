@@ -82,6 +82,31 @@ A normal production route/surface MUST NOT use fixture/example data as its autho
 silent fallback when production data is unavailable. Production composition surfaces real unavailable
 or error state instead.
 
+## Feature ownership and UI composition (incremental contract)
+
+A feature owns its domain-specific models, presentation and typed API/query behavior regardless
+of which product surface displays it. Tasks, Documents, Git and Sessions may contribute to
+Specification Work, Project Settings, or other surfaces. The host owns placement, navigation,
+responsive layouts, and extension-point behavior; it does not become the owner of those features.
+
+- `features/tasks/` owns Full Task, Task Preview presentation, and Task-group/row controls.
+  `features/specs/` owns Specification routing, Workspace composition and Secondary stack
+  navigation. The existing aggregate Workspace projection remains an explicit migration seam.
+- `SpecFlowUiModule` (future UI contribution registration) and the existing backend
+  `RuntimeFeature` are separate composition boundaries. HTTP contracts connect them;
+  neither UI components nor plugins instantiate independent HttpClient/QueryClient lifecycles.
+- The first prospective extension point is `specification.work.sections`. A future
+  `project.settings.sections` point will allow feature-owned settings UI. UI presentation
+  does not own parsing, defaults, persistence, or authorization of Runtime configuration.
+- Configurable Git branch/push policy, Task lane/status configuration, runtime module discovery,
+  and dynamic third-party code loading are **out of scope** for this increment.
+
+Task presentation is colocated under `features/tasks/pages`, Task Preview presentation under
+`features/tasks/inspectors`, and the Work contribution under
+`features/tasks/contributions/specification-work`. Remaining dependencies on the aggregate
+Workspace model/actions are intentional, temporary adapters until feature-level ownership and
+contribution registration are hardened in the following changes.
+
 ## Current implementation and migration state
 
 The current router tree is owned by the application routing composition. The root is neutral because

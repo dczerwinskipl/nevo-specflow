@@ -10,7 +10,7 @@ import {
   DocumentsSummarySection,
   ExtensionsSection,
 } from './sections';
-import { TasksSection } from './tasks';
+import { TasksSection } from '../../tasks/contributions/specification-work';
 
 export interface WorkViewProps {
   readonly specId?: string;

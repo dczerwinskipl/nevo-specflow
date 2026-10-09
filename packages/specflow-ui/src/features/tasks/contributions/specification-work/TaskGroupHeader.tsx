@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { OperationalGroupHeader } from '../../shared/OperationalList';
+import { OperationalGroupHeader } from '../../../specs/shared/OperationalList';
 
 export interface TaskGroupHeaderProps {
   readonly name: string;

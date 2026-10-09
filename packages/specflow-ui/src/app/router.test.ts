@@ -79,20 +79,15 @@ describe('SpecFlow router access policy', () => {
   it('redirects legacy Task search state to the canonical resource route', () => {
     const beforeLoad = specificationRoute.options.beforeLoad;
     expect(beforeLoad).toBeDefined();
-    let caught: unknown;
-    try {
-      void beforeLoad?.({
-        params: { specId: 'admission' },
-        search: { collection: 'archive', view: 'task', task: 'TASK-03' },
-      } as Parameters<NonNullable<typeof beforeLoad>>[0]);
-    } catch (error) {
-      caught = error;
-    }
-    expect(isRedirect(caught)).toBe(true);
-    if (isRedirect(caught)) {
-      expect(caught.options.to).toBe('/specs/$specId/tasks/$taskId');
-      expect(caught.options.params).toEqual({ specId: 'admission', taskId: 'TASK-03' });
-      expect(caught.options.search).toEqual({ collection: 'archive' });
+    const result = beforeLoad?.({
+      params: { specId: 'admission' },
+      search: { collection: 'archive', view: 'task', task: 'TASK-03' },
+    } as Parameters<NonNullable<typeof beforeLoad>>[0]);
+    expect(isRedirect(result)).toBe(true);
+    if (isRedirect(result)) {
+      expect(result.options.to).toBe('/specs/$specId/tasks/$taskId');
+      expect(result.options.params).toEqual({ specId: 'admission', taskId: 'TASK-03' });
+      expect(result.options.search).toEqual({ collection: 'archive' });
     }
   });
 

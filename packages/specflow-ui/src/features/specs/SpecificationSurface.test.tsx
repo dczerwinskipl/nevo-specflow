@@ -79,8 +79,8 @@ describe('SpecificationSurface', () => {
           <LocalizationProvider>
             <AppShell navigation={<div>Nav</div>}>
               <SpecificationSurface specId="spec-missing" />
-            </AppShell>
-          </LocalizationProvider>
+              </AppShell>
+            </LocalizationProvider>
           </SpecFlowServicesProvider>
         </UiModulesProvider>
       </QueryClientProvider>,
@@ -117,8 +117,8 @@ describe('SpecificationSurface', () => {
           <LocalizationProvider>
             <AppShell navigation={<div>Nav</div>}>
               <SpecificationSurface specId="spec-404" />
-            </AppShell>
-          </LocalizationProvider>
+              </AppShell>
+            </LocalizationProvider>
           </SpecFlowServicesProvider>
         </UiModulesProvider>
       </QueryClientProvider>,
@@ -143,8 +143,8 @@ describe('SpecificationSurface', () => {
           <LocalizationProvider>
             <AppShell navigation={<div>Nav</div>}>
               <SpecificationSurface specId="spec-123" />
-            </AppShell>
-          </LocalizationProvider>
+              </AppShell>
+            </LocalizationProvider>
           </SpecFlowServicesProvider>
         </UiModulesProvider>
       </QueryClientProvider>,

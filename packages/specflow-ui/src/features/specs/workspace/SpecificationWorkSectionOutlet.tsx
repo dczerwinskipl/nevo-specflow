@@ -89,7 +89,10 @@ export function SpecificationWorkSectionOutlet({
   const context: SpecificationWorkSectionContext = { specId, data, actions };
   return (
     <>
-      {modules.get(specificationWorkSections).filter((contribution) => contribution.slot === slot).map((contribution) => (
+      {modules
+        .get(specificationWorkSections)
+        .filter((contribution) => contribution.slot === slot)
+        .map((contribution) => (
         <SectionBoundary
           key={`${specId}:${contribution.id}`}
           onRetry={actions.refresh}
@@ -108,7 +111,7 @@ export function SpecificationWorkSectionOutlet({
         >
           <RegisteredWorkSection contribution={contribution} context={context} />
         </SectionBoundary>
-      ))}
+        ))}
     </>
   );
 }

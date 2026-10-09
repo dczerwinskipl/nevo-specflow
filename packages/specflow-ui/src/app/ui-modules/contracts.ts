@@ -22,9 +22,7 @@ export interface UiModule {
 }
 
 /** Both registration and lookup retain the contribution contract defined by the host. */
-export function defineUiExtensionPoint<T extends UiContribution>(
-  id: string,
-): UiExtensionPoint<T> {
+export function defineUiExtensionPoint<T extends UiContribution>(id: string): UiExtensionPoint<T> {
   return Object.freeze({ id });
 }
 

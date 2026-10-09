@@ -1,8 +1,4 @@
-import {
-  contributeTo,
-  defineUiExtensionPoint,
-  type UiContribution,
-} from './contracts';
+import { contributeTo, defineUiExtensionPoint, type UiContribution } from './contracts';
 import { createUiRegistry } from './registry';
 
 interface TestSettingsContribution extends UiContribution {

@@ -1,8 +1,4 @@
-import type {
-  UiContribution,
-  UiExtensionPoint,
-  UiModule,
-} from './contracts';
+import type { UiContribution, UiExtensionPoint, UiModule } from './contracts';
 
 /** Read-only lookup; extension-point semantics remain the host's responsibility. */
 export interface UiRegistry {
@@ -53,9 +49,10 @@ export function createUiRegistry(
   }
 
   // Do not expose the mutable arrays owned by the registry builder.
-  const registered = new Map(
-    [...contributions].map(([id, values]) => [id, Object.freeze([...values])]),
-  );
+  const registered = new Map<string, readonly UiContribution[]>();
+  for (const [id, values] of contributions) {
+    registered.set(id, Object.freeze([...values]));
+  }
 
   return {
     get<T extends UiContribution>(point: UiExtensionPoint<T>): readonly T[] {

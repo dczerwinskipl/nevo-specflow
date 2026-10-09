@@ -18,6 +18,5 @@ export interface SpecificationWorkSectionContribution extends UiContribution {
 
 export type SpecificationWorkSlot = SpecificationWorkSectionContribution['slot'];
 
-export const specificationWorkSections = defineUiExtensionPoint<SpecificationWorkSectionContribution>(
-  'specification.work.sections',
-);
+export const specificationWorkSections =
+  defineUiExtensionPoint<SpecificationWorkSectionContribution>('specification.work.sections');

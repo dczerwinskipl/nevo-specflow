@@ -9,6 +9,7 @@ import {
   type SpecsOverviewApi,
 } from '../features/specs/overview/api';
 import { createRuntimeSpecificationApi, type SpecificationApi } from '../features/specs/api';
+import { createRuntimeTaskApi, type TaskApi } from '../features/tasks/api';
 
 export interface SpecFlowAppServices {
   readonly runtimeInfoApi: RuntimeInfoApi;
@@ -16,6 +17,7 @@ export interface SpecFlowAppServices {
   readonly authStore: AuthStore;
   readonly specsOverviewApi: SpecsOverviewApi;
   readonly specificationApi: SpecificationApi;
+  readonly taskApi: TaskApi;
 }
 
 export type SpecFlowServices = SpecFlowAppServices;
@@ -27,6 +29,7 @@ export interface SpecFlowServicesOptions {
   readonly authStore?: AuthStore;
   readonly specsOverviewApi?: SpecsOverviewApi;
   readonly specificationApi?: SpecificationApi;
+  readonly taskApi?: TaskApi;
 }
 
 export function createSpecFlowAppServices(
@@ -51,6 +54,7 @@ export function createSpecFlowAppServices(
     authStore,
     specsOverviewApi,
     specificationApi,
+    taskApi: options.taskApi ?? createRuntimeTaskApi(http),
   };
 }
 

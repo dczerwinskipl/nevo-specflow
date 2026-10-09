@@ -1,3 +1,5 @@
+import { taskKeys } from '../tasks/queries';
+
 export const specificationKeys = {
   all: ['specifications'] as const,
   spec: (specId: string) => [...specificationKeys.all, specId] as const,
@@ -6,6 +8,6 @@ export const specificationKeys = {
     [...specificationKeys.spec(specId), 'document', docId] as const,
   changes: (specId: string, source: string) =>
     [...specificationKeys.spec(specId), 'changes', source] as const,
-  task: (specId: string, taskId: string) =>
-    [...specificationKeys.spec(specId), 'task', taskId] as const,
+  /** @deprecated Use taskKeys.detail from the Tasks feature. */
+  task: taskKeys.detail,
 };

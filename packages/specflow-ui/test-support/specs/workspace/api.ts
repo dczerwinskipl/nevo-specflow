@@ -1,4 +1,5 @@
 import type { SpecificationApi } from '../../../src/features/specs/api';
+import type { TaskApi } from '../../../src/features/tasks/api';
 import type { SpecificationWorkspaceResponse } from '@nevo/specflow-contracts/specs/workspace';
 
 /** Story-only typed API responses. The route still runs real Query + DTO mapper. */
@@ -54,6 +55,24 @@ export function createWorkspaceIntegrationApi(): SpecificationApi {
         ? Promise.resolve(snapshot)
         : Promise.reject(new Error('Unconfigured test Specification'));
     },
+    getDocument: (specId, documentId, signal) => {
+      signal?.throwIfAborted();
+      if (specId !== 'api-integration' || documentId !== 'spec') {
+        return Promise.reject(new Error('Unexpected test document'));
+      }
+      return Promise.resolve({
+        id: documentId,
+        title: 'Integration document',
+        content: '# Document content from Runtime detail API\n\nDetail query loaded successfully.',
+        revision: 'integration-doc-2',
+      });
+    },
+  };
+}
+
+/** Story-only Task detail adapter, separate from Specification Workspace reads. */
+export function createTaskIntegrationApi(): TaskApi {
+  return {
     getTask: (specId, taskId, signal) => {
       signal?.throwIfAborted();
       if (specId !== 'api-integration' || taskId !== 'TASK-01') {
@@ -67,18 +86,6 @@ export function createWorkspaceIntegrationApi(): SpecificationApi {
         },
         purpose: 'Latest purpose loaded independently from the detail endpoint.',
         acceptanceCriteria: ['Latest acceptance criterion'],
-      });
-    },
-    getDocument: (specId, documentId, signal) => {
-      signal?.throwIfAborted();
-      if (specId !== 'api-integration' || documentId !== 'spec') {
-        return Promise.reject(new Error('Unexpected test document'));
-      }
-      return Promise.resolve({
-        id: documentId,
-        title: 'Integration document',
-        content: '# Document content from Runtime detail API\n\nDetail query loaded successfully.',
-        revision: 'integration-doc-2',
       });
     },
   };

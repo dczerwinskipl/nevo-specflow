@@ -2,7 +2,6 @@ import type { HttpClient } from '@nevo/http-client';
 import type {
   SpecificationWorkspaceResponse,
   SpecificationDocumentResponse,
-  SpecificationTaskResponse,
 } from '@nevo/specflow-contracts/specs/workspace';
 
 export interface SpecificationApi {
@@ -15,7 +14,6 @@ export interface SpecificationApi {
     documentId: string,
     signal?: AbortSignal,
   ): Promise<SpecificationDocumentResponse>;
-  getTask(specId: string, taskId: string, signal?: AbortSignal): Promise<SpecificationTaskResponse>;
 }
 
 export function createRuntimeSpecificationApi(client: HttpClient): SpecificationApi {
@@ -28,9 +26,5 @@ export function createRuntimeSpecificationApi(client: HttpClient): Specification
         base(specId) + '/documents/' + encodeURIComponent(documentId),
         { signal },
       ),
-    getTask: (specId, taskId, signal) =>
-      client.get<SpecificationTaskResponse>(base(specId) + '/tasks/' + encodeURIComponent(taskId), {
-        signal,
-      }),
   };
 }

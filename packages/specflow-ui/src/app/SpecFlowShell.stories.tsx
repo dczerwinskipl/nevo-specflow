@@ -26,7 +26,10 @@ import {
 import { createSpecsFixture } from '../../test-support/specs/overview/fixtures';
 import type { SpecsOverviewApi } from '../features/specs/overview/api';
 import { createFixtureSpecsOverviewApi } from '../../test-support/specs/overview/api';
-import { createWorkspaceIntegrationApi } from '../../test-support/specs/workspace/api';
+import {
+  createWorkspaceIntegrationApi,
+  createTaskIntegrationApi,
+} from '../../test-support/specs/workspace/api';
 
 export function RoutedApplication({
   authMode = 'local',
@@ -135,7 +138,9 @@ export function RoutedApplication({
       authStore: auth,
       runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode: 'demo' }) },
       specsOverviewApi,
-      ...(integrationDto ? { specificationApi: createWorkspaceIntegrationApi() } : {}),
+      ...(integrationDto
+        ? { specificationApi: createWorkspaceIntegrationApi(), taskApi: createTaskIntegrationApi() }
+        : {}),
     });
   }, [auth, specsStatus, integrationDto]);
 

@@ -90,9 +90,9 @@ describe('SpecFlow router access policy', () => {
     }
     expect(isRedirect(caught)).toBe(true);
     if (isRedirect(caught)) {
-      expect(caught.to).toBe('/specs/$specId/tasks/$taskId');
-      expect(caught.params).toEqual({ specId: 'admission', taskId: 'TASK-03' });
-      expect(caught.search).toEqual({ collection: 'archive' });
+      expect(caught.options.to).toBe('/specs/$specId/tasks/$taskId');
+      expect(caught.options.params).toEqual({ specId: 'admission', taskId: 'TASK-03' });
+      expect(caught.options.search).toEqual({ collection: 'archive' });
     }
   });
 

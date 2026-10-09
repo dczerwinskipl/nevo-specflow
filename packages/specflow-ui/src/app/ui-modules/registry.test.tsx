@@ -11,7 +11,12 @@ import {
 } from '../../features/specs/workspace/WorkspaceContext';
 import { builtInUiModuleRegistry } from './builtInUiModules';
 import { UiModulesProvider } from './UiModulesProvider';
-import { contributeTo, defineUiExtensionPoint, type UiContribution, type UiModule } from './contracts';
+import {
+  contributeTo,
+  defineUiExtensionPoint,
+  type UiContribution,
+  type UiModule,
+} from './contracts';
 import { createUiRegistry } from './registry';
 
 interface TestPanelContribution extends UiContribution {
@@ -101,13 +106,11 @@ describe('typed UI extension registry', () => {
 
   it('rejects duplicate module IDs and contribution IDs globally', () => {
     const module = moduleWithSection('a', 'main');
-    expect(() => createUiRegistry([specificationWorkSections], [module, module])).toThrow(
-      'module id',
-    );
     const duplicate = { id: 'example.b', contributions: module.contributions };
-    expect(() => createUiRegistry([specificationWorkSections], [module, duplicate])).toThrow(
-      'contribution id',
-    );
+    const createDuplicates = (other: UiModule) =>
+      createUiRegistry([specificationWorkSections], [module, other]);
+    expect(() => createDuplicates(module)).toThrow('module id');
+    expect(() => createDuplicates(duplicate)).toThrow('contribution id');
   });
 
   it('rejects unknown or conflicting extension points', () => {

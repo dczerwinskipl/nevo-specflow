@@ -87,12 +87,12 @@ export function SpecificationWorkSectionOutlet({
   const { t } = useTranslation();
   const actions = useWorkspaceRuntime();
   const context: SpecificationWorkSectionContext = { specId, data, actions };
+  const sections = modules
+    .get(specificationWorkSections)
+    .filter((contribution) => contribution.slot === slot);
   return (
     <>
-      {modules
-        .get(specificationWorkSections)
-        .filter((contribution) => contribution.slot === slot)
-        .map((contribution) => (
+      {sections.map((contribution) => (
         <SectionBoundary
           key={`${specId}:${contribution.id}`}
           onRetry={actions.refresh}
@@ -111,7 +111,7 @@ export function SpecificationWorkSectionOutlet({
         >
           <RegisteredWorkSection contribution={contribution} context={context} />
         </SectionBoundary>
-        ))}
+      ))}
     </>
   );
 }

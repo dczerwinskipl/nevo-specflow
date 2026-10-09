@@ -76,9 +76,9 @@ describe('SpecificationSurface', () => {
       <QueryClientProvider client={queryClient}>
         <UiModulesProvider modules={builtInUiModuleRegistry}>
           <SpecFlowServicesProvider services={services}>
-          <LocalizationProvider>
-            <AppShell navigation={<div>Nav</div>}>
-              <SpecificationSurface specId="spec-missing" />
+            <LocalizationProvider>
+              <AppShell navigation={<div>Nav</div>}>
+                <SpecificationSurface specId="spec-missing" />
               </AppShell>
             </LocalizationProvider>
           </SpecFlowServicesProvider>
@@ -114,9 +114,9 @@ describe('SpecificationSurface', () => {
       <QueryClientProvider client={queryClient}>
         <UiModulesProvider modules={builtInUiModuleRegistry}>
           <SpecFlowServicesProvider services={services}>
-          <LocalizationProvider>
-            <AppShell navigation={<div>Nav</div>}>
-              <SpecificationSurface specId="spec-404" />
+            <LocalizationProvider>
+              <AppShell navigation={<div>Nav</div>}>
+                <SpecificationSurface specId="spec-404" />
               </AppShell>
             </LocalizationProvider>
           </SpecFlowServicesProvider>
@@ -140,9 +140,9 @@ describe('SpecificationSurface', () => {
       <QueryClientProvider client={queryClient}>
         <UiModulesProvider modules={builtInUiModuleRegistry}>
           <SpecFlowServicesProvider services={services}>
-          <LocalizationProvider>
-            <AppShell navigation={<div>Nav</div>}>
-              <SpecificationSurface specId="spec-123" />
+            <LocalizationProvider>
+              <AppShell navigation={<div>Nav</div>}>
+                <SpecificationSurface specId="spec-123" />
               </AppShell>
             </LocalizationProvider>
           </SpecFlowServicesProvider>

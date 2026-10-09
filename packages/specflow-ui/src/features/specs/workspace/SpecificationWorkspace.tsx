@@ -148,6 +148,12 @@ function SpecificationWorkspaceInner({
     [navigateToView],
   );
 
+  const sectionAvailability = data.sectionAvailability?.[currentView];
+  const sectionUnavailable =
+    currentView !== 'work' &&
+    sectionAvailability !== undefined &&
+    sectionAvailability !== 'available';
+
   const secondaryContextValue: SpecificationSecondaryContextValue = useMemo(
     () => ({
       specId,
@@ -301,8 +307,7 @@ function SpecificationWorkspaceInner({
                   {/* View Content */}
                   {currentView === 'work' ? (
                     <WorkView specId={specId} data={data} />
-                  ) : data.sectionAvailability?.[currentView] !== undefined &&
-                    data.sectionAvailability?.[currentView] !== 'available' ? (
+                  ) : sectionUnavailable ? (
                     <Alert
                       tone="attention"
                       role="status"

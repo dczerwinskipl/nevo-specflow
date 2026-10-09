@@ -1,5 +1,5 @@
 import type { SpecificationTaskResponse } from '@nevo/specflow-contracts/specs/workspace';
-import type { TaskLifecycle } from '../workspace/model';
+import type { TaskLifecycle } from '../specs/workspace/model';
 
 /** Full Task identity and detail are independent of Workspace task-group membership. */
 export interface FullTaskData {

@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { isHttpClientError } from '@nevo/http-client';
-import { useSpecFlowServices } from '../../../services';
-import type { SpecificationApi } from '../api';
-import { specificationKeys } from '../queries';
+import { useSpecFlowServices } from '../../services';
+import type { SpecificationApi } from '../specs/api';
+import { specificationKeys } from '../specs/queries';
 
 export function useSpecificationTask(
   specId: string,

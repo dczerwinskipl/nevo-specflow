@@ -11,8 +11,8 @@ import {
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { FullTaskView } from './FullTaskView';
-import { mapFullTaskResponse } from './model';
-import type { useSpecificationTask } from './useSpecificationTask';
+import { mapFullTaskResponse } from '../model';
+import type { useSpecificationTask } from '../useSpecificationTask';
 
 export interface SpecificationTaskPageProps {
   readonly specId: string;

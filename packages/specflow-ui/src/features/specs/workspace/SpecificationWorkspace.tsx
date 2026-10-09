@@ -20,7 +20,7 @@ import { DocumentsView } from './DocumentsView';
 import { SessionsView } from './SessionsView';
 import { ChangesView } from './ChangesView';
 import { RepositoryView } from './RepositoryView';
-import { FullTaskView } from '../tasks/FullTaskView';
+import { FullTaskView } from '../../tasks/pages/FullTaskView';
 import { ActivityHistory } from './ActivityHistory';
 import { ExecuteModal } from './ExecuteModal';
 import { NewConversationModal } from './NewConversationModal';

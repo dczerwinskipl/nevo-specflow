@@ -7,10 +7,10 @@ import { describe, expect, it } from 'vitest';
 import { createSpecFlowQueryClient } from '../../../app/queryClient';
 import { LocalizationProvider } from '../../../i18n';
 import { createSpecFlowAppServices, SpecFlowServicesProvider } from '../../../services';
-import { specificationKeys } from '../queries';
-import { mapFullTaskResponse } from './model';
+import { specificationKeys } from '../../specs/queries';
+import { mapFullTaskResponse } from '../model';
 import { SpecificationTaskPage } from './SpecificationTaskPage';
-import { useSpecificationTask } from './useSpecificationTask';
+import { useSpecificationTask } from '../useSpecificationTask';
 
 const specId = 'admission';
 const taskId = 'TASK-77';

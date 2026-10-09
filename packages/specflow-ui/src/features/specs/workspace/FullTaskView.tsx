@@ -1,28 +1,45 @@
 import { Icon, Timeline, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { TaskItem } from './model';
+import type { FullTaskData } from '../tasks/model';
 import { taskStatusLabel } from './status-labels';
 
 export interface FullTaskViewProps {
-  readonly task: TaskItem;
+  readonly task: FullTaskData;
   readonly specKey: string;
   readonly onBack: () => void;
+  readonly backHref?: string;
   readonly onOpenSession?: (sessionId: string) => void;
 }
 
-export function FullTaskView({ task, specKey, onBack, onOpenSession }: FullTaskViewProps) {
+export function FullTaskView({ task, specKey, onBack, backHref, onOpenSession }: FullTaskViewProps) {
   const { t } = useTranslation();
 
   return (
     <div className="grid max-w-content-standard gap-6 py-2">
-      <button
-        type="button"
-        onClick={onBack}
-        className="flex w-fit items-center gap-2 text-body-sm font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring"
-      >
-        <Icon name="arrow-right" size="sm" className="rotate-180" />
-        <span>{t('specification.backToSpecification')}</span>
-      </button>
+      {backHref ? (
+        <a
+          href={backHref}
+          onClick={(event) => {
+            if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+              event.preventDefault();
+              onBack();
+            }
+          }}
+          className="flex w-fit items-center gap-2 text-body-sm font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring"
+        >
+          <Icon name="arrow-right" size="sm" className="rotate-180" />
+          <span>{t('specification.backToSpecification')}</span>
+        </a>
+      ) : (
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex w-fit items-center gap-2 text-body-sm font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring"
+        >
+          <Icon name="arrow-right" size="sm" className="rotate-180" />
+          <span>{t('specification.backToSpecification')}</span>
+        </button>
+      )}
 
       <div>
         <p className="font-mono text-body-xs text-content-muted">

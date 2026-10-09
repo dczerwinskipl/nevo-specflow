@@ -14,7 +14,7 @@ const SESSION_STATUS_KEYS = {
 } as const;
 
 /** Resolve at render time, never when producing a TanStack Query cache entry. */
-export function taskStatusLabel(task: TaskItem, t: TFunction): string {
+export function taskStatusLabel(task: Pick<TaskItem, 'status' | 'statusCode'>, t: TFunction): string {
   return task.statusCode ? t(TASK_STATUS_KEYS[task.statusCode]) : task.status;
 }
 

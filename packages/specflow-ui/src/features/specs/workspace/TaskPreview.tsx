@@ -58,12 +58,14 @@ export function TaskPreview({ task, groups, specKey, onClose, onOpenFull }: Task
           </span>
           <p className="mt-0.5 text-content-muted">{taskStatusLabel(task, t)}</p>
         </div>
-        <div>
-          <span className="font-medium text-content-secondary">
-            {t('specification.taskGroupLabel')}
-          </span>
-          <p className="mt-0.5 text-content-muted">{group?.name ?? task.group}</p>
-        </div>
+        {group?.name || task.group ? (
+          <div>
+            <span className="font-medium text-content-secondary">
+              {t('specification.taskGroupLabel')}
+            </span>
+            <p className="mt-0.5 text-content-muted">{group?.name ?? task.group}</p>
+          </div>
+        ) : null}
         <div>
           <span className="font-medium text-content-secondary">
             {t('specification.taskContextLabel')}

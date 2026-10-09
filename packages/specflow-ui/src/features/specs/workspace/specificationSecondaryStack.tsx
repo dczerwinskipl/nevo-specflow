@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { appI18n } from '../../../i18n';
 import type { ActivityEvent, SpecificationWorkspaceData, TaskGroup, TaskItem } from './model';
 import { TaskPreview } from './TaskPreview';
+import { useSpecificationTask } from '../tasks/useSpecificationTask';
 import { ActivityHistory } from './ActivityHistory';
 
 export interface SpecificationSecondaryContextValue {
@@ -42,16 +43,27 @@ export function useTaskPreviewData({
   taskId: string;
 }): SecondaryData<TaskPreviewSecondaryData> {
   const context = useContext(SpecificationSecondaryDataContext);
-  if (!context) {
-    return { status: 'loading' };
-  }
-  const task = context.data.taskGroups.flatMap((g) => g.tasks).find((t) => t.id === taskId);
-  if (!task) {
+  const listTask = context?.data.taskGroups.flatMap((g) => g.tasks).find((t) => t.id === taskId);
+  // Attention/Activity may reference a Task absent from the current Workspace projection.
+  const detail = useSpecificationTask(specId, taskId, undefined, Boolean(context) && !listTask);
+  if (!context) return { status: 'loading' };
+  if (!listTask && detail.isPending) return { status: 'loading' };
+  if (!listTask && (detail.isError || !detail.data || detail.data.task.id !== taskId)) {
     return {
       status: 'unavailable',
-      message: appI18n.t('specification.taskNotFoundDescription', { taskId }),
+      message: detail.isTaskNotFound
+        ? appI18n.t('specification.taskNotFoundDescription', { taskId })
+        : appI18n.t('specification.unavailableDescription', { id: taskId }),
     };
   }
+  const task: TaskItem = listTask ?? {
+    id: taskId,
+    title: detail.data!.task.title,
+    status: detail.data!.task.status.lifecycle,
+    statusCode: detail.data!.task.status.lifecycle,
+    lifecycle: detail.data!.task.status.lifecycle,
+    group: '',
+  };
   const group = context.data.taskGroups.find(
     (g) => g.id === task.group || g.tasks.some((t) => t.id === task.id),
   );

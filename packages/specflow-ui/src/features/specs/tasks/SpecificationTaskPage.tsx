@@ -72,7 +72,7 @@ export function SpecificationTaskPage({
                     </Button>
                   </div>
                 </div>
-              ) : taskState.data.task.id !== taskId ? (
+              ) : !taskState.data || taskState.data.task.id !== taskId ? (
                 <Alert role="alert" tone="attention" title={t('specification.unavailableTitle')}>
                   {t('specification.unavailableDescription', { id: taskId })}
                 </Alert>

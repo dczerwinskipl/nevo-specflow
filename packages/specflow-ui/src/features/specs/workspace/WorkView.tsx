@@ -59,7 +59,6 @@ export function WorkView({ specId, data }: WorkViewProps) {
         <div className="py-6">
           <TasksSection
             key={specId}
-            specId={specId}
             taskGroups={data.taskGroups}
             isPreparing={data.isPreparing}
             totalTasksCount={data.totalTasksCount}

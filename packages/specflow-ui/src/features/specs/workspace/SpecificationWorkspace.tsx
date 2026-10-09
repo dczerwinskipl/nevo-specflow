@@ -31,6 +31,8 @@ import {
   historyStack,
   type SpecificationSecondaryContextValue,
 } from './specificationSecondaryStack';
+import { useSpecificationViewNavigation } from './useSpecificationViewNavigation';
+import { useSpecificationDialogs } from './useSpecificationDialogs';
 
 export interface SpecificationWorkspaceProps {
   readonly specId: string;
@@ -81,58 +83,33 @@ function SpecificationWorkspaceInner({
   const { t } = useTranslation();
   const secondaryNavigation = useSecondaryNavigation();
 
-  // When onNavigateView is provided (e.g. by TanStack Router integration),
-  // route parameters (initialView / initialTask) are the single source of truth.
-  // For standalone fixtures/stories without onNavigateView, fall back to local state.
-  const isControlled = Boolean(onNavigateView);
-  const [uncontrolledView, setUncontrolledView] = useState<SpecificationWorkspaceView>(
-    initialView === 'task' || initialTask ? 'task' : initialView,
-  );
-  const [uncontrolledTaskId, setUncontrolledTaskId] = useState<string | null>(
-    initialView === 'task' || initialTask ? (initialTask ?? null) : null,
-  );
+  const { currentView, fullTaskId, navigateToView, handleViewChange } =
+    useSpecificationViewNavigation({
+      initialView,
+      initialTask,
+      onNavigateView,
+      onViewChange,
+      onTaskChange,
+    });
 
-  const currentView: SpecificationWorkspaceView = isControlled
-    ? initialView === 'task' || initialTask
-      ? 'task'
-      : initialView
-    : uncontrolledView;
-
-  const fullTaskId: string | null = isControlled
-    ? initialView === 'task' || initialTask
-      ? (initialTask ?? null)
-      : null
-    : uncontrolledTaskId;
+  const {
+    executeDialogOpen,
+    conversationDialogOpen,
+    tasksToExecute,
+    openExecuteDialog,
+    closeExecuteDialog,
+    handleConfirmExecute,
+    openConversationDialog,
+    closeConversationDialog,
+    handleConfirmConversation,
+  } = useSpecificationDialogs({
+    onExecute,
+    onNewConversation,
+  });
 
   const [activeDocId, setActiveDocId] = useState<string | null>(null);
   const [docOrigin, setDocOrigin] = useState<'work' | 'documents'>('documents');
   const [changesSource, setChangesSource] = useState<'base' | 'uncommitted' | 'mr'>('base');
-
-  // Explicit boolean dialog flags instead of union string modal state
-  const [executeDialogOpen, setExecuteDialogOpen] = useState(false);
-  const [conversationDialogOpen, setConversationDialogOpen] = useState(false);
-  const [tasksToExecute, setTasksToExecute] = useState<readonly string[]>([]);
-
-  const navigateToView = useCallback(
-    (nextView: SpecificationWorkspaceView, nextTaskId: string | null = null) => {
-      if (onNavigateView) {
-        onNavigateView({ view: nextView, taskId: nextTaskId });
-      } else {
-        setUncontrolledView(nextView);
-        setUncontrolledTaskId(nextTaskId);
-        onViewChange?.(nextView);
-        onTaskChange?.(nextTaskId);
-      }
-    },
-    [onNavigateView, onViewChange, onTaskChange],
-  );
-
-  const handleViewChange = useCallback(
-    (view: SpecificationWorkspaceView) => {
-      navigateToView(view, null);
-    },
-    [navigateToView],
-  );
 
   const handlePreviewTask = useCallback(
     (taskId: string) => {
@@ -202,11 +179,8 @@ function SpecificationWorkspaceInner({
       openRepository: () => handleViewChange('repository'),
       openChanges: handleOpenChanges,
       openHistory: handleOpenHistory,
-      startConversation: (_agent) => setConversationDialogOpen(true),
-      executeTasks: (taskIds, _agent) => {
-        setTasksToExecute(taskIds);
-        setExecuteDialogOpen(true);
-      },
+      startConversation: (_agent) => openConversationDialog(),
+      executeTasks: (taskIds, _agent) => openExecuteDialog(taskIds),
       refresh: () => onRefresh?.(),
       canExecute: Boolean(onExecute),
       canStartConversation: Boolean(onNewConversation),
@@ -229,6 +203,8 @@ function SpecificationWorkspaceInner({
       handleOpenDoc,
       handleOpenChanges,
       handleOpenHistory,
+      openConversationDialog,
+      openExecuteDialog,
       onRefresh,
       onExecute,
       onNewConversation,
@@ -344,7 +320,7 @@ function SpecificationWorkspaceInner({
                       sessions={data.sessions}
                       onOpenSession={onOpenSession}
                       onNewConversation={
-                        onNewConversation ? () => setConversationDialogOpen(true) : undefined
+                        onNewConversation ? () => openConversationDialog() : undefined
                       }
                     />
                   ) : currentView === 'changes' ? (
@@ -412,28 +388,14 @@ function SpecificationWorkspaceInner({
           open={executeDialogOpen}
           selectedTasks={Array.from(tasksToExecute)}
           executionReadiness={data.executionReadiness}
-          onClose={() => setExecuteDialogOpen(false)}
-          onExecute={
-            onExecute
-              ? (agent) => {
-                  setExecuteDialogOpen(false);
-                  void onExecute(agent, Array.from(tasksToExecute));
-                }
-              : undefined
-          }
+          onClose={closeExecuteDialog}
+          onExecute={onExecute ? handleConfirmExecute : undefined}
         />
 
         <NewConversationModal
           open={conversationDialogOpen}
-          onClose={() => setConversationDialogOpen(false)}
-          onStart={
-            onNewConversation
-              ? (agent) => {
-                  setConversationDialogOpen(false);
-                  void onNewConversation(agent);
-                }
-              : undefined
-          }
+          onClose={closeConversationDialog}
+          onStart={onNewConversation ? handleConfirmConversation : undefined}
         />
       </WorkspaceProvider>
     </SpecificationSecondaryDataContext.Provider>

@@ -14,11 +14,7 @@ import {
   WorkspaceHeader,
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type {
-  DocumentItem,
-  SpecificationWorkspaceData,
-  SpecificationWorkspaceView,
-} from './model';
+import type { DocumentItem, SpecificationWorkspaceData, SpecificationWorkspaceView } from './model';
 import { WorkView } from './WorkView';
 import { DocumentsView } from './DocumentsView';
 import { SessionsView } from './SessionsView';

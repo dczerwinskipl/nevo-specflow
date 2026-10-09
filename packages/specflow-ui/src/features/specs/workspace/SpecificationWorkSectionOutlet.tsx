@@ -16,13 +16,13 @@ interface SectionBoundaryProps {
 }
 
 class SectionBoundary extends Component<SectionBoundaryProps, { failed: boolean }> {
-  state = { failed: false };
+  override state = { failed: false };
 
   static getDerivedStateFromError() {
     return { failed: true };
   }
 
-  render() {
+  override render() {
     return this.state.failed ? this.props.fallback : this.props.children;
   }
 }

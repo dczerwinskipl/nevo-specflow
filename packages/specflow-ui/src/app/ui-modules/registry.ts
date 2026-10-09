@@ -5,7 +5,9 @@ import type {
 } from './contracts';
 
 export interface UiModuleRegistry {
-  specificationWorkSections(slot: SpecificationWorkSlot): readonly SpecificationWorkSectionContribution[];
+  specificationWorkSections(
+    slot: SpecificationWorkSlot,
+  ): readonly SpecificationWorkSectionContribution[];
 }
 
 /** All collisions are rejected before a screen is rendered. Registration order is stable. */

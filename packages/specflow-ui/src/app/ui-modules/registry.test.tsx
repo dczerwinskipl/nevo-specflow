@@ -52,7 +52,7 @@ describe('SpecFlow UI module composition', () => {
     expect(first).toBeGreaterThan(0);
     expect(second).toBeGreaterThan(first);
     expect(markup).toContain('Added for SPEC-21');
-    expect(markup).toContain('Repozytorium');
+    expect(markup).toContain('feature/session-refresh');
   });
 
   it('rejects duplicate module and contribution identities before rendering', () => {

@@ -210,7 +210,6 @@ function SpecificationWorkspaceInner({
     ],
   );
 
-
   return (
     <SpecificationSecondaryDataContext.Provider value={secondaryContextValue}>
       <WorkspaceProvider runtime={runtime}>

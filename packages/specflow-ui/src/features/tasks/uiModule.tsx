@@ -8,8 +8,10 @@ import { TasksSection } from './contributions/specification-work';
 
 function TaskGroupsWorkSection({ specId, data, actions }: SpecificationWorkSectionContext) {
   const { t } = useTranslation();
-  if (data.sectionAvailability?.tasks === 'forbidden' ||
-      data.sectionAvailability?.tasks === 'unavailable') {
+  if (
+    data.sectionAvailability?.tasks === 'forbidden' ||
+    data.sectionAvailability?.tasks === 'unavailable'
+  ) {
     return (
       <Alert tone="attention" title={t('specification.unavailableTitle')}>
         {t('specification.unavailableDescription', { id: specId })}

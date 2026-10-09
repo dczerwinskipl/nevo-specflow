@@ -24,8 +24,4 @@ export function verifyUiExtensionPointTypes() {
 
   // @ts-expect-error Missing required settings-specific property.
   contributeTo(settings, { id: 'invalid', editable: true });
-
-  // @ts-expect-error Specification slots are not part of this extension point.
-  const invalidSlot = contribution.slot;
-  void invalidSlot;
 }

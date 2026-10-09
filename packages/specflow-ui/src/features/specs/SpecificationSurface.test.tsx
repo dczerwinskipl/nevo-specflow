@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { appI18n, LocalizationProvider } from '../../i18n';
 import { createSpecFlowQueryClient } from '../../app/queryClient';
+import { builtInUiModuleRegistry } from '../../app/ui-modules/builtInUiModules';
+import { UiModulesProvider } from '../../app/ui-modules/UiModulesProvider';
 import { createSpecFlowAppServices, SpecFlowServicesProvider } from '../../services';
 import { SpecificationSurface } from './SpecificationSurface';
 import { HttpClientError } from '@nevo/http-client';
@@ -24,11 +26,13 @@ describe('SpecificationSurface', () => {
     const services = createSpecFlowAppServices(servicesOverride);
     return renderToStaticMarkup(
       <QueryClientProvider client={queryClient}>
-        <SpecFlowServicesProvider services={services}>
+        <UiModulesProvider modules={builtInUiModuleRegistry}>
+          <SpecFlowServicesProvider services={services}>
           <LocalizationProvider>
             <AppShell navigation={<div>Nav</div>}>{component}</AppShell>
           </LocalizationProvider>
-        </SpecFlowServicesProvider>
+          </SpecFlowServicesProvider>
+        </UiModulesProvider>
       </QueryClientProvider>,
     );
   }
@@ -76,7 +80,8 @@ describe('SpecificationSurface', () => {
               <SpecificationSurface specId="spec-missing" />
             </AppShell>
           </LocalizationProvider>
-        </SpecFlowServicesProvider>
+          </SpecFlowServicesProvider>
+        </UiModulesProvider>
       </QueryClientProvider>,
     );
 
@@ -112,7 +117,8 @@ describe('SpecificationSurface', () => {
               <SpecificationSurface specId="spec-404" />
             </AppShell>
           </LocalizationProvider>
-        </SpecFlowServicesProvider>
+          </SpecFlowServicesProvider>
+        </UiModulesProvider>
       </QueryClientProvider>,
     );
 
@@ -136,7 +142,8 @@ describe('SpecificationSurface', () => {
               <SpecificationSurface specId="spec-123" />
             </AppShell>
           </LocalizationProvider>
-        </SpecFlowServicesProvider>
+          </SpecFlowServicesProvider>
+        </UiModulesProvider>
       </QueryClientProvider>,
     );
 

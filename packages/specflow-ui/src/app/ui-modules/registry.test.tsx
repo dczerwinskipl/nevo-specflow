@@ -3,6 +3,7 @@ import { AppShell } from '@nevo/ui';
 import { describe, expect, it } from 'vitest';
 import { LocalizationProvider } from '../../i18n';
 import { createSpecificationWorkspaceFixture } from '../../../test-support/specs/workspace/fixtures';
+import { specificationWorkSections } from '../../features/specs/extensions/specificationWorkSections';
 import { WorkView } from '../../features/specs/workspace/WorkView';
 import {
   WorkspaceProvider,
@@ -10,31 +11,42 @@ import {
 } from '../../features/specs/workspace/WorkspaceContext';
 import { builtInUiModuleRegistry } from './builtInUiModules';
 import { UiModulesProvider } from './UiModulesProvider';
-import type { SpecFlowUiModule } from './contracts';
-import { createUiModuleRegistry } from './registry';
+import {
+  contributeTo,
+  defineUiExtensionPoint,
+  type UiContribution,
+  type UiModule,
+} from './contracts';
+import { createUiRegistry } from './registry';
 
-const moduleWithSection = (id: string, slot: 'main' | 'related'): SpecFlowUiModule => ({
+interface TestPanelContribution extends UiContribution {
+  readonly panelKey: string;
+  readonly canClose: boolean;
+}
+
+const testPanels = defineUiExtensionPoint<TestPanelContribution>('tests.settings.panels');
+
+const moduleWithSection = (id: string, slot: 'main' | 'related'): UiModule => ({
   id: `example.${id}`,
   contributions: [
-    {
-      extensionPoint: 'specification.work.sections',
+    contributeTo(specificationWorkSections, {
       id: `example.${id}.section`,
       slot,
-      render: ({ specId }) => <section data-test-module={id}>Added for {specId}</section>,
-    },
+      Component: ({ specId }) => <section data-test-module={id}>Added for {specId}</section>,
+    }),
   ],
 });
 
-describe('SpecFlow UI module composition', () => {
+describe('typed UI extension registry', () => {
   it('registers Tasks as a built-in feature, not as a WorkView import', () => {
-    expect(builtInUiModuleRegistry.specificationWorkSections('main').map((x) => x.id)).toEqual([
+    expect(builtInUiModuleRegistry.get(specificationWorkSections).map((x) => x.id)).toEqual([
       'specflow.tasks.task-groups',
     ]);
   });
 
-  it('inserts an additional module section without changing the Work host implementation', () => {
+  it('inserts independent sections without altering the Work host', () => {
     const data = createSpecificationWorkspaceFixture('working', 'SPEC-21');
-    const registry = createUiModuleRegistry([
+    const registry = createUiRegistry([specificationWorkSections], [
       moduleWithSection('first', 'related'),
       moduleWithSection('second', 'related'),
     ]);
@@ -51,39 +63,98 @@ describe('SpecFlow UI module composition', () => {
     );
     const first = markup.indexOf('data-test-module="first"');
     const second = markup.indexOf('data-test-module="second"');
-
     expect(first).toBeGreaterThan(0);
     expect(second).toBeGreaterThan(first);
     expect(markup).toContain('Added for SPEC-21');
     expect(markup).toContain('feature/session-refresh');
   });
 
-  it('rejects duplicate module and contribution identities before rendering', () => {
-    const section = moduleWithSection('a', 'main');
-    expect(() => createUiModuleRegistry([section, section])).toThrow('module id');
+  it('registers one module across two differently typed extension points', () => {
+    const registry = createUiRegistry([specificationWorkSections, testPanels], [
+      {
+        id: 'example.combined',
+        contributions: [
+          contributeTo(specificationWorkSections, {
+            id: 'example.combined.work',
+            slot: 'main',
+            Component: () => <section>Work</section>,
+          }),
+          contributeTo(testPanels, {
+            id: 'example.combined.panel',
+            panelKey: 'git',
+            canClose: false,
+          }),
+        ],
+      },
+      {
+        id: 'example.other',
+        contributions: [
+          contributeTo(testPanels, {
+            id: 'example.other.panel',
+            panelKey: 'task',
+            canClose: true,
+          }),
+        ],
+      },
+    ]);
+
+    expect(registry.get(specificationWorkSections)[0]?.slot).toBe('main');
+    expect(registry.get(testPanels).map(({ panelKey }) => panelKey)).toEqual(['git', 'task']);
+    expect(registry.get(testPanels)[0]?.canClose).toBe(false);
+    expect(Object.isFrozen(registry.get(testPanels))).toBe(true);
+  });
+
+  it('rejects duplicate module IDs and duplicate contribution IDs globally', () => {
+    const module = moduleWithSection('a', 'main');
+    expect(() => createUiRegistry([specificationWorkSections], [module, module])).toThrow(
+      'module id',
+    );
     expect(() =>
-      createUiModuleRegistry([
-        section,
+      createUiRegistry([specificationWorkSections], [
+        module,
         {
           id: 'example.b',
-          contributions: section.contributions,
+          contributions: module.contributions,
         },
       ]),
     ).toThrow('contribution id');
   });
 
-  it('keeps Work sections in their intended slot and declared registration order', () => {
-    const registry = createUiModuleRegistry([
+  it('rejects unknown/conflicting extension points, including reused IDs', () => {
+    const conflict = defineUiExtensionPoint<TestPanelContribution>('specification.work.sections');
+    expect(() => createUiRegistry([specificationWorkSections, conflict], [])).toThrow(
+      'extension point id',
+    );
+    expect(() => createUiRegistry([specificationWorkSections], [
+      { id: 'unknown.module', contributions: [contributeTo(testPanels, {
+        id: 'unknown.panel', panelKey: 'settings', canClose: true,
+      })] },
+    ])).toThrow('Unknown or conflicting');
+    expect(() => createUiRegistry([specificationWorkSections], [
+      { id: 'conflicting.module', contributions: [contributeTo(conflict, {
+        id: 'conflicting.panel', panelKey: 'settings', canClose: true,
+      })] },
+    ])).toThrow('Unknown or conflicting');
+    expect(() => createUiRegistry([specificationWorkSections], []).get(conflict)).toThrow(
+      'Unknown or conflicting',
+    );
+  });
+
+  it('preserves module registration order and leaves slot filtering to Specification', () => {
+    const registry = createUiRegistry([specificationWorkSections], [
       moduleWithSection('main-1', 'main'),
       moduleWithSection('related-1', 'related'),
       moduleWithSection('main-2', 'main'),
     ]);
-    expect(registry.specificationWorkSections('main').map((c) => c.id)).toEqual([
+    const contributions = registry.get(specificationWorkSections);
+    expect(contributions.map((c) => c.id)).toEqual([
       'example.main-1.section',
+      'example.related-1.section',
       'example.main-2.section',
     ]);
-    expect(registry.specificationWorkSections('related').map((c) => c.id)).toEqual([
-      'example.related-1.section',
+    expect(contributions.filter((c) => c.slot === 'main').map((c) => c.id)).toEqual([
+      'example.main-1.section',
+      'example.main-2.section',
     ]);
   });
 });

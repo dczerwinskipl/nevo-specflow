@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppShell } from '@nevo/ui';
 import { appI18n, LocalizationProvider } from '../../../i18n';
 import { SpecificationWorkspace } from './SpecificationWorkspace';
+import { UiModulesProvider } from '../../../app/ui-modules/UiModulesProvider';
+import { builtInUiModuleRegistry } from '../../../app/ui-modules/builtInUiModules';
 import { DocumentsView } from './DocumentsView';
 
 import { createSpecificationWorkspaceFixture } from '../../../../test-support/specs/workspace/fixtures';
@@ -12,11 +14,13 @@ function renderWorkspaceMarkup(
 ) {
   const data = props.data ?? createSpecificationWorkspaceFixture('working', 'UI-1234');
   return renderToStaticMarkup(
-    <LocalizationProvider>
-      <AppShell navigation={<div>Nav</div>}>
-        <SpecificationWorkspace specId="UI-1234" data={data} {...props} />
-      </AppShell>
-    </LocalizationProvider>,
+    <UiModulesProvider modules={builtInUiModuleRegistry}>
+      <LocalizationProvider>
+        <AppShell navigation={<div>Nav</div>}>
+          <SpecificationWorkspace specId="UI-1234" data={data} {...props} />
+        </AppShell>
+      </LocalizationProvider>
+    </UiModulesProvider>,
   );
 }
 

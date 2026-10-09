@@ -17,6 +17,8 @@ type AuthMode =
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createSpecFlowQueryClient } from './queryClient';
+import { builtInUiModuleRegistry } from './ui-modules/builtInUiModules';
+import { UiModulesProvider } from './ui-modules/UiModulesProvider';
 import { createSpecFlowAppServices, SpecFlowServicesProvider } from '../services';
 import { specificationKeys } from '../features/specs/queries';
 import {
@@ -151,11 +153,13 @@ export function RoutedApplication({
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SpecFlowServicesProvider services={services}>
-        <StoryLocalization locale={locale}>
-          <RouterProvider router={router} />
-        </StoryLocalization>
-      </SpecFlowServicesProvider>
+      <UiModulesProvider modules={builtInUiModuleRegistry}>
+        <SpecFlowServicesProvider services={services}>
+          <StoryLocalization locale={locale}>
+            <RouterProvider router={router} />
+          </StoryLocalization>
+        </SpecFlowServicesProvider>
+      </UiModulesProvider>
     </QueryClientProvider>
   );
 }

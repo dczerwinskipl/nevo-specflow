@@ -124,7 +124,7 @@ behind fixtures. All contributions in a slot are ordered by registration order.
 
 A built-in Tasks module is the first consumer. Registering a new contribution does not
 require changes to `WorkView` or its section-selection conditions; modules are assembled
-in the application composition root. Other existing core sections are intentionally
+in the application composition root and supplied to hosts through `UiModulesProvider`. Other existing core sections are intentionally
 unchanged until their feature ownership is migrated. This is a UI composition mechanism,
 not dynamic remote plugin loading, a server-side plugin manifest, or a generic schema UI.
 Future Settings or Task/Session panels get their **own** typed extension-point contracts;

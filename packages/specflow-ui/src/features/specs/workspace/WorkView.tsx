@@ -1,5 +1,4 @@
-import { specificationUiModules } from '../../../app/ui-modules/builtInUiModules';
-import type { UiModuleRegistry } from '../../../app/ui-modules/registry';
+import { useUiModules } from '../../../app/ui-modules/UiModulesProvider';
 import { SpecificationWorkSectionOutlet } from './SpecificationWorkSectionOutlet';
 import type { SpecificationWorkspaceData } from './model';
 import {
@@ -14,15 +13,14 @@ import {
 export interface WorkViewProps {
   readonly specId?: string;
   readonly data: SpecificationWorkspaceData;
-  /** Host composition seam for registered features, including tests and future plugins. */
-  readonly modules?: UiModuleRegistry;
 }
 
 /**
  * Specification Workspace work view composition root.
  * Coordinates section layout without monolithic state management.
  */
-export function WorkView({ specId, data, modules = specificationUiModules }: WorkViewProps) {
+export function WorkView({ specId, data }: WorkViewProps) {
+  const modules = useUiModules();
   return (
     <div className="divide-y divide-border-subtle max-w-content-standard">
       <div className="pb-6">

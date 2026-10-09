@@ -8,7 +8,8 @@ import {
   WorkspaceProvider,
   createFakeWorkspaceRuntime,
 } from '../../features/specs/workspace/WorkspaceContext';
-import { specificationUiModules } from './builtInUiModules';
+import { builtInUiModuleRegistry } from './builtInUiModules';
+import { UiModulesProvider } from './UiModulesProvider';
 import type { SpecFlowUiModule } from './contracts';
 import { createUiModuleRegistry } from './registry';
 
@@ -26,7 +27,7 @@ const moduleWithSection = (id: string, slot: 'main' | 'related'): SpecFlowUiModu
 
 describe('SpecFlow UI module composition', () => {
   it('registers Tasks as a built-in feature, not as a WorkView import', () => {
-    expect(specificationUiModules.specificationWorkSections('main').map((x) => x.id)).toEqual([
+    expect(builtInUiModuleRegistry.specificationWorkSections('main').map((x) => x.id)).toEqual([
       'specflow.tasks.task-groups',
     ]);
   });
@@ -38,13 +39,15 @@ describe('SpecFlow UI module composition', () => {
       moduleWithSection('second', 'related'),
     ]);
     const markup = renderToStaticMarkup(
-      <LocalizationProvider>
-        <AppShell navigation={<div>Navigation</div>}>
-          <WorkspaceProvider runtime={createFakeWorkspaceRuntime()}>
-            <WorkView data={data} modules={registry} />
-          </WorkspaceProvider>
-        </AppShell>
-      </LocalizationProvider>,
+      <UiModulesProvider modules={registry}>
+        <LocalizationProvider>
+          <AppShell navigation={<div>Navigation</div>}>
+            <WorkspaceProvider runtime={createFakeWorkspaceRuntime()}>
+              <WorkView data={data} />
+            </WorkspaceProvider>
+          </AppShell>
+        </LocalizationProvider>
+      </UiModulesProvider>,
     );
     const first = markup.indexOf('data-test-module="first"');
     const second = markup.indexOf('data-test-module="second"');

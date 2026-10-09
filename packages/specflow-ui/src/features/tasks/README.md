@@ -20,3 +20,9 @@ to a Project Settings extension point rather than becoming a hardcoded part of W
 The canonical `/specs/:specId/tasks/:taskId` route is declared by `tasks/routes.tsx` and
 registered by the application router. Task detail uses `TaskApi` and `taskKeys` through
 the shared services/QueryClient composition; `specs` does not own its endpoint.
+
+The `tasksUiModule` registers the `specification.work.sections` contribution.
+Its adapter translates the temporary Specification Workspace projection into Task-owned
+props; `TasksSection` itself does not import `WorkspaceRuntime` or the aggregate
+Specification model. No additional endpoint, global QueryClient or production fixture
+is introduced by the contribution system.

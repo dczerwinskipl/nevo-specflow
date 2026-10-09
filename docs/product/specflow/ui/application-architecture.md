@@ -107,6 +107,30 @@ Task presentation is colocated under `features/tasks/pages`, Task Preview presen
 Workspace model/actions are intentional, temporary adapters until feature-level ownership and
 contribution registration are hardened in the following changes.
 
+### UI module contribution foundation
+
+The application composition root owns a deterministic `UiModuleRegistry`. Each
+`SpecFlowUiModule` identifies a product feature and publishes contributions for
+implemented extension points. Module and contribution identifiers must be globally
+unique and stable; duplicate registrations fail at composition time.
+
+The first implemented extension point, `specification.work.sections`, has host-controlled
+slots `main` (after core Specification/Attention/Preparation content, before Documents)
+and `related` (after Documents). The Specification Work host owns these positions,
+spacing, and per-section error isolation. The module owns visibility and rendering of
+its section, with a narrow adapter to the existing aggregate Workspace snapshot. It
+must not independently create HttpClient/QueryClient or hide missing backend data
+behind fixtures. All contributions in a slot are ordered by registration order.
+
+A built-in Tasks module is the first consumer. Registering a new contribution does not
+require changes to `WorkView` or its section-selection conditions; modules are assembled
+in the application composition root. Other existing core sections are intentionally
+unchanged until their feature ownership is migrated. This is a UI composition mechanism,
+not dynamic remote plugin loading, a server-side plugin manifest, or a generic schema UI.
+Future Settings or Task/Session panels get their **own** typed extension-point contracts;
+they do not adopt Work-specific context. Authorization is enforced by Runtime on every
+resource endpoint independently of UI contribution visibility.
+
 ## Current implementation and migration state
 
 The current router tree is owned by the application routing composition. The root is neutral because

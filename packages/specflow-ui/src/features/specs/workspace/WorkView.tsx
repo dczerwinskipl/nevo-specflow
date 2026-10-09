@@ -1,6 +1,6 @@
-import { Alert } from '@nevo/ui';
-import { useTranslation } from 'react-i18next';
-import { useWorkspaceRuntime } from './WorkspaceContext';
+import { specificationUiModules } from '../../../app/ui-modules/builtInUiModules';
+import type { UiModuleRegistry } from '../../../app/ui-modules/registry';
+import { SpecificationWorkSectionOutlet } from './SpecificationWorkSectionOutlet';
 import type { SpecificationWorkspaceData } from './model';
 import {
   SpecificationSummarySection,
@@ -9,22 +9,20 @@ import {
   ResumeSessionSection,
   PreparationSection,
   DocumentsSummarySection,
-  ExtensionsSection,
 } from './sections';
-import { TasksSection } from '../../tasks/contributions/specification-work';
 
 export interface WorkViewProps {
   readonly specId?: string;
   readonly data: SpecificationWorkspaceData;
+  /** Host composition seam for registered features, including tests and future plugins. */
+  readonly modules?: UiModuleRegistry;
 }
 
 /**
  * Specification Workspace work view composition root.
  * Coordinates section layout without monolithic state management.
  */
-export function WorkView({ specId, data }: WorkViewProps) {
-  const { t } = useTranslation();
-  const runtime = useWorkspaceRuntime();
+export function WorkView({ specId, data, modules = specificationUiModules }: WorkViewProps) {
   return (
     <div className="divide-y divide-border-subtle max-w-content-standard">
       <div className="pb-6">
@@ -60,32 +58,12 @@ export function WorkView({ specId, data }: WorkViewProps) {
         </div>
       ) : null}
 
-      {!data.isEmpty &&
-      data.sectionAvailability?.tasks !== 'unavailable' &&
-      data.sectionAvailability?.tasks !== 'forbidden' ? (
-        <div className="py-6">
-          <TasksSection
-            key={specId}
-            taskGroups={data.taskGroups}
-            isPreparing={data.isPreparing}
-            totalTasksCount={data.totalTasksCount}
-            completedTasksCount={data.completedTasksCount}
-            executionReadiness={data.executionReadiness}
-            onPreviewTask={runtime.previewTask}
-            fullTaskHref={runtime.fullTaskHref}
-            onExecuteTasks={runtime.executeTasks}
-            canExecute={runtime.canExecute !== false}
-          />
-        </div>
-      ) : null}
-
-      {data.sectionAvailability?.tasks && data.sectionAvailability.tasks !== 'available' ? (
-        <div className="py-6">
-          <Alert tone="attention" title={t('specification.unavailableTitle')}>
-            {t('specification.unavailableDescription', { id: specId ?? data.id })}
-          </Alert>
-        </div>
-      ) : null}
+      <SpecificationWorkSectionOutlet
+        slot="main"
+        specId={specId ?? data.id}
+        data={data}
+        modules={modules}
+      />
 
       {!data.isEmpty &&
       (!data.sectionAvailability?.documents ||
@@ -95,11 +73,12 @@ export function WorkView({ specId, data }: WorkViewProps) {
         </div>
       ) : null}
 
-      {data.hasExtensions ? (
-        <div className="py-6">
-          <ExtensionsSection />
-        </div>
-      ) : null}
+      <SpecificationWorkSectionOutlet
+        slot="related"
+        specId={specId ?? data.id}
+        data={data}
+        modules={modules}
+      />
     </div>
   );
 }

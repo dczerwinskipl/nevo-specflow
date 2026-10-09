@@ -165,7 +165,15 @@ function SpecificationWorkspaceInner({
       previewTask: handlePreviewTask,
       onTaskUnauthorized,
     }),
-    [specId, data, handleOpenFullTask, onOpenSession, handleOpenDoc, handlePreviewTask, onTaskUnauthorized],
+    [
+      specId,
+      data,
+      handleOpenFullTask,
+      onOpenSession,
+      handleOpenDoc,
+      handlePreviewTask,
+      onTaskUnauthorized,
+    ],
   );
 
   const runtime: WorkspaceRuntime = useMemo(

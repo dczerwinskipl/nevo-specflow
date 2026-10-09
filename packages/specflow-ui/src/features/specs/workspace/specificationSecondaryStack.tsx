@@ -70,20 +70,15 @@ export function useTaskPreviewData({
   if (!context) return { status: 'loading' };
   if (!listTask && detail.isPending) return { status: 'loading' };
   if (!listTask && detail.isError) {
-    return taskPreviewFailure(
-      detailStatus,
-      detail.isTaskNotFound,
-      taskId,
-      () => {
-        if (detailStatus === 401 && onTaskUnauthorized) {
-          onTaskUnauthorized(() => {
-            void retryDetail();
-          });
-        } else {
+    return taskPreviewFailure(detailStatus, detail.isTaskNotFound, taskId, () => {
+      if (detailStatus === 401 && onTaskUnauthorized) {
+        onTaskUnauthorized(() => {
           void retryDetail();
-        }
-      },
-    );
+        });
+      } else {
+        void retryDetail();
+      }
+    });
   }
   if (!listTask && detail.data?.task.id !== taskId) {
     return {
@@ -125,7 +120,10 @@ export function taskPreviewFailure(
   retry: () => void,
 ): SecondaryData<TaskPreviewSecondaryData> {
   if (httpStatus === 403) {
-    return { status: 'access-denied', message: appI18n.t('specification.taskPreviewAccessDenied') };
+    return {
+      status: 'access-denied',
+      message: appI18n.t('specification.taskPreviewAccessDenied'),
+    };
   }
   if (httpStatus === 404 && isTaskNotFound) {
     return {

@@ -8,6 +8,7 @@ import { SpecsAccessDenied } from './overview/SpecsAccessDenied';
 import { SpecificationSurface } from './SpecificationSurface';
 import { useSpecificationWorkspace } from './useSpecificationWorkspace';
 import type { SpecificationWorkspaceView } from './workspace/model';
+import { recoverTaskPreviewAuthorization } from './workspace/recoverTaskPreviewAuthorization';
 export { specificationTaskRoute } from '../tasks/routes';
 
 export const specsForbiddenRoute = createRoute({
@@ -190,18 +191,16 @@ function SpecificationRouteScreen() {
       initialView={view === 'task' ? undefined : view}
       onTaskUnauthorized={(retry) => {
         const returnTo = `/specs/${encodeURIComponent(specId)}?collection=${collection}`;
-        void auth.refresh().then(
-          (session) => {
-            if (session.authenticationRequired && !session.authenticated) {
-              void navigate({ to: '/login', search: { returnTo }, replace: true });
-            } else {
-              retry();
-            }
+        void recoverTaskPreviewAuthorization({
+          refresh: () => auth.refresh(),
+          retry,
+          onLogin: () => {
+            void navigate({ to: '/login', search: { returnTo }, replace: true });
           },
-          () => {
+          onRuntimeUnavailable: () => {
             void navigate({ to: '/runtime-unavailable', search: { returnTo }, replace: true });
           },
-        );
+        });
       }}
       onNavigateView={({ view: nextView, taskId: nextTaskId }) => {
         if (nextView === 'task' && nextTaskId) {

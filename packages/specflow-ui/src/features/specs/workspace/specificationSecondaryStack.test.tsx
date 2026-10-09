@@ -1,6 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createSpecFlowQueryClient } from '../../../app/queryClient';
 import { createSpecFlowAppServices, SpecFlowServicesProvider } from '../../../services';
 import { specificationKeys } from '../queries';
@@ -8,6 +8,7 @@ import { createSpecificationWorkspaceFixture } from '../../../../test-support/sp
 import {
   SpecificationSecondaryDataContext,
   useTaskPreviewData,
+  taskPreviewFailure,
 } from './specificationSecondaryStack';
 
 const specId = 'admission';
@@ -48,5 +49,41 @@ describe('Task preview by identity', () => {
     );
     expect(markup).toContain('Referenced outside Task list');
     expect(markup).not.toContain('unavailable');
+  });
+});
+
+describe('Task Preview HTTP failure states', () => {
+  it('keeps expired authentication distinct and retryable', () => {
+    const retry = vi.fn();
+    const state = taskPreviewFailure(401, false, taskId, retry);
+    expect(state.status).toBe('error');
+    if (state.status !== 'error') throw new Error('Expected retryable error');
+    expect(String(state.message)).toContain('session');
+    state.retry?.();
+    expect(retry).toHaveBeenCalledOnce();
+  });
+
+  it('shows access denied without rendering or retrying the Task', () => {
+    const state = taskPreviewFailure(403, false, taskId, vi.fn());
+    expect(state.status).toBe('access-denied');
+    expect(state).not.toHaveProperty('retry');
+  });
+
+  it('treats only domain-confirmed 404 as not found', () => {
+    const retry = vi.fn();
+    const absent = taskPreviewFailure(404, true, taskId, retry);
+    expect(absent.status).toBe('unavailable');
+    expect(String(absent.status === 'unavailable' ? absent.message : '')).toContain(taskId);
+    const unexpected = taskPreviewFailure(404, false, taskId, retry);
+    expect(unexpected.status).toBe('error');
+  });
+
+  it('keeps temporary Runtime failures retryable', () => {
+    const retry = vi.fn();
+    const state = taskPreviewFailure(503, false, taskId, retry);
+    expect(state.status).toBe('error');
+    if (state.status !== 'error') throw new Error('Expected recoverable error');
+    state.retry?.();
+    expect(retry).toHaveBeenCalledOnce();
   });
 });

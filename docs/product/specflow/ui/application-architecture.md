@@ -131,6 +131,15 @@ Future Settings or Task/Session panels get their **own** typed extension-point c
 they do not adopt Work-specific context. Authorization is enforced by Runtime on every
 resource endpoint independently of UI contribution visibility.
 
+### Obsolete Extensions placeholder
+
+The pre-module `ExtensionsSection` and `hasExtensions` boolean were removed. The Runtime
+Workspace mapper never exposed a genuine extension payload and always returned `false`;
+keeping the empty placeholder would imply a capability that did not exist. Real optional
+Specification Work sections are contributed through `specification.work.sections`.
+Dynamic discovery and enablement of external plugins remain follow-ups, not features of
+this registry.
+
 ## Current implementation and migration state
 
 The current router tree is owned by the application routing composition. The root is neutral because

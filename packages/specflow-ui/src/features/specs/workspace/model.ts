@@ -128,7 +128,6 @@ export interface SpecificationWorkspaceData {
   readonly isEmpty?: boolean;
   readonly isPreparing?: boolean;
   readonly hasGit?: boolean;
-  readonly hasExtensions?: boolean;
   readonly attentionItems: readonly AttentionItem[];
   readonly repoContext?: RepoContext;
   readonly resumeSession?: SessionSummary;

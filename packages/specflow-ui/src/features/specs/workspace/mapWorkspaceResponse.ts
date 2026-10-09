@@ -46,7 +46,6 @@ export function mapWorkspaceResponse(
     isEmpty: specification.preparationState === 'empty',
     isPreparing: specification.preparationState === 'preparing',
     hasGit: sections.repository.state === 'available',
-    hasExtensions: false,
     sectionAvailability: {
       attention: sections.attention.state,
       tasks: sections.tasks.state,

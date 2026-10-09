@@ -15,8 +15,7 @@ export type SpecificationScenario =
   | 'no-git'
   | 'git-conflict'
   | 'git-unknown'
-  | 'git-stale'
-  | 'extensions';
+  | 'git-stale';
 
 export const defaultTaskGroups: readonly TaskGroup[] = [
   {
@@ -271,7 +270,6 @@ export function createSpecificationWorkspaceFixture(
   const isPreparing = scenario === 'preparing';
   const isEmpty = scenario === 'empty';
   const hasGit = scenario !== 'no-git' && !isEmpty;
-  const hasExtensions = scenario === 'extensions';
 
   const attentionItems: AttentionItem[] = [];
 
@@ -385,7 +383,6 @@ export function createSpecificationWorkspaceFixture(
     isEmpty,
     isPreparing,
     hasGit,
-    hasExtensions,
     attentionItems,
     repoContext,
     resumeSession: isEmpty ? undefined : defaultSessions[0],

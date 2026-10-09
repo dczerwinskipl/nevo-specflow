@@ -4,5 +4,4 @@ export * from './RepositorySection';
 export * from './ResumeSessionSection';
 export * from './PreparationSection';
 export * from './DocumentsSummarySection';
-export * from './ExtensionsSection';
 export * from './WorkspaceSection';

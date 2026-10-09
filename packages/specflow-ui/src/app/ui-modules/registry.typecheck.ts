@@ -28,5 +28,4 @@ export function verifyUiExtensionPointTypes() {
   // @ts-expect-error Specification slots are not part of this extension point.
   const invalidSlot = contribution.slot;
   void invalidSlot;
-
 }

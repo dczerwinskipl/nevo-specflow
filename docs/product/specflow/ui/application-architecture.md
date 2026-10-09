@@ -116,6 +116,8 @@ The current product routes under the guarded layout remain:
 - `/` for the read-only Specs Overview (`?collection=current|archive`);
 - `/specs/:specId` for the owning Specification, with `?collection=current|archive` as parent return
   context; loads server state via TanStack Query and renders the Specification Workspace;
+- `/specs/:specId/tasks/:taskId` for Full Task detail, with the collection as optional return context;
+  reads Task detail directly, independently of Workspace Task groups or Workspace read availability;
 - `/ui-playground` for a directly routable development/integration screen, not a persistent product
   navigation item.
 
@@ -192,8 +194,11 @@ The application provides real Specification URLs for Current and Archive records
 `/specs/:specId` route reads the Runtime Workspace projection and separately loads Markdown
 documents and Task detail through real HTTP, while unknown sources remain explicitly unavailable.
 Creation, execution and archive/delete commands are not implemented by this increment.
-URL search owns main view and explicit full Task navigation; local Secondary navigation and
-selection remain in local workspace state.
+URL search still owns the remaining Specification-local main views pending their route migration.
+Full Task has a canonical resource path rather than `?view=task&task=...`; legacy links redirect.
+Full Task uses its own detail query and presentation model, and Workspace list membership is never
+a prerequisite for direct navigation. Local Task Preview remains a Secondary inspection surface.
+Local Secondary navigation and selection remain in local workspace state.
 
 The login and Runtime-recovery screens are product-owned compositions on Nevo UI's
 `StandaloneShell`. That shared shell owns the navigation-free application frame: AppBackground,

@@ -31,10 +31,9 @@ contracts are filled in with the implementation.
 - **Back follows the product hierarchy**, not raw browser history.
 - **Do not expose the internal model as navigation.** Users navigate product concepts,
   not database entities or provider payloads.
-- **A route is not automatically global navigation.** Full Session can have a stable product route
-  without earning a persistent sidebar item. Contextual inspector targets such as Task detail or
-  future file preview remain local unless a future capability explicitly promotes them to a main
-  routed surface.
+- **A route is not automatically global navigation.** Full Session and Full Task can have stable
+  product routes without earning persistent sidebar items. Task Preview and contextual inspectors
+  remain local Secondary state; Full Task is the explicit main routed destination.
 - **Preserve the current work context when possible.** Use Secondary or floating interaction for
   contextual exploration; use a main workspace route when the user explicitly promotes that context
   into their primary task.
@@ -75,11 +74,10 @@ navigation avoids a horizontal tab strip and avoids an extra permanent rail; on 
 it collapses into a contextual view selector. The implemented global product navigation remains
 deliberately small as described below.
 
-The owner-refined Specification design separates short Task preview in Secondary from explicit
-Full Task promotion into a main surface. Work defaults to Specification history in Secondary. This
-is proposed next-screen behavior, not a capability of the implemented placeholder. Follow that
-local design draft rather than treating the earlier inspector-only Task hierarchy below as a
-prohibition on explicit promotion.
+The Specification design separates short Task Preview in Secondary from explicit Full Task
+promotion into a main routed page (`/specs/:specId/tasks/:taskId`). Work defaults to
+Specification history in Secondary. A Full Task deep link reads the Task by ID through the
+authenticated Runtime detail API, not through the Workspace Task collection.
 
 For the current spec-driven MVP, global product navigation stays deliberately small. The default
 product entry is Specs Overview:

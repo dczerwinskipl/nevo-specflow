@@ -22,16 +22,16 @@ import {
   createSpecItem,
   createSpecsFixture,
   createArchiveItem,
-} from './fixtures';
+} from '../../../../test-support/specs/overview/fixtures';
 import type {
   SpecsCollection,
   SpecsOverview as SpecsOverviewData,
-  SpecsOverviewSource,
   SpecsOverviewState,
   CurrentSpecTarget,
 } from './model';
 import { SpecsOverview } from './SpecsOverview';
 import { useSpecsOverview } from './useSpecsOverview';
+import type { SpecsOverviewApi } from './api';
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createSpecFlowQueryClient } from '../../../app/queryClient';
@@ -54,9 +54,9 @@ function SourceLifecycleComponent() {
       reject: (error: Error) => void;
     }[]
   >([]);
-  const source = useMemo<SpecsOverviewSource>(
+  const source = useMemo<SpecsOverviewApi>(
     () => ({
-      read: (scope) =>
+      getOverview: (scope) =>
         new Promise((resolve, reject) => {
           // Deliberately ignores cancellation: the owner must also guard late responses.
           pending.current.push({ collection: scope, resolve, reject });
@@ -102,6 +102,7 @@ function OverviewFixture({
   locale?: AppLocale;
   interactive?: boolean;
 }) {
+  const queryClient = useMemo(() => createSpecFlowQueryClient(), []);
   const router = useMemo(() => {
     const signedIn: AuthSessionResponse = {
       authenticationRequired: true,
@@ -162,9 +163,11 @@ function OverviewFixture({
     });
   }, [state, interactive]);
   return (
-    <StoryLocalization locale={locale}>
-      <RouterProvider router={router} />
-    </StoryLocalization>
+    <QueryClientProvider client={queryClient}>
+      <StoryLocalization locale={locale}>
+        <RouterProvider router={router} />
+      </StoryLocalization>
+    </QueryClientProvider>
   );
 }
 
@@ -390,6 +393,48 @@ export const Archive: Story = {
   args: { state: { ...loaded, collection: 'archive', projection: createSpecsFixture('archive') } },
   tags: ['visual'],
   parameters: { chromatic: { disableSnapshot: false } },
+};
+
+/** Full metadata is the normal Archive visual fixture; incomplete records are tested separately. */
+export const ArchiveWithCompleteMetadata: Story = {
+  ...Archive,
+  play: ({ canvasElement }) => {
+    const rows = [...canvasElement.querySelectorAll<HTMLElement>('[data-spec-id]')];
+    if (rows.length !== 18) throw new Error('Expected all archived specifications.');
+    if (rows.some((row) => !row.getAttribute('data-spec-key'))) {
+      throw new Error('Archive fixture must render a stable Specification key on every row.');
+    }
+    if (rows.some((row) => !row.querySelector('[data-spec-metadata]'))) {
+      throw new Error('Archive fixture should cover tags and linked PR metadata.');
+    }
+  },
+};
+
+export const ArchiveMissingOptionalMetadata: Story = {
+  args: {
+    state: {
+      ...loaded,
+      collection: 'archive',
+      projection: {
+        ...createSpecsFixture('archive'),
+        items: [
+          createArchiveItem({
+            id: 'legacy-import',
+            key: undefined,
+            tags: [],
+            pullRequests: [],
+            title: 'Imported archive without optional identifiers',
+          }),
+        ],
+      },
+    },
+  },
+  play: ({ canvasElement }) => {
+    const row = canvasElement.querySelector<HTMLElement>('[data-spec-id="legacy-import"]');
+    if (!row || row.getAttribute('data-spec-key') || row.querySelector('[data-spec-metadata]')) {
+      throw new Error('Legacy record must not fabricate absent optional metadata.');
+    }
+  },
 };
 
 export const ArchiveContract: Story = {

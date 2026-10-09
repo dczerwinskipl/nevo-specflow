@@ -73,7 +73,7 @@
     "viewWork": "Praca",
     "viewDocuments": "Dokumenty",
     "viewSessions": "Sesje",
-    "viewChanges": "Zmiany",
+    "viewChanges": "Wszystkie zmiany",
     "viewRepository": "Repozytorium",
     "viewsAriaLabel": "Widoki specyfikacji",
     "currentViewSelector": "Bieżący widok: {{view}}",
@@ -109,7 +109,6 @@
     "gitConflictsUnknown": "Konflikty lokalne: nieznane",
     "prReviewLink": "Przegląd PR",
     "changesLink": "Zmiany",
-    "viewChanges": "Wszystkie zmiany",
     "gitRefreshFailed": "Nie udało się odświeżyć stanu repozytorium",
     "gitStaleData": "Dane nieaktualne · ostatnie sprawdzenie 30 min temu",
     "continueSessionHeading": "Kontynuuj sesję",
@@ -209,7 +208,14 @@
     "refreshedNotification": "Odświeżono stan specyfikacji",
     "diffNotification": "Otwarto diff pliku: {{file}}",
     "executeStartedNotification": "Uruchomiono wykonanie z {{agent}} ({{count}} tasków)",
-    "conversationStartedNotification": "Rozpoczęto rozmowę z {{agent}}"
+    "conversationStartedNotification": "Rozpoczęto rozmowę z {{agent}}",
+    "taskStatusPending": "Gotowe",
+    "taskStatusInProgress": "W trakcie",
+    "taskStatusCompleted": "Ukończone",
+    "taskStatusBlocked": "Zablokowane",
+    "sessionStatusActive": "Aktywna",
+    "sessionStatusAttention": "Wymaga uwagi",
+    "attentionViewTask": "Zobacz task"
   },
   "playground": {
     "title": "UI Playground",

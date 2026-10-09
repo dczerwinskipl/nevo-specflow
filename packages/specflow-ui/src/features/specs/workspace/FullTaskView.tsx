@@ -1,6 +1,7 @@
 import { Icon, Timeline, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { TaskItem } from './model';
+import { taskStatusLabel } from './status-labels';
 
 export interface FullTaskViewProps {
   readonly task: TaskItem;
@@ -35,7 +36,7 @@ export function FullTaskView({ task, specKey, onBack, onOpenSession }: FullTaskV
           {task.title}
         </Typography>
         <p className="mt-1 text-body-sm text-content-secondary">
-          {task.status}
+          {taskStatusLabel(task, t)}
           {task.additionalInfo ? ` · ${task.additionalInfo}` : ''}
         </p>
       </div>

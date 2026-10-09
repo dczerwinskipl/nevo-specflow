@@ -1,6 +1,7 @@
 import { Button, IconButton, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { TaskGroup, TaskItem } from './model';
+import { taskStatusLabel } from './status-labels';
 
 export interface TaskPreviewProps {
   readonly task: TaskItem;
@@ -55,7 +56,7 @@ export function TaskPreview({ task, groups, specKey, onClose, onOpenFull }: Task
           <span className="font-medium text-content-secondary">
             {t('specification.taskStateLabel')}
           </span>
-          <p className="mt-0.5 text-content-muted">{task.status}</p>
+          <p className="mt-0.5 text-content-muted">{taskStatusLabel(task, t)}</p>
         </div>
         <div>
           <span className="font-medium text-content-secondary">

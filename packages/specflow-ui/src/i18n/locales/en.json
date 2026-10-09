@@ -73,7 +73,7 @@
     "viewWork": "Work",
     "viewDocuments": "Documents",
     "viewSessions": "Sessions",
-    "viewChanges": "Changes",
+    "viewChanges": "View changes",
     "viewRepository": "Repository",
     "viewsAriaLabel": "Specification views",
     "currentViewSelector": "Current view: {{view}}",
@@ -109,7 +109,6 @@
     "gitConflictsUnknown": "Local conflicts: unknown",
     "prReviewLink": "Review PR",
     "changesLink": "Changes",
-    "viewChanges": "View changes",
     "gitRefreshFailed": "Failed to refresh repository status",
     "gitStaleData": "Stale data · last checked 30 min ago",
     "continueSessionHeading": "Continue session",
@@ -209,7 +208,14 @@
     "refreshedNotification": "Specification state refreshed",
     "diffNotification": "File diff opened: {{file}}",
     "executeStartedNotification": "Started execution with {{agent}} ({{count}} tasks)",
-    "conversationStartedNotification": "Started conversation with {{agent}}"
+    "conversationStartedNotification": "Started conversation with {{agent}}",
+    "taskStatusPending": "Ready",
+    "taskStatusInProgress": "In progress",
+    "taskStatusCompleted": "Completed",
+    "taskStatusBlocked": "Blocked",
+    "sessionStatusActive": "Active",
+    "sessionStatusAttention": "Requires attention",
+    "attentionViewTask": "View task"
   },
   "playground": {
     "title": "UI Playground",

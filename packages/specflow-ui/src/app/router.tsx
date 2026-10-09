@@ -57,7 +57,7 @@ export function createSpecFlowRouter(
   const context: SpecFlowRouterContext = {
     services,
     auth: services.authStore,
-    specs: services.specsSource,
+    specs: services.specsOverviewApi,
   };
 
   return createRouter({

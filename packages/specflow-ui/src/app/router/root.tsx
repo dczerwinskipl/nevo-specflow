@@ -1,14 +1,14 @@
 import { createRootRouteWithContext, createRoute, Outlet, redirect } from '@tanstack/react-router';
 import type { AuthStore } from '../../auth/store';
 import { resolveAppAccess, safeReturnTo } from '../../auth/access';
-import type { SpecsOverviewSource } from '../../features/specs/overview/model';
+import type { SpecsOverviewApi } from '../../features/specs/overview/api';
 import type { SpecFlowAppServices } from '../dependencies';
 import { SpecFlowShell } from '../SpecFlowShell';
 
 export interface SpecFlowRouterContext {
   readonly services: SpecFlowAppServices;
   readonly auth: AuthStore;
-  readonly specs: SpecsOverviewSource;
+  readonly specs: SpecsOverviewApi;
 }
 
 export const rootRoute = createRootRouteWithContext<SpecFlowRouterContext>()({

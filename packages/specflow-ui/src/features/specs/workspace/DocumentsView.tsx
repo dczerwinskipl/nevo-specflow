@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Button, Icon, InformationList, MarkdownDocument, TextInput, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { OperationalRow } from '../shared/OperationalList';
@@ -6,6 +6,7 @@ import type { DocumentItem } from './model';
 
 export interface DocumentsViewProps {
   readonly documents: readonly DocumentItem[];
+  readonly renderContent?: (doc: DocumentItem) => ReactNode;
   readonly activeDocId: string | null;
   readonly docOrigin: 'work' | 'documents';
   readonly onSelectDoc: (id: string | null) => void;
@@ -14,6 +15,7 @@ export interface DocumentsViewProps {
 
 export function DocumentsView({
   documents,
+  renderContent,
   activeDocId,
   docOrigin,
   onSelectDoc,
@@ -55,7 +57,9 @@ export function DocumentsView({
               <p className="text-body-sm text-content-secondary">{activeDoc.summary}</p>
             ) : null}
 
-            {activeDoc.sections && activeDoc.sections.length > 0 ? (
+            {renderContent ? (
+              renderContent(activeDoc)
+            ) : activeDoc.sections && activeDoc.sections.length > 0 ? (
               activeDoc.sections.map((section, idx) => (
                 <div key={idx} className="grid gap-1">
                   <Typography

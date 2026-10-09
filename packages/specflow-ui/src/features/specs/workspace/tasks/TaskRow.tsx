@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { OperationalRow } from '../../shared/OperationalList';
 import type { TaskItem } from '../model';
 import { getTaskStatePresentation } from './presentation';
+import { taskStatusLabel } from '../status-labels';
 
 export interface TaskRowProps {
   readonly task: TaskItem;
@@ -61,7 +62,7 @@ export function TaskRow({
       primary={task.title}
       onPrimaryClick={() => onPreview(task.id)}
       primaryAriaLabel={task.title}
-      compactFacts={[{ text: task.id, mono: true }, task.status]}
+      compactFacts={[{ text: task.id, mono: true }, taskStatusLabel(task, t)]}
       supporting={
         task.additionalInfo
           ? {
@@ -80,7 +81,7 @@ export function TaskRow({
         'data-row-task': task.id,
         'data-task-title': 'true',
         'data-task-key': task.id,
-        'data-task-status': task.status,
+        'data-task-status': task.statusCode ?? task.status,
       }}
     />
   );

@@ -2,6 +2,7 @@ import { InformationList, MenuItem, OverflowMenu } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { OperationalRow } from '../../shared/OperationalList';
 import type { SessionSummary } from '../model';
+import { sessionActivityLabel } from '../status-labels';
 import { useWorkspaceRuntime } from '../WorkspaceContext';
 import { WorkspaceSection } from './WorkspaceSection';
 
@@ -48,7 +49,7 @@ export function ResumeSessionSection({ session }: ResumeSessionSectionProps) {
           supporting={
             session.activity
               ? {
-                  text: session.activity.label,
+                  text: sessionActivityLabel(session, t),
                   tone: session.activity.tone ?? 'neutral',
                   icon: session.activity.icon,
                   iconClassName: session.activity.animate ? 'animate-spin' : undefined,

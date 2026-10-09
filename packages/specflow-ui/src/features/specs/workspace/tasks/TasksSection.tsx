@@ -72,7 +72,11 @@ export function TasksSection({
     runtime.canExecute === false
       ? t('common.notImplemented')
       : executionReadiness?.canExecute === false
-        ? executionReadiness.blockers?.[0]
+        ? executionReadiness.reasonCode === 'not_implemented'
+          ? t('common.notImplemented')
+          : executionReadiness.reasonCode === 'source_unavailable'
+            ? t('specification.unavailableTitle')
+            : (executionReadiness.blockers?.[0] ?? t('specification.executeGenericBlockedNotice'))
         : undefined;
 
   return (

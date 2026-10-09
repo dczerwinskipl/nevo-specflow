@@ -1,4 +1,4 @@
-import { contributeTo, defineUiExtensionPoint, type UiContribution } from './contracts';
+import { contributeTo, defineUiExtensionPoint, type UiContribution, type UiModule } from './contracts';
 import { createUiRegistry } from './registry';
 
 interface TestSettingsContribution extends UiContribution {
@@ -24,4 +24,13 @@ export function verifyUiExtensionPointTypes() {
 
   // @ts-expect-error Missing required settings-specific property.
   contributeTo(settings, { id: 'invalid', editable: true });
+
+  const brokenModule: UiModule = {
+    id: 'test.broken',
+    contributions: [
+      // @ts-expect-error A handwritten contribution registration lacks the private brand.
+      { point: settings, contribution: { id: 'missing-settings-key' } },
+    ],
+  };
+  void brokenModule;
 }

@@ -5,6 +5,10 @@ export interface UiContribution {
 
 declare const contributionType: unique symbol;
 
+// Private nominal marker: public UiModule values must use contributeTo() to
+// create a registration with the extension point's required contribution type.
+const registrationBrand: unique symbol = Symbol('UiContributionRegistration');
+
 /** A typed token; the optional phantom member exists only for TypeScript inference. */
 export interface UiExtensionPoint<T extends UiContribution> {
   readonly id: string;
@@ -12,6 +16,7 @@ export interface UiExtensionPoint<T extends UiContribution> {
 }
 
 export interface UiContributionRegistration {
+  readonly [registrationBrand]: true;
   readonly point: UiExtensionPoint<UiContribution>;
   readonly contribution: UiContribution;
 }
@@ -30,5 +35,5 @@ export function contributeTo<T extends UiContribution>(
   point: UiExtensionPoint<T>,
   contribution: NoInfer<T>,
 ): UiContributionRegistration {
-  return { point, contribution };
+  return { point, contribution, [registrationBrand]: true };
 }

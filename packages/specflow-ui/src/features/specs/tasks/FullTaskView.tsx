@@ -11,7 +11,13 @@ export interface FullTaskViewProps {
   readonly onOpenSession?: (sessionId: string) => void;
 }
 
-export function FullTaskView({ task, specKey, onBack, backHref, onOpenSession }: FullTaskViewProps) {
+export function FullTaskView({
+  task,
+  specKey,
+  onBack,
+  backHref,
+  onOpenSession,
+}: FullTaskViewProps) {
   const { t } = useTranslation();
 
   return (

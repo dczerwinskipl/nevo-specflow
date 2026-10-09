@@ -16,7 +16,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import type {
   DocumentItem,
-  TaskItem,
   SpecificationWorkspaceData,
   SpecificationWorkspaceView,
 } from './model';

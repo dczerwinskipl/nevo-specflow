@@ -1,6 +1,6 @@
 import type { AuthSessionResponse } from '@nevo/specflow-contracts/authentication';
 import { describe, expect, it } from 'vitest';
-import { createMemoryHistory } from '@tanstack/react-router';
+import { createMemoryHistory, isRedirect } from '@tanstack/react-router';
 
 import type { AuthApi } from '../auth/api';
 import { createAuthStore } from '../auth/store';
@@ -11,6 +11,7 @@ import {
   resolveAppAccess,
   resolveLoginAccess,
   validateSpecificationSearch,
+  specificationRoute,
 } from './router';
 
 const noAuth: AuthSessionResponse = {
@@ -75,19 +76,24 @@ describe('SpecFlow router access policy', () => {
     },
   );
 
-  it('redirects legacy Full Task navigation to the canonical route', async () => {
-    const router = createSpecFlowRouter(
-      createMemoryHistory({ initialEntries: ['/'] }),
-      createSpecFlowAppServices({ authStore: storeWith(authenticated) }),
-    );
-    await router.load();
-    await router.navigate({
-      to: '/specs/$specId',
-      params: { specId: 'admission' },
-      search: { collection: 'archive', view: 'task', task: 'TASK-03' },
-    });
-    expect(router.state.location.pathname).toBe('/specs/admission/tasks/TASK-03');
-    expect(router.state.location.search).toEqual({ collection: 'archive' });
+  it('redirects legacy Task search state to the canonical resource route', () => {
+    const beforeLoad = specificationRoute.options.beforeLoad;
+    expect(beforeLoad).toBeDefined();
+    let caught: unknown;
+    try {
+      void beforeLoad?.({
+        params: { specId: 'admission' },
+        search: { collection: 'archive', view: 'task', task: 'TASK-03' },
+      } as Parameters<NonNullable<typeof beforeLoad>>[0]);
+    } catch (error) {
+      caught = error;
+    }
+    expect(isRedirect(caught)).toBe(true);
+    if (isRedirect(caught)) {
+      expect(caught.to).toBe('/specs/$specId/tasks/$taskId');
+      expect(caught.params).toEqual({ specId: 'admission', taskId: 'TASK-03' });
+      expect(caught.search).toEqual({ collection: 'archive' });
+    }
   });
 
   it('reaches documents view directly via search parameters', async () => {

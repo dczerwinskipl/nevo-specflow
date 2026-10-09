@@ -137,6 +137,13 @@ export const Documents: Story = {
   args: { path: '/specs/docs-spec?view=documents' },
 };
 
+export const LegacyFullTaskLink: Story = {
+  args: { path: '/specs/admission?collection=archive&view=task&task=TASK-03' },
+  play: async ({ canvas }) => {
+    await canvas.findByRole('heading', { name: /Task \/ TASK-03/i }, { timeout: 5000 });
+  },
+};
+
 export const FullTask: Story = {
   args: { path: '/specs/admission/tasks/TASK-03?collection=current' },
   play: async ({ canvas }) => {

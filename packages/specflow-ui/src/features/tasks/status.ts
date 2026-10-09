@@ -15,4 +15,3 @@ export function taskStatusLabel(
 ): string {
   return task.statusCode ? t(TASK_STATUS_KEYS[task.statusCode]) : task.status;
 }
-

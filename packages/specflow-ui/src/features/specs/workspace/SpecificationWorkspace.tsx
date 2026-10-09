@@ -79,12 +79,11 @@ function SpecificationWorkspaceInner({
   const { t } = useTranslation();
   const secondaryNavigation = useSecondaryNavigation();
 
-  const { currentView, navigateToView, handleViewChange } =
-    useSpecificationViewNavigation({
-      initialView,
-      onNavigateView,
-      onViewChange,
-    });
+  const { currentView, navigateToView, handleViewChange } = useSpecificationViewNavigation({
+    initialView,
+    onNavigateView,
+    onViewChange,
+  });
 
   const {
     executeDialogOpen,
@@ -302,13 +301,8 @@ function SpecificationWorkspaceInner({
                   {/* View Content */}
                   {currentView === 'work' ? (
                     <WorkView specId={specId} data={data} />
-                  ) : currentView !== 'task' &&
-                    data.sectionAvailability?.[
-                      currentView === 'documents' ? 'documents' : currentView
-                    ] !== undefined &&
-                    data.sectionAvailability?.[
-                      currentView === 'documents' ? 'documents' : currentView
-                    ] !== 'available' ? (
+                  ) : data.sectionAvailability?.[currentView] !== undefined &&
+                    data.sectionAvailability?.[currentView] !== 'available' ? (
                     <Alert
                       tone="attention"
                       role="status"

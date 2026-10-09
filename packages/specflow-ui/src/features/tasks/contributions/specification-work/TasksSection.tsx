@@ -71,8 +71,7 @@ export function TasksSection({
         total: totalTasks,
       });
 
-  const isExecutionDisabled =
-    canExecute === false || executionReadiness?.canExecute === false;
+  const isExecutionDisabled = canExecute === false || executionReadiness?.canExecute === false;
 
   const executionTitle =
     canExecute === false

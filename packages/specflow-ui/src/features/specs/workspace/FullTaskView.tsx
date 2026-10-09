@@ -20,7 +20,13 @@ export function FullTaskView({ task, specKey, onBack, backHref, onOpenSession }:
         <a
           href={backHref}
           onClick={(event) => {
-            if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) {
+            if (
+              event.button === 0 &&
+              !event.metaKey &&
+              !event.ctrlKey &&
+              !event.shiftKey &&
+              !event.altKey
+            ) {
               event.preventDefault();
               onBack();
             }

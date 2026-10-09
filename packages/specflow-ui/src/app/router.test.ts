@@ -75,14 +75,17 @@ describe('SpecFlow router access policy', () => {
     },
   );
 
-  it('redirects legacy Full Task search links to the canonical route', async () => {
+  it('redirects legacy Full Task navigation to the canonical route', async () => {
     const router = createSpecFlowRouter(
-      createMemoryHistory({
-        initialEntries: ['/specs/admission?collection=archive&view=task&task=TASK-03'],
-      }),
+      createMemoryHistory({ initialEntries: ['/'] }),
       createSpecFlowAppServices({ authStore: storeWith(authenticated) }),
     );
     await router.load();
+    await router.navigate({
+      to: '/specs/$specId',
+      params: { specId: 'admission' },
+      search: { collection: 'archive', view: 'task', task: 'TASK-03' },
+    });
     expect(router.state.location.pathname).toBe('/specs/admission/tasks/TASK-03');
     expect(router.state.location.search).toEqual({ collection: 'archive' });
   });

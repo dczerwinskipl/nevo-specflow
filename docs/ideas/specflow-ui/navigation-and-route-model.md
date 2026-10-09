@@ -98,7 +98,7 @@ surface, not a product navigation entry.
 | Specs Overview            | global Specs / default product entry                                                                           | Primary                                                   |
 | Specification             | Specification row/identity or stable route                                                                     | Primary                                                   |
 | Task Preview              | Task row from Specification or explicit Task target from another owning context                                | Secondary on split layouts; pushed local detail on narrow |
-| Full Task                 | explicit promotion from Preview, Task menu, or stable resource URL                                               | main routable Primary                                    |
+| Full Task                 | explicit promotion from Preview, Task menu, or stable resource URL                                             | main routable Primary                                     |
 | Floating Session          | existing-Session conversation target on Wide only                                                              | floating presentation outside AppWorkspace stack          |
 | Full Session              | existing Session target on Compact/Narrow; explicit full-session action; Floating Session header; stable route | main Primary + optional Secondary                         |
 | Session Context           | Full Session Context action/default split entry                                                                | Secondary or pushed local detail                          |

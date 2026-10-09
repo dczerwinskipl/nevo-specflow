@@ -56,9 +56,10 @@ function ProductNavigation({
       ),
   });
   const activeSpecId = activeSpecMatch?.params.specId ?? null;
-  const activeView = activeSpecMatch?.routeId === '/_app/specs/$specId/tasks/$taskId'
-    ? null
-    : (search?.view ?? 'work');
+  const activeView =
+    activeSpecMatch?.routeId === '/_app/specs/$specId/tasks/$taskId'
+      ? null
+      : (search?.view ?? 'work');
   const collection = search?.collection ?? 'current';
 
   const { data: specData } = useSpecificationWorkspace(activeSpecId ?? '');

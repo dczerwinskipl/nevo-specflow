@@ -48,16 +48,20 @@ export function SpecificationTaskPage({
               {taskState.isPending ? (
                 <div className="flex items-center gap-3 py-8" role="status">
                   <Spinner size="md" aria-label={t('common.loading')} />
-                  <Typography variant="body-sm">{t('specification.loadingWorkspace', { id: taskId })}</Typography>
+                  <Typography variant="body-sm">
+                    {t('specification.loadingWorkspace', { id: taskId })}
+                  </Typography>
                 </div>
               ) : taskState.isError ? (
                 <div className="grid max-w-content-standard gap-3">
                   <Alert
                     role="alert"
                     tone="attention"
-                    title={taskState.isTaskNotFound
-                      ? t('specification.taskNotFoundTitle')
-                      : t('specification.unavailableTitle')}
+                    title={
+                      taskState.isTaskNotFound
+                        ? t('specification.taskNotFoundTitle')
+                        : t('specification.unavailableTitle')
+                    }
                   >
                     {taskState.isTaskNotFound
                       ? t('specification.taskNotFoundDescription', { taskId })

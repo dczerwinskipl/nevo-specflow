@@ -6,10 +6,8 @@ import {
   AppWorkspace,
   AppWorkspaceBody,
   AppWorkspaceProvider,
-  Button,
   Icon,
   Link,
-  Typography,
   useSecondaryNavigation,
   WorkspaceHeader,
 } from '@nevo/ui';
@@ -20,7 +18,6 @@ import { DocumentsView } from './DocumentsView';
 import { SessionsView } from './SessionsView';
 import { ChangesView } from './ChangesView';
 import { RepositoryView } from './RepositoryView';
-import { FullTaskView } from '../../tasks/pages/FullTaskView';
 import { ActivityHistory } from './ActivityHistory';
 import { ExecuteModal } from './ExecuteModal';
 import { NewConversationModal } from './NewConversationModal';
@@ -40,11 +37,8 @@ export interface SpecificationWorkspaceProps {
   readonly overviewHref?: string;
   readonly onBack?: () => void;
   readonly initialView?: SpecificationWorkspaceView;
-  readonly initialTask?: string;
   /** @deprecated Use onNavigateView instead */
   readonly onViewChange?: (view: SpecificationWorkspaceView) => void;
-  /** @deprecated Use onNavigateView instead */
-  readonly onTaskChange?: (taskId: string | null) => void;
   readonly onNavigateView?: (target: {
     view: SpecificationWorkspaceView;
     taskId?: string | null;
@@ -72,9 +66,7 @@ function SpecificationWorkspaceInner({
   overviewHref,
   onBack,
   initialView = 'work',
-  initialTask,
   onViewChange,
-  onTaskChange,
   onNavigateView,
   onRefresh,
   onExecute,
@@ -87,13 +79,11 @@ function SpecificationWorkspaceInner({
   const { t } = useTranslation();
   const secondaryNavigation = useSecondaryNavigation();
 
-  const { currentView, fullTaskId, navigateToView, handleViewChange } =
+  const { currentView, navigateToView, handleViewChange } =
     useSpecificationViewNavigation({
       initialView,
-      initialTask,
       onNavigateView,
       onViewChange,
-      onTaskChange,
     });
 
   const {
@@ -129,20 +119,24 @@ function SpecificationWorkspaceInner({
   const handleOpenFullTask = useCallback(
     (taskId: string) => {
       void secondaryNavigation.close();
-      navigateToView('task', taskId);
+      if (onNavigateView) {
+        onNavigateView({ view: 'task', taskId });
+        return;
+      }
+      // Standalone presentation surfaces also promote Full Task to its canonical route.
+      const collection = overviewHref?.includes('collection=archive') ? '?collection=archive' : '';
+      window.location.assign(
+        `/specs/${encodeURIComponent(specId)}/tasks/${encodeURIComponent(taskId)}${collection}`,
+      );
     },
-    [secondaryNavigation, navigateToView],
+    [secondaryNavigation, onNavigateView, overviewHref, specId],
   );
-
-  const handleBackFromFullTask = useCallback(() => {
-    navigateToView('work', null);
-  }, [navigateToView]);
 
   const handleOpenDoc = useCallback(
     (docId: string, origin: 'work' | 'documents' = 'work') => {
       setActiveDocId(docId);
       setDocOrigin(origin);
-      navigateToView('documents', null);
+      navigateToView('documents');
     },
     [navigateToView],
   );
@@ -150,15 +144,10 @@ function SpecificationWorkspaceInner({
   const handleOpenChanges = useCallback(
     (source: 'base' | 'uncommitted' | 'mr' = 'base') => {
       setChangesSource(source);
-      navigateToView('changes', null);
+      navigateToView('changes');
     },
     [navigateToView],
   );
-
-  const fullTask = useMemo(() => {
-    if (!fullTaskId) return null;
-    return data.taskGroups.flatMap((g) => g.tasks).find((t) => t.id === fullTaskId) ?? null;
-  }, [data.taskGroups, fullTaskId]);
 
   const secondaryContextValue: SpecificationSecondaryContextValue = useMemo(
     () => ({
@@ -216,8 +205,6 @@ function SpecificationWorkspaceInner({
     ],
   );
 
-  const headerTitle =
-    currentView === 'task' && fullTask ? `Task / ${fullTask.id}` : t('specification.title');
 
   return (
     <SpecificationSecondaryDataContext.Provider value={secondaryContextValue}>
@@ -233,7 +220,7 @@ function SpecificationWorkspaceInner({
           <AppWorkspace.Primary
             header={
               <WorkspaceHeader
-                title={headerTitle}
+                title={t('specification.title')}
                 actions={
                   onRefresh
                     ? [
@@ -361,35 +348,8 @@ function SpecificationWorkspaceInner({
                   ) : currentView === 'repository' ? (
                     <RepositoryView
                       repoContext={data.repoContext}
-                      onGoToChanges={() => navigateToView('changes', null)}
+                      onGoToChanges={() => navigateToView('changes')}
                     />
-                  ) : currentView === 'task' ? (
-                    fullTask ? (
-                      <FullTaskView
-                        task={fullTask}
-                        specKey={specId}
-                        onBack={handleBackFromFullTask}
-                        onOpenSession={onOpenSession}
-                      />
-                    ) : (
-                      <Alert
-                        role="alert"
-                        tone="attention"
-                        title={t('specification.taskNotFoundTitle')}
-                        className="max-w-content-standard"
-                      >
-                        <Typography variant="body-sm" className="text-content-secondary">
-                          {t('specification.taskNotFoundDescription', {
-                            taskId: fullTaskId ?? '',
-                          })}
-                        </Typography>
-                        <div className="mt-3 flex items-center gap-3">
-                          <Button variant="secondary" size="sm" onClick={handleBackFromFullTask}>
-                            {t('specification.backToTasks')}
-                          </Button>
-                        </div>
-                      </Alert>
-                    )
                   ) : null}
                 </AppContentContainer>
               </AppWorkspaceBody>

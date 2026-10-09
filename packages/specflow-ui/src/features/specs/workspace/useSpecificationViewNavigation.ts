@@ -3,84 +3,36 @@ import type { SpecificationWorkspaceView } from './model';
 
 export interface UseSpecificationViewNavigationOptions {
   readonly initialView?: SpecificationWorkspaceView;
-  readonly initialTask?: string;
-  readonly onNavigateView?: (target: {
-    view: SpecificationWorkspaceView;
-    taskId?: string | null;
-  }) => void;
+  readonly onNavigateView?: (target: { view: SpecificationWorkspaceView }) => void;
   readonly onViewChange?: (view: SpecificationWorkspaceView) => void;
-  readonly onTaskChange?: (taskId: string | null) => void;
 }
 
 export interface UseSpecificationViewNavigationResult {
   readonly currentView: SpecificationWorkspaceView;
-  readonly fullTaskId: string | null;
-  readonly navigateToView: (
-    nextView: SpecificationWorkspaceView,
-    nextTaskId?: string | null,
-  ) => void;
+  readonly navigateToView: (view: SpecificationWorkspaceView) => void;
   readonly handleViewChange: (view: SpecificationWorkspaceView) => void;
 }
 
-/**
- * Encapsulates Specification Workspace view navigation.
- * When onNavigateView is provided (TanStack Router integration),
- * the router search parameters are the single source of truth.
- * For standalone fixtures and tests, falls back to component-local uncontrolled state.
- */
+/** Only Specification-local views live here; Full Task is a separate routed page. */
 export function useSpecificationViewNavigation({
   initialView = 'work',
-  initialTask,
   onNavigateView,
   onViewChange,
-  onTaskChange,
 }: UseSpecificationViewNavigationOptions): UseSpecificationViewNavigationResult {
-  const isControlled = Boolean(onNavigateView);
-
-  const [uncontrolledView, setUncontrolledView] = useState<SpecificationWorkspaceView>(
-    initialView === 'task' || initialTask ? 'task' : initialView,
-  );
-  const [uncontrolledTaskId, setUncontrolledTaskId] = useState<string | null>(
-    initialView === 'task' || initialTask ? (initialTask ?? null) : null,
-  );
-
-  const currentView: SpecificationWorkspaceView = isControlled
-    ? initialView === 'task' || initialTask
-      ? 'task'
-      : initialView
-    : uncontrolledView;
-
-  const fullTaskId: string | null = isControlled
-    ? initialView === 'task' || initialTask
-      ? (initialTask ?? null)
-      : null
-    : uncontrolledTaskId;
+  const [uncontrolledView, setUncontrolledView] = useState<SpecificationWorkspaceView>(initialView);
+  const currentView = onNavigateView ? initialView : uncontrolledView;
 
   const navigateToView = useCallback(
-    (nextView: SpecificationWorkspaceView, nextTaskId: string | null = null) => {
+    (view: SpecificationWorkspaceView) => {
       if (onNavigateView) {
-        onNavigateView({ view: nextView, taskId: nextTaskId });
+        onNavigateView({ view });
       } else {
-        setUncontrolledView(nextView);
-        setUncontrolledTaskId(nextTaskId);
-        onViewChange?.(nextView);
-        onTaskChange?.(nextTaskId);
+        setUncontrolledView(view);
+        onViewChange?.(view);
       }
     },
-    [onNavigateView, onViewChange, onTaskChange],
+    [onNavigateView, onViewChange],
   );
 
-  const handleViewChange = useCallback(
-    (view: SpecificationWorkspaceView) => {
-      navigateToView(view, null);
-    },
-    [navigateToView],
-  );
-
-  return {
-    currentView,
-    fullTaskId,
-    navigateToView,
-    handleViewChange,
-  };
+  return { currentView, navigateToView, handleViewChange: navigateToView };
 }

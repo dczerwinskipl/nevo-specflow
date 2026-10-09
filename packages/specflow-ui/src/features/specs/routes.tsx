@@ -26,7 +26,9 @@ export const specsRoute = createRoute({
   component: SpecsRouteScreen,
 });
 
-const VALID_VIEWS: ReadonlySet<SpecificationWorkspaceView> = new Set([
+type LegacySpecificationView = SpecificationWorkspaceView | 'task';
+
+const VALID_VIEWS: ReadonlySet<LegacySpecificationView> = new Set([
   'work',
   'documents',
   'sessions',
@@ -35,13 +37,13 @@ const VALID_VIEWS: ReadonlySet<SpecificationWorkspaceView> = new Set([
   'task',
 ]);
 
-function isValidView(view: unknown): view is SpecificationWorkspaceView {
-  return typeof view === 'string' && VALID_VIEWS.has(view as SpecificationWorkspaceView);
+function isValidView(view: unknown): view is LegacySpecificationView {
+  return typeof view === 'string' && VALID_VIEWS.has(view as LegacySpecificationView);
 }
 
 export function validateSpecificationSearch(search: Record<string, unknown>): {
   collection: 'current' | 'archive';
-  view?: SpecificationWorkspaceView;
+  view?: LegacySpecificationView;
   task?: string;
 } {
   const collection = search.collection === 'archive' ? 'archive' : 'current';
@@ -51,7 +53,7 @@ export function validateSpecificationSearch(search: Record<string, unknown>): {
       ? search.task.trim()
       : undefined;
 
-  let view: SpecificationWorkspaceView | undefined;
+  let view: LegacySpecificationView | undefined;
   let task: string | undefined;
 
   if (rawView === 'task') {
@@ -153,7 +155,7 @@ function SpecsRouteScreen() {
 
 function SpecificationRouteScreen() {
   const { specId } = specificationRoute.useParams();
-  const { collection, view, task } = specificationRoute.useSearch();
+  const { collection, view } = specificationRoute.useSearch();
   const { services, auth } = specificationRoute.useRouteContext();
   const navigate = specificationRoute.useNavigate();
   const { errorStatus } = useSpecificationWorkspace(specId, services.specificationApi);
@@ -186,8 +188,7 @@ function SpecificationRouteScreen() {
       specId={specId}
       overviewHref={`/?collection=${collection}`}
       onBack={() => void navigate({ to: '/', search: { collection } })}
-      initialView={view}
-      initialTask={task}
+      initialView={view === 'task' ? undefined : view}
       onNavigateView={({ view: nextView, taskId: nextTaskId }) => {
         if (nextView === 'task' && nextTaskId) {
           void navigate({

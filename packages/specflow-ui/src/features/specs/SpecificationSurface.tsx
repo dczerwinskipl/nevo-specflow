@@ -25,11 +25,8 @@ export interface SpecificationSurfaceProps {
   readonly overviewHref?: string;
   readonly onBack?: () => void;
   readonly initialView?: SpecificationWorkspaceView;
-  readonly initialTask?: string;
   /** @deprecated Use onNavigateView instead */
   readonly onViewChange?: (view: SpecificationWorkspaceView) => void;
-  /** @deprecated Use onNavigateView instead */
-  readonly onTaskChange?: (taskId: string | null) => void;
   readonly onNavigateView?: (target: {
     view: SpecificationWorkspaceView;
     taskId?: string | null;
@@ -60,9 +57,7 @@ function SpecificationSurfaceConnected({
   overviewHref,
   onBack,
   initialView,
-  initialTask,
   onViewChange,
-  onTaskChange,
   onNavigateView,
   onRefresh,
   onExecute,
@@ -193,9 +188,7 @@ function SpecificationSurfaceConnected({
       overviewHref={overviewHref}
       onBack={onBack}
       initialView={initialView}
-      initialTask={initialTask}
       onViewChange={onViewChange}
-      onTaskChange={onTaskChange}
       onNavigateView={onNavigateView}
       onRefresh={onRefresh ?? refreshWorkspace}
       onExecute={onExecute}

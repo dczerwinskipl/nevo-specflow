@@ -123,12 +123,11 @@ describe('SpecificationWorkspace', () => {
     expect(markup).toContain('Sprawdź konflikty');
   });
 
-  it('renders initial task view when initialTask is provided', () => {
-    const markup = renderWorkspaceMarkup({ initialTask: 'TASK-03' });
+  it('does not render the legacy list-backed Full Task view inside Specification Work', () => {
+    const markup = renderWorkspaceMarkup();
 
-    expect(markup).toContain('Wróć do specyfikacji');
-    expect(markup).toContain('Opis i cel');
-    expect(markup).toContain('Kryteria akceptacji');
+    expect(markup).not.toContain('Task / TASK-03');
+    expect(markup).not.toContain('Kryteria akceptacji');
   });
 
   it('renders documents view when initialView is documents', () => {

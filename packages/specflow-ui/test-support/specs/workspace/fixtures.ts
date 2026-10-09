@@ -15,7 +15,8 @@ export type SpecificationScenario =
   | 'no-git'
   | 'git-conflict'
   | 'git-unknown'
-  | 'git-stale';
+  | 'git-stale'
+  | 'extensions';
 
 export const defaultTaskGroups: readonly TaskGroup[] = [
   {

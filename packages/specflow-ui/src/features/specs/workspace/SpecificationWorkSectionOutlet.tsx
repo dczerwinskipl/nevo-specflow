@@ -1,12 +1,13 @@
 import { Component, type ReactNode } from 'react';
 import { Alert, Button } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { UiModuleRegistry } from '../../../app/ui-modules/registry';
-import type {
-  SpecificationWorkSectionContext,
-  SpecificationWorkSectionContribution,
-  SpecificationWorkSlot,
-} from '../../../app/ui-modules/contracts';
+import type { UiRegistry } from '../../../app/ui-modules/registry';
+import {
+  specificationWorkSections,
+  type SpecificationWorkSectionContext,
+  type SpecificationWorkSectionContribution,
+  type SpecificationWorkSlot,
+} from '../extensions/specificationWorkSections';
 import { useWorkspaceRuntime } from './WorkspaceContext';
 import type { SpecificationWorkspaceData } from './model';
 
@@ -61,14 +62,19 @@ function RegisteredWorkSection({
     return null;
   }
 
-  return <div className="py-6">{contribution.render(context)}</div>;
+  const Section = contribution.Component;
+  return (
+    <div className="py-6">
+      <Section {...context} />
+    </div>
+  );
 }
 
 export interface SpecificationWorkSectionOutletProps {
   readonly slot: SpecificationWorkSlot;
   readonly specId: string;
   readonly data: SpecificationWorkspaceData;
-  readonly modules: UiModuleRegistry;
+  readonly modules: UiRegistry;
 }
 
 /** The Work host provides placement, not knowledge of the registered feature. */
@@ -83,7 +89,7 @@ export function SpecificationWorkSectionOutlet({
   const context: SpecificationWorkSectionContext = { specId, data, actions };
   return (
     <>
-      {modules.specificationWorkSections(slot).map((contribution) => (
+      {modules.get(specificationWorkSections).filter((contribution) => contribution.slot === slot).map((contribution) => (
         <SectionBoundary
           key={`${specId}:${contribution.id}`}
           onRetry={actions.refresh}

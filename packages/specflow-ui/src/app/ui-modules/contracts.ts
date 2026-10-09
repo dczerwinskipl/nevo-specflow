@@ -1,26 +1,36 @@
-import type { ReactNode } from 'react';
-import type { SpecificationWorkspaceData } from '../../features/specs/workspace/model';
-import type { WorkspaceRuntime } from '../../features/specs/workspace/WorkspaceContext';
-
-/** Registered UI modules own features; hosts own where their contributions appear. */
-export interface SpecFlowUiModule {
+/** Generic UI composition identity. Feature-specific contracts belong to their hosts. */
+export interface UiContribution {
   readonly id: string;
-  readonly contributions: readonly SpecificationWorkSectionContribution[];
 }
 
-/** A transitional, Specification-owned adapter. It is not a generic plugin context. */
-export interface SpecificationWorkSectionContext {
-  readonly specId: string;
-  readonly data: SpecificationWorkspaceData;
-  readonly actions: WorkspaceRuntime;
-}
+declare const contributionType: unique symbol;
 
-export interface SpecificationWorkSectionContribution {
-  readonly extensionPoint: 'specification.work.sections';
+/** A typed token; the optional phantom member exists only for TypeScript inference. */
+export interface UiExtensionPoint<T extends UiContribution> {
   readonly id: string;
-  readonly slot: 'main' | 'related';
-  readonly isVisible?: (context: SpecificationWorkSectionContext) => boolean;
-  readonly render: (context: SpecificationWorkSectionContext) => ReactNode;
+  readonly [contributionType]?: () => T;
 }
 
-export type SpecificationWorkSlot = SpecificationWorkSectionContribution['slot'];
+export interface UiContributionRegistration {
+  readonly point: UiExtensionPoint<UiContribution>;
+  readonly contribution: UiContribution;
+}
+
+export interface UiModule {
+  readonly id: string;
+  readonly contributions: readonly UiContributionRegistration[];
+}
+
+/** Both registration and lookup retain the contribution contract defined by the host. */
+export function defineUiExtensionPoint<T extends UiContribution>(
+  id: string,
+): UiExtensionPoint<T> {
+  return Object.freeze({ id });
+}
+
+export function contributeTo<T extends UiContribution>(
+  point: UiExtensionPoint<T>,
+  contribution: NoInfer<T>,
+): UiContributionRegistration {
+  return { point, contribution };
+}

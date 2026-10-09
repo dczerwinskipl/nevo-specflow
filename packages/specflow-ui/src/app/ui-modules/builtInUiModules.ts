@@ -1,5 +1,6 @@
+import { specificationWorkSections } from '../../features/specs/extensions/specificationWorkSections';
 import { tasksUiModule } from '../../features/tasks/uiModule';
-import { createUiModuleRegistry } from './registry';
+import { createUiRegistry } from './registry';
 
-/** Application composition only: product views never import built-in feature implementations. */
-export const builtInUiModuleRegistry = createUiModuleRegistry([tasksUiModule]);
+/** Static application composition: adding a module does not change registry internals. */
+export const builtInUiModuleRegistry = createUiRegistry([specificationWorkSections], [tasksUiModule]);

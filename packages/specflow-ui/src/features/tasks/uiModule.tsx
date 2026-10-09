@@ -1,9 +1,10 @@
 import { Alert } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type {
-  SpecFlowUiModule,
-  SpecificationWorkSectionContext,
-} from '../../app/ui-modules/contracts';
+import { contributeTo, type UiModule } from '../../app/ui-modules/contracts';
+import {
+  specificationWorkSections,
+  type SpecificationWorkSectionContext,
+} from '../specs/extensions/specificationWorkSections';
 import { TasksSection } from './contributions/specification-work';
 
 function TaskGroupsWorkSection({ specId, data, actions }: SpecificationWorkSectionContext) {
@@ -35,18 +36,17 @@ function TaskGroupsWorkSection({ specId, data, actions }: SpecificationWorkSecti
   );
 }
 
-export const tasksUiModule: SpecFlowUiModule = {
+export const tasksUiModule: UiModule = {
   id: 'specflow.tasks',
   contributions: [
-    {
-      extensionPoint: 'specification.work.sections',
+    contributeTo(specificationWorkSections, {
       id: 'specflow.tasks.task-groups',
       slot: 'main',
       isVisible: ({ data }) =>
         !data.isEmpty ||
         data.sectionAvailability?.tasks === 'forbidden' ||
         data.sectionAvailability?.tasks === 'unavailable',
-      render: (context) => <TaskGroupsWorkSection {...context} />,
-    },
+      Component: TaskGroupsWorkSection,
+    }),
   ],
 };

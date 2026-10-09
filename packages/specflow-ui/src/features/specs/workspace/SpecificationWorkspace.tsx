@@ -14,10 +14,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import type { DocumentItem, SpecificationWorkspaceData, SpecificationWorkspaceView } from './model';
 import { WorkView } from './WorkView';
-import { DocumentsView } from './DocumentsView';
-import { SessionsView } from './SessionsView';
-import { ChangesView } from './ChangesView';
-import { RepositoryView } from './RepositoryView';
+import { SpecificationViewOutlet } from './SpecificationViewOutlet';
 import { ActivityHistory } from './ActivityHistory';
 import { ExecuteModal } from './ExecuteModal';
 import { NewConversationModal } from './NewConversationModal';
@@ -37,12 +34,8 @@ export interface SpecificationWorkspaceProps {
   readonly overviewHref?: string;
   readonly onBack?: () => void;
   readonly initialView?: SpecificationWorkspaceView;
-  /** @deprecated Use onNavigateView instead */
-  readonly onViewChange?: (view: SpecificationWorkspaceView) => void;
-  readonly onNavigateView?: (target: {
-    view: SpecificationWorkspaceView | 'task';
-    taskId?: string | null;
-  }) => void;
+  readonly onNavigateView?: (target: { view: SpecificationWorkspaceView }) => void;
+  readonly onOpenTask?: (taskId: string) => void;
   readonly onRefresh?: () => void | Promise<void>;
   readonly onExecute?: (agent: string, tasks: readonly string[]) => void | Promise<void>;
   readonly onNewConversation?: (agent: string) => void | Promise<void>;
@@ -67,8 +60,8 @@ function SpecificationWorkspaceInner({
   overviewHref,
   onBack,
   initialView = 'work',
-  onViewChange,
   onNavigateView,
+  onOpenTask,
   onRefresh,
   onExecute,
   onNewConversation,
@@ -84,7 +77,6 @@ function SpecificationWorkspaceInner({
   const { currentView, navigateToView, handleViewChange } = useSpecificationViewNavigation({
     initialView,
     onNavigateView,
-    onViewChange,
   });
 
   const {
@@ -120,8 +112,8 @@ function SpecificationWorkspaceInner({
   const handleOpenFullTask = useCallback(
     (taskId: string) => {
       void secondaryNavigation.close();
-      if (onNavigateView) {
-        onNavigateView({ view: 'task', taskId });
+      if (onOpenTask) {
+        onOpenTask(taskId);
         return;
       }
       // Standalone presentation surfaces also promote Full Task to its canonical route.
@@ -130,7 +122,7 @@ function SpecificationWorkspaceInner({
         `/specs/${encodeURIComponent(specId)}/tasks/${encodeURIComponent(taskId)}${collection}`,
       );
     },
-    [secondaryNavigation, onNavigateView, overviewHref, specId],
+    [secondaryNavigation, onOpenTask, overviewHref, specId],
   );
 
   const handleOpenDoc = useCallback(
@@ -149,11 +141,6 @@ function SpecificationWorkspaceInner({
     },
     [navigateToView],
   );
-
-  const sectionAvailability =
-    currentView === 'work' ? undefined : data.sectionAvailability?.[currentView];
-  const sectionUnavailable =
-    sectionAvailability !== undefined && sectionAvailability !== 'available';
 
   const secondaryContextValue: SpecificationSecondaryContextValue = useMemo(
     () => ({
@@ -183,7 +170,11 @@ function SpecificationWorkspaceInner({
       openSession: (id) => onOpenSession?.(id),
       openSessionsView: () => handleViewChange('sessions'),
       openDoc: (docId, origin = 'work') => handleOpenDoc(docId, origin),
-      openDocumentsView: () => handleViewChange('documents'),
+      openDocumentsView: () => {
+        setActiveDocId(null);
+        setDocOrigin('documents');
+        handleViewChange('documents');
+      },
       openRepository: () => handleViewChange('repository'),
       openChanges: handleOpenChanges,
       openHistory: handleOpenHistory,
@@ -313,52 +304,33 @@ function SpecificationWorkspaceInner({
                     </Alert>
                   ) : null}
 
-                  {/* View Content */}
+                  {/* Local views are host-routed, feature-implemented. */}
                   {currentView === 'work' ? (
                     <WorkView specId={specId} data={data} />
-                  ) : sectionUnavailable ? (
-                    <Alert
-                      tone="attention"
-                      role="status"
-                      title={t('specification.unavailableTitle')}
-                    >
-                      {t('specification.unavailableDescription', { id: specId })}
-                    </Alert>
-                  ) : currentView === 'documents' ? (
-                    <DocumentsView
-                      documents={data.documents}
-                      renderContent={renderDocument}
-                      activeDocId={activeDocId}
-                      docOrigin={docOrigin}
-                      onSelectDoc={(id) => setActiveDocId(id)}
-                      onBackToOrigin={() => {
-                        if (docOrigin === 'work') {
-                          handleViewChange('work');
-                        }
-                        setActiveDocId(null);
+                  ) : (
+                    <SpecificationViewOutlet
+                      view={currentView}
+                      context={{
+                        data,
+                        actions: runtime,
+                        document: {
+                          selectedId: activeDocId,
+                          origin: docOrigin,
+                          onSelect: setActiveDocId,
+                          onBack: () => {
+                            if (docOrigin === 'work') handleViewChange('work');
+                            setActiveDocId(null);
+                          },
+                          renderContent: renderDocument,
+                        },
+                        changes: {
+                          source: changesSource,
+                          onSourceChange: setChangesSource,
+                          onDiff,
+                        },
                       }}
                     />
-                  ) : currentView === 'sessions' ? (
-                    <SessionsView
-                      sessions={data.sessions}
-                      onOpenSession={onOpenSession}
-                      onNewConversation={
-                        onNewConversation ? () => openConversationDialog() : undefined
-                      }
-                    />
-                  ) : currentView === 'changes' ? (
-                    <ChangesView
-                      currentSource={changesSource}
-                      changes={data.changes}
-                      onSourceChange={setChangesSource}
-                      onDiff={onDiff}
-                    />
-                  ) : currentView === 'repository' ? (
-                    <RepositoryView
-                      repoContext={data.repoContext}
-                      onGoToChanges={() => navigateToView('changes')}
-                    />
-                  ) : null}
+                  )}
                 </AppContentContainer>
               </AppWorkspaceBody>
             </AppContent>

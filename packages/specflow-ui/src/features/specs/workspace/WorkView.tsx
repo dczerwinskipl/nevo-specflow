@@ -1,14 +1,8 @@
 import { useUiModules } from '../../../app/ui-modules/UiModulesProvider';
 import { SpecificationWorkSectionOutlet } from './SpecificationWorkSectionOutlet';
+import { SpecificationAttentionOutlet } from './SpecificationAttentionOutlet';
 import type { SpecificationWorkspaceData } from './model';
-import {
-  SpecificationSummarySection,
-  AttentionSection,
-  RepositorySection,
-  ResumeSessionSection,
-  PreparationSection,
-  DocumentsSummarySection,
-} from './sections';
+import { SpecificationSummarySection, PreparationSection } from './sections';
 
 export interface WorkViewProps {
   readonly specId?: string;
@@ -32,23 +26,14 @@ export function WorkView({ specId, data }: WorkViewProps) {
         />
       </div>
 
-      {data.attentionItems.length > 0 ? (
-        <div className="py-6">
-          <AttentionSection items={data.attentionItems} />
-        </div>
-      ) : null}
+      <SpecificationAttentionOutlet specId={specId ?? data.id} data={data} />
 
-      {data.hasGit && data.repoContext ? (
-        <div className="py-6">
-          <RepositorySection repoContext={data.repoContext} />
-        </div>
-      ) : null}
-
-      {!data.isEmpty && data.resumeSession ? (
-        <div className="py-6">
-          <ResumeSessionSection session={data.resumeSession} />
-        </div>
-      ) : null}
+      <SpecificationWorkSectionOutlet
+        slot="context"
+        specId={specId ?? data.id}
+        data={data}
+        modules={modules}
+      />
 
       {data.isEmpty ? (
         <div className="py-6">
@@ -62,14 +47,6 @@ export function WorkView({ specId, data }: WorkViewProps) {
         data={data}
         modules={modules}
       />
-
-      {!data.isEmpty &&
-      (!data.sectionAvailability?.documents ||
-        data.sectionAvailability.documents === 'available') ? (
-        <div className="py-6">
-          <DocumentsSummarySection documents={data.documents} />
-        </div>
-      ) : null}
 
       <SpecificationWorkSectionOutlet
         slot="related"

@@ -1,20 +1,28 @@
 import { InformationList, MenuItem, OverflowMenu } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import { OperationalRow } from '../../shared/OperationalList';
-import type { SessionSummary } from '../model';
-import { sessionActivityLabel } from '../status-labels';
-import { useWorkspaceRuntime } from '../WorkspaceContext';
-import { WorkspaceSection } from './WorkspaceSection';
+import { OperationalRow } from '../../../specs/shared/OperationalList';
+import type { SessionSummary } from '../../../specs/workspace/model';
+import { sessionActivityLabel } from '../../../specs/workspace/status-labels';
+import { WorkspaceSection } from '../../../specs/workspace/sections/WorkspaceSection';
 
 export interface ResumeSessionSectionProps {
   readonly session: SessionSummary;
+  readonly onOpenSession: (sessionId: string) => void;
+  readonly onOpenSessionsView: () => void;
+  readonly onStartConversation: () => void;
+  readonly canStartConversation: boolean;
+  readonly canOpenSession: boolean;
 }
 
-export function ResumeSessionSection({ session }: ResumeSessionSectionProps) {
+export function ResumeSessionSection({
+  session,
+  onOpenSession,
+  onOpenSessionsView,
+  onStartConversation,
+  canStartConversation,
+  canOpenSession,
+}: ResumeSessionSectionProps) {
   const { t } = useTranslation();
-  const runtime = useWorkspaceRuntime();
-
-  const isSessionOpenable = runtime.canOpenSession !== false;
 
   return (
     <WorkspaceSection aria-labelledby="resume-heading">
@@ -26,13 +34,13 @@ export function ResumeSessionSection({ session }: ResumeSessionSectionProps) {
           <OverflowMenu
             label={t('specification.continueSessionHeading')}
             triggerLabel={t('specification.sessionActions')}
-            disabled={!runtime.canStartConversation}
-            title={!runtime.canStartConversation ? t('common.notImplemented') : undefined}
+            disabled={!canStartConversation}
+            title={!canStartConversation ? t('common.notImplemented') : undefined}
           >
             <MenuItem
               leadingIcon="plus"
-              disabled={!runtime.canStartConversation}
-              onSelect={() => runtime.startConversation()}
+              disabled={!canStartConversation}
+              onSelect={() => onStartConversation()}
             >
               {t('specification.newConversation')}
             </MenuItem>
@@ -44,7 +52,7 @@ export function ResumeSessionSection({ session }: ResumeSessionSectionProps) {
         <OperationalRow
           titleAs="span"
           primary={session.title}
-          onPrimaryClick={isSessionOpenable ? () => runtime.openSession(session.id) : undefined}
+          onPrimaryClick={canOpenSession ? () => onOpenSession(session.id) : undefined}
           compactFacts={[session.taskCount ?? '', session.age ?? '']}
           supporting={
             session.activity
@@ -62,7 +70,7 @@ export function ResumeSessionSection({ session }: ResumeSessionSectionProps) {
       </InformationList>
 
       <WorkspaceSection.Footer>
-        <WorkspaceSection.Continuation onClick={runtime.openSessionsView}>
+        <WorkspaceSection.Continuation onClick={onOpenSessionsView}>
           {t('specification.allSessionsLink')}
         </WorkspaceSection.Continuation>
       </WorkspaceSection.Footer>

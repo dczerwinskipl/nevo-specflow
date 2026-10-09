@@ -137,6 +137,50 @@ export const Documents: Story = {
   args: { path: '/specs/docs-spec?view=documents' },
 };
 
+/**
+ * Routed interaction coverage: entering Document Detail from Work must return to Work;
+ * entering from the Documents list must return to that list, not the Work surface.
+ */
+export const DocumentReturnNavigation: Story = {
+  args: { path: '/specs/docs-spec?collection=current' },
+  play: async ({ canvas, userEvent }) => {
+    await canvas.findByText('Specification ID: docs-spec', {}, { timeout: 10000 });
+
+    // Work -> Document Detail -> Work (preserve the originating surface).
+    await userEvent.click(await canvas.findByRole('button', { name: 'Obszar: uwierzytelnianie' }));
+    await canvas.findByRole('heading', { name: 'Obszar: uwierzytelnianie' });
+    await userEvent.click(await canvas.findByRole('button', { name: 'Back to work view' }));
+    const allDocuments = await canvas.findByRole('button', { name: 'All documents' });
+
+    // Work -> Documents list -> Document Detail -> Documents list.
+    await userEvent.click(allDocuments);
+    await canvas.findByRole('heading', { name: 'Documents' });
+    const readActions = await canvas.findAllByRole('button', { name: 'Read' });
+    const firstRead = readActions[0];
+    if (!firstRead) throw new Error('Documents list should contain a readable document.');
+    await userEvent.click(firstRead);
+    await canvas.findByRole('button', { name: 'Back to documents' });
+    await userEvent.click(await canvas.findByRole('button', { name: 'Back to documents' }));
+    await canvas.findByRole('heading', { name: 'Documents' });
+    await canvas.findAllByRole('button', { name: 'Read' });
+    if (canvas.queryByRole('button', { name: 'Back to documents' })) {
+      throw new Error('Returning from Document Detail must restore the Documents list.');
+    }
+  },
+};
+
+export const RepositoryNavigation: Story = {
+  args: { path: '/specs/admission?view=repository' },
+  play: async ({ canvas, userEvent }) => {
+    await canvas.findByText('Specification ID: admission', {}, { timeout: 5000 });
+    const toChanges = await canvas.findByRole('button', {
+      name: /Go to changes|Przejdź do zmian/i,
+    });
+    await userEvent.click(toChanges);
+    await canvas.findByRole('heading', { name: /Changes|Zmiany/i }, { timeout: 5000 });
+  },
+};
+
 export const LegacyFullTaskLink: Story = {
   args: { path: '/specs/admission?collection=archive&view=task&task=TASK-03' },
   play: async ({ canvas }) => {

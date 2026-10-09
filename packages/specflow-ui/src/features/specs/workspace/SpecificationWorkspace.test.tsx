@@ -5,7 +5,7 @@ import { appI18n, LocalizationProvider } from '../../../i18n';
 import { SpecificationWorkspace } from './SpecificationWorkspace';
 import { UiModulesProvider } from '../../../app/ui-modules/UiModulesProvider';
 import { builtInUiModuleRegistry } from '../../../app/ui-modules/builtInUiModules';
-import { DocumentsView } from './DocumentsView';
+import { DocumentsView } from '../../documents/views/DocumentsView';
 
 import { createSpecificationWorkspaceFixture } from '../../../../test-support/specs/workspace/fixtures';
 
@@ -118,6 +118,46 @@ describe('SpecificationWorkspace', () => {
     expect(markup).toContain('w przygotowaniu');
   });
 
+  it('preserves Runtime attention ordering across contributing modules', () => {
+    const source = createSpecificationWorkspaceFixture('working', 'UI-1234');
+    const attentionItems = [
+      {
+        id: 's',
+        kind: 'session' as const,
+        title: 'First session attention',
+        reason: 'Needs a response',
+        targetId: 'S1',
+        actionLabel: 'Open',
+      },
+      {
+        id: 'g',
+        kind: 'git' as const,
+        title: 'Second git attention',
+        reason: 'Resolve conflicts',
+        actionLabel: 'Review',
+      },
+      {
+        id: 't',
+        kind: 'task' as const,
+        title: 'Third task attention',
+        reason: 'Review task',
+        targetId: 'T1',
+        actionLabel: 'Inspect',
+      },
+      {
+        id: 'c',
+        kind: 'specification' as const,
+        title: 'Fourth specification attention',
+        reason: 'Needs preparation',
+        actionLabel: '',
+      },
+    ];
+    const markup = renderWorkspaceMarkup({ data: { ...source, attentionItems } });
+    const titles = attentionItems.map((item) => markup.indexOf(item.title));
+    expect(titles.every((position) => position > 0)).toBe(true);
+    expect(titles).toEqual([...titles].sort((a, b) => a - b));
+  });
+
   it('renders git-conflict scenario with conflict attention item', () => {
     const markup = renderWorkspaceMarkup({
       data: createSpecificationWorkspaceFixture('git-conflict', 'UI-1234'),
@@ -140,6 +180,25 @@ describe('SpecificationWorkspace', () => {
     expect(markup).toContain('Szukaj dokumentu');
     expect(markup).toContain('Specyfikacja');
     expect(markup).toContain('Obszar: uwierzytelnianie');
+  });
+
+  it('masks registered repository view when Runtime forbids it', () => {
+    const data = createSpecificationWorkspaceFixture('working', 'UI-1234');
+    const markup = renderWorkspaceMarkup({
+      data: {
+        ...data,
+        sectionAvailability: { ...data.sectionAvailability, repository: 'forbidden' },
+      },
+      initialView: 'repository',
+    });
+    expect(markup).toContain(appI18n.t('specification.unavailableTitle'));
+    expect(markup).not.toContain('feature/session-refresh');
+  });
+
+  it('renders repository view through its registered module', () => {
+    const markup = renderWorkspaceMarkup({ initialView: 'repository' });
+    expect(markup).toContain('#128');
+    expect(markup).toContain('feature/session-refresh');
   });
 
   it('renders sessions view when initialView is sessions', () => {

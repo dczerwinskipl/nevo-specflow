@@ -1,6 +1,6 @@
 import { Button, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { RepoContext } from './model';
+import type { RepoContext } from '../../specs/workspace/model';
 
 export interface RepositoryViewProps {
   readonly repoContext?: RepoContext;

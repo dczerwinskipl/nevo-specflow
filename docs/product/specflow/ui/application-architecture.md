@@ -82,54 +82,72 @@ A normal production route/surface MUST NOT use fixture/example data as its autho
 silent fallback when production data is unavailable. Production composition surfaces real unavailable
 or error state instead.
 
-## Feature ownership and UI composition (incremental contract)
+## Feature ownership and UI composition
 
 A feature owns its domain-specific models, presentation and typed API/query behavior regardless
 of which product surface displays it. Tasks, Documents, Git and Sessions may contribute to
-Specification Work, Project Settings, or other surfaces. The host owns placement, navigation,
-responsive layouts, and extension-point behavior; it does not become the owner of those features.
+Specification Work, Project Settings or other surfaces. The host owns placement, navigation,
+responsive layouts and extension-point behavior; it does not become the owner of those features.
 
-- `features/tasks/` owns Full Task, Task Preview presentation, and Task-group/row controls.
-  `features/specs/` owns Specification routing, Workspace composition and Secondary stack
-  navigation. The existing aggregate Workspace projection remains an explicit migration seam.
-- `SpecFlowUiModule` (future UI contribution registration) and the existing backend
-  `RuntimeFeature` are separate composition boundaries. HTTP contracts connect them;
-  neither UI components nor plugins instantiate independent HttpClient/QueryClient lifecycles.
-- The first prospective extension point is `specification.work.sections`. A future
-  `project.settings.sections` point will allow feature-owned settings UI. UI presentation
-  does not own parsing, defaults, persistence, or authorization of Runtime configuration.
-- Configurable Git branch/push policy, Task lane/status configuration, runtime module discovery,
-  and dynamic third-party code loading are **out of scope** for this increment.
+Tasks currently owns `features/tasks/pages` (independent Full Task route/API/Query),
+`features/tasks/inspectors` (Task Preview) and
+`features/tasks/contributions/specification-work` (the Work section). Specification
+owns Workspace, routing composition, Secondary stack and its aggregate read model. UI
+contribution registration does not change the backend resource ownership.
 
-Task presentation is colocated under `features/tasks/pages`, Task Preview presentation under
-`features/tasks/inspectors`, and the Work contribution under
-`features/tasks/contributions/specification-work`. Remaining dependencies on the aggregate
-Workspace model/actions are intentional, temporary adapters until feature-level ownership and
-contribution registration are hardened in the following changes.
+### UI module extension contract
 
-### UI module contribution foundation
+The static composition has five distinct concepts:
 
-The application composition root owns a deterministic `UiModuleRegistry`. Each
-`SpecFlowUiModule` identifies a product feature and publishes contributions for
-implemented extension points. Module and contribution identifiers must be globally
-unique and stable; duplicate registrations fail at composition time.
+- **UiModule** is a feature-owned group of registered UI contributions, with a stable module ID.
+- **UiExtensionPoint<T>** is a typed token and contract *owned by the receiving host*. Define a new
+  point next to the host, not in generic registry infrastructure.
+- **UiContribution** has a stable contribution ID and the data/component shape specified by its
+  extension point. A single module may contribute to several differently typed points.
+- **UiRegistry** validates registrations and provides typed `registry.get(extensionPoint)` lookups.
+  It knows only IDs and exact point-token identity; it does not know feature models, slot semantics,
+  authorization, routers, or React layout.
+- **Host** defines the point's context, filters and renders contributions, owns placement, presentation,
+  error isolation and recovery. A host may use a different contract than Specification Work.
 
-The first implemented extension point, `specification.work.sections`, has host-controlled
-slots `main` (after core Specification/Attention/Preparation content, before Documents)
-and `related` (after Documents). The Specification Work host owns these positions,
-spacing, and per-section error isolation. The module owns visibility and rendering of
-its section, with a narrow adapter to the existing aggregate Workspace snapshot. It
-must not independently create HttpClient/QueryClient or hide missing backend data
-behind fixtures. All contributions in a slot are ordered by registration order.
+`app/ui-modules/contracts.ts` defines `defineUiExtensionPoint<T>()`, `contributeTo(point, contribution)`
+and the generic module identity. `app/ui-modules/registry.ts` composes a known list of supported point
+definitions and statically imported modules, rejecting unknown or conflicting point definitions, duplicate
+module IDs and globally duplicated contribution IDs. Registrations preserve order; lookup returns read-only
+snapshots. The application composition root declares the supported points and modules in
+`app/ui-modules/builtInUiModules.ts` and passes the registry through `UiModulesProvider`.
+Tests and Storybook inject a registry explicitly; the provider does not import built-ins.
 
-A built-in Tasks module is the first consumer. Registering a new contribution does not
-require changes to `WorkView` or its section-selection conditions; modules are assembled
-in the application composition root and supplied to hosts through `UiModulesProvider`. Other existing core sections are intentionally
-unchanged until their feature ownership is migrated. This is a UI composition mechanism,
-not dynamic remote plugin loading, a server-side plugin manifest, or a generic schema UI.
-Future Settings or Task/Session panels get their **own** typed extension-point contracts;
-they do not adopt Work-specific context. Authorization is enforced by Runtime on every
-resource endpoint independently of UI contribution visibility.
+The first real point is owned by `features/specs/extensions/specificationWorkSections.ts`:
+`specification.work.sections`. Its contribution contract specifies `id`, `slot`
+(`main` or `related`), optional `isVisible` and a React `Component` accepting
+`SpecificationWorkSectionContext`. Specification Work filters by slot and renders JSX components,
+so contributions use normal hooks and lifecycle. Slot order and layout belong to the host, not
+to the registry. A new built-in contribution to Work imports this point, registers it with
+`contributeTo(specificationWorkSections, ...)` in its own `uiModule.tsx`, and is added
+to the module list in the application composition root. Neither the host nor the registry
+imports the feature implementation.
+
+Another host, such as Project Settings, can define a *different* typed point beside its surface,
+add the point to application composition, and receive its own contribution shape from any UI module.
+No registry change or central product-specific union is needed. Do not create unused extension-point
+definitions until a host actually requires them.
+
+### Transitional boundaries and future plugins
+
+`SpecificationWorkSectionContext` currently includes the full `SpecificationWorkspaceData`
+aggregate and `WorkspaceRuntime` semantic actions. This is a **transitional Specs-owned adapter**,
+not an approved public contract for all modules. `TasksSection` already receives narrow props and
+callbacks; new features should not copy its aggregate dependency uncritically. Review context ownership
+before introducing the second real feature, and avoid independent Workspace/Task API duplication.
+
+The generic registry does not implement discovery, installation, enablement, dynamic JavaScript
+loading, permissions, server-managed schema UI or persistence. Future multi-part SpecFlow plugins
+may optionally supply `UiModule` declarations along with independently designed Runtime features,
+CLI commands, workflow steps and YAML configuration. The broader plugin contract remains **undecided**.
+Existing backend `RuntimeFeature` is a separate composition boundary, not an alias for `UiModule`.
+Access and authorization remain enforced by Runtime APIs, not by contribution visibility. Neither
+a contribution nor a plugin creates its own HTTP transport or QueryClient.
 
 ### Obsolete Extensions placeholder
 

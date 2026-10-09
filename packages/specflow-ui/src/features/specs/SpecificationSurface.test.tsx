@@ -28,9 +28,9 @@ describe('SpecificationSurface', () => {
       <QueryClientProvider client={queryClient}>
         <UiModulesProvider modules={builtInUiModuleRegistry}>
           <SpecFlowServicesProvider services={services}>
-          <LocalizationProvider>
-            <AppShell navigation={<div>Nav</div>}>{component}</AppShell>
-          </LocalizationProvider>
+            <LocalizationProvider>
+              <AppShell navigation={<div>Nav</div>}>{component}</AppShell>
+            </LocalizationProvider>
           </SpecFlowServicesProvider>
         </UiModulesProvider>
       </QueryClientProvider>,
@@ -74,7 +74,8 @@ describe('SpecificationSurface', () => {
 
     const markup = renderToStaticMarkup(
       <QueryClientProvider client={queryClient}>
-        <SpecFlowServicesProvider services={services}>
+        <UiModulesProvider modules={builtInUiModuleRegistry}>
+          <SpecFlowServicesProvider services={services}>
           <LocalizationProvider>
             <AppShell navigation={<div>Nav</div>}>
               <SpecificationSurface specId="spec-missing" />
@@ -111,7 +112,8 @@ describe('SpecificationSurface', () => {
 
     const markup = renderToStaticMarkup(
       <QueryClientProvider client={queryClient}>
-        <SpecFlowServicesProvider services={services}>
+        <UiModulesProvider modules={builtInUiModuleRegistry}>
+          <SpecFlowServicesProvider services={services}>
           <LocalizationProvider>
             <AppShell navigation={<div>Nav</div>}>
               <SpecificationSurface specId="spec-404" />
@@ -136,7 +138,8 @@ describe('SpecificationSurface', () => {
 
     const markup = renderToStaticMarkup(
       <QueryClientProvider client={queryClient}>
-        <SpecFlowServicesProvider services={services}>
+        <UiModulesProvider modules={builtInUiModuleRegistry}>
+          <SpecFlowServicesProvider services={services}>
           <LocalizationProvider>
             <AppShell navigation={<div>Nav</div>}>
               <SpecificationSurface specId="spec-123" />

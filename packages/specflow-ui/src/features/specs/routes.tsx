@@ -8,7 +8,6 @@ import { SpecsAccessDenied } from './overview/SpecsAccessDenied';
 import { SpecificationSurface } from './SpecificationSurface';
 import { useSpecificationWorkspace } from './useSpecificationWorkspace';
 import type { SpecificationWorkspaceView } from './workspace/model';
-import { specificationTaskRoute } from '../tasks/routes';
 export { specificationTaskRoute } from '../tasks/routes';
 
 export const specsForbiddenRoute = createRoute({

@@ -41,7 +41,7 @@ export function SpecificationTaskPage({
         openNavigation: t('navigation.open'),
       }}
     >
-      <AppWorkspace.Primary header={<WorkspaceHeader title={`${t('specification.title')} / ${taskId}`} />}>
+      <AppWorkspace.Primary header={<WorkspaceHeader title={`Task / ${taskId}`} />}>
         <AppContent className="w-content-xwide max-w-full">
           <AppWorkspaceBody className="py-6">
             <AppContentContainer align="start" size="full">

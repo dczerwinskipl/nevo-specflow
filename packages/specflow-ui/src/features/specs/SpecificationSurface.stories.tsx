@@ -89,7 +89,7 @@ export const FullTaskPromotionFlow: Story = {
 
     await canvas.findByRole('heading', { name: /Task \/ TASK-03/i }, { timeout: 5000 });
 
-    const backBtn = await canvas.findByRole('button', {
+    const backBtn = await canvas.findByRole('link', {
       name: /Back to specification|Wróć do specyfikacji/i,
     });
     await userEvent.click(backBtn);
@@ -138,7 +138,7 @@ export const Documents: Story = {
 };
 
 export const FullTask: Story = {
-  args: { path: '/specs/admission?task=TASK-03' },
+  args: { path: '/specs/admission/tasks/TASK-03?collection=current' },
   play: async ({ canvas }) => {
     await canvas.findByRole('heading', { name: /Task \/ TASK-03/i }, { timeout: 5000 });
     await canvas.findByText('TASK-03 · admission', {}, { timeout: 5000 });

@@ -201,9 +201,8 @@ function SpecificationWorkspaceInner({
         if (overviewHref?.includes('collection=archive')) {
           params.set('collection', 'archive');
         }
-        params.set('view', 'task');
-        params.set('task', taskId);
-        return `/specs/${encodeURIComponent(specId)}?${params.toString()}`;
+        const search = params.toString();
+        return `/specs/${encodeURIComponent(specId)}/tasks/${encodeURIComponent(taskId)}${search ? `?${search}` : ''}`;
       },
     }),
     [

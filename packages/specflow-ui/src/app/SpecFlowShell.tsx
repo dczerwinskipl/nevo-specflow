@@ -47,9 +47,18 @@ function ProductNavigation({
         readonly view?: string;
       },
   });
-  const specMatch = /^\/specs\/([^/]+)/.exec(pathname);
-  const activeSpecId = specMatch?.[1] ? decodeURIComponent(specMatch[1]) : null;
-  const activeView = search?.view ?? 'work';
+  const activeSpecMatch = useRouterState({
+    select: (state) =>
+      state.matches.find(
+        (match) =>
+          match.routeId === '/_app/specs/$specId' ||
+          match.routeId === '/_app/specs/$specId/tasks/$taskId',
+      ),
+  });
+  const activeSpecId = activeSpecMatch?.params.specId ?? null;
+  const activeView = activeSpecMatch?.routeId === '/_app/specs/$specId/tasks/$taskId'
+    ? null
+    : (search?.view ?? 'work');
   const collection = search?.collection ?? 'current';
 
   const { data: specData } = useSpecificationWorkspace(activeSpecId ?? '');
@@ -170,7 +179,7 @@ function ProductNavigation({
         if (node.key === 'specs') {
           return pathname === '/' ? 'active' : 'none';
         }
-        if (node.key === `spec-view-${activeView}`) {
+        if (activeView && node.key === `spec-view-${activeView}`) {
           return 'active';
         }
         if (node.key === `spec-${activeSpecId}`) {

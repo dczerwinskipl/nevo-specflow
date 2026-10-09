@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { createRoute } from '@tanstack/react-router';
+import { createRoute, redirect } from '@tanstack/react-router';
 import { appRoute, rootRoute } from '../../app/router/root';
 import { SpecsOverview } from './overview/SpecsOverview';
 import { useSpecsOverview } from './overview/useSpecsOverview';
@@ -8,6 +8,8 @@ import { SpecsAccessDenied } from './overview/SpecsAccessDenied';
 import { SpecificationSurface } from './SpecificationSurface';
 import { useSpecificationWorkspace } from './useSpecificationWorkspace';
 import type { SpecificationWorkspaceView } from './workspace/model';
+import { useSpecificationTask } from './tasks/useSpecificationTask';
+import { SpecificationTaskPage } from './tasks/SpecificationTaskPage';
 
 export const specsForbiddenRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -74,8 +76,69 @@ export const specificationRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/specs/$specId',
   validateSearch: validateSpecificationSearch,
+  beforeLoad: ({ params, search }) => {
+    // Old Full Task search links still reach the resource, without loading the Workspace list.
+    if (search.view === 'task') {
+      if (search.task) {
+        throw redirect({
+          to: '/specs/$specId/tasks/$taskId',
+          params: { specId: params.specId, taskId: search.task },
+          search: { collection: search.collection },
+          replace: true,
+        });
+      }
+      throw redirect({
+        to: '/specs/$specId',
+        params: { specId: params.specId },
+        search: { collection: search.collection },
+        replace: true,
+      });
+    }
+  },
   component: SpecificationRouteScreen,
 });
+
+export const specificationTaskRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/specs/$specId/tasks/$taskId',
+  validateSearch: (search: Record<string, unknown>) => ({
+    collection: search.collection === 'archive' ? ('archive' as const) : ('current' as const),
+  }),
+  component: SpecificationTaskRouteScreen,
+});
+
+function SpecificationTaskRouteScreen() {
+  const { specId, taskId } = specificationTaskRoute.useParams();
+  const { collection } = specificationTaskRoute.useSearch();
+  const { services, auth } = specificationTaskRoute.useRouteContext();
+  const navigate = specificationTaskRoute.useNavigate();
+  const taskState = useSpecificationTask(specId, taskId, services.specificationApi);
+  const returnTo = `/specs/${encodeURIComponent(specId)}/tasks/${encodeURIComponent(taskId)}?collection=${collection}`;
+
+  useEffect(() => {
+    if (taskState.errorStatus === 403) {
+      void navigate({ to: '/access-denied', replace: true });
+    } else if (taskState.errorStatus === 401) {
+      void auth.refresh().then(
+        () => navigate({ to: '/login', search: { returnTo }, replace: true }),
+        () => navigate({ to: '/runtime-unavailable', search: { returnTo }, replace: true }),
+      );
+    }
+  }, [taskState.errorStatus, auth, navigate, returnTo]);
+
+  if (taskState.errorStatus === 401 || taskState.errorStatus === 403) return null;
+  const onBack = () =>
+    void navigate({ to: '/specs/$specId', params: { specId }, search: { collection } });
+  return (
+    <SpecificationTaskPage
+      specId={specId}
+      taskId={taskId}
+      collection={collection}
+      taskState={taskState}
+      onBack={onBack}
+    />
+  );
+}
 
 function SpecsRouteScreen() {
   const { specs, auth, services } = specsRoute.useRouteContext();
@@ -168,6 +231,14 @@ function SpecificationRouteScreen() {
       initialView={view}
       initialTask={task}
       onNavigateView={({ view: nextView, taskId: nextTaskId }) => {
+        if (nextView === 'task' && nextTaskId) {
+          void navigate({
+            to: '/specs/$specId/tasks/$taskId',
+            params: { specId, taskId: nextTaskId },
+            search: { collection },
+          });
+          return;
+        }
         void navigate({
           search: (prev) => ({
             ...prev,
@@ -180,5 +251,5 @@ function SpecificationRouteScreen() {
   );
 }
 
-export const specsAppRoutes = [specsRoute, specificationRoute] as const;
+export const specsAppRoutes = [specsRoute, specificationRoute, specificationTaskRoute] as const;
 export const specsRootRoutes = [specsForbiddenRoute] as const;

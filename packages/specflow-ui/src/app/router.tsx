@@ -13,6 +13,7 @@ import {
   specsRootRoutes,
   specsRoute,
   specificationRoute,
+  specificationTaskRoute,
   validateSpecificationSearch,
   specsForbiddenRoute,
 } from '../features/specs/routes';
@@ -28,6 +29,7 @@ export {
   runtimeUnavailableRoute,
   specsRoute,
   specificationRoute,
+  specificationTaskRoute,
   validateSpecificationSearch,
   specsForbiddenRoute,
   resolveAppAccess,

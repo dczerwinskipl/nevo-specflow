@@ -58,7 +58,7 @@ describe('Task Preview HTTP failure states', () => {
     const state = taskPreviewFailure(401, false, taskId, retry);
     expect(state.status).toBe('error');
     if (state.status !== 'error') throw new Error('Expected retryable error');
-    expect(String(state.message)).toContain('session');
+    expect(state.message).toContain('session');
     state.retry?.();
     expect(retry).toHaveBeenCalledOnce();
   });
@@ -73,7 +73,7 @@ describe('Task Preview HTTP failure states', () => {
     const retry = vi.fn();
     const absent = taskPreviewFailure(404, true, taskId, retry);
     expect(absent.status).toBe('unavailable');
-    expect(String(absent.status === 'unavailable' ? absent.message : '')).toContain(taskId);
+    expect(absent.status === 'unavailable' ? absent.message : '').toContain(taskId);
     const unexpected = taskPreviewFailure(404, false, taskId, retry);
     expect(unexpected.status).toBe('error');
   });

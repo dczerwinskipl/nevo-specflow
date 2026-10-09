@@ -29,7 +29,7 @@ describe('Specification Work contribution failure isolation', () => {
   it('remains failed through ordinary updates until the user explicitly retries', () => {
     const onRetry = vi.fn();
     const { instance } = createFailedBoundary(onRetry);
-    instance.render();
+    expect(instance.render()).toBe('Contribution failed');
     expect(onRetry).not.toHaveBeenCalled();
     expect(instance.state.failed).toBe(true);
   });

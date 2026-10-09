@@ -6,7 +6,7 @@ describe('Task Preview session-expiry routing policy', () => {
     const onLogin = vi.fn();
     const retry = vi.fn();
     await recoverTaskPreviewAuthorization({
-      refresh: async () => ({ authenticationRequired: true, authenticated: false }),
+      refresh: () => Promise.resolve({ authenticationRequired: true, authenticated: false }),
       retry,
       onLogin,
       onRuntimeUnavailable: vi.fn(),
@@ -19,7 +19,7 @@ describe('Task Preview session-expiry routing policy', () => {
     const retry = vi.fn();
     const onLogin = vi.fn();
     await recoverTaskPreviewAuthorization({
-      refresh: async () => ({ authenticationRequired: true, authenticated: true }),
+      refresh: () => Promise.resolve({ authenticationRequired: true, authenticated: true }),
       retry,
       onLogin,
       onRuntimeUnavailable: vi.fn(),
@@ -31,7 +31,7 @@ describe('Task Preview session-expiry routing policy', () => {
   it('does not force a login when authentication is disabled', async () => {
     const retry = vi.fn();
     await recoverTaskPreviewAuthorization({
-      refresh: async () => ({ authenticationRequired: false, authenticated: false }),
+      refresh: () => Promise.resolve({ authenticationRequired: false, authenticated: false }),
       retry,
       onLogin: vi.fn(),
       onRuntimeUnavailable: vi.fn(),
@@ -43,7 +43,7 @@ describe('Task Preview session-expiry routing policy', () => {
     const onRuntimeUnavailable = vi.fn();
     const retry = vi.fn();
     await recoverTaskPreviewAuthorization({
-      refresh: async () => Promise.reject(new Error('Runtime unavailable')),
+      refresh: () => Promise.reject(new Error('Runtime unavailable')),
       retry,
       onLogin: vi.fn(),
       onRuntimeUnavailable,

@@ -79,7 +79,7 @@ describe('SpecFlow router access policy', () => {
   it('redirects legacy Task search state to the canonical resource route', () => {
     const beforeLoad = specificationRoute.options.beforeLoad;
     expect(beforeLoad).toBeDefined();
-    const result = beforeLoad?.({
+    const result: unknown = beforeLoad?.({
       params: { specId: 'admission' },
       search: { collection: 'archive', view: 'task', task: 'TASK-03' },
     } as Parameters<NonNullable<typeof beforeLoad>>[0]);

@@ -14,11 +14,11 @@ export function App() {
     <QueryClientProvider client={defaultQueryClient}>
       <UiModulesProvider modules={builtInUiModuleRegistry}>
         <SpecFlowServicesProvider services={defaultSpecFlowServices}>
-        <AuthQueryCacheBoundary auth={defaultSpecFlowServices.authStore}>
-          <LocalizationProvider>
-            <RouterProvider router={router} />
-          </LocalizationProvider>
-        </AuthQueryCacheBoundary>
+          <AuthQueryCacheBoundary auth={defaultSpecFlowServices.authStore}>
+            <LocalizationProvider>
+              <RouterProvider router={router} />
+            </LocalizationProvider>
+          </AuthQueryCacheBoundary>
         </SpecFlowServicesProvider>
       </UiModulesProvider>
     </QueryClientProvider>

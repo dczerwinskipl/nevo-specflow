@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef } from 'react';
+import { createContext, useContext } from 'react';
 import {
   AppContent,
   defineSecondaryStack,
@@ -14,16 +14,16 @@ import type { ActivityEvent, SpecificationWorkspaceData, TaskGroup, TaskItem } f
 import { TaskPreview } from '../../tasks/inspectors/TaskPreview';
 import { useSpecificationTask } from '../../tasks/useSpecificationTask';
 import { ActivityHistory } from './ActivityHistory';
+import { DocumentContent } from '../../documents/connected/DocumentContent';
 
 export interface SpecificationSecondaryContextValue {
   readonly specId: string;
   readonly data: SpecificationWorkspaceData;
   readonly openFullTask: (taskId: string) => void;
+  readonly openFullDocument?: (documentId: string) => void;
   readonly openSession?: (sessionId: string) => void;
   readonly openDoc?: (docId: string) => void;
   readonly previewTask: (taskId: string) => void;
-  /** The route owns authentication recovery; Preview never navigates itself. */
-  readonly onTaskUnauthorized?: (retry: () => void) => void;
 }
 
 export const SpecificationSecondaryDataContext =
@@ -48,36 +48,13 @@ export function useTaskPreviewData({
   const listTask = context?.data.taskGroups.flatMap((g) => g.tasks).find((t) => t.id === taskId);
   // Attention/Activity may reference a Task absent from the current Workspace projection.
   const detail = useSpecificationTask(specId, taskId, undefined, Boolean(context) && !listTask);
-  const handledUnauthorized = useRef<string | null>(null);
-  const onTaskUnauthorized = context?.onTaskUnauthorized;
   const detailStatus = detail.errorStatus;
   const retryDetail = detail.refetch;
-  const isMissingFromList = !listTask;
-  useEffect(() => {
-    if (detail.isSuccess) handledUnauthorized.current = null;
-  }, [detail.isSuccess]);
-  useEffect(() => {
-    if (!context || !isMissingFromList || detailStatus !== 401 || !onTaskUnauthorized) return;
-    const identity = `${specId}:${taskId}`;
-    if (handledUnauthorized.current === identity) return;
-    handledUnauthorized.current = identity;
-    // One automatic auth recovery per failed lookup. Do not loop on repeated 401 responses.
-    onTaskUnauthorized(() => {
-      void retryDetail();
-    });
-  }, [context, detailStatus, isMissingFromList, onTaskUnauthorized, retryDetail, specId, taskId]);
-
   if (!context) return { status: 'loading' };
   if (!listTask && detail.isPending) return { status: 'loading' };
   if (!listTask && detail.isError) {
     return taskPreviewFailure(detailStatus, detail.isTaskNotFound, taskId, () => {
-      if (detailStatus === 401 && onTaskUnauthorized) {
-        onTaskUnauthorized(() => {
-          void retryDetail();
-        });
-      } else {
-        void retryDetail();
-      }
+      void retryDetail();
     });
   }
   if (!listTask && detail.data?.task.id !== taskId) {
@@ -197,6 +174,73 @@ export const taskPreviewStack = defineSecondaryStack<
         },
       ],
       component: TaskPreviewScreen,
+    },
+  },
+});
+
+export interface DocumentPreviewData {
+  readonly specId: string;
+  readonly documentId: string;
+  readonly title: string;
+  readonly openFullDocument?: (documentId: string) => void;
+}
+export interface DocumentPreviewPages {
+  preview: Record<never, never>;
+}
+function useDocumentPreviewData({
+  specId,
+  documentId,
+}: {
+  specId: string;
+  documentId: string;
+}): SecondaryData<DocumentPreviewData> {
+  const context = useContext(SpecificationSecondaryDataContext);
+  if (!context) return { status: 'loading' };
+  const title = context.data.documents.find((item) => item.id === documentId)?.title ?? documentId;
+  return {
+    status: 'ready',
+    data: { specId, documentId, title, openFullDocument: context.openFullDocument },
+  };
+}
+function DocumentPreviewHeader({
+  data,
+}: SecondaryScreenProps<DocumentPreviewData, DocumentPreviewPages['preview']>) {
+  return <WorkspaceHeaderIdentity headingLevel={2} title={data.title} subtitle={data.documentId} />;
+}
+function DocumentPreviewScreen({
+  data,
+}: SecondaryScreenProps<DocumentPreviewData, DocumentPreviewPages['preview']>) {
+  return (
+    <AppContent>
+      <DocumentContent specId={data.specId} documentId={data.documentId} />
+    </AppContent>
+  );
+}
+export const documentPreviewStack = defineSecondaryStack<
+  { specId: string; documentId: string },
+  DocumentPreviewData,
+  DocumentPreviewPages
+>({
+  id: 'specification-document-preview',
+  initial: 'preview',
+  useData: useDocumentPreviewData,
+  screens: {
+    preview: {
+      title: 'Document preview',
+      header: DocumentPreviewHeader,
+      actions: ({ data }): readonly WorkspaceHeaderAction[] =>
+        data.openFullDocument
+          ? [
+              {
+                id: 'open-full-document',
+                label: 'Open full document',
+                icon: 'open-full',
+                primary: true,
+                onPress: () => data.openFullDocument?.(data.documentId),
+              },
+            ]
+          : [],
+      component: DocumentPreviewScreen,
     },
   },
 });

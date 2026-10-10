@@ -64,6 +64,8 @@
     "placeholderDescription": "You have opened the owning Specification. Documents, Tasks and Sessions will become available here in a later increment. No workflow action has been performed.",
     "identity": "Specification ID: {{id}}",
     "loadingWorkspace": "Loading specification {{id}}…",
+    "resourceAccessDeniedTitle": "Access denied",
+    "resourceAccessDeniedDescription": "You do not have permission to view this resource.",
     "unavailableTitle": "Specification is unavailable",
     "unavailableDescription": "The specification workspace is not supported by Runtime yet or could not be loaded.",
     "notFoundTitle": "Specification not found",

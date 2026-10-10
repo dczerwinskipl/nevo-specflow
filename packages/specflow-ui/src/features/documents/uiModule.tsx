@@ -4,11 +4,6 @@ import {
   type SpecificationWorkSectionContext,
 } from '../specs/extensions/specificationWorkSections';
 import { DocumentsSummarySection } from './contributions/specification-work/DocumentsSummarySection';
-import {
-  specificationViews,
-  type SpecificationViewContext,
-} from '../specs/extensions/specificationViews';
-import { DocumentsView } from './views/DocumentsView';
 
 function SpecificationDocuments({ data, actions }: SpecificationWorkSectionContext) {
   return (
@@ -16,19 +11,6 @@ function SpecificationDocuments({ data, actions }: SpecificationWorkSectionConte
       documents={data.documents}
       onOpenDocument={actions.openDoc}
       onOpenDocumentsView={actions.openDocumentsView}
-    />
-  );
-}
-
-function SpecificationDocumentsView({ data, document }: SpecificationViewContext) {
-  return (
-    <DocumentsView
-      documents={data.documents}
-      renderContent={document.renderContent}
-      activeDocId={document.selectedId}
-      docOrigin={document.origin}
-      onSelectDoc={document.onSelect}
-      onBackToOrigin={document.onBack}
     />
   );
 }
@@ -44,11 +26,6 @@ export const documentsUiModule: UiModule = {
         (!data.sectionAvailability?.documents ||
           data.sectionAvailability.documents === 'available'),
       Component: SpecificationDocuments,
-    }),
-    contributeTo(specificationViews, {
-      id: 'specflow.documents.view',
-      view: 'documents',
-      Component: SpecificationDocumentsView,
     }),
   ],
 };

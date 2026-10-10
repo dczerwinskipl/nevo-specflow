@@ -91,21 +91,19 @@ describe('SpecFlow router access policy', () => {
     }
   });
 
-  it('reaches documents view directly via search parameters', async () => {
-    const router = createSpecFlowRouter(
-      createMemoryHistory({
-        initialEntries: ['/specs/admission?collection=current&view=documents'],
-      }),
-      createSpecFlowAppServices({
-        authStore: storeWith(authenticated),
-        specsOverviewApi: { getOverview: (value) => Promise.resolve(createSpecsFixture(value)) },
-      }),
-    );
-    await router.load();
-    const match = router.state.matches.find((item) => item.routeId === '/_app/specs/$specId');
-    expect(match?.status).toBe('success');
-    expect(match?.params).toEqual({ specId: 'admission' });
-    expect(match?.search).toEqual({ collection: 'current', view: 'documents' });
+  it('redirects the legacy Documents tab to the canonical Primary URL', () => {
+    const beforeLoad = specificationRoute.options.beforeLoad;
+    const result: unknown = beforeLoad?.({
+      params: { specId: 'admission' },
+      search: { collection: 'current', view: 'documents' },
+    } as Parameters<NonNullable<typeof beforeLoad>>[0]);
+    expect(isRedirect(result)).toBe(true);
+    if (isRedirect(result)) {
+      expect(result.options.to).toBe('/specs/$specId/documents');
+      expect(result.options.params).toEqual({ specId: 'admission' });
+      expect(result.options.search).toEqual({ collection: 'current' });
+      expect(result.options.replace).toBe(true);
+    }
   });
 
   it('normalizes search parameters: strips task when view is documents', () => {

@@ -4,12 +4,6 @@ import {
   type SpecificationWorkSectionContext,
 } from '../specs/extensions/specificationWorkSections';
 import { RepositorySection } from './contributions/specification-work/RepositorySection';
-import {
-  specificationViews,
-  type SpecificationViewContext,
-} from '../specs/extensions/specificationViews';
-import { RepositoryView } from './views/RepositoryView';
-import { ChangesView } from './views/ChangesView';
 import { specificationAttentionItems } from '../specs/extensions/specificationAttentionItems';
 
 function SpecificationRepository({ data, actions }: SpecificationWorkSectionContext) {
@@ -23,26 +17,6 @@ function SpecificationRepository({ data, actions }: SpecificationWorkSectionCont
   );
 }
 
-function SpecificationRepositoryView({ data, actions }: SpecificationViewContext) {
-  return (
-    <RepositoryView
-      repoContext={data.repoContext}
-      onGoToChanges={() => actions.openChanges('base')}
-    />
-  );
-}
-
-function SpecificationChangesView({ data, changes }: SpecificationViewContext) {
-  return (
-    <ChangesView
-      changes={data.changes}
-      currentSource={changes.source}
-      onSourceChange={changes.onSourceChange}
-      onDiff={changes.onDiff}
-    />
-  );
-}
-
 export const gitUiModule: UiModule = {
   id: 'specflow.git',
   contributions: [
@@ -51,16 +25,6 @@ export const gitUiModule: UiModule = {
       slot: 'context',
       isVisible: ({ data }) => Boolean(data.hasGit && data.repoContext),
       Component: SpecificationRepository,
-    }),
-    contributeTo(specificationViews, {
-      id: 'specflow.git.repository-view',
-      view: 'repository',
-      Component: SpecificationRepositoryView,
-    }),
-    contributeTo(specificationViews, {
-      id: 'specflow.git.changes-view',
-      view: 'changes',
-      Component: SpecificationChangesView,
     }),
     contributeTo(specificationAttentionItems, {
       id: 'specflow.git.attention',

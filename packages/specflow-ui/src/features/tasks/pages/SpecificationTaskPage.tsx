@@ -58,14 +58,18 @@ export function SpecificationTaskPage({
                     role="alert"
                     tone="attention"
                     title={
-                      taskState.isTaskNotFound
-                        ? t('specification.taskNotFoundTitle')
-                        : t('specification.unavailableTitle')
+                      taskState.errorStatus === 403
+                        ? t('specification.resourceAccessDeniedTitle')
+                        : taskState.isTaskNotFound
+                          ? t('specification.taskNotFoundTitle')
+                          : t('specification.unavailableTitle')
                     }
                   >
-                    {taskState.isTaskNotFound
-                      ? t('specification.taskNotFoundDescription', { taskId })
-                      : t('specification.unavailableDescription', { id: taskId })}
+                    {taskState.errorStatus === 403
+                      ? t('specification.resourceAccessDeniedDescription')
+                      : taskState.isTaskNotFound
+                        ? t('specification.taskNotFoundDescription', { taskId })
+                        : t('specification.unavailableDescription', { id: taskId })}
                   </Alert>
                   <div className="flex flex-wrap gap-2">
                     <Button variant="secondary" size="sm" onClick={() => void taskState.refetch()}>

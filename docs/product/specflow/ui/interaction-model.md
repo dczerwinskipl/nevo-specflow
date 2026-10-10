@@ -67,12 +67,13 @@ Detail, Full Session, Project Settings.
 
 ## Product hierarchy
 
-Inside one Specification, the owner decision establishes Specification-local contextual
-navigation for Spec-owned destinations (Work, Documents, Sessions, Changes, Repository). These
-are Spec-owned contextual views, not new global product areas. On Wide, local contextual
-navigation avoids a horizontal tab strip and avoids an extra permanent rail; on Compact/Narrow,
-it collapses into a contextual view selector. The implemented global product navigation remains
-deliberately small as described below.
+Specification Overview owns `/specs/:specId`. Documents, Sessions, Changes
+and Repository are feature-owned canonical Primary pages under that specification,
+not tabs controlled by `?view`. They do not become global product areas.
+
+TanStack Router owns routable Primary surfaces. Nevo UI Secondary Stack owns
+contextual Task/Document previews, independent from URL search state.
+Promoting a preview to Full is an explicit Primary route navigation.
 
 The Specification design separates short Task Preview in Secondary from explicit Full Task
 promotion into a main routed page (`/specs/:specId/tasks/:taskId`). Work defaults to

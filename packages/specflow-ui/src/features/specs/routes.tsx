@@ -6,9 +6,6 @@ import { SpecsOverview } from './overview/SpecsOverview';
 import { useSpecsOverview } from './overview/useSpecsOverview';
 import { SpecsAccessDenied } from './overview/SpecsAccessDenied';
 import { SpecificationSurface } from './SpecificationSurface';
-import { useSpecificationWorkspace } from './useSpecificationWorkspace';
-import type { SpecificationWorkspaceView } from './workspace/model';
-import { recoverTaskPreviewAuthorization } from './workspace/recoverTaskPreviewAuthorization';
 export { specificationTaskRoute } from '../tasks/routes';
 
 export const specsForbiddenRoute = createRoute({
@@ -26,7 +23,8 @@ export const specsRoute = createRoute({
   component: SpecsRouteScreen,
 });
 
-type LegacySpecificationView = SpecificationWorkspaceView | 'task';
+type LegacySpecificationView =
+  'work' | 'documents' | 'sessions' | 'changes' | 'repository' | 'task';
 
 const VALID_VIEWS: ReadonlySet<LegacySpecificationView> = new Set([
   'work',
@@ -59,7 +57,7 @@ export function validateSpecificationSearch(search: Record<string, unknown>): {
   if (rawView === 'task') {
     view = 'task';
     task = rawTask;
-  } else if (rawView && rawView !== 'work') {
+  } else if (rawView) {
     view = rawView;
     task = undefined;
   } else if (rawTask) {
@@ -79,7 +77,7 @@ export const specificationRoute = createRoute({
   path: '/specs/$specId',
   validateSearch: validateSpecificationSearch,
   beforeLoad: ({ params, search }) => {
-    // Old Full Task search links still reach the resource, without loading the Workspace list.
+    // Normalize old tab-like URLs to canonical Primary resources.
     if (search.view === 'task') {
       if (search.task) {
         return redirect({
@@ -96,12 +94,52 @@ export const specificationRoute = createRoute({
         replace: true,
       });
     }
+    if (search.view === 'work') {
+      return redirect({
+        to: '/specs/$specId',
+        params: { specId: params.specId },
+        search: { collection: search.collection },
+        replace: true,
+      });
+    }
+    if (search.view === 'documents') {
+      return redirect({
+        to: '/specs/$specId/documents',
+        params: { specId: params.specId },
+        search: { collection: search.collection },
+        replace: true,
+      });
+    }
+    if (search.view === 'sessions') {
+      return redirect({
+        to: '/specs/$specId/sessions',
+        params: { specId: params.specId },
+        search: { collection: search.collection },
+        replace: true,
+      });
+    }
+    if (search.view === 'changes') {
+      return redirect({
+        to: '/specs/$specId/changes',
+        params: { specId: params.specId },
+        search: { collection: search.collection, source: 'base' },
+        replace: true,
+      });
+    }
+    if (search.view === 'repository') {
+      return redirect({
+        to: '/specs/$specId/repository',
+        params: { specId: params.specId },
+        search: { collection: search.collection },
+        replace: true,
+      });
+    }
   },
   component: SpecificationRouteScreen,
 });
 
 function SpecsRouteScreen() {
-  const { specs, auth, services } = specsRoute.useRouteContext();
+  const { specs, services } = specsRoute.useRouteContext();
   const runtimeInfo = useQuery({
     queryKey: ['runtime-info'],
     queryFn: ({ signal }) => services.runtimeInfoApi.getInfo(signal),
@@ -111,27 +149,12 @@ function SpecsRouteScreen() {
   const { state, refresh } = useSpecsOverview(specs, collection);
 
   useEffect(() => {
-    if (state.errorStatus === 403) {
-      void navigate({ to: '/access-denied', replace: true });
-    } else if (state.errorStatus === 401) {
-      void auth.refresh().then(
-        () =>
-          navigate({
-            to: '/login',
-            search: { returnTo: `/?collection=${collection}` },
-            replace: true,
-          }),
-        () =>
-          navigate({
-            to: '/runtime-unavailable',
-            search: { returnTo: `/?collection=${collection}` },
-            replace: true,
-          }),
-      );
-    }
-  }, [state.errorStatus, auth, navigate, collection]);
+    // Overview authorization denotes application-wide Specs access, unlike
+    // a forbidden individual Task or Document resource.
+    if (state.errorStatus === 403) void navigate({ to: '/access-denied', replace: true });
+  }, [state.errorStatus, navigate]);
 
-  if (state.errorStatus === 401 || state.errorStatus === 403) return null;
+  if (state.errorStatus === 403) return null;
 
   return (
     <SpecsOverview
@@ -155,53 +178,15 @@ function SpecsRouteScreen() {
 
 function SpecificationRouteScreen() {
   const { specId } = specificationRoute.useParams();
-  const { collection, view } = specificationRoute.useSearch();
-  const { services, auth } = specificationRoute.useRouteContext();
+  const { collection } = specificationRoute.useSearch();
   const navigate = specificationRoute.useNavigate();
-  const { errorStatus } = useSpecificationWorkspace(specId, services.specificationApi);
-
-  useEffect(() => {
-    if (errorStatus === 403) {
-      void navigate({ to: '/access-denied', replace: true });
-    } else if (errorStatus === 401) {
-      void auth.refresh().then(
-        () =>
-          navigate({
-            to: '/login',
-            search: { returnTo: `/specs/${encodeURIComponent(specId)}?collection=${collection}` },
-            replace: true,
-          }),
-        () =>
-          navigate({
-            to: '/runtime-unavailable',
-            search: { returnTo: `/specs/${encodeURIComponent(specId)}?collection=${collection}` },
-            replace: true,
-          }),
-      );
-    }
-  }, [errorStatus, auth, navigate, specId, collection]);
-
-  if (errorStatus === 401 || errorStatus === 403) return null;
 
   return (
     <SpecificationSurface
       specId={specId}
       overviewHref={`/?collection=${collection}`}
       onBack={() => void navigate({ to: '/', search: { collection } })}
-      initialView={view === 'task' ? undefined : view}
-      onTaskUnauthorized={(retry) => {
-        const returnTo = `/specs/${encodeURIComponent(specId)}?collection=${collection}`;
-        void recoverTaskPreviewAuthorization({
-          refresh: () => auth.refresh(),
-          retry,
-          onLogin: () => {
-            void navigate({ to: '/login', search: { returnTo }, replace: true });
-          },
-          onRuntimeUnavailable: () => {
-            void navigate({ to: '/runtime-unavailable', search: { returnTo }, replace: true });
-          },
-        });
-      }}
+
       onOpenTask={(taskId) => {
         void navigate({
           to: '/specs/$specId/tasks/$taskId',
@@ -209,15 +194,38 @@ function SpecificationRouteScreen() {
           search: { collection },
         });
       }}
-      onNavigateView={({ view: nextView }) => {
+      onOpenFullDocument={(documentId) => {
         void navigate({
-          search: (prev) => ({
-            ...prev,
-            view: nextView === 'work' ? undefined : nextView,
-            task: undefined,
-          }),
+          to: '/specs/$specId/documents/$documentId',
+          params: { specId, documentId },
+          search: { collection },
+          state: { specflowDocumentReturnTo: 'overview' },
         });
       }}
+      onOpenDocuments={() =>
+        void navigate({
+          to: '/specs/$specId/documents',
+          params: { specId },
+          search: { collection },
+        })
+      }
+      onOpenSessions={() =>
+        void navigate({ to: '/specs/$specId/sessions', params: { specId }, search: { collection } })
+      }
+      onOpenRepository={() =>
+        void navigate({
+          to: '/specs/$specId/repository',
+          params: { specId },
+          search: { collection },
+        })
+      }
+      onOpenChanges={(source = 'base') =>
+        void navigate({
+          to: '/specs/$specId/changes',
+          params: { specId },
+          search: { collection, source },
+        })
+      }
     />
   );
 }

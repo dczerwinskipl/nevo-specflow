@@ -16,17 +16,21 @@ import { useTranslation } from 'react-i18next';
 
 import type { AuthStore } from '../auth/store';
 import { defaultNevoBrand, NevoBrandLogo } from '../brand';
-import type { SpecificationWorkspaceView } from '../features/specs/workspace/model';
 import { AccountMenu } from './AccountMenu';
 
-import { useSpecificationWorkspace } from '../features/specs/useSpecificationWorkspace';
+import { useSpecificationNavigationMetadata } from '../features/specs/overview/useSpecificationNavigationMetadata';
 
 interface NavigationTarget {
-  readonly to: '/' | '/specs/$specId';
+  readonly to:
+    | '/'
+    | '/specs/$specId'
+    | '/specs/$specId/documents'
+    | '/specs/$specId/sessions'
+    | '/specs/$specId/changes'
+    | '/specs/$specId/repository';
   readonly params?: { readonly specId: string };
   readonly search?: {
     readonly collection?: 'current' | 'archive';
-    readonly view?: SpecificationWorkspaceView;
   };
 }
 
@@ -41,28 +45,31 @@ function ProductNavigation({
   const { closeNavigation } = useAppNavigation();
   const pathname = useRouterState({ select: (routerState) => routerState.location.pathname });
   const search = useRouterState({
-    select: (routerState) =>
-      routerState.location.search as {
-        readonly collection?: 'current' | 'archive';
-        readonly view?: string;
-      },
+    select: (state) => state.location.search as { readonly collection?: 'current' | 'archive' },
   });
   const activeSpecMatch = useRouterState({
-    select: (state) =>
-      state.matches.find(
-        (match) =>
-          match.routeId === '/_app/specs/$specId' ||
-          match.routeId === '/_app/specs/$specId/tasks/$taskId',
-      ),
+    select: (state) => state.matches.find((match) => 'specId' in match.params),
   });
-  const activeSpecId = activeSpecMatch?.params.specId ?? null;
-  const activeView =
-    activeSpecMatch?.routeId === '/_app/specs/$specId/tasks/$taskId'
-      ? null
-      : (search?.view ?? 'work');
+  const activeSpecId =
+    activeSpecMatch && 'specId' in activeSpecMatch.params
+      ? String(activeSpecMatch.params.specId)
+      : null;
+  const activeView = pathname.includes('/tasks/')
+    ? null
+    : pathname.endsWith('/documents')
+      ? 'documents'
+      : pathname.includes('/documents/')
+        ? 'documents'
+        : pathname.endsWith('/sessions')
+          ? 'sessions'
+          : pathname.endsWith('/changes')
+            ? 'changes'
+            : pathname.endsWith('/repository')
+              ? 'repository'
+              : null;
   const collection = search?.collection ?? 'current';
 
-  const { data: specData } = useSpecificationWorkspace(activeSpecId ?? '');
+  const specMetadata = useSpecificationNavigationMetadata(activeSpecId);
 
   const state = useSyncExternalStore(
     (listener) => auth.subscribe(listener),
@@ -92,12 +99,12 @@ function ProductNavigation({
     ];
 
     if (activeSpecId) {
-      const docCount = specData?.documents.length;
+      const docCount = specMetadata?.documentCount;
       const docsLabel =
         docCount !== undefined
           ? `${t('specification.viewDocuments')} ${docCount}`
           : t('specification.viewDocuments');
-      const hasGit = specData?.hasGit !== false;
+      const hasGit = specMetadata?.hasGit !== false;
 
       rootNodes.push({
         key: `spec-${activeSpecId}`,
@@ -105,34 +112,25 @@ function ProductNavigation({
         target: {
           to: '/specs/$specId',
           params: { specId: activeSpecId },
-          search: { collection, view: 'work' },
+          search: { collection },
         },
         children: [
-          {
-            key: `spec-view-work`,
-            label: t('specification.viewWork'),
-            target: {
-              to: '/specs/$specId',
-              params: { specId: activeSpecId },
-              search: { collection, view: 'work' },
-            },
-          },
           {
             key: `spec-view-documents`,
             label: docsLabel,
             target: {
-              to: '/specs/$specId',
+              to: '/specs/$specId/documents',
               params: { specId: activeSpecId },
-              search: { collection, view: 'documents' },
+              search: { collection },
             },
           },
           {
             key: `spec-view-sessions`,
             label: t('specification.viewSessions'),
             target: {
-              to: '/specs/$specId',
+              to: '/specs/$specId/sessions',
               params: { specId: activeSpecId },
-              search: { collection, view: 'sessions' },
+              search: { collection },
             },
           },
           ...(hasGit
@@ -141,18 +139,18 @@ function ProductNavigation({
                   key: `spec-view-changes`,
                   label: t('specification.viewChanges'),
                   target: {
-                    to: '/specs/$specId' as const,
+                    to: '/specs/$specId/changes' as const,
                     params: { specId: activeSpecId },
-                    search: { collection, view: 'changes' as const },
+                    search: { collection },
                   },
                 },
                 {
                   key: `spec-view-repository`,
                   label: t('specification.viewRepository'),
                   target: {
-                    to: '/specs/$specId' as const,
+                    to: '/specs/$specId/repository' as const,
                     params: { specId: activeSpecId },
-                    search: { collection, view: 'repository' as const },
+                    search: { collection },
                   },
                 },
               ]
@@ -162,7 +160,7 @@ function ProductNavigation({
     }
 
     return rootNodes;
-  }, [activeSpecId, collection, specData, t]);
+  }, [activeSpecId, collection, specMetadata, t]);
 
   const rootIcons = useMemo(() => {
     const icons: Record<string, IconName> = {
@@ -184,7 +182,9 @@ function ProductNavigation({
           return 'active';
         }
         if (node.key === `spec-${activeSpecId}`) {
-          return 'ancestor';
+          return pathname === `/specs/${encodeURIComponent(activeSpecId ?? '')}`
+            ? 'active'
+            : 'ancestor';
         }
         return 'none';
       },
@@ -204,15 +204,63 @@ function ProductNavigation({
             </Link>
           );
         }
+        const specParams = node.target.params!;
+        const routeSearch = { collection: node.target.search?.collection ?? collection };
+        const to = node.target.to;
+        if (to === '/specs/$specId/documents')
+          return (
+            <Link
+              className={className}
+              to="/specs/$specId/documents"
+              params={specParams}
+              search={routeSearch}
+              onClick={closeNavigation}
+            >
+              {children}
+            </Link>
+          );
+        if (to === '/specs/$specId/sessions')
+          return (
+            <Link
+              className={className}
+              to="/specs/$specId/sessions"
+              params={specParams}
+              search={routeSearch}
+              onClick={closeNavigation}
+            >
+              {children}
+            </Link>
+          );
+        if (to === '/specs/$specId/changes')
+          return (
+            <Link
+              className={className}
+              to="/specs/$specId/changes"
+              params={specParams}
+              search={{ ...routeSearch, source: 'base' }}
+              onClick={closeNavigation}
+            >
+              {children}
+            </Link>
+          );
+        if (to === '/specs/$specId/repository')
+          return (
+            <Link
+              className={className}
+              to="/specs/$specId/repository"
+              params={specParams}
+              search={routeSearch}
+              onClick={closeNavigation}
+            >
+              {children}
+            </Link>
+          );
         return (
           <Link
             className={className}
             to="/specs/$specId"
-            params={node.target.params!}
-            search={{
-              collection: node.target.search?.collection ?? collection,
-              view: node.target.search?.view,
-            }}
+            params={specParams}
+            search={routeSearch}
             onClick={closeNavigation}
           >
             {children}
@@ -272,10 +320,14 @@ export function SpecFlowShell({ auth, children }: PropsWithChildren<{ readonly a
   const capture = useDesignMetadata('SpecFlowApplicationShell', { viewport: 'desktop' });
 
   const signOut = async () => {
+    const operation = auth.logout();
+    const expectedMutation = auth.mutationGeneration();
     try {
-      await auth.logout();
+      await operation;
+      if (auth.mutationGeneration() !== expectedMutation) return;
       await router.navigate({ to: '/login', search: { returnTo: '/' }, replace: true });
     } catch {
+      if (auth.mutationGeneration() !== expectedMutation) return;
       await router.navigate({
         to: '/runtime-unavailable',
         search: { returnTo: '/' },

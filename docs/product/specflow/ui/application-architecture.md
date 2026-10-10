@@ -136,17 +136,17 @@ import the Tasks implementation.
 The next UI composition increment, stacked on #45, adds two other **Specs-owned** extension
 points without changing the generic registry:
 
-- `specification.views`: Git owns `repository` and `changes`, Sessions owns `sessions`,
-  and Documents owns `documents`. The host chooses a registered component by view ID,
-  validates section availability and preserves router-owned URL/search state. Full Task
-  remains a separate canonical route; old `?view=task&task=...` links only redirect.
+- The previous `specification.views` tab registry is removed. Full Primary
+  pages are owned by feature-specific TanStack Router routes, including
+  Documents List, Full Document, Sessions List, Changes, Repository and Full Task.
+  `/specs/:specId` is Specification Overview; old `?view` addresses redirect.
 - `specification.attention.items`: Tasks, Sessions and Git select/present Runtime attention
   items, with feature-specific actions and icons. Specification owns the combined
   Requires Attention surface and preserves the order of the Runtime aggregate. Requests
   with no registered handler remain visible without an action instead of being dropped.
 
-Git, Sessions and Documents also own their `specification.work.sections` contributions.
-Their Work links invoke the same host navigation actions as the full views; they never
+Git, Sessions and Documents own `specification.work.sections` contributions.
+Their links navigate to canonical Primary routes or open contextual Secondary previews; they never
 instantiate an independent Workspace HTTP client. `SpecificationSummarySection`,
 `PreparationSection`, the attention container and Activity History remain host-owned
 cross-feature coordination for now.
@@ -209,6 +209,8 @@ The current product routes under the guarded layout remain:
 - `/` for the read-only Specs Overview (`?collection=current|archive`);
 - `/specs/:specId` for the owning Specification, with `?collection=current|archive` as parent return
   context; loads server state via TanStack Query and renders the Specification Workspace;
+- `/specs/:specId/documents` and `/specs/:specId/documents/:documentId` for Documents List and Full Document;
+- `/specs/:specId/sessions`, `/specs/:specId/changes`, `/specs/:specId/repository` for feature-owned pages (list data temporarily reads the Workspace projection);
 - `/specs/:specId/tasks/:taskId` for Full Task detail, with the collection as optional return context;
   reads Task detail directly, independently of Workspace Task groups or Workspace read availability;
 - `/ui-playground` for a directly routable development/integration screen, not a persistent product
@@ -221,7 +223,7 @@ SpecFlow UI establishes a clear data-boundary hierarchy:
 ```text
 Runtime HTTP contracts
         ↓
-Feature API adapters (`SpecificationApi`, `TaskApi`, `SpecsOverviewApi`)
+Feature API adapters (`SpecificationApi`, `TaskApi`, `DocumentApi`, `SpecsOverviewApi`)
         ↓
 TanStack Query query/mutation definitions
         ↓
@@ -242,8 +244,8 @@ Feature APIs are composed from this boundary via `SpecFlowServicesProvider` and 
 - `SpecFlowServices` exposes `authApi`, `authStore`, `specsOverviewApi`,
   `specificationApi`, `taskApi` and `runtimeInfoApi`. The one shared `HttpClient` stays private
   to the composition root.
-- `SpecificationApi` reads the real Workspace and document endpoints from Runtime, while
-  feature-owned `TaskApi` reads Task detail through its own typed adapter and query keys.
+- `SpecificationApi` reads the Runtime Workspace endpoint, while feature-owned `DocumentApi` and `TaskApi`
+  read their independent Detail endpoints through typed adapters and query keys.
   Both use the shared application HTTP client, and missing project-side sources produce
   explicit unavailable responses rather than browser fixtures.
 - Storybook/test fixtures live under `test-support` and must not be imported by production UI.
@@ -416,3 +418,38 @@ changes) rather than only re-fetching the initial snapshot. A failed detail load
 The feature caches semantic lifecycle/status codes, not labels in a particular locale;
 product presentation resolves those codes using the current i18next locale. A single
 `recommendedSessionId` originates in Runtime; UI does not assume the first Session is preferred.
+
+### Sidebar navigation read model
+
+`ProductNavigation` reads a small document-count/Git-availability projection from
+an existing TanStack Query Workspace cache entry, using a disabled observer.
+It does not issue `GET /api/specs/:specId/workspace` merely because the user
+opened Full Task or Full Document directly. When the Workspace has not yet
+been loaded, those optional navigation hints stay unknown (document count
+is omitted; Git destinations are not hidden based on missing metadata).
+This is a cache-only transitional adapter, not a second authoritative
+read model. A dedicated lightweight Runtime navigation endpoint may replace
+it if fresh sidebar metadata becomes a product requirement.
+
+### Authentication recovery boundary
+
+Typed protected Runtime APIs share one decorated transport created in the application
+services factory. `AuthApi` uses the undecorated underlying transport, preventing
+recursive authentication recovery.
+
+The application-owned `AuthRecoveryCoordinator` coordinates HTTP 401 revalidation,
+single-flight requests and generation-based late responses. Safe reads are replayed
+at most once after a valid session. Mutations never replay automatically.
+Persistent 401 and resource-specific 403 remain errors rather than causing loops.
+SSE errors revalidate the session without blindly restarting the stream.
+Protected SSE subscriptions are bound to their opening authentication session:
+a login/logout or confirmed identity change actively closes a stream, and
+late events from the old identity are never yielded into the UI.
+
+The application root owns Login/Runtime Unavailable navigation. Individual feature
+routes must not refresh sessions or redirect after 401. TanStack Query retains
+feature data when revalidation confirms the same identity, while logout and
+identity changes isolate and clear previous-user cached data.
+
+Feature APIs must not use raw `HttpClient.axios`, which bypasses application
+recovery. It remains an exceptional, explicitly documented low-level escape hatch.

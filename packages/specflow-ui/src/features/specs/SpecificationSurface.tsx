@@ -15,25 +15,25 @@ import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { specificationKeys } from './queries';
 
-import type { SpecificationWorkspaceData, SpecificationWorkspaceView } from './workspace/model';
+import type { SpecificationWorkspaceData } from './workspace/model';
 import { SpecificationWorkspace } from './workspace/SpecificationWorkspace';
 import { useSpecificationWorkspace } from './useSpecificationWorkspace';
-import { SpecificationDocumentContent } from './connected/SpecificationDocumentContent';
 
 export interface SpecificationSurfaceProps {
   readonly specId: string;
   readonly overviewHref?: string;
   readonly onBack?: () => void;
-  readonly initialView?: SpecificationWorkspaceView;
-  readonly onNavigateView?: (target: { view: SpecificationWorkspaceView }) => void;
+  readonly onOpenDocuments?: () => void;
+  readonly onOpenSessions?: () => void;
+  readonly onOpenRepository?: () => void;
+  readonly onOpenChanges?: (source?: 'base' | 'uncommitted' | 'mr') => void;
   readonly onOpenTask?: (taskId: string) => void;
+  readonly onOpenFullDocument?: (documentId: string) => void;
   readonly data?: SpecificationWorkspaceData;
   readonly onRefresh?: () => void | Promise<void>;
   readonly onExecute?: (agent: string, tasks: readonly string[]) => void | Promise<void>;
   readonly onNewConversation?: (agent: string) => void | Promise<void>;
   readonly onOpenSession?: (sessionId: string) => void;
-  readonly onTaskUnauthorized?: (retry: () => void) => void;
-  readonly onDiff?: (file: string) => void;
 }
 
 /** Specification workspace screen. */
@@ -53,15 +53,16 @@ function SpecificationSurfaceConnected({
   specId,
   overviewHref,
   onBack,
-  initialView,
-  onNavigateView,
+  onOpenDocuments,
+  onOpenSessions,
+  onOpenRepository,
+  onOpenChanges,
   onOpenTask,
+  onOpenFullDocument,
   onRefresh,
   onExecute,
   onNewConversation,
   onOpenSession,
-  onTaskUnauthorized,
-  onDiff,
 }: SpecificationSurfaceProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -185,17 +186,17 @@ function SpecificationSurfaceConnected({
       data={data}
       overviewHref={overviewHref}
       onBack={onBack}
-      initialView={initialView}
-      onNavigateView={onNavigateView}
+      onOpenDocuments={onOpenDocuments}
+      onOpenSessions={onOpenSessions}
+      onOpenRepository={onOpenRepository}
+      onOpenChanges={onOpenChanges}
       onOpenTask={onOpenTask}
+      onOpenFullDocument={onOpenFullDocument}
       onRefresh={onRefresh ?? refreshWorkspace}
       onExecute={onExecute}
       onNewConversation={onNewConversation}
       onOpenSession={onOpenSession}
-      onTaskUnauthorized={onTaskUnauthorized}
-      onDiff={onDiff}
       refreshFailed={isError && Boolean(data)}
-      renderDocument={(doc) => <SpecificationDocumentContent specId={specId} documentId={doc.id} />}
     />
   );
 }

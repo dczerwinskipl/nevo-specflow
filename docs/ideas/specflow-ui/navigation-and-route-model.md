@@ -113,16 +113,16 @@ Task/issue deep links inside that row.
 
 ## 5. Specification and Task navigation
 
-The later local Specification UX draft compares a
-Specification-local main-view navigation layer for Documents, Sessions and available capabilities.
-It retains Task/evidence as local inspectors but proposes router-owned main local destinations.
-That proposal is not yet implemented by the placeholder and must be reviewed before freezing
-the earlier contextual-only collection placement described here.
+The implementation separates canonical Primary pages from local Secondary
+inspectors. Specification Overview is `/specs/:specId`; Documents List and
+Full Document use `/specs/:specId/documents` and
+`/specs/:specId/documents/:documentId`. Full Task uses
+`/specs/:specId/tasks/:taskId`. Sessions List, Changes and Repository have
+their own sibling Primary routes. Legacy `?view` URLs redirect.
 
-The owner-refined model also separates local short Task preview from explicit Full Task promotion.
-Inspector-only Task statements below describe the earlier proposal, not a prohibition on the new
-main destination. Default Work Secondary shows Specification activity/history; preview replaces
-it only on user action.
+On split layouts Task/Document previews live in Secondary. On Narrow the same
+inspectors are locally pushed without becoming routes. A new Primary route
+disposes the previous local inspector state.
 
 A Specs Overview row always opens the Specification Primary. It must not redirect the user to
 whichever Task/issue happens to be highest priority at that moment, and ordinary status/reason prose

@@ -1,9 +1,10 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { AppShell } from '@nevo/ui';
 import { appI18n, LocalizationProvider } from '../../../i18n';
 import { SpecificationWorkspace } from './SpecificationWorkspace';
-import { DocumentsView } from './DocumentsView';
+import { UiModulesProvider } from '../../../app/ui-modules/UiModulesProvider';
+import { builtInUiModuleRegistry } from '../../../app/ui-modules/builtInUiModules';
 
 import { createSpecificationWorkspaceFixture } from '../../../../test-support/specs/workspace/fixtures';
 
@@ -12,11 +13,13 @@ function renderWorkspaceMarkup(
 ) {
   const data = props.data ?? createSpecificationWorkspaceFixture('working', 'UI-1234');
   return renderToStaticMarkup(
-    <LocalizationProvider>
-      <AppShell navigation={<div>Nav</div>}>
-        <SpecificationWorkspace specId="UI-1234" data={data} {...props} />
-      </AppShell>
-    </LocalizationProvider>,
+    <UiModulesProvider modules={builtInUiModuleRegistry}>
+      <LocalizationProvider>
+        <AppShell navigation={<div>Nav</div>}>
+          <SpecificationWorkspace specId="UI-1234" data={data} {...props} />
+        </AppShell>
+      </LocalizationProvider>
+    </UiModulesProvider>,
   );
 }
 
@@ -114,6 +117,46 @@ describe('SpecificationWorkspace', () => {
     expect(markup).toContain('w przygotowaniu');
   });
 
+  it('preserves Runtime attention ordering across contributing modules', () => {
+    const source = createSpecificationWorkspaceFixture('working', 'UI-1234');
+    const attentionItems = [
+      {
+        id: 's',
+        kind: 'session' as const,
+        title: 'First session attention',
+        reason: 'Needs a response',
+        targetId: 'S1',
+        actionLabel: 'Open',
+      },
+      {
+        id: 'g',
+        kind: 'git' as const,
+        title: 'Second git attention',
+        reason: 'Resolve conflicts',
+        actionLabel: 'Review',
+      },
+      {
+        id: 't',
+        kind: 'task' as const,
+        title: 'Third task attention',
+        reason: 'Review task',
+        targetId: 'T1',
+        actionLabel: 'Inspect',
+      },
+      {
+        id: 'c',
+        kind: 'specification' as const,
+        title: 'Fourth specification attention',
+        reason: 'Needs preparation',
+        actionLabel: '',
+      },
+    ];
+    const markup = renderWorkspaceMarkup({ data: { ...source, attentionItems } });
+    const titles = attentionItems.map((item) => markup.indexOf(item.title));
+    expect(titles.every((position) => position > 0)).toBe(true);
+    expect(titles).toEqual([...titles].sort((a, b) => a - b));
+  });
+
   it('renders git-conflict scenario with conflict attention item', () => {
     const markup = renderWorkspaceMarkup({
       data: createSpecificationWorkspaceFixture('git-conflict', 'UI-1234'),
@@ -123,35 +166,17 @@ describe('SpecificationWorkspace', () => {
     expect(markup).toContain('Sprawdź konflikty');
   });
 
-  it('renders initial task view when initialTask is provided', () => {
-    const markup = renderWorkspaceMarkup({ initialTask: 'TASK-03' });
+  it('does not render the legacy list-backed Full Task view inside Specification Work', () => {
+    const markup = renderWorkspaceMarkup();
 
-    expect(markup).toContain('Wróć do specyfikacji');
-    expect(markup).toContain('Opis i cel');
-    expect(markup).toContain('Kryteria akceptacji');
+    expect(markup).not.toContain('Task / TASK-03');
+    expect(markup).not.toContain('Kryteria akceptacji');
   });
 
-  it('renders documents view when initialView is documents', () => {
-    const markup = renderWorkspaceMarkup({ initialView: 'documents' });
-
-    expect(markup).toContain('Szukaj dokumentu');
-    expect(markup).toContain('Specyfikacja');
-    expect(markup).toContain('Obszar: uwierzytelnianie');
-  });
-
-  it('renders sessions view when initialView is sessions', () => {
-    const markup = renderWorkspaceMarkup({ initialView: 'sessions' });
-
-    expect(markup).toContain('Sesje tej specyfikacji');
-    expect(markup).toContain('Nowa rozmowa');
-  });
-
-  it('renders changes view when initialView is changes', () => {
-    const markup = renderWorkspaceMarkup({ initialView: 'changes' });
-
-    expect(markup).toContain('Względem main');
-    expect(markup).toContain('Niecommitowane');
-    expect(markup).toContain('src/auth/refreshSession.ts');
+  it('renders Specification Overview independently of the previous tab-view selection model', () => {
+    const markup = renderWorkspaceMarkup();
+    expect(markup).toContain('Wymaga Twojej uwagi');
+    expect(markup).toContain('Taski');
   });
 
   it('renders Specification header eyebrow with back link and specification identity', () => {
@@ -170,41 +195,5 @@ describe('SpecificationWorkspace', () => {
     // In ResumeSessionSection, button should be disabled and have title "Niezaimplementowane"
     expect(markup).toContain('disabled=""');
     expect(markup).toContain('Niezaimplementowane');
-  });
-
-  it('renders honest capabilities: does not render diff button when onDiff is not provided', () => {
-    const markup = renderWorkspaceMarkup({
-      initialView: 'changes',
-      onDiff: undefined,
-    });
-
-    expect(markup).not.toContain('Pokaż diff');
-  });
-
-  it('renders markdown content in document detail view using MarkdownDocument', () => {
-    const markup = renderToStaticMarkup(
-      <LocalizationProvider>
-        <DocumentsView
-          documents={[
-            {
-              id: 'doc-spec',
-              title: 'Główna specyfikacja',
-              kind: 'spec',
-              content: '### Szczegóły techniczne\n\nTo jest **sformatowany** tekst markdown.',
-            },
-          ]}
-          activeDocId="doc-spec"
-          docOrigin="documents"
-          onSelectDoc={vi.fn()}
-          onBackToOrigin={vi.fn()}
-        />
-      </LocalizationProvider>,
-    );
-
-    expect(markup).toContain('Główna specyfikacja');
-    expect(markup).toContain('Szczegóły techniczne');
-    expect(markup).toContain(
-      '<strong class="font-semibold text-content-primary">sformatowany</strong>',
-    );
   });
 });

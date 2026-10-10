@@ -45,8 +45,15 @@ export function mapWorkspaceResponse(
     intro: specification.summary,
     isEmpty: specification.preparationState === 'empty',
     isPreparing: specification.preparationState === 'preparing',
-    hasGit: sections.repository.state === 'available',
-    hasExtensions: false,
+    // A temporarily unavailable repository is unknown, not absent.
+    // Forbidden or not-yet-implemented Git is not a usable navigation target.
+    hasGit:
+      sections.repository.state === 'available'
+        ? true
+        : sections.repository.state === 'forbidden' ||
+            sections.repository.reason === 'not_implemented'
+          ? false
+          : undefined,
     sectionAvailability: {
       attention: sections.attention.state,
       tasks: sections.tasks.state,

@@ -1,5 +1,21 @@
-import type { SpecificationWorkspaceResponse } from '@nevo/specflow-contracts/specs/workspace';
-import type { ActivityEvent, SpecificationWorkspaceData, TaskItem } from './model';
+import type {
+  SpecificationWorkspaceResponse,
+  WorkspaceAttention,
+} from '@nevo/specflow-contracts/specs/workspace';
+import type { ActivityEvent, AttentionItem, SpecificationWorkspaceData, TaskItem } from './model';
+
+function mapAttention(items: readonly WorkspaceAttention[]): AttentionItem[] {
+  return items.map((item) => ({
+    id: item.id,
+    kind: item.kind,
+    title: item.title,
+    reason: item.reason,
+    actionLabel: '',
+    actionCode: item.kind,
+    targetId: item.targetId,
+    priority: item.priority,
+  }));
+}
 
 export function mapWorkspaceResponse(
   dto: SpecificationWorkspaceResponse,
@@ -55,7 +71,6 @@ export function mapWorkspaceResponse(
           ? false
           : undefined,
     sectionAvailability: {
-      attention: sections.attention.state,
       tasks: sections.tasks.state,
       documents: sections.documents.state,
       sessions: sections.sessions.state,
@@ -63,18 +78,15 @@ export function mapWorkspaceResponse(
       repository: sections.repository.state,
       changes: sections.changes.state,
     },
-    attentionItems:
-      sections.attention.state === 'available'
-        ? sections.attention.data.items.map((item) => ({
-            id: item.id,
-            kind: item.kind,
-            title: item.title,
-            reason: item.reason,
-            actionLabel: '',
-            actionCode: item.kind,
-            targetId: item.targetId,
-          }))
-        : [],
+    attentionItems: mapAttention(specification.attention),
+    featureAttention: {
+      tasks: tasks ? mapAttention(tasks.attention ?? []) : [],
+      sessions:
+        sections.sessions.state === 'available'
+          ? mapAttention(sections.sessions.data.attention ?? [])
+          : [],
+      git: repository ? mapAttention(repository.attention ?? []) : [],
+    },
     taskGroups,
     completedTasksCount: tasks?.completed,
     totalTasksCount: tasks?.total,

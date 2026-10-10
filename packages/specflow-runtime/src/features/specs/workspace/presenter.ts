@@ -7,19 +7,27 @@ function presentSection<T>(section: SourceSection<T>) {
     : { state: 'unavailable' as const, reason: section.reason };
 }
 
-/** Converts the Runtime read model to the public response without mixing authorization into storage. */
+/** The Runtime read model already assigns Attention to its owning domain section. */
 export function presentWorkspace(data: WorkspaceReadModel): SpecificationWorkspaceResponse {
   return {
     revision: data.revision,
     specification: data.specification,
     ...(data.recommendedSessionId ? { recommendedSessionId: data.recommendedSessionId } : {}),
     sections: {
-      attention: presentSection(data.sections.attention),
       tasks: presentSection(data.sections.tasks),
       documents: presentSection(data.sections.documents),
       sessions: presentSection(data.sections.sessions),
       activity: presentSection(data.sections.activity),
-      repository: presentSection(data.sections.repository),
+      repository:
+        data.sections.repository.state === 'available'
+          ? {
+              state: 'available',
+              data: {
+                ...data.sections.repository.data,
+                attention: data.sections.repository.data.attention ?? [],
+              },
+            }
+          : presentSection(data.sections.repository),
       changes: presentSection(data.sections.changes),
     },
     actions: data.actions,

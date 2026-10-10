@@ -52,6 +52,13 @@ export interface AttentionItem {
   readonly actionLabel: string;
   readonly actionCode?: 'task' | 'session' | 'git' | 'specification';
   readonly targetId?: string;
+  readonly priority?: 'critical' | 'high' | 'normal';
+}
+
+export interface FeatureAttentionData {
+  readonly tasks: readonly AttentionItem[];
+  readonly sessions: readonly AttentionItem[];
+  readonly git: readonly AttentionItem[];
 }
 
 export interface RepoContext {
@@ -113,7 +120,7 @@ export interface SpecificationChangesData {
 }
 
 export type SpecificationSectionId =
-  'attention' | 'tasks' | 'documents' | 'sessions' | 'activity' | 'repository' | 'changes';
+  'tasks' | 'documents' | 'sessions' | 'activity' | 'repository' | 'changes';
 export type SpecificationSectionState = 'available' | 'unavailable' | 'forbidden';
 
 export interface SpecificationWorkspaceData {
@@ -125,7 +132,10 @@ export interface SpecificationWorkspaceData {
   readonly isEmpty?: boolean;
   readonly isPreparing?: boolean;
   readonly hasGit?: boolean;
+  /** Specification-owned entries only, not other features' Attention. */
   readonly attentionItems: readonly AttentionItem[];
+  /** Facts provided by the owning Runtime feature sections. */
+  readonly featureAttention?: FeatureAttentionData;
   readonly repoContext?: RepoContext;
   readonly resumeSession?: SessionSummary;
   readonly taskGroups: readonly TaskGroup[];

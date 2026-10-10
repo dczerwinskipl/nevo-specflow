@@ -153,4 +153,73 @@ describe('SpecificationSurface', () => {
     expect(markup).toContain('Odświeżanie sesji i zachowanie kontekstu użytkownika');
     expect(markup).toContain('ID specyfikacji: spec-123');
   });
+
+  it('distinguishes forbidden Workspace from transient source failures', () => {
+    const queryClient = createSpecFlowQueryClient();
+    const services = createSpecFlowAppServices();
+    const query = queryClient.getQueryCache().build(queryClient, {
+      queryKey: specificationKeys.detail('spec-forbidden'),
+    });
+    query.setState({
+      status: 'error',
+      error: new HttpClientError('Forbidden', { kind: 'http', status: 403 }),
+      fetchStatus: 'idle',
+      errorUpdateCount: 1,
+    });
+
+    const markup = renderToStaticMarkup(
+      <QueryClientProvider client={queryClient}>
+        <UiModulesProvider modules={builtInUiModuleRegistry}>
+          <SpecFlowServicesProvider services={services}>
+            <LocalizationProvider>
+              <AppShell navigation={<div>Nav</div>}>
+                <SpecificationSurface specId="spec-forbidden" />
+              </AppShell>
+            </LocalizationProvider>
+          </SpecFlowServicesProvider>
+        </UiModulesProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(markup).toContain('Brak dostępu');
+    expect(markup).toContain('Nie masz uprawnień');
+    expect(markup).not.toContain('Specyfikacja jest niedostępna');
+  });
+
+  it('does not render retained Workspace content after a domain 404', () => {
+    const queryClient = createSpecFlowQueryClient();
+    const specId = 'deleted';
+    const key = specificationKeys.detail(specId);
+    const cached = createSpecificationWorkspaceFixture('working', specId);
+    queryClient.setQueryData(key, cached);
+    const query = queryClient.getQueryCache().find({ queryKey: key, exact: true });
+    if (!query) throw new Error('Expected cached Workspace query');
+    query.setState({
+      status: 'error',
+      error: new HttpClientError('Specification deleted', {
+        kind: 'http',
+        status: 404,
+        data: { error: 'specification_not_found' },
+      }),
+      fetchStatus: 'idle',
+      errorUpdateCount: 1,
+    });
+
+    const markup = renderToStaticMarkup(
+      <QueryClientProvider client={queryClient}>
+        <UiModulesProvider modules={builtInUiModuleRegistry}>
+          <SpecFlowServicesProvider services={createSpecFlowAppServices()}>
+            <LocalizationProvider>
+              <AppShell navigation={<div>Nav</div>}>
+                <SpecificationSurface specId={specId} />
+              </AppShell>
+            </LocalizationProvider>
+          </SpecFlowServicesProvider>
+        </UiModulesProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(markup).toContain('Nie znaleziono specyfikacji');
+    expect(markup).not.toContain(cached.title);
+  });
 });

@@ -250,6 +250,12 @@ Feature APIs are composed from this boundary via `SpecFlowServicesProvider` and 
   explicit unavailable responses rather than browser fixtures.
 - Storybook/test fixtures live under `test-support` and must not be imported by production UI.
 
+Connected components use an explicitly provided `SpecFlowServicesProvider`; missing providers fail
+immediately rather than silently falling back to the production singleton. Route guards access
+**the same composed service instance** through TanStack Router context. These two contexts are
+access paths, not separate service instances or independent reactive stores. Neither may hold
+rapidly changing Task/Session/Workspace data.
+
 Component code never instantiates ad-hoc transport clients and does not know arbitrary endpoint URLs.
 
 ### Server state via TanStack Query
@@ -259,7 +265,7 @@ An application-level `QueryClient` is initialized at the composition root (`App.
 
 - Server reads, caching, invalidation, loading, error, and mutation lifecycle are owned by TanStack Query.
 - Query keys are defined canonically per feature (`specificationKeys`, `specsOverviewKeys`).
-- Local UI state (active local view, selected task, inspector drawer open/close, dialog visibility) remains local React state.
+- Local UI state (selection, local Secondary stack, dialog visibility) remains local React state.
 
 ### Separation of screen composition and presentation
 
@@ -415,8 +421,20 @@ The present Runtime increment has a demonstration source and integration tests b
 claim a completed project-side Specification read adapter. Multi-project and
 multi-worktree ownership remain separate future capabilities.
 
-Workspace refresh invalidates the Specification query prefix (snapshot, Tasks, documents and
-changes) rather than only re-fetching the initial snapshot. A failed detail load exposes Retry.
+Workspace header Refresh invalidates **only the exact Workspace snapshot** query. Full Task,
+Document and Git Changes queries own independent freshness, error and Retry lifecycles; they
+are not implicitly refetched merely because the user refreshes the overview. A domain mutation
+may separately invalidate every authoritative projection it actually changes.
+A failed detail load exposes Retry. The temporary aggregate-backed Documents, Sessions and Git
+list pages may retain a successful snapshot after a transient HTTP 503, but MUST visibly mark
+it as stale and offer a local Query Retry. A later 401/403/404 must never display previously
+cached protected or deleted content.
+
+A contribution error boundary catches **render failures only**. Its Retry resets its own
+render boundary without refetching Workspace or inferring a feature Query key. Connected
+feature components own their data-load error and Retry UX; modules that introduce independent
+queries MUST implement their own scoped refetch and error presentation. The host MUST NOT
+turn a render retry into broad Query invalidation.
 The feature caches semantic lifecycle/status codes, not labels in a particular locale;
 product presentation resolves those codes using the current i18next locale. A single
 `recommendedSessionId` originates in Runtime; UI does not assume the first Session is preferred.
@@ -429,6 +447,11 @@ It does not issue `GET /api/specs/:specId/workspace` merely because the user
 opened Full Task or Full Document directly. When the Workspace has not yet
 been loaded, those optional navigation hints stay unknown (document count
 is omitted; Git destinations are not hidden based on missing metadata).
+An explicitly unsupported (`not_implemented`) or forbidden Git source hides the Git
+navigation entries, while `source_unavailable` remains unknown instead of being treated
+as an absent capability. No unavailable document collection is misrepresented as
+an authoritative zero. A resource-wide HTTP 401, 403 or 404 suppresses previously cached
+sidebar metadata, even if TanStack Query retains the earlier successful response.
 This is a cache-only transitional adapter, not a second authoritative
 read model. A dedicated lightweight Runtime navigation endpoint may replace
 it if fresh sidebar metadata becomes a product requirement.

@@ -31,24 +31,24 @@ export const sessionsUiModule: UiModule = {
     }),
     contributeTo(specificationAttentionItems, {
       id: 'specflow.sessions.attention',
-      getItems: ({ data, actions }) =>
-        data.attentionItems
-          .filter((item) => item.kind === 'session')
-          .map((item) => ({
-            item,
-            icon: 'chat',
-            action: item.targetId
-              ? {
-                  label: item.actionLabel,
-                  labelKey:
-                    item.actionCode === 'session' ? 'specification.openSessionAction' : undefined,
-                  onClick: () => actions.openSession(item.targetId!),
-                  disabled: actions.canOpenSession === false,
-                  disabledTitleKey:
-                    actions.canOpenSession === false ? 'common.notImplemented' : undefined,
-                }
-              : undefined,
-          })),
+      getItems: ({ data, actions }) => {
+        const items = data.featureAttention?.sessions ?? [];
+        return items.map((item) => ({
+          item,
+          icon: 'chat',
+          action: item.targetId
+            ? {
+                label: item.actionLabel,
+                labelKey:
+                  item.actionCode === 'session' ? 'specification.openSessionAction' : undefined,
+                onClick: () => actions.openSession(item.targetId!),
+                disabled: actions.canOpenSession === false,
+                disabledTitleKey:
+                  actions.canOpenSession === false ? 'common.notImplemented' : undefined,
+              }
+            : undefined,
+        }));
+      },
     }),
   ],
 };

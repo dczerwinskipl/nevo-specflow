@@ -28,18 +28,18 @@ export const gitUiModule: UiModule = {
     }),
     contributeTo(specificationAttentionItems, {
       id: 'specflow.git.attention',
-      getItems: ({ data, actions }) =>
-        data.attentionItems
-          .filter((item) => item.kind === 'git')
-          .map((item) => ({
-            item,
-            icon: 'branch',
-            action: {
-              label: item.actionLabel,
-              labelKey: item.actionCode === 'git' ? 'specification.viewRepository' : undefined,
-              onClick: actions.openRepository,
-            },
-          })),
+      getItems: ({ data, actions }) => {
+        const items = data.featureAttention?.git ?? [];
+        return items.map((item) => ({
+          item,
+          icon: 'branch',
+          action: {
+            label: item.actionLabel,
+            labelKey: item.actionCode === 'git' ? 'specification.viewRepository' : undefined,
+            onClick: actions.openRepository,
+          },
+        }));
+      },
     }),
   ],
 };

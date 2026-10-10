@@ -18,14 +18,17 @@ const unauthenticated: AuthSessionResponse = {
   loginMethods: session('a').loginMethods,
 };
 
-function setup(getSession: () => Promise<AuthSessionResponse>) {
+function setup(
+  getSession: () => Promise<AuthSessionResponse>,
+  initialSession: AuthSessionResponse = session('a'),
+) {
   const api: AuthApi = {
     getSession,
     loginWithPassword: (_username) => Promise.resolve(session('b')),
     startOidc: () => Promise.reject(new Error('unused')),
     logout: () => Promise.resolve(),
   };
-  const auth = createAuthStore(api, session('a'));
+  const auth = createAuthStore(api, initialSession);
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const detach = bindAuthQueryCache(auth, queryClient);
   const key = ['specifications', 'a', 'document', 'notes'];
@@ -47,6 +50,43 @@ describe('Auth Query cache isolation', () => {
     const { auth, queryClient, detach, key } = setup(() => Promise.resolve(session('a')));
     await auth.loginWithPassword('b', 'secret');
     expect(queryClient.getQueryData(key)).toBeUndefined();
+    detach();
+  });
+
+  it('clears cached user data when a trusted-local session stops being authenticated', async () => {
+    const initiallyAuthenticated: AuthSessionResponse = {
+      ...session('a'),
+      authenticationRequired: false,
+    };
+    const revalidated: AuthSessionResponse = {
+      authenticationRequired: false,
+      authenticated: false,
+      user: { id: 'a', name: 'a' },
+      loginMethods: session('a').loginMethods,
+    };
+    const { auth, queryClient, detach, key } = setup(
+      () => Promise.resolve(revalidated),
+      initiallyAuthenticated,
+    );
+    await auth.refresh();
+    expect(auth.sessionGeneration()).toBe(0);
+    expect(queryClient.getQueryData(key)).toBeUndefined();
+    detach();
+  });
+
+  it('retains cached data when revalidating the same trusted-local user', async () => {
+    const localSession: AuthSessionResponse = {
+      authenticationRequired: false,
+      authenticated: false,
+      user: { id: 'a', name: 'a' },
+      loginMethods: session('a').loginMethods,
+    };
+    const { auth, queryClient, detach, key } = setup(
+      () => Promise.resolve(localSession),
+      localSession,
+    );
+    await auth.refresh();
+    expect(queryClient.getQueryData(key)).toEqual({ data: 'private' });
     detach();
   });
 

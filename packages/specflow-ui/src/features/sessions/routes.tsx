@@ -1,21 +1,28 @@
 import { createRoute } from '@tanstack/react-router';
-import { appRoute } from '../../app/router/root';
+import { useTranslation } from 'react-i18next';
+import { specificationRoute } from '../specs/routes';
+import { parseSpecificationCollection } from '../../app/router/search';
 import { SpecificationAggregatePage } from '../specs/pages/SpecificationAggregatePage';
 import { SessionsView } from './views/SessionsView';
 
 export const sessionsRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: '/specs/$specId/sessions',
+  getParentRoute: () => specificationRoute,
+  path: 'sessions',
   validateSearch: (search: Record<string, unknown>) => ({
-    collection: search.collection === 'archive' ? ('archive' as const) : ('current' as const),
+    collection: parseSpecificationCollection(search),
   }),
   component: SessionsRouteScreen,
 });
 
 function SessionsRouteScreen() {
   const { specId } = sessionsRoute.useParams();
+  const { t } = useTranslation();
   return (
-    <SpecificationAggregatePage specId={specId} title="Sessions" section="sessions">
+    <SpecificationAggregatePage
+      specId={specId}
+      title={t('specification.viewSessions')}
+      section="sessions"
+    >
       {(data) => <SessionsView sessions={data.sessions} />}
     </SpecificationAggregatePage>
   );

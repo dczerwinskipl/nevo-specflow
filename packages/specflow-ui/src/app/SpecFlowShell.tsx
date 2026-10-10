@@ -11,7 +11,7 @@ import {
   type NavigationAdapter,
   type NavigationNode,
 } from '@nevo/ui';
-import { Link, useRouter, useRouterState } from '@tanstack/react-router';
+import { Link, useMatch, useMatchRoute, useRouter, useRouterState } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 
 import type { AuthStore } from '../auth/store';
@@ -20,19 +20,25 @@ import { AccountMenu } from './AccountMenu';
 
 import { useSpecificationNavigationMetadata } from '../features/specs/overview/useSpecificationNavigationMetadata';
 
-interface NavigationTarget {
-  readonly to:
-    | '/'
-    | '/specs/$specId'
-    | '/specs/$specId/documents'
-    | '/specs/$specId/sessions'
-    | '/specs/$specId/changes'
-    | '/specs/$specId/repository';
-  readonly params?: { readonly specId: string };
-  readonly search?: {
-    readonly collection?: 'current' | 'archive';
-  };
-}
+/** Sidebar destinations only; Full Task and Document Detail are not menu entries. */
+type SidebarTarget =
+  | {
+      readonly to: '/';
+      readonly search: { readonly collection: 'current' | 'archive' };
+    }
+  | {
+      readonly to:
+        | '/specs/$specId'
+        | '/specs/$specId/documents'
+        | '/specs/$specId/sessions'
+        | '/specs/$specId/changes'
+        | '/specs/$specId/repository';
+      readonly params: { readonly specId: string };
+      readonly search: {
+        readonly collection: 'current' | 'archive';
+        readonly source?: 'base';
+      };
+    };
 
 function ProductNavigation({
   auth,
@@ -43,32 +49,16 @@ function ProductNavigation({
 }) {
   const { t } = useTranslation();
   const { closeNavigation } = useAppNavigation();
-  const pathname = useRouterState({ select: (routerState) => routerState.location.pathname });
-  const search = useRouterState({
-    select: (state) => state.location.search as { readonly collection?: 'current' | 'archive' },
-  });
-  const activeSpecMatch = useRouterState({
-    select: (state) => state.matches.find((match) => 'specId' in match.params),
+  const matchRoute = useMatchRoute();
+  const collection = useRouterState({
+    select: (state) => (state.location.search.collection === 'archive' ? 'archive' : 'current'),
   });
   const activeSpecId =
-    activeSpecMatch && 'specId' in activeSpecMatch.params
-      ? String(activeSpecMatch.params.specId)
-      : null;
-  const activeView = pathname.includes('/tasks/')
-    ? null
-    : pathname.endsWith('/documents')
-      ? 'documents'
-      : pathname.includes('/documents/')
-        ? 'documents'
-        : pathname.endsWith('/sessions')
-          ? 'sessions'
-          : pathname.endsWith('/changes')
-            ? 'changes'
-            : pathname.endsWith('/repository')
-              ? 'repository'
-              : null;
-  const collection = search?.collection ?? 'current';
-
+    useMatch({
+      from: '/_app/specs/$specId',
+      shouldThrow: false,
+      select: (match) => match.params.specId,
+    }) ?? null;
   const specMetadata = useSpecificationNavigationMetadata(activeSpecId);
 
   const state = useSyncExternalStore(
@@ -89,8 +79,8 @@ function ProductNavigation({
     }
   }, [activeSpecId]);
 
-  const navigationNodes = useMemo<readonly NavigationNode<NavigationTarget>[]>(() => {
-    const rootNodes: NavigationNode<NavigationTarget>[] = [
+  const navigationNodes = useMemo<readonly NavigationNode<SidebarTarget>[]>(() => {
+    const rootNodes: NavigationNode<SidebarTarget>[] = [
       {
         key: 'specs',
         label: t('navigation.specifications'),
@@ -108,13 +98,17 @@ function ProductNavigation({
 
       rootNodes.push({
         key: `spec-${activeSpecId}`,
-        label: activeSpecId,
-        target: {
-          to: '/specs/$specId',
-          params: { specId: activeSpecId },
-          search: { collection },
-        },
+        label: specMetadata?.title ?? activeSpecId,
         children: [
+          {
+            key: 'spec-view-overview',
+            label: t('specification.viewOverview'),
+            target: {
+              to: '/specs/$specId',
+              params: { specId: activeSpecId },
+              search: { collection },
+            },
+          },
           {
             key: `spec-view-documents`,
             label: docsLabel,
@@ -141,7 +135,7 @@ function ProductNavigation({
                   target: {
                     to: '/specs/$specId/changes' as const,
                     params: { specId: activeSpecId },
-                    search: { collection },
+                    search: { collection, source: 'base' } as const,
                   },
                 },
                 {
@@ -150,7 +144,7 @@ function ProductNavigation({
                   target: {
                     to: '/specs/$specId/repository' as const,
                     params: { specId: activeSpecId },
-                    search: { collection },
+                    search: { collection } as const,
                   },
                 },
               ]
@@ -172,95 +166,43 @@ function ProductNavigation({
     return icons;
   }, [activeSpecId]);
 
-  const navigationAdapter = useMemo<NavigationAdapter<NavigationTarget>>(
+  const navigationAdapter = useMemo<NavigationAdapter<SidebarTarget>>(
     () => ({
       match: (node) => {
-        if (node.key === 'specs') {
-          return pathname === '/' ? 'active' : 'none';
+        const target = node.target;
+        if (!target) {
+          // Full Task has no list destination yet; keep the owning Specification group visible.
+          return activeSpecId && node.key === `spec-${activeSpecId}` ? 'ancestor' : 'none';
         }
-        if (activeView && node.key === `spec-view-${activeView}`) {
-          return 'active';
+
+        // The Router owns route matching. Child routes keep their parent expanded,
+        // while a detail Document keeps its Documents destination selected.
+        if (target.to === '/') {
+          return matchRoute({ to: '/', fuzzy: false }) ? 'active' : 'none';
         }
-        if (node.key === `spec-${activeSpecId}`) {
-          return pathname === `/specs/${encodeURIComponent(activeSpecId ?? '')}`
-            ? 'active'
-            : 'ancestor';
+        if (matchRoute({ to: target.to, params: target.params, fuzzy: false })) return 'active';
+        if (target.to === '/specs/$specId') return 'none';
+        if (matchRoute({ to: target.to, params: target.params, fuzzy: true })) {
+          return node.children?.length ? 'ancestor' : 'active';
         }
         return 'none';
       },
       renderLink: ({ children, className, node }) => {
-        if (!node.target) {
-          return <span className={className}>{children}</span>;
-        }
-        if (node.target.to === '/') {
+        const target = node.target;
+        if (!target) return <span className={className}>{children}</span>;
+        if (target.to === '/') {
           return (
-            <Link
-              className={className}
-              to="/"
-              search={{ collection: node.target.search?.collection ?? 'current' }}
-              onClick={closeNavigation}
-            >
+            <Link className={className} to="/" search={target.search} onClick={closeNavigation}>
               {children}
             </Link>
           );
         }
-        const specParams = node.target.params!;
-        const routeSearch = { collection: node.target.search?.collection ?? collection };
-        const to = node.target.to;
-        if (to === '/specs/$specId/documents')
-          return (
-            <Link
-              className={className}
-              to="/specs/$specId/documents"
-              params={specParams}
-              search={routeSearch}
-              onClick={closeNavigation}
-            >
-              {children}
-            </Link>
-          );
-        if (to === '/specs/$specId/sessions')
-          return (
-            <Link
-              className={className}
-              to="/specs/$specId/sessions"
-              params={specParams}
-              search={routeSearch}
-              onClick={closeNavigation}
-            >
-              {children}
-            </Link>
-          );
-        if (to === '/specs/$specId/changes')
-          return (
-            <Link
-              className={className}
-              to="/specs/$specId/changes"
-              params={specParams}
-              search={{ ...routeSearch, source: 'base' }}
-              onClick={closeNavigation}
-            >
-              {children}
-            </Link>
-          );
-        if (to === '/specs/$specId/repository')
-          return (
-            <Link
-              className={className}
-              to="/specs/$specId/repository"
-              params={specParams}
-              search={routeSearch}
-              onClick={closeNavigation}
-            >
-              {children}
-            </Link>
-          );
         return (
           <Link
             className={className}
-            to="/specs/$specId"
-            params={specParams}
-            search={routeSearch}
+            to={target.to}
+            params={target.params}
+            search={target.search}
             onClick={closeNavigation}
           >
             {children}
@@ -268,7 +210,7 @@ function ProductNavigation({
         );
       },
     }),
-    [closeNavigation, pathname, activeSpecId, activeView, collection],
+    [closeNavigation, matchRoute],
   );
 
   return (

@@ -1,6 +1,7 @@
 import { InformationList, MenuItem, OverflowMenu } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { OperationalRow } from '../../../specs/shared/OperationalList';
+import type { CompactFacts } from '../../../specs/shared/OperationalList/OperationalRow.types';
 import type { SessionSummary } from '../../../specs/workspace/model';
 import { sessionActivityLabel } from '../../../specs/workspace/status-labels';
 import { WorkspaceSection } from '../../../specs/workspace/sections/WorkspaceSection';
@@ -12,6 +13,13 @@ export interface ResumeSessionSectionProps {
   readonly onStartConversation: () => void;
   readonly canStartConversation: boolean;
   readonly canOpenSession: boolean;
+}
+
+function sessionFacts({ taskCount, age }: SessionSummary): CompactFacts {
+  if (taskCount && age) return [taskCount, age];
+  if (taskCount) return [taskCount];
+  if (age) return [age];
+  return [];
 }
 
 export function ResumeSessionSection({
@@ -53,7 +61,7 @@ export function ResumeSessionSection({
           titleAs="span"
           primary={session.title}
           onPrimaryClick={canOpenSession ? () => onOpenSession(session.id) : undefined}
-          compactFacts={[session.taskCount ?? '', session.age ?? '']}
+          compactFacts={sessionFacts(session)}
           supporting={
             session.activity
               ? {

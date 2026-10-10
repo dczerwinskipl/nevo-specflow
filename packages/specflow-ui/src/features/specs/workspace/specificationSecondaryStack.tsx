@@ -32,7 +32,6 @@ export const SpecificationSecondaryDataContext =
 export interface TaskPreviewSecondaryData {
   readonly specId: string;
   readonly task: TaskItem;
-  readonly group?: TaskGroup;
   readonly groups: readonly TaskGroup[];
   readonly openFullTask: (taskId: string) => void;
 }
@@ -45,44 +44,49 @@ export function useTaskPreviewData({
   taskId: string;
 }): SecondaryData<TaskPreviewSecondaryData> {
   const context = useContext(SpecificationSecondaryDataContext);
-  const listTask = context?.data.taskGroups.flatMap((g) => g.tasks).find((t) => t.id === taskId);
+  const listTask = context?.data.taskGroups
+    .flatMap((group) => group.tasks)
+    .find((task) => task.id === taskId);
   // Attention/Activity may reference a Task absent from the current Workspace projection.
   const detail = useSpecificationTask(specId, taskId, undefined, Boolean(context) && !listTask);
-  const detailStatus = detail.errorStatus;
-  const retryDetail = detail.refetch;
   if (!context) return { status: 'loading' };
-  if (!listTask && detail.isPending) return { status: 'loading' };
-  if (!listTask && detail.isError) {
-    return taskPreviewFailure(detailStatus, detail.isTaskNotFound, taskId, () => {
-      void retryDetail();
-    });
-  }
-  if (!listTask && detail.data?.task.id !== taskId) {
-    return {
-      status: 'error',
-      message: appI18n.t('specification.taskPreviewLoadFailed'),
-      retry: () => {
-        void retryDetail();
-      },
+
+  let task: TaskItem;
+  if (listTask) {
+    task = listTask;
+  } else {
+    if (detail.isPending) return { status: 'loading' };
+    if (detail.isError) {
+      return taskPreviewFailure(detail.errorStatus, detail.isTaskNotFound, taskId, () => {
+        void detail.refetch();
+      });
+    }
+
+    const detailTask = detail.data?.task;
+    if (detailTask?.id !== taskId) {
+      return {
+        status: 'error',
+        message: appI18n.t('specification.taskPreviewLoadFailed'),
+        retry: () => {
+          void detail.refetch();
+        },
+      };
+    }
+    task = {
+      id: taskId,
+      title: detailTask.title,
+      status: detailTask.status.lifecycle,
+      statusCode: detailTask.status.lifecycle,
+      lifecycle: detailTask.status.lifecycle,
+      group: '',
     };
   }
-  const task: TaskItem = listTask ?? {
-    id: taskId,
-    title: detail.data!.task.title,
-    status: detail.data!.task.status.lifecycle,
-    statusCode: detail.data!.task.status.lifecycle,
-    lifecycle: detail.data!.task.status.lifecycle,
-    group: '',
-  };
-  const group = context.data.taskGroups.find(
-    (g) => g.id === task.group || g.tasks.some((t) => t.id === task.id),
-  );
+
   return {
     status: 'ready',
     data: {
       specId,
       task,
-      group,
       groups: context.data.taskGroups,
       openFullTask: context.openFullTask,
     },
@@ -233,7 +237,7 @@ export const documentPreviewStack = defineSecondaryStack<
           ? [
               {
                 id: 'open-full-document',
-                label: 'Open full document',
+                label: appI18n.t('specification.openFullDocument'),
                 icon: 'open-full',
                 primary: true,
                 onPress: () => data.openFullDocument?.(data.documentId),

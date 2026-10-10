@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, type ReactNode } from 'react';
 import {
   Alert,
   AppContent,
@@ -27,10 +27,17 @@ import {
 } from './specificationSecondaryStack';
 import { useSpecificationDialogs } from './useSpecificationDialogs';
 
+function fullTaskHref(specId: string, taskId: string, collection: 'current' | 'archive'): string {
+  const search = collection === 'archive' ? '?collection=archive' : '';
+  return `/specs/${encodeURIComponent(specId)}/tasks/${encodeURIComponent(taskId)}${search}`;
+}
+
 export interface SpecificationWorkspaceProps {
   readonly specId: string;
+  readonly collection?: 'current' | 'archive';
   readonly data: SpecificationWorkspaceData;
   readonly overviewHref?: string;
+  readonly renderBackLink?: (children: ReactNode, className: string) => ReactNode;
   readonly onBack?: () => void;
   readonly onOpenDocuments?: () => void;
   readonly onOpenSessions?: () => void;
@@ -56,8 +63,9 @@ export function SpecificationWorkspace(props: SpecificationWorkspaceProps) {
 function SpecificationWorkspaceInner({
   specId,
   data,
+  collection = 'current',
   overviewHref,
-  onBack,
+  renderBackLink,
   onOpenDocuments,
   onOpenSessions,
   onOpenRepository,
@@ -107,12 +115,9 @@ function SpecificationWorkspaceInner({
         return;
       }
       // Standalone presentation surfaces also promote Full Task to its canonical route.
-      const collection = overviewHref?.includes('collection=archive') ? '?collection=archive' : '';
-      window.location.assign(
-        `/specs/${encodeURIComponent(specId)}/tasks/${encodeURIComponent(taskId)}${collection}`,
-      );
+      window.location.assign(fullTaskHref(specId, taskId, collection));
     },
-    [secondaryNavigation, onOpenTask, overviewHref, specId],
+    [secondaryNavigation, onOpenTask, collection, specId],
   );
 
   const handleOpenDoc = useCallback(
@@ -164,14 +169,7 @@ function SpecificationWorkspaceInner({
       canExecute: Boolean(onExecute),
       canStartConversation: Boolean(onNewConversation),
       canOpenSession: Boolean(onOpenSession),
-      fullTaskHref: (taskId) => {
-        const params = new URLSearchParams();
-        if (overviewHref?.includes('collection=archive')) {
-          params.set('collection', 'archive');
-        }
-        const search = params.toString();
-        return `/specs/${encodeURIComponent(specId)}/tasks/${encodeURIComponent(taskId)}${search ? `?${search}` : ''}`;
-      },
+      fullTaskHref: (taskId) => fullTaskHref(specId, taskId, collection),
     }),
     [
       handlePreviewTask,
@@ -188,7 +186,7 @@ function SpecificationWorkspaceInner({
       onRefresh,
       onExecute,
       onNewConversation,
-      overviewHref,
+      collection,
       specId,
     ],
   );
@@ -231,33 +229,28 @@ function SpecificationWorkspaceInner({
                   {/* Eyebrow: Spec / ${specId} with back link */}
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-1.5 text-body-sm text-content-muted">
-                      {overviewHref ? (
-                        <Link
-                          href={overviewHref}
-                          className="w-fit"
-                          onClick={(event) => {
-                            if (
-                              onBack &&
-                              event.button === 0 &&
-                              !event.metaKey &&
-                              !event.ctrlKey &&
-                              !event.shiftKey &&
-                              !event.altKey
-                            ) {
-                              event.preventDefault();
-                              onBack();
-                            }
-                          }}
-                        >
-                          <span className="inline-flex items-center gap-1.5 font-medium text-content-secondary hover:text-content-primary">
+                      {renderBackLink ? (
+                        renderBackLink(
+                          <>
                             <Icon name="arrow-right" size="sm" className="rotate-180" />
                             <span data-spec-back-label>
                               {t('specification.backToSpecifications')}
                             </span>
+                          </>,
+                          'w-fit inline-flex items-center gap-1.5 font-medium text-content-secondary hover:text-content-primary',
+                        )
+                      ) : overviewHref ? (
+                        <Link
+                          href={overviewHref}
+                          className="w-fit inline-flex items-center gap-1.5 font-medium text-content-secondary hover:text-content-primary"
+                        >
+                          <Icon name="arrow-right" size="sm" className="rotate-180" />
+                          <span data-spec-back-label>
+                            {t('specification.backToSpecifications')}
                           </span>
                         </Link>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 font-medium text-content-secondary">
+                        <span className="font-medium text-content-secondary">
                           <span data-spec-back-label>
                             {t('specification.backToSpecifications')}
                           </span>

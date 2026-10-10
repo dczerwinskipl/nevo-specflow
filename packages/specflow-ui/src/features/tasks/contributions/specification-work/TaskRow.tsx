@@ -35,7 +35,7 @@ export function TaskRow({
         aria-label={t('specification.selectTask', { id: task.id })}
         checked={selected}
         disabled={isPreparing}
-        onCheckedChange={(checked) => onSelect(task.id, Boolean(checked))}
+        onCheckedChange={(checked) => onSelect(task.id, checked === true)}
       />
     </div>
   );

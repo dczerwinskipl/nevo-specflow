@@ -13,12 +13,12 @@ import {
   specsRootRoutes,
   specsRoute,
   specificationRoute,
-  specificationTaskRoute,
+  specificationIndexRoute,
   validateSpecificationSearch,
   specsForbiddenRoute,
 } from '../features/specs/routes';
 import { defaultSpecFlowServices } from '../services';
-import { taskAppRoutes } from '../features/tasks/routes';
+import { taskAppRoutes, specificationTaskRoute } from '../features/tasks/routes';
 import { documentsAppRoutes } from '../features/documents/routes';
 import { sessionsAppRoutes } from '../features/sessions/routes';
 import { gitAppRoutes } from '../features/git/routes';
@@ -55,10 +55,13 @@ export const routeTree = rootRoute.addChildren([
   ...specsRootRoutes,
   appRoute.addChildren([
     ...specsAppRoutes,
-    ...taskAppRoutes,
-    ...documentsAppRoutes,
-    ...sessionsAppRoutes,
-    ...gitAppRoutes,
+    specificationRoute.addChildren([
+      specificationIndexRoute,
+      ...taskAppRoutes,
+      ...documentsAppRoutes,
+      ...sessionsAppRoutes,
+      ...gitAppRoutes,
+    ]),
     uiPlaygroundRoute,
   ]),
 ]);

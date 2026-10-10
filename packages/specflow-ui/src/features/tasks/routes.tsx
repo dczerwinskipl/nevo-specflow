@@ -1,13 +1,14 @@
 import { createRoute } from '@tanstack/react-router';
-import { appRoute } from '../../app/router/root';
+import { specificationRoute } from '../specs/routes';
+import { parseSpecificationCollection } from '../../app/router/search';
 import { useSpecificationTask } from './useSpecificationTask';
 import { SpecificationTaskPage } from './pages/SpecificationTaskPage';
 
 export const specificationTaskRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: '/specs/$specId/tasks/$taskId',
+  getParentRoute: () => specificationRoute,
+  path: 'tasks/$taskId',
   validateSearch: (search: Record<string, unknown>) => ({
-    collection: search.collection === 'archive' ? ('archive' as const) : ('current' as const),
+    collection: parseSpecificationCollection(search),
   }),
   component: SpecificationTaskRouteScreen,
 });

@@ -34,36 +34,34 @@ export function SpecificationAggregatePage({
   const availability = section && query.data?.sectionAvailability?.[section];
   const accessDenied = query.errorStatus === 403;
   const sectionDenied = availability === 'forbidden';
-  const errorTitle = t(
-    accessDenied ? 'specification.resourceAccessDeniedTitle' : 'specification.unavailableTitle',
-  );
-  const errorMessage = accessDenied
-    ? t('specification.resourceAccessDeniedDescription')
-    : t('specification.unavailableDescription', { id: specId });
-  const sectionTitle = t(
-    sectionDenied ? 'specification.resourceAccessDeniedTitle' : 'specification.unavailableTitle',
-  );
-  const sectionMessage = sectionDenied
-    ? t('specification.resourceAccessDeniedDescription')
-    : t('specification.unavailableDescription', { id: specId });
+  const deniedCopy = {
+    title: t('specification.resourceAccessDeniedTitle'),
+    message: t('specification.resourceAccessDeniedDescription'),
+  };
+  const unavailableCopy = {
+    title: t('specification.unavailableTitle'),
+    message: t('specification.unavailableDescription', { id: specId }),
+  };
+  const errorCopy = accessDenied ? deniedCopy : unavailableCopy;
+  const sectionCopy = sectionDenied ? deniedCopy : unavailableCopy;
   return (
     <AppWorkspace split="primary">
       <AppWorkspace.Primary header={<WorkspaceHeader title={title} />}>
         <AppContent className="w-content-xwide max-w-full">
           <AppWorkspaceBody className="py-6">
             <AppContentContainer align="start" size="full">
-              {query.isLoading || query.isPending ? (
+              {query.isPending ? (
                 <Spinner label={t('specification.loadingWorkspace', { id: specId })} />
               ) : query.isError && (!query.data || query.errorStatus === 403) ? (
-                <Alert role="alert" tone="attention" title={errorTitle}>
-                  <Typography variant="body-sm">{errorMessage}</Typography>
+                <Alert role="alert" tone="attention" title={errorCopy.title}>
+                  <Typography variant="body-sm">{errorCopy.message}</Typography>
                   <Button variant="secondary" size="sm" onClick={() => void query.refetch()}>
                     {t('common.retry')}
                   </Button>
                 </Alert>
               ) : availability && availability !== 'available' ? (
-                <Alert role="status" tone="attention" title={sectionTitle}>
-                  {sectionMessage}
+                <Alert role="status" tone="attention" title={sectionCopy.title}>
+                  {sectionCopy.message}
                 </Alert>
               ) : query.data ? (
                 children(query.data)

@@ -1,5 +1,7 @@
 import { createRoute } from '@tanstack/react-router';
-import { appRoute } from '../../app/router/root';
+import { useTranslation } from 'react-i18next';
+import { specificationRoute } from '../specs/routes';
+import { parseSpecificationCollection } from '../../app/router/search';
 import { SpecificationAggregatePage } from '../specs/pages/SpecificationAggregatePage';
 import { ChangesView } from './views/ChangesView';
 import { RepositoryView } from './views/RepositoryView';
@@ -9,19 +11,19 @@ function parseChangesSource(source: unknown): 'base' | 'uncommitted' | 'mr' {
 }
 
 export const repositoryRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: '/specs/$specId/repository',
+  getParentRoute: () => specificationRoute,
+  path: 'repository',
   validateSearch: (search: Record<string, unknown>) => ({
-    collection: search.collection === 'archive' ? ('archive' as const) : ('current' as const),
+    collection: parseSpecificationCollection(search),
   }),
   component: RepositoryRouteScreen,
 });
 
 export const changesRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: '/specs/$specId/changes',
+  getParentRoute: () => specificationRoute,
+  path: 'changes',
   validateSearch: (search: Record<string, unknown>) => ({
-    collection: search.collection === 'archive' ? ('archive' as const) : ('current' as const),
+    collection: parseSpecificationCollection(search),
     source: parseChangesSource(search.source),
   }),
   component: ChangesRouteScreen,
@@ -31,8 +33,13 @@ function RepositoryRouteScreen() {
   const { specId } = repositoryRoute.useParams();
   const { collection } = repositoryRoute.useSearch();
   const navigate = repositoryRoute.useNavigate();
+  const { t } = useTranslation();
   return (
-    <SpecificationAggregatePage specId={specId} title="Repository" section="repository">
+    <SpecificationAggregatePage
+      specId={specId}
+      title={t('specification.repositoryHeading')}
+      section="repository"
+    >
       {(data) => (
         <RepositoryView
           repoContext={data.repoContext}
@@ -53,8 +60,13 @@ function ChangesRouteScreen() {
   const { specId } = changesRoute.useParams();
   const { source, collection } = changesRoute.useSearch();
   const navigate = changesRoute.useNavigate();
+  const { t } = useTranslation();
   return (
-    <SpecificationAggregatePage specId={specId} title="Changes" section="changes">
+    <SpecificationAggregatePage
+      specId={specId}
+      title={t('specification.changesHeading')}
+      section="changes"
+    >
       {(data) => (
         <ChangesView
           changes={data.changes}

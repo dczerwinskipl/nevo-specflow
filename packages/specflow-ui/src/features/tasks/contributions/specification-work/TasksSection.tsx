@@ -59,10 +59,10 @@ export function TasksSection({
     });
   };
 
+  const tasks = taskGroups.flatMap((group) => group.tasks);
   const completedCount =
-    completedTasksCount ??
-    taskGroups.flatMap((g) => g.tasks).filter((task) => task.lifecycle === 'completed').length;
-  const totalTasks = totalTasksCount ?? taskGroups.flatMap((g) => g.tasks).length;
+    completedTasksCount ?? tasks.filter((task) => task.lifecycle === 'completed').length;
+  const totalTasks = totalTasksCount ?? tasks.length;
 
   const countLabel = isPreparing
     ? t('specification.tasksInPreparation', { count: totalTasks })
@@ -73,16 +73,19 @@ export function TasksSection({
 
   const isExecutionDisabled = canExecute === false || executionReadiness?.canExecute === false;
 
-  const executionTitle =
-    canExecute === false
-      ? t('common.notImplemented')
-      : executionReadiness?.canExecute === false
-        ? executionReadiness.reasonCode === 'not_implemented'
-          ? t('common.notImplemented')
-          : executionReadiness.reasonCode === 'source_unavailable'
-            ? t('specification.unavailableTitle')
-            : (executionReadiness.blockers?.[0] ?? t('specification.executeGenericBlockedNotice'))
-        : undefined;
+  let executionTitle: string | undefined;
+  if (!canExecute) {
+    executionTitle = t('common.notImplemented');
+  } else if (executionReadiness?.canExecute === false) {
+    if (executionReadiness.reasonCode === 'not_implemented') {
+      executionTitle = t('common.notImplemented');
+    } else if (executionReadiness.reasonCode === 'source_unavailable') {
+      executionTitle = t('specification.unavailableTitle');
+    } else {
+      executionTitle =
+        executionReadiness.blockers?.[0] ?? t('specification.executeGenericBlockedNotice');
+    }
+  }
 
   return (
     <WorkspaceSection aria-labelledby="tasks-heading">

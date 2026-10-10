@@ -9,7 +9,11 @@ function renderNavigation(queryClient: QueryClient, specId: string | null): stri
   function NavigationProbe() {
     const metadata = useSpecificationNavigationMetadata(specId);
     return (
-      <span>{metadata ? `${metadata.documentCount}|${String(metadata.hasGit)}` : 'unknown'}</span>
+      <span>
+        {metadata
+          ? `${metadata.title}|${metadata.documentCount}|${String(metadata.hasGit)}`
+          : 'unknown'}
+      </span>
     );
   }
   return renderToStaticMarkup(
@@ -37,7 +41,9 @@ describe('Specification navigation metadata', () => {
     const data = createSpecificationWorkspaceFixture('no-git', 's');
     queryClient.setQueryData(specificationKeys.detail('s'), data);
 
-    expect(renderNavigation(queryClient, 's')).toContain(`${data.documents.length}|false`);
+    expect(renderNavigation(queryClient, 's')).toContain(
+      `${data.title}|${data.documents.length}|false`,
+    );
     expect(renderNavigation(queryClient, null)).toContain('unknown');
   });
 });

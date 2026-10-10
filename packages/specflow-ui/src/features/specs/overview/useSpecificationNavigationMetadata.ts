@@ -3,6 +3,7 @@ import { specificationKeys } from '../queries';
 import type { SpecificationWorkspaceData } from '../workspace/model';
 
 export interface SpecificationNavigationMetadata {
+  readonly title: string;
   readonly documentCount: number;
   readonly hasGit: boolean | undefined;
 }
@@ -18,6 +19,7 @@ export function useSpecificationNavigationMetadata(specId: string | null) {
     queryKey: specificationKeys.detail(specId ?? ''),
     enabled: false,
     select: (data) => ({
+      title: data.title,
       documentCount: data.documents.length,
       hasGit: data.hasGit,
     }),

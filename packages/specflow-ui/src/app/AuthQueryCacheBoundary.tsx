@@ -9,6 +9,7 @@ export function bindAuthQueryCache(auth: AuthStore, queryClient: QueryClient): (
     const state = auth.getState();
     if (state.status === 'ready') {
       const session = state.session;
+      // Cache isolation also tracks authenticated -> unauthenticated transitions in local mode.
       const identity = session.authenticated
         ? `user:${session.user.id}`
         : session.authenticationRequired

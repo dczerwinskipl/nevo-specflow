@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import {
   Alert,
   AppContent,
@@ -21,7 +22,9 @@ import { useSpecificationWorkspace } from './useSpecificationWorkspace';
 
 export interface SpecificationSurfaceProps {
   readonly specId: string;
+  readonly collection?: 'current' | 'archive';
   readonly overviewHref?: string;
+  readonly renderBackLink?: (children: ReactNode, className: string) => ReactNode;
   readonly onBack?: () => void;
   readonly onOpenDocuments?: () => void;
   readonly onOpenSessions?: () => void;
@@ -51,7 +54,9 @@ export function SpecificationSurface(props: SpecificationSurfaceProps) {
 
 function SpecificationSurfaceConnected({
   specId,
+  collection,
   overviewHref,
+  renderBackLink,
   onBack,
   onOpenDocuments,
   onOpenSessions,
@@ -83,24 +88,16 @@ function SpecificationSurfaceConnected({
           <AppContent className="w-content-xwide max-w-full">
             <AppWorkspaceBody className="py-8">
               <AppContentContainer align="start" size="full" className="grid gap-6">
-                {overviewHref ? (
-                  <Link
-                    href={overviewHref}
-                    className="w-fit"
-                    onClick={(event) => {
-                      if (
-                        onBack &&
-                        event.button === 0 &&
-                        !event.metaKey &&
-                        !event.ctrlKey &&
-                        !event.shiftKey &&
-                        !event.altKey
-                      ) {
-                        event.preventDefault();
-                        onBack();
-                      }
-                    }}
-                  >
+                {renderBackLink ? (
+                  renderBackLink(
+                    <>
+                      <Icon name="arrow-right" size="sm" className="rotate-180" />
+                      <span data-spec-back-label>{t('specification.backToSpecifications')}</span>
+                    </>,
+                    'w-fit inline-flex items-center gap-2 text-body-sm font-medium',
+                  )
+                ) : overviewHref ? (
+                  <Link href={overviewHref} className="w-fit">
                     <span className="inline-flex items-center gap-2 text-body-sm font-medium">
                       <Icon name="arrow-right" size="sm" className="rotate-180" />
                       <span data-spec-back-label>{t('specification.backToSpecifications')}</span>
@@ -183,8 +180,10 @@ function SpecificationSurfaceConnected({
   return (
     <SpecificationWorkspace
       specId={specId}
+      collection={collection}
       data={data}
       overviewHref={overviewHref}
+      renderBackLink={renderBackLink}
       onBack={onBack}
       onOpenDocuments={onOpenDocuments}
       onOpenSessions={onOpenSessions}

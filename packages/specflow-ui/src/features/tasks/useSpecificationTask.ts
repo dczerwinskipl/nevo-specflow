@@ -17,13 +17,14 @@ export function useSpecificationTask(
     queryFn: ({ signal }) => activeApi.getTask(specId, taskId, signal),
     enabled: enabled && Boolean(specId) && Boolean(taskId),
   });
-  const errorStatus = isHttpClientError(query.error) ? query.error.status : undefined;
+  const httpError = isHttpClientError(query.error) ? query.error : undefined;
+  const errorStatus = httpError?.status;
+  const data = httpError?.data;
   const isTaskNotFound =
     errorStatus === 404 &&
-    isHttpClientError(query.error) &&
-    typeof query.error.data === 'object' &&
-    query.error.data !== null &&
-    'error' in query.error.data &&
-    query.error.data.error === 'specification_task_not_found';
+    typeof data === 'object' &&
+    data !== null &&
+    'error' in data &&
+    data.error === 'specification_task_not_found';
   return { ...query, errorStatus, isTaskNotFound };
 }

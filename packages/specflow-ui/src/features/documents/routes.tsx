@@ -7,25 +7,26 @@ import {
   AppWorkspaceBody,
   WorkspaceHeader,
 } from '@nevo/ui';
-import { appRoute } from '../../app/router/root';
+import { specificationRoute } from '../specs/routes';
+import { parseSpecificationCollection } from '../../app/router/search';
 import { SpecificationAggregatePage } from '../specs/pages/SpecificationAggregatePage';
 import { DocumentsView } from './views/DocumentsView';
 import { DocumentContent } from './connected/DocumentContent';
 
 export const documentsRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: '/specs/$specId/documents',
+  getParentRoute: () => specificationRoute,
+  path: 'documents',
   validateSearch: (search: Record<string, unknown>) => ({
-    collection: search.collection === 'archive' ? ('archive' as const) : ('current' as const),
+    collection: parseSpecificationCollection(search),
   }),
   component: DocumentsRouteScreen,
 });
 
 export const documentDetailRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: '/specs/$specId/documents/$documentId',
+  getParentRoute: () => specificationRoute,
+  path: 'documents/$documentId',
   validateSearch: (search: Record<string, unknown>) => ({
-    collection: search.collection === 'archive' ? ('archive' as const) : ('current' as const),
+    collection: parseSpecificationCollection(search),
   }),
   component: DocumentDetailRouteScreen,
 });
@@ -34,8 +35,13 @@ function DocumentsRouteScreen() {
   const { specId } = documentsRoute.useParams();
   const { collection } = documentsRoute.useSearch();
   const navigate = documentsRoute.useNavigate();
+  const { t } = useTranslation();
   return (
-    <SpecificationAggregatePage specId={specId} title="Documents" section="documents">
+    <SpecificationAggregatePage
+      specId={specId}
+      title={t('specification.documentsHeading')}
+      section="documents"
+    >
       {(data) => (
         <DocumentsView
           documents={data.documents}

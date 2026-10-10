@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { createRoute, redirect } from '@tanstack/react-router';
+import { createRoute, Link, Outlet, redirect } from '@tanstack/react-router';
 import { appRoute, rootRoute } from '../../app/router/root';
+import { parseSpecificationCollection } from '../../app/router/search';
 import { SpecsOverview } from './overview/SpecsOverview';
 import { useSpecsOverview } from './overview/useSpecsOverview';
 import { SpecsAccessDenied } from './overview/SpecsAccessDenied';
 import { SpecificationSurface } from './SpecificationSurface';
-export { specificationTaskRoute } from '../tasks/routes';
+import { operationalPrimaryLinkClassName } from './shared/OperationalList/OperationalRow';
 
 export const specsForbiddenRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -18,7 +19,7 @@ export const specsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/',
   validateSearch: (search: Record<string, unknown>) => ({
-    collection: search.collection === 'archive' ? ('archive' as const) : ('current' as const),
+    collection: parseSpecificationCollection(search),
   }),
   component: SpecsRouteScreen,
 });
@@ -44,7 +45,7 @@ export function validateSpecificationSearch(search: Record<string, unknown>): {
   view?: LegacySpecificationView;
   task?: string;
 } {
-  const collection = search.collection === 'archive' ? 'archive' : 'current';
+  const collection = parseSpecificationCollection(search);
   const rawView = isValidView(search.view) ? search.view : undefined;
   const rawTask =
     typeof search.task === 'string' && search.task.trim().length > 0
@@ -59,7 +60,6 @@ export function validateSpecificationSearch(search: Record<string, unknown>): {
     task = rawTask;
   } else if (rawView) {
     view = rawView;
-    task = undefined;
   } else if (rawTask) {
     view = 'task';
     task = rawTask;
@@ -135,6 +135,12 @@ export const specificationRoute = createRoute({
       });
     }
   },
+  component: Outlet,
+});
+
+export const specificationIndexRoute = createRoute({
+  getParentRoute: () => specificationRoute,
+  path: '/',
   component: SpecificationRouteScreen,
 });
 
@@ -165,6 +171,18 @@ function SpecsRouteScreen() {
       specificationHref={(specId) =>
         `/specs/${encodeURIComponent(specId)}?collection=${collection}`
       }
+      renderSpecificationLink={(specId, children, ariaLabel) => (
+        <Link
+          to="/specs/$specId"
+          params={{ specId }}
+          search={{ collection }}
+          className={operationalPrimaryLinkClassName}
+          aria-label={ariaLabel}
+          data-focus-ring="delegated"
+        >
+          {children}
+        </Link>
+      )}
       onOpenTarget={(target) =>
         void navigate({
           to: '/specs/$specId',
@@ -184,7 +202,13 @@ function SpecificationRouteScreen() {
   return (
     <SpecificationSurface
       specId={specId}
+      collection={collection}
       overviewHref={`/?collection=${collection}`}
+      renderBackLink={(children, className) => (
+        <Link to="/" search={{ collection }} className={className}>
+          {children}
+        </Link>
+      )}
       onBack={() => void navigate({ to: '/', search: { collection } })}
 
       onOpenTask={(taskId) => {
@@ -230,5 +254,5 @@ function SpecificationRouteScreen() {
   );
 }
 
-export const specsAppRoutes = [specsRoute, specificationRoute] as const;
+export const specsAppRoutes = [specsRoute] as const;
 export const specsRootRoutes = [specsForbiddenRoute] as const;

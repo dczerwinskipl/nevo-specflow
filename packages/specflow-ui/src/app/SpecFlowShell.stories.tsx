@@ -345,6 +345,122 @@ export const Navigation: Story = {
   },
 };
 
+function assertSpecificationNavigation(
+  navigation: HTMLElement,
+  specId: string,
+  activeDestination: string | null,
+  collection: 'current' | 'archive' = 'current',
+) {
+  const destinations = [
+    `/specs/${specId}`,
+    `/specs/${specId}/documents`,
+    `/specs/${specId}/sessions`,
+    `/specs/${specId}/changes`,
+    `/specs/${specId}/repository`,
+  ];
+  const links = [...navigation.querySelectorAll<HTMLAnchorElement>('a[href]')];
+  const group = navigation.querySelector(
+    '[data-navigation-depth="1"][data-navigation-state="ancestor"]',
+  );
+  if (!group) throw new Error('The Specification folder should be the active route ancestor.');
+  if (group.querySelector('a')) {
+    throw new Error('Clicking the Specification folder must not navigate.');
+  }
+  const folder = group.querySelector<HTMLButtonElement>('button[aria-expanded]');
+  if (!folder) throw new Error('Specification folder must have an expandable button.');
+  const firstChild = navigation.querySelector<HTMLAnchorElement>(
+    '[data-navigation-depth="2"] a[href]',
+  );
+  if (!firstChild || new URL(firstChild.href).pathname !== destinations[0]) {
+    throw new Error('Overview must be the first Specification subpage.');
+  }
+  for (const route of destinations) {
+    const link = links.find((item) => new URL(item.href).pathname === route);
+    if (!link) throw new Error(`Missing specification destination ${route}`);
+    if (new URL(link.href).searchParams.get('collection') !== collection) {
+      throw new Error(`Navigation did not preserve collection for ${route}`);
+    }
+    const state = link.closest('[data-navigation-state]')?.getAttribute('data-navigation-state');
+    if (state !== (route === activeDestination ? 'active' : 'none')) {
+      throw new Error(`Unexpected navigation state ${state} for ${route}`);
+    }
+  }
+}
+
+export const NavigationSpecificationActive: Story = {
+  args: { path: '/specs/admission?collection=current' },
+  tags: ['integration'],
+  play: async ({ canvas, userEvent }) => {
+    const nav = await canvas.findByRole('navigation', { name: 'Product navigation' });
+    assertSpecificationNavigation(nav, 'admission', '/specs/admission');
+    const folder = nav.querySelector<HTMLButtonElement>('button[aria-expanded]');
+    if (!folder) throw new Error('Expected Specification folder button');
+    if (!folder.textContent?.includes('Deterministic admission and execution boundaries')) {
+      throw new Error('Specification folder should show its title from the existing projection');
+    }
+    await userEvent.click(folder);
+    if (folder.getAttribute('aria-expanded') !== 'false') {
+      throw new Error('Specification folder should collapse without navigating');
+    }
+    await userEvent.click(folder);
+    assertSpecificationNavigation(nav, 'admission', '/specs/admission');
+  },
+};
+
+export const NavigationDocumentDetailActive: Story = {
+  args: { path: '/specs/admission/documents/spec?collection=current' },
+  tags: ['integration'],
+  play: async ({ canvas }) => {
+    const nav = await canvas.findByRole('navigation', { name: 'Product navigation' });
+    assertSpecificationNavigation(nav, 'admission', '/specs/admission/documents');
+  },
+};
+
+export const NavigationFullTaskAncestor: Story = {
+  args: { path: '/specs/admission/tasks/TASK-03?collection=current' },
+  tags: ['integration'],
+  play: async ({ canvas }) => {
+    const nav = await canvas.findByRole('navigation', { name: 'Product navigation' });
+    assertSpecificationNavigation(nav, 'admission', null);
+  },
+};
+
+export const NavigationSessionsActive: Story = {
+  args: { path: '/specs/admission/sessions?collection=current' },
+  tags: ['integration'],
+  play: async ({ canvas }) => {
+    const nav = await canvas.findByRole('navigation', { name: 'Product navigation' });
+    assertSpecificationNavigation(nav, 'admission', '/specs/admission/sessions');
+  },
+};
+
+export const NavigationChangesActive: Story = {
+  args: { path: '/specs/admission/changes?collection=current&source=base' },
+  tags: ['integration'],
+  play: async ({ canvas }) => {
+    const nav = await canvas.findByRole('navigation', { name: 'Product navigation' });
+    assertSpecificationNavigation(nav, 'admission', '/specs/admission/changes');
+  },
+};
+
+export const NavigationRepositoryActive: Story = {
+  args: { path: '/specs/admission/repository?collection=current' },
+  tags: ['integration'],
+  play: async ({ canvas }) => {
+    const nav = await canvas.findByRole('navigation', { name: 'Product navigation' });
+    assertSpecificationNavigation(nav, 'admission', '/specs/admission/repository');
+  },
+};
+
+export const NavigationArchiveSpecification: Story = {
+  args: { path: '/specs/archive-0?collection=archive' },
+  tags: ['integration'],
+  play: async ({ canvas }) => {
+    const nav = await canvas.findByRole('navigation', { name: 'Product navigation' });
+    assertSpecificationNavigation(nav, 'archive-0', '/specs/archive-0', 'archive');
+  },
+};
+
 export const MobileNavigation: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: async ({ canvas, canvasElement, userEvent }) => {

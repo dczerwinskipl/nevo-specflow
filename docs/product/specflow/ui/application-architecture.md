@@ -332,9 +332,11 @@ Locale resolution, persistence, stable-key rules, and CLI/UI ownership are defin
 
 `SpecFlowShell` owns the product navigation composition. Its layout has three structural regions:
 
-Normal product navigation currently contains only Specs, also active while inside Specification.
-Project Settings earns an entry when its real surface exists. UI Playground remains available by
-direct URL for development, never as a persistent product entry.
+Normal global product navigation contains Specs. Within a selected Specification it also
+shows an expandable, non-navigating Specification folder, with Overview first, then feature-owned
+Documents, Sessions, Changes and Repository quick links. Full Task is not a sidebar list page.
+Project Settings earns a global entry when its real surface exists. UI Playground remains available
+by direct URL for development, never as a persistent product entry.
 
 1. a non-scrolling brand header;
 2. a `min-height: 0`, flexible, vertically scrollable navigation body;
@@ -421,7 +423,7 @@ product presentation resolves those codes using the current i18next locale. A si
 
 ### Sidebar navigation read model
 
-`ProductNavigation` reads a small document-count/Git-availability projection from
+`ProductNavigation` reads a cached Specification title and small document-count/Git-availability projection from
 an existing TanStack Query Workspace cache entry, using a disabled observer.
 It does not issue `GET /api/specs/:specId/workspace` merely because the user
 opened Full Task or Full Document directly. When the Workspace has not yet

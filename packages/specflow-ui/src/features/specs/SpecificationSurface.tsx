@@ -14,7 +14,7 @@ import {
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
-import { specificationKeys } from './queries';
+import { invalidateSpecificationWorkspace } from './queries';
 
 import type { SpecificationWorkspaceData } from './workspace/model';
 import { SpecificationWorkspace } from './workspace/SpecificationWorkspace';
@@ -74,7 +74,7 @@ function SpecificationSurfaceConnected({
   const { data, isLoading, isError, errorStatus, isDomainNotFound, refetch } =
     useSpecificationWorkspace(specId);
 
-  if (isError && (!data || errorStatus === 401 || errorStatus === 403)) {
+  if (isError && (!data || errorStatus === 401 || errorStatus === 403 || errorStatus === 404)) {
     return (
       <AppWorkspace
         split="primary"
@@ -109,16 +109,20 @@ function SpecificationSurfaceConnected({
                   role="alert"
                   tone="attention"
                   title={
-                    isDomainNotFound
-                      ? t('specification.notFoundTitle')
-                      : t('specification.unavailableTitle')
+                    errorStatus === 403
+                      ? t('specification.resourceAccessDeniedTitle')
+                      : isDomainNotFound
+                        ? t('specification.notFoundTitle')
+                        : t('specification.unavailableTitle')
                   }
                   className="max-w-content-standard"
                 >
                   <Typography variant="body-sm" className="text-content-secondary">
-                    {isDomainNotFound
-                      ? t('specification.notFoundDescription', { id: specId })
-                      : t('specification.unavailableDescription', { id: specId })}
+                    {errorStatus === 403
+                      ? t('specification.resourceAccessDeniedDescription')
+                      : isDomainNotFound
+                        ? t('specification.notFoundDescription', { id: specId })
+                        : t('specification.unavailableDescription', { id: specId })}
                   </Typography>
 
                   <div className="mt-3 flex items-center gap-3">
@@ -171,10 +175,7 @@ function SpecificationSurfaceConnected({
   }
 
   const refreshWorkspace = async () => {
-    await queryClient.invalidateQueries({
-      queryKey: specificationKeys.spec(specId),
-      refetchType: 'active',
-    });
+    await invalidateSpecificationWorkspace(queryClient, specId);
   };
 
   return (

@@ -42,7 +42,20 @@ export function SpecificationAggregatePage({
     title: t('specification.unavailableTitle'),
     message: t('specification.unavailableDescription', { id: specId }),
   };
-  const errorCopy = accessDenied ? deniedCopy : unavailableCopy;
+  const notFoundCopy = {
+    title: t('specification.notFoundTitle'),
+    message: t('specification.notFoundDescription', { id: specId }),
+  };
+  const errorCopy = accessDenied
+    ? deniedCopy
+    : query.isDomainNotFound
+      ? notFoundCopy
+      : unavailableCopy;
+  const mustShowError =
+    query.isError && (!query.data || [401, 403, 404].includes(query.errorStatus ?? 0));
+  // Keep the last successful projection for transient failures, but identify it
+  // as stale and let the user retry. Auth and not-found errors remain blocking.
+  const showingStaleData = query.isError && Boolean(query.data) && !mustShowError;
   const sectionCopy = sectionDenied ? deniedCopy : unavailableCopy;
   return (
     <AppWorkspace split="primary">
@@ -52,20 +65,34 @@ export function SpecificationAggregatePage({
             <AppContentContainer align="start" size="full">
               {query.isPending ? (
                 <Spinner label={t('specification.loadingWorkspace', { id: specId })} />
-              ) : query.isError && (!query.data || query.errorStatus === 403) ? (
+              ) : mustShowError ? (
                 <Alert role="alert" tone="attention" title={errorCopy.title}>
                   <Typography variant="body-sm">{errorCopy.message}</Typography>
                   <Button variant="secondary" size="sm" onClick={() => void query.refetch()}>
                     {t('common.retry')}
                   </Button>
                 </Alert>
-              ) : availability && availability !== 'available' ? (
-                <Alert role="status" tone="attention" title={sectionCopy.title}>
-                  {sectionCopy.message}
-                </Alert>
-              ) : query.data ? (
-                children(query.data)
-              ) : null}
+              ) : (
+                <>
+                  {showingStaleData ? (
+                    <Alert role="status" tone="attention" title={t('specification.staleDataTitle')}>
+                      <Typography variant="body-sm">
+                        {t('specification.staleDataDescription')}
+                      </Typography>
+                      <Button variant="secondary" size="sm" onClick={() => void query.refetch()}>
+                        {t('common.retry')}
+                      </Button>
+                    </Alert>
+                  ) : null}
+                  {availability && availability !== 'available' ? (
+                    <Alert role="status" tone="attention" title={sectionCopy.title}>
+                      {sectionCopy.message}
+                    </Alert>
+                  ) : query.data ? (
+                    children(query.data)
+                  ) : null}
+                </>
+              )}
             </AppContentContainer>
           </AppWorkspaceBody>
         </AppContent>

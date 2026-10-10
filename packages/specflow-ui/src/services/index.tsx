@@ -71,22 +71,25 @@ export function createSpecFlowAppServices(
 
 export const defaultSpecFlowServices: SpecFlowAppServices = createSpecFlowAppServices();
 
-const SpecFlowServicesContext = createContext<SpecFlowServices>(defaultSpecFlowServices);
+// Services are composed once by the application. Never silently fall back to the
+// production instance when a Storybook/test/secondary tree omits its provider.
+const SpecFlowServicesContext = createContext<SpecFlowServices | null>(null);
 
 export interface SpecFlowServicesProviderProps {
-  readonly services?: SpecFlowServices;
+  readonly services: SpecFlowServices;
   readonly children: ReactNode;
 }
 
-export function SpecFlowServicesProvider({
-  services = defaultSpecFlowServices,
-  children,
-}: SpecFlowServicesProviderProps) {
+export function SpecFlowServicesProvider({ services, children }: SpecFlowServicesProviderProps) {
   return (
     <SpecFlowServicesContext.Provider value={services}>{children}</SpecFlowServicesContext.Provider>
   );
 }
 
 export function useSpecFlowServices(): SpecFlowServices {
-  return useContext(SpecFlowServicesContext);
+  const services = useContext(SpecFlowServicesContext);
+  if (!services) {
+    throw new Error('useSpecFlowServices must be used within SpecFlowServicesProvider');
+  }
+  return services;
 }

@@ -12,42 +12,34 @@ import { useWorkspaceRuntime } from './WorkspaceContext';
 import type { SpecificationWorkspaceData } from './model';
 
 interface SectionBoundaryProps {
-  readonly fallback: (retry: () => void, recovering: boolean) => ReactNode;
-  readonly onRetry: () => void | Promise<void>;
+  readonly fallback: (retryRender: () => void) => ReactNode;
   readonly children: ReactNode;
 }
 
 interface SectionBoundaryState {
   readonly failed: boolean;
-  readonly recovering: boolean;
 }
 
 /**
- * Keep the failed contribution isolated until an explicit user retry or a new
- * resource/contribution identity. Background query updates never cause retry loops.
+ * Isolate render failures until a manual render retry or a new resource identity.
+ * A render boundary does not know a feature's Query keys and never refetches data.
+ * Feature-owned data errors and Retry must be handled by the connected feature itself.
  */
 export class SectionBoundary extends Component<SectionBoundaryProps, SectionBoundaryState> {
-  override state: SectionBoundaryState = { failed: false, recovering: false };
+  override state: SectionBoundaryState = { failed: false };
 
   static getDerivedStateFromError(): Partial<SectionBoundaryState> {
-    return { failed: true, recovering: false };
+    return { failed: true };
   }
 
-  private readonly retry = () => {
-    if (this.state.recovering) return;
-    this.setState({ recovering: true });
-    void Promise.resolve()
-      .then(() => this.props.onRetry())
-      .then(
-        () => this.setState({ failed: false, recovering: false }),
-        () => this.setState({ recovering: false }),
-      );
+  private readonly retryRender = () => {
+    // If the underlying render problem remains, React catches the same error
+    // and shows the fallback again instead of claiming successful recovery.
+    this.setState({ failed: false });
   };
 
   override render() {
-    return this.state.failed
-      ? this.props.fallback(this.retry, this.state.recovering)
-      : this.props.children;
+    return this.state.failed ? this.props.fallback(this.retryRender) : this.props.children;
   }
 }
 
@@ -95,15 +87,18 @@ export function SpecificationWorkSectionOutlet({
       {sections.map((contribution) => (
         <SectionBoundary
           key={`${specId}:${contribution.id}`}
-          onRetry={actions.refresh}
-          fallback={(retry, recovering) => (
+          fallback={(retryRender) => (
             <div className="grid gap-2 py-6">
-              <Alert role="alert" tone="attention" title={t('specification.unavailableTitle')}>
-                {t('specification.unavailableDescription', { id: specId })}
+              <Alert
+                role="alert"
+                tone="attention"
+                title={t('specification.sectionRenderFailedTitle')}
+              >
+                {t('specification.sectionRenderFailedDescription')}
               </Alert>
               <div>
-                <Button variant="secondary" size="sm" onClick={retry} disabled={recovering}>
-                  {t(recovering ? 'common.retrying' : 'common.retry')}
+                <Button variant="secondary" size="sm" onClick={retryRender}>
+                  {t('common.retry')}
                 </Button>
               </div>
             </div>

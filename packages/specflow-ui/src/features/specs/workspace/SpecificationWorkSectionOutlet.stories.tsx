@@ -12,16 +12,20 @@ function WorkSection({ fail }: { readonly fail: boolean }) {
 function RecoverableWorkSection() {
   const [fail, setFail] = useState(true);
   return (
-    <SectionBoundary
-      onRetry={() => setFail(false)}
-      fallback={(retry, recovering) => (
-        <button type="button" onClick={retry} disabled={recovering}>
-          Retry contribution
-        </button>
-      )}
-    >
-      <WorkSection fail={fail} />
-    </SectionBoundary>
+    <div>
+      <button type="button" onClick={() => setFail(false)}>
+        Fix contribution
+      </button>
+      <SectionBoundary
+        fallback={(retryRender) => (
+          <button type="button" onClick={retryRender}>
+            Retry contribution
+          </button>
+        )}
+      >
+        <WorkSection fail={fail} />
+      </SectionBoundary>
+    </div>
   );
 }
 
@@ -50,6 +54,9 @@ type Story = StoryObj<typeof meta>;
 export const RetryAfterRenderError: Story = {
   play: async ({ canvas, userEvent }) => {
     const retry = await canvas.findByRole('button', { name: 'Retry contribution' });
+    await userEvent.click(canvas.getByRole('button', { name: 'Fix contribution' }));
+    // Fixing the cause does not automatically clear an error boundary.
+    await canvas.findByRole('button', { name: 'Retry contribution' });
     await userEvent.click(retry);
     await canvas.findByText('Contribution restored');
   },

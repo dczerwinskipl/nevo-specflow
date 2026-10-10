@@ -12,9 +12,6 @@ export {
   type TaskStatePresentation,
 } from '../../tasks/model';
 
-export type SpecificationWorkspaceView =
-  'work' | 'documents' | 'sessions' | 'changes' | 'repository';
-
 export interface DocumentSection {
   readonly heading: string;
   readonly content?: string;

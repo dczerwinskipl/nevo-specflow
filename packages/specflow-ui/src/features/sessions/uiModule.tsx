@@ -4,11 +4,6 @@ import {
   type SpecificationWorkSectionContext,
 } from '../specs/extensions/specificationWorkSections';
 import { ResumeSessionSection } from './contributions/specification-work/ResumeSessionSection';
-import {
-  specificationViews,
-  type SpecificationViewContext,
-} from '../specs/extensions/specificationViews';
-import { SessionsView } from './views/SessionsView';
 import { specificationAttentionItems } from '../specs/extensions/specificationAttentionItems';
 
 function SpecificationResumeSession({ data, actions }: SpecificationWorkSectionContext) {
@@ -25,18 +20,6 @@ function SpecificationResumeSession({ data, actions }: SpecificationWorkSectionC
   );
 }
 
-function SpecificationSessionsView({ data, actions }: SpecificationViewContext) {
-  return (
-    <SessionsView
-      sessions={data.sessions}
-      onOpenSession={actions.canOpenSession === false ? undefined : actions.openSession}
-      onNewConversation={
-        actions.canStartConversation === false ? undefined : () => actions.startConversation()
-      }
-    />
-  );
-}
-
 export const sessionsUiModule: UiModule = {
   id: 'specflow.sessions',
   contributions: [
@@ -45,11 +28,6 @@ export const sessionsUiModule: UiModule = {
       slot: 'context',
       isVisible: ({ data }) => !data.isEmpty && Boolean(data.resumeSession),
       Component: SpecificationResumeSession,
-    }),
-    contributeTo(specificationViews, {
-      id: 'specflow.sessions.view',
-      view: 'sessions',
-      Component: SpecificationSessionsView,
     }),
     contributeTo(specificationAttentionItems, {
       id: 'specflow.sessions.attention',

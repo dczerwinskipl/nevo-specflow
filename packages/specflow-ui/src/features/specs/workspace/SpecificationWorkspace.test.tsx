@@ -1,11 +1,10 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { AppShell } from '@nevo/ui';
 import { appI18n, LocalizationProvider } from '../../../i18n';
 import { SpecificationWorkspace } from './SpecificationWorkspace';
 import { UiModulesProvider } from '../../../app/ui-modules/UiModulesProvider';
 import { builtInUiModuleRegistry } from '../../../app/ui-modules/builtInUiModules';
-import { DocumentsView } from '../../documents/views/DocumentsView';
 
 import { createSpecificationWorkspaceFixture } from '../../../../test-support/specs/workspace/fixtures';
 
@@ -174,46 +173,10 @@ describe('SpecificationWorkspace', () => {
     expect(markup).not.toContain('Kryteria akceptacji');
   });
 
-  it('renders documents view when initialView is documents', () => {
-    const markup = renderWorkspaceMarkup({ initialView: 'documents' });
-
-    expect(markup).toContain('Szukaj dokumentu');
-    expect(markup).toContain('Specyfikacja');
-    expect(markup).toContain('Obszar: uwierzytelnianie');
-  });
-
-  it('masks registered repository view when Runtime forbids it', () => {
-    const data = createSpecificationWorkspaceFixture('working', 'UI-1234');
-    const markup = renderWorkspaceMarkup({
-      data: {
-        ...data,
-        sectionAvailability: { ...data.sectionAvailability, repository: 'forbidden' },
-      },
-      initialView: 'repository',
-    });
-    expect(markup).toContain(appI18n.t('specification.unavailableTitle'));
-    expect(markup).not.toContain('feature/session-refresh');
-  });
-
-  it('renders repository view through its registered module', () => {
-    const markup = renderWorkspaceMarkup({ initialView: 'repository' });
-    expect(markup).toContain('#128');
-    expect(markup).toContain('feature/session-refresh');
-  });
-
-  it('renders sessions view when initialView is sessions', () => {
-    const markup = renderWorkspaceMarkup({ initialView: 'sessions' });
-
-    expect(markup).toContain('Sesje tej specyfikacji');
-    expect(markup).toContain('Nowa rozmowa');
-  });
-
-  it('renders changes view when initialView is changes', () => {
-    const markup = renderWorkspaceMarkup({ initialView: 'changes' });
-
-    expect(markup).toContain('Względem main');
-    expect(markup).toContain('Niecommitowane');
-    expect(markup).toContain('src/auth/refreshSession.ts');
+  it('renders Specification Overview independently of the previous tab-view selection model', () => {
+    const markup = renderWorkspaceMarkup();
+    expect(markup).toContain('Wymaga Twojej uwagi');
+    expect(markup).toContain('Taski');
   });
 
   it('renders Specification header eyebrow with back link and specification identity', () => {
@@ -232,41 +195,5 @@ describe('SpecificationWorkspace', () => {
     // In ResumeSessionSection, button should be disabled and have title "Niezaimplementowane"
     expect(markup).toContain('disabled=""');
     expect(markup).toContain('Niezaimplementowane');
-  });
-
-  it('renders honest capabilities: does not render diff button when onDiff is not provided', () => {
-    const markup = renderWorkspaceMarkup({
-      initialView: 'changes',
-      onDiff: undefined,
-    });
-
-    expect(markup).not.toContain('Pokaż diff');
-  });
-
-  it('renders markdown content in document detail view using MarkdownDocument', () => {
-    const markup = renderToStaticMarkup(
-      <LocalizationProvider>
-        <DocumentsView
-          documents={[
-            {
-              id: 'doc-spec',
-              title: 'Główna specyfikacja',
-              kind: 'spec',
-              content: '### Szczegóły techniczne\n\nTo jest **sformatowany** tekst markdown.',
-            },
-          ]}
-          activeDocId="doc-spec"
-          docOrigin="documents"
-          onSelectDoc={vi.fn()}
-          onBackToOrigin={vi.fn()}
-        />
-      </LocalizationProvider>,
-    );
-
-    expect(markup).toContain('Główna specyfikacja');
-    expect(markup).toContain('Szczegóły techniczne');
-    expect(markup).toContain(
-      '<strong class="font-semibold text-content-primary">sformatowany</strong>',
-    );
   });
 });

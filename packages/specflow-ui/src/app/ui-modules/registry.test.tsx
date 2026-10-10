@@ -5,13 +5,12 @@ import { LocalizationProvider } from '../../i18n';
 import { createSpecificationWorkspaceFixture } from '../../../test-support/specs/workspace/fixtures';
 import { specificationWorkSections } from '../../features/specs/extensions/specificationWorkSections';
 import { specificationAttentionItems } from '../../features/specs/extensions/specificationAttentionItems';
-import { specificationViews } from '../../features/specs/extensions/specificationViews';
 import { WorkView } from '../../features/specs/workspace/WorkView';
 import {
   WorkspaceProvider,
   createFakeWorkspaceRuntime,
 } from '../../features/specs/workspace/WorkspaceContext';
-import { builtInUiModuleRegistry, createSpecFlowUiRegistry } from './builtInUiModules';
+import { builtInUiModuleRegistry } from './builtInUiModules';
 import { UiModulesProvider } from './UiModulesProvider';
 import {
   contributeTo,
@@ -49,42 +48,11 @@ describe('typed UI extension registry', () => {
     ]);
   });
 
-  it('composes feature-owned routes and attention sources', () => {
-    expect(builtInUiModuleRegistry.get(specificationViews).map(({ view }) => view)).toEqual([
-      'repository',
-      'changes',
-      'sessions',
-      'documents',
-    ]);
+  it('registers feature-owned attention contributions without a tab-view registry', () => {
     expect(builtInUiModuleRegistry.get(specificationAttentionItems).map(({ id }) => id)).toEqual([
       'specflow.git.attention',
       'specflow.sessions.attention',
       'specflow.tasks.attention',
-    ]);
-  });
-
-  it('rejects two modules that register different IDs for the same Specification view at composition', () => {
-    const moduleForView = (id: string, view: 'documents' | 'sessions'): UiModule => ({
-      id: `example.${id}`,
-      contributions: [
-        contributeTo(specificationViews, {
-          id: `example.${id}.view`,
-          view,
-          Component: () => <section>{id}</section>,
-        }),
-      ],
-    });
-
-    const documents = moduleForView('documents', 'documents');
-    const conflicting = moduleForView('other-documents', 'documents');
-    expect(() => createSpecFlowUiRegistry([documents, conflicting])).toThrow(
-      'Duplicate Specification view "documents": example.documents.view and example.other-documents.view',
-    );
-
-    const valid = createSpecFlowUiRegistry([documents, moduleForView('sessions', 'sessions')]);
-    expect(valid.get(specificationViews).map(({ view }) => view)).toEqual([
-      'documents',
-      'sessions',
     ]);
   });
 

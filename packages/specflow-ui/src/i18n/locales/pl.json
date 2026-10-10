@@ -64,6 +64,8 @@
     "placeholderDescription": "Otwarta została właściwa specyfikacja. Dokumenty, zadania i sesje będą dostępne tutaj w kolejnym etapie. Nie wykonano żadnej akcji workflow.",
     "identity": "ID specyfikacji: {{id}}",
     "loadingWorkspace": "Ładowanie specyfikacji {{id}}…",
+    "resourceAccessDeniedTitle": "Brak dostępu",
+    "resourceAccessDeniedDescription": "Nie masz uprawnień do wyświetlenia tego zasobu.",
     "unavailableTitle": "Specyfikacja jest niedostępna",
     "unavailableDescription": "Obszar roboczy specyfikacji nie jest jeszcze wspierany przez Runtime lub nie mógł zostać załadowany.",
     "notFoundTitle": "Nie znaleziono specyfikacji",

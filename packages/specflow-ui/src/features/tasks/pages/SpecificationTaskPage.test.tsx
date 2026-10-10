@@ -103,6 +103,13 @@ describe('direct Full Task page', () => {
     expect(unavailableMarkup).toContain('role="alert"');
   });
 
+  it('shows forbidden Task resources as access denied, not as unavailable', () => {
+    const forbidden = new HttpClientError('Forbidden', { kind: 'http', status: 403 });
+    const markup = renderTask({ error: forbidden });
+    expect(markup).toContain('Access denied');
+    expect(markup).not.toContain('Specification is unavailable');
+  });
+
   it('does not infer absence from a pending detail request', () => {
     const markup = renderTask({ seedDetail: false });
     expect(markup).toContain('role="status"');

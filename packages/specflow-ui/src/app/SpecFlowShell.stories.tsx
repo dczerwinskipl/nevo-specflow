@@ -3,7 +3,7 @@ import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
 import { RouterProvider, createMemoryHistory } from '@tanstack/react-router';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useMemo } from 'react';
-import { HttpClientError } from '@nevo/http-client';
+import { HttpClientError, createHttpClient } from '@nevo/http-client';
 
 import type { AppLocale } from '../i18n';
 import { StoryLocalization } from '../i18n/StoryLocalization';
@@ -22,6 +22,7 @@ import { UiModulesProvider } from './ui-modules/UiModulesProvider';
 import { createSpecFlowAppServices, SpecFlowServicesProvider } from '../services';
 import { specificationKeys } from '../features/specs/queries';
 import { taskKeys } from '../features/tasks/queries';
+import { documentKeys } from '../features/documents/queries';
 import {
   createSpecificationWorkspaceFixture,
   type SpecificationScenario,
@@ -32,6 +33,7 @@ import { createFixtureSpecsOverviewApi } from '../../test-support/specs/overview
 import {
   createWorkspaceIntegrationApi,
   createTaskIntegrationApi,
+  createDocumentIntegrationApi,
 } from '../../test-support/specs/workspace/api';
 
 export function RoutedApplication({
@@ -105,7 +107,7 @@ export function RoutedApplication({
         }
       }
       for (const doc of fixture.documents) {
-        query.setQueryData(specificationKeys.document(id, doc.id), {
+        query.setQueryData(documentKeys.detail(id, doc.id), {
           id: doc.id,
           title: doc.title,
           content:
@@ -137,12 +139,29 @@ export function RoutedApplication({
         }
       : createFixtureSpecsOverviewApi();
 
+    const http = createHttpClient();
+    if (specsStatus === 401) {
+      // Exercise real application composition: typed API -> protected transport
+      // -> AuthRecoveryCoordinator -> session -> Login. A fake feature API
+      // would bypass the global mechanism and falsely test route-local recovery.
+      http.get = (url: string) => {
+        if (url === '/api/specs/overview') {
+          return Promise.reject(new HttpClientError('Unauthorized', { kind: 'http', status: 401 }));
+        }
+        return Promise.reject(new Error(`Unconfigured Storybook HTTP GET: ${url}`));
+      };
+    }
     return createSpecFlowAppServices({
+      http,
       authStore: auth,
       runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode: 'demo' }) },
-      specsOverviewApi,
+      ...(specsStatus === 401 ? {} : { specsOverviewApi }),
       ...(integrationDto
-        ? { specificationApi: createWorkspaceIntegrationApi(), taskApi: createTaskIntegrationApi() }
+        ? {
+            specificationApi: createWorkspaceIntegrationApi(),
+            taskApi: createTaskIntegrationApi(),
+            documentApi: createDocumentIntegrationApi(),
+          }
         : {}),
     });
   }, [auth, specsStatus, integrationDto]);

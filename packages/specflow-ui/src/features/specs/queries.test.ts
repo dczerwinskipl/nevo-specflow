@@ -2,6 +2,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
 import { specificationKeys } from './queries';
 import { taskKeys } from '../tasks/queries';
+import { documentKeys } from '../documents/queries';
 
 describe('Specification Query key scope', () => {
   it('invalidates workspace, documents and Tasks together but not another Specification', async () => {
@@ -10,7 +11,7 @@ describe('Specification Query key scope', () => {
     const other = 'security';
     const keys = [
       specificationKeys.detail(id),
-      specificationKeys.document(id, 'spec'),
+      documentKeys.detail(id, 'spec'),
       taskKeys.detail(id, 'TASK-02'),
     ];
     for (const key of keys) queryClient.setQueryData(key, { revision: 1 });

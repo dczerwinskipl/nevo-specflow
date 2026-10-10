@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   Alert,
   AppContent,
@@ -12,9 +12,8 @@ import {
   WorkspaceHeader,
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { DocumentItem, SpecificationWorkspaceData, SpecificationWorkspaceView } from './model';
+import type { SpecificationWorkspaceData } from './model';
 import { WorkView } from './WorkView';
-import { SpecificationViewOutlet } from './SpecificationViewOutlet';
 import { ActivityHistory } from './ActivityHistory';
 import { ExecuteModal } from './ExecuteModal';
 import { NewConversationModal } from './NewConversationModal';
@@ -22,10 +21,10 @@ import { WorkspaceProvider, type WorkspaceRuntime } from './WorkspaceContext';
 import {
   SpecificationSecondaryDataContext,
   taskPreviewStack,
+  documentPreviewStack,
   historyStack,
   type SpecificationSecondaryContextValue,
 } from './specificationSecondaryStack';
-import { useSpecificationViewNavigation } from './useSpecificationViewNavigation';
 import { useSpecificationDialogs } from './useSpecificationDialogs';
 
 export interface SpecificationWorkspaceProps {
@@ -33,16 +32,16 @@ export interface SpecificationWorkspaceProps {
   readonly data: SpecificationWorkspaceData;
   readonly overviewHref?: string;
   readonly onBack?: () => void;
-  readonly initialView?: SpecificationWorkspaceView;
-  readonly onNavigateView?: (target: { view: SpecificationWorkspaceView }) => void;
+  readonly onOpenDocuments?: () => void;
+  readonly onOpenSessions?: () => void;
+  readonly onOpenRepository?: () => void;
+  readonly onOpenChanges?: (source?: 'base' | 'uncommitted' | 'mr') => void;
   readonly onOpenTask?: (taskId: string) => void;
+  readonly onOpenFullDocument?: (documentId: string) => void;
   readonly onRefresh?: () => void | Promise<void>;
   readonly onExecute?: (agent: string, tasks: readonly string[]) => void | Promise<void>;
   readonly onNewConversation?: (agent: string) => void | Promise<void>;
   readonly onOpenSession?: (sessionId: string) => void;
-  readonly onTaskUnauthorized?: (retry: () => void) => void;
-  readonly onDiff?: (file: string) => void;
-  readonly renderDocument?: (doc: DocumentItem) => ReactNode;
   readonly refreshFailed?: boolean;
 }
 
@@ -59,25 +58,20 @@ function SpecificationWorkspaceInner({
   data,
   overviewHref,
   onBack,
-  initialView = 'work',
-  onNavigateView,
+  onOpenDocuments,
+  onOpenSessions,
+  onOpenRepository,
+  onOpenChanges,
   onOpenTask,
+  onOpenFullDocument,
   onRefresh,
   onExecute,
   onNewConversation,
   onOpenSession,
-  onTaskUnauthorized,
-  onDiff,
-  renderDocument,
   refreshFailed,
 }: SpecificationWorkspaceProps) {
   const { t } = useTranslation();
   const secondaryNavigation = useSecondaryNavigation();
-
-  const { currentView, navigateToView, handleViewChange } = useSpecificationViewNavigation({
-    initialView,
-    onNavigateView,
-  });
 
   const {
     executeDialogOpen,
@@ -93,10 +87,6 @@ function SpecificationWorkspaceInner({
     onExecute,
     onNewConversation,
   });
-
-  const [activeDocId, setActiveDocId] = useState<string | null>(null);
-  const [docOrigin, setDocOrigin] = useState<'work' | 'documents'>('documents');
-  const [changesSource, setChangesSource] = useState<'base' | 'uncommitted' | 'mr'>('base');
 
   const handlePreviewTask = useCallback(
     (taskId: string) => {
@@ -126,20 +116,10 @@ function SpecificationWorkspaceInner({
   );
 
   const handleOpenDoc = useCallback(
-    (docId: string, origin: 'work' | 'documents' = 'work') => {
-      setActiveDocId(docId);
-      setDocOrigin(origin);
-      navigateToView('documents');
+    (docId: string, _origin: 'work' | 'documents' = 'work') => {
+      void secondaryNavigation.open(documentPreviewStack, { specId, documentId: docId });
     },
-    [navigateToView],
-  );
-
-  const handleOpenChanges = useCallback(
-    (source: 'base' | 'uncommitted' | 'mr' = 'base') => {
-      setChangesSource(source);
-      navigateToView('changes');
-    },
-    [navigateToView],
+    [secondaryNavigation, specId],
   );
 
   const secondaryContextValue: SpecificationSecondaryContextValue = useMemo(
@@ -147,19 +127,23 @@ function SpecificationWorkspaceInner({
       specId,
       data,
       openFullTask: handleOpenFullTask,
+      openFullDocument: (documentId: string) => {
+        void secondaryNavigation.close();
+        if (onOpenFullDocument) onOpenFullDocument(documentId);
+      },
       openSession: onOpenSession,
       openDoc: (docId) => handleOpenDoc(docId, 'work'),
       previewTask: handlePreviewTask,
-      onTaskUnauthorized,
     }),
     [
       specId,
       data,
       handleOpenFullTask,
+      onOpenFullDocument,
+      secondaryNavigation,
       onOpenSession,
       handleOpenDoc,
       handlePreviewTask,
-      onTaskUnauthorized,
     ],
   );
 
@@ -168,15 +152,11 @@ function SpecificationWorkspaceInner({
       previewTask: handlePreviewTask,
       openTask: handleOpenFullTask,
       openSession: (id) => onOpenSession?.(id),
-      openSessionsView: () => handleViewChange('sessions'),
+      openSessionsView: () => onOpenSessions?.(),
       openDoc: (docId, origin = 'work') => handleOpenDoc(docId, origin),
-      openDocumentsView: () => {
-        setActiveDocId(null);
-        setDocOrigin('documents');
-        handleViewChange('documents');
-      },
-      openRepository: () => handleViewChange('repository'),
-      openChanges: handleOpenChanges,
+      openDocumentsView: () => onOpenDocuments?.(),
+      openRepository: () => onOpenRepository?.(),
+      openChanges: (source) => onOpenChanges?.(source),
       openHistory: handleOpenHistory,
       startConversation: (_agent) => openConversationDialog(),
       executeTasks: (taskIds, _agent) => openExecuteDialog(taskIds),
@@ -197,9 +177,11 @@ function SpecificationWorkspaceInner({
       handlePreviewTask,
       handleOpenFullTask,
       onOpenSession,
-      handleViewChange,
+      onOpenDocuments,
+      onOpenSessions,
+      onOpenRepository,
+      onOpenChanges,
       handleOpenDoc,
-      handleOpenChanges,
       handleOpenHistory,
       openConversationDialog,
       openExecuteDialog,
@@ -304,33 +286,8 @@ function SpecificationWorkspaceInner({
                     </Alert>
                   ) : null}
 
-                  {/* Local views are host-routed, feature-implemented. */}
-                  {currentView === 'work' ? (
-                    <WorkView specId={specId} data={data} />
-                  ) : (
-                    <SpecificationViewOutlet
-                      view={currentView}
-                      context={{
-                        data,
-                        actions: runtime,
-                        document: {
-                          selectedId: activeDocId,
-                          origin: docOrigin,
-                          onSelect: setActiveDocId,
-                          onBack: () => {
-                            if (docOrigin === 'work') handleViewChange('work');
-                            setActiveDocId(null);
-                          },
-                          renderContent: renderDocument,
-                        },
-                        changes: {
-                          source: changesSource,
-                          onSourceChange: setChangesSource,
-                          onDiff,
-                        },
-                      }}
-                    />
-                  )}
+                  {/* Specification Overview contributions. Primary destinations belong to Router. */}
+                  <WorkView specId={specId} data={data} />
                 </AppContentContainer>
               </AppWorkspaceBody>
             </AppContent>

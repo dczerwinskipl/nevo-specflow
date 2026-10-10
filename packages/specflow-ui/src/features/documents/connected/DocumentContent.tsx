@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
+import { isHttpClientError } from '@nevo/http-client';
 import { Alert, Button, MarkdownDocument, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { useSpecFlowServices } from '../../../services';
-import { specificationKeys } from '../queries';
+import { documentKeys } from '../queries';
 
-export function SpecificationDocumentContent({
+export function DocumentContent({
   specId,
   documentId,
 }: {
@@ -12,10 +13,10 @@ export function SpecificationDocumentContent({
   readonly documentId: string;
 }) {
   const { t } = useTranslation();
-  const { specificationApi } = useSpecFlowServices();
+  const { documentApi } = useSpecFlowServices();
   const query = useQuery({
-    queryKey: specificationKeys.document(specId, documentId),
-    queryFn: ({ signal }) => specificationApi.getDocument(specId, documentId, signal),
+    queryKey: documentKeys.detail(specId, documentId),
+    queryFn: ({ signal }) => documentApi.getDocument(specId, documentId, signal),
   });
 
   if (query.isPending)
@@ -25,10 +26,17 @@ export function SpecificationDocumentContent({
       </Typography>
     );
   if (query.isError) {
+    const forbidden = isHttpClientError(query.error) && query.error.status === 403;
+    const title = t(
+      forbidden ? 'specification.resourceAccessDeniedTitle' : 'specification.unavailableTitle',
+    );
+    const description = forbidden
+      ? t('specification.resourceAccessDeniedDescription')
+      : t('specification.unavailableDescription', { id: documentId });
     return (
       <div className="grid gap-3">
-        <Alert tone="attention" role="alert" title={t('specification.unavailableTitle')}>
-          {t('specification.unavailableDescription', { id: documentId })}
+        <Alert tone="attention" role="alert" title={title}>
+          {description}
         </Alert>
         <Button variant="secondary" size="sm" onClick={() => void query.refetch()}>
           {t('common.retry')}

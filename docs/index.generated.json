@@ -326,6 +326,35 @@
       ]
     },
     {
+      "id": "ideas.specflow-engine.e1e2-hardening",
+      "type": "hub",
+      "title": "E1/E2 architecture and code-quality hardening",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/execution-plans/e1-e2-quality-hardening/README.md",
+      "read_when": [
+        "planning the audited E1/E2 architecture quality hardening"
+      ],
+      "summary": "Temporary post-audit implementation plan for structural E1/E2 improvements, with independent checkpoints and exact-sha verification.",
+      "related": [
+        "ideas.specflow-engine.execution-plans",
+        "ideas.specflow-engine.plan-02",
+        "ideas.specflow-engine.test-plan"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime",
+        "cli",
+        "testing"
+      ],
+      "tags": [
+        "execution-plan",
+        "temporary",
+        "architecture",
+        "hardening"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.execution-plans",
       "type": "hub",
       "title": "Temporary SpecFlow Engine implementation runbook",
@@ -2142,6 +2171,225 @@
         "server",
         "ui",
         "security"
+      ]
+    },
+    {
+      "id": "ideas.specflow-engine.e1e2-hardening.q00",
+      "type": "engineering",
+      "title": "Q00 Baseline and behavioral characterization",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/execution-plans/e1-e2-quality-hardening/tasks/Q00-baseline-and-contracts.md",
+      "read_when": [
+        "implementing or independently reviewing Q00 Baseline and behavioral characterization"
+      ],
+      "summary": "Pin the refactor baseline and capture current journal, CLI and HTTP behavior without modifying production code.",
+      "related": [
+        "ideas.specflow-engine.execution-plans",
+        "ideas.specflow-engine.plan-02",
+        "ideas.specflow-engine.test-plan"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "testing",
+        "workflow",
+        "cli",
+        "runtime"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "hardening",
+        "testing"
+      ]
+    },
+    {
+      "id": "ideas.specflow-engine.e1e2-hardening.q01",
+      "type": "engineering",
+      "title": "Q01 Pure Close journal codec",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/execution-plans/e1-e2-quality-hardening/tasks/Q01-close-journal-codec.md",
+      "read_when": [
+        "implementing or independently reviewing Q01 Pure Close journal codec"
+      ],
+      "summary": "Separate strict Close journal schema and evidence validation from path-safe durable filesystem storage.",
+      "related": [
+        "ideas.specflow-engine.execution-plans",
+        "ideas.specflow-engine.plan-02",
+        "ideas.specflow-engine.test-plan"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "hardening",
+        "journal"
+      ]
+    },
+    {
+      "id": "ideas.specflow-engine.e1e2-hardening.q02",
+      "type": "engineering",
+      "title": "Q02 Consistent Close checkpoint CAS",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/execution-plans/e1-e2-quality-hardening/tasks/Q02-close-checkpoint-cas.md",
+      "read_when": [
+        "implementing or independently reviewing Q02 Consistent Close checkpoint CAS"
+      ],
+      "summary": "Centralize the narrow Close journal CAS publication convention without moving Git effects under the project control lock.",
+      "related": [
+        "ideas.specflow-engine.execution-plans",
+        "ideas.specflow-engine.plan-02",
+        "ideas.specflow-engine.test-plan"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "hardening",
+        "cas"
+      ]
+    },
+    {
+      "id": "ideas.specflow-engine.e1e2-hardening.q03",
+      "type": "engineering",
+      "title": "Q03 Shared Close integration progression",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/execution-plans/e1-e2-quality-hardening/tasks/Q03-close-integration-progression.md",
+      "read_when": [
+        "implementing or independently reviewing Q03 Shared Close integration progression"
+      ],
+      "summary": "Deduplicate common Close integration-phase dispatch while preserving distinct archive and conflict business outcomes.",
+      "related": [
+        "ideas.specflow-engine.execution-plans",
+        "ideas.specflow-engine.plan-02",
+        "ideas.specflow-engine.test-plan"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "hardening",
+        "lifecycle"
+      ]
+    },
+    {
+      "id": "ideas.specflow-engine.e1e2-hardening.q04",
+      "type": "engineering",
+      "title": "Q04 Restore registry dependency direction",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/execution-plans/e1-e2-quality-hardening/tasks/Q04-registry-ownership.md",
+      "read_when": [
+        "implementing or independently reviewing Q04 Restore registry dependency direction"
+      ],
+      "summary": "Remove specification-specific lifecycle orchestration from generic project registry infrastructure.",
+      "related": [
+        "ideas.specflow-engine.execution-plans",
+        "ideas.specflow-engine.plan-02",
+        "ideas.specflow-engine.test-plan"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "hardening",
+        "registry"
+      ]
+    },
+    {
+      "id": "ideas.specflow-engine.e1e2-hardening.q05",
+      "type": "engineering",
+      "title": "Q05 Stable public operation projections",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/execution-plans/e1-e2-quality-hardening/tasks/Q05-public-operation-projections.md",
+      "read_when": [
+        "implementing or independently reviewing Q05 Stable public operation projections"
+      ],
+      "summary": "Present transport-neutral Create/Close results instead of exposing durable internal journals by default.",
+      "related": [
+        "ideas.specflow-engine.execution-plans",
+        "ideas.specflow-engine.plan-02",
+        "ideas.specflow-engine.test-plan"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "cli",
+        "workflow",
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "hardening",
+        "contracts"
+      ]
+    },
+    {
+      "id": "ideas.specflow-engine.e1e2-hardening.q06",
+      "type": "engineering",
+      "title": "Q06 Reusable real-process test support",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/execution-plans/e1-e2-quality-hardening/tasks/Q06-process-test-support.md",
+      "read_when": [
+        "implementing or independently reviewing Q06 Reusable real-process test support"
+      ],
+      "summary": "Consolidate process launch, barrier, termination and cleanup test plumbing while keeping real OS/Git behavior.",
+      "related": [
+        "ideas.specflow-engine.execution-plans",
+        "ideas.specflow-engine.plan-02",
+        "ideas.specflow-engine.test-plan"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "testing"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "hardening",
+        "fixtures"
+      ]
+    },
+    {
+      "id": "ideas.specflow-engine.e1e2-hardening.q07",
+      "type": "engineering",
+      "title": "Q07 Permanent Engine CI smoke and full-regression policy",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/execution-plans/e1-e2-quality-hardening/tasks/Q07-ci-test-policy.md",
+      "read_when": [
+        "implementing or independently reviewing Q07 Permanent Engine CI smoke and full-regression policy"
+      ],
+      "summary": "Make real-Git Engine and CLI/HTTP smoke a reliable recurring PR signal, preserving full cross-platform crash gates.",
+      "related": [
+        "ideas.specflow-engine.execution-plans",
+        "ideas.specflow-engine.plan-02",
+        "ideas.specflow-engine.test-plan"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "testing",
+        "release"
+      ],
+      "tags": [
+        "execution-task",
+        "temporary",
+        "hardening",
+        "ci"
       ]
     },
     {

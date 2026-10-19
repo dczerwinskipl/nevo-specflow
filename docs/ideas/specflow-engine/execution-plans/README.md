@@ -41,6 +41,10 @@ The original Plan 02 E2.T09 optional binding/cleanup placeholder is replaced by 
 
 **Deferred beyond these five plans:** [Multi-instance execution](../multi-instance-execution.md) and its [future task plan](../multi-instance-plan/README.md) are not an E1–E5 acceptance gate. Preserve the distinction between a workflow attempt, one provider Turn and a physical writer claim; do not implement multi-instance dispatch or aggregation in E5.T07. This follow-up plan lives **outside** this disposable tree and must not be removed during E1–E5 cleanup.
 
+## E1/E2 audited architecture hardening (cross-plan follow-up)
+
+After E2.T17 implementation stabilizes, use [E1/E2 quality hardening](e1-e2-quality-hardening/README.md) for the independent PR #53 audit findings F01–F07. The Q00–Q07 tasks cover refactoring, test architecture and permanent CI without adding product features. **T17 functional acceptance and the architecture reference-quality gate remain separate.** These tasks are temporary and must follow the same pre-merge cleanup policy as the five existing plans. They do not add a sixth product foundation or modify Plans 03–05 dependencies.
+
 ## Dispatch semantics
 
 - **Solo / review gate:** run task separately; verify its output and contract before starting dependent task. This is the default for Project Home, authorization, workflow definition changes, durable operations, recovery, Engine↔Runtime handshake and crash-sensitive settlement.

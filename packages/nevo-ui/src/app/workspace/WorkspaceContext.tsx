@@ -352,19 +352,24 @@ export function AppWorkspaceProvider({
 
   // Route/owner scope invalidation is not a user-initiated close: clear even if
   // the old screen has a leave guard. No stale screen may affect the new scope.
+  // That includes a Secondary that is still sliding out after its flow was closed.
   useLayoutEffect(() => {
+    const scopeChanged = currentScope.current !== scopeKey;
     currentScope.current = scopeKey;
-    if (flowRef.current && flowRef.current.scopeKey !== scopeKey) {
+    const staleFlow = flowRef.current !== null && flowRef.current.scopeKey !== scopeKey;
+    if (staleFlow) {
       flowRef.current = null;
       guards.current.clear();
       setFlow(null);
+    }
+    if (staleFlow || scopeChanged) {
       revision.current += 1;
-      setTransition({
-        action: 'close',
-        revision: revision.current,
-        incoming: null,
-        outgoing: null,
-      });
+      const revisionAtChange = revision.current;
+      setTransition((previous) =>
+        staleFlow || previous.outgoing
+          ? { action: 'close', revision: revisionAtChange, incoming: null, outgoing: null }
+          : previous,
+      );
     }
   }, [scopeKey]);
 
@@ -565,20 +570,23 @@ export function AppWorkspaceProvider({
       secondary: currentSurface(visibleFlow),
       secondaryDepth: visibleFlow?.entries.length ?? 0,
       canGoBack: (visibleFlow?.entries.length ?? 0) > 1,
-      transition: visibleFlow
-        ? transition
-        : {
-            action: 'close',
-            revision: transition.revision,
-            incoming: null,
-            outgoing: null,
-          },
+      // A closed flow keeps its own transition so mobile can slide the last Secondary out; only
+      // a flow left behind by another scope must never animate.
+      transition:
+        visibleFlow || flow === null
+          ? transition
+          : {
+              action: 'close',
+              revision: transition.revision,
+              incoming: null,
+              outgoing: null,
+            },
       open,
       back,
       close,
       canLeaveScope,
     }),
-    [visibleFlow, transition, open, back, close, canLeaveScope, currentSurface],
+    [visibleFlow, flow, transition, open, back, close, canLeaveScope, currentSurface],
   );
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;

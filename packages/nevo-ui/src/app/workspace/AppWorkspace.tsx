@@ -551,10 +551,8 @@ function AppWorkspaceRoot({
   const mobileRuntime = useMobileWorkspaceTransition({
     secondaryInstanceKey:
       state.mode === 'stacked' && state.showSecondary ? secondaryPresentation?.key : undefined,
-    transition:
-      state.mode === 'stacked' && state.showSecondary
-        ? secondaryPresentation?.transition
-        : undefined,
+    // Closing the last Secondary leaves no incoming surface, but its outgoing one must still exit.
+    transition: state.mode === 'stacked' ? workspace?.transition : undefined,
   });
   const secondaryRegionRef = useRef<HTMLDivElement>(null);
   const labels = { ...defaultAppWorkspaceLabels, ...labelsProp };
@@ -599,7 +597,9 @@ function AppWorkspaceRoot({
       const target = secondaryRegionRef.current?.querySelector<HTMLElement>(
         '[data-workspace-header-title="true"]',
       );
-      (target ?? secondaryRegionRef.current)?.focus();
+      // The incoming surface is still translated off-screen here; letting focus scroll would shift
+      // the overflow-hidden workspace container against the running transform.
+      (target ?? secondaryRegionRef.current)?.focus({ preventScroll: true });
     });
     return () => cancelAnimationFrame(frame);
   }, [

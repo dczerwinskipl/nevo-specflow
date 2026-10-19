@@ -84,7 +84,6 @@ async function settleArchiveWithoutIntegration(
     },
   });
 }
-}
 
 /**
  * E2.T15: Engine owns the scoped archive commit and the optional linked

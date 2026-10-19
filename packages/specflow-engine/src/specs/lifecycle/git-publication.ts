@@ -1,4 +1,3 @@
-
 import type { SpecFlowEngine } from '../../application';
 import { GitCapabilityError } from '../../git/errors';
 import { publishCloseCheckpoint } from './close-checkpoint';

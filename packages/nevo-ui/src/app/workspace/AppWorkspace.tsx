@@ -599,7 +599,9 @@ function AppWorkspaceRoot({
       const target = secondaryRegionRef.current?.querySelector<HTMLElement>(
         '[data-workspace-header-title="true"]',
       );
-      (target ?? secondaryRegionRef.current)?.focus();
+      // The incoming surface is still translated off-screen here; letting focus scroll would shift
+      // the overflow-hidden workspace container against the running transform.
+      (target ?? secondaryRegionRef.current)?.focus({ preventScroll: true });
     });
     return () => cancelAnimationFrame(frame);
   }, [

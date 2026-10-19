@@ -26,7 +26,7 @@ import {
   requireRecordedDivergentCandidate,
 } from './git-scratch';
 import { requireVerifiedCloseIntegration } from './git-publication';
-import { readCloseJournal, publishCloseJournal } from './journal-store';
+import { readCloseJournal } from './journal-store';
 import { CloseOperationError, type CloseJournal } from './model';
 import { inspectCleanGitWorkspace } from './preflight';
 import { assertResourcesAvailable } from './resources';

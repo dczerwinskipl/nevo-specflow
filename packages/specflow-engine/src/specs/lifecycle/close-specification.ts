@@ -6,17 +6,11 @@ import { readWorkspaceRegistry } from '../../project/workspace-registry';
 import { readWorkspaceSpecification } from '../repository';
 import { archiveSpecificationWithCommit, inspectArchivePhysicalRecovery } from './archive-effects';
 import { prepareCloseGitIntegration } from './git-preparation';
-import {
-  proveAlreadyIntegratedClose,
-  publishCloseGitFastForward,
-  publishDivergentCloseCandidate,
-  requireVerifiedCloseIntegration,
-} from './git-publication';
-import { prepareDivergentCloseCandidate, settleArchivedLinkedConflict } from './git-scratch';
+import { settleArchivedLinkedConflict } from './git-scratch';
 import { readCloseJournal } from './journal-store';
 import { CloseOperationError, type CloseJournal } from './model';
 import { reserveCloseOperation } from './reservation';
-import { disposeReboundWorktree, rebindVerifiedClose } from './worktree-disposal';
+import { advanceCloseIntegration } from './close-integration';
 
 export type CloseSpecificationResult =
   | { readonly status: 'completed'; readonly journal: CloseJournal }
@@ -111,23 +105,7 @@ export async function closeSpecification(
       ? await prepareCloseGitIntegration(engine, request.operationId)
       : await settleArchiveWithoutIntegration(engine, journal);
   }
-  if (journal.stage === 'integration-preparation-initiated') {
-    switch (journal.integration?.relationship) {
-      case 'already-integrated':
-        journal = await proveAlreadyIntegratedClose(engine, request.operationId);
-        break;
-      case 'fast-forward':
-        journal = await publishCloseGitFastForward(engine, request.operationId);
-        break;
-      case 'divergent':
-        journal = await prepareDivergentCloseCandidate(engine, request.operationId);
-        break;
-      default:
-        throw recovery('Integration relationship is missing or unverified.');
-    }
-  }
-  if (journal.stage === 'integration-scratch-candidate')
-    journal = await publishDivergentCloseCandidate(engine, request.operationId);
+  journal = await advanceCloseIntegration(engine, journal);
   if (journal.stage === 'integration-scratch-conflict')
     journal = await settleArchivedLinkedConflict(engine, request.operationId);
   if (journal.stage === 'archived-linked-awaiting-integration') {
@@ -151,12 +129,6 @@ export async function closeSpecification(
       conflictPaths: journal.scratch?.conflictPaths ?? [],
     };
   }
-  if (journal.stage === 'integration-verified') {
-    await requireVerifiedCloseIntegration(engine, request.operationId);
-    journal = await rebindVerifiedClose(engine, request.operationId);
-  }
-  if (journal.stage === 'binding-rebound')
-    journal = await disposeReboundWorktree(engine, request.operationId);
 
   if (journal.stage !== 'completed' || !journal.archive?.committedHead)
     throw recovery('Close is nonterminal; inspect its exact physical effects before recovery.');

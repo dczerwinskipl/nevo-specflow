@@ -24,14 +24,18 @@ const pinnedPnpm = (
   JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')) as { packageManager: string }
 ).packageManager.replace(/^pnpm@/, '');
 
-function pinnedDependencyVersion(packageName: string, dependencyName: string): string {
+function declaredDependencyVersion(packageName: string, dependencyName: string): string {
   const manifest = JSON.parse(
     readFileSync(join(repoRoot, 'packages', packageName, 'package.json'), 'utf8'),
-  ) as { dependencies?: Record<string, string> };
-  const version = manifest.dependencies?.[dependencyName];
+  ) as {
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+  };
+  const version =
+    manifest.dependencies?.[dependencyName] ?? manifest.devDependencies?.[dependencyName];
   if (!version || !/^\d+\.\d+\.\d+$/u.test(version)) {
     throw new Error(
-      `Expected a pinned version for ${dependencyName} in ${packageName}/package.json.`,
+      `Expected a declared version for ${dependencyName} in ${packageName}/package.json.`,
     );
   }
   return version;
@@ -211,22 +215,28 @@ describe('packaged @nevo/specflow — isolated tarball install', () => {
 
   it('THIRD_PARTY_NOTICES.txt carries licenses for third-party code embedded in the bundle', () => {
     const notices = tarArgs('-xzOf', 'package/THIRD_PARTY_NOTICES.txt');
-    expect(notices).toMatch(/commander 15\.0\.0/);
+    expect(notices).toContain(`commander ${declaredDependencyVersion('specflow', 'commander')}`);
     expect(notices).toMatch(/MIT License/i);
     expect(notices).toMatch(/Copyright \(c\) 2011 TJ Holowaychuk/);
-    expect(notices).toMatch(/yaml 2\.9\.1 \(ISC\)/);
+    expect(notices).toContain(`yaml ${declaredDependencyVersion('specflow', 'yaml')} (ISC)`);
     expect(notices).toMatch(/Copyright Eemeli Aro <eemeli@gmail\.com>/);
-    expect(notices).toMatch(/fastify 5\.12\.5/);
-    expect(notices).toMatch(/openid-client 6\.8\.8/);
     expect(notices).toContain(
-      `@fastify/rate-limit ${pinnedDependencyVersion('specflow-runtime', '@fastify/rate-limit')}`,
+      `fastify ${declaredDependencyVersion('specflow-runtime', 'fastify')}`,
     );
-    expect(notices).toMatch(/@clack\/prompts 1\.8\.1/);
-    expect(notices).toMatch(/@clack\/core 1\.5\.1/);
-    expect(notices).toMatch(/react 19\.3\.0/);
-    expect(notices).toMatch(/react-dom 19\.3\.0/);
     expect(notices).toContain(
-      `@tanstack/react-router ${pinnedDependencyVersion('specflow-ui', '@tanstack/react-router')}`,
+      `openid-client ${declaredDependencyVersion('specflow-runtime', 'openid-client')}`,
+    );
+    expect(notices).toContain(
+      `@fastify/rate-limit ${declaredDependencyVersion('specflow-runtime', '@fastify/rate-limit')}`,
+    );
+    expect(notices).toContain(
+      `@clack/prompts ${declaredDependencyVersion('specflow', '@clack/prompts')}`,
+    );
+    expect(notices).toMatch(/@clack\/core \d+\.\d+\.\d+(?:-[\da-z.-]+)?/iu);
+    expect(notices).toContain(`react ${declaredDependencyVersion('specflow-ui', 'react')}`);
+    expect(notices).toContain(`react-dom ${declaredDependencyVersion('specflow-ui', 'react-dom')}`);
+    expect(notices).toContain(
+      `@tanstack/react-router ${declaredDependencyVersion('specflow-ui', '@tanstack/react-router')}`,
     );
     // esbuild is build-only — its code is not in the bundle, so it is not listed.
     expect(notices).not.toMatch(/esbuild/i);

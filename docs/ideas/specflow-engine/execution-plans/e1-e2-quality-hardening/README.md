@@ -43,6 +43,20 @@ related:
 
 **Default execution:** SOLO checkpoint per task, one implementation slice and one independent review before continuing. Q01–Q04 touch closely coupled Engine state and MUST remain sequential. Q05 changes transport contracts, so review CLI/HTTP together. Q07 comes after Q06 so new harness behavior is validated by permanent gates. No parallel writers to lifecycle, registry, Git, CI workflows or test fixtures.
 
+## Q00 implementation evidence
+
+[Q00 pinned behavioral baseline](Q00-baseline.md) and the associated
+`packages/specflow-engine/test/quality-hardening-q00-journals.test.ts`
+characterize current Create/Close validation and contract consumers.
+These additions are **candidate evidence until exact-SHA CI and independent review**;
+Q01 stays blocked until Q00 ACCEPT.
+
+The Engine has not been merged or released. **No backward compatibility,
+format migration, old-version aliases, or adapter shims are required.**
+Characterization is not approval of accidental parser laxity. An intentional
+pre-release tightening must be documented, reviewed and tested, not treated
+as a legacy compatibility obligation.
+
 ## Scope boundaries and behavior preservation
 
 1. Offline Engine, same canonical `specification.yaml`, same stable Spec/Project Home/workspace identities, no implicit primary fallback.

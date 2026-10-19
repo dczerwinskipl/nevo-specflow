@@ -565,20 +565,23 @@ export function AppWorkspaceProvider({
       secondary: currentSurface(visibleFlow),
       secondaryDepth: visibleFlow?.entries.length ?? 0,
       canGoBack: (visibleFlow?.entries.length ?? 0) > 1,
-      transition: visibleFlow
-        ? transition
-        : {
-            action: 'close',
-            revision: transition.revision,
-            incoming: null,
-            outgoing: null,
-          },
+      // A closed flow keeps its own transition so mobile can slide the last Secondary out; only
+      // a flow left behind by another scope must never animate.
+      transition:
+        visibleFlow || flow === null
+          ? transition
+          : {
+              action: 'close',
+              revision: transition.revision,
+              incoming: null,
+              outgoing: null,
+            },
       open,
       back,
       close,
       canLeaveScope,
     }),
-    [visibleFlow, transition, open, back, close, canLeaveScope, currentSurface],
+    [visibleFlow, flow, transition, open, back, close, canLeaveScope, currentSurface],
   );
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;

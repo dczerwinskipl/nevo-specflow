@@ -120,9 +120,20 @@ export const NarrowTransitionsStayAligned: Story = {
       await sampleTransition(canvasElement, click('Todo history')),
     );
     assertCleanTransition('Back', await sampleTransition(canvasElement, click('Back')));
-    assertCleanTransition(
-      'Close',
-      await sampleTransition(canvasElement, click('Close secondary content')),
+    const close = await sampleTransition(canvasElement, click('Close secondary content'));
+    assertCleanTransition('Close', close);
+    const exiting = close.filter((f) =>
+      f.surfaces.some(
+        (s) => s.surface === 'secondary' && s.role === 'outgoing' && s.motion === 'exiting',
+      ),
+    );
+    assert(
+      exiting.length > 0,
+      'Closing the last Secondary must slide it out instead of unmounting',
+    );
+    assert(
+      exiting.every((f) => f.surfaces.some((s) => s.surface === 'primary' && s.interactive)),
+      'Primary must be painted and interactive underneath the exiting Secondary',
     );
   },
 };

@@ -352,19 +352,24 @@ export function AppWorkspaceProvider({
 
   // Route/owner scope invalidation is not a user-initiated close: clear even if
   // the old screen has a leave guard. No stale screen may affect the new scope.
+  // That includes a Secondary that is still sliding out after its flow was closed.
   useLayoutEffect(() => {
+    const scopeChanged = currentScope.current !== scopeKey;
     currentScope.current = scopeKey;
-    if (flowRef.current && flowRef.current.scopeKey !== scopeKey) {
+    const staleFlow = flowRef.current !== null && flowRef.current.scopeKey !== scopeKey;
+    if (staleFlow) {
       flowRef.current = null;
       guards.current.clear();
       setFlow(null);
+    }
+    if (staleFlow || scopeChanged) {
       revision.current += 1;
-      setTransition({
-        action: 'close',
-        revision: revision.current,
-        incoming: null,
-        outgoing: null,
-      });
+      const revisionAtChange = revision.current;
+      setTransition((previous) =>
+        staleFlow || previous.outgoing
+          ? { action: 'close', revision: revisionAtChange, incoming: null, outgoing: null }
+          : previous,
+      );
     }
   }, [scopeKey]);
 

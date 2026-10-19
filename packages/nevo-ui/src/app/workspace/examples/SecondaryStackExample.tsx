@@ -100,15 +100,17 @@ function DemoWorkspace({
 export function SecondaryStackExample({
   width = 1400,
   closeBehavior = 'flow',
+  scopeKey,
 }: {
   width?: number;
   closeBehavior?: 'page' | 'flow';
+  scopeKey?: string | number;
 }) {
   const [store] = useState(createDemoStore);
   const [stacks] = useState(() => createDemoStacks(store));
   return (
     <div style={{ width, maxWidth: '100%', height: 700 }}>
-      <AppWorkspaceProvider>
+      <AppWorkspaceProvider scopeKey={scopeKey}>
         <AppShell
           navigation={<div className="p-5">Demo navigation</div>}
           style={{ height: '100%', width: '100%' }}

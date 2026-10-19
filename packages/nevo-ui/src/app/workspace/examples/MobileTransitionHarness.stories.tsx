@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { useState } from 'react';
 import { SecondaryStackExample } from './SecondaryStackExample';
 
 const meta = {
@@ -173,6 +174,41 @@ export const NarrowRapidTransitionsStayAligned: Story = {
       await tapWhenOnScreen(canvasElement, 'Back');
     });
     assertCleanTransition('Rapid push/back', rapid);
+  },
+};
+
+function ScopeSwitchingHarness() {
+  const [scope, setScope] = useState('specification-a');
+  return (
+    <>
+      <button onClick={() => setScope('specification-b')} type="button">
+        Switch specification
+      </button>
+      <SecondaryStackExample closeBehavior="page" scopeKey={scope} width={390} />
+    </>
+  );
+}
+
+export const NarrowScopeChangeDropsExitingSecondary: Story = {
+  tags: ['contract'],
+  render: () => <ScopeSwitchingHarness />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const outgoing = () =>
+      canvasElement.querySelector(
+        '[data-workspace-surface="secondary"][data-workspace-role="outgoing"]',
+      );
+    await userEvent.click(canvas.getByRole('button', { name: 'Review navigation' }));
+    await sampleTransition(canvasElement, async () => undefined);
+    await userEvent.click(canvas.getByRole('button', { name: 'Close secondary content' }));
+    assert(outgoing(), 'Closing the last Secondary must start sliding it out');
+
+    // The specification changes while the closed Secondary is still sliding out.
+    canvas.getByRole('button', { name: 'Switch specification' }).click();
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    assert(
+      !outgoing(),
+      'A Secondary of the previous scope must not keep animating over the new scope',
+    );
   },
 };
 

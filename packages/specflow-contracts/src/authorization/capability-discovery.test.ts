@@ -32,7 +32,13 @@ describe('capability discovery contracts', () => {
     expect(
       Value.Check(responseSchema, {
         resource: { name: 'spec', scope: { specId: 'S1' } },
-        capabilities: { view: true, create: false, manage: true },
+        capabilities: {
+          view: true,
+          create: false,
+          manage: true,
+          'close-worktree': false,
+          'close-specification': false,
+        },
       }),
     ).toBe(true);
 
@@ -47,7 +53,13 @@ describe('capability discovery contracts', () => {
   it('keeps a feature-specific response type without a central resource union', () => {
     const response: CapabilityDiscoveryResponseFor<typeof SpecCapabilities> = {
       resource: { name: 'spec', scope: {} },
-      capabilities: { view: true, create: false, manage: false },
+      capabilities: {
+        view: true,
+        create: false,
+        manage: false,
+        'close-worktree': false,
+        'close-specification': false,
+      },
     };
 
     expect(response.capabilities.manage).toBe(false);

@@ -72,7 +72,13 @@ describe('authorization HTTP API', () => {
       });
       expect(spec.json<CapabilityDiscoveryResponse>()).toEqual({
         resource: { name: 'spec', scope: { workspaceId: 'W1', specId: 'S1' } },
-        capabilities: { view: true, create: true, manage: true },
+        capabilities: {
+          view: true,
+          create: true,
+          manage: true,
+          'close-worktree': true,
+          'close-specification': true,
+        },
       });
 
       const sessions = await app.inject({
@@ -101,6 +107,8 @@ describe('authorization HTTP API', () => {
         view: false,
         create: false,
         manage: false,
+        'close-worktree': false,
+        'close-specification': false,
       });
     } finally {
       await app.close();
@@ -128,6 +136,8 @@ describe('authorization HTTP API', () => {
         view: true,
         create: false,
         manage: false,
+        'close-worktree': false,
+        'close-specification': false,
       });
 
       const global = await app.inject({
@@ -138,7 +148,13 @@ describe('authorization HTTP API', () => {
       });
       expect(global.json<CapabilityDiscoveryResponse>()).toEqual({
         resource: { name: 'spec', scope: {} },
-        capabilities: { view: false, create: false, manage: false },
+        capabilities: {
+          view: false,
+          create: false,
+          manage: false,
+          'close-worktree': false,
+          'close-specification': false,
+        },
       });
     } finally {
       await app.close();
@@ -219,6 +235,8 @@ describe('authorization HTTP API', () => {
         view: true,
         create: false,
         manage: false,
+        'close-worktree': false,
+        'close-specification': false,
       });
     } finally {
       await app.close();
@@ -242,6 +260,8 @@ describe('authorization HTTP API', () => {
         view: true,
         create: true,
         manage: true,
+        'close-worktree': true,
+        'close-specification': true,
       });
     } finally {
       await app.close();

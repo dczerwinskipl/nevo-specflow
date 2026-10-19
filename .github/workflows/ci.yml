@@ -2,6 +2,9 @@ name: CI
 
 on:
   workflow_dispatch:
+  # Nightly comprehensive integration suite on the default branch.
+  schedule:
+    - cron: "17 2 * * *"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
   push:
@@ -74,10 +77,9 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup
 
-      # Resolve the same Turbo task graph used for execution, then fan only package
-      # test tasks out into independent GitHub jobs. On PRs, --affected selects changed
-      # workspaces plus downstream dependents from the declared workspace graph; main /
-      # release exercise every package test task.
+      # Resolve the Turbo task graph and fan out independent package jobs.
+      # PRs select affected workspaces, then defer known process/browser-heavy packages;
+      # main, release, scheduled and manual runs execute the full package suite.
       - name: Resolve package tests
         id: plan
         shell: bash
@@ -100,7 +102,19 @@ jobs:
             ),
           ].sort();
 
-          const tests = packages.map((packageName) => ({
+          // These packages run subprocess/transport/browser integration tests.
+          // Keep them for main/nightly/manual runs, not the PR feedback loop.
+          const deferredOnPr = new Set([
+            '@nevo/specflow',
+            '@nevo/specflow-runtime',
+            'nevo-repo-storybook',
+          ]);
+          const selectedPackages =
+            process.env.GITHUB_EVENT_NAME === 'pull_request'
+              ? packages.filter((packageName) => !deferredOnPr.has(packageName))
+              : packages;
+
+          const tests = selectedPackages.map((packageName) => ({
             package: packageName,
             label: packageName.startsWith('nevo-repo-')
               ? `tool/${packageName.slice('nevo-repo-'.length)}`
@@ -129,7 +143,11 @@ jobs:
       - name: Install Playwright Chromium
         if: matrix.package == 'nevo-figma-import' || matrix.package == 'nevo-repo-storybook'
         run: pnpm --filter "${{ matrix.package }}" exec playwright install --with-deps chromium
-      - name: Test ${{ matrix.package }}
+      - name: Engine unit tests (PR only)
+        if: github.event_name == 'pull_request' && matrix.package == '@nevo/specflow-engine'
+        run: pnpm --filter @nevo/specflow-engine test:unit
+      - name: Test ${{ matrix.package }} (full on main / nightly)
+        if: github.event_name != 'pull_request' || matrix.package != '@nevo/specflow-engine'
         env:
           PACKAGE: ${{ matrix.package }}
         run: pnpm exec turbo run test --filter="$PACKAGE"
@@ -162,9 +180,11 @@ jobs:
 
           echo "Package tests passed (or no package test task was affected)."
 
+  # Packing, installed CLI and cross-OS smoke tests are integration tests:
+  # run after merge, nightly or explicitly via workflow_dispatch.
   packaged-product:
     name: product smoke (${{ matrix.os }})
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    if: github.event_name != 'pull_request'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -181,7 +201,7 @@ jobs:
   verify-product-smoke:
     name: product smoke
     needs: packaged-product
-    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: always() && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Verify product smoke matrix

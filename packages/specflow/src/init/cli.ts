@@ -1,13 +1,20 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
 import { relative } from 'node:path';
 
+import {
+  bootstrapProjectHome,
+  assertPrimaryGitCheckout,
+  resolveGitCheckoutLayout,
+  type GitCheckoutLayout,
+} from '@nevo/specflow-engine';
 import {
   initRuntime,
   type RuntimeInitContribution,
   type RuntimeSetupUi,
 } from '@nevo/specflow-runtime';
 import { Command } from 'commander';
-
-import { resolveProjectLayout, type ProjectLayout } from '../project/layout';
 
 import {
   assertProjectCanInitialize,
@@ -16,11 +23,13 @@ import {
   type InitializeProjectResult,
 } from './initialize-project';
 
+const gitProcess = promisify(execFile);
+
 export interface ProjectInitCommandContext {
   readonly cwd: string;
   readonly stdout: (line: string) => void;
   readonly ui?: RuntimeSetupUi;
-  readonly resolveLayout?: (cwd: string) => Promise<ProjectLayout>;
+  readonly resolveLayout?: (cwd: string) => Promise<GitCheckoutLayout>;
   readonly initRuntime?: (options: { ui: RuntimeSetupUi }) => Promise<RuntimeInitContribution>;
   readonly initialize?: (options: InitializeProjectOptions) => Promise<InitializeProjectResult>;
 }
@@ -34,18 +43,55 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
         throw new Error('Interactive project initialization is not available in this CLI context.');
       }
 
-      const layout = await (context.resolveLayout ?? resolveProjectLayout)(context.cwd);
+      const layout = await (context.resolveLayout ?? resolveGitCheckoutLayout)(context.cwd);
+      // Reject linked worktrees before asking questions or mutating configuration.
+      await assertPrimaryGitCheckout(layout.root);
       await assertProjectCanInitialize(layout);
 
       const runtime = await (context.initRuntime ?? initRuntime)({ ui });
+      const gitEnabled = await ui.confirm(
+        'Enable managed Git worktrees and lifecycle operations?',
+        true,
+      );
+      let gitConfig: { enabled: boolean; integrationTargetBranch?: string } = { enabled: false };
+      if (gitEnabled) {
+        const currentBranch = (
+          await gitProcess('git', ['symbolic-ref', '--quiet', '--short', 'HEAD'], {
+            cwd: layout.root,
+          })
+        ).stdout.trim();
+        const integrationTargetBranch = (
+          await ui.input('Branch receiving integrated worktrees', currentBranch)
+        ).trim();
+        if (!integrationTargetBranch) throw new Error('Git integration target branch is required.');
+        // Validate the exact committed ref before initialization; do not
+        // silently substitute a workstation-local default on another machine.
+        try {
+          await gitProcess('git', ['check-ref-format', '--branch', integrationTargetBranch], {
+            cwd: layout.root,
+          });
+          await gitProcess(
+            'git',
+            ['show-ref', '--verify', 'refs/heads/' + integrationTargetBranch],
+            { cwd: layout.root },
+          );
+        } catch {
+          throw new Error('Integration target must be an existing, valid local Git branch.');
+        }
+        gitConfig = { enabled: true, integrationTargetBranch };
+      }
       const contribution = {
-        projectConfig: { runtime: runtime.projectConfig },
+        projectConfig: { runtime: runtime.projectConfig, git: gitConfig },
         localConfig: { runtime: runtime.localConfig },
       };
 
       ui.note(
         [
           ...runtime.summary,
+          'Git worktrees: ' + (gitConfig.enabled ? 'enabled' : 'disabled'),
+          ...(gitConfig.integrationTargetBranch
+            ? ['Integration branch: ' + gitConfig.integrationTargetBranch]
+            : []),
           '',
           `Project config: ${relative(layout.root, layout.projectConfigPath)}`,
           `Local config: ${relative(layout.root, layout.localConfigPath)}`,
@@ -64,6 +110,10 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
         layout,
         contribution,
       });
+
+      // Config is published before home designation. On failure, keep any
+      // persisted marker/registry for explicit recovery; never reset identity.
+      await bootstrapProjectHome(result.root);
 
       context.stdout('Initialized Nevo SpecFlow.');
       context.stdout(`Project config: ${relative(result.root, result.projectConfigPath)}`);

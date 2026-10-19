@@ -1,0 +1,33 @@
+name: Temporary T17 Platform Gate
+on:
+  push:
+    branches:
+      - feature/specflow-engine-foundation
+permissions:
+  contents: read
+jobs:
+  lifecycle-full:
+    name: Lifecycle full (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Toolchain
+        run: |
+          node --version
+          git --version
+          pnpm --version
+      - name: Real filesystem and lifecycle regression
+        run: pnpm --filter @nevo/specflow-engine test:filesystem:full
+      - name: Build CLI and Runtime test dependencies
+        run: pnpm exec turbo run build --filter=@nevo/specflow-runtime --filter=@nevo/specflow
+      - name: Runtime adapter tests (isolated single worker)
+        run: pnpm --filter @nevo/specflow-runtime exec vitest run --maxWorkers=1 --no-file-parallelism
+      - name: CLI tests (isolated single worker)
+        run: pnpm --filter @nevo/specflow exec vitest run --maxWorkers=1 --no-file-parallelism

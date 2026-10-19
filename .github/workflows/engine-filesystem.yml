@@ -1,0 +1,36 @@
+name: Engine filesystem integration
+
+on:
+  # Full OS regression is NOT a PR gate: it runs after merge, nightly, or manually.
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"
+  push:
+    branches: [main]
+    paths:
+      - "packages/specflow-engine/**"
+      - ".github/workflows/engine-filesystem.yml"
+
+# Never cancel an in-flight main/nightly crash-recovery regression.
+concurrency:
+  group: engine-filesystem-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  engine-filesystem-full:
+    name: engine filesystem full (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Full real-Git, cross-process and crash/recovery regression
+        run: pnpm --filter @nevo/specflow-engine test:filesystem:full

@@ -1,0 +1,34 @@
+name: Temporary PR53 OS performance discovery
+on:
+  push:
+    branches: [ci/pr53-os-perf-discovery]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  profile:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-26, windows-2025]
+    name: OS perf discovery (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Process and Git microbenchmark
+        run: node tools/perf-diagnostic.mjs
+      - uses: ./.github/actions/setup
+      - name: Toolchain
+        run: |
+          node --version
+          git --version
+          pnpm --version
+      - name: Baseline no-Git test
+        run: pnpm --filter @nevo/specflow-engine exec vitest run test/version-control-policy.test.ts --testTimeout=20000 --maxWorkers=1 --no-file-parallelism --reporter=verbose
+      - name: Targeted durable-create regression
+        run: pnpm --filter @nevo/specflow-engine exec vitest run test/durable-create.test.ts --testTimeout=20000 --maxWorkers=1 --no-file-parallelism --reporter=verbose
+      - name: Targeted SIGKILL regression
+        run: pnpm --filter @nevo/specflow-engine exec vitest run test/close-sigkill.test.ts --testTimeout=20000 --maxWorkers=1 --no-file-parallelism --reporter=verbose

@@ -2203,6 +2203,34 @@
       ]
     },
     {
+      "id": "ideas.specflow-engine.e1e2-hardening.q00-baseline",
+      "type": "engineering",
+      "title": "Q00 current E1/E2 behavioral baseline",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/execution-plans/e1-e2-quality-hardening/Q00-baseline.md",
+      "read_when": [
+        "implementing or reviewing E1/E2 Q01 through Q07"
+      ],
+      "summary": "Pinned pre-refactor journal, Git lifecycle and transport contract evidence, with executable characterization and exact-SHA verification requirements.",
+      "related": [
+        "ideas.specflow-engine.e1e2-hardening",
+        "ideas.specflow-engine.e1e2-hardening.q00"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "testing",
+        "workflow",
+        "cli",
+        "runtime"
+      ],
+      "tags": [
+        "execution-plan",
+        "temporary",
+        "hardening",
+        "baseline"
+      ]
+    },
+    {
       "id": "ideas.specflow-engine.e1e2-hardening.q01",
       "type": "engineering",
       "title": "Q01 Pure Close journal codec",

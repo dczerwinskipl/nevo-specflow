@@ -26,12 +26,12 @@ related:
 ## Required change
 
 - Move *pure* current-format parsing/structural/semantic predicates to `specs/lifecycle/journal-codec.ts` (or equally narrow module). Keep read/write/lstat/realpath/atomic persistence and error translation in `journal-store.ts`.
-- Give all current stages and optional evidence a readable, exhaustive validation path. Preserve strict structural checks, resource derivation and invalid-stage rejection. Do not normalize or tolerate old journal formats.
-- No change to serialized bytes, stage names, mutating effects, error-code contract, lock/CAS or recovery authority. Avoid introducing a general state-machine library.
+- Give supported stages and optional evidence a readable, exhaustive validation path. Preserve strict structural checks, resource derivation and invalid-stage rejection. Do not add legacy-format normalization, aliasing or fallback.
+- Existing journal bytes, stages and error codes provide a **pre-refactor comparison baseline**, not a backward-compatibility requirement. Intentional changes to version, serialized format, stages and internal contracts are allowed before release without migration; document the difference, update affected consumers and cover it with explicit tests. Preserve durable intent, fail-closed rejection, CAS, idempotency, side-effect ownership and recovery authority. Avoid a general state-machine library.
 
 ## Acceptance/proof
 
-1. Differential fixture corpus from Q00: all valid stages stay accepted; every forgery, missing required evidence, unexpected key/version, wrong resource claim, mismatched archive/scratch/terminal proof stays rejected.
-2. Read/write/roundtrip and tampered actual file tests show identical outcomes and unchanged durable state on rejection.
+1. Use the Q00 fixture corpus to detect changes. Every supported legitimate stage remains valid, and every forgery, missing required evidence, wrong resource claim, mismatched archive/scratch/terminal proof remains rejected. Tighten unintended acceptance of unknown keys/versions if needed; record each deliberate pre-release contract change explicitly rather than preserving the defect.
+2. Read/write/roundtrip and tampered actual file tests show equivalent outcomes except for reviewed, intentional contract corrections; rejection must not mutate durable state.
 3. Confirm production store shrinks to persistence ownership without stage policy hidden in IO helpers.
 4. Run full relevant lifecycle/real-Git regression (including process cases), then independent review. No T17 LC regrading without current-SHA execution.

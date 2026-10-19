@@ -19,7 +19,7 @@ related:
 
 **Purpose:** address the independent architecture audit of [PR #53](https://github.com/dczerwinskipl/nevo-specflow/pull/53), without extending E2 functionality or re-opening T17 crash/recovery work. The source audit is pinned to [`d3770c575b89a8e27e58e9bd468f9febacde2588`](https://github.com/dczerwinskipl/nevo-specflow/commit/d3770c575b89a8e27e58e9bd468f9febacde2588), prior to the history-only squash to `abada44cd32d78a58cb533c5f815fe1ab8149de0`. The tree of the squash commit is identical to the audited implementation tree. Future implementers **must re-check the actual working HEAD**, because audit links and test results are commit-specific.
 
-**Status:** PROPOSED, NOT IMPLEMENTED; owner selects the merge blockers. This is a disposable execution plan, under the same pre-merge deletion rule as the rest of `execution-plans/`. Do not promote it into an ADR without the owner's decision.
+**Status:** Q00 implementation pending exact-HEAD verification; Q01–Q07 not implemented. Owner selects the merge blockers. This is a disposable execution plan, under the same pre-merge deletion rule as the rest of `execution-plans/`. Do not promote it into an ADR without the owner's decision.
 
 ## Separate decision gates
 
@@ -60,7 +60,7 @@ as a legacy compatibility obligation.
 ## Scope boundaries and behavior preservation
 
 1. Offline Engine, same canonical `specification.yaml`, same stable Spec/Project Home/workspace identities, no implicit primary fallback.
-2. Preserve **exact current journal formats** and strict validation. No migration or compatibility code for unreleased prototype variants.
+2. Treat current Create/Close journal formats as a **comparison baseline, not a compatibility contract**. Deliberate, reviewed changes to format, version, stages and internal APIs are permitted without migrations or adapters for unreleased E1/E2. Preserve fail-closed validation, durable intent, CAS, idempotency and safe recovery.
 3. Keep durable intent **before** every Git/filesystem effect, and preserve unknown-outcome fencing; do not automatically replay uncertain Git.
 4. Preserve Project Home short control lock, journal CAS, shared-resource reservations and protected registry generations. Never run Git subprocesses inside a control lock.
 5. Verify physical Git HEAD, index, worktree, immutable branch refs and management identity before successful recovery, integration, rebind or disposal.

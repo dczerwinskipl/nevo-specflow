@@ -35,3 +35,38 @@ related:
 2. Read/write/roundtrip and tampered actual file tests show equivalent outcomes except for reviewed, intentional contract corrections; rejection must not mutate durable state.
 3. Confirm production store shrinks to persistence ownership without stage policy hidden in IO helpers.
 4. Run full relevant lifecycle/real-Git regression (including process cases), then independent review. No T17 LC regrading without current-SHA execution.
+
+## Implementation checkpoint (candidate for independent review)
+
+Work commenced at the owner's direction on pre-change HEAD
+`a799a2fc0aa7b509d82c0d3fda8cd68296065da3`, while Q00's platform CI
+was still queued. This permits implementation, **not** premature Q00 or Q01 ACCEPT.
+
+- Extracted the existing deterministic Close validation from
+  `specs/lifecycle/journal-store.ts` into `specs/lifecycle/journal-codec.ts`.
+  The storage module retains directory/symlink checks, JSON parsing, atomic
+  publication and `CLOSE_JOURNAL_CORRUPT` error translation.
+- The validation body was compared mechanically with the original and is
+  unchanged apart from naming the shared UUID regex and replacing an outdated
+  T11 comment. No Close stage, durable journal shape, Git effect, CAS, registry,
+  transport contract, or recovery rule was deliberately changed.
+- Focused new boundary coverage:
+  `test/quality-hardening-q01-codec.test.ts` verifies a real reserved Close
+  checkpoint, rejects forged policy/resource/stage/identity records at both
+  codec and store boundaries, and checks that rejected writes leave journal
+  bytes, Git HEAD, and registry revision unchanged.
+- Differential stages/roundtrip/tampering fixtures remain in
+  `test/quality-hardening-q00-journals.test.ts`. The existing lifecycle,
+  real-Git, process and crash recovery tests remain the safety gate.
+- Current known parser inconsistencies (model-only `recovery-required` stage
+  and permissive unknown top-level fields) are **not** fixed by this extraction.
+  Their characterization does not create a backward-compatibility obligation;
+  changing them requires an explicit, reviewed correctness decision.
+
+**Verification not yet claimed:** `pnpm --filter @nevo/specflow-engine
+test:filesystem:full`, `pnpm --filter @nevo/specflow-engine test:unit`,
+TypeScript/format checks, and full Ubuntu/Windows/macOS platform gates must
+run on the actual Q01 commit SHA. No local PASS is asserted. The independent
+reviewer should capture the resulting HEAD and check this report against the
+actual source and platform results.
+

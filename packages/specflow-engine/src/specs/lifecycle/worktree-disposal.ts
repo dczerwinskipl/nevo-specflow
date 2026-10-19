@@ -1,11 +1,10 @@
-import { isDeepStrictEqual } from 'node:util';
 import { lstat, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import type { SpecFlowEngine } from '../../application';
 import { executeGitMutation } from '../../git/mutation';
 import { executeGit } from '../../git/process';
-import { withProjectControlLock } from '../../project/control-lock';
+import { publishCloseCheckpoint } from './close-checkpoint';
 import {
   inspectRegisteredWorkspace,
   readWorkspaceRegistry,
@@ -69,19 +68,15 @@ async function stage(
   prior: CloseJournal,
   next: CloseJournal,
 ): Promise<CloseJournal> {
-  return withProjectControlLock(engine.context, async () => {
-    const observed = await readCloseJournal(engine.context, prior.plan.operationId);
-    if (!observed || !isDeepStrictEqual(observed, prior))
-      throw conflict('Concurrent Close journal transition.');
-    await assertResourcesAvailable(engine.context, prior.plan.resources, {
-      kind: 'close',
-      operationId: prior.plan.operationId,
-    });
-    await publishCloseJournal(engine.context, next);
-    const reread = await readCloseJournal(engine.context, prior.plan.operationId);
-    if (!reread || !isDeepStrictEqual(reread, next))
-      throw recovery('Close state checkpoint did not persist.');
-    return reread;
+  return publishCloseCheckpoint(engine, prior, next, {
+    onConflict: 'Concurrent Close journal transition.',
+    onReadbackFailure: 'Close state checkpoint did not persist.',
+    verifyCurrent: async () => {
+      await assertResourcesAvailable(engine.context, prior.plan.resources, {
+        kind: 'close',
+        operationId: prior.plan.operationId,
+      });
+    },
   });
 }
 async function assertPublication(engine: SpecFlowEngine, record: CloseJournal): Promise<void> {

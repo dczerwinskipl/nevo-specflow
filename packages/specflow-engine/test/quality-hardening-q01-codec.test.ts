@@ -11,7 +11,9 @@ import {
   withProjectControlLock,
   type CloseJournal,
 } from '../src/testing';
+import { publishCloseCheckpoint } from '../src/specs/lifecycle/close-checkpoint';
 import { isCloseJournal } from '../src/specs/lifecycle/journal-codec';
+import { readWorkspaceRegistry } from '../src/project/workspace-registry';
 import {
   closeJournalPath,
   publishCloseJournal,
@@ -106,5 +108,44 @@ describe('Q01 pure Close journal codec and durable store boundary', () => {
     expect((await engine.readRegistry()).revision).toBe(registryRevision);
     expect(git(root, 'rev-parse', 'HEAD')).toBe(head);
     expect(git(root, 'status', '--porcelain')).toBe('');
+
+    // Structural CAS only: no archive effect or physical Git operation is
+    // simulated by this fixture. Full lifecycle tests verify those effects.
+    const proposed: CloseJournal = {
+      ...journal,
+      stage: 'archive-initiated',
+      archive: {
+        sourceCommit: journal.plan.source.head,
+        sourcePath: 'specs/active/' + journal.plan.slug,
+        destinationPath: 'specs/archive/' + journal.plan.slug,
+        files: [
+          {
+            relativePath: 'specs/active/' + journal.plan.slug + '/specification.yaml',
+            sha256: 'a'.repeat(64),
+          },
+        ],
+        archivedManifestSha256: 'b'.repeat(64),
+      },
+    };
+    expect(isCloseJournal(context, proposed, operationId)).toBe(true);
+    const commit = () =>
+      publishCloseCheckpoint(engine, journal, proposed, {
+        onConflict: 'Stale Close journal.',
+        onReadbackFailure: 'Lost durable Close journal.',
+        verifyCurrent: async (current) => {
+          expect(current).toEqual(journal);
+          expect((await readWorkspaceRegistry(context)).revision).toBe(registryRevision);
+        },
+      });
+    const competing = await Promise.allSettled([commit(), commit()]);
+    expect(competing.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    const stale = competing.find((result) => result.status === 'rejected');
+    expect(stale).toMatchObject({
+      status: 'rejected',
+      reason: { code: 'CLOSE_CONFLICT' },
+    });
+    expect(await readCloseJournal(context, operationId)).toEqual(proposed);
+    expect(git(root, 'rev-parse', 'HEAD')).toBe(head);
+    expect((await engine.readRegistry()).revision).toBe(registryRevision);
   }, 120000);
 });

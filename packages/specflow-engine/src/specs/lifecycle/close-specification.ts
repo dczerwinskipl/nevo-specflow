@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 
 import type { SpecFlowEngine } from '../../application';
-import { withProjectControlLock } from '../../project/control-lock';
+import { publishCloseCheckpoint } from './close-checkpoint';
 import { readWorkspaceRegistry } from '../../project/workspace-registry';
 import { readWorkspaceSpecification } from '../repository';
 import { archiveSpecificationWithCommit, inspectArchivePhysicalRecovery } from './archive-effects';
@@ -13,7 +13,7 @@ import {
   requireVerifiedCloseIntegration,
 } from './git-publication';
 import { prepareDivergentCloseCandidate, settleArchivedLinkedConflict } from './git-scratch';
-import { publishCloseJournal, readCloseJournal } from './journal-store';
+import { readCloseJournal } from './journal-store';
 import { CloseOperationError, type CloseJournal } from './model';
 import { reserveCloseOperation } from './reservation';
 import { disposeReboundWorktree, rebindVerifiedClose } from './worktree-disposal';
@@ -68,26 +68,22 @@ async function settleArchiveWithoutIntegration(
   )
     throw recovery('Canonical binding changed before archive-only settlement.');
   await assertArchivedAt(journal.plan.source.root, journal.plan.specId);
-  return withProjectControlLock(engine.context, async () => {
-    const current = await readCloseJournal(engine.context, journal.plan.operationId);
-    const latest = await readWorkspaceRegistry(engine.context);
-    if (
-      !current ||
-      !isDeepStrictEqual(current, journal) ||
-      latest.revision !== journal.plan.registryRevision
-    )
-      throw recovery('Archive settlement lost its pinned journal or registry.');
-    const next: CloseJournal = {
-      ...journal,
-      stage: 'completed',
-      outcome: journal.plan.source.instanceId ? 'archive-only-closed' : 'archived-in-primary',
-    };
-    await publishCloseJournal(engine.context, next);
-    const stored = await readCloseJournal(engine.context, journal.plan.operationId);
-    if (!stored || !isDeepStrictEqual(stored, next))
-      throw recovery('Archive settlement was not durable.');
-    return stored;
+  const next: CloseJournal = {
+    ...journal,
+    stage: 'completed',
+    outcome: journal.plan.source.instanceId ? 'archive-only-closed' : 'archived-in-primary',
+  };
+  return publishCloseCheckpoint(engine, journal, next, {
+    onConflict: 'Archive settlement lost its pinned journal or registry.',
+    onConflictCode: 'CLOSE_RECOVERY_REQUIRED',
+    onReadbackFailure: 'Archive settlement was not durable.',
+    verifyCurrent: async () => {
+      const latest = await readWorkspaceRegistry(engine.context);
+      if (latest.revision !== journal.plan.registryRevision)
+        throw recovery('Archive settlement lost its pinned journal or registry.');
+    },
   });
+}
 }
 
 /**

@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { isDeepStrictEqual } from 'node:util';
 import { lstat, mkdir, open, readFile, readdir, realpath } from 'node:fs/promises';
 
 import { executeGit } from '../../git/process';
@@ -10,7 +9,7 @@ import type { SpecFlowEngine } from '../../application';
 import { readWorkspaceSpecification } from '../repository';
 import { GitCapabilityError } from '../../git/errors';
 import { isGitIgnored } from '../../project/git-checkout';
-import { withProjectControlLock } from '../../project/control-lock';
+import { publishCloseCheckpoint } from './close-checkpoint';
 import { readWorkspaceRegistry } from '../../project/workspace-registry';
 import {
   createDetachedIntegrationCheckout,
@@ -21,7 +20,7 @@ import {
 } from '../../version-control/git/integration-scratch';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import { inspectCloseGitIntegration } from './git-integration';
-import { publishCloseJournal, readCloseJournal } from './journal-store';
+import { readCloseJournal } from './journal-store';
 import { CloseOperationError, type CloseJournal, type CloseIntegrationScratch } from './model';
 
 const OWNER_MARKER = '.nevo/local/state/integration-scratch-owner.json';
@@ -165,28 +164,20 @@ async function publishScratchStage(
   before: CloseJournal,
   after: CloseJournal,
 ): Promise<CloseJournal> {
-  return withProjectControlLock(engine.context, async () => {
-    const current = await readCloseJournal(engine.context, before.plan.operationId);
-    if (!current || !isDeepStrictEqual(current, before)) {
-      throw conflict('Close scratch journal changed during candidate preparation.');
-    }
-    const registry = await readWorkspaceRegistry(engine.context);
-    if (registry.revision !== before.plan.registryRevision) {
-      throw conflict('Workspace registry changed since Close reservation.');
-    }
-    const policy = await readProjectGitPolicy(engine.context);
-    if (
-      policy.revision !== before.plan.configRevision ||
-      policy.policy.integrationTargetBranch !== before.plan.targetBranch
-    ) {
-      throw conflict('Integration target policy changed since Close reservation.');
-    }
-    await publishCloseJournal(engine.context, after);
-    const verified = await readCloseJournal(engine.context, before.plan.operationId);
-    if (!verified || !isDeepStrictEqual(verified, after)) {
-      throw recovery('Scratch checkpoint cannot be proved durable.');
-    }
-    return verified;
+  return publishCloseCheckpoint(engine, before, after, {
+    onConflict: 'Close scratch journal changed during candidate preparation.',
+    onReadbackFailure: 'Scratch checkpoint cannot be proved durable.',
+    verifyCurrent: async () => {
+      const registry = await readWorkspaceRegistry(engine.context);
+      if (registry.revision !== before.plan.registryRevision)
+        throw conflict('Workspace registry changed since Close reservation.');
+      const policy = await readProjectGitPolicy(engine.context);
+      if (
+        policy.revision !== before.plan.configRevision ||
+        policy.policy.integrationTargetBranch !== before.plan.targetBranch
+      )
+        throw conflict('Integration target policy changed since Close reservation.');
+    },
   });
 }
 

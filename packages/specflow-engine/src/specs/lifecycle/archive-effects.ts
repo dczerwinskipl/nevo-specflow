@@ -8,14 +8,14 @@ import { parse, stringify } from 'yaml';
 import type { SpecFlowEngine } from '../../application';
 import { executeGitMutation } from '../../git/mutation';
 import { executeGit } from '../../git/process';
-import { withProjectControlLock } from '../../project/control-lock';
+import { publishCloseCheckpoint } from './close-checkpoint';
 import {
   inspectRegisteredWorkspace,
   readWorkspaceRegistry,
 } from '../../project/workspace-registry';
 import { inspectCleanGitWorkspace } from './preflight';
 import { disabledIntegrationHooksDirectory } from './git-scratch';
-import { publishCloseJournal, readCloseJournal } from './journal-store';
+import { readCloseJournal } from './journal-store';
 import {
   CloseOperationError,
   type CloseJournal,
@@ -122,18 +122,15 @@ async function publish(
   old: CloseJournal,
   next: CloseJournal,
 ): Promise<CloseJournal> {
-  return withProjectControlLock(engine.context, async () => {
-    const current = await readCloseJournal(engine.context, old.plan.operationId);
-    if (!current || !isDeepStrictEqual(current, old))
-      throw failure('Concurrent Close archive journal modification.');
-    const registry = await readWorkspaceRegistry(engine.context);
-    if (registry.revision !== old.plan.registryRevision)
-      throw failure('Registry revision changed during archival.');
-    await publishCloseJournal(engine.context, next);
-    const stored = await readCloseJournal(engine.context, old.plan.operationId);
-    if (!stored || !isDeepStrictEqual(stored, next))
-      throw failure('Archive journal checkpoint was not durable.');
-    return stored;
+  return publishCloseCheckpoint(engine, old, next, {
+    onConflict: 'Concurrent Close archive journal modification.',
+    onConflictCode: 'CLOSE_RECOVERY_REQUIRED',
+    onReadbackFailure: 'Archive journal checkpoint was not durable.',
+    verifyCurrent: async () => {
+      const registry = await readWorkspaceRegistry(engine.context);
+      if (registry.revision !== old.plan.registryRevision)
+        throw failure('Registry revision changed during archival.');
+    },
   });
 }
 

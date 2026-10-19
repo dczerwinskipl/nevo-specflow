@@ -1,8 +1,7 @@
-import { isDeepStrictEqual } from 'node:util';
 
 import type { SpecFlowEngine } from '../../application';
 import { GitCapabilityError } from '../../git/errors';
-import { withProjectControlLock } from '../../project/control-lock';
+import { publishCloseCheckpoint } from './close-checkpoint';
 import {
   inspectRegisteredWorkspace,
   readWorkspaceRegistry,
@@ -19,7 +18,7 @@ import {
   disabledIntegrationHooksDirectory,
   requireRecordedDivergentCandidate,
 } from './git-scratch';
-import { publishCloseJournal, readCloseJournal } from './journal-store';
+import { readCloseJournal } from './journal-store';
 import { CloseOperationError, type CloseJournal } from './model';
 import { inspectCleanGitWorkspace } from './preflight';
 
@@ -53,18 +52,10 @@ async function persistStage(
   previous: CloseJournal,
   next: CloseJournal,
 ): Promise<CloseJournal> {
-  return withProjectControlLock(engine.context, async () => {
-    const current = await readCloseJournal(engine.context, previous.plan.operationId);
-    if (!current || !isDeepStrictEqual(current, previous)) {
-      throw conflict('Close journal changed while proving Git publication.');
-    }
-    await requireCurrentAdmission(engine, current);
-    await publishCloseJournal(engine.context, next);
-    const recorded = await readCloseJournal(engine.context, previous.plan.operationId);
-    if (!recorded || !isDeepStrictEqual(recorded, next)) {
-      throw recovery('Unable to verify the durable Git publication checkpoint.');
-    }
-    return recorded;
+  return publishCloseCheckpoint(engine, previous, next, {
+    onConflict: 'Close journal changed while proving Git publication.',
+    onReadbackFailure: 'Unable to verify the durable Git publication checkpoint.',
+    verifyCurrent: (current) => requireCurrentAdmission(engine, current),
   });
 }
 

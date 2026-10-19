@@ -5,6 +5,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: pr53-os-perf-discovery-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   profile:
     strategy:
@@ -28,7 +31,16 @@ jobs:
           pnpm --version
       - name: Baseline no-Git test
         run: pnpm --filter @nevo/specflow-engine exec vitest run test/version-control-policy.test.ts --testTimeout=20000 --maxWorkers=1 --no-file-parallelism --reporter=verbose
-      - name: Targeted durable-create regression
+      - name: Representative durable-create regression
         run: pnpm --filter @nevo/specflow-engine exec vitest run test/durable-create.test.ts --testTimeout=20000 --maxWorkers=1 --no-file-parallelism --reporter=verbose
-      - name: Targeted SIGKILL regression
-        run: pnpm --filter @nevo/specflow-engine exec vitest run test/close-sigkill.test.ts --testTimeout=20000 --maxWorkers=1 --no-file-parallelism --reporter=verbose
+      - name: LC26 default Git checkout - expected Windows line ending mismatch
+        continue-on-error: true
+        run: pnpm --filter @nevo/specflow-engine exec vitest run test/close-worktree-lifecycle.test.ts -t "LC26: integrates real Unicode and spaced Git paths with index and file parity" --testTimeout=20000 --maxWorkers=1 --no-file-parallelism --reporter=verbose
+      - name: LC26 with isolated Git autocrlf=false
+        env:
+          GIT_CONFIG_COUNT: '1'
+          GIT_CONFIG_KEY_0: core.autocrlf
+          GIT_CONFIG_VALUE_0: 'false'
+        run: pnpm --filter @nevo/specflow-engine exec vitest run test/close-worktree-lifecycle.test.ts -t "LC26: integrates real Unicode and spaced Git paths with index and file parity" --testTimeout=20000 --maxWorkers=1 --no-file-parallelism --reporter=verbose
+      - name: LC21 targeted active-Git SIGKILL
+        run: pnpm --filter @nevo/specflow-engine exec vitest run test/close-sigkill.test.ts -t "LC21: killing the active Git merge leaves uncertain physical state fenced" --testTimeout=20000 --maxWorkers=1 --no-file-parallelism --reporter=verbose

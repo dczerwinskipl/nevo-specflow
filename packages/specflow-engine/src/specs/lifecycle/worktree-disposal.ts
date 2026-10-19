@@ -15,7 +15,7 @@ import {
   rebindLifecycleSpec,
   retireLifecycleWorkspace,
   type LifecycleRegistryCAS,
-} from '../../project/registry-lifecycle';
+} from './registry-lifecycle';
 import {
   verifyPublishedGitCheckout,
   verifyGitTreePathEquivalent,

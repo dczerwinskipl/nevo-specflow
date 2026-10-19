@@ -1,16 +1,16 @@
 import { isDeepStrictEqual } from 'node:util';
 
-import { writeJsonAtomically } from './atomic-json';
-import { withProjectControlLock } from './control-lock';
-import type { ResolvedProjectHome } from './project-home';
+import { writeJsonAtomically } from '../../project/atomic-json';
+import { withProjectControlLock } from '../../project/control-lock';
+import type { ResolvedProjectHome } from '../../project/project-home';
 import {
   WorkspaceRegistryError,
   readWorkspaceRegistry,
   validateWorkspaceRegistry,
   workspaceRegistryPath,
   type WorkspaceRegistry,
-} from './workspace-registry';
-import { assertSharedResourcesAvailable } from '../specs/coordination/resources';
+} from '../../project/workspace-registry';
+import { assertSharedResourcesAvailable } from '../coordination/resources';
 
 export interface LifecycleRegistryCAS {
   readonly operationId: string;

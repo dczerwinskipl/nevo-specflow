@@ -1,14 +1,14 @@
 ---
 id: ideas.specflow-engine.e1e2-hardening.q01
 type: engineering
-title: "Q01 Pure Close journal codec"
+title: 'Q01 Pure Close journal codec'
 status: draft
 scope: specflow
 areas: [workflow, testing]
 tags: [execution-task, temporary, hardening, journal]
 read_when:
   - implementing or independently reviewing Q01 Pure Close journal codec
-summary: "Separate strict Close journal schema and evidence validation from path-safe durable filesystem storage."
+summary: 'Separate strict Close journal schema and evidence validation from path-safe durable filesystem storage.'
 related:
   - ideas.specflow-engine.execution-plans
   - ideas.specflow-engine.plan-02
@@ -25,7 +25,7 @@ related:
 
 ## Required change
 
-- Move *pure* current-format parsing/structural/semantic predicates to `specs/lifecycle/journal-codec.ts` (or equally narrow module). Keep read/write/lstat/realpath/atomic persistence and error translation in `journal-store.ts`.
+- Move _pure_ current-format parsing/structural/semantic predicates to `specs/lifecycle/journal-codec.ts` (or equally narrow module). Keep read/write/lstat/realpath/atomic persistence and error translation in `journal-store.ts`.
 - Give supported stages and optional evidence a readable, exhaustive validation path. Preserve strict structural checks, resource derivation and invalid-stage rejection. Do not add legacy-format normalization, aliasing or fallback.
 - Existing journal bytes, stages and error codes provide a **pre-refactor comparison baseline**, not a backward-compatibility requirement. Intentional changes to version, serialized format, stages and internal contracts are allowed before release without migration; document the difference, update affected consumers and cover it with explicit tests. Preserve durable intent, fail-closed rejection, CAS, idempotency, side-effect ownership and recovery authority. Avoid a general state-machine library.
 
@@ -69,4 +69,3 @@ TypeScript/format checks, and full Ubuntu/Windows/macOS platform gates must
 run on the actual Q01 commit SHA. No local PASS is asserted. The independent
 reviewer should capture the resulting HEAD and check this report against the
 actual source and platform results.
-

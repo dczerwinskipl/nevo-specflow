@@ -1,14 +1,14 @@
 ---
 id: ideas.specflow-engine.e1e2-hardening
 type: hub
-title: "E1/E2 architecture and code-quality hardening"
+title: 'E1/E2 architecture and code-quality hardening'
 status: draft
 scope: specflow
 areas: [workflow, runtime, cli, testing]
 tags: [execution-plan, temporary, architecture, hardening]
 read_when:
   - planning the audited E1/E2 architecture quality hardening
-summary: "Temporary post-audit implementation plan for structural E1/E2 improvements, with independent checkpoints and exact-sha verification."
+summary: 'Temporary post-audit implementation plan for structural E1/E2 improvements, with independent checkpoints and exact-sha verification.'
 related:
   - ideas.specflow-engine.execution-plans
   - ideas.specflow-engine.plan-02
@@ -30,16 +30,16 @@ related:
 
 ## Tasks and dependencies
 
-| Task | Finding(s) | Dependency | Risk | Outcome / gate |
-|---|---|---|---|---|
-| [Q00 Baseline and behavioral characterization](tasks/Q00-baseline-and-contracts.md) | All | T17 scope fixed; verified HEAD | Low | Required input for all changes |
-| [Q01 Pure Close journal codec](tasks/Q01-close-journal-codec.md) | F02 | Q00 | Medium | P2, reference gate |
-| [Q02 Consistent Close CAS checkpoint](tasks/Q02-close-checkpoint-cas.md) | F03 | Q01 | High | P2, reference gate |
-| [Q03 Shared Close integration progression](tasks/Q03-close-integration-progression.md) | F01 | Q02 | High | P2, reference gate |
-| [Q04 Registry dependency direction](tasks/Q04-registry-ownership.md) | F04 | Q03 | Medium | P2, reference gate |
-| [Q05 Stable operation read models](tasks/Q05-public-operation-projections.md) | F05 | Q04 | Medium | P2, reference gate |
-| [Q06 OS process test harness](tasks/Q06-process-test-support.md) | F07 | Q05 | Medium | P2, reference gate |
-| [Q07 Permanent PR smoke and platform policy](tasks/Q07-ci-test-policy.md) | F06 | Q06 | Medium CI risk | P2, reference gate |
+| Task                                                                                   | Finding(s) | Dependency                     | Risk           | Outcome / gate                 |
+| -------------------------------------------------------------------------------------- | ---------- | ------------------------------ | -------------- | ------------------------------ |
+| [Q00 Baseline and behavioral characterization](tasks/Q00-baseline-and-contracts.md)    | All        | T17 scope fixed; verified HEAD | Low            | Required input for all changes |
+| [Q01 Pure Close journal codec](tasks/Q01-close-journal-codec.md)                       | F02        | Q00                            | Medium         | P2, reference gate             |
+| [Q02 Consistent Close CAS checkpoint](tasks/Q02-close-checkpoint-cas.md)               | F03        | Q01                            | High           | P2, reference gate             |
+| [Q03 Shared Close integration progression](tasks/Q03-close-integration-progression.md) | F01        | Q02                            | High           | P2, reference gate             |
+| [Q04 Registry dependency direction](tasks/Q04-registry-ownership.md)                   | F04        | Q03                            | Medium         | P2, reference gate             |
+| [Q05 Stable operation read models](tasks/Q05-public-operation-projections.md)          | F05        | Q04                            | Medium         | P2, reference gate             |
+| [Q06 OS process test harness](tasks/Q06-process-test-support.md)                       | F07        | Q05                            | Medium         | P2, reference gate             |
+| [Q07 Permanent PR smoke and platform policy](tasks/Q07-ci-test-policy.md)              | F06        | Q06                            | Medium CI risk | P2, reference gate             |
 
 **Default execution:** SOLO checkpoint per task, one implementation slice and one independent review before continuing. Q01–Q04 touch closely coupled Engine state and MUST remain sequential. Q05 changes transport contracts, so review CLI/HTTP together. Q07 comes after Q06 so new harness behavior is validated by permanent gates. No parallel writers to lifecycle, registry, Git, CI workflows or test fixtures.
 

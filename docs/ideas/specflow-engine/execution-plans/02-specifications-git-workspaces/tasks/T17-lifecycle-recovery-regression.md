@@ -46,7 +46,6 @@ Engine test lifecycle real Git fixtures, OS-process SIGKILL workers; Runtime HTT
 - Checkpoint for this task: Final independent acceptance report, not self-review, and owner sign-off; temporary docs remain until final PR cleanup.
 - Preserve completed E2.T01–T08; avoid unrelated refactors. No Plan 03 or Session dependency.
 
-
 ## E2.T17 evidence register (candidate links, not test PASS)
 
 The acceptance criteria are LC01–LC40 in [test-plan](../../../test-plan.md).

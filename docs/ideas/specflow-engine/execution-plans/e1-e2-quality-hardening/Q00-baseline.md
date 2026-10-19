@@ -1,14 +1,14 @@
 ---
 id: ideas.specflow-engine.e1e2-hardening.q00-baseline
 type: engineering
-title: "Q00 current E1/E2 behavioral baseline"
+title: 'Q00 current E1/E2 behavioral baseline'
 status: draft
 scope: specflow
 areas: [testing, workflow, cli, runtime]
 tags: [execution-plan, temporary, hardening, baseline]
 read_when:
   - implementing or reviewing E1/E2 Q01 through Q07
-summary: "Pinned pre-refactor journal, Git lifecycle and transport contract evidence, with executable characterization and exact-SHA verification requirements."
+summary: 'Pinned pre-refactor journal, Git lifecycle and transport contract evidence, with executable characterization and exact-SHA verification requirements.'
 related:
   - ideas.specflow-engine.e1e2-hardening
   - ideas.specflow-engine.e1e2-hardening.q00
@@ -20,45 +20,45 @@ related:
 
 ## Identity and immutable comparison point
 
-| Item | Exact value |
-|---|---|
-| Repo / PR | \`dczerwinskipl/nevo-specflow\` / #53 |
-| Branch | \`feature/specflow-engine-foundation\` |
-| PR base | \`docs/ideas-engine-workspace-foundation\` at \`b03853629aa32e9136269a5f9cc696b60d9e78b6\` |
-| Pre-Q00 HEAD (plan) | \`3347f7bb3a00cac9b3c50894be81b207b244bb3a\` |
-| HEAD tree | \`c895c83864144b874dd4e6fb6780b35c048c661f\` |
-| Squashed implementation | \`abada44cd32d78a58cb533c5f815fe1ab8149de0\` |
-| Squash tree | \`327f472e41a0b5e459f216c75792a0634f90e8bb\` |
-| Audited original implementation | \`d3770c575b89a8e27e58e9bd468f9febacde2588\` |
-| Audited original tree | \`327f472e41a0b5e459f216c75792a0634f90e8bb\` |
+| Item                            | Exact value                                                                                |
+| ------------------------------- | ------------------------------------------------------------------------------------------ |
+| Repo / PR                       | \`dczerwinskipl/nevo-specflow\` / #53                                                      |
+| Branch                          | \`feature/specflow-engine-foundation\`                                                     |
+| PR base                         | \`docs/ideas-engine-workspace-foundation\` at \`b03853629aa32e9136269a5f9cc696b60d9e78b6\` |
+| Pre-Q00 HEAD (plan)             | \`3347f7bb3a00cac9b3c50894be81b207b244bb3a\`                                               |
+| HEAD tree                       | \`c895c83864144b874dd4e6fb6780b35c048c661f\`                                               |
+| Squashed implementation         | \`abada44cd32d78a58cb533c5f815fe1ab8149de0\`                                               |
+| Squash tree                     | \`327f472e41a0b5e459f216c75792a0634f90e8bb\`                                               |
+| Audited original implementation | \`d3770c575b89a8e27e58e9bd468f9febacde2588\`                                               |
+| Audited original tree           | \`327f472e41a0b5e459f216c75792a0634f90e8bb\`                                               |
 
-The tree equality proves *source equivalence* at the squash, not new run results or CI status. Q00 itself adds characterization and documentation only. The next reviewer must pin the **new** HEAD and compare tests against the identical physical scenario or journal input.
+The tree equality proves _source equivalence_ at the squash, not new run results or CI status. Q00 itself adds characterization and documentation only. The next reviewer must pin the **new** HEAD and compare tests against the identical physical scenario or journal input.
 
 ## No backward compatibility
 
-This is an unreleased, unmerged implementation. **No legacy journal reader, schema migration, alias, dual-write, or compatibility adapter is required.** The baseline describes *what today's implementation does*, including weaknesses, not a promise to preserve errors. Q01 may deliberately tighten an unintended current acceptance or repair the model-only \`recovery-required\` stage **if separately reviewed and recorded**; it must not accidentally change safety semantics. Nothing in this document licenses replaying uncertain Git or weakening durable intent.
+This is an unreleased, unmerged implementation. **No legacy journal reader, schema migration, alias, dual-write, or compatibility adapter is required.** The baseline describes _what today's implementation does_, including weaknesses, not a promise to preserve errors. Q01 may deliberately tighten an unintended current acceptance or repair the model-only \`recovery-required\` stage **if separately reviewed and recorded**; it must not accidentally change safety semantics. Nothing in this document licenses replaying uncertain Git or weakening durable intent.
 
 ## Journal inputs, expected outputs and durable effects
 
 Executable fixture corpus: [\`packages/specflow-engine/test/quality-hardening-q00-journals.test.ts\`](../../../../../packages/specflow-engine/test/quality-hardening-q00-journals.test.ts). It constructs canonical context with **real git init + commit**, current immutable identities, resource derivation and deterministic Git object IDs. Close fixtures are structural evidence, not a substitute for execution of the physical Git transitions below.
 
-| Format and input | Expected parser / store result | Required side-effect check |
-|---|---|---|
-| Create v2, all \`CREATE_STAGES\` | ACCEPT, unchanged JSON fields | Parsing does not run Git |
-| Create wrong version, foreign Project Home, forged fingerprint | \`CREATE_JOURNAL_CORRUPT\` | Reject without rewrite |
-| Create legacy \`change.yaml\`, unexpected target keys, unknown stage | \`CREATE_JOURNAL_CORRUPT\` | Reject without rewrite |
-| Create unexpected top-level key | Currently ACCEPT | Known non-strictness; **not** a compatibility requirement |
-| Close v1 valid reserved / archive intent / archive commit intent / committed | ACCEPT | Read preserves bytes |
-| Close v1 valid primary terminal, linked archive-only terminal | ACCEPT with exact outcome | No new Git activity on parser read |
-| Close v1 linked integration preparation, worktree preparation, scratch intent/candidate/conflict | ACCEPT with pinned matching evidence | Parser does not publish Git |
-| Close v1 publish intent, verified integration, rebound, disposal, worktree terminal | ACCEPT with required stage proof | Parser does not mutate registry |
-| Close v1 retained linked conflict, optional retired scratch proof | ACCEPT with coherent conflict evidence | No scratch removal on parser read |
-| Close changed version, Project Home identity, fingerprint, resource claims | \`CLOSE_JOURNAL_CORRUPT\` | Tampered JSON stays byte-identical |
-| Close missing primary destination, illegal primary integration selector | \`CLOSE_JOURNAL_CORRUPT\` | No unreserved Git ref |
-| Close missing committed archive, forged scratch root, absent rebind proof | \`CLOSE_JOURNAL_CORRUPT\` | No settlement or resource retirement |
-| Close unsupported future stage | \`CLOSE_JOURNAL_CORRUPT\` | No hidden migration |
-| Close \`recovery-required\` in TypeScript union | Currently \`CLOSE_JOURNAL_CORRUPT\` | **Model/store inconsistency; record as a candidate defect**, not a desired rule |
-| Close unexpected top-level key | Currently ACCEPT | Known non-strictness; **not** a compatibility requirement |
+| Format and input                                                                                 | Expected parser / store result         | Required side-effect check                                                      |
+| ------------------------------------------------------------------------------------------------ | -------------------------------------- | ------------------------------------------------------------------------------- |
+| Create v2, all \`CREATE_STAGES\`                                                                 | ACCEPT, unchanged JSON fields          | Parsing does not run Git                                                        |
+| Create wrong version, foreign Project Home, forged fingerprint                                   | \`CREATE_JOURNAL_CORRUPT\`             | Reject without rewrite                                                          |
+| Create legacy \`change.yaml\`, unexpected target keys, unknown stage                             | \`CREATE_JOURNAL_CORRUPT\`             | Reject without rewrite                                                          |
+| Create unexpected top-level key                                                                  | Currently ACCEPT                       | Known non-strictness; **not** a compatibility requirement                       |
+| Close v1 valid reserved / archive intent / archive commit intent / committed                     | ACCEPT                                 | Read preserves bytes                                                            |
+| Close v1 valid primary terminal, linked archive-only terminal                                    | ACCEPT with exact outcome              | No new Git activity on parser read                                              |
+| Close v1 linked integration preparation, worktree preparation, scratch intent/candidate/conflict | ACCEPT with pinned matching evidence   | Parser does not publish Git                                                     |
+| Close v1 publish intent, verified integration, rebound, disposal, worktree terminal              | ACCEPT with required stage proof       | Parser does not mutate registry                                                 |
+| Close v1 retained linked conflict, optional retired scratch proof                                | ACCEPT with coherent conflict evidence | No scratch removal on parser read                                               |
+| Close changed version, Project Home identity, fingerprint, resource claims                       | \`CLOSE_JOURNAL_CORRUPT\`              | Tampered JSON stays byte-identical                                              |
+| Close missing primary destination, illegal primary integration selector                          | \`CLOSE_JOURNAL_CORRUPT\`              | No unreserved Git ref                                                           |
+| Close missing committed archive, forged scratch root, absent rebind proof                        | \`CLOSE_JOURNAL_CORRUPT\`              | No settlement or resource retirement                                            |
+| Close unsupported future stage                                                                   | \`CLOSE_JOURNAL_CORRUPT\`              | No hidden migration                                                             |
+| Close \`recovery-required\` in TypeScript union                                                  | Currently \`CLOSE_JOURNAL_CORRUPT\`    | **Model/store inconsistency; record as a candidate defect**, not a desired rule |
+| Close unexpected top-level key                                                                   | Currently ACCEPT                       | Known non-strictness; **not** a compatibility requirement                       |
 
 The Create parser is \`src/specs/create/journal-codec.ts\` (v2). Close validation currently lives in \`src/specs/lifecycle/journal-store.ts\` (v1); it is deliberately the future Q01 extraction target. Any codec extraction should compare **identical input and output/error code**, then explicitly enumerate approved intentional corrections. Actual files are read/written in tests to verify rejection does not alter bytes.
 
@@ -66,17 +66,17 @@ The Create parser is \`src/specs/create/journal-codec.ts\` (v2). Close validatio
 
 These are **test references, not PASS claims**. For each case capture before/after \`git rev-parse HEAD\`, \`git status --porcelain\`, \`git ls-files --stage\` when index changes, source/target branch, worktree membership, state of canonical \`specification.yaml\`, registry \`revision\` and binding \`generation\`, journal stage/evidence, and behavior on same \`operationId\` retry.
 
-| Case / input | Existing executable source | Expected externally visible result |
-|---|---|---|
-| Linked worktree close, real fast-forward; retry | \`test/close-worktree-lifecycle.test.ts\` | \`completed\`; same specId, destination binding, source worktree gone, same HEAD on retry; preserve branch ref |
-| Primary Spec archive; retry | \`test/close-specification-lifecycle.test.ts\` | \`completed / archived-in-primary\`; scoped commit only, registry revision unchanged, no second Git commit |
-| Linked Spec archive then integrate | \`test/close-specification-lifecycle.test.ts\` | \`completed / integrated-and-removed\`; archived canonical source in primary, binding CAS, managed worktree removed |
-| Linked archive only; retry | \`test/close-specification-lifecycle.test.ts\` | \`completed / archive-only-closed\`; no primary merge, source worktree and original binding retained; same-intent retry no mutation |
-| Archive-only then separate Worktree Close | \`test/close-specification-lifecycle.test.ts\` LC38 | Archived manifest moves to primary via separate worktree integration; binding rebind; no second archive |
-| Divergent candidate, physical two-parent proof | \`test/git-integration-proof.test.ts\` | Exact HEAD, index, tree and ref proof; no blind repeat of Git publication |
-| Divergent conflict and operator reconciliation | \`test/archive-close.test.ts\`, \`test/git-integration-proof.test.ts\`, \`test/specs/close.http.test.ts\` (Runtime) | Conflict evidence retained, primary unchanged, no implicit cleanup; explicit process-quiescence acknowledgement and separate reconciliation |
-| Stale identity, policy/branch drift, foreign worktree | \`test/lifecycle-admission.test.ts\`, \`test/close-worktree-lifecycle.test.ts\` | Fail closed; no unapproved commit, rebind, or deletion |
-| Killed archive/integration/disposal and cross-process contention | \`test/close-sigkill.test.ts\`, \`test/close-process-contention.test.ts\` | Real terminated processes and physical recovery evidence; one-winner resource/CAS behavior; no presumed exactly-once from journal stage |
+| Case / input                                                     | Existing executable source                                                                                          | Expected externally visible result                                                                                                          |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Linked worktree close, real fast-forward; retry                  | \`test/close-worktree-lifecycle.test.ts\`                                                                           | \`completed\`; same specId, destination binding, source worktree gone, same HEAD on retry; preserve branch ref                              |
+| Primary Spec archive; retry                                      | \`test/close-specification-lifecycle.test.ts\`                                                                      | \`completed / archived-in-primary\`; scoped commit only, registry revision unchanged, no second Git commit                                  |
+| Linked Spec archive then integrate                               | \`test/close-specification-lifecycle.test.ts\`                                                                      | \`completed / integrated-and-removed\`; archived canonical source in primary, binding CAS, managed worktree removed                         |
+| Linked archive only; retry                                       | \`test/close-specification-lifecycle.test.ts\`                                                                      | \`completed / archive-only-closed\`; no primary merge, source worktree and original binding retained; same-intent retry no mutation         |
+| Archive-only then separate Worktree Close                        | \`test/close-specification-lifecycle.test.ts\` LC38                                                                 | Archived manifest moves to primary via separate worktree integration; binding rebind; no second archive                                     |
+| Divergent candidate, physical two-parent proof                   | \`test/git-integration-proof.test.ts\`                                                                              | Exact HEAD, index, tree and ref proof; no blind repeat of Git publication                                                                   |
+| Divergent conflict and operator reconciliation                   | \`test/archive-close.test.ts\`, \`test/git-integration-proof.test.ts\`, \`test/specs/close.http.test.ts\` (Runtime) | Conflict evidence retained, primary unchanged, no implicit cleanup; explicit process-quiescence acknowledgement and separate reconciliation |
+| Stale identity, policy/branch drift, foreign worktree            | \`test/lifecycle-admission.test.ts\`, \`test/close-worktree-lifecycle.test.ts\`                                     | Fail closed; no unapproved commit, rebind, or deletion                                                                                      |
+| Killed archive/integration/disposal and cross-process contention | \`test/close-sigkill.test.ts\`, \`test/close-process-contention.test.ts\`                                           | Real terminated processes and physical recovery evidence; one-winner resource/CAS behavior; no presumed exactly-once from journal stage     |
 
 All paths in this table without a package prefix are relative to \`packages/specflow-engine/\` unless marked Runtime.
 
@@ -90,7 +90,7 @@ All paths in this table without a package prefix are relative to \`packages/spec
 
 **HTTP Close:** \`POST /api/specs/:specId/close\` and \`POST /api/specs/:specId/worktree/close\` require operation ID and distinct per-Spec capabilities. Whole-branch integration additionally needs **project Git Integrate** permission, including retry/inspection paths. Success \`200\` for completed; nonterminal/conflict is specified as \`202\`; response is \`{operationId,specId,kind,status,stage,outcome?,conflictPaths?,scratchRetired?}\`. Preview routes return \`{operationId,specId,kind,location,integrationRequired}\`. Inspection routes return the projected Close result, not the raw journal; no found operation returns \`404\`. Reconciliation requires \`confirmedNoActiveGitProcess: true\`. Authentication errors \`401/403\`, typed \`400/404/409/422/503\`. Existing tests: \`packages/specflow-runtime/test/specs/close.http.test.ts\`. Do not mislabel the schema's \`202\` path as observed PASS until a conflict case is executed.
 
-**Comparison rule:** For a deliberately approved breaking pre-release change, snapshot the *new* intended shape and update all consumers atomically. There is no promise of backward compatibility.
+**Comparison rule:** For a deliberately approved breaking pre-release change, snapshot the _new_ intended shape and update all consumers atomically. There is no promise of backward compatibility.
 
 ## Verification to attach before Q00 independent ACCEPT
 

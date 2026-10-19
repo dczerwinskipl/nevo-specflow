@@ -105,9 +105,9 @@ describe('Q00 Create journal current-format acceptance baseline', () => {
     // Current implementation accepts unknown top-level keys. This is a
     // characterization, not permission to tighten it in Q01 silently.
     const unknownTopLevel = { ...original, unrecognized: true };
-    expect(
-      parseCreateJournal(engine.context, unknownTopLevel, original.operationId),
-    ).toEqual(unknownTopLevel);
+    expect(parseCreateJournal(engine.context, unknownTopLevel, original.operationId)).toEqual(
+      unknownTopLevel,
+    );
   });
 });
 

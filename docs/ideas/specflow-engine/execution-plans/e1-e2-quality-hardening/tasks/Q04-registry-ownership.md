@@ -1,14 +1,14 @@
 ---
 id: ideas.specflow-engine.e1e2-hardening.q04
 type: engineering
-title: "Q04 Restore registry dependency direction"
+title: 'Q04 Restore registry dependency direction'
 status: draft
 scope: specflow
 areas: [workflow, testing]
 tags: [execution-task, temporary, hardening, registry]
 read_when:
   - implementing or independently reviewing Q04 Restore registry dependency direction
-summary: "Remove specification-specific lifecycle orchestration from generic project registry infrastructure."
+summary: 'Remove specification-specific lifecycle orchestration from generic project registry infrastructure.'
 related:
   - ideas.specflow-engine.execution-plans
   - ideas.specflow-engine.plan-02

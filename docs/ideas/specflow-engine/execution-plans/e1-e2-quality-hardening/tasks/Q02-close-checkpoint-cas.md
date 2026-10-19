@@ -1,14 +1,14 @@
 ---
 id: ideas.specflow-engine.e1e2-hardening.q02
 type: engineering
-title: "Q02 Consistent Close checkpoint CAS"
+title: 'Q02 Consistent Close checkpoint CAS'
 status: draft
 scope: specflow
 areas: [workflow, testing]
 tags: [execution-task, temporary, hardening, cas]
 read_when:
   - implementing or independently reviewing Q02 Consistent Close checkpoint CAS
-summary: "Centralize the narrow Close journal CAS publication convention without moving Git effects under the project control lock."
+summary: 'Centralize the narrow Close journal CAS publication convention without moving Git effects under the project control lock.'
 related:
   - ideas.specflow-engine.execution-plans
   - ideas.specflow-engine.plan-02
@@ -22,6 +22,7 @@ related:
 ## Evidence
 
 Similar but not identical implementations currently live in:
+
 - [`archive-effects.ts:120–138`](https://github.com/dczerwinskipl/nevo-specflow/blob/d3770c575b89a8e27e58e9bd468f9febacde2588/packages/specflow-engine/src/specs/lifecycle/archive-effects.ts#L120-L138)
 - [`git-publication.ts:50–70`](https://github.com/dczerwinskipl/nevo-specflow/blob/d3770c575b89a8e27e58e9bd468f9febacde2588/packages/specflow-engine/src/specs/lifecycle/git-publication.ts#L50-L70)
 - [`git-scratch.ts:163–191`](https://github.com/dczerwinskipl/nevo-specflow/blob/d3770c575b89a8e27e58e9bd468f9febacde2588/packages/specflow-engine/src/specs/lifecycle/git-scratch.ts#L163-L191)

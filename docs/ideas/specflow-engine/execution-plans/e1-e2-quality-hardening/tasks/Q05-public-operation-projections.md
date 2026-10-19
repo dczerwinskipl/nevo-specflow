@@ -1,14 +1,14 @@
 ---
 id: ideas.specflow-engine.e1e2-hardening.q05
 type: engineering
-title: "Q05 Stable public operation projections"
+title: 'Q05 Stable public operation projections'
 status: draft
 scope: specflow
 areas: [runtime, cli, workflow, testing]
 tags: [execution-task, temporary, hardening, contracts]
 read_when:
   - implementing or independently reviewing Q05 Stable public operation projections
-summary: "Present transport-neutral Create/Close results instead of exposing durable internal journals by default."
+summary: 'Present transport-neutral Create/Close results instead of exposing durable internal journals by default.'
 related:
   - ideas.specflow-engine.execution-plans
   - ideas.specflow-engine.plan-02

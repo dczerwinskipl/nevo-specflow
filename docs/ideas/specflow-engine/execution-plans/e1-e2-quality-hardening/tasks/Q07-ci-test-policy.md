@@ -1,14 +1,14 @@
 ---
 id: ideas.specflow-engine.e1e2-hardening.q07
 type: engineering
-title: "Q07 Permanent Engine CI smoke and full-regression policy"
+title: 'Q07 Permanent Engine CI smoke and full-regression policy'
 status: draft
 scope: specflow
 areas: [testing, release]
 tags: [execution-task, temporary, hardening, ci]
 read_when:
   - implementing or independently reviewing Q07 Permanent Engine CI smoke and full-regression policy
-summary: "Make real-Git Engine and CLI/HTTP smoke a reliable recurring PR signal, preserving full cross-platform crash gates."
+summary: 'Make real-Git Engine and CLI/HTTP smoke a reliable recurring PR signal, preserving full cross-platform crash gates.'
 related:
   - ideas.specflow-engine.execution-plans
   - ideas.specflow-engine.plan-02

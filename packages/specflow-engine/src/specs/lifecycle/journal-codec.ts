@@ -3,7 +3,8 @@ import { join } from 'node:path';
 import type { ResolvedProjectHome } from '../../project/project-home';
 import { fingerprintCloseIntent, resourcesForClosePlan, type CloseJournal } from './model';
 
-export const CLOSE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
+export const CLOSE_UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const SHA = /^[a-f0-9]{64}$/iu;
 
 export function isCloseJournal(

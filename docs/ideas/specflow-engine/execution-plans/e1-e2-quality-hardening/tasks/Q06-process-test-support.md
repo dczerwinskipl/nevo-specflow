@@ -1,14 +1,14 @@
 ---
 id: ideas.specflow-engine.e1e2-hardening.q06
 type: engineering
-title: "Q06 Reusable real-process test support"
+title: 'Q06 Reusable real-process test support'
 status: draft
 scope: specflow
 areas: [testing]
 tags: [execution-task, temporary, hardening, fixtures]
 read_when:
   - implementing or independently reviewing Q06 Reusable real-process test support
-summary: "Consolidate process launch, barrier, termination and cleanup test plumbing while keeping real OS/Git behavior."
+summary: 'Consolidate process launch, barrier, termination and cleanup test plumbing while keeping real OS/Git behavior.'
 related:
   - ideas.specflow-engine.execution-plans
   - ideas.specflow-engine.plan-02

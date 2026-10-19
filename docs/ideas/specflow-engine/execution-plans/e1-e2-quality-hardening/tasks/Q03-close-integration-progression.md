@@ -1,14 +1,14 @@
 ---
 id: ideas.specflow-engine.e1e2-hardening.q03
 type: engineering
-title: "Q03 Shared Close integration progression"
+title: 'Q03 Shared Close integration progression'
 status: draft
 scope: specflow
 areas: [workflow, testing]
 tags: [execution-task, temporary, hardening, lifecycle]
 read_when:
   - implementing or independently reviewing Q03 Shared Close integration progression
-summary: "Deduplicate common Close integration-phase dispatch while preserving distinct archive and conflict business outcomes."
+summary: 'Deduplicate common Close integration-phase dispatch while preserving distinct archive and conflict business outcomes.'
 related:
   - ideas.specflow-engine.execution-plans
   - ideas.specflow-engine.plan-02

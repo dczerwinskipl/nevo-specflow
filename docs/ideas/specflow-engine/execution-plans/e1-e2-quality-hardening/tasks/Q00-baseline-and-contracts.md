@@ -1,14 +1,14 @@
 ---
 id: ideas.specflow-engine.e1e2-hardening.q00
 type: engineering
-title: "Q00 Baseline and behavioral characterization"
+title: 'Q00 Baseline and behavioral characterization'
 status: draft
 scope: specflow
 areas: [testing, workflow, cli, runtime]
 tags: [execution-task, temporary, hardening, testing]
 read_when:
   - implementing or independently reviewing Q00 Baseline and behavioral characterization
-summary: "Pin the refactor baseline and capture current journal, CLI and HTTP behavior without modifying production code."
+summary: 'Pin the refactor baseline and capture current journal, CLI and HTTP behavior without modifying production code.'
 related:
   - ideas.specflow-engine.execution-plans
   - ideas.specflow-engine.plan-02

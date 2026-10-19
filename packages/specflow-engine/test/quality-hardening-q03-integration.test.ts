@@ -16,9 +16,9 @@ describe('Q03 shared Close integration progression', () => {
         plan: { operationId: randomUUID(), kind },
         stage: 'integration-preparation-initiated',
       } as CloseJournal;
-      await expect(
-        advanceCloseIntegration({} as SpecFlowEngine, journal),
-      ).rejects.toMatchObject({ code: 'CLOSE_RECOVERY_REQUIRED' });
+      await expect(advanceCloseIntegration({} as SpecFlowEngine, journal)).rejects.toMatchObject({
+        code: 'CLOSE_RECOVERY_REQUIRED',
+      });
     },
   );
 });

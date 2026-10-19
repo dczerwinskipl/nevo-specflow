@@ -10,9 +10,7 @@ describe('Q04 registry dependency direction', () => {
     const entries = await readdir(directory, { recursive: true });
     for (const file of entries.filter((name) => name.endsWith('.ts'))) {
       const content = await readFile(join(directory, file), 'utf8');
-      expect(content, file).not.toMatch(
-        /(?:from|import\()\s*['"](?:\.\.\/)+specs\//u,
-      );
+      expect(content, file).not.toMatch(/(?:from|import\()\s*['"](?:\.\.\/)+specs\//u);
     }
   });
 });

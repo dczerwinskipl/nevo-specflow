@@ -1,0 +1,27 @@
+name: Temporary PR53 Windows Git fixture check
+on:
+  push:
+    branches: [ci/pr53-windows-git-fixture-fix]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lc26:
+    name: LC26 Windows line endings
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Force hostile runner Git default
+        shell: bash
+        run: |
+          git config --global core.autocrlf true
+          git config --global --get core.autocrlf
+          node --version
+          git --version
+      - name: Verify LF-preserving integration under inherited CRLF default
+        run: |
+          pnpm --filter @nevo/specflow-engine exec vitest run test/close-worktree-lifecycle.test.ts -t "LC26: integrates real Unicode and spaced Git paths with index and file parity" --testTimeout=20000 --maxWorkers=1 --no-file-parallelism --reporter=verbose

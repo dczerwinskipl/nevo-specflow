@@ -44,7 +44,7 @@ const buckets = Array.from({ length: total }, () => []);
 namedCases.forEach((name, index) => buckets[index % total].push(name));
 const selected = buckets[part - 1];
 if (!selected?.length) throw new Error('Selected empty test shard.');
-const escapeRegex = (name) => name.replace(/[\^$.*+?()[\]{}|]/g, '\\$&');
+const escapeRegex = (name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const pattern = '(?:' + selected.map(escapeRegex).join('|') + ')$';
 
 const summary = {

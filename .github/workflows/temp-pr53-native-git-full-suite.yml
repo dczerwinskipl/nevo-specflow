@@ -1,0 +1,81 @@
+name: Temporary PR53 full suite - native Git plus Windows sharding
+on:
+  push:
+    branches: [ci/pr53-full-suite-native-git-sharded]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-engine:
+    name: Windows Engine full (${{ matrix.kind }} ${{ matrix.part }}/${{ matrix.total }})
+    runs-on: windows-2025
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - kind: hot
+            part: 1
+            total: 2
+          - kind: hot
+            part: 2
+            total: 2
+          - kind: rest
+            part: 1
+            total: 4
+          - kind: rest
+            part: 2
+            total: 4
+          - kind: rest
+            part: 3
+            total: 4
+          - kind: rest
+            part: 4
+            total: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Verify shard coverage
+        run: |
+          node tools/ci-engine-${{ matrix.kind }}-shard.mjs ${{ matrix.part }} ${{ matrix.total }} --list
+      - name: Complete assigned Engine real-Git filesystem regression
+        run: |
+          node tools/ci-engine-${{ matrix.kind }}-shard.mjs ${{ matrix.part }} ${{ matrix.total }}
+  other-platforms:
+    name: Full Engine + Runtime + CLI (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-26]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Full Engine real-Git filesystem regression
+        run: pnpm --filter @nevo/specflow-engine test:filesystem:full
+      - name: Build Runtime and CLI test dependencies
+        run: pnpm exec turbo run build --filter=@nevo/specflow-runtime --filter=@nevo/specflow
+      - name: Runtime adapter tests
+        run: pnpm --filter @nevo/specflow-runtime exec vitest run --maxWorkers=1 --no-file-parallelism
+      - name: CLI tests
+        run: pnpm --filter @nevo/specflow exec vitest run --maxWorkers=1 --no-file-parallelism
+  windows-adapters:
+    name: Windows Runtime + CLI
+    runs-on: windows-2025
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Build Runtime and CLI test dependencies
+        run: pnpm exec turbo run build --filter=@nevo/specflow-runtime --filter=@nevo/specflow
+      - name: Runtime adapter tests
+        run: pnpm --filter @nevo/specflow-runtime exec vitest run --maxWorkers=1 --no-file-parallelism
+      - name: CLI tests
+        run: pnpm --filter @nevo/specflow exec vitest run --maxWorkers=1 --no-file-parallelism

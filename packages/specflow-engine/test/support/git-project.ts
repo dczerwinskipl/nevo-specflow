@@ -5,7 +5,7 @@ import { join } from 'node:path';
 
 /** Real Git, real filesystem and a committed baseline for integration tests. */
 export function git(root: string, ...args: string[]): string {
-  return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+  return execFileSync(process.env.NEVO_BENCH_NATIVE_GIT ?? 'git', args, { cwd: root, encoding: 'utf8' }).trim();
 }
 
 export async function createGitTestProject(prefix: string, configYaml: string): Promise<string> {

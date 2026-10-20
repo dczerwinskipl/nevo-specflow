@@ -1,0 +1,33 @@
+name: Temporary PR53 actual lifecycle native Git A-B
+on:
+  push:
+    branches: [ci/pr53-native-git-lifecycle-ab]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lifecycle-git:
+    name: Windows 2025 native Git lifecycle A-B
+    runs-on: windows-2025
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Baseline Git wrapper LC26
+        run: |
+          pnpm --filter @nevo/specflow-engine exec vitest run test/close-worktree-lifecycle.test.ts -t "LC26: integrates real Unicode and spaced Git paths with index and file parity" --testTimeout=20000 --maxWorkers=1 --no-file-parallelism --reporter=verbose
+      - name: Native UCRT64 Git LC26
+        env:
+          NEVO_BENCH_NATIVE_GIT: 'C:\Program Files\Git\ucrt64\bin\git.exe'
+        run: |
+          pnpm --filter @nevo/specflow-engine exec vitest run test/close-worktree-lifecycle.test.ts -t "LC26: integrates real Unicode and spaced Git paths with index and file parity" --testTimeout=20000 --maxWorkers=1 --no-file-parallelism --reporter=verbose
+      - name: Baseline Git wrapper LC21
+        run: |
+          pnpm --filter @nevo/specflow-engine exec vitest run test/close-sigkill.test.ts -t "LC21: killing the active Git merge leaves uncertain physical state fenced" --testTimeout=20000 --maxWorkers=1 --no-file-parallelism --reporter=verbose
+      - name: Native UCRT64 Git LC21
+        env:
+          NEVO_BENCH_NATIVE_GIT: 'C:\Program Files\Git\ucrt64\bin\git.exe'
+        run: |
+          pnpm --filter @nevo/specflow-engine exec vitest run test/close-sigkill.test.ts -t "LC21: killing the active Git merge leaves uncertain physical state fenced" --testTimeout=20000 --maxWorkers=1 --no-file-parallelism --reporter=verbose

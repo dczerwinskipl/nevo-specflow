@@ -529,7 +529,6 @@ describe('E2.T11 actual OS-process SIGKILL and physical reconciliation', () => {
     const { root, spec, operationId } = await project('worktree-close', true);
     const originalHead = git(root, 'rev-parse', 'HEAD');
     const sourceHead = git(spec.workspaceRoot, 'rev-parse', 'HEAD');
-    const sourceTree = git(root, 'rev-parse', sourceHead + '^{tree}');
     const filterScript = join(tmpdir(), 'nevo-t17-smudge-' + randomUUID() + '.cjs');
     const signalPrefix = join(tmpdir(), 'nevo-t17-merge-' + randomUUID());
     const filterSignal = signalPrefix + '.filter';
@@ -646,17 +645,29 @@ describe('E2.T11 actual OS-process SIGKILL and physical reconciliation', () => {
       );
       const observedHead = git(root, 'rev-parse', 'HEAD');
       const observedIndex = git(root, 'ls-files', '--stage');
-      const observedIndexTree = git(root, 'write-tree');
       const observedPhysical = git(root, 'status', '--porcelain', '--untracked-files=all');
       // Git for Windows may advance HEAD before a blocked smudge filter finishes.
       // SIGKILL does not imply that HEAD must remain at its original value.
       // Only the two pinned commits are valid; do not accept an unrelated ref.
       expect([originalHead, sourceHead]).toContain(observedHead);
       expect(observedIndex.length).toBeGreaterThan(0);
+      // A killed Git process can leave index.lock behind. Do not invoke
+      // git write-tree here: it tries to acquire the same lock and is not a
+      // safe observer of an interrupted publication.
+      const staleIndexLock = await access(join(root, '.git', 'index.lock'))
+        .then(() => true)
+        .catch((error: unknown) => {
+          if (
+            error instanceof Error &&
+            'code' in error &&
+            (error as NodeJS.ErrnoException).code === 'ENOENT'
+          ) {
+            return false;
+          }
+          throw error;
+        });
       const fullyPublished =
-        observedHead === sourceHead &&
-        observedIndexTree === sourceTree &&
-        observedPhysical === '';
+        observedHead === sourceHead && observedPhysical === '' && !staleIndexLock;
       const registryBefore = await reopened.readRegistry();
       // A lost mutating child can never be reconciled without independent
       // confirmation of process quiescence, even if Git appears complete.

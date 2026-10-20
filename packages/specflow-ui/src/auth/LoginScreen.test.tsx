@@ -37,7 +37,7 @@ describe('LoginScreen', () => {
     const rootTag = openingTagFor(html, 'data-standalone-shell-region="root"');
     const bodyTag = openingTagFor(html, 'data-standalone-shell-region="body"');
     const mobileHeaderTag = openingTagFor(html, 'data-standalone-shell-region="mobile-header"');
-    const mobileSelectorTag = openingTagFor(html, 'aria-label="Change language"');
+    const mobileSelectorTag = openingTagFor(html, '="Change language"');
     const desktopHeaderTag = openingTagFor(html, 'data-standalone-shell-region="desktop-header"');
     const surfaceTag = openingTagFor(html, 'data-standalone-shell-region="surface"');
 

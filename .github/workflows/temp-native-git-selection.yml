@@ -1,0 +1,31 @@
+name: Temporary Native Git Selection Cross-OS Verification
+on:
+  push:
+    branches: [perf/pr53-native-git-selection]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2025, ubuntu-24.04, macos-26]
+    name: Native Git lifecycle (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Typecheck Engine
+        run: pnpm --filter @nevo/specflow-engine typecheck
+      - name: Git selection and fallback tests
+        run: pnpm --filter @nevo/specflow-engine exec vitest run test/git-executable.test.ts --maxWorkers=1 --no-file-parallelism --reporter=verbose
+      - name: Real worktree Unicode and checkout proof
+        run: |
+          pnpm --filter @nevo/specflow-engine exec vitest run test/close-worktree-lifecycle.test.ts -t "LC26: integrates real Unicode and spaced Git paths with index and file parity" --testTimeout=20000 --maxWorkers=1 --no-file-parallelism --reporter=verbose
+      - name: Real process SIGKILL and recovery
+        run: |
+          pnpm --filter @nevo/specflow-engine exec vitest run test/close-sigkill.test.ts -t "LC21: killing the active Git merge leaves uncertain physical state fenced" --testTimeout=20000 --maxWorkers=1 --no-file-parallelism --reporter=verbose

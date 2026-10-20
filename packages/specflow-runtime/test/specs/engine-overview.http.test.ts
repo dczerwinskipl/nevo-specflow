@@ -30,6 +30,7 @@ function trustedLocalConfig() {
 }
 
 const roots: string[] = [];
+const completeOverviewTimeoutMs = process.platform === 'win32' ? 120000 : 45000;
 
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
@@ -157,7 +158,7 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
     } finally {
       await app.close();
     }
-  }, 45000);
+  }, completeOverviewTimeoutMs);
 
   it('does not hide unknown canonical Specs when project settings list legacy sections', async () => {
     const { engine } = await fixture();

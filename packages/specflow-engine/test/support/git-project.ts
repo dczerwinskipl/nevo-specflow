@@ -3,9 +3,13 @@ import { mkdir, mkdtemp, realpath, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { resolveGitExecutable } from '../../src/git/executable';
+
+const gitExecutable = resolveGitExecutable();
+
 /** Real Git, real filesystem and a committed baseline for integration tests. */
 export function git(root: string, ...args: string[]): string {
-  return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+  return execFileSync(gitExecutable, args, { cwd: root, encoding: 'utf8' }).trim();
 }
 
 export async function createGitTestProject(prefix: string, configYaml: string): Promise<string> {

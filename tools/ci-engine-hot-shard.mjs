@@ -4,9 +4,8 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
- * Temporary benchmark: shard one expensive integration test file by test case.
- * Every test still runs real Git and isolated per-case Git repos; no mocks,
- * shortened assertions, parallel execution inside one Vitest worker, or retries.
+ * Shard expensive real-Git integration cases without reducing test coverage.
+ * Each selected case still uses real Git, isolated fixtures and original assertions.
  */
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const engineRoot = join(root, 'packages', 'specflow-engine');
@@ -16,17 +15,26 @@ const part = Number(process.argv[2]);
 const total = Number(process.argv[3]);
 const listOnly = process.argv.includes('--list');
 
-if (!Number.isInteger(part) || !Number.isInteger(total) || part < 1 || total < 1 || part > total || total > 12) {
+if (
+  !Number.isInteger(part) ||
+  !Number.isInteger(total) ||
+  part < 1 ||
+  total < 1 ||
+  part > total ||
+  total > 12
+) {
   throw new Error('Usage: node tools/ci-engine-hot-shard.mjs <part> <total> [--list]');
 }
 
-// The file has ordinary it('...') cases and an OS-conditional it.skipIf(...)(...).
-// Refuse to silently lose coverage if test declaration syntax changes.
+// Fail closed if test declarations change so cases are never silently omitted.
 const allDeclarations = [...source.matchAll(/^\s*(?:it|test)(?:\.[a-zA-Z]+)?\(/gm)];
-const namedCases = [...source.matchAll(/^\s*it(?:\.skipIf\([^\n]*?\))?\(\s*(['"])([^\n]*?)\1/gm)].map(
-  (match) => match[2],
-);
-if (namedCases.length !== allDeclarations.length || new Set(namedCases).size !== namedCases.length) {
+const namedCases = [
+  ...source.matchAll(/^\s*it(?:\.skipIf\([^\n]*?\))?\(\s*(['"])([^\n]*?)\1/gm),
+].map((match) => match[2]);
+if (
+  namedCases.length !== allDeclarations.length ||
+  new Set(namedCases).size !== namedCases.length
+) {
   throw new Error(
     'Unrecognized or duplicated test declaration; update the sharding parser before running.',
   );
@@ -39,15 +47,14 @@ if (!selected?.length) throw new Error('Selected empty test shard.');
 const escapeRegex = (name) => name.replace(/[\^$.*+?()[\]{}|]/g, '\\$&');
 const pattern = '(?:' + selected.map(escapeRegex).join('|') + ')$';
 
-console.log(
-  JSON.stringify({
-    file: fileName,
-    shard: part + '/' + total,
-    allCases: namedCases.length,
-    selectedCases: selected.length,
-    cases: selected,
-  }, null, 2),
-);
+const summary = {
+  file: fileName,
+  shard: part + '/' + total,
+  allCases: namedCases.length,
+  selectedCases: selected.length,
+  cases: selected,
+};
+console.log(JSON.stringify(summary, null, 2));
 if (listOnly) process.exit(0);
 
 const vitestMain = join(engineRoot, 'node_modules', 'vitest', 'vitest.mjs');

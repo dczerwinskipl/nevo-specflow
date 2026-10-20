@@ -4,9 +4,8 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
- * Windows full-regression experiment, excluding the hot integration-proof file
- * which is partitioned by test name in ci-engine-hot-shard.mjs.
- * Historical durations are from PR #53 Windows run 39288746460.
+ * Partition the remaining real-Git filesystem tests by measured Windows duration.
+ * The expensive integration-proof file is partitioned separately by test case.
  */
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const engineRoot = join(root, 'packages', 'specflow-engine');
@@ -14,7 +13,14 @@ const testRoot = join(engineRoot, 'test');
 const hot = 'test/git-integration-proof.test.ts';
 const part = Number(process.argv[2]);
 const total = Number(process.argv[3]);
-if (!Number.isInteger(part) || !Number.isInteger(total) || part < 1 || part > total || total < 1 || total > 12) {
+if (
+  !Number.isInteger(part) ||
+  !Number.isInteger(total) ||
+  part < 1 ||
+  part > total ||
+  total < 1 ||
+  total > 12
+) {
   throw new Error('Usage: node tools/ci-engine-rest-shard.mjs <part> <total> [--list]');
 }
 
@@ -30,8 +36,8 @@ const allFiles = discover(testRoot).sort();
 if (!allFiles.includes(hot)) throw new Error('Pinned hot test file is missing from the suite.');
 const files = allFiles.filter((name) => name !== hot);
 
-// Duration estimates in seconds, from the previous Windows full run.
-// New tests always enter a shard; unknown files use a conservative estimate.
+// Historical durations in seconds from PR #53 Windows run 39288746460.
+// New test files are discovered automatically and assigned a conservative weight.
 const known = {
   'close-sigkill': 742,
   'lifecycle-admission': 681,
@@ -66,24 +72,27 @@ function weight(file) {
 }
 const buckets = Array.from({ length: total }, () => ({ seconds: 0, files: [] }));
 for (const file of files.sort((a, b) => weight(b) - weight(a) || a.localeCompare(b))) {
-  const target = buckets.reduce((best, bucket) => bucket.seconds < best.seconds ? bucket : best);
+  const target = buckets.reduce((best, bucket) =>
+    bucket.seconds < best.seconds ? bucket : best,
+  );
   target.files.push(file);
   target.seconds += weight(file);
 }
 const selected = buckets[part - 1];
 if (!selected?.files.length) throw new Error('Selected empty test shard.');
 
-console.log(JSON.stringify({
+const summary = {
   shard: part + '/' + total,
   filesInSuite: allFiles.length,
   assignedAcrossRest: buckets.reduce((sum, bucket) => sum + bucket.files.length, 0),
   estimatedSeconds: selected.seconds,
   selected: selected.files,
-}, null, 2));
+};
+console.log(JSON.stringify(summary, null, 2));
 if (process.argv.includes('--list')) process.exit(0);
 
 const vitestMain = join(engineRoot, 'node_modules', 'vitest', 'vitest.mjs');
-const child = spawnSync(process.execPath, [
+const args = [
   vitestMain,
   'run',
   ...selected.files,
@@ -91,7 +100,8 @@ const child = spawnSync(process.execPath, [
   '--maxWorkers=1',
   '--no-file-parallelism',
   '--reporter=verbose',
-], {
+];
+const child = spawnSync(process.execPath, args, {
   cwd: engineRoot,
   env: process.env,
   stdio: 'inherit',

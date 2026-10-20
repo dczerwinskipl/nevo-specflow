@@ -671,9 +671,9 @@ describe('E2.T11 actual OS-process SIGKILL and physical reconciliation', () => {
       const registryBefore = await reopened.readRegistry();
       // A lost mutating child can never be reconciled without independent
       // confirmation of process quiescence, even if Git appears complete.
-      await expect(reconcileCloseGitPublication(reopened, operationId, false)).rejects.toMatchObject(
-        { code: 'CLOSE_RECOVERY_REQUIRED' },
-      );
+      await expect(
+        reconcileCloseGitPublication(reopened, operationId, false),
+      ).rejects.toMatchObject({ code: 'CLOSE_RECOVERY_REQUIRED' });
       if (fullyPublished) {
         // The child was killed, but all pinned physical evidence is complete.
         // Proof-only recovery is permitted; Git must not be executed again.

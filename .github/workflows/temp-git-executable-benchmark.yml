@@ -1,0 +1,20 @@
+name: Temporary PR53 Git executable startup A-B
+on:
+  push:
+    branches: [ci/pr53-git-wrapper-benchmark]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  git-executable:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+    runs-on: ${{ matrix.os }}
+    name: Git startup (${{ matrix.os }})
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Git wrapper vs native executable
+        run: node tools/temp-git-executable-benchmark.mjs

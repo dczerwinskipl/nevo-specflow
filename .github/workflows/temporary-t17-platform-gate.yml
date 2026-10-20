@@ -3,26 +3,25 @@ on:
   push:
     branches:
       - feature/specflow-engine-foundation
+  pull_request:
+    branches:
+      - feature/specflow-engine-foundation
 permissions:
   contents: read
 jobs:
-  lifecycle-full:
+  lifecycle-full-unix:
     name: Lifecycle full (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
-      - name: Toolchain
-        run: |
-          node --version
-          git --version
-          pnpm --version
       - name: Real filesystem and lifecycle regression
         run: pnpm --filter @nevo/specflow-engine test:filesystem:full
       - name: Build CLI and Runtime test dependencies
@@ -31,3 +30,53 @@ jobs:
         run: pnpm --filter @nevo/specflow-runtime exec vitest run --maxWorkers=1 --no-file-parallelism
       - name: CLI tests (isolated single worker)
         run: pnpm --filter @nevo/specflow exec vitest run --maxWorkers=1 --no-file-parallelism
+  lifecycle-full-windows-engine:
+    name: Windows Engine full (${{ matrix.kind }} ${{ matrix.part }}/${{ matrix.total }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - kind: hot
+            part: 1
+            total: 2
+          - kind: hot
+            part: 2
+            total: 2
+          - kind: rest
+            part: 1
+            total: 4
+          - kind: rest
+            part: 2
+            total: 4
+          - kind: rest
+            part: 3
+            total: 4
+          - kind: rest
+            part: 4
+            total: 4
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Audit exact test assignment
+        run: node tools/ci-engine-${{ matrix.kind }}-shard.mjs ${{ matrix.part }} ${{ matrix.total }} --list
+      - name: Real filesystem and lifecycle regression
+        run: node tools/ci-engine-${{ matrix.kind }}-shard.mjs ${{ matrix.part }} ${{ matrix.total }}
+  lifecycle-full-windows-adapters:
+    name: Windows Runtime and CLI
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Build CLI and Runtime test dependencies
+        run: pnpm exec turbo run build --filter=@nevo/specflow-runtime --filter=@nevo/specflow
+      - name: Runtime adapter tests (isolated single worker)
+        run: pnpm --filter @nevo/specflow-runtime exec vitest run --maxWorkers=1 --no-file-parallelism
+      - name: CLI tests (isolated single worker)
+        run: pnpm --filter @nevo/specflow exec vitest run --testTimeout=20000 --maxWorkers=1 --no-file-parallelism

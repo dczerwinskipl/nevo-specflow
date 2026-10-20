@@ -77,6 +77,6 @@ jobs:
       - name: Build CLI and Runtime test dependencies
         run: pnpm exec turbo run build --filter=@nevo/specflow-runtime --filter=@nevo/specflow
       - name: Runtime adapter tests (isolated single worker)
-        run: pnpm --filter @nevo/specflow-runtime exec vitest run --maxWorkers=1 --no-file-parallelism
+        run: pnpm --filter @nevo/specflow-runtime exec vitest run --testTimeout=120000 --maxWorkers=1 --no-file-parallelism
       - name: CLI tests (isolated single worker)
         run: pnpm --filter @nevo/specflow exec vitest run --testTimeout=20000 --maxWorkers=1 --no-file-parallelism

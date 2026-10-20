@@ -528,6 +528,8 @@ describe('E2.T11 actual OS-process SIGKILL and physical reconciliation', () => {
   it('LC21: killing the active Git merge leaves uncertain physical state fenced', async () => {
     const { root, spec, operationId } = await project('worktree-close', true);
     const originalHead = git(root, 'rev-parse', 'HEAD');
+    const sourceHead = git(spec.workspaceRoot, 'rev-parse', 'HEAD');
+    const sourceTree = git(root, 'rev-parse', sourceHead + '^{tree}');
     const filterScript = join(tmpdir(), 'nevo-t17-smudge-' + randomUUID() + '.cjs');
     const signalPrefix = join(tmpdir(), 'nevo-t17-merge-' + randomUUID());
     const filterSignal = signalPrefix + '.filter';
@@ -644,27 +646,52 @@ describe('E2.T11 actual OS-process SIGKILL and physical reconciliation', () => {
       );
       const observedHead = git(root, 'rev-parse', 'HEAD');
       const observedIndex = git(root, 'ls-files', '--stage');
+      const observedIndexTree = git(root, 'write-tree');
       const observedPhysical = git(root, 'status', '--porcelain', '--untracked-files=all');
-      expect(observedHead).toBe(originalHead);
+      // Git for Windows may advance HEAD before a blocked smudge filter finishes.
+      // SIGKILL does not imply that HEAD must remain at its original value.
+      // Only the two pinned commits are valid; do not accept an unrelated ref.
+      expect([originalHead, sourceHead]).toContain(observedHead);
       expect(observedIndex.length).toBeGreaterThan(0);
-      await expect(reconcileCloseGitPublication(reopened, operationId, true)).rejects.toMatchObject(
-        {
-          code: 'CLOSE_RECOVERY_REQUIRED',
-        },
+      const fullyPublished =
+        observedHead === sourceHead &&
+        observedIndexTree === sourceTree &&
+        observedPhysical === '';
+      const registryBefore = await reopened.readRegistry();
+      // A lost mutating child can never be reconciled without independent
+      // confirmation of process quiescence, even if Git appears complete.
+      await expect(reconcileCloseGitPublication(reopened, operationId, false)).rejects.toMatchObject(
+        { code: 'CLOSE_RECOVERY_REQUIRED' },
       );
-      // An interrupted Git checkout is itself dirty, so first admission
-      // fails at read-only preflight before resource-claim validation.
+      if (fullyPublished) {
+        // The child was killed, but all pinned physical evidence is complete.
+        // Proof-only recovery is permitted; Git must not be executed again.
+        const verified = await reconcileCloseGitPublication(reopened, operationId, true);
+        expect(verified.stage).toBe('integration-verified');
+        expect(verified.integration?.publishedCommit).toBe(sourceHead);
+      } else {
+        // HEAD, index or worktree still differs from the pinned publication.
+        // Retain the durable intent; never replay the uncertain merge.
+        await expect(
+          reconcileCloseGitPublication(reopened, operationId, true),
+        ).rejects.toMatchObject({ code: 'CLOSE_RECOVERY_REQUIRED' });
+      }
+      expect(await reopened.readRegistry()).toEqual(registryBefore);
+      // Admission remains blocked both for torn publication and for a
+      // verified-but-not-yet-rebound Close journal.
       await expect(
         reserveCloseOperation(reopened, {
           kind: 'worktree-close',
           operationId: randomUUID(),
           specId: spec.specId,
         }),
-      ).rejects.toMatchObject({ code: 'CLOSE_PREFLIGHT' });
-      // Separately prove that the durable journal still owns its checkout/ref
-      // even if a later caller could satisfy the clean-tree preflight.
+      ).rejects.toMatchObject({
+        code: expect.stringMatching(/^CLOSE_(?:PREFLIGHT|CONFLICT)$/u),
+      });
       const retained = await inspectCloseOperation(reopened, operationId);
-      expect(retained?.stage).toBe('integration-publish-initiated');
+      expect(retained?.stage).toBe(
+        fullyPublished ? 'integration-verified' : 'integration-publish-initiated',
+      );
       await withProjectControlLock(reopened.context, async () => {
         await expect(
           assertResourcesAvailable(reopened.context, retained!.plan.resources),

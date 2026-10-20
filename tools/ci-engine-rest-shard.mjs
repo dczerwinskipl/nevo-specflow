@@ -72,9 +72,7 @@ function weight(file) {
 }
 const buckets = Array.from({ length: total }, () => ({ seconds: 0, files: [] }));
 for (const file of files.sort((a, b) => weight(b) - weight(a) || a.localeCompare(b))) {
-  const target = buckets.reduce((best, bucket) =>
-    bucket.seconds < best.seconds ? bucket : best,
-  );
+  const target = buckets.reduce((best, bucket) => bucket.seconds < best.seconds ? bucket : best);
   target.files.push(file);
   target.seconds += weight(file);
 }

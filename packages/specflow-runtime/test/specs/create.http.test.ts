@@ -18,6 +18,7 @@ import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
 
 const roots: string[] = [];
+const createTestTimeoutMs = process.platform === 'win32' ? 120000 : 30000;
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
@@ -169,7 +170,7 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
     } finally {
       await app.close();
     }
-  }, process.platform === 'win32' ? 120000 : 30000);
+  }, createTestTimeoutMs);
 
   it('rejects unexpected request keys and invalid title without persistence', async () => {
     const { engine } = await fixture();

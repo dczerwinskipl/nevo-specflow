@@ -1,9 +1,23 @@
 import { spawn } from 'node:child_process';
 import { channel } from 'node:diagnostics_channel';
 
+import { resolveGitExecutable } from './executable';
 import { GitOutputDecoder } from './output-decoder';
 
 const gitProcessChannel = channel('nevo.specflow.engine.git-process');
+
+// Keep native Git discovery fast on the ordinary path, but respect explicit
+// PATH changes (including executable-unavailable admission and recovery tests).
+let resolvedPath: string | undefined;
+let resolvedExecutable: string | undefined;
+function currentGitExecutable(): string {
+  const path = process.env.PATH ?? '';
+  if (resolvedPath !== path || resolvedExecutable === undefined) {
+    resolvedExecutable = resolveGitExecutable(process.platform, path);
+    resolvedPath = path;
+  }
+  return resolvedExecutable;
+}
 
 /** Sanitizes Git discovery/config overrides for every Engine process. */
 export function spawnLocalGit(cwd: string, args: readonly string[]) {
@@ -11,7 +25,7 @@ export function spawnLocalGit(cwd: string, args: readonly string[]) {
   for (const name of Object.keys(env)) {
     if (name.toUpperCase().startsWith('GIT_')) delete env[name];
   }
-  const child = spawn('git', [...args], {
+  const child = spawn(currentGitExecutable(), [...args], {
     cwd,
     env,
     shell: false,

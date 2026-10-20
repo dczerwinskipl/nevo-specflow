@@ -690,15 +690,19 @@ describe('E2.T11 actual OS-process SIGKILL and physical reconciliation', () => {
       expect(await reopened.readRegistry()).toEqual(registryBefore);
       // Admission remains blocked both for torn publication and for a
       // verified-but-not-yet-rebound Close journal.
-      await expect(
-        reserveCloseOperation(reopened, {
+      let admissionFailure: unknown;
+      try {
+        await reserveCloseOperation(reopened, {
           kind: 'worktree-close',
           operationId: randomUUID(),
           specId: spec.specId,
-        }),
-      ).rejects.toMatchObject({
-        code: expect.stringMatching(/^CLOSE_(?:PREFLIGHT|CONFLICT)$/u),
-      });
+        });
+      } catch (error) {
+        admissionFailure = error;
+      }
+      expect(admissionFailure).toBeDefined();
+      const admissionCode: unknown = (admissionFailure as { code?: unknown }).code;
+      expect(['CLOSE_PREFLIGHT', 'CLOSE_CONFLICT']).toContain(admissionCode);
       const retained = await inspectCloseOperation(reopened, operationId);
       expect(retained?.stage).toBe(
         fullyPublished ? 'integration-verified' : 'integration-publish-initiated',

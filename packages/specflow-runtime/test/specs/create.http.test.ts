@@ -169,7 +169,7 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
     } finally {
       await app.close();
     }
-  }, 30000);
+  }, process.platform === 'win32' ? 120000 : 30000);
 
   it('rejects unexpected request keys and invalid title without persistence', async () => {
     const { engine } = await fixture();

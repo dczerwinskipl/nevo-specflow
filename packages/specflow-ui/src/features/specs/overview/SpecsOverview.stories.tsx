@@ -393,7 +393,7 @@ export const CurrentContract: Story = {
 
 export const AccountNavigation: Story = {
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(await canvas.findByRole('button', { name: 'Open user menu for Demo' }));
+    await userEvent.click(await canvas.findByRole('button', { name: /Demo/ }));
     const menu = document.querySelector<HTMLElement>('[role="menu"][aria-label="User menu"]');
     if (menu?.querySelectorAll('[role="menuitemradio"]').length !== 2)
       throw new Error('Overview navigation must expose the real account and locale menu.');

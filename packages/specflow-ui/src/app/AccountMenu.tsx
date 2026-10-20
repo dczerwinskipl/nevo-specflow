@@ -31,7 +31,7 @@ export function AccountMenu({
     <Menu>
       <MenuTrigger asChild>
         <button
-          aria-label={t('account.openMenu', { name: userName })}
+          aria-description={t('account.openMenu', { name: userName })}
           className={cn(
             'flex h-control-height-default w-full cursor-pointer items-center gap-2 rounded-control border border-solid px-2 text-left',
             actionVariantClasses.ghost,

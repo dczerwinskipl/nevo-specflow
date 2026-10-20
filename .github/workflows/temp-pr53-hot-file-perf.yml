@@ -1,0 +1,25 @@
+name: Temporary Engine hot-file case sharding benchmark
+on:
+  push:
+    branches: [ci/pr53-windows-hot-test-sharding]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  case-shards:
+    name: Git proof cases (Windows shard ${{ matrix.part }}/4)
+    runs-on: windows-2025
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Verify test-case shard ownership
+        run: node tools/ci-engine-hot-shard.mjs ${{ matrix.part }} 4 --list
+      - name: Execute real Git integration proof test cases
+        run: node tools/ci-engine-hot-shard.mjs ${{ matrix.part }} 4

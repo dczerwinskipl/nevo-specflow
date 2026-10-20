@@ -52,7 +52,7 @@ console.log(
 if (listOnly) process.exit(0);
 
 const require = createRequire(join(engineRoot, 'package.json'));
-const vitestMain = resolve(dirname(require.resolve('vitest')), '..', 'vitest.mjs');
+const vitestMain = join(engineRoot, 'node_modules', 'vitest', 'vitest.mjs');
 const args = [
   vitestMain,
   'run',

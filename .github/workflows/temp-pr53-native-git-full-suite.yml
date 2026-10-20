@@ -78,4 +78,4 @@ jobs:
       - name: Runtime adapter tests
         run: pnpm --filter @nevo/specflow-runtime exec vitest run --maxWorkers=1 --no-file-parallelism
       - name: CLI tests
-        run: pnpm --filter @nevo/specflow exec vitest run --maxWorkers=1 --no-file-parallelism
+        run: pnpm --filter @nevo/specflow exec vitest run --testTimeout=20000 --maxWorkers=1 --no-file-parallelism

@@ -50,6 +50,7 @@ describe('Git executable discovery (Windows process performance)', () => {
     expect(resolveGitExecutable('linux', directory, exists)).toBe('git');
     expect(resolveGitExecutable('darwin', directory, exists)).toBe('git');
   });
+
   it('honors PATH removal and restoration even after native Git was already discovered', async () => {
     const cwd = process.cwd();
     expect((await executeGit(cwd, ['--version'])).exitCode).toBe(0);
@@ -63,5 +64,4 @@ describe('Git executable discovery (Windows process performance)', () => {
     }
     expect((await executeGit(cwd, ['--version'])).exitCode).toBe(0);
   });
-
 });

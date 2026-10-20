@@ -11,7 +11,9 @@ export function spawnLocalGit(cwd: string, args: readonly string[]) {
   for (const name of Object.keys(env)) {
     if (name.toUpperCase().startsWith('GIT_')) delete env[name];
   }
-  const child = spawn('git', [...args], {
+  // Temporary A/B benchmark only; do not ship this environment override.
+  const binary = process.env.NEVO_BENCH_NATIVE_GIT ?? 'git';
+  const child = spawn(binary, [...args], {
     cwd,
     env,
     shell: false,

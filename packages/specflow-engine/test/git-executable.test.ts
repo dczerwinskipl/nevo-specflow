@@ -1,8 +1,9 @@
 import { win32 } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { resolveGitExecutable } from '../src/git/executable';
+import { executeGit } from '../src/git/process';
 
 function available(...paths: string[]) {
   const known = new Set(paths.map((path) => win32.normalize(path).toLowerCase()));
@@ -49,4 +50,18 @@ describe('Git executable discovery (Windows process performance)', () => {
     expect(resolveGitExecutable('linux', directory, exists)).toBe('git');
     expect(resolveGitExecutable('darwin', directory, exists)).toBe('git');
   });
+  it('honors PATH removal and restoration even after native Git was already discovered', async () => {
+    const cwd = process.cwd();
+    expect((await executeGit(cwd, ['--version'])).exitCode).toBe(0);
+    vi.stubEnv('PATH', win32.join('X:', 'missing-git-from-path'));
+    try {
+      await expect(executeGit(cwd, ['--version'])).rejects.toMatchObject({
+        code: 'GIT_UNAVAILABLE',
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    expect((await executeGit(cwd, ['--version'])).exitCode).toBe(0);
+  });
+
 });

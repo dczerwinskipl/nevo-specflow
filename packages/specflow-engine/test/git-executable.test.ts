@@ -17,43 +17,36 @@ describe('Git executable discovery (Windows process performance)', () => {
   const legacy = win32.join(root, 'mingw64', 'bin', 'git.exe');
 
   it('bypasses the cmd forwarding executable using the matching UCRT64 Git', () => {
-    expect(resolveGitExecutable('win32', win32.dirname(wrapper), available(wrapper, modern))).toBe(
-      modern,
-    );
+    const directory = win32.dirname(wrapper);
+    const exists = available(wrapper, modern);
+    expect(resolveGitExecutable('win32', directory, exists)).toBe(modern);
   });
 
   it('recognizes Git for Windows bin and older mingw64 installations', () => {
-    expect(
-      resolveGitExecutable('win32', win32.dirname(binWrapper), available(binWrapper, legacy)),
-    ).toBe(legacy);
+    const directory = win32.dirname(binWrapper);
+    const exists = available(binWrapper, legacy);
+    expect(resolveGitExecutable('win32', directory, exists)).toBe(legacy);
   });
 
   it('prefers UCRT64 when both runtimes are installed', () => {
-    expect(
-      resolveGitExecutable(
-        'win32',
-        win32.dirname(wrapper),
-        available(wrapper, modern, legacy),
-      ),
-    ).toBe(modern);
+    const directory = win32.dirname(wrapper);
+    const exists = available(wrapper, modern, legacy);
+    expect(resolveGitExecutable('win32', directory, exists)).toBe(modern);
   });
 
   it('respects PATH precedence instead of selecting an unrelated Git installation', () => {
     const custom = 'D:\\PortableGit\\git.exe';
-    expect(
-      resolveGitExecutable(
-        'win32',
-        win32.dirname(custom) + ';' + win32.dirname(wrapper),
-        available(custom, wrapper, modern),
-      ),
-    ).toBe('git');
+    const path = win32.dirname(custom) + ';' + win32.dirname(wrapper);
+    const exists = available(custom, wrapper, modern);
+    expect(resolveGitExecutable('win32', path, exists)).toBe('git');
   });
 
   it('falls back for unknown layouts, missing sibling binaries, and non-Windows', () => {
-    const gitPath = win32.dirname(wrapper);
-    expect(resolveGitExecutable('win32', gitPath, available(wrapper))).toBe('git');
-    expect(resolveGitExecutable('win32', '', available(wrapper, modern))).toBe('git');
-    expect(resolveGitExecutable('linux', gitPath, available(wrapper, modern))).toBe('git');
-    expect(resolveGitExecutable('darwin', gitPath, available(wrapper, modern))).toBe('git');
+    const directory = win32.dirname(wrapper);
+    const exists = available(wrapper, modern);
+    expect(resolveGitExecutable('win32', directory, available(wrapper))).toBe('git');
+    expect(resolveGitExecutable('win32', '', exists)).toBe('git');
+    expect(resolveGitExecutable('linux', directory, exists)).toBe('git');
+    expect(resolveGitExecutable('darwin', directory, exists)).toBe('git');
   });
 });

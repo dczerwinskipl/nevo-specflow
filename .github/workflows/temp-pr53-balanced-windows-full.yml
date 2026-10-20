@@ -1,0 +1,45 @@
+name: Temporary PR53 balanced Windows full filesystem regression
+on:
+  push:
+    branches: [ci/pr53-windows-hot-test-sharding]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  full-regression-shard:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - kind: hot
+            part: 1
+            total: 2
+          - kind: hot
+            part: 2
+            total: 2
+          - kind: rest
+            part: 1
+            total: 4
+          - kind: rest
+            part: 2
+            total: 4
+          - kind: rest
+            part: 3
+            total: 4
+          - kind: rest
+            part: 4
+            total: 4
+    name: Windows full regression (${{ matrix.kind }} ${{ matrix.part }}/${{ matrix.total }})
+    runs-on: windows-2025
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Record exact test assignment
+        run: |
+          node tools/ci-engine-${{ matrix.kind }}-shard.mjs ${{ matrix.part }} ${{ matrix.total }} --list
+      - name: Run all assigned tests against real Git and filesystem
+        run: |
+          node tools/ci-engine-${{ matrix.kind }}-shard.mjs ${{ matrix.part }} ${{ matrix.total }}

@@ -5,9 +5,18 @@ on:
   push:
     branches:
       - main
+  # Catch UI interaction failures before merge, not only after main pushes.
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "packages/specflow-ui/src/**"
+      - "packages/specflow-ui/test-support/**"
+      - "packages/nevo-ui/src/**"
+      - "tools/storybook/**"
+      - ".github/workflows/chromatic.yml"
 
 concurrency:
-  group: chromatic-${{ github.ref }}
+  group: chromatic-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -16,16 +25,19 @@ permissions:
 jobs:
   publish:
     name: chromatic
+    # Secret-bearing publishing is restricted to trusted same-repo PRs.
+    if: github.event_name != 'pull_request' || (github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     env:
       CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
-      CHROMATIC_SHA: ${{ github.sha }}
-      CHROMATIC_BRANCH: ${{ github.ref_name }}
+      CHROMATIC_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      CHROMATIC_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
       CHROMATIC_SLUG: ${{ github.repository }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: ./.github/actions/setup
 
       - name: Build Storybook workspace dependencies
@@ -45,9 +57,11 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
-          const file = 'tools/storybook/chromatic-diagnostics.json';
+          // Chromatic can write reports at either invocation or package cwd.
+          const file = ['chromatic-diagnostics.json', 'tools/storybook/chromatic-diagnostics.json']
+            .find((path) => fs.existsSync(path));
           if (!fs.existsSync(file)) {
-            console.log('No Chromatic diagnostics file; inspect the build link in job logs.');
+            console.log('Chromatic diagnostics not present at root or Storybook cwd; inspect the build link in job logs.');
             process.exit(0);
           }
           const sensitive = /token|secret|credential|password|authorization|headers|environment|env|apiKey|private/i;

@@ -93,7 +93,12 @@ function parseLocalWorktreesRoot(localConfig: unknown): string | undefined {
   }
   const value = local.worktreesRoot;
   if (value === undefined) return undefined;
-  if (typeof value !== 'string' || !value.trim() || value.length > 1000 || value.includes('\u0000')) {
+  if (
+    typeof value !== 'string' ||
+    !value.trim() ||
+    value.length > 1000 ||
+    value.includes('\u0000')
+  ) {
     throw invalid('git.worktreesRoot must be a non-empty path.');
   }
   return value;

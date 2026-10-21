@@ -152,6 +152,33 @@ jobs:
           PACKAGE: ${{ matrix.package }}
         run: pnpm exec turbo run test --filter="$PACKAGE"
 
+  # Cheap one-OS packaged boundary on relevant PRs. Main retains the
+  # comprehensive Ubuntu/Windows/macOS smoke matrix after merge.
+  packaged-product-pr:
+    name: packaged product smoke (PR / Ubuntu)
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Detect packaged-product changes
+        id: affected
+        shell: bash
+        run: |
+          git diff --name-only "${TURBO_SCM_BASE}" "${TURBO_SCM_HEAD}" > .ci-packaged-changed
+          if grep -Eq '^(packages/(specflow|specflow-runtime|specflow-engine|specflow-contracts|specflow-ui|nevo-ui)/|\.github/workflows/ci\.yml$|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$)' .ci-packaged-changed; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No packaged product changes."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: ./.github/actions/setup
+        if: steps.affected.outputs.run == 'true'
+      - name: Smoke installed CLI + Engine Runtime from isolated tarball
+        if: steps.affected.outputs.run == 'true'
+        run: pnpm --filter @nevo/specflow test:packaged
   # Aggregate the independently-running package tests into one stable required check.
   verify-tests:
     name: verify tests
@@ -159,6 +186,7 @@ jobs:
       - test-plan
       - package-test
       - engine-transport-smoke
+      - packaged-product-pr
     if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
     steps:
@@ -168,6 +196,7 @@ jobs:
           PACKAGE_RESULT: ${{ needs.package-test.result }}
           HAS_TESTS: ${{ needs.test-plan.outputs.has_tests }}
           TRANSPORT_RESULT: ${{ needs.engine-transport-smoke.result }}
+          PACKAGED_PR_RESULT: ${{ needs.packaged-product-pr.result }}
           EVENT_NAME: ${{ github.event_name }}
         shell: bash
         run: |
@@ -183,6 +212,11 @@ jobs:
 
           if [ "$EVENT_NAME" = "pull_request" ] && [ "$TRANSPORT_RESULT" != "success" ]; then
             echo "Engine transport smoke must succeed for every ready PR: $TRANSPORT_RESULT"
+            exit 1
+          fi
+
+          if [ "$EVENT_NAME" = "pull_request" ] && [ "$PACKAGED_PR_RESULT" != "success" ]; then
+            echo "PR packaged-product smoke must succeed (or pass its relevance gate): $PACKAGED_PR_RESULT"
             exit 1
           fi
 

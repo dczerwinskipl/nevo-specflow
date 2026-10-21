@@ -39,13 +39,18 @@ function git(cwd: string, ...args: string[]): void {
   execFileSync('git', args, { cwd, windowsHide: true });
 }
 
-async function fixture() {
+async function fixture(gitEnabled = false) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-workspace-')));
   roots.push(root);
   git(root, 'init', '-q');
   await mkdir(join(root, '.nevo'));
   await writeFile(join(root, '.gitignore'), '.nevo/local/\n');
-  await writeFile(join(root, '.nevo/config.yaml'), 'runtime: {}\ngit:\n  enabled: false\n');
+  await writeFile(
+    join(root, '.nevo/config.yaml'),
+    gitEnabled
+      ? 'runtime: {}\ngit:\n  enabled: true\n  integrationTargetBranch: develop\n'
+      : 'runtime: {}\ngit:\n  enabled: false\n',
+  );
   git(root, 'add', '.gitignore', '.nevo/config.yaml');
   git(
     root,
@@ -57,6 +62,7 @@ async function fixture() {
     '-qm',
     'initial',
   );
+  if (gitEnabled) git(root, 'branch', '-m', 'develop');
   return { root, engine: await bootstrapProjectHome(root) };
 }
 
@@ -134,6 +140,54 @@ describe('Engine-backed specification workspace read', () => {
       }
     },
     timeoutMs,
+  );
+
+  it(
+    'a specification created over HTTP in a new worktree can be inspected and opened (the Create to workspace path)',
+    async () => {
+      const { engine } = await fixture(true);
+      const app = await createRuntimeApp(trustedLocalConfig(), { specs: { engine } });
+      try {
+        const operationId = randomUUID();
+        const options = await app.inject('/api/specs/create-options');
+        expect(options.statusCode, options.body).toBe(200);
+        expect(options.json<{ newWorktree: { status: string } }>().newWorktree.status).toBe(
+          'available',
+        );
+        const created = await app.inject({
+          method: 'POST',
+          url: '/api/specs',
+          payload: {
+            title: 'From the new workspace',
+            operationId,
+            target: { kind: 'new-worktree' },
+          },
+        });
+        expect(created.statusCode, created.body).toBe(201);
+        const { specId } = created.json<{ specId: string }>();
+
+        const inspected = await app.inject(`/api/specs/create/operations/${operationId}`);
+        expect(inspected.statusCode, inspected.body).toBe(200);
+        expect(inspected.json()).toMatchObject({ specId, status: 'completed' });
+
+        // The specification lives in a linked worktree (explicit binding), yet opens like any other.
+        const workspace = await app.inject(`/api/specs/${specId}/workspace`);
+        expect(workspace.statusCode, workspace.body).toBe(200);
+        const body = workspace.json<SpecificationWorkspaceResponse>();
+        expect(Value.Check(SpecificationWorkspaceResponseSchema, body)).toBe(true);
+        expect(body.specification).toMatchObject({
+          id: specId,
+          title: 'From the new workspace',
+        });
+        const overview = await app.inject('/api/specs/overview');
+        expect(overview.json<{ items: { id: string }[] }>().items.map((item) => item.id)).toContain(
+          specId,
+        );
+      } finally {
+        await app.close();
+      }
+    },
+    timeoutMs * 2,
   );
 
   it(

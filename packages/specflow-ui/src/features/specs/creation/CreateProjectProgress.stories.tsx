@@ -105,6 +105,8 @@ const meta = {
   component: Fixture,
   tags: ['contract'],
   parameters: { layout: 'fullscreen' },
+  // A running operation is kept in sessionStorage; every story starts without one.
+  beforeEach: () => sessionStorage.clear(),
 } satisfies Meta<typeof Fixture>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -127,7 +129,7 @@ export const StepsWhileCreating: Story = {
     });
     await expect(region).toHaveAttribute('aria-live', 'polite');
     const running = await context.canvas.findByText('Przygotowanie środowiska pracy');
-    await expect(running.closest('li')).toHaveAttribute('aria-current', 'step');
+    await waitFor(() => expect(running.closest('li')).toHaveAttribute('aria-current', 'step'));
     await expect(context.canvas.getByText('Rezerwowanie nazwy').closest('li')).toHaveAttribute(
       'data-status',
       'done',

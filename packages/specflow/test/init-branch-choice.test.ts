@@ -1,0 +1,63 @@
+import { execFileSync } from 'node:child_process';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import type { RuntimeSetupUi } from '@nevo/specflow-runtime';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
+import { chooseIntegrationTargetBranch } from '../src/init/cli';
+
+function git(root: string, ...args: string[]): void {
+  execFileSync('git', args, { cwd: root, stdio: 'ignore' });
+}
+
+function fakeUi(): { ui: RuntimeSetupUi; calls: { choices: string[]; initial?: string }[] } {
+  const calls: { choices: string[]; initial?: string }[] = [];
+  const ui = {
+    select: (_message: string, choices: readonly { value: string }[], initial?: string) => {
+      calls.push({ choices: choices.map((choice) => choice.value), initial });
+      return Promise.resolve(initial ?? choices[0]!.value);
+    },
+  } as unknown as RuntimeSetupUi;
+  return { ui, calls };
+}
+
+describe('chooseIntegrationTargetBranch', () => {
+  let root: string;
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), 'nevo-init-branch-'));
+    git(root, 'init', '-b', 'trunk');
+    git(root, 'config', 'user.email', 'test@example.com');
+    git(root, 'config', 'user.name', 'Test');
+  });
+
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it('explains how to continue when the repository has no commits', async () => {
+    const { ui, calls } = fakeUi();
+
+    await expect(chooseIntegrationTargetBranch(ui, root)).rejects.toThrow(
+      /unborn branch 'trunk'.*first commit/,
+    );
+    expect(calls).toEqual([]);
+  });
+
+  it('offers the existing local branches and preselects the current one', async () => {
+    await writeFile(join(root, 'README.md'), '# test\n');
+    git(root, 'add', '-A');
+    git(root, 'commit', '-m', 'init');
+    git(root, 'branch', 'develop');
+    const { ui, calls } = fakeUi();
+
+    const chosen = await chooseIntegrationTargetBranch(ui, root);
+
+    expect(chosen).toBe('trunk');
+    expect(calls).toHaveLength(1);
+    expect([...calls[0]!.choices].sort()).toEqual(['develop', 'trunk']);
+    expect(calls[0]!.initial).toBe('trunk');
+  });
+});

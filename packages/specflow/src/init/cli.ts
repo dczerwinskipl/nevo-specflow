@@ -34,6 +34,64 @@ export interface ProjectInitCommandContext {
   readonly initialize?: (options: InitializeProjectOptions) => Promise<InitializeProjectResult>;
 }
 
+/** Local branch names (refs/heads), empty for a repository without commits. */
+async function listLocalBranches(root: string): Promise<string[]> {
+  try {
+    const { stdout } = await gitProcess(
+      'git',
+      ['for-each-ref', '--format=%(refname:short)', 'refs/heads'],
+      { cwd: root },
+    );
+    return stdout
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+async function currentBranchName(root: string): Promise<string | undefined> {
+  try {
+    const { stdout } = await gitProcess('git', ['symbolic-ref', '--quiet', '--short', 'HEAD'], {
+      cwd: root,
+    });
+    return stdout.trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The target must be an existing local branch, so offer the existing ones instead of free
+ * text. A repository without commits has no branches yet: say how to fix that.
+ */
+export async function chooseIntegrationTargetBranch(
+  ui: RuntimeSetupUi,
+  root: string,
+): Promise<string> {
+  const branches = await listLocalBranches(root);
+  if (branches.length === 0) {
+    const unborn = await currentBranchName(root);
+    throw new Error(
+      'This repository has no local branches yet' +
+        (unborn ? ` (HEAD points at the unborn branch '${unborn}')` : '') +
+        '. Create the first commit (git add -A && git commit -m "Initial commit"), then run init again.',
+    );
+  }
+  const current = await currentBranchName(root);
+  const selected = await ui.select(
+    'Branch receiving integrated worktrees',
+    branches.map((name) => ({
+      value: name,
+      label: name,
+      ...(name === current ? { hint: 'current' } : {}),
+    })),
+    current !== undefined && branches.includes(current) ? current : branches[0],
+  );
+  return selected;
+}
+
 export function createProjectInitCommand(context: ProjectInitCommandContext): Command {
   return new Command('init')
     .description('Initialize Nevo SpecFlow configuration for this repository')
@@ -55,29 +113,7 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
       );
       let gitConfig: { enabled: boolean; integrationTargetBranch?: string } = { enabled: false };
       if (gitEnabled) {
-        const currentBranch = (
-          await gitProcess('git', ['symbolic-ref', '--quiet', '--short', 'HEAD'], {
-            cwd: layout.root,
-          })
-        ).stdout.trim();
-        const integrationTargetBranch = (
-          await ui.input('Branch receiving integrated worktrees', currentBranch)
-        ).trim();
-        if (!integrationTargetBranch) throw new Error('Git integration target branch is required.');
-        // Validate the exact committed ref before initialization; do not
-        // silently substitute a workstation-local default on another machine.
-        try {
-          await gitProcess('git', ['check-ref-format', '--branch', integrationTargetBranch], {
-            cwd: layout.root,
-          });
-          await gitProcess(
-            'git',
-            ['show-ref', '--verify', 'refs/heads/' + integrationTargetBranch],
-            { cwd: layout.root },
-          );
-        } catch {
-          throw new Error('Integration target must be an existing, valid local Git branch.');
-        }
+        const integrationTargetBranch = await chooseIntegrationTargetBranch(ui, layout.root);
         gitConfig = { enabled: true, integrationTargetBranch };
       }
       const contribution = {

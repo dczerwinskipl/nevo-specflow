@@ -13,6 +13,7 @@ summary: >
   workflow behavior.
 related:
   - reference.api.specflow-specification-operations
+  - reference.api.operation-progress
   - architecture.runtime.specflow-lifecycle
 ---
 
@@ -83,6 +84,31 @@ canonical `specId`, not by a potentially stale worktree path.
 After a shared-worktree Spec archive, sibling Specs and their workspace remain unchanged.
 Integrating the whole branch and removing that workspace is a separate explicitly previewed
 Workspace Close action. Neither Create nor Close automatically runs E3–E5 workflow/provider steps.
+
+## Live progress while creating
+
+Creating a workspace can take from a few seconds to minutes, so while the request runs the form
+shows a calm checklist of named steps under the form (the form stays as it was): the running step
+has a spinner, finished steps a check, steps that follow stay muted. The steps are the public
+vocabulary of the operation, not Git or journal internals:
+
+| Step                    | Shown as (en)                   | Shown when         |
+| ----------------------- | ------------------------------- | ------------------ |
+| `reserving`             | Reserving the name              | always             |
+| `preparing-workspace`   | Preparing the workspace         | new workspace only |
+| `writing-specification` | Writing the specification files | always             |
+| `registering`           | Registering the workspace       | always             |
+
+A step that does not apply (the workspace step for the current or an existing workspace) is not
+drawn. Rows are reserved from the moment of the submit, so the page does not jump when the first
+step arrives. The checklist is read by assistive technology through a polite live region and each
+row also says its state in text.
+
+Progress is best effort. If the live stream cannot be opened, drops or is unsupported, nothing is
+shown or announced and the form behaves exactly as before: the existing 15 s monitoring, polling and
+the response of the request decide the outcome. The stream never fails or delays a Create. The
+mechanism is generic (`reference.api.operation-progress`) and is reused by other long-running
+operations.
 
 ## Workspace names and worktree folder
 

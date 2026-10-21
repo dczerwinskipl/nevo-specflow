@@ -2248,6 +2248,24 @@
       ]
     },
     {
+      "id": "engineering.shared.operation-progress",
+      "type": "engineering",
+      "title": "Adding live progress to a long-running operation",
+      "status": "current",
+      "file": "docs/engineering/shared/operation-progress.md",
+      "read_when": [
+        "an operation can run for seconds or minutes and the UI should show its steps",
+        "adding a kind to the operation progress stream",
+        "consuming operation progress in the UI"
+      ],
+      "summary": "How the generic operation progress mechanism is layered (contracts registry, Runtime broadcaster, UI port, hook and checklist) and a recipe to add it to another operation.",
+      "related": [
+        "reference.api.operation-progress",
+        "engineering.shared.async-and-lifecycle",
+        "engineering.shared.effects-and-io"
+      ]
+    },
+    {
       "id": "engineering.shared.specflow-git-recovery",
       "type": "engineering",
       "title": "Durable Engine Git mutations, process coordination and recovery",
@@ -4872,6 +4890,7 @@
       "summary": "User-facing E2 Create choices and recovery wording without inferred future Git or workflow behavior.",
       "related": [
         "reference.api.specflow-specification-operations",
+        "reference.api.operation-progress",
         "architecture.runtime.specflow-lifecycle"
       ],
       "scope": "specflow",
@@ -5019,6 +5038,30 @@
       ]
     },
     {
+      "id": "reference.api.operation-progress",
+      "type": "reference",
+      "title": "Operation progress events (SSE) HTTP reference",
+      "status": "current",
+      "file": "docs/reference/api/operation-progress.md",
+      "read_when": [
+        "showing live progress of a long-running operation",
+        "adding a new operation kind to the progress stream",
+        "changing the progress event schemas or the events endpoint"
+      ],
+      "summary": "Kind-agnostic Server-Sent Events stream of long-running operations: endpoint, event model, step vocabulary per operation kind, replay, waiting and fallback rules.",
+      "related": [
+        "reference.api.specflow-specification-operations",
+        "engineering.shared.operation-progress",
+        "product.specflow.specification-creation"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "ui"
+      ]
+    },
+    {
       "id": "reference.api.specflow-specification-operations",
       "type": "reference",
       "title": "Specification Create and Close HTTP reference",
@@ -5032,7 +5075,8 @@
       "related": [
         "architecture.runtime.specflow-lifecycle",
         "product.specflow.specification-creation",
-        "reference.configuration.specflow-git-worktrees"
+        "reference.configuration.specflow-git-worktrees",
+        "reference.api.operation-progress"
       ],
       "scope": "specflow",
       "areas": [

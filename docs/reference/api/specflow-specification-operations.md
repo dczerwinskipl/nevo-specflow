@@ -15,6 +15,7 @@ related:
   - architecture.runtime.specflow-lifecycle
   - product.specflow.specification-creation
   - reference.configuration.specflow-git-worktrees
+  - reference.api.operation-progress
 ---
 
 # Specification Create and Close HTTP reference
@@ -25,11 +26,12 @@ future Workflow or provider Session APIs.
 
 ## Create
 
-| HTTP | Route                                       | Result                                              |
-| ---- | ------------------------------------------- | --------------------------------------------------- |
-| GET  | `/api/specs/create-options`                 | 200, authorized read-only options                   |
-| POST | `/api/specs`                                | **201**, `CreatedSpec`                              |
-| GET  | `/api/specs/create/operations/:operationId` | 200 sanitized observation or 404 `CREATE_NOT_FOUND` |
+| HTTP | Route                                                           | Result                                              |
+| ---- | --------------------------------------------------------------- | --------------------------------------------------- |
+| GET  | `/api/specs/create-options`                                     | 200, authorized read-only options                   |
+| POST | `/api/specs`                                                    | **201**, `CreatedSpec`                              |
+| GET  | `/api/specs/create/operations/:operationId`                     | 200 sanitized observation or 404 `CREATE_NOT_FOUND` |
+| GET  | `/api/operations/:operationId/events?kind=specification-create` | live named steps (SSE), see below                   |
 
 All three require project-wide Spec `Create` capability before reading protected data.
 401/403 use existing Auth schemas. With no Engine composition, all return
@@ -68,6 +70,14 @@ not an integration-selectable destination. All options are a snapshot, not a res
 Operation lookup returns `{operationId,kind:"specification-create",status:"in-progress"|"recovery-required"}`
 or completed `CreatedSpec`. It is read-only and never proves process liveness or initiates
 recovery. After timeout, reuse the **same** operation ID.
+
+Live progress: POST can take seconds to minutes, so a client that sends an `operationId` may also
+watch `GET /api/operations/:operationId/events?kind=specification-create`, the generic operation
+progress stream (see `reference.api.operation-progress`: events, the public step vocabulary
+`reserving`, `preparing-workspace`, `writing-specification`, `registering`, replay and the wait for
+a not yet reserved operation). It requires the same `Create` capability, never exposes paths or
+journal stages, and is optional: the POST result and the inspection above stay the source of truth,
+and without SSE clients just poll the inspection.
 
 ## Close
 

@@ -27,6 +27,7 @@ function renderScreen(
   dataMode: 'project' | 'demo',
   projectCreationApi: Partial<ProjectCreationApi>,
   props: { specId?: string } = {},
+  client = createSpecFlowQueryClient(),
 ) {
   const onProjectCreated = vi.fn();
   const services = createSpecFlowAppServices({
@@ -34,7 +35,7 @@ function renderScreen(
     projectCreationApi: projectCreationApi as ProjectCreationApi,
   });
   render(
-    <QueryClientProvider client={createSpecFlowQueryClient()}>
+    <QueryClientProvider client={client}>
       <TestServicesRouterContext services={services}>
         <LocalizationProvider instance={createSpecFlowI18n('en')}>
           <VisitStateProvider>
@@ -135,6 +136,38 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
     expect((create.mock.calls[0]![0] as { target?: unknown }).target).toEqual({
       kind: 'new-worktree',
     });
+  });
+
+  it('re-entering the screen never shows options cached from the previous visit as current', async () => {
+    const client = createSpecFlowQueryClient();
+    const first = renderScreen(
+      'project',
+      { createOptions: () => Promise.resolve(createOptionsFixture('no-linked')) },
+      {},
+      client,
+    );
+    expect(await screen.findByLabelText('Specification name')).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.queryByRole('radio', { name: /new workspace/i })).toBeTruthy(),
+    );
+    cleanup();
+    expect(first.onProjectCreated).not.toHaveBeenCalled();
+
+    // The second visit: Git state changed, the answer is still in flight.
+    let resolve!: (value: ReturnType<typeof createOptionsFixture>) => void;
+    const pending = new Promise<ReturnType<typeof createOptionsFixture>>((r) => (resolve = r));
+    renderScreen('project', { createOptions: () => pending }, {}, client);
+    expect(await screen.findByLabelText('Specification name')).toBeTruthy();
+    // No tile state from the cached answer while the fresh one is loading.
+    expect(screen.queryByRole('radio', { name: /new workspace/i })).toBeNull();
+    expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
+    const submit = screen.getByRole('button', { name: 'Create specification' });
+    fireEvent.change(screen.getByLabelText('Specification name'), { target: { value: 'Title' } });
+    expect((submit as HTMLButtonElement).disabled).toBe(true);
+
+    resolve(createOptionsFixture('default'));
+    expect(await screen.findByRole('radio', { name: /new workspace/i })).toBeTruthy();
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
   });
 
   it('explains that a session cannot be created on a project Runtime', async () => {

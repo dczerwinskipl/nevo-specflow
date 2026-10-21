@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
+import { useVisitFreshOptions } from './visitFreshOptions';
 import { Alert, Field, Separator, TextArea, TextInput, Typography } from '@nevo/ui';
 import type { CreatedSpec } from '@nevo/specflow-contracts/specs';
 import type { CreateFailure } from './createFailure';
@@ -65,7 +66,7 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
     refetchOnWindowFocus: true,
     retry: false,
   });
-  const workspaceOptions = createOptions.data;
+  const workspaceOptions = useVisitFreshOptions(createOptions);
 
   const [title, setTitle] = useState(stored?.request.title ?? ''),
     [goal, setGoal] = useState(stored?.request.goal ?? ''),

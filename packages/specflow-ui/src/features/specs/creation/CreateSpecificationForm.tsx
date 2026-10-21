@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { isHttpClientError } from '@nevo/http-client';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
+import { useVisitFreshOptions } from './visitFreshOptions';
 import { Separator, Typography, useWorkspaceCapabilities } from '@nevo/ui';
 import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
 import {
@@ -76,9 +77,11 @@ export function CreateSpecificationForm({
     queryFn: ({ signal }) => creationApi.createOptions(signal),
     enabled: !specId,
     retry: false,
+    staleTime: 0,
+    refetchOnMount: 'always',
     refetchOnWindowFocus: true,
   });
-  const workspaceOptions = createOptions.data;
+  const workspaceOptions = useVisitFreshOptions(createOptions);
 
   const [method, setMethod] = useState(specId ? 'ai' : ''),
     [title, setTitle] = useState(''),

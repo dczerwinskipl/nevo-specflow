@@ -8,7 +8,7 @@ export {
   type ApiErrorReason,
   type MutationOutcome,
 } from './ApiError';
-export { classifyHttpError, readServerCode, type ClassifyContext } from './classify';
+export { asApiError, classifyHttpError, readServerCode, type ClassifyContext } from './classify';
 export { commonErrorCodes, type ErrorCodeRule, type ErrorCodeTable } from './codes/common';
 export {
   createApiTransport,
@@ -16,3 +16,4 @@ export {
   type ApiTransport,
   type ApiTransportContext,
 } from './transport';
+export { useApiErrorMessage } from './useApiErrorMessage';

@@ -53,6 +53,5 @@ describe('SpecFlow application services composition', () => {
 
     expect(markup).toContain('same');
     expect(router.options.context.auth).toBe(services.authStore);
-    expect(router.options.context.specs).toBe(services.specsOverviewApi);
   });
 });

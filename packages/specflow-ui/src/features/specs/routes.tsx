@@ -1,11 +1,10 @@
 import { useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { createRoute, Link, Outlet, redirect } from '@tanstack/react-router';
 import { appRoute, rootRoute } from '../../app/router/root';
 import { parseSpecificationCollection } from '../../app/router/search';
 import { SpecsOverview } from './overview/SpecsOverview';
 import { useSpecificationWorkspace } from './useSpecificationWorkspace';
-import { useRuntimeDataMode } from '../../app/useRuntimeDataMode';
+import { useRuntimeMode } from '../../app/useRuntimeMode';
 import { useSpecsOverview } from './overview/useSpecsOverview';
 import { SpecsAccessDenied } from './overview/SpecsAccessDenied';
 import { SpecificationSurface } from './SpecificationSurface';
@@ -158,14 +157,11 @@ export const specificationIndexRoute = createRoute({
 });
 
 function SpecsRouteScreen() {
-  const { specs, services } = specsRoute.useRouteContext();
-  const runtimeInfo = useQuery({
-    queryKey: ['runtime-info'],
-    queryFn: ({ signal }) => services.runtimeInfoApi.getInfo(signal),
-  });
+  const { services } = specsRoute.useRouteContext();
+  const mode = useRuntimeMode();
   const { collection } = specsRoute.useSearch();
   const navigate = specsRoute.useNavigate();
-  const { state, refresh } = useSpecsOverview(specs, collection);
+  const { state, refresh } = useSpecsOverview(services.specsOverviewApi, collection);
 
   useEffect(() => {
     // Overview authorization denotes application-wide Specs access, unlike
@@ -179,9 +175,9 @@ function SpecsRouteScreen() {
     <SpecsOverview
       state={state}
       onRefresh={refresh}
-      sample={runtimeInfo.data?.dataMode === 'demo'}
+      sample={mode === 'demo'}
       onCreate={
-        runtimeInfo.data?.dataMode === 'demo'
+        mode !== 'loading' && mode !== 'unavailable'
           ? () => void navigate({ to: '/specs/new', search: { collection } })
           : undefined
       }
@@ -217,7 +213,7 @@ function SpecificationRouteScreen() {
   const { collection } = specificationRoute.useSearch();
   const navigate = specificationRoute.useNavigate();
   // Session detail exists only where the Runtime serves it (demo mode); otherwise rows stay inert.
-  const sessionDetail = useRuntimeDataMode() === 'demo';
+  const sessionDetail = useRuntimeMode() === 'demo';
 
   return (
     <SpecificationSurface

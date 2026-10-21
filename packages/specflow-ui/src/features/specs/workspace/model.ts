@@ -133,6 +133,10 @@ export type SpecificationSectionState = 'available' | 'unavailable' | 'forbidden
 
 export interface SpecificationWorkspaceData {
   readonly sectionAvailability?: Partial<Record<SpecificationSectionId, SpecificationSectionState>>;
+  /** Why an unavailable section is unavailable: `not_implemented` is permanent for this Runtime. */
+  readonly sectionUnavailableReason?: Partial<
+    Record<SpecificationSectionId, 'not_implemented' | 'source_unavailable'>
+  >;
   readonly id: string;
   /** Optional human-facing Specification key, e.g. `UI-1234`. */
   readonly key?: string;

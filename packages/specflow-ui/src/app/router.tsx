@@ -25,6 +25,8 @@ import { sessionsAppRoutes } from '../features/sessions/routes';
 import { gitAppRoutes } from '../features/git/routes';
 import { createSpecFlowAppServices, type SpecFlowAppServices } from './dependencies';
 import { UiPlaygroundScreen } from './screens';
+import { NotFoundView } from './errors/NotFoundView';
+import { RouteErrorView } from './errors/RouteErrorView';
 import { rootRoute, appRoute, type SpecFlowRouterContext } from './router/root';
 
 export {
@@ -76,12 +78,15 @@ export function createSpecFlowRouter(
   const context: SpecFlowRouterContext = {
     services,
     auth: services.authStore,
-    specs: services.specsOverviewApi,
   };
 
   return createRouter({
     routeTree,
     context,
+    defaultErrorComponent: RouteErrorView,
+    defaultNotFoundComponent: NotFoundView,
+    // Defects reach the console (no remote telemetry in a local product); the boundary shows a generic screen.
+    defaultOnCatch: (error) => console.error('Route render failed', error),
     ...(history ? { history } : {}),
   });
 }

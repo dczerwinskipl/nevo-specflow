@@ -1069,5 +1069,77 @@
       "loadingContext": "Wczytywanie kontekstu…",
       "contextUnavailable": "Kontekst jest niedostępny."
     }
+  },
+  "apiErrors": {
+    "kind": {
+      "network": {
+        "title": "Brak połączenia z Runtime",
+        "description": "SpecFlow nie może połączyć się z Runtime. Sprawdź, czy działa, i spróbuj ponownie."
+      },
+      "timeout": {
+        "title": "Runtime odpowiada zbyt długo",
+        "description": "Żądanie może być nadal przetwarzane. Sprawdź jego wynik, zanim je powtórzysz."
+      },
+      "unauthenticated": {
+        "title": "Sesja wygasła",
+        "description": "Zaloguj się ponownie, aby kontynuować. Wprowadzone dane zostały zachowane."
+      },
+      "forbidden": {
+        "title": "Brak uprawnień",
+        "description": "Twoja rola nie pozwala na tę czynność. Poproś administratora projektu o dostęp."
+      },
+      "not-found": {
+        "title": "Nie znaleziono",
+        "description": "Żądany element nie istnieje lub nie jest już dostępny."
+      },
+      "validation": {
+        "title": "Dane nie zostały przyjęte",
+        "description": "Runtime odrzucił dane. Sprawdź je i spróbuj ponownie."
+      },
+      "conflict": {
+        "title": "Konfliktująca zmiana",
+        "description": "Element został zmieniony lub już istnieje. Odśwież i spróbuj ponownie."
+      },
+      "precondition": {
+        "title": "Środowisko nie jest gotowe",
+        "description": "Projekt nie spełnia warunku wymaganego do tej czynności. Odśwież opcje i spróbuj ponownie."
+      },
+      "recovery-required": {
+        "title": "Operacja wymaga odzyskania",
+        "description": "Runtime nie zakończył operacji w bezpieczny sposób. Nie powtarzaj jej; sprawdź jej wynik."
+      },
+      "rate-limited": {
+        "title": "Zbyt wiele żądań",
+        "description": "Odczekaj chwilę i spróbuj ponownie."
+      },
+      "unavailable": {
+        "title": "Runtime jest niedostępny",
+        "description": "Ta część Runtime jest teraz niedostępna. Spróbuj ponownie za chwilę."
+      },
+      "server": {
+        "title": "Runtime zgłosił błąd",
+        "description": "Po stronie Runtime coś zawiodło. Wynik ostatniej czynności nie jest pewny."
+      },
+      "protocol": {
+        "title": "Nieoczekiwana odpowiedź Runtime",
+        "description": "Runtime odpowiedział w sposób, którego SpecFlow nie rozumie. Odśwież stronę; jeśli problem wraca, skopiuj szczegóły."
+      }
+    }
+  },
+  "featureUnavailable": {
+    "title": "Niedostępne w tym Runtime",
+    "description": "Połączony Runtime nie obsługuje jeszcze tej części SpecFlow. Reszta produktu działa normalnie.",
+    "back": "Wróć do specyfikacji"
+  },
+  "routeError": {
+    "title": "Coś poszło nie tak",
+    "description": "Nie udało się wyświetlić tego ekranu. Możesz spróbować ponownie lub wrócić do specyfikacji.",
+    "retry": "Spróbuj ponownie",
+    "back": "Wróć do specyfikacji"
+  },
+  "notFound": {
+    "title": "Nie znaleziono strony",
+    "description": "Ten adres nie prowadzi do żadnej strony SpecFlow.",
+    "back": "Wróć do specyfikacji"
   }
 }

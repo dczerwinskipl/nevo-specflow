@@ -125,4 +125,54 @@ describe('Specification aggregate resource boundary', () => {
     expect(html).toContain('Fresh content:');
     expect(html).not.toContain('Wyświetlane są wcześniej pobrane dane');
   });
+
+  function renderPage(client: ReturnType<typeof createSpecFlowQueryClient>, specId: string) {
+    return renderToStaticMarkup(
+      <QueryClientProvider client={client}>
+        <TestServicesRouterContext services={createSpecFlowAppServices()}>
+          <LocalizationProvider>
+            <AppShell navigation={<div>Nav</div>}>
+              <SpecificationAggregatePage specId={specId} title="Documents" section="documents">
+                {(data) => <span>Content: {data.title}</span>}
+              </SpecificationAggregatePage>
+            </AppShell>
+          </LocalizationProvider>
+        </TestServicesRouterContext>
+      </QueryClientProvider>,
+    );
+  }
+
+  it('shows "not available in this Runtime" without retry when the Runtime has no source (503)', () => {
+    const specId = 'no-source';
+    const client = createSpecFlowQueryClient();
+    const key = specificationKeys.detail(specId);
+    const query = client.getQueryCache().build(client, { queryKey: key });
+    query.setState({
+      status: 'error',
+      error: new HttpClientError('unavailable', {
+        kind: 'http',
+        status: 503,
+        data: { error: 'specification_source_unavailable' },
+      }),
+      fetchStatus: 'idle',
+      errorUpdateCount: 1,
+    });
+    const html = renderPage(client, specId);
+    expect(html).toContain('Niedostępne w tym Runtime');
+    expect(html).not.toContain('Spróbuj ponownie');
+    expect(html).not.toContain('Specyfikacja jest niedostępna');
+  });
+
+  it('shows "not available in this Runtime" for a section the Runtime does not implement', () => {
+    const specId = 'not-implemented';
+    const client = createSpecFlowQueryClient();
+    client.setQueryData(specificationKeys.detail(specId), {
+      ...createSpecificationWorkspaceFixture('working', specId),
+      sectionAvailability: { documents: 'unavailable' },
+      sectionUnavailableReason: { documents: 'not_implemented' },
+    });
+    const html = renderPage(client, specId);
+    expect(html).toContain('Niedostępne w tym Runtime');
+    expect(html).not.toContain('Content:');
+  });
 });

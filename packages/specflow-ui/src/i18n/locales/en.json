@@ -1069,5 +1069,77 @@
       "loadingContext": "Loading the context…",
       "contextUnavailable": "The context is unavailable."
     }
+  },
+  "apiErrors": {
+    "kind": {
+      "network": {
+        "title": "No connection to Runtime",
+        "description": "SpecFlow could not reach the Runtime. Check that it is running and try again."
+      },
+      "timeout": {
+        "title": "Runtime took too long to answer",
+        "description": "The request may still be processed. Check the result before repeating it."
+      },
+      "unauthenticated": {
+        "title": "You are signed out",
+        "description": "Sign in again to continue. What you entered is kept."
+      },
+      "forbidden": {
+        "title": "No permission",
+        "description": "Your role does not allow this. Ask a project administrator if you need access."
+      },
+      "not-found": {
+        "title": "Not found",
+        "description": "The requested item does not exist or is no longer available."
+      },
+      "validation": {
+        "title": "The data was not accepted",
+        "description": "Runtime rejected the data. Review it and try again."
+      },
+      "conflict": {
+        "title": "Conflicting change",
+        "description": "The item changed or already exists. Refresh and try again."
+      },
+      "precondition": {
+        "title": "The environment is not ready",
+        "description": "The project does not meet a condition required for this. Refresh the options and try again."
+      },
+      "recovery-required": {
+        "title": "The operation needs recovery",
+        "description": "Runtime could not finish the operation safely. Do not repeat it; check its result instead."
+      },
+      "rate-limited": {
+        "title": "Too many requests",
+        "description": "Wait a moment and try again."
+      },
+      "unavailable": {
+        "title": "Runtime is unavailable",
+        "description": "This part of Runtime is not available right now. Try again in a moment."
+      },
+      "server": {
+        "title": "Runtime reported an error",
+        "description": "Something failed on the Runtime side. The result of the last action is not certain."
+      },
+      "protocol": {
+        "title": "Unexpected answer from Runtime",
+        "description": "Runtime answered in a way SpecFlow does not understand. Reload the page; if it persists, copy the details."
+      }
+    }
+  },
+  "featureUnavailable": {
+    "title": "Not available in this Runtime",
+    "description": "The connected Runtime does not serve this part of SpecFlow yet. The rest of the product keeps working.",
+    "back": "Back to specifications"
+  },
+  "routeError": {
+    "title": "Something went wrong",
+    "description": "This screen could not be displayed. You can try again or go back to the specifications.",
+    "retry": "Try again",
+    "back": "Back to specifications"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "description": "This address does not lead to a SpecFlow page.",
+    "back": "Back to specifications"
   }
 }

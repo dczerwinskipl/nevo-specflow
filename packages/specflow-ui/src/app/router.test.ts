@@ -220,3 +220,14 @@ function fakeApi(overrides: Partial<AuthApi> = {}): AuthApi {
     ...overrides,
   };
 }
+
+describe('SpecFlow router boundaries', () => {
+  it('registers the product error and not-found components for every route', () => {
+    const router = createSpecFlowRouter(
+      createMemoryHistory({ initialEntries: ['/'] }),
+      createSpecFlowAppServices({ authStore: storeWith(authenticated) }),
+    );
+    expect(router.options.defaultErrorComponent).toBeTypeOf('function');
+    expect(router.options.defaultNotFoundComponent).toBeTypeOf('function');
+  });
+});

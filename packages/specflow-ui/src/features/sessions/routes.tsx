@@ -1,5 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
-import { useAppServices } from '../../app/useAppServices';
+import { useRuntimeMode } from '../../app/useRuntimeMode';
 import { createRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { SpecificationAggregatePage, specificationRoute } from '../specs';
@@ -23,12 +22,7 @@ function SessionsRouteScreen() {
   const { collection } = sessionsRoute.useSearch();
   const { t } = useTranslation();
   const navigate = sessionsRoute.useNavigate();
-  const { runtimeInfoApi } = useAppServices();
-  const runtime = useQuery({
-    queryKey: ['runtime-info'],
-    queryFn: ({ signal }) => runtimeInfoApi.getInfo(signal),
-  });
-  const demo = runtime.data?.dataMode === 'demo';
+  const demo = useRuntimeMode() === 'demo';
   return (
     <SpecificationAggregatePage
       specId={specId}

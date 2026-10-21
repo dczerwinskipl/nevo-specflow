@@ -1,4 +1,4 @@
-import type { HttpClientError } from '@nevo/http-client';
+import { isHttpClientError, type HttpClientError } from '@nevo/http-client';
 import { ApiError, type ApiErrorKind, type MutationOutcome } from './ApiError';
 import { commonErrorCodes, type ErrorCodeRule, type ErrorCodeTable } from './codes/common';
 
@@ -142,4 +142,15 @@ export function classifyHttpError(
     requestId,
     cause: error,
   });
+}
+
+/**
+ * Classifies a failure that came through a client not wrapped by the API transport. Errors that
+ * are not HTTP failures (and cancellations) yield `undefined`.
+ */
+export function asApiError(error: unknown, context: ClassifyContext): ApiError | undefined {
+  if (error instanceof ApiError) return error;
+  if (!isHttpClientError(error)) return undefined;
+  const classified = classifyHttpError(error, context);
+  return classified instanceof ApiError ? classified : undefined;
 }

@@ -17,7 +17,7 @@ import { productNavigationItems, showsNoSpecificationHint } from './productNavig
 import { useSessionDisclosure, type SessionDisclosurePreferences } from './useSessionDisclosure';
 import { useNavigationFocus } from './useNavigationFocus';
 import { focusHashSection, useHashSectionFocus } from './useHashSectionFocus';
-import { useRuntimeDataMode } from '../useRuntimeDataMode';
+import { useRuntimeMode } from '../useRuntimeMode';
 import { designLayerMetadata } from '@nevo/figma-capture/metadata';
 import type { AuthStore } from '../../auth/store';
 import { AccountMenu } from '../AccountMenu';
@@ -62,7 +62,7 @@ export function ProductNavigation({
     sessionDisclosure.preferences,
     sessionDisclosure.setExpanded,
   );
-  const demo = useRuntimeDataMode() === 'demo';
+  const demo = useRuntimeMode() === 'demo';
   useNavigationFocus();
   useHashSectionFocus();
   const state = useSyncExternalStore(

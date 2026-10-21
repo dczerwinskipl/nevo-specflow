@@ -5,6 +5,7 @@ import { useRouter } from '@tanstack/react-router';
 import type { SpecFlowAppServices } from '../../services';
 import type { SpecificationApi } from './api';
 import { specificationKeys } from './queries';
+import { asApiError } from '../../api';
 import { getHttpErrorStatus } from '../../shared/http/httpErrorStatus';
 import type { SpecificationWorkspaceData } from './workspace/model';
 import { mapWorkspaceResponse } from './workspace/mapWorkspaceResponse';
@@ -20,6 +21,8 @@ export interface UseSpecificationWorkspaceResult {
   readonly error: unknown;
   readonly errorStatus: number | undefined;
   readonly isDomainNotFound: boolean;
+  /** The Runtime has no source for this read at all (permanent; retrying cannot help). */
+  readonly isNotInRuntime: boolean;
   readonly refetch: () => Promise<unknown>;
 }
 
@@ -52,6 +55,9 @@ export function useSpecificationWorkspace(
     query.error.data.error === 'specification_not_found';
 
   const errorStatus = getHttpErrorStatus(query.error);
+  const isNotInRuntime =
+    asApiError(query.error, { operation: 'specs.workspace', method: 'GET' })?.reason ===
+    'not-in-runtime';
 
   return {
     data: query.data,
@@ -64,6 +70,7 @@ export function useSpecificationWorkspace(
     error: query.error,
     errorStatus,
     isDomainNotFound,
+    isNotInRuntime,
     refetch: query.refetch,
   };
 }

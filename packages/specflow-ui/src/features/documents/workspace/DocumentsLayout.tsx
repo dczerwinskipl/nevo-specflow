@@ -1,17 +1,6 @@
 import { Outlet, useParams } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
-import { useAppServices } from '../../../app/useAppServices';
+import { useRuntimeMode } from '../../../app/useRuntimeMode';
 import { DocumentsWorkspace } from './DocumentsWorkspace';
-
-/** `undefined` until Runtime info settles, so neither variant renders (and fetches) prematurely. */
-function useDemoMode() {
-  const { runtimeInfoApi } = useAppServices();
-  const runtime = useQuery({
-    queryKey: ['runtime-info'],
-    queryFn: ({ signal }) => runtimeInfoApi.getInfo(signal),
-  });
-  return runtime.isPending ? undefined : runtime.data?.dataMode === 'demo';
-}
 
 /**
  * Layout of `documents` and `documents/$documentId`. In demo mode it owns the whole Documents
@@ -24,9 +13,11 @@ export function DocumentsLayout() {
     strict: false,
     select: (params) => ({ specId: params.specId, documentId: params.documentId }),
   });
-  const demo = useDemoMode();
-  if (demo === undefined || !specId) return null;
+  const mode = useRuntimeMode();
+  // Neither variant renders (and fetches) before Runtime info settles.
+  if (mode === 'loading' || !specId) return null;
   // A spec switch is a new workspace: the key drops the previous spec's tree state.
-  if (demo) return <DocumentsWorkspace key={specId} specId={specId} documentId={documentId} />;
+  if (mode === 'demo')
+    return <DocumentsWorkspace key={specId} specId={specId} documentId={documentId} />;
   return <Outlet />;
 }

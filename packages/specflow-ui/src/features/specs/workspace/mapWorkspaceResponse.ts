@@ -96,6 +96,11 @@ export function mapWorkspaceResponse(
       repository: sections.repository.state,
       changes: sections.changes.state,
     },
+    sectionUnavailableReason: Object.fromEntries(
+      Object.entries(sections).flatMap(([id, section]) =>
+        section.state === 'unavailable' ? [[id, section.reason]] : [],
+      ),
+    ),
     attentionItems: mapAttention(specification.attention),
     featureAttention: {
       tasks: mapFeatureAttention(sections.tasks),

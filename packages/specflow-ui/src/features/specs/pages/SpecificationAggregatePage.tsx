@@ -1,4 +1,5 @@
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
+import { FeatureUnavailable } from '../../../app/errors/FeatureUnavailable';
 import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
 import type { ReactNode } from 'react';
 import {
@@ -78,6 +79,10 @@ export function SpecificationAggregatePage({
   // as stale and let the user retry. Auth and not-found errors remain blocking.
   const showingStaleData = query.isError && Boolean(query.data) && !mustShowError;
   const sectionCopy = sectionDenied ? deniedCopy : unavailableCopy;
+  const sectionNotInRuntime =
+    availability === 'unavailable' &&
+    section !== undefined &&
+    query.data?.sectionUnavailableReason?.[section] === 'not_implemented';
   return (
     <AppWorkspace labels={workspaceLabels} split="primary">
       <AppWorkspace.Primary
@@ -110,6 +115,8 @@ export function SpecificationAggregatePage({
                     fetching={query.fetchStatus !== 'paused' && Boolean(specId)}
                   />
                 )
+              ) : mustShowError && query.isNotInRuntime ? (
+                <FeatureUnavailable />
               ) : mustShowError ? (
                 <Alert role="alert" tone="attention" title={errorCopy.title}>
                   <Typography variant="body-sm">{errorCopy.message}</Typography>
@@ -129,7 +136,9 @@ export function SpecificationAggregatePage({
                       </Button>
                     </Alert>
                   ) : null}
-                  {availability && availability !== 'available' ? (
+                  {sectionNotInRuntime ? (
+                    <FeatureUnavailable />
+                  ) : availability && availability !== 'available' ? (
                     <Alert role="status" tone="attention" title={sectionCopy.title}>
                       {sectionCopy.message}
                     </Alert>

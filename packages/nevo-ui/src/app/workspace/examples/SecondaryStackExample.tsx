@@ -72,9 +72,17 @@ function EntityLists({ store, stacks }: { store: DemoStore; stacks: DemoStacks }
   );
 }
 
-function DemoWorkspace({ store, stacks }: { store: DemoStore; stacks: DemoStacks }) {
+function DemoWorkspace({
+  store,
+  stacks,
+  closeBehavior,
+}: {
+  store: DemoStore;
+  stacks: DemoStacks;
+  closeBehavior: 'page' | 'flow';
+}) {
   return (
-    <AppWorkspace split="primary">
+    <AppWorkspace split="primary" secondaryCloseBehavior={closeBehavior}>
       <AppWorkspace.Primary header={<WorkspaceHeader title="Secondary stack demo" />}>
         <AppContent>
           <EntityLists store={store} stacks={stacks} />
@@ -89,17 +97,25 @@ function DemoWorkspace({ store, stacks }: { store: DemoStore; stacks: DemoStacks
   );
 }
 
-export function SecondaryStackExample({ width = 1400 }: { width?: number }) {
+export function SecondaryStackExample({
+  width = 1400,
+  closeBehavior = 'flow',
+  scopeKey,
+}: {
+  width?: number;
+  closeBehavior?: 'page' | 'flow';
+  scopeKey?: string | number;
+}) {
   const [store] = useState(createDemoStore);
   const [stacks] = useState(() => createDemoStacks(store));
   return (
     <div style={{ width, maxWidth: '100%', height: 700 }}>
-      <AppWorkspaceProvider>
+      <AppWorkspaceProvider scopeKey={scopeKey}>
         <AppShell
           navigation={<div className="p-5">Demo navigation</div>}
           style={{ height: '100%', width: '100%' }}
         >
-          <DemoWorkspace store={store} stacks={stacks} />
+          <DemoWorkspace store={store} stacks={stacks} closeBehavior={closeBehavior} />
         </AppShell>
       </AppWorkspaceProvider>
     </div>

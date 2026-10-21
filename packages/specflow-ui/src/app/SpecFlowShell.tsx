@@ -1,117 +1,28 @@
-import { useMemo, useSyncExternalStore, type PropsWithChildren } from 'react';
-
-import { designLayerMetadata, designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
-import {
-  APP_NAVIGATION_INLINE_PADDING,
-  AppShell,
-  Separator,
-  SideNavigation,
-  useAppNavigation,
-  type NavigationAdapter,
-  type NavigationNode,
-} from '@nevo/ui';
-import { Link, useRouter, useRouterState } from '@tanstack/react-router';
+import { useSessionDisclosurePreferences } from './navigation/useSessionDisclosure';
+import { type PropsWithChildren } from 'react';
+import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
+import { AppShell } from '@nevo/ui';
+import { useRouter } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-
 import type { AuthStore } from '../auth/store';
-import { defaultNevoBrand, NevoBrandLogo } from '../brand';
-import { AccountMenu } from './AccountMenu';
-
-interface NavigationTarget {
-  readonly to: '/';
-}
-
-function ProductNavigation({
-  auth,
-  onSignOut,
-}: {
-  readonly auth: AuthStore;
-  readonly onSignOut: () => void | Promise<void>;
-}) {
-  const { t } = useTranslation();
-  const { closeNavigation } = useAppNavigation();
-  const pathname = useRouterState({ select: (routerState) => routerState.location.pathname });
-  const state = useSyncExternalStore(
-    (listener) => auth.subscribe(listener),
-    () => auth.getState(),
-    () => auth.getState(),
-  );
-
-  const navigationNodes = useMemo<readonly NavigationNode<NavigationTarget>[]>(
-    () => [{ key: 'specs', label: t('navigation.specifications'), target: { to: '/' } }],
-    [t],
-  );
-
-  const navigationAdapter = useMemo<NavigationAdapter<NavigationTarget>>(
-    () => ({
-      match: (node) =>
-        node.target?.to === '/' && (pathname === '/' || pathname.startsWith('/specs/'))
-          ? 'active'
-          : 'none',
-      renderLink: ({ children, className, node }) => (
-        <Link
-          className={className}
-          to={node.target?.to ?? '/'}
-          search={{ collection: 'current' }}
-          onClick={closeNavigation}
-        >
-          {children}
-        </Link>
-      ),
-    }),
-    [closeNavigation, pathname],
-  );
-
-  return (
-    <div
-      className="flex min-h-0 flex-1 flex-col"
-      style={{ paddingInline: APP_NAVIGATION_INLINE_PADDING }}
-      {...designLayerMetadata({ layer: 'product-navigation' })}
-    >
-      <div
-        className="shrink-0 py-5 pr-12"
-        data-product-navigation-header="true"
-        {...designLayerMetadata({ layer: 'brand' })}
-      >
-        <NevoBrandLogo {...defaultNevoBrand} product="SpecFlow" size="md" type="horizontal" />
-      </div>
-
-      <Separator />
-
-      <SideNavigation
-        aria-label={t('navigation.product')}
-        adapter={navigationAdapter}
-        className="min-h-0 flex-1 overflow-y-auto py-4"
-        nodes={navigationNodes}
-        {...designLayerMetadata({ layer: 'navigation-links' })}
-      />
-
-      <Separator />
-
-      <div
-        className="shrink-0 pt-4"
-        data-product-navigation-footer="true"
-        style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
-        {...designLayerMetadata({ layer: 'account-footer' })}
-      >
-        {state.status === 'ready' ? (
-          <AccountMenu session={state.session} onSignOut={onSignOut} />
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
+import { defaultNevoBrand } from '../brand';
+import { ProductNavigation } from './navigation/ProductNavigation';
+import { NavigationTransitionProvider } from './navigation/NavigationTransition';
 export function SpecFlowShell({ auth, children }: PropsWithChildren<{ readonly auth: AuthStore }>) {
   const { t } = useTranslation();
   const router = useRouter();
+  const sessionDisclosure = useSessionDisclosurePreferences();
   const capture = useDesignMetadata('SpecFlowApplicationShell', { viewport: 'desktop' });
 
   const signOut = async () => {
+    const operation = auth.logout();
+    const expectedMutation = auth.mutationGeneration();
     try {
-      await auth.logout();
+      await operation;
+      if (auth.mutationGeneration() !== expectedMutation) return;
       await router.navigate({ to: '/login', search: { returnTo: '/' }, replace: true });
     } catch {
+      if (auth.mutationGeneration() !== expectedMutation) return;
       await router.navigate({
         to: '/runtime-unavailable',
         search: { returnTo: '/' },
@@ -121,19 +32,27 @@ export function SpecFlowShell({ auth, children }: PropsWithChildren<{ readonly a
   };
 
   return (
-    <div className="h-dvh w-full" {...capture}>
-      <div className="h-full" {...designSlot('SpecFlowApplicationShell', 'shell')}>
-        <AppShell
-          brandPrimary={defaultNevoBrand.coreColor}
-          labels={{
-            closeNavigation: t('navigation.close'),
-            navigationTitle: t('navigation.title'),
-          }}
-          navigation={<ProductNavigation auth={auth} onSignOut={signOut} />}
-        >
-          {children}
-        </AppShell>
+    <NavigationTransitionProvider>
+      <div className="h-dvh w-full" {...capture}>
+        <div className="h-full" {...designSlot('SpecFlowApplicationShell', 'shell')}>
+          <AppShell
+            brandPrimary={defaultNevoBrand.coreColor}
+            labels={{
+              closeNavigation: t('navigation.close'),
+              navigationTitle: t('navigation.title'),
+            }}
+            navigation={
+              <ProductNavigation
+                auth={auth}
+                onSignOut={signOut}
+                sessionDisclosure={sessionDisclosure}
+              />
+            }
+          >
+            {children}
+          </AppShell>
+        </div>
       </div>
-    </div>
+    </NavigationTransitionProvider>
   );
 }

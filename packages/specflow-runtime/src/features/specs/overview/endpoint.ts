@@ -1,3 +1,4 @@
+import { Type } from 'typebox';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyPluginCallback } from 'fastify';
 import {
@@ -11,6 +12,7 @@ import {
   AuthorizationForbiddenErrorResponseSchema,
 } from '@nevo/specflow-contracts/authorization';
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
+import { SpecificationReadErrorSchema } from '@nevo/specflow-contracts/specs/workspace';
 import {
   SpecsOverviewQuerySchema,
   SpecsOverviewReadErrorSchema,
@@ -45,7 +47,7 @@ export const specsOverviewEndpoint: FastifyPluginCallback<SpecsOverviewEndpointO
         querystring: SpecsOverviewQuerySchema,
         response: {
           200: SpecsOverviewSchema,
-          503: SpecsOverviewReadErrorSchema,
+          503: Type.Union([SpecsOverviewReadErrorSchema, SpecificationReadErrorSchema]),
           401: AuthenticationRequiredErrorResponseSchema,
           403: AuthorizationForbiddenErrorResponseSchema,
         },
@@ -54,10 +56,7 @@ export const specsOverviewEndpoint: FastifyPluginCallback<SpecsOverviewEndpointO
     async (request, reply) => {
       reply.header('Cache-Control', 'no-store');
       if (!options.repository) {
-        return reply.code(503).send({
-          error: 'Engine-backed Specifications are unavailable.',
-          code: 'ENGINE_UNAVAILABLE',
-        });
+        return reply.code(503).send({ error: 'specification_source_unavailable' });
       }
       try {
         return await (request.query.collection === 'archive'

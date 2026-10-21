@@ -37,6 +37,7 @@ import { designSpec as separatorDesignSpec } from '../components/layout/Separato
 import { designSpec as breadcrumbsDesignSpec } from '../components/navigation/Breadcrumbs/Breadcrumbs.figma';
 import { designSpec as paginationDesignSpec } from '../components/navigation/Pagination/Pagination.figma';
 import { designSpec as sideNavigationDesignSpec } from '../components/navigation/SideNavigation/SideNavigation.figma';
+import { designSpec as navigationRowDesignSpec } from '../components/navigation/SideNavigation/NavigationRow.figma';
 import { designSpecs as tabsDesignSpecs } from '../components/navigation/Tabs/Tabs.figma';
 import { designSpec as alertDialogDesignSpec } from '../components/overlays/AlertDialog/AlertDialog.figma';
 import { designSpec as dialogDesignSpec } from '../components/overlays/Dialog/Dialog.figma';
@@ -46,11 +47,13 @@ import { designSpec as popoverDesignSpec } from '../components/overlays/Popover/
 import { designSpec as tooltipDesignSpec } from '../components/overlays/Tooltip/Tooltip.figma';
 import { designSpec as messageComposerDesignSpec } from '../components/patterns/MessageComposer/MessageComposer.figma';
 import { designSpec as cardDesignSpec } from '../components/surfaces/Card/Card.figma';
+import { designSpec as accentBlockDesignSpec } from '../components/surfaces/AccentBlock/AccentBlock.figma';
 import { designSpec as surfaceDesignSpec } from '../components/surfaces/Surface/Surface.figma';
 
 import { designSpec as statusIndicatorDesignSpec } from '../components/feedback/StatusIndicator/StatusIndicator.figma';
 import { designSpec as progressDesignSpec } from '../components/feedback/Progress/Progress.figma';
 import { designSpec as collapsibleDesignSpec } from '../components/content/Collapsible/Collapsible.figma';
+import { designSpec as informationListDesignSpec } from '../components/content/InformationList/InformationList.figma';
 // Deliberately explicit: this is the single deterministic registration point for
 // design authoring modules. Runtime component barrels never export *.figma files.
 export const nevoUiDesignSystem = defineDesignSystem([
@@ -76,6 +79,7 @@ export const nevoUiDesignSystem = defineDesignSystem([
   ...tabsDesignSpecs,
   ...segmentedControlDesignSpecs,
   surfaceDesignSpec,
+  accentBlockDesignSpec,
   cardDesignSpec,
   messageComposerDesignSpec,
   dataTableDesignSpec,
@@ -87,6 +91,7 @@ export const nevoUiDesignSystem = defineDesignSystem([
   spinnerDesignSpec,
   toastDesignSpec,
   sideNavigationDesignSpec,
+  navigationRowDesignSpec,
   breadcrumbsDesignSpec,
   paginationDesignSpec,
   drawerDesignSpec,
@@ -99,6 +104,7 @@ export const nevoUiDesignSystem = defineDesignSystem([
   statusIndicatorDesignSpec,
   progressDesignSpec,
   collapsibleDesignSpec,
+  informationListDesignSpec,
   ...appDesignSpecs,
   standaloneShellDesignSpec,
 ] as const);

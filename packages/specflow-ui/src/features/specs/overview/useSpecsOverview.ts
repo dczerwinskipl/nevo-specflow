@@ -1,55 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { isHttpClientError } from '@nevo/http-client';
 
-import type { SpecsCollection, SpecsOverviewSource, SpecsOverviewState } from './model';
+import type { SpecsCollection, SpecsOverviewState } from './model';
+import type { SpecsOverviewApi } from './api';
+import { specsOverviewQueryOptions } from './queries';
 
-export function useSpecsOverview(source: SpecsOverviewSource, collection: SpecsCollection) {
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [result, setResult] = useState<SpecsOverviewState>({
+export function useSpecsOverview(api: SpecsOverviewApi, collection: SpecsCollection) {
+  const query = useQuery(specsOverviewQueryOptions(api, collection));
+
+  const state: SpecsOverviewState = {
     collection,
-    loading: true,
-    refreshing: false,
-    error: false,
-  });
+    projection: query.data?.collection === collection ? query.data : undefined,
+    loading: query.isLoading,
+    refreshing: query.isRefetching,
+    error: query.isError,
+    errorStatus: query.error && isHttpClientError(query.error) ? query.error.status : undefined,
+  };
 
-  useEffect(() => {
-    const controller = new AbortController();
-    setResult((previous) => {
-      const projection =
-        previous.projection?.collection === collection ? previous.projection : undefined;
-      return {
-        collection,
-        projection,
-        loading: !projection,
-        refreshing: Boolean(projection),
-        error: false,
-      };
-    });
-    void source
-      .read(collection, controller.signal)
-      .then((projection) => {
-        if (controller.signal.aborted) return;
-        if (projection.collection !== collection)
-          throw new Error('Specs projection scope mismatch.');
-        setResult({ collection, projection, loading: false, refreshing: false, error: false });
-      })
-      .catch((error: unknown) => {
-        if (controller.signal.aborted) return;
-        setResult((previous) => ({
-          ...previous,
-          collection,
-          loading: false,
-          refreshing: false,
-          error: true,
-          errorStatus: isHttpClientError(error) ? error.status : undefined,
-        }));
-      });
-    return () => controller.abort();
-  }, [source, collection, refreshKey]);
-
-  const state =
-    result.collection === collection
-      ? result
-      : { collection, loading: true, refreshing: false, error: false };
-  return { state, refresh: () => setRefreshKey((key) => key + 1) };
+  return {
+    state,
+    refresh: () => {
+      void query.refetch();
+    },
+  };
 }

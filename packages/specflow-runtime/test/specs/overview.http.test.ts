@@ -29,10 +29,13 @@ function createSampleApp(
 describe('Specs overview HTTP integration', () => {
   it('retains trusted-local disabled access semantics', async () => {
     const config = passwordConfig();
-    const app = await createSampleApp({
-      ...config,
-      authentication: { ...config.authentication, mode: 'none' },
-    });
+    const app = await createRealRuntimeApp(
+      {
+        ...config,
+        authentication: { ...config.authentication, mode: 'none' },
+      },
+      { dataMode: 'demo' },
+    );
 
     try {
       const response = await app.inject('/api/specs/overview');
@@ -55,12 +58,15 @@ describe('Specs overview HTTP integration', () => {
 
   it('uses real password login and revokes list access on logout', async () => {
     const config = passwordConfig();
-    const app = await createSampleApp({
-      ...config,
-      authorization: {
-        assignments: [{ userId: 'demo-user', role: 'viewer', scope: {} }],
+    const app = await createRealRuntimeApp(
+      {
+        ...config,
+        authorization: {
+          assignments: [{ userId: 'demo-user', role: 'viewer', scope: {} }],
+        },
       },
-    });
+      { dataMode: 'demo' },
+    );
 
     try {
       const anonymous = await app.inject('/api/specs/overview');
@@ -135,7 +141,7 @@ describe('Specs overview HTTP integration', () => {
           ],
         },
       },
-      { auth: { store } },
+      { auth: { store }, dataMode: 'demo' },
     );
     const headers = { cookie: `${authCookieNames(config.server.port).session}=${session}` };
 
@@ -213,7 +219,7 @@ describe('Specs overview HTTP integration', () => {
             ],
           },
         },
-        { auth: { store } },
+        { auth: { store }, dataMode: 'demo' },
       );
 
       try {

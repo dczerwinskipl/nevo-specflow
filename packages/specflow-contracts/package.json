@@ -37,6 +37,22 @@
     "./authorization/capability-discovery": {
       "types": "./dist/authorization/capability-discovery.d.ts",
       "default": "./dist/authorization/capability-discovery.js"
+    },
+    "./specs/workspace": {
+      "types": "./dist/specs/workspace/index.d.ts",
+      "default": "./dist/specs/workspace/index.js"
+    },
+    "./runtime": {
+      "types": "./dist/runtime/index.d.ts",
+      "default": "./dist/runtime/index.js"
+    },
+    "./tasks": {
+      "types": "./dist/tasks/index.d.ts",
+      "default": "./dist/tasks/index.js"
+    },
+    "./documents": {
+      "types": "./dist/documents/index.d.ts",
+      "default": "./dist/documents/index.js"
     }
   },
   "files": [
@@ -49,7 +65,7 @@
   },
   "dependencies": {
     "@nevo/authorization": "workspace:*",
-    "typebox": "1.3.34"
+    "typebox": "1.3.36"
   },
   "devDependencies": {
     "vitest": "5.0.3"

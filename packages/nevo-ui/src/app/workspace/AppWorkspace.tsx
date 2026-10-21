@@ -70,6 +70,8 @@ export interface AppWorkspaceSecondaryRegionProps extends AppWorkspaceRegionProp
 interface CommonAppWorkspaceProps {
   split?: AppWorkspaceSplitMode;
   labels?: Partial<AppWorkspaceLabels>;
+  /** Close the active page (returning to its parent) or the entire contextual flow. */
+  secondaryCloseBehavior?: 'page' | 'flow';
 }
 
 export type AppWorkspaceProps = CommonAppWorkspaceProps & {
@@ -501,7 +503,12 @@ function MobileRuntimeSurfaceRegion({
   );
 }
 
-function AppWorkspaceRoot({ children, labels: labelsProp, split = 'balanced' }: AppWorkspaceProps) {
+function AppWorkspaceRoot({
+  children,
+  labels: labelsProp,
+  split = 'balanced',
+  secondaryCloseBehavior = 'flow',
+}: AppWorkspaceProps) {
   const staticSurfaces = resolveComposedWorkspace(children);
 
   const workspace = useOptionalWorkspace();
@@ -515,7 +522,7 @@ function AppWorkspaceRoot({ children, labels: labelsProp, split = 'balanced' }: 
         key: `runtime-${runtimeSecondary.instanceKey}`,
         canStack: true,
         transition: workspace?.transition,
-        onClose: workspace?.close,
+        onClose: secondaryCloseBehavior === 'page' ? workspace?.back : workspace?.close,
         onBack: workspace?.back,
       }
     : defaultSecondaryOpen && defaultSecondary
@@ -544,10 +551,8 @@ function AppWorkspaceRoot({ children, labels: labelsProp, split = 'balanced' }: 
   const mobileRuntime = useMobileWorkspaceTransition({
     secondaryInstanceKey:
       state.mode === 'stacked' && state.showSecondary ? secondaryPresentation?.key : undefined,
-    transition:
-      state.mode === 'stacked' && state.showSecondary
-        ? secondaryPresentation?.transition
-        : undefined,
+    // Closing the last Secondary leaves no incoming surface, but its outgoing one must still exit.
+    transition: state.mode === 'stacked' ? workspace?.transition : undefined,
   });
   const secondaryRegionRef = useRef<HTMLDivElement>(null);
   const labels = { ...defaultAppWorkspaceLabels, ...labelsProp };
@@ -590,9 +595,11 @@ function AppWorkspaceRoot({ children, labels: labelsProp, split = 'balanced' }: 
 
     const frame = requestAnimationFrame(() => {
       const target = secondaryRegionRef.current?.querySelector<HTMLElement>(
-        '.workspace-stack__layer--current [data-workspace-header-title="true"]',
+        '[data-workspace-header-title="true"]',
       );
-      (target ?? secondaryRegionRef.current)?.focus();
+      // The incoming surface is still translated off-screen here; letting focus scroll would shift
+      // the overflow-hidden workspace container against the running transform.
+      (target ?? secondaryRegionRef.current)?.focus({ preventScroll: true });
     });
     return () => cancelAnimationFrame(frame);
   }, [

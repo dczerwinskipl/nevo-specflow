@@ -28,12 +28,15 @@ export interface WorkspaceHeaderAction {
 
 export interface WorkspaceHeaderProps {
   actions?: readonly WorkspaceHeaderAction[];
+  as?: 'h1' | 'h2' | 'h3' | 'h4' | 'span';
   className?: string;
   icon?: IconGlyph;
   labels?: Partial<WorkspaceHeaderLabels>;
   status?: ReactNode;
   subtitle?: ReactNode;
   title: ReactNode;
+  /** Structured location content, outside heading semantics. Actions remain discoverable. */
+  identityContent?: ReactNode;
   /** Primary defaults to h1; contextual Secondary headers use h2. */
   headingLevel?: 1 | 2;
 }
@@ -157,11 +160,12 @@ function DirectPrimaryAction({ action }: { action: WorkspaceHeaderAction }) {
 
 export interface WorkspaceHeaderIdentityProps extends Pick<
   WorkspaceHeaderProps,
-  'icon' | 'status' | 'subtitle' | 'title' | 'headingLevel'
+  'as' | 'icon' | 'status' | 'subtitle' | 'title' | 'headingLevel'
 > {}
 
 /** Product-owned heading content; the workspace owns its surrounding action chrome. */
 export function WorkspaceHeaderIdentity({
+  as,
   icon,
   status,
   subtitle,
@@ -174,7 +178,7 @@ export function WorkspaceHeaderIdentity({
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-2">
           <Typography
-            as={headingLevel === 2 ? 'h2' : 'h1'}
+            as={as ?? (headingLevel === 2 ? 'h2' : 'h1')}
             className="min-w-0 truncate outline-none"
             data-workspace-header-title="true"
             tabIndex={-1}
@@ -231,6 +235,7 @@ export function WorkspaceHeaderFrame({
 
 export function WorkspaceHeader({
   actions = [],
+  as,
   className,
   icon,
   labels,
@@ -238,6 +243,7 @@ export function WorkspaceHeader({
   subtitle,
   title,
   headingLevel = 1,
+  identityContent,
 }: WorkspaceHeaderProps) {
   return (
     <WorkspaceHeaderFrame
@@ -245,13 +251,16 @@ export function WorkspaceHeader({
       className={className}
       labels={labels}
       content={
-        <WorkspaceHeaderIdentity
-          headingLevel={headingLevel}
-          icon={icon}
-          status={status}
-          subtitle={subtitle}
-          title={title}
-        />
+        identityContent ?? (
+          <WorkspaceHeaderIdentity
+            as={as}
+            headingLevel={headingLevel}
+            icon={icon}
+            status={status}
+            subtitle={subtitle}
+            title={title}
+          />
+        )
       }
     />
   );

@@ -13,6 +13,7 @@ import {
 
 export interface RuntimeStartOptions extends LoadRuntimeConfigOptions {
   readonly projectRoot: string;
+  readonly demo?: boolean;
   readonly dependencies?: RuntimeAppDependencies;
 }
 
@@ -23,7 +24,10 @@ export interface RuntimeHandle {
 
 export async function startRuntime(options: RuntimeStartOptions): Promise<RuntimeHandle> {
   const loaded = await loadRuntimeConfig(options);
-  const app = await createListeningApp(loaded.config, options.projectRoot, options.dependencies);
+  const app = await createListeningApp(loaded.config, options.projectRoot, {
+    ...options.dependencies,
+    ...(options.demo ? { dataMode: 'demo' as const } : {}),
+  });
 
   try {
     const address = await app.listen({

@@ -22,18 +22,31 @@ import {
   createSpecItem,
   createSpecsFixture,
   createArchiveItem,
-} from './fixtures';
+} from '../../../../test-support/specs/overview/fixtures';
 import type {
   SpecsCollection,
   SpecsOverview as SpecsOverviewData,
-  SpecsOverviewSource,
   SpecsOverviewState,
   CurrentSpecTarget,
 } from './model';
 import { SpecsOverview } from './SpecsOverview';
 import { useSpecsOverview } from './useSpecsOverview';
+import type { SpecsOverviewApi } from './api';
+
+import { QueryClientProvider } from '@tanstack/react-query';
+import { createSpecFlowQueryClient } from '../../../app/queryClient';
+import { specPrimaryLinkClassName } from './SpecListRow';
 
 function SourceLifecycleFixture() {
+  const queryClient = useMemo(() => createSpecFlowQueryClient(), []);
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SourceLifecycleComponent />
+    </QueryClientProvider>
+  );
+}
+
+function SourceLifecycleComponent() {
   const [collection, setCollection] = useState<SpecsCollection>('current');
   const pending = useRef<
     {
@@ -42,9 +55,9 @@ function SourceLifecycleFixture() {
       reject: (error: Error) => void;
     }[]
   >([]);
-  const source = useMemo<SpecsOverviewSource>(
+  const source = useMemo<SpecsOverviewApi>(
     () => ({
-      read: (scope) =>
+      getOverview: (scope) =>
         new Promise((resolve, reject) => {
           // Deliberately ignores cancellation: the owner must also guard late responses.
           pending.current.push({ collection: scope, resolve, reject });
@@ -53,11 +66,23 @@ function SourceLifecycleFixture() {
     [],
   );
   const { state, refresh } = useSpecsOverview(source, collection);
-  const settle = (scope: SpecsCollection, failure = false) => {
+  const settle = (scope: SpecsCollection, failure = false, invalid = false) => {
     const request = pending.current.findLast((item) => item.collection === scope);
     if (!request) throw new Error('Expected a pending collection request.');
     if (failure) request.reject(new Error('Fixture unavailable'));
-    else request.resolve(createSpecsFixture(scope));
+    else {
+      const projection = createSpecsFixture();
+      request.resolve(
+        invalid
+          ? {
+              ...projection,
+              items: projection.items.map((item, index) =>
+                index === 0 ? { ...item, progress: { completed: 10, total: 9 } } : item,
+              ),
+            }
+          : createSpecsFixture(scope),
+      );
+    }
   };
   return (
     <StoryLocalization locale="en">
@@ -69,6 +94,9 @@ function SourceLifecycleFixture() {
       <div className="flex gap-4 p-4" aria-label="Source test controls">
         <button type="button" onClick={() => settle('current')}>
           Resolve Current
+        </button>
+        <button type="button" onClick={() => settle('current', false, true)}>
+          Resolve invalid Current
         </button>
         <button type="button" onClick={() => settle('archive')}>
           Resolve Archive
@@ -90,6 +118,7 @@ function OverviewFixture({
   locale?: AppLocale;
   interactive?: boolean;
 }) {
+  const queryClient = useMemo(() => createSpecFlowQueryClient(), []);
   const router = useMemo(() => {
     const signedIn: AuthSessionResponse = {
       authenticationRequired: true,
@@ -150,9 +179,11 @@ function OverviewFixture({
     });
   }, [state, interactive]);
   return (
-    <StoryLocalization locale={locale}>
-      <RouterProvider router={router} />
-    </StoryLocalization>
+    <QueryClientProvider client={queryClient}>
+      <StoryLocalization locale={locale}>
+        <RouterProvider router={router} />
+      </StoryLocalization>
+    </QueryClientProvider>
   );
 }
 
@@ -184,6 +215,32 @@ function OverviewFixtureContent({
         onCreateSession={interactive ? () => setSessionStarts((count) => count + 1) : undefined}
         onOpenTarget={interactive ? setTarget : undefined}
         specificationHref={interactive ? (id) => `/specs/${id}` : undefined}
+        renderSpecificationLink={
+          interactive
+            ? (specId, children, ariaLabel) => (
+                <a
+                  href={`/specs/${specId}`}
+                  className={specPrimaryLinkClassName}
+                  aria-label={ariaLabel}
+                  data-focus-ring="delegated"
+                  onClick={(event) => {
+                    if (
+                      event.button !== 0 ||
+                      event.metaKey ||
+                      event.ctrlKey ||
+                      event.shiftKey ||
+                      event.altKey
+                    )
+                      return;
+                    event.preventDefault();
+                    setTarget({ kind: 'specification', specId });
+                  }}
+                >
+                  {children}
+                </a>
+              )
+            : undefined
+        }
       />
       <output className="sr-only" aria-label="Fixture interaction result">
         {JSON.stringify({ target, refreshes, sessionStarts })}
@@ -207,6 +264,45 @@ const meta = {
 } satisfies Meta<typeof OverviewFixture>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+const pullRequestContractPlay: NonNullable<Story['play']> = async ({
+  canvas,
+  canvasElement,
+  userEvent,
+}) => {
+  const pr = canvas.getAllByRole('link', { name: /Open pull request/ })[0]!;
+  let activated = 0;
+  pr.addEventListener(
+    'click',
+    (event) => {
+      event.preventDefault();
+      activated++;
+    },
+    { once: true },
+  );
+  if (matchMedia('(pointer:coarse)').matches) {
+    const rect = pr.getBoundingClientRect();
+    if (rect.width < 44 || rect.height < 44)
+      throw new Error('PR touch target must be at least44×44');
+    const hit = canvasElement.ownerDocument.elementFromPoint(rect.right - 1, rect.bottom - 1);
+    if (hit?.closest('a') !== pr)
+      throw new Error('Near-edge PR target must not activate the stretched Specification link');
+    await userEvent.click(hit);
+  } else await userEvent.click(pr);
+  if (
+    activated !== 1 ||
+    canvas.getByLabelText('Fixture interaction result').textContent?.includes('"target":')
+  )
+    throw new Error('PR activation must remain independent');
+};
+export const CurrentPullRequestContract: Story = {
+  tags: ['contract', '!autodocs'],
+  play: pullRequestContractPlay,
+};
+export const ArchivePullRequestContract: Story = {
+  args: { state: { ...loaded, collection: 'archive', projection: createSpecsFixture('archive') } },
+  tags: ['contract', '!autodocs'],
+  play: pullRequestContractPlay,
+};
 
 export const Current: Story = {
   tags: ['visual'],
@@ -235,19 +331,30 @@ export const CurrentContract: Story = {
     canvas.getByText('Agent input required');
     canvas.getByText(/1 session active/);
     canvas.getByText('1 active session');
-    const edges = [
-      ...canvasElement.querySelectorAll('[data-spec-title], [data-spec-section-header] h2'),
-    ].map((el) => el.getBoundingClientRect().left);
-    if (edges.some((left) => Math.abs(left - edges[0]!) > 1))
-      throw new Error('Shared content axis drift.');
+    const titleEdges = [...canvasElement.querySelectorAll('[data-spec-title]')].map(
+      (el) => el.getBoundingClientRect().left,
+    );
+    if (titleEdges.some((left) => Math.abs(left - titleEdges[0]!) > 1))
+      throw new Error('Specification title axis drift.');
+    const headerEdges = [...canvasElement.querySelectorAll('[data-spec-section-header] h2')].map(
+      (el) => el.getBoundingClientRect().left,
+    );
+    if (headerEdges.some((left) => Math.abs(left - headerEdges[0]!) > 1))
+      throw new Error('Section header axis drift.');
     const progressEdges = [...canvasElement.querySelectorAll('[data-spec-progress]')].map(
       (el) => el.getBoundingClientRect().left,
     );
     if (progressEdges.some((left) => Math.abs(left - progressEdges[0]!) > 1))
       throw new Error('Progress scan column drift.');
-    const secondary = canvasElement.querySelector<HTMLElement>('[data-spec-secondary]');
-    if (!secondary || window.getComputedStyle(secondary).columnGap !== '8px')
-      throw new Error('Secondary fields should use compact token spacing.');
+    const columns = canvasElement.querySelector('[data-spec-columns]');
+    if (
+      columns?.checkVisibility() &&
+      Math.abs(columns.children[2]!.getBoundingClientRect().left - progressEdges[0]!) > 1
+    )
+      throw new Error('Collection headings must align with their scan tracks.');
+    const metadata = canvasElement.querySelector<HTMLElement>('[data-spec-metadata]');
+    if (!metadata || window.getComputedStyle(metadata).marginTop !== '4px')
+      throw new Error('Identity metadata must stay directly under the title.');
     const destination = canvas.getByRole('link', {
       name: 'Open specification: Deterministic admission and execution boundaries',
     });
@@ -375,6 +482,48 @@ export const Archive: Story = {
   parameters: { chromatic: { disableSnapshot: false } },
 };
 
+/** Full metadata is the normal Archive visual fixture; incomplete records are tested separately. */
+export const ArchiveWithCompleteMetadata: Story = {
+  ...Archive,
+  play: ({ canvasElement }) => {
+    const rows = [...canvasElement.querySelectorAll<HTMLElement>('[data-spec-id]')];
+    if (rows.length !== 18) throw new Error('Expected all archived specifications.');
+    if (rows.some((row) => !row.getAttribute('data-spec-key'))) {
+      throw new Error('Archive fixture must render a stable Specification key on every row.');
+    }
+    if (rows.some((row) => !row.querySelector('[data-spec-metadata]'))) {
+      throw new Error('Archive fixture should cover tags and linked PR metadata.');
+    }
+  },
+};
+
+export const ArchiveMissingOptionalMetadata: Story = {
+  args: {
+    state: {
+      ...loaded,
+      collection: 'archive',
+      projection: {
+        ...createSpecsFixture('archive'),
+        items: [
+          createArchiveItem({
+            id: 'legacy-import',
+            key: undefined,
+            tags: [],
+            pullRequests: [],
+            title: 'Imported archive without optional identifiers',
+          }),
+        ],
+      },
+    },
+  },
+  play: ({ canvasElement }) => {
+    const row = canvasElement.querySelector<HTMLElement>('[data-spec-id="legacy-import"]');
+    if (!row || row.getAttribute('data-spec-key') || row.querySelector('[data-spec-metadata]')) {
+      throw new Error('Legacy record must not fabricate absent optional metadata.');
+    }
+  },
+};
+
 export const ArchiveContract: Story = {
   args: { state: { ...loaded, collection: 'archive', projection: createSpecsFixture('archive') } },
   tags: ['contract', '!autodocs'],
@@ -428,6 +577,82 @@ export const LongContent: Story = {
   args: { state: { ...loaded, projection: createLongContentFixture() } },
 };
 export const Polish: Story = { args: { locale: 'pl' } };
+export const ProgressStates: Story = {
+  args: {
+    state: {
+      ...loaded,
+      projection: {
+        ...createSpecsFixture(),
+        items: [0, 1, 9, 10, 17, 18, 19, 20, 100, 10000].map((total, index) =>
+          createSpecItem({
+            id: `progress-${total}`,
+            title: `Aggregate task completion — ${total} tasks`,
+            progress: { total, completed: index % 2 ? total : Math.floor(total / 2) },
+            classification: {
+              section: 'requires-attention',
+              ...(index % 3 ? { reason: 'review' as const } : {}),
+            },
+            currentExecutions: [],
+          }),
+        ),
+      },
+    },
+  },
+  tags: ['contract', '!autodocs'],
+  play: ({ canvas, canvasElement }) => {
+    canvas.getByText('No tasks');
+    if (canvasElement.querySelector('[data-spec-id="progress-0"] [role="progressbar"]'))
+      throw new Error('Zero tasks has no determinate bar.');
+    const row = canvasElement.querySelector('[data-spec-id="progress-9"]')!;
+    const children = row.querySelector('[data-spec-title]')?.parentElement?.parentElement?.children;
+    if (
+      !children ||
+      !children[1]?.hasAttribute('data-spec-progress') ||
+      !children[2]?.hasAttribute('data-spec-summary')
+    )
+      throw new Error('Logical mobile order must be identity, progress, situation.');
+    if (!canvasElement.querySelector('[data-spec-id="progress-1"] [data-spec-summary]'))
+      throw new Error('Completion cannot remove human attention.');
+  },
+};
+export const InvalidArchiveDates: Story = {
+  args: {
+    state: {
+      ...loaded,
+      collection: 'archive',
+      projection: {
+        ...createSpecsFixture('archive'),
+        items: [
+          createArchiveItem({
+            id: 'invalid-completed',
+            title: 'Malformed completion date',
+            completedAt: 'invalid',
+            archivedAt: '2026-10-01',
+          }),
+          createArchiveItem({
+            id: 'invalid-archived',
+            title: 'Malformed archive date',
+            archivedAt: 'invalid',
+          }),
+        ],
+      },
+    },
+  },
+  tags: ['contract', '!autodocs'],
+  play: ({ canvas, canvasElement }) => {
+    canvas.getAllByText('Date unavailable');
+    const row = canvasElement.querySelector('[data-spec-id="invalid-completed"]')!;
+    if (!row.textContent?.includes('Completed') || row.querySelector('time'))
+      throw new Error(
+        'Completion evidence survives an invalid date without manufacturing another milestone.',
+      );
+    if (
+      canvasElement.querySelector('[role="progressbar"]') ||
+      canvasElement.querySelector('[data-spec-progress]')
+    )
+      throw new Error('Archive has no operational progress.');
+  },
+};
 export const MetadataOverflow: Story = {
   args: {
     state: {
@@ -577,10 +802,14 @@ export const ArchiveLifecycle: Story = {
   },
   play: ({ canvasElement }) => {
     const rows = canvasElement.querySelectorAll('[data-spec-id]');
+    const history = (id: string) =>
+      canvasElement.querySelector(`[data-spec-id="${id}"] [data-spec-summary]`);
     if (
-      !rows[0]?.textContent?.includes('Completed Sep 22, 2026') ||
-      !rows[1]?.textContent?.includes('Archived Sep 25, 2026') ||
-      !rows[2]?.textContent?.includes('Completed Sep 22, 2026')
+      !history('completed')?.textContent?.includes('Sep 22, 2026') ||
+      !history('archived')?.textContent?.includes('Sep 25, 2026') ||
+      !history('both')?.textContent?.includes('Sep 22, 2026') ||
+      !history('both')?.textContent?.includes('Completed') ||
+      rows[0]?.getAttribute('data-spec-id') !== 'archived'
     )
       throw new Error('Authoritative lifecycle timestamps must drive Archive history.');
     if (rows[3]?.querySelector('time') || !rows[3]?.textContent?.includes('Archived'))
@@ -676,5 +905,18 @@ export const SourceLifecycle: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Resolve Archive' }));
     await canvas.findByText('Canonical Session, Turn and Work model');
     if (canvas.queryByRole('alert')) throw new Error('Successful retry must clear the error.');
+  },
+};
+
+export const InvalidSourceAggregate: Story = {
+  tags: ['integration', '!autodocs'],
+  render: () => <SourceLifecycleFixture />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Resolve invalid Current' }));
+    await canvas.findByRole('alert');
+    if (canvasElement.querySelector('[data-spec-id]'))
+      throw new Error(
+        'Invalid producer aggregates must enter source failure, not clamp the facts.',
+      );
   },
 };

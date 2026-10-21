@@ -11,3 +11,5 @@ export {
 } from './configuration';
 
 export { ProjectGitCapabilities, SpecCapabilities } from '@nevo/specflow-contracts/specs';
+
+export { createDemoSpecsRepositories } from './demo/repositories';

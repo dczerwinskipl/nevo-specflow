@@ -11,6 +11,7 @@ import {
 } from '@nevo/specflow-contracts/authorization';
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import { requireCapability } from '../../auth';
+import { isSpecsSourceError } from '../read/error';
 import type { SpecificationWorkspaceRepository, WorkspaceContributions } from './repository';
 import { readAuthorizedWorkspace } from './read-authorized-workspace';
 import type { SessionReferenceOwner } from '../../sessions';
@@ -47,13 +48,21 @@ export const specificationWorkspaceEndpoint: FastifyPluginCallback<
     },
     async (request, reply) => {
       reply.header('Cache-Control', 'no-store');
-      const result = await readAuthorizedWorkspace(
-        options.repository,
-        options.contributions,
-        request.params.specId,
-        request.authz,
-        options.sessions,
-      );
+      let result: Awaited<ReturnType<typeof readAuthorizedWorkspace>>;
+      try {
+        result = await readAuthorizedWorkspace(
+          options.repository,
+          options.contributions,
+          request.params.specId,
+          request.authz,
+          options.sessions,
+        );
+      } catch (error) {
+        // Authorization failures and defects keep their own handling; only a failing canonical
+        // source is an unavailable read.
+        if (!isSpecsSourceError(error)) throw error;
+        return reply.code(503).send({ error: 'specification_source_unavailable' });
+      }
       if (result.kind === 'ok') return result.value;
       if (result.kind === 'not_found')
         return reply.code(404).send({ error: 'specification_not_found' });

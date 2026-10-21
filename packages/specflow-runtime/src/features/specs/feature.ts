@@ -9,6 +9,7 @@ import { specsOverviewEndpoint } from './overview/endpoint';
 import type { SpecsOverviewRepository } from './overview/repository/read-repository';
 import { createEngineSpecsOverviewRepository } from './overview/repository/engine-repository';
 import { specificationWorkspaceEndpoint } from './workspace/endpoint';
+import { createEngineWorkspaceRepository } from './workspace/engine-repository';
 import type {
   SpecificationWorkspaceRepository,
   WorkspaceContributions,
@@ -37,6 +38,13 @@ export function createSpecsFeature(options: CreateSpecsFeatureOptions = {}): Run
     (options.dependencies?.engine
       ? createEngineSpecsOverviewRepository(options.dependencies.engine)
       : undefined);
+  // Same rule for the workspace identity: an injected repository (demo) wins, the Engine is the
+  // production source and its absence is an unavailable source.
+  const workspaceRepository =
+    options.dependencies?.workspaceRepository ??
+    (options.dependencies?.engine
+      ? createEngineWorkspaceRepository(options.dependencies.engine)
+      : undefined);
   const config = options.config ?? defaultSpecsFeatureConfig();
 
   return {
@@ -50,7 +58,7 @@ export function createSpecsFeature(options: CreateSpecsFeatureOptions = {}): Run
         currentSections: config.overview.current.sections,
       });
       app.register(specificationWorkspaceEndpoint, {
-        repository: options.dependencies?.workspaceRepository,
+        repository: workspaceRepository,
         contributions: options.dependencies?.contributions,
         sessions: options.dependencies?.sessions,
       });

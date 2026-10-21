@@ -58,6 +58,28 @@ describe('normalizeHttpError', () => {
     });
   });
 
+  it('normalizes timeouts as their own kind', () => {
+    const normalized = normalizeHttpError(
+      new AxiosError('timeout of 10ms exceeded', AxiosError.ECONNABORTED, requestConfig()),
+    );
+
+    expect(normalized).toMatchObject({ kind: 'timeout', code: AxiosError.ECONNABORTED });
+  });
+
+  it('exposes lower-case response headers on http errors', () => {
+    const normalized = normalizeHttpError(
+      new AxiosError('x', AxiosError.ERR_BAD_REQUEST, requestConfig(), undefined, {
+        status: 429,
+        statusText: '',
+        data: {},
+        headers: { 'Retry-After': '3' },
+        config: requestConfig(),
+      } as never),
+    );
+
+    expect(normalized.headers).toEqual({ 'retry-after': '3' });
+  });
+
   it('normalizes non-Axios failures as unexpected errors', () => {
     const cause = new Error('boom');
     const normalized = normalizeHttpError(cause);

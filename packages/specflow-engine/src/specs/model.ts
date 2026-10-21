@@ -208,6 +208,8 @@ export function createSpecificationScaffold(
     '',
     '## Goal',
     '',
+    '<!-- Initial goal captured when this specification was created; refine or rewrite it freely. -->',
+    '',
     goal?.length ? goal : 'Describe the intended outcome of this specification.',
     '',
     '## Non-goals',

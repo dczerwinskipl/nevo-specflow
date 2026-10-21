@@ -38,6 +38,26 @@ async function persist(root: string, scaffold: SpecificationScaffold): Promise<v
 }
 
 describe('E2.T01 Specification manifest and canonical checkout repository', () => {
+  it('marks the Goal section as the initial, freely refinable goal for agents', () => {
+    const specId = randomUUID();
+    const withGoal = createSpecificationScaffold({
+      specId,
+      title: 'Goal note',
+      created: '2026-10-14',
+      goal: 'Ship the thing.',
+    });
+    const overview = withGoal.files[1]!.content;
+    expect(overview).toContain(
+      '## Goal\n\n<!-- Initial goal captured when this specification was created; refine or rewrite it freely. -->\n\nShip the thing.\n',
+    );
+    const empty = createSpecificationScaffold({
+      specId,
+      title: 'Goal note',
+      created: '2026-10-14',
+    });
+    expect(empty.files[1]!.content).toContain('refine or rewrite it freely');
+  });
+
   it('creates a deterministic title-only scaffold using the canonical specification.yaml', async () => {
     const specId = randomUUID();
     const input = { specId, title: 'Żółty Projekt', created: '2026-10-14' };

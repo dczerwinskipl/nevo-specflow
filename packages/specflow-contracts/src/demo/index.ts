@@ -1,4 +1,5 @@
 import { Type, type Static } from 'typebox';
+import { SPEC_SLUG_MAX_LENGTH, SPEC_SLUG_PATTERN } from '../specs/slug';
 const Id = Type.String({ minLength: 1, maxLength: 200, pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]*$' });
 const Text = Type.String({ maxLength: 200000 });
 export const DemoLocationSchema = Type.Object({
@@ -213,6 +214,10 @@ export const DemoCreateInputSchema = Type.Object(
     /** Where the specification lives. Absent = main (primary) workspace. */
     target: Type.Optional(DemoCreateTargetSchema),
     title: Type.String({ minLength: 1, maxLength: 240 }),
+    /** Mirror of the real `slug`: optional lowercase kebab-case override of the title-derived slug. */
+    slug: Type.Optional(
+      Type.String({ minLength: 1, maxLength: SPEC_SLUG_MAX_LENGTH, pattern: SPEC_SLUG_PATTERN }),
+    ),
     catalogueRevision: Type.String(),
     archetypeId: Id,
     archetypeVersion: Type.String(),

@@ -92,6 +92,42 @@ describe('Specification-owned demo location', () => {
     expect(env.state.specifications.size).toBe(2);
   });
 
+  describe('explicit slug', () => {
+    it('uses the slug for the specification and the generated branch', () => {
+      const { env, create } = setup();
+      const spec = env.specs.create('alice', {
+        ...create,
+        operationId: op(5),
+        slug: 'my-slug',
+        target: { kind: 'new-worktree' },
+      });
+      expect(spec.slug).toBe('my-slug');
+      expect(spec.relativeManifestPath).toBe('specs/my-slug/manifest.json');
+    });
+
+    it('conflicts on a taken slug instead of renaming, and on a replay with another slug', () => {
+      const { env, create } = setup();
+      const input = { ...create, operationId: op(6), title: 'Inny', slug: 'my-slug' };
+      env.specs.create('alice', input);
+      expect(() => env.specs.create('alice', { ...input, operationId: op(7) })).toThrowError(
+        expect.objectContaining({ code: 'CREATE_CONFLICT' }),
+      );
+      expect(() => env.specs.create('alice', { ...input, slug: 'other' })).toThrowError(
+        expect.objectContaining({ code: 'CREATE_CONFLICT' }),
+      );
+    });
+
+    it('rejects a malformed slug and keeps title derivation when no slug is given', () => {
+      const { env, create } = setup();
+      expect(() =>
+        env.specs.create('alice', { ...create, operationId: op(8), slug: 'Not Valid' }),
+      ).toThrowError(expect.objectContaining({ code: 'CREATE_OPERATION_INVALID' }));
+      expect(
+        env.specs.create('alice', { ...create, operationId: op(9), title: 'Zażółć' }).slug,
+      ).toBe('zazolc');
+    });
+  });
+
   describe('idempotent create order: the operation record is consulted before the catalogue', () => {
     it('replays a COMPLETED operation after the catalogue revision changed without a second spec', () => {
       const { env, create, spec } = setup();

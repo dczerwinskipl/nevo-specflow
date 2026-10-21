@@ -5,6 +5,7 @@ import type {
   DemoCreatedSpec,
   DemoLocation,
 } from '@nevo/specflow-contracts/demo';
+import { isValidSpecSlug } from '@nevo/specflow-contracts/specs';
 import { DemoOperationError, fingerprintInput, type DemoState } from '../../../demo/state';
 import type { DemoDocuments } from '../../documents';
 import {
@@ -103,10 +104,20 @@ export function createDemoSpecs(
     )
       throw new DemoOperationError(400, 'demo_invalid_selection');
     forcedFailure(scenarios, input.target);
-    const baseSlug = slugify(input.title);
     const usedSlugs = new Set([...specifications.values()].map((spec) => spec.slug));
-    let slug = baseSlug;
-    for (let n = 2; usedSlugs.has(slug); n += 1) slug = baseSlug + '-' + n;
+    let slug: string;
+    if (input.slug !== undefined) {
+      // An explicit slug is never silently renamed (like the Engine): a taken one conflicts.
+      if (!isValidSpecSlug(input.slug))
+        throw new DemoTargetError(400, 'CREATE_OPERATION_INVALID', 'CREATE_OPERATION_INVALID');
+      if (usedSlugs.has(input.slug))
+        throw new DemoTargetError(409, 'CREATE_CONFLICT', 'CREATE_CONFLICT');
+      slug = input.slug;
+    } else {
+      const baseSlug = slugify(input.title);
+      slug = baseSlug;
+      for (let n = 2; usedSlugs.has(slug); n += 1) slug = baseSlug + '-' + n;
+    }
     const resolved: ResolvedTarget = resolveTarget(optionsFor(scenarios), input.target, slug);
     const selectedPaths = archetype.documents
       .filter((d) => d.required || input.optionalDocumentIds.includes(d.id))

@@ -17,6 +17,7 @@ describe('Runtime Specs Overview API', () => {
     expect(get).toHaveBeenCalledWith('/api/specs/overview', {
       params: { collection: 'archive' },
       signal,
+      timeoutMs: 30_000,
     });
   });
 

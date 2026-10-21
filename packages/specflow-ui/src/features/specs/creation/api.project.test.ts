@@ -34,7 +34,10 @@ describe('project creation adapter', () => {
     const { api, http } = build();
     const signal = new AbortController().signal;
     await api.createOptions(signal);
-    expect(http.get).toHaveBeenCalledWith('/api/specs/create-options', { signal });
+    expect(http.get).toHaveBeenCalledWith('/api/specs/create-options', {
+      signal,
+      timeoutMs: 30_000,
+    });
   });
 
   it('posts the request verbatim with the long create time limit, so the request is not abandoned', async () => {

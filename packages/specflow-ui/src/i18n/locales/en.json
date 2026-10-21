@@ -523,6 +523,15 @@
     "activeCount_many": "{{count}} active",
     "sessionBack": "Spec Writer session"
   },
+  "operations": {
+    "progress": {
+      "status": {
+        "pending": "waiting",
+        "running": "in progress",
+        "done": "done"
+      }
+    }
+  },
   "loading": {
     "waitingForConnection": "Waiting for connection…",
     "task": "Loading Task…",
@@ -924,6 +933,15 @@
     "monitoring": {
       "title": "Preparing the workspace",
       "body": "This can take a few minutes. Keep this page open: we are checking the operation for you and will open the specification when it is ready."
+    },
+    "progress": {
+      "label": "Specification creation progress",
+      "steps": {
+        "reserving": "Reserving the name",
+        "preparing-workspace": "Preparing the workspace",
+        "writing-specification": "Writing the specification files",
+        "registering": "Registering the workspace"
+      }
     }
   },
   "documents": {

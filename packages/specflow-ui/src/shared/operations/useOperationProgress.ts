@@ -8,7 +8,7 @@ import {
   visibleProgressSteps,
   type OperationProgressState,
   type OperationStepView,
-} from './operationProgress';
+} from './progressState';
 
 export interface UseOperationProgressOptions {
   /** The progress port (from the app services; `shared` never reaches into the composition root). */

@@ -9,12 +9,19 @@ import { isApiError } from '../../../api';
 import { ApplicationContextLine } from '../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../app/useAppServices';
 import { useMessage } from '../../../i18n/message';
+import { OperationProgress } from '../../../shared/operations/OperationProgress';
+import { useOperationProgress } from '../../../shared/operations/useOperationProgress';
 import { projectCreationKeys } from './api.project';
 import { CreateFailureAlert, type CopyKind } from './CreateFailureAlert';
 import { CreateFooter } from './CreateFooter';
 import { CreateLeaveDialog } from './CreateLeaveDialog';
 import { CreateShell } from './CreateShell';
 import { buildOperationDetails } from './createOperationDetails';
+import {
+  createProgressLabel,
+  createProgressPlaceholderRows,
+  createProgressSteps,
+} from './createProgress';
 import { useCreateOperationStorage } from './createOperationStorage';
 import {
   createGoalMaxLength,
@@ -48,7 +55,7 @@ import {
 export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedSpec) => void }) {
   const { t, i18n } = useTranslation();
   const text = useMessage();
-  const { projectCreationApi } = useAppServices();
+  const { projectCreationApi, operationsApi } = useAppServices();
   const storage = useCreateOperationStorage();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const submitRef = useRef<HTMLButtonElement>(null);
@@ -96,6 +103,14 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
   });
   const { busy, monitoring, uncertain, recovery, forbidden: forbiddenCreate } = flags;
   const failure = state.failure;
+  // Display only: named steps while the Runtime works. The operation's own state (reducer, POST,
+  // inspection polling) never depends on this stream, which just falls silent if it fails.
+  const progress = useOperationProgress({
+    api: operationsApi,
+    kind: 'specification-create',
+    operationId: state.sent?.operationId,
+    enabled: busy,
+  });
 
   const leaveGuard = useCreateLeaveGuard({
     blocksLeave: flags.blocksLeave,
@@ -315,6 +330,15 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
           onRefreshConfiguration={() => undefined}
           failureAlert={
             <>
+              {busy && !failure && (
+                <OperationProgress
+                  steps={createProgressSteps(progress.steps)}
+                  label={createProgressLabel}
+                  placeholderRows={
+                    progress.available ? createProgressPlaceholderRows(state.sent?.target) : 0
+                  }
+                />
+              )}
               {monitoring && !failure && (
                 <Alert role="status" tone="info" title={t('create.monitoring.title')}>
                   <p>{t('create.monitoring.body')}</p>

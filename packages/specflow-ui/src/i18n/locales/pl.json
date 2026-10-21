@@ -523,6 +523,15 @@
     "noSpecificationSelectedDescription": "Otwórz specyfikację z listy, aby zobaczyć jej dokumenty i sesje.",
     "sessionBack": "Sesja Spec Writera"
   },
+  "operations": {
+    "progress": {
+      "status": {
+        "pending": "oczekuje",
+        "running": "w toku",
+        "done": "gotowe"
+      }
+    }
+  },
   "loading": {
     "waitingForConnection": "Oczekiwanie na połączenie…",
     "task": "Ładowanie zadania…",
@@ -924,6 +933,15 @@
     "monitoring": {
       "title": "Przygotowujemy środowisko pracy",
       "body": "To może potrwać kilka minut. Zostaw tę stronę otwartą: sprawdzamy operację za Ciebie i otworzymy specyfikację, gdy będzie gotowa."
+    },
+    "progress": {
+      "label": "Postęp tworzenia specyfikacji",
+      "steps": {
+        "reserving": "Rezerwowanie nazwy",
+        "preparing-workspace": "Przygotowanie środowiska pracy",
+        "writing-specification": "Zapisywanie plików specyfikacji",
+        "registering": "Rejestrowanie środowiska pracy"
+      }
     }
   },
   "documents": {

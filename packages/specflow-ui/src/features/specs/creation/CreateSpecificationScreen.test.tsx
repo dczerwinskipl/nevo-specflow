@@ -9,6 +9,8 @@ import { VisitStateProvider } from '../../../app/VisitStateProvider';
 import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
 import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
+import type { OperationProgressEvent } from '@nevo/specflow-contracts/operations';
+import type { OperationsApi } from '../../../shared/operations/operationsApi';
 import type { ProjectCreationApi } from './api.project';
 import { CreateSpecificationScreen } from './CreateSpecificationScreen';
 import { createOptionsFixture } from './creationOptions.stories-support';
@@ -23,16 +25,26 @@ const created: CreatedSpec = {
   relativeManifestPath: 'specs/active/title/specification.yaml',
 };
 
+/** No live progress: the stream ends at once, as when a Runtime does not offer it. */
+const silentOperations: OperationsApi = {
+  // eslint-disable-next-line require-yield
+  async *watchProgress() {
+    await Promise.resolve();
+  },
+};
+
 function renderScreen(
   dataMode: 'project' | 'demo',
   projectCreationApi: Partial<ProjectCreationApi>,
   props: { specId?: string } = {},
   client = createSpecFlowQueryClient(),
+  operationsApi: OperationsApi = silentOperations,
 ) {
   const onProjectCreated = vi.fn();
   const services = createSpecFlowAppServices({
     runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode }) },
     projectCreationApi: projectCreationApi as ProjectCreationApi,
+    operationsApi,
   });
   render(
     <QueryClientProvider client={client}>
@@ -173,5 +185,121 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
   it('explains that a session cannot be created on a project Runtime', async () => {
     renderScreen('project', {}, { specId: 'spec-1' });
     expect(await screen.findByText('Not available in this Runtime')).toBeTruthy();
+  });
+
+  describe('live progress', () => {
+    const base = {
+      operationId: created.operationId,
+      kind: 'specification-create',
+      at: '2026-01-01T00:00:00.000Z',
+    };
+
+    /** A stream the test drives by hand; records the signal each watch received. */
+    function controlledOperations() {
+      const queue: (OperationProgressEvent | Error)[] = [];
+      const signals: AbortSignal[] = [];
+      let wake: (() => void) | undefined;
+      const api: OperationsApi = {
+        async *watchProgress(_kind, _id, signal) {
+          if (signal) signals.push(signal);
+          for (;;) {
+            while (queue.length === 0) {
+              if (signal?.aborted) return;
+              await new Promise<void>((resolve) => {
+                wake = resolve;
+                signal?.addEventListener('abort', () => resolve(), { once: true });
+              });
+            }
+            const next = queue.shift()!;
+            if (next instanceof Error) throw next;
+            yield next;
+          }
+        },
+      };
+      return {
+        api,
+        signals,
+        push(item: OperationProgressEvent | Error) {
+          queue.push(item);
+          wake?.();
+        },
+      };
+    }
+
+    async function submitFor(operations: OperationsApi, create: ProjectCreationApi['create']) {
+      renderScreen(
+        'project',
+        { createOptions: () => Promise.resolve(createOptionsFixture('default')), create },
+        {},
+        createSpecFlowQueryClient(),
+        operations,
+      );
+      fireEvent.change(await screen.findByLabelText('Specification name'), {
+        target: { value: 'Payment limits' },
+      });
+      fireEvent.click(await screen.findByRole('radio', { name: /new workspace/i }));
+      const submit = await screen.findByRole('button', { name: 'Create specification' });
+      await waitFor(() => expect((submit as HTMLButtonElement).disabled).toBe(false));
+      fireEvent.click(submit);
+    }
+
+    it('shows the named steps of the running operation as a checklist and keeps the form working', async () => {
+      const operations = controlledOperations();
+      let finish!: (value: CreatedSpec) => void;
+      const create = vi.fn(() => new Promise<CreatedSpec>((resolve) => (finish = resolve)));
+      await submitFor(operations.api, create);
+
+      // Rows are reserved at once; the real checklist arrives with the first snapshot.
+      await waitFor(() => expect(operations.signals).toHaveLength(1));
+      operations.push({
+        ...base,
+        type: 'snapshot',
+        status: 'running',
+        steps: [
+          { id: 'reserving', status: 'done' },
+          { id: 'preparing-workspace', status: 'running' },
+          { id: 'writing-specification', status: 'pending' },
+          { id: 'registering', status: 'pending' },
+        ],
+      });
+      const running = await screen.findByText('Preparing the workspace');
+      expect(running.closest('li')?.getAttribute('aria-current')).toBe('step');
+      expect(
+        screen.getByText('Reserving the name').closest('li')?.getAttribute('data-status'),
+      ).toBe('done');
+
+      operations.push({ ...base, type: 'step', step: 'preparing-workspace', status: 'done' });
+      await waitFor(() => expect(running.closest('li')?.getAttribute('data-status')).toBe('done'));
+
+      // The POST result stays authoritative: finishing it ends the operation.
+      finish(created);
+      await waitFor(() => expect(operations.signals[0]?.aborted).toBe(true));
+    });
+
+    it('never fails or blocks the create when the stream fails: no checklist, the POST decides', async () => {
+      const operations = controlledOperations();
+      let finish!: (value: CreatedSpec) => void;
+      const create = vi.fn(() => new Promise<CreatedSpec>((resolve) => (finish = resolve)));
+      await submitFor(operations.api, create);
+      await waitFor(() => expect(operations.signals).toHaveLength(1));
+      operations.push(new Error('stream refused'));
+      await waitFor(() =>
+        expect(document.querySelector('[data-testid="operation-progress"]')).toBeNull(),
+      );
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(screen.getByRole<HTMLButtonElement>('button', { name: /Preparing/ }).disabled).toBe(
+        true,
+      );
+      finish(created);
+    });
+
+    it('stops watching when the page goes away mid-operation', async () => {
+      const operations = controlledOperations();
+      const create = vi.fn(() => new Promise<CreatedSpec>(() => undefined));
+      await submitFor(operations.api, create);
+      await waitFor(() => expect(operations.signals).toHaveLength(1));
+      cleanup();
+      expect(operations.signals[0]?.aborted).toBe(true);
+    });
   });
 });

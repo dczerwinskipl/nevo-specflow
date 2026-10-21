@@ -5,7 +5,7 @@ import {
   initialOperationProgress,
   operationProgressReducer,
   visibleProgressSteps,
-} from './operationProgress';
+} from './progressState';
 
 const base = {
   operationId: '3f0a6d4e-8f2a-4b6e-9d0a-1c2b3d4e5f60',

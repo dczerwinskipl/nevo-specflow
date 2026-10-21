@@ -37,20 +37,16 @@ export function ResumeSessionSection({
         title={t('specification.continueSessionHeading')}
         icon="chat"
         actions={
-          <OverflowMenu
-            label={t('specification.continueSessionHeading')}
-            triggerLabel={t('specification.sessionActions')}
-            disabled={!canStartConversation}
-            title={!canStartConversation ? t('common.notImplemented') : undefined}
-          >
-            <MenuItem
-              leadingIcon="plus"
-              disabled={!canStartConversation}
-              onSelect={() => onStartConversation()}
+          canStartConversation ? (
+            <OverflowMenu
+              label={t('specification.continueSessionHeading')}
+              triggerLabel={t('specification.sessionActions')}
             >
-              {t('specification.newConversation')}
-            </MenuItem>
-          </OverflowMenu>
+              <MenuItem leadingIcon="plus" onSelect={() => onStartConversation()}>
+                {t('specification.newConversation')}
+              </MenuItem>
+            </OverflowMenu>
+          ) : undefined
         }
       />
 

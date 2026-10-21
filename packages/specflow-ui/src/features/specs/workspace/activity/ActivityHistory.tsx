@@ -1,5 +1,6 @@
 import { Button, EmptyState, Icon, Timeline, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
+import { FeatureUnavailable } from '../../../../app/errors/FeatureUnavailable';
 import type { ActivityEvent } from '../model';
 import { TaskActivityItem } from './TaskActivityItem';
 import { SessionActivityItem } from './SessionActivityItem';
@@ -11,6 +12,8 @@ export interface ActivityHistoryProps {
   readonly events: readonly ActivityEvent[];
   /** Availability of the activity source. Unavailable/forbidden is not an empty history. */
   readonly availability?: 'available' | 'unavailable' | 'forbidden';
+  /** `not_implemented` is permanent for this Runtime: a calm state, never a failure. */
+  readonly unavailableReason?: 'not_implemented' | 'source_unavailable';
   /** Re-reads the activity source; offered only for an unavailable source. */
   readonly onRetry?: () => void;
   readonly isExplicit?: boolean;
@@ -24,6 +27,7 @@ export function ActivityHistory({
   showHeading = true,
   events,
   availability = 'available',
+  unavailableReason,
   onRetry,
   isExplicit = false,
   onClose,
@@ -64,7 +68,9 @@ export function ActivityHistory({
         </div>
       ) : null}
 
-      {availability !== 'available' ? (
+      {availability === 'unavailable' && unavailableReason === 'not_implemented' ? (
+        <FeatureUnavailable className="border-none" />
+      ) : availability !== 'available' ? (
         <EmptyState
           icon="clock"
           title={t(

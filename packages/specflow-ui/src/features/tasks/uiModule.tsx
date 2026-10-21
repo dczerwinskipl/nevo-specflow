@@ -6,10 +6,17 @@ import {
   specificationWorkSections,
   type SpecificationWorkSectionContext,
 } from '../specs';
+import { FeatureUnavailable } from '../../app/errors/FeatureUnavailable';
 import { TasksSection } from './contributions/specification-work';
 
 function TaskGroupsWorkSection({ specId, data, actions }: SpecificationWorkSectionContext) {
   const { t } = useTranslation();
+  if (
+    data.sectionAvailability?.tasks === 'unavailable' &&
+    data.sectionUnavailableReason?.tasks === 'not_implemented'
+  ) {
+    return <FeatureUnavailable className="border-none" />;
+  }
   if (
     data.sectionAvailability?.tasks === 'forbidden' ||
     data.sectionAvailability?.tasks === 'unavailable'

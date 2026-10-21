@@ -309,6 +309,7 @@ function SpecificationWorkspaceInner({
                   showHeading={false}
                   events={data.activityEvents}
                   availability={data.sectionAvailability?.activity ?? 'available'}
+                  unavailableReason={data.sectionUnavailableReason?.activity}
                   onRetry={onRefresh ? () => void onRefresh() : undefined}
                   onOpenTask={handlePreviewTask}
                   onOpenSession={onOpenSession}

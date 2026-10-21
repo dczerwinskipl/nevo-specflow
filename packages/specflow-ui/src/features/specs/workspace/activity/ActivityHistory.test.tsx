@@ -47,4 +47,18 @@ describe('ActivityHistory', () => {
     expect(html).toContain('Brak dostępu do historii');
     expect(html).not.toContain('Spróbuj ponownie');
   });
+
+  it('shows a calm not-yet-available state without retry when the Runtime lacks the source', () => {
+    const html = renderToStaticMarkup(
+      <ActivityHistory
+        events={[]}
+        availability="unavailable"
+        unavailableReason="not_implemented"
+        onRetry={() => undefined}
+      />,
+    );
+    expect(html).toContain('Niedostępne w tym Runtime');
+    expect(html).not.toContain('Nie udało się wczytać historii');
+    expect(html).not.toContain('Spróbuj ponownie');
+  });
 });

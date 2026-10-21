@@ -2,6 +2,7 @@ import { useUiModules } from '../../../app/ui-modules/UiModulesProvider';
 import { SpecificationWorkSectionOutlet } from './SpecificationWorkSectionOutlet';
 import { SpecificationAttentionOutlet } from './SpecificationAttentionOutlet';
 import type { SpecificationWorkspaceData } from './model';
+import { useWorkspaceRuntime } from './WorkspaceContext';
 import { SpecificationSummarySection, PreparationSection } from './sections';
 
 export interface WorkViewProps {
@@ -15,6 +16,7 @@ export interface WorkViewProps {
  */
 export function WorkView({ specId, data }: WorkViewProps) {
   const modules = useUiModules();
+  const runtime = useWorkspaceRuntime();
   return (
     <div className="@container/work min-w-0 max-w-content-standard">
       <div className="pb-3">
@@ -36,7 +38,8 @@ export function WorkView({ specId, data }: WorkViewProps) {
         modules={modules}
       />
 
-      {data.isEmpty ? (
+      {/* Preparation is a conversation call-to-action: without a conversation it is not offered. */}
+      {data.isEmpty && runtime.canStartConversation !== false ? (
         <div className="border-t border-border-default py-4 @min-[40rem]/work:py-5">
           <PreparationSection />
         </div>

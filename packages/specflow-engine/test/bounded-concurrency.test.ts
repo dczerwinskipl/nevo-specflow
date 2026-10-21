@@ -37,7 +37,7 @@ describe('mapBounded', () => {
   });
 
   it('handles empty input and rejects an invalid bound', async () => {
-    await expect(mapBounded([], 4, async (value: number) => value)).resolves.toEqual([]);
-    await expect(mapBounded([1], 0, async (value) => value)).rejects.toThrow(RangeError);
+    await expect(mapBounded([], 4, (value: number) => Promise.resolve(value))).resolves.toEqual([]);
+    await expect(mapBounded([1], 0, (value) => Promise.resolve(value))).rejects.toThrow(RangeError);
   });
 });

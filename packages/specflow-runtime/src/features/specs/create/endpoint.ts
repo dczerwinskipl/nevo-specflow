@@ -29,10 +29,14 @@ import {
 } from '@nevo/specflow-contracts/specs';
 
 import { requireCapability } from '../../auth';
+import type { OperationProgressRegistry } from '../../operations';
 import { statusForCreateError, type CreateErrorCode } from './error-status';
+import { startCreateProgress, type CreateProgress } from './progress';
 
 export interface SpecsCreateEndpointOptions {
   readonly engine?: SpecFlowEngine;
+  /** Optional live progress (SSE) for operations that carry a client `operationId`. */
+  readonly progress?: OperationProgressRegistry;
 }
 
 /**
@@ -166,21 +170,37 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         });
       }
 
+      // Best-effort progress for the generic operation stream; never affects the outcome.
+      let progress: CreateProgress | undefined;
       try {
         const body = request.body;
+        if (options.progress && body.operationId) {
+          progress = startCreateProgress(
+            options.progress,
+            body.operationId,
+            body.target?.kind === 'new-worktree' ? 'new-worktree' : 'existing',
+          );
+        }
         // Resolve default from the verified Project Home (not the HTTP server
         // process cwd or a user-provided, unverified root).
         const target = await resolveCreateTarget(engine, body.target);
-        const result = await createSpecificationFromRequest(engine, {
-          operationId: body.operationId,
-          title: body.title,
-          goal: body.goal,
-          ...(body.slug !== undefined ? { slug: body.slug } : {}),
-          target,
-        });
-        return reply.code(201).send(projectCreatedSpecification(result));
+        const result = await createSpecificationFromRequest(
+          engine,
+          {
+            operationId: body.operationId,
+            title: body.title,
+            goal: body.goal,
+            ...(body.slug !== undefined ? { slug: body.slug } : {}),
+            target,
+          },
+          progress ? { onStage: (observation) => progress?.onStage(observation) } : {},
+        );
+        const created = projectCreatedSpecification(result);
+        progress?.complete(created);
+        return reply.code(201).send(created);
       } catch (error) {
         const code = errorCode(error);
+        progress?.fail(code);
         if (!code) throw error;
 
         const status = statusForCreateError(code);

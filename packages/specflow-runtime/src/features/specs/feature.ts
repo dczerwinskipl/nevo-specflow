@@ -14,7 +14,10 @@ import type {
   SpecificationWorkspaceRepository,
   WorkspaceContributions,
 } from './workspace/repository';
+import type { Scope } from '@nevo/authorization';
 import type { SessionReferenceOwner } from '../sessions';
+import type { OperationProgressRegistry } from '../operations';
+import { requireCapability } from '../auth';
 
 export interface SpecsFeatureDependencies {
   readonly overviewRepository?: SpecsOverviewRepository;
@@ -22,6 +25,12 @@ export interface SpecsFeatureDependencies {
   readonly workspaceRepository?: SpecificationWorkspaceRepository;
   readonly contributions?: WorkspaceContributions;
   readonly sessions?: SessionReferenceOwner;
+  /** Generic operation progress registry; absent disables live progress. */
+  readonly progress?: {
+    readonly registry: OperationProgressRegistry;
+    /** Authorization scope of Create (project level; the demo Runtime scopes to its project). */
+    readonly createScope?: Scope;
+  };
 }
 
 export interface CreateSpecsFeatureOptions {
@@ -49,9 +58,24 @@ export function createSpecsFeature(options: CreateSpecsFeatureOptions = {}): Run
 
   return {
     authorizationResources: [SpecCapabilities, ProjectGitCapabilities],
+    operationKinds: [
+      {
+        kind: 'specification-create',
+        authorize: requireCapability({
+          resource: SpecCapabilities,
+          capability: SpecCapabilities.capabilities.Create,
+          scope: options.dependencies?.progress?.createScope ?? {},
+        }),
+      },
+    ],
 
     register(app) {
-      app.register(specsCreateEndpoint, { engine: options.dependencies?.engine });
+      app.register(specsCreateEndpoint, {
+        engine: options.dependencies?.engine,
+        ...(options.dependencies?.progress
+          ? { progress: options.dependencies.progress.registry }
+          : {}),
+      });
       app.register(specsCloseEndpoint, { engine: options.dependencies?.engine });
       app.register(specsOverviewEndpoint, {
         repository,

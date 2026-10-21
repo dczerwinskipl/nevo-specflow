@@ -189,6 +189,8 @@ export const demoCreateScenarios = [
   'recovery-required',
   'recovery-resolved',
   'network-uncertain',
+  /** Paces the Create progress steps so a live checklist can be observed. */
+  'slow-create',
 ] as const;
 export type DemoOptionsScenario = (typeof demoOptionsScenarios)[number];
 export type DemoOptionsFailureScenario = (typeof demoOptionsFailureScenarios)[number];

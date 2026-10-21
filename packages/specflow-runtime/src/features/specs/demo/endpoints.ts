@@ -21,6 +21,11 @@ import {
 import type { DemoState } from '../../../demo/state';
 import { DemoTargetError, parseScenarios, type DemoScenario } from './create-options';
 import type { DemoSpecs } from './operations';
+import type { OperationProgressRegistry } from '../../operations';
+import { startCreateProgress } from '../create/progress';
+
+const DEMO_STEP_DELAY_MS = 150;
+const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 const OperationParams = Type.Object({ operationId: Type.String({ minLength: 1, maxLength: 100 }) });
 /** Specs-owned demo endpoints: create options, atomic create, operation inspection, catalogue. */
@@ -29,6 +34,7 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
   state: DemoState,
   specs: DemoSpecs,
   catalogue: DemoCatalogue,
+  progress?: OperationProgressRegistry,
 ) {
   const typed = app.withTypeProvider<TypeBoxTypeProvider>();
   /**
@@ -168,12 +174,32 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
       });
       const active = scenarios(request);
       if (!active) return reply.code(400).send(invalidScenario);
+      const targetKind = request.body.target?.kind === 'new-worktree' ? 'new-worktree' : 'existing';
+      // Same generic stream as the real Runtime (`GET /api/operations/:id/events`).
+      const reporter = progress
+        ? startCreateProgress(progress, request.body.operationId, targetKind)
+        : undefined;
       try {
         const outcome = specs.createWithOutcome(
           request.authz.readContext().subject,
           request.body,
           active,
         );
+        if (reporter && outcome.fresh) {
+          // Paced only when the scenario seam is on and asks for it; otherwise the steps are
+          // published at once (a late subscriber replays them from the snapshot).
+          for (const stage of [
+            'reserved',
+            'git-provisioned',
+            'manifest-writing',
+            'registry-writing',
+          ] as const) {
+            reporter.onStage({ stage, target: targetKind });
+            if (active.includes('slow-create')) await delay(DEMO_STEP_DELAY_MS);
+          }
+          const { documentIds: _documentIds, ...created } = outcome.result;
+          reporter.complete(created);
+        }
         if (outcome.fresh && active.includes('network-uncertain')) {
           // Committed, but the response never arrives: the client must replay with the same operationId.
           reply.hijack();
@@ -184,6 +210,13 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
         }
         return reply.code(201).send(outcome.result);
       } catch (error) {
+        reporter?.fail(
+          error instanceof DemoTargetError
+            ? error.code
+            : isDemoOperationError(error)
+              ? error.code
+              : undefined,
+        );
         if (error instanceof DemoTargetError)
           return error.code === 'forbidden'
             ? reply.code(403).send({ error: 'forbidden' })

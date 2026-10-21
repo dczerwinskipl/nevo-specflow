@@ -35,6 +35,8 @@ export {
   type SpecificationManifest,
 } from './specs/model';
 
+export { DEFAULT_BRANCH_PATTERN, validateBranchPattern } from './version-control/worktrees/policy';
+
 export { GitCapabilityError, type GitCapabilityErrorCode } from './git/errors';
 
 export {

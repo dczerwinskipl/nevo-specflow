@@ -12,6 +12,23 @@ import {
 } from '../src/version-control/worktrees/policy';
 
 describe('Version Control worktree policy (VC01)', () => {
+  it('defaults to the git-flavoured feature/{slug} pattern', () => {
+    expect(DEFAULT_BRANCH_PATTERN).toBe('feature/{slug}');
+    const policy = parseGitWorktreePolicy({ git: { enabled: true } });
+    expect(resolveWorktreeBranch(policy, 'my-spec', '12345678')).toBe('feature/my-spec');
+  });
+
+  it.each(['feature/{slug}', 'feature/{slug}-{shortId}', 'spec/{shortId}', '{slug}'])(
+    'accepts pattern %s with {shortId} optional',
+    (pattern) => {
+      expect(() => validateBranchPattern(pattern)).not.toThrow();
+    },
+  );
+
+  it('rejects a static pattern that would collide on every create', () => {
+    expect(() => validateBranchPattern('feature/static')).toThrow();
+  });
+
   it('keeps the legacy defaults without worktrees configuration', () => {
     expect(parseGitWorktreePolicy({ git: { enabled: true } })).toEqual({
       enabled: true,
@@ -66,7 +83,6 @@ describe('Version Control worktree policy (VC01)', () => {
   });
 
   it.each([
-    '{slug}',
     'feature/{slug}-{unknown}',
     'feature/{shortId}-{shortId}',
     'feature/{slug-{shortId}',

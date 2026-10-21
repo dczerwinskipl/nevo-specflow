@@ -12,7 +12,7 @@ export interface GitWorktreePolicy {
   readonly integrationTargetBranch?: string;
 }
 
-export const DEFAULT_BRANCH_PATTERN = 'spec/{slug}-{shortId}';
+export const DEFAULT_BRANCH_PATTERN = 'feature/{slug}';
 export const DEFAULT_BASE_REF = 'HEAD';
 
 const SUPPORTED_TEMPLATE_FIELDS = ['slug', 'shortId'] as const;
@@ -73,16 +73,19 @@ export function parseGitWorktreePolicy(
   };
 }
 
-/** Only two placeholders are supported; a stable shortId is mandatory. */
+/** Two placeholders are supported; {shortId} is optional, but at least one token is required. */
 export function validateBranchPattern(pattern: string): void {
   if (!pattern || pattern.length > 200) throw invalid('Invalid Git worktree branch pattern.');
   const tokens = [...pattern.matchAll(/\{([^{}]*)\}/gu)].map((match) => match[1]);
   if (
     tokens.some((token) => !SUPPORTED_TEMPLATE_FIELDS.some((field) => field === token)) ||
-    tokens.filter((token) => token === 'shortId').length !== 1 ||
+    tokens.length === 0 ||
+    tokens.filter((token) => token === 'shortId').length > 1 ||
     tokens.filter((token) => token === 'slug').length > 1
   ) {
-    throw invalid('Branch pattern requires one {shortId}; only {slug} is also supported.');
+    throw invalid(
+      'Branch pattern supports at most one {slug} and one optional {shortId}, and needs at least one.',
+    );
   }
   // Detect unmatched braces and hidden template expressions.
   const withoutTokens = pattern.replace(/\{(?:slug|shortId)\}/gu, '');

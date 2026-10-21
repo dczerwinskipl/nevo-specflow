@@ -196,6 +196,19 @@ describe('VC06 legacy real-Git regression coverage through WorktreePort', () => 
     ).rejects.toMatchObject({ code: 'BRANCH_ALREADY_EXISTS' });
   });
 
+  it('a taken default-pattern branch yields the conflict path and never overwrites', async () => {
+    const { root, worktrees } = await fixture();
+    git(root, 'branch', 'feature/taken-slug');
+    const before = git(root, 'rev-parse', 'feature/taken-slug');
+    const { shortId, baseRefOverride, targetPath } = request(root);
+    await expect(
+      worktrees.plan({ shortId, baseRefOverride, targetPath, slug: 'taken-slug' }),
+    ).rejects.toMatchObject({
+      code: 'BRANCH_ALREADY_EXISTS',
+    });
+    expect(git(root, 'rev-parse', 'feature/taken-slug')).toBe(before);
+  });
+
   it('rejects a child branch when its parent ref exists without side effects', async () => {
     const { root, engine, worktrees } = await fixture();
     git(root, 'branch', 'spec/example');

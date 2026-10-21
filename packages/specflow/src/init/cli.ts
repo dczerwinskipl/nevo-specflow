@@ -6,6 +6,8 @@ import { relative } from 'node:path';
 import {
   bootstrapProjectHome,
   assertPrimaryGitCheckout,
+  DEFAULT_BRANCH_PATTERN,
+  validateBranchPattern,
   resolveGitCheckoutLayout,
   type GitCheckoutLayout,
 } from '@nevo/specflow-engine';
@@ -92,6 +94,46 @@ export async function chooseIntegrationTargetBranch(
   return selected;
 }
 
+const CUSTOM_PATTERN = '__custom__';
+const MAX_PATTERN_ATTEMPTS = 3;
+
+/**
+ * Branch pattern for managed worktrees. Presets cover the common shapes; a custom text
+ * is validated by the Engine's own pattern validator so init can never write a pattern
+ * the Runtime would later reject.
+ */
+export async function chooseBranchPattern(ui: RuntimeSetupUi): Promise<string> {
+  const selected = await ui.select<string>(
+    'Branch name pattern for new worktrees',
+    [
+      { value: DEFAULT_BRANCH_PATTERN, label: DEFAULT_BRANCH_PATTERN, hint: 'recommended' },
+      { value: 'feature/{slug}-{shortId}', label: 'feature/{slug}-{shortId}' },
+      { value: 'spec/{slug}-{shortId}', label: 'spec/{slug}-{shortId}' },
+      { value: CUSTOM_PATTERN, label: 'Custom pattern...' },
+    ],
+    DEFAULT_BRANCH_PATTERN,
+  );
+  if (selected !== CUSTOM_PATTERN) return selected;
+  for (let attempt = 1; attempt <= MAX_PATTERN_ATTEMPTS; attempt += 1) {
+    const text = (
+      await ui.input(
+        'Custom branch pattern ({slug} and optional {shortId})',
+        DEFAULT_BRANCH_PATTERN,
+      )
+    ).trim();
+    try {
+      validateBranchPattern(text);
+      return text;
+    } catch (error) {
+      ui.note(
+        error instanceof Error ? error.message : 'Invalid branch pattern.',
+        'Invalid pattern',
+      );
+    }
+  }
+  throw new Error('No valid branch pattern was provided.');
+}
+
 export function createProjectInitCommand(context: ProjectInitCommandContext): Command {
   return new Command('init')
     .description('Initialize Nevo SpecFlow configuration for this repository')
@@ -111,10 +153,15 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
         'Enable managed Git worktrees and lifecycle operations?',
         true,
       );
-      let gitConfig: { enabled: boolean; integrationTargetBranch?: string } = { enabled: false };
+      let gitConfig: {
+        enabled: boolean;
+        integrationTargetBranch?: string;
+        worktrees?: { branchPattern: string };
+      } = { enabled: false };
       if (gitEnabled) {
         const integrationTargetBranch = await chooseIntegrationTargetBranch(ui, layout.root);
-        gitConfig = { enabled: true, integrationTargetBranch };
+        const branchPattern = await chooseBranchPattern(ui);
+        gitConfig = { enabled: true, integrationTargetBranch, worktrees: { branchPattern } };
       }
       const contribution = {
         projectConfig: { runtime: runtime.projectConfig, git: gitConfig },
@@ -128,6 +175,7 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
           ...(gitConfig.integrationTargetBranch
             ? ['Integration branch: ' + gitConfig.integrationTargetBranch]
             : []),
+          ...(gitConfig.worktrees ? ['Branch pattern: ' + gitConfig.worktrees.branchPattern] : []),
           '',
           `Project config: ${relative(layout.root, layout.projectConfigPath)}`,
           `Local config: ${relative(layout.root, layout.localConfigPath)}`,

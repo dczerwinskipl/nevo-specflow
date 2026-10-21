@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import type { RuntimeSetupUi } from '@nevo/specflow-runtime';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { chooseIntegrationTargetBranch } from '../src/init/cli';
+import { chooseBranchPattern, chooseIntegrationTargetBranch } from '../src/init/cli';
 
 function git(root: string, ...args: string[]): void {
   execFileSync('git', args, { cwd: root, stdio: 'ignore' });
@@ -59,5 +59,49 @@ describe('chooseIntegrationTargetBranch', () => {
     expect(calls).toHaveLength(1);
     expect([...calls[0]!.choices].sort()).toEqual(['develop', 'trunk']);
     expect(calls[0]!.initial).toBe('trunk');
+  });
+});
+
+describe('chooseBranchPattern', () => {
+  function scripted(answers: string[]): { ui: RuntimeSetupUi; notes: string[]; choices: string[] } {
+    const notes: string[] = [];
+    const choices: string[] = [];
+    const ui = {
+      select: (_m: string, c: readonly { value: string }[], initial?: string) => {
+        choices.push(...c.map((item) => item.value));
+        return Promise.resolve(answers.shift() ?? initial!);
+      },
+      input: () => Promise.resolve(answers.shift()!),
+      note: (message: string) => notes.push(message),
+    } as unknown as RuntimeSetupUi;
+    return { ui, notes, choices };
+  }
+
+  it('preselects feature/{slug} and offers the presets', async () => {
+    const { ui, choices } = scripted([]);
+    expect(await chooseBranchPattern(ui)).toBe('feature/{slug}');
+    expect(choices).toEqual([
+      'feature/{slug}',
+      'feature/{slug}-{shortId}',
+      'spec/{slug}-{shortId}',
+      '__custom__',
+    ]);
+  });
+
+  it('returns a chosen preset', async () => {
+    expect(await chooseBranchPattern(scripted(['spec/{slug}-{shortId}']).ui)).toBe(
+      'spec/{slug}-{shortId}',
+    );
+  });
+
+  it('re-asks a custom pattern until the Engine validator accepts it', async () => {
+    const { ui, notes } = scripted(['__custom__', 'static-name', 'topic/{slug}']);
+    expect(await chooseBranchPattern(ui)).toBe('topic/{slug}');
+    expect(notes).toHaveLength(1);
+  });
+
+  it('gives up after repeated invalid custom patterns', async () => {
+    const { ui } = scripted(['__custom__', 'a', 'b', 'c']);
+    await expect(chooseBranchPattern(ui)).rejects.toThrow(/No valid branch pattern/);
   });
 });

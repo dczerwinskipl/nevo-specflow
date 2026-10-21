@@ -15,3 +15,12 @@ export {
   type CreateSpecRequest,
   type CreatedSpec,
 } from './create';
+
+export {
+  SPEC_SLUG_MAX_LENGTH,
+  SPEC_SLUG_PATTERN,
+  deriveSpecSlug,
+  isValidSpecSlug,
+  specSlugProblem,
+  type SpecSlugProblem,
+} from './slug';

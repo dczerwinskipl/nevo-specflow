@@ -1,5 +1,7 @@
 import { Type, type Static } from 'typebox';
 
+import { SPEC_SLUG_MAX_LENGTH, SPEC_SLUG_PATTERN } from './slug';
+
 const UuidSchema = Type.String({
   pattern:
     '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
@@ -23,6 +25,13 @@ export const CreateSpecRequestSchema = Type.Object(
   {
     title: Type.String({ minLength: 1, maxLength: 200 }),
     goal: Type.Optional(Type.String({ maxLength: 4000 })),
+    /**
+     * Optional slug override (lowercase kebab-case ASCII). Names the Spec folder, the generated
+     * `feature/<slug>` branch and the worktree folder. Omitted: derived from the title.
+     */
+    slug: Type.Optional(
+      Type.String({ minLength: 1, maxLength: SPEC_SLUG_MAX_LENGTH, pattern: SPEC_SLUG_PATTERN }),
+    ),
     operationId: Type.Optional(UuidSchema),
     target: Type.Optional(Type.Union([ExistingSpecTargetSchema, NewSpecWorktreeTargetSchema])),
   },

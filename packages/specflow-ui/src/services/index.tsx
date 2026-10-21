@@ -1,3 +1,4 @@
+import { createRuntimeOperationsApi, type OperationsApi } from '../shared/operations/operationsApi';
 import type { CreationApi } from '../features/specs/creation/api';
 import { createDemoCreationApi } from '../features/specs/creation/api.demo';
 import {
@@ -42,6 +43,8 @@ export interface SpecFlowAppServices {
   readonly creationApi: CreationApi;
   /** Specification creation of a project Runtime (the demo Runtime uses `creationApi`). */
   readonly projectCreationApi: ProjectCreationApi;
+  /** Live progress of long-running operations (generic, best effort). */
+  readonly operationsApi: OperationsApi;
 }
 
 export type SpecFlowServices = SpecFlowAppServices;
@@ -60,6 +63,7 @@ export interface SpecFlowServicesOptions {
   readonly sessionsApi?: SessionsApi;
   readonly creationApi?: CreationApi;
   readonly projectCreationApi?: ProjectCreationApi;
+  readonly operationsApi?: OperationsApi;
 }
 
 export function createSpecFlowAppServices(
@@ -97,6 +101,7 @@ export function createSpecFlowAppServices(
       createProjectCreationApi(
         createApiTransport(runtimeHttp, { operation: 'specs.create', codes: createSpecErrorCodes }),
       ),
+    operationsApi: options.operationsApi ?? createRuntimeOperationsApi(runtimeHttp),
   };
 }
 

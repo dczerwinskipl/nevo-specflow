@@ -190,6 +190,15 @@ AppWorkspace
 The same rule applies to dialogs, inspectors, drawers, and floating windows: their host surface
 already provides containment.
 
+## Bounded workspace rule
+
+A Primary-only collection page whose readable unit has a fixed optimal width (for example a list
+whose rows are designed for `content-standard`) bounds the workspace rather than stretching rows
+or leaving the content left-anchored in a wide workspace. Use `AppWorkspace fit="bounded"` with the
+existing width token on `AppContent`; do not add a new width token or a local maximum width. The
+workspace and navigation are then centred as one group, and header actions stay aligned with the
+content. Narrow and drawer layouts are unchanged.
+
 ## Nested-containment rule
 
 A contained surface should not normally contain another visually contained surface.

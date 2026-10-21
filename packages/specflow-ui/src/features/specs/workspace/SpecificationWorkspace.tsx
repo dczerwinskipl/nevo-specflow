@@ -1,3 +1,4 @@
+import { RefreshStatus } from '../../../app/loading/RefreshStatus';
 import {
   ApplicationLocationIdentity,
   ApplicationContextLine,
@@ -31,7 +32,7 @@ import {
   type SpecificationSecondaryContextValue,
 } from './specificationSecondaryStack';
 import { useSpecificationDialogs } from './useSpecificationDialogs';
-import { TaskViewStateProvider } from '../../tasks/detail/TaskViewState';
+import { TaskViewStateProvider } from '../../tasks';
 
 function fullTaskHref(specId: string, taskId: string, collection: 'current' | 'archive'): string {
   const search = collection === 'archive' ? '?collection=archive' : '';
@@ -56,6 +57,7 @@ export interface SpecificationWorkspaceProps {
   readonly onNewConversation?: (agent: string) => void | Promise<void>;
   readonly onOpenSession?: (sessionId: string) => void;
   readonly refreshFailed?: boolean;
+  readonly refreshing?: boolean;
 }
 
 export function SpecificationWorkspace(props: SpecificationWorkspaceProps) {
@@ -87,6 +89,7 @@ function SpecificationWorkspaceInner({
   onNewConversation,
   onOpenSession,
   refreshFailed,
+  refreshing = false,
 }: SpecificationWorkspaceProps) {
   const { t } = useTranslation();
   const secondaryNavigation = useSecondaryNavigation();
@@ -150,8 +153,10 @@ function SpecificationWorkspaceInner({
       openSession: onOpenSession,
       openDoc: (docId) => handleOpenDoc(docId, 'work'),
       previewTask: handlePreviewTask,
+      retry: onRefresh ? () => void onRefresh() : undefined,
     }),
     [
+      onRefresh,
       specId,
       data,
       handleOpenFullTask,
@@ -176,7 +181,9 @@ function SpecificationWorkspaceInner({
       openHistory: handleOpenHistory,
       startConversation: (_agent) => openConversationDialog(),
       executeTasks: (taskIds, _agent) => openExecuteDialog(taskIds),
-      refresh: () => onRefresh?.(),
+      refresh: () => {
+        if (!refreshing) return onRefresh?.();
+      },
       canExecute: Boolean(onExecute),
       canStartConversation: Boolean(onNewConversation),
       canOpenSession: Boolean(onOpenSession),
@@ -195,6 +202,7 @@ function SpecificationWorkspaceInner({
       openConversationDialog,
       openExecuteDialog,
       onRefresh,
+      refreshing,
       onExecute,
       onNewConversation,
       collection,
@@ -207,6 +215,7 @@ function SpecificationWorkspaceInner({
       <WorkspaceProvider runtime={runtime}>
         <AppWorkspace
           split="primary"
+          fit="bounded"
           labels={{
             backToPrimary: t('navigation.back'),
             closeSecondary: t('navigation.closeSecondary'),
@@ -219,13 +228,19 @@ function SpecificationWorkspaceInner({
                 title={t('specification.viewOverview')}
                 as="span"
                 identityContent={
-                  <ApplicationLocationIdentity
-                    title={t('specification.viewOverview')}
-                    view="overview"
-                    specId={specId}
-                  />
+                  <div className="flex min-w-0 items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <ApplicationLocationIdentity
+                        title={t('specification.viewOverview')}
+                        view="overview"
+                        specId={specId}
+                      />
+                    </div>
+                    <RefreshStatus active={refreshing} />
+                  </div>
                 }
                 icon="file"
+                labels={{ moreActions: t('common.moreActions') }}
                 actions={[
                   ...(!supportsSplit
                     ? [
@@ -242,9 +257,12 @@ function SpecificationWorkspaceInner({
                         {
                           id: 'refresh',
                           icon: 'refresh' as const,
-                          label: t('specifications.refresh'),
+                          label: t(
+                            refreshing ? 'specifications.refreshing' : 'specifications.refresh',
+                          ),
+                          disabled: refreshing,
                           onPress: () => {
-                            void onRefresh();
+                            if (!refreshing) void onRefresh();
                           },
                         },
                       ]
@@ -253,8 +271,8 @@ function SpecificationWorkspaceInner({
               />
             }
           >
-            <AppContent className="w-content-xwide max-w-full">
-              <AppWorkspaceBody className="py-6">
+            <AppContent className="w-content-standard max-w-full">
+              <AppWorkspaceBody scroll="area" contentClassName="py-6">
                 <AppContentContainer align="start" size="full" className="grid gap-6">
                   {refreshFailed ? (
                     <Alert
@@ -286,13 +304,17 @@ function SpecificationWorkspaceInner({
             header={<WorkspaceHeader as="h2" title={t('specification.activityHistory')} />}
           >
             <AppContent>
-              <ActivityHistory
-                showHeading={false}
-                events={data.activityEvents}
-                onOpenTask={handlePreviewTask}
-                onOpenSession={onOpenSession}
-                onOpenDoc={(docId) => handleOpenDoc(docId, 'work')}
-              />
+              <AppWorkspaceBody padding="none" scroll="area">
+                <ActivityHistory
+                  showHeading={false}
+                  events={data.activityEvents}
+                  availability={data.sectionAvailability?.activity ?? 'available'}
+                  onRetry={onRefresh ? () => void onRefresh() : undefined}
+                  onOpenTask={handlePreviewTask}
+                  onOpenSession={onOpenSession}
+                  onOpenDoc={(docId) => handleOpenDoc(docId, 'work')}
+                />
+              </AppWorkspaceBody>
             </AppContent>
           </AppWorkspace.Secondary>
         </AppWorkspace>

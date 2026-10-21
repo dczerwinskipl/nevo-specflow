@@ -1,3 +1,4 @@
+import { HttpClientError } from '@nevo/http-client';
 import { appI18n } from '../../../i18n';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -18,40 +19,70 @@ const taskId = 'TASK-77';
 
 function PreviewStatus() {
   const preview = useTaskPreviewData({ specId, taskId });
-  return <span>{preview.status === 'ready' ? preview.data.task.title : preview.status}</span>;
+  return (
+    <span>
+      {preview.status === 'ready' ? (
+        <>
+          {preview.data.task.title}
+          {preview.data.refreshFailed ? ' stale with retry' : ''}
+          {preview.data.retry ? ' retry available' : ''}
+        </>
+      ) : (
+        preview.status
+      )}
+    </span>
+  );
 }
 
 describe('Task preview by identity', () => {
-  it('uses the Task detail API/cache when a Task is missing from Workspace groups', () => {
-    const queryClient = createSpecFlowQueryClient();
-    queryClient.setQueryData(taskKeys.detail(specId, taskId), {
-      task: {
-        id: taskId,
-        title: 'Referenced outside Task list',
-        status: { id: 'pending', label: 'Pending', lifecycle: 'pending' },
-      },
-      acceptanceCriteria: [],
-    });
-    const data = { ...createSpecificationWorkspaceFixture('working', specId), taskGroups: [] };
-    const markup = renderToStaticMarkup(
-      <QueryClientProvider client={queryClient}>
-        <TestServicesRouterContext services={createSpecFlowAppServices()}>
-          <SpecificationSecondaryDataContext.Provider
-            value={{
-              specId,
-              data,
-              openFullTask: () => undefined,
-              previewTask: () => undefined,
-            }}
-          >
-            <PreviewStatus />
-          </SpecificationSecondaryDataContext.Provider>
-        </TestServicesRouterContext>
-      </QueryClientProvider>,
-    );
-    expect(markup).toContain('Referenced outside Task list');
-    expect(markup).not.toContain('unavailable');
-  });
+  it.each([undefined, 503, 403])(
+    'handles retained Task detail after status %s without a Workspace list entry',
+    (status) => {
+      const queryClient = createSpecFlowQueryClient();
+      queryClient.setQueryData(taskKeys.detail(specId, taskId), {
+        task: {
+          id: taskId,
+          title: 'Referenced outside Task list',
+          status: { id: 'pending', label: 'Pending', lifecycle: 'pending' },
+        },
+        acceptanceCriteria: [],
+      });
+      if (status)
+        queryClient
+          .getQueryCache()
+          .find({ queryKey: taskKeys.detail(specId, taskId), exact: true })!
+          .setState({
+            status: 'error',
+            error: new HttpClientError('Refresh failed', { kind: 'http', status }),
+            fetchStatus: 'idle',
+          });
+      const data = { ...createSpecificationWorkspaceFixture('working', specId), taskGroups: [] };
+      const markup = renderToStaticMarkup(
+        <QueryClientProvider client={queryClient}>
+          <TestServicesRouterContext services={createSpecFlowAppServices()}>
+            <SpecificationSecondaryDataContext.Provider
+              value={{
+                specId,
+                data,
+                openFullTask: () => undefined,
+                previewTask: () => undefined,
+              }}
+            >
+              <PreviewStatus />
+            </SpecificationSecondaryDataContext.Provider>
+          </TestServicesRouterContext>
+        </QueryClientProvider>,
+      );
+      if (status === 403) {
+        expect(markup).toContain('access-denied');
+        expect(markup).not.toContain('Referenced outside Task list');
+      } else {
+        expect(markup).toContain('Referenced outside Task list');
+        if (status === 503) expect(markup).toContain('stale with retry');
+        expect(markup).toContain('retry available');
+      }
+    },
+  );
 });
 
 describe('Task Preview HTTP failure states', () => {

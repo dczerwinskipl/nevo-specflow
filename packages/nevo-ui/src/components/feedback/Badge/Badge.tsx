@@ -5,8 +5,13 @@ import type { StatusTone } from '../../../design-system/statusTone';
 import { cn } from '../../../lib';
 
 export const badgeVariants = tv({
-  base: 'inline-flex min-h-5 w-fit items-center rounded-full border px-2 py-0.5 font-sans text-label-sm',
+  base: 'inline-flex w-fit items-center rounded-full border px-2 font-sans text-label-sm',
   variants: {
+    /** `compact` has no minimum height or vertical padding, so it fits inside a one-line row. */
+    size: {
+      default: 'min-h-5 py-0.5',
+      compact: 'py-0',
+    },
     tone: {
       neutral: 'border-border-default bg-surface-subtle text-content-secondary',
       info: 'border-status-info/30 bg-status-info/10 text-status-info',
@@ -15,14 +20,16 @@ export const badgeVariants = tv({
       danger: 'border-status-danger/30 bg-status-danger/10 text-status-danger',
     },
   },
-  defaultVariants: { tone: 'neutral' },
+  defaultVariants: { size: 'default', tone: 'neutral' },
 });
 
 export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
   tone?: StatusTone;
+  /** `compact` for rows with a fixed one-line height (tree rows). Default `default`. */
+  size?: 'default' | 'compact';
 }
 export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(function Badge(
-  { children, className, tone, ...props },
+  { children, className, size = 'default', tone, ...props },
   ref,
 ) {
   const resolvedTone = tone ?? 'neutral';
@@ -30,7 +37,7 @@ export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(function Badge(
   return (
     <span
       ref={ref}
-      className={cn(badgeVariants({ tone: resolvedTone }), className)}
+      className={cn(badgeVariants({ size, tone: resolvedTone }), className)}
       {...props}
       {...capture}
     >

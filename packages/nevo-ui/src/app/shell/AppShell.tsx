@@ -25,12 +25,16 @@ import {
   APP_NAVIGATION_WIDTH,
   APP_SHELL_GAP,
   WIDE_SHELL_MIN_WIDTH,
+  resolveWorkspaceContentWidth,
 } from '../workspace/workspaceSizing';
 
 export type AppNavigationMode = 'persistent' | 'drawer';
 
 interface AppWorkspaceContextValue {
+  /** Border-box width of the workspace region: decides split/stacked mode and thresholds. */
   availableWidth?: number;
+  /** Content-box width inside the surface borders: the width slot sizes must add up to. */
+  contentWidth?: number;
   navigationMode: AppNavigationMode;
 }
 
@@ -173,9 +177,13 @@ export function AppShell({
     () => ({ closeNavigation, navigationOpen }),
     [closeNavigation, navigationOpen],
   );
+  const contentWidth = resolveWorkspaceContentWidth(availableWidth, {
+    bordered: workspaceMaterialOwner === 'shell',
+    inset: workspaceIsInset,
+  });
   const workspaceContext = useMemo<AppWorkspaceContextValue>(
-    () => ({ availableWidth, navigationMode }),
-    [availableWidth, navigationMode],
+    () => ({ availableWidth, contentWidth, navigationMode }),
+    [availableWidth, contentWidth, navigationMode],
   );
   const geometryStyle = {
     '--app-navigation-width': `${APP_NAVIGATION_WIDTH}px`,
@@ -231,29 +239,32 @@ export function AppShell({
               ) : null}
 
               <AppWorkspaceContext.Provider key="workspace" value={workspaceContext}>
-                {workspaceMaterialOwner === 'shell' ? (
-                  <WorkspaceSurface
-                    as="main"
-                    className={cn(
-                      'mt-4 h-[calc(100%-1rem)] w-max has-[[data-workspace-fit=available]]:w-full min-w-0 max-w-[calc(100%-var(--app-navigation-width)-var(--app-shell-gap))] flex-none overflow-hidden rounded-tl-surface border-t border-l border-workspace-edge',
-                      workspaceIsInset && 'rounded-tr-surface border-r',
-                    )}
-                    data-app-shell-region="workspace"
-                    data-app-shell-workspace-fit={workspaceIsInset ? 'inset' : 'edge'}
-                    {...designSlot('AppShell', 'workspace')}
-                  >
-                    {children}
-                  </WorkspaceSurface>
-                ) : (
-                  <main
-                    className="h-full w-full min-w-0 flex-none overflow-hidden"
-                    data-app-shell-region="workspace"
-                    data-app-shell-workspace-material-owner="panel"
-                    {...designSlot('AppShell', 'workspace')}
-                  >
-                    {children}
-                  </main>
-                )}
+                <WorkspaceSurface
+                  as="main"
+                  material={workspaceMaterialOwner === 'shell'}
+                  className={cn(
+                    workspaceMaterialOwner === 'shell'
+                      ? cn(
+                          'mt-4 h-[calc(100%-1rem)] w-max has-[[data-workspace-fit=available]]:w-full min-w-0 max-w-[calc(100%-var(--app-navigation-width)-var(--app-shell-gap))] flex-none overflow-hidden rounded-tl-surface border-t border-l border-workspace-edge',
+                          workspaceIsInset && 'rounded-tr-surface border-r',
+                        )
+                      : 'h-full w-full min-w-0 flex-none overflow-hidden',
+                  )}
+                  data-app-shell-region="workspace"
+                  data-app-shell-workspace-fit={
+                    workspaceMaterialOwner === 'shell'
+                      ? workspaceIsInset
+                        ? 'inset'
+                        : 'edge'
+                      : undefined
+                  }
+                  data-app-shell-workspace-material-owner={
+                    workspaceMaterialOwner === 'panel' ? 'panel' : undefined
+                  }
+                  {...designSlot('AppShell', 'workspace')}
+                >
+                  {children}
+                </WorkspaceSurface>
               </AppWorkspaceContext.Provider>
 
               {!wide ? (

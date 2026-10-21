@@ -41,13 +41,15 @@
   --color-border-default: rgba(255, 255, 255, 0.095);
   --color-border-strong: rgba(255, 255, 255, 0.17);
   --color-border-subtle: rgba(255, 255, 255, 0.05);
+  /* Boundary of state-bearing glyphs (unchecked Checkbox/Radio, OFF Switch): >= 3:1 non-text. */
+  --color-border-control: rgba(255, 255, 255, 0.34);
   --color-workspace-edge: rgba(255, 255, 255, 0.12);
   --color-divider: rgba(255, 255, 255, 0.06);
 
   --color-content-primary: #f3f4f6;
   --color-content-secondary: #c5c7cc;
-  --color-content-muted: #85888f;
-  --color-content-placeholder: #7a7e87;
+  --color-content-muted: #8f929a;
+  --color-content-placeholder: #85888f;
   --color-content-on-primary: #ffffff;
   --color-content-link: #60a5fa;
   --color-content-link-hover: #93c5fd;
@@ -87,9 +89,29 @@
   --spacing-control-height-inline: 1.5rem;
   --spacing-control-height-compact: 2rem;
   --spacing-control-height-default: 2.25rem;
+  /* Minimum interactive target: 24px on every pointer, 44px on coarse pointers (see hitAreaClassName). */
+  --spacing-target-min: 1.5rem;
+  --spacing-target-touch: 2.75rem;
   --spacing-control-padding-inline: 0.5rem;
   --spacing-control-padding-compact: 0.625rem;
   --spacing-control-padding-default: 0.75rem;
+
+  /*
+   * Compact explorer-tree geometry, derived from control and icon geometry (see treeRecipes.ts).
+   * gap: glyph, icon and name spacing inside a row.
+   * indent: one nesting level = one glyph slot.
+   * leaf-offset: leaves have no disclosure slot; their icon aligns with sibling folder icons.
+   * name-offset: row edge to a folder's name (border + padding + chevron + gap + icon + gap).
+   * row-height: one compact control height; the hit area, not the row, grows on coarse pointers.
+   */
+  --spacing-tree-gap: calc(var(--spacing) * 1.5);
+  --spacing-tree-indent: var(--spacing-icon-md);
+  --spacing-tree-leaf-offset: calc(var(--spacing-icon-md) + var(--spacing-tree-gap));
+  --spacing-tree-name-offset: calc(
+    1px + var(--spacing-control-padding-inline) + var(--spacing-icon-md) * 2 +
+      var(--spacing-tree-gap) * 2
+  );
+  --spacing-tree-row-height: var(--spacing-control-height-compact);
 
   /* Shape hierarchy: inline action → control → composite → app surface. */
   --radius-control-inline: 0.25rem;
@@ -159,6 +181,14 @@
 :root {
   color-scheme: dark;
   font-synthesis: none;
+  /* Runtime target size consumed by hitAreaClassName. Visual control sizes never change with it. */
+  --target-size: var(--spacing-target-min);
+}
+
+@media (pointer: coarse) {
+  :root {
+    --target-size: var(--spacing-target-touch);
+  }
 }
 
 html {
@@ -205,6 +235,25 @@ body {
     inset 0 0 0 1px rgba(255, 255, 255, 0.025);
   content: '';
   pointer-events: none;
+}
+
+@keyframes initial-content-appearance {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.initial-content-appearance {
+  animation: initial-content-appearance var(--motion-duration-normal) var(--motion-ease-standard);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .initial-content-appearance {
+    animation: none;
+  }
 }
 
 :where(a, button, input, select, textarea):focus-visible:not([data-focus-ring='delegated']),

@@ -5,7 +5,7 @@ import { mapFullTaskResponse } from '../model';
 import { TaskEvidenceInspection } from './TaskInspection';
 import { createTaskDetailFixture } from './taskDetail.test-support';
 
-vi.mock('../../documents/connected/DocumentContent', () => ({
+vi.mock('../../documents/content/DocumentContent', () => ({
   DocumentContent: ({ documentId }: { documentId: string }) => <div>Reader {documentId}</div>,
 }));
 describe('Pinned evidence inspector', () => {

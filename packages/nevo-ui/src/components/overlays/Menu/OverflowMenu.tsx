@@ -13,11 +13,13 @@ export interface OverflowMenuProps {
   size?: IconButtonSize;
   disabled?: boolean;
   title?: string;
+  /** Called when the menu closes and is about to return focus to the trigger; `preventDefault()` skips it. */
+  onCloseAutoFocus?: (event: Event) => void;
 }
 
 /** An overflow menu that expands over its trigger rather than floating below it. */
 export const OverflowMenu = forwardRef<HTMLButtonElement, OverflowMenuProps>(function OverflowMenu(
-  { children, className, label, size = 'md', triggerLabel, disabled, title },
+  { children, className, label, onCloseAutoFocus, size = 'md', triggerLabel, disabled, title },
   ref,
 ) {
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -54,6 +56,7 @@ export const OverflowMenu = forwardRef<HTMLButtonElement, OverflowMenuProps>(fun
       <MenuContent
         align="end"
         aria-label={triggerLabel}
+        onCloseAutoFocus={onCloseAutoFocus}
         className="overflow-menu-content w-auto max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto"
         sideOffset={-anchor.height}
         style={

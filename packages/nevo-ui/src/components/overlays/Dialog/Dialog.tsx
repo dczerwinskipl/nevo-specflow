@@ -50,7 +50,7 @@ export const DialogContent = forwardRef<
           <DialogPrimitive.Close asChild>
             <IconButton
               aria-label={closeLabel ?? labels.close}
-              className="absolute right-3 top-3"
+              className="absolute! right-3 top-3"
               icon="close"
               size="sm"
               variant="ghost"
@@ -115,7 +115,10 @@ export const DialogFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivEle
     return (
       <div
         ref={ref}
-        className={cn('flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)}
+        className={cn(
+          'flex flex-col-reverse gap-2 *:min-w-0 *:w-full sm:flex-row sm:flex-wrap sm:justify-end sm:*:w-auto',
+          className,
+        )}
         {...designSlot('Dialog', 'footer')}
         {...props}
       />

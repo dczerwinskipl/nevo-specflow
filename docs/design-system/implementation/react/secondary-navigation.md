@@ -134,6 +134,11 @@ not separate hook calls. Use a pure subscription or stable data hook: no data sn
 in navigation entries.
 Do not define screen components or hook factories inside a rerendering React component.
 Its discriminated result is one of `loading`, `ready`, `unavailable`, `error` or `access-denied`.
+The `loading` member accepts optional `presentation?: ReactNode`, supplied by the product's
+`useData(rootParams)` from its existing data/fetch state. Undefined retains the default host loading
+notice; an explicit null renders no notice. A supplied presentation owns its copy and single loading
+status, so the host does not add another status. It never mounts the ready screen with missing data.
+Header Back/Close, action readiness and `preserveOnDataLoss` retain their existing behavior.
 No result automatically navigates away. Ordinary refetches should retain a `ready` result when
 the previous usable data remains available, then update the `data` prop.
 
@@ -216,3 +221,105 @@ for scrolling. An intrinsic-width surface cannot measure content through size co
 Use `AppWorkspaceBody scroll="area"` for the shared `ScrollArea` edge indicators and
 viewport on a desktop surface. On stacked layouts the host already owns `ScrollArea`;
 the body then contributes content and padding without nesting another scroll viewport.
+In `scroll="area"` mode `className` styles the ScrollArea root; refine the padded content box with
+`contentClassName` (merged after the `padding` preset, for example `padding="md" contentClassName="py-6"`)
+instead of wrapping the content in an extra padding element.
+
+### Workspace width fit
+
+`AppWorkspace fit` decides how wide the workspace is in split-capable (Wide/Compact) layouts.
+Stacked layouts always fill the available width, whatever the value. The resolution lives in
+`resolveWorkspaceFit` (`workspaceSizing.ts`) and is covered by `workspaceSizing.test.ts`.
+
+| `fit`               | Primary only                                        | Primary + Secondary                                                 | Use for                                                                       |
+| ------------------- | --------------------------------------------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `content` (default) | fills the available width                           | fits intrinsic content (`max-content`), centred with the navigation | ordinary pages; unchanged default                                             |
+| `available`         | fills                                               | fills; the split shares follow `split`                              | editors, creation flows and other surfaces that should use all measured space |
+| `bounded`           | fits intrinsic content, centred with the navigation | fits intrinsic content                                              | Primary-only collection pages whose readable unit has a fixed optimal width   |
+
+With `bounded`, the Primary must declare its width (for example
+`<AppContent className="w-content-standard max-w-full">`); the workspace then shrinks to that
+width and `AppShell` centres navigation and workspace as one group, so header actions stay next to
+the content they act on at wide and ultrawide sizes. A Primary without a declared width has no
+intrinsic bound and behaves like `content`. Do not combine `bounded` with ad-hoc `max-w-[…]` or
+centring wrappers. `AppWorkspaceFit.contract.stories.tsx` covers the three values (`Available*`, `Content*`,
+`BoundedPrimaryOnly*` contracts at 1024/1440/1920/2560 and 390).
+
+The shell-owned workspace surface has an edge border (`border-l`, plus `border-r` when inset). `AppShell`
+publishes two widths through the workspace context: `availableWidth` (the surface border-box, which decides
+split/stacked mode and the dominance thresholds) and `contentWidth` (`availableWidth` minus
+`APP_WORKSPACE_EDGE_BORDER` per border, `resolveWorkspaceContentWidth`), which the Primary/Secondary max
+widths are computed from, so a Secondary never exceeds the surface content box by the border width.
+Never compensate with a `-1px` on a region. The `SecondaryFitsSurface*` contracts cover 1280-1600.
+
+### Bounded content scrolling
+
+`AppWorkspace` defaults to `scroll="workspace"`, retaining the mobile host-owned scrolling
+described above. Use the explicit `scroll="content"` opt-in for a workspace whose regions contain
+bounded editors, composers, or readers with fixed controls. This applies to Primary, declarative
+Secondary, and runtime Secondary pages in that workspace; it does not change split proportions,
+navigation, or the Secondary lifecycle.
+
+In content mode the mobile host keeps its header and system Back/Close controls fixed and provides
+a height-constrained content region instead of an outer `ScrollArea`. The content owns scrolling:
+use `AppWorkspaceBody scroll="area"` for an ordinary reader, or the editor's own scroll viewport.
+Keep file identity, toolbars, save actions, and composers outside that viewport. Flex/grid ancestors
+must retain `min-height: 0` and the content must fill the available region. A native read-only
+scroll region also needs keyboard access. Do not recreate a second outer product scroll container.
+
+Content mode does not install `AppContentScrollProvider` on mobile, so `AppWorkspaceBody` retains
+its own bounded scrolling behavior. The mobile floating action replacement is unnecessary because
+the shared header remains visible. Default workspace mode and its scrolling header/floating actions
+remain unchanged. `AppWorkspaceScroll.contract.stories.tsx` verifies a 320×740 editor, fixed controls,
+internal scrolling, and preservation of the default mobile scroll owner.
+
+### Anchors under the floating navigation row
+
+In stacked (mobile) mode the in-flow header scrolls away and the fixed floating navigation row overlays
+the top of the same scroll viewport. `AppWorkspace.css` owns that zone with two custom properties, so no
+page ever computes pixel offsets:
+
+- `--workspace-overlay-top`: where the row sits (`max(0.75rem, env(safe-area-inset-top))`), used by
+  `.mobile-floating-navigation { top }` and the scroll area.
+- `--workspace-overlay-inset-top`: row top + default control height + 0.5rem, set on
+  `.mobile-workspace-scroll-area` and applied as `scroll-padding-top` of `.mobile-workspace-scroll`.
+
+`scrollIntoView`, `#hash` navigation and focus scrolling honour `scroll-padding-top`, so targets
+(for example `#tasks-heading`) land below the row (WCAG 2.2 2.4.11 Focus Not Obscured). Products only
+provide an `id`/focusable target and keep calling `scrollIntoView({ block: 'start' })`; there is no
+per-target marker attribute and no `scroll-margin-top` is required. Descendants that need the zone
+(for example a sticky element inside the page) can read `var(--workspace-overlay-inset-top)`.
+The properties do not exist in split/desktop mode or in `scroll="content"` workspaces, which have no
+overlay. `AppWorkspaceScroll.contract.stories.tsx` verifies 390 and 320 (including `#tasks-heading`
+through `location.hash`) and a safe-area override.
+
+### Header actions
+
+`WorkspaceHeader` (and the Secondary header, through the same `WorkspaceHeaderFrame`) takes
+`actions: WorkspaceHeaderAction[]`:
+
+```ts
+{ id, label, primary?, disabled?, tone?: 'neutral' | 'danger', onPress,
+  icon?: IconGlyph,
+  presentation?: 'button' | 'icon',      // 'icon' requires `icon` (type-enforced): IconButton sm + Tooltip(label)
+  direct?: 'wide' | 'always' | 'never' } // default: primary -> shown directly, everything else -> 'never'
+```
+
+- Budget: **2 direct actions on wide headers, 1 on narrow**; the rest go to the `•••` menu in input
+  order. A `tone: 'danger'` action is never direct. When more actions qualify than the budget allows,
+  `direct: 'always'` wins, then the `primary` action, then `direct: 'wide'` in input order. Direct actions
+  render in input order with the filled `primary` last.
+- "Narrow" is the **measured** width of the header frame (`WORKSPACE_HEADER_NARROW_MAX_WIDTH`, 384px,
+  `ResizeObserver`, `data-workspace-header-density`), not a CSS-only query, because menu membership depends
+  on it and menus portal outside any container query. A direct text `primary` with an `icon` collapses to
+  an icon-only button on narrow headers (as before, now driven by the measured density).
+- A menu action that moves focus itself (for example mounts an inline input) sets
+  `onMenuClosed: () => void`. The menu then does not return focus to the `•••` trigger; it calls the
+  handler once it has closed and no longer traps focus, so the consumer needs no timers or retakes.
+- An icon action's `label` is its accessible name and its tooltip (also on keyboard focus).
+- The stacked floating row (`compact` density) lists **all** actions in `•••`, a superset of the in-flow
+  header (which is `inert` while covered), so nothing is exposed twice.
+- `resolveWorkspaceHeaderActions(actions, 'wide' | 'narrow' | 'compact')` is the pure resolver
+  (`true`/`false` still mean compact/wide). Document view: `[{ id: 'edit', icon: 'edit',
+presentation: 'icon', direct: 'always', ... }]`; edit: `[preview (icon, direct: 'wide'), save (primary,
+direct: 'always'), discard]` -> wide `[eye][Save][•••]`, narrow `[Save][••• Show preview, Discard]`.

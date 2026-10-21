@@ -32,11 +32,14 @@ export const AppBackground = forwardRef<HTMLDivElement, AppBackgroundProps>(func
 export interface WorkspaceSurfaceProps extends HTMLAttributes<HTMLElement> {
   as?: 'div' | 'main' | 'section';
   blur?: boolean;
+  /** Keep this host mounted when a descendant owns the workspace material. */
+  material?: boolean;
 }
 
 export function WorkspaceSurface({
   as: Component = 'div',
   blur = true,
+  material = true,
   className,
   ...props
 }: WorkspaceSurfaceProps) {
@@ -44,7 +47,11 @@ export function WorkspaceSurface({
 
   return (
     <Component
-      className={cn(workspaceSurfaceClassName, blur && 'backdrop-blur-sm', className)}
+      className={cn(
+        material && workspaceSurfaceClassName,
+        material && blur && 'backdrop-blur-sm',
+        className,
+      )}
       {...props}
       {...metadata}
     />

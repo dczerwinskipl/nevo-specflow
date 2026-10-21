@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { TaskWorkspaceData } from './taskWorkspaceModel';
-import { descriptionScrollOwner } from '../../documents/description/DocumentDescription';
+import { descriptionScrollOwner, restoreScrollPosition } from '../../documents';
 
 function useWorkspaceState(data: TaskWorkspaceData) {
   const [description, setDescription] = useState(false);
@@ -71,14 +71,16 @@ export function useWorkspaceScroll(key: string) {
   useLayoutEffect(() => {
     if (!ref.current) return;
     let restored = false;
-    const frame = requestAnimationFrame(() => {
-      if (!ref.current) return;
-      // Resolve after the host has laid out the new page. A short page can acquire
-      // a scroll owner when its preserved disclosures are restored.
-      const owner = descriptionScrollOwner(ref.current);
-      owner.scrollTop = scroll.current.get(key) ?? 0;
-      restored = true;
-    });
+    // Resolve after the host has laid out the new page. A short page can acquire
+    // a scroll owner when its preserved disclosures are restored, and a surface that is
+    // still hidden or animating cannot hold the position yet.
+    const stopRestoring = restoreScrollPosition(
+      ref.current,
+      () => scroll.current.get(key) ?? 0,
+      () => {
+        restored = true;
+      },
+    );
     const save = (event: Event) => {
       if (!restored || leaving.current || !ref.current) return;
       const owner = descriptionScrollOwner(ref.current);
@@ -88,7 +90,7 @@ export function useWorkspaceScroll(key: string) {
     // surface. Capture observes either without depending on host DOM classes.
     document.addEventListener('scroll', save, { passive: true, capture: true });
     return () => {
-      cancelAnimationFrame(frame);
+      stopRestoring();
       document.removeEventListener('scroll', save, true);
     };
   }, [key, scroll]);

@@ -140,6 +140,24 @@ src/
   init/
 ```
 
+### Runtime demo environment
+
+The demo Runtime (`dataMode: demo`) has one shared in-memory state per Runtime instance
+(`src/demo/state.ts`: catalogue, created Specifications, Sessions, locations, idempotent requests,
+failure injection). That state is data plus a few invariants; it is not a place for operations.
+Operations, validation and endpoints belong to the feature that owns the capability:
+`features/documents/demo/` (document tree, import, rename/move/delete, read/save with revisions,
+seeded content), `features/sessions/demo/` (Session allocation, seeded details, references, context),
+`features/specs/demo/` (workspace registry and Create options, atomic Create with idempotency and
+operation inspection, the scenario seam) and `features/tasks/demo/`. Each module exposes its demo
+surface through its barrel; a module needs another module's capability only through that barrel or
+an injected narrow function (for example Create validates and seeds documents through
+`documents.plan`/`append`, and the Session routes receive `documentPaths`). `src/demo/index.ts` is
+the composition root: it builds the state, constructs each module's operations over it and
+registers every route under `/api/demo/**`; only `server/app.ts` imports it. ESLint
+(`no-restricted-imports`) enforces barrel-only cross-feature imports for `src/features/**` and keeps
+features from importing the demo composition root.
+
 A feature owns the authorization resource definitions and capabilities it exposes. Cross-cutting
 authorization evaluates them but does not import product feature definitions. The Runtime composition root collects feature authorization
 resource definitions, defines the product role-to-capability policy, and injects both into Auth. Product
@@ -202,6 +220,52 @@ extensionless relative-source convention.
 
 Repository tooling under `tools/**` may use NodeNext-style `.js` specifiers when it executes
 raw `tsc` output. See ADR 0009 for the product-package build model.
+
+## UI module ownership and boundaries
+
+A component, store or API port lives in the module that owns the capability, regardless of which
+screen first implemented it. A screen's folder (for example Create) must not become the storage of
+every element that screen happened to need first.
+
+- `features/documents/` owns the Documents explorer, editor, document draft store and the
+  documents port (`explorer/`, `editor/`, `content/`, `workspace/`, `api.ts`).
+  `features/sessions/` owns Session screens, context, composer drafts, recovery and the sessions
+  port. `features/specs/creation/` owns only the Create flow and its creation port.
+- Each port is an interface plus a named adapter beside it (`api.ts`, `api.demo.ts`) and is
+  provided as a separate service by `createSpecFlowAppServices` (`documentsApi`, `sessionsApi`,
+  `creationApi`). Demo adapters stay demo adapters; they do not decide where product components live.
+- Visit-scoped state is a small external store owned by its feature and subscribed per entry
+  (for example one document's draft), not one global React context whose every update re-renders
+  all consumers.
+- `src/shared/` holds only code that several features genuinely use (generic controls, the
+  retained-request mechanism, the keyed store, notifications, and the product presentational
+  pieces `operational-list/` (`OperationalRow`, `OperationalGroupHeader`) and `workspace-section/`
+  (`WorkspaceSection`) that Documents, Sessions, Tasks, Git and Specs all render). It imports no
+  feature and no composition root. A purely presentational piece used by several features lives
+  here instead of in the feature that happened to create it; features do not re-export it.
+- Features reach other features only through the target's barrel (`features/<name>/index.ts`),
+  which deliberately exports what others may use. `features/specs/creation` is private to Create;
+  its entry exposes only its routes. Composition roots (`app/`, `services/`) and tests, stories and
+  story-support files are not restricted. ESLint (`no-restricted-imports` in `eslint.config.mjs`)
+  enforces these rules for production sources.
+
+### Operations and state machines in UI
+
+- A user operation with several outcomes (Create) is modelled as an explicit state machine: a pure
+  reducer over named phases (`idle | submitting | outcome-unknown | recovery-required | completed |
+failed`), unit-tested for every legal transition and for illegal events being ignored. The ASCII
+  diagram sits at the top of the reducer (`features/specs/creation/createOperationReducer.ts`).
+  A hook performs the I/O and reports each result as an event; the component renders the state.
+  No state-machine library.
+- Mutable bookkeeping that async continuations and router callbacks must read synchronously
+  (retained request ids, in-flight guard) lives in one small ledger/lock object created once per
+  owner (`createOperationLedger`, `operationLock`); never in scattered `useRef`s and never read
+  while rendering. Refs are for DOM nodes and imperative handles.
+- Routes that share one workspace (Documents list and document) share one pathless layout route
+  that owns that workspace's state; one-shot signals between them are instance state, never module
+  variables.
+
+Review state ownership, effects and async operations of a UI change against this section.
 
 ## File size is an inspection trigger
 

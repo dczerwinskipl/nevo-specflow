@@ -73,7 +73,10 @@ export const AlertDialogFooter = forwardRef<HTMLDivElement, HTMLAttributes<HTMLD
     return (
       <div
         ref={ref}
-        className={cn('flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)}
+        className={cn(
+          'flex flex-col-reverse gap-2 *:min-w-0 *:w-full sm:flex-row sm:flex-wrap sm:justify-end sm:*:w-auto',
+          className,
+        )}
         {...designSlot('AlertDialog', 'footer')}
         {...props}
       />

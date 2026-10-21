@@ -17,27 +17,23 @@ import type { RuntimeConfig } from '../config/types';
 import {
   createSessionsFeature,
   SessionCapabilities,
-  createDemoSessionReferences,
   type SessionReferenceOwner,
 } from '../features/sessions';
-import {
-  createTasksFeature,
-  createDemoTaskSources,
-  type TasksFeatureDependencies,
-} from '../features/tasks';
-import {
-  createDocumentsFeature,
-  createDemoDocumentSource,
-  type DocumentsFeatureDependencies,
-} from '../features/documents';
+import { createTasksFeature, type TasksFeatureDependencies } from '../features/tasks';
+import { createDocumentsFeature, type DocumentsFeatureDependencies } from '../features/documents';
 import { createSettingsFeature, SettingsCapabilities } from '../features/settings';
 import {
   createSpecsFeature,
-  createDemoSpecsRepositories,
   SpecCapabilities,
   ProjectGitCapabilities,
   type SpecsFeatureDependencies,
 } from '../features/specs';
+import {
+  createDemoEnvironment,
+  createDemoRuntime,
+  registerDemoRoutes,
+  type DemoEnvironment,
+} from '../demo';
 import type { RuntimeFeature } from '../features/runtime-feature';
 import { registerRuntimeErrorHandler } from './error-handler';
 import { registerEndpointPolicy } from './endpoint-policy';
@@ -46,7 +42,10 @@ import { isRequestAtPublicOrigin } from './origin';
 import { registerRuntimeWebApp, type RuntimeWebApp } from './web-app';
 
 export interface RuntimeAppDependencies {
+  readonly demoEnvironment?: DemoEnvironment;
   readonly dataMode?: 'project' | 'demo';
+  /** Enable the demo scenario seam (default off; demo data mode only, ignored otherwise). */
+  readonly demoScenarios?: boolean;
   readonly tasks?: TasksFeatureDependencies;
   readonly documents?: DocumentsFeatureDependencies;
   readonly sessions?: { references?: SessionReferenceOwner };
@@ -90,10 +89,23 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   await registerEndpointPolicy(app, config.server.rateLimit);
 
   const mode = dependencies.dataMode ?? 'project';
-  const demo = mode === 'demo' ? createDemoSpecsRepositories() : undefined;
-  const sessionReferences =
-    dependencies.sessions?.references ??
-    (demo ? createDemoSessionReferences(demo.catalogue) : undefined);
+  const demo =
+    mode === 'demo'
+      ? createDemoRuntime(
+          dependencies.demoEnvironment ??
+            createDemoEnvironment({
+              showcase: true,
+              scenarios: dependencies.demoScenarios === true,
+            }),
+          {
+            references: dependencies.sessions?.references,
+            documentSource: dependencies.documents?.source,
+          },
+        )
+      : undefined;
+  const sessionReferences: SessionReferenceOwner | undefined =
+    demo?.sessionReferences ?? dependencies.sessions?.references;
+  const documentSource = demo?.documentSource ?? dependencies.documents?.source;
   const productFeatures: readonly RuntimeFeature[] = [
     createSpecsFeature({
       ...(config.specs ? { config: config.specs } : {}),
@@ -106,14 +118,12 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       },
     }),
     createTasksFeature({
-      ...(demo ? createDemoTaskSources(demo.catalogue) : {}),
+      ...(demo ? demo.taskSources : {}),
       ...dependencies.tasks,
       sessions: dependencies.tasks?.sessions ?? sessionReferences,
     }),
     createDocumentsFeature({
-      source:
-        dependencies.documents?.source ??
-        (demo ? createDemoDocumentSource(demo.catalogue) : undefined),
+      source: documentSource,
     }),
     createSessionsFeature(),
     createSettingsFeature(),
@@ -148,6 +158,8 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   for (const feature of productFeatures) {
     await feature.register?.(app);
   }
+
+  if (demo) registerDemoRoutes(app, demo);
 
   if (dependencies.webApp) {
     registerRuntimeWebApp(app, dependencies.webApp);

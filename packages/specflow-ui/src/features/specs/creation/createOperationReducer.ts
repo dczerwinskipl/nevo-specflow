@@ -1,0 +1,243 @@
+import type { DemoCreateRequest, DemoOperationStatus } from '@nevo/specflow-contracts/demo';
+import type { CreateFailure } from './createFailure';
+
+/**
+ * State machine of one Create operation (pure; the async orchestration lives in
+ * `useCreateSpecification`).
+ *
+ * ```text
+ *                      submit-started
+ *   idle ───────────────────────────────────────┐
+ *     ▲                                         ▼
+ *     │ failure-dismissed /               ┌────────────┐  submit-succeeded   ┌───────────┐
+ *     │ form-edited (snapshot changed)    │ submitting │────────────────────▶│ completed │ (terminal)
+ *     │                                   └────────────┘                     └───────────┘
+ *   ┌────────┐   submit-failed (definite answer)  │ │ │ submit-failed (no / unreadable answer)
+ *   │ failed │◀───────────────────────────────────┘ │ └──────────────────────────┐
+ *   └────────┘     submit-started (new attempt)     │ submit-failed (503 recovery)│
+ *        │                                          ▼                             ▼
+ *        └─────────────▶ submitting      ┌──────────────────┐   ┌───────────────────┐
+ *                                        │ outcome-unknown  │   │ recovery-required │
+ *                                        └──────────────────┘   └───────────────────┘
+ *   Both unknown phases: submit-started replays the retained operation (-> submitting, failure
+ *   kept); submit-offline-replay returns to the same phase (nothing was dispatched);
+ *   check-started -> check-found-completed (-> submitting, replay) | check-not-started
+ *   (-> outcome-unknown) | check-failed-operation (-> failed) | check-unreadable (same phase).
+ * ```
+ *
+ * Illegal events for the current phase are ignored (the state object is returned unchanged).
+ * `form-edited` never retires an unknown outcome: only the server's answer ends it.
+ */
+export type CreatePhase =
+  'idle' | 'submitting' | 'outcome-unknown' | 'recovery-required' | 'completed' | 'failed';
+
+export type UnknownPhase = 'outcome-unknown' | 'recovery-required';
+
+/** A failure remembers the form it belongs to: editing the form retires its alert. */
+export type StoredFailure = CreateFailure & { snapshot: string };
+
+/** Facts of the create request as it was SENT (display only; the retained body is in the ledger). */
+export interface SentRequest {
+  operationId: string;
+  title: string;
+  target?: DemoCreateRequest['target'];
+}
+
+export interface CreateOperationState {
+  phase: CreatePhase;
+  failure: StoredFailure | null;
+  /** While `submitting`: the unknown phase this attempt replays (null for a fresh attempt). */
+  resumedFrom: UnknownPhase | null;
+  sent: SentRequest | null;
+  status: DemoOperationStatus | null;
+  /** The operation status check is in flight. */
+  checking: boolean;
+  statusUnreadable: boolean;
+  /** A replay was refused because the browser is offline: the earlier unknown outcome stands. */
+  connectionLost: boolean;
+  /** The last submit ended in a failure (drives revealing the failure under the submit button). */
+  submitFailed: boolean;
+  /** Counts failed submits, so a repeated identical failure is still observable. */
+  errorSeq: number;
+}
+
+export type CreateOperationEvent =
+  | { type: 'submit-started' }
+  | { type: 'request-prepared'; sent: SentRequest }
+  | { type: 'submit-succeeded' }
+  | { type: 'submit-failed'; failure: StoredFailure; discardSent?: boolean }
+  | { type: 'submit-offline-replay' }
+  | { type: 'check-started' }
+  | { type: 'check-found-completed' }
+  | { type: 'check-not-started'; status: DemoOperationStatus; snapshot: string }
+  | { type: 'check-failed-operation'; status: DemoOperationStatus; snapshot: string }
+  | { type: 'check-unreadable'; status?: DemoOperationStatus }
+  | { type: 'failure-dismissed' }
+  | { type: 'form-edited'; snapshot: string };
+
+export const initialCreateOperation: CreateOperationState = {
+  phase: 'idle',
+  failure: null,
+  resumedFrom: null,
+  sent: null,
+  status: null,
+  checking: false,
+  statusUnreadable: false,
+  connectionLost: false,
+  submitFailed: false,
+  errorSeq: 0,
+};
+
+const isUnknown = (phase: CreatePhase): phase is UnknownPhase =>
+  phase === 'outcome-unknown' || phase === 'recovery-required';
+
+/** The phase a definite or unknown failure leads to. */
+export function phaseOfFailure(failure: CreateFailure): CreatePhase {
+  if (failure.kind === 'uncertain') return 'outcome-unknown';
+  if (failure.kind === 'recovery-required') return 'recovery-required';
+  return 'failed';
+}
+
+export function createOperationReducer(
+  state: CreateOperationState,
+  event: CreateOperationEvent,
+): CreateOperationState {
+  switch (event.type) {
+    case 'submit-started': {
+      if (state.phase === 'idle' || state.phase === 'failed')
+        return {
+          ...state,
+          phase: 'submitting',
+          failure: null,
+          resumedFrom: null,
+          status: null,
+          statusUnreadable: false,
+          connectionLost: false,
+          submitFailed: false,
+        };
+      // An unknown outcome stays on screen while it is being checked.
+      if (isUnknown(state.phase))
+        return {
+          ...state,
+          phase: 'submitting',
+          resumedFrom: state.phase,
+          status: null,
+          statusUnreadable: false,
+          connectionLost: false,
+          submitFailed: false,
+        };
+      return state;
+    }
+    case 'request-prepared':
+      return state.phase === 'submitting' ? { ...state, sent: event.sent } : state;
+    case 'submit-succeeded':
+      return state.phase === 'submitting'
+        ? { ...state, phase: 'completed', resumedFrom: null, submitFailed: false }
+        : state;
+    case 'submit-failed':
+      return state.phase === 'submitting'
+        ? {
+            ...state,
+            phase: phaseOfFailure(event.failure),
+            failure: event.failure,
+            resumedFrom: null,
+            sent: event.discardSent ? null : state.sent,
+            submitFailed: true,
+            errorSeq: state.errorSeq + 1,
+          }
+        : state;
+    case 'submit-offline-replay':
+      return state.phase === 'submitting' && state.resumedFrom
+        ? {
+            ...state,
+            phase: state.resumedFrom,
+            resumedFrom: null,
+            connectionLost: true,
+            submitFailed: true,
+            errorSeq: state.errorSeq + 1,
+          }
+        : state;
+    case 'check-started':
+      return isUnknown(state.phase) && !state.checking
+        ? { ...state, checking: true, statusUnreadable: false }
+        : state;
+    case 'check-found-completed':
+      return state.checking && isUnknown(state.phase)
+        ? {
+            ...state,
+            phase: 'submitting',
+            resumedFrom: state.phase,
+            failure: null,
+            status: null,
+            checking: false,
+            statusUnreadable: false,
+            connectionLost: false,
+            submitFailed: false,
+          }
+        : state;
+    case 'check-not-started':
+      return state.checking && isUnknown(state.phase)
+        ? {
+            ...state,
+            phase: 'outcome-unknown',
+            failure: { kind: 'uncertain', snapshot: event.snapshot },
+            status: event.status,
+            checking: false,
+          }
+        : state;
+    case 'check-failed-operation':
+      return state.checking && isUnknown(state.phase)
+        ? {
+            ...state,
+            phase: 'failed',
+            failure: { kind: 'failed', operationFailed: true, snapshot: event.snapshot },
+            sent: null,
+            status: event.status,
+            checking: false,
+          }
+        : state;
+    case 'check-unreadable':
+      return state.checking
+        ? {
+            ...state,
+            status: event.status ?? state.status,
+            checking: false,
+            statusUnreadable: true,
+          }
+        : state;
+    case 'failure-dismissed':
+      return state.phase === 'failed'
+        ? { ...state, phase: 'idle', failure: null, submitFailed: false }
+        : state;
+    case 'form-edited':
+      // A conflict describes the attempt that produced it; an unknown outcome is never retired.
+      return state.phase === 'failed' && state.failure && state.failure.snapshot !== event.snapshot
+        ? { ...state, phase: 'idle', failure: null }
+        : state;
+  }
+}
+
+/** What the presentation asks about the operation; derived, never stored. */
+export interface CreateOperationFlags {
+  busy: boolean;
+  checking: boolean;
+  uncertain: boolean;
+  recovery: boolean;
+  forbidden: boolean;
+  /** Leaving would abandon an in-flight or unresolved operation. */
+  blocksLeave: boolean;
+}
+
+export function selectCreateOperationFlags(state: CreateOperationState): CreateOperationFlags {
+  const uncertain = state.failure?.kind === 'uncertain';
+  const recovery = state.failure?.kind === 'recovery-required';
+  const busy = state.phase === 'submitting';
+  return {
+    busy,
+    checking: state.checking,
+    uncertain,
+    recovery,
+    forbidden: state.failure?.kind === 'forbidden',
+    blocksLeave: busy || uncertain || recovery,
+  };
+}

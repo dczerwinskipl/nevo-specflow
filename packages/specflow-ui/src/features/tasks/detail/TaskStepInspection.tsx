@@ -4,7 +4,7 @@ import { canInspectTaskReference } from './taskReference';
 import { TaskReferenceAvailability } from './TaskReferenceAvailability';
 import { useTaskInspectionScroll } from './useTaskInspectionScroll';
 import type { FullTaskData } from '../model';
-import { OperationalRow } from '../../specs/shared/OperationalList';
+import { OperationalRow } from '../../../shared/operational-list';
 import { TaskSourceState } from './TaskDetails';
 import { inspectionStep, matchesWork, type TaskInspectionAnchor } from './taskInspectionModel';
 import type { TaskEvidenceParams } from './TaskInspection';

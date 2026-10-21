@@ -1,13 +1,11 @@
 import { Badge, Button, Icon, InformationList, iconButtonVariants } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { useId } from 'react';
-import { WorkspaceSection } from '../../specs/workspace/sections/WorkspaceSection';
-import {
-  OperationalRow,
-  operationalPrimaryLinkClassName,
-} from '../../specs/shared/OperationalList';
+import { OperationalRow, operationalPrimaryLinkClassName } from '../../../shared/operational-list';
+import { WorkspaceSection } from '../../../shared/workspace-section';
+
 import { useTaskWorkspace } from './TaskWorkspaceState';
-import { SessionProviderIcon } from '../../sessions/shared/SessionProviderIcon';
+import { SessionProviderIcon } from '../../sessions';
 
 export function TaskWorkspaceSessions() {
   const { t } = useTranslation();

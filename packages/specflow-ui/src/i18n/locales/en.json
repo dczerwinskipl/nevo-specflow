@@ -5,13 +5,17 @@
     "english": "English",
     "polish": "Polski",
     "retry": "Retry",
+    "moreActions": "More actions",
+    "dismissNotification": "Dismiss notification",
     "retrying": "Retrying…",
     "cancel": "Cancel",
     "close": "Close",
     "open": "Open",
     "loading": "Loading…",
     "notImplemented": "Not implemented",
-    "unknown": "Unknown"
+    "unknown": "Unknown",
+    "flow": "Flow",
+    "pullRequestNumber": "PR #{{number}}"
   },
   "navigation": {
     "product": "Product navigation",
@@ -81,6 +85,8 @@
     "viewWork": "Work",
     "viewOverview": "Overview",
     "viewDocuments": "Documents",
+    "documentIdleTitle": "Select a document",
+    "documentIdleDescription": "Open a file from the tree to see its content.",
     "viewSessions": "Sessions",
     "viewChanges": "View changes",
     "viewRepository": "Repository",
@@ -92,6 +98,17 @@
     "taskActionsNamed": "Actions for {{id}}",
     "historyAriaLabel": "Activity history",
     "activityHistory": "Activity history",
+    "activityHistoryEmptyTitle": "No history for this specification",
+    "activityHistoryEmptyDescription": "Events will appear here as work on the specification happens.",
+    "activityHistoryUnavailableTitle": "Couldn't load history",
+    "activityHistoryUnavailableDescription": "The history of this specification is temporarily unavailable.",
+    "activityHistoryForbiddenTitle": "No access to history",
+    "activityHistoryForbiddenDescription": "You don't have permission to view this specification's history.",
+    "documentPreviewTitle": "Document preview",
+    "markdownTable": "Table",
+    "markdownCodeBlock": "Code block",
+    "markdownTaskDone": "Completed task",
+    "markdownTaskOpen": "Incomplete task",
     "thisSpecification": "This specification",
     "backFromHistory": "Back from history",
     "previewTaskAria": "Preview task: {{title}}",
@@ -336,7 +353,9 @@
     "milestone": {
       "completed": "Completed",
       "archived": "Archived"
-    }
+    },
+    "more_few": "+{{count}} more",
+    "more_many": "+{{count}} more"
   },
   "taskWorkspace": {
     "readMore": "Read more",
@@ -468,7 +487,8 @@
     "materialUnavailable": "Content unavailable",
     "readerUnavailable": "No reader is available for this material.",
     "materialForbidden": "Access restricted",
-    "restrictedMaterial": "Restricted material"
+    "restrictedMaterial": "Restricted material",
+    "historyTitle": "History"
   },
   "applicationNavigation": {
     "location": "Application location",
@@ -496,8 +516,558 @@
     "partialActivity": "Activity is partially available",
     "tasksUnavailable": "Task list is not available yet",
     "staleContext": "Context may be stale",
-    "contextUnavailable": "Context unavailable",
+    "contextUnavailable": "Couldn't load information about this specification.",
+    "noSpecificationSelectedTitle": "Select a specification",
+    "noSpecificationSelectedDescription": "Open a specification from the list to see its documents and sessions.",
     "activeCount_few": "{{count}} active",
-    "activeCount_many": "{{count}} active"
+    "activeCount_many": "{{count}} active",
+    "sessionBack": "Spec Writer session"
+  },
+  "loading": {
+    "waitingForConnection": "Waiting for connection…",
+    "task": "Loading Task…",
+    "document": "Loading document…",
+    "history": "Loading Task history…",
+    "detail": "Loading resource…",
+    "dependency": "The Task context is unavailable."
+  },
+  "create": {
+    "newSession": "New session",
+    "newSpecification": "New specification",
+    "loading": "Loading configuration…",
+    "demoOnly": "Creation is available in demo mode only",
+    "loadError": "Unable to load the configuration",
+    "sessionReady": "Session ready",
+    "specificationCreated": "Specification created",
+    "withAI": "With an agent",
+    "manual": "On my own",
+    "nameLabel": "Specification name",
+    "namePlaceholder": "E.g. SSO sign-in",
+    "workflowLabel": "Workflow",
+    "model": "Model",
+    "chooseModel": "Choose a model",
+    "effort": "Effort",
+    "providerDefault": "Executor default",
+    "mode": "Working mode",
+    "send": "Send",
+    "changeMethod": "Change the way of working",
+    "formRegion": "Specification creation",
+    "sessionWorkspaceIntro": "The new session uses the workspace of this specification.",
+    "simulatedSuffix": "simulated, no Git operations",
+    "method": {
+      "title": "How do you want to create the specification?",
+      "intro": "Choose whether to start with a conversation with the Spec Writer or with the document skeleton from the workflow.",
+      "aiText": "Start a Spec Writer session. Later stages can use other agents.",
+      "manualText": "Create the documents required by the workflow and edit them yourself."
+    },
+    "heading": {
+      "session": "Who do you want to work with?",
+      "specification": "What do you want to describe?"
+    },
+    "subheading": {
+      "session": "Configure another Spec Writer session.",
+      "specification": "Choose the workflow that matches the kind of work."
+    },
+    "agent": {
+      "sessionTitle": "Session configuration",
+      "initialTitle": "Initial agent session",
+      "introSession": "Choose the executor of this Spec Writer session.",
+      "introInitial": "Choose the executor of the first Spec Writer session. Later sessions can use other agents.",
+      "noProviders": "No executors are available."
+    },
+    "provider": {
+      "accessApi": "API",
+      "accessSubscription": "Subscription",
+      "unavailable": "Unavailable in this environment",
+      "availableDemo": "Available in the demo",
+      "available": "Available"
+    },
+    "prerequisite": {
+      "workspaceLoading": "Loading workspace options…",
+      "workspaceError": "Unable to load the workspace options.",
+      "forbidden": "You do not have permission to create specifications.",
+      "refreshConfiguration": "Refresh the configuration before creating.",
+      "title": "Enter a specification name.",
+      "workflow": "Choose an available workflow.",
+      "provider": "Choose an available executor.",
+      "model": "Choose a model.",
+      "mode": "Choose a supported working mode."
+    },
+    "announce": {
+      "refreshFailed": "Unable to refresh the options. The form is kept.",
+      "refreshedStale": "Options refreshed. The form is kept — fix the highlighted field.",
+      "refreshed": "Options refreshed.",
+      "notStarted": "The operation has not started yet. Retry the same operation — it keeps the same identifier.",
+      "operationFailed": "The operation failed. You can create the specification again.",
+      "copied": "Copied {{label}}."
+    },
+    "operation": {
+      "copyLabelOperation": "operation details",
+      "copyLabelDiagnostics": "diagnostic data",
+      "stageWorkspacePrepared": "Workspace prepared",
+      "detail": {
+        "operation": "Operation identifier",
+        "specification": "Specification",
+        "place": "Place of work",
+        "branch": "Branch",
+        "step": "Stage",
+        "attempt": "Last attempt"
+      }
+    },
+    "leave": {
+      "title": "Discard the configuration?",
+      "description": "Unsaved settings will be lost.",
+      "stay": "Continue",
+      "discard": "Discard configuration"
+    },
+    "configUnavailable": {
+      "title": "The configuration is unavailable",
+      "body": "Your draft is kept. Refresh the configuration before creating.",
+      "refresh": "Refresh configuration"
+    },
+    "footer": {
+      "operationKept": "The operation is kept under the same identifier.",
+      "aiNote": "You will write the message in the opened session. The agent does not start automatically.",
+      "manualNote": "After creation we will open the documents for editing."
+    },
+    "submit": {
+      "checking": "Checking…",
+      "preparing": "Preparing…",
+      "checkOperation": "Check operation status",
+      "checkResult": "Check the result",
+      "openSession": "Open session",
+      "createAndOpen": "Create and open session",
+      "create": "Create specification"
+    },
+    "recovery": {
+      "title": "Unable to open the session",
+      "body": "The specification and its workspace already exist. We will retry only the initial session with the remembered configuration.",
+      "stillUnconfirmed": "Still no confirmation. You can retry the same operation.",
+      "retry": "Retry opening the session"
+    },
+    "options": {
+      "show": "Show options",
+      "noResults": "No results",
+      "loading": "Loading"
+    },
+    "archetype": {
+      "unavailable": "The selected workflow is unavailable. Choose another one.",
+      "info": "Workflow information",
+      "phases": "Workflow phases",
+      "noDescription": "The workflow description is unavailable.",
+      "noPhases": "The catalogue does not describe the phases.",
+      "requiredDocuments": "Required documents",
+      "suggestedLater": "Suggested later",
+      "details": "Document details",
+      "requiredNone": "No required documents",
+      "requiredCount_one": "{{count}} required document",
+      "requiredCount_few": "{{count}} required documents",
+      "requiredCount_many": "{{count}} required documents",
+      "requiredCount_other": "{{count}} required documents",
+      "suggestedCount_one": "{{count}} suggested later",
+      "suggestedCount_few": "{{count}} suggested later",
+      "suggestedCount_many": "{{count}} suggested later",
+      "suggestedCount_other": "{{count}} suggested later"
+    },
+    "errors": {
+      "forbiddenTitle": "You do not have permission to create specifications",
+      "readOnlyForm": "The form is read-only.",
+      "uncertain": {
+        "title": "We are checking the creation result",
+        "body": "We have no confirmed result. Check it with the same operation — we will not create a second specification or a second branch."
+      },
+      "recovery": {
+        "title": "Creation needs to be completed",
+        "body": "Nevo started preparing the workspace but did not confirm the result. Do not create the specification again — it could duplicate the branch and folder. The form is locked until the check is done.",
+        "inProgress": "The operation is still in progress.",
+        "pending": "The operation still needs to be completed."
+      },
+      "branchExistsAutomatic": {
+        "title": "Nevo could not choose a free branch name",
+        "body": "The specification was not created: the automatically chosen branch is already taken. Enter your own branch name — the other settings are kept."
+      },
+      "branchExists": {
+        "title": "The branch name is taken",
+        "body": "The specification was not created. Enter a different branch name or let Nevo generate one automatically."
+      },
+      "stale": {
+        "title": "The workspace state changed since the form was opened",
+        "body": "{{reason}} The specification was not created. The name and choices are kept — refresh the options and fix the highlighted field."
+      },
+      "staleReason": {
+        "default": "One of the selected options is no longer valid or available.",
+        "DEMO_WORKSPACE_UNAVAILABLE": "The selected workspace is no longer available.",
+        "BASE_REF_NOT_FOUND": "The selected starting branch is no longer available."
+      },
+      "conflict": {
+        "title": "This operation was already used with a different request",
+        "body": "The specification was not created. The next attempt will use a new operation identifier."
+      },
+      "unauthenticated": {
+        "title": "Your session expired",
+        "body": "The specification was not created. Sign in again and try once more — the form is kept."
+      },
+      "offline": {
+        "title": "No connection",
+        "body": "Nothing was sent or created. When the connection is back, create the specification again — the form is kept."
+      },
+      "failed": {
+        "title": "Unable to create the specification",
+        "body": "The configuration is kept. Fix the settings or try again.",
+        "bodyOperation": "The operation failed. The configuration is kept. Fix the settings or try again."
+      },
+      "statusUnreadable": "Unable to read the operation status. Check it again — it is still the same operation.",
+      "connectionLost": "No connection — we did not check the result. Try again when the connection is back.",
+      "copyOperation": "Copy operation details",
+      "copyHelp": "If the problem persists, copy the operation details and pass them to an administrator.",
+      "copyDiagnostics": "Copy diagnostic data",
+      "diagnostics": "Diagnostic data",
+      "useCustomName": "Enter your own name",
+      "useAutomaticName": "Use an automatic name"
+    },
+    "workspace": {
+      "heading": "Where do you want to work?",
+      "intro": "Choose where the specification and its changes will live.",
+      "refreshOptions": "Refresh workspace options",
+      "refreshOptionsAction": "Refresh options",
+      "refreshing": "Refreshing options…",
+      "summaryLabel": "Workspace summary",
+      "recommended": "Recommended",
+      "currentCheckout": "current checkout",
+      "dirtyBadge": "changes",
+      "dirtyNote": "The folder has uncommitted Git changes. New specification files will appear next to them.",
+      "noBranch": "Workspace without a branch",
+      "staleAnnouncement": "A previously selected value is no longer available.",
+      "tile": {
+        "newTitle": "New workspace",
+        "newDescription": "A new branch and a separate worktree. The current working folder is not changed.",
+        "mainTitle": "Current folder",
+        "mainDescription": "Work directly in the current checkout, without a new branch.",
+        "existingTitle": "Existing workspace",
+        "existingDescription": "Choose a previously created worktree and continue working."
+      },
+      "tileReason": {
+        "newDisabled": "Disabled in the project configuration.",
+        "newMismatch": "This folder does not belong to the project repository.",
+        "newCheckoutUnavailable": "The project folder is unavailable right now.",
+        "newGitUnavailable": "Git is unavailable right now.",
+        "mainDetached": "No branch is checked out in the current folder (detached state).",
+        "mainUnavailable": "The current folder is unavailable.",
+        "existingNone": "There are no other workspaces in the project.",
+        "existingUnavailable": "No workspace is available right now."
+      },
+      "reason": {
+        "dirty": "Has uncommitted Git changes",
+        "detached": "No branch checked out (detached state)",
+        "checkout-unavailable": "Folder unavailable",
+        "git-membership-mismatch": "The folder does not belong to this repository",
+        "git-disabled": "Git disabled",
+        "git-unavailable": "Git unavailable",
+        "other": "Unavailable"
+      },
+      "reasonInline": {
+        "dirty": "has uncommitted Git changes",
+        "detached": "no branch checked out (detached state)",
+        "checkout-unavailable": "folder unavailable",
+        "git-membership-mismatch": "the folder does not belong to this repository",
+        "git-disabled": "Git disabled",
+        "git-unavailable": "Git unavailable",
+        "other": "unavailable"
+      },
+      "specCount_one": "{{count}} specification",
+      "specCount_few": "{{count}} specifications",
+      "specCount_many": "{{count}} specifications",
+      "specCount_other": "{{count}} specifications",
+      "specCountNone": "no specifications",
+      "availableCount_one": "{{count}} available",
+      "availableCount_few": "{{count}} available",
+      "availableCount_many": "{{count}} available",
+      "availableCount_other": "{{count}} available",
+      "sharedUseWorkspace_one": "{{count}} existing specification already uses this workspace. Changes and Git history will be shared.",
+      "sharedUseWorkspace_few": "{{count}} existing specifications already use this workspace. Changes and Git history will be shared.",
+      "sharedUseWorkspace_many": "{{count}} existing specifications already use this workspace. Changes and Git history will be shared.",
+      "sharedUseWorkspace_other": "{{count}} existing specifications already use this workspace. Changes and Git history will be shared.",
+      "sharedUseFolder_one": "{{count}} existing specification already uses this folder. Changes and Git history will be shared.",
+      "sharedUseFolder_few": "{{count}} existing specifications already use this folder. Changes and Git history will be shared.",
+      "sharedUseFolder_many": "{{count}} existing specifications already use this folder. Changes and Git history will be shared.",
+      "sharedUseFolder_other": "{{count}} existing specifications already use this folder. Changes and Git history will be shared.",
+      "loadFailed": {
+        "title": "Unable to load the workspace options",
+        "body": "The name and settings stay in the form. We do not guess the workspace."
+      },
+      "nothing": {
+        "title": "A specification cannot be created anywhere right now",
+        "body": "No workspace is available. The name and settings stay in the form. Refresh the options once access to the repository is restored."
+      },
+      "refreshFailed": {
+        "title": "Unable to refresh the options",
+        "body": "We are showing the most recently loaded options. The form is kept."
+      },
+      "notice": {
+        "noTarget": "No integration target is configured. You can create the specification, but closing the work will require a target in the project configuration.",
+        "otherBranch": "The project target <target/> is served by the current folder, which is now on branch <current/>. Closing the work may then require a change. Creation is not blocked.",
+        "otherBranchNone": "The project target <target/> is served by the current folder, which currently has no branch checked out. Closing the work may then require a change. Creation is not blocked.",
+        "unavailable": "The target <target/> is not available right now: {{reason}}. Creation is not blocked."
+      },
+      "baseHead": "Current commit of the current folder",
+      "baseHeadOnBranch": "Current commit of the current folder (<branch/>)",
+      "fact": {
+        "base": "Start from",
+        "branch": "New branch",
+        "automatic": "automatic",
+        "target": "Chosen merge target",
+        "pickTarget": "choose a target",
+        "pinned": "(pinned)",
+        "projectTarget": "(project target)",
+        "noTarget": "no target"
+      },
+      "main": {
+        "onBranch": "The specification will be created on branch <branch/>. We do not create a new branch or worktree and do not switch the current branch.",
+        "noBranch": "The specification will be created in the current folder. We do not create a new branch or worktree."
+      },
+      "inherited": {
+        "pinned": "Merged into: <branch/> (set when this workspace was created)",
+        "branchChanged": "The target workspace changed its branch since it was pinned. Closing the work may require a change.",
+        "unavailable": "The target workspace is not available right now. Closing the work may require a change.",
+        "project": "Project target: <branch/>",
+        "none": "No merge target is set in the project."
+      },
+      "existing": {
+        "label": "Workspace",
+        "placeholder": "Choose a workspace",
+        "unmanaged": "Not managed by Nevo",
+        "outside": "Outside Nevo",
+        "joins": "The specification will join <branch/>.",
+        "joinsNoBranch": "The specification will join this workspace.",
+        "unmanagedNote": "This workspace was added outside Nevo and is not managed by it."
+      },
+      "errors": {
+        "branchEmpty": "Enter a branch name or turn this option off.",
+        "branchTooLong": "The branch name is too long.",
+        "branchCharacters": "The branch name contains characters that are not allowed. Use letters, digits, \"-\", \"_\" and \"/\".",
+        "branchStructure": "The branch name has a layout that is not allowed: do not start with \"-\" or \"/\", do not end with \"/\", \".\" or \".lock\", and do not use \"..\", \"//\" or \"@{\".",
+        "branchExists": "A branch with this name already exists. Enter a different name.",
+        "noWorkspace": "No workspace is available.",
+        "pickWorkspace": "Choose a workspace.",
+        "pickBase": "Choose a starting branch or turn this option off.",
+        "pickTarget": "Choose a merge target or turn this option off."
+      },
+      "stale": {
+        "tile": "This option is no longer available. Choose another one.",
+        "existing": "This workspace is no longer available.",
+        "base": "This branch is no longer available. Choose another one or turn this option off.",
+        "target": "This workspace can no longer be a merge target. Choose another one or turn this option off."
+      },
+      "settings": {
+        "default": "Default settings",
+        "changed": "Changed settings ({{count}}): {{names}}",
+        "nameBase": "base",
+        "nameTarget": "target",
+        "nameBranch": "name",
+        "trigger": "Change settings",
+        "baseSwitch": "Start from a different branch",
+        "baseNone": "There are no local branches to choose from.",
+        "baseDefault": "Default: <branch/>",
+        "basePlaceholder": "Choose a branch",
+        "refCurrent": "current folder",
+        "refWorkspace": "has a workspace",
+        "refDirty": "{{label}} · changes",
+        "targetSwitch": "Merge later into a different branch",
+        "targetPick": "Choose which branch the changes will return to.",
+        "targetNone": "There are no workspaces to merge into.",
+        "targetFollows": "By default we follow the project target: <branch/>",
+        "targetUnconfigured": "The integration target is not configured.",
+        "targetLabel": "Choose the merge target",
+        "targetNote": "Nothing will be merged now. This only marks the place for later. The choice pins the target at creation and will not change, while the default target follows the project configuration.",
+        "targetUnavailable": "Unavailable as a target:",
+        "unavailableItemBranch": "<branch/> ({{reason}})",
+        "unavailableItemNoBranch": "{{name}} ({{reason}})",
+        "branchSwitch": "Use your own branch name",
+        "branchSwitchDescription": "Nevo generates the name and it cannot be previewed before creation. If it is taken, we will ask for another one.",
+        "branchLabel": "New branch name",
+        "branchPlaceholder": "feature/new-api",
+        "branchHelp": "Nevo prepares the worktree folder itself. If the name is taken, you will enter another one."
+      },
+      "suggestion": {
+        "title": "Do you want to merge the changes back into <branch/> later?",
+        "projectDefault": "By default we merge into <branch/> (the project target). ",
+        "note": "Changing the base does not change the target by itself. A target set here is pinned to the new workspace.",
+        "set": "Set merge target",
+        "keep": "Leave unchanged",
+        "announceSet": "Merge target set to {{branch}}.",
+        "announceKept": "The merge target stays unchanged: {{branch}}.",
+        "announceKeptNoTarget": "The merge target stays unchanged.",
+        "dirty": "We will not suggest merging back into <branch/>: that workspace has uncommitted Git changes. The merge target stays unchanged."
+      }
+    }
+  },
+  "documents": {
+    "title": "Documents",
+    "unsaved": "Unsaved changes",
+    "loadingDocument": "Loading the document…",
+    "loadingDocuments": "Loading documents…",
+    "loadFailed": "Unable to load the documents",
+    "noAccess": "You do not have access to this document",
+    "unavailable": "The document is unavailable",
+    "backToList": "Back to the document list",
+    "closeDocument": "Close document",
+    "demo": {
+      "title": "Demo mode",
+      "body": "Documents and empty folders are kept until the demo environment restarts."
+    },
+    "editor": {
+      "conflict": "The document changed. Your draft is kept.",
+      "saveFailed": "Unable to save. Your draft is kept.",
+      "sourceLabel": "Content of {{name}}"
+    },
+    "properties": {
+      "label": "Properties"
+    },
+    "actions": {
+      "showPath": "Show path",
+      "edit": "Edit document",
+      "preview": "Show preview",
+      "save": "Save",
+      "discard": "Discard changes"
+    },
+    "dialogs": {
+      "path": {
+        "title": "Document path",
+        "copy": "Copy path",
+        "copied": "Copied.",
+        "copyFailed": "Unable to copy."
+      },
+      "unsaved": {
+        "saveFailed": "Unable to save. The draft is kept.",
+        "continue": "Keep editing",
+        "discard": "Discard changes",
+        "save": "Save changes",
+        "discardDescription": "Revert the changes in {{name}}? You can save them or discard them and stay in the editor."
+      }
+    },
+    "guard": {
+      "description": "The document has unsaved changes. Save or discard them before switching the document or view.",
+      "save": "Save and continue"
+    },
+    "saved": {
+      "none": "This specification has no documents.",
+      "openNote": "The document opens in Documents. The message draft is kept."
+    },
+    "tree": {
+      "newFile": "New file",
+      "newFolder": "New folder",
+      "upload": "Upload files",
+      "rename": "Rename",
+      "move": "Move",
+      "delete": "Delete",
+      "required": "Required",
+      "requiredReason": "Required by the workflow: it cannot be changed or deleted.",
+      "rowActions": "Actions: {{name}}",
+      "checkFailed": "Unable to check the current documents. Try again.",
+      "renamed": "Name changed.",
+      "folderAdded": "Folder added.",
+      "fileAdded": "File added.",
+      "deleted": "Deleted.",
+      "moved": "Moved.",
+      "unconfirmedRename": "No confirmation. Check the same operation before renaming again.",
+      "unconfirmed": "No confirmation. Check the result of the same operation.",
+      "inputRename": "New name",
+      "inputFolder": "New folder name",
+      "inputFile": "New file name",
+      "saving": "Saving…",
+      "checkResult": "Check the result of this operation",
+      "emptyFolder": "This folder is empty. Add a file or folder from the menu.",
+      "readOnly": "This specification is read-only.",
+      "addFirst": "Add the first file from the actions menu.",
+      "processing": "Processing…",
+      "importDone": "Import finished.",
+      "importStillUnconfirmed": "The import is still unconfirmed. The files are kept.",
+      "importUnconfirmed": "The import was not confirmed. The files are kept so the same operation can be retried.",
+      "importRejected": "Import rejected. {{reason}}",
+      "retryImport": "Retry import",
+      "uploadDone": "Added: {{count}}.",
+      "uploadSkipped": "Added: {{count}}. Skipped: {{skipped}}.",
+      "skippedItem": "{{name}}: {{reason}}",
+      "skip": {
+        "limit": "at most 10 files per import",
+        "size": "the file exceeds 2 MB",
+        "format": "supported formats are .md and .txt",
+        "path": "the path exceeds 500 characters",
+        "exists": "this path already exists — rename the file",
+        "content": "the content exceeds 200,000 characters",
+        "utf8": "unable to read the text as UTF-8"
+      },
+      "moveFileTitle": "Move file",
+      "moveFolderTitle": "Move folder",
+      "targetFolder": "Target folder",
+      "topLevel": "Top level",
+      "deleteFileTitle": "Delete file",
+      "deleteFolderTitle": "Delete folder",
+      "deleteFileWarning": "Deleting this file cannot be undone in this demo session.",
+      "deleteFolderWarning": "Deleting this folder and its documents cannot be undone in this demo session.",
+      "error": {
+        "pathConflict": "This path already exists. Choose a different name or folder.",
+        "revisionConflict": "The document or tree changed. Close the action and open it again to see the current state.",
+        "required": "This path is required by the workflow — the change cannot be made.",
+        "requestConflict": "The request has a different recorded result. Refresh the documents before the next operation.",
+        "default": "Unable to make the change. Check the name and path; the draft is kept."
+      },
+      "reason": {
+        "required": "A path required by the workflow — it cannot be changed or deleted.",
+        "operationsUnavailable": "Operations on this sample specification are unavailable.",
+        "rootProtected": "The root folder cannot be changed or deleted.",
+        "unavailable": "This operation is unavailable."
+      },
+      "nameError": {
+        "characters": "The name cannot contain the characters \\ / : * ? \" < > |",
+        "control": "The name cannot contain control characters.",
+        "tooLong": "The name can be at most 200 characters long.",
+        "other": "Enter a different name.",
+        "dot": "The name cannot start with a dot.",
+        "reserved": "The name is reserved by the system.",
+        "trailing": "The name cannot end with a dot or a space.",
+        "format": "Supported formats are .md and .txt."
+      },
+      "nameReason": {
+        "dot": "the name cannot start with a dot",
+        "reserved": "the name is reserved by the system",
+        "invalid": "the name contains characters that are not allowed or ends with a dot/space"
+      }
+    }
+  },
+  "sessions": {
+    "demo": {
+      "title": "Session",
+      "titleWithProfile": "Session · {{profile}}",
+      "backToSession": "Back to the Spec Writer session",
+      "closeContext": "Close context",
+      "context": "Context",
+      "loading": "Loading the session…",
+      "unavailable": "The session is unavailable",
+      "notFound": "This session does not exist or was deleted.",
+      "startTitle": "Start with what you want to settle",
+      "startBody": "You can describe the problem, ask for questions, or point to a part of the specification. The documents are already part of the context.",
+      "messageLabel": "Message to the Spec Writer",
+      "messagePlaceholder": "E.g. check whether we covered secure sign-out…",
+      "demoNote": "Session demo · the message stays a draft. Sending is not available.",
+      "contextIntro": "Materials available to the Spec Writer, regardless of your message.",
+      "documentsHint": "Specification files and source materials",
+      "project": "Project",
+      "instructions": "SpecFlow instructions",
+      "instructionsHint": "Role and working rules",
+      "loadingDocuments": "Loading documents…",
+      "documentsUnavailable": "The documents are unavailable",
+      "noDocuments": "No documents.",
+      "loadingDocument": "Loading the document…",
+      "documentUnavailable": "The document is unavailable.",
+      "previewLine": "{{filename}} · Preview",
+      "previewTitle": "Document preview",
+      "openInDocuments": "Open in Documents",
+      "demoContext": "Demo context, no Git operations.",
+      "writer": "Spec Writer",
+      "instructionsBody": "Project and role instructions are passed by SpecFlow regardless of the user message. This placeholder does not show the full system prompt.",
+      "loadingContext": "Loading the context…",
+      "contextUnavailable": "The context is unavailable."
+    }
   }
 }

@@ -1,3 +1,4 @@
+import { createSpecificationRoute, newSessionRoute } from '../features/specs/creation';
 import { createRoute, createRouter, type RouterHistory } from '@tanstack/react-router';
 
 import { authRoutes, loginRoute, runtimeUnavailableRoute } from '../auth/routes';
@@ -55,11 +56,13 @@ export const routeTree = rootRoute.addChildren([
   ...specsRootRoutes,
   appRoute.addChildren([
     ...specsAppRoutes,
+    createSpecificationRoute,
     specificationRoute.addChildren([
       specificationIndexRoute,
       ...taskAppRoutes,
       ...documentsAppRoutes,
       ...sessionsAppRoutes,
+      newSessionRoute,
       ...gitAppRoutes,
     ]),
     uiPlaygroundRoute,

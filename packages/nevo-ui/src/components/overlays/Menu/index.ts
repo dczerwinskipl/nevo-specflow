@@ -4,6 +4,7 @@ export {
   MenuGroup,
   MenuItem,
   MenuLabel,
+  MenuNote,
   MenuRadioGroup,
   MenuRadioItem,
   MenuSeparator,
@@ -15,6 +16,7 @@ export type {
   MenuContentProps,
   MenuItemProps,
   MenuItemTone,
+  MenuNoteProps,
   MenuRadioGroupProps,
   MenuRadioItemProps,
 } from './Menu';

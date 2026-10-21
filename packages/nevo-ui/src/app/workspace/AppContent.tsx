@@ -87,12 +87,22 @@ export function AppWorkspaceHeader({
 export function AppWorkspaceBody({
   children,
   className,
+  contentClassName,
   tabIndex = 0,
   padding = 'md',
   scroll = 'native',
   ...props
 }: PropsWithChildren<
-  HTMLAttributes<HTMLDivElement> & { padding?: 'none' | 'sm' | 'md'; scroll?: 'native' | 'area' }
+  HTMLAttributes<HTMLDivElement> & {
+    /**
+     * Classes for the padded content box. In `scroll="area"` they are merged after the `padding`
+     * preset on the ScrollArea content (so `py-6` refines `md`), where `className` styles the
+     * ScrollArea root; in `native` mode they apply to the body element itself.
+     */
+    contentClassName?: string;
+    padding?: 'none' | 'sm' | 'md';
+    scroll?: 'native' | 'area';
+  }
 >) {
   const ancestorOwnsScroll = useContext(AppContentScrollContext);
 
@@ -101,7 +111,10 @@ export function AppWorkspaceBody({
       <ScrollArea
         {...props}
         className={cn('min-h-0 flex-1 w-full', className)}
-        contentClassName={padding === 'md' ? 'p-4' : padding === 'sm' ? 'p-3' : undefined}
+        contentClassName={cn(
+          padding === 'md' ? 'p-4' : padding === 'sm' ? 'p-3' : undefined,
+          contentClassName,
+        )}
         tabIndex={tabIndex}
       >
         {children}
@@ -115,6 +128,7 @@ export function AppWorkspaceBody({
         appWorkspaceBodyVariants({ padding }),
         ancestorOwnsScroll && 'min-h-auto flex-none overflow-visible',
         className,
+        contentClassName,
       )}
       tabIndex={ancestorOwnsScroll ? undefined : tabIndex}
       {...props}

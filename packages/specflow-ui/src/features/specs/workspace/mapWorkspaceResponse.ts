@@ -74,6 +74,7 @@ export function mapWorkspaceResponse(
   const changes = sections.changes.state === 'available' ? sections.changes.data : undefined;
   return {
     id: specification.id,
+    ...(specification.key ? { key: specification.key } : {}),
     title: specification.title,
     intro: specification.summary,
     isEmpty: specification.preparationState === 'empty',
@@ -110,9 +111,12 @@ export function mapWorkspaceResponse(
             id: doc.id,
             title: doc.title,
             kind: doc.kind,
+            ...(doc.filename ? { filename: doc.filename } : {}),
             summary: doc.summary,
           }))
         : [],
+    documentFolders:
+      sections.documents.state === 'available' ? sections.documents.data.folders : undefined,
     mainDocumentId:
       sections.documents.state === 'available' ? sections.documents.data.items[0]?.id : undefined,
     sessions: sessionSummaries,

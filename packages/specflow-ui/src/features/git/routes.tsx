@@ -1,8 +1,8 @@
 import { createRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { specificationRoute } from '../specs/routes';
+import { SpecificationAggregatePage, specificationRoute } from '../specs';
 import { parseSpecificationCollection } from '../../app/router/search';
-import { SpecificationAggregatePage } from '../specs/pages/SpecificationAggregatePage';
+
 import { ChangesView } from './views/ChangesView';
 import { RepositoryView } from './views/RepositoryView';
 
@@ -39,6 +39,7 @@ function RepositoryRouteScreen() {
       specId={specId}
       title={t('specification.repositoryHeading')}
       section="repository"
+      loadingShape="summary"
     >
       {(data) => (
         <RepositoryView
@@ -67,6 +68,7 @@ function ChangesRouteScreen() {
       specId={specId}
       title={t('specification.changesHeading')}
       section="changes"
+      loadingShape="summary"
     >
       {(data) => (
         <ChangesView

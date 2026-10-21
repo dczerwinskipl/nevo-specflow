@@ -1,6 +1,11 @@
+import { translateNow } from '../../../i18n/message';
+import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
+import { RefreshStatus } from '../../../app/loading/RefreshStatus';
 import { createContext, useContext } from 'react';
 import {
   AppContent,
+  Alert,
+  Button,
   AppWorkspaceBody,
   defineSecondaryStack,
   useSecondaryStack,
@@ -13,26 +18,25 @@ import { useTranslation } from 'react-i18next';
 import { appI18n } from '../../../i18n';
 import type { ActivityEvent, SpecificationWorkspaceData, TaskGroup, TaskItem } from './model';
 import {
-  inspectionAnchor,
-  type TaskInspectionAnchor,
-} from '../../tasks/detail/taskInspectionModel';
-import { TaskPreview } from '../../tasks/inspectors/TaskPreview';
-import {
-  TaskInspection,
-  TaskEvidenceInspection,
-  TaskEvidenceHeader,
-  type TaskEvidenceParams,
-  TaskResourceInspection,
   TaskContextHeader,
+  TaskEvidenceHeader,
+  TaskEvidenceInspection,
   TaskFlowHeader,
+  TaskInspection,
+  TaskPreview,
   TaskResourceHeader,
-} from '../../tasks/detail/TaskInspection';
-import { useTaskResources } from '../../tasks/detail/useTaskPages';
-import { mergeTaskResources } from '../../tasks/detail/TaskDetails';
-import { mapFullTaskResponse } from '../../tasks/model';
-import { useSpecificationTask } from '../../tasks/useSpecificationTask';
+  TaskResourceInspection,
+  inspectionAnchor,
+  mapFullTaskResponse,
+  mergeTaskResources,
+  type TaskEvidenceParams,
+  type TaskInspectionAnchor,
+  useSpecificationTask,
+  useTaskResources,
+} from '../../tasks';
+
 import { ActivityHistory } from './ActivityHistory';
-import { DocumentContent } from '../../documents/connected/DocumentContent';
+import { DocumentContent } from '../../documents';
 
 export interface SpecificationSecondaryContextValue {
   readonly specId: string;
@@ -42,12 +46,17 @@ export interface SpecificationSecondaryContextValue {
   readonly openSession?: (sessionId: string) => void;
   readonly openDoc?: (docId: string) => void;
   readonly previewTask: (taskId: string) => void;
+  /** Re-reads the Workspace snapshot (e.g. after an unavailable section). */
+  readonly retry?: () => void;
 }
 
 export const SpecificationSecondaryDataContext =
   createContext<SpecificationSecondaryContextValue | null>(null);
 
 export interface TaskPreviewSecondaryData {
+  readonly refreshing?: boolean;
+  readonly refreshFailed?: boolean;
+  readonly retry?: () => void;
   readonly fullTaskLabel?: string;
   readonly specId: string;
   readonly task: TaskItem;
@@ -69,8 +78,9 @@ export function useTaskPreviewData({
     .find((task) => task.id === taskId);
   // Attention/Activity may reference a Task absent from the current Workspace projection.
   const detail = useSpecificationTask(specId, taskId, undefined, Boolean(context));
-  if (!context) return { status: 'loading' };
-  if (detail.isError && (detail.errorStatus === 403 || detail.isTaskNotFound)) {
+  if (context?.specId !== specId)
+    return { status: 'unavailable', message: t('loading.dependency') };
+  if (detail.isError && [401, 403, 404, 409].includes(detail.errorStatus ?? 0)) {
     return taskPreviewFailure(detail.errorStatus, detail.isTaskNotFound, taskId, () => {
       void detail.refetch();
     });
@@ -83,15 +93,32 @@ export function useTaskPreviewData({
         ? { ...listTask, ...mapFullTaskResponse(detail.data) }
         : listTask;
   } else {
-    if (detail.isPending) return { status: 'loading' };
-    if (detail.isError) {
+    if (detail.isPending)
+      return {
+        status: 'loading',
+        presentation: (
+          <AppContent className="w-content-standard max-w-full">
+            <AppWorkspaceBody padding="none" scroll="area">
+              <div className="p-4">
+                <LoadingPresentation
+                  shape="preview"
+                  label={t('loading.task')}
+                  fetching={detail.fetchStatus === 'fetching'}
+                />
+              </div>
+            </AppWorkspaceBody>
+          </AppContent>
+        ),
+      };
+    if (detail.isError && detail.data?.task.id !== taskId) {
       return taskPreviewFailure(detail.errorStatus, detail.isTaskNotFound, taskId, () => {
         void detail.refetch();
       });
     }
 
-    const detailTask = detail.data?.task;
-    if (detailTask?.id !== taskId) {
+    const response = detail.data;
+    const detailTask = response?.task;
+    if (!response || detailTask?.id !== taskId) {
       return {
         status: 'error',
         message: appI18n.t('specification.taskPreviewLoadFailed'),
@@ -104,13 +131,18 @@ export function useTaskPreviewData({
       statusCode: detailTask.status.lifecycle,
       lifecycle: detailTask.status.lifecycle,
       group: '',
-      ...mapFullTaskResponse(detail.data),
+      ...mapFullTaskResponse(response),
     };
   }
 
   return {
     status: 'ready',
     data: {
+      refreshing: detail.isFetching,
+      refreshFailed: detail.isError,
+      retry: () => {
+        void detail.refetch();
+      },
       specId,
       task,
       groups: context.data.taskGroups,
@@ -160,15 +192,16 @@ export interface TaskPreviewPages {
   resource: { id: string };
 }
 
-export function TaskPreviewHeader(
-  _: SecondaryScreenProps<TaskPreviewSecondaryData, TaskPreviewPages['preview']>,
-) {
+export function TaskPreviewHeader({
+  data,
+}: SecondaryScreenProps<TaskPreviewSecondaryData, TaskPreviewPages['preview']>) {
   const { t } = useTranslation();
   return (
     <WorkspaceHeaderIdentity
       headingLevel={2}
       title={t('specification.taskPreviewTitle')}
       icon="list-checks"
+      status={<RefreshStatus active={Boolean(data.refreshing)} />}
     />
   );
 }
@@ -177,9 +210,20 @@ export function TaskPreviewScreen({
   data,
 }: SecondaryScreenProps<TaskPreviewSecondaryData, TaskPreviewPages['preview']>) {
   const nav = useSecondaryStack<TaskPreviewPages>();
+  const { t } = useTranslation();
   return (
     <AppContent className="w-content-standard max-w-full">
-      <AppWorkspaceBody padding="none">
+      <AppWorkspaceBody padding="none" scroll="area">
+        {data.refreshFailed ? (
+          <div className="p-4">
+            <Alert tone="attention" role="status" title={t('specification.staleDataTitle')}>
+              {t('specification.staleDataDescription')}
+              <Button variant="secondary" size="sm" disabled={data.refreshing} onClick={data.retry}>
+                {t('common.retry')}
+              </Button>
+            </Alert>
+          </div>
+        ) : null}
         <TaskPreview
           task={data.task}
           groups={data.groups}
@@ -217,7 +261,7 @@ function PreviewWork({
 }: SecondaryScreenProps<TaskPreviewSecondaryData, TaskInspectionAnchor>) {
   return (
     <AppContent className="w-content-standard max-w-full">
-      <AppWorkspaceBody padding="none">
+      <AppWorkspaceBody padding="none" scroll="area">
         <TaskInspection task={data.task} page="work" anchor={params} />
       </AppWorkspaceBody>
     </AppContent>
@@ -228,7 +272,7 @@ function PreviewFlow({
 }: SecondaryScreenProps<TaskPreviewSecondaryData, Record<never, never>>) {
   return (
     <AppContent className="w-content-standard max-w-full">
-      <AppWorkspaceBody padding="none">
+      <AppWorkspaceBody padding="none" scroll="area">
         <TaskInspection task={data.task} page="flow" />
       </AppWorkspaceBody>
     </AppContent>
@@ -240,7 +284,7 @@ function EvidenceScreen({
 }: SecondaryScreenProps<TaskPreviewSecondaryData, TaskEvidenceParams>) {
   return (
     <AppContent className="w-content-standard max-w-full">
-      <AppWorkspaceBody padding="none">
+      <AppWorkspaceBody padding="none" scroll="area">
         <div className="p-4">
           <TaskEvidenceInspection task={data.task} params={params} />
         </div>
@@ -255,7 +299,7 @@ function PreviewRequirement({
   const nav = useSecondaryStack<TaskPreviewPages>();
   return (
     <AppContent className="w-content-standard max-w-full">
-      <AppWorkspaceBody padding="none">
+      <AppWorkspaceBody padding="none" scroll="area">
         <TaskInspection
           task={data.task}
           page="requirement"
@@ -281,7 +325,7 @@ function PreviewResource({
   );
   return (
     <AppContent className="w-content-standard max-w-full">
-      <AppWorkspaceBody padding="none">
+      <AppWorkspaceBody padding="none" scroll="area">
         <div className="p-4">
           <TaskResourceInspection resource={refs.find((ref) => ref.id === params.id)} />
         </div>
@@ -299,17 +343,45 @@ export const taskPreviewStack = defineSecondaryStack<
   initial: 'preview',
   useData: useTaskPreviewData,
   screens: {
-    work: { title: 'Step details', header: WorkHeader, component: PreviewWork },
-    flow: { title: 'Flow', header: TaskFlowHeader, component: PreviewFlow },
+    work: {
+      get title() {
+        return translateNow('taskDetails.stepDetails');
+      },
+      header: WorkHeader,
+      component: PreviewWork,
+    },
+    flow: {
+      get title() {
+        return translateNow('common.flow');
+      },
+      header: TaskFlowHeader,
+      component: PreviewFlow,
+    },
     requirement: {
-      title: 'Requirement',
+      get title() {
+        return translateNow('taskDetails.requirement');
+      },
       header: RequirementHeader,
       component: PreviewRequirement,
     },
-    evidence: { title: 'Evidence', header: TaskEvidenceHeader, component: EvidenceScreen },
-    resource: { title: 'Resource', header: TaskResourceHeader, component: PreviewResource },
+    evidence: {
+      get title() {
+        return translateNow('taskDetails.evidence');
+      },
+      header: TaskEvidenceHeader,
+      component: EvidenceScreen,
+    },
+    resource: {
+      get title() {
+        return translateNow('taskDetails.resource');
+      },
+      header: TaskResourceHeader,
+      component: PreviewResource,
+    },
     preview: {
-      title: 'Task preview',
+      get title() {
+        return translateNow('specification.taskPreviewTitle');
+      },
       header: TaskPreviewHeader,
       actions: ({ data }): readonly WorkspaceHeaderAction[] => [
         {
@@ -329,6 +401,8 @@ export interface DocumentPreviewData {
   readonly specId: string;
   readonly documentId: string;
   readonly title: string;
+  /** Human file path when known; the internal document id is never shown. */
+  readonly filename?: string;
   readonly openFullDocument?: (documentId: string) => void;
 }
 export interface DocumentPreviewPages {
@@ -343,14 +417,20 @@ function useDocumentPreviewData({
 }): SecondaryData<DocumentPreviewData> {
   const { t } = useTranslation();
   const context = useContext(SpecificationSecondaryDataContext);
-  if (!context) return { status: 'loading' };
-  const title = context.data.documents.find((item) => item.id === documentId)?.title ?? documentId;
+  if (context?.specId !== specId)
+    return {
+      status: 'unavailable',
+      message: t('specification.unavailableDescription', { id: documentId }),
+    };
+  const document = context.data.documents.find((item) => item.id === documentId);
+  const title = document?.title ?? document?.filename ?? t('specification.documentPreviewTitle');
   return {
     status: 'ready',
     data: {
       specId,
       documentId,
       title,
+      ...(document?.filename && document.filename !== title ? { filename: document.filename } : {}),
       fullDocumentLabel: t('specification.openFullDocument'),
       openFullDocument: context.openFullDocument,
     },
@@ -359,14 +439,14 @@ function useDocumentPreviewData({
 function DocumentPreviewHeader({
   data,
 }: SecondaryScreenProps<DocumentPreviewData, DocumentPreviewPages['preview']>) {
-  return <WorkspaceHeaderIdentity headingLevel={2} title={data.title} subtitle={data.documentId} />;
+  return <WorkspaceHeaderIdentity headingLevel={2} title={data.title} subtitle={data.filename} />;
 }
 function DocumentPreviewScreen({
   data,
 }: SecondaryScreenProps<DocumentPreviewData, DocumentPreviewPages['preview']>) {
   return (
     <AppContent className="w-content-standard max-w-full">
-      <AppWorkspaceBody padding="none">
+      <AppWorkspaceBody scroll="area">
         <DocumentContent specId={data.specId} documentId={data.documentId} />
       </AppWorkspaceBody>
     </AppContent>
@@ -382,7 +462,9 @@ export const documentPreviewStack = defineSecondaryStack<
   useData: useDocumentPreviewData,
   screens: {
     preview: {
-      title: 'Document preview',
+      get title() {
+        return translateNow('specification.documentPreviewTitle');
+      },
       header: DocumentPreviewHeader,
       actions: ({ data }): readonly WorkspaceHeaderAction[] =>
         data.openFullDocument
@@ -404,6 +486,8 @@ export const documentPreviewStack = defineSecondaryStack<
 export interface HistorySecondaryData {
   readonly specId: string;
   readonly events: readonly ActivityEvent[];
+  readonly availability: 'available' | 'unavailable' | 'forbidden';
+  readonly retry?: () => void;
   readonly openTask: (taskId: string) => void;
   readonly openSession?: (sessionId: string) => void;
   readonly openDoc?: (docId: string) => void;
@@ -423,6 +507,8 @@ export function useHistoryData({
     data: {
       specId,
       events: context.data.activityEvents,
+      availability: context.data.sectionAvailability?.activity ?? 'available',
+      retry: context.retry,
       openTask: context.previewTask,
       openSession: context.openSession,
       openDoc: context.openDoc,
@@ -452,10 +538,12 @@ export function ActivityHistoryScreen({
   const nav = useSecondaryStack<HistoryPages>();
   return (
     <AppContent className="w-content-standard max-w-full">
-      <AppWorkspaceBody padding="none">
+      <AppWorkspaceBody padding="none" scroll="area">
         <ActivityHistory
           showHeading={false}
           events={data.events}
+          availability={data.availability}
+          onRetry={data.retry}
           isExplicit={true}
           onOpenTask={(taskId) => {
             void nav.navTo(taskPreviewStack, { specId: data.specId, taskId });
@@ -478,7 +566,9 @@ export const historyStack = defineSecondaryStack<
   useData: useHistoryData,
   screens: {
     history: {
-      title: 'Activity history',
+      get title() {
+        return translateNow('specification.activityHistory');
+      },
       header: ActivityHistoryHeader,
       component: ActivityHistoryScreen,
     },

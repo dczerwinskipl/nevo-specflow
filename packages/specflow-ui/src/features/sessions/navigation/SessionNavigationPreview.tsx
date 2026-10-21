@@ -1,14 +1,20 @@
 import type { ReactNode } from 'react';
 import { Circle, MessageCircleWarning } from 'lucide-react';
-import { Icon, Typography } from '@nevo/ui';
+import { hitAreaBlockClassName, Icon, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { SessionNavigationEntry } from './summary';
+// The icon column is the DS small icon size; the section content below aligns with the text column.
+const rowClassName = 'grid grid-cols-[var(--spacing-icon-sm)_minmax(0,1fr)] gap-x-2 py-1.5';
+const linkClassName = `-mx-2 rounded-control px-2 hover:bg-surface-hover ${hitAreaBlockClassName}`;
 /** Sessions owns the conservative state copy and presentation of provided titles. */
 export function SessionNavigationPreview({
   entries,
+  renderEntryLink,
   children,
 }: {
   entries: readonly SessionNavigationEntry[];
+  /** When the session detail destination exists, each preview row becomes one link target. */
+  renderEntryLink?: (sessionId: string, className: string, children: ReactNode) => ReactNode;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -17,16 +23,12 @@ export function SessionNavigationPreview({
       {entries.map((session) => {
         const attention = session.activityCode === 'attention';
         const tone = attention ? 'text-status-attention' : 'text-status-info';
-        return (
-          <div
-            key={session.id}
-            className="grid grid-cols-[14px_minmax(0,1fr)] gap-x-2 py-1.5"
-            data-session-navigation-entry
-          >
+        const content = (
+          <>
             <Icon
               name={attention ? MessageCircleWarning : Circle}
               size="sm"
-              className={`mt-[3px] size-3.5 ${tone}`}
+              className={`mt-[3px] size-icon-sm ${tone}`}
             />
             <div>
               <Typography
@@ -44,10 +46,19 @@ export function SessionNavigationPreview({
                 )}
               </Typography>
             </div>
+          </>
+        );
+        return renderEntryLink ? (
+          <div key={session.id} data-session-navigation-entry>
+            {renderEntryLink(session.id, `${rowClassName} ${linkClassName}`, content)}
+          </div>
+        ) : (
+          <div key={session.id} className={rowClassName} data-session-navigation-entry>
+            {content}
           </div>
         );
       })}
-      <div className="ml-[22px]">{children}</div>
+      <div className="ml-[calc(var(--spacing-icon-sm)+var(--spacing)*2)]">{children}</div>
     </div>
   );
 }

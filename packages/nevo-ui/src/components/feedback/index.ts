@@ -7,3 +7,4 @@ export * from './Toast';
 export type { StatusTone } from '../../design-system/statusTone';
 export * from './StatusIndicator';
 export * from './Progress';
+export { useInitialAppearance } from './useInitialAppearance';

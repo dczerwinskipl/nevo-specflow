@@ -23,8 +23,10 @@ import { useOptionalWorkspace } from './WorkspaceContext';
 import type { WorkspaceTransition } from './WorkspaceContext';
 import {
   resolveSlotMaxWidth,
+  resolveWorkspaceFit,
   resolveWorkspaceSplit,
   supportsRuntimeWorkspaceSplit,
+  type AppWorkspaceFit,
   type AppWorkspaceSplitMode,
 } from './workspaceSizing';
 import type { AppWorkspaceSurface } from './workspaceSurface';
@@ -37,7 +39,9 @@ import {
   CompactWorkspaceActions,
   WorkspaceHeader,
   type WorkspaceHeaderAction,
+  type WorkspaceHeaderActionDirect,
   type WorkspaceHeaderActionTone,
+  type WorkspaceHeaderDensity,
   type WorkspaceHeaderProps,
 } from './WorkspaceHeader';
 
@@ -68,6 +72,18 @@ export interface AppWorkspaceSecondaryRegionProps extends AppWorkspaceRegionProp
 }
 
 interface CommonAppWorkspaceProps {
+  /** Keep headers fixed and let bounded content (editors/composers) own scrolling, including mobile. */
+  scroll?: 'workspace' | 'content';
+  /**
+   * How the workspace is sized in split-capable (Wide/Compact) layouts. Stacked layouts always
+   * fill the available width.
+   * - `content` (default): fit intrinsic content when a Secondary is shown; Primary-only fills.
+   * - `available`: always fill the measured available workspace (editors, creation flows).
+   * - `bounded`: always fit intrinsic content, with or without a Secondary, so a Primary-only page
+   *   whose readable unit has a fixed optimal width (a bounded `AppContent`) is centred with the
+   *   navigation instead of stretching.
+   */
+  fit?: AppWorkspaceFit;
   split?: AppWorkspaceSplitMode;
   labels?: Partial<AppWorkspaceLabels>;
   /** Close the active page (returning to its parent) or the entire contextual flow. */
@@ -186,7 +202,7 @@ function useWorkspaceLayoutState(
   hasSecondary: boolean,
   secondaryCanStack: boolean,
 ): WorkspaceLayoutState {
-  const { availableWidth } = useAppWorkspace();
+  const { availableWidth, contentWidth = availableWidth } = useAppWorkspace();
   const isSplitView = supportsRuntimeWorkspaceSplit(availableWidth);
   const showSecondary = hasSecondary && (isSplitView || secondaryCanStack);
   const resolvedSplit = resolveWorkspaceSplit(split, isSplitView && showSecondary, availableWidth);
@@ -194,11 +210,11 @@ function useWorkspaceLayoutState(
   return {
     mode: isSplitView ? 'split' : 'stacked',
     showSecondary,
-    primaryMaxWidth: resolveSlotMaxWidth(availableWidth, resolvedSplit.primary),
+    primaryMaxWidth: resolveSlotMaxWidth(contentWidth, resolvedSplit.primary),
     secondaryMaxWidth:
       resolvedSplit.secondary === 0
         ? undefined
-        : resolveSlotMaxWidth(availableWidth, resolvedSplit.secondary),
+        : resolveSlotMaxWidth(contentWidth, resolvedSplit.secondary),
   };
 }
 
@@ -241,6 +257,8 @@ function CloseAction({
 }
 
 function RuntimeSurfaceRegion({
+  contentOwnsScroll = false,
+  fitAvailable = false,
   compactNavigationAction,
   divider = false,
   instanceKey,
@@ -255,11 +273,13 @@ function RuntimeSurfaceRegion({
   surfaceRef,
   tabIndex,
 }: {
+  contentOwnsScroll?: boolean;
   compactNavigationAction?: WorkspaceHeaderAction;
   divider?: boolean;
   instanceKey: string;
   leadingAction?: ReactNode;
   maxWidth?: number;
+  fitAvailable?: boolean;
   mobileRuntime?: MobileWorkspaceSurfaceRuntime;
   onMobileMotionComplete?: (event: AnimationEvent<HTMLElement>) => void;
   stackedVisual: boolean;
@@ -277,6 +297,7 @@ function RuntimeSurfaceRegion({
 
     return (
       <MobileRuntimeSurfaceRegion
+        contentOwnsScroll={contentOwnsScroll}
         compactNavigationAction={compactNavigationAction}
         instanceKey={instanceKey}
         key={mobileRuntime.instanceKey}
@@ -295,7 +316,7 @@ function RuntimeSurfaceRegion({
   return (
     <div
       className={cn(
-        'min-w-0 flex-none overflow-hidden outline-none',
+        'min-w-0 flex-none overflow-clip outline-none',
         'w-max max-w-full group-data-[workspace-fit=available]/workspace:w-full',
         divider && 'border-l border-border-subtle',
       )}
@@ -306,9 +327,10 @@ function RuntimeSurfaceRegion({
       tabIndex={tabIndex}
       style={{
         maxWidth: maxWidth === undefined ? '100%' : `${maxWidth}px`,
+        width: fitAvailable ? (maxWidth === undefined ? '100%' : `${maxWidth}px`) : undefined,
       }}
     >
-      <div className="workspace-stack relative h-full min-h-0 min-w-0 overflow-hidden">
+      <div className="workspace-stack relative h-full min-h-0 min-w-0 overflow-clip">
         <div className="flex h-full min-h-0 flex-col" data-workspace-layer={instanceKey}>
           <SurfaceBoundary surface={surface}>
             {showHeader ? (
@@ -323,7 +345,7 @@ function RuntimeSurfaceRegion({
                 {trailingAction}
               </div>
             ) : null}
-            <div className="min-h-0 flex-1 overflow-hidden">{surface.content}</div>
+            <div className="min-h-0 flex-1 overflow-clip">{surface.content}</div>
           </SurfaceBoundary>
         </div>
       </div>
@@ -332,6 +354,7 @@ function RuntimeSurfaceRegion({
 }
 
 function MobileRuntimeSurfaceRegion({
+  contentOwnsScroll = false,
   compactNavigationAction,
   instanceKey,
   leadingAction,
@@ -343,6 +366,7 @@ function MobileRuntimeSurfaceRegion({
   tabIndex,
   trailingAction,
 }: {
+  contentOwnsScroll?: boolean;
   compactNavigationAction?: WorkspaceHeaderAction;
   instanceKey: string;
   leadingAction?: ReactNode;
@@ -416,7 +440,7 @@ function MobileRuntimeSurfaceRegion({
   return (
     <div
       className={cn(
-        '@container absolute inset-0 min-w-0 overflow-hidden outline-none',
+        '@container absolute inset-0 min-w-0 overflow-clip outline-none',
         'h-full w-full',
         runtime.surface === 'secondary' && 'bg-canvas bg-app-base',
         !runtime.visible && 'hidden',
@@ -434,70 +458,100 @@ function MobileRuntimeSurfaceRegion({
       }}
     >
       <SurfaceBoundary surface={surface}>
-        <ScrollArea
-          className="mobile-workspace-scroll-area h-full"
-          contentClassName="min-h-full"
-          direction="vertical"
-          onScroll={(event) => updateHeaderCovered(event.currentTarget.scrollTop)}
-          startEdge={headerCovered ? 'auto' : 'hidden'}
-          viewportClassName="mobile-workspace-scroll"
-          viewportRef={viewportRef}
-        >
-          <div className="workspace-stack relative min-h-full min-w-0 overflow-hidden">
-            <div
-              className="workspace-stack__layer workspace-stack__layer--current flex min-h-full flex-col"
-              data-workspace-layer={instanceKey}
-            >
-              <>
-                {showHeader ? (
-                  <div
-                    aria-hidden={headerCovered || undefined}
-                    className="@container flex h-14 shrink-0 items-center gap-2 px-3"
-                    inert={headerCovered ? true : undefined}
-                    ref={headerRef}
-                  >
-                    {leadingAction}
-                    <div className="min-w-0 flex-1">{surface.header}</div>
-                    {trailingAction}
-                  </div>
-                ) : null}
-
-                <div className="mobile-workspace-sheet flex-1">
-                  <div
-                    className={cn(
-                      workspaceSurfaceClassName,
-                      'mobile-workspace-surface min-h-full overflow-hidden rounded-t-surface border border-b-0 border-workspace-edge',
-                    )}
-                  >
-                    <AppContentScrollProvider>
-                      <div className="min-h-full">{surface.content}</div>
-                    </AppContentScrollProvider>
-                  </div>
+        {contentOwnsScroll ? (
+          <div
+            className="workspace-stack relative flex h-full min-h-0 min-w-0 flex-col overflow-clip"
+            data-workspace-scroll-owner="content"
+          >
+            <div className="flex h-full min-h-0 flex-col" data-workspace-layer={instanceKey}>
+              {showHeader ? (
+                <div
+                  className="@container flex h-14 shrink-0 items-center gap-2 px-3"
+                  ref={headerRef}
+                >
+                  {leadingAction}
+                  <div className="min-w-0 flex-1">{surface.header}</div>
+                  {trailingAction}
                 </div>
-              </>
+              ) : null}
+              <div
+                className={cn(
+                  workspaceSurfaceClassName,
+                  'min-h-0 flex-1 overflow-clip rounded-t-surface border border-b-0 border-workspace-edge',
+                )}
+              >
+                {surface.content}
+              </div>
             </div>
           </div>
-        </ScrollArea>
+        ) : (
+          <ScrollArea
+            className="mobile-workspace-scroll-area h-full"
+            contentClassName="min-h-full"
+            direction="vertical"
+            onScroll={(event) => updateHeaderCovered(event.currentTarget.scrollTop)}
+            startEdge={headerCovered ? 'auto' : 'hidden'}
+            viewportClassName="mobile-workspace-scroll"
+            viewportRef={viewportRef}
+          >
+            <div className="workspace-stack relative min-h-full min-w-0 overflow-hidden">
+              <div
+                className="workspace-stack__layer workspace-stack__layer--current flex min-h-full flex-col"
+                data-workspace-layer={instanceKey}
+              >
+                <>
+                  {showHeader ? (
+                    <div
+                      aria-hidden={headerCovered || undefined}
+                      className="@container flex h-14 shrink-0 items-center gap-2 px-3"
+                      inert={headerCovered ? true : undefined}
+                      ref={headerRef}
+                    >
+                      {leadingAction}
+                      <div className="min-w-0 flex-1">{surface.header}</div>
+                      {trailingAction}
+                    </div>
+                  ) : null}
 
-        <div
-          aria-hidden={!headerCovered || undefined}
-          className="mobile-floating-navigation"
-          inert={!headerCovered ? true : undefined}
-        >
-          {leadingAction}
-          {surface.renderCompactActions ? (
-            surface.renderCompactActions({
-              className: 'mobile-floating-navigation__control',
-              navigationAction: compactNavigationAction,
-            })
-          ) : (
-            <CompactWorkspaceActions
-              className="mobile-floating-navigation__control"
-              header={surface.header}
-              navigationAction={compactNavigationAction}
-            />
-          )}
-        </div>
+                  <div className="mobile-workspace-sheet flex-1">
+                    <div
+                      className={cn(
+                        workspaceSurfaceClassName,
+                        'mobile-workspace-surface min-h-full overflow-hidden rounded-t-surface border border-b-0 border-workspace-edge',
+                      )}
+                    >
+                      <AppContentScrollProvider>
+                        <div className="min-h-full">{surface.content}</div>
+                      </AppContentScrollProvider>
+                    </div>
+                  </div>
+                </>
+              </div>
+            </div>
+          </ScrollArea>
+        )}
+
+        {!contentOwnsScroll && (
+          <div
+            aria-hidden={!headerCovered || undefined}
+            className="mobile-floating-navigation"
+            inert={!headerCovered ? true : undefined}
+          >
+            {leadingAction}
+            {surface.renderCompactActions ? (
+              surface.renderCompactActions({
+                className: 'mobile-floating-navigation__control',
+                navigationAction: compactNavigationAction,
+              })
+            ) : (
+              <CompactWorkspaceActions
+                className="mobile-floating-navigation__control"
+                header={surface.header}
+                navigationAction={compactNavigationAction}
+              />
+            )}
+          </div>
+        )}
       </SurfaceBoundary>
     </div>
   );
@@ -507,7 +561,9 @@ function AppWorkspaceRoot({
   children,
   labels: labelsProp,
   split = 'balanced',
+  fit = 'content',
   secondaryCloseBehavior = 'flow',
+  scroll = 'workspace',
 }: AppWorkspaceProps) {
   const staticSurfaces = resolveComposedWorkspace(children);
 
@@ -548,6 +604,7 @@ function AppWorkspaceRoot({
     secondaryPresentation !== undefined,
     secondaryPresentation?.canStack ?? false,
   );
+  const resolvedFit = resolveWorkspaceFit(fit, state.mode, state.showSecondary);
   const mobileRuntime = useMobileWorkspaceTransition({
     secondaryInstanceKey:
       state.mode === 'stacked' && state.showSecondary ? secondaryPresentation?.key : undefined,
@@ -616,14 +673,14 @@ function AppWorkspaceRoot({
         state.mode === 'split' && navigationMode === 'drawer' && workspaceSurfaceClassName,
       )}
       data-layout={state.mode}
-      data-workspace-fit={state.mode === 'split' && state.showSecondary ? 'content' : 'available'}
-      style={{
-        width: state.mode === 'split' && state.showSecondary ? 'max-content' : '100%',
-      }}
+      data-workspace-fit={resolvedFit}
+      style={{ width: resolvedFit === 'content' ? 'max-content' : '100%' }}
     >
       <RuntimeSurfaceRegion
+        contentOwnsScroll={scroll === 'content'}
         instanceKey="primary"
         leadingAction={primaryNavigationAction}
+        fitAvailable={fit === 'available'}
         maxWidth={state.primaryMaxWidth}
         mobileRuntime={state.mode === 'stacked' ? mobileRuntime.primary : undefined}
         onMobileMotionComplete={mobileRuntime.completeMotion}
@@ -634,11 +691,13 @@ function AppWorkspaceRoot({
 
       {state.showSecondary && secondaryPresentation ? (
         <RuntimeSurfaceRegion
+          contentOwnsScroll={scroll === 'content'}
           compactNavigationAction={compactSecondaryCloseAction}
           divider={state.mode === 'split'}
           instanceKey={secondaryPresentation.key}
           key={secondaryPresentation.key}
           leadingAction={secondaryBackAction}
+          fitAvailable={fit === 'available'}
           maxWidth={state.mode === 'split' ? state.secondaryMaxWidth : undefined}
           mobileRuntime={state.mode === 'stacked' ? mobileRuntime.secondary : undefined}
           onMobileMotionComplete={mobileRuntime.completeMotion}
@@ -655,6 +714,7 @@ function AppWorkspaceRoot({
       mobileRuntime.outgoingSecondary.mounted &&
       outgoingSecondaryPresentation ? (
         <RuntimeSurfaceRegion
+          contentOwnsScroll={scroll === 'content'}
           instanceKey={outgoingSecondaryPresentation.key}
           key={`outgoing-${outgoingSecondaryPresentation.key}`}
           leadingAction={outgoingBackAction}
@@ -679,7 +739,9 @@ export const AppWorkspace = Object.assign(AppWorkspaceRoot, {
 export {
   WorkspaceHeader,
   type WorkspaceHeaderAction,
+  type WorkspaceHeaderActionDirect,
   type WorkspaceHeaderActionTone,
+  type WorkspaceHeaderDensity,
   type WorkspaceHeaderProps,
 };
 

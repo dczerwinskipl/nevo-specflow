@@ -2,11 +2,11 @@ import { Alert } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { contributeTo, type UiModule } from '../../app/ui-modules/contracts';
 import {
+  specificationAttentionItems,
   specificationWorkSections,
   type SpecificationWorkSectionContext,
-} from '../specs/extensions/specificationWorkSections';
+} from '../specs';
 import { TasksSection } from './contributions/specification-work';
-import { specificationAttentionItems } from '../specs/extensions/specificationAttentionItems';
 
 function TaskGroupsWorkSection({ specId, data, actions }: SpecificationWorkSectionContext) {
   const { t } = useTranslation();

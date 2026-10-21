@@ -4,6 +4,7 @@ import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import {
   actionVariantClasses,
   fastColorTransitionClassName,
+  hitAreaClassName,
 } from '../../../design-system/interactionRecipes';
 import { cn } from '../../../lib';
 import { Icon, type IconGlyph } from '../../foundations/Icon';
@@ -11,7 +12,7 @@ import { Icon, type IconGlyph } from '../../foundations/Icon';
 export const iconButtonDefaults = { variant: 'ghost', size: 'md' } as const;
 
 export const iconButtonVariants = tv({
-  base: `inline-flex shrink-0 cursor-pointer items-center justify-center border border-solid disabled:pointer-events-none disabled:opacity-50 ${fastColorTransitionClassName}`,
+  base: `${hitAreaClassName} inline-flex shrink-0 cursor-pointer items-center justify-center border border-solid disabled:pointer-events-none disabled:opacity-50 ${fastColorTransitionClassName}`,
   variants: {
     variant: {
       ...actionVariantClasses,

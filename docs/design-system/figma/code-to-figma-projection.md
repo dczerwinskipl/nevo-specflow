@@ -178,3 +178,9 @@ roots and MUST already exist in the managed Figma document before an application
 The importer scopes reconciliation sections and stale-content cleanup to the active owner profile.
 It MUST NOT delete or re-parent another owner's managed components while synchronizing a partial
 application export.
+
+## Hit-area pseudo-elements
+
+`hitAreaClassName` and `hitAreaBlockClassName` add an invisible `::after` that only enlarges the
+interactive area (24px / 44px on coarse pointers). It is not projected to Figma: component sizes in
+Figma stay the visual sizes.

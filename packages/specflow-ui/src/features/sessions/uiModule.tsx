@@ -1,10 +1,10 @@
 import { contributeTo, type UiModule } from '../../app/ui-modules/contracts';
 import {
+  specificationAttentionItems,
   specificationWorkSections,
   type SpecificationWorkSectionContext,
-} from '../specs/extensions/specificationWorkSections';
+} from '../specs';
 import { ResumeSessionSection } from './contributions/specification-work/ResumeSessionSection';
-import { specificationAttentionItems } from '../specs/extensions/specificationAttentionItems';
 
 function SpecificationResumeSession({ data, actions }: SpecificationWorkSectionContext) {
   if (!data.resumeSession) return null;

@@ -7,9 +7,10 @@ import type {
   TaskSnapshot,
 } from '@nevo/specflow-contracts/specs/workspace';
 import { useTranslation } from 'react-i18next';
-import { OperationalRow } from '../../specs/shared/OperationalList';
-import { WorkspaceSection } from '../../specs/workspace/sections/WorkspaceSection';
-import { DocumentDescription } from '../../documents/description/DocumentDescription';
+import { OperationalRow } from '../../../shared/operational-list';
+import { WorkspaceSection } from '../../../shared/workspace-section';
+
+import { DocumentDescription } from '../../documents';
 import type { FullTaskData } from '../model';
 import { matchesWork } from './taskInspectionModel';
 import { taskStatusLabel } from '../status';
@@ -164,7 +165,7 @@ export function TaskDetails({
             </dd>
           </div>
           <div className="flex min-w-0 gap-2 @min-[40rem]/task:block">
-            <dt className="shrink-0 text-body-sm text-content-muted">Flow</dt>
+            <dt className="shrink-0 text-body-sm text-content-muted">{t('common.flow')}</dt>
             <dd className="min-w-0 text-body-sm text-content-primary [overflow-wrap:anywhere]">
               {workData ? (
                 workData.definition.title || workData.definition.id

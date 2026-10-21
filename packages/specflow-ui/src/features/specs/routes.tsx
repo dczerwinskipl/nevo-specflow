@@ -4,6 +4,8 @@ import { createRoute, Link, Outlet, redirect } from '@tanstack/react-router';
 import { appRoute, rootRoute } from '../../app/router/root';
 import { parseSpecificationCollection } from '../../app/router/search';
 import { SpecsOverview } from './overview/SpecsOverview';
+import { useSpecificationWorkspace } from './useSpecificationWorkspace';
+import { useRuntimeDataMode } from '../../app/useRuntimeDataMode';
 import { useSpecsOverview } from './overview/useSpecsOverview';
 import { SpecsAccessDenied } from './overview/SpecsAccessDenied';
 import { SpecificationSurface } from './SpecificationSurface';
@@ -135,8 +137,19 @@ export const specificationRoute = createRoute({
       });
     }
   },
-  component: Outlet,
+  component: SpecificationRouteLayout,
 });
+
+/**
+ * The Specification route owns the Workspace query for every per-spec child route. Children
+ * and the navigation observe the same entry, so a cold deep link and client navigation read
+ * one deterministic source (deduplicated with the Overview/Documents/Sessions reads).
+ */
+function SpecificationRouteLayout() {
+  const { specId } = specificationRoute.useParams();
+  useSpecificationWorkspace(specId);
+  return <Outlet />;
+}
 
 export const specificationIndexRoute = createRoute({
   getParentRoute: () => specificationRoute,
@@ -167,6 +180,11 @@ function SpecsRouteScreen() {
       state={state}
       onRefresh={refresh}
       sample={runtimeInfo.data?.dataMode === 'demo'}
+      onCreate={
+        runtimeInfo.data?.dataMode === 'demo'
+          ? () => void navigate({ to: '/specs/new', search: { collection } })
+          : undefined
+      }
       onCollectionChange={(value) => void navigate({ search: { collection: value } })}
       specificationHref={(specId) =>
         `/specs/${encodeURIComponent(specId)}?collection=${collection}`
@@ -198,6 +216,8 @@ function SpecificationRouteScreen() {
   const { specId } = specificationRoute.useParams();
   const { collection } = specificationRoute.useSearch();
   const navigate = specificationRoute.useNavigate();
+  // Session detail exists only where the Runtime serves it (demo mode); otherwise rows stay inert.
+  const sessionDetail = useRuntimeDataMode() === 'demo';
 
   return (
     <SpecificationSurface
@@ -232,6 +252,16 @@ function SpecificationRouteScreen() {
           params: { specId },
           search: { collection },
         })
+      }
+      onOpenSession={
+        sessionDetail
+          ? (sessionId) =>
+              void navigate({
+                to: '/specs/$specId/sessions/$sessionId',
+                params: { specId, sessionId },
+                search: { collection },
+              })
+          : undefined
       }
       onOpenSessions={() =>
         void navigate({ to: '/specs/$specId/sessions', params: { specId }, search: { collection } })

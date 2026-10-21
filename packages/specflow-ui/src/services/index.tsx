@@ -1,3 +1,7 @@
+import type { CreationApi } from '../features/specs/creation/api';
+import { createDemoCreationApi } from '../features/specs/creation/api.demo';
+import type { SessionsApi } from '../features/sessions/api';
+import { createDemoSessionsApi } from '../features/sessions/api.demo';
 import { createHttpClient, type HttpClient } from '@nevo/http-client';
 
 import { createBrowserAuthApi, type AuthApi } from '../auth/api';
@@ -11,7 +15,12 @@ import {
 } from '../features/specs/overview/api';
 import { createRuntimeSpecificationApi, type SpecificationApi } from '../features/specs/api';
 import { createRuntimeTaskApi, type TaskApi } from '../features/tasks/api';
-import { createRuntimeDocumentApi, type DocumentApi } from '../features/documents/api';
+import {
+  createRuntimeDocumentApi,
+  type DocumentApi,
+  type DocumentsApi,
+} from '../features/documents/api';
+import { createDemoDocumentsApi } from '../features/documents/api.demo';
 
 export interface SpecFlowAppServices {
   readonly runtimeInfoApi: RuntimeInfoApi;
@@ -22,6 +31,9 @@ export interface SpecFlowAppServices {
   readonly specificationApi: SpecificationApi;
   readonly taskApi: TaskApi;
   readonly documentApi: DocumentApi;
+  readonly documentsApi: DocumentsApi;
+  readonly sessionsApi: SessionsApi;
+  readonly creationApi: CreationApi;
 }
 
 export type SpecFlowServices = SpecFlowAppServices;
@@ -36,6 +48,9 @@ export interface SpecFlowServicesOptions {
   readonly specificationApi?: SpecificationApi;
   readonly taskApi?: TaskApi;
   readonly documentApi?: DocumentApi;
+  readonly documentsApi?: DocumentsApi;
+  readonly sessionsApi?: SessionsApi;
+  readonly creationApi?: CreationApi;
 }
 
 export function createSpecFlowAppServices(
@@ -65,6 +80,9 @@ export function createSpecFlowAppServices(
     specificationApi,
     taskApi: options.taskApi ?? createRuntimeTaskApi(runtimeHttp),
     documentApi: options.documentApi ?? createRuntimeDocumentApi(runtimeHttp),
+    documentsApi: options.documentsApi ?? createDemoDocumentsApi(runtimeHttp),
+    sessionsApi: options.sessionsApi ?? createDemoSessionsApi(runtimeHttp),
+    creationApi: options.creationApi ?? createDemoCreationApi(runtimeHttp),
   };
 }
 

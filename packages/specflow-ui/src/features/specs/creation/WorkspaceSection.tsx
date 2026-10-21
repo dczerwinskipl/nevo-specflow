@@ -1,0 +1,418 @@
+import {
+  useId,
+  useImperativeHandle,
+  useRef,
+  type Dispatch,
+  type ReactNode,
+  type Ref,
+  type SetStateAction,
+} from 'react';
+import { FolderPlus, Layers, Lock } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { useMessage, type Message } from '../../../i18n/message';
+import {
+  AccentBlock,
+  Alert,
+  Badge,
+  Button,
+  Icon,
+  IconButton,
+  Skeleton,
+  StatusIndicator,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+  Typography,
+  choiceSurfaceCheckClassName,
+  choiceSurfaceClassName,
+  choiceSurfaceTracksClassName,
+  cn,
+  type IconGlyph,
+} from '@nevo/ui';
+import type { DemoCreateOptions } from '@nevo/specflow-contracts/demo';
+import { BranchName } from './BranchName';
+import { ExistingSummary, MainSummary, NewSummary } from './WorkspaceTileSummaries';
+import {
+  activeTile,
+  availableCountLabel,
+  primaryWorkspace,
+  revalidate,
+  staleMessages,
+  tileAvailability,
+  type Tile,
+  type WorkspaceChoice,
+} from './workspaceChoice';
+
+export interface WorkspaceSectionHandle {
+  /** Focuses the first invalid field; false when none is flagged or mounted. */
+  focusFirstInvalid: () => boolean;
+}
+
+export type WorkspaceOptionsState =
+  | { status: 'loading' }
+  | { status: 'error' }
+  | { status: 'forbidden' }
+  | { status: 'ready'; options: DemoCreateOptions };
+
+interface TileDefinition {
+  id: Tile;
+  title: Message;
+  description: Message;
+  icon: IconGlyph;
+}
+const tiles: readonly TileDefinition[] = [
+  {
+    id: 'new',
+    title: { key: 'create.workspace.tile.newTitle' },
+    description: { key: 'create.workspace.tile.newDescription' },
+    icon: FolderPlus,
+  },
+  {
+    id: 'main',
+    title: { key: 'create.workspace.tile.mainTitle' },
+    description: { key: 'create.workspace.tile.mainDescription' },
+    icon: 'folder',
+  },
+  {
+    id: 'existing',
+    title: { key: 'create.workspace.tile.existingTitle' },
+    description: { key: 'create.workspace.tile.existingDescription' },
+    icon: Layers,
+  },
+];
+
+/** Loading stand-in for a tile: the same surface and padding, text-line placeholders inside. */
+function TileSkeleton() {
+  return (
+    <div className="grid gap-2 rounded-composite border border-solid border-border-subtle bg-surface-control p-4">
+      <Skeleton className="h-5 w-2/3" />
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-1/2" />
+    </div>
+  );
+}
+
+/**
+ * "Gdzie chcesz pracować?": three radio tiles (new, main, existing) and one summary block after
+ * the whole group. The section is controlled: the form owns `choice` and builds the request.
+ */
+export function WorkspaceSection({
+  state,
+  refreshing = false,
+  refreshFailed = false,
+  choice,
+  update,
+  locked,
+  onRefresh,
+  announcement,
+  onAnnounce,
+  branchConflict,
+  focusBranchSignal,
+  headingId,
+  handleRef,
+}: {
+  state: WorkspaceOptionsState;
+  refreshing?: boolean;
+  /** The last refresh failed; the options on screen are the previously loaded ones. */
+  refreshFailed?: boolean;
+  choice: WorkspaceChoice;
+  update: Dispatch<SetStateAction<WorkspaceChoice>>;
+  locked: boolean;
+  onRefresh: () => void;
+  /** Latest polite announcement; the single `role=status` lives in this section's header. */
+  announcement: string;
+  onAnnounce: (message: string) => void;
+  branchConflict?: string;
+  focusBranchSignal?: number;
+  headingId: string;
+  /** Lets the owner move focus to the first field the options flagged as invalid. */
+  handleRef?: Ref<WorkspaceSectionHandle>;
+}) {
+  const { t } = useTranslation();
+  const text = useMessage();
+  const groupName = useId();
+  const controls = {
+    base: useRef<HTMLElement | null>(null),
+    target: useRef<HTMLElement | null>(null),
+    branch: useRef<HTMLInputElement | null>(null),
+  };
+  const existingControl = useRef<HTMLElement | null>(null);
+  const ids = useId();
+  const options = state.status === 'ready' ? state.options : undefined;
+  const availability = options ? tileAvailability(options) : undefined;
+  const active = options ? activeTile(choice, options) : null;
+  const errors = options ? revalidate(choice, options) : {};
+  const nothing = Boolean(options) && active === null;
+  useImperativeHandle(handleRef, () => ({
+    focusFirstInvalid: () => {
+      const order = [
+        ['existing', existingControl],
+        ['base', controls.base],
+        ['target', controls.target],
+        ['branch', controls.branch],
+      ] as const;
+      for (const [key, ref] of order) {
+        if (errors[key] && ref.current) {
+          ref.current.focus();
+          return true;
+        }
+      }
+      return false;
+    },
+  }));
+
+  const select = (tile: Tile) => {
+    if (!options || !availability || locked || !availability[tile].ok) return;
+    const next: WorkspaceChoice = { ...choice, tile };
+    const nextErrors = revalidate(next, options);
+    const { existing: existingError, ...settingsErrors } = nextErrors;
+    const stale =
+      tile === 'new'
+        ? Object.keys(settingsErrors).length > 0
+        : tile === 'existing' && existingError !== undefined;
+    if (stale) onAnnounce(t('create.workspace.staleAnnouncement'));
+    update({ ...next, settingsOpen: tile === 'new' && stale ? true : next.settingsOpen });
+  };
+
+  const meta = (tile: Tile): ReactNode => {
+    if (!options || !availability) return null;
+    if (tile === 'new') return <Badge tone="info">{t('create.workspace.recommended')}</Badge>;
+    if (tile === 'main') {
+      const primary = primaryWorkspace(options);
+      return (
+        <>
+          {primary?.branch ? (
+            <BranchName name={primary.branch} />
+          ) : (
+            <span>{t('create.workspace.currentCheckout')}</span>
+          )}
+          {primary?.state === 'dirty' && (
+            <Badge tone="attention">{t('create.workspace.dirtyBadge')}</Badge>
+          )}
+        </>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+        <StatusIndicator tone="success" />
+        {text(availableCountLabel(availability.existing.count ?? 0))}
+      </span>
+    );
+  };
+
+  const body = (() => {
+    if (state.status === 'loading')
+      return (
+        <div aria-busy="true" className="grid gap-4">
+          <div className="grid gap-3 @2xl:grid-cols-3">
+            {[0, 1, 2].map((index) => (
+              <TileSkeleton key={index} />
+            ))}
+          </div>
+          <AccentBlock>
+            <div className="grid max-w-content-narrow gap-2">
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-4 w-full" />
+            </div>
+          </AccentBlock>
+        </div>
+      );
+    if (state.status === 'error')
+      return (
+        <Alert
+          role="alert"
+          tone="attention"
+          title={t('create.workspace.loadFailed.title')}
+          className="max-w-content-narrow"
+        >
+          <p>{t('create.workspace.loadFailed.body')}</p>
+          <Button className="mt-3" size="sm" variant="secondary" onClick={onRefresh}>
+            {t('common.retry')}
+          </Button>
+        </Alert>
+      );
+    if (state.status === 'forbidden')
+      return (
+        <Alert
+          role="alert"
+          tone="danger"
+          icon={Lock}
+          title={t('create.errors.forbiddenTitle')}
+          className="max-w-content-narrow"
+        >
+          <p>{t('create.errors.readOnlyForm')}</p>
+        </Alert>
+      );
+    const ready = state.options;
+    const available = tileAvailability(ready);
+    return (
+      <>
+        <div
+          role="radiogroup"
+          aria-labelledby={headingId}
+          className="grid items-stretch gap-3 @2xl:grid-cols-3"
+        >
+          {tiles.map((tile) => {
+            const tileState = available[tile.id];
+            const blocked = !tileState.ok;
+            const selected = active === tile.id;
+            const titleId = `${ids}-${tile.id}-title`;
+            const textId = `${ids}-${tile.id}-text`;
+            return (
+              <label
+                key={tile.id}
+                aria-disabled={blocked || undefined}
+                className={cn(choiceSurfaceClassName, choiceSurfaceTracksClassName)}
+              >
+                <input
+                  className="sr-only"
+                  type="radio"
+                  name={groupName}
+                  value={tile.id}
+                  checked={selected}
+                  aria-disabled={blocked || undefined}
+                  aria-labelledby={titleId}
+                  aria-describedby={textId}
+                  onChange={() => select(tile.id)}
+                />
+                <span className={cn(blocked ? 'text-content-muted' : 'text-content-secondary')}>
+                  <Icon name={tile.icon} />
+                </span>
+                <span className="min-w-0 break-words">
+                  <strong
+                    id={titleId}
+                    className={cn(
+                      'block text-title-sm',
+                      blocked ? 'text-content-secondary' : 'text-content-primary',
+                    )}
+                  >
+                    {text(tile.title)}
+                  </strong>
+                  <span id={textId} className="mt-1 block text-body-sm text-content-secondary">
+                    {blocked && tileState.reason ? text(tileState.reason) : text(tile.description)}
+                  </span>
+                  {!blocked && (
+                    <span className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-body-sm text-content-secondary">
+                      {meta(tile.id)}
+                    </span>
+                  )}
+                </span>
+                <span
+                  className={cn(choiceSurfaceCheckClassName, !selected && 'invisible')}
+                  aria-hidden="true"
+                >
+                  <Icon name="check" size="sm" />
+                </span>
+              </label>
+            );
+          })}
+        </div>
+        {nothing && (
+          <Alert
+            role="alert"
+            tone="attention"
+            title={t('create.workspace.nothing.title')}
+            className="max-w-content-narrow"
+          >
+            <p>{t('create.workspace.nothing.body')}</p>
+            <Button
+              className="mt-3"
+              size="sm"
+              variant="secondary"
+              leadingIcon="refresh"
+              onClick={onRefresh}
+            >
+              {t('create.workspace.refreshOptionsAction')}
+            </Button>
+          </Alert>
+        )}
+        {active && (
+          <AccentBlock role="group" aria-label={t('create.workspace.summaryLabel')}>
+            <div className="grid max-w-content-narrow grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2">
+              {!available[active].ok ? (
+                <>
+                  <Icon name="triangle-alert" className="text-status-attention" />
+                  <Typography as="p" variant="body-md" className="min-w-0 text-content-primary">
+                    {text(staleMessages.tile)}
+                  </Typography>
+                </>
+              ) : active === 'new' ? (
+                <NewSummary
+                  options={ready}
+                  choice={choice}
+                  update={update}
+                  errors={errors}
+                  branchConflict={branchConflict}
+                  focusBranchSignal={focusBranchSignal}
+                  onAnnounce={onAnnounce}
+                  controls={controls}
+                />
+              ) : active === 'main' ? (
+                <MainSummary options={ready} />
+              ) : (
+                <ExistingSummary
+                  options={ready}
+                  choice={choice}
+                  update={update}
+                  errors={errors}
+                  controlRef={existingControl}
+                />
+              )}
+            </div>
+          </AccentBlock>
+        )}
+      </>
+    );
+  })();
+
+  return (
+    <section className="grid min-w-0 gap-4" aria-labelledby={headingId}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="grid gap-1">
+          <Typography as="h2" variant="title-md" id={headingId}>
+            {t('create.workspace.heading')}
+          </Typography>
+          <Typography as="p" variant="body-md" className="text-content-secondary">
+            {t('create.workspace.intro')}
+          </Typography>
+        </div>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <IconButton
+                aria-label={t('create.workspace.refreshOptions')}
+                icon="refresh"
+                size="sm"
+                onClick={onRefresh}
+              />
+            </TooltipTrigger>
+            <TooltipContent>{t('create.workspace.refreshOptions')}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+      <p
+        role="status"
+        className={cn('text-body-sm text-content-secondary', !refreshing && 'sr-only')}
+      >
+        {refreshing ? t('create.workspace.refreshing') : announcement}
+      </p>
+      {refreshFailed && state.status === 'ready' && !refreshing && (
+        <Alert
+          role="alert"
+          tone="attention"
+          title={t('create.workspace.refreshFailed.title')}
+          className="max-w-content-narrow"
+        >
+          <p>{t('create.workspace.refreshFailed.body')}</p>
+          <Button className="mt-3" size="sm" variant="secondary" onClick={onRefresh}>
+            {t('common.retry')}
+          </Button>
+        </Alert>
+      )}
+      <fieldset disabled={locked} className="contents">
+        {body}
+      </fieldset>
+    </section>
+  );
+}

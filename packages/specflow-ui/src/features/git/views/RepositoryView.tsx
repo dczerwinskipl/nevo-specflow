@@ -1,6 +1,6 @@
 import { Button, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { RepoContext } from '../../specs/workspace/model';
+import { type RepoContext } from '../../specs';
 
 export interface RepositoryViewProps {
   readonly showHeading?: boolean;
@@ -64,7 +64,7 @@ export function RepositoryView({
       <div className="divide-y divide-border-subtle">
         {facts.map(([label, value], index) => (
           <div key={index} className="grid gap-1 py-3">
-            <span className="text-body-xs text-content-muted">{label}</span>
+            <span className="text-body-sm text-content-muted">{label}</span>
             <span className="font-medium text-content-primary [overflow-wrap:anywhere]">
               {value}
             </span>

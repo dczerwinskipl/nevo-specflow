@@ -1,7 +1,9 @@
+import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
 import { useLayoutEffect, useRef, useId } from 'react';
 import { TaskHistoryDetails } from './TaskHistoryDetails';
 import { useTaskViewState } from './TaskViewState';
-import { descriptionScrollOwner } from '../../documents/description/DocumentDescription';
+import { descriptionScrollOwner, restoreScrollPosition } from '../../documents';
+
 import type { TaskHistoryResourceParams } from './TaskHistoryResourceInspection';
 import { Button, Timeline, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
@@ -27,18 +29,12 @@ export function TaskHistory({
   const initialScroll = useRef(state.historyScroll ?? 0);
   const prepared = useRef(false);
   useLayoutEffect(() => {
-    if (!root.current) return;
-    const owner = descriptionScrollOwner(root.current);
-    let secondFrame = 0;
-    const firstFrame = requestAnimationFrame(() => {
-      secondFrame = requestAnimationFrame(() => {
-        owner.scrollTop = initialScroll.current;
-      });
-    });
+    const node = root.current;
+    if (!node) return;
+    const stopRestoring = restoreScrollPosition(node, () => initialScroll.current);
     return () => {
-      cancelAnimationFrame(firstFrame);
-      cancelAnimationFrame(secondFrame);
-      if (!prepared.current) saveHistoryScroll(owner.scrollTop);
+      stopRestoring();
+      if (!prepared.current) saveHistoryScroll(descriptionScrollOwner(node).scrollTop);
     };
   }, [saveHistoryScroll]);
   const rememberScroll = () => {
@@ -60,9 +56,11 @@ export function TaskHistory({
   return (
     <div ref={root} className="grid min-w-0 gap-3 p-4">
       {query.isPending && !query.isError ? (
-        <Typography as="p" variant="body-sm">
-          {t('common.loading')}
-        </Typography>
+        <LoadingPresentation
+          shape="history"
+          label={t('loading.history')}
+          fetching={query.fetchStatus === 'fetching'}
+        />
       ) : null}
       <Timeline size="md">
         {entries.map(({ entry, token }) => (
@@ -179,7 +177,7 @@ export function TaskHistory({
           disabled={query.isFetching}
           onClick={() => void query.fetchNextPage()}
         >
-          {t('taskDetails.showMore')}
+          {query.isFetching ? t('common.loading') : t('taskDetails.showMore')}
         </Button>
       ) : null}
     </div>

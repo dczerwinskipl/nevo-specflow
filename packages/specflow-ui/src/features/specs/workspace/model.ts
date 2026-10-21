@@ -1,5 +1,5 @@
 import type { IconName } from '@nevo/ui';
-import type { TaskExecutionReadiness, TaskGroup } from '../../tasks/model';
+import { type TaskExecutionReadiness, type TaskGroup } from '../../tasks';
 
 export {
   getTaskStatePresentation,
@@ -10,7 +10,7 @@ export {
   type TaskItem,
   type TaskGroup,
   type TaskStatePresentation,
-} from '../../tasks/model';
+} from '../../tasks';
 
 export interface DocumentSection {
   readonly heading: string;
@@ -19,6 +19,7 @@ export interface DocumentSection {
 }
 
 export interface DocumentItem {
+  readonly filename?: string;
   readonly id: string;
   readonly title: string;
   readonly kind: string;
@@ -133,6 +134,8 @@ export type SpecificationSectionState = 'available' | 'unavailable' | 'forbidden
 export interface SpecificationWorkspaceData {
   readonly sectionAvailability?: Partial<Record<SpecificationSectionId, SpecificationSectionState>>;
   readonly id: string;
+  /** Optional human-facing Specification key, e.g. `UI-1234`. */
+  readonly key?: string;
   readonly title: string;
   readonly intro: string;
   readonly mainDocumentId?: string;
@@ -147,6 +150,7 @@ export interface SpecificationWorkspaceData {
   readonly resumeSession?: SessionSummary;
   readonly taskGroups: readonly TaskGroup[];
   readonly documents: readonly DocumentItem[];
+  readonly documentFolders?: readonly string[];
   readonly sessions: readonly SessionSummary[];
   readonly activityEvents: readonly ActivityEvent[];
   readonly completedTasksCount?: number;

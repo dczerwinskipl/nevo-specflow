@@ -49,6 +49,8 @@ export function RoutedApplication({
   cancelNavigation = false,
   catalogueFailure,
   navigationFailure = false,
+  loadingDelayMs = 0,
+  dataMode = 'demo',
 }: {
   authMode?: AuthMode;
   locale?: AppLocale;
@@ -60,6 +62,9 @@ export function RoutedApplication({
   cancelNavigation?: boolean;
   catalogueFailure?: 'wrong-collection' | 'invalid-progress';
   navigationFailure?: boolean;
+  loadingDelayMs?: number;
+  /** `demo` renders the demo Documents workspace; `project` renders the aggregate Documents view. */
+  dataMode?: 'project' | 'demo';
 }) {
   const catalogueRequests = useRef(0);
   const queryClient = useMemo(() => {
@@ -237,20 +242,39 @@ export function RoutedApplication({
         return Promise.reject(new Error(`Unconfigured Storybook HTTP GET: ${url}`));
       };
     }
+    const wait = () => new Promise<void>((resolve) => setTimeout(resolve, loadingDelayMs));
+    const workspaceSource = createWorkspaceIntegrationApi();
+    const taskSource = createTaskIntegrationApi();
+    const documentSource = createDocumentIntegrationApi();
     return createSpecFlowAppServices({
       http,
       authStore: auth,
-      runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode: 'demo' }) },
+      runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode }) },
       ...(specsStatus === 401 ? {} : { specsOverviewApi }),
       ...(integrationDto
         ? {
-            specificationApi: createWorkspaceIntegrationApi(),
-            taskApi: createTaskIntegrationApi(),
-            documentApi: createDocumentIntegrationApi(),
+            specificationApi: {
+              getSpecificationWorkspace: async (...args) => {
+                await wait();
+                return workspaceSource.getSpecificationWorkspace(...args);
+              },
+            },
+            taskApi: {
+              getTask: async (...args) => {
+                await wait();
+                return taskSource.getTask(...args);
+              },
+            },
+            documentApi: {
+              getDocument: async (...args) => {
+                await wait();
+                return documentSource.getDocument(...args);
+              },
+            },
           }
         : {}),
     });
-  }, [auth, specsStatus, integrationDto, catalogueFailure]);
+  }, [auth, specsStatus, integrationDto, catalogueFailure, loadingDelayMs, dataMode]);
 
   const router = useMemo(() => {
     const history = createMemoryHistory({ initialEntries: [path] });
@@ -557,10 +581,10 @@ export const NavigationDocumentDetailActive: Story = {
   play: async ({ canvas }) => {
     const nav = await canvas.findByRole('navigation', { name: 'Product navigation' });
     assertSpecificationNavigation(nav, 'admission', '/specs/admission/documents');
-    const title = await canvas.findByRole('heading', { name: 'Specyfikacja', level: 1 });
+    const title = await canvas.findByRole('heading', { name: 'Documents', level: 1 });
     if (title.closest('[data-workspace-active="true"]')?.querySelectorAll('h1').length !== 1)
       throw new Error(
-        'Full Document must have one view-owned H1; embedded Markdown headings are subordinate.',
+        'Documents workspace must have one view-owned H1; the open document and embedded Markdown headings are subordinate.',
       );
   },
 };
@@ -637,7 +661,7 @@ export const NavigationSwitcherInteractions: Story = {
   },
   tags: ['integration'],
   play: async ({ canvas, canvasElement, userEvent }) => {
-    await canvas.findByRole('heading', { name: 'Specyfikacja', level: 1 });
+    await canvas.findByRole('heading', { name: 'Documents', level: 1 });
     const doc = canvasElement.ownerDocument;
     const trigger = canvas.getByRole('button', {
       name: /Current specification Deterministic admission/,
@@ -654,7 +678,7 @@ export const NavigationSwitcherInteractions: Story = {
       () => !doc.querySelector('.popover-content[data-state="open"]') || null,
       'Current choice must close picker',
     );
-    if (!canvas.queryByRole('heading', { name: 'Specyfikacja', level: 1 }))
+    if (!canvas.queryByRole('heading', { name: 'Documents', level: 1 }))
       throw new Error('Current choice must not reset the detail route');
     const icon = trigger.querySelector('[data-specification-switcher-icon]');
     if (!icon) throw new Error('Switcher glyph missing');

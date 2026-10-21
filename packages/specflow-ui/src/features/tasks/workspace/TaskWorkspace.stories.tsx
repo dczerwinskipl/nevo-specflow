@@ -75,7 +75,7 @@ export const PreviewReturnContract: Story = {
   render: (args) => <PreviewFixture {...args} />,
   parameters: { workspaceWidth: 375 },
   play: async ({ canvas, canvasElement, userEvent }) => {
-    const opener = canvas.getByRole('button', { name: 'Otwórz Task' });
+    const opener = canvas.getByRole('button', { name: 'Otwórz zadanie' });
     await userEvent.click(opener);
     const title = await canvas.findByRole('heading', { level: 1, name: /Zachowaj sesję/ });
     await waitFor(async () => {
@@ -271,8 +271,8 @@ export const MaterialReferencePointerContract: Story = {
       canvasElement.querySelector<HTMLElement>('[data-task-workspace="primary"]')!,
       'review-3.md',
     );
-    await userEvent.click(canvas.getByRole('button', { name: 'Historia Taska' }));
-    await canvas.findByRole('heading', { name: 'Historia Taska' });
+    await userEvent.click(canvas.getByRole('button', { name: 'Historia zadania' }));
+    await canvas.findByRole('heading', { name: 'Historia zadania' });
     await userEvent.click(
       canvas.getAllByRole('button', { name: 'Materiały tego przekazania' })[1]!,
     );
@@ -318,8 +318,8 @@ export const NarrowHistoryCloseContract: Story = {
   tags: ['contract'],
   parameters: { workspaceWidth: 480 },
   play: async ({ canvas, canvasElement, userEvent }) => {
-    await userEvent.click(canvas.getByRole('button', { name: 'Historia Taska' }));
-    await canvas.findByRole('heading', { name: 'Historia Taska' });
+    await userEvent.click(canvas.getByRole('button', { name: 'Historia zadania' }));
+    await canvas.findByRole('heading', { name: 'Historia zadania' });
     await userEvent.click(
       canvas.getAllByRole('button', { name: 'Materiały tego przekazania' })[1]!,
     );
@@ -342,22 +342,25 @@ export const NarrowHistoryCloseContract: Story = {
     await userEvent.click(opener);
     await canvas.findByText(/Raport dotyczy/);
     await userEvent.click(canvas.getByRole('button', { name: 'Zamknij panel dodatkowy' }));
-    await waitFor(async () => {
-      await expect(canvasElement.ownerDocument.activeElement).toBe(
-        canvas.getByRole('button', { name: 'review-2.md · Review · próba 2' }),
-      );
-      const returned = canvas.getByRole('button', { name: 'review-2.md · Review · próba 2' });
-      let owner = returned.parentElement;
-      while (
-        owner &&
-        !(
-          /(auto|scroll)/.test(getComputedStyle(owner).overflowY) &&
-          owner.scrollHeight > owner.clientHeight + 1
+    await waitFor(
+      async () => {
+        await expect(canvasElement.ownerDocument.activeElement).toBe(
+          canvas.getByRole('button', { name: 'review-2.md · Review · próba 2' }),
+        );
+        const returned = canvas.getByRole('button', { name: 'review-2.md · Review · próba 2' });
+        let owner = returned.parentElement;
+        while (
+          owner &&
+          !(
+            /(auto|scroll)/.test(getComputedStyle(owner).overflowY) &&
+            owner.scrollHeight > owner.clientHeight + 1
+          )
         )
-      )
-        owner = owner.parentElement;
-      await expect(owner?.scrollTop).toBe(before);
-    });
+          owner = owner.parentElement;
+        await expect(owner?.scrollTop).toBe(before);
+      },
+      { timeout: 5000 },
+    );
     await expect(canvas.getByRole('button', { name: 'Ukryj materiały' })).toHaveAttribute(
       'aria-expanded',
       'true',

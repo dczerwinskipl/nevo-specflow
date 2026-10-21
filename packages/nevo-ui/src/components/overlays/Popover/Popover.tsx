@@ -18,7 +18,16 @@ export const PopoverContent = forwardRef<
   ComponentRef<typeof PopoverPrimitive.Content>,
   PopoverContentProps
 >(function PopoverContent(
-  { align = 'start', children, className, container, motion = 'default', sideOffset = 8, ...props },
+  {
+    align = 'start',
+    children,
+    className,
+    collisionPadding = 8,
+    container,
+    motion = 'default',
+    sideOffset = 8,
+    ...props
+  },
   ref,
 ) {
   const capture = useDesignMetadata('Popover');
@@ -28,13 +37,26 @@ export const PopoverContent = forwardRef<
       <PopoverPrimitive.Content
         ref={ref}
         align={align}
-        className={cn('popover-content', floatingSurfaceClassName, className)}
+        className={cn(
+          'popover-content',
+          floatingSurfaceClassName,
+          // Clamp to the collision-aware available size so the surface never outgrows the visible
+          // viewport (a software keyboard shrinks it); consumers still own width and padding.
+          'flex min-w-0 max-w-(--radix-popover-content-available-width) max-h-(--radix-popover-content-available-height) flex-col',
+          className,
+        )}
+        collisionPadding={collisionPadding}
         sideOffset={sideOffset}
         data-motion={motion}
         {...props}
         {...capture}
       >
-        <div {...designSlot('Popover', 'content')}>{children}</div>
+        <div
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
+          {...designSlot('Popover', 'content')}
+        >
+          {children}
+        </div>
       </PopoverPrimitive.Content>
     </PopoverPrimitive.Portal>
   );

@@ -144,7 +144,9 @@ summary level. (The specific level model for SpecFlow UI's AI Work view is in
 ## Interaction hierarchy
 
 One obvious primary interaction per surface. Icon semantics must be consistent and
-learnable. A small icon still needs a comfortably large hit target.
+learnable. A small icon still needs a comfortably large hit target: at least 24px on every pointer and
+44px on coarse pointers, reached by expanding the hit area rather than the visual (see
+[target size](../implementation/react/component-guidelines.md#target-size)).
 
 For surface-level actions, prefer one visible primary action when the header has useful space and move
 secondary actions into overflow. Constrained headers may move all actions into overflow rather than

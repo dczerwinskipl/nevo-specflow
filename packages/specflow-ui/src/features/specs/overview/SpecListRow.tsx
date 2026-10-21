@@ -54,7 +54,7 @@ export function SpecListRow({
         href={pr.href}
         aria-label={t('specifications.openPullRequest', { number: pr.number, title: item.title })}
       >
-        PR #{pr.number}
+        {t('common.pullRequestNumber', { number: pr.number })}
       </Link>
     ) : pr?.kind === 'multiple' ? (
       <span>{t('specifications.pullRequests', { count: pr.count })}</span>

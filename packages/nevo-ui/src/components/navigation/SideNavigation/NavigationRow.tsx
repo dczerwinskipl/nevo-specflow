@@ -52,16 +52,16 @@ export const NavigationRow = forwardRef<HTMLLIElement, NavigationRowProps>(funct
   const trigger = useRef<HTMLButtonElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const containedFocus = useRef(false);
+  const collapsed = disclosure !== undefined && !disclosure.expanded;
   useLayoutEffect(() => {
     if (
-      disclosure &&
-      !disclosure.expanded &&
+      collapsed &&
       (containedFocus.current || content.current?.contains(document.activeElement))
     ) {
       trigger.current?.focus();
       containedFocus.current = false;
     }
-  }, [disclosure?.expanded]);
+  }, [collapsed]);
   return (
     <li ref={ref} className={cn('min-w-0 list-none', className)} {...props} {...capture}>
       <div

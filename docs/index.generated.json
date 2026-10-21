@@ -4581,6 +4581,36 @@
       ]
     },
     {
+      "id": "ideas.specflow-ui.screens.specification-creation",
+      "type": "product",
+      "title": "Specification creation, Documents and Session UX redesign",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/screens/specification-creation-ui-spec.md",
+      "read_when": [
+        "reviewing Specification creation and manual or AI preparation",
+        "implementing the owner-approved Create and Documents UX in the bounded demo"
+      ],
+      "summary": "Owner-approved Create and Documents contract: workflow-led single-column creation, first-session configuration, branch/worktree choice, preview-first documents in larger Secondary, and folder-context inline file operations through bounded Runtime demo capabilities.",
+      "related": [
+        "ideas.specflow-ui.screens.specs-overview",
+        "ideas.specflow-ui.navigation-route-model",
+        "product.specflow.ui.interaction-model",
+        "product.specflow.ui.ai-session-ux",
+        "design-system.principles.system-boundary"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "specification",
+        "session",
+        "creation",
+        "worktree",
+        "mock"
+      ]
+    },
+    {
       "id": "ideas.specflow-ui.screens.specification-workspace",
       "type": "product",
       "title": "Specification UI spec",
@@ -5009,6 +5039,32 @@
         "runtime",
         "server",
         "security"
+      ]
+    },
+    {
+      "id": "reference.api.specification-creation-demo",
+      "type": "reference",
+      "title": "Specification creation demo integration contract",
+      "status": "current",
+      "file": "docs/reference/api/specification-creation-demo.md",
+      "read_when": [
+        "implementing or testing the temporary Specification creation demo"
+      ],
+      "summary": "Temporary Runtime-owned in-memory integration for creating demonstration Specifications, documents and allocated Session placeholders without real provider or worktree execution.",
+      "related": [
+        "reference.api.specification-workspace",
+        "product.specflow.ui.data-loading-and-integration",
+        "ideas.specflow-ui.screens.specification-creation"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "runtime"
+      ],
+      "tags": [
+        "demo",
+        "specification",
+        "session"
       ]
     },
     {

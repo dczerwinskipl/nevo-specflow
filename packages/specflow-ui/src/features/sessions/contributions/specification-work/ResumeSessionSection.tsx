@@ -1,10 +1,8 @@
 import { Button, InformationList, MenuItem, OverflowMenu } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import { OperationalRow } from '../../../specs/shared/OperationalList';
-import type { CompactFacts } from '../../../specs/shared/OperationalList/OperationalRow.types';
-import type { SessionSummary } from '../../../specs/workspace/model';
-import { sessionActivityLabel } from '../../../specs/workspace/status-labels';
-import { WorkspaceSection } from '../../../specs/workspace/sections/WorkspaceSection';
+import { sessionActivityLabel, type SessionSummary } from '../../../specs';
+import { OperationalRow, type CompactFacts } from '../../../../shared/operational-list';
+import { WorkspaceSection } from '../../../../shared/workspace-section';
 
 export interface ResumeSessionSectionProps {
   readonly session: SessionSummary;

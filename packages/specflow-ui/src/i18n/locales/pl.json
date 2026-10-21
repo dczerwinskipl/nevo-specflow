@@ -5,13 +5,17 @@
     "english": "English",
     "polish": "Polski",
     "retry": "Spróbuj ponownie",
+    "moreActions": "Więcej akcji",
+    "dismissNotification": "Zamknij powiadomienie",
     "retrying": "Ponawianie…",
     "cancel": "Anuluj",
     "close": "Zamknij",
     "open": "Otwórz",
     "loading": "Ładowanie…",
     "notImplemented": "Niezaimplementowane",
-    "unknown": "Nieznane"
+    "unknown": "Nieznane",
+    "flow": "Flow",
+    "pullRequestNumber": "PR #{{number}}"
   },
   "navigation": {
     "product": "Nawigacja produktu",
@@ -81,6 +85,8 @@
     "viewWork": "Praca",
     "viewOverview": "Przegląd",
     "viewDocuments": "Dokumenty",
+    "documentIdleTitle": "Wybierz dokument",
+    "documentIdleDescription": "Otwórz plik z drzewa, aby zobaczyć jego treść.",
     "viewSessions": "Sesje",
     "viewChanges": "Wszystkie zmiany",
     "viewRepository": "Repozytorium",
@@ -92,25 +98,36 @@
     "taskActionsNamed": "Akcje dla {{id}}",
     "historyAriaLabel": "Historia aktywności",
     "activityHistory": "Historia aktywności",
+    "activityHistoryEmptyTitle": "Brak historii tej specyfikacji",
+    "activityHistoryEmptyDescription": "Zdarzenia pojawią się tutaj podczas pracy nad specyfikacją.",
+    "activityHistoryUnavailableTitle": "Nie udało się wczytać historii",
+    "activityHistoryUnavailableDescription": "Historia tej specyfikacji jest chwilowo niedostępna.",
+    "activityHistoryForbiddenTitle": "Brak dostępu do historii",
+    "activityHistoryForbiddenDescription": "Nie masz uprawnień do historii tej specyfikacji.",
+    "documentPreviewTitle": "Podgląd dokumentu",
+    "markdownTable": "Tabela",
+    "markdownCodeBlock": "Blok kodu",
+    "markdownTaskDone": "Zadanie ukończone",
+    "markdownTaskOpen": "Zadanie nieukończone",
     "thisSpecification": "Ta specyfikacja",
     "backFromHistory": "Wróć z historii",
-    "previewTaskAria": "Podgląd taska: {{title}}",
+    "previewTaskAria": "Podgląd zadania: {{title}}",
     "openSessionAria": "Otwórz sesję: {{title}}",
     "readDocAria": "Czytaj dokument: {{title}}",
-    "taskPreviewAriaLabel": "Podgląd taska",
-    "closeTaskPreview": "Zamknij podgląd taska",
+    "taskPreviewAriaLabel": "Podgląd zadania",
+    "closeTaskPreview": "Zamknij podgląd zadania",
     "defaultTaskPreviewDescription": "Utrzymać rozpoczęty kontekst użytkownika po odświeżeniu sesji i jawnie obsłużyć zmianę uprawnień.",
     "taskStateLabel": "Stan",
     "taskGroupLabel": "Grupa",
     "taskContextLabel": "Kontekst",
-    "fullTaskView": "Pełny widok taska",
-    "taskPreviewTitle": "Podgląd taska",
+    "fullTaskView": "Pełny widok zadania",
+    "taskPreviewTitle": "Podgląd zadania",
     "taskNotFoundTitle": "Nie znaleziono zadania",
     "taskNotFoundDescription": "Wskazane zadanie \"{{taskId}}\" nie istnieje w tej specyfikacji.",
-    "taskPreviewSessionExpired": "Sesja wygasła. Zaloguj się ponownie, aby zobaczyć task.",
-    "taskPreviewAccessDenied": "Nie masz uprawnień do wyświetlenia tego taska.",
-    "taskPreviewSourceUnavailable": "Dane taska są tymczasowo niedostępne. Spróbuj ponownie.",
-    "taskPreviewLoadFailed": "Nie udało się pobrać podglądu taska. Spróbuj ponownie.",
+    "taskPreviewSessionExpired": "Sesja wygasła. Zaloguj się ponownie, aby zobaczyć zadanie.",
+    "taskPreviewAccessDenied": "Nie masz uprawnień do wyświetlenia tego zadania.",
+    "taskPreviewSourceUnavailable": "Dane zadania są tymczasowo niedostępne. Spróbuj ponownie.",
+    "taskPreviewLoadFailed": "Nie udało się pobrać podglądu zadania. Spróbuj ponownie.",
     "backToTasks": "Wróć do zadań",
     "readSpecificationLink": "Czytaj specyfikację →",
     "requiresAttention": "Wymaga Twojej uwagi",
@@ -132,16 +149,16 @@
     "newConversation": "Nowa rozmowa",
     "activityHistoryLink": "Historia aktywności",
     "prepareSpecificationHeading": "Przygotuj specyfikację do realizacji",
-    "prepareSpecificationDescription": "Rozpocznij rozmowę z agentem, aby dopracować wymagania i przygotować taski do realizacji.",
+    "prepareSpecificationDescription": "Rozpocznij rozmowę z agentem, aby dopracować wymagania i przygotować zadania do realizacji.",
     "startConversation": "Rozpocznij rozmowę",
-    "tasksHeading": "Taski",
+    "tasksHeading": "Zadania",
     "tasksInPreparation": "{{count}} w przygotowaniu",
     "tasksProgressCount": "{{completed}} / {{total}} ukończone",
     "selectedTasksCount": "{{count}} wybrane",
     "executeWithAgent": "Wykonaj z agentem",
     "executeSingleTask": "Wykonaj 1 zadanie",
     "executeMultipleTasks": "Wykonaj {{count}} zadań",
-    "tasksPreparingNotice": "Taski są jeszcze w przygotowaniu. Otwórz je, żeby sprawdzić zakres; wykonanie wymaga zakończenia review.",
+    "tasksPreparingNotice": "Zadania są jeszcze w przygotowaniu. Otwórz je, żeby sprawdzić zakres; wykonanie wymaga zakończenia review.",
     "documentsHeading": "Dokumenty",
     "allDocumentsLink": "Wszystkie dokumenty",
     "relatedOperationsHeading": "Powiązane operacje",
@@ -202,26 +219,26 @@
     "taskFullAcceptanceItem2": "Zmiana uprawnień nie zatwierdza automatycznie nowej operacji.",
     "taskFullAcceptanceItem3": "Równoległe żądania respektują wspólny wynik odświeżenia.",
     "taskFullWorkflowHeading": "Workflow i dostępne działania",
-    "taskFullWorkflowContent": "Przykładowa projekcja taska: {{status}}. Dostępne działania i ich warunki pochodzą z backendu.",
+    "taskFullWorkflowContent": "Przykładowa projekcja zadania: {{status}}. Dostępne działania i ich warunki pochodzą z backendu.",
     "taskFullEvidenceHeading": "Evidence",
     "taskFullReviewSummary": "Podsumowanie review",
     "taskFullVerificationResult": "Wynik weryfikacji",
     "taskFullRelatedSessionsHeading": "Powiązane sesje",
     "taskFullSecurityReviewSession": "Przegląd scenariuszy bezpieczeństwa",
-    "taskFullHistoryHeading": "Historia taska",
+    "taskFullHistoryHeading": "Historia zadania",
     "taskFullHistoryContent": "Przygotowanie zakresu → wykonanie → review; przykładowe zdarzenia.",
-    "executeModalTitle": "Wykonaj wybrane taski",
+    "executeModalTitle": "Wykonaj wybrane zadania",
     "executeScopeLabel": "Zakres: {{tasks}}",
-    "executeBlockedNotice": "Wykonanie niedostępne: {{tasks}}. Przykładowa projekcja: wymagane review, aktywne wykonanie albo task poza zakresem tej akcji.",
+    "executeBlockedNotice": "Wykonanie niedostępne: {{tasks}}. Przykładowa projekcja: wymagane review, aktywne wykonanie albo zadanie poza zakresem tej akcji.",
     "executeWarningNotice": "Ostrzeżenie: TASK-05 zależy od TASK-03. Przykładowa projekcja dopuszcza pracę przygotowawczą mimo tej zależności.",
     "agentSelectLabel": "Agent",
     "conversationModalTitle": "Nowa rozmowa o specyfikacji",
-    "conversationModalDescription": "Rozmowa należy do tej specyfikacji. Nie uruchamia automatycznie workflow tasków.",
+    "conversationModalDescription": "Rozmowa należy do tej specyfikacji. Nie uruchamia automatycznie workflow zadań.",
     "conversationModalComposerNote": "Wiadomość wpisujesz w normalnym composerze sesji.",
     "sessionOpenedNotification": "Otwarto sesję: {{id}}",
     "refreshedNotification": "Odświeżono stan specyfikacji",
     "diffNotification": "Otwarto diff pliku: {{file}}",
-    "executeStartedNotification": "Uruchomiono wykonanie z {{agent}} ({{count}} tasków)",
+    "executeStartedNotification": "Uruchomiono wykonanie z {{agent}} ({{count}} zadań)",
     "conversationStartedNotification": "Rozpoczęto rozmowę z {{agent}}",
     "taskStatusPending": "Gotowe",
     "taskStatusInProgress": "W trakcie",
@@ -229,7 +246,7 @@
     "taskStatusBlocked": "Zablokowane",
     "sessionStatusActive": "Aktywna",
     "sessionStatusAttention": "Wymaga uwagi",
-    "attentionViewTask": "Zobacz task",
+    "attentionViewTask": "Zobacz zadanie",
     "viewTasks": "Zadania"
   },
   "playground": {
@@ -336,7 +353,9 @@
     "milestone": {
       "completed": "Ukończono",
       "archived": "Zarchiwizowano"
-    }
+    },
+    "more_few": "+{{count}} więcej",
+    "more_many": "+{{count}} więcej"
   },
   "taskWorkspace": {
     "readMore": "Czytaj więcej",
@@ -367,7 +386,7 @@
     "hideMaterials": "Ukryj materiały",
     "openMaterial": "Otwórz materiał w tym workspace",
     "download": "Pobierz archiwum demonstracyjne",
-    "history": "Historia Taska",
+    "history": "Historia zadania",
     "emptyHistory": "Brak wykonanych kroków",
     "draftHistory": "Zadanie pozostaje szkicem.",
     "readyHistory": "Historia pojawi się po pierwszym wykonaniu.",
@@ -378,13 +397,13 @@
     "feedbackError": "Opisz wymagane zmiany.",
     "startDemo": "Demo: wybrano rozpoczęcie kroku. Agent nie został uruchomiony.",
     "decisionDemo": "Demo: sprawdzono rozstrzygnięcie. Stan zadania nie został zmieniony.",
-    "openTask": "Otwórz Task",
+    "openTask": "Otwórz zadanie",
     "sessionDemo": {
       "title": "Sesja demonstracyjna",
       "notice": "Demo sesji na fixtures. Ten ekran nie jest połączony z rzeczywistą sesją.",
       "question": "Pytanie do użytkownika",
       "questionUnavailable": "Ta fixture nie zawiera treści pytania.",
-      "return": "Aby wrócić do Taska, przełącz się na poprzednią kartę lub zamknij tę kartę."
+      "return": "Aby wrócić do zadania, przełącz się na poprzednią kartę lub zamknij tę kartę."
     }
   },
   "taskDetails": {
@@ -468,7 +487,8 @@
     "materialUnavailable": "Treść niedostępna",
     "readerUnavailable": "Brak czytnika tego materiału.",
     "materialForbidden": "Dostęp ograniczony",
-    "restrictedMaterial": "Materiał chroniony"
+    "restrictedMaterial": "Materiał chroniony",
+    "historyTitle": "Historia"
   },
   "applicationNavigation": {
     "location": "Lokalizacja w aplikacji",
@@ -498,6 +518,556 @@
     "partialActivity": "Aktywność jest częściowo dostępna",
     "tasksUnavailable": "Lista zadań nie jest jeszcze dostępna",
     "staleContext": "Kontekst może być nieaktualny",
-    "contextUnavailable": "Kontekst jest niedostępny"
+    "contextUnavailable": "Nie udało się wczytać informacji o specyfikacji.",
+    "noSpecificationSelectedTitle": "Wybierz specyfikację",
+    "noSpecificationSelectedDescription": "Otwórz specyfikację z listy, aby zobaczyć jej dokumenty i sesje.",
+    "sessionBack": "Sesja Spec Writera"
+  },
+  "loading": {
+    "waitingForConnection": "Oczekiwanie na połączenie…",
+    "task": "Ładowanie zadania…",
+    "document": "Ładowanie dokumentu…",
+    "history": "Ładowanie historii zadania…",
+    "detail": "Ładowanie zasobu…",
+    "dependency": "Kontekst zadania jest niedostępny."
+  },
+  "create": {
+    "newSession": "Nowa sesja",
+    "newSpecification": "Nowa specyfikacja",
+    "loading": "Wczytywanie konfiguracji…",
+    "demoOnly": "Tworzenie dostępne wyłącznie w trybie demonstracyjnym",
+    "loadError": "Nie udało się wczytać konfiguracji",
+    "sessionReady": "Sesja gotowa",
+    "specificationCreated": "Specyfikacja utworzona",
+    "withAI": "Z agentem",
+    "manual": "Samodzielnie",
+    "nameLabel": "Nazwa specyfikacji",
+    "namePlaceholder": "Np. Logowanie SSO",
+    "workflowLabel": "Workflow",
+    "model": "Model",
+    "chooseModel": "Wybierz model",
+    "effort": "Effort",
+    "providerDefault": "Domyślny wykonawcy",
+    "mode": "Tryb pracy",
+    "send": "Wyślij",
+    "changeMethod": "Zmień sposób pracy",
+    "formRegion": "Utworzenie specyfikacji",
+    "sessionWorkspaceIntro": "Nowa sesja korzysta z środowiska pracy tej specyfikacji.",
+    "simulatedSuffix": "symulacja, bez operacji Git",
+    "method": {
+      "title": "Jak chcesz stworzyć specyfikację?",
+      "intro": "Wybierz, czy zaczniesz od rozmowy ze Spec Writerem, czy od szkieletu dokumentów z workflow.",
+      "aiText": "Rozpocznij sesję Spec Writera. Kolejne etapy mogą korzystać z innych agentów.",
+      "manualText": "Utwórz wymagane dokumenty z workflow i edytuj je samodzielnie."
+    },
+    "heading": {
+      "session": "Z kim chcesz pracować?",
+      "specification": "Co chcesz opisać?"
+    },
+    "subheading": {
+      "session": "Skonfiguruj kolejną sesję Spec Writera.",
+      "specification": "Wybierz workflow, który odpowiada rodzajowi pracy."
+    },
+    "agent": {
+      "sessionTitle": "Konfiguracja sesji",
+      "initialTitle": "Początkowa sesja agenta",
+      "introSession": "Wybierz wykonawcę tej sesji Spec Writera.",
+      "introInitial": "Wybierz wykonawcę pierwszej sesji Spec Writera. Kolejne sesje mogą korzystać z innych agentów.",
+      "noProviders": "Brak dostępnych wykonawców."
+    },
+    "provider": {
+      "accessApi": "API",
+      "accessSubscription": "Subskrypcja",
+      "unavailable": "Niedostępny w tym środowisku",
+      "availableDemo": "Dostępny w demo",
+      "available": "Dostępny"
+    },
+    "prerequisite": {
+      "workspaceLoading": "Wczytujemy opcje środowiska pracy…",
+      "workspaceError": "Nie udało się wczytać opcji środowiska pracy.",
+      "forbidden": "Nie masz uprawnień do tworzenia specyfikacji.",
+      "refreshConfiguration": "Odśwież konfigurację przed utworzeniem.",
+      "title": "Podaj nazwę specyfikacji.",
+      "workflow": "Wybierz dostępny workflow.",
+      "provider": "Wybierz dostępnego wykonawcę.",
+      "model": "Wybierz model.",
+      "mode": "Wybierz obsługiwany tryb pracy."
+    },
+    "announce": {
+      "refreshFailed": "Nie udało się odświeżyć opcji. Formularz zachowany.",
+      "refreshedStale": "Opcje odświeżone. Formularz zachowany — popraw zaznaczone pole.",
+      "refreshed": "Opcje odświeżone.",
+      "notStarted": "Operacja jeszcze się nie rozpoczęła. Ponów tę samą operację — zachowuje ten sam identyfikator.",
+      "operationFailed": "Operacja zakończyła się niepowodzeniem. Możesz utworzyć specyfikację ponownie.",
+      "copied": "Skopiowano {{label}}."
+    },
+    "operation": {
+      "copyLabelOperation": "dane operacji",
+      "copyLabelDiagnostics": "dane diagnostyczne",
+      "stageWorkspacePrepared": "Środowisko pracy przygotowane",
+      "detail": {
+        "operation": "Identyfikator operacji",
+        "specification": "Specyfikacja",
+        "place": "Miejsce pracy",
+        "branch": "Gałąź",
+        "step": "Etap",
+        "attempt": "Ostatnia próba"
+      }
+    },
+    "leave": {
+      "title": "Porzucić konfigurację?",
+      "description": "Niezapisane ustawienia zostaną utracone.",
+      "stay": "Kontynuuj",
+      "discard": "Porzuć konfigurację"
+    },
+    "configUnavailable": {
+      "title": "Konfiguracja jest niedostępna",
+      "body": "Twój szkic pozostaje zachowany. Odśwież konfigurację przed utworzeniem.",
+      "refresh": "Odśwież konfigurację"
+    },
+    "footer": {
+      "operationKept": "Operacja jest zachowana pod tym samym identyfikatorem.",
+      "aiNote": "Wiadomość napiszesz w otwartej sesji. Agent nie uruchomi się automatycznie.",
+      "manualNote": "Po utworzeniu otworzymy dokumenty do edycji."
+    },
+    "submit": {
+      "checking": "Sprawdzanie…",
+      "preparing": "Przygotowywanie…",
+      "checkOperation": "Sprawdź stan operacji",
+      "checkResult": "Sprawdź wynik",
+      "openSession": "Otwórz sesję",
+      "createAndOpen": "Utwórz i otwórz sesję",
+      "create": "Utwórz specyfikację"
+    },
+    "recovery": {
+      "title": "Nie udało się otworzyć sesji",
+      "body": "Specyfikacja i jej workspace już istnieją. Ponowimy wyłącznie początkową sesję z zapamiętaną konfiguracją.",
+      "stillUnconfirmed": "Nadal brak potwierdzenia. Możesz ponowić tę samą operację.",
+      "retry": "Ponów otwarcie sesji"
+    },
+    "options": {
+      "show": "Pokaż opcje",
+      "noResults": "Brak wyników",
+      "loading": "Wczytywanie"
+    },
+    "archetype": {
+      "unavailable": "Wybrany workflow jest niedostępny. Wybierz inną pozycję.",
+      "info": "Informacje o workflow",
+      "phases": "Przebieg workflow",
+      "noDescription": "Opis workflow niedostępny.",
+      "noPhases": "Przebieg nie jest opisany w katalogu.",
+      "requiredDocuments": "Wymagane dokumenty",
+      "suggestedLater": "Sugerowane później",
+      "details": "Szczegóły dokumentów",
+      "requiredNone": "Brak wymaganych dokumentów",
+      "requiredCount_one": "{{count}} dokument wymagany",
+      "requiredCount_few": "{{count}} dokumenty wymagane",
+      "requiredCount_many": "{{count}} dokumentów wymaganych",
+      "requiredCount_other": "{{count}} dokumentów wymaganych",
+      "suggestedCount_one": "{{count}} sugerowany później",
+      "suggestedCount_few": "{{count}} sugerowane później",
+      "suggestedCount_many": "{{count}} sugerowanych później",
+      "suggestedCount_other": "{{count}} sugerowanych później"
+    },
+    "errors": {
+      "forbiddenTitle": "Nie masz uprawnień do tworzenia specyfikacji",
+      "readOnlyForm": "Formularz jest tylko do odczytu.",
+      "uncertain": {
+        "title": "Sprawdzamy wynik tworzenia",
+        "body": "Nie mamy potwierdzonego wyniku. Sprawdź go tą samą operacją — nie utworzymy drugiej specyfikacji ani drugiej gałęzi."
+      },
+      "recovery": {
+        "title": "Tworzenie wymaga dokończenia",
+        "body": "Nevo rozpoczęło przygotowanie środowiska pracy, ale nie potwierdziło wyniku. Nie twórz specyfikacji ponownie — mogłoby to zdublować gałąź i katalog. Formularz jest zablokowany do czasu sprawdzenia.",
+        "inProgress": "Operacja jest nadal w toku.",
+        "pending": "Operacja nadal wymaga dokończenia."
+      },
+      "branchExistsAutomatic": {
+        "title": "Nevo nie zdołało wybrać wolnej nazwy gałęzi",
+        "body": "Specyfikacja nie została utworzona: gałąź wybrana automatycznie jest już zajęta. Podaj własną nazwę gałęzi — pozostałe ustawienia zostały zachowane."
+      },
+      "branchExists": {
+        "title": "Nazwa gałęzi jest zajęta",
+        "body": "Specyfikacja nie została utworzona. Wpisz inną nazwę gałęzi albo pozwól Nevo wygenerować ją automatycznie."
+      },
+      "stale": {
+        "title": "Stan środowiska pracy zmienił się od otwarcia formularza",
+        "body": "{{reason}} Specyfikacja nie została utworzona. Nazwa i wybory zostały zachowane — odśwież opcje i popraw zaznaczone pole."
+      },
+      "staleReason": {
+        "default": "Jedna z wybranych opcji nie jest już poprawna lub dostępna.",
+        "DEMO_WORKSPACE_UNAVAILABLE": "Wybrane środowisko pracy nie jest już dostępne.",
+        "BASE_REF_NOT_FOUND": "Wybrana gałąź początkowa nie jest już dostępna."
+      },
+      "conflict": {
+        "title": "Ta operacja została już użyta z innym żądaniem",
+        "body": "Specyfikacja nie została utworzona. Przy następnej próbie użyjemy nowego identyfikatora operacji."
+      },
+      "unauthenticated": {
+        "title": "Sesja wygasła",
+        "body": "Specyfikacja nie została utworzona. Zaloguj się ponownie i spróbuj jeszcze raz — formularz został zachowany."
+      },
+      "offline": {
+        "title": "Brak połączenia",
+        "body": "Nic nie zostało wysłane ani utworzone. Gdy połączenie wróci, utwórz specyfikację ponownie — formularz został zachowany."
+      },
+      "failed": {
+        "title": "Nie udało się utworzyć specyfikacji",
+        "body": "Konfiguracja została zachowana. Popraw ustawienia lub spróbuj ponownie.",
+        "bodyOperation": "Operacja zakończyła się niepowodzeniem. Konfiguracja została zachowana. Popraw ustawienia lub spróbuj ponownie."
+      },
+      "statusUnreadable": "Nie udało się odczytać stanu operacji. Sprawdź ją ponownie — to wciąż ta sama operacja.",
+      "connectionLost": "Brak połączenia — nie sprawdziliśmy wyniku. Spróbuj ponownie, gdy połączenie wróci.",
+      "copyOperation": "Skopiuj dane operacji",
+      "copyHelp": "Jeśli problem się powtarza, skopiuj dane operacji i przekaż je administratorowi.",
+      "copyDiagnostics": "Skopiuj dane diagnostyczne",
+      "diagnostics": "Dane diagnostyczne",
+      "useCustomName": "Podaj własną nazwę",
+      "useAutomaticName": "Użyj automatycznej nazwy"
+    },
+    "workspace": {
+      "heading": "Gdzie chcesz pracować?",
+      "intro": "Wybierz, gdzie powstanie specyfikacja i jej zmiany.",
+      "refreshOptions": "Odśwież opcje środowiska pracy",
+      "refreshOptionsAction": "Odśwież opcje",
+      "refreshing": "Odświeżamy opcje…",
+      "summaryLabel": "Podsumowanie środowiska pracy",
+      "recommended": "Zalecane",
+      "currentCheckout": "bieżący checkout",
+      "dirtyBadge": "zmiany",
+      "dirtyNote": "Katalog ma niezapisane zmiany w Git. Nowe pliki specyfikacji pojawią się obok nich.",
+      "noBranch": "Środowisko bez gałęzi",
+      "staleAnnouncement": "Wybrana wcześniej wartość nie jest już dostępna.",
+      "tile": {
+        "newTitle": "Nowe środowisko pracy",
+        "newDescription": "Nowa gałąź i osobny worktree. Bez zmiany aktualnego katalogu roboczego.",
+        "mainTitle": "Bieżący katalog",
+        "mainDescription": "Praca bezpośrednio w aktualnym checkoutcie, bez nowej gałęzi.",
+        "existingTitle": "Istniejące środowisko pracy",
+        "existingDescription": "Wybierz wcześniej utworzony worktree i kontynuuj pracę."
+      },
+      "tileReason": {
+        "newDisabled": "Wyłączone w konfiguracji projektu.",
+        "newMismatch": "Ten katalog nie należy do repozytorium projektu.",
+        "newCheckoutUnavailable": "Katalog projektu jest teraz niedostępny.",
+        "newGitUnavailable": "Git jest teraz niedostępny.",
+        "mainDetached": "W bieżącym katalogu nie wybrano gałęzi (odłączony stan).",
+        "mainUnavailable": "Bieżący katalog jest niedostępny.",
+        "existingNone": "Brak innych środowisk pracy w projekcie.",
+        "existingUnavailable": "Żadne środowisko pracy nie jest teraz dostępne."
+      },
+      "reason": {
+        "dirty": "Ma niezapisane zmiany w Git",
+        "detached": "Nie wybrano gałęzi (odłączony stan)",
+        "checkout-unavailable": "Katalog niedostępny",
+        "git-membership-mismatch": "Katalog nie należy do tego repozytorium",
+        "git-disabled": "Git wyłączony",
+        "git-unavailable": "Git niedostępny",
+        "other": "Niedostępny"
+      },
+      "reasonInline": {
+        "dirty": "ma niezapisane zmiany w Git",
+        "detached": "nie wybrano gałęzi (odłączony stan)",
+        "checkout-unavailable": "katalog niedostępny",
+        "git-membership-mismatch": "katalog nie należy do tego repozytorium",
+        "git-disabled": "Git wyłączony",
+        "git-unavailable": "Git niedostępny",
+        "other": "niedostępny"
+      },
+      "specCount_one": "{{count}} specyfikacja",
+      "specCount_few": "{{count}} specyfikacje",
+      "specCount_many": "{{count}} specyfikacji",
+      "specCount_other": "{{count}} specyfikacji",
+      "specCountNone": "brak specyfikacji",
+      "availableCount_one": "{{count}} dostępny",
+      "availableCount_few": "{{count}} dostępne",
+      "availableCount_many": "{{count}} dostępnych",
+      "availableCount_other": "{{count}} dostępnych",
+      "sharedUseWorkspace_one": "{{count}} istniejąca specyfikacja używa już tego środowiska pracy. Zmiany i historia Git będą wspólne.",
+      "sharedUseWorkspace_few": "{{count}} istniejące specyfikacje używają już tego środowiska pracy. Zmiany i historia Git będą wspólne.",
+      "sharedUseWorkspace_many": "{{count}} istniejących specyfikacji używa już tego środowiska pracy. Zmiany i historia Git będą wspólne.",
+      "sharedUseWorkspace_other": "{{count}} istniejących specyfikacji używa już tego środowiska pracy. Zmiany i historia Git będą wspólne.",
+      "sharedUseFolder_one": "{{count}} istniejąca specyfikacja używa już tego katalogu. Zmiany i historia Git będą wspólne.",
+      "sharedUseFolder_few": "{{count}} istniejące specyfikacje używają już tego katalogu. Zmiany i historia Git będą wspólne.",
+      "sharedUseFolder_many": "{{count}} istniejących specyfikacji używa już tego katalogu. Zmiany i historia Git będą wspólne.",
+      "sharedUseFolder_other": "{{count}} istniejących specyfikacji używa już tego katalogu. Zmiany i historia Git będą wspólne.",
+      "loadFailed": {
+        "title": "Nie udało się wczytać opcji środowiska pracy",
+        "body": "Nazwa i ustawienia zostają w formularzu. Nie zgadujemy środowiska pracy."
+      },
+      "nothing": {
+        "title": "Nie można teraz utworzyć specyfikacji w żadnym miejscu",
+        "body": "Żadne środowisko pracy nie jest dostępne. Nazwa i ustawienia zostaną w formularzu. Odśwież opcje po przywróceniu dostępu do repozytorium."
+      },
+      "refreshFailed": {
+        "title": "Nie udało się odświeżyć opcji",
+        "body": "Pokazujemy ostatnio wczytane opcje. Formularz został zachowany."
+      },
+      "notice": {
+        "noTarget": "Nie skonfigurowano celu integracji. Utworzysz specyfikację, ale zamknięcie pracy będzie wymagać ustawienia celu w konfiguracji projektu.",
+        "otherBranch": "Cel projektu <target/> jest realizowany przez bieżący katalog, a ten jest teraz na gałęzi <current/>. Zamknięcie pracy może wtedy wymagać zmiany. Tworzenie nie jest blokowane.",
+        "otherBranchNone": "Cel projektu <target/> jest realizowany przez bieżący katalog, a ten nie ma teraz wybranej gałęzi. Zamknięcie pracy może wtedy wymagać zmiany. Tworzenie nie jest blokowane.",
+        "unavailable": "Cel <target/> nie jest teraz dostępny: {{reason}}. Tworzenie nie jest blokowane."
+      },
+      "baseHead": "Aktualny commit bieżącego katalogu",
+      "baseHeadOnBranch": "Aktualny commit bieżącego katalogu (<branch/>)",
+      "fact": {
+        "base": "Zacznij od",
+        "branch": "Nowa gałąź",
+        "automatic": "automatycznie",
+        "target": "Wskazany cel scalenia",
+        "pickTarget": "wybierz cel",
+        "pinned": "(przypięte)",
+        "projectTarget": "(cel projektu)",
+        "noTarget": "brak celu"
+      },
+      "main": {
+        "onBranch": "Specyfikacja powstanie na gałęzi <branch/>. Nie tworzymy nowej gałęzi ani worktree i nie przełączamy aktualnej gałęzi.",
+        "noBranch": "Specyfikacja powstanie w bieżącym katalogu. Nie tworzymy nowej gałęzi ani worktree."
+      },
+      "inherited": {
+        "pinned": "Scalane do: <branch/> (ustalone przy tworzeniu tego środowiska)",
+        "branchChanged": "Środowisko docelowe zmieniło gałąź od czasu przypięcia. Zamknięcie pracy może wymagać zmiany.",
+        "unavailable": "Środowisko docelowe nie jest teraz dostępne. Zamknięcie pracy może wymagać zmiany.",
+        "project": "Cel projektu: <branch/>",
+        "none": "Cel scalenia nie jest ustawiony w projekcie."
+      },
+      "existing": {
+        "label": "Środowisko pracy",
+        "placeholder": "Wybierz środowisko pracy",
+        "unmanaged": "Nie zarządza nim Nevo",
+        "outside": "Poza Nevo",
+        "joins": "Specyfikacja dołączy do <branch/>.",
+        "joinsNoBranch": "Specyfikacja dołączy do tego środowiska pracy.",
+        "unmanagedNote": "To środowisko pracy zostało dodane poza Nevo i nie jest przez nie zarządzane."
+      },
+      "errors": {
+        "branchEmpty": "Wpisz nazwę gałęzi lub wyłącz tę opcję.",
+        "branchTooLong": "Nazwa gałęzi jest zbyt długa.",
+        "branchCharacters": "Nazwa gałęzi zawiera niedozwolone znaki. Użyj liter, cyfr, „-”, „_” i „/”.",
+        "branchStructure": "Nazwa gałęzi ma niedozwolony układ: nie zaczynaj od „-” ani „/”, nie kończ na „/”, „.” ani „.lock” i nie używaj „..”, „//” ani „@{”.",
+        "branchExists": "Gałąź o tej nazwie już istnieje. Wpisz inną nazwę.",
+        "noWorkspace": "Brak dostępnego środowiska pracy.",
+        "pickWorkspace": "Wybierz środowisko pracy.",
+        "pickBase": "Wybierz gałąź początkową lub wyłącz tę opcję.",
+        "pickTarget": "Wybierz cel scalenia lub wyłącz tę opcję."
+      },
+      "stale": {
+        "tile": "Ten wariant nie jest już dostępny. Wybierz inną opcję.",
+        "existing": "To środowisko pracy nie jest już dostępne.",
+        "base": "Ta gałąź nie jest już dostępna. Wybierz inną lub wyłącz tę opcję.",
+        "target": "To środowisko pracy nie może już być celem scalenia. Wybierz inny lub wyłącz tę opcję."
+      },
+      "settings": {
+        "default": "Ustawienia domyślne",
+        "changed": "Zmienione ustawienia ({{count}}): {{names}}",
+        "nameBase": "baza",
+        "nameTarget": "cel",
+        "nameBranch": "nazwa",
+        "trigger": "Zmień ustawienia",
+        "baseSwitch": "Zacznij od innej gałęzi",
+        "baseNone": "Brak lokalnych gałęzi do wyboru.",
+        "baseDefault": "Domyślnie: <branch/>",
+        "basePlaceholder": "Wybierz gałąź",
+        "refCurrent": "bieżący katalog",
+        "refWorkspace": "ma środowisko pracy",
+        "refDirty": "{{label}} · zmiany",
+        "targetSwitch": "Scal później do innej gałęzi",
+        "targetPick": "Wybierz, do jakiej gałęzi wrócą zmiany.",
+        "targetNone": "Brak środowisk pracy, do których można scalić.",
+        "targetFollows": "Domyślnie podążamy za celem projektu: <branch/>",
+        "targetUnconfigured": "Cel integracji nie jest skonfigurowany.",
+        "targetLabel": "Wskaż cel scalenia",
+        "targetNote": "Nic nie zostanie scalone teraz. To tylko wskazanie miejsca na później. Wybór przypina cel przy tworzeniu i już się nie zmieni, a domyślny cel podąża za konfiguracją projektu.",
+        "targetUnavailable": "Niedostępne jako cel:",
+        "unavailableItemBranch": "<branch/> ({{reason}})",
+        "unavailableItemNoBranch": "{{name}} ({{reason}})",
+        "branchSwitch": "Użyj własnej nazwy gałęzi",
+        "branchSwitchDescription": "Nazwę generuje Nevo i nie da się jej podejrzeć przed utworzeniem. Jeśli będzie zajęta, zapytamy o inną.",
+        "branchLabel": "Nazwa nowej gałęzi",
+        "branchPlaceholder": "feature/new-api",
+        "branchHelp": "Katalog worktree Nevo przygotuje samodzielnie. Jeśli nazwa jest zajęta, podasz inną."
+      },
+      "suggestion": {
+        "title": "Chcesz później scalić zmiany z powrotem do <branch/>?",
+        "projectDefault": "Domyślnie scalimy do <branch/> (cel projektu). ",
+        "note": "Zmiana bazy sama nie zmienia celu. Cel ustawiony tutaj zostanie przypięty do nowego środowiska.",
+        "set": "Ustaw cel scalenia",
+        "keep": "Zostaw bez zmian",
+        "announceSet": "Cel scalenia ustawiony na {{branch}}.",
+        "announceKept": "Cel scalenia pozostaje bez zmian: {{branch}}.",
+        "announceKeptNoTarget": "Cel scalenia pozostaje bez zmian.",
+        "dirty": "Nie zaproponujemy scalenia z powrotem do <branch/>: to środowisko pracy ma niezapisane zmiany w Git. Cel scalenia zostaje bez zmian."
+      }
+    }
+  },
+  "documents": {
+    "title": "Dokumenty",
+    "unsaved": "Niezapisane zmiany",
+    "loadingDocument": "Wczytywanie dokumentu…",
+    "loadingDocuments": "Wczytywanie dokumentów…",
+    "loadFailed": "Nie udało się wczytać dokumentów",
+    "noAccess": "Nie masz dostępu do dokumentu",
+    "unavailable": "Dokument jest niedostępny",
+    "backToList": "Wróć do listy dokumentów",
+    "closeDocument": "Zamknij dokument",
+    "demo": {
+      "title": "Tryb demonstracyjny",
+      "body": "Dokumenty i puste foldery są zachowane do restartu środowiska demonstracyjnego."
+    },
+    "editor": {
+      "conflict": "Dokument zmienił się. Twój szkic pozostaje zachowany.",
+      "saveFailed": "Nie udało się zapisać. Twój szkic pozostaje zachowany.",
+      "sourceLabel": "Treść {{name}}"
+    },
+    "properties": {
+      "label": "Właściwości"
+    },
+    "actions": {
+      "showPath": "Pokaż ścieżkę",
+      "edit": "Edytuj dokument",
+      "preview": "Pokaż podgląd",
+      "save": "Zapisz",
+      "discard": "Cofnij zmiany"
+    },
+    "dialogs": {
+      "path": {
+        "title": "Ścieżka dokumentu",
+        "copy": "Kopiuj ścieżkę",
+        "copied": "Skopiowano.",
+        "copyFailed": "Nie udało się skopiować."
+      },
+      "unsaved": {
+        "saveFailed": "Nie udało się zapisać. Szkic jest zachowany.",
+        "continue": "Kontynuuj edycję",
+        "discard": "Odrzuć zmiany",
+        "save": "Zapisz zmiany",
+        "discardDescription": "Cofnąć zmiany w dokumencie {{name}}? Możesz je zapisać albo odrzucić i pozostać w edytorze."
+      }
+    },
+    "guard": {
+      "description": "Dokument ma niezapisane zmiany. Zapisz je albo odrzuć przed zmianą dokumentu lub widoku.",
+      "save": "Zapisz i przejdź"
+    },
+    "saved": {
+      "none": "Ta specyfikacja nie ma dokumentów.",
+      "openNote": "Dokument otworzy się w Documents. Szkic wiadomości zostanie zachowany."
+    },
+    "tree": {
+      "newFile": "Nowy plik",
+      "newFolder": "Nowy folder",
+      "upload": "Wgraj pliki",
+      "rename": "Zmień nazwę",
+      "move": "Przenieś",
+      "delete": "Usuń",
+      "required": "Wymagany",
+      "requiredReason": "Dokument wymagany przez workflow: nie można go zmienić ani usunąć.",
+      "rowActions": "Akcje: {{name}}",
+      "checkFailed": "Nie udało się sprawdzić aktualnych dokumentów. Spróbuj ponownie.",
+      "renamed": "Nazwa zmieniona.",
+      "folderAdded": "Folder dodany.",
+      "fileAdded": "Plik dodany.",
+      "deleted": "Usunięto.",
+      "moved": "Przeniesiono.",
+      "unconfirmedRename": "Brak potwierdzenia. Sprawdź tę samą operację przed dalszą zmianą nazwy.",
+      "unconfirmed": "Brak potwierdzenia. Sprawdź wynik tej samej operacji.",
+      "inputRename": "Nowa nazwa",
+      "inputFolder": "Nazwa nowego folderu",
+      "inputFile": "Nazwa nowego pliku",
+      "saving": "Zapisywanie…",
+      "checkResult": "Sprawdź wynik tej operacji",
+      "emptyFolder": "Folder jest pusty. Dodaj plik lub folder z menu.",
+      "readOnly": "Ta specyfikacja jest tylko do odczytu.",
+      "addFirst": "Dodaj pierwszy plik przez menu akcji.",
+      "processing": "Przetwarzanie…",
+      "importDone": "Import zakończony.",
+      "importStillUnconfirmed": "Nadal brak potwierdzenia importu. Pliki zachowane.",
+      "importUnconfirmed": "Import nie został potwierdzony. Pliki zachowano do ponowienia tej samej operacji.",
+      "importRejected": "Import odrzucony. {{reason}}",
+      "retryImport": "Ponów import",
+      "uploadDone": "Dodano: {{count}}.",
+      "uploadSkipped": "Dodano: {{count}}. Pominięto: {{skipped}}.",
+      "skippedItem": "{{name}}: {{reason}}",
+      "skip": {
+        "limit": "maksymalnie 10 plików na import",
+        "size": "plik przekracza 2 MB",
+        "format": "obsługiwane formaty to .md i .txt",
+        "path": "ścieżka przekracza 500 znaków",
+        "exists": "ta ścieżka już istnieje — zmień nazwę pliku",
+        "content": "treść przekracza 200 000 znaków",
+        "utf8": "nie udało się odczytać tekstu UTF-8"
+      },
+      "moveFileTitle": "Przenieś plik",
+      "moveFolderTitle": "Przenieś folder",
+      "targetFolder": "Folder docelowy",
+      "topLevel": "Najwyższy poziom",
+      "deleteFileTitle": "Usuń plik",
+      "deleteFolderTitle": "Usuń folder",
+      "deleteFileWarning": "Usunięcie tego pliku jest nieodwracalne w tej sesji demo.",
+      "deleteFolderWarning": "Usunięcie obejmuje folder i jego dokumenty jest nieodwracalne w tej sesji demo.",
+      "error": {
+        "pathConflict": "Ta ścieżka już istnieje. Wybierz inną nazwę lub folder.",
+        "revisionConflict": "Dokument lub drzewo zmieniło się. Zamknij akcję i otwórz ją ponownie, aby sprawdzić aktualny stan.",
+        "required": "Wymagana ścieżka workflow — tej zmiany nie można wykonać.",
+        "requestConflict": "Żądanie ma inny zapisany wynik. Odśwież dokumenty przed kolejną operacją.",
+        "default": "Nie udało się wykonać zmiany. Sprawdź nazwę i ścieżkę; szkic pozostaje zachowany."
+      },
+      "reason": {
+        "required": "Wymagana ścieżka workflow — nie można jej zmienić ani usunąć.",
+        "operationsUnavailable": "Operacje na tej przykładowej specyfikacji są niedostępne.",
+        "rootProtected": "Folderu głównego nie można zmienić ani usunąć.",
+        "unavailable": "Ta operacja jest niedostępna."
+      },
+      "nameError": {
+        "characters": "Nazwa nie może zawierać znaków \\ / : * ? \" < > |",
+        "control": "Nazwa nie może zawierać znaków sterujących.",
+        "tooLong": "Nazwa może mieć maksymalnie 200 znaków.",
+        "other": "Wpisz inną nazwę.",
+        "dot": "Nazwa nie może zaczynać się od kropki.",
+        "reserved": "Ta nazwa jest zarezerwowana przez system.",
+        "trailing": "Nazwa nie może kończyć się kropką ani spacją.",
+        "format": "Obsługiwane formaty to .md i .txt."
+      },
+      "nameReason": {
+        "dot": "nazwa nie może zaczynać się od kropki",
+        "reserved": "nazwa jest zarezerwowana przez system",
+        "invalid": "nazwa zawiera niedozwolone znaki lub kończy się kropką/spacją"
+      }
+    }
+  },
+  "sessions": {
+    "demo": {
+      "title": "Sesja",
+      "titleWithProfile": "Sesja · {{profile}}",
+      "backToSession": "Wróć do sesji Spec Writera",
+      "closeContext": "Zamknij kontekst",
+      "context": "Kontekst",
+      "loading": "Wczytywanie sesji…",
+      "unavailable": "Sesja jest niedostępna",
+      "notFound": "Ta sesja nie istnieje lub została usunięta.",
+      "startTitle": "Zacznij od tego, co chcesz ustalić",
+      "startBody": "Możesz opisać problem, poprosić o pytania albo wskazać fragment specyfikacji. Dokumenty są już częścią kontekstu.",
+      "messageLabel": "Wiadomość do Spec Writera",
+      "messagePlaceholder": "Np. sprawdź, czy uwzględniliśmy bezpieczne wylogowanie…",
+      "demoNote": "Demo sesji · wiadomość pozostaje szkicem. Wysyłanie nie jest dostępne.",
+      "contextIntro": "Materiały dostępne dla Spec Writera, niezależnie od Twojej wiadomości.",
+      "documentsHint": "Pliki specyfikacji i materiały źródłowe",
+      "project": "Projekt",
+      "instructions": "Instrukcje SpecFlow",
+      "instructionsHint": "Rola i zasady pracy",
+      "loadingDocuments": "Wczytywanie dokumentów…",
+      "documentsUnavailable": "Dokumenty są niedostępne",
+      "noDocuments": "Brak dokumentów.",
+      "loadingDocument": "Wczytywanie dokumentu…",
+      "documentUnavailable": "Dokument jest niedostępny.",
+      "previewLine": "{{filename}} · Podgląd",
+      "previewTitle": "Podgląd dokumentu",
+      "openInDocuments": "Otwórz w Documents",
+      "demoContext": "Kontekst demonstracyjny, bez operacji Git.",
+      "writer": "Spec Writer",
+      "instructionsBody": "Instrukcje projektu i roli są przekazywane przez SpecFlow niezależnie od wiadomości użytkownika. Ten placeholder nie pokazuje pełnego promptu systemowego.",
+      "loadingContext": "Wczytywanie kontekstu…",
+      "contextUnavailable": "Kontekst jest niedostępny."
+    }
   }
 }

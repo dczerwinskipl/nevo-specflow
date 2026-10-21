@@ -26,6 +26,7 @@ export interface SpecsOverviewState {
   readonly collection: SpecsCollection;
   readonly projection?: SpecsOverview;
   readonly loading: boolean;
+  readonly paused?: boolean;
   readonly refreshing: boolean;
   readonly error: boolean;
   readonly errorStatus?: number;

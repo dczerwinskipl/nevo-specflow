@@ -1,6 +1,8 @@
 /** Explicit fixture input shared by owner-specific demo adapters; never used by project readers. */
 export interface DemoSpecification {
   id: string;
+  /** Optional human-facing key (for example `UI-1234`), shown next to the title in navigation. */
+  key?: string;
   title: string;
   progress: { completed: number; total: number };
   readyForWork?: boolean;

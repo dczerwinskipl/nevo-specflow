@@ -75,7 +75,7 @@ export const ToastClose = forwardRef<
     <ToastPrimitive.Close ref={ref} asChild {...props}>
       <IconButton
         aria-label={dismissLabel ?? defaultToastDismissLabel}
-        className="absolute right-2 top-2"
+        className="absolute! right-2 top-2"
         icon="close"
         size="xs"
         variant="ghost"

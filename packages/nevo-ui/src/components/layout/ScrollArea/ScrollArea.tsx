@@ -27,6 +27,11 @@ export interface ScrollAreaProps extends Omit<
   direction?: ScrollAreaDirection;
   endEdge?: EdgeVisibility;
   indicatorColor?: string;
+  /**
+   * Role of the labelled viewport. `region` (default) is a landmark; use `group` for many repeated
+   * scrollers on one page (for example code blocks), where identical landmarks are noise.
+   */
+  labelRole?: 'region' | 'group';
   onEdgesChange?: (edges: ScrollAreaEdges) => void;
   onScroll?: UIEventHandler<HTMLDivElement>;
   startEdge?: EdgeVisibility;
@@ -97,6 +102,7 @@ export const ScrollArea = forwardRef<HTMLDivElement, ScrollAreaProps>(function S
     direction = 'vertical',
     endEdge = 'auto',
     indicatorColor,
+    labelRole = 'region',
     onEdgesChange,
     onScroll,
     startEdge = 'auto',
@@ -229,7 +235,7 @@ export const ScrollArea = forwardRef<HTMLDivElement, ScrollAreaProps>(function S
           scheduleUpdate();
           onScroll?.(event);
         }}
-        role={ariaLabel || ariaLabelledBy ? 'region' : undefined}
+        role={ariaLabel || ariaLabelledBy ? labelRole : undefined}
         tabIndex={tabIndex}
       >
         <div ref={contentRef} className={cn('scroll-area-content', contentClassName)}>

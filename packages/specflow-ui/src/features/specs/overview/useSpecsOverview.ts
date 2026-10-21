@@ -10,8 +10,16 @@ export function useSpecsOverview(api: SpecsOverviewApi, collection: SpecsCollect
 
   const state: SpecsOverviewState = {
     collection,
-    projection: query.data?.collection === collection ? query.data : undefined,
-    loading: query.isLoading,
+    projection:
+      query.data?.collection === collection &&
+      !(
+        query.isError &&
+        [401, 403, 404].includes(isHttpClientError(query.error) ? (query.error.status ?? 0) : 0)
+      )
+        ? query.data
+        : undefined,
+    loading: query.isLoading && !query.data,
+    paused: query.isPending && query.fetchStatus === 'paused',
     refreshing: query.isRefetching,
     error: query.isError,
     errorStatus: query.error && isHttpClientError(query.error) ? query.error.status : undefined,

@@ -20,6 +20,22 @@ describe('ScrollArea', () => {
     expect(markup).toContain('aria-hidden="true"');
   });
 
+  it('names a labelled viewport as a region by default and as a group on request', () => {
+    const region = renderToStaticMarkup(
+      <ScrollArea aria-label="Wide">
+        <div>x</div>
+      </ScrollArea>,
+    );
+    const group = renderToStaticMarkup(
+      <ScrollArea aria-label="Wide" labelRole="group">
+        <div>x</div>
+      </ScrollArea>,
+    );
+    expect(region).toContain('role="region"');
+    expect(group).toContain('role="group"');
+    expect(renderToStaticMarkup(<ScrollArea>x</ScrollArea>)).not.toContain('role=');
+  });
+
   it('reports physical horizontal continuation without relying on scrollLeft direction', () => {
     const viewport = {
       clientHeight: 100,

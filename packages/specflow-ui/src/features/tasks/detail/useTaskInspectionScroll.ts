@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
-import { descriptionScrollOwner } from '../../documents/description/DocumentDescription';
+import { descriptionScrollOwner, restoreScrollPosition } from '../../documents';
+
 import { useTaskViewState } from './TaskViewState';
 
 /** Remember a keyed inspection across a nested evidence push, after workspace focus restores. */
@@ -9,18 +10,12 @@ export function useTaskInspectionScroll(taskId: string, key: string) {
   const initial = useRef(state.inspectionScroll?.[key] ?? 0);
   const prepared = useRef(false);
   useLayoutEffect(() => {
-    if (!root.current) return;
-    const owner = descriptionScrollOwner(root.current);
-    let second = 0;
-    const first = requestAnimationFrame(() => {
-      second = requestAnimationFrame(() => {
-        owner.scrollTop = initial.current;
-      });
-    });
+    const node = root.current;
+    if (!node) return;
+    const stopRestoring = restoreScrollPosition(node, () => initial.current);
     return () => {
-      cancelAnimationFrame(first);
-      cancelAnimationFrame(second);
-      if (!prepared.current) saveInspectionScroll(key, owner.scrollTop);
+      stopRestoring();
+      if (!prepared.current) saveInspectionScroll(key, descriptionScrollOwner(node).scrollTop);
     };
   }, [key, saveInspectionScroll]);
   return {

@@ -101,3 +101,101 @@ describe('WorkspaceHeader actions', () => {
     expect(markup).toContain('aria-label="Więcej działań"');
   });
 });
+
+describe('WorkspaceHeader direct action budget', () => {
+  const press = vi.fn();
+  const preview: WorkspaceHeaderAction = {
+    id: 'preview',
+    label: 'Preview',
+    icon: 'eye',
+    presentation: 'icon',
+    direct: 'wide',
+    onPress: press,
+  };
+  const save: WorkspaceHeaderAction = {
+    id: 'save',
+    label: 'Save',
+    primary: true,
+    direct: 'always',
+    onPress: press,
+  };
+  const discard: WorkspaceHeaderAction = { id: 'discard', label: 'Discard', onPress: press };
+  const edit: WorkspaceHeaderAction = {
+    id: 'edit',
+    label: 'Edit',
+    icon: 'file',
+    presentation: 'icon',
+    direct: 'always',
+    onPress: press,
+  };
+  const ids = (list: readonly WorkspaceHeaderAction[]) => list.map((action) => action.id);
+
+  it('shows two direct actions on wide headers with the filled primary last', () => {
+    const resolved = resolveWorkspaceHeaderActions([preview, save, discard], 'wide');
+    expect(ids(resolved.direct)).toEqual(['preview', 'save']);
+    expect(ids(resolved.overflow)).toEqual(['discard']);
+    expect(resolved.directPrimary?.id).toBe('save');
+  });
+
+  it('shows one direct action on narrow headers and keeps the rest in input order', () => {
+    const resolved = resolveWorkspaceHeaderActions([preview, save, discard], 'narrow');
+    expect(ids(resolved.direct)).toEqual(['save']);
+    expect(ids(resolved.overflow)).toEqual(['preview', 'discard']);
+  });
+
+  it('lets direct always win the narrow slot over the primary', () => {
+    const resolved = resolveWorkspaceHeaderActions(
+      [{ ...save, direct: undefined }, edit, discard],
+      'narrow',
+    );
+    expect(ids(resolved.direct)).toEqual(['edit']);
+    expect(ids(resolved.overflow)).toEqual(['save', 'discard']);
+  });
+
+  it('supports the view state: a single always-direct icon action', () => {
+    expect(ids(resolveWorkspaceHeaderActions([edit], 'wide').direct)).toEqual(['edit']);
+    expect(ids(resolveWorkspaceHeaderActions([edit], 'narrow').direct)).toEqual(['edit']);
+  });
+
+  it('never makes danger or never-direct actions direct and enforces the budget', () => {
+    const danger: WorkspaceHeaderAction = {
+      id: 'delete',
+      label: 'Delete',
+      primary: true,
+      tone: 'danger',
+      direct: 'always',
+      onPress: press,
+    };
+    const never: WorkspaceHeaderAction = { ...save, id: 'never', direct: 'never' };
+    expect(ids(resolveWorkspaceHeaderActions([danger, never], 'wide').direct)).toEqual([]);
+    const many = [edit, { ...edit, id: 'edit2' }, { ...edit, id: 'edit3' }, save];
+    expect(resolveWorkspaceHeaderActions(many, 'wide').direct).toHaveLength(2);
+    expect(resolveWorkspaceHeaderActions(many, 'narrow').direct).toHaveLength(1);
+    expect(resolveWorkspaceHeaderActions(many, 'wide').overflow).toHaveLength(2);
+  });
+
+  it('keeps the legacy single-primary behaviour for actions without direct', () => {
+    const resolved = resolveWorkspaceHeaderActions(actions, 'wide');
+    expect(resolved.directPrimary?.id).toBe('create');
+    expect(ids(resolved.overflow)).toEqual(['export', 'delete']);
+    expect(ids(resolveWorkspaceHeaderActions(actions, 'narrow').direct)).toEqual(['create']);
+  });
+
+  it('puts everything in the overflow in compact density, as a superset', () => {
+    const resolved = resolveWorkspaceHeaderActions([preview, save, discard], 'compact');
+    expect(resolved.direct).toEqual([]);
+    expect(ids(resolved.overflow)).toEqual(['preview', 'save', 'discard']);
+  });
+
+  it('renders icon actions as labelled icon buttons and never duplicates a direct action', () => {
+    const markup = renderToStaticMarkup(
+      <WorkspaceHeaderFrame
+        content={<WorkspaceHeaderIdentity title="Doc" />}
+        actions={[preview, save, discard]}
+      />,
+    );
+    expect(markup).toContain('aria-label="Preview"');
+    expect(markup).toContain('data-workspace-header-density="wide"');
+    expect((markup.match(/aria-label="Preview"/g) ?? []).length).toBe(1);
+  });
+});

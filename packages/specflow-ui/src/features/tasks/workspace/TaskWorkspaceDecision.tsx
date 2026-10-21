@@ -1,6 +1,6 @@
 import { Button, Field, SegmentedControl, TextArea, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import { WorkspaceSection } from '../../specs/workspace/sections/WorkspaceSection';
+import { WorkspaceSection } from '../../../shared/workspace-section';
 import { useTaskWorkspace } from './TaskWorkspaceState';
 
 export function TaskWorkspaceDecision() {

@@ -14,6 +14,8 @@ import {
 export interface RuntimeStartOptions extends LoadRuntimeConfigOptions {
   readonly projectRoot: string;
   readonly demo?: boolean;
+  /** With `demo`: accept the `demoScenario` seam (default off; isolated scenario environments only). */
+  readonly demoScenarios?: boolean;
   readonly dependencies?: RuntimeAppDependencies;
 }
 
@@ -26,7 +28,9 @@ export async function startRuntime(options: RuntimeStartOptions): Promise<Runtim
   const loaded = await loadRuntimeConfig(options);
   const app = await createListeningApp(loaded.config, options.projectRoot, {
     ...options.dependencies,
-    ...(options.demo ? { dataMode: 'demo' as const } : {}),
+    ...(options.demo
+      ? { dataMode: 'demo' as const, ...(options.demoScenarios ? { demoScenarios: true } : {}) }
+      : {}),
   });
 
   try {

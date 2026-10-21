@@ -1,7 +1,7 @@
 import { Button, cn } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { RepoContext } from '../../../specs/workspace/model';
-import { WorkspaceSection } from '../../../specs/workspace/sections/WorkspaceSection';
+import { type RepoContext } from '../../../specs';
+import { WorkspaceSection } from '../../../../shared/workspace-section';
 
 export interface RepositorySectionProps {
   readonly repoContext: RepoContext;
@@ -32,7 +32,7 @@ export function RepositorySection({
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body-xs text-content-secondary">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-body-sm text-content-secondary">
           <span className={cn(repoContext.isDirty && 'text-status-attention')}>
             {repoContext.freshness === 'unknown'
               ? t('specification.gitLocalChangesUnknown')
@@ -61,8 +61,8 @@ export function RepositorySection({
         {repoContext.linkedPr ? (
           <div className="flex flex-wrap items-center justify-between gap-3 text-body-sm">
             <div className="flex flex-wrap items-baseline gap-2">
-              <span className="font-mono text-body-xs text-content-muted">
-                PR #{repoContext.linkedPr.number}
+              <span className="font-mono text-body-sm text-content-muted">
+                {t('common.pullRequestNumber', { number: repoContext.linkedPr.number })}
               </span>
               <span className="font-medium text-content-primary">{repoContext.linkedPr.title}</span>
             </div>
@@ -74,7 +74,7 @@ export function RepositorySection({
         ) : null}
 
         {repoContext.freshness !== 'fresh' ? (
-          <div className="flex items-center gap-3 text-body-xs text-content-muted">
+          <div className="flex items-center gap-3 text-body-sm text-content-muted">
             <span>
               {repoContext.freshness === 'unknown'
                 ? t('specification.gitRefreshFailed')

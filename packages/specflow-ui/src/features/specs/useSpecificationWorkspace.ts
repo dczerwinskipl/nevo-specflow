@@ -1,16 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
 import { isHttpClientError } from '@nevo/http-client';
 
-import { useAppServices } from '../../app/useAppServices';
+import { useRouter } from '@tanstack/react-router';
+import type { SpecFlowAppServices } from '../../services';
 import type { SpecificationApi } from './api';
 import { specificationKeys } from './queries';
-import { getHttpErrorStatus } from './httpErrorStatus';
+import { getHttpErrorStatus } from '../../shared/http/httpErrorStatus';
 import type { SpecificationWorkspaceData } from './workspace/model';
 import { mapWorkspaceResponse } from './workspace/mapWorkspaceResponse';
 
 export interface UseSpecificationWorkspaceResult {
   readonly data: SpecificationWorkspaceData | undefined;
   readonly isLoading: boolean;
+  readonly fetchStatus?: 'fetching' | 'paused' | 'idle';
   readonly isPending: boolean;
   readonly isRefetching: boolean;
   readonly isError: boolean;
@@ -25,13 +27,19 @@ export function useSpecificationWorkspace(
   specId: string,
   api?: SpecificationApi,
 ): UseSpecificationWorkspaceResult {
-  const services = useAppServices();
-  const activeApi = api ?? services.specificationApi;
+  // Services are resolved lazily inside the query function, so observers that are disabled
+  // (no matched Specification) or rendered outside a routed context never need them.
+  const router = useRouter({ warn: false });
 
   const query = useQuery({
     queryKey: specificationKeys.detail(specId),
     queryFn: async ({ signal }) =>
-      mapWorkspaceResponse(await activeApi.getSpecificationWorkspace(specId, signal)),
+      mapWorkspaceResponse(
+        await (api ?? requireServices(router).specificationApi).getSpecificationWorkspace(
+          specId,
+          signal,
+        ),
+      ),
     enabled: Boolean(specId),
   });
 
@@ -48,6 +56,7 @@ export function useSpecificationWorkspace(
   return {
     data: query.data,
     isLoading: query.isLoading,
+    fetchStatus: query.fetchStatus,
     isPending: query.isPending,
     isRefetching: query.isRefetching,
     isError: query.isError,
@@ -57,4 +66,12 @@ export function useSpecificationWorkspace(
     isDomainNotFound,
     refetch: query.refetch,
   };
+}
+
+function requireServices(router: ReturnType<typeof useRouter> | undefined): SpecFlowAppServices {
+  const services = (
+    router?.options.context as { readonly services?: SpecFlowAppServices } | undefined
+  )?.services;
+  if (!services) throw new Error('useSpecificationWorkspace requires the SpecFlow Router context');
+  return services;
 }

@@ -77,7 +77,7 @@ describe('SpecificationWorkspace', () => {
     expect(markup).toContain('<h3');
     expect(markup).toContain('text-section-label');
     expect(markup).toContain('Repozytorium');
-    expect(markup).toContain('Taski');
+    expect(markup).toContain('Zadania');
 
     // h4 for task groups
     expect(markup).toContain('<h4');
@@ -111,7 +111,7 @@ describe('SpecificationWorkspace', () => {
       data: createSpecificationWorkspaceFixture('preparing', 'UI-1234'),
     });
 
-    expect(markup).toContain('Taski są jeszcze w przygotowaniu');
+    expect(markup).toContain('Zadania są jeszcze w przygotowaniu');
     expect(markup).toContain('Przygotowanie do review');
     expect(markup).toContain('w przygotowaniu');
   });
@@ -194,7 +194,7 @@ describe('SpecificationWorkspace', () => {
   it('renders Specification Overview independently of the previous tab-view selection model', () => {
     const markup = renderWorkspaceMarkup();
     expect(markup).toContain('Wymaga Twojej uwagi');
-    expect(markup).toContain('Taski');
+    expect(markup).toContain('Zadania');
   });
 
   it('does not manufacture a technical-id eyebrow or duplicate content Back', () => {

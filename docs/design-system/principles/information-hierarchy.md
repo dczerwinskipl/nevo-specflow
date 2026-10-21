@@ -185,6 +185,44 @@ Default treatment:
 Semantic colour/icon changes the tone of supporting information. It does not promote the text to a
 heading or create a new typography hierarchy.
 
+## Form and state text roles
+
+Forms and configuration surfaces use the same token set; there is no separate form typography.
+Each role maps to an existing token, so products never need local sizes, weights or greys:
+
+| Role                             | Tokens                                                                                          | Notes                                                               |
+| -------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Surface heading                  | `title-lg`, `content-primary`                                                                   | the workspace/page H1                                               |
+| Form section heading             | `title-md`, `content-primary` (real `h2`/`legend`)                                              | must outrank item names (`title-sm`); not uppercase `section-label` |
+| Item / option name               | `title-sm`, `content-primary`                                                                   | provider, start method, card title                                  |
+| Field label                      | `label-sm`/`label-md` via `Field` / `CheckboxField` / `RadioGroupOption`                        | not `body-sm font-medium`                                           |
+| Description / unavailable reason | `body-sm`, `content-secondary`                                                                  | stays readable when the control is disabled                         |
+| Helper text tied to a control    | `Field.Description` / control `description` → `body-sm`, `content-muted`                        | linked with `aria-describedby`                                      |
+| Status                           | `StatusIndicator` / `statusTone` → `status-*` with a text label                                 | never colour alone                                                  |
+| Error                            | `content-error` inline or `Alert tone="danger"`                                                 | not `content-muted`                                                 |
+| Disabled                         | owned by the control (Button opacity, Field label `content-muted`, choice surface/tree recipes) | no `content-disabled` token                                         |
+| Placeholder                      | `content-placeholder`, only inside input controls                                               | never for helper, disabled or empty-state text                      |
+
+### Contrast roles (dark theme only)
+
+The palette is dark only; a light theme has no tokens yet and every ratio below is dark-only.
+The roles are separated by **context, not by shade**: they never sit side by side, so all of them
+must clear AA in their own context instead of being forced apart below it.
+
+| Role         | Token                 | Value     | Context and floor                                                                                      |
+| ------------ | --------------------- | --------- | ------------------------------------------------------------------------------------------------------ |
+| Value        | `content-primary`     | #f3f4f6   | typed values, titles: 13:1 and above everywhere                                                        |
+| Supporting   | `content-secondary`   | #c5c7cc   | readable reasons, stays readable on a disabled control                                                 |
+| Muted        | `content-muted`       | #8f929a   | helper, metadata, subtitles: >= 4.5:1 on workspace, field, hover and selected fills (4.67 on selected) |
+| Placeholder  | `content-placeholder` | #85888f   | empty-input hint only: >= 4.5:1 on the field fill (4.64); never helper or disabled text                |
+| Disabled     | not a text colour     |           | control-owned state; exempt from 1.4.3, label stays `content-muted`, opacity .6 on the control only    |
+| Control edge | `border-control`      | white 34% | boundary of unchecked Checkbox/Radio and the OFF Switch: >= 3:1 non-text (3.1 on workspace)            |
+
+Muted and placeholder are intentionally almost the same shade (about 1.07:1): do not "re-separate"
+them by darkening the placeholder, which would drop it below AA inside a field. The decorative field
+border stays `border-default` (the control is identified by its label, value and fill); only
+state-bearing glyphs use `border-control`. `executable gate: design-system/contrast.test.ts`.
+
 ## Actions are not information roles
 
 Navigation and commands are interaction affordances, not styled information.

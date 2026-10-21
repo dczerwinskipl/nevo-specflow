@@ -1,3 +1,5 @@
+import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
+import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
 import type { ReactNode } from 'react';
 import {
   Alert,
@@ -6,7 +8,6 @@ import {
   AppWorkspace,
   AppWorkspaceBody,
   Button,
-  Spinner,
   Typography,
   WorkspaceHeader,
 } from '@nevo/ui';
@@ -38,13 +39,18 @@ export function SpecificationAggregatePage({
   title,
   section,
   children,
+  loading,
+  loadingShape = 'list',
 }: {
+  loading?: ReactNode;
+  loadingShape?: 'list' | 'summary';
   specId: string;
   title: string;
   section?: SpecificationSectionId;
   children: (data: SpecificationWorkspaceData) => ReactNode;
 }) {
   const { t } = useTranslation();
+  const workspaceLabels = useWorkspaceLabels();
   const query = useSpecificationWorkspace(specId);
   const availability = section && query.data?.sectionAvailability?.[section];
   const accessDenied = query.errorStatus === 403;
@@ -73,7 +79,7 @@ export function SpecificationAggregatePage({
   const showingStaleData = query.isError && Boolean(query.data) && !mustShowError;
   const sectionCopy = sectionDenied ? deniedCopy : unavailableCopy;
   return (
-    <AppWorkspace split="primary">
+    <AppWorkspace labels={workspaceLabels} split="primary">
       <AppWorkspace.Primary
         header={
           <WorkspaceHeader
@@ -90,12 +96,20 @@ export function SpecificationAggregatePage({
         }
       >
         <AppContent className="w-content-xwide max-w-full">
-          <AppWorkspaceBody className="py-6">
+          <AppWorkspaceBody scroll="area" contentClassName="py-6">
             <AppContentContainer align="start" size="full">
               <ApplicationContextLine specId={specId} view={sectionViews[section ?? 'activity']} />
               <ViewPageTitle>{title}</ViewPageTitle>
               {query.isPending ? (
-                <Spinner label={t('specification.loadingWorkspace', { id: specId })} />
+                loading !== undefined ? (
+                  loading
+                ) : (
+                  <LoadingPresentation
+                    shape={loadingShape}
+                    label={t('specification.loadingWorkspace', { id: specId })}
+                    fetching={query.fetchStatus !== 'paused' && Boolean(specId)}
+                  />
+                )
               ) : mustShowError ? (
                 <Alert role="alert" tone="attention" title={errorCopy.title}>
                   <Typography variant="body-sm">{errorCopy.message}</Typography>

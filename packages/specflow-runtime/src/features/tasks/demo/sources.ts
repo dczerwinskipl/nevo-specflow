@@ -8,7 +8,24 @@ import type {
   ReferenceVisibility,
   ResourceFacts,
 } from '../reads/facts';
+import { demoTaskGroupFor } from './groups';
 import { demoExecutionFacts, demoTaskHistory, demoTaskResources } from './execution';
+
+/** Synthetic demo task titles (per index; ids stay `TASK-NN`). */
+const demoTaskTitles = [
+  'Kontrakt admisji zadań',
+  'Walidacja kolejki po restarcie',
+  'Granice wykonania agentów',
+  'Obsługa wygasłej sesji',
+  'Powrót do kontekstu specyfikacji',
+  'Raport z wykonania kroku',
+  'Uprawnienia do zasobów zadania',
+  'Testy scenariuszy odzyskiwania',
+  'Dokumentacja decyzji architektonicznych',
+  'Migracja istniejących wpisów',
+  'Monitorowanie kolejki',
+  'Przegląd bezpieczeństwa',
+] as const;
 
 export function buildDemoTasks(record: DemoSpecification): TaskDefinitionFacts['task'][] {
   const active = new Set(record.currentExecutions?.flatMap((item) => [...item.taskIds]) ?? []);
@@ -19,9 +36,9 @@ export function buildDemoTasks(record: DemoSpecification): TaskDefinitionFacts['
   const completed = new Set(
     ids.filter((id) => !active.has(id)).slice(0, record.progress.completed),
   );
-  return ids.map((id) => ({
+  return ids.map((id, index) => ({
     id,
-    title: id + ' · ' + record.title,
+    title: id + ' · ' + demoTaskTitles[index % demoTaskTitles.length],
     status: {
       id: completed.has(id) ? 'completed' : active.has(id) ? 'in_progress' : 'ready',
       label: completed.has(id) ? 'Completed' : active.has(id) ? 'In progress' : 'Ready',
@@ -49,7 +66,7 @@ export function createDemoTaskSources(catalogue: DemoCatalogue): TasksFeatureDep
         purpose: 'Demonstration Task for ' + record.title,
         acceptanceCriteria: [],
         summary: 'Demonstration Task for ' + record.title,
-        group: { id: 'tasks', label: 'Tasks' },
+        group: { id: demoTaskGroupFor(task).id, label: demoTaskGroupFor(task).name },
         taskType: null,
         document: { state: 'available', data: { id: taskId, revision: 'demo-document-1' } },
         dependencies: [],

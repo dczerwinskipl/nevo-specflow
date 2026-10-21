@@ -1,3 +1,5 @@
+import { RefreshStatus } from '../../../app/loading/RefreshStatus';
+import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -9,7 +11,7 @@ import {
   Button,
   EmptyState,
   SegmentedControl,
-  Skeleton,
+  useInitialAppearance,
   TextInput,
   Typography,
   WorkspaceHeader,
@@ -60,6 +62,7 @@ export function SpecsOverview({
   );
   const visible = projection ? filterSpecsOverview(projection, term) : undefined;
   const busy = state.loading || state.refreshing;
+  const appearance = useInitialAppearance(state.collection, state.loading, Boolean(projection));
 
   return (
     <AppWorkspace
@@ -69,16 +72,22 @@ export function SpecsOverview({
         openNavigation: t('navigation.open'),
       }}
       split="primary"
+      fit="bounded"
     >
       <AppWorkspace.Primary
         header={
           <WorkspaceHeader
             as="span"
             identityContent={
-              <ApplicationLocationIdentity
-                title={t('specifications.title')}
-                view="specifications"
-              />
+              <div className="flex min-w-0 items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <ApplicationLocationIdentity
+                    title={t('specifications.title')}
+                    view="specifications"
+                  />
+                </div>
+                <RefreshStatus active={state.refreshing} />
+              </div>
             }
             title={t('specifications.title')}
             labels={{
@@ -115,9 +124,9 @@ export function SpecsOverview({
           />
         }
       >
-        <AppContent>
-          <AppWorkspaceBody className="py-6">
-            <AppContentContainer align="start" className="grid gap-4" size="xwide">
+        <AppContent className="w-content-standard max-w-full">
+          <AppWorkspaceBody scroll="area" contentClassName="py-6">
+            <AppContentContainer align="start" className="grid gap-4" size="full">
               <ViewPageTitle className="mb-2">{t('specifications.title')}</ViewPageTitle>
               <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
                 <SegmentedControl
@@ -154,11 +163,6 @@ export function SpecsOverview({
                   className="w-full"
                 />
               ) : null}
-              {state.refreshing ? (
-                <Typography role="status" variant="body-sm" className="text-content-muted">
-                  {t('specifications.refreshing')}
-                </Typography>
-              ) : null}
               {state.error ? (
                 <Alert
                   role="alert"
@@ -179,59 +183,57 @@ export function SpecsOverview({
                   </Button>
                 </Alert>
               ) : null}
-              {state.loading ? (
-                <div aria-label={t('specifications.loading')} role="status" className="grid gap-6">
-                  {Array.from({ length: 4 }, (_, index) => (
-                    <div aria-hidden="true" className="grid gap-3" key={index}>
-                      <Skeleton className="h-5 w-3/5" />
-                      <Skeleton className="h-4 w-4/5" />
-                      <Skeleton className="h-3 w-2/5" />
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-              {visible && !state.loading ? (
-                <SpecsOverviewCollection
-                  projection={visible}
-                  searching={term.trim().length > 0}
-                  onOpenTarget={onOpenTarget}
-                  specificationHref={specificationHref}
-                  renderSpecificationLink={renderSpecificationLink}
-                />
-              ) : null}
-              {visible && !visible.items.length && !state.loading ? (
-                <EmptyState
-                  className="border-0"
-                  title={t(
-                    term
-                      ? 'specifications.noResults'
-                      : state.collection === 'current'
-                        ? 'specifications.emptyCurrent'
-                        : 'specifications.emptyArchive',
-                  )}
-                  description={t(
-                    term
-                      ? 'specifications.noResultsDescription'
-                      : state.collection === 'current'
-                        ? 'specifications.emptyCurrentDescription'
-                        : 'specifications.emptyArchiveDescription',
-                  )}
-                  actions={
-                    term ? (
-                      <Button
-                        variant="secondary"
-                        onClick={() => setSearch({ collection: state.collection, value: '' })}
-                      >
-                        {t('specifications.clearSearch')}
-                      </Button>
-                    ) : onCreate && state.collection === 'current' ? (
-                      <Button leadingIcon="plus" onClick={onCreate}>
-                        {t('specifications.create')}
-                      </Button>
-                    ) : undefined
-                  }
-                />
-              ) : null}
+              <div ref={appearance} className="min-w-0">
+                {state.loading || state.paused ? (
+                  <LoadingPresentation
+                    shape="overview"
+                    label={t('specifications.loading')}
+                    fetching={!state.paused}
+                  />
+                ) : null}
+                {visible && !state.loading ? (
+                  <SpecsOverviewCollection
+                    projection={visible}
+                    searching={term.trim().length > 0}
+                    onOpenTarget={onOpenTarget}
+                    specificationHref={specificationHref}
+                    renderSpecificationLink={renderSpecificationLink}
+                  />
+                ) : null}
+                {visible && !visible.items.length && !state.loading ? (
+                  <EmptyState
+                    className="border-0"
+                    title={t(
+                      term
+                        ? 'specifications.noResults'
+                        : state.collection === 'current'
+                          ? 'specifications.emptyCurrent'
+                          : 'specifications.emptyArchive',
+                    )}
+                    description={t(
+                      term
+                        ? 'specifications.noResultsDescription'
+                        : state.collection === 'current'
+                          ? 'specifications.emptyCurrentDescription'
+                          : 'specifications.emptyArchiveDescription',
+                    )}
+                    actions={
+                      term ? (
+                        <Button
+                          variant="secondary"
+                          onClick={() => setSearch({ collection: state.collection, value: '' })}
+                        >
+                          {t('specifications.clearSearch')}
+                        </Button>
+                      ) : onCreate && state.collection === 'current' ? (
+                        <Button leadingIcon="plus" onClick={onCreate}>
+                          {t('specifications.create')}
+                        </Button>
+                      ) : undefined
+                    }
+                  />
+                ) : null}
+              </div>
             </AppContentContainer>
           </AppWorkspaceBody>
         </AppContent>

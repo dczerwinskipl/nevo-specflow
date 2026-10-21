@@ -3,8 +3,8 @@ import type { TaskResource, TaskLink } from '@nevo/specflow-contracts/specs/work
 import { useTranslation } from 'react-i18next';
 import { TaskStepInspection } from './TaskStepInspection';
 import { matchesWork, inspectionStep, type TaskInspectionAnchor } from './taskInspectionModel';
-import { DocumentContent } from '../../documents/connected/DocumentContent';
-import { OperationalRow } from '../../specs/shared/OperationalList';
+import { DocumentContent } from '../../documents';
+import { OperationalRow } from '../../../shared/operational-list';
 import type { FullTaskData } from '../model';
 import { TaskSourceState } from './TaskDetails';
 

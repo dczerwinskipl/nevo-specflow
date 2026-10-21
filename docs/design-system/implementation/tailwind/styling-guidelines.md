@@ -67,6 +67,13 @@ Applications and examples import the Nevo UI stylesheet from `@nevo/ui/styles.cs
 their product/example-specific additions. Shared tokens or reusable component styles MUST NOT be
 forked into an application stylesheet.
 
+A utility whose theme token does not exist (for example `text-body-xs` or `text-content-info`)
+compiles to nothing, so the element silently inherits its surroundings. Use only roles defined in
+the Nevo UI `@theme`. `pnpm --filter @nevo/ui check:token-classes` lists semantic colour,
+typography and spacing utilities without a matching token in `packages/nevo-ui/src`,
+`packages/specflow-ui/src` and `examples` (`--strict` exits non-zero; pass directories to narrow
+the scan). Nevo UI itself is held to zero violations by its unit tests.
+
 ## 7. Multi-slot components
 
 A component that styles several internal elements exposes per-slot class props or a

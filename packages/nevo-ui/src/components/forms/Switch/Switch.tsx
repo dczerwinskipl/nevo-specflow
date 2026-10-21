@@ -8,6 +8,7 @@ import {
 } from 'react';
 import { cn } from '../../../lib';
 import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
+import { hitAreaBlockClassName, hitAreaClassName } from '../../../design-system/interactionRecipes';
 import { useFieldControl } from '../Field';
 
 export const Switch = forwardRef<
@@ -36,7 +37,8 @@ export const Switch = forwardRef<
       aria-describedby={field.ariaDescribedBy}
       aria-invalid={field.ariaInvalid}
       className={cn(
-        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-border-default bg-surface-control p-0.5 outline-none transition-colors',
+        hitAreaClassName,
+        'inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-border-control bg-surface-control p-0.5 outline-none transition-colors',
         'data-[state=checked]:border-action-primary data-[state=checked]:bg-action-primary disabled:cursor-not-allowed disabled:opacity-60',
         className,
       )}
@@ -77,19 +79,16 @@ export function SwitchField({
   const describedBy = [ariaDescribedBy, descriptionId].filter(Boolean).join(' ') || undefined;
 
   return (
-    <div
-      className={cn(
-        'flex items-start justify-between gap-4',
-        disabled && 'opacity-60',
-        fieldClassName,
-      )}
-    >
-      <div className="min-w-0">
+    <div className={cn('flex items-start justify-between gap-4', fieldClassName)}>
+      <div className="min-w-0 flex-1">
         <label
           htmlFor={id}
           className={cn(
-            'block text-body-sm text-content-primary',
-            disabled ? 'cursor-not-allowed' : 'cursor-pointer',
+            hitAreaBlockClassName,
+            'block text-body-sm',
+            disabled
+              ? 'cursor-not-allowed text-content-muted'
+              : 'cursor-pointer text-content-primary',
           )}
         >
           {label}

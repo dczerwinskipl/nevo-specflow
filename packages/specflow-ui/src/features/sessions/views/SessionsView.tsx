@@ -1,8 +1,7 @@
 import { Button, InformationList, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { SessionSummary } from '../../specs/workspace/model';
-import { sessionActivityLabel } from '../../specs/workspace/status-labels';
-import { OperationalRow } from '../../specs/shared/OperationalList';
+import { sessionActivityLabel, type SessionSummary } from '../../specs';
+import { OperationalRow } from '../../../shared/operational-list';
 
 export interface SessionsViewProps {
   readonly showHeading?: boolean;

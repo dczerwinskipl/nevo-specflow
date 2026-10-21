@@ -25,3 +25,33 @@ export const WithLabel: Story = {
     </div>
   ),
 };
+
+export const DisabledWithDescription: Story = {
+  tags: ['contract', '!autodocs'],
+  render: () => (
+    <div className="grid max-w-md gap-4">
+      <SwitchField label="Off" description="Reason stays readable." />
+      <SwitchField defaultChecked label="On" description="Reason stays readable." />
+      <SwitchField disabled label="Disabled off" description="Reason stays readable." />
+      <SwitchField
+        disabled
+        defaultChecked
+        label="Disabled on"
+        description="Reason stays readable."
+      />
+    </div>
+  ),
+  play: async ({ canvas }) => {
+    const description = canvas.getAllByText('Reason stays readable.')[2]!;
+    const field = description.parentElement!.parentElement!;
+    if (getComputedStyle(field).opacity !== '1')
+      throw new Error('The disabled field wrapper must not fade (the control fades itself).');
+    const control = canvas.getAllByRole('switch')[2]!;
+    if (Number(getComputedStyle(control).opacity) !== 0.6)
+      throw new Error('The disabled control fades once.');
+    // Off state boundary uses the 3:1 control border, not the decorative border.
+    const off = canvas.getAllByRole('switch')[0]!;
+    if (getComputedStyle(off).borderTopColor === 'rgba(255, 255, 255, 0.095)')
+      throw new Error('The OFF switch must use border-control.');
+  },
+};

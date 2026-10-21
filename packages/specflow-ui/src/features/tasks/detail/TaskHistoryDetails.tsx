@@ -1,7 +1,7 @@
 import { InformationList, Typography } from '@nevo/ui';
 import type { TaskHistoryPage } from '@nevo/specflow-contracts/specs/workspace';
 import { useTranslation } from 'react-i18next';
-import { OperationalRow } from '../../specs/shared/OperationalList';
+import { OperationalRow } from '../../../shared/operational-list';
 import { TaskHints } from './TaskHints';
 import { TaskCopyValue, TaskDetailDisclosure } from './TaskDetailDisclosure';
 import { TaskSourceState } from './TaskDetails';

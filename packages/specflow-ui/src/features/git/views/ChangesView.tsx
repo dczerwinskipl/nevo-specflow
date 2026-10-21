@@ -1,7 +1,7 @@
 import { Button, SegmentedControl, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 
-import type { SpecificationChangesData } from '../../specs/workspace/model';
+import { type SpecificationChangesData } from '../../specs';
 
 export interface ChangesViewProps {
   readonly showHeading?: boolean;

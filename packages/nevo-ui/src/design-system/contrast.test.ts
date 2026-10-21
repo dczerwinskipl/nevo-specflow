@@ -54,6 +54,16 @@ function luminance(color: Rgba): number {
   return 0.2126 * linear[0]! + 0.7152 * linear[1]! + 0.0722 * linear[2]!;
 }
 
+/** Contrast of a token over a stack of translucent surface tokens painted on the canvas. */
+function contrastOver(foregroundToken: string, surfaces: string[]): number {
+  let background = parseColor(colorToken('canvas'));
+  for (const surface of surfaces)
+    background = composite(parseColor(colorToken(surface)), background);
+  const foreground = composite(parseColor(colorToken(foregroundToken)), background);
+  const values = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+  return (values[0]! + 0.05) / (values[1]! + 0.05);
+}
+
 function contrast(foregroundToken: string, backgroundToken: string): number {
   const canvas = parseColor(colorToken('canvas'));
   const background = composite(parseColor(colorToken(backgroundToken)), canvas);
@@ -80,6 +90,45 @@ describe('WCAG 2.2 AA semantic color pairs', () => {
     ['danger status content', 'status-danger', 'canvas'],
   ])('%s has at least 4.5:1 text contrast', (_label, foreground, background) => {
     expect(contrast(foreground, background)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  const workspace = ['workspace-material'];
+  it.each([
+    ['muted on workspace', 'content-muted', workspace],
+    ['muted on raised', 'content-muted', ['surface-raised']],
+    ['muted on a field', 'content-muted', [...workspace, 'surface-control']],
+    ['muted on a hovered row', 'content-muted', [...workspace, 'surface-hover']],
+    ['muted on a selected row', 'content-muted', [...workspace, 'surface-selected']],
+    ['placeholder on a field', 'content-placeholder', [...workspace, 'surface-control']],
+    ['placeholder on workspace', 'content-placeholder', workspace],
+    ['secondary on a selected row', 'content-secondary', [...workspace, 'surface-selected']],
+    ['error text on workspace', 'status-danger', workspace],
+  ])('%s keeps 4.5:1 text contrast', (_label, foreground, surfaces) => {
+    expect(contrastOver(foreground, surfaces)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each([
+    ['control border on workspace', workspace],
+    ['control border on canvas', []],
+    ['control border on raised', ['surface-raised']],
+    ['control border on a field', [...workspace, 'surface-control']],
+  ])('%s keeps 3:1 non-text contrast', (_label, surfaces) => {
+    expect(contrastOver('border-control', surfaces)).toBeGreaterThanOrEqual(3);
+  });
+
+  it('keeps the Switch ON track, thumb and OFF-state thumb distinguishable from the surface', () => {
+    expect(contrastOver('action-primary', workspace)).toBeGreaterThanOrEqual(3);
+    expect(
+      contrastOver('content-primary', [...workspace, 'surface-control']),
+    ).toBeGreaterThanOrEqual(3);
+  });
+
+  it('keeps muted, placeholder and secondary as distinct roles by value', () => {
+    expect(colorToken('content-muted')).not.toBe(colorToken('content-placeholder'));
+    expect(colorToken('content-secondary')).not.toBe(colorToken('content-muted'));
+    expect(contrastOver('content-secondary', workspace)).toBeGreaterThan(
+      contrastOver('content-muted', workspace) + 3,
+    );
   });
 
   it('keeps the shared focus indicator above 3:1 on dark surfaces', () => {

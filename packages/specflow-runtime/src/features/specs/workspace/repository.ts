@@ -43,6 +43,7 @@ export interface WorkspaceReadModel {
   readonly revision: string;
   readonly specification: {
     readonly id: string;
+    readonly key?: string;
     readonly title: string;
     readonly summary: string;
     readonly preparationState: 'empty' | 'preparing' | 'prepared';

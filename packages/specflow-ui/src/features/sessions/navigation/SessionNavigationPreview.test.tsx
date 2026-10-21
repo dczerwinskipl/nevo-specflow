@@ -32,4 +32,22 @@ describe('Sessions navigation presentation', () => {
     expect(html).not.toContain('animate-spin');
     expect(html).not.toContain('raw-role-task-key');
   });
+  it('renders each preview row as one link when the session destination exists', () => {
+    const html = renderToStaticMarkup(
+      <StoryLocalization locale="en">
+        <SessionNavigationPreview
+          entries={[{ id: 'sample-session-24', title: 'Implementer', activityCode: 'active' }]}
+          renderEntryLink={(sessionId, className, children) => (
+            <a href={`/sessions/${sessionId}`} className={className}>
+              {children}
+            </a>
+          )}
+        >
+          <a href="/sessions">View all sessions</a>
+        </SessionNavigationPreview>
+      </StoryLocalization>,
+    );
+    expect(html).toMatch(/<a href="\/sessions\/sample-session-24" class="[^"]*grid[^"]*">/);
+    expect(html).toContain('Implementer');
+  });
 });

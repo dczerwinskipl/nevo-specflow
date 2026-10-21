@@ -163,6 +163,8 @@ export function createDemoSpecs(
         liveOptions.workspaces.push({
           workspaceId,
           kind: 'linked',
+          name: slug,
+          path: `${liveOptions.worktreesRoot.path}/${slug}`,
           managed: true,
           specCount: 1,
           state: 'available',

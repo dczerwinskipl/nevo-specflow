@@ -812,7 +812,8 @@
       "fact": {
         "base": "Start from",
         "target": "Merge into",
-        "branch": "Branch name"
+        "branch": "Branch name",
+        "folder": "Worktree folder"
       },
       "main": {
         "onBranch": "The specification will be created on branch <branch/>. We do not create a new branch or worktree and do not switch the current branch.",
@@ -911,10 +912,7 @@
         "noteOtherBranchNone": "The project target <target/> is not checked out in the current folder, which has no branch. Closing the work may need a change. Creation is not blocked.",
         "noteNoTarget": "No project target is configured, so closing the work will need one. Creation is not blocked."
       },
-      "ref": {
-        "primary": "Current folder",
-        "linked": "Workspace"
-      }
+      "folderWillBeCreated": "Created together with the workspace."
     },
     "project": {
       "subheading": "Name it, add the goal if you have one, and choose where its files will live.",

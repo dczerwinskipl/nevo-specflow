@@ -67,8 +67,7 @@ export function WorkspaceLabel({
 }
 
 /**
- * A workspace as a merge target: its role as the primary text (the contract carries no workspace
- * name, only whether it is the current folder) and its branch as the secondary chip.
+ * A workspace as a merge target: its name (the checkout folder) as the primary text and its branch as the secondary chip.
  */
 export function WorkspaceRef({
   workspace,
@@ -77,15 +76,10 @@ export function WorkspaceRef({
   workspace: DemoCreateOptions['workspaces'][number];
   truncate?: boolean;
 }) {
-  const { t } = useTranslation();
   const text = useMessage();
   return (
     <span className="inline-flex min-w-0 max-w-full flex-wrap items-baseline gap-x-2 gap-y-0.5">
-      <span className={truncate ? 'truncate' : undefined}>
-        {workspace.kind === 'primary'
-          ? t('create.workspace.ref.primary')
-          : t('create.workspace.ref.linked')}
-      </span>{' '}
+      <span className={truncate ? 'truncate' : undefined}>{workspace.name}</span>{' '}
       {workspace.branch ? (
         <BranchRef name={workspace.branch} truncate={truncate} />
       ) : (
@@ -378,7 +372,7 @@ export function NewWorkspaceSettings({
                     const blocked = workspace.integrationSelectable !== true;
                     return {
                       value: workspace.workspaceId,
-                      textValue: `${workspace.kind === 'primary' ? t('create.workspace.ref.primary') : t('create.workspace.ref.linked')} ${workspace.branch ?? text(noBranchLabel)}`,
+                      textValue: `${workspace.name} ${workspace.branch ?? text(noBranchLabel)}`,
                       unavailable: blocked,
                       description: blocked ? text(reasonText(workspace.reason)) : undefined,
                       meta: text(specCountLabel(workspace.specCount)),

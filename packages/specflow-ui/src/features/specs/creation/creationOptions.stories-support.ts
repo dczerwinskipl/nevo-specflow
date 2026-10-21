@@ -47,6 +47,8 @@ export function seedOptions(): DemoCreateOptions {
       {
         workspaceId: ids.main,
         kind: 'primary',
+        name: 'acme-app',
+        path: '/work/acme-app',
         managed: false,
         specCount: 0,
         state: 'available',
@@ -57,6 +59,8 @@ export function seedOptions(): DemoCreateOptions {
       {
         workspaceId: ids.platform,
         kind: 'linked',
+        name: 'platform',
+        path: '/work/acme-app-worktrees/platform',
         managed: true,
         specCount: 2,
         state: 'available',
@@ -67,6 +71,8 @@ export function seedOptions(): DemoCreateOptions {
       {
         workspaceId: ids.payments,
         kind: 'linked',
+        name: 'payments',
+        path: '/work/acme-app-worktrees/payments',
         managed: true,
         specCount: 1,
         state: 'dirty',
@@ -80,6 +86,8 @@ export function seedOptions(): DemoCreateOptions {
       {
         workspaceId: ids.architecture,
         kind: 'linked',
+        name: 'architecture',
+        path: '/work/acme-app-worktrees/architecture',
         managed: true,
         specCount: 3,
         state: 'available',
@@ -90,6 +98,8 @@ export function seedOptions(): DemoCreateOptions {
       {
         workspaceId: ids.spike,
         kind: 'linked',
+        name: 'spike',
+        path: '/work/acme-app-worktrees/spike',
         managed: true,
         specCount: 0,
         state: 'detached',
@@ -100,6 +110,8 @@ export function seedOptions(): DemoCreateOptions {
       {
         workspaceId: ids.legacy,
         kind: 'linked',
+        name: 'legacy',
+        path: '/work/acme-app-worktrees/legacy',
         managed: true,
         specCount: 1,
         state: 'unavailable',
@@ -111,6 +123,7 @@ export function seedOptions(): DemoCreateOptions {
     newWorktree: { status: 'available' },
     defaultBaseRef: 'develop',
     branchPattern: 'feature/{slug}',
+    worktreesRoot: { path: '/work/acme-app-worktrees', exists: true },
     integrationTargetBranch: 'develop',
     baseRefs: [
       { ref: 'develop', checkedOutWorkspaceId: ids.main },
@@ -254,6 +267,8 @@ export function createOptionsFixture(variant: OptionsVariant = 'default'): DemoC
         next.workspaces.push({
           workspaceId,
           kind: 'linked',
+          name: `team-${index + 1}`,
+          path: `/work/acme-app-worktrees/team-${index + 1}`,
           managed: true,
           specCount: index % 4,
           state: 'available',

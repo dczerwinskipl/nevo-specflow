@@ -6,7 +6,11 @@ import { join } from 'node:path';
 import type { RuntimeSetupUi } from '@nevo/specflow-runtime';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { chooseBranchPattern, chooseIntegrationTargetBranch } from '../src/init/cli';
+import {
+  chooseBranchPattern,
+  chooseIntegrationTargetBranch,
+  chooseWorktreesRoot,
+} from '../src/init/cli';
 
 function git(root: string, ...args: string[]): void {
   execFileSync('git', args, { cwd: root, stdio: 'ignore' });
@@ -103,5 +107,51 @@ describe('chooseBranchPattern', () => {
   it('gives up after repeated invalid custom patterns', async () => {
     const { ui } = scripted(['__custom__', 'a', 'b', 'c']);
     await expect(chooseBranchPattern(ui)).rejects.toThrow(/No valid branch pattern/);
+  });
+});
+
+describe('chooseWorktreesRoot', () => {
+  const root = join(tmpdir(), 'nevo-init-root', 'repo');
+  const fallback = join(tmpdir(), 'nevo-init-root', 'repo-worktrees');
+
+  function scripted(answers: string[]): {
+    ui: RuntimeSetupUi;
+    notes: string[];
+    defaults: unknown[];
+  } {
+    const notes: string[] = [];
+    const defaults: unknown[] = [];
+    const ui = {
+      input: (_m: string, def?: string) => {
+        defaults.push(def);
+        return Promise.resolve(answers.shift() ?? def!);
+      },
+      note: (message: string) => notes.push(message),
+    } as unknown as RuntimeSetupUi;
+    return { ui, notes, defaults };
+  }
+
+  it('shows <repo>-worktrees as the default and stores nothing when it is kept', async () => {
+    const { ui, defaults } = scripted([]);
+    expect(await chooseWorktreesRoot(ui, root)).toBeUndefined();
+    expect(defaults).toEqual([fallback]);
+  });
+
+  it('accepts a relative or an absolute folder outside the repository', async () => {
+    expect(await chooseWorktreesRoot(scripted(['../trees']).ui, root)).toBe('../trees');
+    const absolute = join(tmpdir(), 'elsewhere-trees');
+    expect(await chooseWorktreesRoot(scripted([absolute]).ui, root)).toBe(absolute);
+  });
+
+  it('rejects a folder inside the working tree or .git and asks again', async () => {
+    const { ui, notes } = scripted(['inside', '.git/trees', '../ok']);
+    expect(await chooseWorktreesRoot(ui, root)).toBe('../ok');
+    expect(notes).toHaveLength(2);
+  });
+
+  it('gives up after repeated invalid folders', async () => {
+    await expect(chooseWorktreesRoot(scripted(['a', 'b', 'c']).ui, root)).rejects.toThrow(
+      /No valid worktree folder/,
+    );
   });
 });

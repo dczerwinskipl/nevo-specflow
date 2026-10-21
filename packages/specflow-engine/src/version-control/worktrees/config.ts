@@ -4,13 +4,25 @@ import { parse as parseYaml } from 'yaml';
 
 import type { ResolvedProjectHome } from '../../project/project-home';
 import { GitCapabilityError } from '../../git/errors';
-import { parseGitWorktreePolicy, type GitWorktreePolicy } from './policy';
+import { parseGitWorktreePolicy, resolveWorktreesRoot, type GitWorktreePolicy } from './policy';
 
 /** Reads only home-owned committed and local configuration. */
 export async function loadGitWorktreePolicy(
   context: ResolvedProjectHome,
 ): Promise<GitWorktreePolicy> {
   return (await readProjectGitPolicy(context)).policy;
+}
+
+/** Effective, validated worktree folder for NEW worktrees (local config or the default). */
+export function effectiveWorktreesRoot(
+  context: ResolvedProjectHome,
+  policy: GitWorktreePolicy,
+): string {
+  return resolveWorktreesRoot(
+    context.project.homeRoot,
+    context.project.gitCommonDir,
+    policy.worktreesRoot,
+  );
 }
 
 /** One committed Project Home authority, including exact bytes pinned by lifecycle. */

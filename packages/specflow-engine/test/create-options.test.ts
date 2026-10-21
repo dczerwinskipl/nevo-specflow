@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { readFile, rm } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { basename, join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -42,8 +43,12 @@ describe('E2.I01 authorized create-options Engine read model', () => {
         selectable: true,
         integrationSelectable: true,
         branch: 'develop',
+        name: basename(root),
+        path: root,
       },
     ]);
+    expect(options.branchPattern).toBe('feature/{slug}');
+    expect(options.worktreesRoot).toEqual({ path: root + '-worktrees', exists: false });
     expect(options.defaultBaseRef).toBe('develop');
     expect(options.integrationTargetBranch).toBe('develop');
     expect(options.newWorktree).toEqual({ status: 'available' });
@@ -53,7 +58,6 @@ describe('E2.I01 authorized create-options Engine read model', () => {
         { ref: 'refs/heads/feature/x' },
       ]),
     );
-    expect(JSON.stringify(options)).not.toContain(root);
     expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(registryBefore);
     expect(git(root, 'rev-parse', 'HEAD')).toBe(headBefore);
     expect(git(root, 'show-ref', '--heads')).toBe(refsBefore);
@@ -106,12 +110,16 @@ describe('E2.I01 authorized create-options Engine read model', () => {
       reason: 'dirty',
     });
     expect(options.workspaces).toHaveLength(2);
+    expect(linked).toMatchObject({
+      name: basename(first.workspaceRoot),
+      path: first.workspaceRoot,
+    });
+    expect(options.worktreesRoot).toEqual({ path: root + '-worktrees', exists: true });
     const linkedRef = git(first.workspaceRoot, 'symbolic-ref', 'HEAD');
     expect(options.baseRefs).toContainEqual({
       ref: linkedRef,
       checkedOutWorkspaceId: first.workspaceId,
     });
-    expect(JSON.stringify(options)).not.toContain(first.workspaceRoot);
     expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(before);
   }, 180000);
 
@@ -187,4 +195,28 @@ describe('E2.I01 authorized create-options Engine read model', () => {
     expect(options.newWorktree).toEqual({ status: 'disabled', reason: 'git-disabled' });
     expect(options.workspaces[0]?.state).toBe('available');
   }, 90000);
+
+  it('reads the worktree folder from the local config and reports whether it exists', async () => {
+    const root = await createGitTestProject(
+      'specflow-create-options-root-',
+      'runtime: {}\ngit:\n  enabled: true\n',
+    );
+    const custom = root + '-custom-trees';
+    roots.push(root, custom);
+    await mkdir(join(root, '.nevo/local'), { recursive: true });
+    await writeFile(
+      join(root, '.nevo/local/config.yaml'),
+      'git:\n  worktreesRoot: ' + JSON.stringify(custom) + '\n',
+    );
+    const engine = await bootstrapProjectHome(root);
+    expect((await inspectCreateOptions(engine)).worktreesRoot).toEqual({
+      path: custom,
+      exists: false,
+    });
+    await mkdir(custom);
+    expect((await inspectCreateOptions(engine)).worktreesRoot).toEqual({
+      path: custom,
+      exists: true,
+    });
+  }, 120000);
 });

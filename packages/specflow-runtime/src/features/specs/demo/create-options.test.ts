@@ -23,6 +23,16 @@ const code = (fn: () => unknown) => {
 };
 
 describe('seed registry', () => {
+  it('names every workspace and exposes the worktree folder like the Engine does', () => {
+    const seed = options();
+    expect(seed.workspaces.every((w) => w.name.length > 0 && w.path.length > 0)).toBe(true);
+    expect(seed.workspaces.find((w) => w.kind === 'primary')).toMatchObject({
+      name: 'acme-app',
+      path: '/work/acme-app',
+    });
+    expect(seed.worktreesRoot).toEqual({ path: '/work/acme-app-worktrees', exists: true });
+    expect(seed.branchPattern).toBe('feature/{slug}');
+  });
   it('matches the documented happy-path table', () => {
     const seed = options();
     expect(seed.primaryWorkspaceId).toBe(ids.main);

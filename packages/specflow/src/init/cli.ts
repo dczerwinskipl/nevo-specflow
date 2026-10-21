@@ -1,12 +1,13 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-import { relative } from 'node:path';
+import { basename, dirname, join, relative } from 'node:path';
 
 import {
   bootstrapProjectHome,
   assertPrimaryGitCheckout,
   DEFAULT_BRANCH_PATTERN,
+  resolveWorktreesRoot,
   validateBranchPattern,
   resolveGitCheckoutLayout,
   type GitCheckoutLayout,
@@ -134,6 +135,32 @@ export async function chooseBranchPattern(ui: RuntimeSetupUi): Promise<string> {
   throw new Error('No valid branch pattern was provided.');
 }
 
+/**
+ * Machine-local folder that receives managed worktrees. Returns the value to store in the local
+ * config, or `undefined` when the default (`<repo>-worktrees` next to the repository) is kept.
+ * Relative values resolve against the repository; the Engine validator rejects anything inside
+ * the working tree or `.git`.
+ */
+export async function chooseWorktreesRoot(
+  ui: RuntimeSetupUi,
+  root: string,
+): Promise<string | undefined> {
+  const defaultRoot = join(dirname(root), basename(root) + '-worktrees');
+  for (let attempt = 1; attempt <= MAX_PATTERN_ATTEMPTS; attempt += 1) {
+    const text = (
+      await ui.input('Folder for new worktrees (this machine only)', defaultRoot)
+    ).trim();
+    if (!text || text === defaultRoot) return undefined;
+    try {
+      resolveWorktreesRoot(root, join(root, '.git'), text);
+      return text;
+    } catch (error) {
+      ui.note(error instanceof Error ? error.message : 'Invalid folder.', 'Invalid folder');
+    }
+  }
+  throw new Error('No valid worktree folder was provided.');
+}
+
 export function createProjectInitCommand(context: ProjectInitCommandContext): Command {
   return new Command('init')
     .description('Initialize Nevo SpecFlow configuration for this repository')
@@ -153,6 +180,7 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
         'Enable managed Git worktrees and lifecycle operations?',
         true,
       );
+      let worktreesRoot: string | undefined;
       let gitConfig: {
         enabled: boolean;
         integrationTargetBranch?: string;
@@ -162,10 +190,14 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
         const integrationTargetBranch = await chooseIntegrationTargetBranch(ui, layout.root);
         const branchPattern = await chooseBranchPattern(ui);
         gitConfig = { enabled: true, integrationTargetBranch, worktrees: { branchPattern } };
+        worktreesRoot = await chooseWorktreesRoot(ui, layout.root);
       }
       const contribution = {
         projectConfig: { runtime: runtime.projectConfig, git: gitConfig },
-        localConfig: { runtime: runtime.localConfig },
+        localConfig: {
+          runtime: runtime.localConfig,
+          ...(worktreesRoot !== undefined ? { git: { worktreesRoot } } : {}),
+        },
       };
 
       ui.note(
@@ -176,6 +208,13 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
             ? ['Integration branch: ' + gitConfig.integrationTargetBranch]
             : []),
           ...(gitConfig.worktrees ? ['Branch pattern: ' + gitConfig.worktrees.branchPattern] : []),
+          ...(gitConfig.enabled
+            ? [
+                'Worktree folder: ' +
+                  (worktreesRoot ??
+                    join(dirname(layout.root), basename(layout.root) + '-worktrees')),
+              ]
+            : []),
           '',
           `Project config: ${relative(layout.root, layout.projectConfigPath)}`,
           `Local config: ${relative(layout.root, layout.localConfigPath)}`,

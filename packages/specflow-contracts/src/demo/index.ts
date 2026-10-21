@@ -119,6 +119,10 @@ export const DemoCreateOptionsSchema = Type.Object(
         {
           workspaceId: Uuid,
           kind: Type.Union([Type.Literal('primary'), Type.Literal('linked')]),
+          /** Display label: the checkout folder name (the repository folder for the primary one). */
+          name: Type.String({ minLength: 1 }),
+          /** Display path of the registered checkout. */
+          path: Type.String({ minLength: 1 }),
           managed: Type.Boolean(),
           specCount: Type.Integer({ minimum: 0 }),
           state: Type.Union([
@@ -153,7 +157,13 @@ export const DemoCreateOptionsSchema = Type.Object(
       { additionalProperties: false },
     ),
     defaultBaseRef: Type.String({ minLength: 1 }),
+    /** Effective pattern; `{shortId}` is optional, so `feature/{slug}` previews as `feature/<slug>`. */
     branchPattern: Type.String({ minLength: 1 }),
+    /** Effective folder for new worktrees (machine-local `git.worktreesRoot` or the default). */
+    worktreesRoot: Type.Object(
+      { path: Type.String({ minLength: 1 }), exists: Type.Boolean() },
+      { additionalProperties: false },
+    ),
     integrationTargetBranch: Type.Optional(Type.String({ minLength: 1 })),
     baseRefs: Type.Array(
       Type.Object(

@@ -1,3 +1,5 @@
+import { join, resolve } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -6,6 +8,8 @@ import {
   normalizeBaseRef,
   parseGitWorktreePolicy,
   resolveWorktreeBranch,
+  resolveWorktreesRoot,
+  assertWorktreeTargetOutsideRepository,
   validateBaseRef,
   validateBranchName,
   validateBranchPattern,
@@ -125,6 +129,62 @@ describe('Version Control worktree policy (VC01)', () => {
     ]) {
       expect(() => parseGitWorktreePolicy(project)).toThrow();
     }
-    expect(() => parseGitWorktreePolicy({ git: { enabled: true } }, { git: {} })).toThrow();
+    expect(() => parseGitWorktreePolicy({ git: { enabled: true } }, { git: {} })).not.toThrow();
+    for (const local of [
+      { git: { enabled: true } },
+      { git: { branchPattern: 'x/{slug}' } },
+      { git: { worktreesRoot: 17 } },
+      { git: { worktreesRoot: '' } },
+      { git: 'nope' },
+    ]) {
+      expect(() => parseGitWorktreePolicy({ git: { enabled: true } }, local)).toThrow();
+    }
+  });
+
+  describe('git.worktreesRoot (workstation-local)', () => {
+    const home = resolve('/work/repo');
+    const common = join(home, '.git');
+
+    it('is read only from the local config and kept out of the committed policy', () => {
+      const policy = parseGitWorktreePolicy(
+        { git: { enabled: true } },
+        { git: { worktreesRoot: '../elsewhere' } },
+      );
+      expect(policy.worktreesRoot).toBe('../elsewhere');
+      expect(parseGitWorktreePolicy({ git: { enabled: true } }).worktreesRoot).toBeUndefined();
+      expect(() =>
+        parseGitWorktreePolicy({ git: { enabled: true, worktreesRoot: '/x' } }),
+      ).toThrow();
+    });
+
+    it('defaults to <repo>-worktrees next to the repository', () => {
+      expect(resolveWorktreesRoot(home, common, undefined)).toBe(resolve('/work/repo-worktrees'));
+    });
+
+    it('resolves a relative root against the repository and accepts an absolute one', () => {
+      expect(resolveWorktreesRoot(home, common, '../trees')).toBe(resolve('/work/trees'));
+      expect(resolveWorktreesRoot(home, common, resolve('/abs/trees'))).toBe(resolve('/abs/trees'));
+    });
+
+    it.each(['.', 'inside', '.git/trees', '.git', 'a/../b'])(
+      'rejects %s inside the working tree or .git',
+      (value) => {
+        expect(() => resolveWorktreesRoot(home, common, value)).toThrow();
+      },
+    );
+
+    it('rejects a root inside a Git directory located outside the working tree', () => {
+      const elsewhere = resolve('/work/gitdirs/repo.git');
+      expect(() => resolveWorktreesRoot(home, elsewhere, join(elsewhere, 'trees'))).toThrow();
+    });
+
+    it('checks a persisted target independently of the current configuration', () => {
+      expect(() =>
+        assertWorktreeTargetOutsideRepository(home, common, resolve('/old/root/slug')),
+      ).not.toThrow();
+      expect(() =>
+        assertWorktreeTargetOutsideRepository(home, common, join(home, 'slug')),
+      ).toThrow();
+    });
   });
 });

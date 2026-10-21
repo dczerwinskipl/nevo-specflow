@@ -261,7 +261,10 @@ happy path: primary `develop` (0 specs, not Nevo-managed, no pin), linked `featu
 `feature/payments` (1, dirty: selectable, not an integration target, **pinned** to the primary
 workspace/`develop`), `spec/architecture` (3), a detached entry and an unavailable entry (both not
 selectable and, like the Engine, without `branch`); `newWorktree` available, `defaultBaseRef`
-`develop`, `branchPattern` `feature/{slug}`, `integrationTargetBranch` `develop`.
+`develop`, `branchPattern` `feature/{slug}`, `integrationTargetBranch` `develop`. Like the Engine, every
+workspace carries `name` (checkout folder; the primary one is `acme-app`) and `path`, and the
+response carries `worktreesRoot` `{ path: '/work/acme-app-worktrees', exists: true }`; a new
+simulated worktree gets `name` = slug and a `path` below that root.
 `integrationSelectable` is `state === 'available' && (primary || managed)`.
 
 Create body requires `operationId` (UUID, idempotency key; the legacy `requestId` was removed) and takes an optional `target` and an optional `slug` (same rule and meaning as the real `slug`: lowercase kebab-case ASCII, at most 80 characters; unlike the title-derived slug, which gets a `-2` suffix on a collision, a taken explicit slug answers 409 `CREATE_CONFLICT`, and a malformed one 400 `CREATE_OPERATION_INVALID`). Absent `target` = the primary checkout. Tiles (user-facing labels use "środowisko pracy" for a workspace; "workspace" is a code/contract term only):
@@ -310,7 +313,7 @@ body returns the original result.
   `integrationSelectable: false`); the UI shows a quiet note, the Engine does not declare it.
 
 Demo divergences kept on purpose: `baseRefs[].ref` and `defaultBaseRef` are short branch names (the Engine
-uses `refs/heads/...` for `baseRefs`), `branchPattern` has no `{shortId}`, titles are limited to 240 (the
+uses `refs/heads/...` for `baseRefs`), `branchPattern` has no `{shortId}` (the Engine allows it optionally), titles are limited to 240 (the
 Engine accepts 200), and the operation-status read (proposed, includes `failed`) has no Engine
 counterpart for Create.
 

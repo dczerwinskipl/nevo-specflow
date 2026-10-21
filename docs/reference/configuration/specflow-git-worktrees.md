@@ -43,7 +43,29 @@ overlapping reservations) and an existing branch is never overwritten. The effec
 returned as `branchPattern` by create-options, so the UI previews exactly `feature/<slug>` unless
 the pattern contains `{shortId}`.
 
-The workstation-local config cannot override committed `git` policy.
+The workstation-local config cannot override committed `git` policy, with one exception: the
+machine-specific worktree folder.
+
+## Local worktree folder
+
+```yaml
+# .nevo/local/config.yaml (per machine, never committed)
+git:
+  worktreesRoot: ../my-trees
+```
+
+| Field               | Effect                                                                                                                                                                                |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `git.worktreesRoot` | Folder receiving managed worktrees (`<root>/<slug>`). Default `<repo>-worktrees` next to the repository. Relative values resolve against the repository, absolute ones are used as is |
+
+The folder must be outside the repository working tree and the `.git` directory; Create fails
+closed otherwise. `nevo-specflow init` asks for it (default shown) and stores it only when it
+differs from the default. Create journals store the absolute target path, so changing the folder
+never affects a worktree reserved or created under a previous folder: recovery and idempotent
+retries still use the originally reserved path (its folder name must equal the reserved slug and it
+must stay outside the repository). Create-options return the effective folder as `worktreesRoot`
+(`{path, exists}`) for a read-only "Worktree folder" line in the UI.
+
 Create validates explicitly selected `integrationTargetWorkspaceId` as a **request field**, not a
 configuration field. When selected, it pins the destination checkout ID, incarnation and branch
 in the newly created workspace's local registration. When omitted, Close uses project policy.

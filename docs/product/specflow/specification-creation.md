@@ -59,11 +59,13 @@ rule the Engine uses for derived slugs, shared as `deriveSpecSlug`/`specSlugProb
 `@nevo/specflow-contracts/specs`). The UI previews the slug live from the name until the user
 edits it and validates a typed one inline; a taken slug answers `CREATE_CONFLICT` and is shown at
 the field. The final branch and worktree location still belong to Engine: the UI shows only a
-**preview** built from `branchPattern` and the slug, where the random `{shortId}` is written as
-`<id>`, and it never promises that later integration will succeed.
+**preview** built from `branchPattern` and the slug (the default `feature/{slug}` previews exactly
+as `feature/<slug>`; only a pattern containing the optional `{shortId}` shows it as `<id>`), and it never promises that later integration will succeed.
 
 **Goal** is sent as `goal`, persisted in the Create journal and written to the Specification
-overview scaffold; the app does not display it yet, and the field's help text says so.
+overview scaffold; the app does not display it yet, and the field's help text says so. The scaffold marks the
+section with a comment under `## Goal` telling an agent that it is the initial goal from creation
+and may be refined or rewritten freely.
 
 Create options are a snapshot of Git state, so the Create screen treats only options fetched
 since the screen was entered as current: while they load it shows the loading state of the
@@ -81,3 +83,16 @@ canonical `specId`, not by a potentially stale worktree path.
 After a shared-worktree Spec archive, sibling Specs and their workspace remain unchanged.
 Integrating the whole branch and removing that workspace is a separate explicitly previewed
 Workspace Close action. Neither Create nor Close automatically runs E3–E5 workflow/provider steps.
+
+## Workspace names and worktree folder
+
+Every workspace in create-options has a `name` (checkout folder; the primary checkout uses the
+repository folder) and a `path`; the UI shows the name instead of a generic "Current folder" or
+"Workspace" label wherever a workspace is referred to. The new-workspace summary shows the effective
+`worktreesRoot` as a read-only "Worktree folder" row, with a quiet note when it does not exist yet.
+
+## Overview right after Create in project mode
+
+A Runtime that answers the workspace read with `unavailable` / `not_implemented` sections shows a
+calm "Not available in this Runtime yet" state (no warning tone, no Retry). Actions that cannot work
+there, such as "Start conversation", are hidden instead of shown disabled. Demo mode is unchanged.

@@ -1,3 +1,5 @@
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
+
 import { GitCapabilityError } from '../../git/errors';
 import { validateBaseRef, validateBranchName } from '../git/refs';
 
@@ -10,6 +12,11 @@ export interface GitWorktreePolicy {
   readonly baseRef: string;
   /** Independently configured destination for existing-worktree integration. */
   readonly integrationTargetBranch?: string;
+  /**
+   * Workstation-local `git.worktreesRoot` exactly as configured (relative values are resolved
+   * against the repository). Absent = the `<repo>-worktrees` default. Never committed.
+   */
+  readonly worktreesRoot?: string;
 }
 
 export const DEFAULT_BRANCH_PATTERN = 'feature/{slug}';
@@ -23,13 +30,16 @@ export function parseGitWorktreePolicy(
   localConfig?: unknown,
 ): GitWorktreePolicy {
   if (!isRecord(projectConfig)) throw invalid('Project configuration must be an object.');
-  if (isRecord(localConfig) && localConfig.git !== undefined) {
-    throw invalid('Git policy cannot be overridden by workstation-local configuration.');
-  }
+  const worktreesRoot = parseLocalWorktreesRoot(localConfig);
 
   const value = projectConfig.git;
   if (value === undefined) {
-    return { enabled: false, branchPattern: DEFAULT_BRANCH_PATTERN, baseRef: DEFAULT_BASE_REF };
+    return {
+      enabled: false,
+      branchPattern: DEFAULT_BRANCH_PATTERN,
+      baseRef: DEFAULT_BASE_REF,
+      ...(worktreesRoot !== undefined ? { worktreesRoot } : {}),
+    };
   }
   if (!isRecord(value) || typeof value.enabled !== 'boolean') {
     throw invalid('Project git.enabled must be a boolean.');
@@ -70,7 +80,60 @@ export function parseGitWorktreePolicy(
     branchPattern,
     baseRef,
     ...(target !== undefined ? { integrationTargetBranch: target } : {}),
+    ...(worktreesRoot !== undefined ? { worktreesRoot } : {}),
   };
+}
+
+/** Only `git.worktreesRoot` may live in the workstation-local config; all other Git policy is committed. */
+function parseLocalWorktreesRoot(localConfig: unknown): string | undefined {
+  if (!isRecord(localConfig) || localConfig.git === undefined) return undefined;
+  const local = localConfig.git;
+  if (!isRecord(local) || Object.keys(local).some((key) => key !== 'worktreesRoot')) {
+    throw invalid('Only git.worktreesRoot can be set in workstation-local configuration.');
+  }
+  const value = local.worktreesRoot;
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string' || !value.trim() || value.length > 1000 || value.includes('\u0000')) {
+    throw invalid('git.worktreesRoot must be a non-empty path.');
+  }
+  return value;
+}
+
+/**
+ * Absolute folder that receives managed worktrees. The default sits next to the repository;
+ * a configured value may be relative (to the repository) or absolute but never inside the
+ * working tree or the Git directory.
+ */
+export function resolveWorktreesRoot(
+  home: string,
+  gitCommonDir: string,
+  configured: string | undefined,
+): string {
+  const root =
+    configured === undefined
+      ? join(dirname(home), basename(home) + '-worktrees')
+      : resolve(home, configured);
+  assertWorktreeTargetOutsideRepository(home, gitCommonDir, root, 'git.worktreesRoot');
+  return root;
+}
+
+/** Also used for persisted journal targets, so it never consults the current configuration. */
+export function assertWorktreeTargetOutsideRepository(
+  home: string,
+  gitCommonDir: string,
+  target: string,
+  label = 'Worktree target',
+): void {
+  if (isInsideOrSame(home, target) || isInsideOrSame(gitCommonDir, target)) {
+    throw invalid(label + ' must be outside the repository working tree and the .git directory.');
+  }
+}
+
+function isInsideOrSame(parent: string, child: string): boolean {
+  const fold = (value: string) =>
+    process.platform === 'win32' ? resolve(value).toLowerCase() : resolve(value);
+  const rel = relative(fold(parent), fold(child));
+  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
 }
 
 /** Two placeholders are supported; {shortId} is optional, but at least one token is required. */

@@ -812,7 +812,8 @@
       "fact": {
         "base": "Zacznij od",
         "target": "Scal do",
-        "branch": "Nazwa gałęzi"
+        "branch": "Nazwa gałęzi",
+        "folder": "Katalog worktree"
       },
       "main": {
         "onBranch": "Specyfikacja powstanie na gałęzi <branch/>. Nie tworzymy nowej gałęzi ani worktree i nie przełączamy aktualnej gałęzi.",
@@ -911,10 +912,7 @@
         "noteOtherBranchNone": "Cel projektu <target/> nie jest wybrany w bieżącym katalogu, który nie ma gałęzi. Zamknięcie pracy może wymagać zmiany. Tworzenie nie jest blokowane.",
         "noteNoTarget": "Nie skonfigurowano celu projektu, więc zamknięcie pracy będzie go wymagać. Tworzenie nie jest blokowane."
       },
-      "ref": {
-        "primary": "Bieżący katalog",
-        "linked": "Środowisko"
-      }
+      "folderWillBeCreated": "Zostanie utworzony razem ze środowiskiem."
     },
     "project": {
       "subheading": "Nadaj jej nazwę, opisz cel, jeśli go masz, i wybierz, gdzie mają leżeć jej pliki.",

@@ -1,4 +1,5 @@
-import { resolve } from 'node:path';
+import { stat } from 'node:fs/promises';
+import { basename, resolve } from 'node:path';
 
 import type { SpecFlowEngine } from '../application';
 import { GitCapabilityError } from '../git/errors';
@@ -6,7 +7,7 @@ import { executeGit } from '../git/process';
 import { WorkspaceRegistryError, inspectRegisteredWorkspace } from '../project/workspace-registry';
 import { createLocalGitClient } from '../version-control/git/client';
 import { validateBaseRef } from '../version-control/git/refs';
-import { readProjectGitPolicy } from '../version-control/worktrees/config';
+import { effectiveWorktreesRoot, readProjectGitPolicy } from '../version-control/worktrees/config';
 import { discoverSpecifications } from './discovery';
 
 export type CreateWorkspaceState = 'available' | 'unavailable' | 'detached' | 'dirty';
@@ -21,6 +22,10 @@ export type CreateOptionsReason =
 export interface CreateWorkspaceOption {
   readonly workspaceId: string;
   readonly kind: 'primary' | 'linked';
+  /** Display label: the checkout's folder name (for the primary one, the repository folder). */
+  readonly name: string;
+  /** Display path of the registered checkout. */
+  readonly path: string;
   readonly managed: boolean;
   readonly specCount: number;
   readonly state: CreateWorkspaceState;
@@ -46,6 +51,8 @@ export interface PublicCreateOptions {
   };
   readonly defaultBaseRef: string;
   readonly branchPattern: string;
+  /** Effective folder (local `git.worktreesRoot` or the default) that receives new worktrees. */
+  readonly worktreesRoot: { readonly path: string; readonly exists: boolean };
   readonly integrationTargetBranch?: string;
   readonly baseRefs: readonly CreateBaseRefOption[];
 }
@@ -91,6 +98,8 @@ export async function inspectCreateOptions(engine: SpecFlowEngine): Promise<Publ
     const common = {
       workspaceId: workspace.workspaceId,
       kind: workspace.kind,
+      name: basename(workspace.root),
+      path: workspace.root,
       managed: workspace.managed,
       specCount: counts.get(workspace.workspaceId) ?? 0,
     };
@@ -191,6 +200,7 @@ export async function inspectCreateOptions(engine: SpecFlowEngine): Promise<Publ
       : { status: 'unavailable', reason: 'git-unavailable' },
     defaultBaseRef: policy.baseRef,
     branchPattern: policy.branchPattern,
+    worktreesRoot: await describeWorktreesRoot(engine, policy),
     ...(policy.integrationTargetBranch !== undefined
       ? { integrationTargetBranch: policy.integrationTargetBranch }
       : {}),
@@ -214,6 +224,19 @@ export async function inspectCreateOptions(engine: SpecFlowEngine): Promise<Publ
           : {}),
       })),
   };
+}
+
+async function describeWorktreesRoot(
+  engine: SpecFlowEngine,
+  policy: Awaited<ReturnType<typeof readProjectGitPolicy>>['policy'],
+): Promise<{ readonly path: string; readonly exists: boolean }> {
+  const path = effectiveWorktreesRoot(engine.context, policy);
+  const found = await stat(path).catch((error: unknown) => {
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT')
+      return undefined;
+    throw error;
+  });
+  return { path, exists: found?.isDirectory() === true };
 }
 
 function samePath(left: string, right: string): boolean {

@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { lstat, readFile, rm, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 
 import { createJournalPath } from '../src/specs/create-journal';
@@ -222,9 +222,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     if (journal?.target.kind !== 'new-worktree') throw new Error('Expected linked reservation.');
     expect(journal.version).toBe(2);
     expect(journal?.stage).toBe('reserved');
-    expect(journal?.target.branch).toBe(
-      'spec/pinned-git-reservation-' + journal.specId.slice(0, 8),
-    );
+    expect(journal?.target.branch).toBe('feature/pinned-git-reservation');
     expect(journal?.target.baseCommit).toBe(originalHead);
     const configPath = join(root, '.nevo/config.yaml');
     await writeFile(
@@ -737,4 +735,65 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     expect((await engine.readRegistry()).specBindings).toHaveLength(2);
     expect(await discoverSpecifications(engine)).toHaveLength(2);
   }, 90000);
+
+  it('creates under a configured local worktree folder and still recovers after it changes', async () => {
+    const { root, engine } = await project();
+    const firstRoot = root + '-first-trees';
+    const secondRoot = root + '-second-trees';
+    roots.push(firstRoot, secondRoot);
+    const localConfig = join(root, '.nevo/local/config.yaml');
+    await mkdir(dirname(localConfig), { recursive: true });
+    await writeFile(localConfig, 'git:\n  worktreesRoot: ' + JSON.stringify(firstRoot) + '\n');
+    const input = linked('Custom worktree folder');
+    const created = await createSpecification(engine, input);
+    expect(created.workspaceRoot).toBe(join(firstRoot, 'custom-worktree-folder'));
+    expect((await lstat(created.workspaceRoot)).isDirectory()).toBe(true);
+
+    // The journal pins the absolute target: a later root change never invalidates it.
+    await writeFile(localConfig, 'git:\n  worktreesRoot: ' + JSON.stringify(secondRoot) + '\n');
+    const restarted = await openSpecFlowEngine({ cwd: root });
+    expect(await createSpecification(restarted, input)).toEqual(created);
+    expect((await inspectCreateSpecification(restarted, input.operationId))?.stage).toBe(
+      'completed',
+    );
+    await expect(lstat(secondRoot)).rejects.toMatchObject({ code: 'ENOENT' });
+  }, 120000);
+
+  it('resumes an interrupted create into the originally reserved folder after the root changed', async () => {
+    const { root, engine } = await project();
+    const firstRoot = root + '-resume-first';
+    roots.push(firstRoot, root + '-resume-second');
+    const localConfig = join(root, '.nevo/local/config.yaml');
+    await mkdir(dirname(localConfig), { recursive: true });
+    await writeFile(localConfig, 'git:\n  worktreesRoot: ' + JSON.stringify(firstRoot) + '\n');
+    const input = linked('Resume in old folder');
+    await expect(
+      createSpecification(engine, input, {
+        afterEffect: (effect) =>
+          effect === 'reservation'
+            ? Promise.reject(new Error('Stop after durable reservation'))
+            : Promise.resolve(),
+      }),
+    ).rejects.toThrow('Stop after durable reservation');
+    await writeFile(
+      localConfig,
+      'git:\n  worktreesRoot: ' + JSON.stringify(root + '-resume-second') + '\n',
+    );
+    const restarted = await openSpecFlowEngine({ cwd: root });
+    const created = await createSpecification(restarted, input, {
+      resumeInterruptedOperation: true,
+    });
+    expect(created.workspaceRoot).toBe(join(firstRoot, 'resume-in-old-folder'));
+  }, 120000);
+
+  it('answers a taken default-pattern branch with the conflict path and keeps the branch', async () => {
+    const { root, engine } = await project();
+    git(root, 'branch', 'feature/taken-branch');
+    const before = git(root, 'rev-parse', 'feature/taken-branch');
+    const failure = await createSpecification(engine, linked('Taken branch')).catch(
+      (error: unknown) => error as { code?: string },
+    );
+    expect(String((failure as { code?: string }).code)).toMatch(/CONFLICT|BRANCH_ALREADY_EXISTS/u);
+    expect(git(root, 'rev-parse', 'feature/taken-branch')).toBe(before);
+  }, 120000);
 });

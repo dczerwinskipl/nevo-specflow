@@ -20,6 +20,11 @@ export const demoWorkspaceIds = {
   legacy: uuid(6),
 } as const;
 
+/** Synthetic machine layout: the repository folder and the folder that receives worktrees. */
+export const demoRepositoryName = 'acme-app';
+export const demoWorktreesRoot = '/work/acme-app-worktrees';
+const linkedPath = (folder: string) => `${demoWorktreesRoot}/${folder}`;
+
 const destination = (workspaceId: string, branch: string) => ({ workspaceId, branch });
 
 /**
@@ -59,6 +64,8 @@ export function seedCreateOptions(): DemoCreateOptions {
       {
         workspaceId: ids.main,
         kind: 'primary',
+        name: demoRepositoryName,
+        path: '/work/acme-app',
         // The Engine never marks the primary workspace as Nevo-managed and gives it no pin.
         managed: false,
         specCount: 0,
@@ -70,6 +77,8 @@ export function seedCreateOptions(): DemoCreateOptions {
       {
         workspaceId: ids.platform,
         kind: 'linked',
+        name: 'platform',
+        path: linkedPath('platform'),
         managed: true,
         specCount: 2,
         state: 'available',
@@ -80,6 +89,8 @@ export function seedCreateOptions(): DemoCreateOptions {
       {
         workspaceId: ids.payments,
         kind: 'linked',
+        name: 'payments',
+        path: linkedPath('payments'),
         managed: true,
         specCount: 1,
         state: 'dirty',
@@ -93,6 +104,8 @@ export function seedCreateOptions(): DemoCreateOptions {
       {
         workspaceId: ids.architecture,
         kind: 'linked',
+        name: 'architecture',
+        path: linkedPath('architecture'),
         managed: true,
         specCount: 3,
         state: 'available',
@@ -103,6 +116,8 @@ export function seedCreateOptions(): DemoCreateOptions {
       {
         workspaceId: ids.spike,
         kind: 'linked',
+        name: 'spike',
+        path: linkedPath('spike'),
         managed: true,
         specCount: 0,
         state: 'detached',
@@ -113,6 +128,8 @@ export function seedCreateOptions(): DemoCreateOptions {
       {
         workspaceId: ids.legacy,
         kind: 'linked',
+        name: 'legacy',
+        path: linkedPath('legacy'),
         managed: true,
         specCount: 1,
         state: 'unavailable',
@@ -124,6 +141,7 @@ export function seedCreateOptions(): DemoCreateOptions {
     newWorktree: { status: 'available' },
     defaultBaseRef: 'develop',
     branchPattern: 'feature/{slug}',
+    worktreesRoot: { path: demoWorktreesRoot, exists: true },
     integrationTargetBranch: 'develop',
     baseRefs: [
       { ref: 'develop', checkedOutWorkspaceId: ids.main },
@@ -332,6 +350,8 @@ export function applyOptionsScenario(
         next.workspaces.push({
           workspaceId,
           kind: 'linked',
+          name: `team-${index + 1}`,
+          path: linkedPath(`team-${index + 1}`),
           managed: true,
           specCount: index % 4,
           state: 'available',

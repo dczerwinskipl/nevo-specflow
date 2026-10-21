@@ -218,6 +218,17 @@ export function NewSummary({
         >
           <BranchRef name={overrides.branch ?? branchPreview(options, slug)} />
         </SummaryRow>
+        <SummaryRow
+          label={t('create.workspace.fact.folder')}
+          override={false}
+          note={
+            options.worktreesRoot.exists ? undefined : t('create.workspace.folderWillBeCreated')
+          }
+        >
+          <Typography as="span" variant="code-md" className="wrap-anywhere">
+            {options.worktreesRoot.path}
+          </Typography>
+        </SummaryRow>
       </dl>
       <NewWorkspaceSettings
         options={options}

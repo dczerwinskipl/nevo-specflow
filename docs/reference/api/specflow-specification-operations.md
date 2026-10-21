@@ -51,11 +51,16 @@ worktree. Omitted/explicit overrides have distinct durable fingerprints.
 
 Successful result:
 `{operationId,specId,kind:"specification-create",status:"completed",slug,workspaceId,relativeManifestPath}`.
-No absolute checkout paths are exposed.
+The Create result exposes no absolute checkout paths; create-options do (see `path` and `worktreesRoot` below).
 
-Create options include `primaryWorkspaceId`, `workspaces[]` (`workspaceId,kind,managed,specCount,
+Create options include `primaryWorkspaceId`, `workspaces[]` (`workspaceId,kind,name,path,managed,specCount,
 state,selectable,integrationSelectable,branch?,reason?,integrationDestination?`),
-`newWorktree`, `defaultBaseRef`, `branchPattern`, `integrationTargetBranch?`, `baseRefs[]`.
+`newWorktree`, `defaultBaseRef`, `branchPattern`, `worktreesRoot`, `integrationTargetBranch?`, `baseRefs[]`.
+`name` is the display label of a checkout (its folder name; for the primary checkout the repository
+folder) and `path` its registered display path. `branchPattern` is the effective pattern (default
+`feature/{slug}`; `{shortId}` is optional). `worktreesRoot` is `{path,exists}`: the effective folder
+that receives new worktrees, from the machine-local `git.worktreesRoot` or the `<repo>-worktrees`
+default; `exists` tells whether it exists yet (it is created on first use).
 Local `baseRefs[].ref` values are `refs/heads/...`; project default may instead be
 `HEAD`, a SHA or a tag. An existing dirty workspace may be selectable for Create but is
 not an integration-selectable destination. All options are a snapshot, not a reservation.

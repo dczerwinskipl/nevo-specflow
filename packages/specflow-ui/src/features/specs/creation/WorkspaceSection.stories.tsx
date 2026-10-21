@@ -146,10 +146,14 @@ export const DefaultNewWorkspace: Story = {
       'Zacznij od',
       'Scal do',
       'Nazwa gałęzi',
+      'Katalog worktree',
     ]);
     await expect(rowValue(canvas, 'Zacznij od')).toHaveTextContent('develop');
-    await expect(rowValue(canvas, 'Scal do')).toHaveTextContent('Bieżący katalog develop');
+    await expect(rowValue(canvas, 'Scal do')).toHaveTextContent('acme-app develop');
     await expect(rowValue(canvas, 'Nazwa gałęzi')).toHaveTextContent('feature/limity-platnosci');
+    await expect(rowValue(canvas, 'Katalog worktree')).toHaveTextContent(
+      '/work/acme-app-worktrees',
+    );
     // Default request: nothing but the kind; no baseRef, branch or target is hard-coded.
     await expect(request(canvas)).toBe('{"kind":"new-worktree"}');
     // The summary comes after the whole radio group, also in the DOM.
@@ -412,7 +416,7 @@ export const IndependentSwitchesStartFromTheDefaults: Story = {
         integrationTargetWorkspaceId: workspaceIds.architecture,
       }),
     );
-    await expect(rowValue(canvas, 'Scal do')).toHaveTextContent('Środowisko spec/architecture');
+    await expect(rowValue(canvas, 'Scal do')).toHaveTextContent('architecture spec/architecture');
     // Turning a switch off restores its default and removes its field.
     await userEvent.click(name);
     await expect(request(canvas)).toBe(
@@ -582,9 +586,7 @@ export const UnavailableTargetsStayReadableUnderTheField: Story = {
       canvas.getByRole('switch', { name: 'Scal później do innego środowiska' }),
     );
     const hint = canvas.getByText(/Niedostępne jako cel:/);
-    await expect(hint).toHaveTextContent(
-      'Środowisko feature/payments – ma niezapisane zmiany w Git',
-    );
+    await expect(hint).toHaveTextContent('payments feature/payments – ma niezapisane zmiany w Git');
     await expect(canvas.getByText(/Nic nie zostanie scalone teraz/)).toBeVisible();
     await expect(
       canvas.getByRole('combobox', { name: 'Scal do' }).getAttribute('aria-describedby'),
@@ -879,7 +881,7 @@ export const ConfiguredTargetHasUnsavedChanges: Story = {
   args: { variant: 'target-dirty' },
   tags: ['contract'],
   play: async ({ canvas }) => {
-    await expect(rowValue(canvas, 'Scal do')).toHaveTextContent('Bieżący katalog develop');
+    await expect(rowValue(canvas, 'Scal do')).toHaveTextContent('acme-app develop');
     await expect(summary(canvas)).toHaveTextContent(
       'Teraz niedostępne: ma niezapisane zmiany w Git. Tworzenie nie jest blokowane.',
     );
@@ -1042,13 +1044,13 @@ export const TargetSwitchPrefillsTheDefaultTargetAndOnlyADifferentPickIsSent: St
     await expect(request(canvas)).toBe(
       JSON.stringify({ kind: 'new-worktree', integrationTargetWorkspaceId: workspaceIds.platform }),
     );
-    await expect(rowValue(canvas, 'Scal do')).toHaveTextContent('Środowisko feature/platform');
+    await expect(rowValue(canvas, 'Scal do')).toHaveTextContent('platform feature/platform');
     // Off restores the default and sends nothing.
     await userEvent.click(
       canvas.getByRole('switch', { name: 'Scal później do innego środowiska' }),
     );
     await expect(request(canvas)).toBe('{"kind":"new-worktree"}');
-    await expect(rowValue(canvas, 'Scal do')).toHaveTextContent('Bieżący katalog develop');
+    await expect(rowValue(canvas, 'Scal do')).toHaveTextContent('acme-app develop');
   },
 };
 

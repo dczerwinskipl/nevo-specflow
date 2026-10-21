@@ -7,6 +7,7 @@ import { WorkspaceRegistryError, inspectRegisteredWorkspace } from '../project/w
 import { createLocalGitClient } from '../version-control/git/client';
 import { validateBaseRef } from '../version-control/git/refs';
 import { readProjectGitPolicy } from '../version-control/worktrees/config';
+import { runReadRequest } from '../project/request-verification-memo';
 import { discoverSpecifications } from './discovery';
 
 export type CreateWorkspaceState = 'available' | 'unavailable' | 'detached' | 'dirty';
@@ -54,7 +55,12 @@ export interface PublicCreateOptions {
  * Authorized caller-facing read model. This is NOT an admission reservation.
  * Create rechecks policy, registry, physical identity and Git state when used.
  */
-export async function inspectCreateOptions(engine: SpecFlowEngine): Promise<PublicCreateOptions> {
+export function inspectCreateOptions(engine: SpecFlowEngine): Promise<PublicCreateOptions> {
+  // Read-only: verify each workspace once for this request.
+  return runReadRequest(() => inspectCreateOptionsInRequest(engine));
+}
+
+async function inspectCreateOptionsInRequest(engine: SpecFlowEngine): Promise<PublicCreateOptions> {
   const registry = await engine.readRegistry();
   const policy = (await readProjectGitPolicy(engine.context)).policy;
   const git = createLocalGitClient(engine.context.project.homeRoot);

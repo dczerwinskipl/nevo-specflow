@@ -20,6 +20,7 @@
       "@nevo/specflow-contracts/authorization/capability-discovery": [
         "../specflow-contracts/src/authorization/capability-discovery.ts"
       ],
+      "@nevo/specflow-contracts/operations": ["../specflow-contracts/src/operations/index.ts"],
       "@nevo/specflow-contracts/demo": ["../specflow-contracts/src/demo/index.ts"]
     }
   },

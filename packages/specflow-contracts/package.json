@@ -54,6 +54,10 @@
       "types": "./dist/documents/index.d.ts",
       "default": "./dist/documents/index.js"
     },
+    "./operations": {
+      "types": "./dist/operations/index.d.ts",
+      "default": "./dist/operations/index.js"
+    },
     "./demo": {
       "types": "./dist/demo/index.d.ts",
       "default": "./dist/demo/index.js"

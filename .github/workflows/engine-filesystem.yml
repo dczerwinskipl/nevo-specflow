@@ -1,0 +1,111 @@
+name: Engine filesystem integration
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Optional exact repository commit SHA for pre-merge verification"
+        required: false
+        type: string
+  schedule:
+    - cron: "17 3 * * *"
+  push:
+    branches: [main]
+    paths:
+      - "packages/specflow-engine/**"
+      - "packages/specflow-runtime/**"
+      - "packages/specflow/**"
+      - "packages/specflow-contracts/**"
+      - "tools/ci-engine-*-shard.mjs"
+      - ".github/workflows/engine-filesystem.yml"
+
+concurrency:
+  group: engine-filesystem-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  lifecycle-full-unix:
+    name: engine filesystem full (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.commit_sha || github.sha }}
+      - uses: ./.github/actions/setup
+      - name: Record source and toolchain
+        run: |
+          git rev-parse HEAD
+          git --version
+          node --version
+          pnpm --version
+      - name: Full real filesystem and lifecycle regression
+        run: pnpm --filter @nevo/specflow-engine test:filesystem:full
+      - name: Build CLI and Runtime dependencies
+        run: pnpm exec turbo run build --filter=@nevo/specflow-runtime --filter=@nevo/specflow
+      - name: Runtime full adapter regression
+        run: pnpm --filter @nevo/specflow-runtime exec vitest run --maxWorkers=1 --no-file-parallelism
+      - name: CLI full adapter regression
+        run: pnpm --filter @nevo/specflow exec vitest run --maxWorkers=1 --no-file-parallelism
+
+  windows-engine-full:
+    name: engine filesystem Windows (${{ matrix.kind }} ${{ matrix.part }}/${{ matrix.total }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { kind: hot, part: 1, total: 2 }
+          - { kind: hot, part: 2, total: 2 }
+          - { kind: rest, part: 1, total: 4 }
+          - { kind: rest, part: 2, total: 4 }
+          - { kind: rest, part: 3, total: 4 }
+          - { kind: rest, part: 4, total: 4 }
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.commit_sha || github.sha }}
+      - uses: ./.github/actions/setup
+      - name: Record native Windows Git and Node provenance
+        run: |
+          git rev-parse HEAD
+          git --version
+          node --version
+          pnpm --version
+      - name: Audit exact native Git test shard
+        run: node tools/ci-engine-${{ matrix.kind }}-shard.mjs ${{ matrix.part }} ${{ matrix.total }} --list
+      - name: Real Git/OS process/shard regression
+        run: node tools/ci-engine-${{ matrix.kind }}-shard.mjs ${{ matrix.part }} ${{ matrix.total }}
+
+  windows-adapters-full:
+    name: engine adapters Windows full
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.commit_sha || github.sha }}
+      - uses: ./.github/actions/setup
+      - name: Record native Windows Git and Node provenance
+        run: |
+          git rev-parse HEAD
+          git --version
+          node --version
+          pnpm --version
+      - name: Build CLI and Runtime dependencies
+        run: pnpm exec turbo run build --filter=@nevo/specflow-runtime --filter=@nevo/specflow
+      - name: Runtime full adapter regression
+        run: pnpm --filter @nevo/specflow-runtime exec vitest run --testTimeout=120000 --maxWorkers=1 --no-file-parallelism
+      - name: CLI full adapter regression
+        run: pnpm --filter @nevo/specflow exec vitest run --testTimeout=20000 --maxWorkers=1 --no-file-parallelism

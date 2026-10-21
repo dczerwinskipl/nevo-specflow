@@ -1,17 +1,18 @@
 # Workflows
 
-| Workflow                                             | Trigger                                      | Purpose                                                                                                     |
-| ---------------------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| [`ci.yml`](ci.yml)                                   | Manual; PRs; pushes to `main`, `release/v*`  | Quality/typecheck/test/build, dependency review on PRs, and installed-product smoke on Linux/Windows/macOS. |
-| [`chromatic.yml`](chromatic.yml)                     | Manual; pushes to `main`                     | Publish the shared Storybook and run visual regression tests when its project token is available.           |
-| [`codeql.yml`](codeql.yml)                           | Manual; PRs; protected-branch pushes; weekly | CodeQL analysis for JavaScript/TypeScript.                                                                  |
-| [`pr-title.yml`](pr-title.yml)                       | PR opened / edited / synced                  | Conventional Commits check on the PR title.                                                                 |
-| [`dependabot-pr-title.yml`](dependabot-pr-title.yml) | `workflow_run` after failed PR-title CI      | Safely normalize Dependabot's generated title and re-run the title check.                                   |
-| [`release.yml`](release.yml)                         | `workflow_dispatch` on `release/v*`          | Resolve candidate, build it once, smoke the same tarball on 3 OSes, then tag/attest/upload and advance.     |
-| [`cut-release-line.yml`](cut-release-line.yml)       | `workflow_dispatch`                          | Cut a release line and open/hand off the main-bump PR.                                                      |
-| [`promote-release.yml`](promote-release.yml)         | `workflow_dispatch` on `release/v*`          | Open the channel-promotion PR.                                                                              |
+| Workflow                                             | Trigger                                   | Purpose                                                               |
+| ---------------------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------- |
+| [`ci.yml`](ci.yml)                                   | PRs, main/release, nightly, manual        | Fast PR tests; full suites and product smoke on main/nightly          |
+| [`engine-filesystem.yml`](engine-filesystem.yml)     | main Engine changes, nightly, manual      | Full Git/process/recovery and adapters on three OSes                  |
+| [`chromatic.yml`](chromatic.yml)                     | Manual; pushes to `main`                  | Publish Storybook and run visual regression when a token is available |
+| [`codeql.yml`](codeql.yml)                           | Manual; PRs; protected branches; weekly   | CodeQL analysis for JavaScript/TypeScript                             |
+| [`pr-title.yml`](pr-title.yml)                       | PR opened / edited / synced               | Conventional Commits check on PR titles                               |
+| [`dependabot-pr-title.yml`](dependabot-pr-title.yml) | `workflow_run` after a failed PR-title CI | Normalize Dependabot titles and re-run checks                         |
+| [`release.yml`](release.yml)                         | Manual on `release/v*`                    | Build, smoke, tag, attest and upload a release                        |
+| [`cut-release-line.yml`](cut-release-line.yml)       | Manual                                    | Cut a release line and hand off the version-bump PR                   |
+| [`promote-release.yml`](promote-release.yml)         | Manual on `release/v*`                    | Open the channel-promotion PR                                         |
 
-Draft pull requests intentionally skip the expensive required checks in CI and CodeQL. The workflows still run and publish skipped required jobs, so repository rules remain satisfied for the draft state without consuming the full test/build matrix. Marking a pull request **Ready for review** triggers the full required pipeline on the same HEAD; converting it back to draft cancels any superseded PR run through the existing concurrency policy. CI and CodeQL also support manual `workflow_dispatch`, so a draft branch can be fully validated on demand without changing PR state. The PR-title check continues to run for drafts because it is cheap and gives immediate metadata feedback.
+Draft pull requests intentionally skip the expensive required checks in CI and CodeQL. The workflows still run and publish skipped required jobs, so repository rules remain satisfied for the draft state without consuming the full test/build matrix. Marking a pull request **Ready for review** triggers the fast required PR pipeline on the same HEAD; converting it back to draft cancels any superseded PR run through the existing concurrency policy. CI and CodeQL also support manual `workflow_dispatch`, so a draft branch can be fully validated on demand without changing PR state. The PR-title check continues to run for drafts because it is cheap and gives immediate metadata feedback.
 
 Workflows use least-privilege permissions. No privileged workflow checks out and executes
 untrusted pull-request code. Release planning only reads checks/PR state; write and OIDC/attestation
@@ -20,6 +21,44 @@ cross-platform smoke matrix.
 
 The release workflows may use the optional repository-scoped `CI_GITHUB_RELEASE_TOKEN` described
 in [releasing](../../docs/engineering/repository/releasing.md#ci_github_release_token).
+
+## Test tiers
+
+**Pull requests (fast feedback):** Quality, lint, TypeScript, build, and affected
+unit-level package tests. `@nevo/specflow-engine` retains its fast `test:unit`.
+Additionally, the stable `engine transport smoke` job inspects the PR diff
+and runs real-Git Engine Close lifecycle tests plus authorized HTTP Create/Close
+and offline/cross-process CLI integration on Ubuntu when Engine, CLI, Runtime,
+contracts, or CI test selection change. It succeeds without running heavy tests
+only for unrelated PRs, logging its path decision. This smoke check must be
+required in branch protection once reviewed. Full cross-platform SIGKILL/crash
+remains a separate explicit premerge/promote or postmerge check, not silently
+replaced by the fast PR `verify tests` check.
+
+**After merge to `main` (or release branch):** `ci.yml` executes all package
+`test` scripts, including the full Engine suite, CLI, Runtime and Storybook,
+plus product packaging/smoke on Linux, macOS and Windows. Changes affecting the
+Engine, CLI, Runtime or contracts also trigger full three-OS filesystem and adapter integration.
+
+**Nightly (UTC):** `ci.yml` at 02:17 runs the complete package suite and
+installed-product smoke; `engine-filesystem.yml` at 03:17 runs the full
+Linux/macOS real-Git, concurrent-process and crash/recovery tests with full
+CLI/Runtime adapter tests, plus Windows native-Git six-shard Engine and separate
+CLI/Runtime jobs. Manual `workflow_dispatch` supports optional exact
+`commit_sha` pinned checkout, including before merge; a run must report
+the actual Git SHA, Node, Git and OS. Do not substitute prior-HEAD proof.
+
+Locally, `pnpm --filter @nevo/specflow-engine test` still runs the **complete**
+suite, while `test:unit` is the minimal fast gate. `test:filesystem:full`
+remains a separate sequential, single-worker OS regression.
+
+**Branch protection:** The current `main` and release rulesets still list
+`product smoke` as a required check. The job is explicitly **skipped** on PRs;
+a skipped check is not evidence of packaging validation. Remove that requirement
+when updating branch rules for the fast tier. The affected PR `engine transport smoke`
+check should be added to required checks after CI review. Keep the existing fast
+`quality`, `verify tests`, `build`, `codeql`, `pr-title` and dependency review
+requirements. Heavy platform checks remain deliberate for sensitive premerge changes.
 
 ## Chromatic
 
@@ -62,3 +101,21 @@ supported pull-request SARIF upload path; the workflow does not use `pull_reques
 updates for generic code-scanning errors or high-or-higher security alerts. Release lines keep the
 stable `codeql` check without the native code-scanning rule so `cut-release-line` can create a new
 branch before branch-specific analysis exists.
+
+## Temporary T17 transition
+
+`temporary-t17-platform-gate.yml` stays active for PR #53 until the durable
+`engine-filesystem.yml` has demonstrated equivalent exact-SHA three-OS
+coverage, its sharding/adapter paths have passed, and the T17 owner approves
+retirement. It has not been removed simply because permanent workflows exist.
+The permanent PR smoke is selective; it is **not** a substitute for final
+three-OS physical SIGKILL/recovery promotion evidence.
+
+**Required PR smoke routing:** `engine transport smoke` covers affected
+Engine/CLI/Runtime/contract/lockfile/toolchain changes; UI-only changes skip its
+expensive steps. The existing `verify tests` required aggregate depends on
+and checks the smoke result for every ready PR, so a skipped or failed relevant
+smoke job cannot pass the required aggregate. Configure the smoke check as
+an independent branch-protection requirement when repository rules are next
+edited. The T17 temporary three-OS gate remains in place until independent
+coverage acceptance.

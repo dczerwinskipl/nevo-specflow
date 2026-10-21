@@ -17,6 +17,7 @@ import { createSettingsFeature, SettingsCapabilities } from '../features/setting
 import {
   createSpecsFeature,
   SpecCapabilities,
+  ProjectGitCapabilities,
   type SpecsFeatureDependencies,
 } from '../features/specs';
 import type { RuntimeFeature } from '../features/runtime-feature';
@@ -121,6 +122,8 @@ function specFlowRoleCapabilities(): Readonly<Record<SpecFlowRoleId, readonly Ca
     ...viewer,
     SpecCapabilities.capabilities.Create,
     SpecCapabilities.capabilities.Manage,
+    SpecCapabilities.capabilities.CloseWorktree,
+    SpecCapabilities.capabilities.CloseSpecification,
     SessionCapabilities.capabilities.Create,
     SessionCapabilities.capabilities.Manage,
   ] as const;
@@ -132,6 +135,7 @@ function specFlowRoleCapabilities(): Readonly<Record<SpecFlowRoleId, readonly Ca
       ...developer,
       SettingsCapabilities.capabilities.View,
       SettingsCapabilities.capabilities.Manage,
+      ProjectGitCapabilities.capabilities.Integrate,
     ],
   };
 }

@@ -2,6 +2,9 @@ name: CI
 
 on:
   workflow_dispatch:
+  # Nightly comprehensive integration suite on the default branch.
+  schedule:
+    - cron: "17 2 * * *"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
   push:
@@ -74,10 +77,9 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup
 
-      # Resolve the same Turbo task graph used for execution, then fan only package
-      # test tasks out into independent GitHub jobs. On PRs, --affected selects changed
-      # workspaces plus downstream dependents from the declared workspace graph; main /
-      # release exercise every package test task.
+      # Resolve the Turbo task graph and fan out independent package jobs.
+      # PRs select affected workspaces, then defer known process/browser-heavy packages;
+      # main, release, scheduled and manual runs execute the full package suite.
       - name: Resolve package tests
         id: plan
         shell: bash
@@ -100,7 +102,19 @@ jobs:
             ),
           ].sort();
 
-          const tests = packages.map((packageName) => ({
+          // These packages run subprocess/transport/browser integration tests.
+          // Keep them for main/nightly/manual runs, not the PR feedback loop.
+          const deferredOnPr = new Set([
+            '@nevo/specflow',
+            '@nevo/specflow-runtime',
+            'nevo-repo-storybook',
+          ]);
+          const selectedPackages =
+            process.env.GITHUB_EVENT_NAME === 'pull_request'
+              ? packages.filter((packageName) => !deferredOnPr.has(packageName))
+              : packages;
+
+          const tests = selectedPackages.map((packageName) => ({
             package: packageName,
             label: packageName.startsWith('nevo-repo-')
               ? `tool/${packageName.slice('nevo-repo-'.length)}`
@@ -129,7 +143,11 @@ jobs:
       - name: Install Playwright Chromium
         if: matrix.package == 'nevo-figma-import' || matrix.package == 'nevo-repo-storybook'
         run: pnpm --filter "${{ matrix.package }}" exec playwright install --with-deps chromium
-      - name: Test ${{ matrix.package }}
+      - name: Engine unit tests (PR only)
+        if: github.event_name == 'pull_request' && matrix.package == '@nevo/specflow-engine'
+        run: pnpm --filter @nevo/specflow-engine test:unit
+      - name: Test ${{ matrix.package }} (full on main / nightly)
+        if: github.event_name != 'pull_request' || matrix.package != '@nevo/specflow-engine'
         env:
           PACKAGE: ${{ matrix.package }}
         run: pnpm exec turbo run test --filter="$PACKAGE"
@@ -140,6 +158,7 @@ jobs:
     needs:
       - test-plan
       - package-test
+      - engine-transport-smoke
     if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
     steps:
@@ -148,6 +167,8 @@ jobs:
           PLAN_RESULT: ${{ needs.test-plan.result }}
           PACKAGE_RESULT: ${{ needs.package-test.result }}
           HAS_TESTS: ${{ needs.test-plan.outputs.has_tests }}
+          TRANSPORT_RESULT: ${{ needs.engine-transport-smoke.result }}
+          EVENT_NAME: ${{ github.event_name }}
         shell: bash
         run: |
           if [ "$PLAN_RESULT" != "success" ]; then
@@ -160,11 +181,70 @@ jobs:
             exit 1
           fi
 
+          if [ "$EVENT_NAME" = "pull_request" ] && [ "$TRANSPORT_RESULT" != "success" ]; then
+            echo "Engine transport smoke must succeed for every ready PR: $TRANSPORT_RESULT"
+            exit 1
+          fi
+
           echo "Package tests passed (or no package test task was affected)."
 
+  # One stable PR signal: inexpensive real-Git/HTTP/CLI integration when
+  # lifecycle or its transport contracts change, not on unrelated UI PRs.
+  engine-transport-smoke:
+    name: engine transport smoke
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Detect relevant changes
+        id: affected
+        shell: bash
+        run: |
+          matcher='^(packages/(specflow-engine|specflow-runtime|specflow-contracts|specflow)/|tools/ci-engine-|\.github/workflows/(ci|engine-filesystem)\.yml$|\.github/actions/setup(/|$)|\.github/actions/[^/]+/action\.yml$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|package\.json$|\.npmrc$|\.node-version$|\.nvmrc$|turbo\.json$|tools/(build-package|build-config)\.mjs$)'
+          for path in packages/specflow-engine/src/index.ts packages/specflow-runtime/test/specs/create.http.test.ts packages/specflow/src/specs/command.ts packages/specflow-contracts/src/specs/close.ts tools/ci-engine-hot-shard.mjs .github/workflows/ci.yml pnpm-lock.yaml pnpm-workspace.yaml package.json .github/actions/setup/action.yml; do
+            printf '%s\n' "$path" | grep -Eq "$matcher" || exit 1
+          done
+          for path in docs/README.md packages/specflow-ui/src/index.ts tools/storybook/package.json; do
+            if printf '%s\n' "$path" | grep -Eq "$matcher"; then exit 1; fi
+          done
+          git diff --name-only "${TURBO_SCM_BASE}" "${TURBO_SCM_HEAD}" > .ci-engine-changed
+          if grep -Eq "$matcher" .ci-engine-changed; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Engine/CLI/Runtime not affected; no lifecycle smoke needed."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: ./.github/actions/setup
+        if: steps.affected.outputs.run == 'true'
+      - name: Exact git and Node provenance
+        if: steps.affected.outputs.run == 'true'
+        run: |
+          git rev-parse HEAD
+          git --version
+          node --version
+          pnpm --version
+      - name: Build CLI and Runtime test dependencies
+        if: steps.affected.outputs.run == 'true'
+        run: pnpm exec turbo run build --filter=@nevo/specflow-runtime --filter=@nevo/specflow
+      - name: Engine real-Git lifecycle smoke
+        if: steps.affected.outputs.run == 'true'
+        run: pnpm --filter @nevo/specflow-engine exec vitest run test/close-worktree-lifecycle.test.ts test/close-specification-lifecycle.test.ts test/quality-hardening-q05-projections.test.ts --maxWorkers=1 --no-file-parallelism
+      - name: Runtime authorized Create/Close HTTP smoke
+        if: steps.affected.outputs.run == 'true'
+        run: pnpm --filter @nevo/specflow-runtime exec vitest run test/specs/create.http.test.ts test/specs/close.http.test.ts --maxWorkers=1 --no-file-parallelism
+      - name: Offline CLI and cross-transport smoke
+        if: steps.affected.outputs.run == 'true'
+        run: pnpm --filter @nevo/specflow exec vitest run test/specs-command.test.ts test/create-cross-transport.test.ts --maxWorkers=1 --no-file-parallelism
+
+  # Packing, installed CLI and cross-OS smoke tests are integration tests:
+  # run after merge, nightly or explicitly via workflow_dispatch.
   packaged-product:
     name: product smoke (${{ matrix.os }})
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    if: github.event_name != 'pull_request'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -181,7 +261,7 @@ jobs:
   verify-product-smoke:
     name: product smoke
     needs: packaged-product
-    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+    if: always() && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Verify product smoke matrix

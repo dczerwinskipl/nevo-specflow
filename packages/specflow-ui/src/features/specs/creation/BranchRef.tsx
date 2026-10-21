@@ -1,9 +1,11 @@
 import { cn, Icon, Typography } from '@nevo/ui';
 /**
- * A branch used as a value: decorative branch icon plus the name in the `code-md` role, kept as
- * one unit. Prose (button text, announcements) uses the plain name instead.
+ * The one way a Git branch appears in the Create workspace section (summary rows, switch
+ * descriptions, select items, notes): a decorative branch icon (one size) plus the name in the
+ * `code-md` role, kept as one unit. There are no parenthesised or colon variants around it; prose
+ * that has to stay plain text (button labels, announcements) uses the bare name instead.
  */
-export function BranchName({
+export function BranchRef({
   name,
   truncate = false,
   className,

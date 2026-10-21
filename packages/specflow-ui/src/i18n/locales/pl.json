@@ -807,30 +807,19 @@
         "title": "Nie udało się odświeżyć opcji",
         "body": "Pokazujemy ostatnio wczytane opcje. Formularz został zachowany."
       },
-      "notice": {
-        "noTarget": "Nie skonfigurowano celu integracji. Utworzysz specyfikację, ale zamknięcie pracy będzie wymagać ustawienia celu w konfiguracji projektu.",
-        "otherBranch": "Cel projektu <target/> jest realizowany przez bieżący katalog, a ten jest teraz na gałęzi <current/>. Zamknięcie pracy może wtedy wymagać zmiany. Tworzenie nie jest blokowane.",
-        "otherBranchNone": "Cel projektu <target/> jest realizowany przez bieżący katalog, a ten nie ma teraz wybranej gałęzi. Zamknięcie pracy może wtedy wymagać zmiany. Tworzenie nie jest blokowane.",
-        "unavailable": "Cel <target/> nie jest teraz dostępny: {{reason}}. Tworzenie nie jest blokowane."
-      },
       "baseHead": "Aktualny commit bieżącego katalogu",
-      "baseHeadOnBranch": "Aktualny commit bieżącego katalogu (<branch/>)",
+      "baseHeadOnBranch": "Domyślnie: bieżąca gałąź, <branch/>",
       "fact": {
         "base": "Zacznij od",
-        "branch": "Nowa gałąź",
-        "automatic": "automatycznie",
-        "target": "Wskazany cel scalenia",
-        "pickTarget": "wybierz cel",
-        "pinned": "(przypięte)",
-        "projectTarget": "(cel projektu)",
-        "noTarget": "brak celu"
+        "target": "Scal do",
+        "branch": "Nazwa gałęzi"
       },
       "main": {
         "onBranch": "Specyfikacja powstanie na gałęzi <branch/>. Nie tworzymy nowej gałęzi ani worktree i nie przełączamy aktualnej gałęzi.",
         "noBranch": "Specyfikacja powstanie w bieżącym katalogu. Nie tworzymy nowej gałęzi ani worktree."
       },
       "inherited": {
-        "pinned": "Scalane do: <branch/> (ustalone przy tworzeniu tego środowiska)",
+        "pinned": "Scala do środowiska na <branch/>, ustalone przy tworzeniu tego środowiska.",
         "branchChanged": "Środowisko docelowe zmieniło gałąź od czasu przypięcia. Zamknięcie pracy może wymagać zmiany.",
         "unavailable": "Środowisko docelowe nie jest teraz dostępne. Zamknięcie pracy może wymagać zmiany.",
         "project": "Cel projektu: <branch/>",
@@ -854,7 +843,12 @@
         "noWorkspace": "Brak dostępnego środowiska pracy.",
         "pickWorkspace": "Wybierz środowisko pracy.",
         "pickBase": "Wybierz gałąź początkową lub wyłącz tę opcję.",
-        "pickTarget": "Wybierz cel scalenia lub wyłącz tę opcję."
+        "pickTarget": "Wybierz cel scalenia lub wyłącz tę opcję.",
+        "slugEmpty": "Wpisz slug lub wyłącz tę opcję.",
+        "slugTooLong": "Slug jest zbyt długi. Użyj najwyżej 80 znaków.",
+        "slugFormat": "Użyj małych liter, cyfr i pojedynczych myślników, na przykład limity-platnosci.",
+        "slugReserved": "Ta nazwa jest zarezerwowana przez system operacyjny. Wybierz inną.",
+        "slugTaken": "Specyfikacja z takim slugiem już istnieje. Wpisz inny."
       },
       "stale": {
         "tile": "Ten wariant nie jest już dostępny. Wybierz inną opcję.",
@@ -876,25 +870,30 @@
         "refCurrent": "bieżący katalog",
         "refWorkspace": "ma środowisko pracy",
         "refDirty": "{{label}} · zmiany",
-        "targetSwitch": "Scal później do innej gałęzi",
-        "targetPick": "Wybierz, do jakiej gałęzi wrócą zmiany.",
+        "targetSwitch": "Scal później do innego środowiska",
+        "targetPick": "Wybierz, do jakiego środowiska wrócą zmiany.",
         "targetNone": "Brak środowisk pracy, do których można scalić.",
-        "targetFollows": "Domyślnie podążamy za celem projektu: <branch/>",
+        "targetFollows": "Domyślnie zmiany wrócą do środowiska na celu projektu <branch/>.",
         "targetUnconfigured": "Cel integracji nie jest skonfigurowany.",
-        "targetLabel": "Wskaż cel scalenia",
+        "targetLabel": "Scal do",
         "targetNote": "Nic nie zostanie scalone teraz. To tylko wskazanie miejsca na później. Wybór przypina cel przy tworzeniu i już się nie zmieni, a domyślny cel podąża za konfiguracją projektu.",
         "targetUnavailable": "Niedostępne jako cel:",
-        "unavailableItemBranch": "<branch/> ({{reason}})",
-        "unavailableItemNoBranch": "{{name}} ({{reason}})",
         "branchSwitch": "Użyj własnej nazwy gałęzi",
-        "branchSwitchDescription": "Nazwę generuje Nevo i nie da się jej podejrzeć przed utworzeniem. Jeśli będzie zajęta, zapytamy o inną.",
+        "branchSwitchDescription": "Nevo buduje nazwę ze sluga. Włącz tylko wtedy, gdy potrzebujesz konkretnej nazwy gałęzi.",
         "branchLabel": "Nazwa nowej gałęzi",
         "branchPlaceholder": "feature/new-api",
-        "branchHelp": "Katalog worktree Nevo przygotuje samodzielnie. Jeśli nazwa jest zajęta, podasz inną."
+        "branchHelp": "Katalog worktree Nevo przygotuje samodzielnie. Jeśli nazwa jest zajęta, podasz inną.",
+        "nameSlug": "slug",
+        "unavailableReason": "– {{reason}}",
+        "slugSwitch": "Zmień nazwę (slug)",
+        "slugSwitchDescription": "Slug nazywa katalog specyfikacji, katalog worktree i nową gałąź. Podąża za nazwą specyfikacji, dopóki go nie zmienisz.",
+        "slugLabel": "Slug",
+        "slugPlaceholder": "limity-platnosci",
+        "slugHelp": "Nowa gałąź: <branch/>"
       },
       "suggestion": {
         "title": "Chcesz później scalić zmiany z powrotem do <branch/>?",
-        "projectDefault": "Domyślnie scalimy do <branch/> (cel projektu). ",
+        "projectDefault": "Domyślnie scalimy do celu projektu, <branch/>. ",
         "note": "Zmiana bazy sama nie zmienia celu. Cel ustawiony tutaj zostanie przypięty do nowego środowiska.",
         "set": "Ustaw cel scalenia",
         "keep": "Zostaw bez zmian",
@@ -902,13 +901,27 @@
         "announceKept": "Cel scalenia pozostaje bez zmian: {{branch}}.",
         "announceKeptNoTarget": "Cel scalenia pozostaje bez zmian.",
         "dirty": "Nie zaproponujemy scalenia z powrotem do <branch/>: to środowisko pracy ma niezapisane zmiany w Git. Cel scalenia zostaje bez zmian."
+      },
+      "merge": {
+        "pickTarget": "Wybierz środowisko pracy",
+        "notAvailable": "Niedostępne",
+        "notConfigured": "Nie ustawiono",
+        "noteUnavailable": "Teraz niedostępne: {{reason}}. Tworzenie nie jest blokowane.",
+        "noteOtherBranch": "Cel projektu <target/> nie jest wybrany w bieżącym katalogu, który jest na gałęzi <current/>. Zamknięcie pracy może wymagać zmiany. Tworzenie nie jest blokowane.",
+        "noteOtherBranchNone": "Cel projektu <target/> nie jest wybrany w bieżącym katalogu, który nie ma gałęzi. Zamknięcie pracy może wymagać zmiany. Tworzenie nie jest blokowane.",
+        "noteNoTarget": "Nie skonfigurowano celu projektu, więc zamknięcie pracy będzie go wymagać. Tworzenie nie jest blokowane."
+      },
+      "ref": {
+        "primary": "Bieżący katalog",
+        "linked": "Środowisko"
       }
     },
     "project": {
       "subheading": "Nadaj jej nazwę, opisz cel, jeśli go masz, i wybierz, gdzie mają leżeć jej pliki.",
       "goalLabel": "Cel (opcjonalnie)",
       "goalPlaceholder": "Co ma osiągnąć ta specyfikacja?",
-      "footNote": "Po utworzeniu otworzymy specyfikację."
+      "footNote": "Po utworzeniu otworzymy specyfikację.",
+      "goalHelp": "Zapisujemy w przeglądzie specyfikacji. Aplikacja jeszcze go nie wyświetla."
     },
     "monitoring": {
       "title": "Przygotowujemy środowisko pracy",

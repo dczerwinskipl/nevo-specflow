@@ -37,8 +37,37 @@ explicit user selection sends it. A custom merge destination pins a verified reg
 workspace's checked-out branch and incarnation. Explicitly selecting primary differs from
 following the configured default if primary currently uses another branch.
 
-Final generated slug, branch and worktree location belong to Engine. The UI MUST NOT show
-a guessed final branch or promise that later integration will succeed.
+**Merge into** names a **workspace** (the contract's `integrationTargetWorkspaceId` is a workspace
+pin; the default is the primary workspace on the project's integration target branch): show the
+workspace as the primary text and its branch as a secondary branch chip. **Start from** and
+**Branch name** are branches. The collapsed "default settings" summary is one definition list with
+exactly three rows (Start from, Merge into, Branch name), and every branch in the section uses one
+shared presentational piece (`BranchRef`: one icon size, the `code-md` token, no parenthesised or
+colon variants). A caveat about the default merge target (for example uncommitted changes in the
+primary workspace) is a quiet inline note on the Merge row; it never blocks Create.
+
+Each optional setting (Start from, Merge into, slug, branch name) is switched on with the
+**effective default prefilled** (current branch of the folder, the default target workspace, the
+slug derived from the name and the generated branch), so the user only adjusts it. An untouched
+or default-equal value is never sent as an override (an explicit merge target would become an
+immutable pin, omission follows the project); only a value that differs is. Switching a setting
+off restores the default.
+
+The optional `slug` names the Specification folder, the worktree folder and the generated branch
+(`branchPattern` with `{slug}`). It is lowercase kebab-case ASCII (at most 80 characters, the
+rule the Engine uses for derived slugs, shared as `deriveSpecSlug`/`specSlugProblem` in
+`@nevo/specflow-contracts/specs`). The UI previews the slug live from the name until the user
+edits it and validates a typed one inline; a taken slug answers `CREATE_CONFLICT` and is shown at
+the field. The final branch and worktree location still belong to Engine: the UI shows only a
+**preview** built from `branchPattern` and the slug, where the random `{shortId}` is written as
+`<id>`, and it never promises that later integration will succeed.
+
+**Goal** is sent as `goal`, persisted in the Create journal and written to the Specification
+overview scaffold; the app does not display it yet, and the field's help text says so.
+
+Create options are a snapshot of Git state, so the Create screen treats only options fetched
+since the screen was entered as current: while they load it shows the loading state of the
+workspace section instead of options cached from an earlier visit.
 
 ## Submission and uncertainty
 

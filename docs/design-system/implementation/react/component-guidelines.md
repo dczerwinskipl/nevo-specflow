@@ -172,6 +172,9 @@ in the trigger, so the trigger always stays one line and never contains descript
 
 - Branch-like values compose the label as `Icon name="branch"` (`size="sm"`) + `Typography
 as="span" variant="code-md"`; `textValue` carries the plain name.
+  In the Create workspace section this composition is the single `BranchRef` piece
+  (`features/specs/creation/BranchRef.tsx`) used by summary rows, switch descriptions, notes and
+  select items alike; do not restyle a branch locally or wrap it in parentheses.
 - Native `disabled` is removed from keyboard navigation by Radix. When the user must reach and read
   why an option is not available, use `unavailable` (plus `description` as the reason): the item
   keeps focus, arrow-key and screen-reader reachability, sets `aria-disabled="true"`, and blocks

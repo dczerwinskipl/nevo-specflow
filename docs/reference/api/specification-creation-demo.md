@@ -264,7 +264,7 @@ selectable and, like the Engine, without `branch`); `newWorktree` available, `de
 `develop`, `branchPattern` `feature/{slug}`, `integrationTargetBranch` `develop`.
 `integrationSelectable` is `state === 'available' && (primary || managed)`.
 
-Create body requires `operationId` (UUID, idempotency key; the legacy `requestId` was removed) and takes an optional `target`. Absent `target` = the primary checkout. Tiles (user-facing labels use "środowisko pracy" for a workspace; "workspace" is a code/contract term only):
+Create body requires `operationId` (UUID, idempotency key; the legacy `requestId` was removed) and takes an optional `target` and an optional `slug` (same rule and meaning as the real `slug`: lowercase kebab-case ASCII, at most 80 characters; unlike the title-derived slug, which gets a `-2` suffix on a collision, a taken explicit slug answers 409 `CREATE_CONFLICT`, and a malformed one 400 `CREATE_OPERATION_INVALID`). Absent `target` = the primary checkout. Tiles (user-facing labels use "środowisko pracy" for a workspace; "workspace" is a code/contract term only):
 
 - "Bieżący katalog" (main): no `target`; works in the current checkout, creates no branch or worktree and never switches the current branch.
 - "Istniejące środowisko pracy" (existing): `{ kind: 'existing', workspaceId }`, workspace must be `selectable`.

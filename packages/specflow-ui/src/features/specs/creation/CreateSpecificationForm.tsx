@@ -33,6 +33,7 @@ import {
 } from './WorkspaceSection';
 import {
   activeTile,
+  buildCreateSlug,
   buildCreateTarget,
   initialWorkspaceChoice,
   requestChoiceSnapshot,
@@ -93,6 +94,8 @@ export function CreateSpecificationForm({
   const [announcement, setAnnouncement] = useState(''),
     [branchConflict, setBranchConflict] = useState<string | undefined>(),
     [focusBranchSignal, setFocusBranchSignal] = useState(0),
+    [slugConflict, setSlugConflict] = useState<string | undefined>(),
+    [focusSlugSignal, setFocusSlugSignal] = useState(0),
     [refreshFocusPending, setRefreshFocusPending] = useState(false);
 
   const configurationSnapshot = JSON.stringify({
@@ -200,8 +203,9 @@ export function CreateSpecificationForm({
     return {
       title,
       archetype: { id: archetype.id, version: archetype.version },
+      slug: workspaceOptions ? buildCreateSlug(choice, workspaceOptions, title) : undefined,
       buildTarget: () =>
-        workspaceOptions ? buildCreateTarget(choice, workspaceOptions) : undefined,
+        workspaceOptions ? buildCreateTarget(choice, workspaceOptions, title) : undefined,
       ...(method === 'ai'
         ? {
             session: {
@@ -214,6 +218,17 @@ export function CreateSpecificationForm({
         : {}),
       snapshot: configurationSnapshot,
       onFailed: (next) => {
+        if (next.kind === 'name-conflict') {
+          const sentSlug = workspaceOptions
+            ? buildCreateSlug(choice, workspaceOptions, title)
+            : undefined;
+          if (sentSlug) {
+            setSlugConflict(sentSlug);
+            setChoice((current) => ({ ...current, settingsOpen: true }));
+            setFocusSlugSignal((value) => value + 1);
+          }
+          return;
+        }
         if (next.kind !== 'branch-exists') return;
         if (next.automatic) setBranchConflict(undefined);
         else {
@@ -318,7 +333,10 @@ export function CreateSpecificationForm({
         onRefresh={() => void refreshOptions()}
         announcement={announcement}
         onAnnounce={setAnnouncement}
+        title={title}
         branchConflict={branchConflict}
+        slugConflict={slugConflict}
+        focusSlugSignal={focusSlugSignal}
         focusBranchSignal={focusBranchSignal}
         handleRef={workspaceHandle}
       />
@@ -342,14 +360,16 @@ export function CreateSpecificationForm({
               onCopy={copyDetails}
               onRefresh={() => void refreshOptions()}
               onUseAutomaticName={() => {
-                setChoice((current) => ({ ...current, branch: { ...current.branch, on: false } }));
+                setChoice((current) => ({ ...current, branch: initialWorkspaceChoice.branch }));
                 actions.dismissFailure();
               }}
               onUseCustomName={() => {
                 setChoice((current) => ({
                   ...current,
                   settingsOpen: true,
-                  branch: { ...current.branch, on: true },
+                  branch: current.branch.on
+                    ? current.branch
+                    : { on: true, name: '', edited: false },
                 }));
                 setFocusBranchSignal((value) => value + 1);
                 actions.dismissFailure();

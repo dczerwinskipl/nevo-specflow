@@ -672,6 +672,7 @@ export const OverridesAreSentOnlyForTheActiveTile: Story = {
     await openManualForm(canvas, userEvent);
     await userEvent.click(canvas.getByRole('button', { name: /Zmień ustawienia/ }));
     await userEvent.click(canvas.getByRole('switch', { name: 'Użyj własnej nazwy gałęzi' }));
+    await userEvent.clear(canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' }));
     await userEvent.type(
       canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' }),
       'feature/payments-v2',
@@ -744,6 +745,7 @@ export const BranchNameConflictKeepsTheFormAndFocusesTheField: Story = {
     await openManualForm(canvas, userEvent);
     await userEvent.click(canvas.getByRole('button', { name: /Zmień ustawienia/ }));
     await userEvent.click(canvas.getByRole('switch', { name: 'Użyj własnej nazwy gałęzi' }));
+    await userEvent.clear(canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' }));
     await userEvent.type(
       canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' }),
       'feature/payments-v2',
@@ -764,7 +766,7 @@ export const BranchNameConflictKeepsTheFormAndFocusesTheField: Story = {
     ).not.toBeChecked();
     await userEvent.click(submit(canvas));
     await waitFor(() => expect(createRequests).toHaveLength(2));
-    // A changed body is a new operation; the value is still remembered but no longer sent.
+    // A changed body is a new operation; switching the name off restored the default, so nothing is sent.
     await expect(lastRequest().operationId).not.toBe(first);
     await expect(lastRequest().target).toEqual({ kind: 'new-worktree' });
   },
@@ -778,8 +780,10 @@ export const StaleWorkspaceConflictRefreshPreservesTheForm: Story = {
   play: async ({ canvas, userEvent }) => {
     await openManualForm(canvas, userEvent);
     await userEvent.click(canvas.getByRole('button', { name: /Zmień ustawienia/ }));
-    await userEvent.click(canvas.getByRole('switch', { name: 'Scal później do innej gałęzi' }));
-    await userEvent.click(canvas.getByRole('combobox', { name: 'Wskaż cel scalenia' }));
+    await userEvent.click(
+      canvas.getByRole('switch', { name: 'Scal później do innego środowiska' }),
+    );
+    await userEvent.click(canvas.getByRole('combobox', { name: 'Scal do' }));
     await userEvent.click(
       await within(document.body).findByRole('option', { name: /feature\/platform/ }),
     );
@@ -795,10 +799,10 @@ export const StaleWorkspaceConflictRefreshPreservesTheForm: Story = {
       'Nowa obsługa płatności',
     );
     await expect(
-      canvas.getByRole('switch', { name: 'Scal później do innej gałęzi' }),
+      canvas.getByRole('switch', { name: 'Scal później do innego środowiska' }),
     ).toBeChecked();
     await expect(canvas.getAllByText(/nie może już być celem scalenia/)[0]).toBeVisible();
-    await expect(canvas.getByRole('combobox', { name: 'Wskaż cel scalenia' })).toHaveAttribute(
+    await expect(canvas.getByRole('combobox', { name: 'Scal do' })).toHaveAttribute(
       'aria-invalid',
       'true',
     );
@@ -807,9 +811,7 @@ export const StaleWorkspaceConflictRefreshPreservesTheForm: Story = {
     await expect(
       canvas.queryByText('Stan środowiska pracy zmienił się od otwarcia formularza'),
     ).toBeNull();
-    await waitFor(() =>
-      expect(canvas.getByRole('combobox', { name: 'Wskaż cel scalenia' })).toHaveFocus(),
-    );
+    await waitFor(() => expect(canvas.getByRole('combobox', { name: 'Scal do' })).toHaveFocus());
     await expect(submit(canvas)).toBeDisabled();
   },
 };
@@ -839,6 +841,7 @@ export const RecoveryRequiredLocksTheFormAndNeverCreatesAgain: Story = {
     await openManualForm(canvas, userEvent);
     await userEvent.click(canvas.getByRole('button', { name: /Zmień ustawienia/ }));
     await userEvent.click(canvas.getByRole('switch', { name: 'Użyj własnej nazwy gałęzi' }));
+    await userEvent.clear(canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' }));
     await userEvent.type(
       canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' }),
       'feature/payments-v2',
@@ -939,6 +942,7 @@ export const AutomaticBranchNameCollisionOffersACustomName: Story = {
     await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toHaveValue(
       'Nowa obsługa płatności',
     );
+    await userEvent.clear(field);
     await userEvent.type(field, 'feature/payments-own');
     await userEvent.click(submit(canvas));
     await waitFor(() => expect(createRequests).toHaveLength(2));
@@ -1248,8 +1252,10 @@ export const RefetchInvalidatingACollapsedSettingOpensThePanel: Story = {
   play: async ({ canvas, userEvent }) => {
     await openManualForm(canvas, userEvent);
     await userEvent.click(settings(canvas));
-    await userEvent.click(canvas.getByRole('switch', { name: 'Scal później do innej gałęzi' }));
-    await userEvent.click(canvas.getByRole('combobox', { name: 'Wskaż cel scalenia' }));
+    await userEvent.click(
+      canvas.getByRole('switch', { name: 'Scal później do innego środowiska' }),
+    );
+    await userEvent.click(canvas.getByRole('combobox', { name: 'Scal do' }));
     await userEvent.click(
       await within(document.body).findByRole('option', { name: /feature\/platform/ }),
     );
@@ -1258,7 +1264,7 @@ export const RefetchInvalidatingACollapsedSettingOpensThePanel: Story = {
     // A background refetch removes the chosen target: the panel opens on the flagged field.
     await userEvent.click(canvas.getByRole('button', { name: 'Odśwież opcje w tle' }));
     await waitFor(() => expect(settings(canvas)).toHaveAttribute('aria-expanded', 'true'));
-    await expect(canvas.getByRole('combobox', { name: 'Wskaż cel scalenia' })).toHaveAttribute(
+    await expect(canvas.getByRole('combobox', { name: 'Scal do' })).toHaveAttribute(
       'aria-invalid',
       'true',
     );

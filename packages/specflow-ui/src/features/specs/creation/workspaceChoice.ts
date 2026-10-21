@@ -1,10 +1,12 @@
 import type { DemoCreateOptions, DemoCreateTarget } from '@nevo/specflow-contracts/demo';
+import { deriveSpecSlug, specSlugProblem } from '@nevo/specflow-contracts/specs';
 import { message, type Message } from '../../../i18n/message';
 
 /**
  * Pure policy of the "Gdzie chcesz pracować?" section: which tiles are available, what the
- * request carries, and which stale values must be flagged. The UI never generates slugs, branch
- * names or paths; it only forwards a real override or nothing.
+ * request carries, and which stale values must be flagged. A switched-on setting starts from the
+ * effective default (so the owner only adjusts), but only a value that differs from that default is
+ * ever sent: the UI forwards a real override or nothing.
  */
 export type Tile = 'new' | 'main' | 'existing';
 type Workspace = DemoCreateOptions['workspaces'][number];
@@ -14,7 +16,10 @@ export interface WorkspaceChoice {
   tile: Tile | null;
   base: { on: boolean; ref: string };
   target: { on: boolean; workspaceId: string };
-  branch: { on: boolean; name: string };
+  /** `edited`: the owner typed a name; until then the field shows the generated default. */
+  branch: { on: boolean; name: string; edited: boolean };
+  /** `edited`: the owner typed a slug; until then the field follows the title. */
+  slug: { on: boolean; value: string; edited: boolean };
   existingWorkspaceId: string;
   settingsOpen: boolean;
   /** Merge-back suggestions the user declined, per workspace id. */
@@ -25,7 +30,8 @@ export const initialWorkspaceChoice: WorkspaceChoice = {
   tile: null,
   base: { on: false, ref: '' },
   target: { on: false, workspaceId: '' },
-  branch: { on: false, name: '' },
+  branch: { on: false, name: '', edited: false },
+  slug: { on: false, value: '', edited: false },
   existingWorkspaceId: '',
   settingsOpen: false,
   dismissedSuggestions: {},
@@ -216,7 +222,7 @@ export function inheritedTarget(options: DemoCreateOptions, workspace: Workspace
 }
 
 export type WorkspaceErrors = Partial<
-  Record<'tile' | 'existing' | 'base' | 'target' | 'branch', Message>
+  Record<'tile' | 'existing' | 'base' | 'target' | 'branch' | 'slug', Message>
 >;
 export const staleMessages = {
   tile: message('create.workspace.stale.tile'),
@@ -248,7 +254,11 @@ export function revalidate(choice: WorkspaceChoice, options: DemoCreateOptions):
     )
   )
     errors.target = staleMessages.target;
-  if (choice.branch.on && choice.branch.name.trim()) {
+  if (choice.slug.on && choice.slug.edited && choice.slug.value) {
+    const error = slugError(choice.slug.value);
+    if (error) errors.slug = error;
+  }
+  if (choice.branch.on && choice.branch.edited && choice.branch.name.trim()) {
     const error = branchNameError(choice.branch.name, options);
     if (error) errors.branch = error;
   }
@@ -273,7 +283,11 @@ export function problems(choice: WorkspaceChoice, options: DemoCreateOptions): M
     if (choice.target.on && !choice.target.workspaceId)
       list.push(message('create.workspace.errors.pickTarget'));
     else if (errors.target) list.push(errors.target);
-    if (choice.branch.on) {
+    if (choice.slug.on && choice.slug.edited) {
+      const error = slugError(choice.slug.value);
+      if (error) list.push(error);
+    }
+    if (choice.branch.on && choice.branch.edited) {
       const error = branchNameError(choice.branch.name, options);
       if (error) list.push(error);
     }
@@ -293,9 +307,110 @@ export function defaultBaseValue(options: DemoCreateOptions): string {
     ? listed(primaryWorkspace(options)?.branch)
     : listed(options.defaultBaseRef);
 }
-// There is deliberately no default for the "Scal później" switch: turning it on preselects
-// nothing. `integrationTargetWorkspaceId` is sent only after the user picks a target, because
-// any explicit selector creates an immutable PIN, unlike leaving the field out (follow the project).
+
+/**
+ * Workspace the project's default integration target resolves to: the PRIMARY workspace when it is
+ * on the target branch and usable as a target, otherwise none. A freshly enabled "merge into"
+ * switch starts with it. An untouched default is never sent: an explicit selector creates an
+ * immutable PIN, while omission keeps following the project (see {@link buildCreateTarget}).
+ */
+export function defaultTargetWorkspaceId(options: DemoCreateOptions): string {
+  const status = targetStatus(options);
+  return status.kind === 'ok' ? status.workspace.workspaceId : '';
+}
+
+/** Slug the Engine derives from the title (shared rule); empty while the title has no usable text. */
+export const derivedSlug = (title: string): string => deriveSpecSlug(title);
+
+/** Slug in effect: the typed one when the owner edited it, otherwise the title-derived one. */
+export function effectiveSlug(choice: WorkspaceChoice, title: string): string {
+  return choice.slug.on && choice.slug.edited ? choice.slug.value : derivedSlug(title);
+}
+
+/** Why a typed slug is unusable (shared contract rule), else undefined. */
+export function slugError(value: string): Message | undefined {
+  switch (specSlugProblem(value)) {
+    case 'empty':
+      return message('create.workspace.errors.slugEmpty');
+    case 'too-long':
+      return message('create.workspace.errors.slugTooLong');
+    case 'reserved':
+      return message('create.workspace.errors.slugReserved');
+    case 'format':
+      return message('create.workspace.errors.slugFormat');
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * The generated branch for a slug, written like the configured pattern. The random id part
+ * (`{shortId}`) is unknown before creation and is shown as `<id>`; an unknown slug as `<slug>`.
+ */
+export function branchPreview(options: DemoCreateOptions, slug: string): string {
+  return options.branchPattern
+    .replaceAll('{slug}', slug || '<slug>')
+    .replaceAll('{shortId}', '<id>');
+}
+
+/**
+ * Starting value of "use your own branch name": the generated name without the random id, which an
+ * owner cannot predict, so the result is a name they can adjust. Equal to the generated name only
+ * when the pattern has no `{shortId}`.
+ */
+export function branchPrefill(options: DemoCreateOptions, slug: string): string {
+  if (!slug) return '';
+  return options.branchPattern
+    .replaceAll('{slug}', slug)
+    .replaceAll('{shortId}', '')
+    .replace(/[-_./]+$/u, '');
+}
+
+/** The branch name the owner sees in the field: their own edit, else the prefilled default. */
+export function branchFieldValue(
+  choice: WorkspaceChoice,
+  options: DemoCreateOptions,
+  title: string,
+): string {
+  return choice.branch.edited
+    ? choice.branch.name
+    : branchPrefill(options, effectiveSlug(choice, title));
+}
+
+export interface CreateOverrides {
+  baseRef?: string;
+  branch?: string;
+  integrationTargetWorkspaceId?: string;
+  slug?: string;
+}
+
+/**
+ * Only values that differ from the effective default. An untouched prefilled value (or one the
+ * owner typed back to the default) is not an override and must not be sent.
+ */
+export function createOverrides(
+  choice: WorkspaceChoice,
+  options: DemoCreateOptions,
+  title: string,
+): CreateOverrides {
+  const overrides: CreateOverrides = {};
+  if (choice.base.on && choice.base.ref && choice.base.ref !== defaultBaseValue(options))
+    overrides.baseRef = choice.base.ref;
+  if (
+    choice.target.on &&
+    choice.target.workspaceId &&
+    choice.target.workspaceId !== defaultTargetWorkspaceId(options)
+  )
+    overrides.integrationTargetWorkspaceId = choice.target.workspaceId;
+  const slug = choice.slug.on && choice.slug.edited ? choice.slug.value : '';
+  if (slug && slug !== derivedSlug(title)) overrides.slug = slug;
+  const branch = choice.branch.on && choice.branch.edited ? choice.branch.name.trim() : '';
+  const exactDefault = options.branchPattern.includes('{shortId}')
+    ? undefined
+    : branchPrefill(options, effectiveSlug(choice, title));
+  if (branch && branch !== exactDefault) overrides.branch = branch;
+  return overrides;
+}
 
 /**
  * The request-relevant part of the choice. UI-only state (`settingsOpen`, declined suggestions)
@@ -308,12 +423,14 @@ export function requestChoiceSnapshot(choice: WorkspaceChoice) {
     base: choice.base,
     target: choice.target,
     branch: choice.branch,
+    slug: choice.slug,
     existingWorkspaceId: choice.existingWorkspaceId,
   };
 }
 
 export interface CreateTargetFields {
   title: string;
+  slug?: string;
   target?: DemoCreateTarget;
 }
 
@@ -321,20 +438,30 @@ export interface CreateTargetFields {
 export function buildCreateTarget(
   choice: WorkspaceChoice,
   options: DemoCreateOptions,
+  title = '',
 ): DemoCreateTarget | undefined {
   const tile = activeTile(choice, options);
   if (tile === 'existing' && choice.existingWorkspaceId)
     return { kind: 'existing', workspaceId: choice.existingWorkspaceId };
   if (tile !== 'new') return undefined;
-  const branch = choice.branch.name.trim();
+  const { baseRef, branch, integrationTargetWorkspaceId } = createOverrides(choice, options, title);
   return {
     kind: 'new-worktree',
-    ...(choice.base.on && choice.base.ref ? { baseRef: choice.base.ref } : {}),
-    ...(choice.branch.on && branch ? { branch } : {}),
-    ...(choice.target.on && choice.target.workspaceId
-      ? { integrationTargetWorkspaceId: choice.target.workspaceId }
-      : {}),
+    ...(baseRef ? { baseRef } : {}),
+    ...(branch ? { branch } : {}),
+    ...(integrationTargetWorkspaceId ? { integrationTargetWorkspaceId } : {}),
   };
+}
+
+/** The slug the request carries: only for a new workspace and only a real override. */
+export function buildCreateSlug(
+  choice: WorkspaceChoice,
+  options: DemoCreateOptions,
+  title: string,
+): string | undefined {
+  return activeTile(choice, options) === 'new'
+    ? createOverrides(choice, options, title).slug
+    : undefined;
 }
 
 export function buildCreateRequest(
@@ -343,19 +470,30 @@ export function buildCreateRequest(
   title: string,
   operationId: string,
 ): CreateTargetFields & { operationId: string } {
-  const target = buildCreateTarget(choice, options);
-  return { title: title.trim(), operationId, ...(target ? { target } : {}) };
+  const target = buildCreateTarget(choice, options, title);
+  const slug = buildCreateSlug(choice, options, title);
+  return {
+    title: title.trim(),
+    operationId,
+    ...(slug ? { slug } : {}),
+    ...(target ? { target } : {}),
+  };
 }
 
 /** Summary of the real overrides, e.g. `2 changes: base, target`. */
 export const defaultSettingsSummary: Message = message('create.workspace.settings.default');
-export function settingsSummary(choice: WorkspaceChoice): Message {
+export function settingsSummary(
+  choice: WorkspaceChoice,
+  options: DemoCreateOptions,
+  title: string,
+): Message {
+  const overrides = createOverrides(choice, options, title);
   const names: Message[] = [];
-  if (choice.base.on && choice.base.ref) names.push(message('create.workspace.settings.nameBase'));
-  if (choice.target.on && choice.target.workspaceId)
+  if (overrides.baseRef) names.push(message('create.workspace.settings.nameBase'));
+  if (overrides.integrationTargetWorkspaceId)
     names.push(message('create.workspace.settings.nameTarget'));
-  if (choice.branch.on && choice.branch.name.trim())
-    names.push(message('create.workspace.settings.nameBranch'));
+  if (overrides.slug) names.push(message('create.workspace.settings.nameSlug'));
+  if (overrides.branch) names.push(message('create.workspace.settings.nameBranch'));
   if (names.length === 0) return defaultSettingsSummary;
   return message('create.workspace.settings.changed', { count: names.length, names });
 }

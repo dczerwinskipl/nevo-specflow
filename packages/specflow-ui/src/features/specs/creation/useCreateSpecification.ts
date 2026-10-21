@@ -25,6 +25,8 @@ export interface CreateSubmission {
   title: string;
   archetype: { id: string; version: DemoCreateRequest['archetypeVersion'] };
   /** Lazy: a replay never rebuilds the target, so it must not be evaluated for one. */
+  /** Real slug override the owner typed (never an untouched default), else undefined. */
+  slug?: string;
   buildTarget: () => DemoCreateRequest['target'] | undefined;
   /** Present for the agent path: the initial Session requested together with the specification. */
   session?: Omit<DemoSessionInput, 'requestId' | 'catalogueRevision'>;
@@ -124,6 +126,7 @@ export function useCreateSpecification(
                       ledger.createAttempt,
                       {
                         title: submission.title.trim(),
+                        ...(submission.slug ? { slug: submission.slug } : {}),
                         catalogueRevision,
                         archetypeId: submission.archetype.id,
                         archetypeVersion: submission.archetype.version,

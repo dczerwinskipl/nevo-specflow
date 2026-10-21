@@ -33,6 +33,8 @@ import {
 export interface ProjectSubmission {
   title: string;
   goal: string;
+  /** Real slug override the owner typed (never an untouched default), else undefined. */
+  slug?: string;
   /** Lazy: a replay never rebuilds the target, so it must not be evaluated for one. */
   buildTarget: () => CreateSpecRequest['target'] | undefined;
   /** Fingerprint of the form, so editing it retires the alert of a definite failure. */
@@ -279,6 +281,7 @@ export function useCreateProjectSpecification(
         {
           title: submission.title.trim(),
           ...(goal ? { goal } : {}),
+          ...(submission.slug ? { slug: submission.slug } : {}),
           ...(target ? { target } : {}),
         },
         undefined,

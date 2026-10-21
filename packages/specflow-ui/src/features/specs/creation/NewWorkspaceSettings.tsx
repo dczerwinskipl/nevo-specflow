@@ -19,10 +19,17 @@ import { Trans, useTranslation } from 'react-i18next';
 import { useMessage } from '../../../i18n/message';
 import { OptionSelect } from '../../../shared/controls/OptionSelect';
 import type { DemoCreateOptions } from '@nevo/specflow-contracts/demo';
-import { BranchName } from './BranchName';
+import { BranchRef } from './BranchRef';
 import {
+  branchFieldValue,
+  branchPreview,
   defaultBaseValue,
+  defaultTargetWorkspaceId,
+  derivedSlug,
+  effectiveSlug,
   effectiveTargetBranch,
+  initialWorkspaceChoice,
+  slugError,
   mergeSuggestion,
   noBranchLabel,
   reasonText,
@@ -32,13 +39,14 @@ import {
   type WorkspaceErrors,
 } from './workspaceChoice';
 
-type FocusTarget = 'base' | 'target' | 'branch';
+type FocusTarget = 'base' | 'target' | 'branch' | 'slug';
 
 /** Focusable controls of the settings, so an owner can focus an invalid one without DOM queries. */
 export interface WorkspaceSettingsControls {
   base: MutableRefObject<HTMLElement | null>;
   target: MutableRefObject<HTMLElement | null>;
   branch: MutableRefObject<HTMLInputElement | null>;
+  slug: MutableRefObject<HTMLInputElement | null>;
 }
 
 /** Names a workspace by its branch; a workspace without one has no value to show. */
@@ -52,9 +60,38 @@ export function WorkspaceLabel({
 }) {
   const text = useMessage();
   return workspace.branch ? (
-    <BranchName name={workspace.branch} truncate={truncate} />
+    <BranchRef name={workspace.branch} truncate={truncate} />
   ) : (
     <span className={truncate ? 'truncate' : undefined}>{text(noBranchLabel)}</span>
+  );
+}
+
+/**
+ * A workspace as a merge target: its role as the primary text (the contract carries no workspace
+ * name, only whether it is the current folder) and its branch as the secondary chip.
+ */
+export function WorkspaceRef({
+  workspace,
+  truncate = false,
+}: {
+  workspace: DemoCreateOptions['workspaces'][number];
+  truncate?: boolean;
+}) {
+  const { t } = useTranslation();
+  const text = useMessage();
+  return (
+    <span className="inline-flex min-w-0 max-w-full flex-wrap items-baseline gap-x-2 gap-y-0.5">
+      <span className={truncate ? 'truncate' : undefined}>
+        {workspace.kind === 'primary'
+          ? t('create.workspace.ref.primary')
+          : t('create.workspace.ref.linked')}
+      </span>{' '}
+      {workspace.branch ? (
+        <BranchRef name={workspace.branch} truncate={truncate} />
+      ) : (
+        <span className="text-content-muted">{text(noBranchLabel)}</span>
+      )}
+    </span>
   );
 }
 
@@ -69,6 +106,9 @@ export function NewWorkspaceSettings({
   errors,
   branchConflict,
   focusBranchSignal = 0,
+  title,
+  slugConflict,
+  focusSlugSignal = 0,
   onAnnounce,
   controls,
 }: {
@@ -79,6 +119,11 @@ export function NewWorkspaceSettings({
   /** Branch name the server reported as taken; shown as the field error until it is edited. */
   branchConflict?: string;
   focusBranchSignal?: number;
+  /** The specification name: the generated slug and branch preview derive from it. */
+  title: string;
+  /** Slug the server reported as taken; shown as the field error until it is edited. */
+  slugConflict?: string;
+  focusSlugSignal?: number;
   onAnnounce: (message: string) => void;
   /** Owner-held refs; defaults to refs private to the settings. */
   controls?: WorkspaceSettingsControls;
@@ -89,14 +134,20 @@ export function NewWorkspaceSettings({
     base: useRef<HTMLElement | null>(null),
     target: useRef<HTMLElement | null>(null),
     branch: useRef<HTMLInputElement | null>(null),
+    slug: useRef<HTMLInputElement | null>(null),
   };
   const refs = controls ?? ownRefs;
   const pendingFocus = useRef<FocusTarget | null>(null);
   const seenSignal = useRef(0);
+  const seenSlugSignal = useRef(0);
   useEffect(() => {
     if (focusBranchSignal > seenSignal.current) {
       seenSignal.current = focusBranchSignal;
       pendingFocus.current = 'branch';
+    }
+    if (focusSlugSignal > seenSlugSignal.current) {
+      seenSlugSignal.current = focusSlugSignal;
+      pendingFocus.current = 'slug';
     }
     const next = pendingFocus.current;
     if (!next) return;
@@ -120,9 +171,17 @@ export function NewWorkspaceSettings({
   const branchError =
     errors.branch && choice.branch.name.trim()
       ? text(errors.branch)
-      : branchConflict && choice.branch.name.trim() === branchConflict
+      : branchConflict && choice.branch.edited && choice.branch.name.trim() === branchConflict
         ? t('create.workspace.errors.branchExists')
         : undefined;
+  const slugValue = choice.slug.edited ? choice.slug.value : derivedSlug(title);
+  const typedSlugError = choice.slug.edited ? slugError(choice.slug.value) : undefined;
+  const slugErrorText = typedSlugError
+    ? text(typedSlugError)
+    : slugConflict && choice.slug.edited && choice.slug.value === slugConflict
+      ? t('create.workspace.errors.slugTaken')
+      : undefined;
+  const branchValue = branchFieldValue(choice, options, title);
   const baseRefMeta = (ref: string, checkedOutWorkspaceId?: string) => {
     if (!checkedOutWorkspaceId) return undefined;
     const workspace = options.workspaces.find((w) => w.workspaceId === checkedOutWorkspaceId);
@@ -161,7 +220,7 @@ export function NewWorkspaceSettings({
                   primary?.branch ? (
                     <Trans
                       i18nKey="create.workspace.baseHeadOnBranch"
-                      components={{ branch: <BranchName name={primary.branch} /> }}
+                      components={{ branch: <BranchRef name={primary.branch} /> }}
                     />
                   ) : (
                     t('create.workspace.baseHead')
@@ -169,19 +228,14 @@ export function NewWorkspaceSettings({
                 ) : (
                   <Trans
                     i18nKey="create.workspace.settings.baseDefault"
-                    components={{ branch: <BranchName name={options.defaultBaseRef} /> }}
+                    components={{ branch: <BranchRef name={options.defaultBaseRef} /> }}
                   />
                 )
               }
               onCheckedChange={(on) => {
                 if (baseUnavailable && on) return;
-                // Enabling starts from the effective default, never from an empty select (F-08).
-                set({
-                  base: {
-                    on,
-                    ref: on && !choice.base.ref ? defaultBaseValue(options) : choice.base.ref,
-                  },
-                });
+                // On starts from the effective default (never an empty select, F-08); off restores it.
+                set({ base: { on, ref: on ? defaultBaseValue(options) : '' } });
               }}
             />
             {choice.base.on && (
@@ -197,7 +251,7 @@ export function NewWorkspaceSettings({
                     value: item.ref,
                     textValue: item.ref,
                     meta: baseRefMeta(item.ref, item.checkedOutWorkspaceId),
-                    label: (wraps) => <BranchName name={item.ref} truncate={!wraps} />,
+                    label: (wraps) => <BranchRef name={item.ref} truncate={!wraps} />,
                   }))}
                 />
                 {errors.base && <Field.Error>{text(errors.base)}</Field.Error>}
@@ -209,7 +263,7 @@ export function NewWorkspaceSettings({
                 title={
                   <Trans
                     i18nKey="create.workspace.suggestion.title"
-                    components={{ branch: <BranchName name={suggestion.branch} /> }}
+                    components={{ branch: <BranchRef name={suggestion.branch} /> }}
                   />
                 }
               >
@@ -217,7 +271,7 @@ export function NewWorkspaceSettings({
                   {currentTarget ? (
                     <Trans
                       i18nKey="create.workspace.suggestion.projectDefault"
-                      components={{ branch: <BranchName name={currentTarget} /> }}
+                      components={{ branch: <BranchRef name={currentTarget} /> }}
                     />
                   ) : null}
                   {t('create.workspace.suggestion.note')}
@@ -278,7 +332,7 @@ export function NewWorkspaceSettings({
                 <span className="min-w-0">
                   <Trans
                     i18nKey="create.workspace.suggestion.dirty"
-                    components={{ branch: <BranchName name={suggestion.branch} /> }}
+                    components={{ branch: <BranchRef name={suggestion.branch} /> }}
                   />
                 </span>
               </Typography>
@@ -299,7 +353,7 @@ export function NewWorkspaceSettings({
                 ) : options.integrationTargetBranch ? (
                   <Trans
                     i18nKey="create.workspace.settings.targetFollows"
-                    components={{ branch: <BranchName name={options.integrationTargetBranch} /> }}
+                    components={{ branch: <BranchRef name={options.integrationTargetBranch} /> }}
                   />
                 ) : (
                   t('create.workspace.settings.targetUnconfigured')
@@ -307,8 +361,8 @@ export function NewWorkspaceSettings({
               }
               onCheckedChange={(on) => {
                 if (targetUnavailable && on) return;
-                // Never preselect: an explicit target is a pin, so only a real pick is ever sent.
-                set({ target: { on, workspaceId: choice.target.workspaceId } });
+                // On starts from the default target workspace; it is sent only once it differs.
+                set({ target: { on, workspaceId: on ? defaultTargetWorkspaceId(options) : '' } });
               }}
             />
             {choice.target.on && (
@@ -324,14 +378,11 @@ export function NewWorkspaceSettings({
                     const blocked = workspace.integrationSelectable !== true;
                     return {
                       value: workspace.workspaceId,
-                      textValue: workspace.branch ?? text(noBranchLabel),
+                      textValue: `${workspace.kind === 'primary' ? t('create.workspace.ref.primary') : t('create.workspace.ref.linked')} ${workspace.branch ?? text(noBranchLabel)}`,
                       unavailable: blocked,
                       description: blocked ? text(reasonText(workspace.reason)) : undefined,
-                      meta:
-                        workspace.kind === 'primary'
-                          ? t('create.workspace.settings.refCurrent')
-                          : text(specCountLabel(workspace.specCount)),
-                      label: (wraps) => <WorkspaceLabel workspace={workspace} truncate={!wraps} />,
+                      meta: text(specCountLabel(workspace.specCount)),
+                      label: (wraps) => <WorkspaceRef workspace={workspace} truncate={!wraps} />,
                     };
                   })}
                 />
@@ -343,18 +394,10 @@ export function NewWorkspaceSettings({
                       {unavailableTargets.map((workspace, index) => (
                         <span key={workspace.workspaceId}>
                           {index > 0 ? ', ' : ''}
-                          {workspace.branch ? (
-                            <Trans
-                              i18nKey="create.workspace.settings.unavailableItemBranch"
-                              values={{ reason: text(reasonTextInline(workspace.reason)) }}
-                              components={{ branch: <BranchName name={workspace.branch} /> }}
-                            />
-                          ) : (
-                            t('create.workspace.settings.unavailableItemNoBranch', {
-                              name: text(noBranchLabel),
-                              reason: text(reasonTextInline(workspace.reason)),
-                            })
-                          )}
+                          <WorkspaceRef workspace={workspace} />{' '}
+                          {t('create.workspace.settings.unavailableReason', {
+                            reason: text(reasonTextInline(workspace.reason)),
+                          })}
                         </span>
                       ))}
                       .
@@ -366,25 +409,74 @@ export function NewWorkspaceSettings({
             )}
           </div>
 
+          <div className="grid grid-cols-1 gap-3 py-3">
+            <SwitchField
+              label={t('create.workspace.settings.slugSwitch')}
+              checked={choice.slug.on}
+              description={t('create.workspace.settings.slugSwitchDescription')}
+              onCheckedChange={(on) =>
+                set({
+                  slug: on ? { on: true, value: '', edited: false } : initialWorkspaceChoice.slug,
+                })
+              }
+            />
+            {choice.slug.on && (
+              <Field invalid={Boolean(slugErrorText)}>
+                <Field.Label>{t('create.workspace.settings.slugLabel')}</Field.Label>
+                <TextInput
+                  ref={refs.slug}
+                  value={slugValue}
+                  maxLength={200}
+                  placeholder={t('create.workspace.settings.slugPlaceholder')}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  onChange={(event) =>
+                    set({ slug: { on: true, value: event.target.value, edited: true } })
+                  }
+                />
+                <Field.Description>
+                  <Trans
+                    i18nKey="create.workspace.settings.slugHelp"
+                    components={{
+                      branch: (
+                        <BranchRef name={branchPreview(options, effectiveSlug(choice, title))} />
+                      ),
+                    }}
+                  />
+                </Field.Description>
+                {slugErrorText && <Field.Error>{slugErrorText}</Field.Error>}
+              </Field>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 gap-3 pt-3">
             <SwitchField
               label={t('create.workspace.settings.branchSwitch')}
               checked={choice.branch.on}
               description={t('create.workspace.settings.branchSwitchDescription')}
-              onCheckedChange={(on) => set({ branch: { ...choice.branch, on } })}
+              onCheckedChange={(on) =>
+                set({
+                  branch: on
+                    ? { on: true, name: '', edited: false }
+                    : initialWorkspaceChoice.branch,
+                })
+              }
             />
             {choice.branch.on && (
               <Field invalid={Boolean(branchError)}>
                 <Field.Label>{t('create.workspace.settings.branchLabel')}</Field.Label>
                 <TextInput
                   ref={refs.branch}
-                  value={choice.branch.name}
+                  value={branchValue}
                   maxLength={200}
                   placeholder={t('create.workspace.settings.branchPlaceholder')}
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
-                  onChange={(event) => set({ branch: { on: true, name: event.target.value } })}
+                  onChange={(event) =>
+                    set({ branch: { on: true, name: event.target.value, edited: true } })
+                  }
                 />
                 <Field.Description>{t('create.workspace.settings.branchHelp')}</Field.Description>
                 {branchError && <Field.Error>{branchError}</Field.Error>}

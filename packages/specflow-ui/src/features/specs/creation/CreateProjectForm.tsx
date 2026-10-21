@@ -31,6 +31,7 @@ import {
 } from './WorkspaceSection';
 import {
   activeTile,
+  buildCreateSlug,
   buildCreateTarget,
   initialWorkspaceChoice,
   requestChoiceSnapshot,
@@ -74,6 +75,8 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
   const [announcement, setAnnouncement] = useState(''),
     [branchConflict, setBranchConflict] = useState<string | undefined>(),
     [focusBranchSignal, setFocusBranchSignal] = useState(0),
+    [slugConflict, setSlugConflict] = useState<string | undefined>(),
+    [focusSlugSignal, setFocusSlugSignal] = useState(0),
     [refreshFocusPending, setRefreshFocusPending] = useState(false);
 
   const configurationSnapshot = JSON.stringify({
@@ -161,9 +164,23 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
   const submission = () => ({
     title,
     goal,
-    buildTarget: () => (workspaceOptions ? buildCreateTarget(choice, workspaceOptions) : undefined),
+    slug: workspaceOptions ? buildCreateSlug(choice, workspaceOptions, title) : undefined,
+    buildTarget: () =>
+      workspaceOptions ? buildCreateTarget(choice, workspaceOptions, title) : undefined,
     snapshot: configurationSnapshot,
     onFailed: (next: CreateFailure) => {
+      if (next.kind === 'name-conflict') {
+        // A slug the owner typed may be the taken name: say so at the field, keep the form.
+        const sentSlug = workspaceOptions
+          ? buildCreateSlug(choice, workspaceOptions, title)
+          : undefined;
+        if (sentSlug) {
+          setSlugConflict(sentSlug);
+          setChoice((current) => ({ ...current, settingsOpen: true }));
+          setFocusSlugSignal((value) => value + 1);
+        }
+        return;
+      }
       if (next.kind !== 'branch-exists') return;
       if (next.automatic) setBranchConflict(undefined);
       else {
@@ -267,6 +284,7 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
               onChange={(event) => setGoal(event.target.value)}
               placeholder={t('create.project.goalPlaceholder')}
             />
+            <Field.Description>{t('create.project.goalHelp')}</Field.Description>
           </Field>
         </div>
         <Separator />
@@ -281,8 +299,11 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
           onRefresh={() => void refreshOptions()}
           announcement={announcement}
           onAnnounce={setAnnouncement}
+          title={title}
           branchConflict={branchConflict}
           focusBranchSignal={focusBranchSignal}
+          slugConflict={slugConflict}
+          focusSlugSignal={focusSlugSignal}
           handleRef={workspaceHandle}
         />
         <Separator />
@@ -311,7 +332,7 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
                   onUseAutomaticName={() => {
                     setChoice((current) => ({
                       ...current,
-                      branch: { ...current.branch, on: false },
+                      branch: initialWorkspaceChoice.branch,
                     }));
                     actions.dismissFailure();
                   }}
@@ -319,7 +340,9 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
                     setChoice((current) => ({
                       ...current,
                       settingsOpen: true,
-                      branch: { ...current.branch, on: true },
+                      branch: current.branch.on
+                        ? current.branch
+                        : { on: true, name: '', edited: false },
                     }));
                     setFocusBranchSignal((value) => value + 1);
                     actions.dismissFailure();

@@ -54,8 +54,7 @@ describe('message catalogues', () => {
     const plMessages = flatten(pl);
     // Product names and message templates that are the same in both languages.
     const sameInBoth = new Set([
-      'create.workspace.settings.unavailableItemBranch',
-      'create.workspace.settings.unavailableItemNoBranch',
+      'create.workspace.settings.unavailableReason',
       'documents.tree.skippedItem',
       'common.pullRequestNumber',
       'navigation.uiPlayground',

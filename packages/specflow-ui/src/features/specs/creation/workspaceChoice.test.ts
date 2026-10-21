@@ -8,9 +8,18 @@ import { polishText } from '../../../i18n/testing';
 import {
   activeTile,
   branchNameError as rawBranchNameError,
+  branchFieldValue,
+  branchPrefill,
+  branchPreview,
   buildCreateRequest,
+  buildCreateSlug,
   buildCreateTarget,
+  createOverrides,
   defaultBaseValue,
+  defaultTargetWorkspaceId,
+  derivedSlug,
+  effectiveSlug,
+  slugError as rawSlugError,
   defaultTile,
   effectiveTargetBranch,
   formatOperationTime as rawFormatOperationTime,
@@ -37,7 +46,7 @@ const problems = (...args: Parameters<typeof rawProblems>) =>
 const revalidate = (...args: Parameters<typeof rawRevalidate>) =>
   Object.fromEntries(
     Object.entries(rawRevalidate(...args)).map(([key, entry]) => [key, polishText(entry)]),
-  ) as Partial<Record<'tile' | 'existing' | 'base' | 'target' | 'branch', string>>;
+  ) as Partial<Record<'tile' | 'existing' | 'base' | 'target' | 'branch' | 'slug', string>>;
 const tileAvailability = (...args: Parameters<typeof rawTileAvailability>) =>
   Object.fromEntries(
     Object.entries(rawTileAvailability(...args)).map(([tile, entry]) => [
@@ -47,6 +56,10 @@ const tileAvailability = (...args: Parameters<typeof rawTileAvailability>) =>
   ) as Record<'new' | 'main' | 'existing', { ok: boolean; reason?: string; count?: number }>;
 const settingsSummary = (...args: Parameters<typeof rawSettingsSummary>) =>
   polishText(rawSettingsSummary(...args));
+const slugError = (value: string) => {
+  const entry = rawSlugError(value);
+  return entry ? polishText(entry) : undefined;
+};
 const specCountLabel = (count: number) => polishText(rawSpecCountLabel(count));
 const sharedUseNote = (count: number, place: 'workspace' | 'katalog') =>
   polishText(rawSharedUseNote(count, place === 'katalog' ? 'folder' : 'workspace'));
@@ -121,7 +134,7 @@ describe('buildCreateRequest', () => {
       tile: 'main',
       base: { on: true, ref: 'feature/platform' },
       target: { on: true, workspaceId: ids.platform },
-      branch: { on: true, name: 'feature/x' },
+      branch: { on: true, name: 'feature/x', edited: true },
       existingWorkspaceId: ids.platform,
     });
     expect(buildCreateRequest(remembered, options(), '  Płatności ', op)).toEqual({
@@ -135,7 +148,7 @@ describe('buildCreateRequest', () => {
         tile: 'existing',
         existingWorkspaceId: ids.platform,
         base: { on: true, ref: 'main' },
-        branch: { on: true, name: 'x' },
+        branch: { on: true, name: 'x', edited: true },
       }),
       options(),
       'T',
@@ -154,7 +167,7 @@ describe('buildCreateRequest', () => {
         tile: 'new',
         base: { on: false, ref: 'feature/platform' },
         target: { on: false, workspaceId: ids.platform },
-        branch: { on: false, name: 'feature/x' },
+        branch: { on: false, name: 'feature/x', edited: true },
       }),
       options(),
     );
@@ -174,7 +187,7 @@ describe('buildCreateRequest', () => {
         tile: 'new',
         base: { on: on.base, ref: 'feature/platform' },
         target: { on: on.target, workspaceId: ids.architecture },
-        branch: { on: on.branch, name: ' feature/payments-v2 ' },
+        branch: { on: on.branch, name: ' feature/payments-v2 ', edited: true },
       }),
       options(),
     );
@@ -185,13 +198,34 @@ describe('buildCreateRequest', () => {
       ...(on.target ? { integrationTargetWorkspaceId: ids.architecture } : {}),
     });
   });
-  it('sends a base equal to the default as chosen, and never hard-codes main or develop', () => {
+  it('never sends a prefilled value that equals the default, and never hard-codes main or develop', () => {
+    const o = options();
     const target = buildCreateTarget(
-      choice({ tile: 'new', base: { on: true, ref: 'develop' } }),
-      options(),
+      choice({
+        tile: 'new',
+        base: { on: true, ref: defaultBaseValue(o) },
+        target: { on: true, workspaceId: defaultTargetWorkspaceId(o) },
+      }),
+      o,
     );
-    expect(target).toEqual({ kind: 'new-worktree', baseRef: 'develop' });
-    expect(JSON.stringify(buildCreateTarget(choice(), options()))).not.toMatch(/develop|main/);
+    expect(target).toEqual({ kind: 'new-worktree' });
+    expect(JSON.stringify(buildCreateTarget(choice(), o))).not.toMatch(/develop|main/);
+  });
+  it('sends a base or target once it differs from the default', () => {
+    const o = options();
+    expect(
+      buildCreateTarget(choice({ tile: 'new', base: { on: true, ref: 'feature/platform' } }), o),
+    ).toEqual({ kind: 'new-worktree', baseRef: 'feature/platform' });
+    expect(
+      buildCreateTarget(
+        choice({ tile: 'new', target: { on: true, workspaceId: ids.architecture } }),
+        o,
+      ),
+    ).toEqual({ kind: 'new-worktree', integrationTargetWorkspaceId: ids.architecture });
+  });
+  it('the default merge target is the primary workspace on the project target, else none', () => {
+    expect(defaultTargetWorkspaceId(options())).toBe(ids.main);
+    expect(defaultTargetWorkspaceId(options('primary-dirty'))).toBe('');
   });
   it('an enabled switch without a value sends nothing and blocks Create', () => {
     const pending = choice({ tile: 'new', base: { on: true, ref: '' } });
@@ -205,7 +239,7 @@ describe('buildCreateRequest', () => {
     const configured = choice({
       tile: 'new',
       base: { on: true, ref: 'feature/platform' },
-      branch: { on: true, name: 'feature/payments-v2' },
+      branch: { on: true, name: 'feature/payments-v2', edited: true },
     });
     const first = buildCreateTarget(configured, options());
     const away = { ...configured, tile: 'main' as const };
@@ -330,7 +364,7 @@ describe('revalidate keeps values and flags them', () => {
     tile: 'main',
     base: { on: true, ref: 'feature/platform' },
     target: { on: true, workspaceId: ids.platform },
-    branch: { on: true, name: 'feature/payments-v2' },
+    branch: { on: true, name: 'feature/payments-v2', edited: true },
     existingWorkspaceId: ids.platform,
   });
   it('is clean for current options', () => {
@@ -442,20 +476,30 @@ describe('mergeSuggestion (D5)', () => {
 
 describe('copy helpers', () => {
   it('summarises overrides', () => {
-    expect(settingsSummary(choice())).toBe('Ustawienia domyślne');
-    expect(settingsSummary(choice({ base: { on: true, ref: 'main' } }))).toBe(
+    const o = options();
+    expect(settingsSummary(choice(), o, 'T')).toBe('Ustawienia domyślne');
+    expect(settingsSummary(choice({ base: { on: true, ref: 'feature/platform' } }), o, 'T')).toBe(
       'Zmienione ustawienia (1): baza',
     );
     expect(
       settingsSummary(
         choice({
-          base: { on: true, ref: 'main' },
-          target: { on: true, workspaceId: ids.main },
-          branch: { on: true, name: 'x' },
+          base: { on: true, ref: 'feature/platform' },
+          target: { on: true, workspaceId: ids.architecture },
+          slug: { on: true, value: 'moj-slug', edited: true },
+          branch: { on: true, name: 'x', edited: true },
         }),
+        o,
+        'T',
       ),
-    ).toBe('Zmienione ustawienia (3): baza, cel, nazwa');
-    expect(settingsSummary(choice({ base: { on: true, ref: '' } }))).toBe('Ustawienia domyślne');
+    ).toBe('Zmienione ustawienia (4): baza, cel, slug, nazwa');
+    expect(settingsSummary(choice({ base: { on: true, ref: '' } }), o, 'T')).toBe(
+      'Ustawienia domyślne',
+    );
+    // A prefilled value that equals the default is not a change.
+    expect(settingsSummary(choice({ base: { on: true, ref: defaultBaseValue(o) } }), o, 'T')).toBe(
+      'Ustawienia domyślne',
+    );
   });
   it('inflects counts in Polish', () => {
     expect(specCountLabel(0)).toBe('brak specyfikacji');
@@ -492,14 +536,16 @@ describe('switch values come from the options, never from a hard-coded branch', 
     defaultBaseRef: 'release/1.4',
     integrationTargetBranch: 'feature/platform',
   });
-  it('base on: the explicit value equal to the options default is sent; off: omitted', () => {
+  it('base on: a value equal to the options default is not an override; off: omitted', () => {
     const o = custom();
     const ref = defaultBaseValue(o);
     expect(ref).toBe('release/1.4');
     expect(buildCreateTarget(choice({ tile: 'new', base: { on: true, ref } }), o)).toEqual({
       kind: 'new-worktree',
-      baseRef: 'release/1.4',
     });
+    expect(
+      buildCreateTarget(choice({ tile: 'new', base: { on: true, ref: 'feature/platform' } }), o),
+    ).toEqual({ kind: 'new-worktree', baseRef: 'feature/platform' });
     expect(buildCreateTarget(choice({ tile: 'new', base: { on: false, ref } }), o)).toEqual({
       kind: 'new-worktree',
     });
@@ -523,13 +569,13 @@ describe('switch values come from the options, never from a hard-coded branch', 
 
 describe('requestChoiceSnapshot', () => {
   it('ignores UI-only state so opening the disclosure is not an edit', () => {
-    const base = choice({ branch: { on: true, name: 'feature/x' } });
+    const base = choice({ branch: { on: true, name: 'feature/x', edited: true } });
     const same = requestChoiceSnapshot(base);
     expect(requestChoiceSnapshot({ ...base, settingsOpen: true })).toEqual(same);
     expect(requestChoiceSnapshot({ ...base, dismissedSuggestions: { a: true } })).toEqual(same);
-    expect(requestChoiceSnapshot({ ...base, branch: { on: true, name: 'feature/y' } })).not.toEqual(
-      same,
-    );
+    expect(
+      requestChoiceSnapshot({ ...base, branch: { on: true, name: 'feature/y', edited: true } }),
+    ).not.toEqual(same);
   });
 });
 
@@ -557,19 +603,18 @@ describe('integration target request semantics (explicit pin vs follow the proje
     expect(buildCreateTarget(pending, options())).toEqual({ kind: 'new-worktree' });
     expect(problems(pending, options())).toEqual(['Wybierz cel scalenia lub wyłącz tę opcję.']);
   });
-  it('picking the primary workspace explicitly IS a pin request, unlike leaving the switch off', () => {
-    const picked = newTile({ target: { on: true, workspaceId: ids.main } });
-    expect(buildCreateTarget(picked, options())).toEqual({
+  it('the prefilled default target (primary) is not a pin request; another workspace is', () => {
+    const untouched = newTile({ target: { on: true, workspaceId: ids.main } });
+    expect(buildCreateTarget(untouched, options())).toEqual({ kind: 'new-worktree' });
+    expect(problems(untouched, options())).toEqual([]);
+    const other = newTile({ target: { on: true, workspaceId: ids.platform } });
+    expect(buildCreateTarget(other, options())).toEqual({
       kind: 'new-worktree',
-      integrationTargetWorkspaceId: ids.main,
+      integrationTargetWorkspaceId: ids.platform,
     });
-    expect(problems(picked, options())).toEqual([]);
-    expect(buildCreateTarget(newTile(), options())).not.toEqual(
-      buildCreateTarget(picked, options()),
-    );
   });
   it('the target is independent of baseRef and never derived from a branch name', () => {
-    for (const ref of ['feature/platform', 'develop', 'spec/architecture'])
+    for (const ref of ['feature/platform', 'spec/architecture'])
       expect(buildCreateTarget(newTile({ base: { on: true, ref } }), options())).toEqual({
         kind: 'new-worktree',
         baseRef: ref,
@@ -587,7 +632,10 @@ describe('integration target request semantics (explicit pin vs follow the proje
       integrationTargetWorkspaceId: ids.architecture,
     });
     expect(
-      buildCreateTarget(newTile({ branch: { on: true, name: 'develop-2' } }), options()),
+      buildCreateTarget(
+        newTile({ branch: { on: true, name: 'develop-2', edited: true } }),
+        options(),
+      ),
     ).toEqual({ kind: 'new-worktree', branch: 'develop-2' });
   });
   it('accepting the merge suggestion is the only way it becomes a pin; declining sends nothing', () => {
@@ -608,5 +656,112 @@ describe('integration target request semantics (explicit pin vs follow the proje
     expect(problems(stale, options())).toEqual([
       'To środowisko pracy nie może już być celem scalenia. Wybierz inny lub wyłącz tę opcję.',
     ]);
+  });
+});
+
+describe('slug and branch defaults', () => {
+  const o = options();
+  it('derives the slug from the title with the shared rule', () => {
+    expect(derivedSlug('  Limity płatności! ')).toBe('limity-platnosci');
+    expect(derivedSlug('???')).toBe('');
+  });
+  it('previews the generated branch from the configured pattern', () => {
+    expect(branchPreview(o, 'limity-platnosci')).toBe('feature/limity-platnosci');
+    expect(branchPreview(o, '')).toBe('feature/<slug>');
+    const withId = { ...o, branchPattern: 'spec/{slug}-{shortId}' };
+    expect(branchPreview(withId, 'a-b')).toBe('spec/a-b-<id>');
+    // The owner cannot predict the random id: the editable prefill leaves it out.
+    expect(branchPrefill(withId, 'a-b')).toBe('spec/a-b');
+    expect(branchPrefill(o, 'a-b')).toBe('feature/a-b');
+    expect(branchPrefill(o, '')).toBe('');
+  });
+  it('the effective slug follows the title until the owner edits it', () => {
+    const on = choice({ slug: { on: true, value: '', edited: false } });
+    expect(effectiveSlug(on, 'Limity płatności')).toBe('limity-platnosci');
+    expect(effectiveSlug(on, 'Inny tytuł')).toBe('inny-tytul');
+    const edited = choice({ slug: { on: true, value: 'moj-slug', edited: true } });
+    expect(effectiveSlug(edited, 'Inny tytuł')).toBe('moj-slug');
+    expect(
+      effectiveSlug(choice({ slug: { on: false, value: 'moj-slug', edited: true } }), 'T'),
+    ).toBe('t');
+  });
+  it('the branch field shows the prefilled default until edited, and follows the slug', () => {
+    const untouched = choice({ branch: { on: true, name: '', edited: false } });
+    expect(branchFieldValue(untouched, o, 'Limity płatności')).toBe('feature/limity-platnosci');
+    const withSlug = choice({
+      branch: { on: true, name: '', edited: false },
+      slug: { on: true, value: 'moj-slug', edited: true },
+    });
+    expect(branchFieldValue(withSlug, o, 'Limity płatności')).toBe('feature/moj-slug');
+    const edited = choice({ branch: { on: true, name: 'x/y', edited: true } });
+    expect(branchFieldValue(edited, o, 'T')).toBe('x/y');
+  });
+  it('sends no slug or branch while they are untouched or equal to the default', () => {
+    const untouched = choice({
+      tile: 'new',
+      slug: { on: true, value: '', edited: false },
+      branch: { on: true, name: '', edited: false },
+    });
+    expect(createOverrides(untouched, o, 'Limity płatności')).toEqual({});
+    expect(buildCreateSlug(untouched, o, 'Limity płatności')).toBeUndefined();
+    const typedDefault = choice({
+      tile: 'new',
+      slug: { on: true, value: 'limity-platnosci', edited: true },
+      branch: { on: true, name: 'feature/limity-platnosci', edited: true },
+    });
+    expect(createOverrides(typedDefault, o, 'Limity płatności')).toEqual({});
+  });
+  it('sends the slug and branch once they differ, and the request carries the slug', () => {
+    const changed = choice({
+      tile: 'new',
+      slug: { on: true, value: 'moj-slug', edited: true },
+      branch: { on: true, name: ' feature/inne ', edited: true },
+    });
+    expect(createOverrides(changed, o, 'Limity płatności')).toEqual({
+      slug: 'moj-slug',
+      branch: 'feature/inne',
+    });
+    expect(buildCreateRequest(changed, o, 'Limity płatności', op)).toEqual({
+      title: 'Limity płatności',
+      operationId: op,
+      slug: 'moj-slug',
+      target: { kind: 'new-worktree', branch: 'feature/inne' },
+    });
+  });
+  it('a branch generated with an id is never "equal to the default": an edit is always sent', () => {
+    const withId = { ...o, branchPattern: 'spec/{slug}-{shortId}' };
+    const typed = choice({ tile: 'new', branch: { on: true, name: 'spec/a-b', edited: true } });
+    expect(createOverrides(typed, withId, 'a b')).toEqual({ branch: 'spec/a-b' });
+  });
+  it('a switch that is off sends nothing even when a value is remembered', () => {
+    const off = choice({
+      tile: 'new',
+      slug: { on: false, value: 'moj-slug', edited: true },
+      branch: { on: false, name: 'x', edited: true },
+    });
+    expect(createOverrides(off, o, 'T')).toEqual({});
+  });
+  it('the slug is not part of main or existing requests', () => {
+    const remembered = { slug: { on: true, value: 'moj-slug', edited: true } };
+    expect(buildCreateSlug(choice({ tile: 'main', ...remembered }), o, 'T')).toBeUndefined();
+    expect(buildCreateSlug(choice({ tile: 'existing', ...remembered }), o, 'T')).toBeUndefined();
+  });
+  it('validates a typed slug with the shared contract rule and blocks Create', () => {
+    expect(slugError('moj-slug')).toBeUndefined();
+    expect(slugError('')).toBe('Wpisz slug lub wyłącz tę opcję.');
+    expect(slugError('Moj Slug')).toContain('małych liter');
+    expect(slugError('a'.repeat(81))).toContain('zbyt długi');
+    expect(slugError('con')).toContain('zarezerwowana');
+    const bad = choice({ tile: 'new', slug: { on: true, value: 'Zły Slug', edited: true } });
+    expect(problems(bad, o)).toHaveLength(1);
+    expect(revalidate(bad, o).slug).toContain('małych liter');
+    expect(
+      problems(choice({ tile: 'new', slug: { on: true, value: '', edited: false } }), o),
+    ).toEqual([]);
+  });
+  it('an untouched prefill never blocks Create even when the title gives no slug', () => {
+    const noTitle = choice({ tile: 'new', branch: { on: true, name: '', edited: false } });
+    expect(problems(noTitle, o)).toEqual([]);
+    expect(defaultTargetWorkspaceId(o)).toBe(ids.main);
   });
 });

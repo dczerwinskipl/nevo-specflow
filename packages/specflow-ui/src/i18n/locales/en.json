@@ -807,30 +807,19 @@
         "title": "Unable to refresh the options",
         "body": "We are showing the most recently loaded options. The form is kept."
       },
-      "notice": {
-        "noTarget": "No integration target is configured. You can create the specification, but closing the work will require a target in the project configuration.",
-        "otherBranch": "The project target <target/> is served by the current folder, which is now on branch <current/>. Closing the work may then require a change. Creation is not blocked.",
-        "otherBranchNone": "The project target <target/> is served by the current folder, which currently has no branch checked out. Closing the work may then require a change. Creation is not blocked.",
-        "unavailable": "The target <target/> is not available right now: {{reason}}. Creation is not blocked."
-      },
       "baseHead": "Current commit of the current folder",
-      "baseHeadOnBranch": "Current commit of the current folder (<branch/>)",
+      "baseHeadOnBranch": "Default: the current branch, <branch/>",
       "fact": {
         "base": "Start from",
-        "branch": "New branch",
-        "automatic": "automatic",
-        "target": "Chosen merge target",
-        "pickTarget": "choose a target",
-        "pinned": "(pinned)",
-        "projectTarget": "(project target)",
-        "noTarget": "no target"
+        "target": "Merge into",
+        "branch": "Branch name"
       },
       "main": {
         "onBranch": "The specification will be created on branch <branch/>. We do not create a new branch or worktree and do not switch the current branch.",
         "noBranch": "The specification will be created in the current folder. We do not create a new branch or worktree."
       },
       "inherited": {
-        "pinned": "Merged into: <branch/> (set when this workspace was created)",
+        "pinned": "Merges into the workspace on <branch/>, set when this workspace was created.",
         "branchChanged": "The target workspace changed its branch since it was pinned. Closing the work may require a change.",
         "unavailable": "The target workspace is not available right now. Closing the work may require a change.",
         "project": "Project target: <branch/>",
@@ -854,7 +843,12 @@
         "noWorkspace": "No workspace is available.",
         "pickWorkspace": "Choose a workspace.",
         "pickBase": "Choose a starting branch or turn this option off.",
-        "pickTarget": "Choose a merge target or turn this option off."
+        "pickTarget": "Choose a merge target or turn this option off.",
+        "slugEmpty": "Enter a slug or turn this option off.",
+        "slugTooLong": "The slug is too long. Use at most 80 characters.",
+        "slugFormat": "Use lowercase letters, digits and single hyphens, for example payment-limits.",
+        "slugReserved": "This name is reserved by the operating system. Choose another one.",
+        "slugTaken": "A specification with this slug already exists. Enter a different one."
       },
       "stale": {
         "tile": "This option is no longer available. Choose another one.",
@@ -876,25 +870,30 @@
         "refCurrent": "current folder",
         "refWorkspace": "has a workspace",
         "refDirty": "{{label}} · changes",
-        "targetSwitch": "Merge later into a different branch",
-        "targetPick": "Choose which branch the changes will return to.",
+        "targetSwitch": "Merge later into a different workspace",
+        "targetPick": "Choose which workspace the changes will return to.",
         "targetNone": "There are no workspaces to merge into.",
-        "targetFollows": "By default we follow the project target: <branch/>",
+        "targetFollows": "By default the changes return to the workspace on the project target <branch/>.",
         "targetUnconfigured": "The integration target is not configured.",
-        "targetLabel": "Choose the merge target",
+        "targetLabel": "Merge into",
         "targetNote": "Nothing will be merged now. This only marks the place for later. The choice pins the target at creation and will not change, while the default target follows the project configuration.",
         "targetUnavailable": "Unavailable as a target:",
-        "unavailableItemBranch": "<branch/> ({{reason}})",
-        "unavailableItemNoBranch": "{{name}} ({{reason}})",
         "branchSwitch": "Use your own branch name",
-        "branchSwitchDescription": "Nevo generates the name and it cannot be previewed before creation. If it is taken, we will ask for another one.",
+        "branchSwitchDescription": "Nevo builds the name from the slug. Turn this on only if you need a specific branch name.",
         "branchLabel": "New branch name",
         "branchPlaceholder": "feature/new-api",
-        "branchHelp": "Nevo prepares the worktree folder itself. If the name is taken, you will enter another one."
+        "branchHelp": "Nevo prepares the worktree folder itself. If the name is taken, you will enter another one.",
+        "nameSlug": "slug",
+        "unavailableReason": "– {{reason}}",
+        "slugSwitch": "Edit the name (slug)",
+        "slugSwitchDescription": "The slug names the specification folder, the worktree folder and the new branch. It follows the specification name until you edit it.",
+        "slugLabel": "Slug",
+        "slugPlaceholder": "payment-limits",
+        "slugHelp": "New branch: <branch/>"
       },
       "suggestion": {
         "title": "Do you want to merge the changes back into <branch/> later?",
-        "projectDefault": "By default we merge into <branch/> (the project target). ",
+        "projectDefault": "By default we merge into the project target, <branch/>. ",
         "note": "Changing the base does not change the target by itself. A target set here is pinned to the new workspace.",
         "set": "Set merge target",
         "keep": "Leave unchanged",
@@ -902,13 +901,27 @@
         "announceKept": "The merge target stays unchanged: {{branch}}.",
         "announceKeptNoTarget": "The merge target stays unchanged.",
         "dirty": "We will not suggest merging back into <branch/>: that workspace has uncommitted Git changes. The merge target stays unchanged."
+      },
+      "merge": {
+        "pickTarget": "Choose a workspace",
+        "notAvailable": "Not available",
+        "notConfigured": "Not set",
+        "noteUnavailable": "Not available now: {{reason}}. Creation is not blocked.",
+        "noteOtherBranch": "The project target <target/> is not checked out in the current folder, which is on <current/>. Closing the work may need a change. Creation is not blocked.",
+        "noteOtherBranchNone": "The project target <target/> is not checked out in the current folder, which has no branch. Closing the work may need a change. Creation is not blocked.",
+        "noteNoTarget": "No project target is configured, so closing the work will need one. Creation is not blocked."
+      },
+      "ref": {
+        "primary": "Current folder",
+        "linked": "Workspace"
       }
     },
     "project": {
       "subheading": "Name it, add the goal if you have one, and choose where its files will live.",
       "goalLabel": "Goal (optional)",
       "goalPlaceholder": "What should this specification achieve?",
-      "footNote": "After creation we will open the specification."
+      "footNote": "After creation we will open the specification.",
+      "goalHelp": "Saved in the specification overview. The app does not display it yet."
     },
     "monitoring": {
       "title": "Preparing the workspace",

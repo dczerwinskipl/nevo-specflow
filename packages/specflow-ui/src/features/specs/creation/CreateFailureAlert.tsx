@@ -1,7 +1,7 @@
 import { Alert, Button, Collapsible } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { MessageKey } from '../../../i18n/message';
-import { BranchName } from './BranchName';
+import { BranchRef } from './BranchRef';
 import type { CreateFailure } from './createFailure';
 import type { CreateOperationStatus } from './createOperationReducer';
 
@@ -160,7 +160,7 @@ export function CreateFailureAlert({
                   <div key={id} className="flex min-w-0 flex-wrap gap-x-2">
                     <dt className="text-content-muted">{t(`create.operation.detail.${id}`)}</dt>
                     <dd className="min-w-0 text-content-primary wrap-anywhere">
-                      {id === 'branch' ? <BranchName name={value} /> : value}
+                      {id === 'branch' ? <BranchRef name={value} /> : value}
                     </dd>
                   </div>
                 ))}

@@ -1,19 +1,24 @@
 import { FolderPlus, Layers } from 'lucide-react';
 import { type Dispatch, type MutableRefObject, type ReactNode, type SetStateAction } from 'react';
+import type { TFunction } from 'i18next';
 import { Trans, useTranslation } from 'react-i18next';
 import { useMessage } from '../../../i18n/message';
 import { Badge, Field, Icon, Typography, cn } from '@nevo/ui';
 import { OptionSelect } from '../../../shared/controls/OptionSelect';
 import type { DemoCreateOptions } from '@nevo/specflow-contracts/demo';
-import { BranchName } from './BranchName';
+import { BranchRef } from './BranchRef';
 import {
   NewWorkspaceSettings,
   WorkspaceLabel,
+  WorkspaceRef,
   type WorkspaceSettingsControls,
 } from './NewWorkspaceSettings';
 import {
+  branchPreview,
+  createOverrides,
   defaultSettingsSummary,
-  effectiveTargetBranch,
+  defaultTargetWorkspaceId,
+  effectiveSlug,
   inheritedTarget,
   noBranchLabel,
   primaryWorkspace,
@@ -46,73 +51,106 @@ const note = (children: ReactNode, tone: 'muted' | 'attention' = 'muted') => (
   </Typography>
 );
 
-function Fact({
+/**
+ * One row of the "default settings" definition list: label, value and an optional quiet note under
+ * the value. Rows are `contents` so all labels share one column and every value starts aligned.
+ */
+function SummaryRow({
   label,
   override,
+  note: rowNote,
   children,
 }: {
   label: string;
   override: boolean;
+  note?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <div className="flex min-w-0 items-baseline gap-2">
-      <dt className="shrink-0 text-content-muted">{label}</dt>
-      <dd className={cn('min-w-0', override ? 'text-content-primary' : 'text-content-secondary')}>
-        {children}
+    <div className="contents">
+      <dt className="text-content-muted">{label}</dt>
+      <dd className="min-w-0">
+        <span className={override ? 'text-content-primary' : 'text-content-secondary'}>
+          {children}
+        </span>
+        {rowNote ? <span className="mt-0.5 block text-content-muted">{rowNote}</span> : null}
       </dd>
     </div>
   );
 }
 
-function IntegrationNotice({ options }: { options: DemoCreateOptions }): ReactNode {
-  const { t } = useTranslation();
-  const text = useMessage();
+/** Where the changes will be merged back: a workspace (never a bare branch) and, quietly, a caveat. */
+function mergeRow(
+  options: DemoCreateOptions,
+  choice: WorkspaceChoice,
+  t: TFunction,
+  text: ReturnType<typeof useMessage>,
+): { value: ReactNode; note?: ReactNode; override: boolean } {
+  if (choice.target.on) {
+    const picked = options.workspaces.find((w) => w.workspaceId === choice.target.workspaceId);
+    return picked
+      ? {
+          value: <WorkspaceRef workspace={picked} />,
+          override: choice.target.workspaceId !== defaultTargetWorkspaceId(options),
+        }
+      : {
+          value: (
+            <span className="text-status-attention">{t('create.workspace.merge.pickTarget')}</span>
+          ),
+          override: false,
+        };
+  }
   const status = targetStatus(options);
-  if (status.kind === 'ok') return null;
-  if (status.kind === 'none') return note(t('create.workspace.notice.noTarget'), 'attention');
-  if (status.kind === 'other-branch')
-    return note(
-      status.primary?.branch ? (
-        <Trans
-          i18nKey="create.workspace.notice.otherBranch"
-          components={{
-            target: <BranchName name={status.branch} />,
-            current: <BranchName name={status.primary.branch} />,
-          }}
-        />
-      ) : (
-        <Trans
-          i18nKey="create.workspace.notice.otherBranchNone"
-          components={{ target: <BranchName name={status.branch} /> }}
-        />
-      ),
-      'attention',
-    );
-  return note(
-    <Trans
-      i18nKey="create.workspace.notice.unavailable"
-      values={{ reason: text(reasonTextInline(status.workspace.reason)) }}
-      components={{ target: <BranchName name={status.branch} /> }}
-    />,
-    'attention',
-  );
+  switch (status.kind) {
+    case 'ok':
+      return { value: <WorkspaceRef workspace={status.workspace} />, override: false };
+    case 'unavailable':
+      return {
+        value: <WorkspaceRef workspace={status.workspace} />,
+        override: false,
+        note: t('create.workspace.merge.noteUnavailable', {
+          reason: text(reasonTextInline(status.workspace.reason)),
+        }),
+      };
+    case 'other-branch':
+      return {
+        value: t('create.workspace.merge.notAvailable'),
+        override: false,
+        note: status.primary?.branch ? (
+          <Trans
+            i18nKey="create.workspace.merge.noteOtherBranch"
+            components={{
+              target: <BranchRef name={status.branch} />,
+              current: <BranchRef name={status.primary.branch} />,
+            }}
+          />
+        ) : (
+          <Trans
+            i18nKey="create.workspace.merge.noteOtherBranchNone"
+            components={{ target: <BranchRef name={status.branch} /> }}
+          />
+        ),
+      };
+    case 'none':
+      return {
+        value: t('create.workspace.merge.notConfigured'),
+        override: false,
+        note: t('create.workspace.merge.noteNoTarget'),
+      };
+  }
 }
 
 function BaseValue({ options, base }: { options: DemoCreateOptions; base?: string }) {
   const { t } = useTranslation();
-  if (base) return <BranchName name={base} />;
+  if (base) return <BranchRef name={base} />;
   const primary = primaryWorkspace(options);
   if (options.defaultBaseRef === 'HEAD')
     return primary?.branch ? (
-      <Trans
-        i18nKey="create.workspace.baseHeadOnBranch"
-        components={{ branch: <BranchName name={primary.branch} /> }}
-      />
+      <BranchRef name={primary.branch} />
     ) : (
       <>{t('create.workspace.baseHead')}</>
     );
-  return <BranchName name={options.defaultBaseRef} />;
+  return <BranchRef name={options.defaultBaseRef} />;
 }
 
 export function NewSummary({
@@ -120,8 +158,11 @@ export function NewSummary({
   choice,
   update,
   errors,
+  title,
   branchConflict,
   focusBranchSignal,
+  slugConflict,
+  focusSlugSignal,
   onAnnounce,
   controls,
 }: {
@@ -129,21 +170,21 @@ export function NewSummary({
   choice: WorkspaceChoice;
   update: Dispatch<SetStateAction<WorkspaceChoice>>;
   errors: ReturnType<typeof revalidate>;
+  /** The specification name; the generated branch preview derives from it. */
+  title: string;
   branchConflict?: string;
   focusBranchSignal?: number;
+  slugConflict?: string;
+  focusSlugSignal?: number;
   onAnnounce: (message: string) => void;
   controls: WorkspaceSettingsControls;
 }) {
-  const base = choice.base.on && choice.base.ref ? choice.base.ref : undefined;
-  const custom = choice.branch.on && choice.branch.name.trim() ? choice.branch.name.trim() : '';
-  const overrideTarget = choice.target.on
-    ? options.workspaces.find((w) => w.workspaceId === choice.target.workspaceId)
-    : undefined;
-  const targetPending = choice.target.on && !choice.target.workspaceId;
-  const targetBranch = effectiveTargetBranch(choice, options);
   const { t } = useTranslation();
   const text = useMessage();
-  const summary = settingsSummary(choice);
+  const overrides = createOverrides(choice, options, title);
+  const summary = settingsSummary(choice, options, title);
+  const merge = mergeRow(options, choice, t, text);
+  const slug = effectiveSlug(choice, title);
   return (
     <>
       <Icon name={FolderPlus} className="text-status-info" />
@@ -157,40 +198,37 @@ export function NewSummary({
       >
         {text(summary)}
       </Typography>
-      <dl className="col-start-2 flex min-w-0 flex-wrap items-baseline gap-x-6 gap-y-1 text-body-sm">
-        <Fact label={t('create.workspace.fact.base')} override={Boolean(base)}>
-          <BaseValue options={options} base={base} />
-        </Fact>
-        <Fact label={t('create.workspace.fact.branch')} override={Boolean(custom)}>
-          {custom ? <BranchName name={custom} /> : t('create.workspace.fact.automatic')}
-        </Fact>
-        <Fact label={t('create.workspace.fact.target')} override={Boolean(overrideTarget)}>
-          {targetPending ? (
-            <span className="text-status-attention">{t('create.workspace.fact.pickTarget')}</span>
-          ) : targetBranch ? (
-            <>
-              <BranchName name={targetBranch} />{' '}
-              <span className="text-content-muted">
-                {overrideTarget
-                  ? t('create.workspace.fact.pinned')
-                  : t('create.workspace.fact.projectTarget')}
-              </span>
-            </>
-          ) : overrideTarget ? (
-            text(noBranchLabel)
-          ) : (
-            <span className="text-status-attention">{t('create.workspace.fact.noTarget')}</span>
-          )}
-        </Fact>
+      <dl className="col-start-2 grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-4 gap-y-2 text-body-sm">
+        <SummaryRow label={t('create.workspace.fact.base')} override={Boolean(overrides.baseRef)}>
+          <BaseValue
+            options={options}
+            base={choice.base.on && choice.base.ref ? choice.base.ref : undefined}
+          />
+        </SummaryRow>
+        <SummaryRow
+          label={t('create.workspace.fact.target')}
+          override={merge.override}
+          note={merge.note}
+        >
+          {merge.value}
+        </SummaryRow>
+        <SummaryRow
+          label={t('create.workspace.fact.branch')}
+          override={Boolean(overrides.branch ?? overrides.slug)}
+        >
+          <BranchRef name={overrides.branch ?? branchPreview(options, slug)} />
+        </SummaryRow>
       </dl>
-      {!choice.target.on && <IntegrationNotice options={options} />}
       <NewWorkspaceSettings
         options={options}
         choice={choice}
         update={update}
         errors={errors}
+        title={title}
         branchConflict={branchConflict}
         focusBranchSignal={focusBranchSignal}
+        slugConflict={slugConflict}
+        focusSlugSignal={focusSlugSignal}
         onAnnounce={onAnnounce}
         controls={controls}
       />
@@ -209,7 +247,7 @@ export function MainSummary({ options }: { options: DemoCreateOptions }) {
         {primary?.branch ? (
           <Trans
             i18nKey="create.workspace.main.onBranch"
-            components={{ branch: <BranchName name={primary.branch} /> }}
+            components={{ branch: <BranchRef name={primary.branch} /> }}
           />
         ) : (
           t('create.workspace.main.noBranch')
@@ -240,7 +278,7 @@ function InheritedTargetNote({
         {note(
           <Trans
             i18nKey="create.workspace.inherited.pinned"
-            components={{ branch: <BranchName name={target.branch} /> }}
+            components={{ branch: <BranchRef name={target.branch} /> }}
           />,
         )}
         {target.drift &&
@@ -256,7 +294,7 @@ function InheritedTargetNote({
     return note(
       <Trans
         i18nKey="create.workspace.inherited.project"
-        components={{ branch: <BranchName name={target.branch} /> }}
+        components={{ branch: <BranchRef name={target.branch} /> }}
       />,
     );
   return note(t('create.workspace.inherited.none'));
@@ -326,7 +364,7 @@ export function ExistingSummary({
             {selected.branch ? (
               <Trans
                 i18nKey="create.workspace.existing.joins"
-                components={{ branch: <BranchName name={selected.branch} /> }}
+                components={{ branch: <BranchRef name={selected.branch} /> }}
               />
             ) : (
               t('create.workspace.existing.joinsNoBranch')

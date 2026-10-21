@@ -31,7 +31,7 @@ import {
   type IconGlyph,
 } from '@nevo/ui';
 import type { DemoCreateOptions } from '@nevo/specflow-contracts/demo';
-import { BranchName } from './BranchName';
+import { BranchRef } from './BranchRef';
 import { ExistingSummary, MainSummary, NewSummary } from './WorkspaceTileSummaries';
 import {
   activeTile,
@@ -107,8 +107,11 @@ export function WorkspaceSection({
   onRefresh,
   announcement,
   onAnnounce,
+  title,
   branchConflict,
   focusBranchSignal,
+  slugConflict,
+  focusSlugSignal,
   headingId,
   handleRef,
 }: {
@@ -123,8 +126,12 @@ export function WorkspaceSection({
   /** Latest polite announcement; the single `role=status` lives in this section's header. */
   announcement: string;
   onAnnounce: (message: string) => void;
+  /** The specification name (the generated slug and branch preview derive from it). */
+  title: string;
   branchConflict?: string;
   focusBranchSignal?: number;
+  slugConflict?: string;
+  focusSlugSignal?: number;
   headingId: string;
   /** Lets the owner move focus to the first field the options flagged as invalid. */
   handleRef?: Ref<WorkspaceSectionHandle>;
@@ -136,6 +143,7 @@ export function WorkspaceSection({
     base: useRef<HTMLElement | null>(null),
     target: useRef<HTMLElement | null>(null),
     branch: useRef<HTMLInputElement | null>(null),
+    slug: useRef<HTMLInputElement | null>(null),
   };
   const existingControl = useRef<HTMLElement | null>(null);
   const ids = useId();
@@ -150,6 +158,7 @@ export function WorkspaceSection({
         ['existing', existingControl],
         ['base', controls.base],
         ['target', controls.target],
+        ['slug', controls.slug],
         ['branch', controls.branch],
       ] as const;
       for (const [key, ref] of order) {
@@ -183,7 +192,7 @@ export function WorkspaceSection({
       return (
         <>
           {primary?.branch ? (
-            <BranchName name={primary.branch} />
+            <BranchRef name={primary.branch} />
           ) : (
             <span>{t('create.workspace.currentCheckout')}</span>
           )}
@@ -343,8 +352,11 @@ export function WorkspaceSection({
                   choice={choice}
                   update={update}
                   errors={errors}
+                  title={title}
                   branchConflict={branchConflict}
                   focusBranchSignal={focusBranchSignal}
+                  slugConflict={slugConflict}
+                  focusSlugSignal={focusSlugSignal}
                   onAnnounce={onAnnounce}
                   controls={controls}
                 />

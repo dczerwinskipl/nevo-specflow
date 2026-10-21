@@ -38,7 +38,13 @@ Typed Create errors otherwise expose matching uppercase `error`/`code`; examples
 `CREATE_CONFLICT`/409, `BRANCH_ALREADY_EXISTS`/409, `BASE_REF_NOT_FOUND`/422
 and `CREATE_RECOVERY_REQUIRED`/503.
 
-POST request: `{title,goal?,operationId?,target?}`, title HTTP length 1–200.
+POST request: `{title,goal?,slug?,operationId?,target?}`, title HTTP length 1–200.
+`slug` is optional, lowercase kebab-case ASCII (`^[a-z0-9]+(-[a-z0-9]+)*$`, at most 80 characters,
+not a Windows device name). It replaces the title-derived slug for the Spec folder, the
+worktree folder and the `{slug}` of the branch pattern. It is part of the idempotency fingerprint
+(an omitted slug keeps the previous fingerprint, a different one on the same `operationId` is
+`CREATE_CONFLICT`); a slug already used by a Spec or an open Create is `CREATE_CONFLICT`, never
+renamed; a malformed slug is rejected by the schema (400) or `CREATE_OPERATION_INVALID`.
 `target` omitted means primary, `{kind:"existing",workspaceId}` means one registered checkout,
 and `{kind:"new-worktree",baseRef?,branch?,integrationTargetWorkspaceId?}` means a new managed
 worktree. Omitted/explicit overrides have distinct durable fingerprints.

@@ -28,3 +28,8 @@ savePrefix: ""
 # artifact bundling for the distributable `nevo-specflow` CLI.
 onlyBuiltDependencies:
   - esbuild
+
+# Security advisory GHSA-q3jh-wrc6-jgq8 / CVE-2026-111756:
+# axios pulls this transitive package; pin the patched release across the workspace.
+overrides:
+  follow-redirects: 1.16.1

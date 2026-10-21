@@ -265,3 +265,32 @@ For UI work that changes stories, screen composition, or visual behavior, query 
 Use Storybook as a deterministic verification surface where repository guidance requires it. Keep stories representative of meaningful states rather than using them as a second product implementation. Visual verification must inspect the rendered output and follow the repository's responsive inspect/fix/re-render workflow; Storybook alone is insufficient when the behavior depends on the composed application shell.
 
 When a visually material change affects an existing story or screen with an accepted Chromatic baseline, use the available Chromatic diff as an additional regression signal. Local rendered inspection remains required and answers whether the current result is correct; the regression comparison helps detect unintended drift from an accepted surface. Resolve `engineering.repository.ci` for the authoritative Chromatic workflow. Do not treat Chromatic as a universal required/protected-branch check.
+
+## Module ownership
+
+**Applies when:** adding, moving, modifying, or reviewing feature code, components, stores, API ports, or shared code.
+**Requirement:** Required when applicable.
+
+Module ownership applies to any change that adds, moves or modifies feature code, components, stores, API ports or shared code. Load `engineering.shared.code-organization` (section "Module ownership and boundaries") and apply it. This is agent guidance; ESLint enforces only the package-level import boundaries configured on main.
+
+- A new component, store or port MUST be placed in the feature that owns the capability, not in the folder of the screen or task that first needed it.
+- `shared/` MUST hold only code used by several features and MUST NOT import a feature or composition root. Code SHOULD NOT be moved to `shared/` before a second feature needs it.
+- For new code and code touched during migration, features SHOULD import other features only through `features/<name>/index.ts`. Feature barrels may not exist yet; do not create one only to satisfy this rule.
+- Demo adapters (for example `api.demo.ts`) are allowed only for explicit Demo Runtime contracts or isolated test environments, are not frontend fixtures or mock-data modes, and do not decide ownership. A port is not required to have two adapters. Production fixture-based adapters remain forbidden.
+- If ownership is ambiguous, surface the decision instead of defaulting to the current screen's folder.
+
+## React UI state and effects review
+
+**Applies when:** adding, moving, modifying, or reviewing React UI components, hooks, effects, mutations, or stores in packages/specflow-ui or packages/nevo-ui.
+**Requirement:** Required when applicable.
+
+This review applies only to React UI code (`packages/specflow-ui`, `packages/nevo-ui`), and to any change that adds, moves or modifies components, hooks, effects, mutations or stores there. Load `engineering.shared.code-organization` (section "React UI state, effects and async operations") and apply it. `react-hooks/*` lint rules are not configured on main, so this is agent guidance, not automatic enforcement. Record the result in the handoff or review.
+
+- Derived values MUST be computed during render, not held in state or synchronized by effects.
+- Effects MUST only synchronize with external systems; operation logic MUST live in handlers or a dedicated hook.
+- Each user action MUST have a single owner operation shared by every trigger.
+- Async operations MUST act on the resource they were started for. A closure over an immutable identity captured at request start is fine; reading a mutable "current resource" when the operation settles MUST NOT decide what is updated. Mutation variables are one way to carry identity, not the only one.
+- Late results (after supersession, owner change or unmount) MUST NOT corrupt newer state or another resource's state or cache; they need not always be discarded.
+- Refs MUST NOT be written during render or hold UI-relevant state. Concurrency-control mechanisms (ledger, lock) MUST have one owner and a defined lifecycle.
+- State MUST live at the lowest common owner with isolated updates; an external store with selective subscription is one acceptable option, not a requirement.
+- Complex domain-specific multi-phase operations (recovery, retry, conflict, uncertain outcome) SHOULD use an explicit state machine unless the framework or query library (for example TanStack Query `useMutation`) already owns the transitions.

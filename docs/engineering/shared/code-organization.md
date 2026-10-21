@@ -203,6 +203,77 @@ extensionless relative-source convention.
 Repository tooling under `tools/**` may use NodeNext-style `.js` specifiers when it executes
 raw `tsc` output. See ADR 0009 for the product-package build model.
 
+## Module ownership and boundaries
+
+A component, store or API port MUST live in the module (feature) that owns the capability,
+regardless of which screen or task first needed it. A screen's folder MUST NOT become the storage
+of every element that screen happened to need first. Screen coordination does not change
+ownership.
+
+- Each feature owns its capabilities: components, state stores and API ports. A port is an
+  interface plus a named adapter beside it, provided as a separate service from the composition
+  root.
+- `shared/` MUST hold only code that several features genuinely use and MUST NOT import a feature
+  or a composition root. Code SHOULD NOT be promoted to `shared/` for convenience; promote it when
+  a second feature needs it.
+- Target rule for new code and code touched during migration: features SHOULD reach other features
+  only through the target feature's public boundary (`features/<name>/index.ts`), which exports
+  what others may use. This is not an existing invariant, and creating a barrel only to satisfy
+  this rule is not required. A feature-private sub-slice SHOULD NOT be imported from outside.
+- If ownership is ambiguous, surface the decision instead of defaulting to the current screen's
+  folder.
+
+Example: demo adapters (for example `api.demo.ts`) do not decide ownership. A demo adapter MAY
+exist only for an explicit Demo Runtime contract (a real backend demo endpoint) or an isolated
+test environment. It is not a frontend fixture or mock-data mode, and a port is not required to
+have two adapters. Production fixture-based adapters remain forbidden.
+
+### What tooling enforces today
+
+- Enforced by ESLint on main: the package-level `no-restricted-imports` product boundaries in
+  `eslint.config.mjs` (which package may import which). Feature-barrel imports and the `shared/`
+  direction are NOT enforced by ESLint, and no rule is added for them.
+- `react-hooks/*` ESLint rules are not configured on main. Where a package later configures them,
+  they MUST pass; until then the state and effect rules below are guidance applied by agents and
+  reviewers, not automatic enforcement.
+- The module ownership and state/effect review gate is agent guidance applied through agent
+  instructions and review. Nothing blocks a merge automatically.
+
+## React UI state, effects and async operations
+
+These rules apply only to React UI code (`packages/specflow-ui`, `packages/nevo-ui`). They apply
+when adding, moving or modifying components, hooks, effects, mutations or stores.
+
+- Values computable from props, state or query data MUST be derived during render (or memoized)
+  and MUST NOT be copied into state or synchronized by an effect.
+- Effects MUST synchronize with external systems (DOM, subscriptions, timers). Operation logic
+  (submit, save, retry) MUST live in event handlers or a dedicated hook, not in effects reacting to
+  state.
+- Each user action (for example Save) MUST have a single owner operation; header buttons,
+  shortcuts and leave dialogs MUST call that same operation rather than reimplement it.
+- An async operation MUST act on the resource it was started for. A closure over an immutable
+  resource identity captured at request start is acceptable; reading a mutable "current resource"
+  (from a ref, store or closure) when the operation settles MUST NOT decide what is updated.
+  Passing identity as mutation variables is one way to do this, not the only one.
+- Late results (after supersession, owner change or unmount) are not always discarded; they MUST
+  NOT corrupt newer state or the state or cache of another resource.
+- Refs MUST NOT be written during render, and UI-relevant state MUST NOT be hidden in refs. Refs
+  are fine for data that does not affect rendering. A concurrency-control mechanism (ledger,
+  lock) MUST have one owner and a defined lifecycle.
+- State MUST live at the lowest common owner and its updates MUST be isolated so unrelated
+  consumers do not re-render. Example: an external store with selective subscription is one
+  acceptable option when state must outlive unmount or is shared by independent components.
+- A complex, domain-specific multi-phase operation (recovery, retry, conflict, uncertain outcome)
+  SHOULD be modeled as an explicit state machine when its transition rules are not already owned
+  by the framework or query library. Example: a pure reducer over named phases, tested for legal
+  and illegal transitions. TanStack Query `useMutation` already covers plain save and error
+  handling, so such operations need no extra reducer.
+- Where `react-hooks/*` rules are configured, separate synchronization effects from operation
+  logic instead of blindly adding dependencies.
+
+Ownership, state derivation, effects and async operations of a React UI change SHOULD be reviewed
+against this section. Component line count is an inspection trigger, not a rule.
+
 ## File size is an inspection trigger
 
 There is no hard line-count limit. Refactor when a file mixes independent

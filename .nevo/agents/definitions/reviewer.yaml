@@ -48,3 +48,19 @@ instructions:
     applies:
       when: reviewing a UX contract, screen mock, rendered product screen, or user-facing implementation
     delivery: auto
+  - id: module-ownership
+    title: Module ownership
+    description: Feature ownership and import-boundary rules (agent guidance) for the architectural quality gate.
+    source: ../instructions/module-ownership.md
+    required: true
+    applies:
+      when: adding, moving, modifying, or reviewing feature code, components, stores, API ports, or shared code
+    delivery: auto
+  - id: react-state-effects
+    title: React UI state and effects review
+    description: State, effect and async-operation review rules that apply only to React UI code.
+    source: ../instructions/react-state-effects.md
+    required: true
+    applies:
+      when: adding, moving, modifying, or reviewing React UI components, hooks, effects, mutations, or stores in packages/specflow-ui or packages/nevo-ui
+    delivery: auto

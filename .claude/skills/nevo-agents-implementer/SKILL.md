@@ -87,5 +87,5 @@ This review applies only to React UI code (`packages/specflow-ui`, `packages/nev
 - Async operations MUST act on the resource they were started for. A closure over an immutable identity captured at request start is fine; reading a mutable "current resource" when the operation settles MUST NOT decide what is updated. Mutation variables are one way to carry identity, not the only one.
 - Late results (after supersession, owner change or unmount) MUST NOT corrupt newer state or another resource's state or cache; they need not always be discarded.
 - Refs MUST NOT be written during render or hold UI-relevant state. Concurrency-control mechanisms (ledger, lock) MUST have one owner and a defined lifecycle.
-- State MUST live at the lowest common owner with isolated updates; an external store with selective subscription is one acceptable option, not a requirement.
+- State MUST live at the lowest common owner that matches its required lifetime (state that must outlive that owner belongs higher or in a store), with isolated updates; an external store with selective subscription is one acceptable option, not a requirement.
 - Complex domain-specific multi-phase operations (recovery, retry, conflict, uncertain outcome) SHOULD use an explicit state machine unless the framework or query library (for example TanStack Query `useMutation`) already owns the transitions.

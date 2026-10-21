@@ -210,9 +210,10 @@ regardless of which screen or task first needed it. A screen's folder MUST NOT b
 of every element that screen happened to need first. Screen coordination does not change
 ownership.
 
-- Each feature owns its capabilities: components, state stores and API ports. A port is an
-  interface plus a named adapter beside it, provided as a separate service from the composition
-  root.
+- Each feature owns its capabilities: components, state stores and API ports. A port SHOULD be
+  an interface with a named adapter beside it, provided as a separate service from the
+  composition root, when that separation buys substitutability or isolation; a separate
+  interface is not required where it adds nothing.
 - `shared/` MUST hold only code that several features genuinely use and MUST NOT import a feature
   or a composition root. Code SHOULD NOT be promoted to `shared/` for convenience; promote it when
   a second feature needs it.
@@ -260,7 +261,8 @@ when adding, moving or modifying components, hooks, effects, mutations or stores
 - Refs MUST NOT be written during render, and UI-relevant state MUST NOT be hidden in refs. Refs
   are fine for data that does not affect rendering. A concurrency-control mechanism (ledger,
   lock) MUST have one owner and a defined lifecycle.
-- State MUST live at the lowest common owner and its updates MUST be isolated so unrelated
+- State MUST live at the lowest common owner that matches its required lifetime (a state that
+  must outlive an owner's unmount belongs higher or in a store), and its updates MUST be isolated so unrelated
   consumers do not re-render. Example: an external store with selective subscription is one
   acceptable option when state must outlive unmount or is shared by independent components.
 - A complex, domain-specific multi-phase operation (recovery, retry, conflict, uncertain outcome)

@@ -9,6 +9,7 @@ import {
   resolveGitCheckoutLayout,
   runGit,
 } from './git-checkout';
+import { READ_GIT_CONCURRENCY, mapBounded } from '../concurrency';
 import { verifyGitInstance } from './git-instance';
 import { ProjectHomeError } from './project-home-error';
 
@@ -105,11 +106,15 @@ export async function resolveProjectHome(
     }
   }
 
-  const designated: { checkout: GitCheckout; marker: HomeMarker }[] = [];
-  for (const root of roots) {
-    const selected = await readDesignatedHome(root, caller.commonDir);
-    if (selected) designated.push(selected);
-  }
+  // Worktree roots are independent read-only probes; only roots carrying a
+  // marker spawn Git. Errors surface in worktree order, as in a sequential scan.
+  const designated = (
+    await mapBounded(roots, READ_GIT_CONCURRENCY, (root) =>
+      readDesignatedHome(root, caller.commonDir),
+    )
+  ).filter(
+    (selected): selected is { checkout: GitCheckout; marker: HomeMarker } => selected !== undefined,
+  );
   if (designated.length > 1) {
     throw new ProjectHomeError(
       'PROJECT_HOME_AMBIGUOUS',
@@ -215,7 +220,24 @@ async function readDesignatedHome(
     );
   }
 
-  const checkout = await inspectCheckout(root);
+  // The identity probe and ignore audit are independent read-only Git calls.
+  // Start both, but evaluate in the original order so errors keep precedence.
+  const localPaths = [
+    LOCAL_IGNORE_ENTRY,
+    LOCAL_CONFIG_RELATIVE_PATH,
+    PROJECT_STATE_RELATIVE_PATH + '/',
+    PROJECT_HOME_MARKER_RELATIVE_PATH,
+    PROJECT_STATE_RELATIVE_PATH + '/workspaces.json',
+    PROJECT_STATE_RELATIVE_PATH + '/engine/operations/probe.json',
+    PROJECT_STATE_RELATIVE_PATH + '/engine/claims/probe.json',
+    PROJECT_STATE_RELATIVE_PATH + '/runtime/sessions/probe.json',
+  ];
+  const [checkoutResult, ignoredResult] = await Promise.allSettled([
+    inspectCheckout(root),
+    areGitIgnored(root, localPaths),
+  ]);
+  if (checkoutResult.status === 'rejected') throw checkoutResult.reason;
+  const checkout = checkoutResult.value;
   if (
     checkout.root !== root ||
     checkout.commonDir !== expectedCommonDir ||
@@ -234,17 +256,8 @@ async function readDesignatedHome(
   // An isolated marker rule could otherwise expose credentials, registry data,
   // claims or provider transcripts. Checking actual paths also detects Git
   // negation rules that selectively re-expose a sensitive descendant.
-  const localPaths = [
-    LOCAL_IGNORE_ENTRY,
-    LOCAL_CONFIG_RELATIVE_PATH,
-    PROJECT_STATE_RELATIVE_PATH + '/',
-    PROJECT_HOME_MARKER_RELATIVE_PATH,
-    PROJECT_STATE_RELATIVE_PATH + '/workspaces.json',
-    PROJECT_STATE_RELATIVE_PATH + '/engine/operations/probe.json',
-    PROJECT_STATE_RELATIVE_PATH + '/engine/claims/probe.json',
-    PROJECT_STATE_RELATIVE_PATH + '/runtime/sessions/probe.json',
-  ];
-  const ignored = await areGitIgnored(root, localPaths);
+  if (ignoredResult.status === 'rejected') throw ignoredResult.reason;
+  const ignored = ignoredResult.value;
   const firstExposed = localPaths.find((_, index) => !ignored[index]);
   if (firstExposed !== undefined) {
     throw new ProjectHomeError(

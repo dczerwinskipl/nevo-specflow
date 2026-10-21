@@ -1,6 +1,7 @@
 // Supported application and transport boundary. Test/fixture internals live in ./testing.
 export {
   isGitIgnored,
+  areGitIgnored,
   LOCAL_CONFIG_RELATIVE_PATH,
   LOCAL_IGNORE_ENTRY,
   PROJECT_CONFIG_RELATIVE_PATH,

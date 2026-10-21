@@ -2,7 +2,7 @@ import { lstat, realpath, readFile } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 
 import {
-  isGitIgnored,
+  areGitIgnored,
   LOCAL_CONFIG_RELATIVE_PATH,
   LOCAL_IGNORE_ENTRY,
   PROJECT_CONFIG_RELATIVE_PATH,
@@ -244,13 +244,13 @@ async function readDesignatedHome(
     PROJECT_STATE_RELATIVE_PATH + '/engine/claims/probe.json',
     PROJECT_STATE_RELATIVE_PATH + '/runtime/sessions/probe.json',
   ];
-  for (const path of localPaths) {
-    if (!(await isGitIgnored(root, path))) {
-      throw new ProjectHomeError(
-        'PROJECT_HOME_INVALID',
-        `Workstation-local SpecFlow path is not Git-ignored: ${path}.`,
-      );
-    }
+  const ignored = await areGitIgnored(root, localPaths);
+  const firstExposed = localPaths.find((_, index) => !ignored[index]);
+  if (firstExposed !== undefined) {
+    throw new ProjectHomeError(
+      'PROJECT_HOME_INVALID',
+      `Workstation-local SpecFlow path is not Git-ignored: ${firstExposed}.`,
+    );
   }
 
   return { checkout, marker: parsed };

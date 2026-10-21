@@ -5,7 +5,7 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { isGitIgnored, resolveGitCheckoutLayout } from '../src/testing';
+import { areGitIgnored, isGitIgnored, resolveGitCheckoutLayout } from '../src/testing';
 
 const temporaryRoots: string[] = [];
 
@@ -114,5 +114,24 @@ describe('Engine Git checkout bootstrap boundary', () => {
     expect(primary.root).toBe(await canonicalGitRoot(root));
     expect(secondary.root).toBe(await canonicalGitRoot(linked));
     expect(secondary.root).not.toBe(primary.root);
+  });
+
+  it('batches ignore checks with the same per-path result as the single form', async () => {
+    const root = await tempRoot();
+    execFileSync('git', ['init', '-q'], { cwd: root });
+    await writeFile(join(root, '.gitignore'), '.nevo/local/*\n!.nevo/local/keep.json\n', 'utf8');
+    const paths = ['.nevo/local/', '.nevo/local/a.json', '.nevo/local/keep.json', 'src/x.ts'];
+    const single = await Promise.all(paths.map((path) => isGitIgnored(root, path)));
+    expect(single).toEqual([true, true, false, false]);
+    await expect(areGitIgnored(root, paths)).resolves.toEqual(single);
+    await expect(areGitIgnored(root, [])).resolves.toEqual([]);
+  });
+
+  it('fails the batched ignore check outside a repository like the single form', async () => {
+    const root = await tempRoot();
+    await expect(isGitIgnored(root, 'a')).rejects.toThrow(/Unable to verify Git ignore rules/u);
+    await expect(areGitIgnored(root, ['a', 'b'])).rejects.toThrow(
+      /Unable to verify Git ignore rules/u,
+    );
   });
 });

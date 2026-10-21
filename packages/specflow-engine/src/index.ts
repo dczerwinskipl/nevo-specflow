@@ -62,7 +62,9 @@ export { CreateOperationError } from './specs/create-journal';
 export {
   createSpecificationFromRequest,
   type CreateSpecificationRequest,
+  type CreateSpecificationRequestOptions,
 } from './specs/create-request';
+export type { CreateStageObservation, CreateStageObserver } from './specs/durable-create';
 
 export {
   inspectPublicCreateOperation,

@@ -55,6 +55,27 @@ export interface CreateSpecificationOptions {
    * Neither recovery assertion is available to CLI/HTTP requests.
    */
   readonly resumeInterruptedOperation?: boolean;
+  /**
+   * Observes durable stage transitions (including the stage found at reservation). A pure read-only
+   * notification seam for progress reporting: it receives no paths or journal data and a failing
+   * observer can never affect the operation.
+   */
+  readonly onStage?: CreateStageObserver;
+}
+
+export interface CreateStageObservation {
+  readonly stage: CreateStage;
+  readonly target: 'existing' | 'new-worktree';
+}
+export type CreateStageObserver = (observation: CreateStageObservation) => void;
+
+function notifyStage(observer: CreateStageObserver | undefined, record: CreateJournal): void {
+  if (!observer) return;
+  try {
+    observer({ stage: record.stage, target: record.target.kind });
+  } catch {
+    // Progress is best effort and must never change the outcome of the operation.
+  }
 }
 
 /** Internal fault-injection seam, deliberately absent from CreateSpecificationOptions. */
@@ -106,6 +127,7 @@ export async function createSpecificationWithIntent(
   validateOperationId(operationId);
   const reservation = await reserveCreateOperation(engine, intent, operationId, creationDate);
   let record = reservation.record;
+  notifyStage(options.onStage, record);
   // The journal intent is durable at this point. A test process can now be
   // terminated without any later mutation having started.
   await afterEffect?.('reservation');
@@ -150,9 +172,9 @@ export async function createSpecificationWithIntent(
           }
           const state = await inspectPlannedGitEffect(engine, record);
           if (state === 'present') {
-            record = await transition(engine, record, 'git-provisioned');
+            record = await transition(engine, record, 'git-provisioned', options.onStage);
           } else if (state === 'absent') {
-            record = await transition(engine, record, 'reserved');
+            record = await transition(engine, record, 'reserved', options.onStage);
           } else {
             throw recovery(
               'Git branch/worktree does not match the intent; manual recovery required.',
@@ -164,7 +186,7 @@ export async function createSpecificationWithIntent(
         case 'reserved': {
           if (record.target.kind === 'new-worktree') {
             await validateNewGitReservation(engine, record);
-            record = await transition(engine, record, 'git-initiated');
+            record = await transition(engine, record, 'git-initiated', options.onStage);
             // WorktreePort owns every filesystem/Git side effect. The durable
             // git-initiated transition was committed above, before this call.
             await createPlannedGitWorktree(engine, record);
@@ -172,9 +194,9 @@ export async function createSpecificationWithIntent(
             if ((await inspectPlannedGitEffect(engine, record)) !== 'present') {
               throw recovery('Created Git worktree does not match the recorded intent.');
             }
-            record = await transition(engine, record, 'git-provisioned');
+            record = await transition(engine, record, 'git-provisioned', options.onStage);
           } else {
-            record = await transition(engine, record, 'git-provisioned');
+            record = await transition(engine, record, 'git-provisioned', options.onStage);
           }
           continue;
         }
@@ -188,7 +210,7 @@ export async function createSpecificationWithIntent(
           } else {
             await requireRegisteredTarget(engine, record);
           }
-          record = await transition(engine, record, 'manifest-writing');
+          record = await transition(engine, record, 'manifest-writing', options.onStage);
           continue;
         }
 
@@ -199,13 +221,13 @@ export async function createSpecificationWithIntent(
             afterEffect ? () => afterEffect('manifest-opened') : undefined,
           );
           await afterEffect?.('manifest');
-          record = await transition(engine, record, 'manifest-written');
+          record = await transition(engine, record, 'manifest-written', options.onStage);
           continue;
         }
 
         case 'manifest-written': {
           await verifyScaffold(record);
-          record = await transition(engine, record, 'registry-writing');
+          record = await transition(engine, record, 'registry-writing', options.onStage);
           continue;
         }
 
@@ -214,13 +236,13 @@ export async function createSpecificationWithIntent(
           await verifyScaffold(record);
           await commitBinding(engine, record);
           await afterEffect?.('registry');
-          record = await transition(engine, record, 'registry-linked');
+          record = await transition(engine, record, 'registry-linked', options.onStage);
           continue;
         }
 
         case 'registry-linked': {
           await verifyResult(engine, record);
-          record = await transition(engine, record, 'completed');
+          record = await transition(engine, record, 'completed', options.onStage);
           continue;
         }
         default: {
@@ -249,8 +271,9 @@ async function transition(
   engine: SpecFlowEngine,
   record: CreateJournal,
   stage: CreateStage,
+  observer?: CreateStageObserver,
 ): Promise<CreateJournal> {
-  return withCreateJournalLock(engine.context, async () => {
+  const next = await withCreateJournalLock(engine.context, async () => {
     const current = await readCreateJournal(engine.context, record.operationId);
     if (!current || !isDeepStrictEqual(current, record)) {
       throw new CreateOperationError(
@@ -262,6 +285,8 @@ async function transition(
     await publishCreateJournal(engine.context, next);
     return next;
   });
+  notifyStage(observer, next);
+  return next;
 }
 
 async function verifyResult(engine: SpecFlowEngine, record: CreateJournal): Promise<void> {

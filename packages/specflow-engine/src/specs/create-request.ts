@@ -2,7 +2,11 @@ import { randomUUID } from 'node:crypto';
 
 import type { SpecFlowEngine } from '../application';
 import { normalizeCreateClientIntent, type CreateClientTargetInput } from './create-intent';
-import { createSpecificationWithIntent, type CreatedSpecification } from './durable-create';
+import {
+  createSpecificationWithIntent,
+  type CreatedSpecification,
+  type CreateStageObserver,
+} from './durable-create';
 
 /** Transport-neutral request: optional overrides preserve user omission. */
 export interface CreateSpecificationRequest {
@@ -13,9 +17,15 @@ export interface CreateSpecificationRequest {
   readonly target: CreateClientTargetInput;
 }
 
+export interface CreateSpecificationRequestOptions {
+  /** Read-only notification of durable stage transitions, for progress reporting. */
+  readonly onStage?: CreateStageObserver;
+}
+
 export async function createSpecificationFromRequest(
   engine: SpecFlowEngine,
   request: CreateSpecificationRequest,
+  options: CreateSpecificationRequestOptions = {},
 ): Promise<CreatedSpecification> {
   // No date or ref defaults are chosen outside the Project Home lock. An
   // existing journal is inspected before sampling a fresh clock.
@@ -24,5 +34,6 @@ export async function createSpecificationFromRequest(
     request.operationId ?? randomUUID(),
     normalizeCreateClientIntent(request),
     () => new Date().toISOString().slice(0, 10),
+    options.onStage ? { onStage: options.onStage } : {},
   );
 }

@@ -45,9 +45,15 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
-          const file = 'tools/storybook/chromatic-diagnostics.json';
-          if (!fs.existsSync(file)) {
-            console.log('No Chromatic diagnostics file; inspect the build link in job logs.');
+          // Chromatic's CLI can write the report relative to the workspace or
+          // package cwd, depending on how pnpm filters invoke it.
+          const candidates = [
+            'chromatic-diagnostics.json',
+            'tools/storybook/chromatic-diagnostics.json',
+          ];
+          const file = candidates.find((candidate) => fs.existsSync(candidate));
+          if (!file) {
+            console.log('No local Chromatic diagnostics file; inspect the build link in job logs.');
             process.exit(0);
           }
           const sensitive = /token|secret|credential|password|authorization|headers|environment|env|apiKey|private/i;

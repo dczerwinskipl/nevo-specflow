@@ -1,9 +1,9 @@
 import { Alert, Button, Collapsible } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { MessageKey } from '../../../i18n/message';
-import type { DemoOperationStatus } from '@nevo/specflow-contracts/demo';
 import { BranchName } from './BranchName';
 import type { CreateFailure } from './createFailure';
+import type { CreateOperationStatus } from './createOperationReducer';
 
 const staleReasonCodes = ['DEMO_WORKSPACE_UNAVAILABLE', 'BASE_REF_NOT_FOUND'] as const;
 
@@ -28,6 +28,8 @@ function title(failure: CreateFailure): MessageKey {
       return 'create.errors.stale.title';
     case 'operation-conflict':
       return 'create.errors.conflict.title';
+    case 'name-conflict':
+      return 'create.errors.nameConflict.title';
     case 'forbidden':
       return 'create.errors.forbiddenTitle';
     case 'unauthenticated':
@@ -53,6 +55,8 @@ function bodyKey(failure: CreateFailure): MessageKey {
       return 'create.errors.stale.body';
     case 'operation-conflict':
       return 'create.errors.conflict.body';
+    case 'name-conflict':
+      return 'create.errors.nameConflict.body';
     case 'forbidden':
       return 'create.errors.readOnlyForm';
     case 'unauthenticated':
@@ -95,7 +99,7 @@ export function CreateFailureAlert({
   failure: CreateFailure;
   /** Facts the client knows about the operation (id, name, place, branch, server step/time). */
   details: readonly OperationDetail[];
-  status: DemoOperationStatus | null;
+  status: CreateOperationStatus | null;
   statusUnreadable: boolean;
   /** The last check never left the browser (no connection); the earlier outcome is unchanged. */
   connectionLost: boolean;

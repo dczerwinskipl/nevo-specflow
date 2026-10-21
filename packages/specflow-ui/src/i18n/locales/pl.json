@@ -535,7 +535,6 @@
     "newSession": "Nowa sesja",
     "newSpecification": "Nowa specyfikacja",
     "loading": "Wczytywanie konfiguracji…",
-    "demoOnly": "Tworzenie dostępne wyłącznie w trybie demonstracyjnym",
     "loadError": "Nie udało się wczytać konfiguracji",
     "sessionReady": "Sesja gotowa",
     "specificationCreated": "Specyfikacja utworzona",
@@ -599,7 +598,8 @@
       "refreshed": "Opcje odświeżone.",
       "notStarted": "Operacja jeszcze się nie rozpoczęła. Ponów tę samą operację — zachowuje ten sam identyfikator.",
       "operationFailed": "Operacja zakończyła się niepowodzeniem. Możesz utworzyć specyfikację ponownie.",
-      "copied": "Skopiowano {{label}}."
+      "copied": "Skopiowano {{label}}.",
+      "monitoring": "Przygotowanie środowiska może potrwać kilka minut. Obserwujemy operację."
     },
     "operation": {
       "copyLabelOperation": "dane operacji",
@@ -723,7 +723,11 @@
       "copyDiagnostics": "Skopiuj dane diagnostyczne",
       "diagnostics": "Dane diagnostyczne",
       "useCustomName": "Podaj własną nazwę",
-      "useAutomaticName": "Użyj automatycznej nazwy"
+      "useAutomaticName": "Użyj automatycznej nazwy",
+      "nameConflict": {
+        "title": "Specyfikacja o tej nazwie może już istnieć",
+        "body": "Specyfikacja nie została utworzona: nazwa jest zajęta lub zmienił się stan środowisk. Zmień nazwę albo odśwież opcje. Przy następnej próbie użyjemy nowego identyfikatora operacji."
+      }
     },
     "workspace": {
       "heading": "Gdzie chcesz pracować?",
@@ -899,6 +903,16 @@
         "announceKeptNoTarget": "Cel scalenia pozostaje bez zmian.",
         "dirty": "Nie zaproponujemy scalenia z powrotem do <branch/>: to środowisko pracy ma niezapisane zmiany w Git. Cel scalenia zostaje bez zmian."
       }
+    },
+    "project": {
+      "subheading": "Nadaj jej nazwę, opisz cel, jeśli go masz, i wybierz, gdzie mają leżeć jej pliki.",
+      "goalLabel": "Cel (opcjonalnie)",
+      "goalPlaceholder": "Co ma osiągnąć ta specyfikacja?",
+      "footNote": "Po utworzeniu otworzymy specyfikację."
+    },
+    "monitoring": {
+      "title": "Przygotowujemy środowisko pracy",
+      "body": "To może potrwać kilka minut. Zostaw tę stronę otwartą: sprawdzamy operację za Ciebie i otworzymy specyfikację, gdy będzie gotowa."
     }
   },
   "documents": {

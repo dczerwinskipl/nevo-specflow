@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import type { DemoOperationStatus } from '@nevo/specflow-contracts/demo';
 import {
   createOperationReducer,
   initialCreateOperation,
@@ -7,12 +6,13 @@ import {
   selectCreateOperationFlags,
   type CreateOperationEvent,
   type CreateOperationState,
+  type CreateOperationStatus,
   type CreatePhase,
   type StoredFailure,
 } from './createOperationReducer';
 
 const snapshot = 'form-1';
-const status = { status: 'not-started' } as DemoOperationStatus;
+const status: CreateOperationStatus = { status: 'not-started' };
 const sent = { operationId: 'op-1', title: 'Title' };
 const failure = (kind: StoredFailure['kind'], at = snapshot): StoredFailure =>
   ({ kind, snapshot: at, ...(kind === 'stale' ? { code: 'X' } : {}) }) as StoredFailure;
@@ -28,9 +28,11 @@ const recovery = reduce(submitting, {
   failure: failure('recovery-required'),
 });
 const completed = reduce(submitting, { type: 'submit-succeeded' });
+const monitoring = reduce(submitting, { type: 'monitoring-started' });
 const states: Record<CreatePhase, CreateOperationState> = {
   idle: initialCreateOperation,
   submitting,
+  monitoring,
   failed,
   'outcome-unknown': uncertain,
   'recovery-required': recovery,
@@ -231,6 +233,64 @@ describe('createOperationReducer ignores illegal events', () => {
       ignored(phase, { type: 'form-edited', snapshot: 'another' });
     },
   );
+});
+
+describe('monitoring (a submit that outlived its soft deadline)', () => {
+  it('submitting -> monitoring keeps the sent request and is busy, not failed', () => {
+    const prepared = reduce(
+      submitting,
+      { type: 'request-prepared', sent },
+      { type: 'monitoring-started' },
+    );
+    expect(prepared).toMatchObject({ phase: 'monitoring', sent, failure: null });
+    expect(selectCreateOperationFlags(prepared)).toMatchObject({
+      busy: true,
+      monitoring: true,
+      blocksLeave: true,
+    });
+  });
+
+  it('monitoring ends like submitting: success or a failure', () => {
+    expect(reduce(monitoring, { type: 'submit-succeeded' }).phase).toBe('completed');
+    expect(reduce(monitoring, { type: 'submit-failed', failure: failure('uncertain') }).phase).toBe(
+      'outcome-unknown',
+    );
+    expect(
+      reduce(monitoring, { type: 'submit-failed', failure: failure('recovery-required') }).phase,
+    ).toBe('recovery-required');
+    expect(reduce(monitoring, { type: 'submit-failed', failure: failure('stale') }).phase).toBe(
+      'failed',
+    );
+  });
+
+  it.each([
+    'idle',
+    'monitoring',
+    'failed',
+    'outcome-unknown',
+    'recovery-required',
+    'completed',
+  ] as const)('monitoring-started is ignored in %s', (phase) =>
+    expect(createOperationReducer(states[phase], { type: 'monitoring-started' })).toBe(
+      states[phase],
+    ),
+  );
+
+  it('a status check that finds the operation still open keeps the phase and records the status', () => {
+    const checking = reduce(recovery, { type: 'check-started' });
+    const open = reduce(checking, { type: 'check-still-open', status: { status: 'in-progress' } });
+    expect(open).toMatchObject({
+      phase: 'recovery-required',
+      checking: false,
+      status: { status: 'in-progress' },
+    });
+    expect(
+      createOperationReducer(uncertain, {
+        type: 'check-still-open',
+        status: { status: 'in-progress' },
+      }),
+    ).toBe(uncertain);
+  });
 });
 
 describe('selectCreateOperationFlags', () => {

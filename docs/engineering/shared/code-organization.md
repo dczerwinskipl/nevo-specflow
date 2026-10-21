@@ -234,6 +234,11 @@ every element that screen happened to need first.
 - Each port is an interface plus a named adapter beside it (`api.ts`, `api.demo.ts`) and is
   provided as a separate service by `createSpecFlowAppServices` (`documentsApi`, `sessionsApi`,
   `creationApi`). Demo adapters stay demo adapters; they do not decide where product components live.
+  The project Runtime has its own contract (`@nevo/specflow-contracts/specs`), so a capability that
+  differs between Runtimes gets a second port rather than one port with two adapters
+  (`projectCreationApi` beside `creationApi`); the Runtime mode (`useRuntimeMode`) selects the flow in one
+  place. Project adapters use `src/api` (`ApiTransport`): every failure is an `ApiError` classified once
+  (kind, mutation `outcome`), the server text is never shown, and a mutation is never retried blindly.
 - Visit-scoped state is a small external store owned by its feature and subscribed per entry
   (for example one document's draft), not one global React context whose every update re-renders
   all consumers.

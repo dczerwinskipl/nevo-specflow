@@ -1,5 +1,11 @@
 import type { CreationApi } from '../features/specs/creation/api';
 import { createDemoCreationApi } from '../features/specs/creation/api.demo';
+import {
+  createProjectCreationApi,
+  type ProjectCreationApi,
+} from '../features/specs/creation/api.project';
+import { createSpecErrorCodes } from '../features/specs/creation/createSpecErrors';
+import { createApiTransport } from '../api';
 import type { SessionsApi } from '../features/sessions/api';
 import { createDemoSessionsApi } from '../features/sessions/api.demo';
 import { createHttpClient, type HttpClient } from '@nevo/http-client';
@@ -34,6 +40,8 @@ export interface SpecFlowAppServices {
   readonly documentsApi: DocumentsApi;
   readonly sessionsApi: SessionsApi;
   readonly creationApi: CreationApi;
+  /** Specification creation of a project Runtime (the demo Runtime uses `creationApi`). */
+  readonly projectCreationApi: ProjectCreationApi;
 }
 
 export type SpecFlowServices = SpecFlowAppServices;
@@ -51,6 +59,7 @@ export interface SpecFlowServicesOptions {
   readonly documentsApi?: DocumentsApi;
   readonly sessionsApi?: SessionsApi;
   readonly creationApi?: CreationApi;
+  readonly projectCreationApi?: ProjectCreationApi;
 }
 
 export function createSpecFlowAppServices(
@@ -83,6 +92,11 @@ export function createSpecFlowAppServices(
     documentsApi: options.documentsApi ?? createDemoDocumentsApi(runtimeHttp),
     sessionsApi: options.sessionsApi ?? createDemoSessionsApi(runtimeHttp),
     creationApi: options.creationApi ?? createDemoCreationApi(runtimeHttp),
+    projectCreationApi:
+      options.projectCreationApi ??
+      createProjectCreationApi(
+        createApiTransport(runtimeHttp, { operation: 'specs.create', codes: createSpecErrorCodes }),
+      ),
   };
 }
 

@@ -25,6 +25,13 @@ function NewSpecification() {
     <AppWorkspaceProvider>
       <CreateSpecificationScreen
         onBack={() => void navigate({ to: '/', search: { collection } })}
+        onProjectCreated={(created) =>
+          void navigate({
+            to: '/specs/$specId',
+            params: { specId: created.specId },
+            search: { collection },
+          })
+        }
         onCreated={(specId, documentId) => {
           if (documentId)
             void navigate({
@@ -65,6 +72,7 @@ function NewSession() {
             search: { collection },
           })
         }
+        onProjectCreated={() => undefined}
         onCreated={() => {
           void navigate({ to: '/specs/$specId', params: { specId }, search: { collection } });
         }}

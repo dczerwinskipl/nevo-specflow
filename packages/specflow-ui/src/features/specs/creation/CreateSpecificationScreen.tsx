@@ -1,33 +1,34 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Button } from '@nevo/ui';
+import type { CreatedSpec } from '@nevo/specflow-contracts/specs';
 import { ApplicationContextLine } from '../../../app/navigation/ApplicationLocation';
+import { FeatureUnavailable } from '../../../app/errors/FeatureUnavailable';
 import { useAppServices } from '../../../app/useAppServices';
+import { runtimeKeys, useRuntimeMode } from '../../../app/useRuntimeMode';
 import { creationKeys } from './api';
+import { CreateProjectForm } from './CreateProjectForm';
 import { CreateShell } from './CreateShell';
 import { CreateSpecificationForm } from './CreateSpecificationForm';
 
 interface Props {
   specId?: string;
   onCreated: (id: string, document?: string) => void;
+  /** A specification created on a project Runtime (it has no documents or sessions to open yet). */
+  onProjectCreated: (created: CreatedSpec) => void;
   onSession: (spec: string, session: string) => void;
   onBack: () => void;
 }
 
-/** Loads the runtime mode and the catalogue, then shows the Create form (or why it cannot be shown). */
+/**
+ * Decides by the Runtime mode which Create flow is shown: the real one on a project Runtime, the
+ * demo catalogue flow on a demo Runtime. The two have different contracts and never mix.
+ */
 export function CreateSpecificationScreen(props: Props) {
   const { t } = useTranslation();
-  const services = useAppServices();
-  const runtime = useQuery({
-    queryKey: ['runtime-info'],
-    queryFn: ({ signal }) => services.runtimeInfoApi.getInfo(signal),
-  });
-  const catalogue = useQuery({
-    queryKey: creationKeys.catalogue(props.specId),
-    queryFn: ({ signal }) => services.creationApi.catalogue(props.specId, signal),
-    enabled: runtime.data?.dataMode === 'demo',
-  });
+  const mode = useRuntimeMode();
+  const queryClient = useQueryClient();
   const fallback = (children: ReactNode) => (
     <CreateShell specId={props.specId} containerClassName="grid gap-6">
       <ApplicationContextLine
@@ -38,12 +39,39 @@ export function CreateSpecificationScreen(props: Props) {
       {children}
     </CreateShell>
   );
-  if (runtime.isPending || (runtime.data?.dataMode === 'demo' && catalogue.isPending))
-    return fallback(<p role="status">{t('create.loading')}</p>);
-  if (runtime.data?.dataMode !== 'demo')
-    return fallback(<Alert tone="attention" title={t('create.demoOnly')} />);
-  if (!catalogue.data)
+  if (mode === 'loading') return fallback(<p role="status">{t('create.loading')}</p>);
+  if (mode === 'unavailable')
     return fallback(
+      <Alert tone="attention" title={t('create.loadError')}>
+        <Button onClick={() => void queryClient.invalidateQueries({ queryKey: runtimeKeys.info })}>
+          {t('common.retry')}
+        </Button>
+      </Alert>,
+    );
+  // Agent sessions exist only in the demo Runtime.
+  if (mode === 'project')
+    return props.specId ? (
+      fallback(<FeatureUnavailable />)
+    ) : (
+      <CreateProjectForm onCreated={props.onProjectCreated} />
+    );
+  return <DemoCreateSpecification {...props} fallback={fallback} />;
+}
+
+function DemoCreateSpecification(props: Props & { fallback: (children: ReactNode) => ReactNode }) {
+  const { t } = useTranslation();
+  const services = useAppServices();
+  const runtime = useQuery({
+    queryKey: runtimeKeys.info,
+    queryFn: ({ signal }) => services.runtimeInfoApi.getInfo(signal),
+  });
+  const catalogue = useQuery({
+    queryKey: creationKeys.catalogue(props.specId),
+    queryFn: ({ signal }) => services.creationApi.catalogue(props.specId, signal),
+  });
+  if (catalogue.isPending) return props.fallback(<p role="status">{t('create.loading')}</p>);
+  if (!catalogue.data)
+    return props.fallback(
       <Alert tone="attention" title={t('create.loadError')}>
         <Button onClick={() => void catalogue.refetch()}>{t('common.retry')}</Button>
       </Alert>,

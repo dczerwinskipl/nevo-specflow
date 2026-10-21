@@ -7,6 +7,8 @@ export type CreateFailure =
   /** `code` selects the explanation; the server's own text is never displayed. */
   | { kind: 'stale'; code: string }
   | { kind: 'operation-conflict' }
+  /** The project Runtime CREATE_CONFLICT: the name (slug) may be taken or the state changed. */
+  | { kind: 'name-conflict' }
   | { kind: 'forbidden' }
   /** 401: the session is not authenticated (the form is kept). */
   | { kind: 'unauthenticated' }

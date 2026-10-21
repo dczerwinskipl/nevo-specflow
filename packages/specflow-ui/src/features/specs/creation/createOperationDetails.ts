@@ -1,8 +1,8 @@
 import type { TFunction } from 'i18next';
-import type { DemoCreateOptions, DemoOperationStatus } from '@nevo/specflow-contracts/demo';
+import type { DemoCreateOptions } from '@nevo/specflow-contracts/demo';
 import type { Message } from '../../../i18n/message';
 import type { OperationDetail } from './CreateFailureAlert';
-import type { SentRequest } from './createOperationReducer';
+import type { CreateOperationStatus, SentRequest } from './createOperationReducer';
 import { formatOperationTime, operationStageLabel, primaryWorkspace } from './workspaceChoice';
 
 /**
@@ -11,7 +11,7 @@ import { formatOperationTime, operationStageLabel, primaryWorkspace } from './wo
  */
 export function buildOperationDetails(input: {
   sent: SentRequest | null;
-  status: DemoOperationStatus | null;
+  status: CreateOperationStatus | null;
   workspaceOptions: DemoCreateOptions | undefined;
   typedTitle: string;
   language: string;

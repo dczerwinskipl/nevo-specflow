@@ -535,7 +535,6 @@
     "newSession": "New session",
     "newSpecification": "New specification",
     "loading": "Loading configuration…",
-    "demoOnly": "Creation is available in demo mode only",
     "loadError": "Unable to load the configuration",
     "sessionReady": "Session ready",
     "specificationCreated": "Specification created",
@@ -599,7 +598,8 @@
       "refreshed": "Options refreshed.",
       "notStarted": "The operation has not started yet. Retry the same operation — it keeps the same identifier.",
       "operationFailed": "The operation failed. You can create the specification again.",
-      "copied": "Copied {{label}}."
+      "copied": "Copied {{label}}.",
+      "monitoring": "Preparing the workspace can take a few minutes. We are watching the operation."
     },
     "operation": {
       "copyLabelOperation": "operation details",
@@ -723,7 +723,11 @@
       "copyDiagnostics": "Copy diagnostic data",
       "diagnostics": "Diagnostic data",
       "useCustomName": "Enter your own name",
-      "useAutomaticName": "Use an automatic name"
+      "useAutomaticName": "Use an automatic name",
+      "nameConflict": {
+        "title": "A specification with this name may already exist",
+        "body": "The specification was not created: the name is already taken or the state of the workspaces changed. Change the name or refresh the options. The next attempt uses a new operation identifier."
+      }
     },
     "workspace": {
       "heading": "Where do you want to work?",
@@ -899,6 +903,16 @@
         "announceKeptNoTarget": "The merge target stays unchanged.",
         "dirty": "We will not suggest merging back into <branch/>: that workspace has uncommitted Git changes. The merge target stays unchanged."
       }
+    },
+    "project": {
+      "subheading": "Name it, add the goal if you have one, and choose where its files will live.",
+      "goalLabel": "Goal (optional)",
+      "goalPlaceholder": "What should this specification achieve?",
+      "footNote": "After creation we will open the specification."
+    },
+    "monitoring": {
+      "title": "Preparing the workspace",
+      "body": "This can take a few minutes. Keep this page open: we are checking the operation for you and will open the specification when it is ready."
     }
   },
   "documents": {

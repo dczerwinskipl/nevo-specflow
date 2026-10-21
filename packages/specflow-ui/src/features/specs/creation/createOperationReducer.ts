@@ -1,5 +1,17 @@
-import type { DemoCreateRequest, DemoOperationStatus } from '@nevo/specflow-contracts/demo';
+import type { CreateSpecRequest } from '@nevo/specflow-contracts/specs';
 import type { CreateFailure } from './createFailure';
+
+/**
+ * What the server said about an operation, as far as the UI displays it. Both Runtime flavours fit
+ * (the demo adds a failed/not-started status and a step; the project Runtime answers in-progress,
+ * recovery-required or the result, and 404 means not-started).
+ */
+export interface CreateOperationStatus {
+  status: 'completed' | 'in-progress' | 'recovery-required' | 'not-started' | 'failed';
+  step?: string;
+  branch?: string;
+  updatedAt?: string;
+}
 
 /**
  * State machine of one Create operation (pure; the async orchestration lives in
@@ -25,11 +37,21 @@ import type { CreateFailure } from './createFailure';
  *   (-> outcome-unknown) | check-failed-operation (-> failed) | check-unreadable (same phase).
  * ```
  *
+ * `monitoring` is a long-running submit that outlived its soft deadline: the request is still in
+ * flight and the status is polled. It is an expected state, not a failure; `submit-succeeded` and
+ * `submit-failed` end it like `submitting`.
+ *
  * Illegal events for the current phase are ignored (the state object is returned unchanged).
  * `form-edited` never retires an unknown outcome: only the server's answer ends it.
  */
 export type CreatePhase =
-  'idle' | 'submitting' | 'outcome-unknown' | 'recovery-required' | 'completed' | 'failed';
+  | 'idle'
+  | 'submitting'
+  | 'monitoring'
+  | 'outcome-unknown'
+  | 'recovery-required'
+  | 'completed'
+  | 'failed';
 
 export type UnknownPhase = 'outcome-unknown' | 'recovery-required';
 
@@ -40,7 +62,7 @@ export type StoredFailure = CreateFailure & { snapshot: string };
 export interface SentRequest {
   operationId: string;
   title: string;
-  target?: DemoCreateRequest['target'];
+  target?: CreateSpecRequest['target'];
 }
 
 export interface CreateOperationState {
@@ -49,7 +71,7 @@ export interface CreateOperationState {
   /** While `submitting`: the unknown phase this attempt replays (null for a fresh attempt). */
   resumedFrom: UnknownPhase | null;
   sent: SentRequest | null;
-  status: DemoOperationStatus | null;
+  status: CreateOperationStatus | null;
   /** The operation status check is in flight. */
   checking: boolean;
   statusUnreadable: boolean;
@@ -64,14 +86,17 @@ export interface CreateOperationState {
 export type CreateOperationEvent =
   | { type: 'submit-started' }
   | { type: 'request-prepared'; sent: SentRequest }
+  | { type: 'monitoring-started' }
   | { type: 'submit-succeeded' }
   | { type: 'submit-failed'; failure: StoredFailure; discardSent?: boolean }
   | { type: 'submit-offline-replay' }
   | { type: 'check-started' }
   | { type: 'check-found-completed' }
-  | { type: 'check-not-started'; status: DemoOperationStatus; snapshot: string }
-  | { type: 'check-failed-operation'; status: DemoOperationStatus; snapshot: string }
-  | { type: 'check-unreadable'; status?: DemoOperationStatus }
+  | { type: 'check-not-started'; status: CreateOperationStatus; snapshot: string }
+  | { type: 'check-failed-operation'; status: CreateOperationStatus; snapshot: string }
+  | { type: 'check-unreadable'; status?: CreateOperationStatus }
+  /** The checked operation is still open on the server (in progress / awaiting recovery). */
+  | { type: 'check-still-open'; status: CreateOperationStatus }
   | { type: 'failure-dismissed' }
   | { type: 'form-edited'; snapshot: string };
 
@@ -130,12 +155,14 @@ export function createOperationReducer(
     }
     case 'request-prepared':
       return state.phase === 'submitting' ? { ...state, sent: event.sent } : state;
+    case 'monitoring-started':
+      return state.phase === 'submitting' ? { ...state, phase: 'monitoring' } : state;
     case 'submit-succeeded':
-      return state.phase === 'submitting'
+      return state.phase === 'submitting' || state.phase === 'monitoring'
         ? { ...state, phase: 'completed', resumedFrom: null, submitFailed: false }
         : state;
     case 'submit-failed':
-      return state.phase === 'submitting'
+      return state.phase === 'submitting' || state.phase === 'monitoring'
         ? {
             ...state,
             phase: phaseOfFailure(event.failure),
@@ -205,6 +232,8 @@ export function createOperationReducer(
             statusUnreadable: true,
           }
         : state;
+    case 'check-still-open':
+      return state.checking ? { ...state, status: event.status, checking: false } : state;
     case 'failure-dismissed':
       return state.phase === 'failed'
         ? { ...state, phase: 'idle', failure: null, submitFailed: false }
@@ -220,6 +249,8 @@ export function createOperationReducer(
 /** What the presentation asks about the operation; derived, never stored. */
 export interface CreateOperationFlags {
   busy: boolean;
+  /** The submit outlived its soft deadline and the operation is being watched. */
+  monitoring: boolean;
   checking: boolean;
   uncertain: boolean;
   recovery: boolean;
@@ -231,9 +262,11 @@ export interface CreateOperationFlags {
 export function selectCreateOperationFlags(state: CreateOperationState): CreateOperationFlags {
   const uncertain = state.failure?.kind === 'uncertain';
   const recovery = state.failure?.kind === 'recovery-required';
-  const busy = state.phase === 'submitting';
+  const monitoring = state.phase === 'monitoring';
+  const busy = state.phase === 'submitting' || monitoring;
   return {
     busy,
+    monitoring,
     checking: state.checking,
     uncertain,
     recovery,

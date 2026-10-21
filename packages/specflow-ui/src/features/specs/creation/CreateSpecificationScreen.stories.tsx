@@ -244,6 +244,7 @@ function Fixture({
               <AppShell navigation={<div>Projekt</div>} style={{ height: '100%', width: '100%' }}>
                 <CreateSpecificationScreen
                   onCreated={() => undefined}
+                  onProjectCreated={() => undefined}
                   onSession={() => undefined}
                   onBack={() => undefined}
                 />

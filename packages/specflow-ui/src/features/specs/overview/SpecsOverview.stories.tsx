@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { waitFor } from 'storybook/test';
 import { AppShell, Typography } from '@nevo/ui';
 import {
   Outlet,
@@ -485,15 +486,22 @@ export const Archive: Story = {
 /** Full metadata is the normal Archive visual fixture; incomplete records are tested separately. */
 export const ArchiveWithCompleteMetadata: Story = {
   ...Archive,
-  play: ({ canvasElement }) => {
-    const rows = [...canvasElement.querySelectorAll<HTMLElement>('[data-spec-id]')];
-    if (rows.length !== 18) throw new Error('Expected all archived specifications.');
-    if (rows.some((row) => !row.getAttribute('data-spec-key'))) {
-      throw new Error('Archive fixture must render a stable Specification key on every row.');
-    }
-    if (rows.some((row) => !row.querySelector('[data-spec-metadata]'))) {
-      throw new Error('Archive fixture should cover tags and linked PR metadata.');
-    }
+  play: async ({ canvasElement }) => {
+    // RouterProvider can finish its initial route after Storybook starts play.
+    // Check the final DOM instead of failing during asynchronous initialization.
+    // Off-screen rows remain in the DOM; scrolling does not affect the count.
+    await waitFor(
+      () => {
+        const rows = [...canvasElement.querySelectorAll<HTMLElement>('[data-spec-id]')];
+        if (rows.length !== 18)
+          throw new Error(`Expected all 18 archived specifications; found ${rows.length}.`);
+        if (rows.some((row) => !row.getAttribute('data-spec-key')))
+          throw new Error('Archive fixture must render a stable Specification key on every row.');
+        if (rows.some((row) => !row.querySelector('[data-spec-metadata]')))
+          throw new Error('Archive fixture should cover tags and linked PR metadata.');
+      },
+      { timeout: 5000 },
+    );
   },
 };
 

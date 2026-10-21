@@ -48,7 +48,7 @@ export function StandaloneLocaleMenu() {
     <Menu>
       <MenuTrigger asChild>
         <Button
-          aria-label={t('common.changeLanguage')}
+          aria-description={t('common.changeLanguage')}
           size="sm"
           trailingIcon="chevron-down"
           variant="ghost"

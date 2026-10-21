@@ -32,7 +32,7 @@ export const Default: Story = {
     if (!surface || !desktopHeader || !root || !surface.contains(desktopHeader)) {
       throw new Error('Desktop recovery header must stay inside the standalone surface.');
     }
-    if (!desktopHeader.querySelector('[aria-label="Change language"]')) {
+    if (!desktopHeader.querySelector('[aria-description="Change language"]')) {
       throw new Error('Desktop recovery header must expose the product language action.');
     }
 
@@ -71,7 +71,7 @@ export const Mobile: Story = {
       '[data-standalone-shell-region="mobile-header"]',
     );
     const mobileSelector = mobileHeader?.querySelector<HTMLElement>(
-      '[aria-label="Change language"]',
+      '[aria-description="Change language"]',
     );
     const surface = canvasElement.querySelector<HTMLElement>(
       '[data-standalone-shell-region="surface"]',

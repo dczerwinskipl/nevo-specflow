@@ -301,12 +301,12 @@ const pickerFirstFailurePlay: NonNullable<Story['play']> = async ({
   canvasElement,
   userEvent,
 }) => {
-  await userEvent.click(await canvas.findByRole('button', { name: /Change specification:/ }));
+  await userEvent.click(await canvas.findByRole('button', { name: /Current specification/ }));
   const doc = canvasElement.ownerDocument;
   await waitFor(
     () =>
       doc
-        .querySelector('.popover-content')
+        .querySelector('.popover-content[data-state="open"]')
         ?.textContent?.includes('Specification catalogue unavailable') ?? false,
     'Picker must reject malformed catalogue',
   );
@@ -319,7 +319,7 @@ const pickerFirstFailurePlay: NonNullable<Story['play']> = async ({
   )
     throw new Error('Malformed response must never be successful cache data');
   const browse = doc.querySelector<HTMLAnchorElement>(
-    '.popover-content a[href="/?collection=current"]',
+    '.popover-content[data-state="open"] a[href="/?collection=current"]',
   );
   if (!browse) throw new Error('Browse all destination missing');
   await userEvent.click(browse);
@@ -374,9 +374,7 @@ export const Polish: Story = { args: { locale: 'pl' } };
 export const LocalAccount: Story = {
   args: { authMode: 'local' },
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(
-      await canvas.findByRole('button', { name: 'Open user menu for Local User' }),
-    );
+    await userEvent.click(await canvas.findByRole('button', { name: /Local User/ }));
     const accountMenu = await waitFor(
       () => document.querySelector<HTMLElement>('[role="menu"][aria-label="User menu"]'),
       'Local account menu should open.',
@@ -391,7 +389,7 @@ export const LocalAccount: Story = {
 export const AuthenticatedAccount: Story = {
   args: { authMode: 'authenticated' },
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(await canvas.findByRole('button', { name: 'Open user menu for Demo' }));
+    await userEvent.click(await canvas.findByRole('button', { name: /Demo/ }));
     const accountMenu = await waitFor(
       () => document.querySelector<HTMLElement>('[role="menu"][aria-label="User menu"]'),
       'Authenticated account menu should open.',
@@ -409,7 +407,7 @@ export const AuthenticatedAccount: Story = {
 export const LogoutSuccess: Story = {
   args: { authMode: 'authenticated' },
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(await canvas.findByRole('button', { name: 'Open user menu for Demo' }));
+    await userEvent.click(await canvas.findByRole('button', { name: /Demo/ }));
     const signOut = await waitFor(
       () =>
         [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) =>
@@ -425,7 +423,7 @@ export const LogoutSuccess: Story = {
 export const LogoutRefreshFailure: Story = {
   args: { authMode: 'authenticated-refresh-failure' },
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(await canvas.findByRole('button', { name: 'Open user menu for Demo' }));
+    await userEvent.click(await canvas.findByRole('button', { name: /Demo/ }));
     const signOut = await waitFor(
       () =>
         [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) =>
@@ -449,7 +447,7 @@ export const Navigation: Story = {
     if (nav?.textContent?.includes('UI Playground'))
       throw new Error('Development surfaces must not be in product navigation.');
     const pr = canvas.getByRole('link', {
-      name: 'Open pull request #27 — Deterministic admission and execution boundaries',
+      name: /PR #27: Open pull request/,
     });
     if (rowLink.contains(pr) || pr.getAttribute('href') !== 'https://example.test/pull/27')
       throw new Error('PR must remain a separate sibling destination.');
@@ -545,7 +543,7 @@ export const NavigationSpecificationActive: Story = {
     const nav = await canvas.findByRole('navigation', { name: 'Product navigation' });
     assertSpecificationNavigation(nav, 'admission', '/specs/admission');
     const switcher = canvas.getByRole('button', {
-      name: /Change specification: Deterministic admission/,
+      name: /Current specification Deterministic admission/,
     });
     await userEvent.click(switcher);
     await userEvent.keyboard('{Escape}');
@@ -642,7 +640,7 @@ export const NavigationSwitcherInteractions: Story = {
     await canvas.findByRole('heading', { name: 'Specyfikacja', level: 1 });
     const doc = canvasElement.ownerDocument;
     const trigger = canvas.getByRole('button', {
-      name: /Change specification: Deterministic admission/,
+      name: /Current specification Deterministic admission/,
     });
     const name = trigger.querySelector('.text-title-sm');
     if (!name) throw new Error('Identity title missing');
@@ -653,7 +651,7 @@ export const NavigationSwitcherInteractions: Story = {
     );
     await userEvent.click(current);
     await waitFor(
-      () => !doc.querySelector('.popover-content') || null,
+      () => !doc.querySelector('.popover-content[data-state="open"]') || null,
       'Current choice must close picker',
     );
     if (!canvas.queryByRole('heading', { name: 'Specyfikacja', level: 1 }))
@@ -673,8 +671,14 @@ export const NavigationSwitcherInteractions: Story = {
       'Display-key search must find the authorized specification',
     );
     await userEvent.keyboard('{Escape}');
-    await waitFor(() => !doc.querySelector('.popover-content') || null, 'Escape closes picker');
-    if (doc.activeElement !== trigger) throw new Error('Dismissal restores trigger focus');
+    await waitFor(
+      () => !doc.querySelector('.popover-content[data-state="open"]') || null,
+      'Escape closes picker',
+    );
+    await waitFor(
+      () => (doc.activeElement === trigger ? trigger : null),
+      'Dismissal restores trigger focus',
+    );
     await userEvent.keyboard('{Enter}');
     const titleSearch = await waitFor(
       () => doc.querySelector<HTMLInputElement>('input[aria-label="Search title or ID"]'),
@@ -727,8 +731,8 @@ export const NavigationCancelled: Story = {
     );
     if (!doc.querySelector('.drawer-panel[data-state="open"]'))
       throw new Error('Cancelled route must retain Drawer');
-    const trigger = [...nav.querySelectorAll<HTMLButtonElement>('button')].find((button) =>
-      button.getAttribute('aria-label')?.startsWith('Change specification:'),
+    const trigger = [...nav.querySelectorAll<HTMLButtonElement>('button')].find(
+      (button) => button.getAttribute('aria-description') === 'Change specification',
     )!;
     await userEvent.click(trigger);
     const option = await waitFor(
@@ -747,7 +751,7 @@ export const NavigationCancelled: Story = {
       throw new Error('Cancelled switch must retain picker');
     await userEvent.keyboard('{Escape}');
     await waitFor(
-      () => !doc.querySelector('.popover-content') || null,
+      () => !doc.querySelector('.popover-content[data-state="open"]') || null,
       'Picker must close independently',
     );
     await waitFor(
@@ -755,7 +759,10 @@ export const NavigationCancelled: Story = {
       'Picker dismissal must restore its trigger',
     );
     await userEvent.keyboard('{Escape}');
-    await waitFor(() => !doc.querySelector('.drawer-panel') || null, 'Drawer must dismiss');
+    await waitFor(
+      () => !doc.querySelector('.drawer-panel[data-state="open"]') || null,
+      'Drawer must dismiss',
+    );
     await waitFor(
       () => (doc.activeElement === opener ? opener : null),
       'Drawer dismissal must restore its actual opener',
@@ -785,7 +792,7 @@ export const CurrentPickerKeepsView: Story = {
   args: { path: '/specs/admission/documents?collection=archive' },
   tags: ['integration'],
   play: async ({ canvas, canvasElement, userEvent }) => {
-    const trigger = await canvas.findByRole('button', { name: /Change specification:/ });
+    const trigger = await canvas.findByRole('button', { name: /Current specification/ });
     await userEvent.click(trigger);
     const doc = canvasElement.ownerDocument;
     const selected = await waitFor(
@@ -795,7 +802,9 @@ export const CurrentPickerKeepsView: Story = {
     await userEvent.click(selected);
     await waitFor(
       () =>
-        !doc.querySelector('.popover-content') && doc.activeElement === trigger ? trigger : null,
+        !doc.querySelector('.popover-content[data-state="open"]') && doc.activeElement === trigger
+          ? trigger
+          : null,
       'Selecting current identity dismisses and restores trigger',
     );
     await canvas.findByRole('heading', { name: 'Documents', level: 1 });
@@ -808,7 +817,7 @@ export const PickerFailureResetsOnOpen: Story = {
   args: { path: '/specs/admission?collection=current', navigationFailure: true },
   tags: ['integration'],
   play: async ({ canvas, canvasElement, userEvent }) => {
-    const trigger = await canvas.findByRole('button', { name: /Change specification:/ });
+    const trigger = await canvas.findByRole('button', { name: /Current specification/ });
     await userEvent.click(trigger);
     const doc = canvasElement.ownerDocument;
     const alternative = await waitFor(
@@ -819,12 +828,15 @@ export const PickerFailureResetsOnOpen: Story = {
     await waitFor(() => doc.querySelector('[role="alert"]'), 'Failed navigation must be announced');
     await userEvent.keyboard('{Escape}');
     await waitFor(
-      () => (!doc.querySelector('.popover-content') ? true : null),
+      () => (!doc.querySelector('.popover-content[data-state="open"]') ? true : null),
       'Picker closes after failure',
     );
     await userEvent.click(trigger);
-    await waitFor(() => (doc.querySelector('.popover-content') ? true : null), 'Picker reopens');
-    if (doc.querySelector('.popover-content [role="alert"]'))
+    await waitFor(
+      () => (doc.querySelector('.popover-content[data-state="open"]') ? true : null),
+      'Picker reopens',
+    );
+    if (doc.querySelector('.popover-content[data-state="open"] [role="alert"]'))
       throw new Error('Previous navigation failure must reset on open');
     await userEvent.keyboard('{Escape}');
   },
@@ -847,7 +859,10 @@ export const DrawerRouteCommitFocus: Story = {
     await userEvent.click(link);
     const heading = await canvas.findByRole('heading', { name: 'Documents', level: 1 });
     await waitFor(
-      () => (!doc.querySelector('.drawer-panel') && doc.activeElement === heading ? heading : null),
+      () =>
+        !doc.querySelector('.drawer-panel[data-state="open"]') && doc.activeElement === heading
+          ? heading
+          : null,
       'Committed Drawer navigation must close and focus view H1',
     );
   },
@@ -900,7 +915,7 @@ export const MobileNavigation: Story = {
     const accountTrigger = await waitFor(
       () =>
         [...canvasElement.ownerDocument.querySelectorAll<HTMLButtonElement>('button')].find(
-          (button) => button.getAttribute('aria-label') === 'Open user menu for Local User',
+          (button) => button.textContent?.includes('Local User'),
         ) ?? null,
       'Compact navigation should keep the account footer mounted.',
     );
@@ -912,7 +927,10 @@ export const MobileNavigation: Story = {
     if (!specsLink) throw new Error('Compact navigation should expose Specifications.');
     await userEvent.click(specsLink);
     await waitFor(
-      () => canvasElement.ownerDocument.querySelector('.drawer-panel[data-side="left"]') === null,
+      () =>
+        !canvasElement.ownerDocument.querySelector(
+          '.drawer-panel[data-side="left"][data-state="open"]',
+        ),
       'Selecting a route should close compact navigation.',
     );
     await userEvent.click(

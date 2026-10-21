@@ -48,7 +48,7 @@ export function SpecificationSwitcher({
         <button
           ref={trigger}
           type="button"
-          aria-label={`${t('applicationNavigation.changeSpecification')}: ${title}`}
+          aria-description={t('applicationNavigation.changeSpecification')}
           className="relative block min-h-11 w-full rounded-control px-3 py-2 text-left outline-none hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-focus-ring"
         >
           <Typography

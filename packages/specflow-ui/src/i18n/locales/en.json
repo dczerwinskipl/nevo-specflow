@@ -270,7 +270,7 @@
     "archiveUnavailable": "Archive (not available yet)",
     "deleteUnavailable": "Delete (not available yet)",
     "moreSignals": "{{count}} more signals — {{title}}",
-    "openPullRequest": "Open pull request #{{number}} — {{title}}",
+    "openPullRequest": "PR #{{number}}: Open pull request — {{title}}",
     "openSignal": "{{label}} — {{title}}",
     "more_one": "+{{count}} more",
     "more_other": "+{{count}} more",

@@ -21,9 +21,9 @@
   },
   "dependencies": {
     "axios": "1.20.0",
-    "eventsource-parser": "4.1.1"
+    "eventsource-parser": "4.1.2"
   },
   "devDependencies": {
-    "vitest": "5.0.3"
+    "vitest": "5.0.5"
   }
 }

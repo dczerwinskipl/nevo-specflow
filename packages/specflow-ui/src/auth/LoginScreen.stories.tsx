@@ -63,7 +63,9 @@ function assertStandaloneAuthLayout(canvasElement: HTMLElement) {
   const mobileHeader = canvasElement.querySelector<HTMLElement>(
     '[data-standalone-shell-region="mobile-header"]',
   );
-  const mobileSelector = mobileHeader?.querySelector<HTMLElement>('[aria-label="Change language"]');
+  const mobileSelector = mobileHeader?.querySelector<HTMLElement>(
+    '[aria-description="Change language"]',
+  );
   const surface = canvasElement.querySelector<HTMLElement>(
     '[data-standalone-shell-region="surface"]',
   );
@@ -126,7 +128,7 @@ export const PasswordAndOidcContract: Story = {
       'Desktop standalone header must stay inside the centered auth surface.',
     );
     assert(
-      desktopHeader.querySelector('[aria-label="Change language"]'),
+      desktopHeader.querySelector('[aria-description="Change language"]'),
       'Desktop standalone header must expose the product language action.',
     );
     const root = canvasElement.querySelector<HTMLElement>('[data-standalone-shell-region="root"]');

@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 import {
   APP_NAVIGATION_INLINE_PADDING,
   NavigationRow,
@@ -34,6 +34,12 @@ export function ProductNavigation({
   const { t } = useTranslation();
   const { closeNavigation } = useAppNavigation();
   const location = useRouterState({ select: (state) => state.location });
+  const previousLocation = useRef(location);
+  useEffect(() => {
+    if (previousLocation.current === location) return;
+    previousLocation.current = location;
+    closeNavigation(() => document.querySelector<HTMLElement>('[data-workspace-active="true"] h1'));
+  }, [closeNavigation, location]);
   const collection =
     location.search.collection === 'archive' ? ('archive' as const) : ('current' as const);
   const specId =

@@ -33,6 +33,7 @@ describe('SpecFlow application services', () => {
     expect(get).toHaveBeenNthCalledWith(2, '/api/specs/overview', {
       params: { collection: 'archive' },
       signal,
+      timeoutMs: 30_000,
     });
   });
 });

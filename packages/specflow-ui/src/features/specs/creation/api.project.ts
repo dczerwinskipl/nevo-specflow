@@ -16,6 +16,9 @@ export const createOperationHardLimitMs = 10 * 60 * 1000;
 /** After this long without an answer the UI shows the operation as running and watches it. */
 export const createSoftDeadlineMs = 15_000;
 
+/** Create options inspect Git state per request; allow more than the shared 10 s client default. */
+const createOptionsTimeoutMs = 30_000;
+
 /** Port of the project Runtime Specification creation (the contracts `specs` context). */
 export interface ProjectCreationApi {
   createOptions(signal?: AbortSignal): Promise<CreateOptions>;
@@ -36,6 +39,7 @@ export function createProjectCreationApi(api: ApiTransport): ProjectCreationApi 
       api.get<CreateOptions>('/api/specs/create-options', {
         operation: 'specs.create.options',
         signal,
+        timeoutMs: createOptionsTimeoutMs,
         isValid: (data) => isObject(data) && Array.isArray(data.workspaces),
       }),
     create: (input, signal) =>

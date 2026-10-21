@@ -64,7 +64,8 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
     // The Git state changes outside the UI, and the answer is a snapshot, not a reservation.
     staleTime: 0,
     refetchOnMount: 'always',
-    refetchOnWindowFocus: true,
+    // Each fetch inspects Git state (slow); the visit-fresh refetch on mount stays, focus does not.
+    refetchOnWindowFocus: false,
     retry: false,
   });
   const workspaceOptions = useVisitFreshOptions(createOptions);

@@ -6,6 +6,7 @@ import { PROJECT_HOME_MARKER_RELATIVE_PATH, type ResolvedProjectHome } from './p
 import { verifyLinkedWorkspaceIdentity } from './workspace-identity';
 import { verifyWorkspaceMembership } from './workspace-membership';
 import { verifyGitInstance } from './git-instance';
+import { memoizeVerification } from './request-verification-memo';
 
 import {
   WORKSPACE_REGISTRY_RELATIVE_PATH,
@@ -155,11 +156,21 @@ export async function verifyWorkspaceRoot(
   root: string,
   registration?: WorkspaceRegistration,
 ): Promise<string> {
-  const canonical = await verifyWorkspaceMembership(context, root);
-  if (registration?.kind === 'linked') {
-    await verifyLinkedWorkspaceIdentity(context, registration);
-  }
-  return canonical;
+  // Request-scoped read contexts verify each physical workspace once; every
+  // other caller (mutations, first read) has no memo and verifies in full.
+  const key = JSON.stringify([
+    root,
+    registration?.kind,
+    registration?.workspaceId,
+    registration?.kind === 'linked' ? registration.instanceId : undefined,
+  ]);
+  return memoizeVerification(key, async () => {
+    const canonical = await verifyWorkspaceMembership(context, root);
+    if (registration?.kind === 'linked') {
+      await verifyLinkedWorkspaceIdentity(context, registration);
+    }
+    return canonical;
+  });
 }
 
 export async function inspectRegisteredWorkspace(

@@ -10,6 +10,7 @@ import {
   resolveSpecification,
   type DiscoveredSpecification,
 } from './discovery';
+import { runReadRequest } from '../project/request-verification-memo';
 import { parseSpecificationManifest, SpecificationError } from './model';
 
 type AvailableSpec = Extract<DiscoveredSpecification, { readonly status: 'available' }>;
@@ -37,7 +38,15 @@ export type CanonicalDocumentRead =
  * A scoped read skips excluded linked bindings, but still validates all primary
  * manifests because unbound primary identities cannot be enumerated without them.
  */
-export async function readCanonicalSpecSources(
+export function readCanonicalSpecSources(
+  engine: SpecFlowEngine,
+  isIncluded?: (specId: string) => boolean,
+): Promise<readonly CanonicalSpecSource[]> {
+  // Read-only: verify each workspace once for this request.
+  return runReadRequest(() => readSourcesInRequest(engine, isIncluded));
+}
+
+async function readSourcesInRequest(
   engine: SpecFlowEngine,
   isIncluded?: (specId: string) => boolean,
 ): Promise<readonly CanonicalSpecSource[]> {
@@ -91,7 +100,15 @@ export async function readCanonicalSpecSources(
 }
 
 /** Authorized callers select specId; filesystem paths never cross into Runtime. */
-export async function readCanonicalSpecDocument(
+export function readCanonicalSpecDocument(
+  engine: SpecFlowEngine,
+  specId: string,
+  kind: 'manifest' | 'overview',
+): Promise<CanonicalDocumentRead> {
+  return runReadRequest(() => readDocumentInRequest(engine, specId, kind));
+}
+
+async function readDocumentInRequest(
   engine: SpecFlowEngine,
   specId: string,
   kind: 'manifest' | 'overview',

@@ -5,9 +5,11 @@ import type { SpecFlowEngine } from '../application';
 import { GitCapabilityError } from '../git/errors';
 import { executeGit } from '../git/process';
 import { WorkspaceRegistryError, inspectRegisteredWorkspace } from '../project/workspace-registry';
-import { createLocalGitClient } from '../version-control/git/client';
+import { READ_GIT_CONCURRENCY, mapBounded } from '../concurrency';
+import { createLocalGitClient, type LocalWorktreeFacts } from '../version-control/git/client';
 import { validateBaseRef } from '../version-control/git/refs';
 import { effectiveWorktreesRoot, readProjectGitPolicy } from '../version-control/worktrees/config';
+import { runReadRequest } from '../project/request-verification-memo';
 import { discoverSpecifications } from './discovery';
 
 export type CreateWorkspaceState = 'available' | 'unavailable' | 'detached' | 'dirty';
@@ -61,7 +63,12 @@ export interface PublicCreateOptions {
  * Authorized caller-facing read model. This is NOT an admission reservation.
  * Create rechecks policy, registry, physical identity and Git state when used.
  */
-export async function inspectCreateOptions(engine: SpecFlowEngine): Promise<PublicCreateOptions> {
+export function inspectCreateOptions(engine: SpecFlowEngine): Promise<PublicCreateOptions> {
+  // Read-only: verify each workspace once for this request.
+  return runReadRequest(() => inspectCreateOptionsInRequest(engine));
+}
+
+async function inspectCreateOptionsInRequest(engine: SpecFlowEngine): Promise<PublicCreateOptions> {
   const registry = await engine.readRegistry();
   const policy = (await readProjectGitPolicy(engine.context)).policy;
   const git = createLocalGitClient(engine.context.project.homeRoot);
@@ -86,80 +93,79 @@ export async function inspectCreateOptions(engine: SpecFlowEngine): Promise<Publ
     }
   }
 
-  const worktrees = available ? await git.listWorktrees() : [];
-  const branches = available ? await git.listLocalRefs() : [];
-  const discovered = await discoverSpecifications(engine);
+  // Independent read-only Git/filesystem inspections run concurrently. Results
+  // are consumed in the original order so the first failure is unchanged.
+  const [worktreesResult, branchesResult, discoveredResult] = await Promise.allSettled([
+    available ? git.listWorktrees() : Promise.resolve([] as readonly LocalWorktreeFacts[]),
+    available ? git.listLocalRefs() : Promise.resolve([] as readonly string[]),
+    discoverSpecifications(engine),
+  ]);
+  const worktrees = settledValue(worktreesResult);
+  const branches = settledValue(branchesResult);
+  const discovered = settledValue(discoveredResult);
   const counts = new Map<string, number>();
   for (const spec of discovered)
     counts.set(spec.workspaceId, (counts.get(spec.workspaceId) ?? 0) + 1);
 
-  const workspaces: CreateWorkspaceOption[] = [];
-  for (const workspace of registry.workspaces) {
-    const common = {
-      workspaceId: workspace.workspaceId,
-      kind: workspace.kind,
-      name: basename(workspace.root),
-      path: workspace.root,
-      managed: workspace.managed,
-      specCount: counts.get(workspace.workspaceId) ?? 0,
-    };
-    const checked = await inspectRegisteredWorkspace(
-      engine.context,
-      registry,
-      workspace.workspaceId,
-    );
-    if (checked.status === 'unavailable' || !available) {
-      workspaces.push({
-        ...common,
-        state: 'unavailable',
-        selectable: false,
-        reason: available ? 'checkout-unavailable' : 'git-unavailable',
-      });
-      continue;
-    }
-    const gitWorktree = worktrees.find((item) => samePath(item.root, checked.root));
-    if (!gitWorktree || gitWorktree.prunable) {
-      workspaces.push({
-        ...common,
-        state: 'unavailable',
-        selectable: false,
-        reason: 'git-membership-mismatch',
-      });
-      continue;
-    }
-    if (!gitWorktree.branch?.startsWith('refs/heads/')) {
-      workspaces.push({ ...common, state: 'detached', selectable: false, reason: 'detached' });
-      continue;
-    }
-    const branch = gitWorktree.branch.slice('refs/heads/'.length);
-    const status = await executeGit(checked.root, [
-      '-c',
-      'core.optionalLocks=false',
-      'status',
-      '--porcelain=v1',
-      '--untracked-files=all',
-    ]);
-    if (status.exitCode !== 0) {
-      workspaces.push({
-        ...common,
-        state: 'unavailable',
-        selectable: false,
-        reason: 'checkout-unavailable',
-      });
-      continue;
-    }
-    if (status.stdout.length !== 0) {
-      workspaces.push({
-        ...common,
-        state: 'dirty',
-        selectable: true,
-        branch,
-        reason: 'dirty',
-      });
-      continue;
-    }
-    workspaces.push({ ...common, state: 'available', selectable: true, branch });
-  }
+  const workspaces = await mapBounded(
+    registry.workspaces,
+    READ_GIT_CONCURRENCY,
+    async (workspace): Promise<CreateWorkspaceOption> => {
+      const common = {
+        workspaceId: workspace.workspaceId,
+        kind: workspace.kind,
+        name: basename(workspace.root),
+        path: workspace.root,
+        managed: workspace.managed,
+        specCount: counts.get(workspace.workspaceId) ?? 0,
+      };
+      const checked = await inspectRegisteredWorkspace(
+        engine.context,
+        registry,
+        workspace.workspaceId,
+      );
+      if (checked.status === 'unavailable' || !available) {
+        return {
+          ...common,
+          state: 'unavailable',
+          selectable: false,
+          reason: available ? 'checkout-unavailable' : 'git-unavailable',
+        };
+      }
+      const gitWorktree = worktrees.find((item) => samePath(item.root, checked.root));
+      if (!gitWorktree || gitWorktree.prunable) {
+        return {
+          ...common,
+          state: 'unavailable',
+          selectable: false,
+          reason: 'git-membership-mismatch',
+        };
+      }
+      if (!gitWorktree.branch?.startsWith('refs/heads/')) {
+        return { ...common, state: 'detached', selectable: false, reason: 'detached' };
+      }
+      const branch = gitWorktree.branch.slice('refs/heads/'.length);
+      const status = await executeGit(checked.root, [
+        '-c',
+        'core.optionalLocks=false',
+        'status',
+        '--porcelain=v1',
+        '--untracked-files=all',
+      ]);
+      if (status.exitCode !== 0) {
+        return {
+          ...common,
+          state: 'unavailable',
+          selectable: false,
+          reason: 'checkout-unavailable',
+        };
+      }
+      if (status.stdout.length !== 0) {
+        return { ...common, state: 'dirty', selectable: true, branch, reason: 'dirty' };
+      }
+      return { ...common, state: 'available', selectable: true, branch };
+    },
+  );
   // A concurrent rebind/registration invalidates the whole snapshot.
   if ((await engine.readRegistry()).revision !== registry.revision)
     throw new WorkspaceRegistryError(
@@ -243,4 +249,9 @@ function samePath(left: string, right: string): boolean {
   const a = resolve(left);
   const b = resolve(right);
   return process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
+}
+
+function settledValue<T>(result: PromiseSettledResult<T>): T {
+  if (result.status === 'rejected') throw result.reason;
+  return result.value;
 }

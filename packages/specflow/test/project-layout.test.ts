@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -8,8 +8,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   isGitIgnored,
   LOCAL_CONFIG_RELATIVE_PATH,
-  resolveProjectLayout,
-} from '../src/project/layout';
+  resolveGitCheckoutLayout,
+} from '@nevo/specflow-engine/testing';
 
 const dirs: string[] = [];
 
@@ -18,7 +18,7 @@ afterEach(async () => {
 });
 
 async function gitRepository(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), 'specflow-layout-'));
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-layout-')));
   dirs.push(root);
   execFileSync('git', ['init', '-q'], { cwd: root });
   return root;
@@ -30,7 +30,7 @@ describe('project layout', () => {
     const nested = join(root, 'packages', 'demo');
     await mkdir(nested, { recursive: true });
 
-    const layout = await resolveProjectLayout(nested);
+    const layout = await resolveGitCheckoutLayout(nested);
 
     expect(layout.root).toBe(root);
     expect(layout.projectConfigPath).toBe(join(root, '.nevo', 'config.yaml'));

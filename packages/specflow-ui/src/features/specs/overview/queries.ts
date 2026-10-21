@@ -17,11 +17,12 @@ export function specsOverviewQueryOptions(api: SpecsOverviewApi, collection: Spe
       if (
         projection.items.some(
           ({ progress }) =>
-            !Number.isSafeInteger(progress.total) ||
-            progress.total < 0 ||
-            !Number.isSafeInteger(progress.completed) ||
-            progress.completed < 0 ||
-            progress.completed > progress.total,
+            progress !== null &&
+            (!Number.isSafeInteger(progress.total) ||
+              progress.total < 0 ||
+              !Number.isSafeInteger(progress.completed) ||
+              progress.completed < 0 ||
+              progress.completed > progress.total),
         )
       )
         throw new Error('Invalid Specs progress aggregate.');

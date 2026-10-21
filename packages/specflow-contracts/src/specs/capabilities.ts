@@ -6,5 +6,7 @@ export const SpecCapabilities = defineResource({
     View: 'view',
     Create: 'create',
     Manage: 'manage',
+    CloseWorktree: 'close-worktree',
+    CloseSpecification: 'close-specification',
   },
 });

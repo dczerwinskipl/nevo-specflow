@@ -10,6 +10,6 @@ export {
   type SpecsFeatureConfig,
 } from './configuration';
 
-export { SpecCapabilities } from '@nevo/specflow-contracts/specs';
+export { ProjectGitCapabilities, SpecCapabilities } from '@nevo/specflow-contracts/specs';
 
 export { createDemoSpecsRepositories } from './demo/repositories';

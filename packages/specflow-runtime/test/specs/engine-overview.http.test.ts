@@ -69,7 +69,8 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
         const result = await app.inject('/api/specs/overview?collection=' + collection);
         expect(result.statusCode).toBe(503);
         expect(result.headers['cache-control']).toBe('no-store');
-        expect(result.json()).toMatchObject({ code: 'ENGINE_UNAVAILABLE' });
+        // The Overview read-source contract is shared with Workspace HTTP.
+        expect(result.json()).toEqual({ error: 'specification_source_unavailable' });
         expect(result.body).not.toContain('sample');
       }
     } finally {

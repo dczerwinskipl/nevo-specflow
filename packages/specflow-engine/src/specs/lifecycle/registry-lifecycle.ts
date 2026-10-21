@@ -11,14 +11,18 @@ import {
   type WorkspaceRegistry,
 } from '../../project/workspace-registry';
 import { assertSharedResourcesAvailable } from '../coordination/resources';
+import type { CloseOccupant } from './model';
 
 export interface LifecycleRegistryCAS {
   readonly operationId: string;
   readonly specId: string;
+  readonly occupants?: readonly CloseOccupant[];
   readonly sourceWorkspaceId: string;
   readonly sourceInstanceId: string;
   readonly sourceRoot: string;
-  readonly primaryWorkspaceId: string;
+  readonly targetWorkspaceId: string;
+  readonly targetRoot: string;
+  readonly targetInstanceId?: string;
   readonly expectedBindingGeneration: number;
   readonly expectedRegistryRevision: number;
   readonly resources: readonly string[];
@@ -27,17 +31,43 @@ export interface LifecycleRegistryCAS {
 function conflict(message: string): WorkspaceRegistryError {
   return new WorkspaceRegistryError('REGISTRY_CONFLICT', message);
 }
-function assertOwnership(current: WorkspaceRegistry, claim: LifecycleRegistryCAS): void {
+function assertOwnership(
+  current: WorkspaceRegistry,
+  claim: LifecycleRegistryCAS,
+  afterRebind = false,
+): void {
   const source = current.workspaces.find((w) => w.workspaceId === claim.sourceWorkspaceId);
+  const destination = current.workspaces.find((w) => w.workspaceId === claim.targetWorkspaceId);
   if (
+    !destination ||
+    destination.workspaceId === claim.sourceWorkspaceId ||
+    destination.root !== claim.targetRoot ||
+    destination.instanceId !== claim.targetInstanceId ||
     source?.kind !== 'linked' ||
     !source.managed ||
     source.instanceId !== claim.sourceInstanceId ||
-    source.root !== claim.sourceRoot ||
-    current.primaryWorkspaceId !== claim.primaryWorkspaceId ||
-    current.specBindings.filter((x) => x.workspaceId === claim.sourceWorkspaceId).length > 1
+    source.root !== claim.sourceRoot
   )
     throw conflict('Lifecycle source is not an exclusively managed, pinned checkout.');
+  const bound = current.specBindings
+    .filter((x) => x.workspaceId === claim.sourceWorkspaceId)
+    .sort((a, b) => a.specId.localeCompare(b.specId));
+  if (afterRebind) {
+    if (bound.length !== 0) throw conflict('Source still owns canonical Specifications.');
+  } else if (!claim.occupants) {
+    if (bound.length !== 1 || bound[0]?.specId !== claim.specId)
+      throw conflict('Lifecycle source is not an exclusively bound checkout.');
+  } else {
+    if (
+      bound.length !== claim.occupants.length ||
+      bound.some(
+        (entry, i) =>
+          entry.specId !== claim.occupants![i]!.specId ||
+          entry.generation !== claim.occupants![i]!.bindingGeneration,
+      )
+    )
+      throw conflict('Workspace occupant set or generations changed.');
+  }
 }
 
 /** Narrow, separately coordinated binding CAS. Does NOT loosen the generic append-only port. */
@@ -56,6 +86,7 @@ export async function rebindLifecycleSpec(
       old.generation !== claim.expectedBindingGeneration
     )
       throw conflict('Lifecycle binding generation changed.');
+    const affected = new Set(claim.occupants?.map((x) => x.specId) ?? [claim.specId]);
     await assertSharedResourcesAvailable(context, claim.resources, {
       kind: 'close',
       operationId: claim.operationId,
@@ -65,8 +96,8 @@ export async function rebindLifecycleSpec(
         ...current,
         revision: current.revision + 1,
         specBindings: current.specBindings.map((x) =>
-          x.specId === claim.specId
-            ? { ...x, workspaceId: claim.primaryWorkspaceId, generation: current.revision + 1 }
+          affected.has(x.specId)
+            ? { ...x, workspaceId: claim.targetWorkspaceId, generation: current.revision + 1 }
             : x,
         ),
       },
@@ -87,11 +118,15 @@ export async function retireLifecycleWorkspace(
   return withProjectControlLock(context, async () => {
     const current = await readWorkspaceRegistry(context);
     if (current.revision !== reboundRevision) throw conflict('Post-rebind registry changed.');
-    assertOwnership(current, claim);
-    const bound = current.specBindings.find((x) => x.specId === claim.specId);
+    assertOwnership(current, claim, true);
+    const ids = claim.occupants?.map((x) => x.specId) ?? [claim.specId];
     if (
-      bound?.workspaceId !== claim.primaryWorkspaceId ||
-      bound.generation !== reboundRevision ||
+      ids.some((specId) => {
+        const bound = current.specBindings.find((x) => x.specId === specId);
+        return (
+          bound?.workspaceId !== claim.targetWorkspaceId || bound.generation !== reboundRevision
+        );
+      }) ||
       current.specBindings.some((x) => x.workspaceId === claim.sourceWorkspaceId)
     )
       throw conflict('Source workspace still owns a binding.');

@@ -12,11 +12,13 @@ import {
   assertResourcesAvailable,
   bootstrapProjectHome,
   closeSpecification,
+  closeWorkspace,
   createSpecificationForTesting,
   inspectCloseOperation,
   inspectArchivePhysicalRecovery,
   archiveSpecificationWithCommit,
   inspectPendingDisposal,
+  disposeReboundWorktree,
   openSpecFlowEngine,
   prepareCloseGitIntegration,
   prepareDivergentCloseCandidate,
@@ -46,7 +48,7 @@ afterEach(async () => {
 });
 
 async function project(
-  kind: 'worktree-close' | 'specification-close' = 'worktree-close',
+  kind: 'worktree-close' | 'specification-close' | 'workspace-close' = 'worktree-close',
   fastForward = false,
 ) {
   const root = await createGitTestProject(
@@ -95,6 +97,47 @@ async function project(
     '-qm',
     'commit source spec',
   );
+  const siblings: { specId: string; slug: string }[] = [];
+  if (kind === 'workspace-close') {
+    const registry = await engine.readRegistry();
+    for (const title of ['Shared SIGKILL B', 'Shared SIGKILL C']) {
+      const child = await createSpecificationForTesting(engine, {
+        operationId: randomUUID(),
+        title,
+        created: '2026-10-20',
+        target: { kind: 'existing', workspaceId: spec.workspaceId },
+      });
+      siblings.push({ specId: child.specId, slug: child.slug });
+      git(
+        spec.workspaceRoot,
+        'add',
+        '--',
+        child.relativeManifestPath,
+        'specs/active/' + child.slug + '/overview.md',
+      );
+    }
+    git(
+      spec.workspaceRoot,
+      '-c',
+      'user.name=Test',
+      '-c',
+      'user.email=test@example.invalid',
+      'commit',
+      '-qm',
+      'commit two shared SIGKILL siblings',
+    );
+    expect(
+      (await engine.readRegistry()).specBindings.filter((x) => x.workspaceId === spec.workspaceId),
+    ).toHaveLength(3);
+    expect(registry.primaryWorkspaceId).not.toBe(spec.workspaceId);
+    // Spec B becomes an archive-only sibling before whole-workspace closure.
+    const archived = await closeSpecification(engine, {
+      operationId: randomUUID(),
+      specId: siblings[0]!.specId,
+      integrateToTargetBranch: false,
+    });
+    expect(archived.status).toBe('completed');
+  }
   if (fastForward) {
     // .gitattributes is introduced in the pinned source commit. During the
     // real fast-forward, Git executes the test-only smudge filter for this file.
@@ -126,8 +169,12 @@ async function project(
     );
   }
   const operationId = randomUUID();
-  if (kind === 'worktree-close') {
-    await reserveCloseOperation(engine, { kind, operationId, specId: spec.specId });
+  if (kind === 'worktree-close' || kind === 'workspace-close') {
+    if (kind === 'workspace-close') {
+      await reserveCloseOperation(engine, { kind, operationId, workspaceId: spec.workspaceId });
+    } else {
+      await reserveCloseOperation(engine, { kind, operationId, specId: spec.specId });
+    }
     await prepareCloseGitIntegration(engine, operationId);
   } else {
     await reserveCloseOperation(engine, {
@@ -137,7 +184,7 @@ async function project(
       integrateToTargetBranch: false,
     });
   }
-  return { root, spec, engine, operationId };
+  return { root, spec, siblings, engine, operationId };
 }
 
 async function killAtCheckpoint(root: string, operationId: string, stage: string): Promise<void> {
@@ -166,6 +213,122 @@ async function killAtCheckpoint(root: string, operationId: string, stage: string
     await rm(signal, { force: true });
   }
 }
+
+describe('E2.I03 three-owner OS-process SIGKILL regression', () => {
+  it('kills the actual publisher after source publication, reconciles without replay', async () => {
+    const { root, spec, siblings, engine, operationId } = await project('workspace-close', true);
+    const originalRegistry = await engine.readRegistry();
+    const ids = [spec.specId, ...siblings.map((x) => x.specId)];
+    const sourceCommit = git(spec.workspaceRoot, 'rev-parse', 'HEAD');
+    await killAtCheckpoint(root, operationId, 'publish-complete-before-proof');
+    const reopened = await openSpecFlowEngine({ cwd: root });
+    expect((await inspectCloseOperation(reopened, operationId))?.stage).toBe(
+      'integration-publish-initiated',
+    );
+    expect(git(root, 'rev-parse', 'HEAD')).toBe(sourceCommit);
+    expect((await reopened.readRegistry()).revision).toBe(originalRegistry.revision);
+    await expect(reconcileCloseGitPublication(reopened, operationId, false)).rejects.toMatchObject({
+      code: 'CLOSE_RECOVERY_REQUIRED',
+    });
+    const published = await reconcileCloseGitPublication(reopened, operationId, true);
+    expect(published.stage).toBe('integration-verified');
+    expect(published.integration?.publishedCommit).toBe(sourceCommit);
+    await rebindVerifiedClose(reopened, operationId);
+    const rebound = await reopened.readRegistry();
+    expect(rebound.revision).toBe(originalRegistry.revision + 1);
+    for (const id of ids)
+      expect(rebound.specBindings.find((x) => x.specId === id)?.workspaceId).toBe(
+        rebound.primaryWorkspaceId,
+      );
+    const disposed = await disposeReboundWorktree(reopened, operationId);
+    expect(disposed.stage).toBe('completed');
+    expect(
+      (
+        await closeWorkspace(reopened, {
+          operationId,
+          workspaceId: spec.workspaceId,
+        })
+      ).status,
+    ).toBe('completed');
+    expect((await reopened.readRegistry()).revision).toBe(originalRegistry.revision + 2);
+    expect(git(root, 'rev-parse', 'HEAD')).toBe(sourceCommit);
+    for (const [id, status] of ids.map((id, i) => [id, i === 1 ? 'archived' : 'draft'] as const))
+      expect((await readWorkspaceSpecification(root, id)).status).toBe(status);
+  }, 180000);
+
+  it('kills the actual worker after multi-binding CAS, resumes one journal', async () => {
+    const { root, spec, siblings, engine, operationId } = await project('workspace-close');
+    await prepareDivergentCloseCandidate(engine, operationId);
+    const published = await publishDivergentCloseCandidate(engine, operationId);
+    expect(published.stage).toBe('integration-verified');
+    const head = git(root, 'rev-parse', 'HEAD');
+    const before = await engine.readRegistry();
+    await killAtCheckpoint(root, operationId, 'rebind-cas');
+    const reopened = await openSpecFlowEngine({ cwd: root });
+    expect((await inspectCloseOperation(reopened, operationId))?.stage).toBe(
+      'integration-verified',
+    );
+    const rebound = await reopened.readRegistry();
+    expect(rebound.revision).toBe(before.revision + 1);
+    for (const id of [spec.specId, ...siblings.map((x) => x.specId)]) {
+      expect(rebound.specBindings.find((x) => x.specId === id)).toMatchObject({
+        workspaceId: rebound.primaryWorkspaceId,
+        generation: rebound.revision,
+      });
+    }
+    expect(git(root, 'rev-parse', 'HEAD')).toBe(head);
+    const recovered = await rebindVerifiedClose(reopened, operationId);
+    expect(recovered.stage).toBe('binding-rebound');
+    expect((await reopened.readRegistry()).revision).toBe(rebound.revision);
+    await disposeReboundWorktree(reopened, operationId);
+    expect(
+      (
+        await closeWorkspace(reopened, {
+          operationId,
+          workspaceId: spec.workspaceId,
+        })
+      ).status,
+    ).toBe('completed');
+    expect(git(root, 'rev-parse', 'HEAD')).toBe(head);
+  }, 180000);
+
+  it('kills after physical Git worktree remove, retires all occupants once', async () => {
+    const { root, spec, siblings, engine, operationId } = await project('workspace-close');
+    await prepareDivergentCloseCandidate(engine, operationId);
+    await publishDivergentCloseCandidate(engine, operationId);
+    await rebindVerifiedClose(engine, operationId);
+    const before = await engine.readRegistry();
+    const head = git(root, 'rev-parse', 'HEAD');
+    await killAtCheckpoint(root, operationId, 'removed-pre-retirement');
+    const reopened = await openSpecFlowEngine({ cwd: root });
+    expect((await inspectCloseOperation(reopened, operationId))?.stage).toBe('disposal-initiated');
+    expect(await inspectPendingDisposal(reopened, operationId)).toBe('source-removed');
+    await expect(access(spec.workspaceRoot)).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(reconcileDisposedWorktree(reopened, operationId, false)).rejects.toMatchObject({
+      code: 'CLOSE_RECOVERY_REQUIRED',
+    });
+    expect((await reopened.readRegistry()).revision).toBe(before.revision);
+    const reconciled = await reconcileDisposedWorktree(reopened, operationId, true);
+    expect(reconciled.stage).toBe('completed');
+    const after = await reopened.readRegistry();
+    expect(after.revision).toBe(before.revision + 1);
+    expect(after.workspaces.some((x) => x.workspaceId === spec.workspaceId)).toBe(false);
+    for (const id of [spec.specId, ...siblings.map((x) => x.specId)])
+      expect(after.specBindings.find((x) => x.specId === id)?.workspaceId).toBe(
+        after.primaryWorkspaceId,
+      );
+    expect(
+      (
+        await closeWorkspace(reopened, {
+          operationId,
+          workspaceId: spec.workspaceId,
+        })
+      ).status,
+    ).toBe('completed');
+    expect((await reopened.readRegistry()).revision).toBe(after.revision);
+    expect(git(root, 'rev-parse', 'HEAD')).toBe(head);
+  }, 180000);
+});
 
 describe('E2.T11 actual OS-process SIGKILL and physical reconciliation', () => {
   it('kills the scratch creator after journal intent and forbids Git replay', async () => {

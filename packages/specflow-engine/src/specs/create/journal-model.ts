@@ -1,4 +1,5 @@
 import type { CreateClientIntent } from '../create-intent';
+import type { WorkspaceIntegrationDestination } from '../../project/workspace-registry';
 
 export const CREATE_STAGES = [
   'reserved',
@@ -27,6 +28,7 @@ export interface NewWorktreeJournalTarget {
   readonly branch: string;
   readonly baseCommit: string;
   readonly instanceId: string;
+  readonly integrationDestination?: WorkspaceIntegrationDestination;
 }
 
 export type CreateJournalTarget = ExistingJournalTarget | NewWorktreeJournalTarget;

@@ -2,7 +2,8 @@
 id: ideas.specflow-engine.specification-close-decisions
 type: engineering
 title: Proposed Specification and worktree closure decisions
-status: draft
+status: superseded
+superseded_by: architecture.runtime.specflow-lifecycle
 scope: specflow
 areas: [workflow, security, cli, runtime, testing]
 tags: [decision-record, architecture-review, temporary-design]
@@ -12,8 +13,9 @@ summary: >
   Decisions, rejected alternatives and product-owner questions for safe offline and HTTP closing.
 related:
   - ideas.specflow-engine.specification-worktree-closure
-  - ideas.specflow-engine.plan-02
 ---
+
+> **Historical E1/E2 design evidence — superseded.** The authoritative implemented contract is `architecture.runtime.specflow-lifecycle`. This document MUST NOT override current architecture, exact API schemas or production code.
 
 # Closure design decision record (proposed, pending review)
 

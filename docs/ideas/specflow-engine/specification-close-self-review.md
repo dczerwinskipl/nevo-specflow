@@ -2,7 +2,8 @@
 id: ideas.specflow-engine.specification-close-self-review
 type: engineering
 title: Self-review of Specification and Worktree closure design
-status: draft
+status: superseded
+superseded_by: engineering.shared.specflow-git-recovery
 scope: specflow
 areas: [workflow, security, testing]
 tags: [architecture-review, self-review, lifecycle, temporary-design]
@@ -14,8 +15,9 @@ summary: >
 related:
   - ideas.specflow-engine.specification-worktree-closure
   - ideas.specflow-engine.specification-close-decisions
-  - ideas.specflow-engine.plan-02
 ---
+
+> **Historical E1/E2 design evidence — superseded.** The authoritative implemented contract is `engineering.shared.specflow-git-recovery`. This document MUST NOT override current architecture, exact API schemas or production code.
 
 # Self-review: Plan 02 Specification & Worktree closure
 

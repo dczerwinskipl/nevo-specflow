@@ -56,3 +56,59 @@ export async function closeWorktree(
   }
   return { status: 'completed', journal: final };
 }
+
+/**
+ * I03: explicit workspace-scoped Close. The registry, not the caller, chooses
+ * every canonical occupant. Publication is once per branch and the subsequent
+ * CAS transfers every pinned binding together before any physical disposal.
+ */
+export async function closeWorkspace(
+  engine: SpecFlowEngine,
+  request: { readonly operationId: string; readonly workspaceId: string },
+): Promise<CloseWorktreeResult> {
+  const admitted = await reserveCloseOperation(engine, { ...request, kind: 'workspace-close' });
+  const journal = await advanceCloseIntegration(engine, admitted.journal);
+  if (journal.stage === 'integration-scratch-conflict')
+    return inspectDivergentCloseResolution(engine, request.operationId);
+  if (
+    journal.stage !== 'completed' ||
+    !journal.plan.occupants?.length ||
+    journal.plan.workspaceId !== request.workspaceId
+  )
+    throw new CloseOperationError(
+      'CLOSE_RECOVERY_REQUIRED',
+      'Workspace Close is nonterminal or lacks its immutable occupant inventory.',
+    );
+  const target = journal.plan.target;
+  if (!target || !journal.integration?.publishedCommit)
+    throw new CloseOperationError(
+      'CLOSE_RECOVERY_REQUIRED',
+      'Published target evidence is absent.',
+    );
+  const final = await readCloseJournal(engine.context, request.operationId);
+  const registry = await engine.readRegistry();
+  if (
+    final?.stage !== 'completed' ||
+    registry.workspaces.some((x) => x.workspaceId === request.workspaceId) ||
+    registry.specBindings.some((x) => x.workspaceId === request.workspaceId)
+  )
+    throw new CloseOperationError('CLOSE_RECOVERY_REQUIRED', 'Workspace retirement is not proven.');
+  for (const occupant of journal.plan.occupants) {
+    const binding = registry.specBindings.find((x) => x.specId === occupant.specId);
+    const canonical = await readWorkspaceSpecification(target.root, occupant.specId);
+    if (
+      binding?.workspaceId !== target.workspaceId ||
+      binding.generation !== journal.reboundRevision ||
+      canonical.specId !== occupant.specId ||
+      canonical.slug !== occupant.slug ||
+      canonical.location !== occupant.location ||
+      canonical.status !== occupant.status
+    ) {
+      throw new CloseOperationError(
+        'CLOSE_RECOVERY_REQUIRED',
+        'Workspace occupant was not preserved after integration.',
+      );
+    }
+  }
+  return { status: 'completed', journal: final };
+}

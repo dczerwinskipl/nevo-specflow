@@ -2,7 +2,8 @@
 id: ideas.specflow-engine.boundaries
 type: architecture
 title: Offline Engine CLI and Runtime boundaries
-status: draft
+status: superseded
+superseded_by: architecture.runtime.specflow-engine
 scope: specflow
 areas: [cli, runtime, workflow]
 tags: [engine, adapter, architecture, offline]
@@ -19,6 +20,8 @@ related:
   - architecture.runtime.ownership-and-lifecycle
   - adr.0012-product-package-topology-and-dependency-direction
 ---
+
+> **Historical E1/E2 design evidence — superseded.** The authoritative implemented contract is `architecture.runtime.specflow-engine`. This document MUST NOT override current architecture, exact API schemas or production code.
 
 # Engine, CLI and Runtime boundaries
 

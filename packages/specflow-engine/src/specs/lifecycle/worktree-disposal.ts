@@ -6,6 +6,7 @@ import { executeGitMutation } from '../../git/mutation';
 import { executeGit } from '../../git/process';
 import { publishCloseCheckpoint } from './close-checkpoint';
 import {
+  WorkspaceRegistryError,
   inspectRegisteredWorkspace,
   readWorkspaceRegistry,
   type WorkspaceRegistry,
@@ -41,6 +42,7 @@ function claim(journal: CloseJournal): LifecycleRegistryCAS {
   const plan = journal.plan;
   if (
     (plan.kind !== 'worktree-close' &&
+      plan.kind !== 'workspace-close' &&
       !(
         plan.kind === 'specification-close' &&
         plan.integrateToTargetBranch === true &&
@@ -54,10 +56,13 @@ function claim(journal: CloseJournal): LifecycleRegistryCAS {
   return {
     operationId: plan.operationId,
     specId: plan.specId,
+    ...(plan.occupants ? { occupants: plan.occupants } : {}),
     sourceWorkspaceId: plan.source.workspaceId,
     sourceInstanceId: plan.source.instanceId,
     sourceRoot: plan.source.root,
-    primaryWorkspaceId: plan.target.workspaceId,
+    targetWorkspaceId: plan.target.workspaceId,
+    targetRoot: plan.target.root,
+    ...(plan.target.instanceId ? { targetInstanceId: plan.target.instanceId } : {}),
     expectedBindingGeneration: plan.bindingGeneration,
     expectedRegistryRevision: plan.registryRevision,
     resources: plan.resources,
@@ -116,12 +121,19 @@ async function assertPublication(engine: SpecFlowEngine, record: CloseJournal): 
     ) {
       throw recovery('Published divergent commit has unexpected parents or tree.');
     }
-    await verifyGitTreePathEquivalent(
-      target.root,
-      integration.sourceCommit,
-      candidate,
-      'specs/' + (record.archive ? 'archive' : record.plan.location) + '/' + record.plan.slug,
-    );
+    for (const entry of record.plan.occupants ?? [
+      {
+        slug: record.plan.slug,
+        location: record.archive ? ('archive' as const) : record.plan.location,
+      },
+    ]) {
+      await verifyGitTreePathEquivalent(
+        target.root,
+        integration.sourceCommit,
+        candidate,
+        'specs/' + entry.location + '/' + entry.slug,
+      );
+    }
     // During disposal the scratch may ALREADY have been physically removed.
     // The immutable candidate SHA/tree/parents and published primary are the
     // remaining authority; never recreate scratch from its path.
@@ -131,16 +143,22 @@ async function assertPublication(engine: SpecFlowEngine, record: CloseJournal): 
   }
 }
 function reboundBinding(registry: WorkspaceRegistry, record: CloseJournal): boolean {
-  const entry = registry.specBindings.find((x) => x.specId === record.plan.specId);
+  const ids = record.plan.occupants?.map((x) => x.specId) ?? [record.plan.specId];
   return (
-    entry?.workspaceId === record.plan.target?.workspaceId &&
-    entry?.generation === record.plan.registryRevision + 1 &&
+    ids.every((specId) => {
+      const entry = registry.specBindings.find((x) => x.specId === specId);
+      return (
+        entry?.workspaceId === record.plan.target?.workspaceId &&
+        entry?.generation === record.plan.registryRevision + 1
+      );
+    }) &&
+    !registry.specBindings.some((x) => x.workspaceId === record.plan.source.workspaceId) &&
     registry.revision === record.plan.registryRevision + 1
   );
 }
 
 /**
- * First CAS rebind to primary, then journal. If killed between files, a new
+ * First CAS rebind to the verified destination, then journal. If killed between files, a new
  * call verifies exactly the same resulting CAS instead of writing it again.
  */
 export async function rebindVerifiedClose(
@@ -239,11 +257,11 @@ export async function disposeReboundWorktree(
 ): Promise<CloseJournal> {
   const current = await readCloseJournal(engine.context, operationId);
   if (current?.stage !== 'binding-rebound' || !current.reboundRevision)
-    throw conflict('Managed disposal requires a recorded primary binding.');
+    throw conflict('Managed disposal requires a recorded destination binding.');
   const c = claim(current);
   const registry = await engine.readRegistry();
   if (!reboundBinding(registry, current))
-    throw recovery('Primary binding is no longer the exact CAS result.');
+    throw recovery('Destination binding is no longer the exact CAS result.');
   await assertPublication(engine, current);
   const registration = registry.workspaces.find((x) => x.workspaceId === c.sourceWorkspaceId);
   if (
@@ -253,11 +271,21 @@ export async function disposeReboundWorktree(
     registration.root !== c.sourceRoot
   )
     throw recovery('Disposal target is no longer the exclusively managed source.');
-  const observed = await inspectRegisteredWorkspace(
-    engine.context,
-    registry,
-    registration.workspaceId,
-  );
+  let observed;
+  try {
+    observed = await inspectRegisteredWorkspace(engine.context, registry, registration.workspaceId);
+  } catch (error) {
+    if (
+      error instanceof WorkspaceRegistryError &&
+      (error.code === 'REGISTRY_WORKSPACE_MISMATCH' ||
+        error.code === 'REGISTRY_WORKSPACE_UNAVAILABLE')
+    ) {
+      throw recovery(
+        'Linked checkout incarnation changed; do not remove or retire this workspace.',
+      );
+    }
+    throw error;
+  }
   if (observed.status !== 'available')
     throw recovery('Cannot inspect the original linked worktree incarnation.');
   const facts = await inspectCleanGitWorkspace(registration);
@@ -315,12 +343,18 @@ export async function reconcileDisposedWorktree(
   if (reboundBinding(registry, record)) {
     await retireLifecycleWorkspace(engine.context, c, record.reboundRevision);
   } else {
-    const rebound = registry.specBindings.find((x) => x.specId === c.specId);
+    const ids = c.occupants?.map((x) => x.specId) ?? [c.specId];
     if (
       registry.revision !== record.reboundRevision + 1 ||
       registry.workspaces.some((x) => x.workspaceId === c.sourceWorkspaceId) ||
-      rebound?.workspaceId !== c.primaryWorkspaceId ||
-      rebound.generation !== record.reboundRevision
+      ids.some((specId) => {
+        const rebound = registry.specBindings.find((x) => x.specId === specId);
+        return (
+          rebound?.workspaceId !== c.targetWorkspaceId ||
+          rebound.generation !== record.reboundRevision
+        );
+      }) ||
+      registry.specBindings.some((x) => x.workspaceId === c.sourceWorkspaceId)
     )
       throw recovery('Registry retirement effect cannot be uniquely attributed to Close.');
   }

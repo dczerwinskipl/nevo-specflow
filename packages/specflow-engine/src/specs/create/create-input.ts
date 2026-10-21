@@ -5,6 +5,7 @@ export type CreateSpecificationTarget =
       readonly kind: 'new-worktree';
       readonly baseRef: string;
       readonly branch?: string;
+      readonly integrationTargetWorkspaceId?: string;
     };
 
 export interface CreateSpecificationInput {

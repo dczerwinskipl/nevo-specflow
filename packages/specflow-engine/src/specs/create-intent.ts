@@ -11,6 +11,8 @@ export type ClientCreateTarget =
       readonly kind: 'new-worktree';
       readonly baseRef: ClientOverride;
       readonly branch: ClientOverride;
+      /** Omission retains the project default and legacy intent fingerprint. */
+      readonly integrationTargetWorkspaceId?: string;
     };
 
 /**
@@ -29,6 +31,7 @@ export type CreateClientTargetInput =
       readonly kind: 'new-worktree';
       readonly baseRef?: string;
       readonly branch?: string;
+      readonly integrationTargetWorkspaceId?: string;
     };
 
 export function normalizeCreateClientIntent(input: {
@@ -58,6 +61,9 @@ function normalizeClientTarget(input: CreateClientTargetInput): ClientCreateTarg
         kind: 'new-worktree',
         baseRef: normalizeOverride(input.baseRef),
         branch: normalizeOverride(input.branch),
+        ...(input.integrationTargetWorkspaceId !== undefined
+          ? { integrationTargetWorkspaceId: input.integrationTargetWorkspaceId }
+          : {}),
       };
     default: {
       const exhaustive: never = input;

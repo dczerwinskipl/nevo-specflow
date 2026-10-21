@@ -87,7 +87,12 @@ function assertMatchingRequest(
   journal: CloseJournal,
   request: CloseRequest & { readonly operationId: string },
 ): void {
-  if (journal.plan.kind !== request.kind || journal.plan.specId !== request.specId) {
+  if (
+    journal.plan.kind !== request.kind ||
+    (request.kind === 'workspace-close'
+      ? journal.plan.workspaceId !== request.workspaceId
+      : journal.plan.specId !== request.specId)
+  ) {
     throw new CloseOperationError(
       'CLOSE_CONFLICT',
       'OperationId belongs to another lifecycle intent.',

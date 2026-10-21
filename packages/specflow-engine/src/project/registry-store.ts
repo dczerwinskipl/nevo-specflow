@@ -225,7 +225,11 @@ function sameRegistration(
     before.kind === after.kind &&
     before.root === after.root &&
     before.managed === after.managed &&
-    before.instanceId === after.instanceId
+    before.instanceId === after.instanceId &&
+    isDeepStrictEqual(
+      before.kind === 'linked' ? before.integrationDestination : undefined,
+      after.kind === 'linked' ? after.integrationDestination : undefined,
+    )
   );
 }
 

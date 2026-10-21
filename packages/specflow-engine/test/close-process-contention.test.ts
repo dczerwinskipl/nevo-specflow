@@ -101,11 +101,17 @@ interface Worker {
 
 function spawnCloseWorker(
   root: string,
-  request: {
-    readonly kind: 'specification-close' | 'worktree-close';
-    readonly specId: string;
-    readonly operationId: string;
-  },
+  request:
+    | {
+        readonly kind: 'specification-close' | 'worktree-close';
+        readonly specId: string;
+        readonly operationId: string;
+      }
+    | {
+        readonly kind: 'workspace-close';
+        readonly workspaceId: string;
+        readonly operationId: string;
+      },
   publication?: { readonly ready: string; readonly release: string },
 ): Worker {
   const prefix = join(tmpdir(), 'specflow-close-race-' + randomUUID());
@@ -425,6 +431,126 @@ describe('E2.T17 LC17/LC39 independent OS-process Close contention', () => {
           reapVitestWorker(worker.process),
         ),
       );
+    }
+  }, 240000);
+
+  it('I03: paused Create in shared A/B/C excludes concurrent workspace Close process', async () => {
+    const fixture = await project();
+    const a = await specification(fixture, 'Shared contention A', true);
+    for (const title of ['Shared contention B', 'Shared contention C']) {
+      const child = await createSpecificationForTesting(fixture.engine, {
+        operationId: randomUUID(),
+        title,
+        created: '2026-10-20',
+        target: { kind: 'existing', workspaceId: a.workspaceId },
+      });
+      git(
+        a.workspaceRoot,
+        'add',
+        '--',
+        child.relativeManifestPath,
+        'specs/active/' + child.slug + '/overview.md',
+      );
+    }
+    git(
+      a.workspaceRoot,
+      '-c',
+      'user.name=Test',
+      '-c',
+      'user.email=test@example.invalid',
+      'commit',
+      '-qm',
+      'shared A B C for OS contention',
+    );
+    const registry = await fixture.engine.readRegistry();
+    expect(registry.specBindings.filter((x) => x.workspaceId === a.workspaceId)).toHaveLength(3);
+    const head = git(a.workspaceRoot, 'rev-parse', 'HEAD');
+    const create = spawnPausedCreateWorker(fixture.root, a.workspaceId);
+    let close: Worker | undefined;
+    let createOutcome: { code: number | null; log: string } | undefined;
+    try {
+      await waitFor(create.ready, create);
+      await writeFile(create.start, 'go');
+      await waitFor(create.paused, create);
+      close = spawnCloseWorker(fixture.root, {
+        kind: 'workspace-close',
+        workspaceId: a.workspaceId,
+        operationId: randomUUID(),
+      });
+      await waitFor(close.ready, close);
+      await writeFile(close.start, 'go');
+      const rejected = await close.done;
+      expect(rejected.code, rejected.log).toBe(0);
+      expect(JSON.parse(await readFile(close.result, 'utf8'))).toEqual({ result: 'conflict' });
+      expect(await listCloseJournals(fixture.engine.context)).toHaveLength(0);
+      expect(git(a.workspaceRoot, 'rev-parse', 'HEAD')).toBe(head);
+      expect(git(fixture.root, 'status', '--porcelain')).toBe('');
+    } finally {
+      await writeFile(create.release, 'continue');
+      createOutcome = await create.done;
+      await Promise.all(
+        [create, ...(close ? [close] : [])].map((w) => reapVitestWorker(w.process)),
+      );
+    }
+    expect(createOutcome?.code, createOutcome?.log).toBe(0);
+    const latest = await fixture.engine.readRegistry();
+    expect(latest.specBindings.filter((x) => x.workspaceId === a.workspaceId)).toHaveLength(4);
+    expect(latest.workspaces.some((x) => x.workspaceId === a.workspaceId)).toBe(true);
+  }, 240000);
+
+  it('I03: two independent Workspace Close processes cannot reserve one shared checkout', async () => {
+    const fixture = await project();
+    const a = await specification(fixture, 'Shared OS Close first', true);
+    const child = await createSpecificationForTesting(fixture.engine, {
+      operationId: randomUUID(),
+      title: 'Shared OS Close second',
+      created: '2026-10-20',
+      target: { kind: 'existing', workspaceId: a.workspaceId },
+    });
+    git(
+      a.workspaceRoot,
+      'add',
+      '--',
+      child.relativeManifestPath,
+      'specs/active/' + child.slug + '/overview.md',
+    );
+    git(
+      a.workspaceRoot,
+      '-c',
+      'user.name=Test',
+      '-c',
+      'user.email=test@example.invalid',
+      'commit',
+      '-qm',
+      'commit both shared specs',
+    );
+    const workers = [0, 1].map(() =>
+      spawnCloseWorker(fixture.root, {
+        kind: 'workspace-close' as const,
+        workspaceId: a.workspaceId,
+        operationId: randomUUID(),
+      }),
+    );
+    try {
+      await Promise.all(workers.map((worker) => waitFor(worker.ready, worker)));
+      await Promise.all(workers.map((worker) => writeFile(worker.start, 'go')));
+      const outcomes = await Promise.all(workers.map((worker) => worker.done));
+      for (const outcome of outcomes) expect(outcome.code, outcome.log).toBe(0);
+      const results = await Promise.all(
+        workers.map(
+          async (worker) => JSON.parse(await readFile(worker.result, 'utf8')) as { result: string },
+        ),
+      );
+      expect(results.map((x) => x.result).sort()).toEqual(['conflict', 'reserved']);
+      const journals = await listCloseJournals(fixture.engine.context);
+      expect(journals).toHaveLength(1);
+      expect(journals[0]?.plan.occupants?.map((x) => x.specId)).toEqual(
+        [a.specId, child.specId].sort(),
+      );
+      const registry = await fixture.engine.readRegistry();
+      expect(registry.specBindings.filter((x) => x.workspaceId === a.workspaceId)).toHaveLength(2);
+    } finally {
+      await Promise.all(workers.map((w) => reapVitestWorker(w.process)));
     }
   }, 240000);
 

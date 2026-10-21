@@ -2,7 +2,8 @@
 id: ideas.specflow-engine.workspace-registry
 type: architecture
 title: Workspace registry and Specification discovery
-status: draft
+status: superseded
+superseded_by: architecture.runtime.specflow-project-home
 scope: specflow
 areas: [workflow, configuration, runtime]
 tags: [registry, discovery, deduplication, workspace]
@@ -20,6 +21,8 @@ related:
   - ideas.specflow-engine.project-home
   - ideas.specflow-engine.workspace-binding-lifecycle
 ---
+
+> **Historical E1/E2 design evidence — superseded.** The authoritative implemented contract is `architecture.runtime.specflow-project-home`. This document MUST NOT override current architecture, exact API schemas or production code.
 
 # Workspace registry and Specification discovery
 

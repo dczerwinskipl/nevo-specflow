@@ -24,7 +24,10 @@ export async function advanceCloseIntegration(
   let journal = initial;
   const operationId = journal.plan.operationId;
 
-  if (journal.stage === 'reserved' && journal.plan.kind === 'worktree-close')
+  if (
+    journal.stage === 'reserved' &&
+    (journal.plan.kind === 'worktree-close' || journal.plan.kind === 'workspace-close')
+  )
     journal = await prepareCloseGitIntegration(engine, operationId);
 
   if (journal.stage === 'integration-preparation-initiated') {

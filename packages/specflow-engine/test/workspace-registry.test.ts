@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   PROJECT_HOME_MARKER_RELATIVE_PATH,
   GIT_INSTANCE_SENTINEL_FILE,
+  MAX_MANAGED_WORKSPACE_SPECIFICATIONS,
   WorkspaceRegistryError,
   addWorkspace,
   bindSpecToWorkspace,
@@ -87,6 +88,38 @@ describe('Engine workspace registry model (E1.T04)', () => {
     expect(resolveSpecWorkspaceId(next, specId)).toBe(linked.workspaces[1]!.workspaceId);
     expect(resolveSpecWorkspaceId(next, randomUUID())).toBe(next.primaryWorkspaceId);
     expect(next.workspaces[0]?.root).toBe(context.project.homeRoot);
+  });
+
+  it('I03: forbids creating a bound Spec beyond the documented Workspace Close capacity', async () => {
+    const { context, registry } = await fixture();
+    const workspaceId = randomUUID();
+    const linked = addWorkspace(registry, {
+      workspaceId,
+      kind: 'linked',
+      root: resolve(join(context.project.homeRoot, '..', 'capacity-linked')),
+      managed: true,
+      instanceId: randomUUID(),
+    });
+    // Pure registry transition: no Git subprocess, 1024 slow filesystem Creates,
+    // or journal write is needed to prove the admission boundary.
+    let current = linked;
+    const first = randomUUID();
+    current = bindSpecToWorkspace(current, first, workspaceId);
+    for (let i = 1; i < MAX_MANAGED_WORKSPACE_SPECIFICATIONS; i++)
+      current = bindSpecToWorkspace(current, randomUUID(), workspaceId);
+    expect(current.specBindings.filter((x) => x.workspaceId === workspaceId)).toHaveLength(
+      MAX_MANAGED_WORKSPACE_SPECIFICATIONS,
+    );
+    expect(bindSpecToWorkspace(current, first, workspaceId)).toEqual(current);
+    expect(() => bindSpecToWorkspace(current, randomUUID(), workspaceId)).toThrow(
+      /at most 1024 bound Specifications/u,
+    );
+    expect(current.specBindings.filter((x) => x.workspaceId === workspaceId)).toHaveLength(
+      MAX_MANAGED_WORKSPACE_SPECIFICATIONS,
+    );
+    expect(current.specBindings.some((x) => x.workspaceId === registry.primaryWorkspaceId)).toBe(
+      false,
+    );
   });
 
   it('distinguishes absent registry from corrupt, unknown-version and duplicate state', async () => {

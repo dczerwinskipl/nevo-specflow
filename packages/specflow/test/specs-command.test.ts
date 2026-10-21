@@ -164,7 +164,9 @@ describe('E2.T05 — offline CLI Specs capability', () => {
     const cli = command(root);
     await expect(
       cli.run(['create', '--title', 'No branch', '--branch', 'spec/bad']),
-    ).rejects.toThrow('--base-ref and --branch require --worktree');
+    ).rejects.toThrow(
+      '--base-ref, --branch and --integration-target-workspace-id require --worktree.',
+    );
     expect(await discoverSpecifications(engine)).toEqual([]);
   });
 });

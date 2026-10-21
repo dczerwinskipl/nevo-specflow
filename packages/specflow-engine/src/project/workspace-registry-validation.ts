@@ -7,6 +7,7 @@ import {
   type SpecWorkspaceBinding,
   type WorkspaceRegistration,
   type WorkspaceRegistry,
+  type WorkspaceIntegrationDestination,
 } from './workspace-registry-types';
 
 /** Pure schema and identity validation; never touches Git or the filesystem. */
@@ -39,6 +40,7 @@ export function validateWorkspaceRegistry(
 
   const workspaces = parseRegistrations(source.workspaces);
   assertPrimaryRegistration(workspaces, source.primaryWorkspaceId, context.project.homeRoot);
+  assertIntegrationDestinations(workspaces);
   const specBindings = parseBindings(
     source.specBindings,
     new Set(workspaces.map((workspace) => workspace.workspaceId)),
@@ -92,6 +94,9 @@ function parseRegistration(value: unknown): WorkspaceRegistration {
       root: value.root,
       managed: value.managed,
       instanceId: value.instanceId as string,
+      ...(value.integrationDestination !== undefined
+        ? { integrationDestination: parseIntegrationDestination(value.integrationDestination) }
+        : {}),
     };
   }
   return {
@@ -100,6 +105,58 @@ function parseRegistration(value: unknown): WorkspaceRegistration {
     root: value.root,
     managed: false,
   };
+}
+
+function parseIntegrationDestination(value: unknown): WorkspaceIntegrationDestination {
+  if (
+    !isObject(value) ||
+    !isIdentifier(value.workspaceId) ||
+    typeof value.branch !== 'string' ||
+    value.branch.length === 0 ||
+    value.branch.length > 255 ||
+    value.branch.startsWith('/') ||
+    value.branch.endsWith('/') ||
+    value.branch.includes('..') ||
+    /[\s\\~^:?*[\]]/u.test(value.branch) ||
+    (value.instanceId !== undefined && !isIdentifier(value.instanceId)) ||
+    Object.keys(value).some(
+      (key) => key !== 'workspaceId' && key !== 'branch' && key !== 'instanceId',
+    )
+  ) {
+    throw corrupt('Invalid workspace integration destination.');
+  }
+  return {
+    workspaceId: value.workspaceId,
+    branch: value.branch,
+    ...(value.instanceId !== undefined ? { instanceId: value.instanceId } : {}),
+  };
+}
+
+/** No cycles or dangling targets; a linked destination must pin its incarnation. */
+function assertIntegrationDestinations(workspaces: readonly WorkspaceRegistration[]): void {
+  const byId = new Map(workspaces.map((workspace) => [workspace.workspaceId, workspace]));
+  for (const workspace of workspaces) {
+    if (workspace.kind !== 'linked' || !workspace.integrationDestination) continue;
+    const destination = workspace.integrationDestination;
+    const target = byId.get(destination.workspaceId);
+    if (
+      !target ||
+      target.workspaceId === workspace.workspaceId ||
+      target.instanceId !== destination.instanceId
+    ) {
+      throw corrupt('Integration destination does not match a registered checkout incarnation.');
+    }
+    const visited = new Set([workspace.workspaceId]);
+    let cursor: WorkspaceRegistration | undefined = target;
+    while (cursor) {
+      if (visited.has(cursor.workspaceId)) throw corrupt('Cyclic integration destinations.');
+      visited.add(cursor.workspaceId);
+      cursor =
+        cursor.kind === 'linked' && cursor.integrationDestination
+          ? byId.get(cursor.integrationDestination.workspaceId)
+          : undefined;
+    }
+  }
 }
 
 function assertPrimaryRegistration(

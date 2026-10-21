@@ -2,7 +2,8 @@
 id: ideas.specflow-engine.worktrees
 type: architecture
 title: Optional per Specification Git worktrees
-status: draft
+status: superseded
+superseded_by: architecture.runtime.specflow-lifecycle
 scope: specflow
 areas: [workflow, configuration, security]
 tags: [worktree, git, lifecycle, isolation]
@@ -20,6 +21,8 @@ related:
   - ideas.specflow-engine.locking
   - ideas.specflow-engine.workspace-binding-lifecycle
 ---
+
+> **Historical E1/E2 design evidence — superseded.** The authoritative implemented contract is `architecture.runtime.specflow-lifecycle`. This document MUST NOT override current architecture, exact API schemas or production code.
 
 # Optional per-Specification worktree
 

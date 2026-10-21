@@ -32,6 +32,12 @@ export function resourcesForCreate(record: CreateJournal): readonly MutationReso
     ...identity,
     'ref:refs/heads/' + record.target.branch.toLowerCase(),
     'worktree-path:' + record.target.workspaceRoot.toLowerCase(),
+    ...(record.target.integrationDestination
+      ? [
+          'checkout:' + record.target.integrationDestination.workspaceId,
+          'ref:refs/heads/' + record.target.integrationDestination.branch.toLowerCase(),
+        ]
+      : []),
     'git-worktree-admin-scoped:' + record.projectId,
   ]);
 }

@@ -1,6 +1,8 @@
 import { join } from 'node:path';
 
 import type { ResolvedProjectHome } from '../../project/project-home';
+import { MAX_MANAGED_WORKSPACE_SPECIFICATIONS } from '../../project/workspace-registry';
+import { validateSpecificationSlug } from '../model';
 import { fingerprintCloseIntent, resourcesForClosePlan, type CloseJournal } from './model';
 
 export const CLOSE_UUID =
@@ -42,7 +44,7 @@ export function isCloseJournal(
       typeof plan.source.instanceId === 'string' &&
       plan.integrateToTargetBranch === true;
     if (
-      (plan.kind !== 'worktree-close' && !linkedSpecification) ||
+      (plan.kind !== 'worktree-close' && plan.kind !== 'workspace-close' && !linkedSpecification) ||
       typeof value.reboundRevision !== 'number' ||
       !Number.isSafeInteger(value.reboundRevision) ||
       typeof plan.registryRevision !== 'number' ||
@@ -131,8 +133,11 @@ export function isCloseJournal(
     value.gitInstanceId !== context.project.gitInstanceId ||
     plan.operationId !== operationId ||
     !CLOSE_UUID.test(operationId) ||
-    (plan.kind !== 'worktree-close' && plan.kind !== 'specification-close') ||
+    (plan.kind !== 'worktree-close' &&
+      plan.kind !== 'workspace-close' &&
+      plan.kind !== 'specification-close') ||
     typeof plan.specId !== 'string' ||
+    !isCoherentOccupants(plan) ||
     !CLOSE_UUID.test(plan.specId) ||
     typeof plan.fingerprint !== 'string' ||
     !SHA.test(plan.fingerprint) ||
@@ -175,14 +180,16 @@ export function isCloseJournal(
   }
 
   const intent =
-    plan.kind === 'worktree-close'
-      ? { kind: 'worktree-close' as const, operationId, specId: plan.specId }
-      : {
-          kind: 'specification-close' as const,
-          operationId,
-          specId: plan.specId,
-          integrateToTargetBranch: plan.integrateToTargetBranch ?? false,
-        };
+    plan.kind === 'workspace-close'
+      ? { kind: 'workspace-close' as const, operationId, workspaceId: String(plan.workspaceId) }
+      : plan.kind === 'worktree-close'
+        ? { kind: 'worktree-close' as const, operationId, specId: plan.specId }
+        : {
+            kind: 'specification-close' as const,
+            operationId,
+            specId: plan.specId,
+            integrateToTargetBranch: plan.integrateToTargetBranch ?? false,
+          };
   if (plan.fingerprint !== fingerprintCloseIntent(intent)) return false;
   // Reconstitute only the fields needed for derived ownership: the complete
   // journal is not trusted until all pinned identities/resources agree.
@@ -201,13 +208,16 @@ export function isCloseJournal(
 function isCoherentCloseScope(plan: Record<string, unknown>): boolean {
   if (!isRecord(plan.source)) return false;
   const linked = plan.source.instanceId !== undefined;
-  if (plan.kind === 'worktree-close') {
+  if (plan.kind === 'worktree-close' || plan.kind === 'workspace-close') {
     if (!linked || plan.integrateToTargetBranch !== undefined) return false;
   } else if (plan.kind === 'specification-close') {
     if ((typeof plan.integrateToTargetBranch === 'boolean') !== linked) return false;
     if (plan.location !== 'active') return false;
   }
-  const integrate = plan.kind === 'worktree-close' || plan.integrateToTargetBranch === true;
+  const integrate =
+    plan.kind === 'worktree-close' ||
+    plan.kind === 'workspace-close' ||
+    plan.integrateToTargetBranch === true;
   const needsTarget = integrate || !linked;
   if (!needsTarget) {
     return (
@@ -220,8 +230,8 @@ function isCoherentCloseScope(plan: Record<string, unknown>): boolean {
   return (
     typeof plan.targetBranch === 'string' &&
     plan.targetBranch === plan.target.branch &&
-    typeof plan.configRevision === 'string' &&
-    SHA.test(plan.configRevision) &&
+    ((typeof plan.configRevision === 'string' && SHA.test(plan.configRevision)) ||
+      (linked && plan.configRevision === undefined)) &&
     (linked
       ? plan.source.workspaceId !== plan.target.workspaceId
       : plan.source.workspaceId === plan.target.workspaceId)
@@ -295,7 +305,9 @@ function isIntegrationPreparation(
   // Linked Specification closure must first commit archive effects and pin
   // its NEW integrationSourceCommit. T11 deliberately cannot skip that step.
   if (
-    (plan.kind !== 'worktree-close' && plan.kind !== 'specification-close') ||
+    (plan.kind !== 'worktree-close' &&
+      plan.kind !== 'workspace-close' &&
+      plan.kind !== 'specification-close') ||
     !isRecord(plan.source) ||
     !isRecord(plan.target)
   )
@@ -307,7 +319,8 @@ function isIntegrationPreparation(
       archive.sourceCommit !== plan.source.head)
   )
     return false;
-  if (plan.kind === 'worktree-close' && archive !== undefined) return false;
+  if ((plan.kind === 'worktree-close' || plan.kind === 'workspace-close') && archive !== undefined)
+    return false;
   if (!isRecord(value)) return false;
   const sha = /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/iu;
   const published = value.publishedCommit;
@@ -347,7 +360,7 @@ function isIntegrationPreparation(
     typeof value.sourceCommit === 'string' &&
     sha.test(value.sourceCommit) &&
     value.sourceCommit ===
-      (plan.kind === 'worktree-close'
+      (plan.kind === 'worktree-close' || plan.kind === 'workspace-close'
         ? plan.source.head
         : isRecord(archive)
           ? archive.committedHead
@@ -454,4 +467,57 @@ function isWorkspace(value: unknown): boolean {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Old one-Spec journals stay unchanged; only workspace-level journals pin sets. */
+function isCoherentOccupants(plan: Record<string, unknown>): boolean {
+  if (plan.kind !== 'workspace-close')
+    return plan.workspaceId === undefined && plan.occupants === undefined;
+  if (
+    !isRecord(plan.source) ||
+    plan.workspaceId !== plan.source.workspaceId ||
+    !CLOSE_UUID.test(String(plan.workspaceId)) ||
+    !Array.isArray(plan.occupants) ||
+    plan.occupants.length === 0 ||
+    plan.occupants.length > MAX_MANAGED_WORKSPACE_SPECIFICATIONS
+  )
+    return false;
+  const occupants: readonly unknown[] = plan.occupants;
+  if (
+    !occupants.every((entry, index) => {
+      if (
+        !isRecord(entry) ||
+        !CLOSE_UUID.test(String(entry.specId)) ||
+        typeof entry.slug !== 'string' ||
+        !isCanonicalSlug(entry.slug) ||
+        (entry.location !== 'active' && entry.location !== 'archive') ||
+        typeof entry.status !== 'string' ||
+        !entry.status.trim() ||
+        entry.status.length > 256 ||
+        (entry.location === 'archive' && entry.status !== 'archived') ||
+        typeof entry.bindingGeneration !== 'number' ||
+        !Number.isSafeInteger(entry.bindingGeneration)
+      )
+        return false;
+      const previous = index > 0 ? occupants[index - 1] : undefined;
+      return !isRecord(previous) || String(previous.specId) < String(entry.specId);
+    })
+  )
+    return false;
+  const first = occupants[0];
+  return (
+    isRecord(first) &&
+    plan.specId === first.specId &&
+    plan.slug === first.slug &&
+    plan.location === first.location &&
+    plan.bindingGeneration === first.bindingGeneration
+  );
+}
+
+function isCanonicalSlug(value: string): boolean {
+  try {
+    return validateSpecificationSlug(value) === value;
+  } catch {
+    return false;
+  }
 }

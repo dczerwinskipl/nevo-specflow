@@ -45,7 +45,7 @@ export async function readCloseJournal(
     await requireRealDirectory(join(context.project.stateRoot, 'engine', 'operations'));
     await requireRealDirectory(join(context.project.stateRoot, JOURNAL_DIR));
     const stat = await lstat(path);
-    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 65536) throw invalid();
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 1024 * 1024) throw invalid();
     const parsed = JSON.parse(await readFile(path, 'utf8')) as unknown;
     if (!isCloseJournal(context, parsed, operationId)) throw invalid();
     return parsed;

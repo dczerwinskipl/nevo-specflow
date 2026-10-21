@@ -2,7 +2,8 @@
 id: ideas.specflow-engine.spec-creation
 type: product
 title: Specification creation vertical slice
-status: draft
+status: superseded
+superseded_by: product.specflow.specification-creation
 scope: specflow
 areas: [workflow, cli, server, ui]
 tags: [specifications, create, vertical-slice, worktree]
@@ -22,6 +23,8 @@ related:
   - ideas.specflow-engine.project-home
   - ideas.specflow-engine.execution-scopes
 ---
+
+> **Historical E1/E2 design evidence — superseded.** The authoritative implemented contract is `product.specflow.specification-creation`. This document MUST NOT override current architecture, exact API schemas or production code.
 
 # Specification creation vertical slice
 
@@ -117,3 +120,91 @@ No full agent turn, AI spec drafting, Task Planner, spec approval, PR open/merge
 6. Retry a creation operation, then inject a crash after Git creation and demonstrate reconciliation.
 
 Definition of success is in [acceptance criteria](acceptance-criteria.md).
+
+## E2.I04 production Create HTTP and UI contract (2026-10-20)
+
+This section supersedes the earlier illustrative payloads for **Create Specification**.
+The **Engine**, not the frontend, owns worktree Git admission, the canonical
+`specId`, branch provisioning, durable Create journals and recovery.
+
+### Supported endpoints
+
+- `GET /api/specs/create-options`: authorized project-wide `Spec.Create`
+  options: `primaryWorkspaceId`, selectable workspace choices (including
+  `branch`, `specCount`, `selectable`, `integrationSelectable`,
+  `integrationDestination`), `baseRefs`, `defaultBaseRef`, optional
+  `integrationTargetBranch`, and new-worktree availability. This is **not**
+  a reservation or a promise that a subsequent mutation will succeed.
+- `POST /api/specs`: project-wide `Spec.Create` permission. The required
+  `title` is 1–200 characters at the HTTP boundary; optional `goal`,
+  `target` and caller-generated UUID `operationId`. The Engine revalidates
+  the normalized title and immutable intent. Retrying with the **same**
+  operationId/payload is idempotent; changing immutable input is a conflict.
+- `GET /api/specs/create/operations/:operationId`: project-wide
+  `Spec.Create` permission **before** reading durable state; `Cache-Control:
+no-store`. A missing journal returns 404 `CREATE_NOT_FOUND`. An
+  existing journal returns `{operationId, kind:"specification-create",
+status:"in-progress"}`, `status:"recovery-required"` or the normal
+  completed `CreatedSpec` response. Internal stage, timestamps, failure
+  reasons, Git objects, physical paths and raw journal evidence are never
+  exposed. `in-progress` denotes only **persisted nonterminal state**: it
+  does not assert that an OS process is alive and never initiates recovery.
+  The client must not assign a new operationId merely because a response
+  timed out; it should first inspect the original operationId.
+
+`ENGINE_UNAVAILABLE` is returned with the **same** values in `code` and
+`error` for all three endpoints; normal typed Engine errors use the same
+error-code convention. Invalid UUIDs are rejected at the HTTP boundary.
+
+### Two separate decisions: begin from vs merge into
+
+`target:{kind:"new-worktree",baseRef?,branch?,integrationTargetWorkspaceId?}`
+means create a **new** linked checkout. The optional `baseRef` selects
+**only the starting Git commit**, not the eventual integration destination:
+the Engine accepts `HEAD`, eligible local refs, a full commit SHA and
+`refs/tags/...` in addition to options enumerated as `baseRefs[]`.
+`defaultBaseRef` must therefore not be force-matched to that array.
+Omitting `baseRef` applies the verified project default. Omitting `branch`
+requests an automatically generated branch; the UI must not invent or claim
+its eventual name before successful creation.
+
+The optional `integrationTargetWorkspaceId` selects an **existing, verified**
+checkout that owns the future branch integration destination. Its exact
+checked-out branch and physical incarnation are inspected by Engine at
+Create and pinned as `integrationDestination =
+{workspaceId, branch, instanceId?}` in the workspace registry. Subsequent
+Close verifies that recorded destination, rather than guessing from branch
+names, the Create starting ref or the current primary checkout. The target
+must be `integrationSelectable` when choosing it in the UI, and the
+backend still rechecks it at admission.
+
+**Omission is meaningful**: without an explicit integration target, a new
+worktree follows the project's configured default integration branch rather
+than assuming it should merge back into the starting `baseRef`.
+Explicitly choosing the primary workspace as integration target pins its
+**currently checked-out branch** (for example `feature/x`), which may
+differ from the project's `git.integrationTargetBranch` (for example
+`develop`). Frontend must distinguish _use project default_ from
+_explicitly choose primary_, even if the selected workspace IDs happen
+to coincide.
+
+A `target:{kind:"existing",workspaceId}` creates a Specification **in
+that checkout**; it does not create a new worktree or select a future
+integration destination. Workspace identifiers are opaque to UI; an
+unlabelled checkout may be shown with a short stable identifier as a
+fallback, but no `displayName` backend mutation is implied.
+
+Create does **not** preflight future merges, automatically switch branches,
+archive any Specification, close worktrees or infer workflow completion.
+Those checks/effects belong to explicit Close operations.
+
+### Security and delivery boundaries
+
+HTTP returns relative manifest paths in terminal `CreatedSpec`, never
+physical checkout roots. Unauthorized callers receive 401/403 before journal
+lookup or worktree choice disclosure. Every nonterminal state remains
+read-only through I04; a recovery-required result is an instruction to
+inspect/reconcile through established operator processes, not a license
+for UI automatic retries that might repeat uncertain Git or filesystem
+effects. Changes for I04 are separate from E2.I03 shared-worktree lifecycle,
+with one PR #53 implementation branch and independent CI/re-review gates.

@@ -293,6 +293,100 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
     }
   }, 120000);
 
+  it('I03: workspace preview hides occupants before admin grant, then closes all bindings', async () => {
+    const { root, engine, spec: a } = await fixture(true);
+    const registry = await engine.readRegistry();
+    const workspaceId = registry.specBindings.find((x) => x.specId === a.specId)!.workspaceId;
+    const b = await createSpecificationForTesting(engine, {
+      operationId: randomUUID(),
+      title: 'HTTP shared sibling',
+      created: '2026-10-20',
+      target: { kind: 'existing', workspaceId },
+    });
+    git(
+      a.workspaceRoot,
+      'add',
+      '--',
+      b.relativeManifestPath,
+      'specs/active/' + b.slug + '/overview.md',
+    );
+    git(
+      a.workspaceRoot,
+      '-c',
+      'user.name=Test',
+      '-c',
+      'user.email=test@example.invalid',
+      'commit',
+      '-qm',
+      'add HTTP sibling',
+    );
+    const operationId = randomUUID();
+    const url = '/api/workspaces/' + workspaceId + '/close';
+    const developer = await authedApp(engine, 'developer');
+    try {
+      const denied = await developer.app.inject({
+        method: 'GET',
+        url: url + '/preview',
+        headers: developer.headers,
+      });
+      expect(denied.statusCode).toBe(403);
+      expect(denied.body).not.toContain(b.specId);
+      const refused = await developer.app.inject({
+        method: 'POST',
+        url,
+        headers: developer.headers,
+        payload: { operationId },
+      });
+      expect(refused.statusCode).toBe(403);
+      expect(await inspectCloseOperation(engine, operationId)).toBeUndefined();
+    } finally {
+      await developer.app.close();
+    }
+    const admin = await authedApp(engine, 'admin');
+    try {
+      const preview = await admin.app.inject({
+        method: 'GET',
+        url: url + '/preview',
+        headers: admin.headers,
+      });
+      expect(preview.statusCode, preview.body).toBe(200);
+      expect(preview.json()).toMatchObject({
+        workspaceId,
+        kind: 'workspace-close',
+        wholeBranchIntegration: true,
+        occupantCount: 2,
+      });
+      expect(
+        preview.json<{ occupants: { specId: string }[] }>().occupants.map((x) => x.specId),
+      ).toEqual([a.specId, b.specId].sort());
+      const completed = await admin.app.inject({
+        method: 'POST',
+        url,
+        headers: admin.headers,
+        payload: { operationId },
+      });
+      expect(completed.statusCode, completed.body).toBe(200);
+      expect(completed.json()).toMatchObject({
+        workspaceId,
+        kind: 'workspace-close',
+        status: 'completed',
+        occupantCount: 2,
+      });
+      expect(completed.body).not.toContain(a.specId);
+      expect((await readWorkspaceSpecification(root, a.specId)).status).toBe('draft');
+      expect((await readWorkspaceSpecification(root, b.specId)).status).toBe('draft');
+      const inspection = await admin.app.inject({
+        method: 'GET',
+        url: url + '/operations/' + operationId,
+        headers: admin.headers,
+      });
+      expect(inspection.statusCode).toBe(200);
+      expect(inspection.json()).toMatchObject({ status: 'completed', occupantCount: 2 });
+    } finally {
+      await admin.app.close();
+    }
+  }, 120000);
+
   it('requires project Git permission before even inspecting a retained conflict scratch', async () => {
     const { root, engine, spec } = await fixture(true);
     const url =

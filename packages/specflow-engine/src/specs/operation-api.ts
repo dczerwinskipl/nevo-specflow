@@ -1,6 +1,6 @@
 import type { SpecFlowEngine } from '../application';
 import { closeSpecification } from './lifecycle/close-specification';
-import { closeWorktree } from './lifecycle/close-worktree';
+import { closeWorktree, closeWorkspace } from './lifecycle/close-worktree';
 import { previewCloseOperation, type CloseRequest } from './lifecycle/preflight';
 import { inspectCloseOperation } from './lifecycle/reservation';
 import { reconcileArchivedConflictScratch } from './lifecycle/git-scratch';
@@ -8,6 +8,10 @@ import { CloseOperationError } from './lifecycle/model';
 import {
   projectCloseOperation,
   projectClosePreview,
+  projectWorkspaceClosePreview,
+  projectWorkspaceCloseOperation,
+  type PublicWorkspaceClosePreview,
+  type PublicWorkspaceCloseOperation,
   type PublicCloseOperation,
   type PublicClosePreview,
 } from './operation-projection';
@@ -26,7 +30,7 @@ export async function inspectPublicCloseOperation(
   operationId: string,
 ): Promise<PublicCloseInspection | undefined> {
   const journal = await inspectCloseOperation(engine, operationId);
-  if (!journal) return undefined;
+  if (!journal || journal.plan.kind === 'workspace-close') return undefined;
   return {
     ...projectCloseOperation(journal),
     integrationRequired:
@@ -49,7 +53,12 @@ export async function planPublicCloseOperation(
   if (!request.operationId) return previewPublicCloseOperation(engine, request);
   const existing = await inspectCloseOperation(engine, request.operationId);
   if (existing) {
-    if (existing.plan.specId !== request.specId || existing.plan.kind !== request.kind) {
+    if (
+      existing.plan.kind !== request.kind ||
+      (request.kind === 'workspace-close'
+        ? existing.plan.workspaceId !== request.workspaceId
+        : existing.plan.specId !== request.specId)
+    ) {
       throw new CloseOperationError('CLOSE_CONFLICT', 'Operation identity does not match intent.');
     }
     return projectClosePreview(existing.plan);
@@ -88,4 +97,50 @@ export async function reconcileArchivedConflictScratchOperation(
   return projectCloseOperation(
     await reconcileArchivedConflictScratch(engine, operationId, confirmedNoActiveGitProcess),
   );
+}
+
+/** Workspace auth must happen before calling these methods at the HTTP edge. */
+export async function planPublicWorkspaceCloseOperation(
+  engine: SpecFlowEngine,
+  request: { readonly operationId: string; readonly workspaceId: string },
+): Promise<PublicWorkspaceClosePreview> {
+  // Rehydrate only an immutable matching plan. Caller supplies no occupant list.
+  const existing = await inspectCloseOperation(engine, request.operationId);
+  if (existing) {
+    if (
+      existing.plan.kind !== 'workspace-close' ||
+      existing.plan.workspaceId !== request.workspaceId
+    )
+      throw new CloseOperationError(
+        'CLOSE_CONFLICT',
+        'Operation identity does not match workspace.',
+      );
+    return projectWorkspaceClosePreview(existing.plan);
+  }
+  return projectWorkspaceClosePreview(
+    await previewCloseOperation(engine, { ...request, kind: 'workspace-close' }),
+  );
+}
+
+export async function closeWorkspaceOperation(
+  engine: SpecFlowEngine,
+  request: { readonly operationId: string; readonly workspaceId: string },
+): Promise<PublicWorkspaceCloseOperation> {
+  const result = await closeWorkspace(engine, request);
+  if ('journal' in result) return projectWorkspaceCloseOperation(result.journal);
+  const journal = await inspectCloseOperation(engine, request.operationId);
+  if (!journal)
+    throw new CloseOperationError('CLOSE_RECOVERY_REQUIRED', 'Workspace Close journal is missing.');
+  return projectWorkspaceCloseOperation(journal);
+}
+
+export async function inspectPublicWorkspaceCloseOperation(
+  engine: SpecFlowEngine,
+  operationId: string,
+  workspaceId: string,
+): Promise<PublicWorkspaceCloseOperation | undefined> {
+  const journal = await inspectCloseOperation(engine, operationId);
+  if (journal?.plan.kind !== 'workspace-close' || journal.plan.workspaceId !== workspaceId)
+    return undefined;
+  return projectWorkspaceCloseOperation(journal);
 }

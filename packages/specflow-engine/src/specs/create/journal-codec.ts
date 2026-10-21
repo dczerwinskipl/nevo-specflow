@@ -17,6 +17,7 @@ const WORKTREE_TARGET_FIELDS = new Set([
   'branch',
   'baseCommit',
   'instanceId',
+  'integrationDestination',
 ]);
 
 export function parseCreateJournal(
@@ -79,6 +80,22 @@ function isValidJournalTarget(value: unknown): boolean {
   const allowed = value.kind === 'existing' ? EXISTING_TARGET_FIELDS : WORKTREE_TARGET_FIELDS;
   if (Object.keys(value).some((key) => !allowed.has(key))) return false;
   if (value.kind === 'existing') return true;
+  if (
+    value.integrationDestination !== undefined &&
+    (!isRecord(value.integrationDestination) ||
+      typeof value.integrationDestination.workspaceId !== 'string' ||
+      !UUID.test(value.integrationDestination.workspaceId) ||
+      typeof value.integrationDestination.branch !== 'string' ||
+      value.integrationDestination.branch.length === 0 ||
+      (value.integrationDestination.instanceId !== undefined &&
+        (typeof value.integrationDestination.instanceId !== 'string' ||
+          !UUID.test(value.integrationDestination.instanceId))) ||
+      Object.keys(value.integrationDestination).some(
+        (key) => key !== 'workspaceId' && key !== 'branch' && key !== 'instanceId',
+      ))
+  ) {
+    return false;
+  }
   return (
     typeof value.instanceId === 'string' &&
     UUID.test(value.instanceId) &&
@@ -140,7 +157,22 @@ function isValidJournalIntent(
       value.target.kind !== 'new-worktree' ||
       !isClientOverride(target.baseRef) ||
       !isClientOverride(target.branch) ||
-      Object.keys(target).some((key) => key !== 'kind' && key !== 'baseRef' && key !== 'branch') ||
+      (target.integrationTargetWorkspaceId !== undefined &&
+        (typeof target.integrationTargetWorkspaceId !== 'string' ||
+          !UUID.test(target.integrationTargetWorkspaceId))) ||
+      (value.target.integrationDestination === undefined) !==
+        (target.integrationTargetWorkspaceId === undefined) ||
+      (target.integrationTargetWorkspaceId !== undefined &&
+        (!isRecord(value.target.integrationDestination) ||
+          value.target.integrationDestination.workspaceId !==
+            target.integrationTargetWorkspaceId)) ||
+      Object.keys(target).some(
+        (key) =>
+          key !== 'kind' &&
+          key !== 'baseRef' &&
+          key !== 'branch' &&
+          key !== 'integrationTargetWorkspaceId',
+      ) ||
       !isRecord(plan) ||
       typeof plan.projectRoot !== 'string' ||
       plan.projectRoot !== context.project.homeRoot ||
@@ -168,6 +200,9 @@ function isValidJournalIntent(
                 : {}),
               ...(persisted.target.branch.kind === 'explicit'
                 ? { branch: persisted.target.branch.value }
+                : {}),
+              ...(persisted.target.integrationTargetWorkspaceId !== undefined
+                ? { integrationTargetWorkspaceId: persisted.target.integrationTargetWorkspaceId }
                 : {}),
             },
     });

@@ -30,11 +30,15 @@ export {
 export type {
   WorkspaceRegistryErrorCode,
   WorkspaceRegistration,
+  WorkspaceIntegrationDestination,
   SpecWorkspaceBinding,
   WorkspaceRegistry,
   RegisteredWorkspaceInspection,
 } from './workspace-registry-types';
 export { validateWorkspaceRegistry } from './workspace-registry-validation';
+
+/** Product admission bound; Close journals can safely persist every bound occupant. */
+export const MAX_MANAGED_WORKSPACE_SPECIFICATIONS = 1024;
 
 export function workspaceRegistryPath(context: ResolvedProjectHome): string {
   return join(context.project.stateRoot, WORKSPACE_REGISTRY_RELATIVE_PATH);
@@ -228,6 +232,20 @@ export function bindSpecToWorkspace(
     throw new WorkspaceRegistryError(
       'REGISTRY_CONFLICT',
       'Invalid specId or unregistered workspace.',
+    );
+  }
+  const registered = registry.workspaces.find((w) => w.workspaceId === workspaceId);
+  if (
+    registered?.kind === 'linked' &&
+    registry.specBindings.filter((item) => item.workspaceId === workspaceId).length >=
+      MAX_MANAGED_WORKSPACE_SPECIFICATIONS &&
+    !registry.specBindings.some((item) => item.specId === specId)
+  ) {
+    throw new WorkspaceRegistryError(
+      'REGISTRY_CONFLICT',
+      'A managed linked workspace supports at most ' +
+        MAX_MANAGED_WORKSPACE_SPECIFICATIONS +
+        ' bound Specifications. Choose another worktree before creating.',
     );
   }
   const previous = registry.specBindings.find((item) => item.specId === specId);

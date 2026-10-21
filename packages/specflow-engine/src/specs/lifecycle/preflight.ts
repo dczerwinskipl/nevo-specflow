@@ -4,13 +4,18 @@ import { resolve } from 'node:path';
 
 import type { SpecFlowEngine } from '../../application';
 import { executeGit } from '../../git/process';
-import { inspectRegisteredWorkspace } from '../../project/workspace-registry';
+import {
+  MAX_MANAGED_WORKSPACE_SPECIFICATIONS,
+  inspectRegisteredWorkspace,
+} from '../../project/workspace-registry';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import { resolveSpecification } from '../discovery';
+import { listWorkspaceSpecifications } from '../repository';
 import { isValidSpecificationId } from '../model';
 import {
   CloseOperationError,
   fingerprintCloseIntent,
+  resourcesForClosePlan,
   type ClosePlan,
   type CloseWorkspaceEvidence,
 } from './model';
@@ -18,6 +23,11 @@ import { sortedResources } from './resources';
 
 export type CloseRequest =
   | { readonly kind: 'worktree-close'; readonly operationId?: string; readonly specId: string }
+  | {
+      readonly kind: 'workspace-close';
+      readonly operationId?: string;
+      readonly workspaceId: string;
+    }
   | {
       readonly kind: 'specification-close';
       readonly operationId?: string;
@@ -117,7 +127,10 @@ export async function inspectCleanGitWorkspace(workspace: {
 export async function previewCloseOperation(
   engine: SpecFlowEngine,
   request: CloseRequest,
+  /** Only the workspace-scoped delegate may bypass exclusive legacy admission. */
+  allowShared = false,
 ): Promise<ClosePlan> {
+  if (request.kind === 'workspace-close') return previewWorkspaceClose(engine, request);
   const operationId = request.operationId ?? randomUUID();
   if (request.kind !== 'worktree-close' && request.kind !== 'specification-close') {
     throw new CloseOperationError('CLOSE_INVALID', 'Unknown lifecycle operation kind.');
@@ -140,14 +153,9 @@ export async function previewCloseOperation(
   const linked = sourceWorkspace.kind === 'linked';
   if (linked && !sourceWorkspace.managed)
     throw invalid('Unmanaged linked worktree cannot be closed.');
-  if (linked) {
-    const occupants = registry.specBindings.filter(
-      (item) => item.workspaceId === sourceWorkspace.workspaceId,
-    );
-    if (occupants.length !== 1 || occupants[0]?.specId !== request.specId) {
-      throw invalid('Linked worktree is not exclusively bound to this Specification.');
-    }
-  }
+  // An archive-only Specification Close does not retire its checkout, so
+  // sibling bindings and dependent integration destinations are not obstacles.
+  // Whole-branch integration is admitted separately below.
   if (request.kind === 'worktree-close' && !linked) {
     throw invalid('Close Worktree requires a managed linked checkout.');
   }
@@ -168,39 +176,97 @@ export async function previewCloseOperation(
       );
     }
   }
-  const source = await inspectCleanGitWorkspace(sourceWorkspace);
   const integrate =
     request.kind === 'worktree-close' ||
     (request.kind === 'specification-close' && linked && (request.integrateToTargetBranch ?? true));
+  if (linked && integrate) {
+    if (
+      registry.workspaces.some(
+        (candidate) =>
+          candidate.kind === 'linked' &&
+          candidate.integrationDestination?.workspaceId === sourceWorkspace.workspaceId,
+      )
+    ) {
+      throw invalid('A registered source worktree still depends on this integration destination.');
+    }
+    const occupants = registry.specBindings.filter(
+      (item) => item.workspaceId === sourceWorkspace.workspaceId,
+    );
+    if (!allowShared && (occupants.length !== 1 || occupants[0]?.specId !== request.specId)) {
+      throw new CloseOperationError(
+        'CLOSE_SHARED_WORKTREE',
+        request.kind === 'specification-close'
+          ? 'Multiple Specifications share this worktree. Archive this Specification without integration, or use an explicit workspace-scoped Close.'
+          : 'Legacy spec-scoped Worktree Close requires exclusive occupancy; use workspace-scoped Close for a shared checkout.',
+      );
+    }
+  }
+  const source = await inspectCleanGitWorkspace(sourceWorkspace);
   const needsTarget = integrate || !linked;
   let target: CloseWorkspaceEvidence | undefined;
   let targetBranch: string | undefined;
   let configRevision: string | undefined;
   if (needsTarget) {
-    const configured = await readProjectGitPolicy(engine.context);
-    targetBranch = configured.policy.integrationTargetBranch;
-    if (!targetBranch) {
-      throw invalid(
-        'Project Home requires explicit git.integrationTargetBranch configuration before this operation.',
+    const pinned =
+      integrate && sourceWorkspace.kind === 'linked'
+        ? sourceWorkspace.integrationDestination
+        : undefined;
+    if (pinned) {
+      if (pinned.workspaceId === source.workspaceId) {
+        throw invalid('Integration source and destination are the same physical checkout.');
+      }
+      const registration = registry.workspaces.find(
+        (item) => item.workspaceId === pinned.workspaceId,
       );
-    }
-    configRevision = configured.revision;
-    const primary = registry.workspaces.find(
-      (item) => item.workspaceId === registry.primaryWorkspaceId,
-    );
-    if (primary?.kind !== 'primary') throw invalid('Verified primary workspace is unavailable.');
-    const inspected = await inspectRegisteredWorkspace(
-      engine.context,
-      registry,
-      primary.workspaceId,
-    );
-    if (inspected.status !== 'available') throw invalid('Primary worktree is unavailable.');
-    target =
-      source.workspaceId === primary.workspaceId ? source : await inspectCleanGitWorkspace(primary);
-    if (target.branch !== targetBranch) {
-      throw invalid(
-        'Primary worktree is checked out on a different branch from git.integrationTargetBranch.',
+      if (
+        !registration ||
+        registration.instanceId !== pinned.instanceId ||
+        (registration.kind === 'linked' && !registration.managed)
+      ) {
+        throw invalid('Pinned integration target has an invalid registry incarnation.');
+      }
+      const inspected = await inspectRegisteredWorkspace(
+        engine.context,
+        registry,
+        pinned.workspaceId,
       );
+      if (inspected.status !== 'available') {
+        throw invalid('Pinned integration target checkout is unavailable.');
+      }
+      target = await inspectCleanGitWorkspace(registration);
+      targetBranch = pinned.branch;
+      if (target.branch !== targetBranch) {
+        throw invalid('Integration destination changed its attached local branch.');
+      }
+    } else {
+      // Legacy/default target: retain the configured primary semantics.
+      const configured = await readProjectGitPolicy(engine.context);
+      targetBranch = configured.policy.integrationTargetBranch;
+      if (!targetBranch) {
+        throw invalid(
+          'Project Home requires explicit git.integrationTargetBranch configuration before this operation.',
+        );
+      }
+      configRevision = configured.revision;
+      const primary = registry.workspaces.find(
+        (item) => item.workspaceId === registry.primaryWorkspaceId,
+      );
+      if (primary?.kind !== 'primary') throw invalid('Verified primary workspace is unavailable.');
+      const inspected = await inspectRegisteredWorkspace(
+        engine.context,
+        registry,
+        primary.workspaceId,
+      );
+      if (inspected.status !== 'available') throw invalid('Primary worktree is unavailable.');
+      target =
+        source.workspaceId === primary.workspaceId
+          ? source
+          : await inspectCleanGitWorkspace(primary);
+      if (target.branch !== targetBranch) {
+        throw invalid(
+          'Primary worktree is checked out on a different branch from git.integrationTargetBranch.',
+        );
+      }
     }
   }
   const binding = registry.specBindings.find((item) => item.specId === request.specId);
@@ -242,5 +308,97 @@ export async function previewCloseOperation(
       : {}),
     ...(configRevision ? { configRevision } : {}),
     resources,
+  };
+}
+
+/**
+ * Workspace-level admission is based exclusively on the verified registry.
+ * A caller supplies no Specification ID or occupant list. All pinned occupants
+ * are checked against physical canonical manifests before any journal exists.
+ */
+async function previewWorkspaceClose(
+  engine: SpecFlowEngine,
+  request: {
+    readonly kind: 'workspace-close';
+    readonly operationId?: string;
+    readonly workspaceId: string;
+  },
+): Promise<ClosePlan> {
+  if (!isValidSpecificationId(request.workspaceId))
+    throw new CloseOperationError('CLOSE_INVALID', 'Invalid workspace identity.');
+  const registry = await engine.readRegistry();
+  const workspace = registry.workspaces.find((x) => x.workspaceId === request.workspaceId);
+  if (workspace?.kind !== 'linked' || !workspace.managed || !workspace.instanceId)
+    throw invalid('Workspace Close requires a registered, managed linked worktree.');
+  // Verify Git membership and the managed incarnation BEFORE reading even
+  // one path from the registered root. The inspected canonical root is the
+  // only source subsequently passed to the repository manifest reader.
+  const inspected = await inspectRegisteredWorkspace(engine.context, registry, request.workspaceId);
+  if (inspected.status !== 'available')
+    throw invalid(
+      'Managed workspace checkout is unavailable or its incarnation cannot be verified.',
+    );
+  const bindings = registry.specBindings
+    .filter((x) => x.workspaceId === workspace.workspaceId)
+    .sort((a, b) => (a.specId < b.specId ? -1 : a.specId > b.specId ? 1 : 0));
+  if (bindings.length === 0)
+    throw invalid('Workspace Close requires at least one canonical bound Specification.');
+  if (bindings.length > MAX_MANAGED_WORKSPACE_SPECIFICATIONS)
+    throw invalid(
+      'Workspace has ' +
+        bindings.length +
+        ' bound Specifications, exceeding the supported limit of ' +
+        MAX_MANAGED_WORKSPACE_SPECIFICATIONS +
+        '. Resolve excess bindings before Close; no operation was reserved.',
+    );
+  const physical = await listWorkspaceSpecifications(inspected.root);
+  const byId = new Map(physical.map((item) => [item.specId, item]));
+  const occupants = bindings.map((binding) => {
+    const manifest = byId.get(binding.specId);
+    if (!manifest)
+      throw invalid('Bound canonical Specification is missing from verified checkout.');
+    return {
+      specId: binding.specId,
+      slug: manifest.slug,
+      location: manifest.location,
+      status: manifest.status,
+      bindingGeneration: binding.generation,
+    } as const;
+  });
+  // Derive the existing Worktree Close Git destination, branch and physical
+  // admission using a verified anchor. The anchor is internal only and never
+  // selects or limits the set moved by workspace-level CAS.
+  const operationId = request.operationId ?? randomUUID();
+  const base = await previewCloseOperation(
+    engine,
+    {
+      kind: 'worktree-close',
+      operationId,
+      specId: occupants[0]!.specId,
+    },
+    true,
+  );
+  if (
+    base.registryRevision !== registry.revision ||
+    base.source.workspaceId !== request.workspaceId
+  )
+    throw new CloseOperationError(
+      'CLOSE_CONFLICT',
+      'Workspace occupant snapshot changed during preview.',
+    );
+  const plan: ClosePlan = {
+    ...base,
+    kind: 'workspace-close',
+    workspaceId: request.workspaceId,
+    occupants,
+    fingerprint: fingerprintCloseIntent({
+      kind: 'workspace-close',
+      operationId,
+      workspaceId: request.workspaceId,
+    }),
+  };
+  return {
+    ...plan,
+    resources: resourcesForClosePlan(plan, engine.context.project.projectId),
   };
 }

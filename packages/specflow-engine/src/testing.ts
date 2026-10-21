@@ -8,6 +8,7 @@ export {
 export {
   WORKSPACE_REGISTRY_RELATIVE_PATH,
   WORKSPACE_REGISTRY_VERSION,
+  MAX_MANAGED_WORKSPACE_SPECIFICATIONS,
   addWorkspace,
   bindSpecToWorkspace,
   initialWorkspaceRegistry,
@@ -113,7 +114,11 @@ export {
 } from './specs/lifecycle/worktree-disposal';
 
 /** E2.T13 Worktree Close use case (not a public transport endpoint). */
-export { closeWorktree, type CloseWorktreeResult } from './specs/lifecycle/close-worktree';
+export {
+  closeWorktree,
+  closeWorkspace,
+  type CloseWorktreeResult,
+} from './specs/lifecycle/close-worktree';
 
 /** Verified archived linked conflict: retains scratch metadata claim. */
 export { settleArchivedLinkedConflict } from './specs/lifecycle/git-scratch';

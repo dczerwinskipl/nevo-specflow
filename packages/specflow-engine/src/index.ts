@@ -57,10 +57,25 @@ export {
   type CreateSpecificationRequest,
 } from './specs/create-request';
 
+export {
+  inspectPublicCreateOperation,
+  type PublicCreateInspection,
+} from './specs/create-inspection';
+
+export {
+  inspectCreateOptions,
+  type PublicCreateOptions,
+  type CreateWorkspaceOption,
+  type CreateBaseRefOption,
+} from './specs/create-options';
+
 // Supported operation endpoints project the Engine's durable state to stable DTOs.
 export { CloseOperationError } from './specs/lifecycle/model';
 export {
   closeWorktreeOperation,
+  closeWorkspaceOperation,
+  planPublicWorkspaceCloseOperation,
+  inspectPublicWorkspaceCloseOperation,
   closeSpecificationOperation,
   inspectPublicCloseOperation,
   previewPublicCloseOperation,
@@ -76,4 +91,6 @@ export {
   type PublicCloseOperation,
   type PublicClosePreview,
   type PublicCloseStatus,
+  type PublicWorkspaceClosePreview,
+  type PublicWorkspaceCloseOperation,
 } from './specs/operation-projection';

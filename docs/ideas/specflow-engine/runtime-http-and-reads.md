@@ -2,7 +2,8 @@
 id: ideas.specflow-engine.runtime-http
 type: architecture
 title: Runtime HTTP and read model integration
-status: draft
+status: superseded
+superseded_by: reference.api.specflow-specification-operations
 scope: specflow
 areas: [runtime, server, ui, workflow]
 tags: [http, api, read-model, synchronization]
@@ -19,6 +20,8 @@ related:
   - ideas.specflow-engine.workspace-registry
   - product.specflow.ui.application-architecture
 ---
+
+> **Historical E1/E2 design evidence — superseded.** The authoritative implemented contract is `reference.api.specflow-specification-operations`. This document MUST NOT override current architecture, exact API schemas or production code.
 
 # Runtime HTTP and read integration
 

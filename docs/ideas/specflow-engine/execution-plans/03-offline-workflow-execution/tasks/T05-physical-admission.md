@@ -30,9 +30,9 @@ Derive execution effect scope (read-only enforced vs workspace writer vs Git ref
 ## Prerequisites
 
 - [E3.T03](T03-readiness-step-state.md)
-- [E1.T05](../../01-engine-project-foundation/tasks/T05-shared-coordination-primitives.md)
+- [Implemented E1 project and workspace coordination](../../../../../architecture/runtime/project-home-and-workspaces.md)
 
-Original planning dependency: Plans 01–02, T03. The linked IDs above are the **executable** dependency graph; a separate spec-level gate still applies.
+Original planning dependency: Plans 01–02, T03. Implemented E1/E2 prerequisites now resolve to current documentation. Remaining E3–E5 task dependencies still require their own review gates.
 
 ## Execution & batching
 

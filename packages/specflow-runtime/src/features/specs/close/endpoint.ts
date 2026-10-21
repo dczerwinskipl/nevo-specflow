@@ -9,6 +9,9 @@ import {
   WorkspaceRegistryError,
   closeSpecificationOperation,
   closeWorktreeOperation,
+  closeWorkspaceOperation,
+  inspectPublicWorkspaceCloseOperation,
+  planPublicWorkspaceCloseOperation,
   inspectPublicCloseOperation,
   planPublicCloseOperation,
   reconcileArchivedConflictScratchOperation,
@@ -25,6 +28,10 @@ import {
   CloseScratchReconciliationRequestSchema,
   CloseSpecificationRequestSchema,
   CloseWorktreeRequestSchema,
+  CloseWorkspaceParamsSchema,
+  CloseWorkspaceOperationParamsSchema,
+  CloseWorkspacePreviewSchema,
+  CloseWorkspaceResultSchema,
   ProjectGitCapabilities,
   SpecCapabilities,
 } from '@nevo/specflow-contracts/specs';
@@ -47,6 +54,15 @@ function projectIntegrationAllowed(request: FastifyRequest, engine: SpecFlowEngi
   request.authz.require({
     resource: ProjectGitCapabilities,
     capability: ProjectGitCapabilities.capabilities.Integrate,
+    scope: { projectId: engine.context.project.projectId },
+  });
+}
+
+/** Strong project-wide grant, independent of ordinary Git integration permission. */
+function projectWorkspaceCloseAllowed(request: FastifyRequest, engine: SpecFlowEngine): void {
+  request.authz.require({
+    resource: ProjectGitCapabilities,
+    capability: ProjectGitCapabilities.capabilities.CloseWorkspace,
     scope: { projectId: engine.context.project.projectId },
   });
 }
@@ -105,6 +121,7 @@ function statusForCloseError(code: SafeCode): 400 | 404 | 409 | 422 | 503 {
     case 'SPEC_VALIDATION_ERROR':
       return 400;
     case 'CLOSE_CONFLICT':
+    case 'CLOSE_SHARED_WORKTREE':
     case 'REGISTRY_CONFLICT':
     case 'SPEC_CONFLICT':
     case 'BRANCH_ALREADY_EXISTS':
@@ -225,7 +242,16 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
         } catch (error) {
           const code = safeCode(error);
           if (!code) throw error;
-          return reply.code(statusForCloseError(code)).send({ code, error: code });
+          return reply.code(statusForCloseError(code)).send({
+            code,
+            error: code,
+            ...(code === 'CLOSE_SHARED_WORKTREE'
+              ? {
+                  remedy:
+                    'Archive just this Specification with integrateToTargetBranch=false, or use an explicit workspace-level Close.',
+                }
+              : {}),
+          });
         }
       },
     );
@@ -260,11 +286,118 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
         } catch (error) {
           const code = safeCode(error);
           if (!code) throw error;
-          return reply.code(statusForCloseError(code)).send({ code, error: code });
+          return reply.code(statusForCloseError(code)).send({
+            code,
+            error: code,
+            ...(code === 'CLOSE_SHARED_WORKTREE'
+              ? {
+                  remedy:
+                    'Archive just this Specification with integrateToTargetBranch=false, or use an explicit workspace-level Close.',
+                }
+              : {}),
+          });
         }
       },
     );
   }
+
+  // Workspace scope is not an alias for an arbitrary Spec ID. Authorization
+  // runs BEFORE the read-only preview or journal inspection: unauthorized
+  // callers cannot enumerate any canonical workspace occupant.
+  typed.get(
+    '/api/workspaces/:workspaceId/close/preview',
+    {
+      schema: {
+        params: CloseWorkspaceParamsSchema,
+        response: { 200: CloseWorkspacePreviewSchema, ...errors },
+      },
+    },
+    async (request, reply) => {
+      reply.header('Cache-Control', 'no-store');
+      const engine = options.engine;
+      if (!engine)
+        return reply.code(503).send({ code: 'ENGINE_UNAVAILABLE', error: 'ENGINE_UNAVAILABLE' });
+      try {
+        projectWorkspaceCloseAllowed(request, engine);
+        projectIntegrationAllowed(request, engine);
+        return reply.code(200).send(
+          await planPublicWorkspaceCloseOperation(engine, {
+            workspaceId: request.params.workspaceId,
+            operationId: randomUUID(),
+          }),
+        );
+      } catch (error) {
+        const code = safeCode(error);
+        if (!code) throw error;
+        return reply.code(statusForCloseError(code)).send({ code, error: code });
+      }
+    },
+  );
+
+  typed.post(
+    '/api/workspaces/:workspaceId/close',
+    {
+      schema: {
+        params: CloseWorkspaceParamsSchema,
+        body: CloseWorktreeRequestSchema,
+        response: { 200: CloseWorkspaceResultSchema, 202: CloseWorkspaceResultSchema, ...errors },
+      },
+    },
+    async (request, reply) => {
+      reply.header('Cache-Control', 'no-store');
+      const engine = options.engine;
+      if (!engine)
+        return reply.code(503).send({ code: 'ENGINE_UNAVAILABLE', error: 'ENGINE_UNAVAILABLE' });
+      try {
+        projectWorkspaceCloseAllowed(request, engine);
+        projectIntegrationAllowed(request, engine);
+        const params = {
+          workspaceId: request.params.workspaceId,
+          operationId: request.body.operationId,
+        };
+        // A retry uses the stored immutable plan, not a client supplied list.
+        await planPublicWorkspaceCloseOperation(engine, params);
+        const result = await closeWorkspaceOperation(engine, params);
+        return reply.code(result.status === 'completed' ? 200 : 202).send(result);
+      } catch (error) {
+        const code = safeCode(error);
+        if (!code) throw error;
+        return reply.code(statusForCloseError(code)).send({ code, error: code });
+      }
+    },
+  );
+
+  typed.get(
+    '/api/workspaces/:workspaceId/close/operations/:operationId',
+    {
+      schema: {
+        params: CloseWorkspaceOperationParamsSchema,
+        response: { 200: CloseWorkspaceResultSchema, ...errors },
+      },
+    },
+    async (request, reply) => {
+      reply.header('Cache-Control', 'no-store');
+      const engine = options.engine;
+      if (!engine)
+        return reply.code(503).send({ code: 'ENGINE_UNAVAILABLE', error: 'ENGINE_UNAVAILABLE' });
+      try {
+        projectWorkspaceCloseAllowed(request, engine);
+        projectIntegrationAllowed(request, engine);
+        const result = await inspectPublicWorkspaceCloseOperation(
+          engine,
+          request.params.operationId,
+          request.params.workspaceId,
+        );
+        if (!result)
+          return reply.code(404).send({ code: 'CLOSE_NOT_FOUND', error: 'CLOSE_NOT_FOUND' });
+        return reply.code(200).send(result);
+      } catch (error) {
+        const code = safeCode(error);
+        if (!code) throw error;
+        return reply.code(statusForCloseError(code)).send({ code, error: code });
+      }
+    },
+  );
 
   typed.get(
     '/api/specs/:specId/close/operations/:operationId',
@@ -320,7 +453,16 @@ export const specsCloseEndpoint: FastifyPluginCallback<SpecsCloseEndpointOptions
       } catch (error) {
         const code = safeCode(error);
         if (!code) throw error;
-        return reply.code(statusForCloseError(code)).send({ code, error: code });
+        return reply.code(statusForCloseError(code)).send({
+          code,
+          error: code,
+          ...(code === 'CLOSE_SHARED_WORKTREE'
+            ? {
+                remedy:
+                  'Archive just this Specification with integrateToTargetBranch=false, or use an explicit workspace-level Close.',
+              }
+            : {}),
+        });
       }
     },
   );

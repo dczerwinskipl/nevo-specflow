@@ -8,9 +8,7 @@ read_when:
   - describing the product CLI to a user or in product copy
   - planning a new nevo-specflow command
 summary: >
-  The currently-implemented public surface of the nevo-specflow CLI — --help, --version,
-  project initialization, the local product server command, and the password-hash auth utility — plus the commands that
-  do not exist yet.
+  The currently implemented nevo-specflow CLI: version, init, start, auth and Engine-backed Specifications, plus commands not implemented yet.
 related:
   - docs.product-specflow-cli-readme
   - engineering.cli.architecture
@@ -49,9 +47,13 @@ nevo-specflow auth hash-password --password-stdin         # hash one password li
 - UI hosting and product capabilities beyond the current Runtime HTTP/auth foundation
   remain separate work.
 
+## Specification commands
+
+Engine-backed `nevo-specflow specs create`, `list`, `resolve`, `close`, `worktree close` and `workspace close/inspect` are implemented. See the [Specification CLI reference](specflow-specification-commands.md).
+
 ## Not implemented
 
-`status`, `workflow`, `install`, `update` and any other command are **not**
+`status`, `workflow`, `install`, `update` and any other unlisted command are **not**
 present — not in `--help`, not as hidden commands. They are future direction only.
 Product copy and docs must not describe them as available.
 

@@ -102,14 +102,20 @@ updates for generic code-scanning errors or high-or-higher security alerts. Rele
 stable `codeql` check without the native code-scanning rule so `cut-release-line` can create a new
 branch before branch-specific analysis exists.
 
-## Temporary T17 transition
+## Full cross-platform evidence after E1/E2
 
-`temporary-t17-platform-gate.yml` stays active for PR #53 until the durable
-`engine-filesystem.yml` has demonstrated equivalent exact-SHA three-OS
-coverage, its sharding/adapter paths have passed, and the T17 owner approves
-retirement. It has not been removed simply because permanent workflows exist.
-The permanent PR smoke is selective; it is **not** a substitute for final
-three-OS physical SIGKILL/recovery promotion evidence.
+The temporary T17 push-triggered platform gate and formatting diagnostics have
+been retired. Routine PRs use fast `ci.yml` checks (including selective Engine
+transport smoke) plus CodeQL and PR-title validation. The full cross-platform
+Engine filesystem, SIGKILL, recovery, CLI and Runtime adapter matrix is owned
+by `engine-filesystem.yml`: scheduled nightly, triggered by relevant pushes to
+`main`, or explicitly invoked via `workflow_dispatch` with `commit_sha` for
+an **exact premerge candidate**. A manually requested verification does not
+implicitly waive any branch-protection checks.
+
+Deleting or changing a workflow does not retroactively cancel already queued or
+running GitHub Actions jobs. Stale runs from the retired T17 gate must be
+cancelled via the GitHub Actions UI when necessary.
 
 **Required PR smoke routing:** `engine transport smoke` covers affected
 Engine/CLI/Runtime/contract/lockfile/toolchain changes; UI-only changes skip its

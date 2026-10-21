@@ -6,13 +6,21 @@ import {
   resourcesForCreate,
   SharedResourceError,
 } from '../coordination/resources';
-import { inspectRegisteredWorkspace } from '../../project/workspace-registry';
+import {
+  MAX_MANAGED_WORKSPACE_SPECIFICATIONS,
+  inspectRegisteredWorkspace,
+} from '../../project/workspace-registry';
+import {
+  inspectExplicitIntegrationDestination,
+  type ExplicitIntegrationPreflight,
+} from './integration-destination';
 import { openVersionControl } from '../../version-control';
 import { fingerprintCreateClientIntent, type CreateClientIntent } from '../create-intent';
 import {
   CreateOperationError,
   listCreateJournals,
   publishCreateJournal,
+  readCreateJournal,
   withCreateJournalLock,
   type CreateJournal,
 } from '../create-journal';
@@ -33,6 +41,18 @@ export async function reserveCreateOperation(
   operationId: string,
   creationDate: () => string,
 ): Promise<{ readonly record: CreateJournal; readonly existing: boolean }> {
+  // New physical target inspection is outside the Project Home lock.
+  // Completed-op retries must not depend on the destination's current state.
+  const previousOutsideLock = await readCreateJournal(engine.context, operationId);
+  const explicit: ExplicitIntegrationPreflight | undefined =
+    !previousOutsideLock &&
+    intent.target.kind === 'new-worktree' &&
+    intent.target.integrationTargetWorkspaceId !== undefined
+      ? await inspectExplicitIntegrationDestination(
+          engine,
+          intent.target.integrationTargetWorkspaceId,
+        )
+      : undefined;
   return withCreateJournalLock(engine.context, async () => {
     const operations = await listCreateJournals(engine.context);
     const previous = operations.find((item) => item.operationId === operationId);
@@ -78,7 +98,8 @@ export async function reserveCreateOperation(
     let target: CreateJournal['target'];
     let gitPlan: { readonly projectRoot: string; readonly gitInstanceId: string } | undefined;
     if (intent.target.kind === 'existing') {
-      if (!isValidSpecificationId(intent.target.workspaceId)) {
+      const existingWorkspaceId = intent.target.workspaceId;
+      if (!isValidSpecificationId(existingWorkspaceId)) {
         throw new CreateOperationError('CREATE_OPERATION_INVALID', 'Invalid target workspaceId.');
       }
       const registry = await engine.readRegistry();
@@ -90,12 +111,61 @@ export async function reserveCreateOperation(
       if (inspected.status !== 'available') {
         throw recovery('Selected existing workspace is unavailable.');
       }
+      if (inspected.workspace.kind === 'linked') {
+        // Admission happens BEFORE publishing a Create journal, writing a
+        // manifest or spawning Git. Count already bound Specs AND reserved
+        // Create intents whose bindings have not yet committed. This runs
+        // inside the shared Project Home lock and prevents two independent
+        // processes from simultaneously consuming the final available slot.
+        const bound = new Set(
+          registry.specBindings
+            .filter((binding) => binding.workspaceId === existingWorkspaceId)
+            .map((binding) => binding.specId),
+        );
+        const pending = operations.filter(
+          (operation) =>
+            operation.target.workspaceId === existingWorkspaceId &&
+            operation.stage !== 'completed' &&
+            operation.stage !== 'registry-linked' &&
+            !bound.has(operation.specId),
+        ).length;
+        if (bound.size + pending >= MAX_MANAGED_WORKSPACE_SPECIFICATIONS) {
+          throw new CreateOperationError(
+            'CREATE_CONFLICT',
+            'Selected linked workspace has reached its capacity of ' +
+              MAX_MANAGED_WORKSPACE_SPECIFICATIONS +
+              ' canonical Specifications, including reserved Creates. Select another worktree.',
+          );
+        }
+      }
       target = {
         kind: 'existing',
         workspaceId: intent.target.workspaceId,
         workspaceRoot: inspected.root,
       };
     } else {
+      if (intent.target.integrationTargetWorkspaceId !== undefined) {
+        if (!explicit) {
+          throw new CreateOperationError(
+            'CREATE_CONFLICT',
+            'Destination preflight was superseded by another reservation.',
+          );
+        }
+        const registry = await engine.readRegistry();
+        const chosen = registry.workspaces.find(
+          (item) => item.workspaceId === explicit.destination.workspaceId,
+        );
+        if (
+          registry.revision !== explicit.registryRevision ||
+          !chosen ||
+          chosen.instanceId !== explicit.destination.instanceId
+        ) {
+          throw new CreateOperationError(
+            'CREATE_CONFLICT',
+            'Destination checkout registration changed before Create reservation.',
+          );
+        }
+      }
       const plan = await openVersionControl(engine).worktrees.plan({
         slug: scaffold.slug,
         shortId: specId.slice(0, 8),
@@ -126,6 +196,7 @@ export async function reserveCreateOperation(
         instanceId: randomUUID(),
         branch: plan.branch,
         baseCommit: plan.baseCommit,
+        ...(explicit ? { integrationDestination: explicit.destination } : {}),
       };
       gitPlan = {
         projectRoot: plan.projectRoot,

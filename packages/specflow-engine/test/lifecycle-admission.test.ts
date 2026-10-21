@@ -253,7 +253,7 @@ describe('E2.T10 — read-only lifecycle admission and durable shared Git resour
         operationId,
         specId: first.specId,
       }),
-    ).rejects.toMatchObject({ code: 'CLOSE_PREFLIGHT' });
+    ).rejects.toMatchObject({ code: 'CLOSE_SHARED_WORKTREE' });
     expect(await inspectCloseOperation(engine, operationId)).toBeUndefined();
     expect(await engine.readRegistry()).toEqual(registry);
     expect(git(root, 'rev-parse', 'HEAD')).toBe(primaryHead);

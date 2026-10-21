@@ -27,9 +27,9 @@ Inspect current `@nevo/specflow-contracts/sessions`, Runtime Sessions feature, e
 
 ## Prerequisites
 
-- [E1.T07](../../01-engine-project-foundation/tasks/T07-boundary-and-error-tests.md)
+- [Implemented E1 Engine boundary](../../../../../architecture/runtime/specflow-engine.md)
 
-Original planning dependency: Plan 01 readiness. The linked IDs above are the **executable** dependency graph; a separate spec-level gate still applies.
+Original planning dependency: Plan 01 readiness. Implemented E1/E2 prerequisites now resolve to current documentation. Remaining E3–E5 task dependencies still require their own review gates.
 
 ## Execution & batching
 

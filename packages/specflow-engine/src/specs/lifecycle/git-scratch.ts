@@ -171,19 +171,33 @@ async function publishScratchStage(
       const registry = await readWorkspaceRegistry(engine.context);
       if (registry.revision !== before.plan.registryRevision)
         throw conflict('Workspace registry changed since Close reservation.');
-      const policy = await readProjectGitPolicy(engine.context);
-      if (
-        policy.revision !== before.plan.configRevision ||
-        policy.policy.integrationTargetBranch !== before.plan.targetBranch
-      )
-        throw conflict('Integration target policy changed since Close reservation.');
+      if (before.plan.configRevision) {
+        const policy = await readProjectGitPolicy(engine.context);
+        if (
+          policy.revision !== before.plan.configRevision ||
+          policy.policy.integrationTargetBranch !== before.plan.targetBranch
+        )
+          throw conflict('Integration target policy changed since Close reservation.');
+      } else {
+        const source = registry.workspaces.find(
+          (item) => item.workspaceId === before.plan.source.workspaceId,
+        );
+        const pinned = source?.kind === 'linked' ? source.integrationDestination : undefined;
+        if (
+          !pinned ||
+          pinned.workspaceId !== before.plan.target?.workspaceId ||
+          pinned.instanceId !== before.plan.target.instanceId ||
+          pinned.branch !== before.plan.targetBranch
+        )
+          throw conflict('Pinned workspace destination changed since Close reservation.');
+      }
     },
   });
 }
 
 /**
  * Create and merge in an Engine-owned DETACHED Git worktree, never primary.
- * This is an internal T11 checkpoint only. Candidate publication to primary
+ * This is an internal T11 checkpoint only. Candidate publication to its pinned destination
  * needs a separate durable intent, branch fencing, and physical proof.
  *
  * On any unknown result, preserve the journal and scratch; never rerun Git.
@@ -198,6 +212,7 @@ export async function prepareDivergentCloseCandidate(
   if (
     before?.stage !== 'integration-preparation-initiated' ||
     (before.plan.kind !== 'worktree-close' &&
+      before.plan.kind !== 'workspace-close' &&
       (before.plan.kind !== 'specification-close' || !before.archive?.committedHead)) ||
     before.integration?.relationship !== 'divergent' ||
     !before.plan.target
@@ -277,16 +292,22 @@ export async function prepareDivergentCloseCandidate(
       });
     }
 
-    await verifyIntegrationCandidate({
-      scratchRoot: root,
-      expectedGitCommonDir: engine.context.project.gitCommonDir,
-      targetCommit: before.integration.targetCommit,
-      sourceCommit: before.integration.sourceCommit,
-      candidateCommit: merged.candidateCommit,
-      candidateTree: merged.candidateTree,
-      specificationPath:
-        'specs/' + (before.archive ? 'archive' : before.plan.location) + '/' + before.plan.slug,
-    });
+    for (const spec of before.plan.occupants ?? [
+      {
+        slug: before.plan.slug,
+        location: before.archive ? ('archive' as const) : before.plan.location,
+      },
+    ]) {
+      await verifyIntegrationCandidate({
+        scratchRoot: root,
+        expectedGitCommonDir: engine.context.project.gitCommonDir,
+        targetCommit: before.integration.targetCommit,
+        sourceCommit: before.integration.sourceCommit,
+        candidateCommit: merged.candidateCommit,
+        candidateTree: merged.candidateTree,
+        specificationPath: 'specs/' + spec.location + '/' + spec.slug,
+      });
+    }
     return publishScratchStage(engine, started, {
       ...started,
       stage: 'integration-scratch-candidate',
@@ -337,16 +358,22 @@ export async function requireRecordedDivergentCandidate(
     throw recovery('Durable divergent candidate evidence is absent.');
   try {
     await verifyScratchOwner(engine, scratch, journal.plan.operationId);
-    await verifyIntegrationCandidate({
-      scratchRoot: scratch.root,
-      expectedGitCommonDir: engine.context.project.gitCommonDir,
-      sourceCommit: integration.sourceCommit,
-      targetCommit: integration.targetCommit,
-      candidateCommit: scratch.candidateCommit,
-      candidateTree: scratch.candidateTree,
-      specificationPath:
-        'specs/' + (journal.archive ? 'archive' : journal.plan.location) + '/' + journal.plan.slug,
-    });
+    for (const spec of journal.plan.occupants ?? [
+      {
+        slug: journal.plan.slug,
+        location: journal.archive ? ('archive' as const) : journal.plan.location,
+      },
+    ]) {
+      await verifyIntegrationCandidate({
+        scratchRoot: scratch.root,
+        expectedGitCommonDir: engine.context.project.gitCommonDir,
+        sourceCommit: integration.sourceCommit,
+        targetCommit: integration.targetCommit,
+        candidateCommit: scratch.candidateCommit,
+        candidateTree: scratch.candidateTree,
+        specificationPath: 'specs/' + spec.location + '/' + spec.slug,
+      });
+    }
   } catch {
     throw recovery('Scratch candidate ownership, parents, index or physical tree is unproven.');
   }

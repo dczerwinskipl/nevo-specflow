@@ -3,6 +3,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 
 import type { SpecFlowEngine } from '../application';
 import { GitCapabilityError } from '../git/errors';
+import { executeGit } from '../git/process';
 import { openVersionControl } from '../version-control';
 import type { WorktreePlan, WorktreeEffect } from '../version-control/worktrees/port';
 import {
@@ -59,6 +60,30 @@ export function planFromCreateJournal(engine: SpecFlowEngine, record: CreateJour
  * For a reserved operation, policy fences NEW mutations, but is not consulted
  * for effects inspection or post-Git recovery. Do not re-resolve baseRef.
  */
+/** Destination identity is rechecked outside all control locks. */
+export async function verifyPinnedIntegrationDestination(
+  engine: SpecFlowEngine,
+  record: CreateJournal,
+): Promise<void> {
+  if (record.target.kind !== 'new-worktree' || !record.target.integrationDestination) return;
+  const pinned = record.target.integrationDestination;
+  const registry = await engine.readRegistry();
+  const stored = registry.workspaces.find(
+    (workspace) => workspace.workspaceId === pinned.workspaceId,
+  );
+  if (!stored || stored.instanceId !== pinned.instanceId) {
+    throw recovery('Pinned integration destination registration changed.');
+  }
+  const inspected = await inspectRegisteredWorkspace(engine.context, registry, pinned.workspaceId);
+  if (inspected.status !== 'available') {
+    throw recovery('Pinned integration destination is unavailable.');
+  }
+  const attached = await executeGit(inspected.root, ['symbolic-ref', '--quiet', 'HEAD']);
+  if (attached.exitCode !== 0 || attached.stdout.trim() !== 'refs/heads/' + pinned.branch) {
+    throw recovery('Pinned integration destination branch or checkout changed.');
+  }
+}
+
 export async function validateNewGitReservation(
   engine: SpecFlowEngine,
   record: CreateJournal,
@@ -72,6 +97,7 @@ export async function validateNewGitReservation(
     throw new GitCapabilityError('GIT_UNAVAILABLE', 'Git worktree automation is unavailable.');
   }
   await worktrees.validateReservedPlan(planFromCreateJournal(engine, record));
+  await verifyPinnedIntegrationDestination(engine, record);
   // A newly reserved plan must have no evidence of a previous effect.
   // An interrupted git-initiated stage takes a separate explicit recovery route.
   if ((await worktrees.inspectEffect(planFromCreateJournal(engine, record))) !== 'absent') {
@@ -178,6 +204,11 @@ export async function requireTargetIdentity(
     }
     const registration = registrationOf(record);
     await verifyWorkspaceRoot(engine.context, registration.root, registration);
+    // A completed Create remains idempotent even if a user later changes
+    // the destination checkout's branch; Close will refuse independently.
+    if (record.stage !== 'completed') {
+      await verifyPinnedIntegrationDestination(engine, record);
+    }
   }
 }
 

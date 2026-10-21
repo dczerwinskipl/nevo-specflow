@@ -12,7 +12,10 @@ describe('SpecFlow authorization contracts', () => {
       CloseWorktree: 'spec.close-worktree',
       CloseSpecification: 'spec.close-specification',
     });
-    expect(ProjectGitCapabilities.capabilities).toEqual({ Integrate: 'project-git.integrate' });
+    expect(ProjectGitCapabilities.capabilities).toEqual({
+      Integrate: 'project-git.integrate',
+      CloseWorkspace: 'project-git.close-workspace',
+    });
     expect(SessionCapabilities.capabilities).toEqual({
       Create: 'session.create',
       View: 'session.view',

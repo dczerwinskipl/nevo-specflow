@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from 'node:util';
+
 import type { SpecFlowEngine } from '../application';
 import { updateWorkspaceRegistry } from '../project/registry-store';
 import { addWorkspace, bindSpecToWorkspace } from '../project/workspace-registry';
@@ -19,7 +21,8 @@ export async function commitBinding(engine: SpecFlowEngine, record: CreateJourna
     if (
       existingWorkspace.root !== expected.root ||
       existingWorkspace.instanceId !== expected.instanceId ||
-      existingWorkspace.kind !== 'linked'
+      existingWorkspace.kind !== 'linked' ||
+      !isDeepStrictEqual(existingWorkspace.integrationDestination, expected.integrationDestination)
     ) {
       throw recovery('Workspace registry identity differs from durable intent.');
     }
@@ -35,7 +38,11 @@ export async function commitBinding(engine: SpecFlowEngine, record: CreateJourna
       if (!workspace) updated = addWorkspace(updated, registrationOf(record));
       else if (
         workspace.root !== record.target.workspaceRoot ||
-        workspace.instanceId !== record.target.instanceId
+        workspace.instanceId !== record.target.instanceId ||
+        !isDeepStrictEqual(
+          workspace.kind === 'linked' ? workspace.integrationDestination : undefined,
+          record.target.integrationDestination,
+        )
       ) {
         throw recovery('Concurrent workspace registration disagrees with creation intent.');
       }

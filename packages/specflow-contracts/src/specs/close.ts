@@ -12,6 +12,14 @@ export const CloseOperationParamsSchema = Type.Object(
   { specId: CloseUuidSchema, operationId: CloseUuidSchema },
   { additionalProperties: false },
 );
+export const CloseWorkspaceParamsSchema = Type.Object(
+  { workspaceId: CloseUuidSchema },
+  { additionalProperties: false },
+);
+export const CloseWorkspaceOperationParamsSchema = Type.Object(
+  { workspaceId: CloseUuidSchema, operationId: CloseUuidSchema },
+  { additionalProperties: false },
+);
 export const CloseWorktreeRequestSchema = Type.Object(
   { operationId: CloseUuidSchema },
   { additionalProperties: false },
@@ -68,6 +76,49 @@ export const CloseResultSchema = Type.Object(
   { additionalProperties: false },
 );
 export const CloseErrorSchema = Type.Object(
-  { error: Type.String(), code: Type.String() },
+  { error: Type.String(), code: Type.String(), remedy: Type.Optional(Type.String()) },
+  { additionalProperties: false },
+);
+
+export const CloseWorkspacePreviewSchema = Type.Object(
+  {
+    operationId: CloseUuidSchema,
+    workspaceId: CloseUuidSchema,
+    kind: Type.Literal('workspace-close'),
+    sourceBranch: Type.String(),
+    targetWorkspaceId: CloseUuidSchema,
+    targetBranch: Type.String(),
+    wholeBranchIntegration: Type.Literal(true),
+    occupantCount: Type.Integer({ minimum: 1 }),
+    occupants: Type.Array(
+      Type.Object(
+        {
+          specId: CloseUuidSchema,
+          slug: Type.String(),
+          location: Type.Union([Type.Literal('active'), Type.Literal('archive')]),
+          status: Type.String(),
+        },
+        { additionalProperties: false },
+      ),
+    ),
+  },
+  { additionalProperties: false },
+);
+
+export const CloseWorkspaceResultSchema = Type.Object(
+  {
+    operationId: CloseUuidSchema,
+    workspaceId: CloseUuidSchema,
+    kind: Type.Literal('workspace-close'),
+    status: Type.Union([
+      Type.Literal('completed'),
+      Type.Literal('requires-resolution'),
+      Type.Literal('in-progress'),
+      Type.Literal('recovery-required'),
+    ]),
+    outcome: Type.Optional(Type.Literal('worktree-integrated-and-removed')),
+    occupantCount: Type.Integer({ minimum: 1 }),
+    conflictPaths: Type.Optional(Type.Array(Type.String())),
+  },
   { additionalProperties: false },
 );

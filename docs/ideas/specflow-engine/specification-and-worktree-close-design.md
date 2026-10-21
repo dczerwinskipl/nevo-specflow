@@ -2,7 +2,8 @@
 id: ideas.specflow-engine.specification-worktree-closure
 type: architecture
 title: Specification and managed worktree closure, Foundation A extension
-status: draft
+status: superseded
+superseded_by: architecture.runtime.specflow-lifecycle
 scope: specflow
 areas: [workflow, cli, runtime, security, testing]
 tags: [specification-lifecycle, worktree, durable-operation, temporary-design]
@@ -13,12 +14,13 @@ summary: >
   Proposed recoverable, transport-neutral close operations without a dependency on Plan 03,
   and a conservative future Specification workflow seam.
 related:
-  - ideas.specflow-engine.plan-02
   - ideas.specflow-engine.workspace-binding-lifecycle
   - ideas.specflow-engine.worktrees
   - ideas.specflow-engine.recovery
   - ideas.specflow-engine.acceptance
 ---
+
+> **Historical E1/E2 design evidence — superseded.** The authoritative implemented contract is `architecture.runtime.specflow-lifecycle`. This document MUST NOT override current architecture, exact API schemas or production code.
 
 # Specification and worktree closure: architecture proposal
 

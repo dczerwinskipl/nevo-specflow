@@ -27,9 +27,9 @@ Inspect `dczerwinskipl/nevo` current deterministic workflow `start-operation`, `
 
 ## Prerequisites
 
-- [E2.T08](../../02-specifications-git-workspaces/tasks/T08-safety-and-regression.md)
+- [Accepted E2 Git safety and recovery baseline](../../../../../engineering/shared/specflow-git-recovery.md)
 
-Original planning dependency: Plans 01–02. The linked IDs above are the **executable** dependency graph; a separate spec-level gate still applies.
+Original planning dependency: Plans 01–02. Implemented E1/E2 prerequisites now resolve to current documentation. Remaining E3–E5 task dependencies still require their own review gates.
 
 ## Execution & batching
 

@@ -6,6 +6,8 @@ import {
   SpecificationError,
   WorkspaceRegistryError,
   createSpecificationFromRequest,
+  inspectCreateOptions,
+  inspectPublicCreateOperation,
   projectCreatedSpecification,
   type CreateSpecificationRequest,
   type SpecFlowEngine,
@@ -17,6 +19,9 @@ import {
   AuthorizationForbiddenErrorResponseSchema,
 } from '@nevo/specflow-contracts/authorization';
 import {
+  CreateOperationInspectionSchema,
+  CreateOperationParamsSchema,
+  CreateOptionsSchema,
   CreateSpecErrorSchema,
   CreateSpecRequestSchema,
   CreatedSpecSchema,
@@ -40,6 +45,96 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
   options,
   done,
 ) => {
+  app.withTypeProvider<TypeBoxTypeProvider>().get(
+    '/api/specs/create-options',
+    {
+      preHandler: requireCapability({
+        resource: SpecCapabilities,
+        capability: SpecCapabilities.capabilities.Create,
+        scope: {},
+      }),
+      schema: {
+        response: {
+          200: CreateOptionsSchema,
+          400: CreateSpecErrorSchema,
+          401: AuthenticationRequiredErrorResponseSchema,
+          403: AuthorizationForbiddenErrorResponseSchema,
+          409: CreateSpecErrorSchema,
+          422: CreateSpecErrorSchema,
+          503: CreateSpecErrorSchema,
+        },
+      },
+    },
+    async (_request, reply) => {
+      reply.header('Cache-Control', 'no-store');
+      const engine = options.engine;
+      if (!engine) {
+        return reply.code(503).send({
+          error: 'ENGINE_UNAVAILABLE',
+          code: 'ENGINE_UNAVAILABLE',
+        });
+      }
+      try {
+        const options = await inspectCreateOptions(engine);
+        return reply.code(200).send({
+          ...options,
+          workspaces: [...options.workspaces],
+          baseRefs: [...options.baseRefs],
+        });
+      } catch (error) {
+        const code = errorCode(error);
+        if (!code) throw error;
+        return reply.code(statusForCreateError(code)).send({ error: code, code });
+      }
+    },
+  );
+
+  app.withTypeProvider<TypeBoxTypeProvider>().get(
+    '/api/specs/create/operations/:operationId',
+    {
+      preHandler: requireCapability({
+        resource: SpecCapabilities,
+        capability: SpecCapabilities.capabilities.Create,
+        scope: {},
+      }),
+      schema: {
+        params: CreateOperationParamsSchema,
+        response: {
+          200: CreateOperationInspectionSchema,
+          400: CreateSpecErrorSchema,
+          401: AuthenticationRequiredErrorResponseSchema,
+          403: AuthorizationForbiddenErrorResponseSchema,
+          404: CreateSpecErrorSchema,
+          409: CreateSpecErrorSchema,
+          422: CreateSpecErrorSchema,
+          503: CreateSpecErrorSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      reply.header('Cache-Control', 'no-store');
+      const engine = options.engine;
+      if (!engine)
+        return reply.code(503).send({
+          code: 'ENGINE_UNAVAILABLE',
+          error: 'ENGINE_UNAVAILABLE',
+        });
+      try {
+        const result = await inspectPublicCreateOperation(engine, request.params.operationId);
+        if (!result)
+          return reply.code(404).send({
+            code: 'CREATE_NOT_FOUND',
+            error: 'CREATE_NOT_FOUND',
+          });
+        return reply.code(200).send(result);
+      } catch (error) {
+        const code = errorCode(error);
+        if (!code) throw error;
+        return reply.code(statusForCreateError(code)).send({ code, error: code });
+      }
+    },
+  );
+
   app.withTypeProvider<TypeBoxTypeProvider>().post(
     '/api/specs',
     {
@@ -66,7 +161,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
       const engine = options.engine;
       if (!engine) {
         return reply.code(503).send({
-          error: 'Engine-backed Spec create is unavailable in this Runtime composition.',
+          error: 'ENGINE_UNAVAILABLE',
           code: 'ENGINE_UNAVAILABLE',
         });
       }
@@ -99,7 +194,12 @@ async function resolveCreateTarget(
   engine: SpecFlowEngine,
   target:
     | { readonly kind: 'existing'; readonly workspaceId: string }
-    | { readonly kind: 'new-worktree'; readonly baseRef?: string; readonly branch?: string }
+    | {
+        readonly kind: 'new-worktree';
+        readonly baseRef?: string;
+        readonly branch?: string;
+        readonly integrationTargetWorkspaceId?: string;
+      }
     | undefined,
 ): Promise<CreateSpecificationRequest['target']> {
   switch (target?.kind) {
@@ -112,6 +212,9 @@ async function resolveCreateTarget(
         kind: 'new-worktree',
         ...(target.baseRef !== undefined ? { baseRef: target.baseRef } : {}),
         ...(target.branch !== undefined ? { branch: target.branch } : {}),
+        ...(target.integrationTargetWorkspaceId !== undefined
+          ? { integrationTargetWorkspaceId: target.integrationTargetWorkspaceId }
+          : {}),
       };
     default: {
       const exhaustive: never = target;

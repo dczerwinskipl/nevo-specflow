@@ -37,7 +37,7 @@ export async function inspectCloseGitIntegration(
     throw conflict('Integration inspection requires a mutation-free reservation stage.');
   }
   const plan = journal.plan;
-  if (!plan.target || !plan.targetBranch || !plan.configRevision) {
+  if (!plan.target || !plan.targetBranch) {
     throw new CloseOperationError(
       'CLOSE_INVALID',
       'This Close operation does not include Git target integration.',
@@ -54,12 +54,24 @@ export async function inspectCloseGitIntegration(
   if (registry.revision !== plan.registryRevision) {
     throw conflict('Workspace registry changed after Close reservation.');
   }
-  const policy = await readProjectGitPolicy(engine.context);
-  if (
-    policy.revision !== plan.configRevision ||
-    policy.policy.integrationTargetBranch !== plan.targetBranch
-  ) {
-    throw conflict('Git integration policy changed after Close reservation.');
+  if (plan.configRevision) {
+    const policy = await readProjectGitPolicy(engine.context);
+    if (
+      policy.revision !== plan.configRevision ||
+      policy.policy.integrationTargetBranch !== plan.targetBranch
+    ) {
+      throw conflict('Git integration policy changed after Close reservation.');
+    }
+  } else {
+    const source = registry.workspaces.find((item) => item.workspaceId === plan.source.workspaceId);
+    const pinned = source?.kind === 'linked' ? source.integrationDestination : undefined;
+    if (
+      pinned?.workspaceId !== plan.target.workspaceId ||
+      pinned?.instanceId !== plan.target.instanceId ||
+      pinned?.branch !== plan.targetBranch
+    ) {
+      throw conflict('Pinned workspace integration destination changed since Close admission.');
+    }
   }
 
   const inspectPinned = async (expected: CloseWorkspaceEvidence): Promise<void> => {
@@ -90,7 +102,7 @@ export async function inspectCloseGitIntegration(
   await inspectPinned(plan.source);
   await inspectPinned(plan.target);
   if (plan.target.branch !== plan.targetBranch) {
-    throw conflict('Primary is not checked out on the configured integration target.');
+    throw conflict('Destination checkout is not on its pinned integration branch.');
   }
 
   let gitProof: GitIntegrationEvidence;
@@ -122,16 +134,18 @@ export async function inspectCloseGitIntegration(
   if (sourcePaths.exitCode !== 0) {
     throw conflict('Cannot prove Specification ownership of source branch changes.');
   }
-  const ownedActive = 'specs/active/' + plan.slug + '/';
-  const ownedArchive = 'specs/archive/' + plan.slug + '/';
+  const ownedSlugs = (plan.occupants ?? [{ slug: plan.slug }]).map((x) => x.slug);
   const foreignSpecPath = sourcePaths.stdout
     .split('\0')
     .filter(Boolean)
     .find(
       (path) =>
         path.startsWith('specs/') &&
-        !path.startsWith(ownedActive) &&
-        !path.startsWith(ownedArchive),
+        !ownedSlugs.some(
+          (slug) =>
+            path.startsWith('specs/active/' + slug + '/') ||
+            path.startsWith('specs/archive/' + slug + '/'),
+        ),
     );
   if (foreignSpecPath) {
     throw new CloseOperationError(

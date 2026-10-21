@@ -136,6 +136,7 @@ function specFlowRoleCapabilities(): Readonly<Record<SpecFlowRoleId, readonly Ca
       SettingsCapabilities.capabilities.View,
       SettingsCapabilities.capabilities.Manage,
       ProjectGitCapabilities.capabilities.Integrate,
+      ProjectGitCapabilities.capabilities.CloseWorkspace,
     ],
   };
 }

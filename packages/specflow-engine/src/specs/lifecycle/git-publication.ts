@@ -12,6 +12,7 @@ import {
   verifyPublishedGitCheckout,
 } from '../../version-control/git/integration';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
+import { readWorkspaceSpecification, listWorkspaceSpecifications } from '../repository';
 import { inspectCloseGitIntegration } from './git-integration';
 import {
   disabledIntegrationHooksDirectory,
@@ -28,6 +29,30 @@ function recovery(message: string): CloseOperationError {
   return new CloseOperationError('CLOSE_RECOVERY_REQUIRED', message);
 }
 
+/** Every canonical occupant must retain identical committed subtree bytes. */
+async function verifyCloseSpecificationTrees(
+  record: CloseJournal,
+  sourceCommit: string,
+  targetCommit: string,
+): Promise<void> {
+  const destination = record.plan.target;
+  if (!destination) throw recovery('Missing verified integration destination.');
+  const specs = record.plan.occupants ?? [
+    {
+      slug: record.plan.slug,
+      location: record.archive ? ('archive' as const) : record.plan.location,
+    },
+  ];
+  for (const spec of specs) {
+    await verifyGitTreePathEquivalent(
+      destination.root,
+      sourceCommit,
+      targetCommit,
+      'specs/' + spec.location + '/' + spec.slug,
+    );
+  }
+}
+
 async function requireCurrentAdmission(
   engine: SpecFlowEngine,
   record: CloseJournal,
@@ -36,12 +61,27 @@ async function requireCurrentAdmission(
   if (registry.revision !== record.plan.registryRevision) {
     throw conflict('Workspace registry changed after Close reservation.');
   }
-  const policy = await readProjectGitPolicy(engine.context);
-  if (
-    policy.revision !== record.plan.configRevision ||
-    policy.policy.integrationTargetBranch !== record.plan.targetBranch
-  ) {
-    throw conflict('Pinned integration target policy changed.');
+  if (record.plan.configRevision) {
+    const policy = await readProjectGitPolicy(engine.context);
+    if (
+      policy.revision !== record.plan.configRevision ||
+      policy.policy.integrationTargetBranch !== record.plan.targetBranch
+    ) {
+      throw conflict('Pinned integration target policy changed.');
+    }
+  } else {
+    const source = registry.workspaces.find(
+      (item) => item.workspaceId === record.plan.source.workspaceId,
+    );
+    const pinned = source?.kind === 'linked' ? source.integrationDestination : undefined;
+    if (
+      !pinned ||
+      pinned.workspaceId !== record.plan.target?.workspaceId ||
+      pinned.instanceId !== record.plan.target.instanceId ||
+      pinned.branch !== record.plan.targetBranch
+    ) {
+      throw conflict('Pinned integration destination changed.');
+    }
   }
 }
 
@@ -75,6 +115,7 @@ export async function publishCloseGitFastForward(
   }
   if (
     (record.plan.kind !== 'worktree-close' &&
+      record.plan.kind !== 'workspace-close' &&
       (record.plan.kind !== 'specification-close' || !record.archive?.committedHead)) ||
     !record.integration ||
     !record.plan.target
@@ -178,7 +219,8 @@ export async function reconcileCloseGitPublication(
     if (
       sourceWorkspace.root !== journal.plan.source.root ||
       sourceWorkspace.instanceId !== journal.plan.source.instanceId ||
-      targetWorkspace.root !== target.root
+      targetWorkspace.root !== target.root ||
+      targetWorkspace.instanceId !== target.instanceId
     ) {
       throw conflict('Pinned workspace registration changed during Git publication.');
     }
@@ -209,11 +251,9 @@ export async function reconcileCloseGitPublication(
       expectedCommit: candidate,
       expectedTree: candidateTree,
     });
-    const specPath =
-      'specs/' + (journal.archive ? 'archive' : journal.plan.location) + '/' + journal.plan.slug;
-    await verifyGitTreePathEquivalent(target.root, integration.sourceCommit, candidate, specPath);
+    await verifyCloseSpecificationTrees(journal, integration.sourceCommit, candidate);
   } catch {
-    throw recovery('Primary Git HEAD, index, physical tree or source identity is unproven.');
+    throw recovery('Destination Git HEAD, index, physical tree or source identity is unproven.');
   }
   return persistStage(engine, journal, {
     ...journal,
@@ -235,6 +275,7 @@ export async function proveAlreadyIntegratedClose(
   if (
     record?.stage !== 'integration-preparation-initiated' ||
     (record.plan.kind !== 'worktree-close' &&
+      record.plan.kind !== 'workspace-close' &&
       (record.plan.kind !== 'specification-close' || !record.archive?.committedHead)) ||
     record.integration?.relationship !== 'already-integrated' ||
     !record.plan.target
@@ -259,12 +300,7 @@ export async function proveAlreadyIntegratedClose(
       expectedCommit: integration.targetCommit,
       expectedTree: integration.targetTree,
     });
-    await verifyGitTreePathEquivalent(
-      target.root,
-      integration.sourceCommit,
-      integration.targetCommit,
-      'specs/' + (record.archive ? 'archive' : record.plan.location) + '/' + record.plan.slug,
-    );
+    await verifyCloseSpecificationTrees(record, integration.sourceCommit, integration.targetCommit);
   } catch (error) {
     if (error instanceof GitCapabilityError) throw conflict(error.message);
     throw error;
@@ -292,6 +328,7 @@ export async function requireVerifiedCloseIntegration(
   if (
     record?.stage !== 'integration-verified' ||
     (record.plan.kind !== 'worktree-close' &&
+      record.plan.kind !== 'workspace-close' &&
       (record.plan.kind !== 'specification-close' || !record.archive?.committedHead)) ||
     !record.integration ||
     !record.plan.target
@@ -317,7 +354,8 @@ export async function requireVerifiedCloseIntegration(
       !targetRegistration ||
       sourceRegistration.root !== record.plan.source.root ||
       sourceRegistration.instanceId !== record.plan.source.instanceId ||
-      targetRegistration.root !== targetPlan.root
+      targetRegistration.root !== targetPlan.root ||
+      targetRegistration.instanceId !== targetPlan.instanceId
     ) {
       throw conflict('Physical workspace registration changed after Git integration.');
     }
@@ -353,12 +391,31 @@ export async function requireVerifiedCloseIntegration(
       expectedCommit,
       expectedTree,
     });
-    await verifyGitTreePathEquivalent(
-      targetPlan.root,
-      integration.sourceCommit,
-      expectedCommit,
-      'specs/' + (record.archive ? 'archive' : record.plan.location) + '/' + record.plan.slug,
-    );
+    await verifyCloseSpecificationTrees(record, integration.sourceCommit, expectedCommit);
+    if (record.plan.occupants) {
+      // Do not CAS before proving EVERY pinned ID, slug, status and location
+      // on both physical sides. Inherited unbound Specs may exist, but no
+      // bound source identity may disappear or alias another canonical entry.
+      await Promise.all([
+        listWorkspaceSpecifications(record.plan.source.root),
+        listWorkspaceSpecifications(targetPlan.root),
+      ]);
+      for (const occupant of record.plan.occupants) {
+        const [sourceSpec, targetSpec] = await Promise.all([
+          readWorkspaceSpecification(record.plan.source.root, occupant.specId),
+          readWorkspaceSpecification(targetPlan.root, occupant.specId),
+        ]);
+        for (const spec of [sourceSpec, targetSpec]) {
+          if (
+            spec.specId !== occupant.specId ||
+            spec.slug !== occupant.slug ||
+            spec.location !== occupant.location ||
+            spec.status !== occupant.status
+          )
+            throw conflict('Canonical workspace occupant manifest changed before binding CAS.');
+        }
+      }
+    }
     if (integration.relationship === 'divergent') {
       if (record.scratch?.candidateCommit !== expectedCommit) {
         throw conflict('Published commit does not match the scratch candidate.');
@@ -403,6 +460,7 @@ export async function publishDivergentCloseCandidate(
   if (
     record?.stage !== 'integration-scratch-candidate' ||
     (record.plan.kind !== 'worktree-close' &&
+      record.plan.kind !== 'workspace-close' &&
       (record.plan.kind !== 'specification-close' || !record.archive?.committedHead)) ||
     record.integration?.relationship !== 'divergent' ||
     !record.scratch?.candidateCommit ||

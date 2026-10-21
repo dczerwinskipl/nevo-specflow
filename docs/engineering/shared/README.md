@@ -19,3 +19,5 @@ them instead of restating them.
 | [Effects and I/O](effects-and-io.md)          | Pure decisions, ports/adapters, global side effects.        |
 | [Async and lifecycle](async-and-lifecycle.md) | Cancellation, resource ownership, child processes, cleanup. |
 | [Testing](testing.md)                         | Test responsibility boundaries, determinism, coverage.      |
+
+- [SpecFlow Engine durable Git operations and recovery](specflow-git-recovery.md)

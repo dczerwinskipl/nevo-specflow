@@ -2,7 +2,8 @@
 id: ideas.specflow-engine.git
 type: architecture
 title: Optional Git capability and adapter
-status: draft
+status: superseded
+superseded_by: reference.configuration.specflow-git-worktrees
 scope: specflow
 areas: [workflow, configuration, security]
 tags: [git, worktree, branch, capability]
@@ -19,6 +20,8 @@ related:
   - ideas.specflow-engine.worktrees
   - engineering.repository.git-workflow
 ---
+
+> **Historical E1/E2 design evidence — superseded.** The authoritative implemented contract is `reference.configuration.specflow-git-worktrees`. This document MUST NOT override current architecture, exact API schemas or production code.
 
 # Git capability boundary
 

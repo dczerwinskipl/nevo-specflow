@@ -26,7 +26,8 @@ export async function prepareCloseGitIntegration(
   }
   if (previous.stage === 'integration-preparation-initiated') return previous;
   if (!(
-    (previous.stage === 'reserved' && previous.plan.kind === 'worktree-close') ||
+    (previous.stage === 'reserved' &&
+      (previous.plan.kind === 'worktree-close' || previous.plan.kind === 'workspace-close')) ||
     (previous.stage === 'archive-committed' &&
       previous.plan.kind === 'specification-close' &&
       !!previous.archive?.committedHead &&
@@ -58,12 +59,30 @@ export async function prepareCloseGitIntegration(
       const registry = await readWorkspaceRegistry(engine.context);
       if (registry.revision !== current.plan.registryRevision)
         throw new CloseOperationError('CLOSE_CONFLICT', 'Workspace registry changed.');
-      const policy = await readProjectGitPolicy(engine.context);
-      if (
-        policy.revision !== current.plan.configRevision ||
-        policy.policy.integrationTargetBranch !== current.plan.targetBranch
-      )
-        throw new CloseOperationError('CLOSE_CONFLICT', 'Project Git target policy changed.');
+      if (current.plan.configRevision) {
+        const policy = await readProjectGitPolicy(engine.context);
+        if (
+          policy.revision !== current.plan.configRevision ||
+          policy.policy.integrationTargetBranch !== current.plan.targetBranch
+        )
+          throw new CloseOperationError('CLOSE_CONFLICT', 'Project Git target policy changed.');
+      } else {
+        const source = registry.workspaces.find(
+          (item) => item.workspaceId === current.plan.source.workspaceId,
+        );
+        const pinned = source?.kind === 'linked' ? source.integrationDestination : undefined;
+        if (
+          !pinned ||
+          pinned.workspaceId !== current.plan.target?.workspaceId ||
+          pinned.instanceId !== current.plan.target.instanceId ||
+          pinned.branch !== current.plan.targetBranch
+        ) {
+          throw new CloseOperationError(
+            'CLOSE_CONFLICT',
+            'Workspace integration destination changed after reservation.',
+          );
+        }
+      }
     },
   });
 }

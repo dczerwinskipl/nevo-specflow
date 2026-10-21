@@ -2,7 +2,8 @@
 id: ideas.specflow-engine.project-workspace
 type: architecture
 title: Project Workspace discovery and identity
-status: draft
+status: superseded
+superseded_by: architecture.runtime.specflow-project-home
 scope: specflow
 areas: [configuration, workflow, runtime, cli]
 tags: [project, workspace, identity, discovery, worktree]
@@ -20,6 +21,8 @@ related:
   - ideas.specflow-engine.workspace-binding-lifecycle
   - architecture.runtime.configuration
 ---
+
+> **Historical E1/E2 design evidence — superseded.** The authoritative implemented contract is `architecture.runtime.specflow-project-home`. This document MUST NOT override current architecture, exact API schemas or production code.
 
 # Project and Workspace context
 

@@ -3,7 +3,9 @@ import { CreateOperationError } from '../create-error';
 import type { CreateJournal } from './journal-model';
 
 /** Translate durable create intent into the canonical linked-workspace registration. */
-export function registrationOf(record: CreateJournal): WorkspaceRegistration {
+export function registrationOf(
+  record: CreateJournal,
+): Extract<WorkspaceRegistration, { kind: 'linked' }> {
   const target = record.target;
   if (target.kind !== 'new-worktree' || !target.instanceId) {
     throw new CreateOperationError(
@@ -17,5 +19,8 @@ export function registrationOf(record: CreateJournal): WorkspaceRegistration {
     workspaceId: target.workspaceId,
     root: target.workspaceRoot,
     instanceId: target.instanceId,
+    ...(target.integrationDestination
+      ? { integrationDestination: target.integrationDestination }
+      : {}),
   };
 }

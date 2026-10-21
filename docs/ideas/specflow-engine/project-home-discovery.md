@@ -2,7 +2,8 @@
 id: ideas.specflow-engine.project-home
 type: architecture
 title: Discovering the Project Home from any Git worktree
-status: draft
+status: superseded
+superseded_by: architecture.runtime.specflow-project-home
 scope: specflow
 areas: [configuration, cli, runtime, workflow]
 tags: [project-home, worktree, discovery, identity]
@@ -19,6 +20,8 @@ related:
   - ideas.specflow-engine.recovery
   - architecture.runtime.configuration
 ---
+
+> **Historical E1/E2 design evidence — superseded.** The authoritative implemented contract is `architecture.runtime.specflow-project-home`. This document MUST NOT override current architecture, exact API schemas or production code.
 
 # Project Home discovery
 

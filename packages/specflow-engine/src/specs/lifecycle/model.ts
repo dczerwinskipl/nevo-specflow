@@ -3,9 +3,14 @@ import { createHash } from 'node:crypto';
 import { validateOperationId } from '../create-journal';
 import { isValidSpecificationId } from '../model';
 
-export type CloseKind = 'worktree-close' | 'specification-close';
+export type CloseKind = 'worktree-close' | 'specification-close' | 'workspace-close';
 
 export type CloseIntent =
+  | {
+      readonly kind: 'workspace-close';
+      readonly operationId: string;
+      readonly workspaceId: string;
+    }
   | {
       readonly kind: 'worktree-close';
       readonly operationId: string;
@@ -50,10 +55,22 @@ export interface CloseWorkspaceEvidence {
   readonly instanceId?: string;
 }
 
+/** Pinned canonical occupants; a workspace-scoped Close never derives its set from one specId. */
+export interface CloseOccupant {
+  readonly specId: string;
+  readonly slug: string;
+  readonly location: 'active' | 'archive';
+  readonly status: string;
+  readonly bindingGeneration: number;
+}
+
 export interface ClosePlan {
   readonly kind: CloseKind;
   readonly operationId: string;
+  /** Exclusive legacy close anchor; on workspace close the first snapshot occupant. */
   readonly specId: string;
+  readonly workspaceId?: string;
+  readonly occupants?: readonly CloseOccupant[];
   readonly fingerprint: string;
   readonly slug: string;
   readonly location: 'active' | 'archive';
@@ -133,6 +150,16 @@ export function fingerprintCloseIntent(input: CloseIntent): string {
 
 export function normalizeCloseIntent(input: CloseIntent): CloseIntent {
   validateOperationId(input.operationId);
+  if (input.kind === 'workspace-close') {
+    if (!isValidSpecificationId(input.workspaceId)) {
+      throw new CloseOperationError('CLOSE_INVALID', 'Invalid workspace identity.');
+    }
+    return {
+      kind: 'workspace-close',
+      operationId: input.operationId,
+      workspaceId: input.workspaceId,
+    };
+  }
   if (!isValidSpecificationId(input.specId)) {
     throw new CloseOperationError('CLOSE_INVALID', 'Invalid Specification identity.');
   }
@@ -152,9 +179,14 @@ export function normalizeCloseIntent(input: CloseIntent): CloseIntent {
 
 /** Derived resource identities must agree with persisted intent, not a forged list. */
 export function resourcesForClosePlan(plan: ClosePlan, projectId: string): readonly string[] {
-  const integrate = plan.kind === 'worktree-close' || plan.integrateToTargetBranch === true;
+  const integrate =
+    plan.kind === 'worktree-close' ||
+    plan.kind === 'workspace-close' ||
+    plan.integrateToTargetBranch === true;
   const values = [
-    'spec:' + plan.specId,
+    ...(plan.kind === 'workspace-close'
+      ? (plan.occupants ?? []).map((occupant) => 'spec:' + occupant.specId)
+      : ['spec:' + plan.specId]),
     'checkout:' + plan.source.workspaceId,
     'ref:refs/heads/' + plan.source.branch.toLowerCase(),
     ...(plan.target && plan.target.workspaceId !== plan.source.workspaceId
@@ -173,6 +205,7 @@ export type CloseOperationErrorCode =
   | 'CLOSE_CONFLICT'
   | 'CLOSE_UNAVAILABLE'
   | 'CLOSE_PREFLIGHT'
+  | 'CLOSE_SHARED_WORKTREE'
   | 'CLOSE_RECOVERY_REQUIRED'
   | 'CLOSE_JOURNAL_CORRUPT';
 

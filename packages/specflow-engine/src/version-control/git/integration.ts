@@ -133,11 +133,11 @@ export async function publishGitFastForward(input: {
     checkedOutBranch.exitCode !== 0 ||
     checkedOutBranch.stdout.trim() !== 'refs/heads/' + expectedTargetBranch
   ) {
-    throw conflict('Primary changed its checked-out integration branch before publication.');
+    throw conflict('Target changed its checked-out integration branch before publication.');
   }
   const observed = await requiredGitValue(root, ['rev-parse', '--verify', 'HEAD'], 'Missing HEAD.');
   if (observed !== expectedTargetCommit) {
-    throw conflict('Primary HEAD changed before Git fast-forward publication.');
+    throw conflict('Target HEAD changed before Git fast-forward publication.');
   }
   const status = await executeGit(root, [
     '-c',
@@ -148,7 +148,7 @@ export async function publishGitFastForward(input: {
     '--untracked-files=all',
   ]);
   if (status.exitCode !== 0 || status.stdout) {
-    throw conflict('Primary checkout is not clean immediately before publication.');
+    throw conflict('Target checkout is not clean immediately before publication.');
   }
   const result = await executeGitMutation(root, [
     '-c',
@@ -185,10 +185,10 @@ export async function verifyPublishedGitCheckout(input: {
   }
   const branch = await executeGit(root, ['symbolic-ref', '--quiet', 'HEAD']);
   if (branch.exitCode !== 0 || branch.stdout.trim() !== 'refs/heads/' + expectedBranch) {
-    throw conflict('Checked-out primary is no longer on the configured target branch.');
+    throw conflict('Checked-out target is no longer on its pinned branch.');
   }
   const head = await requiredGitValue(root, ['rev-parse', '--verify', 'HEAD'], 'Missing HEAD.');
-  if (head !== expectedCommit) throw conflict('Primary HEAD does not match publication commit.');
+  if (head !== expectedCommit) throw conflict('Target HEAD does not match publication commit.');
   const tree = await requiredGitValue(
     root,
     ['rev-parse', '--verify', expectedCommit + '^{tree}'],
@@ -198,7 +198,7 @@ export async function verifyPublishedGitCheckout(input: {
 
   const indexTree = await executeGit(root, ['write-tree']);
   if (indexTree.exitCode !== 0 || indexTree.stdout.trim() !== expectedTree) {
-    throw conflict('Primary index does not match published commit tree.');
+    throw conflict('Target index does not match published commit tree.');
   }
   const status = await executeGit(root, [
     '-c',
@@ -209,7 +209,7 @@ export async function verifyPublishedGitCheckout(input: {
     '--untracked-files=all',
   ]);
   if (status.exitCode !== 0 || status.stdout) {
-    throw conflict('Primary physical files differ from published index/HEAD.');
+    throw conflict('Target physical files differ from published index/HEAD.');
   }
 }
 

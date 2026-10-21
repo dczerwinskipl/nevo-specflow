@@ -21,6 +21,13 @@ export class WorkspaceRegistryError extends Error {
   }
 }
 
+/** Pinned destination is owned by the source workspace, not by its Specs. */
+export interface WorkspaceIntegrationDestination {
+  readonly workspaceId: string;
+  readonly branch: string;
+  readonly instanceId?: string;
+}
+
 /** Primary has no separate incarnation marker and is never managed. */
 export type WorkspaceRegistration =
   | {
@@ -37,6 +44,8 @@ export type WorkspaceRegistration =
       readonly managed: boolean;
       /** Physical checkout incarnation required for every linked workspace. */
       readonly instanceId: string;
+      /** Absent on legacy/default-target workspaces. */
+      readonly integrationDestination?: WorkspaceIntegrationDestination;
     };
 
 export interface SpecWorkspaceBinding {

@@ -22,11 +22,9 @@ it.skipIf(!enabled)(
     const ready = process.env.NEVO_CLOSE_RACE_READY!;
     const start = process.env.NEVO_CLOSE_RACE_START!;
     const result = process.env.NEVO_CLOSE_RACE_RESULT!;
-    const request = JSON.parse(process.env.NEVO_CLOSE_RACE_REQUEST!) as {
-      kind: 'specification-close' | 'worktree-close';
-      operationId: string;
-      specId: string;
-    };
+    const request = JSON.parse(process.env.NEVO_CLOSE_RACE_REQUEST!) as
+      | { kind: 'specification-close' | 'worktree-close'; operationId: string; specId: string }
+      | { kind: 'workspace-close'; operationId: string; workspaceId: string };
     const engine = await openSpecFlowEngine({ cwd: root });
     await writeFile(ready, 'ready');
     const deadline = Date.now() + 60000;
@@ -42,7 +40,8 @@ it.skipIf(!enabled)(
     try {
       const reserved = await reserveCloseOperation(engine, request);
       if (process.env.NEVO_CLOSE_RACE_MODE === 'publish-divergent') {
-        if (request.kind !== 'worktree-close') throw new Error('Expected Worktree Close.');
+        if (request.kind !== 'worktree-close' && request.kind !== 'workspace-close')
+          throw new Error('Expected worktree-wide Close.');
         const prepared = await prepareCloseGitIntegration(engine, request.operationId);
         if (prepared.integration?.relationship !== 'divergent') {
           throw new Error('Race fixture did not create divergent Git history.');

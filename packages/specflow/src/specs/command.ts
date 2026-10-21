@@ -5,6 +5,9 @@ import {
   projectCreatedSpecification,
   closeSpecificationOperation,
   closeWorktreeOperation,
+  closeWorkspaceOperation,
+  planPublicWorkspaceCloseOperation,
+  inspectPublicWorkspaceCloseOperation,
   previewPublicCloseOperation,
   reconcileArchivedConflictScratchOperation,
   discoverSpecifications,
@@ -56,6 +59,10 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
     .option('--worktree', 'Provision a managed Git worktree')
     .option('--base-ref <ref>', 'Optional Git base override (defaults to Project Home policy)')
     .option('--branch <branch>', 'Branch name for new worktree')
+    .option(
+      '--integration-target-workspace-id <id>',
+      'Registered checkout to integrate the new worktree into',
+    )
     .option('--operation-id <uuid>', 'Stable UUID for idempotent retries')
     .option('--project-root <path>', 'Require this verified Project Home root')
     .option('--json', 'Print canonical result as JSON')
@@ -67,6 +74,7 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
         worktree?: boolean;
         baseRef?: string;
         branch?: string;
+        integrationTargetWorkspaceId?: string;
         operationId?: string;
         projectRoot?: string;
         json?: boolean;
@@ -94,7 +102,7 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
   worktree
     .command('close')
     .description(
-      'Integrate the whole linked branch into primary, rebind the Spec and remove the managed worktree',
+      'Integrate the linked branch into its pinned destination, rebind the Spec and remove the managed worktree',
     )
     .argument('<spec-id>', 'Canonical Specification UUID')
     .option('--operation-id <uuid>', 'Stable operation UUID; reuse it for idempotent retry')
@@ -130,9 +138,56 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
       }
     });
 
+  const workspace = specs
+    .command('workspace')
+    .description('Operate on an entire registered managed linked worktree');
+  workspace
+    .command('close')
+    .description('Integrate a whole branch and atomically transfer all canonical Specs')
+    .argument('<workspace-id>', 'Registered workspace UUID, not a Specification ID')
+    .option('--operation-id <uuid>', 'Stable operation UUID for retries')
+    .option('--project-root <path>', 'Require this verified Project Home root')
+    .option('--preview', 'Read-only preview, including every affected Spec')
+    .option('--yes', 'Confirm WHOLE-branch integration and worktree removal')
+    .option('--json', 'Output machine-readable result')
+    .action(async (workspaceId: string, options: CliCloseOptions) => {
+      const engine = await engineForClose(context.cwd, options.projectRoot);
+      const operationId = options.operationId ?? randomUUID();
+      const request = { workspaceId, operationId };
+      if (options.preview) {
+        output(context, await planPublicWorkspaceCloseOperation(engine, request));
+        return;
+      }
+      if (!options.yes)
+        throw new Error(
+          'Whole-branch Workspace Close requires --yes. Use workspace close --preview first.',
+        );
+      const result = await closeWorkspaceOperation(engine, request);
+      if (options.json) output(context, result);
+      else {
+        context.stdout('Workspace Close: ' + result.status);
+        context.stdout('Affected Specifications: ' + result.occupantCount);
+        context.stdout('Operation ID: ' + operationId);
+      }
+    });
+  workspace
+    .command('inspect')
+    .description('Inspect workspace-level Close without mutating Git')
+    .argument('<workspace-id>', 'Original source workspace UUID')
+    .argument('<operation-id>', 'Durable operation UUID')
+    .option('--project-root <path>', 'Require this verified Project Home root')
+    .action(async (workspaceId: string, operationId: string, options: { projectRoot?: string }) => {
+      const engine = await engineForClose(context.cwd, options.projectRoot);
+      const result = await inspectPublicWorkspaceCloseOperation(engine, operationId, workspaceId);
+      if (!result) throw new Error('Workspace Close operation not found: ' + operationId);
+      output(context, result);
+    });
+
   specs
     .command('close')
-    .description('Commit an archival move; optionally integrate a linked source into primary')
+    .description(
+      'Commit an archival move; optionally integrate a linked source into its pinned destination',
+    )
     .argument('<spec-id>', 'Canonical Specification UUID')
     .option('--operation-id <uuid>', 'Stable operation UUID; reuse it for idempotent retry')
     .option('--project-root <path>', 'Require this verified Project Home root')
@@ -274,14 +329,20 @@ interface CliCreateOptions {
   readonly workspaceId?: string;
   readonly baseRef?: string;
   readonly branch?: string;
+  readonly integrationTargetWorkspaceId?: string;
 }
 
 function validateCreateOptions(options: CliCreateOptions): void {
   if (options.worktree && options.workspaceId) {
     throw new Error('Choose either --worktree or --workspace-id.');
   }
-  if (!options.worktree && (options.baseRef || options.branch)) {
-    throw new Error('--base-ref and --branch require --worktree.');
+  if (
+    !options.worktree &&
+    (options.baseRef || options.branch || options.integrationTargetWorkspaceId)
+  ) {
+    throw new Error(
+      '--base-ref, --branch and --integration-target-workspace-id require --worktree.',
+    );
   }
 }
 
@@ -294,6 +355,9 @@ function resolveCliCreateTarget(
       kind: 'new-worktree',
       ...(options.baseRef !== undefined ? { baseRef: options.baseRef } : {}),
       ...(options.branch !== undefined ? { branch: options.branch } : {}),
+      ...(options.integrationTargetWorkspaceId !== undefined
+        ? { integrationTargetWorkspaceId: options.integrationTargetWorkspaceId }
+        : {}),
     };
   }
   return { kind: 'existing', workspaceId: options.workspaceId ?? engine.workspace.workspaceId };

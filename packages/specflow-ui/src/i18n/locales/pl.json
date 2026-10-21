@@ -274,19 +274,6 @@
     "openSignal": "{{label}} — {{title}}",
     "more_one": "+{{count}} więcej",
     "more_other": "+{{count}} więcej",
-    "noTasks": "Brak zadań",
-    "invalidProgress": "Postęp niedostępny",
-    "progressLabel": "Ukończenie zadań dla {{title}}",
-    "specificationColumn": "Specyfikacja",
-    "situationColumn": "Sytuacja",
-    "progressColumn": "Postęp",
-    "milestoneColumn": "Etap",
-    "newestMilestoneFirst": "Najnowszy etap najpierw",
-    "dateUnavailable": "Data niedostępna",
-    "milestone": {
-      "completed": "Ukończono",
-      "archived": "Zarchiwizowano"
-    },
     "progress": "{{completed}} / {{total}} zadań",
     "execution_one": "{{role}} · {{count}} zadanie",
     "execution_few": "{{role}} · {{count}} zadania",
@@ -297,7 +284,8 @@
       "requiresAttention": "Wymaga uwagi",
       "active": "W toku",
       "ready": "Gotowe",
-      "draft": "Szkice"
+      "draft": "Szkice",
+      "unknown": "Status nieustalony"
     },
     "collapseSection": "Zwiń sekcję {{label}}",
     "expandSection": "Rozwiń sekcję {{label}}",
@@ -323,7 +311,8 @@
       "concurrent_few": "{{count}} sesje w toku",
       "concurrent_many": "{{count}} sesji w toku",
       "concurrent_other": "{{count}} sesji w toku",
-      "attention": "Wymagana uwaga człowieka"
+      "attention": "Wymagana uwaga człowieka",
+      "unknown": "Stan pracy jeszcze nieustalony"
     },
     "history": {
       "completed": "Ukończono {{date}}",
@@ -333,6 +322,20 @@
     "forbidden": {
       "title": "Brak dostępu",
       "description": "Nie masz uprawnień do przeglądania tych specyfikacji."
+    },
+    "progressUnknown": "Postęp niedostępny",
+    "noTasks": "Brak zadań",
+    "invalidProgress": "Postęp niedostępny",
+    "progressLabel": "Ukończenie zadań dla {{title}}",
+    "specificationColumn": "Specyfikacja",
+    "situationColumn": "Sytuacja",
+    "progressColumn": "Postęp",
+    "milestoneColumn": "Etap",
+    "newestMilestoneFirst": "Najnowszy etap najpierw",
+    "dateUnavailable": "Data niedostępna",
+    "milestone": {
+      "completed": "Ukończono",
+      "archived": "Zarchiwizowano"
     }
   },
   "taskWorkspace": {

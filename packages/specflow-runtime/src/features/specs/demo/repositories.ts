@@ -6,16 +6,32 @@ import type { SpecificationWorkspaceRepository } from '../workspace/repository';
 import { buildDemoTaskContribution } from '../../tasks';
 import { buildDemoSessionContribution } from '../../sessions';
 import { buildDemoDocumentManifest } from '../../documents';
-import type { DemoCatalogue } from '../../demo-catalogue';
+import type { DemoCatalogue, DemoSpecification } from '../../demo-catalogue';
 
-type DemoSpec = CurrentSpecRecord | ArchivedSpecRecord;
-function isCurrent(record: DemoSpec): record is CurrentSpecRecord {
-  return 'currentExecutions' in record;
+type DemoSpec = DemoSpecification;
+
+function normalizeDemoSpec(record: CurrentSpecRecord | ArchivedSpecRecord): DemoSpec {
+  return {
+    id: record.id,
+    title: record.title,
+    progress: record.progress ?? { completed: 0, total: 0 },
+    ...('currentExecutions' in record
+      ? {
+          readyForWork: record.readyForWork ?? false,
+          currentExecutions: record.currentExecutions ?? [],
+          signals: record.signals ?? [],
+        }
+      : {}),
+  };
+}
+
+function isCurrent(record: DemoSpec): boolean {
+  return record.currentExecutions !== undefined;
 }
 
 function buildSpecification(record: DemoSpec): SpecificationReadModel {
   const attention = isCurrent(record)
-    ? record.signals.flatMap((signal) =>
+    ? (record.signals ?? []).flatMap((signal) =>
         signal.kind === 'attention' && signal.target.kind === 'specification'
           ? [
               {
@@ -69,7 +85,8 @@ export function createDemoSpecsRepositories(): {
       overviewRepository.readCurrent(),
       overviewRepository.readArchive(),
     ]);
-    return [...current.items, ...archive.items].find((spec) => spec.id === specId);
+    const record = [...current.items, ...archive.items].find((spec) => spec.id === specId);
+    return record ? normalizeDemoSpec(record) : undefined;
   }
 
   return {
@@ -107,7 +124,7 @@ export function createDemoSpecsRepositories(): {
           overviewRepository.readCurrent(),
           overviewRepository.readArchive(),
         ]);
-        return [...current.items, ...archive.items];
+        return [...current.items, ...archive.items].map(normalizeDemoSpec);
       },
     },
   };

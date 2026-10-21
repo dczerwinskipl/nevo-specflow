@@ -1,8 +1,13 @@
-import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
+import { ProjectGitCapabilities, SpecCapabilities } from '@nevo/specflow-contracts/specs';
+import type { SpecFlowEngine } from '@nevo/specflow-engine';
+
 import type { RuntimeFeature } from '../runtime-feature';
 import { defaultSpecsFeatureConfig, type SpecsFeatureConfig } from './configuration';
+import { specsCreateEndpoint } from './create/endpoint';
+import { specsCloseEndpoint } from './close/endpoint';
 import { specsOverviewEndpoint } from './overview/endpoint';
 import type { SpecsOverviewRepository } from './overview/repository/read-repository';
+import { createEngineSpecsOverviewRepository } from './overview/repository/engine-repository';
 import { specificationWorkspaceEndpoint } from './workspace/endpoint';
 import type {
   SpecificationWorkspaceRepository,
@@ -12,6 +17,7 @@ import type { SessionReferenceOwner } from '../sessions';
 
 export interface SpecsFeatureDependencies {
   readonly overviewRepository?: SpecsOverviewRepository;
+  readonly engine?: SpecFlowEngine;
   readonly workspaceRepository?: SpecificationWorkspaceRepository;
   readonly contributions?: WorkspaceContributions;
   readonly sessions?: SessionReferenceOwner;
@@ -23,19 +29,28 @@ export interface CreateSpecsFeatureOptions {
 }
 
 export function createSpecsFeature(options: CreateSpecsFeatureOptions = {}): RuntimeFeature {
-  const overviewRepository = options.dependencies?.overviewRepository;
-  const workspaceRepository = options.dependencies?.workspaceRepository;
+  // Demo data is available only through an explicit injected repository.
+  // Production composition supplies the Engine; absent Engine is an unavailable
+  // source, never a synthetic list of example specifications.
+  const repository =
+    options.dependencies?.overviewRepository ??
+    (options.dependencies?.engine
+      ? createEngineSpecsOverviewRepository(options.dependencies.engine)
+      : undefined);
   const config = options.config ?? defaultSpecsFeatureConfig();
 
   return {
-    authorizationResources: [SpecCapabilities],
+    authorizationResources: [SpecCapabilities, ProjectGitCapabilities],
+
     register(app) {
+      app.register(specsCreateEndpoint, { engine: options.dependencies?.engine });
+      app.register(specsCloseEndpoint, { engine: options.dependencies?.engine });
       app.register(specsOverviewEndpoint, {
-        repository: overviewRepository,
+        repository,
         currentSections: config.overview.current.sections,
       });
       app.register(specificationWorkspaceEndpoint, {
-        repository: workspaceRepository,
+        repository: options.dependencies?.workspaceRepository,
         contributions: options.dependencies?.contributions,
         sessions: options.dependencies?.sessions,
       });

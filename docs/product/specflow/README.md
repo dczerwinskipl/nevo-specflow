@@ -12,3 +12,5 @@ summary: >
 - [Product overview](overview.md)
 - [CLI](cli/)
 - [UI](ui/)
+
+- [Create Specification and workspace selection](specification-creation.md)

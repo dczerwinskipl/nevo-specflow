@@ -6,6 +6,8 @@ describe('Demo Workspace lifecycle', () => {
     const repositories = createDemoSpecsRepositories();
     const overview = await repositories.overviewRepository.readCurrent();
     for (const item of overview.items) {
+      if (!item.progress || !item.currentExecutions)
+        throw new Error('Demo current Specifications must project progress and executions.');
       const workspace = await readWorkspace(
         repositories.workspaceRepository,
         repositories.contributions,

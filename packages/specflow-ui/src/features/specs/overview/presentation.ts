@@ -14,13 +14,14 @@ type CurrentSummary =
   | { kind: 'attention'; reason?: CurrentSpecAttentionReason; count?: number }
   | { kind: 'active'; executionCount: number }
   | { kind: 'ready' }
-  | { kind: 'draft' };
+  | { kind: 'draft' }
+  | { kind: 'unknown' };
 
 interface RowIdentity {
   readonly id: string;
   readonly title: string;
   readonly key?: string;
-  readonly progress: { completed: number; total: number };
+  readonly progress: { completed: number; total: number } | null;
   readonly tags: Tags;
   readonly omittedTags: number;
   readonly pullRequests?: PullRequests;
@@ -64,7 +65,7 @@ function identity(item: SpecOverviewItem): RowIdentity {
 }
 
 export function currentRow(item: CurrentSpecOverviewItem): CurrentSpecRowModel {
-  const executionCount = item.currentExecutions.length;
+  const executionCount = item.currentExecutions?.length ?? 0;
 
   return {
     ...identity(item),
@@ -111,17 +112,23 @@ function currentSummary(item: CurrentSpecOverviewItem): CurrentSummary {
       };
 
     case 'active':
-      return { kind: 'active', executionCount: item.currentExecutions.length };
+      return { kind: 'active', executionCount: item.currentExecutions?.length ?? 0 };
 
     case 'ready':
       return { kind: 'ready' };
 
     case 'draft':
       return { kind: 'draft' };
+
+    case 'unknown':
+      return { kind: 'unknown' };
   }
 }
 
-export function rowProgress(progress: RowIdentity['progress']): 'invalid' | 'empty' | 'ready' {
+export function rowProgress(
+  progress: RowIdentity['progress'],
+): 'invalid' | 'empty' | 'ready' | 'unknown' {
+  if (progress === null) return 'unknown';
   return !Number.isSafeInteger(progress.total) ||
     progress.total < 0 ||
     !Number.isSafeInteger(progress.completed) ||

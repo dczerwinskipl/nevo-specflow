@@ -183,8 +183,11 @@ function SpecRowIdentity({
 }
 function CurrentSpecRowContent({ item }: { item: CurrentSpecRowModel }) {
   const { t } = useTranslation();
-  const count = t('specifications.progress', item.progress);
-  const progress = rowProgress(item.progress);
+  const details = item.progress;
+  const count = details
+    ? t('specifications.progress', details)
+    : t('specifications.progressUnknown');
+  const progress = rowProgress(details);
   return (
     <>
       <Typography
@@ -193,25 +196,27 @@ function CurrentSpecRowContent({ item }: { item: CurrentSpecRowModel }) {
         className="flex min-w-0 items-center gap-2 text-content-secondary @min-[48rem]/collection:col-start-3 @min-[48rem]/collection:row-start-1 @min-[48rem]/collection:flex-col @min-[48rem]/collection:items-start"
         data-spec-progress
       >
-        {progress === 'invalid' ? (
+        {progress === 'unknown' ? (
+          t('specifications.progressUnknown')
+        ) : progress === 'invalid' ? (
           t('specifications.invalidProgress')
         ) : progress === 'empty' ? (
           t('specifications.noTasks')
-        ) : (
+        ) : details ? (
           <>
             <div className="w-28 shrink-0">
               <Progress
                 variant="segmented"
                 size="compact"
-                completed={item.progress.completed}
-                total={item.progress.total}
+                completed={details.completed}
+                total={details.total}
                 aria-label={t('specifications.progressLabel', { title: item.title })}
                 aria-valuetext={count}
               />
             </div>
             <span>{count}</span>
           </>
-        )}
+        ) : null}
       </Typography>
       <Typography
         as="div"

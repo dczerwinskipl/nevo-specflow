@@ -5,9 +5,18 @@ on:
   push:
     branches:
       - main
+  # Catch UI interaction failures before merge, not only after main pushes.
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "packages/specflow-ui/src/**"
+      - "packages/specflow-ui/test-support/**"
+      - "packages/nevo-ui/src/**"
+      - "tools/storybook/**"
+      - ".github/workflows/chromatic.yml"
 
 concurrency:
-  group: chromatic-${{ github.ref }}
+  group: chromatic-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -16,16 +25,19 @@ permissions:
 jobs:
   publish:
     name: chromatic
+    # Secret-bearing publishing is restricted to trusted same-repo PRs.
+    if: github.event_name != 'pull_request' || (github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     env:
       CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
-      CHROMATIC_SHA: ${{ github.sha }}
-      CHROMATIC_BRANCH: ${{ github.ref_name }}
+      CHROMATIC_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      CHROMATIC_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
       CHROMATIC_SLUG: ${{ github.repository }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: ./.github/actions/setup
 
       - name: Build Storybook workspace dependencies
@@ -35,6 +47,54 @@ jobs:
       - name: Publish Storybook and run visual tests
         if: env.CHROMATIC_PROJECT_TOKEN != ''
         run: pnpm chromatic
+
+      # Chromatic exit code 2 means a story/component failed to render.
+      # Retain *redacted* diagnostics so the failed story can be identified
+      # without exposing the project token in downloadable artifacts.
+      - name: Sanitize failed Chromatic diagnostics
+        if: failure() && env.CHROMATIC_PROJECT_TOKEN != ''
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          // Chromatic can write reports at either invocation or package cwd.
+          const file = ['chromatic-diagnostics.json', 'tools/storybook/chromatic-diagnostics.json']
+            .find((path) => fs.existsSync(path));
+          if (!fs.existsSync(file)) {
+            console.log('Chromatic diagnostics not present at root or Storybook cwd; inspect the build link in job logs.');
+            process.exit(0);
+          }
+          const sensitive = /token|secret|credential|password|authorization|headers|environment|env|apiKey|private/i;
+          const mask = process.env.CHROMATIC_PROJECT_TOKEN;
+          function redact(value, depth = 0) {
+            if (depth > 14) return '[TRUNCATED]';
+            if (typeof value === 'string') {
+              return (mask ? value.split(mask).join('[REDACTED]') : value).slice(0, 6000);
+            }
+            if (Array.isArray(value)) return value.slice(0, 300).map((v) => redact(v, depth + 1));
+            if (value && typeof value === 'object') {
+              return Object.fromEntries(
+                Object.entries(value)
+                  .filter(([key]) => !sensitive.test(key))
+                  .map(([key, v]) => [key, redact(v, depth + 1)]),
+              );
+            }
+            return value;
+          }
+          fs.mkdirSync('chromatic-debug', { recursive: true });
+          fs.writeFileSync('chromatic-debug/diagnostics.json',
+            JSON.stringify(redact(JSON.parse(fs.readFileSync(file, 'utf8'))), null, 2));
+          console.log('Prepared redacted Chromatic diagnostics artifact.');
+          NODE
+
+      - name: Upload redacted Chromatic failure report
+        if: failure() && env.CHROMATIC_PROJECT_TOKEN != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: chromatic-failure-${{ github.sha }}
+          path: chromatic-debug/diagnostics.json
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Explain skipped visual tests
         if: env.CHROMATIC_PROJECT_TOKEN == ''

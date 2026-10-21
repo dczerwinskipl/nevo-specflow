@@ -35,6 +35,7 @@ import {
   createSpecsFeature,
   createDemoSpecsRepositories,
   SpecCapabilities,
+  ProjectGitCapabilities,
   type SpecsFeatureDependencies,
 } from '../features/specs';
 import type { RuntimeFeature } from '../features/runtime-feature';
@@ -97,6 +98,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     createSpecsFeature({
       ...(config.specs ? { config: config.specs } : {}),
       dependencies: {
+        engine: dependencies.specs?.engine,
         overviewRepository: dependencies.specs?.overviewRepository ?? demo?.overviewRepository,
         workspaceRepository: dependencies.specs?.workspaceRepository ?? demo?.workspaceRepository,
         contributions: dependencies.specs?.contributions ?? demo?.contributions,
@@ -178,6 +180,8 @@ function specFlowRoleCapabilities(): Readonly<Record<SpecFlowRoleId, readonly Ca
     ...viewer,
     SpecCapabilities.capabilities.Create,
     SpecCapabilities.capabilities.Manage,
+    SpecCapabilities.capabilities.CloseWorktree,
+    SpecCapabilities.capabilities.CloseSpecification,
     SessionCapabilities.capabilities.Create,
     SessionCapabilities.capabilities.Manage,
   ] as const;
@@ -189,6 +193,8 @@ function specFlowRoleCapabilities(): Readonly<Record<SpecFlowRoleId, readonly Ca
       ...developer,
       SettingsCapabilities.capabilities.View,
       SettingsCapabilities.capabilities.Manage,
+      ProjectGitCapabilities.capabilities.Integrate,
+      ProjectGitCapabilities.capabilities.CloseWorkspace,
     ],
   };
 }

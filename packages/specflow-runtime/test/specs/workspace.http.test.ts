@@ -72,6 +72,8 @@ describe('Specification Workspace Runtime HTTP integration', () => {
       const admission = overview.items.find((item) => item.id === 'admission');
       expect(admission).toBeDefined();
       if (!admission) throw new Error('Demo admission Specification is required.');
+      if (!admission.progress)
+        throw new Error('Demo admission Specification must have known progress.');
 
       const response = await app.inject('/api/specs/admission/workspace');
       expect(response.statusCode).toBe(200);

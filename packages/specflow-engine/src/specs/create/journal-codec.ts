@@ -135,8 +135,11 @@ function isValidJournalIntent(
     intent.title !== value.title ||
     (intent.goal !== undefined && typeof intent.goal !== 'string') ||
     intent.goal !== value.goal ||
+    (intent.slug !== undefined && intent.slug !== value.slug) ||
     !isRecord(intent.target) ||
-    Object.keys(intent).some((key) => key !== 'title' && key !== 'goal' && key !== 'target')
+    Object.keys(intent).some(
+      (key) => key !== 'title' && key !== 'goal' && key !== 'slug' && key !== 'target',
+    )
   ) {
     return false;
   }
@@ -190,6 +193,7 @@ function isValidJournalIntent(
     const normalized = normalizeCreateClientIntent({
       title: persisted.title,
       goal: persisted.goal,
+      slug: persisted.slug,
       target:
         persisted.target.kind === 'existing'
           ? persisted.target

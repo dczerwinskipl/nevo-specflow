@@ -9,6 +9,7 @@ export interface CreateSpecificationRequest {
   readonly operationId?: string;
   readonly title: string;
   readonly goal?: string;
+  readonly slug?: string;
   readonly target: CreateClientTargetInput;
 }
 

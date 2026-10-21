@@ -85,6 +85,7 @@ export async function reserveCreateOperation(
       title: intent.title,
       created,
       goal: intent.goal,
+      slug: intent.slug,
     });
     if (
       canonical.some(

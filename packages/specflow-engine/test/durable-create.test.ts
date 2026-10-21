@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { lstat, readFile, rm, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 
 import { createJournalPath } from '../src/specs/create-journal';
 import { createGitTestProject, git } from './support/git-project';
@@ -336,6 +336,81 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
       'completed',
     );
   }, 90000);
+
+  it('uses an explicit slug for the Spec folder, branch and worktree, and fingerprints it', async () => {
+    const { root, engine } = await project();
+    await writeFile(
+      join(root, '.nevo/config.yaml'),
+      [
+        'runtime: {}',
+        'git:',
+        '  enabled: true',
+        '  worktrees:',
+        '    branchPattern: "feature/{slug}-{shortId}"',
+        '',
+      ].join('\n'),
+    );
+    const { createSpecificationFromRequest } = await import('../src/index');
+    const request = {
+      operationId: randomUUID(),
+      title: 'A very long descriptive title',
+      slug: 'short-name',
+      target: { kind: 'new-worktree' as const, baseRef: 'HEAD' },
+    };
+    const first = await createSpecificationFromRequest(engine, request);
+    roots.push(dirname(first.workspaceRoot));
+    expect(first.slug).toBe('short-name');
+    expect(basename(first.workspaceRoot)).toBe('short-name');
+    expect(git(first.workspaceRoot, 'symbolic-ref', '--short', 'HEAD')).toBe(
+      'feature/short-name-' + first.specId.slice(0, 8),
+    );
+    const manifest = await readFile(
+      join(first.workspaceRoot, 'specs/active/short-name/specification.yaml'),
+      'utf8',
+    );
+    expect(manifest).toContain('title: A very long descriptive title');
+
+    // Replay with the same inputs is idempotent; another slug is a different intent.
+    expect(await createSpecificationFromRequest(engine, request)).toEqual(first);
+    await expect(
+      createSpecificationFromRequest(engine, { ...request, slug: 'other-name' }),
+    ).rejects.toMatchObject({ code: 'CREATE_CONFLICT' });
+    // A taken slug (another operation) is a conflict, not silently renamed.
+    await expect(
+      createSpecificationFromRequest(engine, {
+        ...request,
+        operationId: randomUUID(),
+        title: 'Different title',
+        target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
+      }),
+    ).rejects.toMatchObject({ code: 'CREATE_CONFLICT' });
+    // The title-derived slug still applies when no slug is given.
+    expect(
+      (
+        await createSpecificationFromRequest(engine, {
+          operationId: randomUUID(),
+          title: 'Derived Title',
+          target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
+        })
+      ).slug,
+    ).toBe('derived-title');
+  }, 240000);
+
+  it('rejects a malformed explicit slug before reserving anything', async () => {
+    const { engine } = await project(false);
+    const { createSpecificationFromRequest } = await import('../src/index');
+    for (const slug of ['Upper', 'a--b', '../x', 'con', 'a_b', 'a'.repeat(81)]) {
+      await expect(
+        createSpecificationFromRequest(engine, {
+          operationId: randomUUID(),
+          title: 'Bad slug',
+          slug,
+          target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
+        }),
+        slug,
+      ).rejects.toMatchObject({ code: 'CREATE_OPERATION_INVALID' });
+    }
+  }, 120000);
 
   it('VC05: omission means pinned policy defaults; explicit HEAD is distinct intent', async () => {
     const { root, engine } = await project();

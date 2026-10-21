@@ -259,6 +259,61 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
     }
   }, 180000);
 
+  it(
+    'creates with an explicit slug, replays idempotently and answers 409 for a taken or changed slug',
+    async () => {
+      const { root, engine } = await fixture();
+      const app = await createRuntimeApp(
+        {
+          ...passwordConfig(),
+          authentication: { ...passwordConfig().authentication, mode: 'none' },
+        },
+        { specs: { engine } },
+      );
+      try {
+        const operationId = randomUUID();
+        const payload = { title: 'Some long title', slug: 'my-slug', operationId };
+        const first = await app.inject({ method: 'POST', url: '/api/specs', payload });
+        expect(first.statusCode, first.body).toBe(201);
+        expect(first.json<{ slug: string }>().slug).toBe('my-slug');
+        expect(first.json<{ relativeManifestPath: string }>().relativeManifestPath).toBe(
+          'specs/active/my-slug/specification.yaml',
+        );
+        expect(
+          await readFile(join(root, 'specs/active/my-slug/specification.yaml'), 'utf8'),
+        ).toContain('title: Some long title');
+        const replay = await app.inject({ method: 'POST', url: '/api/specs', payload });
+        expect(replay.statusCode, replay.body).toBe(201);
+        expect(replay.json()).toEqual(first.json());
+        const changed = await app.inject({
+          method: 'POST',
+          url: '/api/specs',
+          payload: { ...payload, slug: 'other-slug' },
+        });
+        expect(changed.statusCode, changed.body).toBe(409);
+        expect(changed.json()).toEqual({ error: 'CREATE_CONFLICT', code: 'CREATE_CONFLICT' });
+        const taken = await app.inject({
+          method: 'POST',
+          url: '/api/specs',
+          payload: { title: 'Another', slug: 'my-slug', operationId: randomUUID() },
+        });
+        expect(taken.statusCode, taken.body).toBe(409);
+        expect(taken.json()).toEqual({ error: 'CREATE_CONFLICT', code: 'CREATE_CONFLICT' });
+        for (const slug of ['', 'Upper', 'a--b', '../x', 'con']) {
+          const bad = await app.inject({
+            method: 'POST',
+            url: '/api/specs',
+            payload: { title: 'Bad', slug, operationId: randomUUID() },
+          });
+          expect(bad.statusCode, slug).toBe(400);
+        }
+      } finally {
+        await app.close();
+      }
+    },
+    createTestTimeoutMs,
+  );
+
   it('rejects unexpected request keys and invalid title without persistence', async () => {
     const { engine } = await fixture();
     const app = await createRuntimeApp(

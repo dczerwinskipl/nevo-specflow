@@ -175,6 +175,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
           operationId: body.operationId,
           title: body.title,
           goal: body.goal,
+          ...(body.slug !== undefined ? { slug: body.slug } : {}),
           target,
         });
         return reply.code(201).send(projectCreatedSpecification(result));

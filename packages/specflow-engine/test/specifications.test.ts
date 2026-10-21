@@ -189,6 +189,23 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
     ).toBeGreaterThan(0);
   });
 
+  it('uses a valid explicit slug for the scaffold paths and rejects an unsafe one', () => {
+    const specId = randomUUID();
+    const result = createSpecificationScaffold({
+      specId,
+      title: 'Żółty Projekt',
+      created: '2026-10-14',
+      slug: 'my-slug',
+    });
+    expect(result.slug).toBe('my-slug');
+    expect(result.files[0]?.relativePath).toBe('specs/active/my-slug/specification.yaml');
+    for (const slug of ['My-Slug', 'a--b', '-a', 'a.b', '../x', 'nul', 'a'.repeat(81)]) {
+      expect(() =>
+        createSpecificationScaffold({ specId, title: 'T', created: '2026-10-14', slug }),
+      ).toThrow(SpecificationError);
+    }
+  });
+
   it('rejects unsafe slugs, invalid creation inputs and absent specifications', async () => {
     const root = await workspace();
     expect(await listWorkspaceSpecifications(root)).toEqual([]);

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { CreateOperationError } from './create-error';
+import { validateBranchName } from '../version-control/git/refs';
 import { isExplicitSpecificationSlug } from './model';
 
 export type ClientOverride =
@@ -51,6 +52,13 @@ export function normalizeCreateClientIntent(input: {
   if (input.slug !== undefined && !isExplicitSpecificationSlug(input.slug)) {
     throw new CreateOperationError('CREATE_OPERATION_INVALID', 'Invalid specification slug.');
   }
+  if (
+    input.target.kind === 'new-worktree' &&
+    input.target.branch !== undefined &&
+    !isValidBranchName(input.target.branch)
+  ) {
+    throw new CreateOperationError('BRANCH_NAME_INVALID', 'Invalid branch name.');
+  }
   const target = normalizeClientTarget(input.target);
   return {
     title,
@@ -81,6 +89,15 @@ function normalizeClientTarget(input: CreateClientTargetInput): ClientCreateTarg
       const exhaustive: never = input;
       return exhaustive;
     }
+  }
+}
+
+function isValidBranchName(branch: string): boolean {
+  try {
+    validateBranchName(branch);
+    return true;
+  } catch {
+    return false;
   }
 }
 

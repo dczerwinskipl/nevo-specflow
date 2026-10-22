@@ -20,6 +20,13 @@ export {
 } from './create';
 
 export {
+  BRANCH_NAME_MAX_LENGTH,
+  branchNameProblem,
+  isValidBranchName,
+  type BranchNameProblem,
+} from './branch-name';
+
+export {
   SPEC_SLUG_MAX_LENGTH,
   SPEC_SLUG_PATTERN,
   deriveSpecSlug,

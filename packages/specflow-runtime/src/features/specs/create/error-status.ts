@@ -32,6 +32,7 @@ export function statusForCreateError(code: CreateErrorCode): CreateHttpStatus {
     case 'WORKTREE_PATH_CONFLICT':
       return 409;
 
+    case 'BRANCH_NAME_INVALID':
     case 'GIT_DISABLED':
     case 'BASE_REF_NOT_FOUND':
     case 'GIT_BASE_CONFIG_MISSING':

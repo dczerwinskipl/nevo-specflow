@@ -32,7 +32,10 @@ function git(cwd: string, ...args: string[]): void {
   execFileSync('git', args, { cwd });
 }
 
-async function server(gitEnabled: boolean, registry?: OperationProgressRegistry) {
+async function server(
+  gitEnabled: boolean,
+  registry: OperationProgressRegistry = createOperationProgressRegistry(),
+) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-create-async-Ż ')));
   roots.push(root);
   git(root, 'init', '-q');
@@ -69,7 +72,7 @@ async function server(gitEnabled: boolean, registry?: OperationProgressRegistry)
       ...passwordConfig(),
       authorization: { assignments: [{ userId: 'demo-user', role: 'developer', scope: {} }] },
     },
-    { auth: { store }, specs: { engine }, ...(registry ? { operations: { registry } } : {}) },
+    { auth: { store }, specs: { engine }, operations: { registry } },
   );
   apps.push(app);
   await app.ready();
@@ -88,7 +91,14 @@ async function server(gitEnabled: boolean, registry?: OperationProgressRegistry)
     for (let attempt = 0; attempt < 1200; attempt++) {
       const response = await inspect(operationId);
       const body = response.json<Record<string, unknown>>();
-      if (response.statusCode === 200 && body.status === 'completed') return body;
+      if (response.statusCode === 200 && body.status === 'completed') {
+        // The journal is terminal before the detached Create finishes its own result
+        // verification; wait for it so teardown never removes the checkout under it.
+        while (registry.peek(operationId, 'specification-create')?.status === 'running') {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        return body;
+      }
       if (body.status === 'recovery-required') throw new Error('recovery required');
       await new Promise((resolve) => setTimeout(resolve, 100));
     }

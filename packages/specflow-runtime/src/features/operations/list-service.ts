@@ -69,6 +69,33 @@ export async function buildOperationList(
     rows.push(fromRegistry(item));
   }
 
+  return shapeOperationList(rows, {
+    now: input.now,
+    config,
+    admit: input.admit,
+    ...(input.statuses ? { statuses: input.statuses } : {}),
+    limit: input.limit,
+  });
+}
+
+export interface ShapeOperationListInput {
+  readonly now: Date;
+  readonly config?: Partial<OperationListConfig>;
+  readonly admit: (row: OperationSummary) => boolean;
+  readonly statuses?: ReadonlySet<string>;
+  readonly limit: number;
+}
+
+/**
+ * Retention of completed rows, admission, counts (after admission, before the filter), ordering,
+ * status filter and limit over already merged rows. Shared with the demo list.
+ */
+export function shapeOperationList(
+  rows: readonly OperationSummary[],
+  input: ShapeOperationListInput,
+): OperationListResponse {
+  const config = { ...DEFAULT_OPERATION_LIST_CONFIG, ...input.config };
+  const nowMs = input.now.getTime();
   const admitted = rows.filter((row) => input.admit(row));
   const recent = capCompleted(admitted, config, nowMs);
   const counts = countOf(recent);

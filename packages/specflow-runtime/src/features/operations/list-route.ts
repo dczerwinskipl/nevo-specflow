@@ -5,6 +5,7 @@ import {
   OPERATION_LIST_DEFAULT_LIMIT,
   OPERATION_LIST_MAX_LIMIT,
   OperationListResponseSchema,
+  type OperationListResponse,
   type OperationSummary,
 } from '@nevo/specflow-contracts/operations';
 import {
@@ -29,7 +30,7 @@ export const OPERATION_LIST_QUERY_INVALID_CODE = 'OPERATION_LIST_QUERY_INVALID';
  * as digits and is range checked here (1..50, default 20). `status` is validated against the
  * known statuses.
  */
-const OperationListQueryStringSchema = Type.Object(
+export const OperationListQueryStringSchema = Type.Object(
   {
     status: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
     limit: Type.Optional(Type.String({ pattern: '^[0-9]{1,3}$' })),
@@ -92,17 +93,14 @@ export function registerOperationListRoute<RawServer extends RawServerBase>(
     },
     async (request, reply) => {
       reply.header('Cache-Control', 'no-store');
-      const statuses = parseStatuses(request.query.status);
-      const limit =
-        request.query.limit === undefined
-          ? OPERATION_LIST_DEFAULT_LIMIT
-          : Number(request.query.limit);
-      if (statuses === 'invalid' || limit < 1 || limit > OPERATION_LIST_MAX_LIMIT) {
+      const query = parseOperationListQuery(request.query);
+      if (!query) {
         return reply.code(400).send({
           error: OPERATION_LIST_QUERY_INVALID_CODE,
           code: OPERATION_LIST_QUERY_INVALID_CODE,
         });
       }
+      const { statuses, limit } = query;
       if (!route.sources) {
         return reply
           .code(503)
@@ -129,12 +127,7 @@ export function registerOperationListRoute<RawServer extends RawServerBase>(
       }
 
       // The weak validator ignores `generatedAt`, so an unchanged list answers 304 on every poll.
-      const etag =
-        'W/"' +
-        createHash('sha1')
-          .update(JSON.stringify([list.items, list.counts, list.truncated]))
-          .digest('base64url') +
-        '"';
+      const etag = operationListEtag(list);
       reply.header('ETag', etag);
       if (matchesEtag(request.headers['if-none-match'], etag)) {
         // A 304 has no body and no response schema; the typed reply only knows the declared codes.
@@ -143,6 +136,18 @@ export function registerOperationListRoute<RawServer extends RawServerBase>(
       return reply.code(200).send(list);
     },
   );
+}
+
+/** Wire query of the list routes -> decoded filter and limit; undefined = invalid (answer 400). */
+export function parseOperationListQuery(query: {
+  readonly status?: string | undefined;
+  readonly limit?: string | undefined;
+}): { readonly statuses?: ReadonlySet<string>; readonly limit: number } | undefined {
+  const statuses = parseStatuses(query.status);
+  const limit = query.limit === undefined ? OPERATION_LIST_DEFAULT_LIMIT : Number(query.limit);
+  if (statuses === 'invalid' || !(limit >= 1 && limit <= OPERATION_LIST_MAX_LIMIT))
+    return undefined;
+  return { ...(statuses ? { statuses } : {}), limit };
 }
 
 function parseStatuses(raw: string | undefined): ReadonlySet<string> | undefined | 'invalid' {
@@ -156,7 +161,18 @@ function parseStatuses(raw: string | undefined): ReadonlySet<string> | undefined
   return new Set(values);
 }
 
-function matchesEtag(header: string | string[] | undefined, etag: string): boolean {
+/** Weak validator over the content only: `generatedAt` is ignored so an unchanged list stays 304. */
+export function operationListEtag(list: OperationListResponse): string {
+  return (
+    'W/"' +
+    createHash('sha1')
+      .update(JSON.stringify([list.items, list.counts, list.truncated]))
+      .digest('base64url') +
+    '"'
+  );
+}
+
+export function matchesEtag(header: string | string[] | undefined, etag: string): boolean {
   const value = Array.isArray(header) ? header.join(',') : header;
   if (!value) return false;
   if (value.trim() === '*') return true;

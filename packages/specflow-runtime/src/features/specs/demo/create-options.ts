@@ -207,14 +207,22 @@ export const demoCreateScenarios = [
   /** Paces the Create progress steps so a live checklist can be observed. */
   'slow-create',
 ] as const;
+/** Scenarios of the operation list. */
+export const demoOperationScenarios = [
+  /** Seeds every list status: running (with steps), interrupted, recovery, failed, completed. */
+  'operations-panel',
+] as const;
 export type DemoOptionsScenario = (typeof demoOptionsScenarios)[number];
 export type DemoOptionsFailureScenario = (typeof demoOptionsFailureScenarios)[number];
 export type DemoCreateScenario = (typeof demoCreateScenarios)[number];
-export type DemoScenario = DemoOptionsScenario | DemoOptionsFailureScenario | DemoCreateScenario;
+export type DemoOperationScenario = (typeof demoOperationScenarios)[number];
+export type DemoScenario =
+  DemoOptionsScenario | DemoOptionsFailureScenario | DemoCreateScenario | DemoOperationScenario;
 const allScenarios: readonly string[] = [
   ...demoOptionsScenarios,
   ...demoOptionsFailureScenarios,
   ...demoCreateScenarios,
+  ...demoOperationScenarios,
 ];
 
 /** Parses a comma-separated scenario list. Returns `undefined` when any name is unknown. */

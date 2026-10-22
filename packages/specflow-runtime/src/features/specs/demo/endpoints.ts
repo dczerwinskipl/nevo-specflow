@@ -13,6 +13,11 @@ import {
   CreateOperationAcceptedSchema,
   SpecCapabilities,
 } from '@nevo/specflow-contracts/specs';
+import { OperationListResponseSchema } from '@nevo/specflow-contracts/operations';
+import {
+  AuthenticationRequiredErrorResponseSchema,
+  AuthorizationForbiddenErrorResponseSchema,
+} from '@nevo/specflow-contracts/authorization';
 import { SessionCapabilities } from '@nevo/specflow-contracts/sessions';
 import type { DemoCatalogue } from '../../demo-catalogue';
 import {
@@ -26,10 +31,16 @@ import type { DemoState } from '../../../demo/state';
 import { DemoTargetError, parseScenarios, type DemoScenario } from './create-options';
 import type { DemoSpecs } from './operations';
 import {
+  matchesEtag,
+  OperationListQueryStringSchema,
+  operationListEtag,
+  parseOperationListQuery,
   registerOperationEventsRoute,
   type OperationEventsStreamOptions,
   type OperationProgressRegistry,
 } from '../../operations';
+import { buildDemoOperationList } from './operation-list';
+import { canViewSpec } from '../overview/filter-authorized-specs';
 import { startCreateProgress } from '../create/progress';
 import { prefersRespondAsync } from '../create/respond-async';
 
@@ -41,6 +52,10 @@ export interface DemoProgress {
 const DEMO_STEP_DELAY_MS = 150;
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+const DemoOperationListErrorSchema = Type.Object(
+  { error: Type.String(), code: Type.Optional(Type.String()) },
+  { additionalProperties: false },
+);
 const OperationParams = Type.Object({ operationId: Type.String({ minLength: 1, maxLength: 100 }) });
 /** Specs-owned demo endpoints: create options, atomic create, operation inspection, catalogue. */
 export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
@@ -96,6 +111,65 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
       if (active.includes('options-error'))
         return reply.code(503).send({ error: 'demo_create_options_unavailable' });
       return specs.createOptions(active);
+    },
+  );
+  // Same contract as `GET /api/specs/operations` (OperationListResponse), over the demo state.
+  typed.get(
+    '/api/demo/specifications/operations',
+    {
+      onRequest: async (_request, reply) => {
+        reply.header('Cache-Control', 'no-store');
+      },
+      schema: {
+        querystring: Type.Object(
+          {
+            ...OperationListQueryStringSchema.properties,
+            demoScenario: Type.Optional(Type.String({ maxLength: 200 })),
+          },
+          { additionalProperties: false },
+        ),
+        response: {
+          200: OperationListResponseSchema,
+          400: DemoOperationListErrorSchema,
+          401: AuthenticationRequiredErrorResponseSchema,
+          403: AuthorizationForbiddenErrorResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      reply.header('Cache-Control', 'no-store');
+      request.authz.requireCapabilityInAnyScope({
+        resource: SpecCapabilities,
+        capability: SpecCapabilities.capabilities.View,
+      });
+      const active = scenarios(request);
+      const query = parseOperationListQuery(request.query);
+      if (!active || !query) return reply.code(400).send(invalidScenario);
+      if (active.includes('forbidden')) return reply.code(403).send({ error: 'forbidden' });
+      const { authz } = request;
+      const list = buildDemoOperationList({
+        records: specs.operationRecords(authz.readContext().subject),
+        live: progress?.registry.list() ?? [],
+        scenarios: active,
+        now: new Date(),
+        // Same admission rule as the real route: a known spec needs View, one without needs Create.
+        admit: (row) =>
+          row.subject?.specId
+            ? canViewSpec(authz, row.subject.specId)
+            : authz.can({
+                resource: SpecCapabilities,
+                capability: SpecCapabilities.capabilities.Create,
+                scope: { projectId: state.catalogue.project.id },
+              }),
+        ...(query.statuses ? { statuses: query.statuses } : {}),
+        limit: query.limit,
+      });
+      const etag = operationListEtag(list);
+      reply.header('ETag', etag);
+      if (matchesEtag(request.headers['if-none-match'], etag)) {
+        return reply.code(304 as unknown as 200).send(undefined as never);
+      }
+      return list;
     },
   );
   typed.get(

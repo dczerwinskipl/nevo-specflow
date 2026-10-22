@@ -19,6 +19,7 @@ import {
   type DemoScenario,
   type ResolvedTarget,
 } from './create-options';
+import type { DemoOperationRecord } from './operation-list';
 
 interface CreateOperation {
   fingerprint: string;
@@ -289,6 +290,28 @@ export function createDemoSpecs(
     /** Registry snapshot, optionally reshaped by an options scenario. */
     createOptions(scenarios: readonly DemoScenario[] = []): DemoCreateOptions {
       return optionsFor(scenarios);
+    },
+    /** The calling subject's Create operations as list records (see `operation-list.ts`). */
+    operationRecords(subject: string): DemoOperationRecord[] {
+      const records: DemoOperationRecord[] = [];
+      for (const [key, operation] of operations) {
+        const [owner, operationId] = JSON.parse(key) as [string, string];
+        if (owner !== subject) continue;
+        const spec = operation.result ? specifications.get(operation.result.specId) : undefined;
+        records.push({
+          operationId,
+          status: operation.status === 'completed' ? 'completed' : 'recovery-required',
+          ...(spec ? { title: spec.record.title, specId: spec.record.id } : {}),
+          ...(operation.result ? { slug: operation.result.slug } : {}),
+          ...(operation.workspaceId ? { workspaceId: operation.workspaceId } : {}),
+          ...(operation.branch ? { branch: operation.branch } : {}),
+          step: operation.step,
+          updatedAt: operation.updatedAt,
+          newWorktree: operation.workspaceId !== liveOptions.primaryWorkspaceId,
+          commits: liveOptions.commits !== undefined,
+        });
+      }
+      return records;
     },
     /** Demo-proposed operation status read (IMPLEMENTATION-SPEC 10.5). */
     operationStatus(

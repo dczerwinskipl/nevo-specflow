@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
+import { homedir } from 'node:os';
 import { basename, dirname, join, relative } from 'node:path';
 
 import {
@@ -95,6 +96,12 @@ export async function chooseIntegrationTargetBranch(
   return selected;
 }
 
+/** `~` and `~/x` mean the home folder in what a person types; the config stores the real path. */
+export function expandHomeFolder(text: string, home: string = homedir()): string {
+  if (text === '~') return home;
+  return text.startsWith('~/') || text.startsWith('~\\') ? join(home, text.slice(2)) : text;
+}
+
 const CUSTOM_PATTERN = '__custom__';
 const MAX_PATTERN_ATTEMPTS = 3;
 
@@ -147,9 +154,9 @@ export async function chooseWorktreesRoot(
 ): Promise<string | undefined> {
   const defaultRoot = join(dirname(root), basename(root) + '-worktrees');
   for (let attempt = 1; attempt <= MAX_PATTERN_ATTEMPTS; attempt += 1) {
-    const text = (
-      await ui.input('Folder for new worktrees (this machine only)', defaultRoot)
-    ).trim();
+    const text = expandHomeFolder(
+      (await ui.input('Folder for new worktrees (this machine only)', defaultRoot)).trim(),
+    );
     if (!text || text === defaultRoot) return undefined;
     try {
       resolveWorktreesRoot(root, join(root, '.git'), text);

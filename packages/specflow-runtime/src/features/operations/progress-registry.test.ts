@@ -25,6 +25,48 @@ afterEach(() => {
 });
 
 describe('operation progress registry', () => {
+  it('starts a fresh run when begin() follows a finished run of the same id inside the grace window', async () => {
+    const registry = createOperationProgressRegistry();
+    const first = registry.begin({ operationId, kind, steps });
+    first.step('reserving', 'running');
+    first.fail('CONTROL_LOCK_BUSY');
+
+    const second = registry.begin({ operationId, kind, steps });
+    second.step('reserving', 'running');
+    const watching = collect(registry.watch(operationId, kind));
+    await tick();
+    second.complete({ ok: true });
+    const events = await watching;
+
+    expect(events[0]?.event).toMatchObject({ type: 'snapshot', status: 'running' });
+    expect(events.map((item) => item.event.type)).not.toContain('failed');
+    expect(events.at(-1)?.event).toMatchObject({ type: 'completed' });
+    expect(registry.size()).toBe(1);
+  });
+
+  it('keeps a still running entry when begin() is called again (a concurrent replay)', async () => {
+    const registry = createOperationProgressRegistry();
+    const original = registry.begin({ operationId, kind, steps });
+    original.step('reserving', 'running');
+    registry.begin({ operationId, kind, steps }).fail('IGNORED');
+
+    original.complete({ ok: true });
+    const events = await collect(registry.watch(operationId, kind));
+    expect(events.at(-1)?.event).toMatchObject({ type: 'completed' });
+  });
+
+  it('reports the outcome of a retained operation through peek()', () => {
+    const registry = createOperationProgressRegistry();
+    expect(registry.peek(operationId, kind)).toBeUndefined();
+    const reporter = registry.begin({ operationId, kind, steps });
+    expect(registry.peek(operationId, kind)).toEqual({ status: 'running' });
+    reporter.fail('BASE_REF_NOT_FOUND');
+    expect(registry.peek(operationId, kind)).toEqual({
+      status: 'failed',
+      code: 'BASE_REF_NOT_FOUND',
+    });
+  });
+
   it('replays the current snapshot to a late subscriber and then streams live events to the end', async () => {
     const registry = createOperationProgressRegistry();
     const reporter = registry.begin({ operationId, kind, steps });

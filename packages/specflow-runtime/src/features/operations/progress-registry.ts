@@ -52,8 +52,16 @@ export interface OperationProgressRegistry {
     kind: string,
     options?: WatchOperationProgressOptions,
   ): AsyncGenerator<StoredProgressEvent>;
+  /** Current outcome of a retained operation; undefined once it left the grace window. */
+  peek(operationId: string, kind: string): OperationProgressOutcome | undefined;
   /** Number of retained operations (observability and tests). */
   size(): number;
+}
+
+export interface OperationProgressOutcome {
+  readonly status: 'running' | 'completed' | 'failed' | 'recovery-required';
+  /** Stable failure code, present only for `failed`. */
+  readonly code?: string;
 }
 
 export interface OperationProgressRegistryOptions {
@@ -71,6 +79,7 @@ interface Entry {
   readonly steps: { id: string; status: OperationStepStatus }[];
   status: 'running' | 'completed' | 'failed' | 'recovery-required';
   currentStep?: string;
+  failureCode?: string;
   seq: number;
   readonly log: StoredProgressEvent[];
   readonly listeners: Set<() => void>;
@@ -150,6 +159,7 @@ export function createOperationProgressRegistry(
       },
       fail(code) {
         if (!running()) return;
+        entry.failureCode = code;
         finish(entry, 'failed');
         publish(entry, (at) => ({
           type: 'failed',
@@ -222,7 +232,9 @@ export function createOperationProgressRegistry(
   return {
     begin(input) {
       const key = keyOf(input.kind, input.operationId);
-      if (entries.has(key)) return noopReporter;
+      // Only a still running entry is a concurrent replay of the same work. A finished one (inside
+      // its grace window) belongs to an earlier run; a retry that really runs again replaces it.
+      if (entries.get(key)?.status === 'running') return noopReporter;
       const entry: Entry = {
         operationId: input.operationId,
         kind: input.kind,
@@ -289,6 +301,15 @@ export function createOperationProgressRegistry(
           if (entry.seq > cursor || signal?.aborted) wake();
         });
       }
+    },
+
+    peek(operationId, kind) {
+      const entry = entries.get(keyOf(kind, operationId));
+      if (!entry) return undefined;
+      return {
+        status: entry.status,
+        ...(entry.failureCode !== undefined ? { code: entry.failureCode } : {}),
+      };
     },
 
     size: () => entries.size,

@@ -31,17 +31,23 @@ const LOCK_RETRIES = 3;
 const LOCK_RETRY_MS = 200;
 
 /** Internal Engine composition; the mutating commit never leaves the Engine package. */
-export function createGitCommitPort(engine: SpecFlowEngine): CommitPort {
+export function createGitCommitPort(
+  engine: SpecFlowEngine,
+  /** Test seam: runs inside the window between the checks and `git commit`. */
+  testHooks?: {
+    readonly afterPreflight?: () => Promise<void>;
+    readonly afterRecheck?: () => Promise<void>;
+  },
+): CommitPort {
   const head = async (root: string): Promise<string | undefined> => {
     const result = await executeGit(root, ['rev-parse', '--verify', '--quiet', 'HEAD^{commit}']);
     const sha = result.stdout.trim();
     return result.exitCode === 0 && OBJECT_ID.test(sha) ? sha : undefined;
   };
 
-  const preflight = async (request: EngineCommitRequest): Promise<void> => {
-    validateRequest(request);
-    const { root } = request;
-    const attached = await executeGit(root, ['symbolic-ref', '--quiet', 'HEAD']);
+  /** HEAD is attached to exactly the expected branch and the committed policy allows committing there. */
+  const assertAttachedToExpected = async (request: EngineCommitRequest): Promise<void> => {
+    const attached = await executeGit(request.root, ['symbolic-ref', '--quiet', 'HEAD']);
     if (attached.exitCode !== 0) throw blocked('detached');
     if (attached.stdout.trim() !== 'refs/heads/' + request.expectedBranch) {
       throw blocked('branch-changed');
@@ -58,6 +64,12 @@ export function createGitCommitPort(engine: SpecFlowEngine): CommitPort {
         refusal,
       );
     }
+  };
+
+  const preflight = async (request: EngineCommitRequest): Promise<void> => {
+    validateRequest(request);
+    const { root } = request;
+    await assertAttachedToExpected(request);
 
     const gitPaths = await resolveGitPaths(root, [...BUSY_STATE, 'index.lock']);
     for (const name of BUSY_STATE) {
@@ -86,15 +98,27 @@ export function createGitCommitPort(engine: SpecFlowEngine): CommitPort {
     const ancestor = await executeGit(root, ['merge-base', '--is-ancestor', sinceHead, 'HEAD']);
     if (ancestor.exitCode === 1) return { status: 'history-changed' };
     if (ancestor.exitCode !== 0) throw inspectionFailed('merge-base');
+    // The operation is read from the REAL trailer block (`%(trailers)` parses only the last
+    // paragraph, like `git interpret-trailers`) and only on a commit the Engine itself committed
+    // (Engine committer identity). A title or body line that looks like a trailer, or a user commit
+    // that quotes one, can therefore never claim an operation.
     const log = await executeGit(root, [
       'log',
-      '--format=%H',
-      '-E',
-      '--grep=^Nevo-Operation: ' + operationId + '$',
+      '--format=%x1e%H%x1f%ce%x1f%(trailers:key=Nevo-Operation,valueonly=true,unfold=true,separator=%x1d)',
       sinceHead + '..HEAD',
     ]);
     if (log.exitCode !== 0) throw inspectionFailed('log');
-    const shas = log.stdout.split('\n').filter(Boolean);
+    const shas = log.stdout
+      .split('\x1e')
+      .map((record) => record.split('\x1f'))
+      .filter(
+        ([, committer, trailers]) =>
+          committer?.trim() === ENGINE_EMAIL &&
+          (trailers ?? '')
+            .split('\x1d')
+            .some((value) => value.trim().toLowerCase() === operationId.toLowerCase()),
+      )
+      .map(([sha]) => sha!.trim());
     if (shas.length === 0) return { status: 'absent' };
     if (shas.length > 1) {
       throw new GitCapabilityError(
@@ -205,6 +229,11 @@ export function createGitCommitPort(engine: SpecFlowEngine): CommitPort {
       if (added.exitCode !== 0) throw failed('intent-to-add');
 
       const author = await userAuthor(root);
+      // `git commit` commits on whatever HEAD is at that moment: confirm the branch (and its
+      // protection) once more immediately before it, and verify where the commit landed after.
+      await testHooks?.afterPreflight?.();
+      await assertAttachedToExpected(request);
+      await testHooks?.afterRecheck?.();
       const committed = await withLockRetry(() =>
         executeGitMutation(root, [
           '-c',
@@ -233,6 +262,19 @@ export function createGitCommitPort(engine: SpecFlowEngine): CommitPort {
             'GIT_OPERATION_UNCERTAIN',
             'The Engine commit does not contain exactly the expected paths.',
             'unexpected-commit-content',
+          );
+        }
+        const landed = await executeGit(root, [
+          'merge-base',
+          '--is-ancestor',
+          found.sha,
+          'refs/heads/' + request.expectedBranch,
+        ]);
+        if (landed.exitCode !== 0) {
+          throw new GitCapabilityError(
+            'GIT_OPERATION_UNCERTAIN',
+            'The Engine commit did not land on the expected branch.',
+            'commit-on-unexpected-branch',
           );
         }
         return { sha: found.sha, parentHead };
@@ -280,8 +322,14 @@ function messageArguments(request: EngineCommitRequest): string[] {
     'Nevo-Kind: ' + request.kind,
     ...Object.entries(request.trailers ?? {}).map(([key, value]) => key + ': ' + line(value, 200)),
   ].join('\n');
-  const body = request.body ? line(request.body, 100) : '';
-  return ['-m', line(request.subject, 200), ...(body ? ['-m', body] : []), '-m', trailers];
+  // A user-controlled line that looks like a trailer is neutralised (defence in depth: only the
+  // real trailer block is ever parsed).
+  const text = (value: string, max: number): string => {
+    const clean = line(value, max);
+    return /^Nevo-[A-Za-z]+\s*:/iu.test(clean) ? '> ' + clean : clean;
+  };
+  const body = request.body ? text(request.body, 100) : '';
+  return ['-m', text(request.subject, 200), ...(body ? ['-m', body] : []), '-m', trailers];
 }
 
 /** The user's configured identity as `Name <email>`, or undefined (the Engine authors then). */

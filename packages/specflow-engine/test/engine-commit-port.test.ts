@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { bootstrapProjectHome, type SpecFlowEngine } from '../src/testing';
 import { openVersionControl } from '../src/version-control';
+import { createGitCommitPort } from '../src/version-control/commits/git-adapter';
 import type { EngineCommitRequest } from '../src/version-control/commits/port';
 import { createGitTestProject, git } from './support/git-project';
 
@@ -328,5 +329,117 @@ describe('Engine commit port (real Git)', () => {
     ]) {
       await expect(commits.preflight(bad)).rejects.toMatchObject({ code: 'COMMIT_BLOCKED' });
     }
+  }, 240000);
+});
+
+describe('Engine commit port: branch race and trailer poisoning (real Git)', () => {
+  it('re-checks the branch right before git commit and refuses when it changed', async () => {
+    const { root, engine } = await project();
+    await writeScaffold(root);
+    const parent = git(root, 'rev-parse', 'HEAD');
+    const commits = createGitCommitPort(engine, {
+      afterPreflight: () => {
+        git(root, 'checkout', '-q', '-b', 'elsewhere');
+        return Promise.resolve();
+      },
+    });
+    await expect(commits.commit(request(root))).rejects.toMatchObject({
+      code: 'COMMIT_BLOCKED',
+      reason: 'branch-changed',
+    });
+    expect(git(root, 'rev-list', '--count', parent + '..elsewhere')).toBe('0');
+    expect(git(root, 'rev-list', '--count', parent + '..feature/work')).toBe('0');
+  }, 240000);
+
+  it('refuses a protected branch switched to in the same window', async () => {
+    const { root, engine } = await project('  commits:\n    protectedBranches: [master]\n');
+    await writeScaffold(root);
+    const parent = git(root, 'rev-parse', 'HEAD');
+    const commits = createGitCommitPort(engine, {
+      afterPreflight: () => {
+        git(root, 'checkout', '-q', '-b', 'master');
+        return Promise.resolve();
+      },
+    });
+    await expect(
+      commits.commit(request(root, { expectedBranch: 'feature/work' })),
+    ).rejects.toMatchObject({ code: 'COMMIT_BLOCKED', reason: 'branch-changed' });
+    expect(git(root, 'rev-list', '--count', parent + '..master')).toBe('0');
+  }, 240000);
+
+  it('reports a commit that landed on another branch as uncertain (recovery), never as done', async () => {
+    const { root, engine } = await project();
+    await writeScaffold(root);
+    const commits = createGitCommitPort(engine, {
+      afterRecheck: () => {
+        git(root, 'checkout', '-q', '-b', 'elsewhere');
+        return Promise.resolve();
+      },
+    });
+    await expect(commits.commit(request(root))).rejects.toMatchObject({
+      code: 'GIT_OPERATION_UNCERTAIN',
+      reason: 'commit-on-unexpected-branch',
+    });
+  }, 240000);
+
+  it('finds an operation only through the real trailer block of an Engine-committed commit', async () => {
+    const { root, engine } = await project();
+    const commits = openVersionControl(engine).commits;
+    const operationId = randomUUID();
+    const since = git(root, 'rev-parse', 'HEAD');
+    // A user commit that carries a REAL trailer block naming the operation (not the Engine).
+    await writeFile(join(root, 'user.txt'), 'x\n');
+    git(root, 'add', 'user.txt');
+    git(
+      root,
+      '-c',
+      'user.name=User',
+      '-c',
+      'user.email=user@example.invalid',
+      'commit',
+      '-qm',
+      'user change\n\nNevo-Operation: ' + operationId,
+    );
+    expect(await commits.findByOperation(root, operationId, since)).toEqual({ status: 'absent' });
+
+    // An Engine-identity commit that only QUOTES the line outside the trailer block.
+    await writeFile(join(root, 'quote.txt'), 'x\n');
+    git(root, 'add', 'quote.txt');
+    git(
+      root,
+      '-c',
+      'user.name=Nevo SpecFlow Engine',
+      '-c',
+      'user.email=engine@nevo.invalid',
+      'commit',
+      '-qm',
+      'Nevo-Operation: ' + operationId,
+      '-m',
+      'free text paragraph',
+      '-m',
+      'Signed-off-by: Someone <s@example.invalid>',
+    );
+    expect(await commits.findByOperation(root, operationId, since)).toEqual({ status: 'absent' });
+  }, 240000);
+
+  it('neutralises a title that looks like a trailer', async () => {
+    const { root, engine } = await project();
+    await writeScaffold(root);
+    const own = randomUUID();
+    const { sha } = await openVersionControl(engine).commits.commit(
+      request(root, { subject: 'Nevo-Operation: ' + randomUUID(), body: 'Nevo-Kind: other' }),
+    );
+    const message = git(root, 'log', '-1', '--format=%B', sha);
+    expect(message).toMatch(/^> Nevo-Operation: /u);
+    expect(message).toContain('> Nevo-Kind: other');
+    expect(message).not.toContain(own);
+    // The commit is still found by its own (real) trailer.
+    expect(
+      await openVersionControl(engine).commits.findByOperation(
+        root,
+        /Nevo-Operation: (\S+)\s*$/u.exec(message)![1]!,
+        git(root, 'rev-parse', sha + '~1'),
+      ),
+    ).toMatchObject({ status: 'found', sha });
   }, 240000);
 });

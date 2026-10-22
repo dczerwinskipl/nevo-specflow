@@ -153,8 +153,8 @@ The project Create flow submits in async mode (`Prefer: respond-async`, see
 the server. It then subscribes to the progress stream (best effort) and reads the inspection endpoint to learn
 the outcome: right away when the stream reports its end, with a slow safety-net poll while the
 stream is healthy, and with the regular backoff (3 s for the first minute, then 10 s, 10 minutes
-at most) when the stream is lost or unsupported. A reload resumes the same operation from session
-storage. The page navigates on the inspection result, never on the stream alone. A Runtime that
+at most) when the stream is lost or unsupported. A reload of the progress page resumes the same operation (by its id, from session
+storage, or from the server alone). The page navigates on the inspection result, never on the stream alone. A Runtime that
 ignores the preference answers 201 synchronously, which completes the flow as before.
 
 After a shared-worktree Spec archive, sibling Specs and their workspace remain unchanged.
@@ -208,8 +208,9 @@ Lifecycle states keep their semantics:
   name, offline): the failure explanation of the form, the plain statement **Nothing was created**
   (only for the codes where that is certain; a failure the server concluded without a result does
   not claim it) and **Back to form**, which returns to Create with the name, goal and workspace
-  choice as they were entered (kept in session storage, not in the URL); a refused field is
-  flagged again there. The remedies of the explanation return to the form with that change made.
+  choice as they were entered (kept in session storage per operation; the URL carries only the
+  operation id, `?draft=<operationId>`, never the values); a refused field is flagged again
+  there. Only this explicit path restores a draft. The remedies of the explanation return to the form with that change made.
 - **Outcome unknown / recovery required**: a separate calm state with the same explanation and a
   single **Check the result** / **Check operation status** action for the same operation, never a
   second create and no way back to the form to start another.
@@ -254,9 +255,13 @@ another tab, another browser or the CLI shows up as well. The panel only informs
   operations (the journal records no initiator).
 - An unknown kind, status or step id (a newer Runtime) is drawn as a generic row without a link.
 
-The way back no longer depends on the tab's own memory: `sessionStorage` keeps only the form draft
-and the request being resumed on the progress page. Opening Create while an unfinished operation is
-stored continues on its page instead of offering a second create. Leaving the page never blocks.
+The way back no longer depends on the tab's own memory: `sessionStorage` keeps, per operation id,
+only the form draft and the request being resumed on that operation's progress page. **New
+specification** always opens an empty form with a new operation: it never resumes or redirects to
+an earlier operation. An operation still running is reached from the operations panel (or its own
+page URL) and continues on the server whatever the user does; starting another one meanwhile does
+not affect it. The stored entry is cleared when the operation concludes. Leaving the page never
+blocks.
 
 #### API contract
 

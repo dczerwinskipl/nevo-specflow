@@ -88,6 +88,8 @@ export const CreateOperationInspectionSchema = Type.Union([
       operationId: UuidSchema,
       kind: Type.Literal('specification-create'),
       status: Type.Union([Type.Literal('in-progress'), Type.Literal('recovery-required')]),
+      /** Stable code when the cause is known (for example `OPERATION_INTERRUPTED` after a long idle). */
+      code: Type.Optional(Type.String()),
     },
     { additionalProperties: false },
   ),

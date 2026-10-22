@@ -56,6 +56,12 @@ export interface OperationProgressRegistry {
   /** Current outcome of a retained operation; undefined once it left the grace window. */
   peek(operationId: string, kind: string): OperationProgressOutcome | undefined;
   /**
+   * Like `peek`, but also answers for a finished operation after its replay window, for as long
+   * as the listing retains it (completed 10 min, failed and recovery-required 60 min). The
+   * per-operation inspection uses it so it keeps agreeing with the list.
+   */
+  recall(operationId: string, kind: string): OperationProgressOutcome | undefined;
+  /**
    * Operations for the listing: every running one plus finished ones inside the listing retention
    * (completed 10 min, failed and recovery-required 60 min, capped). Independent of the replay
    * window: an operation can still be listed after its event log is gone. Copies; order unspecified.
@@ -385,6 +391,20 @@ export function createOperationProgressRegistry(
         status: entry.status,
         ...(entry.failureCode !== undefined ? { code: entry.failureCode } : {}),
       };
+    },
+
+    recall(operationId, kind) {
+      const entry = entries.get(keyOf(kind, operationId));
+      if (entry) {
+        return {
+          status: entry.status,
+          ...(entry.failureCode !== undefined ? { code: entry.failureCode } : {}),
+        };
+      }
+      pruneFinished();
+      const item = finished.get(keyOf(kind, operationId));
+      if (!item) return undefined;
+      return { status: item.status, ...(item.code !== undefined ? { code: item.code } : {}) };
     },
 
     list() {

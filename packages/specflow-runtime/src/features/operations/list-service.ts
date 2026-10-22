@@ -6,7 +6,11 @@ import {
 } from '@nevo/specflow-contracts/operations';
 
 import type { OperationListSource, OperationSourceRow } from './operation-source';
-import type { OperationProgressListing, OperationProgressRegistry } from './progress-registry';
+import type {
+  OperationProgressListing,
+  OperationProgressOutcome,
+  OperationProgressRegistry,
+} from './progress-registry';
 
 export interface OperationListConfig {
   /** A completed operation stays listed this long (default 10 min). */
@@ -131,83 +135,123 @@ function merge(
     ...(row.steps ? { steps: row.steps.map((step) => ({ ...step })) } : {}),
   };
 
-  if (row.state === 'completed') {
-    const finishedAt =
-      reg?.status === 'completed' && reg.finishedAt ? reg.finishedAt : row.updatedAt;
-    return {
-      ...base,
-      status: 'completed',
-      ...journalSteps,
-      ...withStart,
-      updatedAt: finishedAt,
-      finishedAt,
-    };
+  const derived = deriveOperationStatus(row, reg, nowMs, config.staleAfterMs);
+  switch (derived.source) {
+    case 'journal-completed': {
+      const finishedAt =
+        reg?.status === 'completed' && reg.finishedAt ? reg.finishedAt : row.updatedAt;
+      return {
+        ...base,
+        status: 'completed',
+        ...journalSteps,
+        ...withStart,
+        updatedAt: finishedAt,
+        finishedAt,
+      };
+    }
+    case 'journal-recovery':
+    case 'idle':
+      return {
+        ...base,
+        status: 'recovery-required',
+        ...journalSteps,
+        ...withStart,
+        ...(derived.code ? { code: derived.code } : {}),
+        updatedAt: row.updatedAt,
+      };
+    case 'journal-in-progress':
+      return {
+        ...base,
+        status: 'in-progress',
+        ...journalSteps,
+        ...withStart,
+        updatedAt: row.updatedAt,
+      };
+    case 'registry':
+      break;
   }
-  if (row.state === 'recovery-required') {
-    return {
-      ...base,
-      status: 'recovery-required',
-      ...journalSteps,
-      ...withStart,
-      ...(row.code ? { code: row.code } : {}),
-      updatedAt: row.updatedAt,
-    };
-  }
-
-  // Non terminal journal: the live writer (registry) decides, else its idle time.
-  switch (reg?.status) {
+  // Only reached with a live registry outcome overlaying a non terminal journal.
+  const live = reg!;
+  switch (live.status) {
     case 'running':
       return {
         ...base,
         status: 'in-progress',
-        ...liveSteps(reg),
+        ...liveSteps(live),
         ...withStart,
-        updatedAt: later(reg.updatedAt, row.updatedAt),
+        updatedAt: later(live.updatedAt, row.updatedAt),
       };
     case 'failed':
       return {
         ...base,
         status: 'failed',
-        ...(reg.code ? { code: reg.code } : {}),
+        ...(live.code ? { code: live.code } : {}),
         ...withStart,
-        updatedAt: reg.updatedAt,
-        ...(reg.finishedAt ? { finishedAt: reg.finishedAt } : {}),
+        updatedAt: live.updatedAt,
+        ...(live.finishedAt ? { finishedAt: live.finishedAt } : {}),
       };
     case 'recovery-required':
       return {
         ...base,
         status: 'recovery-required',
         ...withStart,
-        updatedAt: later(reg.updatedAt, row.updatedAt),
+        updatedAt: later(live.updatedAt, row.updatedAt),
       };
     case 'completed':
       return {
         ...base,
         status: 'completed',
         ...withStart,
-        updatedAt: reg.updatedAt,
-        finishedAt: reg.finishedAt ?? reg.updatedAt,
+        updatedAt: live.updatedAt,
+        finishedAt: live.finishedAt ?? live.updatedAt,
       };
-    case undefined:
-      break;
   }
-  if (nowMs - Date.parse(row.updatedAt) > config.staleAfterMs) {
+}
+
+/** What the status table decided and which rule decided it. */
+export interface DerivedOperationStatus {
+  readonly status: 'in-progress' | 'failed' | 'recovery-required' | 'completed';
+  /** Stable code of a failed or recovery-required result when known. */
+  readonly code?: string;
+  readonly source:
+    'journal-completed' | 'journal-recovery' | 'registry' | 'idle' | 'journal-in-progress';
+}
+
+/**
+ * THE status table (docs/reference/api/specs-operations-list.md), shared by the list and by the
+ * per-operation inspection so both always agree: a terminal journal wins, else the live registry
+ * outcome (also a recently failed one) decides, else a journal idle longer than `staleAfterMs`
+ * without a live writer is interrupted (`OPERATION_INTERRUPTED`), else it is in progress.
+ */
+export function deriveOperationStatus(
+  row: Pick<OperationSourceRow, 'state' | 'code' | 'updatedAt'>,
+  reg: { readonly status: OperationProgressOutcome['status']; readonly code?: string } | undefined,
+  nowMs: number,
+  staleAfterMs: number = DEFAULT_OPERATION_LIST_CONFIG.staleAfterMs,
+): DerivedOperationStatus {
+  if (row.state === 'completed') return { status: 'completed', source: 'journal-completed' };
+  if (row.state === 'recovery-required') {
     return {
-      ...base,
       status: 'recovery-required',
-      ...journalSteps,
-      ...withStart,
-      code: OPERATION_INTERRUPTED_CODE,
-      updatedAt: row.updatedAt,
+      ...(row.code ? { code: row.code } : {}),
+      source: 'journal-recovery',
     };
   }
-  return {
-    ...base,
-    status: 'in-progress',
-    ...journalSteps,
-    ...withStart,
-    updatedAt: row.updatedAt,
-  };
+  if (reg) {
+    return {
+      status: reg.status === 'running' ? 'in-progress' : reg.status,
+      ...(reg.status === 'failed' && reg.code ? { code: reg.code } : {}),
+      source: 'registry',
+    };
+  }
+  if (nowMs - Date.parse(row.updatedAt) > staleAfterMs) {
+    return {
+      status: 'recovery-required',
+      code: OPERATION_INTERRUPTED_CODE,
+      source: 'idle',
+    };
+  }
+  return { status: 'in-progress', source: 'journal-in-progress' };
 }
 
 function liveSteps(reg: OperationProgressListing) {

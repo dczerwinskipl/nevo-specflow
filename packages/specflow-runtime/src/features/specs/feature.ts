@@ -28,6 +28,8 @@ export interface SpecsFeatureDependencies {
   readonly progress?: {
     readonly registry: OperationProgressRegistry;
     readonly stream?: OperationEventsStreamOptions;
+    readonly now?: () => Date;
+    readonly staleAfterMs?: number;
   };
 }
 
@@ -65,6 +67,12 @@ export function createSpecsFeature(options: CreateSpecsFeatureOptions = {}): Run
               ...(options.dependencies.progress.stream
                 ? { stream: options.dependencies.progress.stream }
                 : {}),
+              ...(options.dependencies.progress.now
+                ? { now: options.dependencies.progress.now }
+                : {}),
+              ...(options.dependencies.progress.staleAfterMs !== undefined
+                ? { staleAfterMs: options.dependencies.progress.staleAfterMs }
+                : {}),
             }
           : {}),
       });
@@ -72,6 +80,10 @@ export function createSpecsFeature(options: CreateSpecsFeatureOptions = {}): Run
         registerSpecsOperationList(app, {
           engine: options.dependencies.engine,
           registry: options.dependencies.progress.registry,
+          ...(options.dependencies.progress.now ? { now: options.dependencies.progress.now } : {}),
+          ...(options.dependencies.progress.staleAfterMs !== undefined
+            ? { config: { staleAfterMs: options.dependencies.progress.staleAfterMs } }
+            : {}),
         });
       }
       app.register(specsCloseEndpoint, { engine: options.dependencies?.engine });

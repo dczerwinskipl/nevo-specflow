@@ -16,6 +16,7 @@ export {
 } from './list-route';
 export {
   buildOperationList,
+  deriveOperationStatus,
   shapeOperationList,
   DEFAULT_OPERATION_LIST_CONFIG,
   type BuildOperationListInput,

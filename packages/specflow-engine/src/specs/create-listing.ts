@@ -117,6 +117,30 @@ export async function listPublicCreateOperations(
   return rows;
 }
 
+/**
+ * The listing row of ONE operation (same tolerant read as the list, never takes the lock and never
+ * spawns Git); `undefined` when no journal file exists.
+ */
+export async function readPublicCreateOperationRow(
+  engine: SpecFlowEngine,
+  operationId: string,
+): Promise<PublicCreateListingRow | undefined> {
+  if (!UUID.test(operationId)) return undefined;
+  const path = join(
+    engine.context.project.stateRoot,
+    CREATE_JOURNAL_RELATIVE_DIR,
+    operationId + '.json',
+  );
+  let stat;
+  try {
+    stat = await lstat(path);
+  } catch (error) {
+    if (isMissing(error)) return undefined;
+    return unreadable(operationId, new Date(0));
+  }
+  return readRow(engine, path, operationId, stat, new Date(stat.mtimeMs));
+}
+
 async function readRow(
   engine: SpecFlowEngine,
   path: string,

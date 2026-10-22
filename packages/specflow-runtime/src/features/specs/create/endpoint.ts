@@ -10,6 +10,7 @@ import {
   createSpecificationFromRequest,
   inspectCreateOptions,
   inspectPublicCreateOperation,
+  readPublicCreateOperationRow,
   projectCreatedSpecification,
   readRegistrySnapshot,
   willCommitCreatedScaffold,
@@ -37,6 +38,7 @@ import {
 
 import { requireCapability } from '../../auth';
 import {
+  deriveOperationStatus,
   registerOperationEventsRoute,
   type OperationEventsStreamOptions,
   type OperationProgressRegistry,
@@ -50,6 +52,10 @@ export interface SpecsCreateEndpointOptions {
   /** Optional live progress (SSE) for operations that carry a client `operationId`. */
   readonly progress?: OperationProgressRegistry;
   readonly stream?: OperationEventsStreamOptions;
+  /** Idle time after which a journal without a live writer is interrupted (tests; default 5 min). */
+  readonly staleAfterMs?: number;
+  /** Injectable clock (tests). */
+  readonly now?: () => Date;
 }
 
 /**
@@ -160,20 +166,33 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
             error: 'CREATE_NOT_FOUND',
           });
         // The journal has no failed state: a run that failed after reservation leaves it non-terminal.
-        // This Runtime still knows the failure for a short time and reports its stable code.
-        const failure =
-          result.status === 'in-progress'
-            ? options.progress?.peek(request.params.operationId, 'specification-create')
-            : undefined;
-        if (failure?.status === 'failed' && failure.code !== undefined) {
+        // The status is derived exactly like the operations list does (one shared status table):
+        // the registry overlay (also a recently failed run), else the journal idle time.
+        if (result.status === 'completed') {
+          return reply.code(200).send(result);
+        }
+        const row = await readPublicCreateOperationRow(engine, request.params.operationId);
+        if (!row) return reply.code(200).send(result);
+        const derived = deriveOperationStatus(
+          { state: result.status, updatedAt: row.updatedAt },
+          options.progress?.recall(request.params.operationId, 'specification-create'),
+          (options.now ?? (() => new Date()))().getTime(),
+          options.staleAfterMs,
+        );
+        if (derived.status === 'failed' && derived.code !== undefined) {
           return reply.code(200).send({
             operationId: request.params.operationId,
             kind: 'specification-create',
             status: 'failed',
-            code: failure.code,
+            code: derived.code,
           });
         }
-        return reply.code(200).send(result);
+        return reply.code(200).send({
+          operationId: request.params.operationId,
+          kind: 'specification-create',
+          status: derived.status === 'recovery-required' ? 'recovery-required' : 'in-progress',
+          ...(derived.status === 'recovery-required' && derived.code ? { code: derived.code } : {}),
+        });
       } catch (error) {
         const code = errorCode(error);
         if (!code) throw error;

@@ -62,6 +62,9 @@ export interface RuntimeAppDependencies {
     readonly registry?: OperationProgressRegistry;
     readonly heartbeatMs?: number;
     readonly waitMs?: number;
+    /** Injectable clock and idle threshold of the operation status derivation (tests). */
+    readonly now?: () => Date;
+    readonly staleAfterMs?: number;
   };
 }
 
@@ -136,7 +139,18 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         contributions: dependencies.specs?.contributions ?? demo?.contributions,
         sessions: sessionReferences,
         // The demo Runtime serves its own Create routes (and events route) below.
-        ...(demo ? {} : { progress: { registry: progressRegistry, stream: progressStream } }),
+        ...(demo
+          ? {}
+          : {
+              progress: {
+                registry: progressRegistry,
+                stream: progressStream,
+                ...(dependencies.operations?.now ? { now: dependencies.operations.now } : {}),
+                ...(dependencies.operations?.staleAfterMs !== undefined
+                  ? { staleAfterMs: dependencies.operations.staleAfterMs }
+                  : {}),
+              },
+            }),
       },
     }),
     createTasksFeature({

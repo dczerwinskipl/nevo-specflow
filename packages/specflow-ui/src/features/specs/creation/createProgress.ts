@@ -95,3 +95,9 @@ export function createCompletedSteps(
       .map((id) => ({ id, status: 'done' as const })),
   );
 }
+
+/** The title of one public step id (the generic title for an id this build does not know). */
+export function createStepTitle(stepId: string): Message {
+  return ((stepCopy as Readonly<Record<string, StepCopy | undefined>>)[stepId] ?? unknownStepCopy)
+    .title;
+}

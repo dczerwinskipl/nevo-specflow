@@ -31,7 +31,15 @@ import type {
   CurrentSpecTarget,
 } from './model';
 import { SpecsOverview } from './SpecsOverview';
-import type { CreatingSpecification } from './SpecsOverviewCreating';
+import { OperationsPanelHost } from '../../../shared/operations';
+import type { OperationListItem } from '../../../shared/operations/operationList';
+import {
+  operationList,
+  operationsStub,
+  runningItem,
+  operationItem,
+  stubCreateKind,
+} from '../../../../test-support/operations/fixtures';
 import { useSpecsOverview } from './useSpecsOverview';
 import type { SpecsOverviewApi } from './api';
 
@@ -115,12 +123,12 @@ function OverviewFixture({
   state,
   locale = 'en',
   interactive = true,
-  creating,
+  operations,
 }: {
   state: SpecsOverviewState;
   locale?: AppLocale;
   interactive?: boolean;
-  creating?: CreatingSpecification;
+  operations?: readonly OperationListItem[];
 }) {
   const queryClient = useMemo(() => createSpecFlowQueryClient(), []);
   const router = useMemo(() => {
@@ -159,7 +167,7 @@ function OverviewFixture({
       path: '/',
       component: () => (
         <SpecFlowShell auth={auth}>
-          <OverviewFixtureContent state={state} interactive={interactive} creating={creating} />
+          <OverviewFixtureContent state={state} interactive={interactive} operations={operations} />
         </SpecFlowShell>
       ),
     });
@@ -181,7 +189,7 @@ function OverviewFixture({
       routeTree: root.addChildren([overview, login, playground]),
       history: createMemoryHistory({ initialEntries: ['/'] }),
     });
-  }, [state, interactive, creating]);
+  }, [state, interactive, operations]);
   return (
     <QueryClientProvider client={queryClient}>
       <StoryLocalization locale={locale}>
@@ -194,12 +202,23 @@ function OverviewFixture({
 function OverviewFixtureContent({
   state,
   interactive,
-  creating,
+  operations,
 }: {
   state: SpecsOverviewState;
   interactive: boolean;
-  creating?: CreatingSpecification;
+  operations?: readonly OperationListItem[];
 }) {
+  const operationsPanel = useMemo(
+    () =>
+      operations ? (
+        <OperationsPanelHost
+          api={operationsStub(operationList(operations))}
+          listUrl="/api/specs/operations"
+          kinds={[stubCreateKind]}
+        />
+      ) : undefined,
+    [operations],
+  );
   const [collectionOverride, setCollectionOverride] = useState<SpecsOverviewState>();
   const [target, setTarget] = useState<CurrentSpecTarget>();
   const [refreshes, setRefreshes] = useState(0);
@@ -208,7 +227,7 @@ function OverviewFixtureContent({
     <>
       <SpecsOverview
         state={collectionOverride ?? state}
-        creating={creating}
+        operationsPanel={operationsPanel}
         onCollectionChange={(collection) =>
           setCollectionOverride({
             collection,
@@ -591,34 +610,37 @@ export const LongContent: Story = {
   args: { state: { ...loaded, projection: createLongContentFixture() } },
 };
 /**
- * A Create that was started and has not concluded: one quiet row above the list leads back to its
- * progress page (read from the client-side ledger; it disappears when the operation concludes).
+ * A Create that is running: the operations panel sits above the list (rendered from API data, no
+ * client-side ledger) and its row leads to the progress page.
  */
 export const CreatingInProgress: Story = {
-  args: { creating: { title: 'Limity płatności', href: '/specs/new/creating/op-1' } },
+  args: {
+    operations: [runningItem(1, { title: 'Limity płatności', operationId: 'op-1' })],
+  },
   play: async ({ canvas }) => {
-    const link = await canvas.findByRole('link', {
-      name: 'Show the progress of creating Limity płatności',
-    });
+    const link = await canvas.findByRole('link', { name: /^Limity płatności, / });
     await expect(link).toHaveAttribute('href', '/specs/new/creating/op-1');
-    await expect(link).toHaveTextContent('Creating Limity płatności…');
-    await expect(link).toHaveTextContent('(in progress)');
+    await expect(link).toHaveTextContent('Step 2 of 4');
+    await expect(canvas.getByRole('region', { name: 'Background operations' })).toBeVisible();
   },
 };
 
-/** The notice at 320 px with a long name: it wraps inside the row and nothing scrolls sideways. */
+/** The panel at 320 px with a long name and a check-result row: it wraps and nothing scrolls sideways. */
 export const CreatingInProgressMobile: Story = {
   args: {
-    creating: {
-      title:
-        'Ograniczenia płatności cyklicznych dla klientów korporacyjnych w kanałach zdalnych oraz integracji z dostawcami',
-      href: '/specs/new/creating/op-1',
-    },
+    operations: [
+      runningItem(2, {
+        title:
+          'Ograniczenia płatności cyklicznych dla klientów korporacyjnych w kanałach zdalnych oraz integracji z dostawcami',
+      }),
+      operationItem({ status: 'recovery-required', title: 'Faktury' }),
+    ],
   },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: async ({ canvas }) => {
-    const link = await canvas.findByRole('link', { name: /Show the progress of creating/ });
-    await expect(link.getBoundingClientRect().right).toBeLessThanOrEqual(window.innerWidth);
+    const links = await canvas.findAllByRole('link', { name: /Background|,/ });
+    for (const link of links)
+      await expect(link.getBoundingClientRect().right).toBeLessThanOrEqual(window.innerWidth);
   },
 };
 export const Polish: Story = { args: { locale: 'pl' } };

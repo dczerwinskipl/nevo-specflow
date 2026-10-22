@@ -15,7 +15,6 @@ import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
 import { ViewPageTitle } from '../../../app/navigation/ApplicationLocation';
 import type { SpecsCollection, SpecsOverviewState, CurrentSpecTarget } from './model';
 import { SpecsOverviewCollection } from './SpecsOverviewCollection';
-import { SpecsOverviewCreating, type CreatingSpecification } from './SpecsOverviewCreating';
 import { SpecsOverviewEmpty } from './SpecsOverviewEmpty';
 import { SpecsOverviewHeader } from './SpecsOverviewHeader';
 import { SpecsOverviewNotice } from './SpecsOverviewNotice';
@@ -31,8 +30,11 @@ export interface SpecsOverviewProps {
   /** Create is offered but cannot be used yet (for example the Runtime mode is still unknown). */
   readonly createDisabled?: boolean;
   readonly onCreateSession?: () => void;
-  /** An unfinished Create operation: a row above the current list leads back to its progress page. */
-  readonly creating?: CreatingSpecification;
+  /**
+   * Background operations above the list (the operations panel). The host builds it from API data
+   * and decides which collections show it; it renders nothing while it has nothing to say.
+   */
+  readonly operationsPanel?: ReactNode;
   readonly sample?: boolean;
   readonly specificationHref?: (specId: string) => string;
   readonly renderSpecificationLink?: (
@@ -50,7 +52,7 @@ export function SpecsOverview({
   onCreate,
   createDisabled = false,
   onCreateSession,
-  creating,
+  operationsPanel,
   sample = false,
   specificationHref,
   renderSpecificationLink,
@@ -129,9 +131,7 @@ export function SpecsOverview({
                   onRetry={onRefresh}
                 />
               ) : null}
-              {creating && state.collection === 'current' ? (
-                <SpecsOverviewCreating creating={creating} />
-              ) : null}
+              {operationsPanel}
               <div ref={appearance} className="min-w-0">
                 {state.loading || state.paused ? (
                   <LoadingPresentation

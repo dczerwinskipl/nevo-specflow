@@ -361,14 +361,7 @@
       "archived": "Archived"
     },
     "more_few": "+{{count}} more",
-    "more_many": "+{{count}} more",
-    "creating": {
-      "named": "Creating {{name}}…",
-      "unnamed": "Creating a specification…",
-      "inProgress": "(in progress)",
-      "open": "Show progress",
-      "aria": "Show the progress of creating {{name}}"
-    }
+    "more_many": "+{{count}} more"
   },
   "taskWorkspace": {
     "readMore": "Read more",

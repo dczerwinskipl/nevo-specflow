@@ -29,8 +29,8 @@ const created: CreatedSpec = {
 
 /** No live progress: the stream ends at once, as when a Runtime does not offer it. */
 const silentOperations: OperationsApi = {
-  // eslint-disable-next-line require-yield
   list: () => Promise.resolve({ kind: 'unavailable' as const }),
+  // eslint-disable-next-line require-yield
   async *watchProgress() {
     await Promise.resolve();
   },

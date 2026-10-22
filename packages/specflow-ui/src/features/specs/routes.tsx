@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect } from 'react';
 import { createRoute, Link, Outlet, redirect } from '@tanstack/react-router';
 import { appRoute, rootRoute } from '../../app/router/root';
 import { parseSpecificationCollection } from '../../app/router/search';
 import { SpecsOverview } from './overview/SpecsOverview';
+import { useUiModules } from '../../app/ui-modules/UiModulesProvider';
+import { specsOverviewPanels } from './extensions/specsOverviewPanels';
 import { useSpecificationWorkspace } from './read-model/useSpecificationWorkspace';
 import { useRuntimeMode } from '../../app/useRuntimeMode';
 import { useSpecsOverview } from './overview/useSpecsOverview';
@@ -162,8 +164,7 @@ function SpecsRouteScreen() {
   const { collection } = specsRoute.useSearch();
   const navigate = specsRoute.useNavigate();
   const { state, refresh } = useSpecsOverview(services.specsOverviewApi, collection);
-  // Read from the client-side ledger when the list opens; the row disappears with the operation.
-  const [unfinishedCreate] = useState(() => services.readUnfinishedCreate());
+  const panels = useUiModules().get(specsOverviewPanels);
 
   useEffect(() => {
     // Overview authorization denotes application-wide Specs access, unlike
@@ -178,25 +179,11 @@ function SpecsRouteScreen() {
       state={state}
       onRefresh={refresh}
       sample={mode === 'demo'}
-      creating={
-        unfinishedCreate
-          ? {
-              ...(unfinishedCreate.title ? { title: unfinishedCreate.title } : {}),
-              href: `/specs/new/creating/${encodeURIComponent(unfinishedCreate.operationId)}?collection=${collection}`,
-              renderLink: (children, ariaLabel, className) => (
-                <Link
-                  to="/specs/new/creating/$operationId"
-                  params={{ operationId: unfinishedCreate.operationId }}
-                  search={{ collection }}
-                  className={className}
-                  aria-label={ariaLabel}
-                >
-                  {children}
-                </Link>
-              ),
-            }
-          : undefined
-      }
+      operationsPanel={panels.map((panel) => (
+        <Fragment key={panel.id}>
+          {panel.render({ collection, mode, operationsApi: services.operationsApi })}
+        </Fragment>
+      ))}
       onCreate={() => void navigate({ to: '/specs/new', search: { collection } })}
       // Create waits for the Runtime mode (it picks the flow); the control stays, disabled.
       createDisabled={mode === 'loading' || mode === 'unavailable'}

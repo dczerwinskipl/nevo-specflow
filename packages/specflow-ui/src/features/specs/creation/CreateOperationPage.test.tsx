@@ -76,8 +76,8 @@ function controlledOperations() {
   };
 }
 const silentOperations: OperationsApi = {
-  // eslint-disable-next-line require-yield
   list: () => Promise.resolve({ kind: 'unavailable' as const }),
+  // eslint-disable-next-line require-yield
   async *watchProgress() {
     await Promise.resolve();
   },

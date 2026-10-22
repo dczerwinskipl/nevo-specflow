@@ -361,14 +361,7 @@
       "archived": "Zarchiwizowano"
     },
     "more_few": "+{{count}} więcej",
-    "more_many": "+{{count}} więcej",
-    "creating": {
-      "named": "Tworzenie: {{name}}…",
-      "unnamed": "Tworzenie specyfikacji…",
-      "inProgress": "(w toku)",
-      "open": "Pokaż postęp",
-      "aria": "Pokaż postęp tworzenia: {{name}}"
-    }
+    "more_many": "+{{count}} więcej"
   },
   "taskWorkspace": {
     "readMore": "Czytaj więcej",

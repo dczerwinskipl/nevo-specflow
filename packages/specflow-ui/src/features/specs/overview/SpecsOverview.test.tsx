@@ -209,32 +209,22 @@ describe('SpecsOverview collections', () => {
     expect(onCollectionChange).toHaveBeenCalledWith('archive');
   });
 
-  describe('an unfinished Create', () => {
-    const creating = { title: 'Payment limits', href: '/specs/new/creating/op-1' };
+  describe('the operations panel slot', () => {
+    const panel = <section aria-label="Background operations">Panel</section>;
 
-    it('shows a way back to its progress page above the current list', () => {
-      renderOverview(loaded(), { creating });
-      const link = screen.getByRole('link', {
-        name: 'Show the progress of creating Payment limits',
-      });
-      expect(link.getAttribute('href')).toBe('/specs/new/creating/op-1');
-      expect(link.textContent).toContain('Creating Payment limits…');
-      expect(link.textContent).toContain('(in progress)');
+    it('renders the slot above the list', () => {
+      renderOverview(loaded(), { operationsPanel: panel });
+      const region = screen.getByRole('region', { name: 'Background operations' });
+      const list = document.querySelector('[data-spec-id]');
+      expect(
+        region.compareDocumentPosition(list as Node) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
     });
 
-    it('names no specification it does not know', () => {
-      renderOverview(loaded(), { creating: { href: creating.href } });
-      expect(screen.getByRole('link', { name: 'Show progress' }).textContent).toContain(
-        'Creating a specification…',
-      );
-    });
-
-    it('is absent when nothing is unfinished and in the archive', () => {
+    it('draws nothing of its own when the host gives no panel', () => {
       renderOverview(loaded());
-      expect(screen.queryByText(/in progress/)).toBeNull();
-      cleanup();
-      renderOverview(loaded('archive'), { creating });
-      expect(screen.queryByText(/in progress/)).toBeNull();
+      expect(screen.queryByRole('region', { name: 'Background operations' })).toBeNull();
+      expect(document.querySelector('[data-creating-specification]')).toBeNull();
     });
   });
 });

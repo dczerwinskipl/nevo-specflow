@@ -62,6 +62,9 @@ export interface RuntimeAppDependencies {
     readonly registry?: OperationProgressRegistry;
     readonly heartbeatMs?: number;
     readonly waitMs?: number;
+    readonly maxStreams?: number;
+    readonly maxStreamsPerPrincipal?: number;
+    readonly maxWaiting?: number;
     /** Injectable clock and idle threshold of the operation status derivation (tests). */
     readonly now?: () => Date;
     readonly staleAfterMs?: number;
@@ -124,6 +127,15 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
       : {}),
     ...(dependencies.operations?.waitMs !== undefined
       ? { waitMs: dependencies.operations.waitMs }
+      : {}),
+    ...(dependencies.operations?.maxStreams !== undefined
+      ? { maxStreams: dependencies.operations.maxStreams }
+      : {}),
+    ...(dependencies.operations?.maxStreamsPerPrincipal !== undefined
+      ? { maxStreamsPerPrincipal: dependencies.operations.maxStreamsPerPrincipal }
+      : {}),
+    ...(dependencies.operations?.maxWaiting !== undefined
+      ? { maxWaiting: dependencies.operations.maxWaiting }
       : {}),
   };
   const sessionReferences: SessionReferenceOwner | undefined =

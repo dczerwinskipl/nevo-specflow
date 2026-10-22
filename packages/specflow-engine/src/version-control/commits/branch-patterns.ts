@@ -43,8 +43,8 @@ export function isValidBranchPattern(pattern: string): boolean {
 /** True when the branch matches the (valid) pattern; an invalid pattern never matches. */
 export function matchesBranchPattern(pattern: string, branch: string): boolean {
   if (branchPatternProblem(pattern) !== undefined) return false;
-  const expression = compile(pattern);
-  return expression?.test(branch) === true;
+  const tokens = compile(pattern);
+  return tokens !== undefined && matchesTokens(tokens, branch);
 }
 
 export type EngineCommitRefusal = 'branch-protected' | 'branch-not-allowed';
@@ -67,62 +67,127 @@ export function engineCommitRefusal(
   return undefined;
 }
 
-const escape = (character: string): string => character.replace(/[\\^$.*+?()[\]{}|]/gu, '\\$&');
+/** One element of a compiled pattern. */
+type Token =
+  | { readonly kind: 'literal'; readonly char: string }
+  | { readonly kind: 'any-char' }
+  | { readonly kind: 'star' }
+  | { readonly kind: 'globstar' }
+  | {
+      readonly kind: 'set';
+      readonly negated: boolean;
+      readonly ranges: readonly (readonly [string, string])[];
+    };
 
-function compile(pattern: string): RegExp | undefined {
-  let source = '';
+/** Parses a pattern into tokens (`undefined` when its structure is invalid). */
+function compile(pattern: string): readonly Token[] | undefined {
+  const tokens: Token[] = [];
   let index = 0;
   while (index < pattern.length) {
     const character = pattern[index]!;
     if (character === '*') {
       let end = index;
       while (pattern[end] === '*') end++;
-      source += end - index >= 2 ? '.*' : '[^/]*';
+      tokens.push({ kind: end - index >= 2 ? 'globstar' : 'star' });
       index = end;
     } else if (character === '?') {
-      source += '[^/]';
+      tokens.push({ kind: 'any-char' });
       index++;
     } else if (character === '[') {
       const close = pattern.indexOf(']', index + 1);
       if (close < 0) return undefined;
       const set = compileSet(pattern.slice(index + 1, close));
       if (set === undefined) return undefined;
-      source += set;
+      tokens.push(set);
       index = close + 1;
     } else if (character === ']' || character === '!' || character === '^') {
       return undefined;
     } else {
-      source += escape(character);
+      tokens.push({ kind: 'literal', char: character });
       index++;
     }
   }
-  return new RegExp('^' + source + '$', 'u');
+  return tokens;
 }
 
-function compileSet(body: string): string | undefined {
+function compileSet(body: string): Token | undefined {
   const negated = body.startsWith('!') || body.startsWith('^');
   const members = negated ? body.slice(1) : body;
   if (members.length === 0) return undefined;
-  let source = '';
+  const ranges: (readonly [string, string])[] = [];
   let index = 0;
   while (index < members.length) {
     const first = members[index]!;
     if (first === '-') {
       // A literal dash is only allowed first or last.
       if (index !== 0 && index !== members.length - 1) return undefined;
-      source += '\\-';
+      ranges.push(['-', '-']);
       index++;
     } else if (!SET_MEMBER.test(first)) {
       return undefined;
     } else if (members[index + 1] === '-' && index + 2 < members.length) {
       const last = members[index + 2]!;
       if (!SET_MEMBER.test(last) || last < first) return undefined;
-      source += escape(first) + '-' + escape(last);
+      ranges.push([first, last]);
       index += 3;
     } else {
-      source += escape(first);
+      ranges.push([first, first]);
       index++;
     }
   }
-  return negated ? '[^/' + source + ']' : '[' + source + ']';
+  return { kind: 'set', negated, ranges };
+}
+
+/**
+ * Linear-time matcher: the set of reachable token positions advances one character at a time, so
+ * the cost is O(pattern length x branch length) whatever the number of wildcards. (A backtracking
+ * regular expression is exponential for patterns such as `*a*a*a*a*b`.)
+ */
+function matchesTokens(tokens: readonly Token[], branch: string): boolean {
+  const text = Array.from(branch);
+  const width = tokens.length;
+  let current = new Array<boolean>(width + 1).fill(false);
+  current[0] = true;
+  const skipEmptyStars = (states: boolean[]): void => {
+    for (let at = 0; at < width; at++) {
+      const token = tokens[at]!;
+      if (states[at] && (token.kind === 'star' || token.kind === 'globstar')) states[at + 1] = true;
+    }
+  };
+  skipEmptyStars(current);
+  for (const character of text) {
+    const next = new Array<boolean>(width + 1).fill(false);
+    let alive = false;
+    for (let at = 0; at < width; at++) {
+      if (!current[at]) continue;
+      const token = tokens[at]!;
+      switch (token.kind) {
+        case 'literal':
+          if (character === token.char) next[at + 1] = true;
+          break;
+        case 'any-char':
+          if (character !== '/') next[at + 1] = true;
+          break;
+        case 'star':
+          if (character !== '/') next[at] = true;
+          break;
+        case 'globstar':
+          next[at] = true;
+          break;
+        case 'set':
+          if (character !== '/' && inSet(token, character)) next[at + 1] = true;
+          break;
+      }
+    }
+    skipEmptyStars(next);
+    for (const reachable of next) alive ||= reachable;
+    if (!alive) return false;
+    current = next;
+  }
+  return current[width] === true;
+}
+
+function inSet(token: Extract<Token, { readonly kind: 'set' }>, character: string): boolean {
+  const inside = token.ranges.some(([from, to]) => character >= from && character <= to);
+  return token.negated ? !inside : inside;
 }

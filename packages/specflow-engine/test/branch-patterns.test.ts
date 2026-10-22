@@ -89,3 +89,22 @@ describe('branch protection pattern', () => {
     ).toBeUndefined();
   });
 });
+
+describe('pathological patterns stay linear', () => {
+  it.each([
+    ['*a'.repeat(20) + '*b', 'a'.repeat(60)],
+    ['**a'.repeat(30) + '**b', 'a'.repeat(200)],
+    ['*/'.repeat(25) + 'x', 'a/'.repeat(100)],
+    ['[a-z]*'.repeat(30) + '?9', 'abc'.repeat(70)],
+  ])('%s finishes within milliseconds and does not match', (pattern, branch) => {
+    const started = performance.now();
+    expect(matchesBranchPattern(pattern, branch)).toBe(false);
+    expect(performance.now() - started).toBeLessThan(50);
+  });
+
+  it('still matches after many wildcards', () => {
+    expect(matchesBranchPattern('*a'.repeat(20) + '*', 'a'.repeat(60))).toBe(true);
+    expect(matchesBranchPattern('**a**', 'x/y/a/z')).toBe(true);
+    expect(matchesBranchPattern('*a*', 'x/a')).toBe(false);
+  });
+});

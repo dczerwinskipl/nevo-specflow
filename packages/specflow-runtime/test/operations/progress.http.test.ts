@@ -37,7 +37,14 @@ function authenticated(role: 'developer' | 'viewer' = 'developer') {
 
 async function listen(
   registry: OperationProgressRegistry,
-  options: { role?: 'developer' | 'viewer'; heartbeatMs?: number; waitMs?: number } = {},
+  options: {
+    role?: 'developer' | 'viewer';
+    heartbeatMs?: number;
+    waitMs?: number;
+    maxStreams?: number;
+    maxStreamsPerPrincipal?: number;
+    maxWaiting?: number;
+  } = {},
 ) {
   const auth = authenticated(options.role);
   const app = await createRuntimeApp(
@@ -51,6 +58,11 @@ async function listen(
         registry,
         ...(options.heartbeatMs !== undefined ? { heartbeatMs: options.heartbeatMs } : {}),
         ...(options.waitMs !== undefined ? { waitMs: options.waitMs } : {}),
+        ...(options.maxStreams !== undefined ? { maxStreams: options.maxStreams } : {}),
+        ...(options.maxStreamsPerPrincipal !== undefined
+          ? { maxStreamsPerPrincipal: options.maxStreamsPerPrincipal }
+          : {}),
+        ...(options.maxWaiting !== undefined ? { maxWaiting: options.maxWaiting } : {}),
       },
     },
   );
@@ -101,6 +113,66 @@ async function readFrames(
 
 const eventsUrl = (base: string, id = operationId) =>
   `${base}/api/specs/create/operations/${id}/events`;
+
+describe('SSE connection caps', () => {
+  const open = async (url: string, headers: Record<string, string>, id: string) => {
+    const controller = new AbortController();
+    const response = await fetch(eventsUrl(url, id), { headers, signal: controller.signal });
+    return { response, close: () => controller.abort() };
+  };
+  const ids = (n: number) => `3f0a6d4e-8f2a-4b6e-9d0a-${String(n).padStart(12, '0')}`;
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 150));
+
+  it('caps open streams per principal with 429 + Retry-After, then frees the slot', async () => {
+    const registry = createOperationProgressRegistry();
+    for (let n = 1; n <= 3; n += 1) registry.begin({ operationId: ids(n), kind, steps });
+    const { url, headers } = await listen(registry, { maxStreamsPerPrincipal: 2, waitMs: 1000 });
+    const first = await open(url, headers, ids(1));
+    const second = await open(url, headers, ids(2));
+    expect([first.response.status, second.response.status]).toEqual([200, 200]);
+
+    const refused = await fetch(eventsUrl(url, ids(3)), { headers });
+    expect(refused.status).toBe(429);
+    expect(refused.headers.get('retry-after')).toMatch(/^\d+$/);
+    expect(await refused.json()).toMatchObject({ code: 'OPERATION_STREAMS_LIMIT' });
+
+    first.close();
+    await settle();
+    const again = await open(url, headers, ids(3));
+    expect(again.response.status).toBe(200);
+    again.close();
+    second.close();
+  });
+
+  it('caps the global number of streams', async () => {
+    const registry = createOperationProgressRegistry();
+    for (let n = 1; n <= 2; n += 1) registry.begin({ operationId: ids(n), kind, steps });
+    const { url, headers } = await listen(registry, { maxStreams: 1 });
+    const first = await open(url, headers, ids(1));
+    expect(first.response.status).toBe(200);
+    expect((await fetch(eventsUrl(url, ids(2)), { headers })).status).toBe(429);
+    first.close();
+  });
+
+  it('caps streams that wait for an unknown id and releases them on abort', async () => {
+    const registry = createOperationProgressRegistry();
+    registry.begin({ operationId: ids(9), kind, steps });
+    const { url, headers } = await listen(registry, { maxWaiting: 1, waitMs: 5000 });
+    const waiting = await open(url, headers, ids(1));
+    expect(waiting.response.status).toBe(200);
+    // A second unknown id is refused, a known one is not.
+    expect((await fetch(eventsUrl(url, ids(2)), { headers })).status).toBe(429);
+    const known = await open(url, headers, ids(9));
+    expect(known.response.status).toBe(200);
+    known.close();
+
+    waiting.close();
+    await settle();
+    const next = await open(url, headers, ids(3));
+    expect(next.response.status).toBe(200);
+    next.close();
+  });
+});
 
 // The mechanism is shared; the route belongs to the feature (here: Create).
 describe('GET /api/specs/create/operations/:operationId/events', () => {

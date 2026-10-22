@@ -21,8 +21,7 @@ interface StepCopy {
  * Copy of the public step vocabulary of `specification-create` (the Runtime maps its journal onto
  * these ids and never exposes raw stages). Exhaustive by type: a new public step cannot ship
  * without its entry, and adding one is exactly one entry here plus its three
- * catalogue keys. A pending step needs no entry of its own: it always reads
- * "Waiting for previous step".
+ * catalogue keys. A pending step needs no copy of its own: it shows only its title, muted.
  */
 const stepCopy = {
   reserving: stepEntry('reserving'),
@@ -43,8 +42,6 @@ function stepEntry(id: SpecificationCreateStep | 'unknown'): StepCopy {
   };
 }
 
-const waiting: Message = message('create.progress.waiting');
-
 /** The honest single row while no step is known; `lost` is the stream being unavailable. */
 export const createNeutralProgress = (lost: boolean): OperationProgressNeutral => ({
   label: message('create.progress.neutral.title'),
@@ -54,8 +51,9 @@ export const createNeutralProgress = (lost: boolean): OperationProgressNeutral =
 });
 
 /**
- * Steps the Runtime reported, in user language: a title and one line that depends on the state
- * (running: what is happening, done: what happened, pending: waiting). Skipped steps are omitted
+ * Steps the Runtime reported, in user language: a title and, once the step has started, one line
+ * (running: what is happening, done: what happened); a pending step is only its muted title, with
+ * no repeated "waiting" line. Skipped steps are omitted
  * (an existing workspace has no "preparing the workspace"); an unknown id gets the generic copy.
  */
 export function createProgressSteps(
@@ -69,8 +67,11 @@ export function createProgressSteps(
       return {
         id: step.id,
         label: copy.title,
-        description:
-          step.status === 'done' ? copy.done : step.status === 'running' ? copy.running : waiting,
+        ...(step.status === 'done'
+          ? { description: copy.done }
+          : step.status === 'running'
+            ? { description: copy.running }
+            : {}),
         status: step.status,
       };
     });
@@ -105,4 +106,10 @@ export function createCompletedSteps(
 export function createStepTitle(stepId: string): Message {
   return ((stepCopy as Readonly<Record<string, StepCopy | undefined>>)[stepId] ?? unknownStepCopy)
     .title;
+}
+
+/** The title of the step that is running now, or undefined while none is (the page then says it generically). */
+export function createRunningStepTitle(steps: readonly OperationStepView[]): Message | undefined {
+  const running = steps.find((step) => step.status === 'running');
+  return running ? createStepTitle(running.id) : undefined;
 }

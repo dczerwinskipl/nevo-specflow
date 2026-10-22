@@ -213,8 +213,11 @@ describe('CreateOperationPage', () => {
         { id: 'registering', status: 'pending' },
       ],
     });
-    const running = await screen.findByText('Preparing the workspace');
-    expect(running.closest('li')?.getAttribute('aria-current')).toBe('step');
+    // The subtitle names the running step too (no generic line next to a concrete step).
+    const running = (await screen.findAllByText('Preparing the workspace')).find((node) =>
+      node.closest('li'),
+    );
+    expect(running?.closest('li')?.getAttribute('aria-current')).toBe('step');
     expect(screen.getByRole('status', { name: 'Specification creation progress' })).toBeTruthy();
   });
 
@@ -320,7 +323,7 @@ describe('CreateOperationPage', () => {
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
   });
 
-  it('states the commit target in the configuration when Git is enabled', async () => {
+  it('keeps the commit (system behaviour) out of the configuration and in the technical details when Git is enabled', async () => {
     store({ target: { kind: 'new-worktree' } });
     storage().saveDraft({
       operationId,
@@ -334,8 +337,10 @@ describe('CreateOperationPage', () => {
       get: vi.fn().mockResolvedValue(accepted),
     });
     const settings = within(await screen.findByLabelText('Creation settings'));
-    expect(settings.getByText('Commit')).toBeTruthy();
-    expect(settings.getAllByText('feature/limits')).toHaveLength(2);
+    expect(settings.queryByText('Commit')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Technical details' }));
+    expect(screen.getByText('Commit')).toBeTruthy();
+    expect(screen.getByText(/The specification files are committed to/)).toBeTruthy();
   });
 
   it('while it runs: steps in user language with a description each, waiting steps muted, no merge-target warning', async () => {
@@ -373,8 +378,13 @@ describe('CreateOperationPage', () => {
     });
     expect(await screen.findByText('Creating the working environment')).toBeTruthy();
     expect(screen.getByText('Name and branch reserved')).toBeTruthy();
-    expect(screen.getAllByText('Waiting for previous step')).toHaveLength(2);
-    expect(screen.getByText('Preparing a new workspace and the specification.')).toBeTruthy();
+    // Pending steps are only muted titles: no repeated "waiting" line.
+    expect(screen.queryByText('Waiting for previous step')).toBeNull();
+    // The subtitle names the running step instead of a generic line.
+    expect(screen.queryByText('Preparing a new workspace and the specification.')).toBeNull();
+    expect(screen.getAllByText('Preparing the workspace')).toHaveLength(2);
+    // One spinner: the header mark is static while the active step turns.
+    expect(document.querySelectorAll('.animate-spin')).toHaveLength(1);
     expect(screen.queryByText(/uncommitted/)).toBeNull();
   });
 

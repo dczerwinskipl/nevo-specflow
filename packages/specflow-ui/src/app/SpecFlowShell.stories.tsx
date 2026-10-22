@@ -488,26 +488,9 @@ export const Navigation: Story = {
     if (back.getAttribute('href') !== '/?collection=current')
       throw new Error('Specification Back must preserve Current collection.');
     await userEvent.click(back);
-    await userEvent.click(
-      await canvas.findByRole('button', {
-        name: 'Specification actions: Deterministic admission and execution boundaries',
-      }),
-    );
-    const open = await waitFor(
-      () =>
-        [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
-          (item) => item.textContent?.trim() === 'Open specification',
-        ) ?? null,
-      'Row overflow must offer Specification navigation.',
-    );
-    if (open.getAttribute('aria-disabled') === 'true')
-      throw new Error('Open specification must be enabled in production composition.');
-    await userEvent.click(open);
-    await canvas.findByRole('heading', {
-      name: 'Deterministic admission and execution boundaries',
-      level: 1,
-    });
-    await userEvent.click(canvas.getByRole('link', { name: 'All specifications' }));
+    // A row has no actions menu: it is one target, the whole row opens the specification.
+    if (canvas.queryByRole('button', { name: /^Specification actions: / }))
+      throw new Error('A row without contextual actions must not offer an actions menu.');
     await userEvent.click(await canvas.findByRole('radio', { name: 'Archive' }));
     const archive = await canvas.findByRole('link', {
       name: 'Open specification: Canonical Session, Turn and Work model',

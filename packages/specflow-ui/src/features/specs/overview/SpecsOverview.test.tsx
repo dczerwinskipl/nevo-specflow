@@ -228,3 +228,56 @@ describe('SpecsOverview collections', () => {
     });
   });
 });
+
+describe('SpecsOverview without work status', () => {
+  const unknownItem = (id: string, extra: Parameters<typeof createSpecItem>[0] = {}) =>
+    createSpecItem({
+      id,
+      title: `Spec ${id}`,
+      classification: { section: 'unknown' },
+      progress: null,
+      signals: null,
+      currentExecutions: null,
+      ...extra,
+    });
+  const unavailable = (items = [unknownItem('a'), unknownItem('b')]): SpecsOverviewState => ({
+    ...loaded(),
+    projection: { ...createSpecsFixture(), sections: ['unknown'], items },
+  });
+
+  it('shows a flat list: no group, no empty columns, the updated time as a fact', () => {
+    renderOverview(unavailable());
+    expect(document.querySelector('[data-spec-layout="flat"]')).not.toBeNull();
+    expect(document.querySelectorAll('[data-spec-id]')).toHaveLength(2);
+    expect(screen.queryByText('Status unavailable')).toBeNull();
+    expect(screen.queryByText('Work status not available yet')).toBeNull();
+    expect(screen.queryByText('Progress unavailable')).toBeNull();
+    expect(document.querySelector('[data-spec-columns]')).toBeNull();
+    expect(document.querySelector('[data-spec-section-header]')).toBeNull();
+    expect(screen.getAllByText(/Updated .*2026/)).toHaveLength(2);
+  });
+
+  it('keeps the progress column when only progress exists', () => {
+    renderOverview(
+      unavailable([unknownItem('a', { progress: { completed: 1, total: 2 } }), unknownItem('b')]),
+    );
+    expect(document.querySelector('[data-spec-layout="flat"]')).not.toBeNull();
+    expect(document.querySelector('[data-spec-columns]')).not.toBeNull();
+  });
+
+  it('keeps the layout while searching (decided from the whole collection)', () => {
+    renderOverview(unavailable(Array.from({ length: 12 }, (_, i) => unknownItem(`s${i}`))));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search specifications' }), {
+      target: { value: 'Spec s3' },
+    });
+    expect(document.querySelector('[data-spec-layout="flat"]')).not.toBeNull();
+    expect(document.querySelectorAll('[data-spec-id]')).toHaveLength(1);
+  });
+
+  it('groups by status when real status data exists, and rows have no actions menu', () => {
+    renderOverview(loaded());
+    expect(document.querySelector('[data-spec-layout="grouped"]')).not.toBeNull();
+    expect(document.querySelector('[data-spec-section-header]')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: /Specification actions: / })).toBeNull();
+  });
+});

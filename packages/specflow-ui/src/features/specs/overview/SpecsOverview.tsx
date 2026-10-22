@@ -18,6 +18,7 @@ import { SpecsOverviewCollection } from './SpecsOverviewCollection';
 import { SpecsOverviewEmpty } from './SpecsOverviewEmpty';
 import { SpecsOverviewHeader } from './SpecsOverviewHeader';
 import { SpecsOverviewNotice } from './SpecsOverviewNotice';
+import { overviewCapabilities } from './presentation';
 import { filterSpecsOverview, isSearchable } from './search';
 import { useCollectionSearch } from './useCollectionSearch';
 
@@ -61,6 +62,8 @@ export function SpecsOverview({
   const search = useCollectionSearch(state.collection);
   const projection =
     state.projection?.collection === state.collection ? state.projection : undefined;
+  // Decided from the whole collection so that typing in the search does not change the layout.
+  const capabilities = projection ? overviewCapabilities(projection) : undefined;
   const visible = projection ? filterSpecsOverview(projection, search.term) : undefined;
   const busy = state.loading || state.refreshing;
   const appearance = useInitialAppearance(state.collection, state.loading, Boolean(projection));
@@ -143,6 +146,7 @@ export function SpecsOverview({
                 {visible && !state.loading ? (
                   <SpecsOverviewCollection
                     projection={visible}
+                    capabilities={capabilities}
                     searching={search.term.trim().length > 0}
                     onOpenTarget={onOpenTarget}
                     specificationHref={specificationHref}

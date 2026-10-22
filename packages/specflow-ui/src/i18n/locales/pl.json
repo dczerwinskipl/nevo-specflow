@@ -286,11 +286,7 @@
     "noResultsDescription": "Wpisz inny tytuł lub wyczyść wyszukiwanie, aby zobaczyć tę kolekcję.",
     "signalsUnavailable": "Informacje o stanie pracy są niedostępne",
     "openSpec": "Otwórz specyfikację: {{title}}",
-    "rowActions": "Akcje specyfikacji: {{title}}",
     "createSession": "Utwórz sesję",
-    "openDetails": "Otwórz specyfikację",
-    "archiveUnavailable": "Archiwizuj (jeszcze niedostępne)",
-    "deleteUnavailable": "Usuń (jeszcze niedostępne)",
     "moreSignals": "Więcej sygnałów: {{count}} — {{title}}",
     "openPullRequest": "PR #{{number}}: Otwórz pull request — {{title}}",
     "openSignal": "{{label}} — {{title}}",
@@ -539,8 +535,6 @@
     },
     "panel": {
       "title": "Operacje w tle",
-      "collapse": "Ukryj operacje",
-      "expand": "Pokaż operacje",
       "loadFailed": "Nie udało się wczytać operacji w tle",
       "refreshFailed": "Nie można odświeżyć. Ponawiam",
       "showAll": "Pokaż wszystkie ({{total}})",
@@ -1064,7 +1058,6 @@
           "done": "Zakończony"
         }
       },
-      "waiting": "Czeka na poprzedni krok",
       "neutral": {
         "title": "Tworzenie specyfikacji",
         "description": "To może chwilę potrwać.",

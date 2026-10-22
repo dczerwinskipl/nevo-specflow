@@ -9,7 +9,8 @@ import { SummaryRow } from './workspace/WorkspaceTileSummaries';
  * The compact configuration of this Create in plain language, as a description list that reuses the
  * rows and the branch/workspace references of the form's workspace summary so the wording matches:
  * type, branch, base and the workspace it is integrated into later, plus a short goal. Technical
- * values (folder, name slug, operation id) live in `CreateTechnicalDetails`. The uncommitted-changes
+ * values and system behaviour that is not the user's choice (folder, name slug, the commit the
+ * Engine makes, operation id) live in `CreateTechnicalDetails`. The uncommitted-changes
  * caveat of the merge target belongs to the form, near the choice, and is not repeated here. Every
  * value comes from the retained request and the facts saved with the draft; a row whose value is
  * unknown is not shown.
@@ -17,7 +18,6 @@ import { SummaryRow } from './workspace/WorkspaceTileSummaries';
 export function CreateSettingsList({ settings }: { settings: CreateSettingsModel }) {
   const { t } = useTranslation();
   const { place, workspace } = settings;
-  const commitBranch = place === 'new' ? settings.branch : workspace?.branch;
 
   const where =
     place === 'new' ? (
@@ -58,14 +58,6 @@ export function CreateSettingsList({ settings }: { settings: CreateSettingsModel
       {settings.mergeInto && (
         <SummaryRow label={t('create.workspace.fact.target')} override={false}>
           <WorkspaceRef workspace={settings.mergeInto} />
-        </SummaryRow>
-      )}
-      {settings.commit && commitBranch && (
-        <SummaryRow label={t('create.workspace.fact.commit')} override={false}>
-          <Trans
-            i18nKey="create.page.settings.committedTo"
-            components={{ branch: <BranchRef name={commitBranch} /> }}
-          />
         </SummaryRow>
       )}
       {settings.goal && (

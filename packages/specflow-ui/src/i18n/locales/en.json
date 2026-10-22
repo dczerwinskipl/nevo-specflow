@@ -286,11 +286,7 @@
     "noResultsDescription": "Try another title or clear the search to see this collection.",
     "signalsUnavailable": "Steering information unavailable",
     "openSpec": "Open specification: {{title}}",
-    "rowActions": "Specification actions: {{title}}",
     "createSession": "Create session",
-    "openDetails": "Open specification",
-    "archiveUnavailable": "Archive (not available yet)",
-    "deleteUnavailable": "Delete (not available yet)",
     "moreSignals": "{{count}} more signals — {{title}}",
     "openPullRequest": "PR #{{number}}: Open pull request — {{title}}",
     "openSignal": "{{label}} — {{title}}",
@@ -539,8 +535,6 @@
     },
     "panel": {
       "title": "Background operations",
-      "collapse": "Hide operations",
-      "expand": "Show operations",
       "loadFailed": "Background operations can't be loaded",
       "refreshFailed": "Cannot refresh. Retrying",
       "showAll": "Show all ({{total}})",
@@ -1064,7 +1058,6 @@
           "done": "Finished"
         }
       },
-      "waiting": "Waiting for previous step",
       "neutral": {
         "title": "Creating specification",
         "description": "This can take a moment.",

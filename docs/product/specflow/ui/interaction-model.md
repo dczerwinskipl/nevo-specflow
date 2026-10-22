@@ -142,6 +142,24 @@ replacement.
 | Pushed / stacked detail  | Narrow representation of Secondary: it becomes the visible workspace surface and provides an explicit way back. |
 | Main page / workspace    | A distinct product surface the user explicitly navigated/promoted to.                                           |
 
+## Specification list: layout follows the data
+
+The current list groups specifications by work status (Requires attention, Active, Ready, Draft)
+with a situation and a progress column only when the Runtime really provides that data. A project
+Runtime may know the specifications but not their work status or progress; the list then shows
+**one flat list** of specifications: the name, the facts that exist (key, tags, pull requests) and
+when it was last updated. It never shows a group "Status unavailable" with empty columns. The choice
+is data-driven (`overviewCapabilities` in the overview presentation: status exists when any
+specification has a real section, progress when any has a progress; decided from the whole
+collection, so a search does not change the layout), not tied to the runtime mode, so the demo with
+real statuses stays grouped. Loading, error and empty states are unchanged.
+
+Rows follow the design-system interaction grammar
+(`design-system.principles.information-row-hierarchy`): a row is one link to the specification with
+no trailing arrow and no actions menu (there are no contextual actions yet); chevrons appear only on
+group headers, as real disclosures at the leading edge. The Background operations panel above the
+list is one always-open container (see `product.specflow.specification-creation`).
+
 ## State preservation
 
 The router/URL owns main product navigation. Local Workspace Secondary state is intentionally not part

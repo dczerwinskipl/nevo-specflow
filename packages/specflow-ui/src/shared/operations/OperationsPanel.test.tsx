@@ -76,10 +76,14 @@ describe('OperationsPanel rows', () => {
     const link = screen.getByRole('link');
     expect(link.getAttribute('href')).toBe(`/specs/new/creating/${item.operationId}`);
     // The accessible name is the visible text plus the status word for assistive technology.
-    expect(link.textContent).toContain('Payment limits, Creating a specification');
+    expect(link.textContent).toContain('Payment limits, ');
     expect(link.textContent).toContain('In progress. Step 2 of 4: Preparing the workspace');
-    expect(link.textContent).toContain('spec/payment-limits');
-    expect(link.textContent).toContain('Step 2 of 4');
+    // One meta line: step and time; no kind, branch, trailing arrow or extra badge.
+    expect(link.textContent).not.toContain('spec/payment-limits');
+    expect(link.querySelector('svg:not([aria-hidden])')).toBeNull();
+    expect(link.querySelector('[data-operation-meta]')?.textContent).toContain(
+      'Step 2 of 4: Preparing the workspace · Started 2 minutes ago',
+    );
     expect(link.querySelector('time')?.textContent).toBe('Started 2 minutes ago');
   });
 
@@ -153,7 +157,7 @@ describe('OperationsPanel rows', () => {
   });
 });
 
-describe('OperationsPanel overflow and collapse', () => {
+describe('OperationsPanel overflow', () => {
   const many = (count: number) =>
     operationList(
       Array.from({ length: count }, (_, index) => runningItem(1, { title: `Spec ${index + 1}` })),
@@ -180,24 +184,11 @@ describe('OperationsPanel overflow and collapse', () => {
     expect(screen.getByText('Showing 6 of 9')).toBeTruthy();
   });
 
-  it('collapses and expands by the disclosure button', () => {
+  it('is always open: no collapse control and the rows stay visible', () => {
     renderPanel({ list: many(2) });
-    const toggle = screen.getByRole('button', { name: 'Hide operations' });
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
-    fireEvent.click(toggle);
-    const collapsed = screen.getByRole('button', { name: 'Show operations' });
-    expect(collapsed.getAttribute('aria-expanded')).toBe('false');
-    expect(document.getElementById(collapsed.getAttribute('aria-controls') ?? '')?.hidden).toBe(
-      true,
-    );
-  });
-
-  it('opens again when a row starts needing a check', () => {
-    const running = runningItem(1, { title: 'Spec' });
-    const { update } = renderPanel({ list: operationList([running]) });
-    fireEvent.click(screen.getByRole('button', { name: 'Hide operations' }));
-    update({ list: operationList([{ ...running, status: 'recovery-required' }]) });
-    expect(screen.getByRole('button', { name: 'Hide operations' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Hide operations|Show operations/ })).toBeNull();
+    expect(document.querySelector('[aria-expanded]')).toBeNull();
+    expect(screen.getAllByRole('listitem')).toHaveLength(2);
   });
 });
 
@@ -244,5 +235,24 @@ describe('OperationsPanel announcements', () => {
   it('does not announce what was already there on the first read', () => {
     renderPanel({ list: operationList([operationItem({ status: 'completed' })]) });
     expect(live()?.textContent).toBe('');
+  });
+});
+
+describe('OperationsPanel structure', () => {
+  it('is one container with plain rows: no nested bordered surface, no trailing chevron', () => {
+    renderPanel({ list: operationList([runningItem(1), operationItem({ status: 'completed' })]) });
+    const section = document.querySelector('[data-operations-panel]')!;
+    for (const item of section.querySelectorAll('li, li a')) {
+      expect(item.className).not.toMatch(/(^| )border( |$)|rounded-composite|bg-surface-subtle/);
+    }
+    expect(section.querySelector('[class*="chevron"]')).toBeNull();
+  });
+
+  it('keeps a finished row visible with its name and a hide control', () => {
+    renderPanel({
+      list: operationList([operationItem({ status: 'completed', title: 'Billing' })]),
+    });
+    expect(screen.getByText('Billing')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Hide Billing' })).toBeTruthy();
   });
 });

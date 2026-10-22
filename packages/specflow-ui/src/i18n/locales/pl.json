@@ -1018,7 +1018,7 @@
       "goalLabel": "Cel (opcjonalnie)",
       "goalPlaceholder": "Co ma osiągnąć ta specyfikacja?",
       "footNote": "Po utworzeniu otworzymy specyfikację.",
-      "goalHelp": "Zapisujemy w przeglądzie specyfikacji. Aplikacja jeszcze go nie wyświetla."
+      "goalHelp": "Zapisujemy w przeglądzie specyfikacji; na stronie postępu pokazujemy go w skróconej formie."
     },
     "monitoring": {
       "reportedTitle": "Serwer zgłosił problem",

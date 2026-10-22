@@ -217,6 +217,7 @@ export function CreateOperationPage({
             failure={failure}
             state={state}
             workspaceOptions={undefined}
+            showDiagnostics={false}
             typedTitle={title ?? ''}
             refreshing={false}
             announce={announce}

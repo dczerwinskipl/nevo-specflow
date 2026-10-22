@@ -3,7 +3,6 @@ import {
   APP_NAVIGATION_INLINE_PADDING,
   Button,
   NavigationRow,
-  Icon,
   ScrollArea,
   Separator,
   Typography,
@@ -246,7 +245,6 @@ export function ProductNavigation({
                                   search={{ collection }}
                                 >
                                   {t('applicationNavigation.allSessions')}
-                                  <Icon name="arrow-right" size="sm" className="size-3.5" />
                                 </StandaloneLink>
                               </SessionNavigationPreview>
                             ),

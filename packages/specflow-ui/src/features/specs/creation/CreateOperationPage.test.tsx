@@ -328,6 +328,9 @@ describe('CreateOperationPage', () => {
     expect(screen.queryByText(/^Nothing was created./)).toBeNull();
     expect(screen.getByRole('button', { name: 'Check operation status' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+    // ONE disclosure of facts: the page's technical details, not a second "Diagnostic data".
+    expect(screen.queryByRole('button', { name: 'Diagnostic data' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Technical details' })).toBeTruthy();
   });
 
   it('keeps the commit (system behaviour) out of the configuration and in the technical details when Git is enabled', async () => {

@@ -114,10 +114,16 @@ export function CreateFailureAlert({
   onRefresh,
   onUseAutomaticName,
   onUseCustomName,
+  showDiagnostics = true,
 }: {
   failure: CreateFailure;
   /** Facts the client knows about the operation (id, name, place, branch, server step/time). */
   details: readonly OperationDetail[];
+  /**
+   * Show the facts in a collapsible of their own. The progress page has "Technical details" for
+   * that, so it turns this off (the copy action still carries the facts) instead of showing two.
+   */
+  showDiagnostics?: boolean;
   status: CreateOperationStatus | null;
   statusUnreadable: boolean;
   /** The last check never left the browser (no connection); the earlier outcome is unchanged. */
@@ -173,23 +179,25 @@ export function CreateFailureAlert({
               {t('create.errors.copyDiagnostics')}
             </Button>
           </div>
-          <Collapsible className="mt-1 -ml-control-padding-compact">
-            <Collapsible.Trigger>{t('create.errors.diagnostics')}</Collapsible.Trigger>
-            <Collapsible.Content>
-              <DescriptionList layout="inline" className="ml-control-padding-compact pb-2">
-                {details.map(({ id, value }) => (
-                  <DescriptionList.Item key={id}>
-                    <DescriptionList.Term>
-                      {t(`create.operation.detail.${id}`)}
-                    </DescriptionList.Term>
-                    <DescriptionList.Detail>
-                      {id === 'branch' ? <BranchRef name={value} /> : value}
-                    </DescriptionList.Detail>
-                  </DescriptionList.Item>
-                ))}
-              </DescriptionList>
-            </Collapsible.Content>
-          </Collapsible>
+          {showDiagnostics && (
+            <Collapsible className="mt-1 -ml-control-padding-compact">
+              <Collapsible.Trigger>{t('create.errors.diagnostics')}</Collapsible.Trigger>
+              <Collapsible.Content>
+                <DescriptionList layout="inline" className="ml-control-padding-compact pb-2">
+                  {details.map(({ id, value }) => (
+                    <DescriptionList.Item key={id}>
+                      <DescriptionList.Term>
+                        {t(`create.operation.detail.${id}`)}
+                      </DescriptionList.Term>
+                      <DescriptionList.Detail>
+                        {id === 'branch' ? <BranchRef name={value} /> : value}
+                      </DescriptionList.Detail>
+                    </DescriptionList.Item>
+                  ))}
+                </DescriptionList>
+              </Collapsible.Content>
+            </Collapsible>
+          )}
         </>
       )}
       {failure.kind === 'stale' && (

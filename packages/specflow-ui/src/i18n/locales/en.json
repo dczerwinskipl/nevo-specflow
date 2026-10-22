@@ -1018,7 +1018,7 @@
       "goalLabel": "Goal (optional)",
       "goalPlaceholder": "What should this specification achieve?",
       "footNote": "After creation we will open the specification.",
-      "goalHelp": "Saved in the specification overview. The app does not display it yet."
+      "goalHelp": "Saved in the specification overview and shown shortened on the progress page."
     },
     "monitoring": {
       "reportedTitle": "The server reported a problem",

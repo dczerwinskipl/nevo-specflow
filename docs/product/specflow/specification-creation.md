@@ -74,7 +74,8 @@ the field. The final branch and worktree location still belong to Engine: the UI
 as `feature/<slug>`; only a pattern containing the optional `{shortId}` shows it as `<id>`), and it never promises that later integration will succeed.
 
 **Goal** is sent as `goal`, persisted in the Create journal and written to the Specification
-overview scaffold; the app does not display it yet, and the field's help text says so. The scaffold marks the
+overview scaffold. The progress page shows it shortened (the first 160 characters, as one line of
+text) and the field's help text says so; the full goal stays in the overview. The scaffold marks the
 section with a comment under `## Goal` telling an agent that it is the initial goal from creation
 and may be refined or rewritten freely.
 

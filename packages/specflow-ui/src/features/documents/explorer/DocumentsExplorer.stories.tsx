@@ -414,10 +414,8 @@ export const InlineErrorsAndCancellation: Story = {
       'aria-disabled',
       'true',
     );
-    await expect(within(menu).getByRole('menuitem', { name: 'Otwórz' })).not.toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
+    // The row itself opens the document: the menu holds no copy of that action.
+    await expect(within(menu).queryByRole('menuitem', { name: 'Otwórz' })).not.toBeInTheDocument();
     const note = within(menu).getByText(/Dokument wymagany przez workflow/);
     await expect(menu).toHaveAttribute('aria-describedby', note.id);
   },

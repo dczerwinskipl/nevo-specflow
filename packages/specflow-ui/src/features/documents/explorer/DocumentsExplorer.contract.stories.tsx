@@ -305,10 +305,9 @@ export const MenusPerNodeType: Story = {
     ]);
     await expect(folder.queryByText(/niedostępne|wymagany/i)).not.toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
-    // File: no creation entries (they do not apply), Otwórz first.
+    // File: no creation entries (they do not apply) and no "Open": the row itself opens it.
     const file = await openMenu(canvas, userEvent, 'zeta.md');
     await expect(file.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
-      'Otwórz',
       'Zmień nazwę',
       'Przenieś',
       'Usuń',
@@ -321,10 +320,7 @@ export const MenusPerNodeType: Story = {
         'aria-disabled',
         'true',
       );
-    await expect(requiredMenu.getByRole('menuitem', { name: 'Otwórz' })).not.toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
+    await expect(requiredMenu.queryByRole('menuitem', { name: 'Otwórz' })).not.toBeInTheDocument();
     const note = requiredMenu.getByText(/Dokument wymagany przez workflow/);
     await expect(within(document.body).getByRole('menu')).toHaveAttribute(
       'aria-describedby',

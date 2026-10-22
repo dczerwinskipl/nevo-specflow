@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 
 import {
   sectionTranslationKey,
-  type CurrentSpecOverviewItem,
   type SpecsOverview,
   type CurrentSpecTarget,
 } from './model';
@@ -79,7 +78,7 @@ export function SpecsOverviewCollection({
           {projection.items.map((item) => (
             <SpecListRow
               key={item.id}
-              item={currentRow(item as CurrentSpecOverviewItem)}
+              item={currentRow(item)}
               layout="flat"
               showProgress={provided.progress}
               specificationHref={specificationHref?.(item.id)}

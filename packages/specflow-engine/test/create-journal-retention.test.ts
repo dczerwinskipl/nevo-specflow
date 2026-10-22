@@ -14,6 +14,7 @@ import {
 import {
   COMPLETED_OPERATION_JOURNAL_RETENTION_DAYS,
   createJournalPath,
+  listCreateJournals,
   publishCreateJournal,
   readCreateJournal,
   removeExpiredCompletedCreateJournals,
@@ -132,6 +133,43 @@ describe('Create journal retention', () => {
     expect(await sweep(context, now, { limit: 2 })).toBe(2);
     expect(await sweep(context, now, { limit: 2 })).toBe(1);
     expect(await sweep(context, now, { limit: 2 })).toBe(0);
+  });
+
+  it('ignores stray stage files in the strict listing and removes old ones in the sweep', async () => {
+    const context = await fixture();
+    const now = Date.now();
+    const live = await seed(context, 'manifest-writing', 0, now);
+    const directory = join(context.project.stateRoot, 'engine/operations/create');
+    // What a SIGKILL between open() and rename() of writeJsonAtomically leaves behind.
+    const stale = '.' + randomUUID() + '.json.' + randomUUID() + '.tmp';
+    const young = '.' + randomUUID() + '.json.' + randomUUID() + '.tmp';
+    await writeFile(join(directory, stale), '{"half');
+    await writeFile(join(directory, young), '{"half');
+    await writeFile(join(directory, '.DS_Store'), 'x');
+    const old = new Date(now - 2 * 60 * 60 * 1000);
+    await utimes(join(directory, stale), old, old);
+
+    // Never throws: every future Create lists the journals under its reservation.
+    const listed = await withCreateJournalLock(context, () => listCreateJournals(context));
+    expect(listed.map((record) => record.operationId)).toEqual([live.operationId]);
+
+    expect(await sweep(context, now)).toBe(0);
+    const names = await readdir(directory);
+    expect(names).not.toContain(stale);
+    expect(names).toContain(young);
+    expect(names).toContain('.DS_Store');
+    expect(names).toContain(live.operationId + '.json');
+  });
+
+  it('still fails closed for an odd *.json entry', async () => {
+    const context = await fixture();
+    const directory = join(context.project.stateRoot, 'engine/operations/create');
+    await withCreateJournalLock(context, async () => {
+      await mkdir(join(directory, randomUUID() + '.json'));
+      await expect(listCreateJournals(context)).rejects.toMatchObject({
+        code: 'CREATE_JOURNAL_CORRUPT',
+      });
+    });
   });
 
   it('tolerates a missing journal directory', async () => {

@@ -10,6 +10,16 @@ import { UUID, invalidJournal, parseCreateJournal } from './journal-codec';
 
 export const CREATE_JOURNAL_RELATIVE_DIR = 'engine/operations/create';
 
+/**
+ * Stage file of `writeJsonAtomically` (`.<id>.json.<uuid>.tmp`). A SIGKILL or power loss between
+ * its creation and the rename leaves it behind; it is never a journal and must not wedge Create.
+ */
+const STRAY_TEMP_JOURNAL = /^.[0-9a-f-]{36}.json.[0-9a-f-]{36}.tmp$/iu;
+
+export function isStrayJournalTempName(name: string): boolean {
+  return STRAY_TEMP_JOURNAL.test(name);
+}
+
 export function validateOperationId(id: string): void {
   if (!UUID.test(id)) {
     throw new CreateOperationError('CREATE_OPERATION_INVALID', 'A UUID operationId is required.');
@@ -56,7 +66,9 @@ export async function listCreateJournals(
   const files = await readdir(path, { withFileTypes: true });
   const records: CreateJournal[] = [];
   for (const file of files) {
-    if (!file.isFile() || file.isSymbolicLink() || !file.name.endsWith('.json')) {
+    // Leftover stage files and editor/OS droppings are not journals; only a `*.json` entry is judged.
+    if (isStrayJournalTempName(file.name) || !file.name.endsWith('.json')) continue;
+    if (!file.isFile() || file.isSymbolicLink()) {
       throw invalidJournal();
     }
     const operationId = file.name.slice(0, -5);

@@ -58,6 +58,10 @@ stream must never fail or block the operation.
    `useOperationProgress({api, streamUrl, enabled})`, where `streamUrl` comes from the feature's
    own API port (`operationEventsUrl(operationId)`). Keep progress out of the operation's
    reducer: it is display state. Pass `placeholderRows` so the checklist does not move the page.
+   Give an operation that takes seconds to minutes its own page (a route carrying the
+   `operationId`, Create: `/specs/new/creating/$operationId`) rather than a panel under the form
+   that started it: the form only stores the request and navigates; the page owns sending,
+   watching and the outcome, and works from the id alone after a reload or a direct link.
 6. **Tests.** Contract schema test; adapter test (stage to step, no leaked text); an HTTP test of
    the stream with the real operation; hook and component tests (events to checklist, fallback
    when the stream fails, abort on unmount); a story at 320 px.
@@ -90,7 +94,14 @@ stream must never fail or block the operation.
   it gets the original rejection (4xx) instead of 202.
 - Polling stops on 401/403 (the owner is told; the operation stays stored) and honours `Retry-After`
   on 429.
-- Leaving the Create screen never blocks while an operation is unfinished: the server finishes it and
-  the stored operation (sessionStorage, per identity) is resumed when the user returns to Create. Only
-  closing the tab loses that, so the browser's own unload prompt covers it. Unsaved edits of an idle
+- Leaving never blocks while an operation is unfinished: the server finishes it and the stored
+  operation (sessionStorage, per identity) is resumed when the user opens Create again (the form
+  continues on the operation's page, replacing itself in the history). Unsaved edits of an idle
   form still ask before leaving.
+- The form hands over with two stored items: the request that was sent (the operation) and the
+  draft (what was entered: fields and workspace choice, plus the refusal to flag). The page
+  releases the operation when the server refused it and keeps the draft, so "Back to form" restores
+  the entries (consumed once, never in the URL); only an operation whose failure left the outcome
+  open (a lost session) stays stored and is tried again on the page.
+- A page opened by id alone (direct link) reads the inspection and shows what the server knows; a
+  404 is "operation not found" and sends nothing, because there is no retained request to send.

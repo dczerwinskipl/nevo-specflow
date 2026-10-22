@@ -83,23 +83,54 @@ canonical `specId`, not by a potentially stale worktree path.
 
 The project Create flow submits in async mode (`Prefer: respond-async`, see
 `reference.api.specflow-specification-operations`): the Runtime reserves the operation and answers
-202 at once, and the screen shows the operation as running while the work continues on the server.
-It then subscribes to the progress stream (best effort) and reads the inspection endpoint to learn
+202 at once, and the progress page (below) shows the operation as running while the work continues on
+the server. It then subscribes to the progress stream (best effort) and reads the inspection endpoint to learn
 the outcome: right away when the stream reports its end, with a slow safety-net poll while the
 stream is healthy, and with the regular backoff (3 s for the first minute, then 10 s, 10 minutes
 at most) when the stream is lost or unsupported. A reload resumes the same operation from session
-storage. The screen navigates on the inspection result, never on the stream alone. A Runtime that
+storage. The page navigates on the inspection result, never on the stream alone. A Runtime that
 ignores the preference answers 201 synchronously, which completes the flow as before.
 
 After a shared-worktree Spec archive, sibling Specs and their workspace remain unchanged.
 Integrating the whole branch and removing that workspace is a separate explicitly previewed
 Workspace Close action. Neither Create nor Close automatically runs E3–E5 workflow/provider steps.
 
+## The progress page
+
+Submitting the form does not draw anything under the form: it stores the request and what was
+entered, and continues on a dedicated page, `/specs/new/creating/:operationId` (bookmarkable and
+safe to reload). The page sends the request when the server has not seen it, follows the operation
+and tells the owner clearly what is going on:
+
+- The heading says **Creating specification**, followed by the title the owner typed and one calm
+  line about where it goes (a new workspace, with its branch when one was typed; an existing
+  workspace by name; the current project checkout). These come from what was sent, never from
+  server text. Focus moves to the heading on arrival.
+- Under it the step checklist (next section), a status line (`Preparing your specification.`,
+  after a while `Still working — this can take a minute.`, in neutral colour) and a note that the
+  owner can leave: creation continues on the server and is resumed from **New specification**.
+- **Done**: the heading becomes **Specification created**, every step is checked, and the
+  specification opens by itself after a moment; **Open specification** opens it at once.
+- **Refused before anything was done** (a taken branch, stale options, a refused name): the failure
+  explanation of the form and **Back to form**, which returns to Create with the name, goal and
+  workspace choice as they were entered (kept in session storage, not in the URL); a refused field
+  is flagged again there. The remedies of the explanation return to the form with that change made.
+- **Outcome unknown** (the answer was lost, the operation needs recovery): the same explanation and
+  a single **Check the result** / **Check operation status** action for the same operation, never a
+  second create and no way back to the form to start another.
+- **Opened without a stored request** (a direct link, cleared storage): the page asks the server and
+  shows what it knows (running: the steps without a title; finished: the specification opens;
+  failed: the explanation). An operation the server has no record of is shown calmly as
+  **Operation not found**, with a way back to Create; nothing is sent.
+
+Opening Create while an unfinished operation is stored continues on its page instead of offering a
+second create. Leaving the page never blocks.
+
 ## Live progress while creating
 
-Creating a workspace can take from a few seconds to minutes, so while the request runs the form
-shows a calm checklist of named steps under the form (the form stays as it was): the running step
-has a spinner, finished steps a check, steps that follow stay muted. The steps are the public
+Creating a workspace can take from a few seconds to minutes, so the progress page shows a calm
+checklist of named steps: the running step has a spinner, finished steps a check, steps that
+follow stay muted. The steps are the public
 vocabulary of the operation, not Git or journal internals:
 
 | Step                    | Shown as (en)                   | Shown when         |
@@ -110,12 +141,12 @@ vocabulary of the operation, not Git or journal internals:
 | `registering`           | Registering the workspace       | always             |
 
 A step that does not apply (the workspace step for the current or an existing workspace) is not
-drawn. Rows are reserved from the moment of the submit, so the page does not jump when the first
+drawn. Rows are reserved from the moment the page opens, so it does not jump when the first
 step arrives. The checklist is read by assistive technology through a polite live region and each
 row also says its state in text.
 
 Progress is best effort. If the live stream cannot be opened, drops or is unsupported, nothing is
-shown or announced and the form carries on with its own monitoring: a calm "we are watching the
+shown or announced and the page carries on with its own monitoring: a calm "we are watching the
 operation" note and the inspection polling decide the outcome. The stream never fails or delays a Create. The
 mechanism is generic (`reference.api.operation-progress`) and is reused by other long-running
 operations.

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { isCreateSpecRequest, type CreateSpecRequest } from '@nevo/specflow-contracts/specs';
 import { useAppServices } from '../../../app/useAppServices';
 import { authSessionIdentity } from '../../../auth/store';
+import type { CreateFailure } from './createFailure';
+import { initialWorkspaceChoice, type WorkspaceChoice } from './workspace/workspaceChoice';
 
 /** The request of an operation that was sent and whose outcome is not yet confirmed. */
 export type SentCreateRequest = CreateSpecRequest & { operationId: string };
@@ -12,13 +14,49 @@ export interface StoredCreateOperation {
   readonly startedAt: number;
 }
 
+/**
+ * What the owner entered into the Create form, kept while the progress page runs the operation so
+ * "Back to form" returns to the same values. It is the form's own state, never the request that
+ * was sent, and it is not in the URL. `failure` is the refusal the form should flag at its field.
+ */
+export interface CreateDraft {
+  readonly title: string;
+  readonly goal: string;
+  readonly choice: WorkspaceChoice;
+  readonly failure?: CreateFailure;
+}
+
 export interface CreateOperationStorage {
   load(): StoredCreateOperation | undefined;
   save(operation: StoredCreateOperation): void;
   clear(): void;
+  loadDraft(): CreateDraft | undefined;
+  saveDraft(draft: CreateDraft): void;
+  clearDraft(): void;
 }
 
 const keyPrefix = 'specflow.create.operation.v1:';
+const draftKeyPrefix = 'specflow.create.draft.v1:';
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** A draft only seeds form fields, so a damaged one is dropped; the choice is merged onto defaults. */
+function toDraft(value: unknown): CreateDraft | undefined {
+  if (!isRecord(value) || typeof value.title !== 'string' || typeof value.goal !== 'string')
+    return undefined;
+  if (!isRecord(value.choice)) return undefined;
+  const failure =
+    isRecord(value.failure) && typeof value.failure.kind === 'string'
+      ? (value.failure as unknown as CreateFailure)
+      : undefined;
+  return {
+    title: value.title,
+    goal: value.goal,
+    choice: { ...initialWorkspaceChoice, ...(value.choice as Partial<WorkspaceChoice>) },
+    ...(failure ? { failure } : {}),
+  };
+}
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
@@ -47,6 +85,7 @@ export function createSessionOperationStorage(
   storage: StorageLike | undefined,
 ): CreateOperationStorage {
   const key = `${keyPrefix}${identity}`;
+  const draftKey = `${draftKeyPrefix}${identity}`;
   return {
     load() {
       try {
@@ -70,6 +109,31 @@ export function createSessionOperationStorage(
     clear() {
       try {
         storage?.removeItem(key);
+      } catch {
+        // Persistence is best effort.
+      }
+    },
+    loadDraft() {
+      try {
+        const raw = storage?.getItem(draftKey);
+        if (!raw) return undefined;
+        const draft = toDraft(JSON.parse(raw));
+        if (!draft) storage?.removeItem(draftKey);
+        return draft;
+      } catch {
+        return undefined;
+      }
+    },
+    saveDraft(draft) {
+      try {
+        storage?.setItem(draftKey, JSON.stringify(draft));
+      } catch {
+        // Persistence is best effort.
+      }
+    },
+    clearDraft() {
+      try {
+        storage?.removeItem(draftKey);
       } catch {
         // Persistence is best effort.
       }

@@ -3,6 +3,7 @@ import {
   createSessionOperationStorage,
   type StoredCreateOperation,
 } from './createOperationStorage';
+import { initialWorkspaceChoice } from './workspace/workspaceChoice';
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const values = new Map(Object.entries(initial));
@@ -60,6 +61,43 @@ describe('create operation storage', () => {
     });
     const storage = createSessionOperationStorage('user:a', backing);
     expect(storage.load()).toBeUndefined();
+    expect(backing.values.size).toBe(0);
+  });
+
+  it('keeps the form draft per identity, separate from the operation', () => {
+    const backing = memoryStorage();
+    const mine = createSessionOperationStorage('user:a', backing);
+    mine.save(operation);
+    mine.saveDraft({
+      title: 'Title',
+      goal: 'Goal',
+      choice: { ...initialWorkspaceChoice, tile: 'new' },
+      failure: { kind: 'name-conflict' },
+    });
+    mine.clear();
+    expect(mine.loadDraft()).toMatchObject({
+      title: 'Title',
+      goal: 'Goal',
+      choice: { tile: 'new' },
+      failure: { kind: 'name-conflict' },
+    });
+    expect(createSessionOperationStorage('user:b', backing).loadDraft()).toBeUndefined();
+    mine.clearDraft();
+    expect(mine.loadDraft()).toBeUndefined();
+  });
+
+  it('completes an older draft choice with the defaults and drops a damaged draft', () => {
+    const backing = memoryStorage({
+      'specflow.create.draft.v1:user:a': JSON.stringify({
+        title: 'T',
+        goal: '',
+        choice: { tile: 'main' },
+      }),
+    });
+    const storage = createSessionOperationStorage('user:a', backing);
+    expect(storage.loadDraft()?.choice).toEqual({ ...initialWorkspaceChoice, tile: 'main' });
+    backing.values.set('specflow.create.draft.v1:user:a', JSON.stringify({ title: 5 }));
+    expect(storage.loadDraft()).toBeUndefined();
     expect(backing.values.size).toBe(0);
   });
 

@@ -20,14 +20,15 @@ interface StepCopy {
 /**
  * Copy of the public step vocabulary of `specification-create` (the Runtime maps its journal onto
  * these ids and never exposes raw stages). Exhaustive by type: a new public step cannot ship
- * without its entry, and adding one (for example `committing-specification`) is exactly one entry
- * here plus its three catalogue keys. A pending step needs no entry of its own: it always reads
+ * without its entry, and adding one is exactly one entry here plus its three
+ * catalogue keys. A pending step needs no entry of its own: it always reads
  * "Waiting for previous step".
  */
 const stepCopy = {
   reserving: stepEntry('reserving'),
   'preparing-workspace': stepEntry('preparing-workspace'),
   'writing-specification': stepEntry('writing-specification'),
+  'committing-specification': stepEntry('committing-specification'),
   registering: stepEntry('registering'),
 } satisfies Record<SpecificationCreateStep, StepCopy>;
 
@@ -79,19 +80,23 @@ const stepOrder: readonly SpecificationCreateStep[] = [
   'reserving',
   'preparing-workspace',
   'writing-specification',
+  'committing-specification',
   'registering',
 ];
 
 /**
  * The checklist of a finished Create, for when the live stream is gone (it is closed once the
- * operation concluded): every step done, the workspace step only when one is prepared.
+ * operation concluded): every step done, the workspace step only when one is prepared and the
+ * commit step only when the Engine commits the scaffold (Git enabled, `commits` in the options).
  */
 export function createCompletedSteps(
   target: CreateSpecRequest['target'],
+  commits = false,
 ): readonly OperationProgressStep[] {
   return createProgressSteps(
     stepOrder
       .filter((id) => id !== 'preparing-workspace' || target?.kind === 'new-worktree')
+      .filter((id) => id !== 'committing-specification' || commits)
       .map((id) => ({ id, status: 'done' as const })),
   );
 }

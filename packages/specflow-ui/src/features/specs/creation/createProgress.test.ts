@@ -43,10 +43,10 @@ describe('Create progress copy', () => {
   it('draws a step id this build does not know generically instead of dropping it', () => {
     const steps = createProgressSteps([
       { id: 'reserving', status: 'done' },
-      { id: 'committing-specification', status: 'running' },
+      { id: 'future-step', status: 'running' },
     ]);
     expect(words(steps)[1]).toEqual(['Next step', 'In progress', 'running']);
-    expect(steps[1]?.id).toBe('committing-specification');
+    expect(steps[1]?.id).toBe('future-step');
   });
 
   it('every known step has a title and a running and a done line in both languages', () => {
@@ -56,6 +56,7 @@ describe('Create progress copy', () => {
         'reserving',
         'preparing-workspace',
         'writing-specification',
+        'committing-specification',
         'registering',
       ]) {
         for (const part of ['title', 'running', 'done'])
@@ -72,6 +73,24 @@ describe('Create progress copy', () => {
       'registering',
     ]);
     expect(createCompletedSteps(undefined).map((s) => s.id)).not.toContain('preparing-workspace');
+  });
+
+  it('names the commit step and lists it only when the Engine commits the scaffold', () => {
+    expect(
+      words(createProgressSteps([{ id: 'committing-specification', status: 'running' }])),
+    ).toEqual([
+      ['Saving the specification in Git', 'Committing the specification files', 'running'],
+    ]);
+    expect(createCompletedSteps({ kind: 'new-worktree' }, true).map((s) => s.id)).toEqual([
+      'reserving',
+      'preparing-workspace',
+      'writing-specification',
+      'committing-specification',
+      'registering',
+    ]);
+    expect(
+      createCompletedSteps({ kind: 'existing', workspaceId: 'w' }, true).map((s) => s.id),
+    ).toEqual(['reserving', 'writing-specification', 'committing-specification', 'registering']);
   });
 
   it('the neutral row never lists steps and says when the live stream is unavailable', () => {

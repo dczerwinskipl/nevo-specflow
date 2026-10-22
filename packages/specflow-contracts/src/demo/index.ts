@@ -102,6 +102,7 @@ const WorkspaceReason = Type.Union([
   Type.Literal('dirty'),
   Type.Literal('branch-protected'),
   Type.Literal('branch-not-allowed'),
+  Type.Literal('git-policy-invalid'),
 ]);
 /**
  * Demo mirror of the PR #53 `CreateOptionsSchema` (same field names and semantics).

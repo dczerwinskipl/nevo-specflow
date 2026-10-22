@@ -1012,6 +1012,11 @@
           "running": "Zapisujemy pliki specyfikacji",
           "done": "Pliki specyfikacji zapisane"
         },
+        "committing-specification": {
+          "title": "Zapisywanie specyfikacji w Git",
+          "running": "Zapisujemy pliki specyfikacji w commicie",
+          "done": "Pliki specyfikacji zapisane w Git"
+        },
         "registering": {
           "title": "Kończenie konfiguracji",
           "running": "Rejestrujemy nową specyfikację",

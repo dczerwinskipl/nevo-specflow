@@ -1012,6 +1012,11 @@
           "running": "Writing the specification files",
           "done": "Specification files written"
         },
+        "committing-specification": {
+          "title": "Saving the specification in Git",
+          "running": "Committing the specification files",
+          "done": "Specification files saved in Git"
+        },
         "registering": {
           "title": "Finishing setup",
           "running": "Registering the new specification",

@@ -16,6 +16,7 @@ const Reason = Type.Union([
   Type.Literal('branch-protected'),
   /** Only with `git.enabled`: `git.commits.allowedBranches` is set and the branch matches none. */
   Type.Literal('branch-not-allowed'),
+  Type.Literal('git-policy-invalid'),
 ]);
 
 /**

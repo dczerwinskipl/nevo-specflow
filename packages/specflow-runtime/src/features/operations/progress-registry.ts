@@ -1,4 +1,5 @@
 import {
+  OPERATION_NOT_FOUND_CODE,
   isTerminalOperationProgressEvent,
   type OperationProgressEvent,
   type OperationStepStatus,
@@ -71,7 +72,7 @@ export interface OperationProgressRegistryOptions {
 }
 
 export const DEFAULT_PROGRESS_WAIT_MS = 30_000;
-export const OPERATION_NOT_FOUND_CODE = 'OPERATION_NOT_FOUND';
+export { OPERATION_NOT_FOUND_CODE };
 
 interface Entry {
   readonly operationId: string;

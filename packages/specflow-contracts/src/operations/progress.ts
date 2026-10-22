@@ -137,6 +137,12 @@ export const OPERATION_PROGRESS_EVENT_TYPES = [
   'recovery-required',
 ] as const satisfies readonly OperationProgressEventType[];
 
+/**
+ * Code of the synthetic `failed` event a stream sends for an operation id the Runtime does not know
+ * (nothing was started, or it left the retention window). It says nothing about the operation.
+ */
+export const OPERATION_NOT_FOUND_CODE = 'OPERATION_NOT_FOUND';
+
 export function isTerminalOperationProgressEvent(event: { readonly type: string }): boolean {
   return (
     event.type === 'completed' || event.type === 'failed' || event.type === 'recovery-required'

@@ -1,3 +1,4 @@
+import { Value } from 'typebox/value';
 import { Type, type Static } from 'typebox';
 
 import { SPEC_SLUG_MAX_LENGTH, SPEC_SLUG_PATTERN } from './slug';
@@ -107,3 +108,8 @@ export const CreateOperationInspectionSchema = Type.Union([
   CreatedSpecSchema,
 ]);
 export type CreateOperationInspection = Static<typeof CreateOperationInspectionSchema>;
+
+/** Runtime check of an untrusted value (for example a stored request) against the request schema. */
+export function isCreateSpecRequest(value: unknown): value is CreateSpecRequest {
+  return Value.Check(CreateSpecRequestSchema, value);
+}

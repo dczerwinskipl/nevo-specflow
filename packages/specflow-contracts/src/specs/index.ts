@@ -12,6 +12,7 @@ export {
   CreateSpecRequestSchema,
   CreatedSpecSchema,
   ExistingSpecTargetSchema,
+  isCreateSpecRequest,
   NewSpecWorktreeTargetSchema,
   type CreateOperationAccepted,
   type CreateOperationInspection,

@@ -11,6 +11,7 @@ import { VisitStateProvider } from '../../../app/VisitStateProvider';
 import { withLocale } from '../../../i18n/StoryLocalization';
 import { createSpecFlowAppServices } from '../../../services';
 import type { OperationsApi } from '../../../shared/operations/operationsApi';
+import { createOperationEventsUrl } from './api.project';
 import { CreateSpecificationScreen } from './CreateSpecificationScreen';
 import { createOptionsFixture } from './creationOptions.stories-support';
 
@@ -39,7 +40,7 @@ function operationsFor(behavior: StreamBehavior): OperationsApi {
     { ...operationBase, type: 'step', step: 'preparing-workspace', status: 'running' },
   ];
   return {
-    async *watchProgress(_kind, _id, signal) {
+    async *watchProgress(_streamUrl, signal) {
       if (behavior === 'unavailable') throw new Error('Stream unavailable');
       for (const event of events) {
         await new Promise((resolve) => setTimeout(resolve, 60));
@@ -72,6 +73,7 @@ function Fixture({ stream = 'steps' }: { stream?: StreamBehavior }) {
               kind: 'specification-create' as const,
               status: 'in-progress' as const,
             }),
+          operationEventsUrl: createOperationEventsUrl,
         },
         operationsApi: operationsFor(stream),
       }),

@@ -80,10 +80,9 @@ interface Seen {
 
 /** Connects first and resolves `events` when the server closes the stream after its terminal event. */
 async function subscribe(url: string, headers: Record<string, string>, operationId: string) {
-  const response = await fetch(
-    `${url}/api/operations/${operationId}/events?kind=specification-create`,
-    { headers },
-  );
+  const response = await fetch(`${url}/api/specs/create/operations/${operationId}/events`, {
+    headers,
+  });
   expect(response.status).toBe(200);
   const events = (async () => {
     const seen: Seen[] = [];

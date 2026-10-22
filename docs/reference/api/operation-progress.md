@@ -10,8 +10,8 @@ read_when:
   - adding a new operation kind to the progress stream
   - changing the progress event schemas or the events endpoint
 summary: >
-  Kind-agnostic Server-Sent Events stream of long-running operations: endpoint, event model,
-  step vocabulary per operation kind, replay, waiting and fallback rules.
+  Server-Sent Events stream of long-running operations: per-feature routes over one shared
+  mechanism, event model, step vocabulary per operation kind, replay, waiting and fallback rules.
 related:
   - reference.api.specflow-specification-operations
   - engineering.shared.operation-progress
@@ -21,22 +21,26 @@ related:
 # Operation progress events (SSE) HTTP reference
 
 Exact schemas are in `packages/specflow-contracts/src/operations/`; the broadcaster and the endpoint
-are in `packages/specflow-runtime/src/features/operations/`. The stream is a **display aid**: it
+are in `packages/specflow-runtime/src/features/operations/`. The mechanism (event envelope, registry,
+SSE framing) is shared and kind-agnostic; the **route** of each operation belongs to its feature and is
+registered next to that feature's inspection endpoint. The stream is a **display aid**: it
 tells a client which named step a long-running operation is in. It never replaces the operation's
 own endpoint or inspection, which stay the source of truth.
 
 ## Endpoint
 
-| HTTP | Route                                             | Result                                                   |
-| ---- | ------------------------------------------------- | -------------------------------------------------------- |
-| GET  | `/api/operations/:operationId/events?kind=<kind>` | 200 `text/event-stream`, closes after the terminal event |
+| Kind                   | HTTP | Route                                              | Result                                                   |
+| ---------------------- | ---- | -------------------------------------------------- | -------------------------------------------------------- |
+| `specification-create` | GET  | `/api/specs/create/operations/:operationId/events` | 200 `text/event-stream`, closes after the terminal event |
 
-- `operationId` is the client-generated UUID of the operation; `kind` (required) selects the
-  operation kind. An unknown `kind` or a malformed id is 400.
-- Authorization is owned by the kind: the stream requires the same capability as the operation
-  itself (for `specification-create`, project-wide Spec `Create`). It is checked before anything
-  about the operation is revealed; 401/403 use the existing Auth schemas. An operation of another
-  kind is indistinguishable from an unknown one.
+There is no global `/api/operations/...` route and no `kind` query parameter: the route implies the
+kind, and the registry is keyed by (kind, operationId).
+
+- `operationId` is the client-generated UUID of the operation. A malformed id is 400.
+- Authorization is the one of the feature's inspection endpoint (for `specification-create`,
+  project-wide Spec `Create`). It is checked before anything about the operation is revealed;
+  401/403 use the existing Auth schemas. An operation of another kind is indistinguishable from an
+  unknown one.
 - `Cache-Control: no-store`. A comment line `: heartbeat` is sent about every 15 s while quiet.
   The stream closes after the terminal event (`completed`, `failed` or `recovery-required`).
 - `Last-Event-ID` is honoured: events after that id are replayed. An id the Runtime does not know
@@ -106,7 +110,8 @@ of the stream. The response of the operation request and its inspection remain a
 
 ## Demo Runtime
 
-The demo Runtime serves the same endpoint for the same kind. Its Create publishes the same steps
+The demo Runtime serves the same mechanism on its own Create route,
+`GET /api/demo/specifications/operations/:operationId/events`, for the same kind. Its Create publishes the same steps
 immediately (a late subscriber replays them); when the demo scenario seam is enabled the scenario
 `slow-create` paces the steps (150 ms) so a live checklist can be observed. Forced demo failures are
 published as `failed` with the demo error code.

@@ -16,8 +16,8 @@ function controlledApi() {
   const signals: AbortSignal[] = [];
   const opened = vi.fn();
   const api: OperationsApi = {
-    async *watchProgress(kind, id, signal) {
-      opened(kind, id);
+    async *watchProgress(streamUrl, signal) {
+      opened(streamUrl);
       if (signal) signals.push(signal);
       for (;;) {
         while (queue.length === 0) {
@@ -45,13 +45,14 @@ function controlledApi() {
   };
 }
 
+const streamUrlOf = (id: string) => `/api/specs/create/operations/${id}/events`;
+
 function setup(api: OperationsApi, props: { enabled: boolean; operationId?: string }) {
   return renderHook(
     (current: { enabled: boolean; operationId?: string }) =>
       useOperationProgress({
         api,
-        kind: 'specification-create',
-        operationId: current.operationId,
+        streamUrl: current.operationId ? streamUrlOf(current.operationId) : undefined,
         enabled: current.enabled,
       }),
     { initialProps: { ...props, operationId: props.operationId ?? operationId } },
@@ -93,7 +94,7 @@ describe('useOperationProgress', () => {
     ]);
     await emit(stream, { ...base, type: 'step', step: 'reserving', status: 'done' });
     expect(hook.result.current.steps[0]).toEqual({ id: 'reserving', status: 'done' });
-    expect(stream.opened).toHaveBeenCalledWith('specification-create', operationId);
+    expect(stream.opened).toHaveBeenCalledWith(streamUrlOf(operationId));
   });
 
   it('does not open a stream while disabled or without an operation id', () => {
@@ -103,8 +104,7 @@ describe('useOperationProgress', () => {
     const renderWithoutId = renderHook(() =>
       useOperationProgress({
         api: stream.api,
-        kind: 'specification-create',
-        operationId: undefined,
+        streamUrl: undefined,
         enabled: true,
       }),
     );

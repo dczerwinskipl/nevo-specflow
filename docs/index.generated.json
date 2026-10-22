@@ -2258,7 +2258,7 @@
         "adding a kind to the operation progress stream",
         "consuming operation progress in the UI"
       ],
-      "summary": "How the generic operation progress mechanism is layered (contracts registry, Runtime broadcaster, UI port, hook and checklist) and a recipe to add it to another operation.",
+      "summary": "How the generic operation progress mechanism is layered (contracts registry, Runtime broadcaster and route helper, UI port, hook and checklist) and a recipe to add it to another operation: one feature route plus an adapter.",
       "related": [
         "reference.api.operation-progress",
         "engineering.shared.async-and-lifecycle",
@@ -5048,7 +5048,7 @@
         "adding a new operation kind to the progress stream",
         "changing the progress event schemas or the events endpoint"
       ],
-      "summary": "Kind-agnostic Server-Sent Events stream of long-running operations: endpoint, event model, step vocabulary per operation kind, replay, waiting and fallback rules.",
+      "summary": "Server-Sent Events stream of long-running operations: per-feature routes over one shared mechanism, event model, step vocabulary per operation kind, replay, waiting and fallback rules.",
       "related": [
         "reference.api.specflow-specification-operations",
         "engineering.shared.operation-progress",

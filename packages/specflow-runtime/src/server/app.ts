@@ -36,7 +36,7 @@ import {
 } from '../demo';
 import {
   createOperationProgressRegistry,
-  createOperationsFeature,
+  type OperationEventsStreamOptions,
   type OperationProgressRegistry,
 } from '../features/operations';
 import type { RuntimeFeature } from '../features/runtime-feature';
@@ -115,6 +115,14 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         )
       : undefined;
   const progressRegistry = dependencies.operations?.registry ?? createOperationProgressRegistry();
+  const progressStream: OperationEventsStreamOptions = {
+    ...(dependencies.operations?.heartbeatMs !== undefined
+      ? { heartbeatMs: dependencies.operations.heartbeatMs }
+      : {}),
+    ...(dependencies.operations?.waitMs !== undefined
+      ? { waitMs: dependencies.operations.waitMs }
+      : {}),
+  };
   const sessionReferences: SessionReferenceOwner | undefined =
     demo?.sessionReferences ?? dependencies.sessions?.references;
   const documentSource = demo?.documentSource ?? dependencies.documents?.source;
@@ -127,12 +135,8 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         workspaceRepository: dependencies.specs?.workspaceRepository ?? demo?.workspaceRepository,
         contributions: dependencies.specs?.contributions ?? demo?.contributions,
         sessions: sessionReferences,
-        progress: {
-          registry: progressRegistry,
-          ...(demo
-            ? { createScope: { projectId: demo.environment.state.catalogue.project.id } }
-            : {}),
-        },
+        // The demo Runtime serves its own Create routes (and events route) below.
+        ...(demo ? {} : { progress: { registry: progressRegistry, stream: progressStream } }),
       },
     }),
     createTasksFeature({
@@ -146,18 +150,6 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     createSessionsFeature(),
     createSettingsFeature(),
   ];
-
-  const operationsFeature = createOperationsFeature({
-    registry: progressRegistry,
-    kinds: productFeatures.flatMap((feature) => feature.operationKinds ?? []),
-    ...(dependencies.operations?.heartbeatMs !== undefined
-      ? { heartbeatMs: dependencies.operations.heartbeatMs }
-      : {}),
-    ...(dependencies.operations?.waitMs !== undefined
-      ? { waitMs: dependencies.operations.waitMs }
-      : {}),
-  });
-  const allFeatures: readonly RuntimeFeature[] = [...productFeatures, operationsFeature];
 
   const authFeature = createAuthFeature({
     authentication: config.authentication,
@@ -185,11 +177,11 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     },
   );
 
-  for (const feature of allFeatures) {
+  for (const feature of productFeatures) {
     await feature.register?.(app);
   }
 
-  if (demo) registerDemoRoutes(app, demo, progressRegistry);
+  if (demo) registerDemoRoutes(app, demo, { registry: progressRegistry, stream: progressStream });
 
   if (dependencies.webApp) {
     registerRuntimeWebApp(app, dependencies.webApp);

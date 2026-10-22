@@ -1,5 +1,9 @@
-export { createOperationsFeature, type OperationsFeatureOptions } from './feature';
-export type { OperationKindRegistration } from './kind-registration';
+export {
+  DEFAULT_PROGRESS_HEARTBEAT_MS,
+  registerOperationEventsRoute,
+  type OperationEventsRoute,
+  type OperationEventsStreamOptions,
+} from './events-route';
 export {
   createOperationProgressRegistry,
   OPERATION_NOT_FOUND_CODE,

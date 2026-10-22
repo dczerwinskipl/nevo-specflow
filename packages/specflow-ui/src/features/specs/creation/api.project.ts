@@ -24,7 +24,16 @@ export interface ProjectCreationApi {
   createOptions(signal?: AbortSignal): Promise<CreateOptions>;
   create(input: CreateSpecRequest, signal?: AbortSignal): Promise<CreatedSpec>;
   inspectOperation(operationId: string, signal?: AbortSignal): Promise<CreateOperationInspection>;
+  /** URL of the live progress stream (SSE) of one Create operation, next to its inspection route. */
+  operationEventsUrl(operationId: string): string;
 }
+
+const operationPath = (operationId: string) =>
+  `/api/specs/create/operations/${encodeURIComponent(operationId)}`;
+
+/** Route of the Create progress stream; owned by the Create feature, not by `shared/operations`. */
+export const createOperationEventsUrl = (operationId: string) =>
+  `${operationPath(operationId)}/events`;
 
 export const projectCreationKeys = {
   createOptions: ['specs', 'create', 'options'] as const,
@@ -50,13 +59,11 @@ export function createProjectCreationApi(api: ApiTransport): ProjectCreationApi 
         isValid: (data) => isObject(data) && typeof data.specId === 'string',
       }),
     inspectOperation: (operationId, signal) =>
-      api.get<CreateOperationInspection>(
-        `/api/specs/create/operations/${encodeURIComponent(operationId)}`,
-        {
-          operation: 'specs.create.inspect',
-          signal,
-          isValid: (data) => isObject(data) && typeof data.status === 'string',
-        },
-      ),
+      api.get<CreateOperationInspection>(operationPath(operationId), {
+        operation: 'specs.create.inspect',
+        signal,
+        isValid: (data) => isObject(data) && typeof data.status === 'string',
+      }),
+    operationEventsUrl: createOperationEventsUrl,
   };
 }

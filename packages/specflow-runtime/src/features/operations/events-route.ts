@@ -1,16 +1,13 @@
-import {
-  OperationKindQuerySchema,
-  OperationProgressParamsSchema,
-  type OperationKind,
-} from '@nevo/specflow-contracts/operations';
+import { OperationProgressParamsSchema } from '@nevo/specflow-contracts/operations';
 import {
   AuthenticationRequiredErrorResponseSchema,
   AuthorizationForbiddenErrorResponseSchema,
 } from '@nevo/specflow-contracts/authorization';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import type { FastifyPluginCallback } from 'fastify';
+import type { ServerResponse } from 'node:http';
 
-import type { OperationKindRegistration } from './kind-registration';
+import type { FastifyInstance, FastifyRequest, RawServerBase } from 'fastify';
+
 import {
   DEFAULT_PROGRESS_WAIT_MS,
   type OperationProgressRegistry,
@@ -19,28 +16,39 @@ import {
 
 export const DEFAULT_PROGRESS_HEARTBEAT_MS = 15_000;
 
-export interface OperationProgressEndpointOptions {
-  readonly registry: OperationProgressRegistry;
-  readonly kinds: readonly OperationKindRegistration[];
+/** Tuning of the SSE stream (tests shorten both). */
+export interface OperationEventsStreamOptions {
   readonly heartbeatMs?: number;
   readonly waitMs?: number;
 }
 
+export interface OperationEventsRoute {
+  /** Route path owned by the feature; must contain the `:operationId` parameter. */
+  readonly path: string;
+  /** The operation kind (a key of the contracts registry) this route streams. */
+  readonly kind: string;
+  /**
+   * Same authentication and authorization as the feature's inspection endpoint. Runs before
+   * anything about the operation is revealed; throws an auth error (rendered by the Runtime).
+   */
+  authorize(request: FastifyRequest): void | Promise<void>;
+  readonly registry: OperationProgressRegistry;
+  readonly stream?: OperationEventsStreamOptions;
+}
+
 /**
- * `GET /api/operations/:operationId/events?kind=<kind>`: kind-agnostic Server-Sent Events stream
- * of a long-running operation. The kind selects the authorization (owned by the kind's feature)
- * before anything about the operation is revealed.
+ * Registers `GET <path>`: the Server-Sent Events stream of one long-running operation of one kind.
+ * The routing, authorization and URL belong to the owning feature (next to its inspection
+ * endpoint); everything else (framing, replay with `Last-Event-ID`, heartbeat, closing after the
+ * terminal event, shutdown) is this shared mechanism. Adding progress to another operation is one
+ * call of this helper plus an adapter that feeds the registry.
  */
-export const operationProgressEndpoint: FastifyPluginCallback<OperationProgressEndpointOptions> = (
-  app,
-  options,
-  done,
-) => {
-  const kinds = new Map<OperationKind, OperationKindRegistration>(
-    options.kinds.map((registration) => [registration.kind, registration]),
-  );
-  const heartbeatMs = options.heartbeatMs ?? DEFAULT_PROGRESS_HEARTBEAT_MS;
-  const waitMs = options.waitMs ?? DEFAULT_PROGRESS_WAIT_MS;
+export function registerOperationEventsRoute<RawServer extends RawServerBase>(
+  app: FastifyInstance<RawServer>,
+  route: OperationEventsRoute,
+): void {
+  const heartbeatMs = route.stream?.heartbeatMs ?? DEFAULT_PROGRESS_HEARTBEAT_MS;
+  const waitMs = route.stream?.waitMs ?? DEFAULT_PROGRESS_WAIT_MS;
   const open = new Set<AbortController>();
 
   app.addHook('preClose', (closed) => {
@@ -49,20 +57,14 @@ export const operationProgressEndpoint: FastifyPluginCallback<OperationProgressE
   });
 
   app.withTypeProvider<TypeBoxTypeProvider>().get(
-    '/api/operations/:operationId/events',
+    route.path,
     {
       preHandler: async (request) => {
-        const registration = kinds.get((request.query as { kind: OperationKind }).kind);
-        if (!registration) {
-          // Unregistered kind: same shape as an unauthorized one, nothing is revealed.
-          request.authz.requireAccess();
-          throw Object.assign(new Error('Unknown operation kind.'), { statusCode: 404 });
-        }
-        await registration.authorize(request);
+        // The Runtime serves HTTP/1 only; the generic RawServer is just the caller's app type.
+        await route.authorize(request as unknown as FastifyRequest);
       },
       schema: {
         params: OperationProgressParamsSchema,
-        querystring: OperationKindQuerySchema,
         response: {
           401: AuthenticationRequiredErrorResponseSchema,
           403: AuthorizationForbiddenErrorResponseSchema,
@@ -71,13 +73,12 @@ export const operationProgressEndpoint: FastifyPluginCallback<OperationProgressE
     },
     async (request, reply) => {
       const { operationId } = request.params;
-      const { kind } = request.query;
       const lastEventId = parseLastEventId(request.headers['last-event-id']);
 
       const controller = new AbortController();
       open.add(controller);
       reply.hijack();
-      const raw = reply.raw;
+      const raw = reply.raw as ServerResponse;
       raw.on('close', () => controller.abort());
       raw.writeHead(200, {
         'Content-Type': 'text/event-stream; charset=utf-8',
@@ -91,7 +92,7 @@ export const operationProgressEndpoint: FastifyPluginCallback<OperationProgressE
       }, heartbeatMs);
 
       try {
-        for await (const item of options.registry.watch(operationId, kind, {
+        for await (const item of route.registry.watch(operationId, route.kind, {
           ...(lastEventId !== undefined ? { lastEventId } : {}),
           waitMs,
           signal: controller.signal,
@@ -106,8 +107,7 @@ export const operationProgressEndpoint: FastifyPluginCallback<OperationProgressE
       }
     },
   );
-  done();
-};
+}
 
 function frame(item: StoredProgressEvent): string {
   return (

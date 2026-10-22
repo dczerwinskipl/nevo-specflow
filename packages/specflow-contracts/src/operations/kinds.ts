@@ -45,11 +45,6 @@ export function isOperationKind(value: string): value is OperationKind {
   return Object.hasOwn(OPERATION_KINDS, value);
 }
 
-export const OperationKindQuerySchema = Type.Object(
-  { kind: Type.Union(OPERATION_KIND_IDS.map((kind) => Type.Literal(kind))) },
-  { additionalProperties: false },
-);
-
 /** Strict per-kind event schema, e.g. for contract tests of fixtures. */
 export function operationProgressEventSchema<TKind extends OperationKind>(kind: TKind) {
   return OPERATION_KINDS[kind].eventSchema;

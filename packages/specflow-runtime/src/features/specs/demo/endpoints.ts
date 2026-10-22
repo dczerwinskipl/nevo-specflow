@@ -21,8 +21,17 @@ import {
 import type { DemoState } from '../../../demo/state';
 import { DemoTargetError, parseScenarios, type DemoScenario } from './create-options';
 import type { DemoSpecs } from './operations';
-import type { OperationProgressRegistry } from '../../operations';
+import {
+  registerOperationEventsRoute,
+  type OperationEventsStreamOptions,
+  type OperationProgressRegistry,
+} from '../../operations';
 import { startCreateProgress } from '../create/progress';
+
+export interface DemoProgress {
+  readonly registry: OperationProgressRegistry;
+  readonly stream?: OperationEventsStreamOptions;
+}
 
 const DEMO_STEP_DELAY_MS = 150;
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -34,7 +43,7 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
   state: DemoState,
   specs: DemoSpecs,
   catalogue: DemoCatalogue,
-  progress?: OperationProgressRegistry,
+  progress?: DemoProgress,
 ) {
   const typed = app.withTypeProvider<TypeBoxTypeProvider>();
   /**
@@ -111,6 +120,21 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
       );
     },
   );
+  if (progress) {
+    // Same shared mechanism as the real Runtime, owned by the demo Create feature.
+    registerOperationEventsRoute(app, {
+      path: '/api/demo/specifications/operations/:operationId/events',
+      kind: 'specification-create',
+      authorize: (request) =>
+        request.authz.require({
+          resource: SpecCapabilities,
+          capability: SpecCapabilities.capabilities.Create,
+          scope: { projectId: state.catalogue.project.id },
+        }),
+      registry: progress.registry,
+      ...(progress.stream ? { stream: progress.stream } : {}),
+    });
+  }
   typed.get(
     '/api/demo/specification-creation',
     {
@@ -175,9 +199,9 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
       const active = scenarios(request);
       if (!active) return reply.code(400).send(invalidScenario);
       const targetKind = request.body.target?.kind === 'new-worktree' ? 'new-worktree' : 'existing';
-      // Same generic stream as the real Runtime (`GET /api/operations/:id/events`).
+      // Same generic stream as the real Runtime (`GET /api/demo/specifications/operations/:id/events`).
       const reporter = progress
-        ? startCreateProgress(progress, request.body.operationId, targetKind)
+        ? startCreateProgress(progress.registry, request.body.operationId, targetKind)
         : undefined;
       try {
         const outcome = specs.createWithOutcome(

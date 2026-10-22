@@ -11,7 +11,7 @@ import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import type { OperationProgressEvent } from '@nevo/specflow-contracts/operations';
 import type { OperationsApi } from '../../../shared/operations/operationsApi';
-import type { ProjectCreationApi } from './api.project';
+import { createOperationEventsUrl, type ProjectCreationApi } from './api.project';
 import { CreateSpecificationScreen } from './CreateSpecificationScreen';
 import { createOptionsFixture } from './creationOptions.stories-support';
 
@@ -43,7 +43,10 @@ function renderScreen(
   const onProjectCreated = vi.fn();
   const services = createSpecFlowAppServices({
     runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode }) },
-    projectCreationApi: projectCreationApi as ProjectCreationApi,
+    projectCreationApi: {
+      operationEventsUrl: createOperationEventsUrl,
+      ...projectCreationApi,
+    } as ProjectCreationApi,
     operationsApi,
   });
   render(
@@ -200,7 +203,7 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
       const signals: AbortSignal[] = [];
       let wake: (() => void) | undefined;
       const api: OperationsApi = {
-        async *watchProgress(_kind, _id, signal) {
+        async *watchProgress(_streamUrl, signal) {
           if (signal) signals.push(signal);
           for (;;) {
             while (queue.length === 0) {

@@ -9,7 +9,8 @@ read_when:
   - consuming operation progress in the UI
 summary: >
   How the generic operation progress mechanism is layered (contracts registry, Runtime
-  broadcaster, UI port, hook and checklist) and a recipe to add it to another operation.
+  broadcaster and route helper, UI port, hook and checklist) and a recipe to add it to another
+  operation: one feature route plus an adapter.
 related:
   - reference.api.operation-progress
   - engineering.shared.async-and-lifecycle
@@ -24,13 +25,13 @@ stream must never fail or block the operation.
 
 ## Layers (one owner each)
 
-| Layer      | Owner                                                              | Knows                                                                                                           |
-| ---------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| Contracts  | `specflow-contracts/src/operations/`                               | event envelope, registry of kinds, step ids and typed result per kind                                           |
-| Engine     | the operation itself                                               | its own stages; exposes a read-only observer, never HTTP                                                        |
-| Runtime    | `specflow-runtime/src/features/operations/` and the kind's feature | broadcaster, SSE endpoint, authorization hook per kind, the adapter from the operation's stages to public steps |
-| UI shared  | `specflow-ui/src/shared/operations/`                               | port (`OperationsApi`), pure reducer, `useOperationProgress`, `OperationProgress` checklist; no operation kind  |
-| UI feature | the operation's feature                                            | copy of the steps (typed `Message`s), where the checklist is drawn                                              |
+| Layer      | Owner                                                              | Knows                                                                                                                                                            |
+| ---------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contracts  | `specflow-contracts/src/operations/`                               | event envelope, registry of kinds, step ids and typed result per kind                                                                                            |
+| Engine     | the operation itself                                               | its own stages; exposes a read-only observer, never HTTP                                                                                                         |
+| Runtime    | `specflow-runtime/src/features/operations/` and the kind's feature | shared: registry keyed by (kind, operationId) and `registerOperationEventsRoute`; feature: the route, its authorization, the adapter from stages to public steps |
+| UI shared  | `specflow-ui/src/shared/operations/`                               | port (`OperationsApi.watchProgress(streamUrl)`), pure reducer, `useOperationProgress`, `OperationProgress` checklist; no operation kind and no route             |
+| UI feature | the operation's feature                                            | the stream URL (next to its inspection URL in its API port), copy of the steps (typed `Message`s), where the checklist is drawn                                  |
 
 ## Recipe
 
@@ -41,18 +42,21 @@ stream must never fail or block the operation.
 2. **Engine.** Give the operation a read-only observer (see `onStage` of the Create flow): a
    synchronous callback with a minimal, path-free observation. It must swallow its own errors,
    so progress can never change the outcome.
-3. **Runtime adapter.** In the kind's feature write one adapter that maps observations to
+3. **Runtime adapter and route.** In the kind's feature write one adapter that maps observations to
    `OperationProgressReporter` calls (`step`, `complete`, `fail`, `recoveryRequired`). Create is
    `features/specs/create/progress.ts`. Start it where the operation starts (it needs the
    `operationId` and the checklist of this run), `complete` with the same payload as the HTTP
    result, and `fail` in the catch with the typed code (`undefined` becomes `INTERNAL_ERROR`).
-4. **Authorization.** Return an `operationKinds` entry from the feature
-   (`{kind, authorize}`) with the capability the operation itself needs. The generic endpoint
-   authorizes by `kind` before it reveals anything.
+4. **Route.** Next to the operation's inspection endpoint call
+   `registerOperationEventsRoute(app, {path, kind, authorize, registry})` (Create:
+   `GET /api/specs/create/operations/:operationId/events` in `features/specs/create/endpoint.ts`).
+   `authorize` is the same capability check as the inspection endpoint, so the route reveals
+   nothing before it passes. There is no global operations route and no `kind` query parameter.
 5. **UI feature.** Add the step labels to the feature's i18n namespace (pl and en), map them with
    `satisfies Record<StepId, Message>` so a new step cannot ship unlabelled, and render
    `<OperationProgress>` while the operation is running, with the hook
-   `useOperationProgress({api, kind, operationId, enabled})`. Keep progress out of the operation's
+   `useOperationProgress({api, streamUrl, enabled})`, where `streamUrl` comes from the feature's
+   own API port (`operationEventsUrl(operationId)`). Keep progress out of the operation's
    reducer: it is display state. Pass `placeholderRows` so the checklist does not move the page.
 6. **Tests.** Contract schema test; adapter test (stage to step, no leaked text); an HTTP test of
    the stream with the real operation; hook and component tests (events to checklist, fallback

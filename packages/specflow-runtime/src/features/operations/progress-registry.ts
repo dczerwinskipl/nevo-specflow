@@ -88,7 +88,9 @@ export function createOperationProgressRegistry(
 ): OperationProgressRegistry {
   const graceMs = options.graceMs ?? 60_000;
   const now = options.now ?? (() => new Date());
+  // Keyed by (kind, operationId): ids of different kinds never collide or reveal each other.
   const entries = new Map<string, Entry>();
+  const keyOf = (kind: string, operationId: string) => JSON.stringify([kind, operationId]);
   const arrivals = new Map<string, Set<() => void>>();
 
   const stamp = () => now().toISOString();
@@ -106,7 +108,8 @@ export function createOperationProgressRegistry(
     entry.status = status;
     delete entry.currentStep;
     setTimeout(() => {
-      if (entries.get(entry.operationId) === entry) entries.delete(entry.operationId);
+      const key = keyOf(entry.kind, entry.operationId);
+      if (entries.get(key) === entry) entries.delete(key);
     }, graceMs).unref();
   }
 
@@ -195,19 +198,19 @@ export function createOperationProgressRegistry(
   });
 
   async function awaitArrival(
-    operationId: string,
+    key: string,
     waitMs: number,
     signal: AbortSignal | undefined,
   ): Promise<void> {
-    if (entries.has(operationId) || signal?.aborted || waitMs <= 0) return;
+    if (entries.has(key) || signal?.aborted || waitMs <= 0) return;
     await new Promise<void>((resolve) => {
-      const set = arrivals.get(operationId) ?? new Set<() => void>();
-      arrivals.set(operationId, set);
+      const set = arrivals.get(key) ?? new Set<() => void>();
+      arrivals.set(key, set);
       const done = () => {
         clearTimeout(timer);
         signal?.removeEventListener('abort', done);
         set.delete(done);
-        if (set.size === 0) arrivals.delete(operationId);
+        if (set.size === 0) arrivals.delete(key);
         resolve();
       };
       const timer = setTimeout(done, waitMs);
@@ -218,7 +221,8 @@ export function createOperationProgressRegistry(
 
   return {
     begin(input) {
-      if (entries.has(input.operationId)) return noopReporter;
+      const key = keyOf(input.kind, input.operationId);
+      if (entries.has(key)) return noopReporter;
       const entry: Entry = {
         operationId: input.operationId,
         kind: input.kind,
@@ -228,18 +232,19 @@ export function createOperationProgressRegistry(
         log: [],
         listeners: new Set(),
       };
-      entries.set(input.operationId, entry);
-      for (const wake of [...(arrivals.get(input.operationId) ?? [])]) wake();
+      entries.set(key, entry);
+      for (const wake of [...(arrivals.get(key) ?? [])]) wake();
       return reporterFor(entry);
     },
 
     async *watch(operationId, kind, watchOptions = {}) {
       const { signal } = watchOptions;
-      await awaitArrival(operationId, watchOptions.waitMs ?? DEFAULT_PROGRESS_WAIT_MS, signal);
+      const key = keyOf(kind, operationId);
+      await awaitArrival(key, watchOptions.waitMs ?? DEFAULT_PROGRESS_WAIT_MS, signal);
       if (signal?.aborted) return;
-      const entry = entries.get(operationId);
-      // A different kind is indistinguishable from an unknown operation.
-      if (entry?.kind !== kind) {
+      const entry = entries.get(key);
+      // An operation of a different kind is a different key: unknown, nothing is revealed.
+      if (!entry) {
         yield notFound(operationId, kind);
         return;
       }

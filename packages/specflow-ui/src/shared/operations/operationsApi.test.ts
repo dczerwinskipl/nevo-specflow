@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createRuntimeOperationsApi } from './operationsApi';
 
 const operationId = '3f0a6d4e-8f2a-4b6e-9d0a-1c2b3d4e5f60';
+const streamUrl = `/api/specs/create/operations/${operationId}/events`;
 const wire = (event: Record<string, unknown>, id?: string) => ({
   type: String(event.type),
   data: JSON.stringify({ operationId, kind: 'specification-create', at: 'now', ...event }),
@@ -37,15 +38,11 @@ async function collect(iterable: AsyncIterable<OperationProgressEvent>) {
 }
 
 describe('operations API (SSE)', () => {
-  it('opens the generic endpoint with the kind and the operation id', async () => {
+  it('opens exactly the stream URL it is given (the feature owns the route)', async () => {
     const { http, sse } = client([wire({ type: 'completed', result: {} })]);
-    await collect(
-      createRuntimeOperationsApi(http).watchProgress('specification-create', operationId),
-    );
+    await collect(createRuntimeOperationsApi(http).watchProgress(streamUrl));
     expect(sse).toHaveBeenCalledTimes(1);
-    expect(sse.mock.calls[0]?.[0]).toBe(
-      `/api/operations/${operationId}/events?kind=specification-create`,
-    );
+    expect(sse.mock.calls[0]?.[0]).toBe(streamUrl);
   });
 
   it('decodes events, skips malformed ones and stops after the terminal event', async () => {
@@ -59,9 +56,7 @@ describe('operations API (SSE)', () => {
       wire({ type: 'step', step: 'reserving', status: 'done' }, '1'),
       wire({ type: 'completed', result: { specId: 'x' } }, '2'),
     ]);
-    const seen = await collect(
-      createRuntimeOperationsApi(http).watchProgress('specification-create', operationId),
-    );
+    const seen = await collect(createRuntimeOperationsApi(http).watchProgress(streamUrl));
     expect(seen.map((event) => event.type)).toEqual(['snapshot', 'step', 'completed']);
     expect(close).toHaveBeenCalled();
   });
@@ -77,11 +72,7 @@ describe('operations API (SSE)', () => {
     }));
     const api = createRuntimeOperationsApi({ sse } as unknown as HttpRequestClient);
     const seen: OperationProgressEvent[] = [];
-    for await (const event of api.watchProgress(
-      'specification-create',
-      operationId,
-      controller.signal,
-    )) {
+    for await (const event of api.watchProgress(streamUrl, controller.signal)) {
       seen.push(event);
       controller.abort();
     }

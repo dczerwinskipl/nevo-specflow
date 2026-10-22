@@ -130,6 +130,19 @@ describe('operation progress registry', () => {
     ]);
   });
 
+  it('keys operations by (kind, operationId): the same id of two kinds is independent', async () => {
+    const registry = createOperationProgressRegistry();
+    const first = registry.begin({ operationId, kind, steps });
+    const second = registry.begin({ operationId, kind: 'other-kind', steps: ['one'] });
+    first.complete({ from: 'first' });
+    second.fail('OTHER');
+    expect(registry.size()).toBe(2);
+    const a = await collect(registry.watch(operationId, kind));
+    const b = await collect(registry.watch(operationId, 'other-kind'));
+    expect(a.at(-1)?.event).toMatchObject({ type: 'completed', result: { from: 'first' } });
+    expect(b.at(-1)?.event).toMatchObject({ type: 'failed', code: 'OTHER' });
+  });
+
   it('stops a waiting subscriber when aborted', async () => {
     const registry = createOperationProgressRegistry();
     registry.begin({ operationId, kind, steps });

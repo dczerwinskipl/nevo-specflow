@@ -64,6 +64,11 @@ describe('project creation adapter', () => {
     });
   });
 
+  it('builds the progress stream URL next to the inspection route', () => {
+    const { api } = build();
+    expect(api.operationEventsUrl('a/b')).toBe('/api/specs/create/operations/a%2Fb/events');
+  });
+
   it('classifies failures with the Create code table', async () => {
     const { api } = build({
       post: vi.fn().mockRejectedValue(

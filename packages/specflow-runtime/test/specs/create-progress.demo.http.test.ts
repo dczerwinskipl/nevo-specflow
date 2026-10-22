@@ -56,7 +56,7 @@ async function createBody(url: string, operationId: string, target?: unknown) {
 }
 
 const events = (url: string, id: string) =>
-  fetch(`${url}/api/operations/${id}/events?kind=specification-create`);
+  fetch(`${url}/api/demo/specifications/operations/${id}/events`);
 
 describe('demo Runtime mirrors the generic operation progress stream', () => {
   it('replays the steps of a finished demo create to a late subscriber', async () => {

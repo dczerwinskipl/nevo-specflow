@@ -1,4 +1,3 @@
-import type { OperationKind } from '@nevo/specflow-contracts/operations';
 import { useEffect, useReducer } from 'react';
 
 import type { OperationsApi } from './operationsApi';
@@ -13,8 +12,8 @@ import {
 export interface UseOperationProgressOptions {
   /** The progress port (from the app services; `shared` never reaches into the composition root). */
   readonly api: OperationsApi;
-  readonly kind: OperationKind;
-  readonly operationId: string | undefined;
+  /** Stream of the running operation, built by the feature's API port; none means nothing to watch. */
+  readonly streamUrl: string | undefined;
   /** Watch only while the operation is running (the owner of the operation decides). */
   readonly enabled: boolean;
 }
@@ -50,23 +49,23 @@ function reduce(state: State, action: Action): State {
 }
 
 /**
- * Live progress of any long-running operation (`kind` selects the step vocabulary). Display state
+ * Live progress of any long-running operation (the event `kind` selects the step vocabulary). Display state
  * only: it never decides, delays or fails the operation. If the stream cannot be opened, drops, or
  * is unsupported, the hook just reports no (more) steps and the owner's own monitoring and
  * polling carry on. The stream is aborted when `enabled` turns off, the operation changes or the
  * component unmounts.
  */
 export function useOperationProgress(options: UseOperationProgressOptions): OperationProgressView {
-  const { api, kind, operationId, enabled } = options;
+  const { api, streamUrl, enabled } = options;
   const [state, dispatch] = useReducer(reduce, initial);
 
   useEffect(() => {
     dispatch({ type: 'reset' });
-    if (!enabled || !operationId) return;
+    if (!enabled || !streamUrl) return;
     const controller = new AbortController();
     void (async () => {
       try {
-        for await (const event of api.watchProgress(kind, operationId, controller.signal)) {
+        for await (const event of api.watchProgress(streamUrl, controller.signal)) {
           if (controller.signal.aborted) return;
           dispatch({ type: 'event', event });
         }
@@ -76,7 +75,7 @@ export function useOperationProgress(options: UseOperationProgressOptions): Oper
       }
     })();
     return () => controller.abort();
-  }, [api, enabled, kind, operationId]);
+  }, [api, enabled, streamUrl]);
 
   return {
     steps: enabled ? visibleProgressSteps(state.steps) : [],

@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   OPERATION_KINDS,
-  OperationKindQuerySchema,
   OperationProgressEventSchema,
   isTerminalOperationProgressEvent,
   operationProgressEventSchema,
@@ -120,12 +119,10 @@ describe('operation progress contract', () => {
     ).toBe(false);
   });
 
-  it('classifies terminal events and validates the kind selector', () => {
+  it('classifies terminal events', () => {
     expect(isTerminalOperationProgressEvent({ type: 'completed' })).toBe(true);
     expect(isTerminalOperationProgressEvent({ type: 'failed' })).toBe(true);
     expect(isTerminalOperationProgressEvent({ type: 'recovery-required' })).toBe(true);
     expect(isTerminalOperationProgressEvent({ type: 'step' })).toBe(false);
-    expect(Value.Check(OperationKindQuerySchema, { kind: 'specification-create' })).toBe(true);
-    expect(Value.Check(OperationKindQuerySchema, { kind: 'other' })).toBe(false);
   });
 });

@@ -99,10 +99,11 @@ async function readFrames(
   return frames;
 }
 
-const eventsUrl = (base: string, id = operationId, query = `kind=${kind}`) =>
-  `${base}/api/operations/${id}/events?${query}`;
+const eventsUrl = (base: string, id = operationId) =>
+  `${base}/api/specs/create/operations/${id}/events`;
 
-describe('GET /api/operations/:operationId/events', () => {
+// The mechanism is shared; the route belongs to the feature (here: Create).
+describe('GET /api/specs/create/operations/:operationId/events', () => {
   it('requires authentication and the kind authorization before revealing anything', async () => {
     const registry = createOperationProgressRegistry();
     registry.begin({ operationId, kind, steps });
@@ -114,11 +115,23 @@ describe('GET /api/operations/:operationId/events', () => {
     expect(await denied.text()).not.toContain(operationId);
   });
 
-  it('rejects an unknown kind and a malformed id', async () => {
+  it('rejects a malformed id and has no global kind-selected route any more', async () => {
     const { url, headers } = await listen(createOperationProgressRegistry());
-    expect((await fetch(eventsUrl(url, operationId, 'kind=nope'), { headers })).status).toBe(400);
     expect((await fetch(eventsUrl(url, 'not-a-uuid'), { headers })).status).toBe(400);
-    expect((await fetch(eventsUrl(url, operationId, ''), { headers })).status).toBe(400);
+    const legacy = await fetch(`${url}/api/operations/${operationId}/events?kind=${kind}`, {
+      headers,
+    });
+    expect(legacy.status).toBe(404);
+  });
+
+  it('does not stream an operation registered under another kind', async () => {
+    const registry = createOperationProgressRegistry();
+    registry.begin({ operationId, kind: 'other-kind', steps });
+    const { url, headers } = await listen(registry, { waitMs: 20 });
+    const response = await fetch(eventsUrl(url), { headers });
+    const frames = (await readFrames(response, () => false)).filter((frame) => frame.event);
+    expect(frames).toHaveLength(1);
+    expect(frames[0]?.data).toMatchObject({ type: 'failed', code: 'OPERATION_NOT_FOUND' });
   });
 
   it('streams snapshot, steps and the terminal result as SSE and then closes', async () => {

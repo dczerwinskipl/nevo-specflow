@@ -1,5 +1,5 @@
 import type { HttpRequestClient, SseEvent } from '@nevo/http-client';
-import type { OperationKind, OperationProgressEvent } from '@nevo/specflow-contracts/operations';
+import type { OperationProgressEvent } from '@nevo/specflow-contracts/operations';
 
 /**
  * Port of the Runtime's generic long-running operation progress stream. Progress is a best-effort
@@ -8,15 +8,13 @@ import type { OperationKind, OperationProgressEvent } from '@nevo/specflow-contr
  */
 export interface OperationsApi {
   /**
-   * Yields the events of one operation (`snapshot` first, then steps) and ends after the terminal
-   * event or when `signal` aborts. Reconnects with `Last-Event-ID` are handled by the SSE client.
+   * Yields the events of one operation (`snapshot` first, then steps) from the stream at
+   * `streamUrl` and ends after the terminal event or when `signal` aborts. The URL is built by the
+   * owning feature's own API port (every feature owns the route of its operation); this port only
+   * knows the event envelope. Reconnects with `Last-Event-ID` are handled by the SSE client.
    * May throw (stream refused, unauthorized, unsupported): callers treat that as "no progress".
    */
-  watchProgress(
-    kind: OperationKind,
-    operationId: string,
-    signal?: AbortSignal,
-  ): AsyncIterable<OperationProgressEvent>;
+  watchProgress(streamUrl: string, signal?: AbortSignal): AsyncIterable<OperationProgressEvent>;
 }
 
 const eventTypes: ReadonlySet<string> = new Set([
@@ -48,11 +46,11 @@ export function decodeProgressEvent(frame: SseEvent): OperationProgressEvent | u
 
 export function createRuntimeOperationsApi(http: HttpRequestClient): OperationsApi {
   return {
-    async *watchProgress(kind, operationId, signal) {
-      const stream = http.sse<OperationProgressEvent | undefined>(
-        `/api/operations/${encodeURIComponent(operationId)}/events?kind=${encodeURIComponent(kind)}`,
-        { ...(signal ? { signal } : {}), decode: decodeProgressEvent },
-      );
+    async *watchProgress(streamUrl, signal) {
+      const stream = http.sse<OperationProgressEvent | undefined>(streamUrl, {
+        ...(signal ? { signal } : {}),
+        decode: decodeProgressEvent,
+      });
       try {
         for await (const event of stream) {
           if (signal?.aborted) return;

@@ -29,7 +29,11 @@ import {
 } from '@nevo/specflow-contracts/specs';
 
 import { requireCapability } from '../../auth';
-import type { OperationProgressRegistry } from '../../operations';
+import {
+  registerOperationEventsRoute,
+  type OperationEventsStreamOptions,
+  type OperationProgressRegistry,
+} from '../../operations';
 import { statusForCreateError, type CreateErrorCode } from './error-status';
 import { startCreateProgress, type CreateProgress } from './progress';
 
@@ -37,6 +41,7 @@ export interface SpecsCreateEndpointOptions {
   readonly engine?: SpecFlowEngine;
   /** Optional live progress (SSE) for operations that carry a client `operationId`. */
   readonly progress?: OperationProgressRegistry;
+  readonly stream?: OperationEventsStreamOptions;
 }
 
 /**
@@ -138,6 +143,21 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
       }
     },
   );
+
+  // Live progress of the same operation: authorized exactly like the inspection endpoint above.
+  if (options.progress) {
+    registerOperationEventsRoute(app, {
+      path: '/api/specs/create/operations/:operationId/events',
+      kind: 'specification-create',
+      authorize: requireCapability({
+        resource: SpecCapabilities,
+        capability: SpecCapabilities.capabilities.Create,
+        scope: {},
+      }),
+      registry: options.progress,
+      ...(options.stream ? { stream: options.stream } : {}),
+    });
+  }
 
   app.withTypeProvider<TypeBoxTypeProvider>().post(
     '/api/specs',

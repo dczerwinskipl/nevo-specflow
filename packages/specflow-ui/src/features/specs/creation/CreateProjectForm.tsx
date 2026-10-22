@@ -107,8 +107,9 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
   // inspection polling) never depends on this stream, which just falls silent if it fails.
   const progress = useOperationProgress({
     api: operationsApi,
-    kind: 'specification-create',
-    operationId: state.sent?.operationId,
+    streamUrl: state.sent
+      ? projectCreationApi.operationEventsUrl(state.sent.operationId)
+      : undefined,
     enabled: busy,
   });
 

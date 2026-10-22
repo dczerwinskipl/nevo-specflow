@@ -17,7 +17,7 @@ import {
   registerDemoSpecRoutes,
 } from '../features/specs';
 import { createDemoTaskSources } from '../features/tasks';
-import type { OperationProgressRegistry } from '../features/operations';
+import type { DemoProgress } from '../features/specs/demo/endpoints';
 import { createDemoState, type DemoStateOptions } from './state';
 
 export { DemoOperationError, type DemoFailureStage, type DemoState } from './state';
@@ -73,7 +73,7 @@ export type DemoRuntime = ReturnType<typeof createDemoRuntime>;
 export function registerDemoRoutes<RawServer extends RawServerBase>(
   app: FastifyInstance<RawServer>,
   demo: DemoRuntime,
-  progress?: OperationProgressRegistry,
+  progress?: DemoProgress,
 ) {
   const { state, documents, sessions, specs } = demo.environment;
   registerDemoSpecRoutes(app, state, specs, demo.catalogue, progress);

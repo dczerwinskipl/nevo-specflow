@@ -74,3 +74,23 @@ stream must never fail or block the operation.
 - Abort the stream when the owner stops needing it (finished, unmounted, another operation).
 - Do not retry or poll the stream from the UI: the SSE client already reconnects with
   `Last-Event-ID` and the server answers with a fresh snapshot.
+
+## Failure after acceptance, retry and navigation (Create)
+
+- The journal has no failed state. A Runtime that saw a run fail after the reservation reports it
+  from the progress registry (`peek`) through the inspection endpoint as
+  `{ status: 'failed', code }` (stable code only, retained for the registry grace window). The UI maps
+  the code with the same table as a refused request: a code that declares nothing was applied is a
+  definite failure, any other code leaves the outcome unknown ("check the result").
+- The stream's terminal `failed` code may be shown while monitoring (best effort, never twice: the
+  inspection's conclusion replaces it); the synthetic `OPERATION_NOT_FOUND` says nothing.
+- `begin()` of an id whose previous run finished (inside the grace window) starts a fresh run; only a
+  still running entry is a concurrent replay.
+- A retry that finds the operation still `reserved` is validated against the reserved plan first, so
+  it gets the original rejection (4xx) instead of 202.
+- Polling stops on 401/403 (the owner is told; the operation stays stored) and honours `Retry-After`
+  on 429.
+- Leaving the Create screen never blocks while an operation is unfinished: the server finishes it and
+  the stored operation (sessionStorage, per identity) is resumed when the user returns to Create. Only
+  closing the tab loses that, so the browser's own unload prompt covers it. Unsaved edits of an idle
+  form still ask before leaving.

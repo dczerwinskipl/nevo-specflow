@@ -173,7 +173,7 @@ in the trigger, so the trigger always stays one line and never contains descript
 - Branch-like values compose the label as `Icon name="branch"` (`size="sm"`) + `Typography
 as="span" variant="code-md"`; `textValue` carries the plain name.
   In the Create workspace section this composition is the single `BranchRef` piece
-  (`features/specs/creation/BranchRef.tsx`) used by summary rows, switch descriptions, notes and
+  (`specflow-ui/src/shared/git/BranchRef.tsx`, a product component, not part of the design system) used by summary rows, switch descriptions, notes and
   select items alike; do not restyle a branch locally or wrap it in parentheses.
 - Native `disabled` is removed from keyboard navigation by Radix. When the user must reach and read
   why an option is not available, use `unavailable` (plus `description` as the reason): the item
@@ -185,6 +185,33 @@ as="span" variant="code-md"`; `textValue` carries the plain name.
 - The listbox width equals the trigger width, so long descriptions wrap; do not widen the content
   locally. Persistent text outside the control remains the place for an overview of unavailable
   options.
+
+## Description list
+
+`DescriptionList` (`dl`) shows the facts of one thing as `Item` groups of one `Term` and one
+`Detail`. `layout="aligned"` (default) puts all terms in one column so every detail starts at the
+same edge; `layout="inline"` makes each pair one wrapping line for a few facts in a narrow region.
+`Detail` takes `emphasis` (`primary` for a value the reader chose or must notice, `secondary` for a
+default) and an optional `note` (a quiet caveat under the value). Terms and details wrap anywhere, so
+long paths and branch names never overflow at 320 px. It is not a table and not a list of entities
+(use `InformationList`). No Figma projection in v1 (like `Combobox`).
+
+## Inline note
+
+`InlineNote` is a short explanatory sentence with a leading icon and no container, the quiet
+counterpart of `Alert`: a fact or caveat that belongs to the content next to it, or the reason an
+action is unavailable. `tone` is `info` (muted icon) or `attention` (status colour); the icon is
+decorative. It has no live-region role: wrap it in one or use `Alert` when it must be announced.
+No Figma projection in v1.
+
+## Option picker
+
+`OptionPicker` chooses one option from a list the owner cannot bound in advance and owns the rule of
+"Select vs Combobox" below: up to eight options a closed `Select`, more a searchable `Combobox`, with
+the same item anatomy (`description`, `meta`, `unavailable`) either way. The owner passes
+`labels` (`showOptions`, `noResults`, `loading`) so the design system holds no product copy; inside a
+`Field` both controls are labelled by `Field.Label`. SpecFlow wraps it once as
+`shared/controls/LocalizedOptionPicker` (texts from `common.options.*`).
 
 ## Tree
 

@@ -12,6 +12,7 @@ import {
   branchPatternProblem,
   DEFAULT_BRANCH_PATTERN,
   matchesBranchPattern,
+  parseCommitsPolicy,
   resolveWorktreesRoot,
   validateBranchPattern,
   resolveGitCheckoutLayout,
@@ -188,7 +189,15 @@ const PATTERN_PROBLEMS: Record<BranchPatternProblem, string> = {
 /** Why a protected-branch pattern is not accepted, or `undefined` when it is (Engine rule). */
 export function protectedBranchPatternProblem(pattern: string): string | undefined {
   const problem = branchPatternProblem(pattern);
-  return problem ? PATTERN_PROBLEMS[problem] : undefined;
+  if (problem) return PATTERN_PROBLEMS[problem];
+  // The Engine's own `git.commits` validator is the single source of truth (it also applies the
+  // branch-name rule to wildcard-free entries, which the pattern grammar alone does not).
+  try {
+    parseCommitsPolicy({ protectedBranches: [pattern] });
+    return undefined;
+  } catch {
+    return 'A wildcard-free entry must be a valid branch name: start with a letter or digit, no leading "-", no segment starting with ".", no trailing ".".';
+  }
 }
 
 /**

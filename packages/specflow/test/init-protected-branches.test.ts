@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { parseCommitsPolicy } from '@nevo/specflow-engine';
 import type { RuntimeSetupUi } from '@nevo/specflow-runtime';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -85,6 +86,40 @@ describe('protectedBranchPatternProblem', () => {
     ['x'.repeat(201), /too long/],
   ])('rejects %j with a plain reason', (pattern, reason) => {
     expect(protectedBranchPatternProblem(pattern)).toMatch(reason);
+  });
+
+  it.each(['.release', '_x', '-x', 'v1.', 'a/.b', 'a/-b'])(
+    'rejects the wildcard-free entry %j that the Engine policy parser would reject',
+    (pattern) => {
+      expect(protectedBranchPatternProblem(pattern)).toMatch(/valid branch name/);
+      expect(() => parseCommitsPolicy({ protectedBranches: [pattern] })).toThrow();
+    },
+  );
+
+  it('round trip: every pattern init accepts parses as a git.commits policy', () => {
+    const candidates = [
+      'main',
+      'release/**',
+      'feature/*',
+      'v?.x',
+      'rel-[0-9]*',
+      '**',
+      '.release',
+      '_x',
+      '-x',
+      'v1.',
+      'a/.b',
+      'a.b',
+      'a-b/c_d',
+      '*.x',
+      '.*',
+      'x'.repeat(200),
+    ];
+    const accepted = candidates.filter(
+      (pattern) => protectedBranchPatternProblem(pattern) === undefined,
+    );
+    expect(accepted).toContain('main');
+    expect(() => parseCommitsPolicy({ protectedBranches: accepted })).not.toThrow();
   });
 });
 

@@ -38,6 +38,7 @@ export {
 
 export {
   DEFAULT_BRANCH_PATTERN,
+  parseCommitsPolicy,
   resolveWorktreesRoot,
   validateBranchPattern,
 } from './version-control/worktrees/policy';

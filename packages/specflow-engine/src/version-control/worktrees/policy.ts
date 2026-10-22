@@ -103,8 +103,12 @@ export function parseGitWorktreePolicy(
   };
 }
 
-/** `git.commits` is validated even while Git is disabled (a typo is found early) but is then inert. */
-function parseCommitsPolicy(value: unknown): GitCommitsPolicy {
+/**
+ * `git.commits` is validated even while Git is disabled (a typo is found early) but is then inert.
+ * This is the ONE validator of the commit policy: the policy reader and `init` both use it, so a
+ * policy that `init` writes can never later yield `GIT_POLICY_INVALID`.
+ */
+export function parseCommitsPolicy(value: unknown): GitCommitsPolicy {
   if (value === undefined) return { protectedBranches: [] };
   if (!isRecord(value)) throw invalid('git.commits must be an object.');
   if (Object.keys(value).some((key) => key !== 'protectedBranches' && key !== 'allowedBranches')) {

@@ -84,8 +84,16 @@ of `A-Za-z0-9._/-` plus the pattern characters, no leading/trailing `/`, no `//`
 lists. A wildcard-free entry must be a valid branch name. The UI can reuse the exact rule from
 `@nevo/specflow-contracts/specs` (`matchesBranchPattern`, `branchPatternProblem`).
 
-`nevo-specflow init` asks for the protected branches only when Git is enabled and writes
-`git.commits.protectedBranches` only when the answer is not empty.
+`nevo-specflow init` asks for the protected branches only when Git is enabled, as the last Git
+question (after the integration target, the branch pattern and the worktree folder). It first asks
+about each of `main` and `master` that **exists locally** (kept by default), then lets the owner add
+any number of custom patterns in the grammar above; each pattern is checked by the Engine's own
+validator before it is accepted (an invalid or duplicate one is explained and asked again). The
+result is written to the **project** config as `git.commits.protectedBranches` only when it is not
+empty (nothing selected writes no `commits` block) and is listed in the final review as
+_Protected branches_. Protecting the integration target branch is allowed and does not break init;
+the review explains that Nevo then cannot commit specifications directly on it, so they are created
+in a new or an existing worktree, and that merging worktrees into it is not affected.
 
 ## Local worktree folder
 

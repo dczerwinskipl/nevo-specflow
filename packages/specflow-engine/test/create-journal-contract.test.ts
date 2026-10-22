@@ -59,7 +59,7 @@ function currentJournal(
     target: { kind: 'existing', workspaceId: targetWorkspaceId },
   });
   return {
-    version: 2,
+    version: 1,
     projectId: context.project.projectId,
     operationId: randomUUID(),
     requestIntent,
@@ -93,10 +93,10 @@ describe('Durable Create — one canonical journal and Specification format', ()
     expect(await readCreateJournal(context, record.operationId)).toEqual(record);
   });
 
-  it('rejects unpublished journal v1 and change.yaml rather than migrating them', async () => {
+  it('rejects unsupported journal version 2 and change.yaml rather than migrating them', async () => {
     const context = await fixture();
     const record = currentJournal(context);
-    await seed(context, { ...record, version: 1 }, record.operationId);
+    await seed(context, { ...record, version: 2 }, record.operationId);
     await expect(readCreateJournal(context, record.operationId)).rejects.toMatchObject({
       code: 'CREATE_JOURNAL_CORRUPT',
     });

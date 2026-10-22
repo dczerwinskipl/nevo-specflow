@@ -7,7 +7,7 @@ import type { CreateJournal } from '../src/specs/create-journal';
 
 function claim(specId: string, target: CreateJournal['target']): CreateJournal {
   return {
-    version: 2,
+    version: 1,
     projectId: '11111111-1111-4111-8111-111111111111',
     operationId: randomUUID(),
     requestIntent: {

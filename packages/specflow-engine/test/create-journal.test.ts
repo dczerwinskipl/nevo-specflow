@@ -59,7 +59,7 @@ function intent(projectId: string, workspaceId: string, root: string): CreateJou
     target: { kind: 'existing', workspaceId },
   });
   return {
-    version: 2,
+    version: 1,
     projectId,
     operationId,
     requestIntent,

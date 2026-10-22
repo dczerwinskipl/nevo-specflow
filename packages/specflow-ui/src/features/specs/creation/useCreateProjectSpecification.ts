@@ -52,6 +52,11 @@ export interface ProjectSubmission {
 export interface ProjectCreateModel {
   state: CreateOperationState;
   flags: CreateOperationFlags;
+  /**
+   * The operation was opened by its id alone (no request is retained here) and the server has no
+   * record of it: nothing is running and there is nothing to resume.
+   */
+  unknownOperation: boolean;
   actions: {
     /**
      * Starts the operation, or (after an unknown outcome) first asks the server what became of it:
@@ -59,6 +64,11 @@ export interface ProjectCreateModel {
      * saw is sent again, with the same identifier.
      */
     submit: (submission: ProjectSubmission) => Promise<void>;
+    /**
+     * The status check of an unknown outcome (or of a recovery-required one) without the form: it
+     * asks the server what became of the operation, never starting a different one.
+     */
+    check: () => Promise<void>;
     /** Retires the alert of a definite failure (never an unknown outcome). */
     dismissFailure: () => void;
     /** Sync read for the leave guard: completing the operation navigates away on purpose. */
@@ -74,6 +84,11 @@ export interface ProjectCreateModel {
 export interface UseCreateProjectSpecificationOptions {
   /** The operation a reloaded page found unconfirmed; it resumes watching it. */
   stored: StoredCreateOperation | undefined;
+  /**
+   * Opens an operation this page holds no request for (a direct link, cleared storage): the server
+   * is asked what it knows and the answer is watched. Ignored when `stored` is given.
+   */
+  operationId?: string;
   /** Current form fingerprint (see {@link ProjectSubmission.snapshot}). */
   snapshot: string;
   onCreated: (created: CreatedSpec) => void;
@@ -95,9 +110,13 @@ function createProjectLedger(stored: StoredCreateOperation | undefined) {
 }
 
 /** A reloaded page starts as an unknown outcome: the operation is checked, never assumed. */
-function stateOfStored(stored: StoredCreateOperation | undefined): CreateOperationState {
-  if (!stored) return initialCreateOperation;
-  const { request } = stored;
+function stateOfStored(seed: {
+  stored: StoredCreateOperation | undefined;
+  operationId: string | undefined;
+}): CreateOperationState {
+  const { stored, operationId } = seed;
+  if (!stored && !operationId) return initialCreateOperation;
+  const request = stored?.request ?? { operationId: operationId ?? '', title: '', target: undefined };
   return [
     { type: 'submit-started' as const },
     {
@@ -123,13 +142,18 @@ type Settling = Pick<ProjectSubmission, 'snapshot' | 'onFailed'>;
 export function useCreateProjectSpecification(
   options: UseCreateProjectSpecificationOptions,
 ): ProjectCreateModel {
-  const { stored, snapshot, onCreated, announce } = options;
+  const { stored, operationId, snapshot, onCreated, announce } = options;
   const { t } = useTranslation();
   const { projectCreationApi: api } = useAppServices();
   const storage = useCreateOperationStorage();
   const cache = useQueryClient();
   const notify = useNotify();
-  const [raw, dispatch] = useReducer(createOperationReducer, stored, stateOfStored);
+  const [raw, dispatch] = useReducer(
+    createOperationReducer,
+    { stored, operationId },
+    stateOfStored,
+  );
+  const [unknownOperation, setUnknownOperation] = useState(false);
   const [ledger] = useState(() => createProjectLedger(stored));
   // The request is never cancelled when the page goes away (the server finishes it and the journal
   // keeps it); only the watching stops.
@@ -151,6 +175,7 @@ export function useCreateProjectSpecification(
       });
       if (outcome.kind === 'completed') {
         storage.clear();
+        storage.clearDraft();
         ledger.navigationAllowed = true;
         void cache.invalidateQueries({ queryKey: specsOverviewKeys.all });
         void cache.invalidateQueries({ queryKey: projectCreationKeys.createOptions });
@@ -181,8 +206,9 @@ export function useCreateProjectSpecification(
   const resolveUnknown = useCallback(
     async (submission: Settling) => {
       const input = ledger.attempt.current?.input;
-      if (!input) return;
-      const reading = await readOperation(api, input.operationId, lifetime);
+      const id = input?.operationId ?? operationId;
+      if (!id) return;
+      const reading = await readOperation(api, id, lifetime);
       if (reading.kind === 'completed') return finish(reading, submission);
       if (reading.kind === 'recovery-required') return finish(reading, submission);
       if (reading.kind === 'failed')
@@ -197,34 +223,39 @@ export function useCreateProjectSpecification(
       if (reading.kind === 'in-progress') {
         onAccepted();
         return finish(
-          await resumeCreateOperation(api, input.operationId, {
+          await resumeCreateOperation(api, id, {
             startedAt: ledger.startedAt,
             hooks: hooksOf(),
           }),
           submission,
         );
       }
+      // Without a retained request there is nothing to send: the operation simply does not exist.
+      if (!input) {
+        if (!lifetime.aborted) setUnknownOperation(true);
+        return finish({ kind: 'not-started' }, submission);
+      }
       // The Engine has no record: the request never arrived, so sending it again (same id) is safe.
       return finish(await submitCreateOperation(api, input, hooksOf()), submission);
     },
-    [api, finish, hooksOf, ledger, lifetime, onAccepted],
+    [api, finish, hooksOf, ledger, lifetime, onAccepted, operationId],
   );
 
   // A reloaded page resumes the operation it found stored.
   useEffect(() => {
-    if (!stored || ledger.resumed) return;
+    if ((!stored && !operationId) || ledger.resumed) return;
     ledger.resumed = true;
     ledger.begin();
     dispatch({ type: 'submit-started' });
     void resolveUnknown({ snapshot: '' }).finally(() => ledger.end());
-  }, [ledger, resolveUnknown, stored]);
+  }, [ledger, operationId, resolveUnknown, stored]);
 
   /** The status check of a `recovery-required` operation (it has no replay). */
   const checkRecovery = useCallback(
     async (submission: ProjectSubmission) => {
       dispatch({ type: 'check-started' });
-      const input = ledger.attempt.current?.input;
-      const reading = input ? await readOperation(api, input.operationId, lifetime) : undefined;
+      const id = ledger.attempt.current?.input.operationId ?? operationId;
+      const reading = id ? await readOperation(api, id, lifetime) : undefined;
       if (lifetime.aborted) return;
       if (reading?.kind === 'completed') {
         dispatch({ type: 'check-found-completed' });
@@ -251,7 +282,7 @@ export function useCreateProjectSpecification(
         });
       else dispatch({ type: 'check-unreadable' });
     },
-    [api, finish, ledger, lifetime],
+    [api, finish, ledger, lifetime, operationId],
   );
 
   const start = useCallback(
@@ -309,13 +340,21 @@ export function useCreateProjectSpecification(
     [checkRecovery, ledger, resolveUnknown, start, state],
   );
 
+  const check = useCallback(
+    () => submit({ title: '', goal: '', buildTarget: () => undefined, snapshot: '' }),
+    [submit],
+  );
+
   const dismissFailure = useCallback(() => dispatch({ type: 'failure-dismissed' }), []);
   const isNavigationAllowed = useCallback(() => ledger.navigationAllowed, [ledger]);
   const setStreamHint = useCallback((hint: StreamHint) => ledger.stream.set(hint), [ledger]);
   const actions = useMemo(
-    () => ({ submit, dismissFailure, isNavigationAllowed, setStreamHint }),
-    [submit, dismissFailure, isNavigationAllowed, setStreamHint],
+    () => ({ submit, check, dismissFailure, isNavigationAllowed, setStreamHint }),
+    [submit, check, dismissFailure, isNavigationAllowed, setStreamHint],
   );
   const flags = useMemo(() => selectCreateOperationFlags(state), [state]);
-  return useMemo(() => ({ state, flags, actions }), [state, flags, actions]);
+  return useMemo(
+    () => ({ state, flags, unknownOperation, actions }),
+    [state, flags, unknownOperation, actions],
+  );
 }

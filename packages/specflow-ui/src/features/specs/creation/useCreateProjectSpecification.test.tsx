@@ -57,6 +57,7 @@ const storageKey = (identity = 'unknown') =>
 function setup(
   http: { post?: ReturnType<typeof vi.fn>; get?: ReturnType<typeof vi.fn> },
   stored?: StoredCreateOperation,
+  operationId?: string,
 ) {
   const onCreated = vi.fn();
   const announce = vi.fn();
@@ -85,7 +86,13 @@ function setup(
     </QueryClientProvider>
   );
   const hook = renderHook(
-    () => useCreateProjectSpecification({ stored, snapshot: 'form-1', onCreated, announce }),
+    () => useCreateProjectSpecification({
+        stored,
+        operationId,
+        snapshot: 'form-1',
+        onCreated,
+        announce,
+      }),
     { wrapper },
   );
   const model = (): ProjectCreateModel => hook.result.current;
@@ -406,6 +413,68 @@ describe('useCreateProjectSpecification', () => {
     });
     expect(onCreated).toHaveBeenCalledWith(created);
     expect(model().state.phase).toBe('completed');
+  });
+
+  describe('opened by operation id alone (direct link, cleared storage)', () => {
+    it('opens the specification of a finished operation without sending anything', async () => {
+      const post = vi.fn();
+      const get = vi.fn().mockResolvedValue(created);
+      const { model, onCreated } = setup({ post, get }, undefined, created.operationId);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(onCreated).toHaveBeenCalledWith(created);
+      expect(model().state.phase).toBe('completed');
+      expect(post).not.toHaveBeenCalled();
+    });
+
+    it('watches an operation the server still runs', async () => {
+      const post = vi.fn();
+      const get = vi.fn().mockResolvedValue(inProgress);
+      const { model } = setup({ post, get }, undefined, created.operationId);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(model().state.phase).toBe('monitoring');
+      expect(model().state.sent).toMatchObject({ operationId: created.operationId, title: '' });
+      expect(post).not.toHaveBeenCalled();
+    });
+
+    it('says the operation is unknown when the server has no record, and never sends it', async () => {
+      const post = vi.fn();
+      const get = vi.fn().mockRejectedValue(notFound());
+      const { model } = setup({ post, get }, undefined, created.operationId);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(model().unknownOperation).toBe(true);
+      expect(post).not.toHaveBeenCalled();
+    });
+
+    it('shows what the server reports about a failed operation', async () => {
+      const get = vi
+        .fn()
+        .mockResolvedValue({ ...inProgress, status: 'failed', code: 'BRANCH_ALREADY_EXISTS' });
+      const { model } = setup({ get }, undefined, created.operationId);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(model().state.failure).toMatchObject({ kind: 'branch-exists' });
+      expect(model().unknownOperation).toBe(false);
+    });
+
+    it('the check action asks the server again for an operation that could not be read', async () => {
+      const get = vi.fn().mockRejectedValueOnce(lostAnswer()).mockResolvedValue(created);
+      const { model, onCreated } = setup({ get }, undefined, created.operationId);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(model().state.phase).toBe('outcome-unknown');
+      await act(async () => {
+        await model().actions.check();
+      });
+      expect(onCreated).toHaveBeenCalledWith(created);
+    });
   });
 
   it('does not navigate for a page that was closed while the operation ran, and keeps the stored operation', async () => {

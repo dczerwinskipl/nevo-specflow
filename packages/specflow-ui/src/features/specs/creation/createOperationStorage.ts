@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { isCreateSpecRequest, type CreateSpecRequest } from '@nevo/specflow-contracts/specs';
 import { useAppServices } from '../../../app/useAppServices';
-import { authSessionIdentity } from '../../../auth/store';
+import { authSessionIdentity, type AuthStore } from '../../../auth/store';
 import type { CreateFailure } from './createFailure';
 import { toCreateFacts, type CreateSettingsFacts } from './workspace/createFacts';
 import { initialWorkspaceChoice, type WorkspaceChoice } from './workspace/workspaceChoice';
@@ -157,17 +157,20 @@ function browserSessionStorage(): StorageLike | undefined {
   }
 }
 
+/** The Create ledger of the signed-in identity (or of an unknown one) in this tab's session storage. */
+export function createOperationStorageFor(authStore: AuthStore): CreateOperationStorage {
+  const state = authStore.getState();
+  const identity = state.status === 'ready' ? authSessionIdentity(state.session) : 'unknown';
+  return createSessionOperationStorage(identity, browserSessionStorage());
+}
+
 /**
  * Storage of the signed-in identity at the moment the Create form opens. The key is captured once:
  * saving, resuming and releasing an operation must all address the same entry even if the session
- * is briefly not `ready` (refresh, recovery) while the operation runs.
+ * is briefly not ready (refresh, recovery) while the operation runs.
  */
 export function useCreateOperationStorage(): CreateOperationStorage {
   const { authStore } = useAppServices();
-  const [storage] = useState(() => {
-    const state = authStore.getState();
-    const identity = state.status === 'ready' ? authSessionIdentity(state.session) : 'unknown';
-    return createSessionOperationStorage(identity, browserSessionStorage());
-  });
+  const [storage] = useState(() => createOperationStorageFor(authStore));
   return storage;
 }

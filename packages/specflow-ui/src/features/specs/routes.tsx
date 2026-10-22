@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { createRoute, Link, Outlet, redirect } from '@tanstack/react-router';
 import { appRoute, rootRoute } from '../../app/router/root';
 import { parseSpecificationCollection } from '../../app/router/search';
@@ -9,7 +9,6 @@ import { useSpecsOverview } from './overview/useSpecsOverview';
 import { SpecsAccessDenied } from './overview/SpecsAccessDenied';
 import { SpecificationSurface } from './SpecificationSurface';
 import { specPrimaryLinkClassName } from './overview/SpecPrimaryLink';
-import { useUnfinishedCreate } from './creation/useUnfinishedCreate';
 
 export const specsForbiddenRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -163,7 +162,8 @@ function SpecsRouteScreen() {
   const { collection } = specsRoute.useSearch();
   const navigate = specsRoute.useNavigate();
   const { state, refresh } = useSpecsOverview(services.specsOverviewApi, collection);
-  const unfinishedCreate = useUnfinishedCreate();
+  // Read from the client-side ledger when the list opens; the row disappears with the operation.
+  const [unfinishedCreate] = useState(() => services.readUnfinishedCreate());
 
   useEffect(() => {
     // Overview authorization denotes application-wide Specs access, unlike

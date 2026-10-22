@@ -2,6 +2,10 @@ import { createRuntimeOperationsApi, type OperationsApi } from '../shared/operat
 import type { CreationApi } from '../features/specs/creation/api';
 import { createDemoCreationApi } from '../features/specs/creation/api.demo';
 import {
+  readUnfinishedCreate,
+  type UnfinishedCreate,
+} from '../features/specs/creation/unfinishedCreate';
+import {
   createProjectCreationApi,
   type ProjectCreationApi,
 } from '../features/specs/creation/api.project';
@@ -48,6 +52,11 @@ export interface SpecFlowAppServices {
   readonly projectCreationApi: ProjectCreationApi;
   /** Live progress of long-running operations (generic, best effort). */
   readonly operationsApi: OperationsApi;
+  /**
+   * The Create operation of this tab that has not concluded, from the client-side operation ledger
+   * (no endpoint); lets screens outside the Create flow lead back to its progress page.
+   */
+  readonly readUnfinishedCreate: () => UnfinishedCreate | undefined;
 }
 
 export type SpecFlowServices = SpecFlowAppServices;
@@ -67,6 +76,7 @@ export interface SpecFlowServicesOptions {
   readonly creationApi?: CreationApi;
   readonly projectCreationApi?: ProjectCreationApi;
   readonly operationsApi?: OperationsApi;
+  readonly readUnfinishedCreate?: () => UnfinishedCreate | undefined;
 }
 
 export function createSpecFlowAppServices(
@@ -107,6 +117,7 @@ export function createSpecFlowAppServices(
         createApiTransport(runtimeHttp, { operation: 'specs.create', codes: createSpecErrorCodes }),
       ),
     operationsApi: options.operationsApi ?? createRuntimeOperationsApi(runtimeHttp),
+    readUnfinishedCreate: options.readUnfinishedCreate ?? (() => readUnfinishedCreate(authStore)),
   };
 }
 

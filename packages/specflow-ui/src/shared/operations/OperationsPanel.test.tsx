@@ -256,3 +256,16 @@ describe('OperationsPanel structure', () => {
     expect(screen.getByRole('button', { name: 'Hide Billing' })).toBeTruthy();
   });
 });
+
+describe('OperationsPanel live region', () => {
+  it('stays the same element while the panel appears and disappears', () => {
+    const { update } = renderPanel();
+    const region = screen.getByRole('status');
+    update({ list: operationList([runningItem(1)]) });
+    expect(screen.getByRole('status')).toBe(region);
+    update({ list: operationList([]) });
+    expect(screen.getByRole('status')).toBe(region);
+    update({ list: undefined, failed: true });
+    expect(screen.getByRole('status')).toBe(region);
+  });
+});

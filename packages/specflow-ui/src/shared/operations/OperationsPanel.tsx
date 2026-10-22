@@ -1,4 +1,11 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Button, Typography } from '@nevo/ui';
 
@@ -70,7 +77,9 @@ export function OperationsPanel({
   // Status transitions are announced politely; the first read and quiet changes say nothing.
   const previous = useRef<ReadonlyMap<string, string> | undefined>(undefined);
   const announce = useRef((value: Message | string) => text(value));
-  announce.current = text;
+  useLayoutEffect(() => {
+    announce.current = text;
+  });
   useEffect(() => {
     if (!list) return;
     const before = previous.current;
@@ -93,8 +102,17 @@ export function OperationsPanel({
     </div>
   );
 
+  // Mounted once, at a stable position after the panel, so a transition that coincides with the
+  // panel appearing or disappearing is still announced.
+  const withLiveRegion = (content: ReactNode) => (
+    <>
+      {content}
+      {liveRegion}
+    </>
+  );
+
   if (!list && failed)
-    return (
+    return withLiveRegion(
       <Alert
         tone="info"
         data-operations-panel="error"
@@ -105,9 +123,9 @@ export function OperationsPanel({
         }
       >
         {t('operations.panel.loadFailed')}
-      </Alert>
+      </Alert>,
     );
-  if (!rows.length) return liveRegion;
+  if (!rows.length) return withLiveRegion(null);
 
   const count = (status: string, serverCount: number | undefined) =>
     Math.max(serverCount ?? 0, rows.filter((row) => row.status === status).length);
@@ -129,7 +147,7 @@ export function OperationsPanel({
   const shown = showAll ? rows : rows.slice(0, operationsPanelVisibleRows);
   const total = Math.max(rows.length, running + attention + failedCount + finished);
 
-  return (
+  return withLiveRegion(
     <section
       aria-labelledby={headingId}
       data-operations-panel
@@ -181,7 +199,6 @@ export function OperationsPanel({
           ) : null}
         </div>
       ) : null}
-      {liveRegion}
-    </section>
+    </section>,
   );
 }

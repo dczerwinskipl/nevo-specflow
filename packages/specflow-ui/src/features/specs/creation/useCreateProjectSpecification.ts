@@ -23,10 +23,13 @@ import {
   type StoredCreateOperation,
 } from './createOperationStorage';
 import {
+  createStreamHints,
   readOperation,
   resumeCreateOperation,
   submitCreateOperation,
   type CreateWatchResult,
+  type StreamHint,
+  type StreamHints,
 } from './watchCreateOperation';
 
 /** Everything the form contributes to one submit, captured when the user submits. */
@@ -57,6 +60,11 @@ export interface ProjectCreateModel {
     dismissFailure: () => void;
     /** Sync read for the leave guard: completing the operation navigates away on purpose. */
     isNavigationAllowed: () => boolean;
+    /**
+     * What the live progress stream says (display aid, best effort). It only decides how soon the
+     * inspection endpoint is read again; it never changes the state of the operation.
+     */
+    setStreamHint: (hint: StreamHint) => void;
   };
 }
 
@@ -76,6 +84,7 @@ interface Ledger {
   navigationAllowed: boolean;
   resumed: boolean;
   inFlight: boolean;
+  stream: StreamHints;
 }
 
 function createLedger(stored: StoredCreateOperation | undefined): Ledger {
@@ -88,6 +97,7 @@ function createLedger(stored: StoredCreateOperation | undefined): Ledger {
     navigationAllowed: false,
     resumed: false,
     inFlight: false,
+    stream: createStreamHints(),
   };
 }
 
@@ -110,8 +120,8 @@ function stateOfStored(stored: StoredCreateOperation | undefined): CreateOperati
 
 /**
  * Orchestrates Create against the project Runtime: one retained operation id per distinct request,
- * long-running watching (soft deadline, hard limit), the check of an unknown outcome and the
- * resume of a persisted operation after a reload. State transitions are decided by
+ * async submit (202) followed by inspection polling (hint from the progress stream, hard limit), the
+ * check of an unknown outcome and the resume of a persisted operation after a reload. State transitions are decided by
  * `createOperationReducer`; this hook only performs the I/O and reports each result as an event.
  */
 export function useCreateProjectSpecification(
@@ -146,8 +156,8 @@ export function useCreateProjectSpecification(
     dispatch({ type: 'form-edited', snapshot });
   }, [state.failure, snapshot]);
 
-  const onMonitoring = useCallback(() => {
-    dispatch({ type: 'monitoring-started' });
+  const onAccepted = useCallback(() => {
+    dispatch({ type: 'submit-accepted' });
     announce(t('create.announce.monitoring'));
   }, [announce, t]);
 
@@ -201,6 +211,11 @@ export function useCreateProjectSpecification(
     [announce, cache, ledger, lifetime, notify, onCreated, storage, t],
   );
 
+  const hooksOf = useCallback(
+    () => ({ onAccepted, signal: lifetime.signal, stream: ledger.stream }),
+    [ledger, lifetime, onAccepted],
+  );
+
   /** Asks the server about a sent operation and acts on the answer (see `submit`). */
   const resolveUnknown = useCallback(
     async (submission: { snapshot: string; onFailed?: (f: CreateFailure) => void }) => {
@@ -217,22 +232,19 @@ export function useCreateProjectSpecification(
         return;
       }
       if (reading.kind === 'in-progress') {
-        onMonitoring();
+        onAccepted();
         return finish(
           await resumeCreateOperation(api, input.operationId, {
             startedAt: ledger.startedAt,
-            hooks: { signal: lifetime.signal },
+            hooks: hooksOf(),
           }),
           submission,
         );
       }
       // The Engine has no record: the request never arrived, so sending it again (same id) is safe.
-      return finish(
-        await submitCreateOperation(api, input, { onMonitoring, signal: lifetime.signal }),
-        submission,
-      );
+      return finish(await submitCreateOperation(api, input, hooksOf()), submission);
     },
-    [api, finish, ledger, lifetime, onMonitoring],
+    [api, finish, hooksOf, ledger, lifetime.signal, onAccepted],
   );
 
   // A reloaded page resumes the operation it found stored.
@@ -293,12 +305,9 @@ export function useCreateProjectSpecification(
         type: 'request-prepared',
         sent: { operationId: input.operationId, title: input.title, target: input.target },
       });
-      finish(
-        await submitCreateOperation(api, input, { onMonitoring, signal: lifetime.signal }),
-        submission,
-      );
+      finish(await submitCreateOperation(api, input, hooksOf()), submission);
     },
-    [api, finish, ledger, lifetime, onMonitoring, storage],
+    [api, finish, hooksOf, ledger, storage],
   );
 
   const submit = useCallback(
@@ -324,9 +333,10 @@ export function useCreateProjectSpecification(
 
   const dismissFailure = useCallback(() => dispatch({ type: 'failure-dismissed' }), []);
   const isNavigationAllowed = useCallback(() => ledger.navigationAllowed, [ledger]);
+  const setStreamHint = useCallback((hint: StreamHint) => ledger.stream.set(hint), [ledger]);
   const actions = useMemo(
-    () => ({ submit, dismissFailure, isNavigationAllowed }),
-    [submit, dismissFailure, isNavigationAllowed],
+    () => ({ submit, dismissFailure, isNavigationAllowed, setStreamHint }),
+    [submit, dismissFailure, isNavigationAllowed, setStreamHint],
   );
   const flags = useMemo(() => selectCreateOperationFlags(state), [state]);
   return useMemo(() => ({ state, flags, actions }), [state, flags, actions]);

@@ -28,7 +28,7 @@ const recovery = reduce(submitting, {
   failure: failure('recovery-required'),
 });
 const completed = reduce(submitting, { type: 'submit-succeeded' });
-const monitoring = reduce(submitting, { type: 'monitoring-started' });
+const monitoring = reduce(submitting, { type: 'submit-accepted' });
 const states: Record<CreatePhase, CreateOperationState> = {
   idle: initialCreateOperation,
   submitting,
@@ -235,12 +235,12 @@ describe('createOperationReducer ignores illegal events', () => {
   );
 });
 
-describe('monitoring (a submit that outlived its soft deadline)', () => {
+describe('monitoring (the Runtime accepted the operation: 202, or a check found it running)', () => {
   it('submitting -> monitoring keeps the sent request and is busy, not failed', () => {
     const prepared = reduce(
       submitting,
       { type: 'request-prepared', sent },
-      { type: 'monitoring-started' },
+      { type: 'submit-accepted' },
     );
     expect(prepared).toMatchObject({ phase: 'monitoring', sent, failure: null });
     expect(selectCreateOperationFlags(prepared)).toMatchObject({
@@ -270,10 +270,8 @@ describe('monitoring (a submit that outlived its soft deadline)', () => {
     'outcome-unknown',
     'recovery-required',
     'completed',
-  ] as const)('monitoring-started is ignored in %s', (phase) =>
-    expect(createOperationReducer(states[phase], { type: 'monitoring-started' })).toBe(
-      states[phase],
-    ),
+  ] as const)('submit-accepted is ignored in %s', (phase) =>
+    expect(createOperationReducer(states[phase], { type: 'submit-accepted' })).toBe(states[phase]),
   );
 
   it('a status check that finds the operation still open keeps the phase and records the status', () => {

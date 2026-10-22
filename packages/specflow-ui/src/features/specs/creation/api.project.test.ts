@@ -1,11 +1,7 @@
 import { HttpClientError, type HttpRequestClient } from '@nevo/http-client';
 import { describe, expect, it, vi } from 'vitest';
 import { createApiTransport } from '../../../api';
-import {
-  createOperationHardLimitMs,
-  createProjectCreationApi,
-  createSoftDeadlineMs,
-} from './api.project';
+import { createOperationHardLimitMs, createProjectCreationApi } from './api.project';
 import { createSpecErrorCodes } from './createSpecErrors';
 
 function build(overrides: Partial<HttpRequestClient> = {}) {
@@ -40,7 +36,7 @@ describe('project creation adapter', () => {
     });
   });
 
-  it('posts the request verbatim with the long create time limit, so the request is not abandoned', async () => {
+  it('posts the request verbatim in async mode with the long create time limit', async () => {
     const { api, http } = build();
     const input = {
       title: 'Title',
@@ -51,9 +47,26 @@ describe('project creation adapter', () => {
     expect(http.post).toHaveBeenCalledWith('/api/specs', input, {
       timeoutMs: createOperationHardLimitMs,
       signal: undefined,
+      headers: { Prefer: 'respond-async' },
     });
     expect(createOperationHardLimitMs).toBe(10 * 60 * 1000);
-    expect(createSoftDeadlineMs).toBe(15_000);
+  });
+
+  it('accepts the 202 acceptance body and the synchronous 201 result, and nothing else', async () => {
+    const accepted = {
+      operationId: '11111111-1111-4111-8111-111111111111',
+      kind: 'specification-create',
+      status: 'in-progress',
+    };
+    const asyncApi = build({ post: vi.fn().mockResolvedValue(accepted) });
+    await expect(asyncApi.api.create({ title: 'T' })).resolves.toEqual(accepted);
+    const syncApi = build({ post: vi.fn().mockResolvedValue({ specId: 'spec-1' }) });
+    await expect(syncApi.api.create({ title: 'T' })).resolves.toEqual({ specId: 'spec-1' });
+    const garbage = build({ post: vi.fn().mockResolvedValue({ status: 'in-progress' }) });
+    await expect(garbage.api.create({ title: 'T' })).rejects.toMatchObject({
+      kind: 'protocol',
+      outcome: 'unknown',
+    });
   });
 
   it('inspects an operation by its encoded id', async () => {

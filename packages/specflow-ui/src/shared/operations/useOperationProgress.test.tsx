@@ -120,6 +120,37 @@ describe('useOperationProgress', () => {
     expect(hook.result.current.available).toBe(false);
   });
 
+  it('reports the stream as lost when it fails, drops or ends without a terminal event', async () => {
+    const failed = controlledApi();
+    const failedHook = setup(failed.api, { enabled: true });
+    expect(failedHook.result.current.lost).toBe(false);
+    await emit(failed, new Error('stream refused'));
+    expect(failedHook.result.current.lost).toBe(true);
+
+    const dropped = controlledApi();
+    const droppedHook = setup(dropped.api, { enabled: true });
+    await emit(dropped, snapshot);
+    await emit(dropped, new Error('dropped'));
+    expect(droppedHook.result.current.lost).toBe(true);
+    expect(droppedHook.result.current.available).toBe(true);
+
+    const ended = controlledApi();
+    const endedHook = setup(ended.api, { enabled: true });
+    await emit(ended, snapshot);
+    await emit(ended, 'end');
+    expect(endedHook.result.current.lost).toBe(true);
+    expect(endedHook.result.current.outcome).toBe('running');
+  });
+
+  it('is not lost while events flow and records the terminal outcome', async () => {
+    const stream = controlledApi();
+    const hook = setup(stream.api, { enabled: true });
+    await emit(stream, snapshot);
+    await emit(stream, { ...base, type: 'completed', result: {} });
+    expect(hook.result.current.outcome).toBe('completed');
+    expect(hook.result.current.lost).toBe(false);
+  });
+
   it('keeps the last drawn steps when the stream breaks after a snapshot', async () => {
     const stream = controlledApi();
     const hook = setup(stream.api, { enabled: true });

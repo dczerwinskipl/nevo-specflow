@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AppShell, AppWorkspaceProvider } from '@nevo/ui';
-import type { CreatedSpec } from '@nevo/specflow-contracts/specs';
+import type { CreateOperationInspection, CreatedSpec } from '@nevo/specflow-contracts/specs';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSpecFlowQueryClient } from '../../../app/queryClient';
@@ -229,10 +229,18 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
       };
     }
 
-    async function submitFor(operations: OperationsApi, create: ProjectCreationApi['create']) {
-      renderScreen(
+    async function submitFor(
+      operations: OperationsApi,
+      create: ProjectCreationApi['create'],
+      extra: Partial<ProjectCreationApi> = {},
+    ) {
+      const rendered = renderScreen(
         'project',
-        { createOptions: () => Promise.resolve(createOptionsFixture('default')), create },
+        {
+          createOptions: () => Promise.resolve(createOptionsFixture('default')),
+          create,
+          ...extra,
+        },
         {},
         createSpecFlowQueryClient(),
         operations,
@@ -244,7 +252,57 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
       const submit = await screen.findByRole('button', { name: 'Create specification' });
       await waitFor(() => expect((submit as HTMLButtonElement).disabled).toBe(false));
       fireEvent.click(submit);
+      return rendered;
     }
+
+    const accepted = {
+      operationId: created.operationId,
+      kind: 'specification-create',
+      status: 'in-progress',
+    } as const;
+
+    it('async mode: the 202 starts the checklist and the completed event opens the specification through the inspection', async () => {
+      const operations = controlledOperations();
+      let done = false;
+      const inspectOperation = vi.fn(() =>
+        Promise.resolve(done ? created : (accepted as CreateOperationInspection)),
+      );
+      const create = vi.fn(() => Promise.resolve(accepted));
+      const rendered = await submitFor(operations.api, create, { inspectOperation });
+      await waitFor(() => expect(operations.signals).toHaveLength(1));
+      await waitFor(() => expect(inspectOperation).toHaveBeenCalledTimes(1));
+      expect(rendered.onProjectCreated).not.toHaveBeenCalled();
+
+      operations.push({
+        ...base,
+        type: 'snapshot',
+        status: 'running',
+        steps: [
+          { id: 'reserving', status: 'done' },
+          { id: 'preparing-workspace', status: 'running' },
+        ],
+      });
+      expect(await screen.findByText('Preparing the workspace')).toBeTruthy();
+
+      // The stream is the primary signal: its end is confirmed by the inspection, immediately.
+      done = true;
+      operations.push({ ...base, type: 'completed', result: created });
+      await waitFor(() => expect(rendered.onProjectCreated).toHaveBeenCalledWith(created));
+      expect(inspectOperation).toHaveBeenCalledTimes(2);
+      expect(create).toHaveBeenCalledOnce();
+    });
+
+    it('async mode without a working stream: a calm note while the inspection is polled', async () => {
+      const operations = controlledOperations();
+      const inspectOperation = vi.fn(() => Promise.resolve(accepted as CreateOperationInspection));
+      const create = vi.fn(() => Promise.resolve(accepted));
+      const rendered = await submitFor(operations.api, create, { inspectOperation });
+      await waitFor(() => expect(operations.signals).toHaveLength(1));
+      operations.push(new Error('stream refused'));
+      expect(await screen.findByText(/Keep this page open/)).toBeTruthy();
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(rendered.onProjectCreated).not.toHaveBeenCalled();
+    });
 
     it('shows the named steps of the running operation as a checklist and keeps the form working', async () => {
       const operations = controlledOperations();

@@ -15,7 +15,7 @@ export interface CreateOperationStatus {
 
 /**
  * State machine of one Create operation (pure; the async orchestration lives in
- * `useCreateSpecification`).
+ * `useCreateProjectSpecification`).
  *
  * ```text
  *                      submit-started
@@ -23,23 +23,30 @@ export interface CreateOperationStatus {
  *     ▲                                         ▼
  *     │ failure-dismissed /               ┌────────────┐  submit-succeeded   ┌───────────┐
  *     │ form-edited (snapshot changed)    │ submitting │────────────────────▶│ completed │ (terminal)
- *     │                                   └────────────┘                     └───────────┘
+ *     │                                   └────────────┘  (201, sync answer) └───────────┘
  *   ┌────────┐   submit-failed (definite answer)  │ │ │ submit-failed (no / unreadable answer)
  *   │ failed │◀───────────────────────────────────┘ │ └──────────────────────────┐
  *   └────────┘     submit-started (new attempt)     │ submit-failed (503 recovery)│
- *        │                                          ▼                             ▼
- *        └─────────────▶ submitting      ┌──────────────────┐   ┌───────────────────┐
- *                                        │ outcome-unknown  │   │ recovery-required │
- *                                        └──────────────────┘   └───────────────────┘
+ *        │                                          │                             │
+ *        └─────────────▶ submitting                 │                             │
+ *                                                   ▼                             ▼
+ *   submitting ──submit-accepted (202, or a check──▶ ┌────────────┐   ┌───────────────────┐
+ *   found the operation still running)               │ monitoring │   │ outcome-unknown / │
+ *                                                    └────────────┘   │ recovery-required │
+ *   monitoring ──submit-succeeded──▶ completed       (inspection is   └───────────────────┘
+ *   monitoring ──submit-failed─────▶ failed | outcome-unknown | recovery-required
+ *                                                    polled; the live stream only hastens it)
+ *
  *   Both unknown phases: submit-started replays the retained operation (-> submitting, failure
  *   kept); submit-offline-replay returns to the same phase (nothing was dispatched);
  *   check-started -> check-found-completed (-> submitting, replay) | check-not-started
  *   (-> outcome-unknown) | check-failed-operation (-> failed) | check-unreadable (same phase).
  * ```
  *
- * `monitoring` is a long-running submit that outlived its soft deadline: the request is still in
- * flight and the status is polled. It is an expected state, not a failure; `submit-succeeded` and
- * `submit-failed` end it like `submitting`.
+ * `monitoring` is an operation the Runtime accepted (HTTP 202, work continues detached) or one a
+ * check found still running: the request is over and the inspection endpoint is polled. It is an
+ * expected state, not a failure; `submit-succeeded` and `submit-failed` end it like `submitting`.
+ * An older Runtime that ignores async mode answers 201 directly (submitting -> completed).
  *
  * Illegal events for the current phase are ignored (the state object is returned unchanged).
  * `form-edited` never retires an unknown outcome: only the server's answer ends it.
@@ -86,7 +93,8 @@ export interface CreateOperationState {
 export type CreateOperationEvent =
   | { type: 'submit-started' }
   | { type: 'request-prepared'; sent: SentRequest }
-  | { type: 'monitoring-started' }
+  /** The Runtime accepted the operation (202) and runs it detached, or it was found running. */
+  | { type: 'submit-accepted' }
   | { type: 'submit-succeeded' }
   | { type: 'submit-failed'; failure: StoredFailure; discardSent?: boolean }
   | { type: 'submit-offline-replay' }
@@ -155,7 +163,7 @@ export function createOperationReducer(
     }
     case 'request-prepared':
       return state.phase === 'submitting' ? { ...state, sent: event.sent } : state;
-    case 'monitoring-started':
+    case 'submit-accepted':
       return state.phase === 'submitting' ? { ...state, phase: 'monitoring' } : state;
     case 'submit-succeeded':
       return state.phase === 'submitting' || state.phase === 'monitoring'
@@ -249,7 +257,7 @@ export function createOperationReducer(
 /** What the presentation asks about the operation; derived, never stored. */
 export interface CreateOperationFlags {
   busy: boolean;
-  /** The submit outlived its soft deadline and the operation is being watched. */
+  /** The Runtime accepted the operation and it is being watched (inspection polling). */
   monitoring: boolean;
   checking: boolean;
   uncertain: boolean;

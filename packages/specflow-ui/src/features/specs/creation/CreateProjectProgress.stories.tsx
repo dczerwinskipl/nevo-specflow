@@ -1,10 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppShell, AppWorkspaceProvider } from '@nevo/ui';
 import type { OperationProgressEvent } from '@nevo/specflow-contracts/operations';
 import type { CreatedSpec } from '@nevo/specflow-contracts/specs';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, waitFor } from 'storybook/test';
+import { expect, fn, waitFor } from 'storybook/test';
 
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import { VisitStateProvider } from '../../../app/VisitStateProvider';
@@ -20,10 +20,24 @@ const operationBase = {
   kind: 'specification-create',
   at: '2026-10-20T14:32:08Z',
 };
-type StreamBehavior = 'steps' | 'unavailable';
+const accepted = {
+  operationId: '3f0a6d4e-8f2a-4b6e-9d0a-1c2b3d4e5f60',
+  kind: 'specification-create' as const,
+  status: 'in-progress' as const,
+};
+const createdSpec: CreatedSpec = {
+  operationId: accepted.operationId,
+  specId: '00000000-0000-4000-8000-0000000000aa',
+  kind: 'specification-create',
+  status: 'completed',
+  slug: 'limity-platnosci',
+  workspaceId: '00000000-0000-4000-8000-000000000002',
+  relativeManifestPath: 'specs/active/limity-platnosci/specification.yaml',
+};
+type StreamBehavior = 'steps' | 'unavailable' | 'completes';
 
 /** Plays the Runtime's stream with short delays; the POST stays pending so the steps stay visible. */
-function operationsFor(behavior: StreamBehavior): OperationsApi {
+function operationsFor(behavior: StreamBehavior, onCompleted: () => void): OperationsApi {
   const events: readonly OperationProgressEvent[] = [
     {
       ...operationBase,
@@ -47,6 +61,12 @@ function operationsFor(behavior: StreamBehavior): OperationsApi {
         if (signal?.aborted) return;
         yield event;
       }
+      if (behavior === 'completes') {
+        // The journal is complete before the stream says so (the Runtime's order).
+        onCompleted();
+        yield { ...operationBase, type: 'completed', result: createdSpec };
+        return;
+      }
       await new Promise<void>((resolve) =>
         signal?.addEventListener('abort', () => resolve(), { once: true }),
       );
@@ -54,28 +74,32 @@ function operationsFor(behavior: StreamBehavior): OperationsApi {
   };
 }
 
-function Fixture({ stream = 'steps' }: { stream?: StreamBehavior }) {
+function Fixture({
+  stream = 'steps',
+  onProjectCreated = () => undefined,
+}: {
+  stream?: StreamBehavior;
+  onProjectCreated?: (created: CreatedSpec) => void;
+}) {
   const client = useMemo(
     () => new QueryClient({ defaultOptions: { queries: { retry: false } } }),
     [],
   );
+  const completed = useRef(false);
   const services = useMemo(
     () =>
       createSpecFlowAppServices({
         runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode: 'project' }) },
         projectCreationApi: {
           createOptions: () => Promise.resolve(createOptionsFixture('default')),
-          // Pending on purpose: the operation is "running" for the whole story.
-          create: () => new Promise<CreatedSpec>(() => undefined),
-          inspectOperation: () =>
-            Promise.resolve({
-              operationId: operationBase.operationId,
-              kind: 'specification-create' as const,
-              status: 'in-progress' as const,
-            }),
+          // Async mode: the Runtime accepts (202) and the operation is "running" until the end.
+          create: () => Promise.resolve(accepted),
+          inspectOperation: () => Promise.resolve(completed.current ? createdSpec : accepted),
           operationEventsUrl: createOperationEventsUrl,
         },
-        operationsApi: operationsFor(stream),
+        operationsApi: operationsFor(stream, () => {
+          completed.current = true;
+        }),
       }),
     [stream],
   );
@@ -88,7 +112,7 @@ function Fixture({ stream = 'steps' }: { stream?: StreamBehavior }) {
               <AppShell navigation={<div>Projekt</div>} style={{ height: '100%', width: '100%' }}>
                 <CreateSpecificationScreen
                   onCreated={() => undefined}
-                  onProjectCreated={() => undefined}
+                  onProjectCreated={onProjectCreated}
                   onSession={() => undefined}
                   onBack={() => undefined}
                 />
@@ -151,5 +175,18 @@ export const NoStreamFallsBackSilently: Story = {
     );
     await expect(context.canvas.queryByRole('alert')).not.toBeInTheDocument();
     await expect(context.canvas.getByRole('button', { name: /Przygotowywanie/ })).toBeDisabled();
+    // The operation is accepted and watched through the inspection endpoint: a calm note says so.
+    await expect(await context.canvas.findByText(/Zostaw tę stronę otwartą/)).toBeInTheDocument();
+  },
+};
+
+/** The stream ends with `completed`: the inspection is read at once and the specification opens. */
+export const CompletedEventOpensTheSpecification: Story = {
+  args: { stream: 'completes', onProjectCreated: fn() },
+  play: async (context) => {
+    await submit(context);
+    await waitFor(() => expect(context.args.onProjectCreated).toHaveBeenCalledWith(createdSpec), {
+      timeout: 4000,
+    });
   },
 };

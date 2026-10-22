@@ -30,6 +30,7 @@ import {
 } from './createProjectReadiness';
 import { useCreateLeaveGuard } from './useCreateLeaveGuard';
 import { useCreateProjectSpecification } from './useCreateProjectSpecification';
+import type { StreamHint } from './watchCreateOperation';
 import { useRevealFailure } from './useRevealFailure';
 import {
   WorkspaceSection,
@@ -112,6 +113,19 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
       : undefined,
     enabled: busy,
   });
+
+  // The stream only hastens the next inspection read (completed event) or switches the poll to the
+  // regular backoff (stream lost); the inspection endpoint stays the single source of truth.
+  const { setStreamHint } = actions;
+  const streamHint: StreamHint =
+    progress.outcome !== null && progress.outcome !== 'running'
+      ? 'terminal'
+      : progress.lost
+        ? 'lost'
+        : 'live';
+  useEffect(() => {
+    setStreamHint(streamHint);
+  }, [setStreamHint, streamHint]);
 
   const leaveGuard = useCreateLeaveGuard({
     blocksLeave: flags.blocksLeave,
@@ -340,7 +354,8 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
                   }
                 />
               )}
-              {monitoring && !failure && (
+              {/* The calm note only when there is no live checklist to look at. */}
+              {monitoring && !failure && progress.lost && progress.steps.length === 0 && (
                 <Alert role="status" tone="info" title={t('create.monitoring.title')}>
                   <p>{t('create.monitoring.body')}</p>
                 </Alert>

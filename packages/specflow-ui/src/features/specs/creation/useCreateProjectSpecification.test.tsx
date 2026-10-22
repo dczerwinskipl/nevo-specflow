@@ -235,26 +235,95 @@ describe('useCreateProjectSpecification', () => {
     expect(onCreated).toHaveBeenCalledWith(created);
   });
 
-  it('turns a long-running create into monitoring and opens the result found by the status poll', async () => {
-    const post = vi.fn(() => new Promise<never>(() => undefined));
+  it('asks for async mode, shows the accepted operation as monitoring and opens the result found by the status poll', async () => {
+    const post = vi.fn().mockResolvedValue(inProgress);
     const get = vi.fn().mockResolvedValueOnce(inProgress).mockResolvedValue(created);
     const { model, onCreated, announce } = setup({ post, get });
-    act(() => {
-      void model().actions.submit(submission());
-    });
-    expect(model().state.phase).toBe('submitting');
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(15_000);
+      void model().actions.submit(submission());
+      await vi.advanceTimersByTimeAsync(0);
     });
+    expect(post.mock.calls[0]![2]).toMatchObject({ headers: { Prefer: 'respond-async' } });
     expect(model().state.phase).toBe('monitoring');
     expect(model().flags).toMatchObject({ monitoring: true, busy: true, blocksLeave: true });
     expect(announce).toHaveBeenCalledWith(expect.stringContaining('few minutes'));
+    // The stored operation survives a reload while it is being watched.
+    expect(storageKey().load()).toBeDefined();
+    // A healthy stream is the primary signal: the poll is only a slow safety net.
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(3_000);
+      await vi.advanceTimersByTimeAsync(14_000);
+    });
+    expect(get).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000);
     });
     expect(onCreated).toHaveBeenCalledWith(created);
     expect(model().state.phase).toBe('completed');
     expect(post).toHaveBeenCalledOnce();
+    expect(storageKey().load()).toBeUndefined();
+  });
+
+  it('reads the inspection at once when the progress stream reports its terminal event', async () => {
+    const post = vi.fn().mockResolvedValue(inProgress);
+    const get = vi.fn().mockResolvedValueOnce(inProgress).mockResolvedValue(created);
+    const { model, onCreated } = setup({ post, get });
+    await act(async () => {
+      void model().actions.submit(submission());
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(model().state.phase).toBe('monitoring');
+    expect(get).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      model().actions.setStreamHint('terminal');
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(get).toHaveBeenCalledTimes(2);
+    expect(onCreated).toHaveBeenCalledWith(created);
+    expect(model().state.phase).toBe('completed');
+  });
+
+  it('polls with the regular backoff once the progress stream is lost', async () => {
+    const post = vi.fn().mockResolvedValue(inProgress);
+    const get = vi.fn().mockResolvedValueOnce(inProgress).mockResolvedValueOnce(inProgress);
+    get.mockResolvedValue(created);
+    const { model, onCreated } = setup({ post, get });
+    await act(async () => {
+      void model().actions.submit(submission());
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    await act(async () => {
+      model().actions.setStreamHint('lost');
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(get).toHaveBeenCalledTimes(2);
+    expect(onCreated).not.toHaveBeenCalled();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3_000);
+    });
+    expect(onCreated).toHaveBeenCalledWith(created);
+  });
+
+  it('still accepts the synchronous 201 of an older Runtime', async () => {
+    const post = vi.fn().mockResolvedValue(created);
+    const get = vi.fn();
+    const { model, onCreated } = setup({ post, get });
+    await act(async () => {
+      await model().actions.submit(submission());
+    });
+    expect(model().state.phase).toBe('completed');
+    expect(onCreated).toHaveBeenCalledWith(created);
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it('ends a watched operation the Runtime reports as recovery-required in the recovery state', async () => {
+    const post = vi.fn().mockResolvedValue(inProgress);
+    const get = vi.fn().mockResolvedValue({ ...inProgress, status: 'recovery-required' });
+    const { model, onCreated } = setup({ post, get });
+    await act(async () => {
+      await model().actions.submit(submission());
+    });
+    expect(model().state.phase).toBe('recovery-required');
+    expect(onCreated).not.toHaveBeenCalled();
   });
 
   it('locks the form on recovery-required and completes after a status check finds the result', async () => {

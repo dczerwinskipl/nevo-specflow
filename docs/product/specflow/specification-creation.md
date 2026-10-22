@@ -81,6 +81,16 @@ A prolonged `in-progress` state does not prove the worker is alive; offer a reco
 instead of endless animation or unsafe automatic retries. After completion navigate by the
 canonical `specId`, not by a potentially stale worktree path.
 
+The project Create flow submits in async mode (`Prefer: respond-async`, see
+`reference.api.specflow-specification-operations`): the Runtime reserves the operation and answers
+202 at once, and the screen shows the operation as running while the work continues on the server.
+It then subscribes to the progress stream (best effort) and reads the inspection endpoint to learn
+the outcome: right away when the stream reports its end, with a slow safety-net poll while the
+stream is healthy, and with the regular backoff (3 s for the first minute, then 10 s, 10 minutes
+at most) when the stream is lost or unsupported. A reload resumes the same operation from session
+storage. The screen navigates on the inspection result, never on the stream alone. A Runtime that
+ignores the preference answers 201 synchronously, which completes the flow as before.
+
 After a shared-worktree Spec archive, sibling Specs and their workspace remain unchanged.
 Integrating the whole branch and removing that workspace is a separate explicitly previewed
 Workspace Close action. Neither Create nor Close automatically runs E3–E5 workflow/provider steps.
@@ -105,8 +115,8 @@ step arrives. The checklist is read by assistive technology through a polite liv
 row also says its state in text.
 
 Progress is best effort. If the live stream cannot be opened, drops or is unsupported, nothing is
-shown or announced and the form behaves exactly as before: the existing 15 s monitoring, polling and
-the response of the request decide the outcome. The stream never fails or delays a Create. The
+shown or announced and the form carries on with its own monitoring: a calm "we are watching the
+operation" note and the inspection polling decide the outcome. The stream never fails or delays a Create. The
 mechanism is generic (`reference.api.operation-progress`) and is reused by other long-running
 operations.
 

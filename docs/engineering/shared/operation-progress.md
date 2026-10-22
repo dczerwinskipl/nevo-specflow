@@ -67,6 +67,10 @@ stream must never fail or block the operation.
 - Subscribe with the client-generated `operationId`; the Runtime waits for an operation that has
   not been reserved yet (see the API reference).
 - On any stream failure show no checklist and carry on with the operation's own monitoring.
+  The hook reports `lost` when the stream failed, dropped or ended without a terminal event, so the
+  owner can switch its polling from a slow safety net to its regular backoff; a terminal event is a
+  reason to read the inspection at once, never the outcome itself (Create:
+  `watchCreateOperation.ts`, hints `live`, `terminal`, `lost`).
 - Abort the stream when the owner stops needing it (finished, unmounted, another operation).
 - Do not retry or poll the stream from the UI: the SSE client already reconnects with
   `Last-Event-ID` and the server answers with a fresh snapshot.

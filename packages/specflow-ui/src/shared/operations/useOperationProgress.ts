@@ -24,25 +24,34 @@ export interface OperationProgressView {
   readonly outcome: OperationProgressState['outcome'];
   /** False once the stream failed before saying anything: the caller shows no checklist. */
   readonly available: boolean;
+  /**
+   * The stream failed, dropped or ended without a terminal event (after the SSE client's own
+   * reconnects): the owner should rely on its own monitoring. Cleared when events flow again.
+   */
+  readonly lost: boolean;
 }
 
 type Action =
   | { type: 'event'; event: Parameters<typeof operationProgressReducer>[1] }
   | { type: 'reset' }
-  | { type: 'unavailable' };
+  | { type: 'unavailable' }
+  | { type: 'lost' };
 interface State extends OperationProgressState {
   readonly available: boolean;
+  readonly lost: boolean;
 }
 
-const initial: State = { ...initialOperationProgress, available: true };
+const initial: State = { ...initialOperationProgress, available: true, lost: false };
 
 function reduce(state: State, action: Action): State {
   switch (action.type) {
     case 'event':
-      return { ...operationProgressReducer(state, action.event), available: true };
+      return { ...operationProgressReducer(state, action.event), available: true, lost: false };
     case 'unavailable':
       // A stream that broke after showing steps leaves them (still accurate until the end).
       return state.outcome === null ? { ...state, available: false } : state;
+    case 'lost':
+      return { ...state, lost: true };
     case 'reset':
       return initial;
   }
@@ -69,9 +78,14 @@ export function useOperationProgress(options: UseOperationProgressOptions): Oper
           if (controller.signal.aborted) return;
           dispatch({ type: 'event', event });
         }
+        // The stream ended (the server closes it after a terminal event, which `outcome` records).
+        if (!controller.signal.aborted) dispatch({ type: 'lost' });
       } catch {
         // Best effort: the operation's own monitoring is the source of truth.
-        if (!controller.signal.aborted) dispatch({ type: 'unavailable' });
+        if (!controller.signal.aborted) {
+          dispatch({ type: 'unavailable' });
+          dispatch({ type: 'lost' });
+        }
       }
     })();
     return () => controller.abort();
@@ -81,5 +95,6 @@ export function useOperationProgress(options: UseOperationProgressOptions): Oper
     steps: enabled ? visibleProgressSteps(state.steps) : [],
     outcome: state.outcome,
     available: state.available,
+    lost: state.lost,
   };
 }

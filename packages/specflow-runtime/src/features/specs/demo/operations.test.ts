@@ -1,3 +1,4 @@
+import { BRANCH_NAME_MAX_LENGTH, isValidBranchName } from '@nevo/specflow-contracts/specs';
 import { describe, expect, it } from 'vitest';
 import { createDemoEnvironment, DemoOperationError } from '../../../demo';
 
@@ -68,7 +69,7 @@ describe('Specification-owned demo location', () => {
     'a/',
     'a.lock',
     'a.lock/b',
-    'x'.repeat(201),
+    'x'.repeat(BRANCH_NAME_MAX_LENGTH + 1),
   ])('rejects unsafe branch %j before creating anything', (branch) => {
     const { env, create } = setup();
     expect(() =>
@@ -79,6 +80,21 @@ describe('Specification-owned demo location', () => {
       }),
     ).toThrowError(expect.objectContaining({ code: 'CREATE_OPERATION_INVALID' }));
     expect(env.state.specifications.size).toBe(1);
+  });
+
+  it('accepts a branch of exactly the contracts limit', () => {
+    const branch = 'x'.repeat(BRANCH_NAME_MAX_LENGTH);
+    expect(BRANCH_NAME_MAX_LENGTH).toBe(240);
+    expect(isValidBranchName(branch)).toBe(true);
+    expect(isValidBranchName(branch + 'x')).toBe(false);
+    const { env, create } = setup();
+    expect(() =>
+      env.specs.create('alice', {
+        ...create,
+        operationId: op(3),
+        target: { kind: 'new-worktree', branch },
+      }),
+    ).not.toThrow();
   });
 
   it('isolates operation keys by identity and replays the same body without a second spec', () => {

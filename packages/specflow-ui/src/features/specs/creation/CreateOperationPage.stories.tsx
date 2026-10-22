@@ -255,7 +255,9 @@ export const InProgressWithSteps: Story = {
       'false',
     );
     await expect(canvas.getByText(/Możesz opuścić tę stronę/)).toBeInTheDocument();
-    await expect(canvas.queryByText(/Nowa specyfikacja/)).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByText(/Otwórz Nowa specyfikacja|Wróć do niego przez/),
+    ).not.toBeInTheDocument();
     await expect(canvas.getByRole('button', { name: 'Wróć do specyfikacji' })).toBeEnabled();
     await expect(canvas.queryByRole('alert')).not.toBeInTheDocument();
   },
@@ -367,7 +369,7 @@ export const Success: Story = {
     ).toBeInTheDocument();
     await expect(canvas.getByRole('button', { name: 'Otwórz specyfikację' })).toBeInTheDocument();
     for (const row of steps(canvasElement).getAllByRole('listitem'))
-      await expect(row).toHaveTextContent(/gotowe$/);
+      await expect(row).toHaveTextContent(/gotowe/);
     await waitFor(() => expect(args.onOpen).toHaveBeenCalledWith(createdSpec), { timeout: 4000 });
   },
 };

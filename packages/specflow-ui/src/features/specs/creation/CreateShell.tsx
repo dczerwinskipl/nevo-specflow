@@ -7,11 +7,14 @@ import { applicationLocationHeader } from '../../../app/navigation/ApplicationLo
 /** The Primary pane every Create state is shown in (loading, error and the form alike). */
 export function CreateShell({
   specId,
+  title,
   containerClassName,
   width = 'standard',
   children,
 }: {
   specId?: string;
+  /** Names the page in the header and the breadcrumb; the default is the Create form's. */
+  title?: string;
   containerClassName?: string;
   /** `narrow` is the readable column of a focused single-task page (the progress page). */
   width?: 'standard' | 'narrow';
@@ -23,7 +26,7 @@ export function CreateShell({
     <AppWorkspace fit="bounded" labels={workspaceLabels} scroll="content">
       <AppWorkspace.Primary
         header={applicationLocationHeader({
-          title: specId ? t('create.newSession') : t('create.newSpecification'),
+          title: title ?? (specId ? t('create.newSession') : t('create.newSpecification')),
           view: specId ? 'new-session' : 'new-specification',
           specId,
         })}

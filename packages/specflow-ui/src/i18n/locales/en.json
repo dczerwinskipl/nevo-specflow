@@ -1031,7 +1031,8 @@
         "title": "Technical details"
       },
       "backToSpecifications": "Back to specifications",
-      "notCreated": "Nothing was created. Your entries are kept, so you can fix this and try again."
+      "notCreated": "Nothing was created. Your entries are kept, so you can fix this and try again.",
+      "location": "Creating specification"
     }
   },
   "documents": {

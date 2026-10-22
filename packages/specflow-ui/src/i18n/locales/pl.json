@@ -1031,7 +1031,8 @@
         "title": "Szczegóły techniczne"
       },
       "backToSpecifications": "Wróć do specyfikacji",
-      "notCreated": "Nic nie zostało utworzone. Wpisane dane są zachowane, więc możesz to poprawić i spróbować ponownie."
+      "notCreated": "Nic nie zostało utworzone. Wpisane dane są zachowane, więc możesz to poprawić i spróbować ponownie.",
+      "location": "Tworzenie specyfikacji"
     }
   },
   "documents": {

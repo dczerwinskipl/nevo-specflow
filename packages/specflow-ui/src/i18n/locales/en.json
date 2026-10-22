@@ -1084,6 +1084,7 @@
         "addedToExistingUnknown": "Added to an existing workspace",
         "addedToFolder": "Added to the current folder, branch <branch/>",
         "addedToFolderUnknown": "Added to the current folder",
+        "name": "Specification name",
         "slug": "Name (slug)",
         "goal": "Goal",
         "committedTo": "The specification files are committed to <branch/>"

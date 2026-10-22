@@ -1084,6 +1084,7 @@
         "addedToExistingUnknown": "Dodana do istniejącego środowiska pracy",
         "addedToFolder": "Dodana do bieżącego katalogu, gałąź <branch/>",
         "addedToFolderUnknown": "Dodana do bieżącego katalogu",
+        "name": "Nazwa specyfikacji",
         "slug": "Nazwa (slug)",
         "goal": "Cel",
         "committedTo": "Pliki specyfikacji trafią do commita na gałęzi <branch/>"

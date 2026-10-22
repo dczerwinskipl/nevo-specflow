@@ -86,8 +86,8 @@ function StepText({
 /**
  * Calm step checklist of a long-running operation, driven only by the steps it receives (it knows
  * no operation kind): the running step shows a spinner, finished ones a check, pending ones stay
- * muted; each step may carry a one-line description. A polite live region announces changes; rows
- * keep a fixed marker column so the layout does not move between states, including at 320 px.
+ * muted; each step may carry a one-line description. It is a labelled group, not a live region: the
+ * owner announces changes once through its own announcer. Rows keep a fixed marker column so the layout does not move between states, including at 320 px.
  */
 export function OperationProgress({
   steps,
@@ -102,8 +102,7 @@ export function OperationProgress({
 
   return (
     <div
-      role="status"
-      aria-live="polite"
+      role="group"
       aria-label={text(label)}
       className={cn('grid min-w-0 gap-3', className)}
     >

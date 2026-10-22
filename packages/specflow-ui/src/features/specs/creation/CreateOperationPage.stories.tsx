@@ -270,7 +270,7 @@ type Story = StoryObj<typeof meta>;
 
 /** The checklist only: the breadcrumbs are list items too. */
 const steps = (canvasElement: HTMLElement) =>
-  within(within(canvasElement).getByRole('status', { name: 'Postęp tworzenia specyfikacji' }));
+  within(within(canvasElement).getByRole('group', { name: 'Postęp tworzenia specyfikacji' }));
 
 const newWorkspace = { title: 'Limity płatności', target: { kind: 'new-worktree' as const } };
 
@@ -388,7 +388,7 @@ export const MergeTargetWarningStaysInTheForm: Story = {
 
 /**
  * A long name, a long branch and no spaces to break at: the single heading wraps inside 320 px
- * (clamped to three lines, the full name stays in its tooltip), nothing scrolls sideways.
+ * (clamped to three lines, the full name is a row of the configuration list), nothing scrolls sideways.
  */
 export const LongTitleAt320: Story = {
   args: {
@@ -413,7 +413,11 @@ export const LongTitleAt320: Story = {
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320);
     const heading = canvas.getByRole('heading', { level: 1, name: /^Tworzenie: Ogr/ });
     await expect(heading.getBoundingClientRect().right).toBeLessThanOrEqual(320);
-    await expect(heading).toHaveAttribute('title', expect.stringMatching(/dostawcami rozliczeń$/));
+    // No tooltip: the full name is a row of the configuration list.
+    await expect(heading).not.toHaveAttribute('title');
+    await expect(
+      within(canvas.getByLabelText('Ustawienia tworzenia')).getByText(/dostawcami rozliczeń$/),
+    ).toBeInTheDocument();
     for (const row of steps(canvasElement).getAllByRole('listitem'))
       await expect(row.getBoundingClientRect().right).toBeLessThanOrEqual(320);
   },

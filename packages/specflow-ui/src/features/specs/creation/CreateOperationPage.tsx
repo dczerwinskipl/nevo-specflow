@@ -15,7 +15,13 @@ import { createRunningStepTitle } from './createProgress';
 import { CreateShell } from './CreateShell';
 import type { CreateFailure } from './createFailure';
 import { useCreateOperationStorage } from './createOperationStorage';
-import { createPageView, createSettingsModel, type CreatePageView } from './createPageView';
+import {
+  createPageHeading,
+  createPageStatus,
+  createPageView,
+  createSettingsModel,
+  type CreatePageView,
+} from './createPageView';
 import { CreateSettingsList } from './CreateSettingsList';
 import { CreateTechnicalDetails } from './CreateTechnicalDetails';
 import { useCreateOperationProgress } from './useCreateOperationProgress';
@@ -25,35 +31,6 @@ import { initialWorkspaceChoice, type WorkspaceChoice } from './workspace/worksp
 
 /** How long the finished checklist stays in view before the new specification opens. */
 export const openAfterCreatedMs = 1500;
-
-const headingKeys = {
-  working: 'create.page.heading.working',
-  completed: 'create.page.heading.completed',
-  refused: 'create.page.heading.refused',
-  unknown: 'create.page.heading.unknown',
-  'not-found': 'create.page.heading.notFound',
-} as const satisfies Record<CreatePageView, string>;
-
-/** The same headings with the specification name; the page uses them whenever the name is known. */
-const namedHeadingKeys = {
-  working: 'create.page.heading.workingNamed',
-  completed: 'create.page.heading.completedNamed',
-  refused: 'create.page.heading.refusedNamed',
-  unknown: 'create.page.heading.unknownNamed',
-} as const satisfies Partial<Record<CreatePageView, string>>;
-
-/** Refusals that happen before anything is done: the page may say nothing was created. */
-const nothingCreatedKinds: ReadonlySet<CreateFailure['kind']> = new Set([
-  'branch-exists',
-  'branch-invalid',
-  'stale',
-  'name-conflict',
-  'offline',
-  'forbidden',
-  'unauthenticated',
-  'branch-protected',
-  'commit-blocked',
-]);
 
 const toneOf = {
   working: 'running',
@@ -136,18 +113,22 @@ export function CreateOperationPage({
   // The finished checklist is seen for a moment, then the specification opens (the button is faster).
   useEffect(() => {
     if (!created) return;
-    announce(t('create.page.status.completed'));
     const timer = setTimeout(() => onOpen(created), openAfterCreatedMs);
     return () => clearTimeout(timer);
-  }, [announce, created, onOpen, t]);
+  }, [created, onOpen]);
 
   const sent = state.sent ?? stored?.request;
   const title = [sent?.title, ownDraft?.title].map((value) => value?.trim()).find(Boolean);
   const target = sent?.target;
-  const settings = createSettingsModel(stored?.request, ownDraft?.goal, ownDraft?.facts);
+  const settings = createSettingsModel(
+    stored?.request,
+    ownDraft?.goal,
+    ownDraft?.facts,
+    ownDraft?.title,
+  );
   const failure = state.failure;
   // A failure that kept the operation (a lost session) is tried again here; a refusal ends it.
-  const retainable = view === 'refused' && storage.load(operationId) !== undefined;
+  const retainable = view === 'refused' && state.retained;
 
   const backToForm = (patch: FormPatch = undefined, keepFailure = true) => {
     const base = storage.loadDraft(operationId);
@@ -163,34 +144,24 @@ export function CreateOperationPage({
     onBackToForm(operationId);
   };
 
-  // One heading carries the state and the name; the full name stays available as the tooltip.
-  const headingView = created ? 'completed' : view;
-  const headingName = title && view !== 'not-found' ? title : undefined;
-  const headingText =
-    headingName && headingView !== 'not-found'
-      ? t(namedHeadingKeys[headingView], { name: headingName })
-      : t(headingKeys[headingView]);
-
+    // One heading carries the state and the name (the full name is in the configuration list).
+  const headingText = text(createPageHeading(view, view === 'not-found' ? undefined : title));
   const newWorkspace =
     (settings?.place ?? (target?.kind === 'new-worktree' ? 'new' : 'main')) === 'new';
-  // What is going on now (subtitle), or, for a refusal that changed nothing, what was NOT created.
-  const statusText = created
-    ? t('create.page.status.completed')
-    : view === 'refused' && failure && nothingCreatedKinds.has(failure.kind)
-      ? t('create.page.notCreated')
-      : view === 'unknown' && failure?.kind === 'recovery-required' && failure.committed
-        ? t('create.page.createdNotCommitted')
-        : working
-          ? stillWorking
-            ? t('create.page.status.stillWorking')
-            : runningStep
-              ? text(runningStep)
-              : flags.monitoring
-                ? t(newWorkspace ? 'create.page.status.workingNew' : 'create.page.status.working')
-                : state.sent && state.resumedFrom
-                  ? t('create.page.status.reading')
-                  : t('create.page.status.sending')
-          : undefined;
+  // The one status line of the page; it is also what is announced, once per change.
+  const status = createPageStatus({
+    view,
+    failure,
+    stillWorking,
+    runningStep,
+    monitoring: flags.monitoring,
+    reading: Boolean(state.sent && state.resumedFrom),
+    newWorkspace,
+  });
+  const statusText = status ? text(status) : undefined;
+  useEffect(() => {
+    if (statusText) announce(statusText);
+  }, [announce, statusText]);
 
   const checkLabel = state.checking
     ? t('create.submit.checking')
@@ -204,7 +175,7 @@ export function CreateOperationPage({
         <ApplicationContextLine className="mb-0" view="new-specification" />
         <header className="flex min-w-0 items-start gap-4">
           {/* Static while running: the active step of the checklist carries the page's only spinner. */}
-          <OperationStatusTile tone={created ? 'success' : toneOf[view]} animated={false} />
+          <OperationStatusTile tone={toneOf[view]} animated={false} />
           <div className="grid min-w-0 gap-1">
             <Typography
               as="h1"
@@ -212,24 +183,17 @@ export function CreateOperationPage({
               ref={headingRef}
               tabIndex={-1}
               className="line-clamp-3 min-w-0 outline-none [overflow-wrap:anywhere]"
-              title={headingName}
             >
               {headingText}
             </Typography>
-            <Typography
-              as="p"
-              variant="body-md"
-              role="status"
-              aria-live="polite"
-              className="min-h-6 text-content-secondary"
-            >
+            <Typography as="p" variant="body-md" className="min-h-6 text-content-secondary">
               {statusText}
             </Typography>
           </div>
         </header>
 
         {(working || created) && (
-          <section aria-label={t('create.progress.label')}>
+          <div>
             <CreateOperationProgress
               progress={progress}
               reportedFailure={reportedFailure}
@@ -239,7 +203,7 @@ export function CreateOperationPage({
               commits={settings?.commit === true}
               monitoring={flags.monitoring}
             />
-          </section>
+          </div>
         )}
 
         {view === 'not-found' && (

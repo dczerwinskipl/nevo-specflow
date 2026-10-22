@@ -42,6 +42,11 @@ export function CreateSettingsList({ settings }: { settings: CreateSettingsModel
 
   return (
     <DescriptionList aria-label={t('create.page.settings.label')}>
+      {settings.name && (
+        <SummaryRow label={t('create.page.settings.name')} override={false}>
+          <span className="wrap-anywhere">{settings.name}</span>
+        </SummaryRow>
+      )}
       <SummaryRow label={t('create.page.settings.where')} override>
         {where}
       </SummaryRow>

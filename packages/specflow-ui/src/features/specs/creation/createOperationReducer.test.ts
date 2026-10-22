@@ -329,3 +329,16 @@ describe('selectCreateOperationFlags', () => {
     expect(selectCreateOperationFlags(replaying)).toMatchObject({ busy: true, uncertain: true });
   });
 });
+
+describe('retained failure', () => {
+  it('remembers whether the failure kept the stored operation, and forgets it on a new attempt', () => {
+    const kept = reduce(submitting, {
+      type: 'submit-failed',
+      failure: failure('unauthenticated'),
+      retained: true,
+    });
+    expect(kept.retained).toBe(true);
+    expect(failed.retained).toBe(false);
+    expect(reduce(kept, { type: 'submit-started' }).retained).toBe(false);
+  });
+});

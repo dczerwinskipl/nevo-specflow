@@ -78,7 +78,7 @@ export function SwitchField({
   const descriptionId = description ? `${id}-description` : undefined;
   // `aria-disabled` keeps the control reachable (its reason is the description); it reads as muted too.
   const unavailable =
-    disabled || props['aria-disabled'] === true || props['aria-disabled'] === 'true';
+    Boolean(disabled) || props['aria-disabled'] === true || props['aria-disabled'] === 'true';
   const describedBy = [ariaDescribedBy, descriptionId].filter(Boolean).join(' ') || undefined;
 
   return (

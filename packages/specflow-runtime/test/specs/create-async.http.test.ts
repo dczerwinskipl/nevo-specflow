@@ -4,7 +4,11 @@ import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { bootstrapProjectHome, createSpecificationForTesting } from '@nevo/specflow-engine/testing';
+import {
+  bootstrapProjectHome,
+  createSpecificationForTesting,
+  inspectPublicCreateOperation,
+} from '@nevo/specflow-engine/testing';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -104,7 +108,7 @@ async function server(
     }
     throw new Error('create did not complete');
   };
-  return { root, engine, post, inspect, untilCompleted };
+  return { root, engine, app, post, inspect, untilCompleted };
 }
 
 describe('POST /api/specs with Prefer: respond-async (real Git)', () => {
@@ -160,6 +164,25 @@ describe('POST /api/specs with Prefer: respond-async (real Git)', () => {
       expect(replay.headers.location).toBe(`/api/specs/create/operations/${operationId}`);
     }
     await untilCompleted(operationId);
+  }, 240000);
+
+  it('close() waits for a detached Create instead of abandoning a non terminal journal', async () => {
+    const { app, engine, post } = await server(true);
+    const operationId = randomUUID();
+    const accepted = await post(
+      {
+        operationId,
+        title: 'Shutdown during create',
+        target: { kind: 'new-worktree', baseRef: 'HEAD' },
+      },
+      'respond-async',
+    );
+    expect(accepted.statusCode).toBe(202);
+
+    // Shutdown right after the 202: the journal must be terminal when close() resolves.
+    await app.close();
+    const inspection = await inspectPublicCreateOperation(engine, operationId);
+    expect(inspection).toMatchObject({ status: 'completed', operationId });
   }, 240000);
 
   it('keeps the synchronous 201 without the header or with other preferences', async () => {

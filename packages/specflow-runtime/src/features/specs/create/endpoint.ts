@@ -47,6 +47,8 @@ import { statusForCreateError, type CreateErrorCode } from './error-status';
 import { startCreateProgress, type CreateProgress } from './progress';
 import { prefersRespondAsync } from './respond-async';
 
+const DEFAULT_CLOSE_GRACE_MS = 30_000;
+
 export interface SpecsCreateEndpointOptions {
   readonly engine?: SpecFlowEngine;
   /** Optional live progress (SSE) for operations that carry a client `operationId`. */
@@ -54,6 +56,8 @@ export interface SpecsCreateEndpointOptions {
   readonly stream?: OperationEventsStreamOptions;
   /** Idle time after which a journal without a live writer is interrupted (tests; default 5 min). */
   readonly staleAfterMs?: number;
+  /** How long `close()` waits for Creates still running (default 30 s). */
+  readonly closeGraceMs?: number;
   /** Injectable clock (tests). */
   readonly now?: () => Date;
 }
@@ -68,6 +72,24 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
   options,
   done,
 ) => {
+  // Creates are not bound to their request, so shutdown has to wait for them: a Create killed
+  // mid-stage leaves a non terminal journal that only an operator can recover.
+  const inFlight = new Set<Promise<unknown>>();
+  const closeGraceMs = options.closeGraceMs ?? DEFAULT_CLOSE_GRACE_MS;
+  app.addHook('onClose', async () => {
+    if (inFlight.size === 0) return;
+    let timer: NodeJS.Timeout | undefined;
+    const expired = new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, closeGraceMs);
+      timer.unref();
+    });
+    try {
+      await Promise.race([Promise.allSettled([...inFlight]), expired]);
+    } finally {
+      clearTimeout(timer);
+    }
+  });
+
   app.withTypeProvider<TypeBoxTypeProvider>().get(
     '/api/specs/create-options',
     {
@@ -301,6 +323,11 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
             throw error;
           }
         })();
+        inFlight.add(finished);
+        void finished.then(
+          () => inFlight.delete(finished),
+          () => inFlight.delete(finished),
+        );
 
         if (respondAsync && operationId) {
           // A failure after acceptance is reported by progress/inspection, never lost unhandled.

@@ -7,15 +7,15 @@ import { message } from '../../i18n/message';
 import { OperationProgress, type OperationProgressStep } from './OperationProgress';
 
 const steps: readonly OperationProgressStep[] = [
-  { id: 'reserving', label: message('create.progress.steps.reserving'), status: 'done' },
+  { id: 'reserving', label: message('create.progress.steps.reserving.title'), status: 'done' },
   {
     id: 'preparing-workspace',
-    label: message('create.progress.steps.preparing-workspace'),
+    label: message('create.progress.steps.preparing-workspace.title'),
     status: 'running',
   },
   {
     id: 'registering',
-    label: message('create.progress.steps.registering'),
+    label: message('create.progress.steps.registering.title'),
     status: 'pending',
   },
 ];
@@ -62,5 +62,35 @@ describe('OperationProgress', () => {
     const { container } = renderProgress({ steps: [], placeholderRows: 3 });
     expect(screen.queryAllByRole('listitem')).toHaveLength(0);
     expect(container.querySelectorAll('[aria-hidden="true"] > div')).toHaveLength(3);
+  });
+
+  it('draws the one-line description of a step under its label', () => {
+    renderProgress({
+      steps: [
+        {
+          id: 'a',
+          label: message('create.progress.steps.reserving.title'),
+          description: message('create.progress.steps.reserving.done'),
+          status: 'done',
+        },
+      ],
+    });
+    expect(screen.getByRole('listitem').textContent).toBe(
+      'Reserving the name doneName and branch reserved',
+    );
+  });
+
+  it('shows ONE neutral running row when no step is known, never a simulated list', () => {
+    renderProgress({
+      steps: [],
+      neutral: {
+        label: message('create.progress.neutral.title'),
+        description: message('create.progress.neutral.description'),
+      },
+    });
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+    const region = screen.getByRole('status', { name: 'Specification creation progress' });
+    expect(within(region).getByText('Creating specification')).toBeTruthy();
+    expect(region.querySelectorAll('[data-operation-progress="neutral"]')).toHaveLength(1);
   });
 });

@@ -57,7 +57,6 @@ export interface CreateSettingsModel {
   readonly branch?: string;
   readonly folder?: string;
   readonly mergeInto?: FactWorkspace;
-  readonly mergeReason?: string;
   readonly slug?: string;
   readonly goal?: string;
 }
@@ -83,7 +82,6 @@ export function createSettingsModel(
     ...(place === 'new' && branch ? { branch } : {}),
     ...(place === 'new' && facts?.folder ? { folder: facts.folder } : {}),
     ...(place === 'new' && facts?.mergeInto ? { mergeInto: facts.mergeInto } : {}),
-    ...(place === 'new' && facts?.mergeReason ? { mergeReason: facts.mergeReason } : {}),
     ...(slug ? { slug } : {}),
     ...(goal ? { goal } : {}),
   };

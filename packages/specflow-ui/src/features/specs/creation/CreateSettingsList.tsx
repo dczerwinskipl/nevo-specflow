@@ -1,27 +1,21 @@
 import { Trans, useTranslation } from 'react-i18next';
-import { DescriptionList, Typography } from '@nevo/ui';
-import { useMessage } from '../../../i18n/message';
+import { DescriptionList } from '@nevo/ui';
 import { BranchRef } from '../../../shared/git/BranchRef';
 import type { CreateSettingsModel } from './createPageView';
 import { WorkspaceRef } from './workspace/NewWorkspaceSettings';
-import { mergeUnavailableNote } from './workspace/workspaceCopy';
 import { SummaryRow } from './workspace/WorkspaceTileSummaries';
 
-const code = (value: string) => (
-  <Typography as="span" variant="code-md" className="wrap-anywhere">
-    {value}
-  </Typography>
-);
-
 /**
- * The actual settings of this Create in plain language, as a description list that reuses the
- * rows and the branch/workspace references of the form's workspace summary so the wording matches.
- * Every value comes from the retained request and the facts saved with the draft; a row whose
- * value is unknown is not shown.
+ * The compact configuration of this Create in plain language, as a description list that reuses the
+ * rows and the branch/workspace references of the form's workspace summary so the wording matches:
+ * type, branch, base and the workspace it is integrated into later, plus a short goal. Technical
+ * values (folder, name slug, operation id) live in `CreateTechnicalDetails`. The uncommitted-changes
+ * caveat of the merge target belongs to the form, near the choice, and is not repeated here. Every
+ * value comes from the retained request and the facts saved with the draft; a row whose value is
+ * unknown is not shown.
  */
 export function CreateSettingsList({ settings }: { settings: CreateSettingsModel }) {
   const { t } = useTranslation();
-  const text = useMessage();
   const { place, workspace } = settings;
 
   const where =
@@ -60,28 +54,14 @@ export function CreateSettingsList({ settings }: { settings: CreateSettingsModel
           {settings.base ? <BranchRef name={settings.base} /> : t('create.workspace.baseHead')}
         </SummaryRow>
       )}
-      {settings.folder && (
-        <SummaryRow label={t('create.workspace.fact.folder')} override={false}>
-          {code(settings.folder)}
-        </SummaryRow>
-      )}
       {settings.mergeInto && (
-        <SummaryRow
-          label={t('create.workspace.fact.target')}
-          override={false}
-          note={settings.mergeReason ? text(mergeUnavailableNote(settings.mergeReason)) : undefined}
-        >
+        <SummaryRow label={t('create.workspace.fact.target')} override={false}>
           <WorkspaceRef workspace={settings.mergeInto} />
-        </SummaryRow>
-      )}
-      {settings.slug && (
-        <SummaryRow label={t('create.page.settings.slug')} override={false}>
-          {code(settings.slug)}
         </SummaryRow>
       )}
       {settings.goal && (
         <SummaryRow label={t('create.page.settings.goal')} override={false}>
-          <span className="line-clamp-3">{settings.goal}</span>
+          <span className="line-clamp-2">{settings.goal}</span>
         </SummaryRow>
       )}
     </DescriptionList>

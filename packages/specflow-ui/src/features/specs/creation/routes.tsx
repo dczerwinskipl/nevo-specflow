@@ -90,6 +90,7 @@ function CreatingSpecification() {
           })
         }
         onBackToForm={() => void navigate({ to: '/specs/new', search: { collection } })}
+        onBackToSpecifications={() => void navigate({ to: '/', search: { collection } })}
       />
     </AppWorkspaceProvider>
   );

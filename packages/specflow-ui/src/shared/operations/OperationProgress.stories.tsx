@@ -10,10 +10,10 @@ const step = (
   id: string,
   status: OperationProgressStep['status'],
   key:
-    | 'create.progress.steps.reserving'
-    | 'create.progress.steps.preparing-workspace'
-    | 'create.progress.steps.writing-specification'
-    | 'create.progress.steps.registering',
+    | 'create.progress.steps.reserving.title'
+    | 'create.progress.steps.preparing-workspace.title'
+    | 'create.progress.steps.writing-specification.title'
+    | 'create.progress.steps.registering.title',
 ): OperationProgressStep => ({ id, status, label: message(key) });
 
 const meta = {
@@ -29,10 +29,10 @@ type Story = StoryObj<typeof meta>;
 export const Running: Story = {
   args: {
     steps: [
-      step('reserving', 'done', 'create.progress.steps.reserving'),
-      step('preparing-workspace', 'running', 'create.progress.steps.preparing-workspace'),
-      step('writing-specification', 'pending', 'create.progress.steps.writing-specification'),
-      step('registering', 'pending', 'create.progress.steps.registering'),
+      step('reserving', 'done', 'create.progress.steps.reserving.title'),
+      step('preparing-workspace', 'running', 'create.progress.steps.preparing-workspace.title'),
+      step('writing-specification', 'pending', 'create.progress.steps.writing-specification.title'),
+      step('registering', 'pending', 'create.progress.steps.registering.title'),
     ],
   },
   play: async ({ canvas }) => {
@@ -47,9 +47,9 @@ export const Running: Story = {
 export const Finished: Story = {
   args: {
     steps: [
-      step('reserving', 'done', 'create.progress.steps.reserving'),
-      step('writing-specification', 'done', 'create.progress.steps.writing-specification'),
-      step('registering', 'done', 'create.progress.steps.registering'),
+      step('reserving', 'done', 'create.progress.steps.reserving.title'),
+      step('writing-specification', 'done', 'create.progress.steps.writing-specification.title'),
+      step('registering', 'done', 'create.progress.steps.registering.title'),
     ],
   },
 };
@@ -66,10 +66,10 @@ export const WaitingForFirstSnapshot: Story = {
 export const Narrow320: Story = {
   args: {
     steps: [
-      step('reserving', 'done', 'create.progress.steps.reserving'),
-      step('preparing-workspace', 'done', 'create.progress.steps.preparing-workspace'),
-      step('writing-specification', 'running', 'create.progress.steps.writing-specification'),
-      step('registering', 'pending', 'create.progress.steps.registering'),
+      step('reserving', 'done', 'create.progress.steps.reserving.title'),
+      step('preparing-workspace', 'done', 'create.progress.steps.preparing-workspace.title'),
+      step('writing-specification', 'running', 'create.progress.steps.writing-specification.title'),
+      step('registering', 'pending', 'create.progress.steps.registering.title'),
     ],
   },
   decorators: [

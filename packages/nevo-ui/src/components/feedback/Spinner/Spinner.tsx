@@ -18,7 +18,7 @@ export function Spinner({ className, label, size = 'md', ...props }: SpinnerProp
       {...capture}
     >
       <span className="inline-flex" {...designSlot('Spinner', 'icon')}>
-        <Icon name="loader" size={size} className="animate-spin" />
+        <Icon name="loader" size={size} className="animate-spin motion-reduce:animate-none" />
       </span>
     </span>
   );

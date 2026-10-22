@@ -87,6 +87,7 @@ function renderPage(
 ) {
   const onOpen = vi.fn();
   const onBackToForm = vi.fn();
+  const onBackToSpecifications = vi.fn();
   const client = {
     post: http.post ?? vi.fn(),
     get: http.get ?? vi.fn(),
@@ -114,6 +115,7 @@ function renderPage(
                   operationId={operationId}
                   onOpen={onOpen}
                   onBackToForm={onBackToForm}
+                  onBackToSpecifications={onBackToSpecifications}
                 />
               </AppShell>
             </AppWorkspaceProvider>
@@ -123,7 +125,13 @@ function renderPage(
     </QueryClientProvider>
   );
   const view = render(tree);
-  return { onOpen, onBackToForm, rerender: () => view.rerender(tree), unmount: view.unmount };
+  return {
+    onOpen,
+    onBackToForm,
+    onBackToSpecifications,
+    rerender: () => view.rerender(tree),
+    unmount: view.unmount,
+  };
 }
 
 beforeEach(() => {
@@ -158,7 +166,11 @@ afterEach(() => {
 const heading = (name: string, named = true) =>
   screen.findByRole('heading', {
     level: 1,
-    name: named ? `${name}: Payment limits` : name,
+    name: named
+      ? name === 'Creating specification'
+        ? 'Creating Payment limits'
+        : `${name}: Payment limits`
+      : name,
   });
 
 describe('CreateOperationPage', () => {
@@ -182,6 +194,8 @@ describe('CreateOperationPage', () => {
     expect(settings.queryByText('Worktree folder')).toBeNull();
     expect(settings.queryByText('Goal')).toBeNull();
     expect(screen.getByText(/you can leave this page/i)).toBeTruthy();
+    // The way back is the list; the old hint to open New specification is gone.
+    expect(screen.queryByText(/Open New specification/)).toBeNull();
 
     await waitFor(() => expect(post).toHaveBeenCalledOnce());
     expect(post.mock.calls[0]![1]).toMatchObject({ operationId, title: 'Payment limits' });
@@ -218,7 +232,7 @@ describe('CreateOperationPage', () => {
     expect(settings.getByText('feature/api')).toBeTruthy();
   });
 
-  it('states a new workspace fully: branch, folder, base, merge target (with the quiet dirty note), slug and a short goal', async () => {
+  it('states the configuration compactly (type, branch, base, integrate into, goal) and keeps technical values in closed details', async () => {
     store({ target: { kind: 'new-worktree' }, slug: 'limits', goal: `Goal ${'long '.repeat(40)}` });
     storage().saveDraft({
       operationId,
@@ -239,17 +253,74 @@ describe('CreateOperationPage', () => {
     const settings = within(await screen.findByLabelText('Creation settings'));
     expect(settings.getByText('Start from')).toBeTruthy();
     expect(settings.getAllByText('develop')).toHaveLength(2);
-    expect(settings.getByText('/work/trees')).toBeTruthy();
     expect(settings.getByText('Merge into')).toBeTruthy();
-    expect(
-      settings.getByText(
-        'This workspace has uncommitted changes. You can still create the specification; commit or stash them before merging into it.',
-      ),
-    ).toBeTruthy();
-    expect(settings.getByText('limits')).toBeTruthy();
+    // The uncommitted-changes caveat belongs to the form, not to the progress page.
+    expect(screen.queryByText(/uncommitted changes/)).toBeNull();
+    // Technical values are not part of the summary; they are in the closed disclosure.
+    expect(settings.queryByText('/work/trees')).toBeNull();
+    expect(screen.getByRole('heading', { level: 2, name: 'Configuration' })).toBeTruthy();
+    const trigger = screen.getByRole('button', { name: 'Technical details' });
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByText('/work/trees')).toBeNull();
+    fireEvent.click(trigger);
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    expect(await screen.findByText('/work/trees')).toBeTruthy();
+    expect(screen.getByText('limits')).toBeTruthy();
+    expect(screen.getByText(operationId)).toBeTruthy();
     const goal = settings.getByText(/^Goal long/);
     expect(goal.textContent.length).toBeLessThanOrEqual(166);
     expect(goal.textContent.endsWith('…')).toBe(true);
+  });
+
+  it('shows the way back to the list, and the failed page says what was NOT created', async () => {
+    store({ target: { kind: 'new-worktree', branch: 'taken' } });
+    const post = vi.fn().mockRejectedValue(httpError(409, 'BRANCH_ALREADY_EXISTS'));
+    const get = vi.fn().mockRejectedValue(httpError(404, 'CREATE_NOT_FOUND'));
+    const { onBackToSpecifications } = renderPage({ post, get });
+    expect(await heading('Specification was not created')).toBeTruthy();
+    expect(screen.getByText(/^Nothing was created./)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Back to specifications' }));
+    expect(onBackToSpecifications).toHaveBeenCalledOnce();
+  });
+
+  it('while it runs: steps in user language with a description each, waiting steps muted, no merge-target warning', async () => {
+    store({ target: { kind: 'new-worktree' } });
+    storage().saveDraft({
+      operationId,
+      title: 'Payment limits',
+      goal: '',
+      choice: initialWorkspaceChoice,
+      facts: {
+        place: 'new',
+        branch: 'feature/limits',
+        mergeInto: { name: 'acme-app', branch: 'develop' },
+        mergeReason: 'dirty',
+      },
+    });
+    const operations = controlledOperations();
+    renderPage(
+      { post: vi.fn().mockResolvedValue(accepted), get: vi.fn().mockResolvedValue(accepted) },
+      operations.api,
+    );
+    // Before any step is known: ONE neutral row, no simulated checklist.
+    expect(await screen.findByText('This can take a moment.')).toBeTruthy();
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+    operations.push({
+      ...event,
+      type: 'snapshot',
+      status: 'running',
+      steps: [
+        { id: 'reserving', status: 'done' },
+        { id: 'preparing-workspace', status: 'running' },
+        { id: 'writing-specification', status: 'pending' },
+        { id: 'registering', status: 'pending' },
+      ],
+    });
+    expect(await screen.findByText('Creating the working environment')).toBeTruthy();
+    expect(screen.getByText('Name and branch reserved')).toBeTruthy();
+    expect(screen.getAllByText('Waiting for previous step')).toHaveLength(2);
+    expect(screen.getByText('Preparing a new workspace and the specification.')).toBeTruthy();
+    expect(screen.queryByText(/uncommitted/)).toBeNull();
   });
 
   it('a reload resumes the same operation: it is read, never sent again', async () => {
@@ -360,7 +431,7 @@ describe('CreateOperationPage', () => {
       expect(await heading('Creating specification', false)).toBeTruthy();
       expect(screen.queryByText(/Payment limits/)).toBeNull();
       expect(screen.queryByLabelText('Creation settings')).toBeNull();
-      await waitFor(() => expect(screen.getByText('Preparing your specification.')).toBeTruthy());
+      await waitFor(() => expect(screen.getByText('Preparing the specification.')).toBeTruthy());
       expect(post).not.toHaveBeenCalled();
     });
 
@@ -411,7 +482,7 @@ describe('CreateOperationPage', () => {
       expect(news.closest('[role="status"]')?.textContent).toMatch(/branch/i);
       // It is information, not the outcome: the page still works and offers no action on it.
       expect(
-        screen.getByRole('heading', { level: 1, name: 'Creating specification: Payment limits' }),
+        screen.getByRole('heading', { level: 1, name: 'Creating Payment limits' }),
       ).toBeTruthy();
       expect(screen.queryByRole('alert')).toBeNull();
       expect(screen.queryByRole('button', { name: 'Back to form' })).toBeNull();
@@ -426,7 +497,7 @@ describe('CreateOperationPage', () => {
       );
       await heading('Creating specification');
       operations.push(streamFailed(OPERATION_NOT_FOUND_CODE));
-      await waitFor(() => expect(screen.getByText('Preparing your specification.')).toBeTruthy());
+      await waitFor(() => expect(screen.getByText('Preparing the specification.')).toBeTruthy());
       expect(screen.queryByText('The server reported a problem')).toBeNull();
     });
 
@@ -457,7 +528,7 @@ describe('CreateOperationPage', () => {
     });
   });
 
-  it('shows the calm note, not an error, when the live stream is unavailable', async () => {
+  it('shows ONE neutral state, not an error, when the live stream is unavailable', async () => {
     store();
     const operations = controlledOperations();
     renderPage(
@@ -465,9 +536,10 @@ describe('CreateOperationPage', () => {
       operations.api,
     );
     await heading('Creating specification');
-    await waitFor(() => expect(screen.getByText('Preparing your specification.')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Preparing the specification.')).toBeTruthy());
     operations.push(new Error('stream refused'));
-    expect(await screen.findByText('Still working')).toBeTruthy();
+    expect(await screen.findByText(/Live steps are unavailable/)).toBeTruthy();
+    expect(screen.queryAllByRole('listitem')).toHaveLength(0);
     expect(screen.queryByRole('alert')).toBeNull();
   });
 });

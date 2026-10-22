@@ -53,7 +53,6 @@ describe('createSettingsModel', () => {
           branch: 'feature/limits',
           folder: '/work/trees',
           mergeInto: { name: 'api', branch: 'main' },
-          mergeReason: 'dirty',
         },
       ),
     ).toEqual({
@@ -62,7 +61,6 @@ describe('createSettingsModel', () => {
       branch: 'feature/limits',
       folder: '/work/trees',
       mergeInto: { name: 'api', branch: 'main' },
-      mergeReason: 'dirty',
       slug: 'limits',
       goal: 'Goal text',
     });

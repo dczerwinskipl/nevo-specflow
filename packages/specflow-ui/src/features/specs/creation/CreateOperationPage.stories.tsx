@@ -107,6 +107,7 @@ interface FixtureProps {
   stream?: Stream;
   onOpen?: (created: CreatedSpec) => void;
   onBackToForm?: () => void;
+  onBackToSpecifications?: () => void;
 }
 
 function Fixture({
@@ -116,6 +117,7 @@ function Fixture({
   stream = 'steps',
   onOpen = () => undefined,
   onBackToForm = () => undefined,
+  onBackToSpecifications = () => undefined,
 }: FixtureProps) {
   const client = useMemo(
     () => new QueryClient({ defaultOptions: { queries: { retry: false } } }),
@@ -172,6 +174,7 @@ function Fixture({
                   operationId={operationId}
                   onOpen={onOpen}
                   onBackToForm={onBackToForm}
+                  onBackToSpecifications={onBackToSpecifications}
                 />
               </AppShell>
             </AppWorkspaceProvider>
@@ -213,32 +216,47 @@ const settingsList = (canvas: { getByLabelText: (label: string) => HTMLElement }
   within(canvas.getByLabelText('Ustawienia tworzenia'));
 
 /**
- * Right after Create: ONE heading says that the specification is being created and which one, the
- * settings of this creation follow in plain language, then the live steps; leaving is explained,
- * nothing alarms.
+ * Right after Create: the progress is the primary content. A status tile with a turning spinner,
+ * ONE heading that names the specification, a subtitle that says what is happening, the steps in
+ * plain language (what is done, what runs, what waits), then the compact configuration, closed
+ * technical details, a quiet note about leaving and the way back to the list.
  */
 export const InProgressWithSteps: Story = {
   args: { request: newWorkspace, facts: newWorkspaceFacts },
   play: async ({ canvas }) => {
     const heading = await canvas.findByRole('heading', {
       level: 1,
-      name: 'Tworzenie specyfikacji: Limity płatności',
+      name: 'Tworzenie: Limity płatności',
     });
     await waitFor(() => expect(document.activeElement).toBe(heading));
     await expect(heading).toHaveAttribute('title', 'Limity płatności');
+    await expect(
+      canvas.getByText('Przygotowujemy nowe środowisko pracy i specyfikację.'),
+    ).toBeVisible();
     // The name is not repeated below the heading.
     await expect(canvas.getAllByText(/Limity płatności/)).toHaveLength(1);
+    const running = await canvas.findByText('Przygotowanie środowiska pracy');
+    await waitFor(() => expect(running.closest('li')).toHaveAttribute('aria-current', 'step'));
+    await expect(canvas.getByText('Tworzymy środowisko pracy')).toBeVisible();
+    await expect(canvas.getByText('Rezerwowanie nazwy').closest('li')).toHaveTextContent(/gotowe/);
+    await expect(canvas.getByText('Nazwa i gałąź zarezerwowane')).toBeVisible();
+    await expect(canvas.getAllByText('Czeka na poprzedni krok').length).toBeGreaterThan(0);
+    // The configuration is a compact secondary summary below the steps.
+    await expect(canvas.getByRole('heading', { level: 2, name: 'Konfiguracja' })).toBeVisible();
     const settings = settingsList(canvas);
     await expect(settings.getByText('W nowym środowisku pracy')).toBeInTheDocument();
     await expect(settings.getByText('feature/limity-platnosci')).toBeInTheDocument();
-    await expect(settings.getByText('/work/acme-app-worktrees')).toBeInTheDocument();
     await expect(settings.getByText('Zacznij od')).toBeInTheDocument();
     await expect(settings.getByText('Scal do')).toBeInTheDocument();
-    await expect(settings.getByText('acme-app')).toBeInTheDocument();
-    const running = await canvas.findByText('Przygotowanie środowiska pracy');
-    await waitFor(() => expect(running.closest('li')).toHaveAttribute('aria-current', 'step'));
-    await expect(canvas.getByText('Rezerwowanie nazwy').closest('li')).toHaveTextContent(/gotowe$/);
+    // Technical values are behind a closed disclosure, not in the summary.
+    await expect(settings.queryByText('/work/acme-app-worktrees')).not.toBeInTheDocument();
+    await expect(canvas.getByRole('button', { name: 'Szczegóły techniczne' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
     await expect(canvas.getByText(/Możesz opuścić tę stronę/)).toBeInTheDocument();
+    await expect(canvas.queryByText(/Nowa specyfikacja/)).not.toBeInTheDocument();
+    await expect(canvas.getByRole('button', { name: 'Wróć do specyfikacji' })).toBeEnabled();
     await expect(canvas.queryByRole('alert')).not.toBeInTheDocument();
   },
 };
@@ -258,7 +276,7 @@ export const InProgressExistingWorkspace: Story = {
   play: async ({ canvas }) => {
     await canvas.findByRole('heading', {
       level: 1,
-      name: 'Tworzenie specyfikacji: Limity płatności',
+      name: 'Tworzenie: Limity płatności',
     });
     const settings = settingsList(canvas);
     await expect(settings.getByText(/Dodana do środowiska pracy/)).toBeInTheDocument();
@@ -266,30 +284,29 @@ export const InProgressExistingWorkspace: Story = {
     await expect(settings.getByText('feature/platform')).toBeInTheDocument();
     await expect(settings.queryByText('Katalog worktree')).not.toBeInTheDocument();
     await expect(settings.queryByText('Scal do')).not.toBeInTheDocument();
+    await expect(canvas.getByText('Przygotowujemy specyfikację.')).toBeVisible();
   },
 };
 
 /**
- * The merge target has uncommitted changes: creating is not affected, so the row carries one quiet
- * sentence with what to do before merging into it later; no alert.
+ * The merge target has uncommitted changes: that caveat stays in the form next to the choice; the
+ * progress page does not repeat it. The folder and the slug are in the technical details.
  */
-export const MergeTargetHasUncommittedChanges: Story = {
+export const MergeTargetWarningStaysInTheForm: Story = {
   args: {
     request: { ...newWorkspace, slug: 'limity', goal: 'Ograniczyć limity płatności cyklicznych.' },
     facts: { ...newWorkspaceFacts, mergeReason: 'dirty', slug: 'limity' },
   },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, userEvent }) => {
     await canvas.findByLabelText('Ustawienia tworzenia');
+    await expect(canvas.queryByText(/niezapisane zmiany/)).not.toBeInTheDocument();
     const settings = settingsList(canvas);
-    await expect(
-      settings.getByText(
-        'To środowisko pracy ma niezapisane zmiany. Specyfikację nadal możesz utworzyć; zatwierdź je (commit) lub odłóż (stash) przed scaleniem do niego.',
-      ),
-    ).toBeVisible();
-    await expect(settings.getByText('limity')).toBeInTheDocument();
     await expect(
       settings.getByText('Ograniczyć limity płatności cyklicznych.'),
     ).toBeInTheDocument();
+    await userEvent.click(canvas.getByRole('button', { name: 'Szczegóły techniczne' }));
+    await expect(await canvas.findByText('/work/acme-app-worktrees')).toBeVisible();
+    await expect(canvas.getByText('limity')).toBeVisible();
     await expect(canvas.queryByRole('alert')).not.toBeInTheDocument();
   },
 };
@@ -319,7 +336,7 @@ export const LongTitleAt320: Story = {
     await settleOwnerV4('creation-progress-320', 320, 740);
     await canvas.findByText('Przygotowanie środowiska pracy');
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320);
-    const heading = canvas.getByRole('heading', { level: 1, name: /^Tworzenie specyfikacji: Ogr/ });
+    const heading = canvas.getByRole('heading', { level: 1, name: /^Tworzenie: Ogr/ });
     await expect(heading.getBoundingClientRect().right).toBeLessThanOrEqual(320);
     await expect(heading).toHaveAttribute('title', expect.stringMatching(/dostawcami rozliczeń$/));
     for (const row of steps(canvasElement).getAllByRole('listitem'))
@@ -327,11 +344,13 @@ export const LongTitleAt320: Story = {
   },
 };
 
-/** No live stream (older Runtime, proxy without SSE): a calm note, no error, the operation goes on. */
+/** No live stream (older Runtime, proxy without SSE): one neutral "Creating specification" row, no error, nothing simulated. */
 export const NoLiveSteps: Story = {
   args: { request: newWorkspace, stream: 'unavailable' },
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText('Nadal pracujemy')).toBeInTheDocument();
+    await expect(await canvas.findByText(/Kroki na żywo są niedostępne/)).toBeInTheDocument();
+    // ONE neutral state; no steps are simulated.
+    await expect(canvas.queryAllByRole('listitem')).toHaveLength(0);
     await expect(canvas.queryByRole('alert')).not.toBeInTheDocument();
   },
 };
@@ -368,6 +387,9 @@ export const Refused: Story = {
       }),
     ).toBeInTheDocument();
     await expect(await canvas.findByRole('alert')).toBeInTheDocument();
+    // What was NOT created, and the safe repair action.
+    await expect(canvas.getByText(/^Nic nie zostało utworzone./)).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Wróć do specyfikacji' })).toBeEnabled();
     await userEvent.click(canvas.getByRole('button', { name: 'Wróć do formularza' }));
     await expect(args.onBackToForm).toHaveBeenCalledOnce();
   },

@@ -9,6 +9,7 @@ import { useSpecsOverview } from './overview/useSpecsOverview';
 import { SpecsAccessDenied } from './overview/SpecsAccessDenied';
 import { SpecificationSurface } from './SpecificationSurface';
 import { specPrimaryLinkClassName } from './overview/SpecPrimaryLink';
+import { useUnfinishedCreate } from './creation/useUnfinishedCreate';
 
 export const specsForbiddenRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -162,6 +163,7 @@ function SpecsRouteScreen() {
   const { collection } = specsRoute.useSearch();
   const navigate = specsRoute.useNavigate();
   const { state, refresh } = useSpecsOverview(services.specsOverviewApi, collection);
+  const unfinishedCreate = useUnfinishedCreate();
 
   useEffect(() => {
     // Overview authorization denotes application-wide Specs access, unlike
@@ -176,6 +178,25 @@ function SpecsRouteScreen() {
       state={state}
       onRefresh={refresh}
       sample={mode === 'demo'}
+      creating={
+        unfinishedCreate
+          ? {
+              ...(unfinishedCreate.title ? { title: unfinishedCreate.title } : {}),
+              href: `/specs/new/creating/${encodeURIComponent(unfinishedCreate.operationId)}?collection=${collection}`,
+              renderLink: (children, ariaLabel, className) => (
+                <Link
+                  to="/specs/new/creating/$operationId"
+                  params={{ operationId: unfinishedCreate.operationId }}
+                  search={{ collection }}
+                  className={className}
+                  aria-label={ariaLabel}
+                >
+                  {children}
+                </Link>
+              ),
+            }
+          : undefined
+      }
       onCreate={() => void navigate({ to: '/specs/new', search: { collection } })}
       // Create waits for the Runtime mode (it picks the flow); the control stays, disabled.
       createDisabled={mode === 'loading' || mode === 'unavailable'}

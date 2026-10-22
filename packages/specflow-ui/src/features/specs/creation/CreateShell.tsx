@@ -8,10 +8,13 @@ import { applicationLocationHeader } from '../../../app/navigation/ApplicationLo
 export function CreateShell({
   specId,
   containerClassName,
+  width = 'standard',
   children,
 }: {
   specId?: string;
   containerClassName?: string;
+  /** `narrow` is the readable column of a focused single-task page (the progress page). */
+  width?: 'standard' | 'narrow';
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -25,10 +28,16 @@ export function CreateShell({
           specId,
         })}
       >
-        <AppContent className="w-content-standard max-w-full">
+        <AppContent
+          className={
+            width === 'narrow'
+              ? 'mx-auto w-content-narrow max-w-full'
+              : 'w-content-standard max-w-full'
+          }
+        >
           <AppWorkspaceBody scroll="area" padding="none">
             <div className="p-4 sm:p-6">
-              <AppContentContainer size="standard" className={containerClassName}>
+              <AppContentContainer size={width} className={containerClassName}>
                 {children}
               </AppContentContainer>
             </div>

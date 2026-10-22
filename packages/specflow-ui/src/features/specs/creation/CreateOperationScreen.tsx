@@ -15,6 +15,7 @@ export function CreateOperationScreen(props: {
   operationId: string;
   onOpen: (created: CreatedSpec) => void;
   onBackToForm: () => void;
+  onBackToSpecifications: () => void;
 }) {
   const { t } = useTranslation();
   const mode = useRuntimeMode();

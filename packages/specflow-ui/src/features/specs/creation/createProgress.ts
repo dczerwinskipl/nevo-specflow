@@ -1,40 +1,78 @@
 import type { SpecificationCreateStep } from '@nevo/specflow-contracts/operations';
 import type { CreateSpecRequest } from '@nevo/specflow-contracts/specs';
 import { message, type Message } from '../../../i18n/message';
-import type { OperationProgressStep } from '../../../shared/operations/OperationProgress';
+import type {
+  OperationProgressNeutral,
+  OperationProgressStep,
+} from '../../../shared/operations/OperationProgress';
 import type { OperationStepView } from '../../../shared/operations/progressState';
 
 /** Accessible name of the Create checklist. */
 export const createProgressLabel: Message = message('create.progress.label');
 
-/**
- * Copy of the public step vocabulary of `specification-create` (the Runtime maps its journal onto
- * these ids and never exposes raw stages). Exhaustive by type: a new public step cannot ship
- * without its label.
- */
-const stepLabels = {
-  reserving: message('create.progress.steps.reserving'),
-  'preparing-workspace': message('create.progress.steps.preparing-workspace'),
-  'writing-specification': message('create.progress.steps.writing-specification'),
-  registering: message('create.progress.steps.registering'),
-} satisfies Record<SpecificationCreateStep, Message>;
-
-/** Steps the Runtime reported, labelled. A step this build does not know is not drawn. */
-export function createProgressSteps(
-  steps: readonly OperationStepView[],
-): readonly OperationProgressStep[] {
-  return steps.flatMap((step) => {
-    const label = (stepLabels as Readonly<Record<string, Message | undefined>>)[step.id];
-    return label ? [{ id: step.id, label, status: step.status }] : [];
-  });
+/** What one step is called and what it says while it runs and once it is done (user language). */
+interface StepCopy {
+  readonly title: Message;
+  readonly running: Message;
+  readonly done: Message;
 }
 
 /**
- * Rows reserved before the first snapshot arrives, so the checklist does not move the page when
- * it appears: an existing workspace has no "preparing the workspace" step.
+ * Copy of the public step vocabulary of `specification-create` (the Runtime maps its journal onto
+ * these ids and never exposes raw stages). Exhaustive by type: a new public step cannot ship
+ * without its entry, and adding one (for example `committing-specification`) is exactly one entry
+ * here plus its three catalogue keys. A pending step needs no entry of its own: it always reads
+ * "Waiting for previous step".
  */
-export function createProgressPlaceholderRows(target: CreateSpecRequest['target']): number {
-  return target?.kind === 'new-worktree' ? 4 : 3;
+const stepCopy = {
+  reserving: stepEntry('reserving'),
+  'preparing-workspace': stepEntry('preparing-workspace'),
+  'writing-specification': stepEntry('writing-specification'),
+  registering: stepEntry('registering'),
+} satisfies Record<SpecificationCreateStep, StepCopy>;
+
+/** A step id this build does not know (a newer Runtime): drawn generically, never dropped. */
+const unknownStepCopy: StepCopy = stepEntry('unknown');
+
+function stepEntry(id: SpecificationCreateStep | 'unknown'): StepCopy {
+  return {
+    title: message(`create.progress.steps.${id}.title`),
+    running: message(`create.progress.steps.${id}.running`),
+    done: message(`create.progress.steps.${id}.done`),
+  };
+}
+
+const waiting: Message = message('create.progress.waiting');
+
+/** The honest single row while no step is known; `lost` is the stream being unavailable. */
+export const createNeutralProgress = (lost: boolean): OperationProgressNeutral => ({
+  label: message('create.progress.neutral.title'),
+  description: message(
+    lost ? 'create.progress.neutral.descriptionLost' : 'create.progress.neutral.description',
+  ),
+});
+
+/**
+ * Steps the Runtime reported, in user language: a title and one line that depends on the state
+ * (running: what is happening, done: what happened, pending: waiting). Skipped steps are omitted
+ * (an existing workspace has no "preparing the workspace"); an unknown id gets the generic copy.
+ */
+export function createProgressSteps(
+  steps: readonly OperationStepView[],
+): readonly OperationProgressStep[] {
+  return steps
+    .filter((step) => step.status !== 'skipped')
+    .map((step) => {
+      const copy =
+        (stepCopy as Readonly<Record<string, StepCopy | undefined>>)[step.id] ?? unknownStepCopy;
+      return {
+        id: step.id,
+        label: copy.title,
+        description:
+          step.status === 'done' ? copy.done : step.status === 'running' ? copy.running : waiting,
+        status: step.status,
+      };
+    });
 }
 
 const stepOrder: readonly SpecificationCreateStep[] = [

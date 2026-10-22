@@ -92,17 +92,18 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         });
       }
       try {
-        const options = await inspectCreateOptions(engine);
+        const { commits, ...options } = await inspectCreateOptions(engine);
         return reply.code(200).send({
           ...options,
           workspaces: [...options.workspaces],
           baseRefs: [...options.baseRefs],
-          ...(options.commits
+          // Present exactly when Git is enabled (the Engine then commits the scaffold).
+          ...(commits
             ? {
                 commits: {
-                  protectedBranches: [...options.commits.protectedBranches],
-                  ...(options.commits.allowedBranches
-                    ? { allowedBranches: [...options.commits.allowedBranches] }
+                  protectedBranches: [...commits.protectedBranches],
+                  ...(commits.allowedBranches
+                    ? { allowedBranches: [...commits.allowedBranches] }
                     : {}),
                 },
               }

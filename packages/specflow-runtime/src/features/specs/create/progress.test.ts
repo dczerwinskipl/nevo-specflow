@@ -95,3 +95,54 @@ describe('Create progress adapter (journal stage -> public step)', () => {
     });
   });
 });
+
+describe('Create progress with the scaffold commit (git enabled)', () => {
+  it('adds committing-specification between writing and registering, for both targets', async () => {
+    for (const target of ['new-worktree', 'existing'] as const) {
+      const registry = createOperationProgressRegistry();
+      const progress = startCreateProgress(registry, operationId, target, true);
+      for (const stage of [
+        'reserved',
+        'manifest-written',
+        'commit-writing',
+        'commit-written',
+        'registry-writing',
+        'completed',
+      ] as const) {
+        progress.onStage({ stage, target });
+      }
+      progress.complete(created);
+      const [snapshot] = await replay(registry);
+      const ids = (snapshot as unknown as { steps: { id: string; status: string }[] }).steps.map(
+        (s) => s.id,
+      );
+      expect(ids).toEqual([
+        'reserving',
+        ...(target === 'new-worktree' ? ['preparing-workspace'] : []),
+        'writing-specification',
+        'committing-specification',
+        'registering',
+      ]);
+    }
+  });
+
+  it('reports the running committing step and publishes COMMIT_FAILED as recovery-required', async () => {
+    const registry = createOperationProgressRegistry();
+    const progress = startCreateProgress(registry, operationId, 'existing', true);
+    progress.onStage({ stage: 'commit-writing', target: 'existing' });
+    const iterator = registry.watch(operationId, 'specification-create', { waitMs: 0 });
+    const first = (await iterator.next()).value as StoredProgressEvent | undefined;
+    await iterator.return(undefined);
+    expect(first?.event).toMatchObject({ currentStep: 'committing-specification' });
+    progress.fail('COMMIT_FAILED');
+    expect((await replay(registry)).at(-1)).toMatchObject({ type: 'recovery-required' });
+  });
+
+  it('keeps BRANCH_PROTECTED and COMMIT_BLOCKED as plain failures (nothing was created)', async () => {
+    for (const code of ['BRANCH_PROTECTED', 'COMMIT_BLOCKED']) {
+      const registry = createOperationProgressRegistry();
+      startCreateProgress(registry, operationId, 'existing', true).fail(code);
+      expect((await replay(registry)).at(-1)).toMatchObject({ type: 'failed', code });
+    }
+  });
+});

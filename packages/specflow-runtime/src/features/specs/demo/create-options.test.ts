@@ -239,3 +239,65 @@ describe('resolveTarget', () => {
       ).toEqual([409, 'DEMO_WORKSPACE_UNAVAILABLE']);
   });
 });
+
+describe('commit options and protected branches', () => {
+  const apply = (name: (typeof demoOptionsScenarios)[number]) =>
+    applyOptionsScenario(options(), name);
+
+  it('seeds git on: commits present, only main protected, nothing selectable-blocked', () => {
+    expect(options().commits).toEqual({ protectedBranches: ['main'] });
+    expect(options().workspaces.every((w) => w.reason !== 'branch-protected')).toBe(true);
+  });
+
+  it('git-disabled removes every commit-related field', () => {
+    const off = apply('git-disabled');
+    expect('commits' in off).toBe(false);
+    expect('branchProtected' in off.newWorktree).toBe(false);
+  });
+
+  it('shapes the protected scenarios', () => {
+    expect(apply('protected-primary').workspaces[0]).toMatchObject({
+      branch: 'main',
+      selectable: false,
+      reason: 'branch-protected',
+    });
+    const linked = apply('protected-all-linked').workspaces.filter(
+      (w) => w.kind === 'linked' && w.branch,
+    );
+    expect(linked.length).toBeGreaterThan(0);
+    expect(linked.every((w) => !w.selectable && w.reason === 'branch-protected')).toBe(true);
+    expect(apply('protected-all-linked').workspaces[0]?.selectable).toBe(true);
+    expect(apply('new-branch-protected').newWorktree).toEqual({
+      status: 'available',
+      branchProtected: true,
+    });
+  });
+
+  it('refuses a protected workspace or branch name as policy, never renaming', () => {
+    const protectedPrimary = apply('protected-primary');
+    expect(code(() => resolveTarget(protectedPrimary, undefined, 's'))).toEqual([
+      422,
+      'BRANCH_PROTECTED',
+    ]);
+    expect(
+      code(() =>
+        resolveTarget(
+          apply('protected-all-linked'),
+          { kind: 'existing', workspaceId: ids.platform },
+          's',
+        ),
+      ),
+    ).toEqual([422, 'BRANCH_PROTECTED']);
+    const generated = apply('new-branch-protected');
+    expect(code(() => resolveTarget(generated, { kind: 'new-worktree' }, 'spec'))).toEqual([
+      422,
+      'BRANCH_PROTECTED',
+    ]);
+    expect(
+      resolveTarget(generated, { kind: 'new-worktree', branch: 'topic/spec' }, 'spec').branch,
+    ).toBe('topic/spec');
+    expect(
+      code(() => resolveTarget(options(), { kind: 'new-worktree', branch: 'main2' }, 's')),
+    ).toBeUndefined();
+  });
+});

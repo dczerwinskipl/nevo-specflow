@@ -174,6 +174,29 @@ describe('Specification-owned demo location', () => {
       expect(resolved.fresh).toBe(false);
       expect(env.state.specifications.size).toBe(2);
     });
+
+    it.each([
+      ['branch-protected', 422],
+      ['commit-blocked', 409],
+    ] as const)('the %s scenario refuses without creating anything', (scenario, status) => {
+      const { env, create } = setup();
+      const before = env.state.specifications.size;
+      expect(() =>
+        env.specs.create('alice', { ...create, operationId: op(5) }, [scenario]),
+      ).toThrowError(expect.objectContaining({ status }));
+      expect(env.state.specifications.size).toBe(before);
+    });
+
+    it('commit-failed answers COMMIT_FAILED once, then CREATE_RECOVERY_REQUIRED for the same operation', () => {
+      const { env, create } = setup();
+      const pending = { ...create, operationId: op(6) };
+      expect(() => env.specs.create('alice', pending, ['commit-failed'])).toThrowError(
+        expect.objectContaining({ code: 'COMMIT_FAILED', status: 503 }),
+      );
+      expect(() => env.specs.create('alice', pending)).toThrowError(
+        expect.objectContaining({ code: 'CREATE_RECOVERY_REQUIRED' }),
+      );
+    });
   });
 
   it('resolves the place at create and Session snapshots never share mutable location state', () => {

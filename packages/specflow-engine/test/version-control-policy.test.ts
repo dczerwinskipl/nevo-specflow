@@ -38,11 +38,13 @@ describe('Version Control worktree policy (VC01)', () => {
       enabled: true,
       branchPattern: DEFAULT_BRANCH_PATTERN,
       baseRef: DEFAULT_BASE_REF,
+      commits: { protectedBranches: [] },
     });
     expect(parseGitWorktreePolicy({})).toEqual({
       enabled: false,
       branchPattern: DEFAULT_BRANCH_PATTERN,
       baseRef: DEFAULT_BASE_REF,
+      commits: { protectedBranches: [] },
     });
   });
 
@@ -186,5 +188,68 @@ describe('Version Control worktree policy (VC01)', () => {
         assertWorktreeTargetOutsideRepository(home, common, join(home, 'slug')),
       ).toThrow();
     });
+  });
+});
+
+describe('git.commits policy (protected and allowed branches)', () => {
+  const parse = (commits: unknown, enabled = true, local?: unknown) =>
+    parseGitWorktreePolicy({ git: { enabled, commits } }, local);
+
+  it('protects nothing by default', () => {
+    expect(parseGitWorktreePolicy({ git: { enabled: true } }).commits).toEqual({
+      protectedBranches: [],
+    });
+    expect(parseGitWorktreePolicy({}).commits).toEqual({ protectedBranches: [] });
+    expect(parse({}).commits).toEqual({ protectedBranches: [] });
+  });
+
+  it('parses protected and allowed patterns, trimmed and without an empty allow-list', () => {
+    expect(
+      parse({ protectedBranches: [' main ', 'release/**'], allowedBranches: ['feature/**'] })
+        .commits,
+    ).toEqual({ protectedBranches: ['main', 'release/**'], allowedBranches: ['feature/**'] });
+    expect(parse({ protectedBranches: ['main'], allowedBranches: [] }).commits).toEqual({
+      protectedBranches: ['main'],
+    });
+  });
+
+  it('stays syntax-validated while Git is disabled', () => {
+    expect(parse({ protectedBranches: ['main'] }, false).commits.protectedBranches).toEqual([
+      'main',
+    ]);
+    expect(() => parse({ protectedBranches: ['a b'] }, false)).toThrow(/invalid branch pattern/);
+  });
+
+  it.each([
+    ['a scalar block', 'main'],
+    ['an unknown key', { protectedBranches: [], other: [] }],
+    ['a non-list', { protectedBranches: 'main' }],
+    ['a non-string entry', { protectedBranches: [1] }],
+    ['an empty entry', { protectedBranches: [''] }],
+    ['a refs/ prefix', { protectedBranches: ['refs/heads/main'] }],
+    ['a leading slash', { protectedBranches: ['/main'] }],
+    ['whitespace inside', { protectedBranches: ['ma in'] }],
+    ['a literal that is no branch name', { protectedBranches: ['-main'] }],
+    ['an unbalanced set', { protectedBranches: ['rel[0-9'] }],
+    ['a duplicate', { protectedBranches: ['main', ' main'] }],
+    [
+      'an entry that is both protected and allowed',
+      {
+        protectedBranches: ['main'],
+        allowedBranches: ['main'],
+      },
+    ],
+    ['too many entries', { protectedBranches: Array.from({ length: 51 }, (_, i) => 'b' + i) }],
+  ])('rejects %s with GIT_POLICY_INVALID', (_name, commits) => {
+    expect(() => parse(commits)).toThrow(expect.objectContaining({ code: 'GIT_POLICY_INVALID' }));
+  });
+
+  it('cannot be set from the workstation-local configuration', () => {
+    expect(() =>
+      parseGitWorktreePolicy(
+        { git: { enabled: true } },
+        { git: { commits: { protectedBranches: ['main'] } } },
+      ),
+    ).toThrow(/worktreesRoot/);
   });
 });

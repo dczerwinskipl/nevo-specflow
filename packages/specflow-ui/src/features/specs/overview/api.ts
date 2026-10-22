@@ -1,6 +1,6 @@
-import type { HttpRequestClient } from '@nevo/http-client';
 import type { SpecsOverview } from '@nevo/specflow-contracts/specs/overview';
 
+import type { ApiTransport } from '../../../api';
 import type { SpecsCollection } from './model';
 
 /**
@@ -9,14 +9,18 @@ import type { SpecsCollection } from './model';
  */
 const overviewReadTimeoutMs = 30_000;
 
+/** Operation name of the read (error classification, diagnostics). */
+export const specsOverviewOperation = 'specs.overview';
+
 export interface SpecsOverviewApi {
   getOverview(collection: SpecsCollection, signal?: AbortSignal): Promise<SpecsOverview>;
 }
 
-export function createRuntimeSpecsOverviewApi(client: HttpRequestClient): SpecsOverviewApi {
+export function createRuntimeSpecsOverviewApi(api: ApiTransport): SpecsOverviewApi {
   return {
     getOverview: (collection, signal) =>
-      client.get<SpecsOverview>('/api/specs/overview', {
+      api.get<SpecsOverview>('/api/specs/overview', {
+        operation: specsOverviewOperation,
         params: { collection },
         signal,
         timeoutMs: overviewReadTimeoutMs,

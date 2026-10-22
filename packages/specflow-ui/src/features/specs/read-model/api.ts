@@ -1,5 +1,8 @@
-import type { HttpRequestClient } from '@nevo/http-client';
+import type { ApiTransport } from '../../../api';
 import type { SpecificationWorkspaceResponse } from '@nevo/specflow-contracts/specs/workspace';
+
+/** Operation name of the read (error classification, diagnostics). */
+export const specsWorkspaceOperation = 'specs.workspace';
 
 export interface SpecificationApi {
   getSpecificationWorkspace(
@@ -8,10 +11,13 @@ export interface SpecificationApi {
   ): Promise<SpecificationWorkspaceResponse>;
 }
 
-export function createRuntimeSpecificationApi(client: HttpRequestClient): SpecificationApi {
+export function createRuntimeSpecificationApi(api: ApiTransport): SpecificationApi {
   const base = (specId: string) => '/api/specs/' + encodeURIComponent(specId);
   return {
     getSpecificationWorkspace: (specId, signal) =>
-      client.get<SpecificationWorkspaceResponse>(base(specId) + '/workspace', { signal }),
+      api.get<SpecificationWorkspaceResponse>(base(specId) + '/workspace', {
+        operation: specsWorkspaceOperation,
+        signal,
+      }),
   };
 }

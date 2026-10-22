@@ -20,7 +20,10 @@ import {
   createRuntimeSpecsOverviewApi,
   type SpecsOverviewApi,
 } from '../features/specs/overview/api';
-import { createRuntimeSpecificationApi, type SpecificationApi } from '../features/specs/read-model/api';
+import {
+  createRuntimeSpecificationApi,
+  type SpecificationApi,
+} from '../features/specs/read-model/api';
 import { createRuntimeTaskApi, type TaskApi } from '../features/tasks/api';
 import {
   createRuntimeDocumentApi,
@@ -80,9 +83,11 @@ export function createSpecFlowAppServices(
   const authRecovery = options.authRecovery ?? createAuthRecoveryCoordinator(authStore);
   const runtimeHttp = createProtectedRuntimeHttpClient(http, authRecovery);
 
-  const specsOverviewApi = options.specsOverviewApi ?? createRuntimeSpecsOverviewApi(runtimeHttp);
+  // Specification reads: failures are classified once (ApiError), cancellation passes through.
+  const specsRead = createApiTransport(runtimeHttp, { operation: 'specs.read' });
+  const specsOverviewApi = options.specsOverviewApi ?? createRuntimeSpecsOverviewApi(specsRead);
 
-  const specificationApi = options.specificationApi ?? createRuntimeSpecificationApi(runtimeHttp);
+  const specificationApi = options.specificationApi ?? createRuntimeSpecificationApi(specsRead);
 
   return {
     runtimeInfoApi: options.runtimeInfoApi ?? createRuntimeInfoApi(runtimeHttp),

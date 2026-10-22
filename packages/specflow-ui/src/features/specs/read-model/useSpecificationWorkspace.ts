@@ -1,12 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { isHttpClientError } from '@nevo/http-client';
 
 import { useRouter } from '@tanstack/react-router';
 import type { SpecFlowAppServices } from '../../../services';
-import type { SpecificationApi } from './api';
+import { specsWorkspaceOperation, type SpecificationApi } from './api';
 import { specificationKeys } from './queries';
 import { asApiError } from '../../../api';
-import { getHttpErrorStatus } from '../../../shared/http/httpErrorStatus';
 import type { SpecificationWorkspaceData } from './model';
 import { mapWorkspaceResponse } from './mapWorkspaceResponse';
 
@@ -46,18 +44,10 @@ export function useSpecificationWorkspace(
     enabled: Boolean(specId),
   });
 
-  const isDomainNotFound =
-    isHttpClientError(query.error) &&
-    query.error.status === 404 &&
-    typeof query.error.data === 'object' &&
-    query.error.data !== null &&
-    'error' in query.error.data &&
-    query.error.data.error === 'specification_not_found';
-
-  const errorStatus = getHttpErrorStatus(query.error);
-  const isNotInRuntime =
-    asApiError(query.error, { operation: 'specs.workspace', method: 'GET' })?.reason ===
-    'not-in-runtime';
+  const failure = asApiError(query.error, { operation: specsWorkspaceOperation, method: 'GET' });
+  const isDomainNotFound = failure?.status === 404 && failure.code === 'specification_not_found';
+  const errorStatus = failure?.status;
+  const isNotInRuntime = failure?.reason === 'not-in-runtime';
 
   return {
     data: query.data,

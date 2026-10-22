@@ -166,10 +166,10 @@ function SpecsRouteScreen() {
   useEffect(() => {
     // Overview authorization denotes application-wide Specs access, unlike
     // a forbidden individual Task or Document resource.
-    if (state.errorStatus === 403) void navigate({ to: '/access-denied', replace: true });
-  }, [state.errorStatus, navigate]);
+    if (state.accessDenied) void navigate({ to: '/access-denied', replace: true });
+  }, [state.accessDenied, navigate]);
 
-  if (state.errorStatus === 403) return null;
+  if (state.accessDenied) return null;
 
   return (
     <SpecsOverview

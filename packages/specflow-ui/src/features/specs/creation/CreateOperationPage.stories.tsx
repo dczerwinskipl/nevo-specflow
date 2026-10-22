@@ -9,7 +9,7 @@ import type {
   CreateSpecRequest,
 } from '@nevo/specflow-contracts/specs';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fn, waitFor } from 'storybook/test';
+import { expect, fn, waitFor, within } from 'storybook/test';
 
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import { settleOwnerV4 } from '../../../test-support/ownerV4Capture.stories-support';
@@ -189,6 +189,10 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/** The checklist only: the breadcrumbs are list items too. */
+const steps = (canvas: ReturnType<typeof within>) =>
+  within(canvas.getByRole('status', { name: 'Postęp tworzenia specyfikacji' }));
+
 const newWorkspace = { title: 'Limity płatności', target: { kind: 'new-worktree' as const } };
 
 /**
@@ -235,7 +239,7 @@ export const LongTitleAt320: Story = {
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320);
     const heading = canvas.getByRole('heading', { level: 1, name: 'Tworzenie specyfikacji' });
     await expect(heading.getBoundingClientRect().right).toBeLessThanOrEqual(320);
-    for (const row of canvas.getAllByRole('listitem'))
+    for (const row of steps(canvas).getAllByRole('listitem'))
       await expect(row.getBoundingClientRect().right).toBeLessThanOrEqual(320);
   },
 };
@@ -257,7 +261,7 @@ export const Success: Story = {
       await canvas.findByRole('heading', { level: 1, name: 'Specyfikacja utworzona' }),
     ).toBeInTheDocument();
     await expect(canvas.getByRole('button', { name: 'Otwórz specyfikację' })).toBeInTheDocument();
-    for (const row of canvas.getAllByRole('listitem'))
+    for (const row of steps(canvas).getAllByRole('listitem'))
       await expect(row).toHaveAttribute('data-status', 'done');
     await waitFor(() => expect(args.onOpen).toHaveBeenCalledWith(createdSpec), { timeout: 4000 });
   },

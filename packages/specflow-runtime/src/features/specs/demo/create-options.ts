@@ -185,6 +185,11 @@ export const demoOptionsScenarios = [
   'protected-all-linked',
   /** The generated branch name (`release/<slug>`) is protected: a typed name has to be used. */
   'new-branch-protected',
+  /**
+   * The Git section of the configuration is invalid: workspaces are listed but not selectable, the
+   * Git part is unavailable (`git-policy-invalid`) and a Create fails closed with 503.
+   */
+  'git-policy-invalid',
 ] as const;
 /** Scenarios that fail the options read itself. */
 export const demoOptionsFailureScenarios = ['options-forbidden', 'options-error'] as const;
@@ -207,14 +212,22 @@ export const demoCreateScenarios = [
   /** Paces the Create progress steps so a live checklist can be observed. */
   'slow-create',
 ] as const;
+/** Scenarios of the operation list. */
+export const demoOperationScenarios = [
+  /** Seeds every list status: running (with steps), interrupted, recovery, failed, completed. */
+  'operations-panel',
+] as const;
 export type DemoOptionsScenario = (typeof demoOptionsScenarios)[number];
 export type DemoOptionsFailureScenario = (typeof demoOptionsFailureScenarios)[number];
 export type DemoCreateScenario = (typeof demoCreateScenarios)[number];
-export type DemoScenario = DemoOptionsScenario | DemoOptionsFailureScenario | DemoCreateScenario;
+export type DemoOperationScenario = (typeof demoOperationScenarios)[number];
+export type DemoScenario =
+  DemoOptionsScenario | DemoOptionsFailureScenario | DemoCreateScenario | DemoOperationScenario;
 const allScenarios: readonly string[] = [
   ...demoOptionsScenarios,
   ...demoOptionsFailureScenarios,
   ...demoCreateScenarios,
+  ...demoOperationScenarios,
 ];
 
 /** Parses a comma-separated scenario list. Returns `undefined` when any name is unknown. */
@@ -277,6 +290,23 @@ export function applyOptionsScenario(
       break;
     case 'git-unavailable':
       next.newWorktree = { status: 'unavailable', reason: 'git-unavailable' };
+      break;
+    case 'git-policy-invalid':
+      next.newWorktree = { status: 'unavailable', reason: 'git-policy-invalid' };
+      next.workspaces = next.workspaces.map((w) =>
+        strip({
+          ...w,
+          selectable: false,
+          integrationSelectable: false,
+          state: 'unavailable',
+          reason: 'git-policy-invalid',
+        }),
+      );
+      next.baseRefs = [];
+      next.defaultBaseRef = 'HEAD';
+      delete next.integrationTargetBranch;
+      // Nothing about Git is known: no commit-related field either.
+      delete next.commits;
       break;
     case 'membership-mismatch':
       next.newWorktree = { status: 'unavailable', reason: 'git-membership-mismatch' };
@@ -499,9 +529,11 @@ export function resolveTarget(
     new DemoTargetError(409, 'DEMO_WORKSPACE_UNAVAILABLE', message);
   // Like the Engine: a checkout whose branch the Engine would not commit on is refused as policy.
   const refusedByBranch = (workspace: DemoWorkspace) =>
-    workspace.reason === 'branch-protected' || workspace.reason === 'branch-not-allowed'
-      ? new DemoTargetError(422, 'BRANCH_PROTECTED', 'BRANCH_PROTECTED')
-      : unavailable('Wybrane środowisko pracy nie jest już dostępne.');
+    workspace.reason === 'git-policy-invalid'
+      ? new DemoTargetError(503, 'GIT_POLICY_INVALID', 'GIT_POLICY_INVALID')
+      : workspace.reason === 'branch-protected' || workspace.reason === 'branch-not-allowed'
+        ? new DemoTargetError(422, 'BRANCH_PROTECTED', 'BRANCH_PROTECTED')
+        : unavailable('Wybrane środowisko pracy nie jest już dostępne.');
   if (!target) {
     const primary = options.workspaces.find((w) => w.workspaceId === options.primaryWorkspaceId);
     if (primary && !primary.selectable) throw refusedByBranch(primary);
@@ -519,6 +551,8 @@ export function resolveTarget(
       baseRef: workspace.branch ?? 'HEAD',
     };
   }
+  if (options.newWorktree.reason === 'git-policy-invalid')
+    throw new DemoTargetError(503, 'GIT_POLICY_INVALID', 'GIT_POLICY_INVALID');
   if (options.newWorktree.status !== 'available')
     throw unavailable('Tworzenie nowego środowiska pracy nie jest teraz dostępne.');
   const baseRef = target.baseRef ?? options.defaultBaseRef;

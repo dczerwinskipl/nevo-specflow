@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { subscribe, unsubscribe } from 'node:diagnostics_channel';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 
@@ -203,6 +204,67 @@ describe('E2.I01 authorized create-options Engine read model', () => {
     expect('commits' in options).toBe(false);
     expect('branchProtected' in options.newWorktree).toBe(false);
   }, 90000);
+
+  it('degrades instead of failing when the Git policy is invalid, and Create stays fail-closed', async () => {
+    const root = await createGitTestProject(
+      'specflow-create-options-invalid-',
+      'runtime: {}\ngit:\n  enabled: true\n',
+    );
+    roots.push(root);
+    const engine = await bootstrapProjectHome(root);
+    await writeFile(
+      join(root, '.nevo/config.yaml'),
+      'runtime: {}\ngit:\n  enabled: true\n  bogusKey: 1\n',
+    );
+    const problems: string[] = [];
+    const spawns: unknown[] = [];
+    const listener = (message: unknown): void => void spawns.push(message);
+    subscribe('nevo.specflow.engine.git-process', listener);
+    let options;
+    try {
+      options = await inspectCreateOptions(engine, { onPolicyProblem: (p) => problems.push(p) });
+    } finally {
+      unsubscribe('nevo.specflow.engine.git-process', listener);
+    }
+
+    // Nothing needs Git for this answer: no process, workspaces from disk checks only.
+    expect(spawns).toEqual([]);
+    expect(options.newWorktree).toEqual({ status: 'unavailable', reason: 'git-policy-invalid' });
+    expect(options.workspaces).toEqual([
+      expect.objectContaining({
+        workspaceId: engine.workspace.workspaceId,
+        kind: 'primary',
+        state: 'unavailable',
+        selectable: false,
+        integrationSelectable: false,
+        reason: 'git-policy-invalid',
+      }),
+    ]);
+    expect(options.workspaces[0]?.branch).toBeUndefined();
+    expect(options.baseRefs).toEqual([]);
+    expect(options.commits).toBeUndefined();
+    expect(options.integrationTargetBranch).toBeUndefined();
+    // The cause reaches the caller log hook only, and carries no path.
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).not.toContain(root);
+
+    // Create reads the policy for every target (to know whether it commits): fail closed.
+    await expect(
+      createSpecificationForTesting(engine, {
+        operationId: randomUUID(),
+        title: 'Must fail closed',
+        created: '2026-10-20',
+        target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
+      }),
+    ).rejects.toMatchObject({ code: 'GIT_POLICY_INVALID' });
+
+    // The same with Git disabled: an invalid section is invalid whatever `enabled` says.
+    await writeFile(
+      join(root, '.nevo/config.yaml'),
+      'runtime: {}\ngit:\n  enabled: false\n  bogusKey: 1\n',
+    );
+    expect((await inspectCreateOptions(engine)).newWorktree.reason).toBe('git-policy-invalid');
+  }, 120000);
 
   it('marks protected and not-allowed branches unselectable and lists the policy', async () => {
     const root = await createGitTestProject(

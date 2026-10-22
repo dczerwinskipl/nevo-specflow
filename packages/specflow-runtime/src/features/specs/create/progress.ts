@@ -1,4 +1,4 @@
-import type { CreateStageObservation } from '@nevo/specflow-engine';
+import { createStepForStage, type CreateStageObservation } from '@nevo/specflow-engine';
 import {
   specificationCreateSteps,
   type SpecificationCreateStep,
@@ -48,43 +48,15 @@ export function startCreateProgress(
 
   return {
     onStage({ stage }) {
-      switch (stage) {
-        case 'reserved':
-          enter('reserving');
-          break;
-        case 'git-initiated':
-        case 'git-provisioned':
-          // Existing targets have no workspace step; their identity check belongs to reserving.
-          enter(steps.includes('preparing-workspace') ? 'preparing-workspace' : 'reserving');
-          break;
-        case 'manifest-writing':
-        case 'manifest-written':
-          enter('writing-specification');
-          break;
-        case 'commit-writing':
-        case 'commit-written':
-          // Only journals that carry a commit reach these stages, i.e. `commits` is true.
-          enter(
-            steps.includes('committing-specification')
-              ? 'committing-specification'
-              : 'writing-specification',
-          );
-          break;
-        case 'registry-writing':
-        case 'registry-linked':
-          enter('registering');
-          break;
-        case 'completed':
-          // Completion is published with its typed result by complete().
-          break;
-        case 'recovery-required':
-          reporter.recoveryRequired();
-          break;
-        default: {
-          const exhaustive: never = stage;
-          return exhaustive;
-        }
+      // Completion is published with its typed result by complete().
+      if (stage === 'completed') return;
+      if (stage === 'recovery-required') {
+        reporter.recoveryRequired();
+        return;
       }
+      // The same stage -> step mapping the journal listing uses; an unknown stage moves nothing.
+      const step = createStepForStage(stage, target, commits);
+      if (step && steps.includes(step)) enter(step);
     },
     complete: (result) => reporter.complete(result),
     fail(code) {

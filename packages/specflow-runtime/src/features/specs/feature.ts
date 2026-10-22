@@ -4,6 +4,7 @@ import type { SpecFlowEngine } from '@nevo/specflow-engine';
 import type { RuntimeFeature } from '../runtime-feature';
 import { defaultSpecsFeatureConfig, type SpecsFeatureConfig } from './configuration';
 import { specsCreateEndpoint } from './create/endpoint';
+import { registerSpecsOperationList } from './create/operation-list';
 import { specsCloseEndpoint } from './close/endpoint';
 import { specsOverviewEndpoint } from './overview/endpoint';
 import type { SpecsOverviewRepository } from './overview/repository/read-repository';
@@ -67,6 +68,12 @@ export function createSpecsFeature(options: CreateSpecsFeatureOptions = {}): Run
             }
           : {}),
       });
+      if (options.dependencies?.progress) {
+        registerSpecsOperationList(app, {
+          engine: options.dependencies.engine,
+          registry: options.dependencies.progress.registry,
+        });
+      }
       app.register(specsCloseEndpoint, { engine: options.dependencies?.engine });
       app.register(specsOverviewEndpoint, {
         repository,

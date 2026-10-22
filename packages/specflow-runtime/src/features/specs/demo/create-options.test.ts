@@ -240,6 +240,38 @@ describe('resolveTarget', () => {
   });
 });
 
+describe('invalid Git policy scenario', () => {
+  const invalid = () => applyOptionsScenario(options(), 'git-policy-invalid');
+  it('lists every workspace as unavailable and serves no Git fact', () => {
+    const next = invalid();
+    expect(next.newWorktree).toEqual({ status: 'unavailable', reason: 'git-policy-invalid' });
+    expect(next.workspaces.length).toBeGreaterThan(1);
+    expect(
+      next.workspaces.every(
+        (w) =>
+          !w.selectable &&
+          !w.integrationSelectable &&
+          w.state === 'unavailable' &&
+          w.reason === 'git-policy-invalid',
+      ),
+    ).toBe(true);
+    expect(next.baseRefs).toEqual([]);
+    expect(next.commits).toBeUndefined();
+    expect(next.integrationTargetBranch).toBeUndefined();
+  });
+  it('fails every Create target closed with 503 GIT_POLICY_INVALID', () => {
+    for (const target of [
+      undefined,
+      { kind: 'existing' as const, workspaceId: ids.main },
+      { kind: 'new-worktree' as const },
+    ])
+      expect(code(() => resolveTarget(invalid(), target, 's'))).toEqual([
+        503,
+        'GIT_POLICY_INVALID',
+      ]);
+  });
+});
+
 describe('commit options and protected branches', () => {
   const apply = (name: (typeof demoOptionsScenarios)[number]) =>
     applyOptionsScenario(options(), name);

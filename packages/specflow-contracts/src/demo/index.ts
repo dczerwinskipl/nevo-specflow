@@ -228,6 +228,8 @@ export const DemoCreateErrorCodeSchema = Type.Union([
   Type.Literal('BRANCH_PROTECTED'),
   Type.Literal('COMMIT_BLOCKED'),
   Type.Literal('COMMIT_FAILED'),
+  /** The project Git policy is invalid: every Create fails closed (503), nothing is created. */
+  Type.Literal('GIT_POLICY_INVALID'),
   Type.Literal('DEMO_WORKSPACE_UNAVAILABLE'),
   Type.Literal('DEMO_INVALID_SCENARIO'),
 ]);

@@ -226,3 +226,97 @@ describe('operation progress registry', () => {
     expect(events.map((item) => item.event.type)).toEqual(['step']);
   });
 });
+
+describe('operation progress registry listing', () => {
+  function clock(start = '2026-10-20T10:00:00.000Z') {
+    let at = Date.parse(start);
+    return {
+      now: () => new Date(at),
+      advance: (ms: number) => {
+        at += ms;
+      },
+    };
+  }
+  const id = (n: number) => `3f0a6d4e-8f2a-4b6e-9d0a-1c2b3d4e5f${String(n).padStart(2, '0')}`;
+
+  it('lists a running operation with timestamps, steps and current step', () => {
+    const time = clock();
+    const registry = createOperationProgressRegistry({ now: time.now });
+    const reporter = registry.begin({ operationId, kind, steps });
+    reporter.step('reserving', 'running');
+    time.advance(5000);
+    reporter.step('reserving', 'done');
+    reporter.step('preparing-workspace', 'running');
+
+    expect(registry.list()).toEqual([
+      {
+        operationId,
+        kind,
+        status: 'running',
+        steps: [
+          { id: 'reserving', status: 'done' },
+          { id: 'preparing-workspace', status: 'running' },
+          { id: 'writing-specification', status: 'pending' },
+        ],
+        currentStep: 'preparing-workspace',
+        startedAt: '2026-10-20T10:00:00.000Z',
+        updatedAt: '2026-10-20T10:00:05.000Z',
+      },
+    ]);
+  });
+
+  it('keeps finished operations listed after the replay window, completed 10 min and failed 60 min', async () => {
+    vi.useFakeTimers();
+    const time = clock();
+    const registry = createOperationProgressRegistry({ now: time.now, graceMs: 60_000 });
+    registry.begin({ operationId: id(1), kind, steps }).complete({ ok: true });
+    registry.begin({ operationId: id(2), kind, steps }).fail('COMMIT_BLOCKED');
+    registry.begin({ operationId: id(3), kind, steps }).recoveryRequired();
+
+    time.advance(61_000);
+    await vi.advanceTimersByTimeAsync(61_000);
+    // The replay window is over: peek and watch forget it, the listing does not.
+    expect(registry.peek(id(1), kind)).toBeUndefined();
+    expect(registry.size()).toBe(0);
+    expect(registry.list().map((item) => [item.operationId, item.status, item.code])).toEqual([
+      [id(1), 'completed', undefined],
+      [id(2), 'failed', 'COMMIT_BLOCKED'],
+      [id(3), 'recovery-required', undefined],
+    ]);
+    expect(registry.list()[0]?.finishedAt).toBe('2026-10-20T10:00:00.000Z');
+
+    time.advance(10 * 60_000);
+    expect(registry.list().map((item) => item.operationId)).toEqual([id(2), id(3)]);
+    time.advance(50 * 60_000);
+    expect(registry.list()).toEqual([]);
+  });
+
+  it('caps the finished operations kept for the listing, dropping the oldest', () => {
+    const registry = createOperationProgressRegistry({ listCap: 3 });
+    for (let n = 1; n <= 5; n += 1) {
+      registry.begin({ operationId: id(n), kind, steps }).fail('X');
+    }
+    expect(registry.list().map((item) => item.operationId)).toEqual([id(3), id(4), id(5)]);
+  });
+
+  it('replaces the finished record when the same id runs again, and keeps kinds apart', () => {
+    const registry = createOperationProgressRegistry();
+    registry.begin({ operationId, kind, steps }).fail('X');
+    registry.begin({ operationId, kind: 'other-kind', steps }).complete(1);
+    const again = registry.begin({ operationId, kind, steps });
+    expect(registry.list().map((item) => [item.kind, item.status])).toEqual([
+      [kind, 'running'],
+      ['other-kind', 'completed'],
+    ]);
+    again.complete(1);
+    expect(registry.list().filter((item) => item.kind === kind)).toHaveLength(1);
+  });
+
+  it('returns copies: callers cannot change the registry', () => {
+    const registry = createOperationProgressRegistry();
+    registry.begin({ operationId, kind, steps }).step('reserving', 'running');
+    const [item] = registry.list();
+    (item!.steps as unknown as { status: string }[])[0]!.status = 'done';
+    expect(registry.list()[0]?.steps[0]?.status).toBe('running');
+  });
+});

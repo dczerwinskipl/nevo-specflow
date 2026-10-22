@@ -55,8 +55,28 @@ export interface OperationProgressRegistry {
   ): AsyncGenerator<StoredProgressEvent>;
   /** Current outcome of a retained operation; undefined once it left the grace window. */
   peek(operationId: string, kind: string): OperationProgressOutcome | undefined;
+  /**
+   * Operations for the listing: every running one plus finished ones inside the listing retention
+   * (completed 10 min, failed and recovery-required 60 min, capped). Independent of the replay
+   * window: an operation can still be listed after its event log is gone. Copies; order unspecified.
+   */
+  list(): readonly OperationProgressListing[];
   /** Number of retained operations (observability and tests). */
   size(): number;
+}
+
+export interface OperationProgressListing {
+  readonly operationId: string;
+  readonly kind: string;
+  readonly status: 'running' | 'completed' | 'failed' | 'recovery-required';
+  /** Stable failure code, present only for `failed`. */
+  readonly code?: string;
+  readonly steps: readonly { readonly id: string; readonly status: OperationStepStatus }[];
+  readonly currentStep?: string;
+  /** ISO instants. */
+  readonly startedAt: string;
+  readonly updatedAt: string;
+  readonly finishedAt?: string;
 }
 
 export interface OperationProgressOutcome {
@@ -68,8 +88,16 @@ export interface OperationProgressOutcome {
 export interface OperationProgressRegistryOptions {
   /** How long a finished operation stays replayable (default 60 s). */
   readonly graceMs?: number;
+  /** How long a finished operation stays in `list()` (completed 10 min, failed 60 min). */
+  readonly listRetention?: { readonly completedMs?: number; readonly failedMs?: number };
+  /** Upper bound of finished operations kept for the listing (default 200). */
+  readonly listCap?: number;
   readonly now?: () => Date;
 }
+
+export const DEFAULT_LIST_COMPLETED_MS = 10 * 60_000;
+export const DEFAULT_LIST_FAILED_MS = 60 * 60_000;
+export const DEFAULT_LIST_CAP = 200;
 
 export const DEFAULT_PROGRESS_WAIT_MS = 30_000;
 export { OPERATION_NOT_FOUND_CODE };
@@ -82,6 +110,9 @@ interface Entry {
   currentStep?: string;
   failureCode?: string;
   seq: number;
+  readonly startedAt: string;
+  updatedAt: string;
+  finishedAt?: string;
   readonly log: StoredProgressEvent[];
   readonly listeners: Set<() => void>;
 }
@@ -98,6 +129,11 @@ export function createOperationProgressRegistry(
 ): OperationProgressRegistry {
   const graceMs = options.graceMs ?? 60_000;
   const now = options.now ?? (() => new Date());
+  const completedMs = options.listRetention?.completedMs ?? DEFAULT_LIST_COMPLETED_MS;
+  const failedMs = options.listRetention?.failedMs ?? DEFAULT_LIST_FAILED_MS;
+  const listCap = options.listCap ?? DEFAULT_LIST_CAP;
+  // Finished operations for the listing only (no event log): outlive the replay window.
+  const finished = new Map<string, OperationProgressListing>();
   // Keyed by (kind, operationId): ids of different kinds never collide or reveal each other.
   const entries = new Map<string, Entry>();
   const keyOf = (kind: string, operationId: string) => JSON.stringify([kind, operationId]);
@@ -110,13 +146,19 @@ export function createOperationProgressRegistry(
 
   function publish(entry: Entry, event: (at: string) => OperationProgressEvent): void {
     entry.seq += 1;
-    entry.log.push({ id: entry.seq, event: event(stamp()) });
+    const at = stamp();
+    entry.updatedAt = at;
+    entry.log.push({ id: entry.seq, event: event(at) });
     notify(entry);
   }
 
   function finish(entry: Entry, status: Exclude<Entry['status'], 'running'>): void {
     entry.status = status;
     delete entry.currentStep;
+    entry.finishedAt = stamp();
+    const key = keyOf(entry.kind, entry.operationId);
+    finished.set(key, listingOf(entry));
+    pruneFinished();
     setTimeout(() => {
       const key = keyOf(entry.kind, entry.operationId);
       if (entries.get(key) === entry) entries.delete(key);
@@ -183,6 +225,34 @@ export function createOperationProgressRegistry(
     };
   }
 
+  function listingOf(entry: Entry): OperationProgressListing {
+    return {
+      operationId: entry.operationId,
+      kind: entry.kind,
+      status: entry.status,
+      ...(entry.failureCode !== undefined ? { code: entry.failureCode } : {}),
+      steps: entry.steps.map((step) => ({ ...step })),
+      ...(entry.currentStep ? { currentStep: entry.currentStep } : {}),
+      startedAt: entry.startedAt,
+      updatedAt: entry.updatedAt,
+      ...(entry.finishedAt ? { finishedAt: entry.finishedAt } : {}),
+    };
+  }
+
+  /** Drops finished operations past their listing retention, then the oldest beyond the cap. */
+  function pruneFinished(): void {
+    const at = now().getTime();
+    for (const [key, item] of finished) {
+      const limit = item.status === 'completed' ? completedMs : failedMs;
+      if (at - Date.parse(item.finishedAt ?? item.updatedAt) >= limit) finished.delete(key);
+    }
+    // Map preserves insertion order: the first keys are the oldest finishes.
+    for (const key of finished.keys()) {
+      if (finished.size <= listCap) break;
+      finished.delete(key);
+    }
+  }
+
   function snapshotOf(entry: Entry): StoredProgressEvent {
     return {
       id: entry.seq,
@@ -242,10 +312,14 @@ export function createOperationProgressRegistry(
         steps: input.steps.map((id) => ({ id, status: 'pending' as const })),
         status: 'running',
         seq: 0,
+        startedAt: stamp(),
+        updatedAt: stamp(),
         log: [],
         listeners: new Set(),
       };
       entries.set(key, entry);
+      // A new run replaces the finished record of an earlier run with the same id.
+      finished.delete(key);
       for (const wake of [...(arrivals.get(key) ?? [])]) wake();
       return reporterFor(entry);
     },
@@ -311,6 +385,14 @@ export function createOperationProgressRegistry(
         status: entry.status,
         ...(entry.failureCode !== undefined ? { code: entry.failureCode } : {}),
       };
+    },
+
+    list() {
+      pruneFinished();
+      const running = [...entries.values()]
+        .filter((entry) => entry.status === 'running')
+        .map(listingOf);
+      return [...running, ...finished.values()];
     },
 
     size: () => entries.size,

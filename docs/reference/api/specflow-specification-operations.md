@@ -33,6 +33,9 @@ future Workflow or provider Session APIs.
 | GET  | `/api/specs/create/operations/:operationId`        | 200 sanitized observation or 404 `CREATE_NOT_FOUND`            |
 | GET  | `/api/specs/create/operations/:operationId/events` | live named steps (SSE), see below                              |
 
+The list of Create operations for the Specifications screen is `GET /api/specs/operations`
+(`reference.api.specs-operations-list`; admitted by spec view, not by `Create`).
+
 All four require project-wide Spec `Create` capability before reading protected data.
 401/403 use existing Auth schemas. With no Engine composition, all return
 503 `{"error":"ENGINE_UNAVAILABLE","code":"ENGINE_UNAVAILABLE"}`.
@@ -76,6 +79,17 @@ folder) and `path` its registered display path. `branchPattern` is the effective
 `feature/{slug}`; `{shortId}` is optional). `worktreesRoot` is `{path,exists}`: the effective folder
 that receives new worktrees, from the machine-local `git.worktreesRoot` or the `<repo>-worktrees`
 default; `exists` tells whether it exists yet (it is created on first use).
+**Invalid Git policy.** An invalid `git` section of the project configuration (for example an unknown key)
+does not fail `GET /api/specs/create-options`. The answer is 200 with what needs no Git: the registered
+workspaces verified on disk, each with `state:'unavailable'`, `selectable:false` and
+`reason:'git-policy-invalid'` (a workspace that is itself unavailable keeps `checkout-unavailable`),
+`newWorktree: {status:'unavailable', reason:'git-policy-invalid'}`, `baseRefs: []`, no `commits` and no
+`integrationTargetBranch`, and the default `branchPattern`/`defaultBaseRef`/`worktreesRoot` (display only). No Git
+process runs. The cause is logged on the server only (a warning with the Engine's own description, no path) and is
+never part of the response. Create (every target, existing included) and the lifecycle mutations still **fail
+closed** with `GIT_POLICY_INVALID`/503, because they read the policy to decide whether the Engine commits;
+fixing the configuration restores everything. Overview, workspace and document reads never read the policy and are
+unaffected.
 Local `baseRefs[].ref` values are `refs/heads/...`; project default may instead be
 `HEAD`, a SHA or a tag. An existing dirty workspace may be selectable for Create but is
 not an integration-selectable destination. All options are a snapshot, not a reservation.

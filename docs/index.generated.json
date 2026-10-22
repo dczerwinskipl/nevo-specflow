@@ -1791,6 +1791,21 @@
       ]
     },
     {
+      "id": "adr.0014-feature-owned-operation-lists",
+      "type": "adr",
+      "title": "Feature-owned operation lists over a shared operation model",
+      "status": "current",
+      "file": "docs/architecture/decisions/0014-feature-owned-operation-lists.md",
+      "read_when": [],
+      "summary": "Operations are a shared entity (model, journal and registry index, per-kind adapters) read through feature-owned, read-only list routes registered by one helper. Specifications exposes GET /api/specs/operations, authorized by spec view; status comes from one documented table; freshness is by polling with ETag; there is no global operations index.",
+      "related": [
+        "reference.api.specs-operations-list",
+        "reference.api.operation-progress",
+        "engineering.shared.operation-progress",
+        "adr.0013-engine-owned-commits-and-protected-branches"
+      ]
+    },
+    {
       "id": "design-system.implementation.library-packaging",
       "type": "engineering",
       "title": "UI library packaging boundary",
@@ -5146,6 +5161,32 @@
       ]
     },
     {
+      "id": "reference.api.specs-operations-list",
+      "type": "reference",
+      "title": "Specifications operation list HTTP API",
+      "status": "current",
+      "file": "docs/reference/api/specs-operations-list.md",
+      "read_when": [
+        "showing the background operations above the Specifications list",
+        "adding a new operation kind or a new feature-owned operation list",
+        "changing the operation list schema, retention or status derivation"
+      ],
+      "summary": "GET /api/specs/operations lists Specification Create operations from the Engine journals and the live progress registry: schema, status table, retention, authorization, ETag, query, error codes and the demo mirror.",
+      "related": [
+        "reference.api.operation-progress",
+        "reference.api.specflow-specification-operations",
+        "reference.api.specs-overview",
+        "engineering.shared.operation-progress",
+        "adr.0014-feature-owned-operation-lists"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "ui"
+      ]
+    },
+    {
       "id": "reference.api.specs-overview",
       "type": "reference",
       "title": "Specs Overview HTTP API",
@@ -5158,6 +5199,7 @@
       "summary": "Typed Current/Archive Specs Overview read endpoint with feature-owned classification, real session authentication, and per-item spec.view filtering.",
       "related": [
         "architecture.runtime.authorization",
+        "reference.api.specs-operations-list",
         "product.specflow.ui.application-architecture"
       ]
     },

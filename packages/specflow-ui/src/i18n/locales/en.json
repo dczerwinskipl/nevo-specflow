@@ -937,8 +937,8 @@
       "goalHelp": "Saved in the specification overview. The app does not display it yet."
     },
     "monitoring": {
-      "title": "Preparing the workspace",
-      "body": "This can take a few minutes. Keep this page open: we are checking the operation for you and will open the specification when it is ready.",
+      "title": "Still working",
+      "body": "The live steps are unavailable, so we are checking the operation for you. This can take a few minutes; you can leave this page and creation continues.",
       "reportedTitle": "The server reported a problem",
       "reportedBody": "{{reason}}. Nevo is confirming the result with the server; this message is replaced by the details."
     },
@@ -949,6 +949,38 @@
         "preparing-workspace": "Preparing the workspace",
         "writing-specification": "Writing the specification files",
         "registering": "Registering the workspace"
+      }
+    },
+    "page": {
+      "heading": {
+        "working": "Creating specification",
+        "completed": "Specification created",
+        "refused": "Specification was not created",
+        "unknown": "Result not confirmed yet",
+        "notFound": "Operation not found"
+      },
+      "target": {
+        "newWorkspace": "In a new workspace.",
+        "newWorkspaceBranch": "In a new workspace on branch {{branch}}.",
+        "existing": "In the existing workspace {{name}}.",
+        "existingUnnamed": "In an existing workspace.",
+        "main": "In the current project checkout."
+      },
+      "status": {
+        "sending": "Sending the request…",
+        "working": "Preparing your specification.",
+        "stillWorking": "Still working — this can take a minute.",
+        "reading": "Reading the operation…",
+        "completed": "Done. Opening the specification…"
+      },
+      "leaveNote": "You can leave this page: creation continues on the server. Open New specification to return to it.",
+      "openSpecification": "Open specification",
+      "backToForm": "Back to form",
+      "tryAgain": "Try again",
+      "backToCreate": "Back to Create",
+      "notFound": {
+        "title": "This operation does not exist",
+        "body": "The server has no record of it. The link may be wrong or the operation may have expired. Nothing is being created."
       }
     }
   },

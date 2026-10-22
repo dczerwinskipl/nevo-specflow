@@ -8,6 +8,7 @@ import { OperationProgress } from '../../../shared/operations/OperationProgress'
 import { useOperationProgress } from '../../../shared/operations/useOperationProgress';
 import { createFailureTitleKey } from './CreateFailureAlert';
 import {
+  createCompletedSteps,
   createProgressLabel,
   createProgressPlaceholderRows,
   createProgressSteps,
@@ -16,34 +17,36 @@ import { toOperationFailure } from './createSpecErrors';
 import type { StreamHint } from './watchCreateOperation';
 
 /**
- * What the Runtime says while a Create runs: the named steps, a calm note when the live stream is
- * unavailable, and, best effort, the failure code the stream reported before the inspection
- * endpoint (the authority) has concluded. Display only: it never decides, delays or fails the
- * operation; it only tells the owner how soon to read the inspection again.
+ * The step checklist of the progress page, with what the Runtime says while a Create runs: the
+ * named steps, a calm note when the live stream is unavailable and, best effort, the failure code
+ * the stream reported before the inspection endpoint (the authority) has concluded. Display only:
+ * it never decides, delays or fails the operation; it only tells the owner how soon to read the
+ * inspection again. A finished Create shows every step done.
  */
-export function CreateProgressPanel({
+export function CreateOperationProgress({
   operationId,
   target,
-  busy,
+  working,
+  completed,
   monitoring,
-  concluded,
   onStreamHint,
 }: {
-  /** The operation that was sent; the stream is watched only while there is one and it is `busy`. */
-  operationId: string | undefined;
+  /** The operation shown; its stream is watched only while it is `working`. */
+  operationId: string;
+  /** The request's target, when this page knows the request (it sizes the placeholder rows). */
   target: CreateSpecRequest['target'];
-  busy: boolean;
+  working: boolean;
+  completed: boolean;
+  /** The Runtime accepted the operation and it is watched through the inspection endpoint. */
   monitoring: boolean;
-  /** The inspection concluded with a failure the form already shows: nothing more to add here. */
-  concluded: boolean;
   onStreamHint: (hint: StreamHint) => void;
 }) {
   const { t } = useTranslation();
   const { projectCreationApi, operationsApi } = useAppServices();
   const progress = useOperationProgress({
     api: operationsApi,
-    streamUrl: operationId ? projectCreationApi.operationEventsUrl(operationId) : undefined,
-    enabled: busy,
+    streamUrl: projectCreationApi.operationEventsUrl(operationId),
+    enabled: working,
   });
 
   // The stream only hastens the next inspection read (a terminal event) or switches the poll to the
@@ -67,7 +70,9 @@ export function CreateProgressPanel({
       : undefined;
   const checklistPossible = progress.available && !reportedFailure && progress.outcome !== 'failed';
 
-  if (!busy || concluded) return null;
+  if (completed)
+    return <OperationProgress steps={createCompletedSteps(target)} label={createProgressLabel} />;
+  if (!working) return null;
   return (
     <>
       <OperationProgress

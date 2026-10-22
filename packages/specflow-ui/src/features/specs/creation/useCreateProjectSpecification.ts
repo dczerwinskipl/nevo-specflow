@@ -69,6 +69,8 @@ export interface ProjectCreateModel {
      * asks the server what became of the operation, never starting a different one.
      */
     check: () => Promise<void>;
+    /** Tries a failed operation again, asking the server first (see the implementation). */
+    retry: () => Promise<void>;
     /** Retires the alert of a definite failure (never an unknown outcome). */
     dismissFailure: () => void;
     /** Sync read for the leave guard: completing the operation navigates away on purpose. */
@@ -109,14 +111,22 @@ function createProjectLedger(stored: StoredCreateOperation | undefined) {
   };
 }
 
-/** A reloaded page starts as an unknown outcome: the operation is checked, never assumed. */
+/**
+ * A reloaded page starts as an unknown outcome that is being checked (never assumed), so it is
+ * already "submitting" in its first render: no frame shows an unconfirmed-outcome alert for an
+ * operation the page is just about to read.
+ */
 function stateOfStored(seed: {
   stored: StoredCreateOperation | undefined;
   operationId: string | undefined;
 }): CreateOperationState {
   const { stored, operationId } = seed;
   if (!stored && !operationId) return initialCreateOperation;
-  const request = stored?.request ?? { operationId: operationId ?? '', title: '', target: undefined };
+  const request = stored?.request ?? {
+    operationId: operationId ?? '',
+    title: '',
+    target: undefined,
+  };
   return [
     { type: 'submit-started' as const },
     {
@@ -127,6 +137,7 @@ function stateOfStored(seed: {
       type: 'submit-failed' as const,
       failure: { kind: 'uncertain' as const, snapshot: '' },
     },
+    { type: 'submit-started' as const },
   ].reduce(createOperationReducer, initialCreateOperation);
 }
 
@@ -246,7 +257,6 @@ export function useCreateProjectSpecification(
     if ((!stored && !operationId) || ledger.resumed) return;
     ledger.resumed = true;
     ledger.begin();
-    dispatch({ type: 'submit-started' });
     void resolveUnknown({ snapshot: '' }).finally(() => ledger.end());
   }, [ledger, operationId, resolveUnknown, stored]);
 
@@ -345,12 +355,26 @@ export function useCreateProjectSpecification(
     [submit],
   );
 
+  /**
+   * Tries a failed operation again: the server is asked first, so it is never started twice. Only
+   * for a failure that kept the operation (a lost session, for instance); a refusal ends it.
+   */
+  const retry = useCallback(async () => {
+    if (state.phase !== 'failed' || !ledger.begin()) return;
+    try {
+      dispatch({ type: 'submit-started' });
+      await resolveUnknown({ snapshot: '' });
+    } finally {
+      ledger.end();
+    }
+  }, [ledger, resolveUnknown, state.phase]);
+
   const dismissFailure = useCallback(() => dispatch({ type: 'failure-dismissed' }), []);
   const isNavigationAllowed = useCallback(() => ledger.navigationAllowed, [ledger]);
   const setStreamHint = useCallback((hint: StreamHint) => ledger.stream.set(hint), [ledger]);
   const actions = useMemo(
-    () => ({ submit, check, dismissFailure, isNavigationAllowed, setStreamHint }),
-    [submit, check, dismissFailure, isNavigationAllowed, setStreamHint],
+    () => ({ submit, check, retry, dismissFailure, isNavigationAllowed, setStreamHint }),
+    [submit, check, retry, dismissFailure, isNavigationAllowed, setStreamHint],
   );
   const flags = useMemo(() => selectCreateOperationFlags(state), [state]);
   return useMemo(

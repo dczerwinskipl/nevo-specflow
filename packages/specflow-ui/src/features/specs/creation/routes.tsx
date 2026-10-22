@@ -4,6 +4,7 @@ import { AppWorkspaceProvider } from '@nevo/ui';
 import { createRoute } from '@tanstack/react-router';
 import { appRoute } from '../../../app/router/root';
 import { specificationRoute } from '../routes';
+import { CreateOperationScreen } from './CreateOperationScreen';
 import { CreateSpecificationScreen } from './CreateSpecificationScreen';
 export const createSpecificationRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -13,6 +14,20 @@ export const createSpecificationRoute = createRoute({
   }),
   component: NewSpecification,
 });
+/**
+ * The page of one Create operation, the place the form hands over to: bookmarkable and safe to
+ * reload, because the operation is identified by its id and the server (or the stored request)
+ * says what became of it.
+ */
+export const createOperationRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/specs/new/creating/$operationId',
+  validateSearch: (search: Record<string, unknown>) => ({
+    collection: parseSpecificationCollection(search),
+  }),
+  component: CreatingSpecification,
+});
+
 export const newSessionRoute = createRoute({
   getParentRoute: () => specificationRoute,
   path: 'sessions/new',
@@ -25,11 +40,12 @@ function NewSpecification() {
     <AppWorkspaceProvider>
       <CreateSpecificationScreen
         onBack={() => void navigate({ to: '/', search: { collection } })}
-        onProjectCreated={(created) =>
+        onProjectStarted={(operationId, { replace }) =>
           void navigate({
-            to: '/specs/$specId',
-            params: { specId: created.specId },
+            to: '/specs/new/creating/$operationId',
+            params: { operationId },
             search: { collection },
+            replace,
           })
         }
         onCreated={(specId, documentId) => {
@@ -57,6 +73,27 @@ function NewSpecification() {
     </AppWorkspaceProvider>
   );
 }
+function CreatingSpecification() {
+  const { operationId } = createOperationRoute.useParams();
+  const navigate = createOperationRoute.useNavigate();
+  const collection = useApplicationCollection();
+  return (
+    <AppWorkspaceProvider>
+      <CreateOperationScreen
+        operationId={operationId}
+        onOpen={(created) =>
+          void navigate({
+            to: '/specs/$specId',
+            params: { specId: created.specId },
+            search: { collection },
+            replace: true,
+          })
+        }
+        onBackToForm={() => void navigate({ to: '/specs/new', search: { collection } })}
+      />
+    </AppWorkspaceProvider>
+  );
+}
 function NewSession() {
   const { specId } = newSessionRoute.useParams();
   const navigate = newSessionRoute.useNavigate();
@@ -72,7 +109,7 @@ function NewSession() {
             search: { collection },
           })
         }
-        onProjectCreated={() => undefined}
+        onProjectStarted={() => undefined}
         onCreated={() => {
           void navigate({ to: '/specs/$specId', params: { specId }, search: { collection } });
         }}

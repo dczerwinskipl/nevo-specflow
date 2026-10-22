@@ -937,8 +937,8 @@
       "goalHelp": "Zapisujemy w przeglądzie specyfikacji. Aplikacja jeszcze go nie wyświetla."
     },
     "monitoring": {
-      "title": "Przygotowujemy środowisko pracy",
-      "body": "To może potrwać kilka minut. Zostaw tę stronę otwartą: sprawdzamy operację za Ciebie i otworzymy specyfikację, gdy będzie gotowa.",
+      "title": "Nadal pracujemy",
+      "body": "Kroki na żywo są niedostępne, więc sprawdzamy operację za Ciebie. To może potrwać kilka minut; możesz opuścić tę stronę, a tworzenie trwa dalej.",
       "reportedTitle": "Serwer zgłosił problem",
       "reportedBody": "{{reason}}. Nevo potwierdza wynik z serwerem; ten komunikat zostanie zastąpiony szczegółami."
     },
@@ -949,6 +949,38 @@
         "preparing-workspace": "Przygotowanie środowiska pracy",
         "writing-specification": "Zapisywanie plików specyfikacji",
         "registering": "Rejestrowanie środowiska pracy"
+      }
+    },
+    "page": {
+      "heading": {
+        "working": "Tworzenie specyfikacji",
+        "completed": "Specyfikacja utworzona",
+        "refused": "Nie utworzono specyfikacji",
+        "unknown": "Wynik jeszcze niepotwierdzony",
+        "notFound": "Nie znaleziono operacji"
+      },
+      "target": {
+        "newWorkspace": "W nowym środowisku pracy.",
+        "newWorkspaceBranch": "W nowym środowisku pracy na gałęzi {{branch}}.",
+        "existing": "W istniejącym środowisku pracy {{name}}.",
+        "existingUnnamed": "W istniejącym środowisku pracy.",
+        "main": "W bieżącym katalogu projektu."
+      },
+      "status": {
+        "sending": "Wysyłanie żądania…",
+        "working": "Przygotowujemy Twoją specyfikację.",
+        "stillWorking": "Nadal pracujemy — to może potrwać minutę.",
+        "reading": "Odczytywanie operacji…",
+        "completed": "Gotowe. Otwieramy specyfikację…"
+      },
+      "leaveNote": "Możesz opuścić tę stronę: tworzenie trwa dalej na serwerze. Wróć do niego przez Nowa specyfikacja.",
+      "openSpecification": "Otwórz specyfikację",
+      "backToForm": "Wróć do formularza",
+      "tryAgain": "Spróbuj ponownie",
+      "backToCreate": "Wróć do tworzenia",
+      "notFound": {
+        "title": "Ta operacja nie istnieje",
+        "body": "Serwer nie ma po niej śladu. Link może być błędny albo operacja wygasła. Nic nie jest tworzone."
       }
     }
   },

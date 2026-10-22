@@ -47,6 +47,6 @@ export function startCreate(input: StartCreateInput): SentCreateRequest | undefi
     return undefined;
   }
   storage.save({ request, startedAt: now() });
-  storage.saveDraft(draft);
+  storage.saveDraft({ ...draft, operationId: request.operationId });
   return request;
 }

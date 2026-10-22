@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Button } from '@nevo/ui';
-import type { CreatedSpec } from '@nevo/specflow-contracts/specs';
 import { ApplicationContextLine } from '../../../app/navigation/ApplicationLocation';
 import { FeatureUnavailable } from '../../../app/errors/FeatureUnavailable';
 import { useAppServices } from '../../../app/useAppServices';
@@ -15,8 +14,11 @@ import { CreateSpecificationForm } from './CreateSpecificationForm';
 interface Props {
   specId?: string;
   onCreated: (id: string, document?: string) => void;
-  /** A specification created on a project Runtime (it has no documents or sessions to open yet). */
-  onProjectCreated: (created: CreatedSpec) => void;
+  /**
+   * A Create on a project Runtime was handed over: continue on the page of its operation. A stored
+   * unfinished operation is resumed with `replace`, so Back does not return to the empty form.
+   */
+  onProjectStarted: (operationId: string, options: { replace: boolean }) => void;
   onSession: (spec: string, session: string) => void;
   onBack: () => void;
 }
@@ -53,7 +55,7 @@ export function CreateSpecificationScreen(props: Props) {
     return props.specId ? (
       fallback(<FeatureUnavailable />)
     ) : (
-      <CreateProjectForm onCreated={props.onProjectCreated} />
+      <CreateProjectForm onStarted={props.onProjectStarted} />
     );
   return <DemoCreateSpecification {...props} fallback={fallback} />;
 }

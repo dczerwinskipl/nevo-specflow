@@ -36,3 +36,24 @@ export function createProgressSteps(
 export function createProgressPlaceholderRows(target: CreateSpecRequest['target']): number {
   return target?.kind === 'new-worktree' ? 4 : 3;
 }
+
+const stepOrder: readonly SpecificationCreateStep[] = [
+  'reserving',
+  'preparing-workspace',
+  'writing-specification',
+  'registering',
+];
+
+/**
+ * The checklist of a finished Create, for when the live stream is gone (it is closed once the
+ * operation concluded): every step done, the workspace step only when one is prepared.
+ */
+export function createCompletedSteps(
+  target: CreateSpecRequest['target'],
+): readonly OperationProgressStep[] {
+  return createProgressSteps(
+    stepOrder
+      .filter((id) => id !== 'preparing-workspace' || target?.kind === 'new-worktree')
+      .map((id) => ({ id, status: 'done' as const })),
+  );
+}

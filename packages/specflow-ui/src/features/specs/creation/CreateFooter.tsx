@@ -15,8 +15,8 @@ export function CreateFooter({
   submitLabel,
   submitDisabled,
 }: {
-  actionRegion: RefObject<HTMLDivElement | null>;
-  submitRef: RefObject<HTMLButtonElement | null>;
+  actionRegion?: RefObject<HTMLDivElement | null>;
+  submitRef?: RefObject<HTMLButtonElement | null>;
   failureAlert: ReactNode;
   /** Translated reason Create is unavailable; undefined shows `note` instead. */
   prerequisite: string | undefined;

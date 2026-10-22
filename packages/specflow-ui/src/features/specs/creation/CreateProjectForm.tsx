@@ -1,42 +1,48 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Field, Separator, TextArea, TextInput, Typography } from '@nevo/ui';
-import type { CreatedSpec } from '@nevo/specflow-contracts/specs';
+import { Alert, Field, Separator, TextArea, TextInput, Typography } from '@nevo/ui';
 import { isApiError } from '../../../api';
 import { ApplicationContextLine } from '../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../app/useAppServices';
 import { useMessage } from '../../../i18n/message';
 import { useAnnouncer } from '../../../shared/a11y/useAnnouncer';
+import type { RequestAttempt } from '../../../shared/operations/retainedRequest';
 import { projectCreationKeys } from './api.project';
-import { CreateFailurePanel } from './CreateFailurePanel';
 import { CreateFooter } from './CreateFooter';
 import { CreateLeaveDialog } from './CreateLeaveDialog';
-import { CreateProgressPanel } from './CreateProgressPanel';
 import { CreateShell } from './CreateShell';
-import { useCreateOperationStorage } from './createOperationStorage';
+import { useCreateOperationStorage, type SentCreateRequest } from './createOperationStorage';
 import {
   createGoalMaxLength,
   createTitleMaxLength,
   projectCreateReadiness,
 } from './createProjectReadiness';
+import { startCreate } from './startCreate';
 import { useCreateLeaveGuard } from './useCreateLeaveGuard';
 import { useCreateOptions } from './useCreateOptions';
-import { useCreateProjectSpecification } from './useCreateProjectSpecification';
-import { useRevealFailure } from './useRevealFailure';
 import { WorkspacePlaceSection } from './workspace/WorkspacePlaceSection';
 import { buildCreateSlug, buildCreateTarget } from './workspace/createRequest';
-import { requestChoiceSnapshot } from './workspace/workspaceChoice';
+import { requestChoiceSnapshot, type WorkspaceChoice } from './workspace/workspaceChoice';
+import { activeTile } from './workspace/workspaceTiles';
 import { useWorkspacePlace } from './workspace/useWorkspacePlace';
 
 /**
  * The Create form of a project Runtime: the specification name, an optional goal and where it
- * lives (new worktree, main workspace or an existing one). The agent session, workflow and initial
- * documents of the demo are not part of the real Create. Each concern has its own owner: the
- * options (`useCreateOptions`), the place choice (`useWorkspacePlace`), the operation itself
- * (`useCreateProjectSpecification`: retained id, watching, check, resume) and what it shows
- * (`CreateProgressPanel`, `CreateFailurePanel`); this component wires them to the form fields.
+ * lives (new worktree, main workspace or an existing one). Submitting only prepares the request
+ * (`startCreate`: retained operation id, stored request and draft) and hands over to the progress
+ * page, which sends, watches and reports it. Each concern has its own owner: the options
+ * (`useCreateOptions`), the place choice (`useWorkspacePlace`) and the operation (the page); this
+ * component wires the first two to the form fields.
+ *
+ * An operation that is still unfinished is resumed from here: opening Create finds it stored and
+ * continues on its page. A draft left by the page ("Back to form") seeds the fields once.
  */
-export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedSpec) => void }) {
+export function CreateProjectForm({
+  onStarted,
+}: {
+  /** The request is stored: continue on the page of this operation (`replace` for a resumed one). */
+  onStarted: (operationId: string, options: { replace: boolean }) => void;
+}) {
   const { t } = useTranslation();
   const text = useMessage();
   const { projectCreationApi } = useAppServices();
@@ -44,12 +50,15 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
   const headingRef = useRef<HTMLHeadingElement>(null);
   const submitRef = useRef<HTMLButtonElement>(null);
   const gitHeadingId = useId();
+  const attempt = useRef<RequestAttempt<SentCreateRequest> | null>(null);
+  const started = useRef(false);
   const { announce, region } = useAnnouncer();
+  const [unprepared, setUnprepared] = useState(false);
 
-  // An operation the previous page left unconfirmed: the form starts from what was sent.
-  const [stored] = useState(() => storage.load());
-  const [title, setTitle] = useState(stored?.request.title ?? '');
-  const [goal, setGoal] = useState(stored?.request.goal ?? '');
+  const [unfinished] = useState(() => storage.load());
+  const [draft] = useState(() => (unfinished ? undefined : storage.loadDraft()));
+  const [title, setTitle] = useState(draft?.title ?? '');
+  const [goal, setGoal] = useState(draft?.goal ?? '');
 
   const createOptions = useCreateOptions({
     queryKey: projectCreationKeys.createOptions,
@@ -58,7 +67,11 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
     refetchOnWindowFocus: false,
   });
   const { options: workspaceOptions } = createOptions;
-  const place = useWorkspacePlace(createOptions, announce);
+  const place = useWorkspacePlace(
+    createOptions,
+    announce,
+    draft && { choice: draft.choice, failure: draft.failure },
+  );
 
   const configurationSnapshot = JSON.stringify({
     title,
@@ -67,29 +80,30 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
   });
   const [initialConfiguration] = useState(configurationSnapshot);
 
-  const { state, flags, actions } = useCreateProjectSpecification({
-    stored,
-    snapshot: configurationSnapshot,
-    onCreated,
-    announce,
-  });
-  const { busy, uncertain, recovery, forbidden: forbiddenCreate } = flags;
-  const failure = state.failure;
+  // The draft is consumed by the first render: a reload of the form starts clean again.
+  useEffect(() => {
+    if (draft) storage.clearDraft();
+  }, [draft, storage]);
 
+  // An unfinished operation has its page: Create resumes it instead of offering a second one.
+  useEffect(() => {
+    if (unfinished) onStarted(unfinished.request.operationId, { replace: true });
+  }, [onStarted, unfinished]);
+
+  // Only unsaved edits ask before leaving; an operation outlives this screen (it has its page).
   const leaveGuard = useCreateLeaveGuard({
-    unfinished: flags.unfinished,
+    unfinished: false,
     dirty: configurationSnapshot !== initialConfiguration,
-    isNavigationAllowed: actions.isNavigationAllowed,
+    isNavigationAllowed: () => started.current,
   });
-  const reveal = useRevealFailure(state.submitFailed, state.errorSeq, failure);
 
-  const locked = busy || uncertain || recovery || forbiddenCreate || createOptions.forbidden;
+  const locked = createOptions.forbidden || Boolean(unfinished);
   const { prerequisite, canSubmit } = projectCreateReadiness({
     title,
     goal,
     workspaceState: createOptions.state,
     choice: place.choice,
-    forbidden: forbiddenCreate || createOptions.forbidden,
+    forbidden: createOptions.forbidden,
   });
 
   useEffect(() => {
@@ -98,40 +112,43 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
 
   const refreshOptions = () =>
     void place.refresh({
-      failure,
-      dismissFailure: actions.dismissFailure,
+      failure: null,
+      dismissFailure: () => undefined,
       fallbackFocus: () => submitRef.current?.focus(),
     });
 
-  const submission = () => {
+  /** The existing workspace's name as it is shown now, so the page can name it. */
+  const placeNameOf = (choice: WorkspaceChoice) => {
+    const name = workspaceOptions?.workspaces.find(
+      (workspace) =>
+        activeTile(choice, workspaceOptions) === 'existing' &&
+        workspace.workspaceId === choice.existingWorkspaceId,
+    )?.name;
+    return name ? { placeName: name } : {};
+  };
+
+  const submit = () => {
+    if (!canSubmit || started.current) return;
     const slug = workspaceOptions
       ? buildCreateSlug(place.choice, workspaceOptions, title)
       : undefined;
-    return {
-      title,
-      goal,
+    const request = startCreate({
+      attempt,
+      storage,
+      draft: { title, goal, choice: place.choice, ...placeNameOf(place.choice) },
       slug,
       buildTarget: () =>
         workspaceOptions ? buildCreateTarget(place.choice, workspaceOptions, title) : undefined,
-      snapshot: configurationSnapshot,
-      onFailed: (next: Parameters<typeof place.reportFailure>[0]) =>
-        place.reportFailure(next, { slug }),
-    };
+    });
+    if (!request) {
+      // Nothing was stored or sent: the form stays usable.
+      setUnprepared(true);
+      announce(t('create.errors.failed.title'));
+      return;
+    }
+    started.current = true;
+    onStarted(request.operationId, { replace: false });
   };
-
-  const working = busy || state.checking;
-  const showPrerequisite = Boolean(prerequisite) && !uncertain && !recovery;
-  const submitLabel = working
-    ? uncertain || recovery
-      ? t('create.submit.checking')
-      : t('create.submit.preparing')
-    : recovery
-      ? t('create.submit.checkOperation')
-      : uncertain
-        ? t('create.submit.checkResult')
-        : t('create.submit.create');
-  const note =
-    uncertain || recovery ? t('create.footer.operationKept') : t('create.project.footNote');
 
   return (
     <CreateShell>
@@ -139,14 +156,7 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
         className="grid gap-8"
         onSubmit={(event) => {
           event.preventDefault();
-          if (recovery) {
-            void actions.submit(submission());
-            return;
-          }
-          if (!busy && (uncertain || canSubmit)) {
-            reveal.captureSubmit(event);
-            void actions.submit(submission());
-          }
+          submit();
         }}
       >
         <div className="grid gap-6">
@@ -174,7 +184,10 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
               value={title}
               maxLength={createTitleMaxLength}
               disabled={locked}
-              onChange={(event) => setTitle(event.target.value)}
+              onChange={(event) => {
+                setUnprepared(false);
+                setTitle(event.target.value);
+              }}
               placeholder={t('create.namePlaceholder')}
             />
           </Field>
@@ -207,43 +220,18 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
         />
         <Separator />
         <CreateFooter
-          actionRegion={reveal.actionRegion}
           submitRef={submitRef}
           failureAlert={
-            <>
-              <CreateProgressPanel
-                operationId={state.sent?.operationId}
-                target={state.sent?.target}
-                busy={busy}
-                monitoring={flags.monitoring}
-                concluded={Boolean(failure)}
-                onStreamHint={actions.setStreamHint}
-              />
-              {failure && (
-                <CreateFailurePanel
-                  failure={failure}
-                  state={state}
-                  workspaceOptions={workspaceOptions}
-                  typedTitle={title.trim()}
-                  refreshing={createOptions.fetching}
-                  announce={announce}
-                  onRefresh={refreshOptions}
-                  onUseAutomaticName={() => {
-                    place.chooseAutomaticBranch();
-                    actions.dismissFailure();
-                  }}
-                  onUseCustomName={() => {
-                    place.chooseCustomBranch();
-                    actions.dismissFailure();
-                  }}
-                />
-              )}
-            </>
+            unprepared && (
+              <Alert role="alert" tone="attention" title={t('create.errors.failed.title')}>
+                <p>{t('create.errors.failed.body')}</p>
+              </Alert>
+            )
           }
-          prerequisite={showPrerequisite && prerequisite ? text(prerequisite) : undefined}
-          note={note}
-          submitLabel={submitLabel}
-          submitDisabled={working || (!uncertain && !recovery && !canSubmit)}
+          prerequisite={prerequisite ? text(prerequisite) : undefined}
+          note={t('create.project.footNote')}
+          submitLabel={t('create.submit.create')}
+          submitDisabled={locked || !canSubmit}
         />
         {region}
       </form>

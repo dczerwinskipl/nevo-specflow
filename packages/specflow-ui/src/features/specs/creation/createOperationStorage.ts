@@ -20,9 +20,13 @@ export interface StoredCreateOperation {
  * was sent, and it is not in the URL. `failure` is the refusal the form should flag at its field.
  */
 export interface CreateDraft {
+  /** The operation this draft was submitted as: the page shows it only for that operation. */
+  readonly operationId?: string;
   readonly title: string;
   readonly goal: string;
   readonly choice: WorkspaceChoice;
+  /** Name of the chosen existing workspace as the owner saw it; the page names it, display only. */
+  readonly placeName?: string;
   readonly failure?: CreateFailure;
 }
 
@@ -51,9 +55,11 @@ function toDraft(value: unknown): CreateDraft | undefined {
       ? (value.failure as unknown as CreateFailure)
       : undefined;
   return {
+    ...(typeof value.operationId === 'string' ? { operationId: value.operationId } : {}),
     title: value.title,
     goal: value.goal,
     choice: { ...initialWorkspaceChoice, ...(value.choice as Partial<WorkspaceChoice>) },
+    ...(typeof value.placeName === 'string' ? { placeName: value.placeName } : {}),
     ...(failure ? { failure } : {}),
   };
 }

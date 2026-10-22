@@ -87,7 +87,8 @@ function setup(
     </QueryClientProvider>
   );
   const hook = renderHook(
-    () => useCreateProjectSpecification({
+    () =>
+      useCreateProjectSpecification({
         stored,
         operationId,
         snapshot,
@@ -477,6 +478,29 @@ describe('useCreateProjectSpecification', () => {
       });
       expect(onCreated).toHaveBeenCalledWith(created);
     });
+  });
+
+  it('retries an operation a lost session left failed: the server is asked first and the stored operation is kept meanwhile', async () => {
+    const stored: StoredCreateOperation = {
+      request: { title: 'Title', operationId: created.operationId },
+      startedAt: Date.now(),
+    };
+    storageKey().save(stored);
+    const post = vi.fn();
+    const get = vi.fn().mockRejectedValueOnce(httpError(401, 'UNAUTHENTICATED'));
+    get.mockResolvedValue(created);
+    const { model, onCreated } = setup({ post, get }, stored, undefined, '');
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(model().state.phase).toBe('failed');
+    expect(model().state.failure).toMatchObject({ kind: 'unauthenticated' });
+    expect(storageKey().load()).toBeDefined();
+    await act(async () => {
+      await model().actions.retry();
+    });
+    expect(onCreated).toHaveBeenCalledWith(created);
+    expect(post).not.toHaveBeenCalled();
   });
 
   it('does not navigate for a page that was closed while the operation ran, and keeps the stored operation', async () => {

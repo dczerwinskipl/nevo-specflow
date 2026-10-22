@@ -1,4 +1,8 @@
-import { createSpecificationRoute, newSessionRoute } from '../features/specs/creation';
+import {
+  createOperationRoute,
+  createSpecificationRoute,
+  newSessionRoute,
+} from '../features/specs/creation';
 import { createRoute, createRouter, type RouterHistory } from '@tanstack/react-router';
 
 import { authRoutes, loginRoute, runtimeUnavailableRoute } from '../auth/routes';
@@ -59,6 +63,7 @@ export const routeTree = rootRoute.addChildren([
   appRoute.addChildren([
     ...specsAppRoutes,
     createSpecificationRoute,
+    createOperationRoute,
     specificationRoute.addChildren([
       specificationIndexRoute,
       ...taskAppRoutes,

@@ -81,6 +81,7 @@ export { createStepForStage, type PublicCreateStepId } from './specs/create/step
 
 export {
   inspectCreateOptions,
+  type InspectCreateOptionsOptions,
   willCommitCreatedScaffold,
   type PublicCreateOptions,
   type CreateWorkspaceOption,

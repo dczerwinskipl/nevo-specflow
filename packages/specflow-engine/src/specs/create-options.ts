@@ -10,6 +10,11 @@ import { createLocalGitClient, type LocalWorktreeFacts } from '../version-contro
 import { validateBaseRef } from '../version-control/git/refs';
 import { engineCommitRefusal } from '../version-control/commits/branch-patterns';
 import { effectiveWorktreesRoot, readProjectGitPolicy } from '../version-control/worktrees/config';
+import {
+  DEFAULT_BASE_REF,
+  DEFAULT_BRANCH_PATTERN,
+  type GitWorktreePolicy,
+} from '../version-control/worktrees/policy';
 import { runReadRequest } from '../project/request-verification-memo';
 import { discoverSpecifications } from './discovery';
 
@@ -24,7 +29,9 @@ export type CreateOptionsReason =
   /** Only with `git.enabled`: the branch matches `git.commits.protectedBranches`. */
   | 'branch-protected'
   /** Only with `git.enabled`: `git.commits.allowedBranches` is set and the branch matches none. */
-  | 'branch-not-allowed';
+  | 'branch-not-allowed'
+  /** The Git section of the configuration is invalid: no Git fact and no policy value is served. */
+  | 'git-policy-invalid';
 
 export interface CreateWorkspaceOption {
   readonly workspaceId: string;
@@ -90,14 +97,52 @@ export async function willCommitCreatedScaffold(engine: SpecFlowEngine): Promise
  * Authorized caller-facing read model. This is NOT an admission reservation.
  * Create rechecks policy, registry, physical identity and Git state when used.
  */
-export function inspectCreateOptions(engine: SpecFlowEngine): Promise<PublicCreateOptions> {
+export function inspectCreateOptions(
+  engine: SpecFlowEngine,
+  options: InspectCreateOptionsOptions = {},
+): Promise<PublicCreateOptions> {
   // Read-only: verify each workspace once for this request.
-  return runReadRequest(() => inspectCreateOptionsInRequest(engine));
+  return runReadRequest(() => inspectCreateOptionsInRequest(engine, options));
 }
 
-async function inspectCreateOptionsInRequest(engine: SpecFlowEngine): Promise<PublicCreateOptions> {
+export interface InspectCreateOptionsOptions {
+  /**
+   * Called with the Engine's own description of why the Git policy is invalid (no paths). The
+   * read then degrades instead of failing; this is where an operator-facing log line goes.
+   */
+  readonly onPolicyProblem?: (problem: string) => void;
+}
+
+/** Values that stand in for an unreadable policy; none of them is ever served as a policy fact. */
+const UNREADABLE_POLICY: GitWorktreePolicy = {
+  enabled: false,
+  branchPattern: DEFAULT_BRANCH_PATTERN,
+  baseRef: DEFAULT_BASE_REF,
+  commits: { protectedBranches: [] },
+};
+
+async function readPolicyOrDegrade(
+  engine: SpecFlowEngine,
+  options: InspectCreateOptionsOptions,
+): Promise<{ readonly policy: GitWorktreePolicy; readonly policyInvalid: boolean }> {
+  try {
+    return { policy: (await readProjectGitPolicy(engine.context)).policy, policyInvalid: false };
+  } catch (error) {
+    if (!(error instanceof GitCapabilityError) || error.code !== 'GIT_POLICY_INVALID') throw error;
+    options.onPolicyProblem?.(error.message);
+    return { policy: UNREADABLE_POLICY, policyInvalid: true };
+  }
+}
+
+async function inspectCreateOptionsInRequest(
+  engine: SpecFlowEngine,
+  options: InspectCreateOptionsOptions,
+): Promise<PublicCreateOptions> {
   const registry = await engine.readRegistry();
-  const policy = (await readProjectGitPolicy(engine.context)).policy;
+  // An invalid Git section must not hide what needs no Git: registered workspaces are still
+  // verified on disk, but Create reads the policy for EVERY target (to know whether it commits),
+  // so none of them is selectable and the Git part is unavailable until the configuration is fixed.
+  const { policy, policyInvalid } = await readPolicyOrDegrade(engine, options);
   // Git facts are fetched ONLY when Git is enabled. A Git-disabled project answers
   // from the registry and filesystem checks alone and spawns no Git process.
   // Otherwise: one `worktree list`, one `for-each-ref`, then bounded-parallel
@@ -138,6 +183,9 @@ async function inspectCreateOptionsInRequest(engine: SpecFlowEngine): Promise<Pu
         registry,
         workspace.workspaceId,
       );
+      if (checked.status !== 'unavailable' && policyInvalid) {
+        return { ...common, state: 'unavailable', selectable: false, reason: 'git-policy-invalid' };
+      }
       if (checked.status === 'unavailable' || (gitEnabled && !gitReachable)) {
         return {
           ...common,
@@ -226,14 +274,16 @@ async function inspectCreateOptionsInRequest(engine: SpecFlowEngine): Promise<Pu
   return {
     primaryWorkspaceId: registry.primaryWorkspaceId,
     workspaces: integrationChoices,
-    newWorktree: !gitEnabled
-      ? { status: 'disabled', reason: 'git-disabled' }
-      : gitReachable
-        ? {
-            status: 'available',
-            ...(branchPatternIsProtected(policy) ? { branchProtected: true as const } : {}),
-          }
-        : { status: 'unavailable', reason: 'git-unavailable' },
+    newWorktree: policyInvalid
+      ? { status: 'unavailable', reason: 'git-policy-invalid' }
+      : !gitEnabled
+        ? { status: 'disabled', reason: 'git-disabled' }
+        : gitReachable
+          ? {
+              status: 'available',
+              ...(branchPatternIsProtected(policy) ? { branchProtected: true as const } : {}),
+            }
+          : { status: 'unavailable', reason: 'git-unavailable' },
     defaultBaseRef: policy.baseRef,
     branchPattern: policy.branchPattern,
     worktreesRoot: await describeWorktreesRoot(engine, policy),

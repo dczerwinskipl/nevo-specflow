@@ -16,6 +16,11 @@ const Reason = Type.Union([
   Type.Literal('branch-protected'),
   /** Only with `git.enabled`: `git.commits.allowedBranches` is set and the branch matches none. */
   Type.Literal('branch-not-allowed'),
+  /**
+   * The Git section of the project configuration is invalid (for example an unknown key). Nothing
+   * about Git is known, so the Git part is unavailable; the cause is logged on the server only.
+   */
+  Type.Literal('git-policy-invalid'),
 ]);
 
 /**

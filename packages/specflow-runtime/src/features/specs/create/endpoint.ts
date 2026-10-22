@@ -82,7 +82,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         },
       },
     },
-    async (_request, reply) => {
+    async (request, reply) => {
       reply.header('Cache-Control', 'no-store');
       const engine = options.engine;
       if (!engine) {
@@ -92,7 +92,12 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         });
       }
       try {
-        const { commits, ...options } = await inspectCreateOptions(engine);
+        const { commits, ...options } = await inspectCreateOptions(engine, {
+          // An invalid Git section degrades the answer (reason `git-policy-invalid`); the problem
+          // goes to the server log only, never into the response.
+          onPolicyProblem: (problem) =>
+            request.log.warn({ problem }, 'Invalid Git policy: create-options served without Git'),
+        });
         return reply.code(200).send({
           ...options,
           workspaces: [...options.workspaces],

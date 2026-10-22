@@ -336,7 +336,12 @@ to another branch), `primary-detached`,
 scenarios `protected-primary` (the primary checkout is on the protected `main`), `protected-all-linked`
 (every linked workspace is on a protected branch) and `new-branch-protected` (the generated `release/<slug>`
 branch is protected, `newWorktree.branchProtected`). The default seed has Git on: `commits: { protectedBranches: ['main'] }`;
-`git-disabled` removes `commits` and every commit-related field, reason and progress step. Read failures:
+`git-disabled` removes `commits` and every commit-related field, reason and progress step. The scenario
+`git-policy-invalid` mirrors an invalid Git configuration section: every workspace is unavailable with the
+reason `git-policy-invalid`, `newWorktree` is `{status:'unavailable', reason:'git-policy-invalid'}`, there are no
+base refs and no `commits`, and a Create fails closed with 503 `GIT_POLICY_INVALID`. The scenario
+`operations-panel` seeds `GET /api/demo/specifications/operations` with every operation status
+(`reference.api.specs-operations-list`). Read failures:
 `options-forbidden` (403), `options-error` (503). Create outcomes: `branch-taken`, `stale-workspace`,
 `integration-target-unavailable`, `base-ref-unavailable`, `forbidden`, `network-uncertain` (commits,
 then drops the connection; replay with the same `operationId` returns the result), `recovery-required`

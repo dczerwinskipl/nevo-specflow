@@ -11,6 +11,7 @@ summary: >
   real session authentication, and per-item spec.view filtering.
 related:
   - architecture.runtime.authorization
+  - reference.api.specs-operations-list
   - product.specflow.ui.application-architecture
 ---
 
@@ -93,6 +94,20 @@ Archive is a separate historical read model:
 Archive has no Current sections, classification, signals, or current executions. Historical items
 may expose authoritative `completedAt` and `archivedAt` timestamps. Consumers must not invent
 Current state for archived Specs.
+
+## Operations above the list
+
+The operations panel above the list reads a separate route, `GET /api/specs/operations`
+(`reference.api.specs-operations-list`): it lists Specification Create operations from the Engine journals
+and the live progress registry, admitted per row by the same `spec.view` capability. It is not part of
+this response: the overview read model stays free of operation state, and a finished operation refreshes
+the overview through a normal refetch.
+
+## Reads do not depend on the Git policy
+
+Overview (both collections), the workspace read and the document reads never read the project Git policy,
+so an invalid `git` configuration section (for example an unknown key) does not fail them. Only the Create
+options and the mutations that need the policy report it (`reference.api.specflow-specification-operations`).
 
 ## Repository boundary
 

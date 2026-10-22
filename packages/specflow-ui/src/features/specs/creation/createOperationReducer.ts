@@ -88,6 +88,8 @@ export interface CreateOperationState {
   connectionLost: boolean;
   /** The last submit ended in a failure (drives revealing the failure under the submit button). */
   submitFailed: boolean;
+  /** The failure kept the stored operation, so the same request can be tried again from the page. */
+  retained: boolean;
   /** Counts failed submits, so a repeated identical failure is still observable. */
   errorSeq: number;
 }
@@ -98,7 +100,7 @@ export type CreateOperationEvent =
   /** The Runtime accepted the operation (202) and runs it detached, or it was found running. */
   | { type: 'submit-accepted' }
   | { type: 'submit-succeeded' }
-  | { type: 'submit-failed'; failure: StoredFailure; discardSent?: boolean }
+  | { type: 'submit-failed'; failure: StoredFailure; discardSent?: boolean; retained?: boolean }
   | { type: 'submit-offline-replay' }
   | { type: 'check-started' }
   | { type: 'check-found-completed' }
@@ -125,6 +127,7 @@ export const initialCreateOperation: CreateOperationState = {
   statusUnreadable: false,
   connectionLost: false,
   submitFailed: false,
+  retained: false,
   errorSeq: 0,
 };
 
@@ -154,6 +157,7 @@ export function createOperationReducer(
           statusUnreadable: false,
           connectionLost: false,
           submitFailed: false,
+          retained: false,
         };
       // An unknown outcome stays on screen while it is being checked.
       if (isUnknown(state.phase))
@@ -185,6 +189,7 @@ export function createOperationReducer(
             resumedFrom: null,
             sent: event.discardSent ? null : state.sent,
             submitFailed: true,
+            retained: event.retained === true,
             errorSeq: state.errorSeq + 1,
           }
         : state;

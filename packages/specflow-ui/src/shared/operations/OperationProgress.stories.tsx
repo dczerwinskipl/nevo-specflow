@@ -36,8 +36,8 @@ export const Running: Story = {
     ],
   },
   play: async ({ canvas }) => {
-    const region = canvas.getByRole('status', { name: 'Postęp tworzenia specyfikacji' });
-    await expect(region).toHaveAttribute('aria-live', 'polite');
+    const region = canvas.getByRole('group', { name: 'Postęp tworzenia specyfikacji' });
+    await expect(region).not.toHaveAttribute('aria-live');
     const running = within(region).getByText('Przygotowanie środowiska pracy').closest('li');
     await expect(running).toHaveAttribute('aria-current', 'step');
     await expect(within(region).getAllByRole('listitem')).toHaveLength(4);

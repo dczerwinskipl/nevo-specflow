@@ -13,6 +13,7 @@ import {
   generatedBranchRefusal,
 } from './createRequest';
 import { activeTile, tileAvailability } from './workspaceTiles';
+import type { WorkspaceConflicts } from './workspaceConflicts';
 
 export type WorkspaceErrors = Partial<
   Record<'tile' | 'existing' | 'base' | 'target' | 'branch' | 'slug', Message>
@@ -155,4 +156,41 @@ export function branchNameError(name: string, options: CreateOptions): Message |
         : 'create.workspace.errors.branchNotAllowed',
     );
   return undefined;
+}
+
+/**
+ * The text each typed field shows under it: a live error of the typed value first, then what the
+ * server refused about exactly that value (until it is edited), then, for the branch, the problem
+ * of the generated name. Pure: the components only translate it.
+ */
+export function workspaceFieldErrors(
+  choice: WorkspaceChoice,
+  options: CreateOptions,
+  conflicts: WorkspaceConflicts | undefined,
+  title: string,
+  errors: WorkspaceErrors,
+): { branch?: Message; slug?: Message } {
+  const branchConflict =
+    conflicts?.branch &&
+    choice.branch.edited &&
+    choice.branch.name.trim() === conflicts.branch.value
+      ? message(
+          conflicts.branch.reason === 'invalid'
+            ? 'create.workspace.errors.branchRejected'
+            : conflicts.branch.reason === 'protected'
+              ? 'create.workspace.errors.branchProtected'
+              : 'create.workspace.errors.branchExists',
+        )
+      : undefined;
+  const branch =
+    (errors.branch && choice.branch.name.trim() ? errors.branch : undefined) ??
+    branchConflict ??
+    generatedBranchProblem(choice, options, title);
+  const typedSlug = choice.slug.edited ? slugError(choice.slug.value) : undefined;
+  const slug =
+    typedSlug ??
+    (conflicts?.slug && choice.slug.edited && choice.slug.value === conflicts.slug.value
+      ? message('create.workspace.errors.slugTaken')
+      : undefined);
+  return { ...(branch ? { branch } : {}), ...(slug ? { slug } : {}) };
 }

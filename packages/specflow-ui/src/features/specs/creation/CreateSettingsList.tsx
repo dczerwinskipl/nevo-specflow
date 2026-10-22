@@ -1,8 +1,8 @@
 import { Trans, useTranslation } from 'react-i18next';
 import { DescriptionList } from '@nevo/ui';
-import { BranchRef } from '../../../shared/git/BranchRef';
+import { BranchRef } from './BranchRef';
 import type { CreateSettingsModel } from './createPageView';
-import { WorkspaceRef } from './workspace/NewWorkspaceSettings';
+import { WorkspaceRef } from './workspace/WorkspaceRef';
 import { SummaryRow } from './workspace/WorkspaceTileSummaries';
 
 /**
@@ -42,6 +42,11 @@ export function CreateSettingsList({ settings }: { settings: CreateSettingsModel
 
   return (
     <DescriptionList aria-label={t('create.page.settings.label')}>
+      {settings.name && (
+        <SummaryRow label={t('create.page.settings.name')} override={false}>
+          <span className="wrap-anywhere">{settings.name}</span>
+        </SummaryRow>
+      )}
       <SummaryRow label={t('create.page.settings.where')} override>
         {where}
       </SummaryRow>

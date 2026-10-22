@@ -24,13 +24,13 @@ import {
   branchFieldValue,
   branchPrefill,
   branchPreview,
-  buildCreateRequest,
   buildCreateSlug,
   buildCreateTarget,
   createOverrides,
-  derivedSlug,
   effectiveSlug,
 } from './createRequest';
+import { buildCreateRequest } from './createRequest.test-support';
+import { deriveSpecSlug } from '@nevo/specflow-contracts/specs';
 import { effectiveTargetBranch, mergeSuggestion } from './mergeSuggestion';
 import {
   formatOperationTime as rawFormatOperationTime,
@@ -674,8 +674,8 @@ describe('integration target request semantics (explicit pin vs follow the proje
 describe('slug and branch defaults', () => {
   const o = options();
   it('derives the slug from the title with the shared rule', () => {
-    expect(derivedSlug('  Limity płatności! ')).toBe('limity-platnosci');
-    expect(derivedSlug('???')).toBe('');
+    expect(deriveSpecSlug('  Limity płatności! ')).toBe('limity-platnosci');
+    expect(deriveSpecSlug('???')).toBe('');
   });
   it('previews the generated branch from the configured pattern', () => {
     expect(branchPreview(o, 'limity-platnosci')).toBe('feature/limity-platnosci');

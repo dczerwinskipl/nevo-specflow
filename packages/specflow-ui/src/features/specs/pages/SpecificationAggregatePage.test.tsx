@@ -158,7 +158,7 @@ describe('Specification aggregate resource boundary', () => {
       errorUpdateCount: 1,
     });
     const html = renderPage(client, specId);
-    expect(html).toContain('Niedostępne w tym Runtime');
+    expect(html).toContain('Niedostępne na tym serwerze');
     expect(html).not.toContain('Spróbuj ponownie');
     expect(html).not.toContain('Specyfikacja jest niedostępna');
   });
@@ -172,7 +172,7 @@ describe('Specification aggregate resource boundary', () => {
       sectionUnavailableReason: { documents: 'not_implemented' },
     });
     const html = renderPage(client, specId);
-    expect(html).toContain('Niedostępne w tym Runtime');
+    expect(html).toContain('Niedostępne na tym serwerze');
     expect(html).not.toContain('Content:');
   });
 });

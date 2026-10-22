@@ -238,7 +238,7 @@ describe('SpecificationWorkspace', () => {
       },
     });
 
-    expect(markup).toContain('Niedostępne w tym Runtime');
+    expect(markup).toContain('Niedostępne na tym serwerze');
     expect(markup).not.toContain('Rozpocznij rozmowę');
     expect(markup).not.toContain('Przygotuj specyfikację do realizacji');
     expect(markup).not.toContain('Nie udało się wczytać historii');

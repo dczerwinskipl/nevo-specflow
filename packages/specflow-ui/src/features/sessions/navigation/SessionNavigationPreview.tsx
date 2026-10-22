@@ -25,11 +25,14 @@ export function SessionNavigationPreview({
         const tone = attention ? 'text-status-attention' : 'text-status-info';
         const content = (
           <>
-            <Icon
-              name={attention ? MessageCircleWarning : Circle}
-              size="sm"
-              className={`mt-[3px] size-icon-sm ${tone}`}
-            />
+            {/* As tall as the first text line (body-md), so the icon centres on it without a pixel nudge. */}
+            <span className="flex h-5 shrink-0 items-center">
+              <Icon
+                name={attention ? MessageCircleWarning : Circle}
+                size="sm"
+                className={`size-icon-sm ${tone}`}
+              />
+            </span>
             <div>
               <Typography
                 as="span"

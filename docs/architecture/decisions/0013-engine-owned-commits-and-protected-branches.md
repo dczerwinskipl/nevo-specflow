@@ -91,3 +91,20 @@ journal holds slug, branch and workspace capacity until then. See
 - Hooks and signing policies of a repository do not apply to Engine commits; this is an explicit
   trade-off.
 - Close integration publish and archive are not yet covered by the guard.
+
+## Rejected
+
+- **The user commits the scaffold.** The status quo; the checkout stays dirty because of Nevo itself
+  and Close refuses to start until someone commits two files Nevo wrote.
+- **`git add` plus a plain `git commit`.** It would sweep up whatever else the user has staged; a
+  path-limited `commit --only` over literal paths leaves the rest of the index and working tree alone.
+- **Protecting `main` (or the integration target) by default.** A silent default would block Create in
+  projects that commit straight to `main`; protection is an explicit, committed project decision.
+- **Reading protection from local or per-checkout configuration.** A linked checkout or a
+  machine-local file could loosen the project's policy; only the committed Project Home config counts.
+- **Running repository hooks and signing on Engine commits.** Hooks can fail or mutate the scaffold and
+  make replay non-deterministic; the trade-off is stated in the consequences and can be revisited.
+- **Renaming a protected generated branch automatically.** The owner would not know where the work
+  lives; the Engine refuses with `BRANCH_PROTECTED` and the owner types a name.
+- **Rolling the files back when the commit fails.** It would add a stage that can itself fail; the
+  journal stays recoverable at `commit-writing` and the same operation is resumed.

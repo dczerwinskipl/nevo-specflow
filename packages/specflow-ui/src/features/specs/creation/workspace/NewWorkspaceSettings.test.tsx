@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LocalizationProvider, createSpecFlowI18n } from '../../../../i18n';
 import { NewWorkspaceSettings } from './NewWorkspaceSettings';
 import { createOptionsFixture } from '../creationOptions.stories-support';
-import { buildCreateRequest } from './createRequest';
+import { buildCreateRequest } from './createRequest.test-support';
 import { initialWorkspaceChoice, type WorkspaceChoice } from './workspaceChoice';
 import { revalidate } from './workspaceValidation';
 
@@ -133,5 +133,30 @@ describe('New workspace settings prefill their switches with the effective defau
     // Switching on again starts from the default, not from the discarded edit.
     toggle(/Edit the name \(slug\)/);
     expect(field('Slug').value).toBe('payment-limits');
+  });
+});
+
+describe('unavailable settings', () => {
+  it('mark the switch unavailable with the design-system pattern and keep the reason readable', () => {
+    render(
+      <LocalizationProvider instance={createSpecFlowI18n('en')}>
+        <NewWorkspaceSettings
+          options={{ ...options, baseRefs: [] }}
+          choice={{ ...initialWorkspaceChoice, tile: 'new', settingsOpen: true }}
+          update={vi.fn()}
+          errors={{}}
+          title="Payment limits"
+          onAnnounce={vi.fn()}
+          onRequestFocus={vi.fn()}
+        />
+      </LocalizationProvider>,
+    );
+    const base = screen.getByRole('switch', { name: /different branch/ });
+    // Unavailable, not disabled: it stays reachable by keyboard and its reason is its description.
+    expect(base.getAttribute('aria-disabled')).toBe('true');
+    const reason = screen.getByText('There are no local branches to choose from.');
+    // The reason is not faded with the control: no ancestor of it carries an opacity class.
+    expect(reason.closest('[class*="opacity-"]')).toBeNull();
+    expect(reason.className).toContain('text-content-secondary');
   });
 });

@@ -13,6 +13,7 @@ import { SpecRowSummary } from './SpecRowSummary';
 import { SpecPrimaryLink, type RenderSpecificationLink } from './SpecPrimaryLink';
 import { SpecPullRequests } from './SpecPullRequests';
 import { specRowColumns } from './specRowColumns';
+import { formatSpecDate } from './specDate';
 
 export interface SpecListRowProps {
   readonly item: SpecRowModel;
@@ -130,11 +131,7 @@ function SpecRowIdentity({
               ) : fact.kind === 'updated' ? (
                 <time dateTime={fact.value}>
                   {t('specifications.updated', {
-                    date: new Intl.DateTimeFormat(i18n.resolvedLanguage, {
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                    }).format(new Date(fact.value)),
+                    date: formatSpecDate(fact.value, i18n.resolvedLanguage),
                   })}
                 </time>
               ) : (

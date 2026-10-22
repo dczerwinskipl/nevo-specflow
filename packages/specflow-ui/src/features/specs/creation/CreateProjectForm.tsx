@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Field, Separator, TextArea, TextInput, Typography } from '@nevo/ui';
+import { Alert, Field, Separator, TextArea, TextInput } from '@nevo/ui';
 import { isApiError } from '../../../api';
 import { ApplicationContextLine } from '../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../app/useAppServices';
@@ -9,6 +9,7 @@ import { useAnnouncer } from '../../../shared/a11y/useAnnouncer';
 import type { RequestAttempt } from '../../../shared/operations/retainedRequest';
 import { projectCreationKeys } from './api.project';
 import { CreateFooter } from './CreateFooter';
+import { CreateFormHeader } from './CreateFormHeader';
 import { CreateLeaveDialog } from './CreateLeaveDialog';
 import { CreateShell } from './CreateShell';
 import { useCreateOperationStorage, type SentCreateRequest } from './createOperationStorage';
@@ -20,7 +21,7 @@ import {
 import { startCreate } from './startCreate';
 import { useCreateLeaveGuard } from './useCreateLeaveGuard';
 import { useCreateOptions } from './useCreateOptions';
-import { WorkspacePlaceSection } from './workspace/WorkspacePlaceSection';
+import { CreateWorkspaceSection } from './CreateWorkspaceSection';
 import { buildCreateFacts } from './workspace/createFacts';
 import { buildCreateSlug, buildCreateTarget } from './workspace/createRequest';
 import { requestChoiceSnapshot, type WorkspaceChoice } from './workspace/workspaceChoice';
@@ -153,23 +154,12 @@ export function CreateProjectForm({
           submit();
         }}
       >
-        <div className="grid gap-6">
-          <ApplicationContextLine className="mb-0" view="new-specification" />
-          <header className="grid gap-2">
-            <Typography
-              as="h1"
-              variant="title-lg"
-              ref={headingRef}
-              tabIndex={-1}
-              className="outline-none"
-            >
-              {t('create.heading.specification')}
-            </Typography>
-            <Typography as="p" variant="body-md" className="text-content-secondary">
-              {t('create.project.subheading')}
-            </Typography>
-          </header>
-        </div>
+        <CreateFormHeader
+          headingRef={headingRef}
+          lead={<ApplicationContextLine className="mb-0" view="new-specification" />}
+          heading={t('create.heading.specification')}
+          subheading={t('create.project.subheading')}
+        />
         <Separator />
         <div className="grid gap-4">
           <Field>
@@ -198,19 +188,14 @@ export function CreateProjectForm({
           </Field>
         </div>
         <Separator />
-        <WorkspacePlaceSection
+        <CreateWorkspaceSection
           headingId={gitHeadingId}
-          state={createOptions.state}
-          refreshing={createOptions.fetching && Boolean(workspaceOptions)}
-          refreshFailed={createOptions.refreshFailed}
-          choice={place.choice}
-          update={place.setChoice}
+          createOptions={createOptions}
+          place={place}
           locked={locked}
+          title={title}
           onRefresh={refreshOptions}
           onAnnounce={announce}
-          title={title}
-          conflicts={place.conflicts}
-          handleRef={place.handleRef}
         />
         <Separator />
         <CreateFooter

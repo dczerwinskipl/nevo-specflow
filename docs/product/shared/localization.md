@@ -85,8 +85,11 @@ Do not add an i18n dependency to `@nevo/ui`.
 - **Design-system strings**: Nevo UI keeps neutral English defaults; the product passes translated
   labels through the component `labels` / `messages` props. A design-system API that needs a plain
   string outside React (for example a Secondary screen `title`) uses `translateNow(key)` in a getter.
-- **Formatting** of dates and numbers uses the active language (`i18n.language`), never a fixed
+- **Formatting** of dates and numbers uses the active language (`i18n.resolvedLanguage`, the language actually in use after fallback), never a fixed
   locale.
+- **Terminology**: one concept has one rendering per language. The Git and workspace terms
+  (workspace, worktree, commit, branch, merge target) and their Polish forms are defined in
+  [Product vocabulary](./vocabulary.md); English stays the source of truth.
 - **Stories and tests** that assert text render in a fixed locale (`withLocale('pl')` decorator,
   `polishText(message)` for policy messages).
 

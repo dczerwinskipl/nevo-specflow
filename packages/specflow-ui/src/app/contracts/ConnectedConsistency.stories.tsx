@@ -24,7 +24,7 @@ import {
   createOptionsFixture,
   type OptionsVariant,
 } from '../../features/specs/creation/creationOptions.stories-support';
-import { settleOwnerV4 } from '../../test-support/ownerV4Capture.stories-support';
+import { settleViewport } from '../../test-support/viewportSettle.stories-support';
 import {
   invokeDocumentAction,
   waitForDocumentActions,
@@ -231,8 +231,8 @@ function Connected({
         allocate: () =>
           Promise.resolve({ sessionId: 'session', location: catalogue.currentLocation }),
       },
-      creationApi: {
-        ...defaults.creationApi,
+      demoCreationApi: {
+        ...defaults.demoCreationApi,
         catalogue: () =>
           catalogueState === 'loading'
             ? new Promise(() => undefined)
@@ -357,7 +357,7 @@ export const ResponsiveDirtyDocument: Story = {
     await userEvent.keyboard('{Enter}{Enter}Retained position');
     const selection = EditorView.findFromDOM(input.closest('.cm-editor')!)!.state.selection.main
       .anchor;
-    await settleOwnerV4('connected-doc-dirty-wide');
+    await settleViewport();
     await viewport(390);
     const mobile = await canvas.findByRole('textbox', { name: 'Treść specification.md' });
     await expect(mobile).toHaveTextContent('Retained position');
@@ -367,7 +367,7 @@ export const ResponsiveDirtyDocument: Story = {
     await expect(canvas.getAllByRole('textbox', { name: 'Treść specification.md' })).toHaveLength(
       1,
     );
-    await settleOwnerV4('connected-doc-dirty-390', 390, 844);
+    await settleViewport(390, 844);
     await viewport(320);
     // One header carries identity and actions: no second document toolbar, no overflow.
     await expect(canvasElement.querySelector('[role="toolbar"]')).toBeNull();
@@ -375,7 +375,7 @@ export const ResponsiveDirtyDocument: Story = {
       '[data-workspace-header]:has([data-workspace-header-title])',
     )!;
     await expect(header.scrollWidth).toBeLessThanOrEqual(header.clientWidth);
-    await settleOwnerV4('connected-doc-dirty-320', 320, 740);
+    await settleViewport(320, 740);
     await invokeDocumentAction(canvas, userEvent, 'Pokaż podgląd');
     await expect(canvas.getByText(/Retained position/)).toBeVisible();
     await invokeDocumentAction(canvas, userEvent, 'Edytuj dokument');
@@ -397,7 +397,7 @@ export const ResponsiveDirtyDocument: Story = {
     // A document opened for the first time defaults to Preview.
     await expect(canvasElement.querySelector('pre')).toHaveTextContent('# Rozmowa z klientem');
     await expect(canvas.getByLabelText('Bieżąca trasa')).toHaveTextContent('collection=archive');
-    await settleOwnerV4('connected-txt-preview-wide');
+    await settleViewport();
     await invokeDocumentAction(canvas, userEvent, 'Edytuj dokument');
     await canvas.findByRole('textbox', { name: 'Treść notes/CLIENT.TXT' });
   },
@@ -525,7 +525,7 @@ export const ShortCreateAndBranch: Story = {
   play: async ({ canvas, userEvent, canvasElement }) => {
     await viewport(1440, 900);
     await canvas.findByRole('button', { name: /Samodzielnie/ });
-    await settleOwnerV4('connected-choice-wide');
+    await settleViewport();
     await viewport(390, 430);
     await userEvent.click(await canvas.findByRole('button', { name: /Samodzielnie/ }));
     await expect(canvas.getByRole('heading', { name: 'Co chcesz opisać?' })).toHaveFocus();
@@ -535,7 +535,7 @@ export const ShortCreateAndBranch: Story = {
     input.scrollIntoView({ block: 'center' });
     const root = input.closest('[data-scroll-area]');
     void root;
-    await settleOwnerV4('connected-create-focused-short', 390, 430);
+    await settleViewport(390, 430);
     await expect(document.scrollingElement?.scrollTop).toBe(0);
     await expect(input.getBoundingClientRect().bottom).toBeLessThan(430);
     await expect(input.getBoundingClientRect().top).toBeGreaterThan(50);
@@ -547,7 +547,7 @@ export const ShortCreateAndBranch: Story = {
     await expect(
       canvas.getByRole('group', { name: 'Podsumowanie środowiska pracy' }),
     ).toHaveTextContent('nie przełączamy aktualnej gałęzi');
-    await settleOwnerV4('connected-main-workspace', 390, 844, () =>
+    await settleViewport(390, 844, () =>
       canvas.getByRole('button', { name: 'Utwórz specyfikację' }),
     );
     await userEvent.click(canvas.getByRole('button', { name: 'Zmień sposób pracy' }));
@@ -688,9 +688,9 @@ export const SessionContextRoundTrip: Story = {
       await canvas.findByRole('textbox', { name: 'Wiadomość do Spec Writera' }),
     ).toHaveValue('Zachowany szkic wiadomości');
     await expect(canvas.getByLabelText('Bieżąca trasa')).toHaveTextContent('collection=archive');
-    await settleOwnerV4('connected-session-wide');
+    await settleViewport();
     await viewport(390);
-    await settleOwnerV4('connected-session-mobile', 390, 844);
+    await settleViewport(390, 844);
   },
 };
 export const LoadingShell: Story = {
@@ -698,7 +698,7 @@ export const LoadingShell: Story = {
   play: async ({ canvas }) => {
     await canvas.findByText('Wczytywanie konfiguracji…');
     await expect(canvas.getByRole('link', { name: 'Wszystkie specyfikacje' })).toBeVisible();
-    await settleOwnerV4('connected-create-loading', 390, 844);
+    await settleViewport(390, 844);
   },
 };
 export const ErrorShell: Story = {
@@ -706,7 +706,7 @@ export const ErrorShell: Story = {
   play: async ({ canvas }) => {
     await canvas.findByText('Nie udało się wczytać konfiguracji');
     await expect(canvas.getByRole('link', { name: 'Wszystkie specyfikacje' })).toBeVisible();
-    await settleOwnerV4('connected-create-error', 390, 844);
+    await settleViewport(390, 844);
   },
 };
 export const NewWorkspaceUnavailableByConfiguration: Story = {
@@ -718,9 +718,7 @@ export const NewWorkspaceUnavailableByConfiguration: Story = {
     await expect(tile).toHaveAttribute('aria-disabled', 'true');
     await expect(tile).not.toBeChecked();
     await expect(canvas.getByRole('radio', { name: 'Bieżący katalog' })).toBeChecked();
-    await settleOwnerV4('connected-worktree-unavailable', 390, 844, () =>
-      canvas.getByText('Wyłączone w konfiguracji projektu.'),
-    );
+    await settleViewport(390, 844, () => canvas.getByText('Wyłączone w konfiguracji projektu.'));
   },
 };
 
@@ -734,7 +732,7 @@ export const LaterSessionConfiguration: Story = {
     await userEvent.click(
       await within(document.body).findByRole('option', { name: 'codex model A' }),
     );
-    await settleOwnerV4('connected-later-session', 390, 844);
+    await settleViewport(390, 844);
     await userEvent.click(canvas.getByRole('link', { name: 'Sesje' }));
     const dialog = await within(document.body).findByRole('alertdialog');
     await expect(dialog).toHaveTextContent('Porzucić konfigurację?');
@@ -760,7 +758,7 @@ export const DocumentFocusAndDisclosure: Story = {
     await waitFor(() => expect(input).toHaveFocus());
     // No path disclosure: the file name is the single header title.
     await expect(canvas.queryByRole('button', { name: /^Ścieżka dokumentu/ })).toBeNull();
-    await settleOwnerV4('connected-document-header-320', 320, 740);
+    await settleViewport(320, 740);
   },
 };
 
@@ -897,7 +895,7 @@ export const LongFilenameHeader: Story = {
     });
     await expect(title.scrollWidth).toBeGreaterThan(title.clientWidth);
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320);
-    await settleOwnerV4('connected-longname-header-320', 320, 740);
+    await settleViewport(320, 740);
   },
 };
 
@@ -912,11 +910,11 @@ export const DocumentsIdleSecondary: Story = {
     ).toBeGreaterThan(0);
     await expect(canvas.getByText('Wybierz dokument')).toBeVisible();
     await expect(canvas.getByText('Otwórz plik z drzewa, aby zobaczyć jego treść.')).toBeVisible();
-    await settleOwnerV4('connected-documents-idle-wide');
+    await settleViewport();
     // Narrow: the tree remains the sole visible Primary; no idle Secondary placeholder.
     await viewport(390, 844);
     await expect(canvas.queryByText('Wybierz dokument')).not.toBeInTheDocument();
-    await settleOwnerV4('connected-documents-idle-390', 390, 844);
+    await settleViewport(390, 844);
   },
 };
 

@@ -1,11 +1,10 @@
 import { browserPage } from './browserPage';
 import { waitFor } from 'storybook/test';
-export async function settleOwnerV4(
-  _name: string,
-  width = 1440,
-  height = 900,
-  anchor?: () => HTMLElement,
-) {
+/**
+ * Sizes the story viewport and waits until the responsive layout, the Secondary presentation and any
+ * running workspace motion have settled, so geometry assertions never race the transition.
+ */
+export async function settleViewport(width = 1440, height = 900, anchor?: () => HTMLElement) {
   await (await browserPage()).viewport(width, height);
   await waitFor(() => {
     const layout = document.querySelector('[data-layout]')?.getAttribute('data-layout');

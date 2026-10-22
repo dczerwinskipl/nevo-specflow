@@ -16,7 +16,6 @@ import { documentActionReason } from './documentTreePolicy';
 
 /** What the row menu can ask for; the explorer decides how each is carried out. */
 export interface DocumentNodeActions {
-  open: (id: string) => void;
   create: (kind: EntryKind, parent: string) => void;
   importInto: (folder: string) => void;
   rename: (kind: EntryKind, path: string, id?: string) => void;
@@ -113,10 +112,9 @@ export function DocumentNodeMenu({
               {t('documents.tree.upload')}
             </MenuItem>
           </>
-        ) : (
-          <MenuItem onSelect={() => id && actions.open(id)}>{t('common.open')}</MenuItem>
-        )}
-        <MenuSeparator />
+        ) : null}
+        {/* A file's row itself opens it, so the menu holds no copy of that action. */}
+        {kind === 'folder' && <MenuSeparator />}
         <MenuItem
           disabled={!policy.rename.available || required}
           onSelect={() => actions.rename(kind, path, id)}

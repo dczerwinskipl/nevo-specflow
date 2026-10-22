@@ -57,7 +57,7 @@ describe('ActivityHistory', () => {
         onRetry={() => undefined}
       />,
     );
-    expect(html).toContain('Niedostępne w tym Runtime');
+    expect(html).toContain('Niedostępne na tym serwerze');
     expect(html).not.toContain('Nie udało się wczytać historii');
     expect(html).not.toContain('Spróbuj ponownie');
   });

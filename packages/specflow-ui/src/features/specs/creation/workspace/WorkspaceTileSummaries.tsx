@@ -6,13 +6,9 @@ import { useMessage } from '../../../../i18n/message';
 import { Badge, DescriptionList, Field, Icon, InlineNote, Typography, cn } from '@nevo/ui';
 import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
-import { BranchRef } from '../../../../shared/git/BranchRef';
-import {
-  NewWorkspaceSettings,
-  WorkspaceLabel,
-  WorkspaceRef,
-  type WorkspaceSettingsControls,
-} from './NewWorkspaceSettings';
+import { BranchRef } from '../BranchRef';
+import { NewWorkspaceSettings, type WorkspaceSettingsControls } from './NewWorkspaceSettings';
+import { WorkspaceLabel, WorkspaceRef } from './WorkspaceRef';
 import { branchPreview, createOverrides, effectiveSlug } from './createRequest';
 import { generatedBranchProblem } from './workspaceValidation';
 import {

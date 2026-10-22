@@ -74,7 +74,8 @@ the field. The final branch and worktree location still belong to Engine: the UI
 as `feature/<slug>`; only a pattern containing the optional `{shortId}` shows it as `<id>`), and it never promises that later integration will succeed.
 
 **Goal** is sent as `goal`, persisted in the Create journal and written to the Specification
-overview scaffold; the app does not display it yet, and the field's help text says so. The scaffold marks the
+overview scaffold. The progress page shows it shortened (the first 160 characters, as one line of
+text) and the field's help text says so; the full goal stays in the overview. The scaffold marks the
 section with a comment under `## Goal` telling an agent that it is the initial goal from creation
 and may be refined or rewritten freely.
 
@@ -133,6 +134,13 @@ the progress page says the files exist, so it never shows the "Nothing was creat
 shows that line only for refusals that changed nothing (`BRANCH_PROTECTED`, `COMMIT_BLOCKED` and the
 other not-applied codes). A later check that reads `recovery-required` without a code keeps the
 generic recovery copy.
+
+Some codes can also be raised after the Runtime reserved the operation, when the journal, the files
+or a commit may already exist: `CONTROL_LOCK_BUSY`, `REGISTRY_CONFLICT`, `GIT_POLICY_INVALID` and
+`WORKTREE_PATH_CONFLICT`. The UI treats them as an **unknown outcome** (never "Nothing was
+created"): the form keeps the stored operation and offers **Check the result** for the same
+operation, which tells whether anything was created. Only codes that are always raised before the
+reservation (validation and preconditions) declare that nothing was changed.
 
 Create options are a snapshot of Git state, so the Create screen treats only options fetched
 since the screen was entered as current: while they load it shows the loading state of the
@@ -277,9 +285,9 @@ blocks.
 
 The panel renders `OperationListResponse` from `@nevo/specflow-contracts/operations`
 (`GET /api/specs/operations` on a project Runtime, `GET /api/demo/specifications/operations` on the
-demo Runtime; query `status` as a comma-separated filter and `limit` 1 to 50). The endpoint is
-delivered by the backend slice that follows this UI work; until it exists a 404 simply leaves the
-panel hidden. See `engineering.shared.operation-progress`.
+demo Runtime; query `status` as a comma-separated filter and `limit` 1 to 50). The endpoint ships
+with the Runtime (`docs/reference/api/specs-operations-list.md`); a 404 or 403 from an older Runtime or
+without the capability simply leaves the panel hidden. See `engineering.shared.operation-progress`.
 
 ## Live progress while creating
 
@@ -333,5 +341,5 @@ repository folder) and a `path`; the UI shows the name instead of a generic "Cur
 ## Overview right after Create in project mode
 
 A Runtime that answers the workspace read with `unavailable` / `not_implemented` sections shows a
-calm "Not available in this Runtime yet" state (no warning tone, no Retry). Actions that cannot work
+calm "Not available on this server yet" state (no warning tone, no Retry). Actions that cannot work
 there, such as "Start conversation", are hidden instead of shown disabled. Demo mode is unchanged.

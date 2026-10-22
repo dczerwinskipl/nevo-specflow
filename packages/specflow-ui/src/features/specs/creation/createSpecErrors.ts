@@ -5,9 +5,12 @@ import type { CreateFailure } from './createFailure';
  * The Runtime Create error codes with the meaning the product gives them. A code not listed
  * here is classified by its HTTP status, so a new server code never breaks the form.
  *
- * `outcome` is what the server declares about its state: 4xx answers come from validation and
- * preconditions before anything was written, `ENGINE_UNAVAILABLE`/`CONTROL_LOCK_BUSY` before the
- * operation started, while the journal and Git-uncertainty codes mean the result is unknown.
+ * `outcome` is what the server declares about its state: validation and precondition answers come
+ * before anything was written (`ENGINE_UNAVAILABLE` before the operation started), while the
+ * journal and Git-uncertainty codes mean the result is unknown. A code the Runtime can also raise
+ * after it reserved the operation (`CONTROL_LOCK_BUSY`, `REGISTRY_CONFLICT`, `GIT_POLICY_INVALID`,
+ * `WORKTREE_PATH_CONFLICT`: the journal, files or a commit may already exist) is `unknown`; the form
+ * then checks the operation instead of claiming nothing was created.
  */
 export const createSpecErrorCodes: ErrorCodeTable = {
   CREATE_OPERATION_INVALID: { kind: 'validation', outcome: 'not-applied' },
@@ -16,9 +19,9 @@ export const createSpecErrorCodes: ErrorCodeTable = {
   CREATE_CONFLICT: { kind: 'conflict', outcome: 'not-applied' },
   BRANCH_ALREADY_EXISTS: { kind: 'conflict', outcome: 'not-applied' },
   BRANCH_ALREADY_CHECKED_OUT: { kind: 'conflict', outcome: 'not-applied' },
-  WORKTREE_PATH_CONFLICT: { kind: 'conflict', outcome: 'not-applied' },
+  WORKTREE_PATH_CONFLICT: { kind: 'conflict', outcome: 'unknown' },
   SPEC_CONFLICT: { kind: 'conflict', outcome: 'not-applied' },
-  REGISTRY_CONFLICT: { kind: 'conflict', outcome: 'not-applied' },
+  REGISTRY_CONFLICT: { kind: 'conflict', outcome: 'unknown' },
   GIT_DISABLED: { kind: 'precondition', outcome: 'not-applied' },
   BASE_REF_NOT_FOUND: { kind: 'precondition', outcome: 'not-applied' },
   GIT_BASE_CONFIG_MISSING: { kind: 'precondition', outcome: 'not-applied' },
@@ -28,14 +31,14 @@ export const createSpecErrorCodes: ErrorCodeTable = {
   COMMIT_BLOCKED: { kind: 'conflict', outcome: 'not-applied' },
   // The files were written, the commit failed: an operator resumes the journalled operation.
   COMMIT_FAILED: { kind: 'recovery-required', outcome: 'unknown' },
-  GIT_POLICY_INVALID: { kind: 'unavailable', outcome: 'not-applied' },
+  GIT_POLICY_INVALID: { kind: 'unavailable', outcome: 'unknown' },
   // A workspace or Specification vanished between reading the options and creating (answered 503).
   SPEC_NOT_FOUND: { kind: 'precondition', outcome: 'not-applied' },
   CREATE_RECOVERY_REQUIRED: { kind: 'recovery-required', outcome: 'unknown' },
   CREATE_JOURNAL_CORRUPT: { kind: 'recovery-required', outcome: 'unknown' },
   REGISTRY_RECOVERY_REQUIRED: { kind: 'recovery-required', outcome: 'unknown' },
   GIT_OPERATION_UNCERTAIN: { kind: 'recovery-required', outcome: 'unknown' },
-  CONTROL_LOCK_BUSY: { kind: 'unavailable', outcome: 'not-applied', retryable: true },
+  CONTROL_LOCK_BUSY: { kind: 'unavailable', outcome: 'unknown', retryable: true },
   ENGINE_UNAVAILABLE: { kind: 'unavailable', outcome: 'not-applied', retryable: true },
   CREATE_NOT_FOUND: { kind: 'not-found', outcome: 'not-applied' },
 };
@@ -71,6 +74,15 @@ export function toCreateFailure(error: ApiError, sent: SentCreate = {}): CreateF
   const code = error.code ?? 'unknown';
   if (code === 'BRANCH_PROTECTED') return protectedBranchFailure(sent);
   if (code === 'COMMIT_BLOCKED') return { kind: 'commit-blocked' };
+  // The server cannot rule out that the operation was reserved: never claim a definite refusal.
+  if (
+    error.outcome === 'unknown' &&
+    error.kind !== 'recovery-required' &&
+    error.kind !== 'network' &&
+    error.kind !== 'unauthenticated' &&
+    error.kind !== 'forbidden'
+  )
+    return { kind: 'uncertain' };
   switch (error.kind) {
     case 'recovery-required':
       return code === 'COMMIT_FAILED'

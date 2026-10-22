@@ -31,10 +31,10 @@ function renderProgress(props: Partial<Parameters<typeof OperationProgress>[0]> 
 afterEach(() => cleanup());
 
 describe('OperationProgress', () => {
-  it('is a polite named live region with an ordered list of the given steps', () => {
+  it('is a named group (not a live region) with an ordered list of the given steps', () => {
     renderProgress();
-    const region = screen.getByRole('status', { name: 'Specification creation progress' });
-    expect(region.getAttribute('aria-live')).toBe('polite');
+    const region = screen.getByRole('group', { name: 'Specification creation progress' });
+    expect(region.hasAttribute('aria-live')).toBe(false);
     const items = within(region).getAllByRole('listitem');
     expect(items.map((item) => item.textContent)).toEqual([
       'Reserving the name done',
@@ -89,7 +89,7 @@ describe('OperationProgress', () => {
       },
     });
     expect(screen.queryAllByRole('listitem')).toHaveLength(0);
-    const region = screen.getByRole('status', { name: 'Specification creation progress' });
+    const region = screen.getByRole('group', { name: 'Specification creation progress' });
     expect(within(region).getByText('Creating specification')).toBeTruthy();
     expect(region.querySelectorAll('[data-operation-progress="neutral"]')).toHaveLength(1);
   });

@@ -208,6 +208,7 @@ export function useCreateProjectSpecification(
         type: 'submit-failed',
         failure: { ...outcome.failure, snapshot: submission.snapshot },
         discardSent: outcome.discardAttempt,
+        retained: !outcome.releaseStorage,
       });
     },
     [announce, cache, ledger, lifetime, notify, onCreated, operationId, storage, t],

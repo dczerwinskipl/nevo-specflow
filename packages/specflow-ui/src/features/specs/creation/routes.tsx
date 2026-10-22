@@ -119,7 +119,6 @@ function NewSession() {
             search: { collection },
           })
         }
-        onProjectStarted={() => undefined}
         onCreated={() => {
           void navigate({ to: '/specs/$specId', params: { specId }, search: { collection } });
         }}

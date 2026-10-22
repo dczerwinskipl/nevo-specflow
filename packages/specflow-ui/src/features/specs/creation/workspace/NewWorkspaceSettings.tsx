@@ -1,26 +1,18 @@
 import { useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
-import { Alert, Button, Collapsible, Field, InlineNote, SwitchField, TextInput } from '@nevo/ui';
-import { Trans, useTranslation } from 'react-i18next';
-import { FormattedList } from '../../../../i18n/formatList';
-import { useMessage } from '../../../../i18n/message';
-import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
+import { Collapsible } from '@nevo/ui';
+import { useTranslation } from 'react-i18next';
+import type { CreateOptions } from '@nevo/specflow-contracts/specs';
+import { BaseRefSetting } from './BaseRefSetting';
+import { BranchSetting } from './BranchSetting';
+import { MergeTargetSetting } from './MergeTargetSetting';
+import { SlugSetting } from './SlugSetting';
+import type { SettingsFocusRequest } from './settingsTypes';
 import {
-  BRANCH_NAME_MAX_LENGTH,
-  SPEC_SLUG_MAX_LENGTH,
-  type CreateOptions,
-} from '@nevo/specflow-contracts/specs';
-import { BranchRef } from '../../../../shared/git/BranchRef';
-import { branchFieldValue, derivedSlug } from './createRequest';
-import { mergeSuggestion, effectiveTargetBranch } from './mergeSuggestion';
-import { defaultBaseValue, defaultTargetWorkspaceId } from './workspaceTiles';
-import {
-  noBranchLabel,
-  specCountLabel,
-  targetReasonText,
-  targetReasonTextInline,
-} from './workspaceCopy';
-import { generatedBranchProblem, slugError, type WorkspaceErrors } from './workspaceValidation';
-import { initialWorkspaceChoice, type WorkspaceChoice } from './workspaceChoice';
+  generatedBranchProblem,
+  workspaceFieldErrors,
+  type WorkspaceErrors,
+} from './workspaceValidation';
+import type { WorkspaceChoice } from './workspaceChoice';
 import type { WorkspaceConflicts } from './workspaceConflicts';
 
 /** Focusable controls of the settings, so an owner can focus an invalid one without DOM queries. */
@@ -31,49 +23,10 @@ export interface WorkspaceSettingsControls {
   slug: MutableRefObject<HTMLInputElement | null>;
 }
 
-/** Names a workspace by its branch; a workspace without one has no value to show. */
-export function WorkspaceLabel({
-  workspace,
-  truncate = false,
-}: {
-  workspace: CreateOptions['workspaces'][number];
-  /** One line with an ellipsis (Select); the searchable list wraps so similar names stay distinct. */
-  truncate?: boolean;
-}) {
-  const text = useMessage();
-  return workspace.branch ? (
-    <BranchRef name={workspace.branch} truncate={truncate} />
-  ) : (
-    <span className={truncate ? 'truncate' : undefined}>{text(noBranchLabel)}</span>
-  );
-}
-
 /**
- * A workspace as a merge target: its name (the checkout folder) as the primary text and its branch as the secondary chip.
- */
-export function WorkspaceRef({
-  workspace,
-  truncate = false,
-}: {
-  workspace: Pick<CreateOptions['workspaces'][number], 'name' | 'branch'>;
-  truncate?: boolean;
-}) {
-  const text = useMessage();
-  return (
-    <span className="inline-flex min-w-0 max-w-full flex-wrap items-baseline gap-x-2 gap-y-0.5">
-      <span className={truncate ? 'truncate' : undefined}>{workspace.name}</span>{' '}
-      {workspace.branch ? (
-        <BranchRef name={workspace.branch} truncate={truncate} />
-      ) : (
-        <span className="text-content-muted">{text(noBranchLabel)}</span>
-      )}
-    </span>
-  );
-}
-
-/**
- * "Zmień ustawienia": one collapsed disclosure with three independent switches. Off means the
- * field is absent from the request; on means exactly the chosen value. Values survive toggling.
+ * "Change settings": one collapsed disclosure that composes four independent settings (base,
+ * merge target, name, branch), each owning its switch and field. Off means the field is absent from
+ * the request; on means exactly the chosen value. Values survive toggling.
  */
 export function NewWorkspaceSettings({
   options,
@@ -98,10 +51,9 @@ export function NewWorkspaceSettings({
   /** Owner-held refs; defaults to refs private to the settings. */
   controls?: WorkspaceSettingsControls;
   /** Focus a control once the render this event causes is done (its field may not exist yet). */
-  onRequestFocus: (field: 'base' | 'target') => void;
+  onRequestFocus: SettingsFocusRequest;
 }) {
   const { t } = useTranslation();
-  const text = useMessage();
   const ownRefs = {
     base: useRef<HTMLElement | null>(null),
     target: useRef<HTMLElement | null>(null),
@@ -110,58 +62,18 @@ export function NewWorkspaceSettings({
   };
   const refs = controls ?? ownRefs;
   const set = (patch: Partial<WorkspaceChoice>) => update((current) => ({ ...current, ...patch }));
-  const primary = options.workspaces.find((w) => w.workspaceId === options.primaryWorkspaceId);
-  const targets = options.workspaces;
-  const selectableTargets = targets.filter((w) => w.integrationSelectable === true);
-  const unavailableTargets = targets.filter((w) => w.integrationSelectable !== true);
-  const suggestion = mergeSuggestion(choice, options);
-  const currentTarget = effectiveTargetBranch(choice, options);
+  const settingsUpdate = { set, update };
+  const fieldErrors = workspaceFieldErrors(choice, options, conflicts, title, errors);
 
   // A value the (refreshed) options invalidated sits in this panel: keep it open so the flagged
   // field is visible instead of a silently blocked Create.
-  // The generated branch is one the Engine will not commit on: the owner has to type another name.
-  const generatedProblem = generatedBranchProblem(choice, options, title);
   const flagged = Boolean(
-    errors.base ?? errors.target ?? errors.slug ?? errors.branch ?? generatedProblem,
+    errors.base ??
+    errors.target ??
+    errors.slug ??
+    errors.branch ??
+    generatedBranchProblem(choice, options, title),
   );
-  const baseUnavailable = options.baseRefs.length === 0;
-  const targetUnavailable = selectableTargets.length === 0;
-  const branchError =
-    errors.branch && choice.branch.name.trim()
-      ? text(errors.branch)
-      : conflicts?.branch &&
-          choice.branch.edited &&
-          choice.branch.name.trim() === conflicts.branch.value
-        ? t(
-            conflicts.branch.reason === 'invalid'
-              ? 'create.workspace.errors.branchRejected'
-              : conflicts.branch.reason === 'protected'
-                ? 'create.workspace.errors.branchProtected'
-                : 'create.workspace.errors.branchExists',
-          )
-        : generatedProblem
-          ? text(generatedProblem)
-          : undefined;
-  const slugValue = choice.slug.edited ? choice.slug.value : derivedSlug(title);
-  const typedSlugError = choice.slug.edited ? slugError(choice.slug.value) : undefined;
-  const slugErrorText = typedSlugError
-    ? text(typedSlugError)
-    : conflicts?.slug && choice.slug.edited && choice.slug.value === conflicts.slug.value
-      ? t('create.workspace.errors.slugTaken')
-      : undefined;
-  const branchValue = branchFieldValue(choice, options, title);
-  const baseRefMeta = (ref: string, checkedOutWorkspaceId?: string) => {
-    if (!checkedOutWorkspaceId) return undefined;
-    const workspace = options.workspaces.find((w) => w.workspaceId === checkedOutWorkspaceId);
-    if (!ref) return undefined;
-    const label =
-      checkedOutWorkspaceId === primary?.workspaceId
-        ? t('create.workspace.settings.refCurrent')
-        : t('create.workspace.settings.refWorkspace');
-    return workspace?.state === 'dirty'
-      ? t('create.workspace.settings.refDirty', { label })
-      : label;
-  };
 
   return (
     <Collapsible
@@ -175,277 +87,37 @@ export function NewWorkspaceSettings({
       <Collapsible.Content>
         <div className="grid grid-cols-1 divide-y divide-border-subtle">
           {/* The first switch needs 12px above it inside the clipping panel for its 44px touch target. */}
-          <div className="grid grid-cols-1 gap-3 py-3 first:pt-2">
-            <SwitchField
-              label={t('create.workspace.settings.baseSwitch')}
-              checked={choice.base.on}
-              aria-disabled={baseUnavailable && !choice.base.on ? true : undefined}
-              fieldClassName={baseUnavailable && !choice.base.on ? 'opacity-60' : undefined}
-              description={
-                baseUnavailable ? (
-                  t('create.workspace.settings.baseNone')
-                ) : options.defaultBaseRef === 'HEAD' ? (
-                  primary?.branch ? (
-                    <Trans
-                      i18nKey="create.workspace.baseHeadOnBranch"
-                      components={{ branch: <BranchRef name={primary.branch} /> }}
-                    />
-                  ) : (
-                    t('create.workspace.baseHead')
-                  )
-                ) : (
-                  <Trans
-                    i18nKey="create.workspace.settings.baseDefault"
-                    components={{ branch: <BranchRef name={options.defaultBaseRef} /> }}
-                  />
-                )
-              }
-              onCheckedChange={(on) => {
-                if (baseUnavailable && on) return;
-                // On starts from the effective default (never an empty select, F-08); off restores it.
-                set({ base: { on, ref: on ? defaultBaseValue(options) : '' } });
-              }}
-            />
-            {choice.base.on && (
-              <Field invalid={Boolean(errors.base)}>
-                <Field.Label>{t('create.workspace.fact.base')}</Field.Label>
-                <LocalizedOptionPicker
-                  value={choice.base.ref}
-                  invalid={Boolean(errors.base)}
-                  placeholder={t('create.workspace.settings.basePlaceholder')}
-                  controlRef={refs.base}
-                  onValueChange={(ref) => set({ base: { on: true, ref } })}
-                  items={options.baseRefs.map((item) => ({
-                    value: item.ref,
-                    textValue: item.ref,
-                    meta: baseRefMeta(item.ref, item.checkedOutWorkspaceId),
-                    label: (wraps) => <BranchRef name={item.ref} truncate={!wraps} />,
-                  }))}
-                />
-                {errors.base && <Field.Error>{text(errors.base)}</Field.Error>}
-              </Field>
-            )}
-            {choice.base.on && suggestion?.kind === 'offer' && (
-              <Alert
-                tone="info"
-                title={
-                  <Trans
-                    i18nKey="create.workspace.suggestion.title"
-                    components={{ branch: <BranchRef name={suggestion.branch} /> }}
-                  />
-                }
-              >
-                <p>
-                  {currentTarget ? (
-                    <Trans
-                      i18nKey="create.workspace.suggestion.projectDefault"
-                      components={{ branch: <BranchRef name={currentTarget} /> }}
-                    />
-                  ) : null}
-                  {t('create.workspace.suggestion.note')}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => {
-                      onRequestFocus('target');
-                      update((current) => ({
-                        ...current,
-                        settingsOpen: true,
-                        target: { on: true, workspaceId: suggestion.workspaceId },
-                      }));
-                      onAnnounce(
-                        t('create.workspace.suggestion.announceSet', {
-                          branch: suggestion.branch,
-                        }),
-                      );
-                    }}
-                  >
-                    {t('create.workspace.suggestion.set')}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      onRequestFocus('base');
-                      update((current) => ({
-                        ...current,
-                        dismissedSuggestions: {
-                          ...current.dismissedSuggestions,
-                          [suggestion.workspaceId]: true,
-                        },
-                      }));
-                      onAnnounce(
-                        currentTarget
-                          ? t('create.workspace.suggestion.announceKept', {
-                              branch: currentTarget,
-                            })
-                          : t('create.workspace.suggestion.announceKeptNoTarget'),
-                      );
-                    }}
-                  >
-                    {t('create.workspace.suggestion.keep')}
-                  </Button>
-                </div>
-              </Alert>
-            )}
-            {choice.base.on && suggestion?.kind === 'dirty' && (
-              <InlineNote>
-                <Trans
-                  i18nKey="create.workspace.suggestion.dirty"
-                  components={{ branch: <BranchRef name={suggestion.branch} /> }}
-                />
-              </InlineNote>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 py-3">
-            <SwitchField
-              label={t('create.workspace.settings.targetSwitch')}
-              checked={choice.target.on}
-              aria-disabled={targetUnavailable && !choice.target.on ? true : undefined}
-              fieldClassName={targetUnavailable && !choice.target.on ? 'opacity-60' : undefined}
-              description={
-                choice.target.on ? (
-                  t('create.workspace.settings.targetPick')
-                ) : targetUnavailable ? (
-                  t('create.workspace.settings.targetNone')
-                ) : options.integrationTargetBranch ? (
-                  <Trans
-                    i18nKey="create.workspace.settings.targetFollows"
-                    components={{ branch: <BranchRef name={options.integrationTargetBranch} /> }}
-                  />
-                ) : (
-                  t('create.workspace.settings.targetUnconfigured')
-                )
-              }
-              onCheckedChange={(on) => {
-                if (targetUnavailable && on) return;
-                // On starts from the default target workspace; it is sent only once it differs.
-                set({ target: { on, workspaceId: on ? defaultTargetWorkspaceId(options) : '' } });
-              }}
-            />
-            {choice.target.on && (
-              <Field invalid={Boolean(errors.target)}>
-                <Field.Label>{t('create.workspace.settings.targetLabel')}</Field.Label>
-                <LocalizedOptionPicker
-                  value={choice.target.workspaceId}
-                  invalid={Boolean(errors.target)}
-                  placeholder={t('create.workspace.existing.placeholder')}
-                  controlRef={refs.target}
-                  onValueChange={(workspaceId) => set({ target: { on: true, workspaceId } })}
-                  items={targets.map((workspace) => {
-                    const blocked = workspace.integrationSelectable !== true;
-                    return {
-                      value: workspace.workspaceId,
-                      textValue: `${workspace.name} ${workspace.branch ?? text(noBranchLabel)}`,
-                      unavailable: blocked,
-                      description: blocked ? text(targetReasonText(workspace.reason)) : undefined,
-                      meta: text(specCountLabel(workspace.specCount)),
-                      label: (wraps) => <WorkspaceRef workspace={workspace} truncate={!wraps} />,
-                    };
-                  })}
-                />
-                <Field.Description>
-                  {t('create.workspace.settings.targetNote')}
-                  {unavailableTargets.length > 0 && (
-                    <span className="mt-1 block">
-                      <Trans
-                        i18nKey="create.workspace.settings.targetUnavailable"
-                        components={{
-                          targets: (
-                            <FormattedList
-                              items={unavailableTargets.map((workspace) => (
-                                <span key={workspace.workspaceId}>
-                                  <WorkspaceRef workspace={workspace} />{' '}
-                                  {t('create.workspace.settings.unavailableReason', {
-                                    reason: text(targetReasonTextInline(workspace.reason)),
-                                  })}
-                                </span>
-                              ))}
-                            />
-                          ),
-                        }}
-                      />
-                    </span>
-                  )}
-                </Field.Description>
-                {errors.target && <Field.Error>{text(errors.target)}</Field.Error>}
-              </Field>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 py-3">
-            <SwitchField
-              label={t('create.workspace.settings.slugSwitch')}
-              checked={choice.slug.on}
-              description={t('create.workspace.settings.slugSwitchDescription')}
-              onCheckedChange={(on) =>
-                set({
-                  slug: on ? { on: true, value: '', edited: false } : initialWorkspaceChoice.slug,
-                })
-              }
-            />
-            {choice.slug.on && (
-              <Field invalid={Boolean(slugErrorText)}>
-                <Field.Label>{t('create.workspace.settings.slugLabel')}</Field.Label>
-                <TextInput
-                  ref={refs.slug}
-                  value={slugValue}
-                  maxLength={SPEC_SLUG_MAX_LENGTH}
-                  placeholder={t('create.workspace.settings.slugPlaceholder')}
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  onChange={(event) =>
-                    set({ slug: { on: true, value: event.target.value, edited: true } })
-                  }
-                />
-                {slugErrorText && <Field.Error>{slugErrorText}</Field.Error>}
-              </Field>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 pt-3">
-            <SwitchField
-              label={t('create.workspace.settings.branchSwitch')}
-              checked={choice.branch.on}
-              description={
-                generatedProblem && !choice.branch.on ? (
-                  <span className="text-status-attention">{text(generatedProblem)}</span>
-                ) : (
-                  t('create.workspace.settings.branchSwitchDescription')
-                )
-              }
-              onCheckedChange={(on) =>
-                set({
-                  branch: on
-                    ? { on: true, name: '', edited: false }
-                    : initialWorkspaceChoice.branch,
-                })
-              }
-            />
-            {choice.branch.on && (
-              <Field invalid={Boolean(branchError)}>
-                <Field.Label>{t('create.workspace.settings.branchLabel')}</Field.Label>
-                <TextInput
-                  ref={refs.branch}
-                  value={branchValue}
-                  maxLength={BRANCH_NAME_MAX_LENGTH}
-                  placeholder={t('create.workspace.settings.branchPlaceholder')}
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  onChange={(event) =>
-                    set({ branch: { on: true, name: event.target.value, edited: true } })
-                  }
-                />
-                <Field.Description>{t('create.workspace.settings.branchHelp')}</Field.Description>
-                {branchError && <Field.Error>{branchError}</Field.Error>}
-              </Field>
-            )}
-          </div>
+          <BaseRefSetting
+            options={options}
+            choice={choice}
+            error={errors.base}
+            update={settingsUpdate}
+            controlRef={refs.base}
+            onAnnounce={onAnnounce}
+            onRequestFocus={onRequestFocus}
+          />
+          <MergeTargetSetting
+            options={options}
+            choice={choice}
+            error={errors.target}
+            update={settingsUpdate}
+            controlRef={refs.target}
+          />
+          <SlugSetting
+            choice={choice}
+            title={title}
+            error={fieldErrors.slug}
+            update={settingsUpdate}
+            inputRef={refs.slug}
+          />
+          <BranchSetting
+            options={options}
+            choice={choice}
+            title={title}
+            error={fieldErrors.branch}
+            update={settingsUpdate}
+            inputRef={refs.branch}
+          />
         </div>
       </Collapsible.Content>
     </Collapsible>

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createHttpClient } from '@nevo/http-client';
-import { createRequestTimeoutMs, creationKeys } from './api';
+import { createRequestTimeoutMs, demoCreationKeys } from './api.demo';
 import { createDemoCreationApi } from './api.demo';
 
 describe('demo creation adapter', () => {
@@ -32,7 +32,7 @@ describe('demo creation adapter', () => {
       ['/api/demo/specs/create-options', { signal }],
       ['/api/demo/specifications/operations/op%2F1', { signal }],
     ]);
-    expect(creationKeys.createOptions).toEqual(['demo-create-options']);
+    expect(demoCreationKeys.createOptions).toEqual(['demo-create-options']);
   });
   it('scopes the catalogue identity through the application client', async () => {
     const http = createHttpClient();
@@ -42,6 +42,6 @@ describe('demo creation adapter', () => {
     expect(get.mock.calls).toEqual([
       ['/api/demo/specification-creation?specId=spec%2Fa', { signal }],
     ]);
-    expect(creationKeys.catalogue('a')).not.toEqual(creationKeys.catalogue('b'));
+    expect(demoCreationKeys.catalogue('a')).not.toEqual(demoCreationKeys.catalogue('b'));
   });
 });

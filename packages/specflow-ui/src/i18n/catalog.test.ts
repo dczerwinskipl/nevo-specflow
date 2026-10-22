@@ -19,6 +19,15 @@ function flatten(value: unknown, prefix = ''): Record<string, string> {
   );
 }
 
+/** Every TypeScript file that may translate a key: sources, stories, tests and story support. */
+function allFiles(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) return entry.name === 'node_modules' ? [] : allFiles(path);
+    return /\.tsx?$/.test(entry.name) && entry.name !== 'catalog.test.ts' ? [path] : [];
+  });
+}
+
 function sourceFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name);
@@ -57,11 +66,9 @@ describe('message catalogues', () => {
       'create.workspace.settings.unavailableReason',
       'documents.tree.skippedItem',
       'common.pullRequestNumber',
-      'navigation.uiPlayground',
       'playground.title',
       'sessions.demo.writer',
       'specification.changesSourcePr',
-      'specifications.openSignal',
     ]);
     const identical = plKeys.filter(
       (key) =>
@@ -70,6 +77,38 @@ describe('message catalogues', () => {
         !sameInBoth.has(key),
     );
     expect(identical).toEqual([]);
+  });
+
+  it('contain no key that nothing translates', () => {
+    const text = [
+      ...allFiles(sourceRoot),
+      ...allFiles(fileURLToPath(new URL('../../test-support', import.meta.url))),
+    ]
+      .map((file) => readFileSync(file, 'utf8'))
+      .join('\n');
+    // A key built at run time (a template literal ending in `${...}` after a static prefix) keeps
+    // everything below that prefix, except the two prefixes whose subtree is wider than what is
+    // built: those list the keys they really build.
+    const broad = new Set(['specifications.', 'taskDetails.']);
+    const dynamicPrefixes = [...text.matchAll(/[`'"]([A-Za-z0-9_.-]+\.)(?:\$\{|['"`]\s*\+)/g)]
+      .map((match) => match[1] ?? '')
+      .filter((prefix) => !broad.has(prefix));
+    const built = [
+      ...['noResults', 'emptyCurrent', 'emptyArchive'].flatMap((kind) => [
+        `specifications.${kind}`,
+        `specifications.${kind}Description`,
+      ]),
+      'taskDetails.startedAt',
+      'taskDetails.completedAt',
+    ];
+    const quotes = ["'", '"', '`'];
+    const unused = [...catalogueBases].filter(
+      (key) =>
+        !built.includes(key) &&
+        !dynamicPrefixes.some((prefix) => key.startsWith(prefix)) &&
+        !quotes.some((quote) => text.includes(`${quote}${key}${quote}`)),
+    );
+    expect(unused).toEqual([]);
   });
 
   it('contain every literal key that source files translate', () => {

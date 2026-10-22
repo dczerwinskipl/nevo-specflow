@@ -38,7 +38,7 @@ import {
 import { DocumentEditor } from '../editor/DocumentEditor';
 import { DocumentEditorProvider, useDocumentEditor } from '../editor/DocumentEditorProvider';
 import { documentHeaderModel } from '../editor/documentHeaderModel';
-import { settleOwnerV4 } from '../../../test-support/ownerV4Capture.stories-support';
+import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 import { invokeDocumentAction } from '../editor/documentHeaderActions.stories-support';
 import { withLocale } from '../../../i18n/StoryLocalization';
 import { useTranslation } from 'react-i18next';
@@ -365,24 +365,24 @@ export const DocumentsAndInline: Story = {
   play: async ({ canvas, userEvent }) => {
     await canvas.findByRole('button', { name: 'Akcje: notes' });
     await expect(canvas.queryByRole('button', { name: /^Dokumenty$/ })).not.toBeInTheDocument();
-    await settleOwnerV4('documents-wide');
+    await settleViewport();
     await userEvent.click(canvas.getByRole('button', { name: 'Akcje: notes' }));
-    await settleOwnerV4('folder-menu-wide');
+    await settleViewport();
     await userEvent.click(within(document.body).getByRole('menuitem', { name: 'Nowy plik' }));
     const name = canvas.getByRole('textbox', { name: 'Nazwa nowego pliku' });
     await waitFor(() => expect(name).toHaveFocus());
     await userEvent.type(name, 'client-notes');
-    await settleOwnerV4('inline-file-wide');
+    await settleViewport();
     await userEvent.keyboard('{Enter}');
     await expect(canvas.getByRole('button', { name: 'client-notes.md' })).toBeVisible();
     await expect(canvas.getByLabelText('Liczba operacji')).toHaveTextContent('1');
     // The active document (specification.md) opens in Preview by default.
-    await settleOwnerV4('preview-wide');
+    await settleViewport();
     await invokeDocumentAction(canvas, userEvent, 'Edytuj dokument');
-    await settleOwnerV4('documents-mobile-tree', 390, 844);
+    await settleViewport(390, 844);
     await userEvent.click(canvas.getByRole('button', { name: /^specification.md/ }));
     await expect(canvas.getByRole('textbox', { name: 'Treść specification.md' })).toBeVisible();
-    await settleOwnerV4('documents-mobile-editor', 390, 844);
+    await settleViewport(390, 844);
   },
 };
 export const InlineErrorsAndCancellation: Story = {
@@ -414,10 +414,8 @@ export const InlineErrorsAndCancellation: Story = {
       'aria-disabled',
       'true',
     );
-    await expect(within(menu).getByRole('menuitem', { name: 'Otwórz' })).not.toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
+    // The row itself opens the document: the menu holds no copy of that action.
+    await expect(within(menu).queryByRole('menuitem', { name: 'Otwórz' })).not.toBeInTheDocument();
     const note = within(menu).getByText(/Dokument wymagany przez workflow/);
     await expect(menu).toHaveAttribute('aria-describedby', note.id);
   },

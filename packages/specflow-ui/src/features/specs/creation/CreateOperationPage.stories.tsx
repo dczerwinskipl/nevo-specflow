@@ -12,7 +12,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, waitFor, within } from 'storybook/test';
 
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
-import { settleOwnerV4 } from '../../../test-support/ownerV4Capture.stories-support';
+import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 import { ApiError } from '../../../api';
 import { VisitStateProvider } from '../../../app/VisitStateProvider';
 import { withLocale } from '../../../i18n/StoryLocalization';
@@ -270,7 +270,10 @@ type Story = StoryObj<typeof meta>;
 
 /** The checklist only: the breadcrumbs are list items too. */
 const steps = (canvasElement: HTMLElement) =>
-  within(within(canvasElement).getByRole('status', { name: 'Postęp tworzenia specyfikacji' }));
+  within(within(canvasElement).getByRole('group', { name: 'Postęp tworzenia specyfikacji' }));
+
+/** The page subtitle, not the screen-reader announcer that repeats it (`sr-only`). */
+const visibleText = { selector: 'p:not(.sr-only)' } as const;
 
 const newWorkspace = { title: 'Limity płatności', target: { kind: 'new-worktree' as const } };
 
@@ -301,12 +304,12 @@ export const InProgressWithSteps: Story = {
       name: 'Tworzenie: Limity płatności',
     });
     await waitFor(() => expect(document.activeElement).toBe(heading));
-    await expect(heading).toHaveAttribute('title', 'Limity płatności');
+    // No tooltip: the full name is the first row of the configuration list.
+    await expect(heading).not.toHaveAttribute('title');
     await expect(
-      canvas.getByText('Przygotowujemy nowe środowisko pracy i specyfikację.'),
+      canvas.getByText('Przygotowujemy nowe środowisko pracy i specyfikację.', visibleText),
     ).toBeVisible();
-    // The name is not repeated below the heading.
-    await expect(canvas.getAllByText(/Limity płatności/)).toHaveLength(1);
+    await expect(settingsList(canvas).getByText('Limity płatności')).toBeInTheDocument();
     const running = await canvas.findByText('Przygotowanie środowiska pracy');
     await waitFor(() => expect(running.closest('li')).toHaveAttribute('aria-current', 'step'));
     await expect(canvas.getByText('Tworzymy środowisko pracy')).toBeVisible();
@@ -359,7 +362,7 @@ export const InProgressExistingWorkspace: Story = {
     await expect(settings.getByText('feature/platform')).toBeInTheDocument();
     await expect(settings.queryByText('Katalog worktree')).not.toBeInTheDocument();
     await expect(settings.queryByText('Scal do')).not.toBeInTheDocument();
-    await expect(canvas.getByText('Przygotowujemy specyfikację.')).toBeVisible();
+    await expect(canvas.getByText('Przygotowujemy specyfikację.', visibleText)).toBeVisible();
   },
 };
 
@@ -388,7 +391,7 @@ export const MergeTargetWarningStaysInTheForm: Story = {
 
 /**
  * A long name, a long branch and no spaces to break at: the single heading wraps inside 320 px
- * (clamped to three lines, the full name stays in its tooltip), nothing scrolls sideways.
+ * (clamped to three lines, the full name is a row of the configuration list), nothing scrolls sideways.
  */
 export const LongTitleAt320: Story = {
   args: {
@@ -408,12 +411,16 @@ export const LongTitleAt320: Story = {
     },
   },
   play: async ({ canvas, canvasElement }) => {
-    await settleOwnerV4('creation-progress-320', 320, 740);
+    await settleViewport(320, 740);
     await canvas.findByText('Przygotowanie środowiska pracy');
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320);
     const heading = canvas.getByRole('heading', { level: 1, name: /^Tworzenie: Ogr/ });
     await expect(heading.getBoundingClientRect().right).toBeLessThanOrEqual(320);
-    await expect(heading).toHaveAttribute('title', expect.stringMatching(/dostawcami rozliczeń$/));
+    // No tooltip: the full name is a row of the configuration list.
+    await expect(heading).not.toHaveAttribute('title');
+    await expect(
+      within(canvas.getByLabelText('Ustawienia tworzenia')).getByText(/dostawcami rozliczeń$/),
+    ).toBeInTheDocument();
     for (const row of steps(canvasElement).getAllByRole('listitem'))
       await expect(row.getBoundingClientRect().right).toBeLessThanOrEqual(320);
   },
@@ -463,7 +470,7 @@ export const Refused: Story = {
     ).toBeInTheDocument();
     await expect(await canvas.findByRole('alert')).toBeInTheDocument();
     // What was NOT created, and the safe repair action.
-    await expect(canvas.getByText(/^Nic nie zostało utworzone./)).toBeVisible();
+    await expect(canvas.getByText(/^Nic nie zostało utworzone./, visibleText)).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Wróć do specyfikacji' })).toBeEnabled();
     await userEvent.click(canvas.getByRole('button', { name: 'Wróć do formularza' }));
     await expect(args.onBackToForm).toHaveBeenCalledOnce();
@@ -512,7 +519,7 @@ export const DirectLinkInProgress: Story = {
 };
 
 /**
- * Git enabled: the checklist has its own step "Zapisywanie specyfikacji w Git" between writing the
+ * Git enabled: the checklist has its own step "Zapisywanie specyfikacji w commicie" between writing the
  * files and registering, and the configuration says on which branch the files are committed.
  */
 export const InProgressWithTheCommitStep: Story = {
@@ -522,8 +529,8 @@ export const InProgressWithTheCommitStep: Story = {
     stream: 'commit-steps',
   },
   play: async ({ canvas, canvasElement, userEvent }) => {
-    const running = (await canvas.findAllByText('Zapisywanie specyfikacji w Git')).find((node) =>
-      node.closest('li'),
+    const running = (await canvas.findAllByText('Zapisywanie specyfikacji w commicie')).find(
+      (node) => node.closest('li'),
     )!;
     await waitFor(() => expect(running.closest('li')).toHaveAttribute('aria-current', 'step'));
     await expect(canvas.getByText('Zapisujemy pliki specyfikacji w commicie')).toBeVisible();
@@ -550,7 +557,7 @@ export const InProgressWithTheCommitStepInAnExistingWorkspace: Story = {
     stream: 'commit-steps-existing',
   },
   play: async ({ canvas, canvasElement }) => {
-    await canvas.findAllByText('Zapisywanie specyfikacji w Git');
+    await canvas.findAllByText('Zapisywanie specyfikacji w commicie');
     // No workspace step for an existing workspace: four rows.
     await expect(steps(canvasElement).getAllByRole('listitem')).toHaveLength(4);
     await expect(
@@ -576,7 +583,7 @@ export const RefusedBecauseTheBranchIsProtected: Story = {
       name: 'Nie utworzono specyfikacji: Limity płatności',
     });
     await expect(await canvas.findByRole('alert')).toHaveTextContent('Gałąź jest chroniona');
-    await expect(canvas.getByText(/^Nic nie zostało utworzone./)).toBeVisible();
+    await expect(canvas.getByText(/^Nic nie zostało utworzone./, visibleText)).toBeVisible();
     await expect(canvas.getByText(/Gałąź wybranego środowiska pracy jest chroniona/)).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Odśwież opcje' }));
     await expect(args.onBackToForm).toHaveBeenCalledOnce();
@@ -598,7 +605,7 @@ export const RefusedBecauseGitCannotCommitNow: Story = {
     await expect(await canvas.findByRole('alert')).toHaveTextContent(
       'Git nie może teraz przyjąć commita',
     );
-    await expect(canvas.getByText(/^Nic nie zostało utworzone./)).toBeVisible();
+    await expect(canvas.getByText(/^Nic nie zostało utworzone./, visibleText)).toBeVisible();
     await expect(canvas.getByText(/trwa scalanie lub rebase/)).toBeVisible();
   },
 };
@@ -619,10 +626,13 @@ export const CreatedButNotCommitted: Story = {
       name: 'Wynik jeszcze niepotwierdzony: Limity płatności',
     });
     await expect(await canvas.findByRole('alert')).toHaveTextContent(
-      'Pliki specyfikacji powstały, ale nie udało się ich zapisać w Git',
+      'Pliki specyfikacji powstały, ale nie udało się zapisać ich w commicie',
     );
     await expect(
-      canvas.getByText('Pliki specyfikacji powstały, ale nie udało się ich zapisać w Git.'),
+      canvas.getByText(
+        'Pliki specyfikacji powstały, ale nie udało się zapisać ich w commicie.',
+        visibleText,
+      ),
     ).toBeVisible();
     await expect(canvas.queryByText(/Nic nie zostało utworzone/)).toBeNull();
     await expect(canvas.getByRole('button', { name: 'Sprawdź stan operacji' })).toBeEnabled();

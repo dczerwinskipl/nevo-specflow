@@ -21,6 +21,7 @@ export function CreateFailurePanel({
   onRefresh,
   onUseAutomaticName,
   onUseCustomName,
+  showDiagnostics,
 }: {
   failure: CreateFailure & { snapshot: string };
   state: CreateOperationState;
@@ -31,6 +32,8 @@ export function CreateFailurePanel({
   onRefresh: () => void;
   onUseAutomaticName: () => void;
   onUseCustomName: () => void;
+  /** See {@link CreateFailureAlert}; the progress page shows its facts in "Technical details". */
+  showDiagnostics?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const text = useMessage();
@@ -39,7 +42,7 @@ export function CreateFailurePanel({
     status: state.status,
     workspaceOptions,
     typedTitle,
-    language: i18n.language,
+    language: i18n.resolvedLanguage ?? i18n.language,
     t,
     text,
   });
@@ -78,6 +81,7 @@ export function CreateFailurePanel({
       onRefresh={onRefresh}
       onUseAutomaticName={onUseAutomaticName}
       onUseCustomName={onUseCustomName}
+      showDiagnostics={showDiagnostics}
     />
   );
 }

@@ -142,7 +142,6 @@ export function DocumentsExplorer({
         });
       });
   const nodeActions: DocumentNodeActions = {
-    open: select,
     create: (kind, parent) => inline.start(kind, parent),
     importInto: (folder) => void operations.actions.guard(() => importer.current?.choose(folder)),
     rename: (kind, path, id) => inline.start(kind, parentOf(path), { id, path }),

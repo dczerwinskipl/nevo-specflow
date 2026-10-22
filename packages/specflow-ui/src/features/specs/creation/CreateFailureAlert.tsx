@@ -1,7 +1,7 @@
 import { Alert, Button, Collapsible, DescriptionList } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { MessageKey } from '../../../i18n/message';
-import { BranchRef } from '../../../shared/git/BranchRef';
+import { BranchRef } from './BranchRef';
 import type { CreateFailure } from './createFailure';
 import type { CreateOperationStatus } from './createOperationReducer';
 
@@ -101,7 +101,7 @@ export type CopyKind = 'operation' | 'diagnostics';
 /**
  * Footer alert of a failed Create. The form and every choice are kept. An uncertain or
  * recovery-required outcome never offers a fresh create: its single action is the form's own
- * submit button ("Sprawdź wynik" / "Sprawdź stan operacji"), which checks the same operation.
+ * submit button ("Check the result" / "Check operation status"), which checks the same operation.
  */
 export function CreateFailureAlert({
   failure,
@@ -114,10 +114,16 @@ export function CreateFailureAlert({
   onRefresh,
   onUseAutomaticName,
   onUseCustomName,
+  showDiagnostics = true,
 }: {
   failure: CreateFailure;
   /** Facts the client knows about the operation (id, name, place, branch, server step/time). */
   details: readonly OperationDetail[];
+  /**
+   * Show the facts in a collapsible of their own. The progress page has "Technical details" for
+   * that, so it turns this off (the copy action still carries the facts) instead of showing two.
+   */
+  showDiagnostics?: boolean;
   status: CreateOperationStatus | null;
   statusUnreadable: boolean;
   /** The last check never left the browser (no connection); the earlier outcome is unchanged. */
@@ -173,23 +179,25 @@ export function CreateFailureAlert({
               {t('create.errors.copyDiagnostics')}
             </Button>
           </div>
-          <Collapsible className="mt-1 -ml-control-padding-compact">
-            <Collapsible.Trigger>{t('create.errors.diagnostics')}</Collapsible.Trigger>
-            <Collapsible.Content>
-              <DescriptionList layout="inline" className="ml-control-padding-compact pb-2">
-                {details.map(({ id, value }) => (
-                  <DescriptionList.Item key={id}>
-                    <DescriptionList.Term>
-                      {t(`create.operation.detail.${id}`)}
-                    </DescriptionList.Term>
-                    <DescriptionList.Detail>
-                      {id === 'branch' ? <BranchRef name={value} /> : value}
-                    </DescriptionList.Detail>
-                  </DescriptionList.Item>
-                ))}
-              </DescriptionList>
-            </Collapsible.Content>
-          </Collapsible>
+          {showDiagnostics && (
+            <Collapsible className="mt-1 -ml-control-padding-compact">
+              <Collapsible.Trigger>{t('create.errors.diagnostics')}</Collapsible.Trigger>
+              <Collapsible.Content>
+                <DescriptionList layout="inline" className="ml-control-padding-compact pb-2">
+                  {details.map(({ id, value }) => (
+                    <DescriptionList.Item key={id}>
+                      <DescriptionList.Term>
+                        {t(`create.operation.detail.${id}`)}
+                      </DescriptionList.Term>
+                      <DescriptionList.Detail>
+                        {id === 'branch' ? <BranchRef name={value} /> : value}
+                      </DescriptionList.Detail>
+                    </DescriptionList.Item>
+                  ))}
+                </DescriptionList>
+              </Collapsible.Content>
+            </Collapsible>
+          )}
         </>
       )}
       {failure.kind === 'stale' && (

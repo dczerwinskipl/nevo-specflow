@@ -186,11 +186,11 @@ describe('CreateOperationPage', () => {
 
     const title = await heading('Creating specification');
     await waitFor(() => expect(document.activeElement).toBe(title));
-    // One heading carries the state and the name; the full name is its tooltip.
-    expect(title.getAttribute('title')).toBe('Payment limits');
-    expect(screen.queryByText('Payment limits')).toBeNull();
+    // One heading carries the state and the name; no tooltip: the full name is a row of the settings.
+    expect(title.hasAttribute('title')).toBe(false);
     // The settings are the request's own facts; unknown values (folder, base) have no row.
     const settings = within(screen.getByLabelText('Creation settings'));
+    expect(settings.getByText('Payment limits')).toBeTruthy();
     expect(settings.getByText('In a new workspace')).toBeTruthy();
     expect(settings.getByText('feature/limits')).toBeTruthy();
     expect(settings.queryByText('Worktree folder')).toBeNull();
@@ -218,7 +218,12 @@ describe('CreateOperationPage', () => {
       node.closest('li'),
     );
     expect(running?.closest('li')?.getAttribute('aria-current')).toBe('step');
-    expect(screen.getByRole('status', { name: 'Specification creation progress' })).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Specification creation progress' })).toBeTruthy();
+    // ONE polite announcer reads each status change once (the subtitle and checklist are not live).
+    await waitFor(() =>
+      expect(screen.getByRole('status').textContent).toBe('Preparing the workspace'),
+    );
+    expect(screen.getAllByRole('status')).toHaveLength(1);
   });
 
   it('describes an existing workspace by the name and branch the form kept', async () => {
@@ -282,7 +287,7 @@ describe('CreateOperationPage', () => {
     const get = vi.fn().mockRejectedValue(httpError(404, 'CREATE_NOT_FOUND'));
     const { onBackToSpecifications } = renderPage({ post, get });
     expect(await heading('Specification was not created')).toBeTruthy();
-    expect(screen.getByText(/^Nothing was created./)).toBeTruthy();
+    expect(screen.getByText(/^Nothing was created./, { selector: 'p:not(.sr-only)' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Back to specifications' }));
     expect(onBackToSpecifications).toHaveBeenCalledOnce();
   });
@@ -298,7 +303,9 @@ describe('CreateOperationPage', () => {
       const get = vi.fn().mockRejectedValue(httpError(404, 'CREATE_NOT_FOUND'));
       renderPage({ post, get });
       expect(await heading('Specification was not created')).toBeTruthy();
-      expect(screen.getByText(/^Nothing was created./)).toBeTruthy();
+      expect(
+        screen.getByText(/^Nothing was created./, { selector: 'p:not(.sr-only)' }),
+      ).toBeTruthy();
       expect(screen.getByText(new RegExp(copy))).toBeTruthy();
       expect(screen.queryByText(code)).toBeNull();
     },
@@ -321,6 +328,9 @@ describe('CreateOperationPage', () => {
     expect(screen.queryByText(/^Nothing was created./)).toBeNull();
     expect(screen.getByRole('button', { name: 'Check operation status' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+    // ONE disclosure of facts: the page's technical details, not a second "Diagnostic data".
+    expect(screen.queryByRole('button', { name: 'Diagnostic data' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Technical details' })).toBeTruthy();
   });
 
   it('keeps the commit (system behaviour) out of the configuration and in the technical details when Git is enabled', async () => {
@@ -381,8 +391,13 @@ describe('CreateOperationPage', () => {
     // Pending steps are only muted titles: no repeated "waiting" line.
     expect(screen.queryByText('Waiting for previous step')).toBeNull();
     // The subtitle names the running step instead of a generic line.
-    expect(screen.queryByText('Preparing a new workspace and the specification.')).toBeNull();
-    expect(screen.getAllByText('Preparing the workspace')).toHaveLength(2);
+    expect(
+      screen.queryByText('Preparing a new workspace and the specification.', {
+        selector: 'p:not(.sr-only)',
+      }),
+    ).toBeNull();
+    // Subtitle, checklist step and the announcer (the only live region).
+    await waitFor(() => expect(screen.getAllByText('Preparing the workspace')).toHaveLength(3));
     // One spinner: the header mark is static while the active step turns.
     expect(document.querySelectorAll('.animate-spin')).toHaveLength(1);
     expect(screen.queryByText(/uncommitted/)).toBeNull();
@@ -411,7 +426,7 @@ describe('CreateOperationPage', () => {
     const { onOpen } = renderPage({ post, get });
     expect(await heading('Specification created')).toBeTruthy();
     const items = within(
-      screen.getByRole('status', { name: 'Specification creation progress' }),
+      screen.getByRole('group', { name: 'Specification creation progress' }),
     ).getAllByRole('listitem');
     // Every step says "done" in text, not only by its icon.
     expect(items).toHaveLength(4);
@@ -487,7 +502,9 @@ describe('CreateOperationPage', () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(21_000);
     });
-    expect(screen.getByText('Still working — this can take a minute.')).toBeTruthy();
+    expect(
+      screen.getByText('Still working — this can take a minute.', { selector: 'p:not(.sr-only)' }),
+    ).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
   });
 

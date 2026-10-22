@@ -25,13 +25,13 @@ describe('Create error codes', () => {
     [409, 'CREATE_CONFLICT', 'name-conflict'],
     [409, 'BRANCH_ALREADY_EXISTS', 'branch-exists'],
     [409, 'BRANCH_ALREADY_CHECKED_OUT', 'branch-exists'],
-    [409, 'WORKTREE_PATH_CONFLICT', 'branch-exists'],
+    [409, 'WORKTREE_PATH_CONFLICT', 'uncertain'],
     [409, 'SPEC_CONFLICT', 'stale'],
-    [409, 'REGISTRY_CONFLICT', 'stale'],
+    [409, 'REGISTRY_CONFLICT', 'uncertain'],
     [422, 'GIT_DISABLED', 'stale'],
     [422, 'BASE_REF_NOT_FOUND', 'stale'],
     [422, 'GIT_BASE_CONFIG_MISSING', 'stale'],
-    [503, 'GIT_POLICY_INVALID', 'failed'],
+    [503, 'GIT_POLICY_INVALID', 'uncertain'],
     [422, 'BRANCH_PROTECTED', 'branch-protected'],
     [409, 'COMMIT_BLOCKED', 'commit-blocked'],
     [503, 'COMMIT_FAILED', 'recovery-required'],
@@ -41,7 +41,7 @@ describe('Create error codes', () => {
     [503, 'CREATE_JOURNAL_CORRUPT', 'recovery-required'],
     [503, 'REGISTRY_RECOVERY_REQUIRED', 'recovery-required'],
     [503, 'GIT_OPERATION_UNCERTAIN', 'recovery-required'],
-    [503, 'CONTROL_LOCK_BUSY', 'failed'],
+    [503, 'CONTROL_LOCK_BUSY', 'uncertain'],
     [503, 'ENGINE_UNAVAILABLE', 'failed'],
     [503, 'PROJECT_HOME_UNAVAILABLE', 'uncertain'],
     [500, 'SOMETHING_NEW', 'uncertain'],
@@ -84,10 +84,19 @@ describe('Create error codes', () => {
     });
   });
 
-  it('declares every table entry as not leaving state behind, except the journal codes', () => {
+  it('declares an entry as leaving nothing behind only when it is raised before the reservation', () => {
+    // Raised after the operation was reserved too (journal, files or a commit may exist).
+    const mayFollowReservation = [
+      'CONTROL_LOCK_BUSY',
+      'REGISTRY_CONFLICT',
+      'GIT_POLICY_INVALID',
+      'WORKTREE_PATH_CONFLICT',
+    ];
     for (const [code, rule] of Object.entries(createSpecErrorCodes))
       expect(rule.outcome, code).toBe(
-        rule.kind === 'recovery-required' ? 'unknown' : 'not-applied',
+        rule.kind === 'recovery-required' || mayFollowReservation.includes(code)
+          ? 'unknown'
+          : 'not-applied',
       );
   });
 
@@ -145,7 +154,10 @@ describe('toOperationFailure (a failure the inspection endpoint reported)', () =
   it.each<[string, CreateFailure['kind']]>([
     ['BRANCH_ALREADY_EXISTS', 'branch-exists'],
     ['BASE_REF_NOT_FOUND', 'stale'],
-    ['CONTROL_LOCK_BUSY', 'failed'],
+    ['CONTROL_LOCK_BUSY', 'uncertain'],
+    ['REGISTRY_CONFLICT', 'uncertain'],
+    ['GIT_POLICY_INVALID', 'uncertain'],
+    ['WORKTREE_PATH_CONFLICT', 'uncertain'],
     ['GIT_OPERATION_UNCERTAIN', 'recovery-required'],
     ['GIT_OPERATION_FAILED', 'uncertain'],
     ['INTERNAL_ERROR', 'uncertain'],

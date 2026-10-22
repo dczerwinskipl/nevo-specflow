@@ -60,7 +60,7 @@ describe('CreateFailureAlert copy', () => {
     ],
     [
       { kind: 'recovery-required', committed: true },
-      'Pliki specyfikacji powstały, ale nie udało się ich zapisać w Git',
+      'Pliki specyfikacji powstały, ale nie udało się zapisać ich w commicie',
       'Do not create it again',
     ],
   ])('says in plain words what happened to %j', (failure, polish, english) => {

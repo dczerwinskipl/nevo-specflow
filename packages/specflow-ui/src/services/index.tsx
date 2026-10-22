@@ -1,5 +1,5 @@
 import { createRuntimeOperationsApi, type OperationsApi } from '../shared/operations/operationsApi';
-import type { CreationApi } from '../features/specs/creation/api';
+import type { DemoCreationApi } from '../features/specs/creation/api.demo';
 import { createDemoCreationApi } from '../features/specs/creation/api.demo';
 import {
   createProjectCreationApi,
@@ -43,14 +43,12 @@ export interface SpecFlowAppServices {
   readonly documentApi: DocumentApi;
   readonly documentsApi: DocumentsApi;
   readonly sessionsApi: SessionsApi;
-  readonly creationApi: CreationApi;
-  /** Specification creation of a project Runtime (the demo Runtime uses `creationApi`). */
+  readonly demoCreationApi: DemoCreationApi;
+  /** Specification creation of a project Runtime (the demo Runtime uses `demoCreationApi`). */
   readonly projectCreationApi: ProjectCreationApi;
   /** Lists of long-running operations and their live progress (generic, best effort). */
   readonly operationsApi: OperationsApi;
 }
-
-export type SpecFlowServices = SpecFlowAppServices;
 
 export interface SpecFlowServicesOptions {
   readonly http?: HttpClient;
@@ -64,7 +62,7 @@ export interface SpecFlowServicesOptions {
   readonly documentApi?: DocumentApi;
   readonly documentsApi?: DocumentsApi;
   readonly sessionsApi?: SessionsApi;
-  readonly creationApi?: CreationApi;
+  readonly demoCreationApi?: DemoCreationApi;
   readonly projectCreationApi?: ProjectCreationApi;
   readonly operationsApi?: OperationsApi;
 }
@@ -100,7 +98,7 @@ export function createSpecFlowAppServices(
     documentApi: options.documentApi ?? createRuntimeDocumentApi(runtimeHttp),
     documentsApi: options.documentsApi ?? createDemoDocumentsApi(runtimeHttp),
     sessionsApi: options.sessionsApi ?? createDemoSessionsApi(runtimeHttp),
-    creationApi: options.creationApi ?? createDemoCreationApi(runtimeHttp),
+    demoCreationApi: options.demoCreationApi ?? createDemoCreationApi(runtimeHttp),
     projectCreationApi:
       options.projectCreationApi ??
       createProjectCreationApi(

@@ -22,14 +22,20 @@ describe('error views', () => {
 
   it('FeatureUnavailable says the feature is not served, without retry or error tone', () => {
     const html = renderToStaticMarkup(<FeatureUnavailable />);
-    expect(html).toContain('Not available in this Runtime');
+    expect(html).toContain('Not available on this server');
     expect(html).toContain('role="status"');
     expect(html).not.toContain('Retry');
   });
 
+  it('FeatureUnavailable offers the way out only when asked to (a panel keeps its own navigation)', () => {
+    expect(renderToStaticMarkup(<FeatureUnavailable />)).not.toContain('<button');
+    const page = renderToStaticMarkup(<FeatureUnavailable onBack={() => undefined} />);
+    expect(page).toContain('Go back');
+  });
+
   it('FeatureUnavailable is translated', async () => {
     await appI18n.changeLanguage('pl');
-    expect(renderToStaticMarkup(<FeatureUnavailable />)).toContain('Niedostępne w tym Runtime');
+    expect(renderToStaticMarkup(<FeatureUnavailable />)).toContain('Niedostępne na tym serwerze');
   });
 
   it('RouteErrorView shows the copy of an ApiError kind and never its technical message', () => {

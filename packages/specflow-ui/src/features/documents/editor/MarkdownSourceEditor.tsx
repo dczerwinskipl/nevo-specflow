@@ -1,4 +1,4 @@
-import { useEffect, useRef, type MutableRefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, type MutableRefObject } from 'react';
 import { EditorView, keymap, drawSelection } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
@@ -69,10 +69,14 @@ export function MarkdownSourceEditor({
   const emittedValues = useRef(new Set<string>()),
     applyingExternal = useRef(false);
   const callbacks = useRef({ onChange, onSave, onViewStateChange });
-  callbacks.current = { onChange, onSave, onViewStateChange };
+  useLayoutEffect(() => {
+    callbacks.current = { onChange, onSave, onViewStateChange };
+  });
   const anchorRef = useRef(anchor);
   const anchorCallbacks = useRef({ onAnchorChange, readerRef });
-  anchorCallbacks.current = { onAnchorChange, readerRef };
+  useLayoutEffect(() => {
+    anchorCallbacks.current = { onAnchorChange, readerRef };
+  });
   useEffect(() => {
     const initial = anchorRef.current;
     const editor = new EditorView({

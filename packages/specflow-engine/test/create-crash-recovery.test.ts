@@ -9,7 +9,6 @@ import {
   bootstrapProjectHome,
   createSpecification,
   inspectCreateSpecification,
-  openSpecFlowEngine,
   inspectProjectControlLock,
   projectControlLockPath,
   workspaceRegistryPath,

@@ -335,4 +335,45 @@ describe('E2.I01 authorized create-options Engine read model', () => {
       exists: true,
     });
   }, 120000);
+
+  it('degrades instead of failing when the local worktree folder is inside the repository', async () => {
+    const root = await createGitTestProject(
+      'specflow-create-options-inside-',
+      'runtime: {}\ngit:\n  enabled: true\n',
+    );
+    roots.push(root);
+    await mkdir(join(root, '.nevo/local'), { recursive: true });
+    await writeFile(join(root, '.nevo/local/config.yaml'), 'git:\n  worktreesRoot: ./wt\n');
+    const engine = await bootstrapProjectHome(root);
+    const problems: string[] = [];
+    const options = await inspectCreateOptions(engine, {
+      onPolicyProblem: (problem) => problems.push(problem),
+    });
+    expect(options.newWorktree).toEqual({ status: 'unavailable', reason: 'git-policy-invalid' });
+    expect(options.worktreesRoot).toEqual({ path: root + '-worktrees', exists: false });
+    // Existing-workspace Creates do not depend on the worktree folder.
+    expect(options.workspaces[0]).toMatchObject({ selectable: true });
+    expect(problems).toHaveLength(1);
+  }, 120000);
+
+  it('treats an unreadable worktree folder as not existing', async () => {
+    const root = await createGitTestProject(
+      'specflow-create-options-stat-',
+      'runtime: {}\ngit:\n  enabled: true\n',
+    );
+    const custom = root + '-file-not-dir';
+    roots.push(root, custom);
+    await writeFile(custom, 'a file, not a folder');
+    await mkdir(join(root, '.nevo/local'), { recursive: true });
+    await writeFile(
+      join(root, '.nevo/local/config.yaml'),
+      'git:\n  worktreesRoot: ' + JSON.stringify(custom + '/child') + '\n',
+    );
+    const engine = await bootstrapProjectHome(root);
+    // stat answers ENOTDIR, not ENOENT: still "does not exist yet", never an untyped failure.
+    expect((await inspectCreateOptions(engine)).worktreesRoot).toEqual({
+      path: custom + '/child',
+      exists: false,
+    });
+  }, 120000);
 });

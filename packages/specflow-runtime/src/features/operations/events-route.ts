@@ -6,6 +6,8 @@ import {
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { ServerResponse } from 'node:http';
 
+import { Type } from 'typebox';
+
 import type { FastifyInstance, FastifyRequest, RawServerBase } from 'fastify';
 
 import {
@@ -86,6 +88,10 @@ export function registerOperationEventsRoute<RawServer extends RawServerBase>(
         response: {
           401: AuthenticationRequiredErrorResponseSchema,
           403: AuthorizationForbiddenErrorResponseSchema,
+          429: Type.Object(
+            { error: Type.String(), code: Type.String() },
+            { additionalProperties: false },
+          ),
         },
       },
     },

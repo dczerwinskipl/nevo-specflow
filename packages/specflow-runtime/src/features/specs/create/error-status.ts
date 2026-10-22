@@ -1,10 +1,15 @@
-import type {
+import {
   CreateOperationError,
-  GitCapabilityErrorCode,
-  ProjectControlLockErrorCode,
-  ProjectHomeErrorCode,
-  SpecificationErrorCode,
-  WorkspaceRegistryErrorCode,
+  GitCapabilityError,
+  ProjectControlLockError,
+  ProjectHomeError,
+  SpecificationError,
+  WorkspaceRegistryError,
+  type GitCapabilityErrorCode,
+  type ProjectControlLockErrorCode,
+  type ProjectHomeErrorCode,
+  type SpecificationErrorCode,
+  type WorkspaceRegistryErrorCode,
 } from '@nevo/specflow-engine';
 
 export type CreateErrorCode =
@@ -72,4 +77,23 @@ export function statusForCreateError(code: CreateErrorCode): CreateHttpStatus {
       return exhaustive;
     }
   }
+}
+
+/**
+ * Only the Engine's public, typed failures are safe transport errors. A Node filesystem error such
+ * as EACCES is not a client validation failure and must never be misreported as HTTP 4xx (it falls
+ * through to the Runtime error handler, which answers a generic 500).
+ */
+export function createErrorCode(error: unknown): CreateErrorCode | undefined {
+  if (
+    error instanceof CreateOperationError ||
+    error instanceof ProjectControlLockError ||
+    error instanceof GitCapabilityError ||
+    error instanceof SpecificationError ||
+    error instanceof WorkspaceRegistryError ||
+    error instanceof ProjectHomeError
+  ) {
+    return error.code;
+  }
+  return undefined;
 }

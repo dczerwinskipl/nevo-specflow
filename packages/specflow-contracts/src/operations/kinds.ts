@@ -47,12 +47,6 @@ export const OPERATION_KINDS = {
 } as const;
 export type OperationKind = keyof typeof OPERATION_KINDS;
 
-export const OPERATION_KIND_IDS = Object.keys(OPERATION_KINDS) as readonly OperationKind[];
-
-export function isOperationKind(value: string): value is OperationKind {
-  return Object.hasOwn(OPERATION_KINDS, value);
-}
-
 /** Strict per-kind event schema, e.g. for contract tests of fixtures. */
 export function operationProgressEventSchema<TKind extends OperationKind>(kind: TKind) {
   return OPERATION_KINDS[kind].eventSchema;

@@ -52,6 +52,7 @@ export {
 } from './version-control/commits/branch-patterns';
 
 export { GitCapabilityError, type GitCapabilityErrorCode } from './git/errors';
+export { inspectLocalBranches, type LocalBranches } from './version-control/git/branches';
 
 export {
   discoverSpecifications,

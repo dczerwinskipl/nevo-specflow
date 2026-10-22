@@ -11,7 +11,7 @@ import {
   chooseIntegrationTargetBranch,
   chooseWorktreesRoot,
   expandHomeFolder,
-} from '../src/init/cli';
+} from '../src/init/prompts';
 
 function git(root: string, ...args: string[]): void {
   execFileSync('git', args, { cwd: root, stdio: 'ignore' });

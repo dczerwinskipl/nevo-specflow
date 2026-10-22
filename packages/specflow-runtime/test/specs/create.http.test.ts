@@ -428,7 +428,7 @@ describe('E2.I01 — authorized read-only Create options', () => {
   it(
     'returns schema-validated policy without Git facts or mutation when Git is disabled',
     async () => {
-      const { root, engine } = await fixture();
+      const { engine } = await fixture();
       const auth = authenticatedStore();
       const app = await createRuntimeApp(
         {

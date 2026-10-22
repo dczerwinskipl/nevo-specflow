@@ -1,21 +1,7 @@
-import { randomUUID } from 'node:crypto';
-
 import {
-  CreateOperationError,
-  GitCapabilityError,
-  ProjectControlLockError,
-  ProjectHomeError,
-  SpecificationError,
-  WorkspaceRegistryError,
-  createSpecificationFromRequest,
   inspectCreateOptions,
   inspectPublicCreateOperation,
   readPublicCreateOperationRow,
-  projectCreatedSpecification,
-  readRegistrySnapshot,
-  willCommitCreatedScaffold,
-  type CreateSpecificationRequest,
-  type CreateStageObservation,
   type SpecFlowEngine,
 } from '@nevo/specflow-engine';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
@@ -43,9 +29,9 @@ import {
   type OperationEventsStreamOptions,
   type OperationProgressRegistry,
 } from '../../operations';
-import { statusForCreateError, type CreateErrorCode } from './error-status';
-import { startCreateProgress, type CreateProgress } from './progress';
+import { createErrorCode, statusForCreateError } from './error-status';
 import { prefersRespondAsync } from './respond-async';
+import { createOperationPath, runCreate } from './run-create';
 
 const DEFAULT_CLOSE_GRACE_MS = 30_000;
 
@@ -75,6 +61,11 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
   // Creates are not bound to their request, so shutdown has to wait for them: a Create killed
   // mid-stage leaves a non terminal journal that only an operator can recover.
   const inFlight = new Set<Promise<unknown>>();
+  const track = (finished: Promise<unknown>): void => {
+    inFlight.add(finished);
+    const forget = () => inFlight.delete(finished);
+    finished.then(forget, forget);
+  };
   const closeGraceMs = options.closeGraceMs ?? DEFAULT_CLOSE_GRACE_MS;
   app.addHook('onClose', async () => {
     if (inFlight.size === 0) return;
@@ -120,16 +111,16 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         });
       }
       try {
-        const { commits, ...options } = await inspectCreateOptions(engine, {
+        const { commits, ...read } = await inspectCreateOptions(engine, {
           // An invalid Git section degrades the answer (reason `git-policy-invalid`); the problem
           // goes to the server log only, never into the response.
           onPolicyProblem: (problem) =>
             request.log.warn({ problem }, 'Invalid Git policy: create-options served without Git'),
         });
         return reply.code(200).send({
-          ...options,
-          workspaces: [...options.workspaces],
-          baseRefs: [...options.baseRefs],
+          ...read,
+          workspaces: [...read.workspaces],
+          baseRefs: [...read.baseRefs],
           // Present exactly when Git is enabled (the Engine then commits the scaffold).
           ...(commits
             ? {
@@ -143,7 +134,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
             : {}),
         });
       } catch (error) {
-        const code = errorCode(error);
+        const code = createErrorCode(error);
         if (!code) throw error;
         return reply.code(statusForCreateError(code)).send({ error: code, code });
       }
@@ -216,7 +207,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
           ...(derived.status === 'recovery-required' && derived.code ? { code: derived.code } : {}),
         });
       } catch (error) {
-        const code = errorCode(error);
+        const code = createErrorCode(error);
         if (!code) throw error;
         return reply.code(statusForCreateError(code)).send({ code, error: code });
       }
@@ -270,155 +261,33 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         });
       }
 
-      const body = request.body;
-      const respondAsync = prefersRespondAsync(request.headers.prefer);
-      // Async mode needs an id to answer with a Location; the client may have chosen its own.
-      const operationId = body.operationId ?? (respondAsync ? randomUUID() : undefined);
-
-      // Best-effort progress for the operation stream; never affects the outcome.
-      let progress: CreateProgress | undefined;
       try {
-        if (options.progress && operationId) {
-          progress = startCreateProgress(
-            options.progress,
-            operationId,
-            body.target?.kind === 'new-worktree' ? 'new-worktree' : 'existing',
-            await willCommitCreatedScaffold(engine),
-          );
-        }
-
-        // The work is NOT bound to this request: Node does not cancel a handler when the client
-        // disconnects and the Engine takes no request signal, so the journal always runs to its
-        // outcome. The promise below is the single owner of that outcome (progress included).
-        let accept: () => void = () => undefined;
-        const accepted = new Promise<'accepted'>((resolve) => {
-          accept = () => resolve('accepted');
+        const outcome = await runCreate({
+          engine,
+          body: request.body,
+          respondAsync: prefersRespondAsync(request.headers.prefer),
+          progress: options.progress,
+          track,
+          onDetachedFailure: (error) => request.log.error({ err: error }, 'Detached Create failed'),
         });
-        const finished = (async () => {
-          try {
-            // Resolve default from the verified Project Home (not the HTTP server
-            // process cwd or a user-provided, unverified root).
-            const target = await resolveCreateTarget(engine, body.target);
-            const result = await createSpecificationFromRequest(
-              engine,
-              {
-                operationId,
-                title: body.title,
-                goal: body.goal,
-                ...(body.slug !== undefined ? { slug: body.slug } : {}),
-                target,
-              },
-              {
-                onStage: (observation) => {
-                  progress?.onStage(observation);
-                  if (respondAsync && isAcceptedObservation(observation)) accept();
-                },
-              },
-            );
-            const created = projectCreatedSpecification(result);
-            progress?.complete(created);
-            return created;
-          } catch (error) {
-            progress?.fail(errorCode(error));
-            throw error;
-          }
-        })();
-        inFlight.add(finished);
-        void finished.then(
-          () => inFlight.delete(finished),
-          () => inFlight.delete(finished),
-        );
-
-        if (respondAsync && operationId) {
-          // A failure after acceptance is reported by progress/inspection, never lost unhandled.
-          finished.catch((error: unknown) => {
-            if (!errorCode(error)) request.log.error({ err: error }, 'Detached Create failed');
-          });
-          const first = await Promise.race([finished, accepted]);
-          if (first === 'accepted') {
-            return reply
-              .code(202)
-              .header('Location', operationPath(operationId))
-              .header('Preference-Applied', CREATE_RESPOND_ASYNC_PREFERENCE)
-              .send({ operationId, kind: 'specification-create', status: 'in-progress' });
-          }
-          return reply.code(201).send(first);
+        if (outcome.kind === 'accepted') {
+          return reply
+            .code(202)
+            .header('Location', createOperationPath(outcome.operationId))
+            .header('Preference-Applied', CREATE_RESPOND_ASYNC_PREFERENCE)
+            .send({
+              operationId: outcome.operationId,
+              kind: 'specification-create',
+              status: 'in-progress',
+            });
         }
-        return reply.code(201).send(await finished);
+        return reply.code(201).send(outcome.created);
       } catch (error) {
-        const code = errorCode(error);
+        const code = createErrorCode(error);
         if (!code) throw error;
-
-        const status = statusForCreateError(code);
-        return reply.code(status).send({ error: code, code });
+        return reply.code(statusForCreateError(code)).send({ error: code, code });
       }
     },
   );
   done();
 };
-
-const operationPath = (operationId: string) => `/api/specs/create/operations/${operationId}`;
-
-/**
- * When a respond-async request is answered 202: the operation has been validated and is past its
- * reservation (a fresh run has left `reserved`, so Git availability and the reserved plan were
- * checked), or it is a retry of work that is still running. A finished or broken journal is
- * answered with its real outcome instead.
- */
-function isAcceptedObservation(observation: CreateStageObservation): boolean {
-  if (observation.stage === 'completed' || observation.stage === 'recovery-required') return false;
-  return observation.replayed === true || observation.stage !== 'reserved';
-}
-
-async function resolveCreateTarget(
-  engine: SpecFlowEngine,
-  target:
-    | { readonly kind: 'existing'; readonly workspaceId: string }
-    | {
-        readonly kind: 'new-worktree';
-        readonly baseRef?: string;
-        readonly branch?: string;
-        readonly integrationTargetWorkspaceId?: string;
-      }
-    | undefined,
-): Promise<CreateSpecificationRequest['target']> {
-  switch (target?.kind) {
-    case undefined:
-      return {
-        kind: 'existing',
-        workspaceId: (await readRegistrySnapshot(engine)).primaryWorkspaceId,
-      };
-    case 'existing':
-      return { kind: 'existing', workspaceId: target.workspaceId };
-    case 'new-worktree':
-      return {
-        kind: 'new-worktree',
-        ...(target.baseRef !== undefined ? { baseRef: target.baseRef } : {}),
-        ...(target.branch !== undefined ? { branch: target.branch } : {}),
-        ...(target.integrationTargetWorkspaceId !== undefined
-          ? { integrationTargetWorkspaceId: target.integrationTargetWorkspaceId }
-          : {}),
-      };
-    default: {
-      const exhaustive: never = target;
-      return exhaustive;
-    }
-  }
-}
-
-function errorCode(error: unknown): CreateErrorCode | undefined {
-  // Only Engine's public, typed failures are safe transport errors. A Node
-  // filesystem error such as EACCES is not a client validation failure and
-  // must never be misreported as HTTP 422.
-  if (
-    error instanceof CreateOperationError ||
-    error instanceof ProjectControlLockError ||
-    error instanceof GitCapabilityError ||
-    error instanceof SpecificationError ||
-    error instanceof WorkspaceRegistryError ||
-    error instanceof ProjectHomeError
-  ) {
-    return error.code;
-  }
-  return undefined;
-}

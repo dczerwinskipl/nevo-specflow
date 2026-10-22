@@ -97,9 +97,9 @@ describe('pathological patterns stay linear', () => {
     ['*/'.repeat(25) + 'x', 'a/'.repeat(100)],
     ['[a-z]*'.repeat(30) + '?9', 'abc'.repeat(70)],
   ])('%s finishes within milliseconds and does not match', (pattern, branch) => {
-    const started = performance.now();
+    const started = Date.now();
     expect(matchesBranchPattern(pattern, branch)).toBe(false);
-    expect(performance.now() - started).toBeLessThan(50);
+    expect(Date.now() - started).toBeLessThan(50);
   });
 
   it('still matches after many wildcards', () => {

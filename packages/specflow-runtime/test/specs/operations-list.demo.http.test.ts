@@ -112,8 +112,15 @@ describe('GET /api/demo/specifications/operations', () => {
       await fetch(listUrl(url, `?${scenario}&status=failed`))
     ).json()) as OperationListResponse;
     expect(failed.items.map((item) => item.status)).toEqual(['failed']);
-    expect((await fetch(listUrl(url, '?status=bogus'))).status).toBe(400);
-    expect((await fetch(listUrl(url, '?limit=0'))).status).toBe(400);
+    // The same 400 body as the real list route.
+    for (const query of ['?status=bogus', '?limit=0']) {
+      const invalid = await fetch(listUrl(url, query));
+      expect(invalid.status).toBe(400);
+      expect(await invalid.json()).toEqual({
+        error: 'OPERATION_LIST_QUERY_INVALID',
+        code: 'OPERATION_LIST_QUERY_INVALID',
+      });
+    }
     expect((await fetch(listUrl(url, '?demoScenario=nope'))).status).toBe(400);
   });
 

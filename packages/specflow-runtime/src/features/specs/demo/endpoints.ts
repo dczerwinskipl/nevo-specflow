@@ -33,6 +33,7 @@ import { parseScenarios, type DemoScenario } from './scenarios';
 import type { DemoSpecs } from './operations';
 import {
   matchesEtag,
+  OPERATION_LIST_QUERY_INVALID_CODE,
   OperationListQueryStringSchema,
   operationListEtag,
   parseOperationListQuery,
@@ -82,7 +83,7 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
     return parseScenarios(raw);
   };
   const invalidScenario = {
-    error: 'Nieznany scenariusz demo.',
+    error: 'DEMO_INVALID_SCENARIO',
     code: 'DEMO_INVALID_SCENARIO' as const,
   };
   typed.get(
@@ -145,7 +146,14 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
       });
       const active = scenarios(request);
       const query = parseOperationListQuery(request.query);
-      if (!active || !query) return reply.code(400).send(invalidScenario);
+      if (!active) return reply.code(400).send(invalidScenario);
+      // The same 400 body as the real list route (shared parser and code).
+      if (!query) {
+        return reply.code(400).send({
+          error: OPERATION_LIST_QUERY_INVALID_CODE,
+          code: OPERATION_LIST_QUERY_INVALID_CODE,
+        });
+      }
       if (active.includes('forbidden')) return reply.code(403).send({ error: 'forbidden' });
       const { authz } = request;
       const list = buildDemoOperationList({

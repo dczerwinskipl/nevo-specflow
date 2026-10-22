@@ -7,12 +7,12 @@ import { parseCommitsPolicy } from '@nevo/specflow-engine';
 import type { RuntimeSetupUi } from '@nevo/specflow-runtime';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { createProjectInitCommand } from '../src/init/cli';
 import {
   chooseProtectedBranches,
-  createProjectInitCommand,
   integrationTargetProtectedNote,
   protectedBranchPatternProblem,
-} from '../src/init/cli';
+} from '../src/init/prompts';
 
 function git(root: string, ...args: string[]): void {
   execFileSync('git', args, { cwd: root, stdio: 'ignore' });

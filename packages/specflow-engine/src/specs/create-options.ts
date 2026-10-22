@@ -1,5 +1,5 @@
 import { stat } from 'node:fs/promises';
-import { basename, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 
 import type { SpecFlowEngine } from '../application';
 import { GitCapabilityError } from '../git/errors';
@@ -271,22 +271,26 @@ async function inspectCreateOptionsInRequest(
         : {}),
     };
   });
+  // A local `git.worktreesRoot` inside the repository is an invalid Git setting like any other:
+  // the read degrades (new worktrees unavailable) instead of failing as a whole.
+  const worktreesRoot = await describeWorktreesRoot(engine, policy, options);
   return {
     primaryWorkspaceId: registry.primaryWorkspaceId,
     workspaces: integrationChoices,
-    newWorktree: policyInvalid
-      ? { status: 'unavailable', reason: 'git-policy-invalid' }
-      : !gitEnabled
-        ? { status: 'disabled', reason: 'git-disabled' }
-        : gitReachable
-          ? {
-              status: 'available',
-              ...(branchPatternIsProtected(policy) ? { branchProtected: true as const } : {}),
-            }
-          : { status: 'unavailable', reason: 'git-unavailable' },
+    newWorktree:
+      policyInvalid || worktreesRoot.invalid
+        ? { status: 'unavailable', reason: 'git-policy-invalid' }
+        : !gitEnabled
+          ? { status: 'disabled', reason: 'git-disabled' }
+          : gitReachable
+            ? {
+                status: 'available',
+                ...(branchPatternIsProtected(policy) ? { branchProtected: true as const } : {}),
+              }
+            : { status: 'unavailable', reason: 'git-unavailable' },
     defaultBaseRef: policy.baseRef,
     branchPattern: policy.branchPattern,
-    worktreesRoot: await describeWorktreesRoot(engine, policy),
+    worktreesRoot: worktreesRoot.value,
     ...(policy.integrationTargetBranch !== undefined
       ? { integrationTargetBranch: policy.integrationTargetBranch }
       : {}),
@@ -336,14 +340,30 @@ function branchPatternIsProtected(
 async function describeWorktreesRoot(
   engine: SpecFlowEngine,
   policy: Awaited<ReturnType<typeof readProjectGitPolicy>>['policy'],
-): Promise<{ readonly path: string; readonly exists: boolean }> {
-  const path = effectiveWorktreesRoot(engine.context, policy);
-  const found = await stat(path).catch((error: unknown) => {
-    if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'ENOENT')
-      return undefined;
-    throw error;
-  });
-  return { path, exists: found?.isDirectory() === true };
+  options: InspectCreateOptionsOptions,
+): Promise<{
+  readonly value: { readonly path: string; readonly exists: boolean };
+  readonly invalid: boolean;
+}> {
+  let path: string;
+  try {
+    path = effectiveWorktreesRoot(engine.context, policy);
+  } catch (error) {
+    if (!(error instanceof GitCapabilityError) || error.code !== 'GIT_POLICY_INVALID') throw error;
+    options.onPolicyProblem?.(error.message);
+    // The configured value is unusable: show where worktrees would go by default.
+    const home = engine.context.project.homeRoot;
+    return {
+      value: {
+        path: join(dirname(home), basename(home) + '-worktrees'),
+        exists: false,
+      },
+      invalid: true,
+    };
+  }
+  // Anything but a readable directory (missing, no permission, ...) is "does not exist yet".
+  const found = await stat(path).catch(() => undefined);
+  return { value: { path, exists: found?.isDirectory() === true }, invalid: false };
 }
 
 function samePath(left: string, right: string): boolean {

@@ -21,8 +21,8 @@ export interface StoredCreateOperation {
  * was sent, and it is not in the URL. `failure` is the refusal the form should flag at its field.
  */
 export interface CreateDraft {
-  /** The operation this draft was submitted as: the page shows it only for that operation. */
-  readonly operationId?: string;
+  /** The operation this draft was submitted as: it is stored, and shown, only under that id. */
+  readonly operationId: string;
   readonly title: string;
   readonly goal: string;
   readonly choice: WorkspaceChoice;
@@ -31,13 +31,17 @@ export interface CreateDraft {
   readonly failure?: CreateFailure;
 }
 
+/**
+ * The ledger of this tab, one entry (and one draft) per operation id: a second operation never
+ * overwrites the first one's resume ability. Entries are only ever read by id, never "the latest".
+ */
 export interface CreateOperationStorage {
-  load(): StoredCreateOperation | undefined;
+  load(operationId: string): StoredCreateOperation | undefined;
   save(operation: StoredCreateOperation): void;
-  clear(): void;
-  loadDraft(): CreateDraft | undefined;
+  clear(operationId: string): void;
+  loadDraft(operationId: string): CreateDraft | undefined;
   saveDraft(draft: CreateDraft): void;
-  clearDraft(): void;
+  clearDraft(operationId: string): void;
 }
 
 const keyPrefix = 'specflow.create.operation.v1:';
@@ -48,7 +52,12 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 /** A draft only seeds form fields, so a damaged one is dropped; the choice is merged onto defaults. */
 function toDraft(value: unknown): CreateDraft | undefined {
-  if (!isRecord(value) || typeof value.title !== 'string' || typeof value.goal !== 'string')
+  if (
+    !isRecord(value) ||
+    typeof value.operationId !== 'string' ||
+    typeof value.title !== 'string' ||
+    typeof value.goal !== 'string'
+  )
     return undefined;
   if (!isRecord(value.choice)) return undefined;
   const failure =
@@ -57,7 +66,7 @@ function toDraft(value: unknown): CreateDraft | undefined {
       : undefined;
   const facts = toCreateFacts(value.facts);
   return {
-    ...(typeof value.operationId === 'string' ? { operationId: value.operationId } : {}),
+    operationId: value.operationId,
     title: value.title,
     goal: value.goal,
     choice: { ...initialWorkspaceChoice, ...(value.choice as Partial<WorkspaceChoice>) },
@@ -83,8 +92,8 @@ function isStored(value: unknown): value is StoredCreateOperation {
 }
 
 /**
- * Keeps the unconfirmed Create operation in `sessionStorage`, keyed by the signed-in identity, so a
- * reload (or an accidental close of the tab) resumes watching the same operation instead of
+ * Keeps the unconfirmed Create operation in `sessionStorage`, keyed by the signed-in identity and
+ * the operation id, so a reload (or an accidental close of the tab) resumes watching the same operation instead of
  * forgetting it and risking a second branch. It survives only until the tab closes by design.
  * Storage may be unavailable or full: persistence is then silently skipped.
  */
@@ -92,16 +101,23 @@ export function createSessionOperationStorage(
   identity: string,
   storage: StorageLike | undefined,
 ): CreateOperationStorage {
-  const key = `${keyPrefix}${identity}`;
-  const draftKey = `${draftKeyPrefix}${identity}`;
+  const key = (operationId: string) => `${keyPrefix}${identity}:${operationId}`;
+  const draftKey = (operationId: string) => `${draftKeyPrefix}${identity}:${operationId}`;
+  const remove = (name: string) => {
+    try {
+      storage?.removeItem(name);
+    } catch {
+      // Persistence is best effort.
+    }
+  };
   return {
-    load() {
+    load(operationId) {
       try {
-        const raw = storage?.getItem(key);
+        const raw = storage?.getItem(key(operationId));
         if (!raw) return undefined;
         const parsed: unknown = JSON.parse(raw);
-        if (isStored(parsed)) return parsed;
-        storage?.removeItem(key);
+        if (isStored(parsed) && parsed.request.operationId === operationId) return parsed;
+        remove(key(operationId));
       } catch {
         // Unreadable entry: treated as absent.
       }
@@ -109,43 +125,32 @@ export function createSessionOperationStorage(
     },
     save(operation) {
       try {
-        storage?.setItem(key, JSON.stringify(operation));
+        storage?.setItem(key(operation.request.operationId), JSON.stringify(operation));
       } catch {
         // Persistence is best effort.
       }
     },
-    clear() {
+    clear: (operationId) => remove(key(operationId)),
+    loadDraft(operationId) {
       try {
-        storage?.removeItem(key);
-      } catch {
-        // Persistence is best effort.
-      }
-    },
-    loadDraft() {
-      try {
-        const raw = storage?.getItem(draftKey);
+        const raw = storage?.getItem(draftKey(operationId));
         if (!raw) return undefined;
         const draft = toDraft(JSON.parse(raw));
-        if (!draft) storage?.removeItem(draftKey);
-        return draft;
+        if (draft?.operationId === operationId) return draft;
+        remove(draftKey(operationId));
       } catch {
-        return undefined;
+        // Unreadable draft: treated as absent.
       }
+      return undefined;
     },
     saveDraft(draft) {
       try {
-        storage?.setItem(draftKey, JSON.stringify(draft));
+        storage?.setItem(draftKey(draft.operationId), JSON.stringify(draft));
       } catch {
         // Persistence is best effort.
       }
     },
-    clearDraft() {
-      try {
-        storage?.removeItem(draftKey);
-      } catch {
-        // Persistence is best effort.
-      }
-    },
+    clearDraft: (operationId) => remove(draftKey(operationId)),
   };
 }
 

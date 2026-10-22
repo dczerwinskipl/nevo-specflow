@@ -15,6 +15,7 @@ function memoryStorage(initial: Record<string, string> = {}) {
   };
 }
 
+const id = '11111111-1111-4111-8111-111111111111';
 const operation: StoredCreateOperation = {
   request: { title: 'Title', operationId: '11111111-1111-4111-8111-111111111111' },
   startedAt: 1_000,
@@ -25,18 +26,32 @@ describe('create operation storage', () => {
     const backing = memoryStorage();
     const mine = createSessionOperationStorage('user:a', backing);
     mine.save(operation);
-    expect(mine.load()).toEqual(operation);
-    expect(createSessionOperationStorage('user:b', backing).load()).toBeUndefined();
-    mine.clear();
-    expect(mine.load()).toBeUndefined();
+    expect(mine.load(id)).toEqual(operation);
+    expect(createSessionOperationStorage('user:b', backing).load(id)).toBeUndefined();
+    mine.clear(id);
+    expect(mine.load(id)).toBeUndefined();
+  });
+
+  it('keeps one entry per operation: saving a second leaves the first resumable', () => {
+    const mine = createSessionOperationStorage('user:a', memoryStorage());
+    const other: StoredCreateOperation = {
+      request: { title: 'Other', operationId: '22222222-2222-4222-8222-222222222222' },
+      startedAt: 2,
+    };
+    mine.save(operation);
+    mine.save(other);
+    expect(mine.load(id)).toEqual(operation);
+    mine.clear(other.request.operationId);
+    expect(mine.load(id)).toEqual(operation);
+    expect(mine.load(other.request.operationId)).toBeUndefined();
   });
 
   it('drops an entry of an unexpected shape instead of resuming it', () => {
     const backing = memoryStorage({
-      'specflow.create.operation.v1:user:a': JSON.stringify({ request: { title: 5 } }),
+      [`specflow.create.operation.v1:user:a:${id}`]: JSON.stringify({ request: { title: 5 } }),
     });
     const storage = createSessionOperationStorage('user:a', backing);
-    expect(storage.load()).toBeUndefined();
+    expect(storage.load(id)).toBeUndefined();
     expect(backing.values.size).toBe(0);
   });
 
@@ -57,10 +72,10 @@ describe('create operation storage', () => {
     ],
   ])('drops an entry with %s instead of POSTing it again', (_name, request) => {
     const backing = memoryStorage({
-      'specflow.create.operation.v1:user:a': JSON.stringify({ request, startedAt: 1 }),
+      [`specflow.create.operation.v1:user:a:${id}`]: JSON.stringify({ request, startedAt: 1 }),
     });
     const storage = createSessionOperationStorage('user:a', backing);
-    expect(storage.load()).toBeUndefined();
+    expect(storage.load(id)).toBeUndefined();
     expect(backing.values.size).toBe(0);
   });
 
@@ -69,48 +84,53 @@ describe('create operation storage', () => {
     const mine = createSessionOperationStorage('user:a', backing);
     mine.save(operation);
     mine.saveDraft({
+      operationId: id,
       title: 'Title',
       goal: 'Goal',
       choice: { ...initialWorkspaceChoice, tile: 'new' },
       failure: { kind: 'name-conflict' },
     });
-    mine.clear();
-    expect(mine.loadDraft()).toMatchObject({
+    mine.clear(id);
+    expect(mine.loadDraft(id)).toMatchObject({
       title: 'Title',
       goal: 'Goal',
       choice: { tile: 'new' },
       failure: { kind: 'name-conflict' },
     });
-    expect(createSessionOperationStorage('user:b', backing).loadDraft()).toBeUndefined();
-    mine.clearDraft();
-    expect(mine.loadDraft()).toBeUndefined();
+    expect(createSessionOperationStorage('user:b', backing).loadDraft(id)).toBeUndefined();
+    mine.clearDraft(id);
+    expect(mine.loadDraft(id)).toBeUndefined();
   });
 
   it('completes an older draft choice with the defaults and drops a damaged draft', () => {
     const backing = memoryStorage({
-      'specflow.create.draft.v1:user:a': JSON.stringify({
+      [`specflow.create.draft.v1:user:a:${id}`]: JSON.stringify({
+        operationId: id,
         title: 'T',
         goal: '',
         choice: { tile: 'main' },
       }),
     });
     const storage = createSessionOperationStorage('user:a', backing);
-    expect(storage.loadDraft()?.choice).toEqual({ ...initialWorkspaceChoice, tile: 'main' });
-    backing.values.set('specflow.create.draft.v1:user:a', JSON.stringify({ title: 5 }));
-    expect(storage.loadDraft()).toBeUndefined();
+    expect(storage.loadDraft(id)?.choice).toEqual({ ...initialWorkspaceChoice, tile: 'main' });
+    backing.values.set(
+      `specflow.create.draft.v1:user:a:${id}`,
+      JSON.stringify({ operationId: id, title: 5 }),
+    );
+    expect(storage.loadDraft(id)).toBeUndefined();
     expect(backing.values.size).toBe(0);
   });
 
   it('treats unreadable JSON as absent', () => {
-    const backing = memoryStorage({ 'specflow.create.operation.v1:user:a': '{nope' });
-    expect(createSessionOperationStorage('user:a', backing).load()).toBeUndefined();
+    const backing = memoryStorage({ [`specflow.create.operation.v1:user:a:${id}`]: '{nope' });
+    expect(createSessionOperationStorage('user:a', backing).load(id)).toBeUndefined();
   });
 
   it('never throws when storage is missing or refuses writes', () => {
     const none = createSessionOperationStorage('user:a', undefined);
     none.save(operation);
-    none.clear();
-    expect(none.load()).toBeUndefined();
+    none.clear(id);
+    expect(none.load(id)).toBeUndefined();
     const full = createSessionOperationStorage('user:a', {
       getItem: () => null,
       setItem: () => {
@@ -122,7 +142,7 @@ describe('create operation storage', () => {
     });
     expect(() => {
       full.save(operation);
-      full.clear();
+      full.clear(id);
     }).not.toThrow();
   });
 });

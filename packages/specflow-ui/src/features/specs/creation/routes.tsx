@@ -11,6 +11,9 @@ export const createSpecificationRoute = createRoute({
   path: '/specs/new',
   validateSearch: (search: Record<string, unknown>) => ({
     collection: parseSpecificationCollection(search),
+    // Set only by "Back to form" of an operation's page: the draft of that operation is restored.
+    // A plain "New specification" never carries it, so it always opens an empty form.
+    ...(typeof search.draft === 'string' && search.draft ? { draft: search.draft } : {}),
   }),
   component: NewSpecification,
 });
@@ -36,16 +39,17 @@ export const newSessionRoute = createRoute({
 function NewSpecification() {
   const navigate = createSpecificationRoute.useNavigate();
   const collection = useApplicationCollection();
+  const { draft } = createSpecificationRoute.useSearch();
   return (
     <AppWorkspaceProvider>
       <CreateSpecificationScreen
+        restoreDraftOf={draft}
         onBack={() => void navigate({ to: '/', search: { collection } })}
-        onProjectStarted={(operationId, { replace }) =>
+        onProjectStarted={(operationId) =>
           void navigate({
             to: '/specs/new/creating/$operationId',
             params: { operationId },
             search: { collection },
-            replace,
           })
         }
         onCreated={(specId, documentId) => {
@@ -89,7 +93,12 @@ function CreatingSpecification() {
             replace: true,
           })
         }
-        onBackToForm={() => void navigate({ to: '/specs/new', search: { collection } })}
+        onBackToForm={(draft) =>
+          void navigate({
+            to: '/specs/new',
+            search: draft ? { collection, draft } : { collection },
+          })
+        }
         onBackToSpecifications={() => void navigate({ to: '/', search: { collection } })}
       />
     </AppWorkspaceProvider>

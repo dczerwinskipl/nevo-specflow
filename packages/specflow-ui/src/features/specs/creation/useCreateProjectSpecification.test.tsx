@@ -51,8 +51,16 @@ const submission = (overrides: Partial<ProjectSubmission> = {}): ProjectSubmissi
   ...overrides,
 });
 
-const storageKey = (identity = 'unknown') =>
-  createSessionOperationStorage(identity, sessionStorage);
+/** The ledger entries of this tab, whatever their operation id (the key carries the id). */
+const ledgerEntries = () =>
+  Object.keys(sessionStorage)
+    .filter((key) => key.startsWith('specflow.create.operation.v1:'))
+    .map((key) => JSON.parse(sessionStorage.getItem(key) ?? 'null') as StoredCreateOperation);
+const storageKey = () => ({
+  load: () => ledgerEntries()[0],
+  save: (operation: StoredCreateOperation) =>
+    createSessionOperationStorage('unknown', sessionStorage).save(operation),
+});
 
 function setup(
   http: { post?: ReturnType<typeof vi.fn>; get?: ReturnType<typeof vi.fn> },
@@ -394,6 +402,31 @@ describe('useCreateProjectSpecification', () => {
     expect(post).not.toHaveBeenCalled();
     expect(onCreated).toHaveBeenCalledWith(created);
     expect(storageKey().load()).toBeUndefined();
+  });
+
+  it('concluding one operation clears only its own ledger entry, never that of another operation', async () => {
+    const other: StoredCreateOperation = {
+      request: { title: 'Other', operationId: '22222222-2222-4222-8222-222222222222' },
+      startedAt: Date.now(),
+    };
+    const own: StoredCreateOperation = {
+      request: { title: 'Title', operationId: created.operationId },
+      startedAt: Date.now(),
+    };
+    storageKey().save(other);
+    storageKey().save(own);
+    const { onCreated } = setup(
+      { post: vi.fn(), get: vi.fn().mockResolvedValue(created) },
+      own,
+      created.operationId,
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(onCreated).toHaveBeenCalledWith(created);
+    expect(ledgerEntries().map((entry) => entry.request.operationId)).toEqual([
+      other.request.operationId,
+    ]);
   });
 
   it('re-sends, with the same id, a resumed operation the server never saw', async () => {

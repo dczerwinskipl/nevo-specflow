@@ -53,7 +53,7 @@ export const Inline: Story = {
           <DescriptionList.Detail>7f3a91c2-4b6e-4d1a-9c0e-2f5a1b8d3e77</DescriptionList.Detail>
         </DescriptionList.Item>
         <DescriptionList.Item>
-          <DescriptionList.Term>Specification</DescriptionList.Term>
+          <DescriptionList.Term>Document</DescriptionList.Term>
           <DescriptionList.Detail>Payment limits</DescriptionList.Detail>
         </DescriptionList.Item>
       </DescriptionList>

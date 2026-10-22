@@ -538,6 +538,8 @@ describe('E2.T17 LC17/LC39 independent OS-process Close contention', () => {
     const registry = await fixture.engine.readRegistry();
     expect(registry.specBindings).toHaveLength(2);
     expect(registry.specBindings.some((item) => item.specId === existing.specId)).toBe(true);
-    expect(git(fixture.root, 'rev-parse', 'HEAD')).toBe(primaryHead);
+    // The released Create commits its own scaffold: exactly one new commit, clean checkout.
+    expect(git(fixture.root, 'rev-list', '--count', primaryHead + '..HEAD')).toBe('1');
+    expect(git(fixture.root, 'status', '--porcelain')).toBe('');
   }, 240000);
 });

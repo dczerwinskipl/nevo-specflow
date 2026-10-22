@@ -12,6 +12,7 @@ import {
   inspectPublicCreateOperation,
   projectCreatedSpecification,
   readRegistrySnapshot,
+  willCommitCreatedScaffold,
   type CreateSpecificationRequest,
   type CreateStageObservation,
   type SpecFlowEngine,
@@ -96,6 +97,16 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
           ...options,
           workspaces: [...options.workspaces],
           baseRefs: [...options.baseRefs],
+          ...(options.commits
+            ? {
+                commits: {
+                  protectedBranches: [...options.commits.protectedBranches],
+                  ...(options.commits.allowedBranches
+                    ? { allowedBranches: [...options.commits.allowedBranches] }
+                    : {}),
+                },
+              }
+            : {}),
         });
       } catch (error) {
         const code = errorCode(error);
@@ -225,6 +236,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
             options.progress,
             operationId,
             body.target?.kind === 'new-worktree' ? 'new-worktree' : 'existing',
+            await willCommitCreatedScaffold(engine),
           );
         }
 

@@ -210,7 +210,12 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
       const targetKind = request.body.target?.kind === 'new-worktree' ? 'new-worktree' : 'existing';
       // Same generic stream as the real Runtime (`GET /api/demo/specifications/operations/:id/events`).
       const reporter = progress
-        ? startCreateProgress(progress.registry, request.body.operationId, targetKind)
+        ? startCreateProgress(
+            progress.registry,
+            request.body.operationId,
+            targetKind,
+            specs.createOptions(active).commits !== undefined,
+          )
         : undefined;
       try {
         const outcome = specs.createWithOutcome(
@@ -222,10 +227,12 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
           if (!reporter || !outcome.fresh) return;
           // Paced only when the scenario seam is on and asks for it; otherwise the steps are
           // published at once (a late subscriber replays them from the snapshot).
+          const commits = specs.createOptions(active).commits !== undefined;
           for (const stage of [
             'reserved',
             'git-provisioned',
             'manifest-writing',
+            ...(commits ? (['commit-writing'] as const) : []),
             'registry-writing',
           ] as const) {
             reporter.onStage({ stage, target: targetKind });

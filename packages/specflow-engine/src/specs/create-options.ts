@@ -8,6 +8,7 @@ import { WorkspaceRegistryError, inspectRegisteredWorkspace } from '../project/w
 import { READ_GIT_CONCURRENCY, mapBounded } from '../concurrency';
 import { createLocalGitClient, type LocalWorktreeFacts } from '../version-control/git/client';
 import { validateBaseRef } from '../version-control/git/refs';
+import { engineCommitRefusal } from '../version-control/commits/branch-patterns';
 import { effectiveWorktreesRoot, readProjectGitPolicy } from '../version-control/worktrees/config';
 import { runReadRequest } from '../project/request-verification-memo';
 import { discoverSpecifications } from './discovery';
@@ -19,7 +20,11 @@ export type CreateOptionsReason =
   | 'checkout-unavailable'
   | 'git-membership-mismatch'
   | 'detached'
-  | 'dirty';
+  | 'dirty'
+  /** Only with `git.enabled`: the branch matches `git.commits.protectedBranches`. */
+  | 'branch-protected'
+  /** Only with `git.enabled`: `git.commits.allowedBranches` is set and the branch matches none. */
+  | 'branch-not-allowed';
 
 export interface CreateWorkspaceOption {
   readonly workspaceId: string;
@@ -50,13 +55,35 @@ export interface PublicCreateOptions {
   readonly newWorktree: {
     readonly status: 'available' | 'disabled' | 'unavailable';
     readonly reason?: CreateOptionsReason;
+    /** Only with `git.enabled` and only `true`: the generated branch name is protected. */
+    readonly branchProtected?: true;
   };
   readonly defaultBaseRef: string;
   readonly branchPattern: string;
   /** Effective folder (local `git.worktreesRoot` or the default) that receives new worktrees. */
   readonly worktreesRoot: { readonly path: string; readonly exists: boolean };
   readonly integrationTargetBranch?: string;
+  /**
+   * Present exactly when the Engine commits the scaffold of a new Specification, i.e. when
+   * `git.enabled` (even with empty lists). Absent when Git is disabled.
+   */
+  readonly commits?: {
+    readonly protectedBranches: readonly string[];
+    readonly allowedBranches?: readonly string[];
+  };
   readonly baseRefs: readonly CreateBaseRefOption[];
+}
+
+/**
+ * Whether Create will commit the scaffold (`git.enabled`). False when the policy cannot be read: the
+ * Create itself then fails with the policy error. Reads configuration only; spawns no Git process.
+ */
+export async function willCommitCreatedScaffold(engine: SpecFlowEngine): Promise<boolean> {
+  try {
+    return (await readProjectGitPolicy(engine.context)).policy.enabled;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -134,6 +161,7 @@ async function inspectCreateOptionsInRequest(engine: SpecFlowEngine): Promise<Pu
         return { ...common, state: 'detached', selectable: false, reason: 'detached' };
       }
       const branch = gitWorktree.branch.slice('refs/heads/'.length);
+      const refusal = engineCommitRefusal(policy.commits, branch);
       const status = await executeGit(checked.root, [
         '-c',
         'core.optionalLocks=false',
@@ -147,6 +175,16 @@ async function inspectCreateOptionsInRequest(engine: SpecFlowEngine): Promise<Pu
           state: 'unavailable',
           selectable: false,
           reason: 'checkout-unavailable',
+        };
+      }
+      // The Engine would not commit the scaffold here: the checkout stays visible but not selectable.
+      if (refusal) {
+        return {
+          ...common,
+          state: status.stdout.length !== 0 ? 'dirty' : 'available',
+          selectable: false,
+          branch,
+          reason: refusal,
         };
       }
       if (status.stdout.length !== 0) {
@@ -191,13 +229,26 @@ async function inspectCreateOptionsInRequest(engine: SpecFlowEngine): Promise<Pu
     newWorktree: !gitEnabled
       ? { status: 'disabled', reason: 'git-disabled' }
       : gitReachable
-        ? { status: 'available' }
+        ? {
+            status: 'available',
+            ...(branchPatternIsProtected(policy) ? { branchProtected: true as const } : {}),
+          }
         : { status: 'unavailable', reason: 'git-unavailable' },
     defaultBaseRef: policy.baseRef,
     branchPattern: policy.branchPattern,
     worktreesRoot: await describeWorktreesRoot(engine, policy),
     ...(policy.integrationTargetBranch !== undefined
       ? { integrationTargetBranch: policy.integrationTargetBranch }
+      : {}),
+    ...(gitEnabled
+      ? {
+          commits: {
+            protectedBranches: [...policy.commits.protectedBranches],
+            ...(policy.commits.allowedBranches
+              ? { allowedBranches: [...policy.commits.allowedBranches] }
+              : {}),
+          },
+        }
       : {}),
     baseRefs: branches
       .filter((ref) => {
@@ -219,6 +270,17 @@ async function inspectCreateOptionsInRequest(engine: SpecFlowEngine): Promise<Pu
           : {}),
       })),
   };
+}
+
+/**
+ * Advisory: expands the branch pattern with a representative slug and short id. The Engine decides
+ * on the real branch name at Create, and a typed branch override can always escape.
+ */
+function branchPatternIsProtected(
+  policy: Awaited<ReturnType<typeof readProjectGitPolicy>>['policy'],
+): boolean {
+  const branch = policy.branchPattern.replaceAll('{slug}', 'a0').replaceAll('{shortId}', '0000000');
+  return engineCommitRefusal(policy.commits, branch) !== undefined;
 }
 
 async function describeWorktreesRoot(

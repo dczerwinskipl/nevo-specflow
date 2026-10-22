@@ -15,6 +15,8 @@ import {
   type ExplicitIntegrationPreflight,
 } from './integration-destination';
 import { openVersionControl } from '../../version-control';
+import { readProjectGitPolicy } from '../../version-control/worktrees/config';
+import { admitExistingCreateCommit, admitNewWorktreeCreateCommit } from '../create-commit';
 import { fingerprintCreateClientIntent, type CreateClientIntent } from '../create-intent';
 import {
   CreateOperationError,
@@ -96,6 +98,10 @@ export async function reserveCreateOperation(
       throw new CreateOperationError('CREATE_CONFLICT', 'Specification slug is already reserved.');
     }
 
+    // With Git enabled the Engine commits the scaffold: every refusal below happens BEFORE a journal,
+    // a file or a Git effect exists. With Git disabled none of this runs.
+    const policy = (await readProjectGitPolicy(engine.context)).policy;
+    let commit: CreateJournal['commit'];
     let target: CreateJournal['target'];
     let gitPlan: { readonly projectRoot: string; readonly gitInstanceId: string } | undefined;
     if (intent.target.kind === 'existing') {
@@ -138,6 +144,19 @@ export async function reserveCreateOperation(
               ' canonical Specifications, including reserved Creates. Select another worktree.',
           );
         }
+      }
+      if (policy.enabled) {
+        commit = {
+          required: true,
+          branch: await admitExistingCreateCommit(engine, {
+            root: inspected.root,
+            paths: scaffold.files.map((file) => file.relativePath),
+            operationId,
+            slug: scaffold.slug,
+            title: intent.title,
+            specId,
+          }),
+        };
       }
       target = {
         kind: 'existing',
@@ -190,6 +209,8 @@ export async function reserveCreateOperation(
           'Git branch or worktree path is reserved.',
         );
       }
+      admitNewWorktreeCreateCommit(policy.commits, plan.branch);
+      commit = { required: true, branch: plan.branch };
       target = {
         kind: 'new-worktree',
         workspaceId: randomUUID(),
@@ -219,6 +240,7 @@ export async function reserveCreateOperation(
       stage: 'reserved',
       target,
       ...(gitPlan ? { gitPlan } : {}),
+      ...(commit ? { commit } : {}),
       files: scaffold.files.map(({ relativePath, sha256 }) => ({ relativePath, sha256 })),
     };
     try {

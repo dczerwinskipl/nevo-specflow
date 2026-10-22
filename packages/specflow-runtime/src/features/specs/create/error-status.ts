@@ -30,10 +30,14 @@ export function statusForCreateError(code: CreateErrorCode): CreateHttpStatus {
     case 'BRANCH_ALREADY_EXISTS':
     case 'BRANCH_ALREADY_CHECKED_OUT':
     case 'WORKTREE_PATH_CONFLICT':
+    // A state conflict the user can resolve and retry (finish the merge, check out a branch).
+    case 'COMMIT_BLOCKED':
       return 409;
 
     case 'BRANCH_NAME_INVALID':
     case 'GIT_DISABLED':
+    // Well-formed request refused by policy: the Engine does not commit on that branch.
+    case 'BRANCH_PROTECTED':
     case 'BASE_REF_NOT_FOUND':
     case 'GIT_BASE_CONFIG_MISSING':
       return 422;
@@ -60,6 +64,8 @@ export function statusForCreateError(code: CreateErrorCode): CreateHttpStatus {
     case 'NOT_GIT_REPOSITORY':
     case 'GIT_OPERATION_UNCERTAIN':
     case 'GIT_OPERATION_FAILED':
+    // Files exist but the scoped commit failed: an operator has to resume the operation.
+    case 'COMMIT_FAILED':
     case 'WORKTREE_MEMBERSHIP_MISMATCH':
     case 'SPEC_SOURCE_INVALID':
     case 'SPEC_NOT_FOUND':

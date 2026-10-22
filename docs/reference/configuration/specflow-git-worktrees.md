@@ -26,6 +26,9 @@ git:
   worktrees:
     baseRef: HEAD
     branchPattern: feature/{slug}
+  commits:
+    protectedBranches: [main, 'release/**']
+    allowedBranches: ['feature/**', develop]
 ```
 
 | Field                         | Effect                                                                                                                          |
@@ -34,6 +37,8 @@ git:
 | `git.worktrees.baseRef`       | Default `HEAD` at **Project Home**; accepted overrides also include local branches, full commit IDs and supported tags          |
 | `git.worktrees.branchPattern` | Default `feature/{slug}`; supports `{slug}` and an optional `{shortId}` (each at most once, at least one required)              |
 | `git.integrationTargetBranch` | Optional short local branch name for later default Close into **primary**; primary must physically have that branch checked out |
+| `git.commits.protectedBranches` | Optional list of branch patterns on which the Engine never commits (default: none). See [Engine commits and protected branches](#engine-commits-and-protected-branches) |
+| `git.commits.allowedBranches` | Optional allow-list of branch patterns; when non-empty the Engine commits only on matching branches (default: none = any branch) |
 
 `nevo-specflow init` asks for the pattern right after the integration target: presets
 `feature/{slug}` (default, recommended), `feature/{slug}-{shortId}`, `spec/{slug}-{shortId}` or a
@@ -45,6 +50,42 @@ the pattern contains `{shortId}`.
 
 The workstation-local config cannot override committed `git` policy, with one exception: the
 machine-specific worktree folder.
+
+## Engine commits and protected branches
+
+When `git.enabled` is `true` the Engine commits the scaffold of a new Specification (see
+[lifecycle](../../architecture/runtime/specification-lifecycle.md)). `git.commits` decides on which
+branches it may do so. It is committed Project Home configuration only: the workstation-local config
+cannot set it and a linked checkout's own copy of the config is never consulted.
+
+- **Nothing is protected by default.** `integrationTargetBranch` is not implicitly protected.
+- A branch is refused when it matches any `protectedBranches` pattern (`branch-protected`), or when
+  `allowedBranches` is non-empty and it matches none (`branch-not-allowed`). Protected always wins.
+- A new worktree's generated or typed branch name is evaluated the same way and refused with
+  `BRANCH_PROTECTED`; it is never renamed silently. The base ref and the integration destination are
+  not evaluated, and Close/integration is not changed by this setting.
+- With `git.enabled: false` (or no `git` block) the block is syntax-validated but inert: no commit,
+  no check, no `commits` field in create-options.
+
+Pattern grammar (close to GitHub's branch-protection patterns, matched case-sensitively against the
+short local branch name, never `refs/heads/...`):
+
+| Syntax                   | Matches                                                                                    |
+| ------------------------ | ------------------------------------------------------------------------------------------ |
+| `*`                      | any run of characters except `/` (`release/*` matches `release/1.0`, not `release/1.0/rc`) |
+| `**`                     | any run of characters including `/` (`release/**` matches `release/1.0/rc`)                |
+| `?`                      | exactly one character except `/`                                                           |
+| `[a-z]` `[abc]` `[!0-9]` | one character of the set (`!` or `^` negates; never `/`)                                  |
+| anything else            | itself                                                                                     |
+
+Validation is fail-closed with `GIT_POLICY_INVALID`: at most 50 entries per list, each 1-200 characters
+of `A-Za-z0-9._/-` plus the pattern characters, no leading/trailing `/`, no `//`, no `..`, no
+`refs/` prefix, no `.lock` suffix, balanced non-empty sets, no duplicates, and no pattern in both
+lists. A wildcard-free entry must be a valid branch name. The UI can reuse the exact rule from
+`@nevo/specflow-contracts/specs` (`matchesBranchPattern`, `branchPatternProblem`).
+
+`nevo-specflow init` asks for the protected branches only when Git is enabled and writes
+`git.commits.protectedBranches` only when the answer is not empty.
 
 ## Local worktree folder
 

@@ -69,6 +69,10 @@ export function createDemoSpecs(
       throw new DemoTargetError(400, 'CREATE_OPERATION_INVALID', 'CREATE_OPERATION_INVALID');
     if (scenarios.includes('base-ref-unavailable'))
       throw new DemoTargetError(422, 'BASE_REF_NOT_FOUND', 'BASE_REF_NOT_FOUND');
+    if (scenarios.includes('branch-protected'))
+      throw new DemoTargetError(422, 'BRANCH_PROTECTED', 'BRANCH_PROTECTED');
+    if (scenarios.includes('commit-blocked'))
+      throw new DemoTargetError(409, 'COMMIT_BLOCKED', 'COMMIT_BLOCKED');
     if (scenarios.includes('branch-taken') && target?.kind === 'new-worktree')
       throw new DemoTargetError(409, 'BRANCH_ALREADY_EXISTS', 'BRANCH_ALREADY_EXISTS');
   };
@@ -244,6 +248,20 @@ export function createDemoSpecs(
       });
       return result;
     };
+    if (scenarios.includes('commit-failed')) {
+      // The files exist but the commit failed: the journal stays at commit-writing, so a re-submit
+      // with the same operationId answers CREATE_RECOVERY_REQUIRED (like the Engine).
+      operations.set(operationKey, {
+        fingerprint: fingerprintInput(input),
+        status: 'recovery-required',
+        step: 'commit-writing',
+        workspaceId,
+        ...(resolved.branch ? { branch: resolved.branch } : {}),
+        updatedAt: new Date().toISOString(),
+        commit,
+      });
+      throw new DemoTargetError(503, 'COMMIT_FAILED', 'COMMIT_FAILED');
+    }
     if (scenarios.includes('recovery-required')) {
       operations.set(operationKey, {
         fingerprint: fingerprintInput(input),

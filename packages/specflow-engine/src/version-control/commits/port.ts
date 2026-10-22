@@ -35,6 +35,11 @@ export type FoundCommit =
   /** `sinceHead` is no longer an ancestor of HEAD: history was rewritten. */
   | { readonly status: 'history-changed' };
 
+export type PathsState =
+  | { readonly state: 'uncommitted' }
+  | { readonly state: 'committed'; readonly sha: string }
+  | { readonly state: 'mixed' };
+
 export interface CommitPort {
   /**
    * Read-only admission check: policy protection, HEAD attached to `expectedBranch`, no merge/rebase/
@@ -53,4 +58,16 @@ export interface CommitPort {
   findByOperation(root: string, operationId: string, sinceHead: string): Promise<FoundCommit>;
   /** Current HEAD of the checkout, or undefined for an unborn branch. */
   head(root: string): Promise<string | undefined>;
+  /** Short name of the attached branch; `COMMIT_BLOCKED` (`detached`) when HEAD is detached. */
+  currentBranch(root: string): Promise<string>;
+  /**
+   * Where `paths` stand: `uncommitted` (none is in HEAD; untracked or intent-to-add), `committed`
+   * (all in HEAD and identical to the working tree; `sha` is the last commit touching them) or
+   * `mixed` (anything else).
+   */
+  inspectPaths(root: string, paths: readonly string[]): Promise<PathsState>;
+  /** Exact content of `path` in `commitSha`, or undefined when absent there. */
+  fileAt(root: string, commitSha: string, path: string): Promise<string | undefined>;
+  /** True when `ancestor` is `descendant` or one of its ancestors. */
+  isAncestor(root: string, ancestor: string, descendant: string): Promise<boolean>;
 }

@@ -287,7 +287,9 @@ Errors use `{ error, code }` where, as in the real Engine, `error` repeats the c
 statuses: 409 `BRANCH_ALREADY_EXISTS`, 422 `BASE_REF_NOT_FOUND`, 409 `CREATE_CONFLICT` (same
 `operationId`, different body), 400 `CREATE_OPERATION_INVALID` (also an unusable
 `integrationTargetWorkspaceId` and an invalid branch name: the field cannot be told apart), 503
-`CREATE_RECOVERY_REQUIRED`. Permissions: 401 `{ error: 'authentication_required' }` and 403
+`CREATE_RECOVERY_REQUIRED`, and the commit codes of a Git-enabled project: 422 `BRANCH_PROTECTED` (also for
+a selected workspace or a generated or typed new-worktree branch that `commits` protects; never renamed), 409
+`COMMIT_BLOCKED`, 503 `COMMIT_FAILED`. Permissions: 401 `{ error: 'authentication_required' }` and 403
 `{ error: 'forbidden' }`, both **without** `code`. Demo-only extras (no Engine counterpart): 409
 `DEMO_WORKSPACE_UNAVAILABLE` (the Engine overloads `CREATE_RECOVERY_REQUIRED`/`REGISTRY_CONFLICT` for an
 unavailable or unknown workspace) and 400 `DEMO_INVALID_SCENARIO`. Replaying the same `operationId` and
@@ -330,11 +332,17 @@ return 400 `DEMO_INVALID_SCENARIO`. Options scenarios also shape the validation 
 `no-integration-target`, `target-dirty`, `primary-dirty`, `platform-dirty`, `primary-other-branch`
 (a linked workspace holds the target branch, the primary does not), `pin-drift` (a pin whose target moved
 to another branch), `primary-detached`,
-`head-base`, `head-base-no-branch`, `many-workspaces`, `managed-false`, `long-names`. Read failures:
+`head-base`, `head-base-no-branch`, `many-workspaces`, `managed-false`, `long-names`, and the commit
+scenarios `protected-primary` (the primary checkout is on the protected `main`), `protected-all-linked`
+(every linked workspace is on a protected branch) and `new-branch-protected` (the generated `release/<slug>`
+branch is protected, `newWorktree.branchProtected`). The default seed has Git on: `commits: { protectedBranches: ['main'] }`;
+`git-disabled` removes `commits` and every commit-related field, reason and progress step. Read failures:
 `options-forbidden` (403), `options-error` (503). Create outcomes: `branch-taken`, `stale-workspace`,
 `integration-target-unavailable`, `base-ref-unavailable`, `forbidden`, `network-uncertain` (commits,
 then drops the connection; replay with the same `operationId` returns the result), `recovery-required`
-(holds the operation; a replay stays 503 until the status read or create carries `recovery-resolved`).
+(holds the operation; a replay stays 503 until the status read or create carries `recovery-resolved`),
+`branch-protected` (422), `commit-blocked` (409) and `commit-failed` (503, the operation then stays
+recovery-required like `recovery-required`).
 
 Client transport rule for `POST /api/demo/specifications` (UI, not Runtime): the request has an explicit
 15 s timeout. A request that was never dispatched (the browser reports no connection) is a definite

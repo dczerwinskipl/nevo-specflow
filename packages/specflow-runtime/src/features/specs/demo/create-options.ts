@@ -1,3 +1,4 @@
+import { engineCommitRefusal } from '@nevo/specflow-contracts/specs';
 import type {
   DemoCreateErrorCode,
   DemoCreateOptions,
@@ -143,6 +144,8 @@ export function seedCreateOptions(): DemoCreateOptions {
     branchPattern: 'feature/{slug}',
     worktreesRoot: { path: demoWorktreesRoot, exists: true },
     integrationTargetBranch: 'develop',
+    // Git is on, so the Engine commits the scaffold; only `main` is protected in the demo project.
+    commits: { protectedBranches: ['main'] },
     baseRefs: [
       { ref: 'develop', checkedOutWorkspaceId: ids.main },
       { ref: 'feature/platform', checkedOutWorkspaceId: ids.platform },
@@ -176,6 +179,12 @@ export const demoOptionsScenarios = [
   'many-workspaces',
   'managed-false',
   'long-names',
+  /** The primary checkout is on a protected branch (`main`): its tile is not selectable. */
+  'protected-primary',
+  /** Every linked workspace is on a protected branch, the primary one is not. */
+  'protected-all-linked',
+  /** The generated branch name (`release/<slug>`) is protected: a typed name has to be used. */
+  'new-branch-protected',
 ] as const;
 /** Scenarios that fail the options read itself. */
 export const demoOptionsFailureScenarios = ['options-forbidden', 'options-error'] as const;
@@ -189,6 +198,12 @@ export const demoCreateScenarios = [
   'recovery-required',
   'recovery-resolved',
   'network-uncertain',
+  /** The Engine refuses to commit on the target's branch (422, nothing created). */
+  'branch-protected',
+  /** The checkout cannot take a commit now (409, nothing created). */
+  'commit-blocked',
+  /** The scoped commit failed after the files were written (503, recovery required). */
+  'commit-failed',
   /** Paces the Create progress steps so a live checklist can be observed. */
   'slow-create',
 ] as const;
@@ -257,6 +272,8 @@ export function applyOptionsScenario(
       next.baseRefs = [];
       next.defaultBaseRef = 'HEAD';
       delete next.integrationTargetBranch;
+      // Git off: the Engine does not commit, so no commit-related field exists at all.
+      delete next.commits;
       break;
     case 'git-unavailable':
       next.newWorktree = { status: 'unavailable', reason: 'git-unavailable' };
@@ -364,6 +381,40 @@ export function applyOptionsScenario(
         next.baseRefs.push({ ref: branch, checkedOutWorkspaceId: workspaceId });
       }
       break;
+    case 'protected-primary':
+      next.workspaces = next.workspaces.map((w) =>
+        strip(
+          w.kind === 'primary'
+            ? {
+                ...w,
+                branch: 'main',
+                selectable: false,
+                integrationSelectable: true,
+                reason: 'branch-protected',
+              }
+            : w,
+        ),
+      );
+      next.baseRefs = next.baseRefs.map((b) =>
+        b.ref === 'develop'
+          ? { ref: b.ref }
+          : b.ref === 'main'
+            ? { ...b, checkedOutWorkspaceId: demoWorkspaceIds.main }
+            : b,
+      );
+      break;
+    case 'protected-all-linked':
+      next.commits = { protectedBranches: ['main', 'feature/**', 'spec/**'] };
+      map(
+        (w) => ({ ...w, selectable: false, reason: 'branch-protected' }),
+        (w) => w.kind === 'linked' && w.branch !== undefined,
+      );
+      break;
+    case 'new-branch-protected':
+      next.branchPattern = 'release/{slug}';
+      next.commits = { protectedBranches: ['main', 'release/**'] };
+      next.newWorktree = { status: 'available', branchProtected: true };
+      break;
     case 'managed-false':
       map(
         (w) => ({ ...w, managed: false }),
@@ -446,13 +497,20 @@ export function resolveTarget(
 ): ResolvedTarget {
   const unavailable = (message: string) =>
     new DemoTargetError(409, 'DEMO_WORKSPACE_UNAVAILABLE', message);
+  // Like the Engine: a checkout whose branch the Engine would not commit on is refused as policy.
+  const refusedByBranch = (workspace: DemoWorkspace) =>
+    workspace.reason === 'branch-protected' || workspace.reason === 'branch-not-allowed'
+      ? new DemoTargetError(422, 'BRANCH_PROTECTED', 'BRANCH_PROTECTED')
+      : unavailable('Wybrane środowisko pracy nie jest już dostępne.');
   if (!target) {
     const primary = options.workspaces.find((w) => w.workspaceId === options.primaryWorkspaceId);
+    if (primary && !primary.selectable) throw refusedByBranch(primary);
     if (!primary?.selectable) throw unavailable('Bieżący katalog nie jest teraz dostępny.');
     return { kind: 'main', workspaceId: primary.workspaceId, baseRef: primary.branch ?? 'HEAD' };
   }
   if (target.kind === 'existing') {
     const workspace = options.workspaces.find((w) => w.workspaceId === target.workspaceId);
+    if (workspace && !workspace.selectable) throw refusedByBranch(workspace);
     if (!workspace?.selectable)
       throw unavailable('Wybrane środowisko pracy nie jest już dostępne.');
     return {
@@ -485,6 +543,9 @@ export function resolveTarget(
     branch = base;
     for (let n = 2; taken(options, branch); n += 1) branch = `${base}-${n}`;
   }
+  // Never silently renamed (like the Engine): a protected branch name is refused.
+  if (options.commits && engineCommitRefusal(options.commits, branch))
+    throw new DemoTargetError(422, 'BRANCH_PROTECTED', 'BRANCH_PROTECTED');
   return {
     kind: 'new-worktree',
     branch,

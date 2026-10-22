@@ -19,6 +19,7 @@ import {
 } from '../project/workspace-identity';
 import { CreateOperationError, type CreateJournal } from './create-journal';
 import { registrationOf } from './create/registration';
+import { requireCommitLineage } from './create-commit';
 
 /**
  * Reconstruct a fixed plan from durable evidence, never from the latest naming
@@ -198,13 +199,15 @@ export async function requireTargetIdentity(
   if (record.target.kind === 'existing') {
     await requireRegisteredTarget(engine, record);
   } else {
-    if (record.stage === 'completed') {
+    if (record.stage === 'completed' || (record.commit && isCommitPhase(record.stage))) {
       // After successful create, legitimate agents may advance HEAD. Validate
       // membership and the original branch, but not the provisioning commit.
       // Physical checkout incarnation remains verified below.
       await openVersionControl(engine).worktrees.inspectCreated(
         planFromCreateJournal(engine, record),
       );
+      // From the commit stage on HEAD is the base or advanced by the Engine's scaffold commit.
+      if (record.stage !== 'completed') await requireCommitLineage(engine, record);
     } else if ((await inspectPlannedGitEffect(engine, record)) !== 'present') {
       // Before terminal completion, exact base HEAD is still critical evidence
       // that this is the worktree produced by the planned Git mutation.
@@ -218,6 +221,16 @@ export async function requireTargetIdentity(
       await verifyPinnedIntegrationDestination(engine, record);
     }
   }
+}
+
+/** Stages in which the scaffold commit may already exist (only journals that carry `commit`). */
+function isCommitPhase(stage: CreateJournal['stage']): boolean {
+  return (
+    stage === 'commit-writing' ||
+    stage === 'commit-written' ||
+    stage === 'registry-writing' ||
+    stage === 'registry-linked'
+  );
 }
 
 function recovery(message: string): CreateOperationError {

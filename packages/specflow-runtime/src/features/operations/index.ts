@@ -5,6 +5,19 @@ export {
   type OperationEventsStreamOptions,
 } from './events-route';
 export {
+  registerOperationListRoute,
+  OPERATIONS_UNAVAILABLE_CODE,
+  OPERATION_LIST_QUERY_INVALID_CODE,
+  type OperationListRoute,
+} from './list-route';
+export {
+  buildOperationList,
+  DEFAULT_OPERATION_LIST_CONFIG,
+  type BuildOperationListInput,
+  type OperationListConfig,
+} from './list-service';
+export type { OperationListSource, OperationSourceRow } from './operation-source';
+export {
   createOperationProgressRegistry,
   OPERATION_NOT_FOUND_CODE,
   type BeginOperationProgress,

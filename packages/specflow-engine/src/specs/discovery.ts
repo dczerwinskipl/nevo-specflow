@@ -4,6 +4,7 @@ import {
   type RegisteredWorkspaceInspection,
   type WorkspaceRegistry,
 } from '../project/workspace-registry';
+import { runReadRequest } from '../project/request-verification-memo';
 import { READ_GIT_CONCURRENCY, mapBounded } from '../concurrency';
 import { isValidSpecificationId, SpecificationError } from './model';
 import { listWorkspaceSpecifications, type WorkspaceSpecification } from './repository';
@@ -226,6 +227,18 @@ export async function resolveSpecification(
     throw new SpecificationError('SPEC_NOT_FOUND', 'Specification does not exist in this project.');
   }
   return selected;
+}
+
+/**
+ * READ-path resolution: same result as {@link resolveSpecification}, but workspace
+ * availability is established with filesystem evidence only (no Git process).
+ * Mutation preflights keep using {@link resolveSpecification}.
+ */
+export function resolveSpecificationForRead(
+  engine: SpecFlowEngine,
+  specId: string,
+): Promise<DiscoveredSpecification> {
+  return runReadRequest(() => resolveSpecification(engine, specId));
 }
 
 function assertCanonicalSlugs(found: ReadonlyMap<string, DiscoveredSpecification>): void {

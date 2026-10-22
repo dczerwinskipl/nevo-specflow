@@ -71,37 +71,24 @@ export function inspectCreateOptions(engine: SpecFlowEngine): Promise<PublicCrea
 async function inspectCreateOptionsInRequest(engine: SpecFlowEngine): Promise<PublicCreateOptions> {
   const registry = await engine.readRegistry();
   const policy = (await readProjectGitPolicy(engine.context)).policy;
+  // Git facts are fetched ONLY when Git is enabled. A Git-disabled project answers
+  // from the registry and filesystem checks alone and spawns no Git process.
+  // Otherwise: one `worktree list`, one `for-each-ref`, then bounded-parallel
+  // `status` for the workspaces that need it.
+  const gitEnabled = policy.enabled;
   const git = createLocalGitClient(engine.context.project.homeRoot);
-
-  let available = true;
-  try {
-    const commonDir = await git.inspectRepository();
-    if (!samePath(commonDir, engine.context.project.gitCommonDir)) {
-      throw new WorkspaceRegistryError(
-        'REGISTRY_WORKSPACE_MISMATCH',
-        'Project Home Git identity changed during create-options inspection.',
-      );
-    }
-  } catch (error) {
-    if (
-      error instanceof GitCapabilityError &&
-      (error.code === 'GIT_UNAVAILABLE' || error.code === 'NOT_GIT_REPOSITORY')
-    ) {
-      available = false;
-    } else {
-      throw error;
-    }
-  }
-
-  // Independent read-only Git/filesystem inspections run concurrently. Results
-  // are consumed in the original order so the first failure is unchanged.
   const [worktreesResult, branchesResult, discoveredResult] = await Promise.allSettled([
-    available ? git.listWorktrees() : Promise.resolve([] as readonly LocalWorktreeFacts[]),
-    available ? git.listLocalRefs() : Promise.resolve([] as readonly string[]),
+    gitEnabled ? git.listWorktrees() : Promise.resolve([] as readonly LocalWorktreeFacts[]),
+    gitEnabled ? git.listLocalRefs() : Promise.resolve([] as readonly string[]),
     discoverSpecifications(engine),
   ]);
-  const worktrees = settledValue(worktreesResult);
-  const branches = settledValue(branchesResult);
+  let gitReachable = gitEnabled;
+  if (gitEnabled && worktreesResult.status === 'rejected') {
+    if (!isGitUnavailable(worktreesResult.reason)) throw worktreesResult.reason;
+    gitReachable = false;
+  }
+  const worktrees = gitReachable ? settledValue(worktreesResult) : [];
+  const branches = gitReachable ? settledValue(branchesResult) : [];
   const discovered = settledValue(discoveredResult);
   const counts = new Map<string, number>();
   for (const spec of discovered)
@@ -124,14 +111,16 @@ async function inspectCreateOptionsInRequest(engine: SpecFlowEngine): Promise<Pu
         registry,
         workspace.workspaceId,
       );
-      if (checked.status === 'unavailable' || !available) {
+      if (checked.status === 'unavailable' || (gitEnabled && !gitReachable)) {
         return {
           ...common,
           state: 'unavailable',
           selectable: false,
-          reason: available ? 'checkout-unavailable' : 'git-unavailable',
+          reason: checked.status === 'unavailable' ? 'checkout-unavailable' : 'git-unavailable',
         };
       }
+      // Git disabled: the filesystem verification above is the whole answer.
+      if (!gitEnabled) return { ...common, state: 'available', selectable: true };
       const gitWorktree = worktrees.find((item) => samePath(item.root, checked.root));
       if (!gitWorktree || gitWorktree.prunable) {
         return {
@@ -199,11 +188,11 @@ async function inspectCreateOptionsInRequest(engine: SpecFlowEngine): Promise<Pu
   return {
     primaryWorkspaceId: registry.primaryWorkspaceId,
     workspaces: integrationChoices,
-    newWorktree: available
-      ? policy.enabled
+    newWorktree: !gitEnabled
+      ? { status: 'disabled', reason: 'git-disabled' }
+      : gitReachable
         ? { status: 'available' }
-        : { status: 'disabled', reason: 'git-disabled' }
-      : { status: 'unavailable', reason: 'git-unavailable' },
+        : { status: 'unavailable', reason: 'git-unavailable' },
     defaultBaseRef: policy.baseRef,
     branchPattern: policy.branchPattern,
     worktreesRoot: await describeWorktreesRoot(engine, policy),
@@ -249,6 +238,15 @@ function samePath(left: string, right: string): boolean {
   const a = resolve(left);
   const b = resolve(right);
   return process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
+}
+
+function isGitUnavailable(error: unknown): boolean {
+  return (
+    error instanceof GitCapabilityError &&
+    (error.code === 'GIT_UNAVAILABLE' ||
+      error.code === 'NOT_GIT_REPOSITORY' ||
+      error.code === 'GIT_OPERATION_FAILED')
+  );
 }
 
 function settledValue<T>(result: PromiseSettledResult<T>): T {

@@ -31,6 +31,27 @@ linked checkout identities and `specId -> workspaceId` bindings with generations
 Git membership and linked checkout incarnation are independently verified. A similar remote URL,
 reused path or branch name is not an equivalent workspace. Primary is not a managed worktree.
 
+## Verification trust model: Git on mutations, disk on reads
+
+Reads must be fast and must not spawn Git. Verification is split by what an operation does.
+
+| Moment | Evidence | Git |
+| --- | --- | --- |
+| Engine open (`openSpecFlowEngine`, once per process) | Full resolution: `rev-parse`, `worktree list`, ignore audit of the local namespace, competing-home scan, Git instance sentinel, current workspace membership. Produces the cached `ResolvedProjectHome`. | yes |
+| Each read request (overview, workspace, documents, tasks, create-options, registry) | Cached identity plus disk checks: home marker still carries the same project/instance/common-dir identity, the Git instance sentinel is intact, `realpath(root) === root`, the checkout's `.git` link resolves to the verified common directory (a linked `.git` file must be mirrored by the admin directory's `gitdir` back-link), the linked identity marker matches the registered incarnation, registry revision and primary identity. | no |
+| Each mutation (create with a new-worktree target or with Git enabled, close/integrate, archive, registry writes, control-lock admission) | Full resolution again, ignore-rule audit of the linked identity marker, and the REGISTRY_CONFLICT revision checks. | yes |
+| Create into an existing workspace of a project with `git.enabled: false` | The disk checks of a read, re-run at every admission step (not memoised); no Git is involved in the operation. | no |
+
+A stale open-time identity can only cause the following on a read, never a write: a deleted or
+moved workspace is reported `workspace_unavailable` by the filesystem check; a replaced or
+foreign checkout fails the `.git` link or identity-marker check and the read is refused; a repository
+re-initialised at the same path fails the Git instance sentinel. A rebound repository, a second
+Project Home designation or a weakened ignore rule is NOT detected by reads; it is detected by the
+next mutation or by reopening the Engine. Reads in a Git-disabled project answer from the registry
+and the filesystem alone, report no branch or dirty state, and `create-options` reports
+`newWorktree` as disabled with reason `git-disabled`. The Engine still needs Git once at open to
+establish Project Home; a project that is not a Git repository is not supported.
+
 ## Canonical discovery
 
 A bound Specification is read from the registered verified checkout's

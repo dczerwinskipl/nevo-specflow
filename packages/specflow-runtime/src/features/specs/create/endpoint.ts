@@ -141,6 +141,20 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
             code: 'CREATE_NOT_FOUND',
             error: 'CREATE_NOT_FOUND',
           });
+        // The journal has no failed state: a run that failed after reservation leaves it non-terminal.
+        // This Runtime still knows the failure for a short time and reports its stable code.
+        const failure =
+          result.status === 'in-progress'
+            ? options.progress?.peek(request.params.operationId, 'specification-create')
+            : undefined;
+        if (failure?.status === 'failed' && failure.code !== undefined) {
+          return reply.code(200).send({
+            operationId: request.params.operationId,
+            kind: 'specification-create',
+            status: 'failed',
+            code: failure.code,
+          });
+        }
         return reply.code(200).send(result);
       } catch (error) {
         const code = errorCode(error);

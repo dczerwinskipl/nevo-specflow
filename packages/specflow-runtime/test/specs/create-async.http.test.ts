@@ -4,12 +4,16 @@ import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { bootstrapProjectHome } from '@nevo/specflow-engine/testing';
+import { bootstrapProjectHome, createSpecificationForTesting } from '@nevo/specflow-engine/testing';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { authCookieNames } from '../../src/features/auth/authentication/http/cookies';
 import { InMemoryAuthenticationStore } from '../../src/features/auth/authentication/store/in-memory-store';
+import {
+  createOperationProgressRegistry,
+  type OperationProgressRegistry,
+} from '../../src/features/operations';
 import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
 
@@ -28,7 +32,7 @@ function git(cwd: string, ...args: string[]): void {
   execFileSync('git', args, { cwd });
 }
 
-async function server(gitEnabled: boolean) {
+async function server(gitEnabled: boolean, registry?: OperationProgressRegistry) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-create-async-Ż ')));
   roots.push(root);
   git(root, 'init', '-q');
@@ -65,7 +69,7 @@ async function server(gitEnabled: boolean) {
       ...passwordConfig(),
       authorization: { assignments: [{ userId: 'demo-user', role: 'developer', scope: {} }] },
     },
-    { auth: { store }, specs: { engine } },
+    { auth: { store }, specs: { engine }, ...(registry ? { operations: { registry } } : {}) },
   );
   apps.push(app);
   await app.ready();
@@ -90,7 +94,7 @@ async function server(gitEnabled: boolean) {
     }
     throw new Error('create did not complete');
   };
-  return { root, post, inspect, untilCompleted };
+  return { root, engine, post, inspect, untilCompleted };
 }
 
 describe('POST /api/specs with Prefer: respond-async (real Git)', () => {
@@ -192,7 +196,58 @@ describe('POST /api/specs with Prefer: respond-async (real Git)', () => {
     expect(response.statusCode).toBeLessThan(500);
     expect(response.json<{ code: string }>().code).toEqual(expect.any(String));
 
+    const badBranch = await post(
+      {
+        operationId: randomUUID(),
+        title: 'Bad branch',
+        target: { kind: 'new-worktree', baseRef: 'HEAD', branch: 'zażółć' },
+      },
+      'respond-async',
+    );
+    expect(badBranch.statusCode).toBe(422);
+    expect(badBranch.json()).toMatchObject({ code: 'BRANCH_NAME_INVALID' });
+
     const invalid = await post({ operationId: randomUUID(), title: '' }, 'respond-async');
     expect(invalid.statusCode).toBe(400);
+  }, 240000);
+
+  it('inspection reports a failure this Runtime observed after the reservation, by code only', async () => {
+    const registry = createOperationProgressRegistry();
+    const { engine, inspect } = await server(false, registry);
+    const operationId = randomUUID();
+    await expect(
+      createSpecificationForTesting(
+        engine,
+        {
+          operationId,
+          title: 'Failed after reservation',
+          created: '2026-10-14',
+          target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
+        },
+        {
+          afterEffect: (effect) =>
+            effect === 'reservation' ? Promise.reject(new Error('stop')) : Promise.resolve(),
+        },
+      ),
+    ).rejects.toThrow('stop');
+
+    expect((await inspect(operationId)).json()).toMatchObject({ status: 'in-progress' });
+    registry
+      .begin({ operationId, kind: 'specification-create', steps: ['reserving'] })
+      .fail('GIT_OPERATION_FAILED');
+
+    const failed = await inspect(operationId);
+    expect(failed.statusCode).toBe(200);
+    expect(failed.json()).toEqual({
+      operationId,
+      kind: 'specification-create',
+      status: 'failed',
+      code: 'GIT_OPERATION_FAILED',
+    });
+
+    // A failure of an operation that was never reserved stays the proof of "not started".
+    const unknown = randomUUID();
+    registry.begin({ operationId: unknown, kind: 'specification-create', steps: [] }).fail('X');
+    expect((await inspect(unknown)).statusCode).toBe(404);
   }, 240000);
 });

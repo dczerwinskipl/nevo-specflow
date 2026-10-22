@@ -80,13 +80,27 @@ export const CreateOperationAcceptedSchema = Type.Object(
 );
 export type CreateOperationAccepted = Static<typeof CreateOperationAcceptedSchema>;
 
-/** A read-only journal projection; never exposes filesystem paths or internal stages. */
+/** A read-only journal projection (plus a retained failure); never exposes filesystem paths or internal stages. */
 export const CreateOperationInspectionSchema = Type.Union([
   Type.Object(
     {
       operationId: UuidSchema,
       kind: Type.Literal('specification-create'),
       status: Type.Union([Type.Literal('in-progress'), Type.Literal('recovery-required')]),
+    },
+    { additionalProperties: false },
+  ),
+  /**
+   * The operation failed after it was reserved and this Runtime observed it (retained for a short
+   * time only; the journal itself has no failed state). `code` is the stable Create error code,
+   * never server text or a path. Absence of this answer never proves success.
+   */
+  Type.Object(
+    {
+      operationId: UuidSchema,
+      kind: Type.Literal('specification-create'),
+      status: Type.Literal('failed'),
+      code: Type.String(),
     },
     { additionalProperties: false },
   ),

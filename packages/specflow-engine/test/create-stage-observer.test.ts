@@ -6,9 +6,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   bootstrapProjectHome,
   createSpecificationForTesting as createSpecification,
+  inspectCreateSpecification,
   type CreateStageObservation,
 } from '../src/testing';
-import { createGitTestProject } from './support/git-project';
+import { createGitTestProject, git } from './support/git-project';
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -87,4 +88,33 @@ describe('create stage observer', () => {
     await createSpecification(engine, input, { onStage: (observation) => seen.push(observation) });
     expect(seen).toEqual([{ stage: 'completed', target: 'existing', replayed: true }]);
   }, 90000);
+});
+
+describe('create stage observer: replay of a reserved operation', () => {
+  it('rejects a retry whose reserved plan is no longer valid instead of announcing it', async () => {
+    const engine = await project(true);
+    const input = {
+      operationId: randomUUID(),
+      title: 'Replay behind a rejection',
+      created: '2026-10-14',
+      target: { kind: 'new-worktree' as const, baseRef: 'HEAD' },
+    };
+    await expect(
+      createSpecification(engine, input, {
+        afterEffect: (effect) =>
+          effect === 'reservation'
+            ? Promise.reject(new Error('Stop after reservation'))
+            : Promise.resolve(),
+      }),
+    ).rejects.toThrow('Stop after reservation');
+    const journal = await inspectCreateSpecification(engine, input.operationId);
+    if (journal?.target.kind !== 'new-worktree') throw new Error('Expected a linked reservation.');
+    git(engine.context.project.homeRoot, 'branch', journal.target.branch);
+
+    const seen: CreateStageObservation[] = [];
+    await expect(
+      createSpecification(engine, input, { onStage: (observation) => seen.push(observation) }),
+    ).rejects.toBeDefined();
+    expect(seen).toEqual([]);
+  }, 120000);
 });

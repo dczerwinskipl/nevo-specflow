@@ -140,7 +140,14 @@ export async function createSpecificationWithIntent(
   validateOperationId(operationId);
   const reservation = await reserveCreateOperation(engine, intent, operationId, creationDate);
   let record = reservation.record;
-  notifyStage(options.onStage, record, reservation.existing);
+  // A retry that finds the operation still reserved is announced only after the reserved plan
+  // validated again, so a transport never accepts it ahead of the original run's rejection.
+  const replayAwaitsValidation =
+    reservation.existing &&
+    record.stage === 'reserved' &&
+    record.target.kind === 'new-worktree' &&
+    !options.resumeInterruptedOperation;
+  if (!replayAwaitsValidation) notifyStage(options.onStage, record, reservation.existing);
   // The journal intent is durable at this point. A test process can now be
   // terminated without any later mutation having started.
   await afterEffect?.('reservation');
@@ -152,6 +159,10 @@ export async function createSpecificationWithIntent(
   // Only resumeInterruptedOperation permits takeover of Create. The separate
   // confirmInterruptedGitSettled flag cannot bypass this writer boundary.
   if (reservation.existing && record.stage !== 'completed' && !options.resumeInterruptedOperation) {
+    if (replayAwaitsValidation) {
+      await rejectInvalidReservedReplay(engine, record);
+      notifyStage(options.onStage, record, true);
+    }
     const observed = await followExistingCreateOperation(engine, operationId);
     if (observed.stage !== 'completed') {
       throw recovery(
@@ -277,6 +288,23 @@ export async function createSpecificationWithIntent(
       throw recovery('Concurrent create did not reach completion; inspect the journal.');
     }
     throw error;
+  }
+}
+
+/**
+ * The original run answers an invalid reserved plan (missing base ref, disabled Git, a taken
+ * branch) with its own rejection; its retry must not be told the work is under way. A failure that
+ * only appears because the original run advanced meanwhile is not a rejection: the journal moved on.
+ */
+async function rejectInvalidReservedReplay(
+  engine: SpecFlowEngine,
+  record: CreateJournal,
+): Promise<void> {
+  try {
+    await validateNewGitReservation(engine, record);
+  } catch (error) {
+    const current = await readCreateJournal(engine.context, record.operationId);
+    if (current?.stage === 'reserved') throw error;
   }
 }
 

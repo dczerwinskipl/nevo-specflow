@@ -45,7 +45,7 @@ function isValidJournalIdentity(
   operationId: string,
 ): boolean {
   return (
-    value.version === 2 &&
+    value.version === 1 &&
     value.projectId === context.project.projectId &&
     value.operationId === operationId &&
     UUID.test(operationId) &&

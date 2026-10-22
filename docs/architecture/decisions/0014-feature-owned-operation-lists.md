@@ -57,12 +57,16 @@ from API data alone.
 
 - Operations started by the CLI or another browser appear within one poll, without live steps.
 - A failure is not durable: after a Runtime restart it is shown as interrupted ("check the result"). A
-  durable `failed` marker, an `initiator` for a "mine" filter, journal garbage collection, a diagnostics
+  durable `failed` marker, an `initiator` for a "mine" filter, a diagnostics
   API and a resumable runner stay out of scope; the contract reserves `queued`, `scheduled` and `resumable`.
 - Every viewer of a spec sees its operations: journals hold no initiator.
 - The list route is a second reader of the journals; it must stay free of Git and of the control lock.
-- Journals are never deleted, so `recovery-required` rows accumulate until resolved (follow-up: garbage
-  collection).
+- Settled journals are garbage collected: reserving a new Create deletes `completed` journals older than 7
+  days (bounded to 50 per reservation, under the reservation lock, no Git; the hook is kind agnostic so
+  Close can reuse it). `recovery-required`, in-progress and corrupt journals are never deleted, so they
+  accumulate until resolved. After the retention the same operationId is a new operation.
+- The Create journal format is `version: 1`; there was never a released version 2 and no migration or
+  compatibility reader exists.
 
 ## Rejected
 

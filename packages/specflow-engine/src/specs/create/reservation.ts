@@ -26,6 +26,7 @@ import {
   withCreateJournalLock,
   type CreateJournal,
 } from '../create-journal';
+import { removeExpiredCompletedCreateJournals } from './journal-retention';
 import { discoverSpecificationsForCreateAdmission } from '../discovery';
 import {
   createSpecificationScaffold,
@@ -56,6 +57,8 @@ export async function reserveCreateOperation(
         )
       : undefined;
   return withCreateJournalLock(engine.context, async () => {
+    // Retention sweep of settled journals under the reservation lock: bounded, Git-free, best effort.
+    await removeExpiredCompletedCreateJournals(engine.context, { keepOperationId: operationId });
     const operations = await listCreateJournals(engine.context);
     const previous = operations.find((item) => item.operationId === operationId);
     if (previous) {
@@ -227,7 +230,7 @@ export async function reserveCreateOperation(
     }
 
     const record: CreateJournal = {
-      version: 2,
+      version: 1,
       projectId: engine.context.project.projectId,
       operationId,
       inputFingerprint: fingerprintCreateClientIntent(intent),

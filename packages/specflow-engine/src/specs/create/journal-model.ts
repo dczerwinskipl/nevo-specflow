@@ -58,7 +58,7 @@ export interface CreateCommitEvidence {
 
 /** Single current durable Create format. No unpublished prototype migrations. */
 export interface CreateJournal {
-  readonly version: 2;
+  readonly version: 1;
   readonly projectId: string;
   readonly operationId: string;
   readonly requestIntent: CreateClientIntent;

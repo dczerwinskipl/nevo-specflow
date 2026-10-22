@@ -1,0 +1,141 @@
+import { randomUUID } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { mkdir, mkdtemp, readdir, realpath, rm, utimes, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { bootstrapProjectHome, createSpecificationScaffold } from '../src/testing';
+import {
+  fingerprintCreateClientIntent,
+  normalizeCreateClientIntent,
+} from '../src/specs/create-intent';
+import {
+  COMPLETED_OPERATION_JOURNAL_RETENTION_DAYS,
+  createJournalPath,
+  publishCreateJournal,
+  readCreateJournal,
+  removeExpiredCompletedCreateJournals,
+  withCreateJournalLock,
+  type CreateJournal,
+  type CreateStage,
+} from '../src/specs/create-journal';
+
+const roots: string[] = [];
+const DAY = 24 * 60 * 60 * 1000;
+
+afterEach(async () => {
+  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+});
+
+async function fixture() {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-gc-')));
+  roots.push(root);
+  execFileSync('git', ['init', '-q'], { cwd: root });
+  await mkdir(join(root, '.nevo'));
+  await writeFile(join(root, '.gitignore'), '.nevo/local/\n');
+  await writeFile(join(root, '.nevo/config.yaml'), 'runtime: {}\n');
+  execFileSync('git', ['add', '.gitignore', '.nevo/config.yaml'], { cwd: root });
+  execFileSync(
+    'git',
+    ['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'initial'],
+    { cwd: root },
+  );
+  return (await bootstrapProjectHome(root)).context;
+}
+
+type Context = Awaited<ReturnType<typeof fixture>>;
+
+function journal(context: Context, stage: CreateStage): CreateJournal {
+  const title = 'Retention ' + randomUUID().slice(0, 8);
+  const specId = randomUUID();
+  const scaffold = createSpecificationScaffold({ specId, title, created: '2026-10-14' });
+  const workspaceId = randomUUID();
+  const requestIntent = normalizeCreateClientIntent({
+    title,
+    target: { kind: 'existing', workspaceId },
+  });
+  return {
+    version: 1,
+    projectId: context.project.projectId,
+    operationId: randomUUID(),
+    requestIntent,
+    inputFingerprint: fingerprintCreateClientIntent(requestIntent),
+    specId,
+    slug: scaffold.slug,
+    title,
+    created: '2026-10-14',
+    stage,
+    target: { kind: 'existing', workspaceId, workspaceRoot: context.project.homeRoot },
+    files: scaffold.files.map(({ relativePath, sha256 }) => ({ relativePath, sha256 })),
+  };
+}
+
+async function seed(context: Context, stage: CreateStage, ageDays: number, now: number) {
+  const record = journal(context, stage);
+  await withCreateJournalLock(context, () => publishCreateJournal(context, record));
+  const when = new Date(now - ageDays * DAY);
+  await utimes(createJournalPath(context, record.operationId), when, when);
+  return record;
+}
+
+const sweep = (context: Context, now: number, extra = {}) =>
+  withCreateJournalLock(context, () =>
+    removeExpiredCompletedCreateJournals(context, { now, ...extra }),
+  );
+
+describe('Create journal retention', () => {
+  it('defaults to seven days', () => {
+    expect(COMPLETED_OPERATION_JOURNAL_RETENTION_DAYS).toBe(7);
+  });
+
+  it('removes only old completed journals', async () => {
+    const context = await fixture();
+    const now = Date.now();
+    const oldDone = await seed(context, 'completed', 8, now);
+    const recentDone = await seed(context, 'completed', 6, now);
+    const oldRecovery = await seed(context, 'recovery-required', 30, now);
+    const oldProgress = await seed(context, 'manifest-writing', 30, now);
+    expect(await sweep(context, now)).toBe(1);
+    expect(await readCreateJournal(context, oldDone.operationId)).toBeUndefined();
+    for (const kept of [recentDone, oldRecovery, oldProgress]) {
+      expect(await readCreateJournal(context, kept.operationId)).toEqual(kept);
+    }
+  });
+
+  it('never removes the kept operation, corrupt or foreign files', async () => {
+    const context = await fixture();
+    const now = Date.now();
+    const keep = await seed(context, 'completed', 30, now);
+    const corruptId = randomUUID();
+    const corrupt = createJournalPath(context, corruptId);
+    await withCreateJournalLock(context, () => writeFile(corrupt, '{not json'));
+    const old = new Date(now - 30 * DAY);
+    await utimes(corrupt, old, old);
+    const oldVersion = await seed(context, 'completed', 30, now);
+    await writeFile(
+      createJournalPath(context, oldVersion.operationId),
+      JSON.stringify({ ...oldVersion, version: 2 }),
+    );
+    await utimes(createJournalPath(context, oldVersion.operationId), old, old);
+    expect(await sweep(context, now, { keepOperationId: keep.operationId })).toBe(0);
+    const dir = await readdir(join(context.project.stateRoot, 'engine/operations/create'));
+    expect(dir).toHaveLength(3);
+  });
+
+  it('respects the per-call limit and finishes on later calls', async () => {
+    const context = await fixture();
+    const now = Date.now();
+    for (let i = 0; i < 5; i++) await seed(context, 'completed', 9, now);
+    expect(await sweep(context, now, { limit: 2 })).toBe(2);
+    expect(await sweep(context, now, { limit: 2 })).toBe(2);
+    expect(await sweep(context, now, { limit: 2 })).toBe(1);
+    expect(await sweep(context, now, { limit: 2 })).toBe(0);
+  });
+
+  it('tolerates a missing journal directory', async () => {
+    const context = await fixture();
+    expect(await removeExpiredCompletedCreateJournals(context, { now: Date.now() })).toBe(0);
+  });
+});

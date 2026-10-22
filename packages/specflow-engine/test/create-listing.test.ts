@@ -56,7 +56,7 @@ function journal(
     target: { kind: 'existing', workspaceId: fx.engine.workspace.workspaceId },
   });
   return {
-    version: 2,
+    version: 1,
     projectId: fx.context.project.projectId,
     operationId: randomUUID(),
     requestIntent,

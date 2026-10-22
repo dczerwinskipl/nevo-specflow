@@ -51,7 +51,7 @@ describe('Q00 Create journal current-format acceptance baseline', () => {
       target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
     });
     const original: CreateJournal = {
-      version: 2,
+      version: 1,
       projectId: engine.context.project.projectId,
       operationId: randomUUID(),
       requestIntent,
@@ -75,7 +75,7 @@ describe('Q00 Create journal current-format acceptance baseline', () => {
     }
 
     const rejected: readonly [string, unknown][] = [
-      ['version 1', { ...original, version: 1 }],
+      ['version 2', { ...original, version: 2 }],
       ['foreign Project Home', { ...original, projectId: randomUUID() }],
       ['forged fingerprint', { ...original, inputFingerprint: 'a'.repeat(64) }],
       [

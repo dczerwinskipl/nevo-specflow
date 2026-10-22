@@ -1,4 +1,4 @@
-import { Collapsible, Typography } from '@nevo/ui';
+import { Collapsible, DescriptionList, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { FrontmatterProperty } from './frontmatter';
 
@@ -31,34 +31,18 @@ export function DocumentProperties({
           </Typography>
         </Collapsible.Trigger>
         <Collapsible.Content className="px-3">
-          <dl className="m-0 grid min-w-0 grid-cols-[minmax(0,max-content)_minmax(0,1fr)] gap-x-4 gap-y-2 [&>dd]:m-0 [&>dt]:max-w-48">
+          <DescriptionList className="pb-2">
             {properties.map(({ key, value }) => (
-              <PropertyRow key={key} name={key} value={value} />
+              <DescriptionList.Item key={key}>
+                <DescriptionList.Term>{key}</DescriptionList.Term>
+                <DescriptionList.Detail className="whitespace-pre-wrap">
+                  {value === '' ? '—' : value}
+                </DescriptionList.Detail>
+              </DescriptionList.Item>
             ))}
-          </dl>
+          </DescriptionList>
         </Collapsible.Content>
       </Collapsible>
     </div>
-  );
-}
-
-function PropertyRow({ name, value }: { name: string; value: string }) {
-  return (
-    <>
-      <Typography
-        as="dt"
-        variant="body-sm"
-        className="min-w-0 text-content-muted [overflow-wrap:anywhere]"
-      >
-        {name}
-      </Typography>
-      <Typography
-        as="dd"
-        variant="body-sm"
-        className="min-w-0 whitespace-pre-wrap text-content-primary [overflow-wrap:anywhere]"
-      >
-        {value === '' ? '—' : value}
-      </Typography>
-    </>
   );
 }

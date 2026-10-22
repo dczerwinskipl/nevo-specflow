@@ -1,6 +1,6 @@
 import { useId, type ReactNode, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Icon } from '@nevo/ui';
+import { Button, InlineNote } from '@nevo/ui';
 
 /**
  * Footer of the Create form: the region for the failure alert and progress, the one reason Create
@@ -36,15 +36,9 @@ export function CreateFooter({
       {failureAlert}
       <footer className="flex flex-col gap-3 @lg:flex-row @lg:items-center @lg:justify-between">
         {prerequisite ? (
-          <p
-            id={prerequisiteId}
-            className="flex min-w-0 items-start gap-2 text-body-sm text-content-secondary"
-          >
-            <Icon name="info" size="sm" />
-            <span className="min-w-0">{prerequisite}</span>
-          </p>
+          <InlineNote id={prerequisiteId}>{prerequisite}</InlineNote>
         ) : (
-          <p className="min-w-0 text-body-sm text-content-secondary">{note}</p>
+          <InlineNote icon={null}>{note}</InlineNote>
         )}
         <div className="w-full @lg:w-auto @lg:shrink-0">
           <Button

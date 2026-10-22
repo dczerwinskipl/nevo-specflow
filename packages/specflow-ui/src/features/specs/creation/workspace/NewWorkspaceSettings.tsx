@@ -1,14 +1,5 @@
 import { useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
-import {
-  Alert,
-  Button,
-  Collapsible,
-  Field,
-  Icon,
-  SwitchField,
-  TextInput,
-  Typography,
-} from '@nevo/ui';
+import { Alert, Button, Collapsible, Field, InlineNote, SwitchField, TextInput } from '@nevo/ui';
 import { Trans, useTranslation } from 'react-i18next';
 import { useMessage } from '../../../../i18n/message';
 import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
@@ -286,19 +277,12 @@ export function NewWorkspaceSettings({
               </Alert>
             )}
             {choice.base.on && suggestion?.kind === 'dirty' && (
-              <Typography
-                as="p"
-                variant="body-sm"
-                className="flex items-start gap-2 text-content-secondary"
-              >
-                <Icon name="info" size="sm" className="mt-0.5 shrink-0 text-content-muted" />
-                <span className="min-w-0">
-                  <Trans
-                    i18nKey="create.workspace.suggestion.dirty"
-                    components={{ branch: <BranchRef name={suggestion.branch} /> }}
-                  />
-                </span>
-              </Typography>
+              <InlineNote>
+                <Trans
+                  i18nKey="create.workspace.suggestion.dirty"
+                  components={{ branch: <BranchRef name={suggestion.branch} /> }}
+                />
+              </InlineNote>
             )}
           </div>
 

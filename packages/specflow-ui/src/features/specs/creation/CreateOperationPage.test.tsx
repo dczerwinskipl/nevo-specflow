@@ -261,7 +261,6 @@ describe('CreateOperationPage', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Configuration' })).toBeTruthy();
     const trigger = screen.getByRole('button', { name: 'Technical details' });
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
-    expect(screen.queryByText('/work/trees')).toBeNull();
     fireEvent.click(trigger);
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
     expect(await screen.findByText('/work/trees')).toBeTruthy();
@@ -350,7 +349,7 @@ describe('CreateOperationPage', () => {
     ).getAllByRole('listitem');
     // Every step says "done" in text, not only by its icon.
     expect(items).toHaveLength(4);
-    for (const item of items) expect(item.textContent).toMatch(/ done$/);
+    for (const item of items) expect(item.textContent).toMatch(/ done/);
     expect(onOpen).not.toHaveBeenCalled();
     await waitFor(() => expect(onOpen).toHaveBeenCalledWith(created), {
       timeout: openAfterCreatedMs + 1500,

@@ -54,7 +54,7 @@ the owner's work. The copy says exactly that in plain words and gives the action
 has uncommitted changes. You can still create the specification; commit or stash them before
 merging into it."_ The same fact reads consistently everywhere the reason appears for a merge
 target (the Merge row note, the unavailable item in the target select, the "unavailable as a
-target" list, the merge-back suggestion, and the progress page's settings); there is no vague "not
+target" list, and the merge-back suggestion); there is no vague "not
 available now" wording, and it stays a quiet inline note, never an alert.
 
 Each optional setting (Start from, Merge into, slug, branch name) is switched on with the
@@ -110,66 +110,101 @@ Workspace Close action. Neither Create nor Close automatically runs E3–E5 work
 Submitting the form does not draw anything under the form: it stores the request and what was
 entered, and continues on a dedicated page, `/specs/new/creating/:operationId` (bookmarkable and
 safe to reload). The page sends the request when the server has not seen it, follows the operation
-and tells the owner clearly what is going on:
+and tells the owner clearly what is going on. **Progress is the primary content**; the
+configuration is a compact secondary summary below it. The page is a focused single-task page in
+the narrow readable column (`w-content-narrow`, centred), stacked vertically, and works from 320 px.
 
-- ONE heading carries the state and the typed name: **Creating specification: \<name\>**, then
-  **Specification created: \<name\>**, **Specification was not created: \<name\>** and **Result not
-  confirmed yet: \<name\>** (the name is an interpolated value of the localised heading, never a
-  separate line under it). A long name wraps (clamped to three lines, no sideways scroll at 320 px)
-  and the full name stays in the heading's tooltip. Without a known name (a direct link) the heading
-  has no name. Focus moves to the heading on arrival.
-- Under it a description list states the **actual settings** of this creation in the words of the
-  form's workspace summary (the same rows and branch/workspace references): _Where_ (in a new
-  workspace; added to workspace NAME with its branch; added to the current folder with its branch),
-  and for a new workspace _Branch name_, _Start from_, _Worktree folder_ (from the create-options
-  `worktreesRoot`) and _Merge into_ (workspace and branch); then the explicit slug and, shortened,
-  the goal if the owner entered one. The values come from the retained request and from the facts
-  the form saved with the draft from the create-options it showed (workspace names, branches,
-  folder), never from server text. A value that is not known (a direct link, a lost draft) has no
-  row; nothing is guessed. The merge target row carries the quiet uncommitted-changes note below
-  when it applies.
-- Under it the step checklist (next section), a status line (`Preparing your specification.`,
-  after a while `Still working — this can take a minute.`, in neutral colour) and a note that the
-  owner can leave: creation continues on the server and is resumed from **New specification**.
+From top to bottom:
+
+1. **Status header.** A status tile (`OperationStatusTile`: a turning spinner while it runs, a
+   static icon otherwise; the spinner stops under `prefers-reduced-motion`) next to ONE heading
+   that carries the state and the typed name: **Creating \<name\>**, then **Specification
+   created: \<name\>**, **Specification was not created: \<name\>** and **Result not confirmed
+   yet: \<name\>** (the name is an interpolated value of the localised heading, never a separate
+   line). A long name wraps (clamped to three lines, no sideways scroll at 320 px) and the full name
+   stays in the tooltip. Without a known name (a direct link) the heading has no name. Focus moves
+   to the heading on arrival. Under the heading one live status line says what is happening now:
+   _Preparing a new workspace and the specification._ (new workspace) or _Preparing the
+   specification._, after a while _Still working — this can take a minute._, and when the request
+   was refused before anything was done, what was **not** created.
+2. **Steps** (next section): each with a title and one line, in user language.
+3. **Configuration** (a heading and a compact description list in the words of the form's
+   workspace summary): _Where_ (in a new workspace; added to workspace NAME with its branch; added
+   to the current folder with its branch), and for a new workspace _Branch name_, _Start from_ and
+   _Merge into_ (workspace and branch), then, shortened to two lines, the goal if one was entered.
+   The values come from the retained request and from the facts the form saved with the draft
+   (workspace names, branches), never from server text; a value that is not known (a direct link, a
+   lost draft) has no row; nothing is guessed. The "merge target has uncommitted changes" caveat is
+   **not** shown here: it stays in the form, next to the integration-target choice.
+4. **Technical details**, a closed `Collapsible`: the worktree folder (absolute path, from the
+   create-options `worktreesRoot`), the explicit slug and the operation id. These matter only for
+   diagnosing or finding things on disk and are not part of the summary.
+5. A quiet note that the owner can leave (creation continues on the server; its status is
+   available from the specification list) and the secondary **Back to specifications** button
+   (also in the refused, unknown and not-found states).
+
+Lifecycle states keep their semantics:
+
+- **In progress**: as above; the leave note and **Back to specifications** are shown.
 - **Done**: the heading becomes **Specification created**, every step is checked, and the
   specification opens by itself after a moment; **Open specification** opens it at once.
-- **Refused before anything was done** (a taken branch, stale options, a refused name): the failure
-  explanation of the form and **Back to form**, which returns to Create with the name, goal and
-  workspace choice as they were entered (kept in session storage, not in the URL); a refused field
-  is flagged again there. The remedies of the explanation return to the form with that change made.
-- **Outcome unknown** (the answer was lost, the operation needs recovery): the same explanation and
-  a single **Check the result** / **Check operation status** action for the same operation, never a
+- **Refused before anything was done** (a taken branch, invalid name, stale options, a refused
+  name, offline): the failure explanation of the form, the plain statement **Nothing was created**
+  (only for the codes where that is certain; a failure the server concluded without a result does
+  not claim it) and **Back to form**, which returns to Create with the name, goal and workspace
+  choice as they were entered (kept in session storage, not in the URL); a refused field is
+  flagged again there. The remedies of the explanation return to the form with that change made.
+- **Outcome unknown / recovery required**: a separate calm state with the same explanation and a
+  single **Check the result** / **Check operation status** action for the same operation, never a
   second create and no way back to the form to start another.
-- **Opened without a stored request** (a direct link, cleared storage): the page asks the server and
-  shows what it knows (running: the steps without a title; finished: the specification opens;
-  failed: the explanation). An operation the server has no record of is shown calmly as
-  **Operation not found**, with a way back to Create; nothing is sent.
+- **Opened without a stored request** (a direct link, cleared storage; a reload is the same): the
+  page asks the server by `operationId` and shows what it knows (running: the steps without a
+  title; finished: the specification opens; failed: the explanation), never a duplicate. An
+  operation the server has no record of is shown calmly as **Operation not found**, with a way back
+  to Create; nothing is sent.
 
-Opening Create while an unfinished operation is stored continues on its page instead of offering a
-second create. Leaving the page never blocks.
+### Way back from elsewhere
+
+While a Create is unfinished, the specification list (current collection) shows one quiet row
+above the list: **Creating \<name\>… (in progress)**, linking to the progress page of the
+operation. It is derived from the client-side operation ledger (the stored request in
+`sessionStorage`, `useUnfinishedCreate`); no endpoint is involved. It disappears when the
+operation completes, is refused or is released, and is not shown in the archive. It is read when
+the list opens, so a Create that finished on the server while the owner was away is reconciled when
+the owner follows the row back to its page. Opening Create while an unfinished operation is stored
+continues on its page instead of offering a second create. Leaving the page never blocks.
 
 ## Live progress while creating
 
 Creating a workspace can take from a few seconds to minutes, so the progress page shows a calm
-checklist of named steps: the running step has a spinner, finished steps a check, steps that
-follow stay muted. The steps are the public
-vocabulary of the operation, not Git or journal internals:
+checklist of named steps: the running step has a spinner and is emphasised, finished steps a check,
+steps that follow stay muted ("Waiting for previous step"). Each step has a title and one line that
+depends on its state. The steps are the public vocabulary of the operation, not Git or journal
+internals:
 
-| Step                    | Shown as (en)                   | Shown when         |
-| ----------------------- | ------------------------------- | ------------------ |
-| `reserving`             | Reserving the name              | always             |
-| `preparing-workspace`   | Preparing the workspace         | new workspace only |
-| `writing-specification` | Writing the specification files | always             |
-| `registering`           | Registering the workspace       | always             |
+| Step                    | Title (en)                 | Running                                    | Done                        | Shown when         |
+| ----------------------- | -------------------------- | ------------------------------------------ | --------------------------- | ------------------ |
+| `reserving`             | Reserving the name         | Checking that the name and branch are free | Name and branch reserved    | always             |
+| `preparing-workspace`   | Preparing the workspace    | Creating the working environment           | Workspace ready             | new workspace only |
+| `writing-specification` | Creating the specification | Writing the specification files            | Specification files written | always             |
+| `registering`           | Finishing setup            | Registering the new specification          | Specification registered    | always             |
 
-A step that does not apply (the workspace step for the current or an existing workspace) is not
-drawn. Rows are reserved from the moment the page opens, so it does not jump when the first
-step arrives. The checklist is read by assistive technology through a polite live region and each
-row also says its state in text.
+A step that does not apply (a skipped step: the workspace step for the current or an existing
+workspace) is not drawn. A step id this build does not know (a newer Runtime) is drawn generically
+("Next step") instead of being hidden. The copy lives in one record in `createProgress.ts`
+(`Record<SpecificationCreateStep, …>`): a new public step, for example
+`committing-specification`, is one entry there plus its three catalogue keys
+(`create.progress.steps.<id>.title|running|done`).
+
+The checklist reflects only what the stream or inspection reported. **No steps are simulated and
+there are no percentages**: until the first snapshot, or when no live stream is available, the page
+shows ONE neutral running row, **Creating specification**, with a calm line (when the stream is
+unavailable: the live steps are unavailable and the operation is being checked). The checklist is
+read by assistive technology through a polite live region and each row also says its state in text.
 
 Progress is best effort. If the live stream cannot be opened, drops or is unsupported, nothing is
-shown or announced and the page carries on with its own monitoring: a calm "we are watching the
-operation" note and the inspection polling decide the outcome. The stream never fails or delays a Create. The
+shown or announced beyond that neutral row and the page carries on with its own monitoring: the
+inspection polling decides the outcome. The stream never fails or delays a Create. The
 mechanism is generic (`reference.api.operation-progress`) and is reused by other long-running
 operations.
 

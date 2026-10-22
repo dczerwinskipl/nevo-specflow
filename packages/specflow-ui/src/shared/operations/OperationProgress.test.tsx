@@ -39,7 +39,7 @@ describe('OperationProgress', () => {
     expect(items.map((item) => item.textContent)).toEqual([
       'Reserving the name done',
       'Preparing the workspace in progress',
-      'Registering the workspace waiting',
+      'Finishing setup waiting',
     ]);
   });
 
@@ -50,7 +50,7 @@ describe('OperationProgress', () => {
     expect(done?.getAttribute('aria-current')).toBeNull();
     expect(done?.textContent).toBe('Reserving the name done');
     expect(running?.textContent).toBe('Preparing the workspace in progress');
-    expect(pending?.textContent).toBe('Registering the workspace waiting');
+    expect(pending?.textContent).toBe('Finishing setup waiting');
   });
 
   it('renders nothing without steps and placeholders', () => {

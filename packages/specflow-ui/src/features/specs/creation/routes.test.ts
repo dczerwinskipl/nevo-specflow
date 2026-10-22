@@ -25,9 +25,9 @@ async function searchOf(url: string) {
     createSpecFlowAppServices({ authStore: createAuthStore(api, local) }),
   );
   await router.load();
-  return router
-    .matchRoutes(router.latestLocation)
-    .find((match) => match.routeId.endsWith('/specs/new'))?.search;
+  const matches: { routeId: string; search: unknown }[] = router.matchRoutes(router.latestLocation);
+  return matches.find((match) => match.routeId.endsWith('/specs/new'))?.search as
+    Record<string, unknown> | undefined;
 }
 
 describe('Create route search', () => {

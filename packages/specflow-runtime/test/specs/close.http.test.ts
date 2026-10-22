@@ -79,16 +79,19 @@ async function fixture(linked: boolean) {
     spec.relativeManifestPath,
     'specs/active/' + spec.slug + '/overview.md',
   );
-  git(
-    spec.workspaceRoot,
-    '-c',
-    'user.name=Test',
-    '-c',
-    'user.email=test@example.invalid',
-    'commit',
-    '-qm',
-    'canonical source',
-  );
+  // Create commits its own scaffold when git.enabled; only commit what is still staged.
+  if (git(spec.workspaceRoot, 'diff', '--cached', '--name-only') !== '') {
+    git(
+      spec.workspaceRoot,
+      '-c',
+      'user.name=Test',
+      '-c',
+      'user.email=test@example.invalid',
+      'commit',
+      '-qm',
+      'canonical source',
+    );
+  }
   return { root, engine, spec };
 }
 

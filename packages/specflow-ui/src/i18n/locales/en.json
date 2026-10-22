@@ -353,6 +353,7 @@
     "situationColumn": "Situation",
     "progressColumn": "Progress",
     "milestoneColumn": "Milestone",
+    "pullRequestColumn": "PR",
     "newestMilestoneFirst": "Newest milestone first",
     "dateUnavailable": "Date unavailable",
     "milestone": {

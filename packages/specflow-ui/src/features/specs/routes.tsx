@@ -8,7 +8,7 @@ import { useRuntimeMode } from '../../app/useRuntimeMode';
 import { useSpecsOverview } from './overview/useSpecsOverview';
 import { SpecsAccessDenied } from './overview/SpecsAccessDenied';
 import { SpecificationSurface } from './SpecificationSurface';
-import { specPrimaryLinkClassName } from './overview/SpecListRow';
+import { specPrimaryLinkClassName } from './overview/SpecPrimaryLink';
 
 export const specsForbiddenRoute = createRoute({
   getParentRoute: () => rootRoute,

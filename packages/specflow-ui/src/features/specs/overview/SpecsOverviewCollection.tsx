@@ -1,11 +1,13 @@
-import { useId, useState, type ReactNode } from 'react';
-import { InformationList, Typography } from '@nevo/ui';
+import { useId, useState } from 'react';
+import { InformationList, Typography, cn } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 
 import { sectionTranslationKey, type SpecsOverview, type CurrentSpecTarget } from './model';
 import { archiveRow, currentRow, sortArchiveItems } from './presentation';
 import { SpecSectionHeader } from './SpecSectionHeader';
 import { SpecListRow } from './SpecListRow';
+import type { RenderSpecificationLink } from './SpecPrimaryLink';
+import { specRowColumns } from './specRowColumns';
 
 export function SpecsOverviewCollection({
   projection,
@@ -17,11 +19,7 @@ export function SpecsOverviewCollection({
   readonly projection: SpecsOverview;
   readonly onOpenTarget?: (target: CurrentSpecTarget) => void;
   readonly specificationHref?: (id: string) => string;
-  readonly renderSpecificationLink?: (
-    specId: string,
-    children: ReactNode,
-    ariaLabel: string,
-  ) => ReactNode;
+  readonly renderSpecificationLink?: RenderSpecificationLink;
   readonly searching?: boolean;
 }) {
   const { t } = useTranslation();
@@ -112,13 +110,18 @@ function OverviewColumns({ archive = false }: { archive?: boolean }) {
       variant="body-sm"
       aria-hidden="true"
       data-spec-columns
-      className={`hidden min-w-0 gap-x-6 pl-2 pr-14 text-content-secondary @min-[48rem]/collection:grid ${archive ? 'grid-cols-[minmax(0,1fr)_12rem_6rem]' : 'grid-cols-[minmax(0,1fr)_15rem_7rem]'}`}
+      className={cn(
+        'hidden min-w-0 gap-x-6 pl-2 pr-14 text-content-secondary',
+        specRowColumns[archive ? 'archive' : 'current'].header,
+      )}
     >
       <span>{t('specifications.specificationColumn')}</span>
       <span>
         {t(archive ? 'specifications.milestoneColumn' : 'specifications.situationColumn')}
       </span>
-      <span>{archive ? 'PR' : t('specifications.progressColumn')}</span>
+      <span>
+        {t(archive ? 'specifications.pullRequestColumn' : 'specifications.progressColumn')}
+      </span>
     </Typography>
   );
 }

@@ -1,6 +1,5 @@
 import {
   InformationList,
-  Link,
   MenuItem,
   MenuSeparator,
   OverflowMenu,
@@ -19,20 +18,16 @@ import {
 } from './presentation';
 import type { CurrentSpecTarget } from './model';
 import { SpecRowSummary } from './SpecRowSummary';
+import { SpecPrimaryLink, type RenderSpecificationLink } from './SpecPrimaryLink';
+import { SpecPullRequests } from './SpecPullRequests';
+import { specRowColumns } from './specRowColumns';
 
 export interface SpecListRowProps {
   readonly item: SpecRowModel;
   readonly specificationHref?: string;
   readonly onOpenTarget?: (target: CurrentSpecTarget) => void;
-  readonly renderSpecificationLink?: (
-    specId: string,
-    children: ReactNode,
-    ariaLabel: string,
-  ) => ReactNode;
+  readonly renderSpecificationLink?: RenderSpecificationLink;
 }
-
-export const specPrimaryLinkClassName =
-  'pointer-events-auto static cursor-pointer whitespace-normal [overflow-wrap:anywhere] outline-none after:absolute after:inset-0 after:rounded-control focus-visible:after:outline-2 focus-visible:after:outline-focus-ring hover:text-accent-primary';
 
 export function SpecListRow({
   item,
@@ -40,62 +35,15 @@ export function SpecListRow({
   onOpenTarget,
   renderSpecificationLink,
 }: SpecListRowProps) {
-  const { t } = useTranslation();
-  const target: CurrentSpecTarget = { kind: 'specification', specId: item.id };
-  const label = t('specifications.openSpec', { title: item.title });
-  const pr = item.pullRequests;
-  const pullRequests =
-    pr?.kind === 'single' ? (
-      <Link
-        className={cn(
-          'pointer-events-auto relative z-10 inline-flex min-h-6 items-center rounded-control-inline [@media(pointer:coarse)]:min-h-11 [@media(pointer:coarse)]:min-w-11 [@media(pointer:coarse)]:items-start [@media(pointer:coarse)]:rounded-none',
-          item.collection === 'archive' && '[@media(pointer:coarse)]:pt-1',
-        )}
-        href={pr.href}
-        aria-label={t('specifications.openPullRequest', { number: pr.number, title: item.title })}
-      >
-        {t('common.pullRequestNumber', { number: pr.number })}
-      </Link>
-    ) : pr?.kind === 'multiple' ? (
-      <span>{t('specifications.pullRequests', { count: pr.count })}</span>
-    ) : null;
-  const primary =
-    renderSpecificationLink?.(item.id, item.title, label) ??
-    (specificationHref ? (
-      <a
-        href={specificationHref}
-        className={specPrimaryLinkClassName}
-        data-focus-ring="delegated"
-        aria-label={label}
-        onClick={(event) => {
-          if (
-            !onOpenTarget ||
-            event.button !== 0 ||
-            event.metaKey ||
-            event.ctrlKey ||
-            event.shiftKey ||
-            event.altKey
-          )
-            return;
-          event.preventDefault();
-          onOpenTarget(target);
-        }}
-      >
-        {item.title}
-      </a>
-    ) : onOpenTarget ? (
-      <button
-        type="button"
-        className={`${specPrimaryLinkClassName} text-left`}
-        data-focus-ring="delegated"
-        aria-label={label}
-        onClick={() => onOpenTarget(target)}
-      >
-        {item.title}
-      </button>
-    ) : (
-      item.title
-    ));
+  const primary = (
+    <SpecPrimaryLink
+      specId={item.id}
+      title={item.title}
+      href={specificationHref}
+      onOpenTarget={onOpenTarget}
+      renderLink={renderSpecificationLink}
+    />
+  );
   return (
     <InformationList.Item
       interactive={
@@ -106,18 +54,12 @@ export function SpecListRow({
       data-spec-key={item.key}
     >
       <InformationList.Content>
-        <div
-          className={
-            item.collection === 'current'
-              ? 'grid min-w-0 gap-x-6 gap-y-2 @min-[48rem]/collection:grid-cols-[minmax(0,1fr)_15rem_7rem]'
-              : 'grid min-w-0 gap-x-6 gap-y-2 @min-[48rem]/collection:grid-cols-[minmax(0,1fr)_12rem_6rem]'
-          }
-        >
-          <SpecRowIdentity item={item} primary={primary} pullRequests={pullRequests} />
+        <div className={cn('grid min-w-0 gap-x-6 gap-y-2', specRowColumns[item.collection].row)}>
+          <SpecRowIdentity item={item} primary={primary} />
           {item.collection === 'current' ? (
             <CurrentSpecRowContent item={item} />
           ) : (
-            <ArchivedSpecRowContent item={item} pullRequests={pullRequests} />
+            <ArchivedSpecRowContent item={item} />
           )}
         </div>
       </InformationList.Content>
@@ -130,15 +72,7 @@ export function SpecListRow({
   );
 }
 
-function SpecRowIdentity({
-  item,
-  primary,
-  pullRequests,
-}: {
-  item: SpecRowModel;
-  primary: ReactNode;
-  pullRequests: ReactNode;
-}) {
+function SpecRowIdentity({ item, primary }: { item: SpecRowModel; primary: ReactNode }) {
   const facts = rowMetadata(item);
   return (
     <div className="min-w-0">
@@ -170,7 +104,9 @@ function SpecRowIdentity({
                   {fact.value}
                 </span>
               ) : fact.kind === 'pr' ? (
-                <span>{pullRequests}</span>
+                <span>
+                  <SpecPullRequests item={item} />
+                </span>
               ) : (
                 <span>{fact.value}</span>
               )}
@@ -229,13 +165,7 @@ function CurrentSpecRowContent({ item }: { item: CurrentSpecRowModel }) {
     </>
   );
 }
-function ArchivedSpecRowContent({
-  item,
-  pullRequests,
-}: {
-  item: ArchiveSpecRowModel;
-  pullRequests: ReactNode;
-}) {
+function ArchivedSpecRowContent({ item }: { item: ArchiveSpecRowModel }) {
   return (
     <>
       <Typography
@@ -251,10 +181,10 @@ function ArchivedSpecRowContent({
         variant="body-sm"
         className={cn(
           'min-w-0 text-content-secondary',
-          !pullRequests && 'hidden @min-[48rem]/collection:block',
+          !item.pullRequests && 'hidden @min-[48rem]/collection:block',
         )}
       >
-        {pullRequests}
+        <SpecPullRequests item={item} />
       </Typography>
     </>
   );

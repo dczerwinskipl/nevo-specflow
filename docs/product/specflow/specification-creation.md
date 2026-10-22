@@ -134,6 +134,13 @@ shows that line only for refusals that changed nothing (`BRANCH_PROTECTED`, `COM
 other not-applied codes). A later check that reads `recovery-required` without a code keeps the
 generic recovery copy.
 
+Some codes can also be raised after the Runtime reserved the operation, when the journal, the files
+or a commit may already exist: `CONTROL_LOCK_BUSY`, `REGISTRY_CONFLICT`, `GIT_POLICY_INVALID` and
+`WORKTREE_PATH_CONFLICT`. The UI treats them as an **unknown outcome** (never "Nothing was
+created"): the form keeps the stored operation and offers **Check the result** for the same
+operation, which tells whether anything was created. Only codes that are always raised before the
+reservation (validation and preconditions) declare that nothing was changed.
+
 Create options are a snapshot of Git state, so the Create screen treats only options fetched
 since the screen was entered as current: while they load it shows the loading state of the
 workspace section instead of options cached from an earlier visit.
@@ -277,9 +284,9 @@ blocks.
 
 The panel renders `OperationListResponse` from `@nevo/specflow-contracts/operations`
 (`GET /api/specs/operations` on a project Runtime, `GET /api/demo/specifications/operations` on the
-demo Runtime; query `status` as a comma-separated filter and `limit` 1 to 50). The endpoint is
-delivered by the backend slice that follows this UI work; until it exists a 404 simply leaves the
-panel hidden. See `engineering.shared.operation-progress`.
+demo Runtime; query `status` as a comma-separated filter and `limit` 1 to 50). The endpoint ships
+with the Runtime (`docs/reference/api/specs-operations-list.md`); a 404 or 403 from an older Runtime or
+without the capability simply leaves the panel hidden. See `engineering.shared.operation-progress`.
 
 ## Live progress while creating
 

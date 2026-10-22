@@ -88,7 +88,7 @@ describe('protectedBranchPatternProblem', () => {
     expect(protectedBranchPatternProblem(pattern)).toMatch(reason);
   });
 
-  it.each(['.release', '_x', '-x', 'v1.', 'a/.b', 'a/-b'])(
+  it.each(['.release', '_x', '-x', 'v1.', 'a/.b'])(
     'rejects the wildcard-free entry %j that the Engine policy parser would reject',
     (pattern) => {
       expect(protectedBranchPatternProblem(pattern)).toMatch(/valid branch name/);

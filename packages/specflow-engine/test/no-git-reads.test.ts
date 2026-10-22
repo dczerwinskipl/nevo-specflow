@@ -1,6 +1,7 @@
 import { subscribe, unsubscribe } from 'node:diagnostics_channel';
 import { randomUUID } from 'node:crypto';
-import { rename, rm } from 'node:fs/promises';
+import { rename, rm, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -53,9 +54,10 @@ async function primaryTarget(engine: SpecFlowEngine) {
 }
 
 /** Every Engine READ operation behind the overview/workspace/documents/tasks/create-options endpoints. */
-const readOperations: ReadonlyArray<
-  readonly [string, (engine: SpecFlowEngine, specId: string) => Promise<unknown>]
-> = [
+const readOperations: readonly (readonly [
+  string,
+  (engine: SpecFlowEngine, specId: string) => Promise<unknown>,
+])[] = [
   ['overview current', (engine) => readCanonicalSpecSources(engine)],
   ['overview archive', (engine) => readCanonicalSpecSources(engine, () => true)],
   ['workspace', (engine, specId) => readCanonicalSpecSources(engine, (id) => id === specId)],
@@ -68,18 +70,22 @@ const readOperations: ReadonlyArray<
 
 describe('read endpoints never spawn Git (regression guard)', () => {
   describe.each([false, true])('git.enabled = %s', (gitEnabled) => {
-    it.each(readOperations)('%s spawns zero Git processes', async (_name, read) => {
-      if (gitEnabled && _name === 'create-options') return; // budgeted separately below
-      const { engine } = await project(gitEnabled);
-      const created = await createSpecificationForTesting(engine, {
-        operationId: randomUUID(),
-        title: 'Guarded read',
-        created: '2026-10-20',
-        target: await primaryTarget(engine),
-      });
-      const { spawns } = await countGit(() => read(engine, created.specId));
-      expect(spawns).toEqual([]);
-    }, 240000);
+    it.each(readOperations)(
+      '%s spawns zero Git processes',
+      async (_name, read) => {
+        if (gitEnabled && _name === 'create-options') return; // budgeted separately below
+        const { engine } = await project(gitEnabled);
+        const created = await createSpecificationForTesting(engine, {
+          operationId: randomUUID(),
+          title: 'Guarded read',
+          created: '2026-10-20',
+          target: await primaryTarget(engine),
+        });
+        const { spawns } = await countGit(() => read(engine, created.specId));
+        expect(spawns).toEqual([]);
+      },
+      240000,
+    );
   });
 });
 
@@ -128,8 +134,8 @@ describe('git-enabled create-options Git budget', () => {
     const { spawns, result } = await countGit(() => inspectCreateOptions(engine));
     expect(result.workspaces).toHaveLength(3);
     expect(spawns.length).toBeLessThanOrEqual(8);
-    const verbs = spawns.map(
-      (args) => args.filter((a) => a !== '-c' && a !== 'core.optionalLocks=false')[0],
+    const verbs = spawns.map((args) =>
+      args.find((a) => a !== '-c' && a !== 'core.optionalLocks=false'),
     );
     expect(verbs.filter((v) => v === 'worktree')).toHaveLength(1);
     expect(verbs.filter((v) => v === 'for-each-ref')).toHaveLength(1);
@@ -179,5 +185,34 @@ describe('mutations keep full Git verification', () => {
     const verbs = spawns.map((args) => args[0]);
     expect(verbs).toContain('worktree');
     expect(verbs).toContain('check-ignore');
+  }, 240000);
+});
+
+describe('verification split between reads and mutations', () => {
+  it('keeps full Git verification on the non-read (mutation) registry path', async () => {
+    const { engine } = await project(false);
+    const { spawns } = await countGit(() => engine.readRegistry());
+    expect(spawns.length).toBeGreaterThanOrEqual(5);
+  }, 240000);
+
+  it('refuses a read of a linked checkout whose Git link was redirected, without Git', async () => {
+    const { engine } = await project(true);
+    const linked = await createSpecificationForTesting(engine, {
+      operationId: randomUUID(),
+      title: 'Redirected link',
+      created: '2026-10-20',
+      target: { kind: 'new-worktree', baseRef: 'HEAD' },
+    });
+    const registry = await engine.readRegistry();
+    const root = registry.workspaces.find((w) => w.workspaceId === linked.workspaceId)!.root;
+    await rm(join(root, '.git'), { force: true });
+    await writeFile(join(root, '.git'), 'gitdir: ' + join(root, 'elsewhere') + '\n');
+
+    const { spawns } = await countGit(async () => {
+      await expect(readCanonicalSpecSources(engine)).rejects.toMatchObject({
+        code: 'REGISTRY_WORKSPACE_MISMATCH',
+      });
+    });
+    expect(spawns).toEqual([]);
   }, 240000);
 });

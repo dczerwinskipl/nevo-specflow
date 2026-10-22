@@ -64,6 +64,22 @@ export const CreateOperationParamsSchema = Type.Object(
   { additionalProperties: false },
 );
 
+/**
+ * `POST /api/specs` with `Prefer: respond-async` (RFC 7240): the operation is validated and
+ * reserved, then answered with 202 and this body while the work continues detached. Poll the
+ * inspection route named by `Location` (or watch its `/events` stream) for the outcome.
+ */
+export const CREATE_RESPOND_ASYNC_PREFERENCE = 'respond-async';
+export const CreateOperationAcceptedSchema = Type.Object(
+  {
+    operationId: UuidSchema,
+    kind: Type.Literal('specification-create'),
+    status: Type.Literal('in-progress'),
+  },
+  { additionalProperties: false },
+);
+export type CreateOperationAccepted = Static<typeof CreateOperationAcceptedSchema>;
+
 /** A read-only journal projection; never exposes filesystem paths or internal stages. */
 export const CreateOperationInspectionSchema = Type.Union([
   Type.Object(

@@ -4,6 +4,8 @@ export * from './close';
 export { CreateOptionsSchema, type CreateOptions } from './create-options';
 
 export {
+  CREATE_RESPOND_ASYNC_PREFERENCE,
+  CreateOperationAcceptedSchema,
   CreateOperationInspectionSchema,
   CreateOperationParamsSchema,
   CreateSpecErrorSchema,
@@ -11,6 +13,7 @@ export {
   CreatedSpecSchema,
   ExistingSpecTargetSchema,
   NewSpecWorktreeTargetSchema,
+  type CreateOperationAccepted,
   type CreateOperationInspection,
   type CreateSpecRequest,
   type CreatedSpec,

@@ -66,13 +66,26 @@ export interface CreateSpecificationOptions {
 export interface CreateStageObservation {
   readonly stage: CreateStage;
   readonly target: 'existing' | 'new-worktree';
+  /**
+   * Present (true) only on the reservation observation of a retry that found an already reserved
+   * operation: the stage is then the one found, and this call is at most a reader of that work.
+   */
+  readonly replayed?: true;
 }
 export type CreateStageObserver = (observation: CreateStageObservation) => void;
 
-function notifyStage(observer: CreateStageObserver | undefined, record: CreateJournal): void {
+function notifyStage(
+  observer: CreateStageObserver | undefined,
+  record: CreateJournal,
+  replayed = false,
+): void {
   if (!observer) return;
   try {
-    observer({ stage: record.stage, target: record.target.kind });
+    observer({
+      stage: record.stage,
+      target: record.target.kind,
+      ...(replayed ? { replayed: true as const } : {}),
+    });
   } catch {
     // Progress is best effort and must never change the outcome of the operation.
   }
@@ -127,7 +140,7 @@ export async function createSpecificationWithIntent(
   validateOperationId(operationId);
   const reservation = await reserveCreateOperation(engine, intent, operationId, creationDate);
   let record = reservation.record;
-  notifyStage(options.onStage, record);
+  notifyStage(options.onStage, record, reservation.existing);
   // The journal intent is durable at this point. A test process can now be
   // terminated without any later mutation having started.
   await afterEffect?.('reservation');

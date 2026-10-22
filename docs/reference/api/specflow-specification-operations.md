@@ -26,12 +26,12 @@ future Workflow or provider Session APIs.
 
 ## Create
 
-| HTTP | Route                                              | Result                                              |
-| ---- | -------------------------------------------------- | --------------------------------------------------- |
-| GET  | `/api/specs/create-options`                        | 200, authorized read-only options                   |
-| POST | `/api/specs`                                       | **201**, `CreatedSpec`                              |
-| GET  | `/api/specs/create/operations/:operationId`        | 200 sanitized observation or 404 `CREATE_NOT_FOUND` |
-| GET  | `/api/specs/create/operations/:operationId/events` | live named steps (SSE), see below                   |
+| HTTP | Route                                              | Result                                                         |
+| ---- | -------------------------------------------------- | -------------------------------------------------------------- |
+| GET  | `/api/specs/create-options`                        | 200, authorized read-only options                              |
+| POST | `/api/specs`                                       | **201** `CreatedSpec`, or **202** with `Prefer: respond-async` |
+| GET  | `/api/specs/create/operations/:operationId`        | 200 sanitized observation or 404 `CREATE_NOT_FOUND`            |
+| GET  | `/api/specs/create/operations/:operationId/events` | live named steps (SSE), see below                              |
 
 All four require project-wide Spec `Create` capability before reading protected data.
 401/403 use existing Auth schemas. With no Engine composition, all return
@@ -70,6 +70,38 @@ not an integration-selectable destination. All options are a snapshot, not a res
 Operation lookup returns `{operationId,kind:"specification-create",status:"in-progress"|"recovery-required"}`
 or completed `CreatedSpec`. It is read-only and never proves process liveness or initiates
 recovery. After timeout, reuse the **same** operation ID.
+
+Async mode (`Prefer: respond-async`, RFC 7240): a client that cannot hold a request open for a
+worktree create sends the request header `Prefer: respond-async` (a token in a comma-separated list,
+case-insensitive, parameters such as `wait` are ignored). The Runtime validates and reserves the
+operation, then answers **202 Accepted** while the work continues detached from the request:
+
+```http
+HTTP/1.1 202 Accepted
+Location: /api/specs/create/operations/<operationId>
+Preference-Applied: respond-async
+Cache-Control: no-store
+Vary: Prefer
+
+{ "operationId": "<uuid>", "kind": "specification-create", "status": "in-progress" }
+```
+
+- 202 is sent once the operation is reserved and validated: a fresh run has left the internal
+  reservation stage (Git availability and the reserved plan were checked), or the request replays
+  work that is still running. Rejections up to that point are the usual synchronous 4xx/503
+  (`BASE_REF_NOT_FOUND`, `BRANCH_ALREADY_EXISTS`, `CREATE_CONFLICT`, ...), never a 202.
+- The outcome is read from the `Location` (the inspection endpoint) or watched on its `/events` stream.
+  A failure after 202 is visible there (`failed` event with a code, `recovery-required`), not on the
+  already finished request.
+- Without an `operationId` in the body the Runtime generates one and returns it.
+- Replay keeps the existing idempotent semantics: the same `operationId` and the same body returns
+  the current state (202 while running, **201** with `CreatedSpec` when completed); a changed body is
+  `CREATE_CONFLICT` (409).
+- Without the header the behaviour is unchanged: the response is the synchronous **201**. A
+  Runtime that does not know the header also answers 201, which a client must accept.
+- Create work is never cancelled by a client disconnect, in sync or async mode: the handler is not
+  bound to the request lifetime (regression test: abort during `POST /api/specs`, the journal still
+  reaches `completed`).
 
 Live progress: POST can take seconds to minutes, so a client that sends an `operationId` may also
 watch `GET /api/specs/create/operations/:operationId/events`, the Create route of the shared operation

@@ -88,6 +88,39 @@ describe('demo Runtime mirrors the generic operation progress stream', () => {
     expect(seen.at(-1)?.event).toBe('completed');
   });
 
+  it('answers 202 with Location for Prefer: respond-async and keeps publishing detached', async () => {
+    const url = await demo(true);
+    const id = '7f3a91c2-4b6e-4d1a-9c0e-000000000104';
+    const accepted = await fetch(`${url}/api/demo/specifications`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-demo-scenario': 'slow-create',
+        prefer: 'respond-async',
+      },
+      body: JSON.stringify(await createBody(url, id)),
+    });
+    expect(accepted.status).toBe(202);
+    expect(accepted.headers.get('location')).toBe(`/api/demo/specifications/operations/${id}`);
+    expect(accepted.headers.get('preference-applied')).toBe('respond-async');
+    expect(await accepted.json()).toEqual({
+      operationId: id,
+      kind: 'specification-create',
+      status: 'in-progress',
+    });
+    // The work continues after the response: the stream still ends with the result.
+    const seen = await readEvents(await events(url, id));
+    expect(seen.at(-1)?.event).toBe('completed');
+
+    // A replay of the same request is answered with the committed result (201).
+    const replay = await fetch(`${url}/api/demo/specifications`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', prefer: 'respond-async' },
+      body: JSON.stringify(await createBody(url, id)),
+    });
+    expect(replay.status).toBe(201);
+  });
+
   it('publishes a code-only failure for a forced demo failure', async () => {
     const url = await demo(true);
     const id = '7f3a91c2-4b6e-4d1a-9c0e-000000000103';

@@ -8,7 +8,11 @@ import {
   DemoOperationStatusSchema,
   DemoCreateResultSchema,
 } from '@nevo/specflow-contracts/demo';
-import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
+import {
+  CREATE_RESPOND_ASYNC_PREFERENCE,
+  CreateOperationAcceptedSchema,
+  SpecCapabilities,
+} from '@nevo/specflow-contracts/specs';
 import { SessionCapabilities } from '@nevo/specflow-contracts/sessions';
 import type { DemoCatalogue } from '../../demo-catalogue';
 import {
@@ -27,6 +31,7 @@ import {
   type OperationProgressRegistry,
 } from '../../operations';
 import { startCreateProgress } from '../create/progress';
+import { prefersRespondAsync } from '../create/respond-async';
 
 export interface DemoProgress {
   readonly registry: OperationProgressRegistry;
@@ -186,7 +191,11 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
       schema: {
         body: DemoCreateInputSchema,
         // 201 like the real Engine (a replayed completed operation answers 201 again).
-        response: { 201: DemoCreateResultSchema, ...createErrors },
+        response: {
+          201: DemoCreateResultSchema,
+          202: CreateOperationAcceptedSchema,
+          ...createErrors,
+        },
       },
     },
     async (request, reply) => {
@@ -209,7 +218,8 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
           request.body,
           active,
         );
-        if (reporter && outcome.fresh) {
+        const publish = async () => {
+          if (!reporter || !outcome.fresh) return;
           // Paced only when the scenario seam is on and asks for it; otherwise the steps are
           // published at once (a late subscriber replays them from the snapshot).
           for (const stage of [
@@ -223,7 +233,22 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
           }
           const { documentIds: _documentIds, ...created } = outcome.result;
           reporter.complete(created);
+        };
+        if (outcome.fresh && prefersRespondAsync(request.headers.prefer)) {
+          // Same contract as the real Runtime: 202 now, the work (progress) continues detached.
+          // The demo state is committed already, so its inspection shows the outcome at once.
+          void publish().catch(() => reporter?.fail(undefined));
+          return reply
+            .code(202)
+            .header('Location', `/api/demo/specifications/operations/${outcome.result.operationId}`)
+            .header('Preference-Applied', CREATE_RESPOND_ASYNC_PREFERENCE)
+            .send({
+              operationId: outcome.result.operationId,
+              kind: 'specification-create',
+              status: 'in-progress',
+            });
         }
+        await publish();
         if (outcome.fresh && active.includes('network-uncertain')) {
           // Committed, but the response never arrives: the client must replay with the same operationId.
           reply.hijack();

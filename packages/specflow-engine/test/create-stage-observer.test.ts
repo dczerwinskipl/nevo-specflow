@@ -73,4 +73,18 @@ describe('create stage observer', () => {
     expect(seen.map((item) => item.stage)).toContain('git-initiated');
     expect(seen.at(-1)).toEqual({ stage: 'completed', target: 'new-worktree' });
   }, 120000);
+
+  it('marks the reservation observation of a retry as replayed', async () => {
+    const engine = await project(false);
+    const input = {
+      operationId: randomUUID(),
+      title: 'Replayed create',
+      created: '2026-10-14',
+      target: { kind: 'existing' as const, workspaceId: engine.workspace.workspaceId },
+    };
+    await createSpecification(engine, input);
+    const seen: CreateStageObservation[] = [];
+    await createSpecification(engine, input, { onStage: (observation) => seen.push(observation) });
+    expect(seen).toEqual([{ stage: 'completed', target: 'existing', replayed: true }]);
+  }, 90000);
 });

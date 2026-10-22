@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import {
   CreateOperationError,
   GitCapabilityError,
@@ -10,6 +12,7 @@ import {
   inspectPublicCreateOperation,
   projectCreatedSpecification,
   type CreateSpecificationRequest,
+  type CreateStageObservation,
   type SpecFlowEngine,
 } from '@nevo/specflow-engine';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
@@ -19,6 +22,8 @@ import {
   AuthorizationForbiddenErrorResponseSchema,
 } from '@nevo/specflow-contracts/authorization';
 import {
+  CREATE_RESPOND_ASYNC_PREFERENCE,
+  CreateOperationAcceptedSchema,
   CreateOperationInspectionSchema,
   CreateOperationParamsSchema,
   CreateOptionsSchema,
@@ -36,6 +41,7 @@ import {
 } from '../../operations';
 import { statusForCreateError, type CreateErrorCode } from './error-status';
 import { startCreateProgress, type CreateProgress } from './progress';
+import { prefersRespondAsync } from './respond-async';
 
 export interface SpecsCreateEndpointOptions {
   readonly engine?: SpecFlowEngine;
@@ -171,6 +177,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         body: CreateSpecRequestSchema,
         response: {
           201: CreatedSpecSchema,
+          202: CreateOperationAcceptedSchema,
           400: CreateSpecErrorSchema,
           401: AuthenticationRequiredErrorResponseSchema,
           403: AuthorizationForbiddenErrorResponseSchema,
@@ -181,7 +188,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
       },
     },
     async (request, reply) => {
-      reply.header('Cache-Control', 'no-store');
+      reply.header('Cache-Control', 'no-store').header('Vary', 'Prefer');
       const engine = options.engine;
       if (!engine) {
         return reply.code(503).send({
@@ -190,37 +197,77 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         });
       }
 
-      // Best-effort progress for the generic operation stream; never affects the outcome.
+      const body = request.body;
+      const respondAsync = prefersRespondAsync(request.headers.prefer);
+      // Async mode needs an id to answer with a Location; the client may have chosen its own.
+      const operationId = body.operationId ?? (respondAsync ? randomUUID() : undefined);
+
+      // Best-effort progress for the operation stream; never affects the outcome.
       let progress: CreateProgress | undefined;
       try {
-        const body = request.body;
-        if (options.progress && body.operationId) {
+        if (options.progress && operationId) {
           progress = startCreateProgress(
             options.progress,
-            body.operationId,
+            operationId,
             body.target?.kind === 'new-worktree' ? 'new-worktree' : 'existing',
           );
         }
-        // Resolve default from the verified Project Home (not the HTTP server
-        // process cwd or a user-provided, unverified root).
-        const target = await resolveCreateTarget(engine, body.target);
-        const result = await createSpecificationFromRequest(
-          engine,
-          {
-            operationId: body.operationId,
-            title: body.title,
-            goal: body.goal,
-            ...(body.slug !== undefined ? { slug: body.slug } : {}),
-            target,
-          },
-          progress ? { onStage: (observation) => progress?.onStage(observation) } : {},
-        );
-        const created = projectCreatedSpecification(result);
-        progress?.complete(created);
-        return reply.code(201).send(created);
+
+        // The work is NOT bound to this request: Node does not cancel a handler when the client
+        // disconnects and the Engine takes no request signal, so the journal always runs to its
+        // outcome. The promise below is the single owner of that outcome (progress included).
+        let accept: () => void = () => undefined;
+        const accepted = new Promise<'accepted'>((resolve) => {
+          accept = () => resolve('accepted');
+        });
+        const finished = (async () => {
+          try {
+            // Resolve default from the verified Project Home (not the HTTP server
+            // process cwd or a user-provided, unverified root).
+            const target = await resolveCreateTarget(engine, body.target);
+            const result = await createSpecificationFromRequest(
+              engine,
+              {
+                operationId,
+                title: body.title,
+                goal: body.goal,
+                ...(body.slug !== undefined ? { slug: body.slug } : {}),
+                target,
+              },
+              {
+                onStage: (observation) => {
+                  progress?.onStage(observation);
+                  if (respondAsync && isAcceptedObservation(observation)) accept();
+                },
+              },
+            );
+            const created = projectCreatedSpecification(result);
+            progress?.complete(created);
+            return created;
+          } catch (error) {
+            progress?.fail(errorCode(error));
+            throw error;
+          }
+        })();
+
+        if (respondAsync && operationId) {
+          // A failure after acceptance is reported by progress/inspection, never lost unhandled.
+          finished.catch((error: unknown) => {
+            if (!errorCode(error)) request.log.error({ err: error }, 'Detached Create failed');
+          });
+          const first = await Promise.race([finished, accepted]);
+          if (first === 'accepted') {
+            return reply
+              .code(202)
+              .header('Location', operationPath(operationId))
+              .header('Preference-Applied', CREATE_RESPOND_ASYNC_PREFERENCE)
+              .send({ operationId, kind: 'specification-create', status: 'in-progress' });
+          }
+          return reply.code(201).send(first);
+        }
+        return reply.code(201).send(await finished);
       } catch (error) {
         const code = errorCode(error);
-        progress?.fail(code);
         if (!code) throw error;
 
         const status = statusForCreateError(code);
@@ -230,6 +277,19 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
   );
   done();
 };
+
+const operationPath = (operationId: string) => `/api/specs/create/operations/${operationId}`;
+
+/**
+ * When a respond-async request is answered 202: the operation has been validated and is past its
+ * reservation (a fresh run has left `reserved`, so Git availability and the reserved plan were
+ * checked), or it is a retry of work that is still running. A finished or broken journal is
+ * answered with its real outcome instead.
+ */
+function isAcceptedObservation(observation: CreateStageObservation): boolean {
+  if (observation.stage === 'completed' || observation.stage === 'recovery-required') return false;
+  return observation.replayed === true || observation.stage !== 'reserved';
+}
 
 async function resolveCreateTarget(
   engine: SpecFlowEngine,

@@ -48,6 +48,28 @@ pnpm install --frozen-lockfile
 
 `format:check` is intentionally read-only. A check command must never repair the working tree.
 
+## Running slow tests on Linux
+
+Real-Git integration tests (Engine, Runtime HTTP, CLI) spawn many Git processes and create many
+small files. On Windows (process start, antivirus scanning, NTFS) a single test file can take
+minutes; on Linux the same file takes seconds. Run them on Linux through Docker:
+
+```bash
+tools/dev/linux-test.sh -- 'pnpm turbo run build --filter=@nevo/specflow-engine^... \
+  && cd packages/specflow-engine && npx vitest run test/create-commit.test.ts --testTimeout=240000'
+```
+
+The script clones the **committed** state of the current branch inside the container (not a
+bind mount, so it uses the container's own filesystem), installs the pinned pnpm and runs the
+command. Uncommitted changes are not included, so commit first. Options: `--ref <branch>`,
+`--memory <size>` (default `10g`), `--cpus <n>` (default `6`), `--image <name>` (default
+`node:24-bookworm`). Docker Desktop (or any Docker engine) is required; run it from Git Bash on
+Windows.
+
+Use the host for fast unit tests and the test you are iterating on; use Linux for real-Git files,
+whole package suites and final verification, which is also closer to CI. A failure seen only on
+Windows (for example a symlink privilege error) is an environment limit: confirm on Linux.
+
 ## Turborepo
 
 Package dependencies and task prerequisites live in `turbo.json` plus package-local overrides.

@@ -442,7 +442,7 @@ describe('E2.I01 — authorized read-only Create options', () => {
   });
 
   it(
-    'returns schema-validated policy and local branch choices without mutation',
+    'returns schema-validated policy without Git facts or mutation when Git is disabled',
     async () => {
       const { root, engine } = await fixture();
       const auth = authenticatedStore();
@@ -481,12 +481,8 @@ describe('E2.I01 — authorized read-only Create options', () => {
         ]);
         expect(result.newWorktree).toEqual({ status: 'disabled', reason: 'git-disabled' });
         expect(result.defaultBaseRef).toBe('HEAD');
-        expect(result.baseRefs.length).toBeGreaterThan(0);
-        expect(result.baseRefs).toEqual(
-          expect.arrayContaining([
-            expect.objectContaining({ checkedOutWorkspaceId: engine.workspace.workspaceId }),
-          ]),
-        );
+        // Git disabled: answered from registry and filesystem only; no Git facts (refs, branches).
+        expect(result.baseRefs).toEqual([]);
         expect(response.body).not.toContain(root);
         expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(registryBefore);
       } finally {

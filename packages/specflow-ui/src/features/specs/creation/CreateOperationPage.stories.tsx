@@ -121,8 +121,7 @@ function Fixture({
   useMemo(() => {
     sessionStorage.clear();
     const storage = createSessionOperationStorage('unknown', sessionStorage);
-    if (request)
-      storage.save({ request: { ...request, operationId } as never, startedAt: Date.now() });
+    if (request) storage.save({ request: { ...request, operationId }, startedAt: Date.now() });
     storage.saveDraft({
       operationId,
       title: request?.title ?? '',
@@ -190,8 +189,8 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /** The checklist only: the breadcrumbs are list items too. */
-const steps = (canvas: ReturnType<typeof within>) =>
-  within(canvas.getByRole('status', { name: 'Postęp tworzenia specyfikacji' }));
+const steps = (canvasElement: HTMLElement) =>
+  within(within(canvasElement).getByRole('status', { name: 'Postęp tworzenia specyfikacji' }));
 
 const newWorkspace = { title: 'Limity płatności', target: { kind: 'new-worktree' as const } };
 
@@ -233,13 +232,13 @@ export const LongTitleAt320: Story = {
       },
     },
   },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
     await settleOwnerV4('creation-progress-320', 320, 740);
     await canvas.findByText('Przygotowanie środowiska pracy');
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320);
     const heading = canvas.getByRole('heading', { level: 1, name: 'Tworzenie specyfikacji' });
     await expect(heading.getBoundingClientRect().right).toBeLessThanOrEqual(320);
-    for (const row of steps(canvas).getAllByRole('listitem'))
+    for (const row of steps(canvasElement).getAllByRole('listitem'))
       await expect(row.getBoundingClientRect().right).toBeLessThanOrEqual(320);
   },
 };
@@ -256,12 +255,12 @@ export const NoLiveSteps: Story = {
 /** Done: every step is checked, the page says so and the specification opens by itself (or on the button). */
 export const Success: Story = {
   args: { request: newWorkspace, server: 'completed', onOpen: fn() },
-  play: async ({ canvas, args }) => {
+  play: async ({ canvas, canvasElement, args }) => {
     await expect(
       await canvas.findByRole('heading', { level: 1, name: 'Specyfikacja utworzona' }),
     ).toBeInTheDocument();
     await expect(canvas.getByRole('button', { name: 'Otwórz specyfikację' })).toBeInTheDocument();
-    for (const row of steps(canvas).getAllByRole('listitem'))
+    for (const row of steps(canvasElement).getAllByRole('listitem'))
       await expect(row).toHaveAttribute('data-status', 'done');
     await waitFor(() => expect(args.onOpen).toHaveBeenCalledWith(createdSpec), { timeout: 4000 });
   },

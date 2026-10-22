@@ -39,7 +39,7 @@ const httpError = (status: number, code: string) =>
 const storage = () => createSessionOperationStorage('unknown', sessionStorage);
 const store = (request: Record<string, unknown> = {}) =>
   storage().save({
-    request: { title: 'Payment limits', operationId, ...request } as never,
+    request: { title: 'Payment limits', operationId, ...request },
     startedAt: Date.now(),
   });
 

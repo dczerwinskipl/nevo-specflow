@@ -183,15 +183,15 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
     renderScreen('project', {
       createOptions: () => Promise.resolve(createOptionsFixture('default')),
     });
-    expect(((await screen.findByLabelText('Specification name')) as HTMLInputElement).value).toBe(
+    expect((await screen.findByLabelText<HTMLInputElement>('Specification name')).value).toBe(
       'Payment limits',
     );
-    expect((screen.getByLabelText('Goal (optional)') as HTMLTextAreaElement).value).toBe(
+    expect(screen.getByLabelText<HTMLTextAreaElement>('Goal (optional)').value).toBe(
       'Limit refunds',
     );
-    expect(
-      ((await screen.findByRole('radio', { name: /current/i })) as HTMLInputElement).checked,
-    ).toBe(true);
+    expect((await screen.findByRole<HTMLInputElement>('radio', { name: /current/i })).checked).toBe(
+      true,
+    );
     // Consumed: a reload of the form starts clean.
     expect(storage().loadDraft()).toBeUndefined();
   });

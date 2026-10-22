@@ -28,7 +28,7 @@ const headingKeys = {
 const withoutSnapshot = ({
   snapshot: _snapshot,
   ...failure
-}: CreateFailure & { snapshot: string }) => failure as CreateFailure;
+}: CreateFailure & { snapshot: string }) => failure;
 
 /** What "Back to form" carries to the form on top of the draft the form left. */
 type FormPatch = { choice: (choice: WorkspaceChoice) => WorkspaceChoice } | undefined;
@@ -91,7 +91,7 @@ export function CreateOperationPage({
   }, [announce, created, onOpen, t]);
 
   const sent = state.sent ?? stored?.request;
-  const title = (sent?.title || ownDraft?.title)?.trim();
+  const title = [sent?.title, ownDraft?.title].map((value) => value?.trim()).find(Boolean);
   const target = sent?.target;
   const failure = state.failure;
   // A failure that kept the operation (a lost session) is tried again here; a refusal ends it.

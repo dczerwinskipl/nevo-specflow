@@ -284,7 +284,12 @@ describe('E2.T05 — real HTTP and offline CLI share one Engine authority', () =
     roots.push(dirname(workspaceRoot));
     expect(workspaceRoot).not.toBe(root);
     expect(git(root, 'rev-parse', 'HEAD')).toBe(before);
-    expect(git(workspaceRoot, 'rev-parse', 'HEAD')).toBe(before);
+    // Create commits its one scaffold commit on the new branch, based on the primary HEAD.
+    expect(git(workspaceRoot, 'rev-parse', 'HEAD~1')).toBe(before);
+    expect(git(workspaceRoot, 'diff', '--name-only', 'HEAD~1', 'HEAD')).toContain(
+      created.relativeManifestPath,
+    );
+    expect(git(workspaceRoot, 'status', '--porcelain')).toBe('');
     expect(git(root, 'worktree', 'list', '--porcelain').match(/worktree /gu)).toHaveLength(2);
 
     const linkedEngine = await openSpecFlowEngine({ cwd: workspaceRoot });

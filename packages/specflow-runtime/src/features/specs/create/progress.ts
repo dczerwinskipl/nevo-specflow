@@ -12,6 +12,7 @@ const RECOVERY_CODES: ReadonlySet<string> = new Set([
   'CREATE_JOURNAL_CORRUPT',
   'REGISTRY_RECOVERY_REQUIRED',
   'GIT_OPERATION_UNCERTAIN',
+  'COMMIT_FAILED',
 ]);
 
 export interface CreateProgress {
@@ -30,8 +31,10 @@ export function startCreateProgress(
   registry: OperationProgressRegistry,
   operationId: string,
   target: 'existing' | 'new-worktree',
+  /** The Engine commits the scaffold (`git.enabled`): the checklist gets `committing-specification`. */
+  commits = false,
 ): CreateProgress {
-  const steps = specificationCreateSteps(target);
+  const steps = specificationCreateSteps(target, commits);
   const reporter = registry.begin({ operationId, kind: 'specification-create', steps });
 
   const enter = (step: SpecificationCreateStep) => {
@@ -57,6 +60,15 @@ export function startCreateProgress(
         case 'manifest-writing':
         case 'manifest-written':
           enter('writing-specification');
+          break;
+        case 'commit-writing':
+        case 'commit-written':
+          // Only journals that carry a commit reach these stages, i.e. `commits` is true.
+          enter(
+            steps.includes('committing-specification')
+              ? 'committing-specification'
+              : 'writing-specification',
+          );
           break;
         case 'registry-writing':
         case 'registry-linked':

@@ -8,6 +8,8 @@ import { followExistingCreateOperation } from './create/observation';
 import type { CreateSpecificationInput } from './create/create-input';
 export type { CreateSpecificationInput, CreateSpecificationTarget } from './create/create-input';
 import { commitBinding } from './create-binding';
+import { ensureScaffoldCommitted } from './create-commit';
+import { openVersionControl } from '../version-control';
 import {
   createPlannedGitWorktree,
   ensureLinkedIdentity,
@@ -95,7 +97,7 @@ function notifyStage(
 
 /** Internal fault-injection seam, deliberately absent from CreateSpecificationOptions. */
 export type CreateEffectHook = (
-  effect: 'reservation' | 'git' | 'manifest-opened' | 'manifest' | 'registry',
+  effect: 'reservation' | 'git' | 'manifest-opened' | 'manifest' | 'commit' | 'registry',
 ) => Promise<void>;
 
 export async function inspectCreateSpecification(
@@ -279,6 +281,35 @@ async function createWithVerifiedIntent(
 
         case 'manifest-written': {
           await verifyScaffold(record);
+          if (record.commit) {
+            // The commit intent (parent HEAD) is durable BEFORE the Git effect.
+            const parentHead = await openVersionControl(engine).commits.head(
+              record.target.workspaceRoot,
+            );
+            if (!parentHead) throw recovery('Target checkout has no commit to build on.');
+            record = await transition(engine, record, 'commit-writing', options.onStage, {
+              parentHead,
+            });
+          } else {
+            record = await transition(engine, record, 'registry-writing', options.onStage);
+          }
+          continue;
+        }
+
+        case 'commit-writing': {
+          await requireTargetIdentity(engine, record);
+          await verifyScaffold(record);
+          const commitSha = await ensureScaffoldCommitted(engine, record);
+          await afterEffect?.('commit');
+          record = await transition(engine, record, 'commit-written', options.onStage, {
+            commitSha,
+          });
+          continue;
+        }
+
+        case 'commit-written': {
+          await requireTargetIdentity(engine, record);
+          await verifyScaffold(record);
           record = await transition(engine, record, 'registry-writing', options.onStage);
           continue;
         }
@@ -341,6 +372,7 @@ async function transition(
   record: CreateJournal,
   stage: CreateStage,
   observer?: CreateStageObserver,
+  commit?: Partial<Pick<NonNullable<CreateJournal['commit']>, 'parentHead' | 'commitSha'>>,
 ): Promise<CreateJournal> {
   const next = await withCreateJournalLock(engine.context, async () => {
     const current = await readCreateJournal(engine.context, record.operationId);
@@ -350,7 +382,11 @@ async function transition(
         'Create journal changed concurrently; restart from the latest durable state.',
       );
     }
-    const next: CreateJournal = { ...current, stage };
+    const next: CreateJournal = {
+      ...current,
+      stage,
+      ...(commit && current.commit ? { commit: { ...current.commit, ...commit } } : {}),
+    };
     await publishCreateJournal(engine.context, next);
     return next;
   });

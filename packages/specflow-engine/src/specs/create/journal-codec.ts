@@ -30,6 +30,7 @@ export function parseCreateJournal(
     !isValidJournalIdentity(context, value, operationId) ||
     !isValidJournalTarget(value.target) ||
     !isValidJournalFiles(value.files, value.slug) ||
+    !isValidJournalCommit(value) ||
     !isValidJournalIntent(context, value)
   ) {
     throw invalidJournal();
@@ -103,6 +104,43 @@ function isValidJournalTarget(value: unknown): boolean {
     typeof value.baseCommit === 'string' &&
     /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/iu.test(value.baseCommit)
   );
+}
+
+/** Optional `commit` evidence and its consistency with the stage and the target. */
+function isValidJournalCommit(value: Record<string, unknown>): boolean {
+  const commit = value.commit;
+  const stage = value.stage;
+  const needsCommit = stage === 'commit-writing' || stage === 'commit-written';
+  if (commit === undefined) return !needsCommit;
+  if (
+    !isRecord(commit) ||
+    commit.required !== true ||
+    typeof commit.branch !== 'string' ||
+    commit.branch.length === 0 ||
+    commit.branch.length > 240 ||
+    (commit.parentHead !== undefined && !isObjectId(commit.parentHead)) ||
+    (commit.commitSha !== undefined && !isObjectId(commit.commitSha)) ||
+    Object.keys(commit).some(
+      (key) =>
+        key !== 'required' && key !== 'branch' && key !== 'parentHead' && key !== 'commitSha',
+    )
+  ) {
+    return false;
+  }
+  if (isRecord(value.target) && value.target.kind === 'new-worktree') {
+    if (value.target.branch !== commit.branch) return false;
+  }
+  if (needsCommit && commit.parentHead === undefined) return false;
+  const committed =
+    stage === 'commit-written' ||
+    stage === 'registry-writing' ||
+    stage === 'registry-linked' ||
+    stage === 'completed';
+  return !committed || commit.commitSha !== undefined;
+}
+
+function isObjectId(value: unknown): boolean {
+  return typeof value === 'string' && /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/iu.test(value);
 }
 
 function isValidJournalFiles(value: unknown, slug: unknown): boolean {

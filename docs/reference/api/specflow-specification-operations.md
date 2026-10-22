@@ -38,7 +38,13 @@ All four require project-wide Spec `Create` capability before reading protected 
 503 `{"error":"ENGINE_UNAVAILABLE","code":"ENGINE_UNAVAILABLE"}`.
 Typed Create errors otherwise expose matching uppercase `error`/`code`; examples include
 `CREATE_CONFLICT`/409, `BRANCH_ALREADY_EXISTS`/409, `BASE_REF_NOT_FOUND`/422
-and `CREATE_RECOVERY_REQUIRED`/503.
+and `CREATE_RECOVERY_REQUIRED`/503. With Git enabled the Engine also commits the scaffold, which adds
+`BRANCH_PROTECTED`/422 (the target branch, or a generated or typed new-worktree branch name, is
+protected by `git.commits`; nothing was created), `COMMIT_BLOCKED`/409 (the checkout cannot take a commit now: detached HEAD,
+merge or rebase in progress, unmerged paths, ignored scaffold path, held index lock; nothing was
+created) and `COMMIT_FAILED`/503 (the scaffold files were written but could not be committed; an
+operator has to resume, a re-submit answers `CREATE_RECOVERY_REQUIRED`). Bodies stay `{error,code}`;
+they never carry branch patterns, paths or Git output.
 
 POST request: `{title,goal?,slug?,operationId?,target?}`, title HTTP length 1–200.
 `slug` is optional, lowercase kebab-case ASCII (`^[a-z0-9]+(-[a-z0-9]+)*$`, at most 80 characters,
@@ -57,7 +63,14 @@ The Create result exposes no absolute checkout paths; create-options do (see `pa
 
 Create options include `primaryWorkspaceId`, `workspaces[]` (`workspaceId,kind,name,path,managed,specCount,
 state,selectable,integrationSelectable,branch?,reason?,integrationDestination?`),
-`newWorktree`, `defaultBaseRef`, `branchPattern`, `worktreesRoot`, `integrationTargetBranch?`, `baseRefs[]`.
+`newWorktree` (`status,reason?,branchProtected?`), `defaultBaseRef`, `branchPattern`, `worktreesRoot`, `integrationTargetBranch?`, `commits?`, `baseRefs[]`.
+`commits` is `{protectedBranches[],allowedBranches?[]}` and is present **exactly when Git is enabled** (the
+Engine then commits the scaffold), even with empty lists; it is absent when Git is disabled, as are the two
+reasons `branch-protected` and `branch-not-allowed` and `newWorktree.branchProtected`. A workspace whose branch
+is protected or not allowed stays listed with `selectable:false` and that `reason` (its `state` is still
+`available`/`dirty`, `branch` names the branch); `integrationSelectable` is unaffected. `newWorktree.branchProtected: true`
+means the branch the pattern generates for a representative name is protected: the tile stays selectable, but
+the user has to type another branch name (advisory; the Engine decides on the real name).
 `name` is the display label of a checkout (its folder name; for the primary checkout the repository
 folder) and `path` its registered display path. `branchPattern` is the effective pattern (default
 `feature/{slug}`; `{shortId}` is optional). `worktreesRoot` is `{path,exists}`: the effective folder
@@ -106,7 +119,7 @@ Vary: Prefer
 Live progress: POST can take seconds to minutes, so a client that sends an `operationId` may also
 watch `GET /api/specs/create/operations/:operationId/events`, the Create route of the shared operation
 progress stream (see `reference.api.operation-progress`: events, the public step vocabulary
-`reserving`, `preparing-workspace`, `writing-specification`, `registering`, replay and the wait for
+`reserving`, `preparing-workspace`, `writing-specification`, `committing-specification` (Git enabled only), `registering`, replay and the wait for
 a not yet reserved operation). It requires the same `Create` capability, never exposes paths or
 journal stages, and is optional: the POST result and the inspection above stay the source of truth,
 and without SSE clients just poll the inspection.

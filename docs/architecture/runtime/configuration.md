@@ -44,7 +44,10 @@ Do not introduce a sibling `.nevo-local/` namespace.
 
 The product owns the **configuration containers and composition**, not the meaning of capability
 settings. It owns Git-root discovery, the `.nevo/` namespace, file locations, ignore rules,
-serialization, and the top-level namespaces contributed by capabilities.
+serialization, and the top-level namespaces contributed by capabilities. Git ownership: everything
+shareable about Git (`git.enabled`, `git.worktrees.*`, `git.integrationTargetBranch`,
+`git.commits.protectedBranches`/`allowedBranches`) lives in the committed project config; the local
+config holds only machine-local values such as `git.worktreesRoot`.
 
 Current shape:
 

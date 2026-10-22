@@ -33,6 +33,39 @@ Create does not switch primary or promise that Close can merge in the future.
 A Specification can instead be created inside a verified existing workspace without provisioning
 another branch. Multiple Spec bindings in the same workspace deliberately share Git history.
 
+### Create commits the scaffold when Git is enabled
+
+When `git.enabled` is true Create commits the scaffold (`specs/active/<slug>/specification.yaml` and
+`overview.md`, nothing else) through the Engine's one commit capability, between writing the
+manifest and binding the registry (journal stages `commit-writing`, `commit-written`; public progress
+step `committing-specification`). The commit lands on the checkout's current branch for the current
+folder and existing-workspace targets, and on the new branch (one commit on top of the base commit) for
+a new worktree. It is `git commit --only` over the two literal paths: the user's other staged hunks,
+unstaged edits and untracked files are untouched. The author is the user's configured Git identity
+(Engine identity when unconfigured), the committer is the Engine, hooks and signing are off, and an
+operation trailer makes replay idempotent. See
+[ADR 0013](../decisions/0013-engine-owned-commits-and-protected-branches.md).
+
+- **Protected branches.** `git.commits.protectedBranches` / `allowedBranches` (committed project
+  config; nothing protected by default) are evaluated before anything is written:
+  `BRANCH_PROTECTED` (422) for a protected or not-allowed branch or a protected new-worktree branch name,
+  `COMMIT_BLOCKED` (409) when the checkout cannot take a commit now (detached HEAD, merge/rebase in
+  progress, unmerged paths, ignored scaffold path, held index lock). Nothing is reserved, written or
+  journalled in these cases.
+- **After files exist.** A commit that cannot be made after the scaffold was written (a branch protected
+  or a merge started meanwhile, a Git failure) is `COMMIT_FAILED` (503): the journal stays at
+  `commit-writing`, files stay in place, and the operation is recovery-required. The operator resumes
+  the same operation with the Engine's `resumeInterruptedOperation` once the cause is fixed, or commits
+  the two scaffold files by hand (resume accepts byte-identical, clean files). Re-submitting the same
+  `operationId` meanwhile answers `CREATE_RECOVERY_REQUIRED`.
+- **Replay.** The commit is applied at most once per operation: resume looks for a commit carrying
+  the operation trailer on top of the recorded parent HEAD before committing.
+- **Git disabled.** No commit, no branch check, no Git process, the former stage graph
+  (`manifest-written` to `registry-writing`) and no `committing-specification` step. A journal
+  reserved before commits existed also keeps that graph.
+- Specifications created untracked earlier are not adopted automatically; Close archive and
+  integration are unchanged by this behaviour.
+
 ## Explicit Close intents
 
 | Operation                                                | Effect                                                                                                                                                                      |

@@ -7,6 +7,7 @@ export {
   type NewWorktreeJournalTarget,
   type CreateJournalTarget,
   type CreateJournalFile,
+  type CreateCommitEvidence,
   type CreateJournal,
 } from './create/journal-model';
 export {

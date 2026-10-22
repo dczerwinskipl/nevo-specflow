@@ -12,6 +12,7 @@ import {
   inspectPublicCreateOperation,
   projectCreatedSpecification,
   readRegistrySnapshot,
+  willCommitCreatedScaffold,
   type CreateSpecificationRequest,
   type CreateStageObservation,
   type SpecFlowEngine,
@@ -91,11 +92,22 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         });
       }
       try {
-        const options = await inspectCreateOptions(engine);
+        const { commits, ...options } = await inspectCreateOptions(engine);
         return reply.code(200).send({
           ...options,
           workspaces: [...options.workspaces],
           baseRefs: [...options.baseRefs],
+          // Present exactly when Git is enabled (the Engine then commits the scaffold).
+          ...(commits
+            ? {
+                commits: {
+                  protectedBranches: [...commits.protectedBranches],
+                  ...(commits.allowedBranches
+                    ? { allowedBranches: [...commits.allowedBranches] }
+                    : {}),
+                },
+              }
+            : {}),
         });
       } catch (error) {
         const code = errorCode(error);
@@ -225,6 +237,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
             options.progress,
             operationId,
             body.target?.kind === 'new-worktree' ? 'new-worktree' : 'existing',
+            await willCommitCreatedScaffold(engine),
           );
         }
 

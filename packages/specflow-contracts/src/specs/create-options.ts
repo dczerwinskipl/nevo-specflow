@@ -12,7 +12,25 @@ const Reason = Type.Union([
   Type.Literal('git-membership-mismatch'),
   Type.Literal('detached'),
   Type.Literal('dirty'),
+  /** Only with `git.enabled`: the checkout's branch matches `git.commits.protectedBranches`. */
+  Type.Literal('branch-protected'),
+  /** Only with `git.enabled`: `git.commits.allowedBranches` is set and the branch matches none. */
+  Type.Literal('branch-not-allowed'),
 ]);
+
+/**
+ * Present exactly when the Engine commits the scaffold of a new Specification (`git.enabled`), even
+ * with empty lists. Absent for a project with Git disabled. Patterns are those of
+ * `git.commits` (grammar: `branch-protection.ts`); the lists are for display only, `selectable`
+ * and `reason` already carry the per-workspace decision.
+ */
+export const CreateCommitsSchema = Type.Object(
+  {
+    protectedBranches: Type.Array(Type.String({ minLength: 1 })),
+    allowedBranches: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
+  },
+  { additionalProperties: false },
+);
 
 export const CreateOptionsSchema = Type.Object(
   {
@@ -56,6 +74,11 @@ export const CreateOptionsSchema = Type.Object(
           Type.Literal('unavailable'),
         ]),
         reason: Type.Optional(Reason),
+        /**
+         * Only with `git.enabled`, and then only `true`: the branch the pattern generates for a
+         * representative name is protected, so the user has to type another branch name.
+         */
+        branchProtected: Type.Optional(Type.Literal(true)),
       },
       { additionalProperties: false },
     ),
@@ -68,6 +91,7 @@ export const CreateOptionsSchema = Type.Object(
       { additionalProperties: false },
     ),
     integrationTargetBranch: Type.Optional(Type.String({ minLength: 1 })),
+    commits: Type.Optional(CreateCommitsSchema),
     baseRefs: Type.Array(
       Type.Object(
         {

@@ -2,8 +2,19 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:pat
 
 import { GitCapabilityError } from '../../git/errors';
 import { validateBaseRef, validateBranchName } from '../git/refs';
+import { BRANCH_PATTERN_MAX_ENTRIES, branchPatternProblem } from '../commits/branch-patterns';
 
 export { validateBaseRef, validateBranchName, normalizeBaseRef } from '../git/refs';
+
+/**
+ * Branches on which the Engine commits its own file changes. Committed Project Home configuration
+ * only (`git.commits`); both lists are glob patterns on the short branch name and inert unless
+ * `git.enabled`.
+ */
+export interface GitCommitsPolicy {
+  readonly protectedBranches: readonly string[];
+  readonly allowedBranches?: readonly string[];
+}
 
 /** Project Home is the only authority for operational Git policy. */
 export interface GitWorktreePolicy {
@@ -12,6 +23,8 @@ export interface GitWorktreePolicy {
   readonly baseRef: string;
   /** Independently configured destination for existing-worktree integration. */
   readonly integrationTargetBranch?: string;
+  /** Nothing is protected by default (`protectedBranches: []`, no allow-list). */
+  readonly commits: GitCommitsPolicy;
   /**
    * Workstation-local `git.worktreesRoot` exactly as configured (relative values are resolved
    * against the repository). Absent = the `<repo>-worktrees` default. Never committed.
@@ -38,6 +51,7 @@ export function parseGitWorktreePolicy(
       enabled: false,
       branchPattern: DEFAULT_BRANCH_PATTERN,
       baseRef: DEFAULT_BASE_REF,
+      commits: { protectedBranches: [] },
       ...(worktreesRoot !== undefined ? { worktreesRoot } : {}),
     };
   }
@@ -46,7 +60,11 @@ export function parseGitWorktreePolicy(
   }
   if (
     Object.keys(value).some(
-      (key) => key !== 'enabled' && key !== 'worktrees' && key !== 'integrationTargetBranch',
+      (key) =>
+        key !== 'enabled' &&
+        key !== 'worktrees' &&
+        key !== 'integrationTargetBranch' &&
+        key !== 'commits',
     )
   ) {
     throw invalid('Unsupported Git policy key.');
@@ -80,8 +98,54 @@ export function parseGitWorktreePolicy(
     branchPattern,
     baseRef,
     ...(target !== undefined ? { integrationTargetBranch: target } : {}),
+    commits: parseCommitsPolicy(value.commits),
     ...(worktreesRoot !== undefined ? { worktreesRoot } : {}),
   };
+}
+
+/** `git.commits` is validated even while Git is disabled (a typo is found early) but is then inert. */
+function parseCommitsPolicy(value: unknown): GitCommitsPolicy {
+  if (value === undefined) return { protectedBranches: [] };
+  if (!isRecord(value)) throw invalid('git.commits must be an object.');
+  if (Object.keys(value).some((key) => key !== 'protectedBranches' && key !== 'allowedBranches')) {
+    throw invalid('Unsupported git.commits policy key.');
+  }
+  const protectedBranches = parsePatternList(
+    'git.commits.protectedBranches',
+    value.protectedBranches,
+  );
+  const allowed =
+    value.allowedBranches === undefined
+      ? undefined
+      : parsePatternList('git.commits.allowedBranches', value.allowedBranches);
+  if (allowed?.some((pattern) => protectedBranches.includes(pattern))) {
+    throw invalid('A branch pattern cannot be both protected and allowed.');
+  }
+  return {
+    protectedBranches,
+    ...(allowed !== undefined && allowed.length > 0 ? { allowedBranches: allowed } : {}),
+  };
+}
+
+function parsePatternList(label: string, value: unknown): readonly string[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) throw invalid(label + ' must be a list of branch patterns.');
+  if (value.length > BRANCH_PATTERN_MAX_ENTRIES) {
+    throw invalid(label + ' has too many entries.');
+  }
+  const patterns: string[] = [];
+  for (const entry of value as unknown[]) {
+    if (typeof entry !== 'string') throw invalid(label + ' entries must be strings.');
+    const pattern = entry.trim();
+    if (branchPatternProblem(pattern) !== undefined) {
+      throw invalid(label + ' contains an invalid branch pattern.');
+    }
+    // A literal (wildcard-free) entry names one branch and must be a valid branch name.
+    if (!/[*?[]/u.test(pattern)) validateBranchName(pattern);
+    if (patterns.includes(pattern)) throw invalid(label + ' contains a duplicate pattern.');
+    patterns.push(pattern);
+  }
+  return patterns;
 }
 
 /** Only `git.worktreesRoot` may live in the workstation-local config; all other Git policy is committed. */

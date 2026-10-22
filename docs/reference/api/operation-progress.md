@@ -87,18 +87,20 @@ stable public vocabulary, not internal stages.
 Result: `CreatedSpec` (see the Create reference). Failure codes: the Create error codes
 (`BRANCH_ALREADY_EXISTS`, `CREATE_CONFLICT`, ...). Journal failures that need repair
 (`CREATE_RECOVERY_REQUIRED`, `CREATE_JOURNAL_CORRUPT`, `REGISTRY_RECOVERY_REQUIRED`,
-`GIT_OPERATION_UNCERTAIN`) are published as `recovery-required`. An unexpected failure is `failed`
+`GIT_OPERATION_UNCERTAIN`, `COMMIT_FAILED`) are published as `recovery-required`. `BRANCH_PROTECTED` and `COMMIT_BLOCKED` are admission refusals (nothing was created) and are published as `failed`. An unexpected failure is `failed`
 with `INTERNAL_ERROR`.
 
-| Step id                 | Meaning for the user                  | Journal stages mapped (internal)       | Present for         |
-| ----------------------- | ------------------------------------- | -------------------------------------- | ------------------- |
-| `reserving`             | the name and operation are reserved   | `reserved`                             | every target        |
-| `preparing-workspace`   | the Git branch and worktree are made  | `git-initiated`, `git-provisioned`     | `new-worktree` only |
-| `writing-specification` | the specification files are written   | `manifest-writing`, `manifest-written` | every target        |
-| `registering`           | the workspace and Spec are registered | `registry-writing`, `registry-linked`  | every target        |
+| Step id                    | Meaning for the user                  | Journal stages mapped (internal)       | Present for             |
+| -------------------------- | ------------------------------------- | -------------------------------------- | ----------------------- |
+| `reserving`                | the name and operation are reserved   | `reserved`                             | every target            |
+| `preparing-workspace`      | the Git branch and worktree are made  | `git-initiated`, `git-provisioned`     | `new-worktree` only     |
+| `writing-specification`    | the specification files are written   | `manifest-writing`, `manifest-written` | every target            |
+| `committing-specification` | the scaffold is committed in Git      | `commit-writing`, `commit-written`     | only when `git.enabled` |
+| `registering`              | the workspace and Spec are registered | `registry-writing`, `registry-linked`  | every target            |
 
 `completed` and `recovery-required` are events, not steps. For an `existing` target (and the
-default primary target) `preparing-workspace` is not part of the checklist.
+default primary target) `preparing-workspace` is not part of the checklist; with Git disabled
+`committing-specification` is not part of it either.
 
 ## Fallback without SSE
 

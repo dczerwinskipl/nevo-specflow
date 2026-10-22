@@ -73,7 +73,10 @@ describe('E2.I01 authorized create-options Engine read model', () => {
       target: { kind: 'new-worktree', baseRef: feature.ref },
     });
     roots.push(root + '-worktrees');
-    expect(git(created.workspaceRoot, 'rev-parse', 'HEAD')).toBe(headBefore);
+    expect(git(created.workspaceRoot, 'rev-parse', 'HEAD~1')).toBe(headBefore);
+    // Git is enabled: the Engine commits scaffolds, nothing is protected by default.
+    expect(options.commits).toEqual({ protectedBranches: [] });
+    expect(options.newWorktree).toEqual({ status: 'available' });
   }, 150000);
 
   it('counts three canonical Specs in one registered linked worktree and reports dirty state', async () => {
@@ -100,15 +103,16 @@ describe('E2.I01 authorized create-options Engine read model', () => {
     const before = await readFile(workspaceRegistryPath(engine.context), 'utf8');
     const options = await inspectCreateOptions(engine);
     const linked = options.workspaces.find((item) => item.workspaceId === first.workspaceId);
+    // The Engine committed every scaffold, so the checkout is clean (and a valid merge destination).
     expect(linked).toMatchObject({
       kind: 'linked',
       managed: true,
       specCount: 3,
-      state: 'dirty',
+      state: 'available',
       selectable: true,
-      integrationSelectable: false,
-      reason: 'dirty',
+      integrationSelectable: true,
     });
+    expect(linked?.reason).toBeUndefined();
     expect(options.workspaces).toHaveLength(2);
     expect(linked).toMatchObject({
       name: basename(first.workspaceRoot),
@@ -121,7 +125,7 @@ describe('E2.I01 authorized create-options Engine read model', () => {
       checkedOutWorkspaceId: first.workspaceId,
     });
     expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(before);
-  }, 180000);
+  }, 420000);
 
   it('does not offer unavailable registered worktrees or invent replacement checkouts', async () => {
     const root = await createGitTestProject(
@@ -194,7 +198,57 @@ describe('E2.I01 authorized create-options Engine read model', () => {
     const options = await inspectCreateOptions(engine);
     expect(options.newWorktree).toEqual({ status: 'disabled', reason: 'git-disabled' });
     expect(options.workspaces[0]?.state).toBe('available');
+    // Git off: byte-identical to before, no commit-related field or reason at all.
+    expect(options.commits).toBeUndefined();
+    expect('commits' in options).toBe(false);
+    expect('branchProtected' in options.newWorktree).toBe(false);
   }, 90000);
+
+  it('marks protected and not-allowed branches unselectable and lists the policy', async () => {
+    const root = await createGitTestProject(
+      'specflow-create-options-protected-',
+      [
+        'runtime: {}',
+        'git:',
+        '  enabled: true',
+        '  worktrees:',
+        '    branchPattern: "release/{slug}"',
+        '  commits:',
+        '    protectedBranches: ["release/**", develop]',
+        '    allowedBranches: ["topic/**"]',
+        '',
+      ].join('\n'),
+    );
+    roots.push(root);
+    git(root, 'branch', '-m', 'develop');
+    await writeFile(join(root, 'dirty.txt'), 'x\n');
+    const engine = await bootstrapProjectHome(root);
+    const options = await inspectCreateOptions(engine);
+    expect(options.commits).toEqual({
+      protectedBranches: ['release/**', 'develop'],
+      allowedBranches: ['topic/**'],
+    });
+    expect(options.workspaces[0]).toMatchObject({
+      state: 'dirty',
+      selectable: false,
+      branch: 'develop',
+      reason: 'branch-protected',
+    });
+    // The generated branch (release/<slug>) is protected: advisory flag, tile stays available.
+    expect(options.newWorktree).toEqual({ status: 'available', branchProtected: true });
+
+    git(root, 'checkout', '-q', '-b', 'scratch');
+    const other = await inspectCreateOptions(engine);
+    expect(other.workspaces[0]).toMatchObject({
+      selectable: false,
+      reason: 'branch-not-allowed',
+    });
+    git(root, 'checkout', '-q', '-b', 'topic/a');
+    expect((await inspectCreateOptions(engine)).workspaces[0]).toMatchObject({
+      selectable: true,
+      reason: 'dirty',
+    });
+  }, 420000);
 
   it('reads the worktree folder from the local config and reports whether it exists', async () => {
     const root = await createGitTestProject(

@@ -74,6 +74,7 @@ export {
 
 export {
   inspectCreateOptions,
+  willCommitCreatedScaffold,
   type PublicCreateOptions,
   type CreateWorkspaceOption,
   type CreateBaseRefOption,

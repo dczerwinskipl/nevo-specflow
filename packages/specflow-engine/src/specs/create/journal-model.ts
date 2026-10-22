@@ -7,6 +7,10 @@ export const CREATE_STAGES = [
   'git-provisioned',
   'manifest-writing',
   'manifest-written',
+  // Only when the journal carries `commit` (git.enabled at reservation): the scaffold is committed
+  // by the Engine between the manifest and the registry binding.
+  'commit-writing',
+  'commit-written',
   'registry-writing',
   'registry-linked',
   'completed',
@@ -38,6 +42,20 @@ export interface CreateJournalFile {
   readonly sha256: string;
 }
 
+/**
+ * Pinned at reservation iff `git.enabled`; absent = this Create never commits (Git disabled, or a
+ * journal reserved before commits existed) and keeps the stage graph `manifest-written -> registry-writing`.
+ */
+export interface CreateCommitEvidence {
+  readonly required: true;
+  /** Short branch the scaffold is committed on (the checkout's current branch, or the new branch). */
+  readonly branch: string;
+  /** HEAD recorded together with the `commit-writing` transition, i.e. BEFORE the Git effect. */
+  readonly parentHead?: string;
+  /** Recorded with `commit-written`. */
+  readonly commitSha?: string;
+}
+
 /** Single current durable Create format. No unpublished prototype migrations. */
 export interface CreateJournal {
   readonly version: 2;
@@ -54,5 +72,6 @@ export interface CreateJournal {
   readonly target: CreateJournalTarget;
   readonly files: readonly CreateJournalFile[];
   readonly gitPlan?: { readonly projectRoot: string; readonly gitInstanceId: string };
+  readonly commit?: CreateCommitEvidence;
   readonly reason?: string;
 }

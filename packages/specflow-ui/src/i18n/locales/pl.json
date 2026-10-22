@@ -539,8 +539,6 @@
     },
     "panel": {
       "title": "Operacje w tle",
-      "collapse": "Ukryj operacje",
-      "expand": "Pokaż operacje",
       "loadFailed": "Nie udało się wczytać operacji w tle",
       "refreshFailed": "Nie można odświeżyć. Ponawiam",
       "showAll": "Pokaż wszystkie ({{total}})",
@@ -1064,7 +1062,6 @@
           "done": "Zakończony"
         }
       },
-      "waiting": "Czeka na poprzedni krok",
       "neutral": {
         "title": "Tworzenie specyfikacji",
         "description": "To może chwilę potrwać.",

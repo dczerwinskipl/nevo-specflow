@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Icon, IconButton, Typography, cn } from '@nevo/ui';
+import { IconButton, Typography, cn } from '@nevo/ui';
 
 import { message, translateMessage } from '../../i18n/message';
 import { OperationStatusTile } from './OperationStatusTile';
@@ -16,12 +16,11 @@ export type RenderOperationLink = (
   className: string,
 ) => ReactNode;
 
-const contentClassName = 'flex min-w-0 flex-1 items-center gap-3';
+const contentClassName = 'flex min-w-0 flex-1 items-start gap-3 px-3 py-2.5';
 const linkClassName = cn(
   contentClassName,
-  'min-h-11 rounded-composite px-3 py-2 text-content-primary no-underline hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-focus-ring',
+  'text-content-primary no-underline hover:bg-surface-hover focus-visible:bg-surface-hover focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring',
 );
-const plainClassName = cn(contentClassName, 'min-h-11 px-3 py-2');
 
 export interface OperationRowProps {
   readonly item: OperationListItem;
@@ -33,9 +32,10 @@ export interface OperationRowProps {
 }
 
 /**
- * One operation as a compact row: status mark, title, kind and branch, the step it is on, and how
- * long ago. The whole row is one link to the operation's page when its kind has one. Text comes
- * from the row data and the kind adapter only.
+ * One operation as a plain row of the panel (no surface of its own): status icon, the name of the
+ * specification and ONE meta line, "step or status · time". The whole row is one link to the
+ * operation's page when its kind has one, with no trailing arrow: a clickable row is clickable as
+ * a whole. Text comes from the row data and the kind adapter only.
  */
 export function OperationRow({ item, kind, now, renderLink, onDismiss }: OperationRowProps) {
   const { t, i18n } = useTranslation();
@@ -43,8 +43,6 @@ export function OperationRow({ item, kind, now, renderLink, onDismiss }: Operati
     translateMessage(t, value, i18n.resolvedLanguage);
   const view = presentOperation(item, kind, now);
   const title = text(view.name);
-  const kindLabel = text(kind?.label ?? message('operations.kind.unknown'));
-  const branch = item.target?.branch;
   const status = text(view.status);
   const detail = view.detail ? text(view.detail) : undefined;
   const action = view.action ? text(view.action) : undefined;
@@ -62,40 +60,33 @@ export function OperationRow({ item, kind, now, renderLink, onDismiss }: Operati
 
   const content = (
     <>
-      <OperationStatusTile tone={view.tone} size="sm" />
+      <span className="flex h-6 shrink-0 items-center">
+        <OperationStatusTile tone={view.tone} size="sm" />
+      </span>
       <span className="grid min-w-0 flex-1 gap-0.5">
-        <Typography as="span" variant="body-md" className="min-w-0 break-words">
+        <Typography as="span" variant="body-md" className="min-w-0 break-words font-medium">
           {title}
           <span className="sr-only">, </span>
         </Typography>
-        <Typography as="span" variant="body-sm" className="min-w-0 break-words text-content-muted">
-          {[kindLabel, branch].filter(Boolean).join(' Â· ')}
-          <span className="sr-only">, </span>
-        </Typography>
-        <span className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
-          <Typography
-            as="span"
-            variant="body-sm"
-            className="min-w-0 break-words text-content-secondary"
-          >
-            {detail ? <span className="sr-only">{status}. </span> : null}
-            {detail ?? status}
-          </Typography>
-          {action ? (
-            <Typography as="span" variant="body-sm" className="font-medium text-content-primary">
-              {action}
-            </Typography>
-          ) : null}
+        <Typography
+          as="span"
+          variant="body-sm"
+          className="min-w-0 break-words text-content-secondary"
+          data-operation-meta
+        >
+          {detail ? <span className="sr-only">{status}. </span> : null}
+          {detail ?? status}
+          {action ? <span className="font-medium text-content-primary">{` · ${action}`}</span> : null}
           {timeText ? (
-            <Typography as="span" variant="body-sm" className="text-content-muted">
-              <time dateTime={timeIso}>{timeText}</time>
-            </Typography>
+            <>
+              <span aria-hidden="true"> · </span>
+              <time dateTime={timeIso} className="text-content-muted">
+                {timeText}
+              </time>
+            </>
           ) : null}
-        </span>
+        </Typography>
       </span>
-      {href ? (
-        <Icon name="chevron-right" size="sm" className="shrink-0 text-content-muted" />
-      ) : null}
     </>
   );
 
@@ -104,7 +95,7 @@ export function OperationRow({ item, kind, now, renderLink, onDismiss }: Operati
       data-operation-id={item.operationId}
       data-operation-kind={item.kind}
       data-operation-status={item.status}
-      className="flex min-w-0 items-center gap-1"
+      className="flex min-w-0 items-start"
     >
       {href ? (
         renderLink ? (
@@ -115,12 +106,13 @@ export function OperationRow({ item, kind, now, renderLink, onDismiss }: Operati
           </a>
         )
       ) : (
-        <div className={plainClassName}>{content}</div>
+        <div className={contentClassName}>{content}</div>
       )}
       {onDismiss && isDismissible(item) ? (
         <IconButton
           icon="close"
           size="sm"
+          className="mr-1 mt-1.5"
           aria-label={text(message('operations.row.dismiss', { name: title }))}
           onClick={() => onDismiss(item.operationId)}
         />

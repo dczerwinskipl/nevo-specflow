@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { createSpecFlowI18n } from '../../../i18n';
 import { translateMessage, type Message } from '../../../i18n/message';
-import { createCompletedSteps, createNeutralProgress, createProgressSteps } from './createProgress';
+import {
+  createCompletedSteps,
+  createNeutralProgress,
+  createProgressSteps,
+  createRunningStepTitle,
+} from './createProgress';
 
 const i18n = createSpecFlowI18n('en');
 const t = (value: Message) => translateMessage(i18n.t, value);
@@ -13,7 +18,7 @@ const words = (steps: ReturnType<typeof createProgressSteps>) =>
   ]);
 
 describe('Create progress copy', () => {
-  it('says each step in user language: done and running describe, pending waits', () => {
+  it('says each step in user language: done and running describe, pending is only its muted title', () => {
     expect(
       words(
         createProgressSteps([
@@ -26,8 +31,8 @@ describe('Create progress copy', () => {
     ).toEqual([
       ['Reserving the name', 'Name and branch reserved', 'done'],
       ['Preparing the workspace', 'Creating the working environment', 'running'],
-      ['Creating the specification', 'Waiting for previous step', 'pending'],
-      ['Finishing setup', 'Waiting for previous step', 'pending'],
+      ['Creating the specification', undefined, 'pending'],
+      ['Finishing setup', undefined, 'pending'],
     ]);
   });
 
@@ -100,5 +105,18 @@ describe('Create progress copy', () => {
     expect(createNeutralProgress(true).description?.key).toBe(
       'create.progress.neutral.descriptionLost',
     );
+  });
+});
+
+describe('Create running step title', () => {
+  it('names the step that is running, and nothing while none is', () => {
+    const running = createRunningStepTitle([
+      { id: 'reserving', status: 'done' },
+      { id: 'preparing-workspace', status: 'running' },
+      { id: 'registering', status: 'pending' },
+    ]);
+    expect(running && t(running)).toBe('Preparing the workspace');
+    expect(createRunningStepTitle([])).toBeUndefined();
+    expect(createRunningStepTitle([{ id: 'reserving', status: 'pending' }])).toBeUndefined();
   });
 });

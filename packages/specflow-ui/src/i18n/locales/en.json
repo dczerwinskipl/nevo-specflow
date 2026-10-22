@@ -539,8 +539,6 @@
     },
     "panel": {
       "title": "Background operations",
-      "collapse": "Hide operations",
-      "expand": "Show operations",
       "loadFailed": "Background operations can't be loaded",
       "refreshFailed": "Cannot refresh. Retrying",
       "showAll": "Show all ({{total}})",
@@ -1064,7 +1062,6 @@
           "done": "Finished"
         }
       },
-      "waiting": "Waiting for previous step",
       "neutral": {
         "title": "Creating specification",
         "description": "This can take a moment.",

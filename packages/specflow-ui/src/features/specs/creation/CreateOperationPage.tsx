@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Button, InlineNote, Separator, Typography } from '@nevo/ui';
 import type { CreatedSpec } from '@nevo/specflow-contracts/specs';
 import { ApplicationContextLine } from '../../../app/navigation/ApplicationLocation';
+import { useMessage } from '../../../i18n/message';
 import { useAnnouncer } from '../../../shared/a11y/useAnnouncer';
 import {
   OperationStatusTile,
@@ -10,12 +11,14 @@ import {
 } from '../../../shared/operations/OperationStatusTile';
 import { CreateFailurePanel } from './CreateFailurePanel';
 import { CreateOperationProgress } from './CreateOperationProgress';
+import { createRunningStepTitle } from './createProgress';
 import { CreateShell } from './CreateShell';
 import type { CreateFailure } from './createFailure';
 import { useCreateOperationStorage } from './createOperationStorage';
 import { createPageView, createSettingsModel, type CreatePageView } from './createPageView';
 import { CreateSettingsList } from './CreateSettingsList';
 import { CreateTechnicalDetails } from './CreateTechnicalDetails';
+import { useCreateOperationProgress } from './useCreateOperationProgress';
 import { useCreateProjectSpecification } from './useCreateProjectSpecification';
 import { useStillWorking } from './useStillWorking';
 import { initialWorkspaceChoice, type WorkspaceChoice } from './workspace/workspaceChoice';
@@ -91,6 +94,7 @@ export function CreateOperationPage({
   onBackToSpecifications: () => void;
 }) {
   const { t } = useTranslation();
+  const text = useMessage();
   const storage = useCreateOperationStorage();
   const { announce, region } = useAnnouncer();
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -116,6 +120,13 @@ export function CreateOperationPage({
   const view = createPageView(state, unknownOperation);
   const working = view === 'working';
   const stillWorking = useStillWorking(working && flags.monitoring);
+  const { progress, reportedFailure } = useCreateOperationProgress({
+    operationId,
+    working,
+    onStreamHint: actions.setStreamHint,
+  });
+  // The step that runs now: the subtitle names it instead of a generic line.
+  const runningStep = working ? createRunningStepTitle(progress.steps) : undefined;
 
   useEffect(() => {
     headingRef.current?.focus();
@@ -171,7 +182,9 @@ export function CreateOperationPage({
         : working
           ? stillWorking
             ? t('create.page.status.stillWorking')
-            : flags.monitoring
+            : runningStep
+              ? text(runningStep)
+              : flags.monitoring
               ? t(newWorkspace ? 'create.page.status.workingNew' : 'create.page.status.working')
               : state.sent && state.resumedFrom
                 ? t('create.page.status.reading')
@@ -189,7 +202,8 @@ export function CreateOperationPage({
       <div className="grid gap-8">
         <ApplicationContextLine className="mb-0" view="new-specification" />
         <header className="flex min-w-0 items-start gap-4">
-          <OperationStatusTile tone={created ? 'success' : toneOf[view]} />
+          {/* Static while running: the active step of the checklist carries the page's only spinner. */}
+          <OperationStatusTile tone={created ? 'success' : toneOf[view]} animated={false} />
           <div className="grid min-w-0 gap-1">
             <Typography
               as="h1"
@@ -216,13 +230,13 @@ export function CreateOperationPage({
         {(working || created) && (
           <section aria-label={t('create.progress.label')}>
             <CreateOperationProgress
-              operationId={operationId}
+              progress={progress}
+              reportedFailure={reportedFailure}
               target={target}
               working={working}
               completed={Boolean(created)}
               commits={settings?.commit === true}
               monitoring={flags.monitoring}
-              onStreamHint={actions.setStreamHint}
             />
           </section>
         )}

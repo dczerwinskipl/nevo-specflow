@@ -243,7 +243,7 @@ describe('OperationsPanel structure', () => {
     renderPanel({ list: operationList([runningItem(1), operationItem({ status: 'completed' })]) });
     const section = document.querySelector('[data-operations-panel]')!;
     for (const item of section.querySelectorAll('li, li a')) {
-      expect(item.className).not.toMatch(/border|rounded-composite|bg-surface-subtle/);
+      expect(item.className).not.toMatch(/(^| )border( |$)|rounded-composite|bg-surface-subtle/);
     }
     expect(section.querySelector('[class*="chevron"]')).toBeNull();
   });

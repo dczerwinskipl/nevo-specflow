@@ -2,11 +2,7 @@ import { useId, useState } from 'react';
 import { InformationList, Typography, cn } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 
-import {
-  sectionTranslationKey,
-  type SpecsOverview,
-  type CurrentSpecTarget,
-} from './model';
+import { sectionTranslationKey, type SpecsOverview, type CurrentSpecTarget } from './model';
 import {
   archiveRow,
   currentRow,

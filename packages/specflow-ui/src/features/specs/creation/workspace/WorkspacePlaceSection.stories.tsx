@@ -1132,8 +1132,8 @@ export const DisclosureMetaWrapsAtWordBoundariesAt320: Story = {
       await expect(brokenWords(canvas.getByText(/Zmienione ustawienia/))).toEqual([]);
       await expect(trigger.scrollWidth).toBeLessThanOrEqual(trigger.clientWidth + 1);
     }
-    // F-10: the accessible name has no stray separator.
-    await expect(canvas.getByText('Zmienione ustawienia (2): baza, nazwa')).toBeVisible();
+    // F-10: the accessible name has no stray separator (the list is joined the Polish way).
+    await expect(canvas.getByText('Zmienione ustawienia (2): baza i nazwa')).toBeVisible();
     await expectNoOverflow(320);
   },
 };

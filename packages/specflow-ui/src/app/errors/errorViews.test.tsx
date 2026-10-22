@@ -27,6 +27,12 @@ describe('error views', () => {
     expect(html).not.toContain('Retry');
   });
 
+  it('FeatureUnavailable offers the way out only when asked to (a panel keeps its own navigation)', () => {
+    expect(renderToStaticMarkup(<FeatureUnavailable />)).not.toContain('<button');
+    const page = renderToStaticMarkup(<FeatureUnavailable onBack={() => undefined} />);
+    expect(page).toContain('Go back');
+  });
+
   it('FeatureUnavailable is translated', async () => {
     await appI18n.changeLanguage('pl');
     expect(renderToStaticMarkup(<FeatureUnavailable />)).toContain('Niedostępne na tym serwerze');

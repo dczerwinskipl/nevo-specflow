@@ -9,7 +9,7 @@ import { createRuntimeApp } from '../../src/server/app';
 import { INTERNAL_ERROR_CODE, registerRuntimeErrorHandler } from '../../src/server/error-handler';
 import { passwordConfig } from '../auth/support/config';
 
-const SECRET_PATH = 'C:\Users\secret\proj\.nevo\local\state\engine\operations\create\x.json';
+const SECRET_PATH = '/home/secret/proj/.nevo/local/state/engine/operations/create/x.json';
 const apps: FastifyInstance[] = [];
 afterEach(async () => {
   await Promise.all(apps.splice(0).map((app) => app.close()));
@@ -26,7 +26,7 @@ function eacces(): Error {
 
 function expectGeneric(body: string): void {
   expect(JSON.parse(body)).toEqual({ error: INTERNAL_ERROR_CODE, code: INTERNAL_ERROR_CODE });
-  for (const leak of ['EACCES', 'secret', 'Users', '.nevo', 'permission denied', 'at ']) {
+  for (const leak of ['EACCES', 'secret', '.nevo', 'permission denied', 'at ', '/home']) {
     expect(body).not.toContain(leak);
   }
 }

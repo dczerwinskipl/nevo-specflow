@@ -116,8 +116,8 @@ text:
   .nevo/config.yaml."_ Current folder and Existing workspace keep working.
 - **Commit row.** The new-workspace summary has a **Commit** row, and the current-folder and
   existing-workspace summaries a quiet line: _"The specification files will be committed to branch
-  X."_ The progress page's configuration list repeats it (_Commit_: the branch) from facts the form
-  saved with the draft.
+  X."_ The progress page lists it (_Commit_: the branch) among its **Technical details**, not in
+  the configuration summary, from facts the form saved with the draft.
 
 ### Errors (code to copy; server text is never shown)
 
@@ -172,28 +172,33 @@ the narrow readable column (`w-content-narrow`, centred), stacked vertically, an
 
 From top to bottom:
 
-1. **Status header.** A status tile (`OperationStatusTile`: a turning spinner while it runs, a
-   static icon otherwise; the spinner stops under `prefers-reduced-motion`) next to ONE heading
+1. **Status header.** A static status tile (`OperationStatusTile` with `animated={false}`: a
+   specification icon while it runs, a check, alert or info icon afterwards; it never spins, because
+   the active step of the checklist carries the page's **only spinner**) next to ONE heading
    that carries the state and the typed name: **Creating \<name\>**, then **Specification
    created: \<name\>**, **Specification was not created: \<name\>** and **Result not confirmed
    yet: \<name\>** (the name is an interpolated value of the localised heading, never a separate
    line). A long name wraps (clamped to three lines, no sideways scroll at 320 px) and the full name
    stays in the tooltip. Without a known name (a direct link) the heading has no name. Focus moves
-   to the heading on arrival. Under the heading one live status line says what is happening now:
-   _Preparing a new workspace and the specification._ (new workspace) or _Preparing the
-   specification._, after a while _Still working — this can take a minute._, and when the request
-   was refused before anything was done, what was **not** created.
+   to the heading on arrival. Under the heading one live status line says what is happening now: **the name of the running
+   step** (for example _Preparing the workspace_), never a generic line next to a concrete step.
+   Only while no step is known does the generic line stay (_Sending the request…_, _Reading the
+   operation…_, _Preparing the specification._); after a while it reads _Still working — this can
+   take a minute._, and when the request was refused before anything was done it says what was
+   **not** created.
 2. **Steps** (next section): each with a title and one line, in user language.
 3. **Configuration** (a heading and a compact description list in the words of the form's
    workspace summary): _Where_ (in a new workspace; added to workspace NAME with its branch; added
    to the current folder with its branch), and for a new workspace _Branch name_, _Start from_ and
    _Merge into_ (workspace and branch), then, shortened to two lines, the goal if one was entered.
+   The **Commit** is not here: it is system behaviour, not a choice (see Technical details).
    The values come from the retained request and from the facts the form saved with the draft
    (workspace names, branches), never from server text; a value that is not known (a direct link, a
    lost draft) has no row; nothing is guessed. The "merge target has uncommitted changes" caveat is
    **not** shown here: it stays in the form, next to the integration-target choice.
 4. **Technical details**, a closed `Collapsible`: the worktree folder (absolute path, from the
-   create-options `worktreesRoot`), the explicit slug and the operation id. These matter only for
+   create-options `worktreesRoot`), the explicit slug, the **Commit** (the branch the Engine
+   commits the scaffold to; Git enabled only) and the operation id. These matter only for
    diagnosing or finding things on disk and are not part of the summary.
 5. A quiet note that the owner can leave (creation continues on the server; its status is
    available from the specification list) and the secondary **Back to specifications** button
@@ -227,18 +232,23 @@ is drawn only from the Runtime's operation list, never from client storage, so a
 another tab, another browser or the CLI shows up as well. The panel only informs: it shows
 **create** operations (no other kinds), no diagnostics, and offers no resume or scheduling.
 
-- **Hidden when empty** and while the first read is pending; the table owns loading. A Runtime
+- **Absent when empty** and while the first read is pending (the table owns loading); **always
+  open** when there is something to show. It is information, not a control: there is no collapse
+  button and no collapsed state. A Runtime
   that does not serve the list (404/403) shows nothing and no error. A failed first read is one
   compact notice with **Retry**; a failed refresh keeps the rows and adds "Cannot refresh.
   Retrying".
-- **Header**: the title, a summary ("1 running, 1 needs attention") and a collapse button. The
-  owner's collapse lasts for the session and the panel opens again by itself when a row starts to
-  need a check.
-- **Rows**: status mark, title, kind and branch, the current step ("Step 2 of 4: Preparing the
-  workspace", counted without skipped steps), and when it started or last changed. A row is one
-  link to the operation's progress page (`/specs/new/creating/<operationId>`). Five rows are
-  shown; **Show all (N)** expands the rest inline, "Showing N of M" says when the server cut the
-  list. At 320 px a row wraps onto lines; touch targets stay at least 44 px.
+- **One container, plain rows.** The panel is ONE bordered container: a header (the title and a
+  summary such as "1 running, 1 needs attention") over rows separated by dividers. A row has no
+  card, border or background of its own, so there is no card inside a card.
+- **Rows**: a status icon, the **name of the specification** (the title the operation was started
+  with; the generic kind label only when the name is unknown) and ONE meta line, _step · time_
+  ("Step 2 of 4: Preparing the workspace · Started 2 minutes ago", counted without skipped steps).
+  There are no kind, branch or extra badges. The whole row is one link to the operation's progress
+  page (`/specs/new/creating/<operationId>`) with **no trailing arrow**; hover and focus tint the
+  whole row. Five rows are shown; **Show all (N)** (a real disclosure) expands the rest inline,
+  "Showing N of M" says when the server cut the list. At 320 px a row wraps onto lines; touch
+  targets stay at least 44 px.
 - **Needs a check** (`recovery-required`): the row says **Check result** and, for a run with no
   activity (`OPERATION_INTERRUPTED`), "No activity for N min. Check the result". It never says
   "failed" and offers no retry; it cannot be hidden.
@@ -269,9 +279,9 @@ panel hidden. See `engineering.shared.operation-progress`.
 ## Live progress while creating
 
 Creating a workspace can take from a few seconds to minutes, so the progress page shows a calm
-checklist of named steps: the running step has a spinner and is emphasised, finished steps a check,
-steps that follow stay muted ("Waiting for previous step"). Each step has a title and one line that
-depends on its state. The steps are the public vocabulary of the operation, not Git or journal
+checklist of named steps: the running step has the page's only spinner and is emphasised,
+finished steps a check, steps that follow stay muted (grey title, **no description line**, no
+repeated "waiting" text). A running or finished step has one line that depends on its state. The steps are the public vocabulary of the operation, not Git or journal
 internals:
 
 | Step                       | Title (en)                      | Running                                    | Done                             | Shown when                                  |
@@ -281,6 +291,12 @@ internals:
 | `writing-specification`    | Creating the specification      | Writing the specification files            | Specification files written      | always                                      |
 | `committing-specification` | Saving the specification in Git | Committing the specification files         | Specification files saved in Git | Git enabled only (`commits` in the options) |
 | `registering`              | Finishing setup                 | Registering the new specification          | Specification registered         | always                                      |
+
+These five ids are exactly the public step vocabulary of the `specification-create` kind
+(`SPECIFICATION_CREATE_STEPS` in `@nevo/specflow-contracts/operations`, mapped from the Engine's
+journal in `step-mapping.ts`); the page adds none of its own and never draws a step the Runtime did
+not report. The Runtime omits `preparing-workspace` for an existing or current workspace and
+`committing-specification` when Git is off, so those rows never appear.
 
 A step that does not apply (a skipped step: the workspace step for the current or an existing
 workspace) is not drawn. A step id this build does not know (a newer Runtime) is drawn generically

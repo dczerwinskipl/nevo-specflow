@@ -4,6 +4,7 @@ import type {
   CurrentSpecSectionId,
   CurrentSpecAttentionReason,
   SpecOverviewItem,
+  SpecsOverview,
 } from './model';
 
 type Tags = readonly [] | readonly [string] | readonly [string, string];
@@ -25,6 +26,8 @@ interface RowIdentity {
   readonly tags: Tags;
   readonly omittedTags: number;
   readonly pullRequests?: PullRequests;
+  /** When the specification last changed; shown as a fact when the list has no work status. */
+  readonly updatedAt?: string;
 }
 
 export interface CurrentSpecRowModel extends RowIdentity {
@@ -69,6 +72,7 @@ export function currentRow(item: CurrentSpecOverviewItem): CurrentSpecRowModel {
 
   return {
     ...identity(item),
+    updatedAt: item.updatedAt,
     collection: 'current',
     sectionId: item.classification.section,
     summary: currentSummary(item),
@@ -140,8 +144,12 @@ export function rowProgress(
       : 'ready';
 }
 type RowMetadataFact =
-  { id: string; kind: 'key' | 'tag' | 'omitted'; value: string } | { id: 'pr'; kind: 'pr' };
-export function rowMetadata(item: SpecRowModel): readonly RowMetadataFact[] {
+  | { id: string; kind: 'key' | 'tag' | 'omitted' | 'updated'; value: string }
+  | { id: 'pr'; kind: 'pr' };
+export function rowMetadata(
+  item: SpecRowModel,
+  options: { readonly updated?: boolean } = {},
+): readonly RowMetadataFact[] {
   return [
     ...(item.key ? [{ id: 'key', kind: 'key' as const, value: item.key }] : []),
     ...item.tags.map((tag, index) => ({ id: `tag-${index}`, kind: 'tag' as const, value: tag })),
@@ -151,5 +159,30 @@ export function rowMetadata(item: SpecRowModel): readonly RowMetadataFact[] {
     ...(item.collection === 'current' && item.pullRequests
       ? [{ id: 'pr' as const, kind: 'pr' as const }]
       : []),
+    ...(options.updated && item.updatedAt && Number.isFinite(Date.parse(item.updatedAt))
+      ? [{ id: 'updated', kind: 'updated' as const, value: item.updatedAt }]
+      : []),
   ];
+}
+
+/**
+ * Which facts the Runtime really provides for the current list. A project Runtime may know the
+ * specifications but not their work status or progress; the list then must not draw groups and
+ * columns of "unavailable". Decided from the whole collection (never from a search result, so
+ * typing does not change the layout): status exists when any specification has a real section,
+ * progress when any has a progress. The archive always has its own milestone and pull-request
+ * columns, and an empty collection keeps the full layout (nothing to flatten).
+ */
+export interface OverviewCapabilities {
+  readonly status: boolean;
+  readonly progress: boolean;
+}
+
+export function overviewCapabilities(projection: SpecsOverview): OverviewCapabilities {
+  if (projection.collection === 'archive' || projection.items.length === 0)
+    return { status: true, progress: true };
+  return {
+    status: projection.items.some((item) => item.classification.section !== 'unknown'),
+    progress: projection.items.some((item) => item.progress !== null),
+  };
 }

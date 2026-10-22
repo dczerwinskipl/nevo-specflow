@@ -82,7 +82,7 @@ describe('OperationsPanel rows', () => {
     expect(link.textContent).not.toContain('spec/payment-limits');
     expect(link.querySelector('svg:not([aria-hidden])')).toBeNull();
     expect(link.querySelector('[data-operation-meta]')?.textContent).toContain(
-      'Step 2 of 4: Preparing the workspace · Started 2 minutes ago',
+      'Step 2 of 4: Preparing the workspace Â· Started 2 minutes ago',
     );
     expect(link.querySelector('time')?.textContent).toBe('Started 2 minutes ago');
   });
@@ -249,7 +249,9 @@ describe('OperationsPanel structure', () => {
   });
 
   it('keeps a finished row visible with its name and a hide control', () => {
-    renderPanel({ list: operationList([operationItem({ status: 'completed', title: 'Billing' })]) });
+    renderPanel({
+      list: operationList([operationItem({ status: 'completed', title: 'Billing' })]),
+    });
     expect(screen.getByText('Billing')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Hide Billing' })).toBeTruthy();
   });

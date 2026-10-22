@@ -482,6 +482,71 @@ export const ReadyAndDraft: Story = {
     },
   },
 };
+/**
+ * A project Runtime that knows the specifications but not their work status or progress: ONE flat
+ * list (name, key facts, when it was updated), no group of "unavailable" and no empty columns.
+ * The choice is data-driven: it follows what the Runtime provides, not the runtime mode.
+ */
+const noStatus = (id: string, title: string, extra: Parameters<typeof createSpecItem>[0] = {}) =>
+  createSpecItem({
+    id,
+    title,
+    classification: { section: 'unknown' },
+    progress: null,
+    signals: null,
+    currentExecutions: null,
+    ...extra,
+  });
+const flatState: SpecsOverviewState = {
+  ...loaded,
+  projection: {
+    ...createSpecsFixture(),
+    sections: ['unknown'],
+    items: [
+      noStatus('a', 'Payment limits', { key: 'PAY-12', updatedAt: '2026-10-20T09:00:00Z' }),
+      noStatus('b', 'Audit trail', { tags: ['Runtime'], updatedAt: '2026-10-12T09:00:00Z' }),
+      noStatus('c', 'Offline mode', { updatedAt: '2026-09-30T09:00:00Z' }),
+    ],
+  },
+};
+export const FlatListWithoutStatus: Story = {
+  args: { state: flatState },
+  tags: ['visual'],
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByRole('link', { name: 'Open specification: Payment limits' });
+    await expect(canvasElement.querySelector('[data-spec-layout="flat"]')).not.toBeNull();
+    await expect(canvas.queryByText('Status unavailable')).toBeNull();
+    await expect(canvas.queryByText('Work status not available yet')).toBeNull();
+    await expect(canvasElement.querySelector('[data-spec-columns]')).toBeNull();
+    await expect(canvas.queryByRole('button', { name: /Specification actions: / })).toBeNull();
+  },
+};
+/** Only progress exists: the flat list keeps one progress column, still no status column. */
+export const FlatListWithProgressOnly: Story = {
+  args: {
+    state: {
+      ...flatState,
+      projection: {
+        ...flatState.projection!,
+        items: (flatState.projection!.items as ReturnType<typeof createSpecItem>[]).map(
+          (item, index) => ({ ...item, progress: { completed: index, total: 4 } }),
+        ),
+      },
+    },
+  },
+};
+export const FlatListMobile: Story = {
+  args: { state: flatState },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+};
+export const FlatListPolish: Story = { args: { state: flatState, locale: 'pl' } };
+/** Real status data: grouped by status, with the situation and progress columns. */
+export const GroupedByStatus: Story = {
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByRole('heading', { name: 'Requires attention' });
+    await expect(canvasElement.querySelector('[data-spec-layout="grouped"]')).not.toBeNull();
+  },
+};
 export const Loading: Story = {
   args: { state: { collection: 'current', loading: true, refreshing: false, error: false } },
 };

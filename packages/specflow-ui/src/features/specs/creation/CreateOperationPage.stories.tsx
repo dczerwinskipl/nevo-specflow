@@ -288,7 +288,7 @@ const settingsList = (canvas: { getByLabelText: (label: string) => HTMLElement }
   within(canvas.getByLabelText('Ustawienia tworzenia'));
 
 /**
- * Right after Create: the progress is the primary content. A status tile with a turning spinner,
+ * Right after Create: the progress is the primary content. A static status icon (the running step carries the only spinner),
  * ONE heading that names the specification, a subtitle that says what is happening, the steps in
  * plain language (what is done, what runs, what waits), then the compact configuration, closed
  * technical details, a quiet note about leaving and the way back to the list.
@@ -312,7 +312,8 @@ export const InProgressWithSteps: Story = {
     await expect(canvas.getByText('Tworzymy środowisko pracy')).toBeVisible();
     await expect(canvas.getByText('Rezerwowanie nazwy').closest('li')).toHaveTextContent(/gotowe/);
     await expect(canvas.getByText('Nazwa i gałąź zarezerwowane')).toBeVisible();
-    await expect(canvas.getAllByText('Czeka na poprzedni krok').length).toBeGreaterThan(0);
+    // Pending steps are muted titles only: no repeated "waiting" line.
+    await expect(canvas.queryByText('Czeka na poprzedni krok')).not.toBeInTheDocument();
     // The configuration is a compact secondary summary below the steps.
     await expect(canvas.getByRole('heading', { level: 2, name: 'Konfiguracja' })).toBeVisible();
     const settings = settingsList(canvas);
@@ -520,15 +521,18 @@ export const InProgressWithTheCommitStep: Story = {
     facts: { ...newWorkspaceFacts, commit: true },
     stream: 'commit-steps',
   },
-  play: async ({ canvas, canvasElement }) => {
-    const running = await canvas.findByText('Zapisywanie specyfikacji w Git');
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const running = (await canvas.findAllByText('Zapisywanie specyfikacji w Git')).find((node) =>
+      node.closest('li'),
+    )!;
     await waitFor(() => expect(running.closest('li')).toHaveAttribute('aria-current', 'step'));
     await expect(canvas.getByText('Zapisujemy pliki specyfikacji w commicie')).toBeVisible();
     await expect(steps(canvasElement).getAllByRole('listitem')).toHaveLength(5);
     await expect(canvas.getByText('Pliki specyfikacji zapisane')).toBeVisible();
-    const settings = settingsList(canvas);
-    await expect(settings.getByText('Commit')).toBeInTheDocument();
-    await expect(settings.getAllByText('feature/limity-platnosci')).toHaveLength(2);
+    // The commit is system behaviour, not a choice: it lives in the technical details.
+    await expect(settingsList(canvas).queryByText('Commit')).not.toBeInTheDocument();
+    await userEvent.click(canvas.getByRole('button', { name: 'Szczegóły techniczne' }));
+    await expect(canvas.getByText('Commit')).toBeVisible();
   },
 };
 
@@ -546,12 +550,12 @@ export const InProgressWithTheCommitStepInAnExistingWorkspace: Story = {
     stream: 'commit-steps-existing',
   },
   play: async ({ canvas, canvasElement }) => {
-    await canvas.findByText('Zapisywanie specyfikacji w Git');
+    await canvas.findAllByText('Zapisywanie specyfikacji w Git');
     // No workspace step for an existing workspace: four rows.
     await expect(steps(canvasElement).getAllByRole('listitem')).toHaveLength(4);
     await expect(
       settingsList(canvas).getAllByText('feature/platform').length,
-    ).toBeGreaterThanOrEqual(2);
+    ).toBeGreaterThanOrEqual(1);
   },
 };
 

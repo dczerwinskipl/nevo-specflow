@@ -22,7 +22,7 @@ type Answer = OperationList | OperationListResult | Error;
 /**
  * The connected panel over an in-memory operations port: each read takes the next answer (the last
  * one repeats), exactly what the Runtime list route would answer. A fresh query cache and a fresh
- * session (hidden rows, collapse) per story.
+ * session (hidden rows) per story.
  */
 function PanelFixture({
   answers,
@@ -88,7 +88,9 @@ export const OneRunning: Story = {
     await expect(region).toHaveTextContent('1 running');
     const link = within(region).getByRole('link', { name: /^Limity płatności/ });
     await expect(link).toHaveTextContent('Step 2 of 4: Preparing the workspace');
-    await expect(link).toHaveTextContent('spec/payment-limits');
+    // One meta line, "step · time": no kind, no branch, no trailing arrow, no collapse control.
+    await expect(link).not.toHaveTextContent('spec/payment-limits');
+    await expect(within(region).queryByRole('button', { name: /operations/i })).toBeNull();
     await expect(link.getAttribute('href')).toContain('/specs/new/creating/');
     await expect(within(region).queryByRole('button', { name: /^Hide Limity/ })).toBeNull();
   },
@@ -222,15 +224,13 @@ export const TruncatedList: Story = {
   },
 };
 
-/** Collapsed by the disclosure button; the summary stays readable in the header. */
-export const Collapsed: Story = {
+/** The panel is information, not a control: always open, nothing to collapse. */
+export const AlwaysOpen: Story = {
   args: { answers: one([runningItem(1, { title: 'Limity płatności' })]) },
   play: async ({ canvas }) => {
     const region = await canvas.findByRole('region', { name: 'Background operations' });
-    await userEvent.click(within(region).getByRole('button', { name: 'Hide operations' }));
-    const toggle = within(region).getByRole('button', { name: 'Show operations' });
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    await expect(region).toHaveTextContent('1 running');
+    await expect(region.querySelector('[aria-expanded]')).toBeNull();
+    await expect(within(region).getByRole('link')).toBeVisible();
   },
 };
 
@@ -298,10 +298,6 @@ export const Mobile320: Story = {
       runningItem(2, {
         title:
           'Ograniczenia płatności cyklicznych dla klientów korporacyjnych w kanałach zdalnych oraz integracji z dostawcami',
-        target: {
-          workspaceKind: 'new-worktree',
-          branch: 'spec/ograniczenia-platnosci-cyklicznych-dla-klientow-korporacyjnych',
-        },
       }),
       operationItem({
         status: 'recovery-required',

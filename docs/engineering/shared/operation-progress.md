@@ -120,7 +120,7 @@ view of the specification of each row).
 | Layer      | Owner                                                       | Knows                                                                                                                                                                                         |
 | ---------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Contracts  | `specflow-contracts/src/operations/list.ts`                 | `OperationListResponse` (items, counts, truncated, generatedAt), `OperationSummary` row, statuses `in-progress`, `recovery-required`, `failed`, `completed` (reserved: `queued`, `scheduled`) |
-| UI shared  | `specflow-ui/src/shared/operations/`                        | port `OperationsApi.list(url, {signal, etag?})`, `useOperationsList`, `OperationsPanel` and `OperationsPanelHost`, row model, session-only hide and collapse; no kind, no route               |
+| UI shared  | `specflow-ui/src/shared/operations/`                        | port `OperationsApi.list(url, {signal, etag?})`, `useOperationsList`, `OperationsPanel` and `OperationsPanelHost`, row model, session-only hide (no collapse: the panel is always open); no kind, no route               |
 | UI feature | the operation's feature (Create: `features/specs/creation`) | list URL by Runtime mode, `OperationKindPresentation` (kind label, step titles through the feature's step mapping, detail and events links), what to refresh on completion                    |
 
 Rules:

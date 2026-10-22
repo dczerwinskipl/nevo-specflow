@@ -6,7 +6,14 @@ import {
   createSpecsFixture,
 } from '../../../../test-support/specs/overview/fixtures';
 import { sectionTranslationKey } from './model';
-import { archiveRow, currentRow, sortArchiveItems, rowMetadata, rowProgress } from './presentation';
+import {
+  archiveRow,
+  currentRow,
+  overviewCapabilities,
+  sortArchiveItems,
+  rowMetadata,
+  rowProgress,
+} from './presentation';
 
 describe('Specs Overview presentation boundary', () => {
   it('keeps identity facts ordered beneath the title and limits PR metadata to Current', () => {
@@ -184,5 +191,66 @@ describe('Specs Overview presentation boundary', () => {
     expect(row).not.toHaveProperty('summary');
     expect(row).not.toHaveProperty('sectionId');
     expect(JSON.stringify(row)).not.toContain('2099');
+  });
+});
+
+describe('Specs Overview capabilities', () => {
+  const unknown = (id: string) =>
+    createSpecItem({
+      id,
+      classification: { section: 'unknown' },
+      progress: null,
+      signals: null,
+      currentExecutions: null,
+    });
+
+  it('has status and progress when the Runtime provides them', () => {
+    expect(overviewCapabilities(createSpecsFixture())).toEqual({ status: true, progress: true });
+  });
+
+  it('has neither when every specification is of unknown status without progress', () => {
+    expect(
+      overviewCapabilities({ ...createSpecsFixture(), items: [unknown('a'), unknown('b')] }),
+    ).toEqual({ status: false, progress: false });
+  });
+
+  it('has status as soon as one specification has a real section, and progress on its own', () => {
+    const base = createSpecsFixture();
+    expect(
+      overviewCapabilities({
+        ...base,
+        items: [unknown('a'), createSpecItem({ id: 'b', progress: null })],
+      }),
+    ).toEqual({ status: true, progress: false });
+    expect(
+      overviewCapabilities({
+        ...base,
+        items: [{ ...unknown('a'), progress: { completed: 1, total: 2 } }],
+      }),
+    ).toEqual({ status: false, progress: true });
+  });
+
+  it('keeps the full layout for an empty list and the archive', () => {
+    expect(overviewCapabilities({ ...createSpecsFixture(), items: [] })).toEqual({
+      status: true,
+      progress: true,
+    });
+    expect(overviewCapabilities(createSpecsFixture('archive'))).toEqual({
+      status: true,
+      progress: true,
+    });
+  });
+
+  it('offers the updated time as a fact only when asked (flat list)', () => {
+    const row = currentRow(createSpecItem({ updatedAt: '2026-10-01T12:00:00Z' }));
+    expect(rowMetadata(row).some((fact) => fact.kind === 'updated')).toBe(false);
+    expect(rowMetadata(row, { updated: true })).toContainEqual({
+      id: 'updated',
+      kind: 'updated',
+      value: '2026-10-01T12:00:00Z',
+    });
+    expect(
+      rowMetadata(currentRow(createSpecItem({ updatedAt: 'not a date' })), { updated: true }),
+    ).toEqual([]);
   });
 });

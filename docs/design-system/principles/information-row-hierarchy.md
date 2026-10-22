@@ -88,6 +88,32 @@ layout/component implementation guidance.
 The primary row target and nested actions still follow valid interactive-DOM rules. A visually unified
 row does not justify invalid nested links/buttons.
 
+## Interaction grammar
+
+One grammar for everything clickable, so the same shape always means the same thing. Do not add an
+interactive element where plain presentation of information is enough.
+
+1. **A clickable row or card is clickable as a whole and carries no trailing arrow.** The title is
+   the primary link, stretched over the row (or the whole row is the link); hover and focus-visible
+   tint the whole row. A chevron, arrow or "open" icon is never added "to indicate navigation": the
+   hover state, the pointer and the link text already say it.
+2. **A chevron means a real disclosure only**: expanding or collapsing hidden content (Technical
+   details, a group of rows, a tree node, "Show all"). It sits at the **leading edge** of the
+   control and turns (right when closed, down when open): `Collapsible`, the group headers and the
+   documents tree all follow this. A disclosure chevron is never on the right of a header, and a
+   menu or select keeps its own trailing caret.
+3. **Information that is not a control is not collapsible.** A panel that only reports state
+   (for example Background operations) is always open when it has something to show; do not add a
+   collapse control to it.
+4. **A row actions menu ("...") exists only for real contextual actions.** Disabled "not available
+   yet" entries and a copy of the row's primary action are not actions: leave the menu out until
+   there is something to do.
+5. **A secondary control inside a row** (hide, remove) is a separate, named button beside the row
+   target, never nested in it, and only for a real action.
+6. **Containment: one level.** A group is one bordered or surfaced container with plain rows
+   separated by dividers; rows inside a container have no border, background or radius of their own
+   (see `design-system.principles.layout-and-containment`).
+
 ## Collection consistency
 
 Comparable collections should preserve one recognizable semantic grammar:
@@ -137,5 +163,7 @@ Before accepting a repeated item treatment, verify:
 3. Are utility/trailing affordances semantically consistent with sibling collections?
 4. Does state change meaning without inventing a new row hierarchy?
 5. If the row grammar differs materially, is the user-facing reason documented?
+   Does every clickable row follow the interaction grammar (whole-row target, no trailing arrow,
+   chevron only for a real leading disclosure, no empty actions menu)?
 6. Are geometry, tracks, spacing, containment, separators, and responsive behavior delegated to
    `design-system.principles.layout-and-containment`?

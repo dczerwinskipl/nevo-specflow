@@ -33,7 +33,7 @@ export interface OperationRowProps {
 
 /**
  * One operation as a plain row of the panel (no surface of its own): status icon, the name of the
- * specification and ONE meta line, "step or status · time". The whole row is one link to the
+ * specification and ONE meta line, "step or status Â· time". The whole row is one link to the
  * operation's page when its kind has one, with no trailing arrow: a clickable row is clickable as
  * a whole. Text comes from the row data and the kind adapter only.
  */
@@ -76,10 +76,12 @@ export function OperationRow({ item, kind, now, renderLink, onDismiss }: Operati
         >
           {detail ? <span className="sr-only">{status}. </span> : null}
           {detail ?? status}
-          {action ? <span className="font-medium text-content-primary">{` · ${action}`}</span> : null}
+          {action ? (
+            <span className="font-medium text-content-primary">{` Â· ${action}`}</span>
+          ) : null}
           {timeText ? (
             <>
-              <span aria-hidden="true"> · </span>
+              <span aria-hidden="true"> Â· </span>
               <time dateTime={timeIso} className="text-content-muted">
                 {timeText}
               </time>

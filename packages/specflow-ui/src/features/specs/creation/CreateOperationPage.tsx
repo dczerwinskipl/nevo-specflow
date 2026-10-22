@@ -185,10 +185,10 @@ export function CreateOperationPage({
             : runningStep
               ? text(runningStep)
               : flags.monitoring
-              ? t(newWorkspace ? 'create.page.status.workingNew' : 'create.page.status.working')
-              : state.sent && state.resumedFrom
-                ? t('create.page.status.reading')
-                : t('create.page.status.sending')
+                ? t(newWorkspace ? 'create.page.status.workingNew' : 'create.page.status.working')
+                : state.sent && state.resumedFrom
+                  ? t('create.page.status.reading')
+                  : t('create.page.status.sending')
           : undefined;
 
   const checkLabel = state.checking

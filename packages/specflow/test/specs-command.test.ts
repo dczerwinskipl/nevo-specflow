@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
+  CREATE_JOURNAL_RELATIVE_DIR,
   bootstrapProjectHome,
   discoverSpecifications,
   workspaceRegistryPath,
@@ -113,6 +114,50 @@ describe('E2.T05 — offline CLI Specs capability', () => {
     expect(JSON.parse(retry.output[0]!)).toEqual(result);
     expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(registryBefore);
     expect(await discoverSpecifications(engine)).toHaveLength(1);
+  }, 120000);
+
+  it('recover: resumes a stuck Create from its journal only with explicit confirmation', async () => {
+    const { root, engine } = await fixture();
+    const operationId = randomUUID();
+    const create = command(root);
+    await create.run([
+      'create',
+      '--title',
+      'Stuck create',
+      '--operation-id',
+      operationId,
+      '--json',
+    ]);
+    const created = JSON.parse(create.output[0]!) as { specId: string };
+
+    // Simulate a crash before the final stage: the journal is non terminal again.
+    const journalPath = join(
+      engine.context.project.stateRoot,
+      CREATE_JOURNAL_RELATIVE_DIR,
+      operationId + '.json',
+    );
+    const journal = JSON.parse(await readFile(journalPath, 'utf8')) as Record<string, unknown>;
+    await writeFile(journalPath, JSON.stringify({ ...journal, stage: 'registry-writing' }));
+
+    // A plain retry is only a reader: it never takes over a possibly live writer.
+    const retry = command(root);
+    await expect(
+      retry.run(['create', '--title', 'Stuck create', '--operation-id', operationId, '--json']),
+    ).rejects.toMatchObject({ code: 'CREATE_RECOVERY_REQUIRED' });
+
+    // The operator must confirm that the original is stopped.
+    await expect(command(root).run(['recover', operationId])).rejects.toThrow(/confirmed-stopped/u);
+
+    const recover = command(root);
+    await recover.run(['recover', operationId, '--confirmed-stopped', '--json']);
+    expect(JSON.parse(recover.output[0]!)).toMatchObject({ operationId, specId: created.specId });
+    const after = JSON.parse(await readFile(journalPath, 'utf8')) as { stage: string };
+    expect(after.stage).toBe('completed');
+    expect(await discoverSpecifications(engine)).toHaveLength(1);
+
+    await expect(
+      command(root).run(['recover', randomUUID(), '--confirmed-stopped']),
+    ).rejects.toMatchObject({ code: 'CREATE_OPERATION_INVALID' });
   }, 120000);
 
   it('CLI chooses current linked checkout, not Project Home, when no target is specified', async () => {

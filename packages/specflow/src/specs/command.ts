@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import {
   createSpecificationFromRequest,
+  resumeInterruptedCreateOperation,
   projectCreatedSpecification,
   closeSpecificationOperation,
   closeWorktreeOperation,
@@ -93,6 +94,46 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
           context.stdout('Created Specification: ' + result.slug + ' (' + result.specId + ')');
           context.stdout('Workspace: ' + result.workspaceRoot + ' (' + result.workspaceId + ')');
           context.stdout('Manifest: ' + result.relativeManifestPath);
+          context.stdout('Operation ID: ' + result.operationId);
+        }
+      },
+    );
+
+  specs
+    .command('recover')
+    .description(
+      'Resume an interrupted Create (stuck journal) with the intent it recorded; see specification-lifecycle docs',
+    )
+    .argument('<operation-id>', 'Create operation UUID (shown by the operations list)')
+    .requiredOption(
+      '--confirmed-stopped',
+      'Confirm that no process of the original Create is still running',
+    )
+    .option(
+      '--confirmed-git-stopped',
+      'Also confirm that no Git process of the original Create is running (needed from stage git-initiated)',
+    )
+    .option('--project-root <path>', 'Require this verified Project Home root')
+    .option('--json', 'Print canonical result as JSON')
+    .action(
+      async (
+        operationId: string,
+        options: {
+          confirmedStopped: true;
+          confirmedGitStopped?: boolean;
+          projectRoot?: string;
+          json?: boolean;
+        },
+      ) => {
+        const engine = await engineAt(context.cwd, options.projectRoot);
+        const result = await resumeInterruptedCreateOperation(engine, operationId, {
+          confirmOriginalStopped: true,
+          ...(options.confirmedGitStopped ? { confirmInterruptedGitSettled: true } : {}),
+        });
+        if (options.json) {
+          output(context, projectCreatedSpecification(result));
+        } else {
+          context.stdout('Recovered Create: ' + result.slug + ' (' + result.specId + ')');
           context.stdout('Operation ID: ' + result.operationId);
         }
       },

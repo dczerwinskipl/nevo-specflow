@@ -71,6 +71,8 @@ export { CreateOperationError } from './specs/create-journal';
 
 export {
   createSpecificationFromRequest,
+  resumeInterruptedCreateOperation,
+  type ResumeCreateOptions,
   type CreateSpecificationRequest,
   type CreateSpecificationRequestOptions,
 } from './specs/create-request';

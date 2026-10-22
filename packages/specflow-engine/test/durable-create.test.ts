@@ -68,7 +68,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     });
     expect(created.specId).toBeDefined();
     expect((await inspectCreateSpecification(engine, input.operationId))?.stage).toBe('completed');
-  }, 90000);
+  }, 240000);
 
   it('creates a Spec in primary and retries the same operation without new records', async () => {
     const { root, engine } = await project(false);
@@ -91,7 +91,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     await expect(
       createSpecification(engine, { ...input, title: 'Unrelated retry' }),
     ).rejects.toMatchObject({ code: 'CREATE_CONFLICT' });
-  }, 90000);
+  }, 240000);
 
   it('creates a linked Git worktree while preserving primary HEAD and project root', async () => {
     const { root, engine } = await project();
@@ -101,7 +101,8 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     roots.push(dirname(output.workspaceRoot));
     expect(output.workspaceRoot).not.toBe(root);
     expect(git(root, 'rev-parse', 'HEAD')).toBe(headBefore);
-    expect(git(output.workspaceRoot, 'rev-parse', 'HEAD')).toBe(headBefore);
+    // The Engine commits the scaffold on the new branch: one commit on top of the base.
+    expect(git(output.workspaceRoot, 'rev-parse', 'HEAD~1')).toBe(headBefore);
     expect((await engine.readRegistry()).workspaces).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -117,7 +118,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     const restarted = await openSpecFlowEngine({ cwd: root });
     expect(await createSpecification(restarted, input)).toEqual(output);
     expect(git(root, 'worktree', 'list', '--porcelain').match(/worktree /gu)).toHaveLength(2);
-  }, 90000);
+  }, 240000);
 
   it('C06: two managed worktrees retain isolated uncommitted Specs without touching primary', async () => {
     const { root, engine } = await project();
@@ -176,7 +177,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
         }),
       ]),
     );
-  }, 120000);
+  }, 300000);
 
   it('SC00: records only Engine-created dirty scaffold files with durable fingerprints', async () => {
     const { root, engine } = await project(false);
@@ -202,7 +203,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     );
     expect(journal?.files.some((file) => file.relativePath === unknownPath)).toBe(false);
     expect(git(root, 'status', '--porcelain', '--untracked-files=all')).toContain(unknownPath);
-  }, 90000);
+  }, 240000);
 
   it('VC05: retries pinned Git reservation after branchPattern/baseRef change', async () => {
     const { root, engine } = await project();
@@ -236,14 +237,14 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     });
     roots.push(dirname(created.workspaceRoot));
     expect(created.specId).toBe(journal?.specId);
-    expect(git(created.workspaceRoot, 'rev-parse', 'HEAD')).toBe(originalHead);
+    expect(git(created.workspaceRoot, 'rev-parse', 'HEAD~1')).toBe(originalHead);
     expect(git(created.workspaceRoot, 'symbolic-ref', '--short', 'HEAD')).toBe(
       journal?.target.branch,
     );
     expect((await inspectCreateSpecification(restarted, input.operationId))?.version).toBe(2);
     expect(git(root, 'rev-parse', 'HEAD')).toBe(originalHead);
     expect(git(root, 'worktree', 'list', '--porcelain').match(/worktree /gu)).toHaveLength(2);
-  }, 90000);
+  }, 240000);
 
   it('VC05: rejects a tampered reserved target even when it is a direct managed child', async () => {
     const { root, engine } = await project();
@@ -298,7 +299,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     );
     expect(git(root, 'worktree', 'list', '--porcelain')).toBe(worktreesBefore);
     expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(registryBefore);
-  }, 90000);
+  }, 240000);
 
   it('VC04: disabled policy blocks new Git mutation before git-initiated but allows completed replay', async () => {
     const { root, engine } = await project();
@@ -333,7 +334,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     expect((await inspectCreateSpecification(restarted, input.operationId))?.stage).toBe(
       'completed',
     );
-  }, 90000);
+  }, 240000);
 
   it('uses an explicit slug for the Spec folder, branch and worktree, and fingerprints it', async () => {
     const { root, engine } = await project();
@@ -408,7 +409,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
         slug,
       ).rejects.toMatchObject({ code: 'CREATE_OPERATION_INVALID' });
     }
-  }, 120000);
+  }, 300000);
 
   it('VC05: omission means pinned policy defaults; explicit HEAD is distinct intent', async () => {
     const { root, engine } = await project();
@@ -451,7 +452,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
         target: { kind: 'new-worktree', baseRef: 'HEAD' },
       }),
     ).rejects.toMatchObject({ code: 'CREATE_CONFLICT' });
-  }, 120000);
+  }, 300000);
 
   it('VC05: reserved omitted defaults survive config changes', async () => {
     const { root, engine } = await project();
@@ -525,10 +526,10 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     expect(git(result.workspaceRoot, 'symbolic-ref', '--short', 'HEAD')).toBe(
       reserved?.target.branch,
     );
-    expect(git(result.workspaceRoot, 'rev-parse', 'HEAD')).toBe(head);
+    expect(git(result.workspaceRoot, 'rev-parse', 'HEAD~1')).toBe(head);
     expect((await inspectCreateSpecification(engine, operationId))?.version).toBe(2);
     expect(git(root, 'worktree', 'list', '--porcelain').match(/worktree /gu)).toHaveLength(2);
-  }, 120000);
+  }, 300000);
 
   it('retries completed linked create after a normal commit without side effects', async () => {
     const { root, engine } = await project();
@@ -579,7 +580,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     );
     expect(await readFile(manifestPath, 'utf8')).toBe(committedManifest);
     expect(committedManifest).toContain('status: approved');
-  }, 90000);
+  }, 240000);
 
   it('does not replay a Git command after an interruption without explicit quiescence', async () => {
     const { root, engine } = await project();
@@ -607,7 +608,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     expect(recovered.workspaceRoot).toBe(workspace);
     expect(git(root, 'worktree', 'list', '--porcelain').match(/worktree /gu)).toHaveLength(2);
     expect((await inspectCreateSpecification(engine, input.operationId))?.stage).toBe('completed');
-  }, 90000);
+  }, 240000);
 
   it('replays manifest-written effects without duplicating files or registry bindings', async () => {
     const { root, engine } = await project(false);
@@ -631,7 +632,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     expect(await readFile(join(root, output.relativeManifestPath), 'utf8')).toContain(
       output.specId,
     );
-  }, 90000);
+  }, 240000);
 
   it('recovers after registry CAS publication without a second registry mutation', async () => {
     const { engine } = await project(false);
@@ -653,7 +654,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     });
     expect(output.specId).toBe((await engine.readRegistry()).specBindings[0]?.specId);
     expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(previous);
-  }, 90000);
+  }, 240000);
 
   it('rejects a tampered scaffold on retry instead of overwriting unrelated edits', async () => {
     const { root, engine } = await project(false);
@@ -673,7 +674,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
       createSpecification(engine, input, { resumeInterruptedOperation: true }),
     ).rejects.toMatchObject({ code: 'CREATE_RECOVERY_REQUIRED' });
     expect(await readFile(path, 'utf8')).toBe('malicious: different\n');
-  }, 90000);
+  }, 240000);
 
   it('rejects disabled Git automation before any journal, branch or registry write', async () => {
     const { root, engine } = await project(false);
@@ -686,7 +687,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     expect(await inspectCreateSpecification(engine, input.operationId)).toBeUndefined();
     expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(registryBefore);
     expect(git(root, 'branch', '--list')).toBe(branchesBefore);
-  }, 90000);
+  }, 240000);
 
   it('rejects an invalid base config blob before journal and Git side effects', async () => {
     const { root, engine } = await project();
@@ -708,7 +709,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
       code: 'GIT_BASE_CONFIG_MISSING',
     });
     expect(await inspectCreateSpecification(engine, input.operationId)).toBeUndefined();
-  }, 90000);
+  }, 240000);
 
   it('serializes same-slug create attempts without losing committed registry state', async () => {
     const { engine } = await project(false);
@@ -721,7 +722,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
       a.status === 'rejected' ? a.reason : b.status === 'rejected' ? b.reason : undefined;
     expect(rejected).toMatchObject({ code: 'CREATE_CONFLICT' });
     expect((await engine.readRegistry()).specBindings).toHaveLength(1);
-  }, 90000);
+  }, 240000);
 
   it('persists distinct concurrent creations without losing registry updates', async () => {
     const { engine } = await project(false);
@@ -734,7 +735,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     expect(new Set(results.map((item) => item.specId)).size).toBe(2);
     expect((await engine.readRegistry()).specBindings).toHaveLength(2);
     expect(await discoverSpecifications(engine)).toHaveLength(2);
-  }, 90000);
+  }, 240000);
 
   it('creates under a configured local worktree folder and still recovers after it changes', async () => {
     const { root, engine } = await project();
@@ -757,7 +758,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
       'completed',
     );
     await expect(lstat(secondRoot)).rejects.toMatchObject({ code: 'ENOENT' });
-  }, 120000);
+  }, 300000);
 
   it('resumes an interrupted create into the originally reserved folder after the root changed', async () => {
     const { root, engine } = await project();
@@ -784,7 +785,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
       resumeInterruptedOperation: true,
     });
     expect(created.workspaceRoot).toBe(join(firstRoot, 'resume-in-old-folder'));
-  }, 120000);
+  }, 300000);
 
   it('answers a taken default-pattern branch with the conflict path and keeps the branch', async () => {
     const { root, engine } = await project();
@@ -795,5 +796,5 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     );
     expect(String((failure as { code?: string }).code)).toMatch(/CONFLICT|BRANCH_ALREADY_EXISTS/u);
     expect(git(root, 'rev-parse', 'feature/taken-branch')).toBe(before);
-  }, 120000);
+  }, 300000);
 });

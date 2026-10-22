@@ -85,8 +85,11 @@ export function CreateOperationPage({
   operationId: string;
   /** Opens the created specification (automatically after a short moment, or on the button). */
   onOpen: (created: CreatedSpec) => void;
-  /** Returns to the Create form; it finds the draft the page kept. */
-  onBackToForm: () => void;
+  /**
+   * Returns to the Create form. A given operation id is the explicit "Back to form" path: the form
+   * restores the draft kept for that operation. Without it the form opens empty.
+   */
+  onBackToForm: (restoreDraftOf?: string) => void;
   /** Leaves for the specification list; the operation goes on and is shown there. */
   onBackToSpecifications: () => void;
 }) {
@@ -99,11 +102,9 @@ export function CreateOperationPage({
 
   // The request this browser sent, if any; a direct link has none and shows what the server knows.
   const [stored] = useState(() => {
-    const operation = storage.load();
-    return operation?.request.operationId === operationId ? operation : undefined;
+    return storage.load(operationId);
   });
-  const [draft] = useState(() => storage.loadDraft());
-  const ownDraft = draft?.operationId === operationId ? draft : undefined;
+  const [ownDraft] = useState(() => storage.loadDraft(operationId));
 
   const onCreated = useCallback((result: CreatedSpec) => setCreated(result), []);
   const { state, flags, unknownOperation, actions } = useCreateProjectSpecification({
@@ -135,10 +136,10 @@ export function CreateOperationPage({
   const settings = createSettingsModel(stored?.request, ownDraft?.goal, ownDraft?.facts);
   const failure = state.failure;
   // A failure that kept the operation (a lost session) is tried again here; a refusal ends it.
-  const retainable = view === 'refused' && storage.load()?.request.operationId === operationId;
+  const retainable = view === 'refused' && storage.load(operationId) !== undefined;
 
   const backToForm = (patch: FormPatch = undefined, keepFailure = true) => {
-    const base = storage.loadDraft();
+    const base = storage.loadDraft(operationId);
     if (base) {
       const { failure: _previous, ...rest } = base;
       const refusal = keepFailure && failure ? withoutSnapshot(failure) : undefined;
@@ -148,7 +149,7 @@ export function CreateOperationPage({
         ...(refusal ? { failure: refusal } : {}),
       });
     }
-    onBackToForm();
+    onBackToForm(operationId);
   };
 
   // One heading carries the state and the name; the full name stays available as the tooltip.
@@ -298,7 +299,7 @@ export function CreateOperationPage({
               <Button onClick={() => backToForm()}>{t('create.page.backToForm')}</Button>
             ))}
           {view === 'not-found' && (
-            <Button variant="secondary" onClick={onBackToForm}>
+            <Button variant="secondary" onClick={() => onBackToForm()}>
               {t('create.page.backToCreate')}
             </Button>
           )}

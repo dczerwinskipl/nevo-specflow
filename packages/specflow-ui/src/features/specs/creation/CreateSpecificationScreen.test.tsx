@@ -39,7 +39,7 @@ const silentOperations: OperationsApi = {
 function renderScreen(
   dataMode: 'project' | 'demo',
   projectCreationApi: Partial<ProjectCreationApi>,
-  props: { specId?: string } = {},
+  props: { specId?: string; restoreDraftOf?: string } = {},
   client = createSpecFlowQueryClient(),
   operationsApi: OperationsApi = silentOperations,
 ) {
@@ -133,18 +133,17 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
     await waitFor(() => expect((submit as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(submit);
     await waitFor(() => expect(onProjectStarted).toHaveBeenCalledOnce());
-    const [operationId, options] = onProjectStarted.mock.calls[0] as [string, { replace: boolean }];
+    const [operationId] = onProjectStarted.mock.calls[0] as [string];
     expect(operationId).toMatch(/^[0-9a-f-]{36}$/);
-    expect(options).toEqual({ replace: false });
     expect(create).not.toHaveBeenCalled();
-    const stored = storage().load();
+    const stored = storage().load(operationId);
     expect(stored?.request).toMatchObject({
       operationId,
       title: 'Payment limits',
       goal: 'Limit refunds',
     });
     expect(Object.keys(stored?.request ?? {}).sort()).not.toContain('archetypeId');
-    expect(storage().loadDraft()).toMatchObject({ operationId, title: 'Payment limits' });
+    expect(storage().loadDraft(operationId)).toMatchObject({ title: 'Payment limits' });
   });
 
   it('stores the new-worktree target of the chosen workspace in the request', async () => {
@@ -159,20 +158,51 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
     await waitFor(() => expect((submit as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(submit);
     await waitFor(() => expect(onProjectStarted).toHaveBeenCalled());
-    expect(storage().load()?.request.target).toEqual({ kind: 'new-worktree' });
+    const [operationId] = onProjectStarted.mock.calls[0] as [string];
+    expect(storage().load(operationId)?.request.target).toEqual({ kind: 'new-worktree' });
   });
 
-  it('resumes an unfinished operation on its page, replacing the empty form in the history', async () => {
+  it('a plain entry shows an empty form even when an unfinished operation and its draft are stored', async () => {
     storage().save({
       request: { title: 'Payment limits', operationId: created.operationId },
       startedAt: Date.now(),
     });
+    storage().saveDraft({
+      operationId: created.operationId,
+      title: 'Payment limits',
+      goal: 'Limit refunds',
+      choice: { ...initialWorkspaceChoice, tile: 'main' },
+    });
     const { onProjectStarted } = renderScreen('project', {
       createOptions: () => Promise.resolve(createOptionsFixture('default')),
     });
-    await waitFor(() =>
-      expect(onProjectStarted).toHaveBeenCalledWith(created.operationId, { replace: true }),
-    );
+    const name = await screen.findByLabelText<HTMLInputElement>('Specification name');
+    expect(name.value).toBe('');
+    expect(name.disabled).toBe(false);
+    expect(screen.getByLabelText<HTMLTextAreaElement>('Goal (optional)').value).toBe('');
+    expect(onProjectStarted).not.toHaveBeenCalled();
+    // The stored operation and its draft stay for its own page.
+    expect(storage().load(created.operationId)).toBeDefined();
+    expect(storage().loadDraft(created.operationId)).toBeDefined();
+  });
+
+  it('a new operation next to a running one gets its own id and leaves the first one resumable', async () => {
+    const first = { title: 'First', operationId: created.operationId };
+    storage().save({ request: first, startedAt: Date.now() });
+    const { onProjectStarted } = renderScreen('project', {
+      createOptions: () => Promise.resolve(createOptionsFixture('default')),
+    });
+    fireEvent.change(await screen.findByLabelText('Specification name'), {
+      target: { value: 'Second' },
+    });
+    const submit = await screen.findByRole('button', { name: 'Create specification' });
+    await waitFor(() => expect((submit as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(submit);
+    await waitFor(() => expect(onProjectStarted).toHaveBeenCalledOnce());
+    const [secondId] = onProjectStarted.mock.calls[0] as [string];
+    expect(secondId).not.toBe(created.operationId);
+    expect(storage().load(secondId)?.request.title).toBe('Second');
+    expect(storage().load(created.operationId)?.request).toEqual(first);
   });
 
   it('Back to form: the fields and the workspace choice of the draft are restored once', async () => {
@@ -182,9 +212,11 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
       goal: 'Limit refunds',
       choice: { ...initialWorkspaceChoice, tile: 'main' },
     });
-    renderScreen('project', {
-      createOptions: () => Promise.resolve(createOptionsFixture('default')),
-    });
+    renderScreen(
+      'project',
+      { createOptions: () => Promise.resolve(createOptionsFixture('default')) },
+      { restoreDraftOf: created.operationId },
+    );
     expect((await screen.findByLabelText<HTMLInputElement>('Specification name')).value).toBe(
       'Payment limits',
     );
@@ -195,7 +227,7 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
       true,
     );
     // Consumed: a reload of the form starts clean.
-    expect(storage().loadDraft()).toBeUndefined();
+    expect(storage().loadDraft(created.operationId)).toBeUndefined();
   });
 
   describe('Back to form after a refusal', () => {
@@ -216,7 +248,7 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
 
     it('flags the refused branch name on its own field, opens it and puts focus there', async () => {
       refused({ kind: 'branch-exists', automatic: false }, 'taken');
-      renderScreen('project', options);
+      renderScreen('project', options, { restoreDraftOf: created.operationId });
       const branch = await screen.findByLabelText<HTMLInputElement>('New branch name');
       expect(branch.value).toBe('taken');
       await waitFor(() => expect(branch.getAttribute('aria-invalid')).toBe('true'));
@@ -228,7 +260,7 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
 
     it('lets the owner fix it: editing the name clears the remembered refusal', async () => {
       refused({ kind: 'branch-exists', automatic: false }, 'taken');
-      renderScreen('project', options);
+      renderScreen('project', options, { restoreDraftOf: created.operationId });
       const branch = await screen.findByLabelText<HTMLInputElement>('New branch name');
       await waitFor(() => expect(branch.getAttribute('aria-invalid')).toBe('true'));
       fireEvent.change(branch, { target: { value: 'feature/payment-limits' } });
@@ -240,7 +272,7 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
 
     it('does not blame a field for a taken name the server generated', async () => {
       refused({ kind: 'branch-exists', automatic: true }, '');
-      renderScreen('project', options);
+      renderScreen('project', options, { restoreDraftOf: created.operationId });
       await screen.findByLabelText('Specification name');
       expect(
         screen.queryByText('A branch with this name already exists. Enter a different name.'),

@@ -34,14 +34,18 @@ import { useWorkspacePlace } from './workspace/useWorkspacePlace';
  * (`useCreateOptions`), the place choice (`useWorkspacePlace`) and the operation (the page); this
  * component wires the first two to the form fields.
  *
- * An operation that is still unfinished is resumed from here: opening Create finds it stored and
- * continues on its page. A draft left by the page ("Back to form") seeds the fields once.
+ * Opening Create always shows an empty form, whatever the ledger holds: an unfinished operation is
+ * reached from the operations list or its own page, never by this entry. Only the explicit "Back to
+ * form" of an operation's page (`restoreDraftOf`) seeds the fields, once, from that operation's draft.
  */
 export function CreateProjectForm({
   onStarted,
+  restoreDraftOf,
 }: {
-  /** The request is stored: continue on the page of this operation (`replace` for a resumed one). */
-  onStarted: (operationId: string, options: { replace: boolean }) => void;
+  /** The request is stored: continue on the page of this operation. */
+  onStarted: (operationId: string) => void;
+  /** The operation whose draft to restore ("Back to form"); absent for a plain entry. */
+  restoreDraftOf?: string;
 }) {
   const { t } = useTranslation();
   const text = useMessage();
@@ -55,8 +59,7 @@ export function CreateProjectForm({
   const { announce, region } = useAnnouncer();
   const [unprepared, setUnprepared] = useState(false);
 
-  const [unfinished] = useState(() => storage.load());
-  const [draft] = useState(() => (unfinished ? undefined : storage.loadDraft()));
+  const [draft] = useState(() => (restoreDraftOf ? storage.loadDraft(restoreDraftOf) : undefined));
   const [title, setTitle] = useState(draft?.title ?? '');
   const [goal, setGoal] = useState(draft?.goal ?? '');
 
@@ -82,13 +85,8 @@ export function CreateProjectForm({
 
   // The draft is consumed by the first render: a reload of the form starts clean again.
   useEffect(() => {
-    if (draft) storage.clearDraft();
+    if (draft) storage.clearDraft(draft.operationId);
   }, [draft, storage]);
-
-  // An unfinished operation has its page: Create resumes it instead of offering a second one.
-  useEffect(() => {
-    if (unfinished) onStarted(unfinished.request.operationId, { replace: true });
-  }, [onStarted, unfinished]);
 
   // Only unsaved edits ask before leaving; an operation outlives this screen (it has its page).
   const leaveGuard = useCreateLeaveGuard({
@@ -97,7 +95,7 @@ export function CreateProjectForm({
     isNavigationAllowed: () => started.current,
   });
 
-  const locked = createOptions.forbidden || Boolean(unfinished);
+  const locked = createOptions.forbidden;
   const { prerequisite, canSubmit } = projectCreateReadiness({
     title,
     goal,
@@ -143,7 +141,7 @@ export function CreateProjectForm({
       return;
     }
     started.current = true;
-    onStarted(request.operationId, { replace: false });
+    onStarted(request.operationId);
   };
 
   return (

@@ -150,7 +150,7 @@ export interface CreateSettingsModel {
 }
 
 export function createSettingsModel(
-  request: Pick<CreateSpecRequest, 'target' | 'slug' | 'goal' | 'title'> | undefined,
+  request: (Pick<CreateSpecRequest, 'target' | 'slug' | 'goal'> & { title?: string }) | undefined,
   draftGoal: string | undefined,
   facts: CreateSettingsFacts | undefined,
   draftTitle?: string,

@@ -135,3 +135,27 @@ describe('New workspace settings prefill their switches with the effective defau
     expect(field('Slug').value).toBe('payment-limits');
   });
 });
+
+describe('unavailable settings', () => {
+  it('disable the switch with the design-system pattern and keep the reason readable', () => {
+    render(
+      <LocalizationProvider instance={createSpecFlowI18n('en')}>
+        <NewWorkspaceSettings
+          options={{ ...options, baseRefs: [] }}
+          choice={{ ...initialWorkspaceChoice, tile: 'new', settingsOpen: true }}
+          update={vi.fn()}
+          errors={{}}
+          title="Payment limits"
+          onAnnounce={vi.fn()}
+          onRequestFocus={vi.fn()}
+        />
+      </LocalizationProvider>,
+    );
+    const base = screen.getByRole('switch', { name: /different branch/ });
+    expect(base.hasAttribute('disabled')).toBe(true);
+    const reason = screen.getByText('There are no local branches to choose from.');
+    // The reason is not faded with the control: no ancestor of it carries an opacity class.
+    expect(reason.closest('[class*="opacity-"]')).toBeNull();
+    expect(reason.className).toContain('text-content-secondary');
+  });
+});

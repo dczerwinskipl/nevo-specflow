@@ -144,7 +144,7 @@ export function CreateOperationPage({
     onBackToForm(operationId);
   };
 
-    // One heading carries the state and the name (the full name is in the configuration list).
+  // One heading carries the state and the name (the full name is in the configuration list).
   const headingText = text(createPageHeading(view, view === 'not-found' ? undefined : title));
   const newWorkspace =
     (settings?.place ?? (target?.kind === 'new-worktree' ? 'new' : 'main')) === 'new';

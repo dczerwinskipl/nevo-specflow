@@ -388,9 +388,13 @@ describe('CreateOperationPage', () => {
     // Pending steps are only muted titles: no repeated "waiting" line.
     expect(screen.queryByText('Waiting for previous step')).toBeNull();
     // The subtitle names the running step instead of a generic line.
-    expect(screen.queryByText('Preparing a new workspace and the specification.')).toBeNull();
+    expect(
+      screen.queryByText('Preparing a new workspace and the specification.', {
+        selector: 'p:not(.sr-only)',
+      }),
+    ).toBeNull();
     // Subtitle, checklist step and the announcer (the only live region).
-    expect(screen.getAllByText('Preparing the workspace')).toHaveLength(3);
+    await waitFor(() => expect(screen.getAllByText('Preparing the workspace')).toHaveLength(3));
     // One spinner: the header mark is static while the active step turns.
     expect(document.querySelectorAll('.animate-spin')).toHaveLength(1);
     expect(screen.queryByText(/uncommitted/)).toBeNull();

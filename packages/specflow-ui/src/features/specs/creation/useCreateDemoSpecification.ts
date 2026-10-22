@@ -30,9 +30,9 @@ import type { CreateFailure } from './createFailure';
 export interface CreateSubmission {
   title: string;
   archetype: { id: string; version: DemoCreateRequest['archetypeVersion'] };
-  /** Lazy: a replay never rebuilds the target, so it must not be evaluated for one. */
   /** Real slug override the owner typed (never an untouched default), else undefined. */
   slug?: string;
+  /** Lazy: a replay never rebuilds the target, so it must not be evaluated for one. */
   buildTarget: () => DemoCreateRequest['target'] | undefined;
   /** Present for the agent path: the initial Session requested together with the specification. */
   session?: Omit<DemoSessionInput, 'requestId' | 'catalogueRevision'>;
@@ -97,12 +97,12 @@ function createDemoLedger() {
  * this hook only performs the I/O and reports each result as an event. Effects exist for
  * synchronisation only.
  */
-export function useCreateSpecification(
+export function useCreateDemoSpecification(
   options: UseCreateSpecificationOptions,
 ): CreateSpecificationModel {
   const { specId, catalogueRevision, snapshot, onCreated, onSession, announce } = options;
   const { t } = useTranslation();
-  const { creationApi, sessionsApi } = useAppServices();
+  const { demoCreationApi, sessionsApi } = useAppServices();
   const cache = useQueryClient();
   const notify = useNotify();
   const requestSessionRecovery = useRequestSessionRecovery();
@@ -154,7 +154,7 @@ export function useCreateSpecification(
             });
             if (typeof navigator !== 'undefined' && navigator.onLine === false)
               throw new RequestNotSentError();
-            const created = await creationApi.create(input);
+            const created = await demoCreationApi.create(input);
             await cache.invalidateQueries({ queryKey: specsOverviewKeys.all });
             return created;
           },
@@ -200,7 +200,7 @@ export function useCreateSpecification(
     [
       cache,
       catalogueRevision,
-      creationApi,
+      demoCreationApi,
       ledger,
       notify,
       onCreated,
@@ -220,7 +220,7 @@ export function useCreateSpecification(
       let status;
       try {
         if (!operationId) throw new Error('Operation id missing');
-        status = await creationApi.operationStatus(operationId);
+        status = await demoCreationApi.operationStatus(operationId);
       } catch {
         dispatch({ type: 'check-unreadable' });
         return { kind: 'checked' };
@@ -247,7 +247,7 @@ export function useCreateSpecification(
       }
       return { kind: 'checked' };
     },
-    [announce, creationApi, execute, ledger, t],
+    [announce, demoCreationApi, execute, ledger, t],
   );
 
   const submit = useCallback(

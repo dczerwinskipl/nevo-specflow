@@ -128,8 +128,8 @@ function Fixture({
     () =>
       createSpecFlowAppServices({
         runtimeInfoApi: { getInfo: () => Promise.resolve({ dataMode: 'demo' }) },
-        creationApi: {
-          ...createSpecFlowAppServices().creationApi,
+        demoCreationApi: {
+          ...createSpecFlowAppServices().demoCreationApi,
           catalogue: () => {
             setReads((value) => ({ ...value, catalogue: value.catalogue + 1 }));
             return failedCatalogue.current
@@ -390,7 +390,7 @@ export const CatalogueFailureKeepsDraft: Story = {
 };
 
 /* Data-blocked states (G11). The live demo catalogue cannot reach these, so each story serves a
- * fixture catalogue through the same `creationApi.catalogue` seam as production. */
+ * fixture catalogue through the same `demoCreationApi.catalogue` seam as production. */
 const provider = catalogue.providers[0]!;
 const variant = (id: string, title: string, patch: Partial<typeof provider> = {}) => ({
   ...provider,
@@ -611,7 +611,7 @@ export const SeparatorsOnlyBetweenRenderedSections: Story = {
   },
 };
 
-/* "Gdzie chcesz pracować?" at form level: request bodies, conflicts, uncertain and recovery. */
+/* The workspace section at form level: request bodies, conflicts, uncertain and recovery. */
 async function openManualForm(
   canvas: Canvas,
   userEvent: UserEvent,

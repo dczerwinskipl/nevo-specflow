@@ -69,7 +69,7 @@ export const ProjectModeNotAvailableYet: Story = {
   args: { demo: false },
   tags: ['contract'],
   play: async ({ canvas }) => {
-    await canvas.findAllByText('Not available in this Runtime');
+    await canvas.findAllByText('Not available on this server');
     await expect(canvas.queryByRole('button', { name: 'Start conversation' })).toBeNull();
     await expect(canvas.queryByRole('alert')).toBeNull();
     await expect(canvas.queryByText("Couldn't load history")).toBeNull();

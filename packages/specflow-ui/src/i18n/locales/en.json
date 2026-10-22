@@ -1345,9 +1345,9 @@
     }
   },
   "featureUnavailable": {
-    "title": "Not available in this Runtime",
-    "description": "The connected Runtime does not serve this part of SpecFlow yet. The rest of the product keeps working.",
-    "back": "Back to specifications"
+    "title": "Not available on this server",
+    "description": "The connected server does not provide this part of SpecFlow yet. The rest of the product keeps working.",
+    "back": "Go back"
   },
   "routeError": {
     "title": "Something went wrong",

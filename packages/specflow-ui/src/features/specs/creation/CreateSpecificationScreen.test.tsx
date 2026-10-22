@@ -315,6 +315,6 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
 
   it('explains that a session cannot be created on a project Runtime', async () => {
     renderScreen('project', {}, { specId: 'spec-1' });
-    expect(await screen.findByText('Not available in this Runtime')).toBeTruthy();
+    expect(await screen.findByText('Not available on this server')).toBeTruthy();
   });
 });

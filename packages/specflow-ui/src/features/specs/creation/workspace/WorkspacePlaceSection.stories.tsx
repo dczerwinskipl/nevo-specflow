@@ -3,14 +3,14 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { browserPage } from '../../../../test-support/browserPage';
 import { expect, waitFor, within } from 'storybook/test';
 import { TooltipProvider } from '@nevo/ui';
-import {
-  WorkspacePlaceSection,
-  type WorkspaceOptionsState,
-  type WorkspacePlaceSectionHandle,
-} from './WorkspacePlaceSection';
+import { WorkspacePlaceSection, type WorkspacePlaceSectionHandle } from './WorkspacePlaceSection';
 import { useAnnouncer } from '../../../../shared/a11y/useAnnouncer';
 import { buildCreateTarget } from './createRequest';
-import { initialWorkspaceChoice, type WorkspaceChoice } from './workspaceChoice';
+import {
+  initialWorkspaceChoice,
+  type WorkspaceChoice,
+  type WorkspaceOptionsState,
+} from './workspaceChoice';
 import { problems } from './workspaceValidation';
 import {
   createOptionsFixture,
@@ -21,7 +21,7 @@ import { polishText } from '../../../../i18n/testing';
 import { withLocale } from '../../../../i18n/StoryLocalization';
 
 /**
- * Presentation contract of "Gdzie chcesz pracować?" without any network: the options reach the
+ * Presentation contract of the workspace section without any network: the options reach the
  * section as plain state (the same `DemoCreateOptions` the Runtime serves), the choice is owned by
  * the story harness exactly as the creation form owns it.
  */

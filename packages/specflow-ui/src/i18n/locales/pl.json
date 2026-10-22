@@ -1345,9 +1345,9 @@
     }
   },
   "featureUnavailable": {
-    "title": "Niedostępne w tym Runtime",
-    "description": "Połączony Runtime nie obsługuje jeszcze tej części SpecFlow. Reszta produktu działa normalnie.",
-    "back": "Wróć do specyfikacji"
+    "title": "Niedostępne na tym serwerze",
+    "description": "Połączony serwer nie udostępnia jeszcze tej części SpecFlow. Reszta produktu działa normalnie.",
+    "back": "Wróć"
   },
   "routeError": {
     "title": "Coś poszło nie tak",

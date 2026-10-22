@@ -231,8 +231,8 @@ function Connected({
         allocate: () =>
           Promise.resolve({ sessionId: 'session', location: catalogue.currentLocation }),
       },
-      creationApi: {
-        ...defaults.creationApi,
+      demoCreationApi: {
+        ...defaults.demoCreationApi,
         catalogue: () =>
           catalogueState === 'loading'
             ? new Promise(() => undefined)

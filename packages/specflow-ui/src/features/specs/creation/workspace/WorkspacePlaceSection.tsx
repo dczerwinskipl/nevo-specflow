@@ -28,7 +28,6 @@ import {
   cn,
   type IconGlyph,
 } from '@nevo/ui';
-import type { CreateOptions } from '@nevo/specflow-contracts/specs';
 import { useFocusRequest } from '../../../../shared/a11y/useFocusRequest';
 import { ChoiceTile, ChoiceTileGroup } from '../../../../shared/controls/ChoiceTile';
 import { BranchRef } from '../../../../shared/git/BranchRef';
@@ -36,7 +35,7 @@ import { ExistingSummary, MainSummary, NewSummary } from './WorkspaceTileSummari
 import { activeTile, primaryWorkspace, tileAvailability } from './workspaceTiles';
 import { availableCountLabel } from './workspaceCopy';
 import { revalidate, staleMessages } from './workspaceValidation';
-import type { Tile, WorkspaceChoice } from './workspaceChoice';
+import type { Tile, WorkspaceChoice, WorkspaceOptionsState } from './workspaceChoice';
 import type { WorkspaceConflicts } from './workspaceConflicts';
 
 /**
@@ -53,12 +52,6 @@ export interface WorkspacePlaceSectionHandle {
 type FocusRequest =
   | { readonly field: 'base' | 'target' | 'branch' | 'slug' }
   | { readonly firstInvalid: true; readonly fallback?: () => void };
-
-export type WorkspaceOptionsState =
-  | { status: 'loading' }
-  | { status: 'error' }
-  | { status: 'forbidden' }
-  | { status: 'ready'; options: CreateOptions };
 
 interface TileDefinition {
   id: Tile;
@@ -99,7 +92,7 @@ function TileSkeleton() {
 }
 
 /**
- * "Gdzie chcesz pracować?": three radio tiles (new, main, existing) and one summary block after
+ * The workspace section: three radio tiles (new, main, existing) and one summary block after
  * the whole group. The section is controlled: the form owns `choice` and builds the request.
  */
 export function WorkspacePlaceSection({

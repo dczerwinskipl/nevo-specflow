@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { isHttpClientError } from '@nevo/http-client';
 import { useTranslation } from 'react-i18next';
-import { Separator, Typography, useWorkspaceCapabilities } from '@nevo/ui';
+import { Separator, useWorkspaceCapabilities } from '@nevo/ui';
 import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
 import {
   ApplicationContextLine,
@@ -16,22 +16,23 @@ import { CreateBasicsSection } from './CreateBasicsSection';
 import { CreateConfigurationNotice } from './CreateConfigurationNotice';
 import { CreateFailurePanel } from './CreateFailurePanel';
 import { CreateFooter } from './CreateFooter';
+import { CreateFormHeader } from './CreateFormHeader';
 import { CreateLeaveDialog } from './CreateLeaveDialog';
 import { CreateMethodChoice } from './CreateMethodChoice';
 import { CreateShell } from './CreateShell';
 import { createReadiness } from './createReadiness';
-import { creationKeys } from './api';
+import { demoCreationKeys } from './api.demo';
 import { SessionWorkspaceSummary } from './SessionWorkspaceSummary';
 import { useCreateLeaveGuard } from './useCreateLeaveGuard';
 import { useCreateOptions } from './useCreateOptions';
-import { useCreateSpecification, type CreateSubmission } from './useCreateSpecification';
+import { useCreateDemoSpecification, type CreateSubmission } from './useCreateDemoSpecification';
 import { useRevealFailure } from './useRevealFailure';
-import { WorkspacePlaceSection } from './workspace/WorkspacePlaceSection';
+import { CreateWorkspaceSection } from './CreateWorkspaceSection';
 import { buildCreateSlug, buildCreateTarget } from './workspace/createRequest';
 import { requestChoiceSnapshot } from './workspace/workspaceChoice';
 import { useWorkspacePlace } from './workspace/useWorkspacePlace';
 
-export interface CreateSpecificationFormProps {
+export interface CreateDemoFormProps {
   catalogue: DemoCatalogue;
   /** Present when only a Session is created for an existing specification. */
   specId?: string;
@@ -43,20 +44,20 @@ export interface CreateSpecificationFormProps {
 
 /**
  * The Create form: owns the values the user edits and composes the sections. The operation itself
- * (submit, replay, status check) is `useCreateSpecification`; this component only reports the form
+ * (submit, replay, status check) is `useCreateDemoSpecification`; this component only reports the form
  * to it and renders its state.
  */
-export function CreateSpecificationForm({
+export function CreateDemoForm({
   catalogue,
   specId,
   onCreated,
   onSession,
   configurationUnavailable,
   onRefresh,
-}: CreateSpecificationFormProps) {
+}: CreateDemoFormProps) {
   const { t } = useTranslation();
   const text = useMessage();
-  const { creationApi } = useAppServices();
+  const { demoCreationApi } = useAppServices();
   const { supportsSplit } = useWorkspaceCapabilities();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const submitRef = useRef<HTMLButtonElement>(null);
@@ -64,8 +65,8 @@ export function CreateSpecificationForm({
   const { announce, region } = useAnnouncer();
 
   const createOptions = useCreateOptions({
-    queryKey: creationKeys.createOptions,
-    fetch: (signal) => creationApi.createOptions(signal),
+    queryKey: demoCreationKeys.createOptions,
+    fetch: (signal) => demoCreationApi.createOptions(signal),
     isForbidden: (error) => isHttpClientError(error) && error.status === 403,
     refetchOnWindowFocus: true,
     enabled: !specId,
@@ -92,7 +93,7 @@ export function CreateSpecificationForm({
   const [initialConfiguration] = useState(configurationSnapshot);
   const configurationDirty = configurationSnapshot !== initialConfiguration;
 
-  const { state, flags, actions } = useCreateSpecification({
+  const { state, flags, actions } = useCreateDemoSpecification({
     specId,
     catalogueRevision: catalogue.revision,
     snapshot: configurationSnapshot,
@@ -223,20 +224,15 @@ export function CreateSpecificationForm({
     specId ? (
       <SessionWorkspaceSummary key="git" location={catalogue.currentLocation} />
     ) : (
-      <WorkspacePlaceSection
+      <CreateWorkspaceSection
         key="git"
         headingId={gitHeadingId}
-        state={createOptions.state}
-        refreshing={createOptions.fetching && Boolean(workspaceOptions)}
-        refreshFailed={createOptions.refreshFailed}
-        choice={place.choice}
-        update={place.setChoice}
+        createOptions={createOptions}
+        place={place}
         locked={locked}
+        title={title}
         onRefresh={refreshOptions}
         onAnnounce={announce}
-        title={title}
-        conflicts={place.conflicts}
-        handleRef={place.handleRef}
       />
     ),
     <CreateFooter
@@ -290,31 +286,24 @@ export function CreateSpecificationForm({
           }
         }}
       >
-        <div className="grid gap-6">
-          {specId ? (
-            <ApplicationContextLine className="mb-0" specId={specId} view="new-session" />
-          ) : (
-            <ApplicationFlowBack
-              label={t('create.changeMethod')}
-              disabled={locked}
-              onBack={() => setMethod('')}
-            />
-          )}
-          <header className="grid gap-2">
-            <Typography
-              as="h1"
-              variant="title-lg"
-              ref={headingRef}
-              tabIndex={-1}
-              className="outline-none"
-            >
-              {specId ? t('create.heading.session') : t('create.heading.specification')}
-            </Typography>
-            <Typography as="p" variant="body-md" className="text-content-secondary">
-              {specId ? t('create.subheading.session') : t('create.subheading.specification')}
-            </Typography>
-          </header>
-        </div>
+        <CreateFormHeader
+          headingRef={headingRef}
+          lead={
+            specId ? (
+              <ApplicationContextLine className="mb-0" specId={specId} view="new-session" />
+            ) : (
+              <ApplicationFlowBack
+                label={t('create.changeMethod')}
+                disabled={locked}
+                onBack={() => setMethod('')}
+              />
+            )
+          }
+          heading={specId ? t('create.heading.session') : t('create.heading.specification')}
+          subheading={
+            specId ? t('create.subheading.session') : t('create.subheading.specification')
+          }
+        />
         {sections.flatMap((section, index) => [
           index > 0 ? <Separator key={`separator-${index}`} /> : null,
           section,

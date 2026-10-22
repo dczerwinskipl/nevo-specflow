@@ -101,7 +101,7 @@ export type CopyKind = 'operation' | 'diagnostics';
 /**
  * Footer alert of a failed Create. The form and every choice are kept. An uncertain or
  * recovery-required outcome never offers a fresh create: its single action is the form's own
- * submit button ("Sprawdź wynik" / "Sprawdź stan operacji"), which checks the same operation.
+ * submit button ("Check the result" / "Check operation status"), which checks the same operation.
  */
 export function CreateFailureAlert({
   failure,

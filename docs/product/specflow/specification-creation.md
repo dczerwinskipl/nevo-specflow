@@ -340,5 +340,5 @@ repository folder) and a `path`; the UI shows the name instead of a generic "Cur
 ## Overview right after Create in project mode
 
 A Runtime that answers the workspace read with `unavailable` / `not_implemented` sections shows a
-calm "Not available in this Runtime yet" state (no warning tone, no Retry). Actions that cannot work
+calm "Not available on this server yet" state (no warning tone, no Retry). Actions that cannot work
 there, such as "Start conversation", are hidden instead of shown disabled. Demo mode is unchanged.

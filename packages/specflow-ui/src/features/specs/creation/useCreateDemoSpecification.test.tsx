@@ -14,12 +14,12 @@ import { VisitStateProvider } from '../../../app/VisitStateProvider';
 import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
 import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
-import type { CreationApi } from './api';
+import type { DemoCreationApi } from './api.demo';
 import {
-  useCreateSpecification,
+  useCreateDemoSpecification,
   type CreateSpecificationModel,
   type CreateSubmission,
-} from './useCreateSpecification';
+} from './useCreateDemoSpecification';
 
 const created: DemoCreatedSpec = {
   specId: 'spec-1',
@@ -44,12 +44,12 @@ const submission = (overrides: Partial<CreateSubmission> = {}): CreateSubmission
   ...overrides,
 });
 
-function setup(creationApi: Partial<CreationApi>) {
+function setup(demoCreationApi: Partial<DemoCreationApi>) {
   const onCreated = vi.fn();
   const onSession = vi.fn();
   const announce = vi.fn();
   const services = createSpecFlowAppServices({
-    creationApi: creationApi as CreationApi,
+    demoCreationApi: demoCreationApi as DemoCreationApi,
   });
   const queryClient = createSpecFlowQueryClient();
   const wrapper = ({ children }: { children: ReactNode }) => (
@@ -63,7 +63,7 @@ function setup(creationApi: Partial<CreationApi>) {
   );
   const hook = renderHook(
     ({ snapshot }: { snapshot: string }) =>
-      useCreateSpecification({
+      useCreateDemoSpecification({
         catalogueRevision: 'rev-1',
         snapshot,
         onCreated,
@@ -81,7 +81,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('useCreateSpecification', () => {
+describe('useCreateDemoSpecification', () => {
   it('creates, allows the navigation and ends completed', async () => {
     const create = vi.fn().mockResolvedValue(created);
     const { model, onCreated } = setup({ create });

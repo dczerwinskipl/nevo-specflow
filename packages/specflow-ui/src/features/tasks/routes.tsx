@@ -1,5 +1,5 @@
 import { createRoute } from '@tanstack/react-router';
-import { specificationRoute } from '../specs';
+import { specificationRoute } from '../specs/routes';
 import { parseSpecificationCollection } from '../../app/router/search';
 import { useSpecificationTask } from './useSpecificationTask';
 import { SpecificationTaskPage } from './pages/SpecificationTaskPage';

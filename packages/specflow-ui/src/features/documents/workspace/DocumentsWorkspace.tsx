@@ -19,7 +19,7 @@ import { useAppServices } from '../../../app/useAppServices';
 import { DocumentRouteGuard } from '../editor/DocumentRouteGuard';
 import { documentHeaderModel, useDocumentEditor } from '../editor/DocumentEditorProvider';
 import { documentRootActions, type DocumentTreeController } from '../explorer/DocumentsExplorer';
-import { documentTreeKeys } from '../queries';
+import { documentTreeKeys } from '../read-model/queries';
 import { DocumentPane, UnsavedMarker } from './DocumentPane';
 import { DocumentSession } from './DocumentSession';
 import { DocumentsTreePanel } from './DocumentsTreePanel';

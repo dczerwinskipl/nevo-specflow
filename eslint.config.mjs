@@ -33,11 +33,13 @@ const nonProductionUiSources = [
 ];
 
 // Other features are reached through their barrel only: `../specs` is fine, `../specs/queries` is not.
+// Two more entries are public: `<feature>/read-model` (data other features may depend on; a leaf that
+// imports only other read models) and `<feature>/routes` (route objects, for composition files).
 function featureBarrelPattern(others) {
   return {
-    regex: String.raw`^(?:\.\./)+(?:${others.join('|')})/.`,
+    regex: String.raw`^(?:\.\./)+(?:${others.join('|')})/(?!(?:read-model|routes)$).`,
     message:
-      'Import another feature through its public barrel (features/<name>/index.ts), not its internals. A capability belongs to the module that owns it; if the barrel lacks it, the owner exports it deliberately.',
+      'Import another feature through its public barrel (features/<name>/index.ts) or its read-model entry, not its internals. A capability belongs to the module that owns it; if the barrel lacks it, the owner exports it deliberately.',
   };
 }
 
@@ -54,8 +56,8 @@ function specflowUiBoundaryBlocks() {
       rules: { 'no-restricted-imports': productImportRestrictions(...patterns) },
     };
   });
-  // Specification creation is internal to specs/creation: the rest of specs reaches it only via its
-  // entry (`./creation`), never `./creation/<internal>`.
+  // Specification creation is internal to specs/creation: the rest of specs does not import it; the
+  // application wires only its routes (`creation/routes`).
   blocks.push({
     files: ['packages/specflow-ui/src/features/specs/**/*.{ts,tsx}'],
     ignores: [...nonProductionUiSources, 'packages/specflow-ui/src/features/specs/creation/**'],
@@ -64,11 +66,27 @@ function specflowUiBoundaryBlocks() {
         ...specflowUiSharedPatterns,
         featureBarrelPattern(features.filter((other) => other !== 'specs')),
         {
-          regex: '(?:^|/)creation/.',
+          regex: '(?:^|/)creation(?:/|$)',
           message:
-            'Specification creation internals are private to features/specs/creation; use its entry (features/specs/creation).',
+            'Specification creation is private to features/specs/creation; the application wires its routes (creation/routes).',
         },
       ),
+    },
+  });
+  // A read-model entry is a leaf: it may use other features' read models, never their screens
+  // (barrels), so features that only need data stay out of each other's UI. The import-cycle test
+  // checks the resulting graph.
+  blocks.push({
+    files: features.map(
+      (feature) => `packages/specflow-ui/src/features/${feature}/read-model/**/*.{ts,tsx}`,
+    ),
+    ignores: nonProductionUiSources,
+    rules: {
+      'no-restricted-imports': productImportRestrictions(...specflowUiSharedPatterns, {
+        regex: String.raw`^(?:\.\./)+(?:${features.join('|')})(?:/(?!read-model$).*)?$`,
+        message:
+          'A read-model entry is a leaf: import only other features read-model entries (features/<name>/read-model), never their barrel or internals.',
+      }),
     },
   });
   // shared/ is cross-feature code: it depends on no feature and on no composition root.

@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { createSpecFlowI18n, LocalizationProvider } from '../../../i18n';
-import { mapFullTaskResponse } from '../model';
+import { mapFullTaskResponse } from '../read-model/model';
 import { TaskDetails, mergeTaskResources, pendingRequirements } from './TaskDetails';
 import { createTaskDetailFixture } from './taskDetail.test-support';
 

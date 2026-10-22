@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button, InformationList, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { TaskExecutionReadiness, TaskGroup } from '../../model';
+import type { TaskExecutionReadiness, TaskGroup } from '../../read-model/model';
 import { WorkspaceSection } from '../../../../shared/workspace-section';
 import { getGroupTone } from './presentation';
 import { TaskGroupHeader } from './TaskGroupHeader';

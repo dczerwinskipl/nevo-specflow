@@ -2,7 +2,7 @@ import {
   createOperationRoute,
   createSpecificationRoute,
   newSessionRoute,
-} from '../features/specs/creation';
+} from '../features/specs/creation/routes';
 import { createRoute, createRouter, type RouterHistory } from '@tanstack/react-router';
 
 import { authRoutes, loginRoute, runtimeUnavailableRoute } from '../auth/routes';

@@ -2,13 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 import { isHttpClientError } from '@nevo/http-client';
 
 import { useRouter } from '@tanstack/react-router';
-import type { SpecFlowAppServices } from '../../services';
+import type { SpecFlowAppServices } from '../../../services';
 import type { SpecificationApi } from './api';
 import { specificationKeys } from './queries';
-import { asApiError } from '../../api';
-import { getHttpErrorStatus } from '../../shared/http/httpErrorStatus';
-import type { SpecificationWorkspaceData } from './workspace/model';
-import { mapWorkspaceResponse } from './workspace/mapWorkspaceResponse';
+import { asApiError } from '../../../api';
+import { getHttpErrorStatus } from '../../../shared/http/httpErrorStatus';
+import type { SpecificationWorkspaceData } from './model';
+import { mapWorkspaceResponse } from './mapWorkspaceResponse';
 
 export interface UseSpecificationWorkspaceResult {
   readonly data: SpecificationWorkspaceData | undefined;

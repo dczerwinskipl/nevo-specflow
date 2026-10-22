@@ -8,7 +8,7 @@ import { appI18n, LocalizationProvider } from '../../../i18n';
 import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import { createSpecificationWorkspaceFixture } from '../../../../test-support/specs/workspace/fixtures';
-import { specificationKeys } from '../queries';
+import { specificationKeys } from '../read-model/queries';
 import { SpecificationAggregatePage } from './SpecificationAggregatePage';
 
 describe('Specification aggregate resource boundary', () => {

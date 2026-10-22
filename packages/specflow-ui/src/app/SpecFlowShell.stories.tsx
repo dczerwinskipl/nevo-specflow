@@ -22,9 +22,9 @@ import { createSpecFlowQueryClient } from './queryClient';
 import { builtInUiModuleRegistry } from './ui-modules/builtInUiModules';
 import { UiModulesProvider } from './ui-modules/UiModulesProvider';
 import { createSpecFlowAppServices } from '../services';
-import { specificationKeys } from '../features/specs/queries';
+import { specificationKeys } from '../features/specs/read-model/queries';
 import { taskKeys } from '../features/tasks/queries';
-import { documentKeys } from '../features/documents/queries';
+import { documentKeys } from '../features/documents/read-model/queries';
 import {
   createSpecificationWorkspaceFixture,
   type SpecificationScenario,

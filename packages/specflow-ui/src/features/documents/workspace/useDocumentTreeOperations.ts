@@ -9,7 +9,7 @@ import { sendRetained, type RequestAttempt } from '../../../shared/operations/re
 import { useDocumentDraftStore } from '../editor/DocumentDraftProvider';
 import { draftFor } from '../editor/documentDraftStore';
 import type { DocumentOperation } from '../explorer/DocumentsExplorer';
-import { documentKeys } from '../queries';
+import { documentKeys } from '../read-model/queries';
 
 /** Follow-up work after a confirmed mutation; its failure never reaches the mutation's caller. */
 const noop = () => undefined;

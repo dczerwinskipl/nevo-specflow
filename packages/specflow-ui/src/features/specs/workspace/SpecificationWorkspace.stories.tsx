@@ -10,7 +10,7 @@ import { StoryLocalization } from '../../../i18n/StoryLocalization';
 import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import { createSpecificationWorkspaceFixture } from '../../../../test-support/specs/workspace/fixtures';
-import type { SpecificationWorkspaceData } from './model';
+import type { SpecificationWorkspaceData } from '../read-model/model';
 import { SpecificationWorkspace } from './SpecificationWorkspace';
 
 /** A project-mode Runtime that serves the manifest only: every other section is not implemented. */

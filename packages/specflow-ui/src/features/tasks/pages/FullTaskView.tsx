@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { FullTaskData } from '../model';
+import type { FullTaskData } from '../read-model/model';
 import { TaskDetails } from '../detail/TaskDetails';
 import { Icon, Typography } from '@nevo/ui';
 import { useRouter } from '@tanstack/react-router';

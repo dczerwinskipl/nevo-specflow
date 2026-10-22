@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react';
 import { defineUiExtensionPoint, type UiContribution } from '../../../app/ui-modules/contracts';
-import type { SpecificationWorkspaceData } from '../workspace/model';
+import type { SpecificationWorkspaceData } from '../read-model/model';
 import type { WorkspaceRuntime } from '../workspace/WorkspaceContext';
 
 /** Host-specific context. This aggregate Workspace adapter is transitional, not a plugin API. */

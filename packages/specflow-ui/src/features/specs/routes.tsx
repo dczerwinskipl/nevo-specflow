@@ -3,7 +3,7 @@ import { createRoute, Link, Outlet, redirect } from '@tanstack/react-router';
 import { appRoute, rootRoute } from '../../app/router/root';
 import { parseSpecificationCollection } from '../../app/router/search';
 import { SpecsOverview } from './overview/SpecsOverview';
-import { useSpecificationWorkspace } from './useSpecificationWorkspace';
+import { useSpecificationWorkspace } from './read-model/useSpecificationWorkspace';
 import { useRuntimeMode } from '../../app/useRuntimeMode';
 import { useSpecsOverview } from './overview/useSpecsOverview';
 import { SpecsAccessDenied } from './overview/SpecsAccessDenied';

@@ -9,7 +9,7 @@ import {
   type SpecificationWorkSlot,
 } from '../extensions/specificationWorkSections';
 import { useWorkspaceRuntime } from './WorkspaceContext';
-import type { SpecificationWorkspaceData } from './model';
+import type { SpecificationWorkspaceData } from '../read-model/model';
 
 interface SectionBoundaryProps {
   readonly fallback: (retryRender: () => void) => ReactNode;

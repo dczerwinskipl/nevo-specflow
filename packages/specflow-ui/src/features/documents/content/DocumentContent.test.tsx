@@ -6,7 +6,7 @@ import { createSpecFlowQueryClient } from '../../../app/queryClient';
 import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
 import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
-import { documentKeys } from '../queries';
+import { documentKeys } from '../read-model/queries';
 import { DocumentContent } from './DocumentContent';
 
 function renderDocument({

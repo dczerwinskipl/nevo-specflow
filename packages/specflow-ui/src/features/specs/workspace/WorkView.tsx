@@ -1,7 +1,7 @@
 import { useUiModules } from '../../../app/ui-modules/UiModulesProvider';
 import { SpecificationWorkSectionOutlet } from './SpecificationWorkSectionOutlet';
 import { SpecificationAttentionOutlet } from './SpecificationAttentionOutlet';
-import type { SpecificationWorkspaceData } from './model';
+import type { SpecificationWorkspaceData } from '../read-model/model';
 import { useWorkspaceRuntime } from './WorkspaceContext';
 import { SpecificationSummarySection, PreparationSection } from './sections';
 

@@ -6,7 +6,7 @@ import type {
   SessionSummary,
   SpecificationWorkspaceData,
   TaskGroup,
-} from '../../../src/features/specs/workspace/model';
+} from '../../../src/features/specs/read-model/model';
 
 export type SpecificationScenario =
   | 'working'

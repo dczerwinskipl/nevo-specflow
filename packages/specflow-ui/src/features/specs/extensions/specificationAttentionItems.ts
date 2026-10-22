@@ -1,6 +1,6 @@
 import type { IconName } from '@nevo/ui';
 import { defineUiExtensionPoint, type UiContribution } from '../../../app/ui-modules/contracts';
-import type { AttentionItem } from '../workspace/model';
+import type { AttentionItem } from '../read-model/model';
 import type { SpecificationWorkSectionContext } from './specificationWorkSections';
 
 /** A module contributes presentation/actions for attention sourced from the Runtime snapshot. */

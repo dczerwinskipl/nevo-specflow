@@ -20,7 +20,7 @@ import {
   createRuntimeSpecsOverviewApi,
   type SpecsOverviewApi,
 } from '../features/specs/overview/api';
-import { createRuntimeSpecificationApi, type SpecificationApi } from '../features/specs/api';
+import { createRuntimeSpecificationApi, type SpecificationApi } from '../features/specs/read-model/api';
 import { createRuntimeTaskApi, type TaskApi } from '../features/tasks/api';
 import {
   createRuntimeDocumentApi,

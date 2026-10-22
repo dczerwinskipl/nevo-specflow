@@ -1,8 +1,8 @@
 import { QueryClient, QueryObserver } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 import { invalidateSpecificationWorkspace, specificationKeys } from './queries';
-import { taskKeys } from '../tasks/queries';
-import { documentKeys } from '../documents/queries';
+import { taskKeys } from '../../tasks/queries';
+import { documentKeys } from '../../documents/read-model/queries';
 
 describe('Specification Query key scope', () => {
   it('refreshes only Workspace without invalidating independent Task, Document or Changes data', async () => {

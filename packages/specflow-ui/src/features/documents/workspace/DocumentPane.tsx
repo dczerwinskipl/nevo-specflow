@@ -24,7 +24,7 @@ import { translateNow } from '../../../i18n/message';
 import { SessionRecoveryNotice, useSessionReturn } from '../../sessions';
 import { DocumentEditor } from '../editor/DocumentEditor';
 import { documentHeaderModel, useDocumentEditor } from '../editor/DocumentEditorProvider';
-import { documentKeys } from '../queries';
+import { documentKeys } from '../read-model/queries';
 
 export interface DocumentParams {
   specId: string;

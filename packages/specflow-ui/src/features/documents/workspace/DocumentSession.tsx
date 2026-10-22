@@ -2,7 +2,7 @@ import { useMemo, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAppServices } from '../../../app/useAppServices';
 import { DocumentEditorProvider } from '../editor/DocumentEditorProvider';
-import { documentKeys, documentTreeKeys } from '../queries';
+import { documentKeys, documentTreeKeys } from '../read-model/queries';
 
 /** Loads the open document once so the header, the pane and the guard share one edit session. */
 export function DocumentSession({

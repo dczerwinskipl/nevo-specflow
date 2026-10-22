@@ -248,11 +248,25 @@ every element that screen happened to need first.
   (`WorkspaceSection`) that Documents, Sessions, Tasks, Git and Specs all render). It imports no
   feature and no composition root. A purely presentational piece used by several features lives
   here instead of in the feature that happened to create it; features do not re-export it.
-- Features reach other features only through the target's barrel (`features/<name>/index.ts`),
-  which deliberately exports what others may use. `features/specs/creation` is private to Create;
-  its entry exposes only its routes. Composition roots (`app/`, `services/`) and tests, stories and
-  story-support files are not restricted. ESLint (`no-restricted-imports` in `eslint.config.mjs`)
-  enforces these rules for production sources.
+- Features reach other features only through the target's public entries. A feature has up to
+  three: the barrel (`features/<name>/index.ts`: screens and behaviour the feature deliberately
+  exports), `features/<name>/read-model` (the data other features may depend on: model types, query
+  keys, the read hook) and `features/<name>/routes` (route objects, for composition files only).
+  `features/specs/creation` is private to Create; the application wires only its `routes`.
+  Composition roots (`app/`, `services/`) and tests, stories and story-support files are not
+  restricted. ESLint (`no-restricted-imports` in `eslint.config.mjs`) enforces these rules for
+  production sources.
+- The import graph of the features has no cycles. Each feature is three nodes: the feature itself
+  (screens), its `read-model` and its composition files (`routes`, `uiModule`, `contributions/`). A
+  read model is a leaf: it imports only other features' read models, so a feature that needs another
+  feature's data (documents needing `specificationKeys`, sessions needing the workspace hook) never
+  depends on that feature's screens. Only composition files depend on other features' composition
+  files (a feature plugging into the specification workspace imports `specs/routes` and the specs
+  extension points); a screen never imports composition. When a new need would close a cycle,
+  move the shared data to the owner's read model, or invert the dependency (the owner renders what
+  the other contributes through props or the `ui-modules` contribution mechanism). The module graph
+  test (`src/features/moduleGraph.test.ts`, analysis in `importCycles.ts`) fails on a cycle between
+  nodes or files, on a read model that imports a screen and on a screen that imports composition.
 
 ### Operations and state machines in UI
 

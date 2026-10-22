@@ -1,6 +1,7 @@
 import { createRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { SpecificationAggregatePage, specificationRoute } from '../specs';
+import { SpecificationAggregatePage } from '../specs';
+import { specificationRoute } from '../specs/routes';
 import { parseSpecificationCollection } from '../../app/router/search';
 
 import { ChangesView } from './views/ChangesView';

@@ -4,7 +4,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { Alert, Button } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { useAppServices } from '../../../app/useAppServices';
-import { specificationKeys } from '../../specs';
+import { specificationKeys } from '../../specs/read-model';
 import { useNotify } from '../../../shared/notifications/notifications';
 import { useSessionRecovery } from '../SessionStateProvider';
 /** The specification and its workspace already exist; only the initial Session is retried. */

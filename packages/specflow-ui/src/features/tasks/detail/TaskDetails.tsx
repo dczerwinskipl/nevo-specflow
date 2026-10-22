@@ -11,7 +11,7 @@ import { OperationalRow } from '../../../shared/operational-list';
 import { WorkspaceSection } from '../../../shared/workspace-section';
 
 import { DocumentDescription } from '../../documents';
-import type { FullTaskData } from '../model';
+import type { FullTaskData } from '../read-model/model';
 import { matchesWork } from './taskInspectionModel';
 import { taskStatusLabel } from '../status';
 import { canInspectTaskReference } from './taskReference';

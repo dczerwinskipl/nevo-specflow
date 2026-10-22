@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import { Button, InformationList, MenuItem, OverflowMenu } from '@nevo/ui';
-import { type DocumentItem } from '../../../specs';
+import { type DocumentItem } from '../../../specs/read-model';
 import { OperationalRow } from '../../../../shared/operational-list';
 import { WorkspaceSection } from '../../../../shared/workspace-section';
 import { useTranslation } from 'react-i18next';

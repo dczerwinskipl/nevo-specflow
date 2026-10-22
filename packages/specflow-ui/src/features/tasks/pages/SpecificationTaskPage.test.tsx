@@ -9,7 +9,7 @@ import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
 import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import { taskKeys } from '../queries';
-import { mapFullTaskResponse } from '../model';
+import { mapFullTaskResponse } from '../read-model/model';
 import { SpecificationTaskPage } from './SpecificationTaskPage';
 import { useSpecificationTask } from '../useSpecificationTask';
 

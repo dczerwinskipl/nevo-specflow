@@ -17,12 +17,12 @@ import {
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
-import { invalidateSpecificationWorkspace } from './queries';
+import { invalidateSpecificationWorkspace } from './read-model/queries';
 
-import type { SpecificationWorkspaceData } from './workspace/model';
+import type { SpecificationWorkspaceData } from './read-model/model';
 import { SpecificationWorkspace } from './workspace/SpecificationWorkspace';
 import { SpecificationStandaloneBack } from './workspace/SpecificationStandaloneBack';
-import { useSpecificationWorkspace } from './useSpecificationWorkspace';
+import { useSpecificationWorkspace } from './read-model/useSpecificationWorkspace';
 
 export interface SpecificationSurfaceProps {
   readonly specId: string;

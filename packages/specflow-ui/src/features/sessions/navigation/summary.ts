@@ -3,7 +3,7 @@ import {
   type SessionSummary,
   type SpecificationWorkspaceData,
   useSpecificationWorkspace,
-} from '../../specs';
+} from '../../specs/read-model';
 
 export type SessionNavigationEntry = SessionSummary & {
   readonly activityCode: 'active' | 'attention';

@@ -21,9 +21,9 @@ import { startCreate } from './startCreate';
 import { useCreateLeaveGuard } from './useCreateLeaveGuard';
 import { useCreateOptions } from './useCreateOptions';
 import { WorkspacePlaceSection } from './workspace/WorkspacePlaceSection';
+import { buildCreateFacts } from './workspace/createFacts';
 import { buildCreateSlug, buildCreateTarget } from './workspace/createRequest';
 import { requestChoiceSnapshot, type WorkspaceChoice } from './workspace/workspaceChoice';
-import { activeTile } from './workspace/workspaceTiles';
 import { useWorkspacePlace } from './workspace/useWorkspacePlace';
 
 /**
@@ -117,14 +117,10 @@ export function CreateProjectForm({
       fallbackFocus: () => submitRef.current?.focus(),
     });
 
-  /** The existing workspace's name as it is shown now, so the page can name it. */
-  const placeNameOf = (choice: WorkspaceChoice) => {
-    const name = workspaceOptions?.workspaces.find(
-      (workspace) =>
-        activeTile(choice, workspaceOptions) === 'existing' &&
-        workspace.workspaceId === choice.existingWorkspaceId,
-    )?.name;
-    return name ? { placeName: name } : {};
+  /** What the form says this Create does, so the progress page can state it without guessing. */
+  const factsOf = (choice: WorkspaceChoice) => {
+    const facts = workspaceOptions && buildCreateFacts(choice, workspaceOptions, title);
+    return facts ? { facts } : {};
   };
 
   const submit = () => {
@@ -135,7 +131,7 @@ export function CreateProjectForm({
     const request = startCreate({
       attempt,
       storage,
-      draft: { title, goal, choice: place.choice, ...placeNameOf(place.choice) },
+      draft: { title, goal, choice: place.choice, ...factsOf(place.choice) },
       slug,
       buildTarget: () =>
         workspaceOptions ? buildCreateTarget(place.choice, workspaceOptions, title) : undefined,

@@ -154,7 +154,12 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const heading = (name: string) => screen.findByRole('heading', { level: 1, name });
+/** The page heading: the state, with the typed name when the page knows it (: Payment limits). */
+const heading = (name: string, named = true) =>
+  screen.findByRole('heading', {
+    level: 1,
+    name: named ? `${name}: Payment limits` : name,
+  });
 
 describe('CreateOperationPage', () => {
   it('names the creation, the typed title and the target, focuses the heading and sends the stored request once', async () => {
@@ -167,8 +172,15 @@ describe('CreateOperationPage', () => {
 
     const title = await heading('Creating specification');
     await waitFor(() => expect(document.activeElement).toBe(title));
-    expect(screen.getByText('Payment limits')).toBeTruthy();
-    expect(screen.getByText('In a new workspace on branch feature/limits.')).toBeTruthy();
+    // One heading carries the state and the name; the full name is its tooltip.
+    expect(title.getAttribute('title')).toBe('Payment limits');
+    expect(screen.queryByText('Payment limits')).toBeNull();
+    // The settings are the request's own facts; unknown values (folder, base) have no row.
+    const settings = within(screen.getByLabelText('Creation settings'));
+    expect(settings.getByText('In a new workspace')).toBeTruthy();
+    expect(settings.getByText('feature/limits')).toBeTruthy();
+    expect(settings.queryByText('Worktree folder')).toBeNull();
+    expect(settings.queryByText('Goal')).toBeNull();
     expect(screen.getByText(/you can leave this page/i)).toBeTruthy();
 
     await waitFor(() => expect(post).toHaveBeenCalledOnce());
@@ -190,17 +202,54 @@ describe('CreateOperationPage', () => {
     expect(screen.getByRole('status', { name: 'Specification creation progress' })).toBeTruthy();
   });
 
-  it('describes an existing workspace by the name the form kept', async () => {
+  it('describes an existing workspace by the name and branch the form kept', async () => {
     store({ target: { kind: 'existing', workspaceId: '00000000-0000-4000-8000-0000000000bb' } });
     storage().saveDraft({
       operationId,
       title: 'Payment limits',
       goal: '',
       choice: initialWorkspaceChoice,
-      placeName: 'api-service',
+      facts: { place: 'existing', workspace: { name: 'api-service', branch: 'feature/api' } },
     });
     renderPage({ get: vi.fn().mockResolvedValue(accepted) });
-    expect(await screen.findByText('In the existing workspace api-service.')).toBeTruthy();
+    const settings = within(await screen.findByLabelText('Creation settings'));
+    expect(settings.getByText(/Added to workspace/)).toBeTruthy();
+    expect(settings.getByText('api-service')).toBeTruthy();
+    expect(settings.getByText('feature/api')).toBeTruthy();
+  });
+
+  it('states a new workspace fully: branch, folder, base, merge target (with the quiet dirty note), slug and a short goal', async () => {
+    store({ target: { kind: 'new-worktree' }, slug: 'limits', goal: `Goal ${'long '.repeat(40)}` });
+    storage().saveDraft({
+      operationId,
+      title: 'Payment limits',
+      goal: '',
+      choice: initialWorkspaceChoice,
+      facts: {
+        place: 'new',
+        base: 'develop',
+        branch: 'feature/limits',
+        folder: '/work/trees',
+        mergeInto: { name: 'acme-app', branch: 'develop' },
+        mergeReason: 'dirty',
+        slug: 'limits',
+      },
+    });
+    renderPage({ get: vi.fn().mockResolvedValue(accepted) });
+    const settings = within(await screen.findByLabelText('Creation settings'));
+    expect(settings.getByText('Start from')).toBeTruthy();
+    expect(settings.getAllByText('develop')).toHaveLength(2);
+    expect(settings.getByText('/work/trees')).toBeTruthy();
+    expect(settings.getByText('Merge into')).toBeTruthy();
+    expect(
+      settings.getByText(
+        'This workspace has uncommitted changes. You can still create the specification; commit or stash them before merging into it.',
+      ),
+    ).toBeTruthy();
+    expect(settings.getByText('limits')).toBeTruthy();
+    const goal = settings.getByText(/^Goal long/);
+    expect(goal.textContent!.length).toBeLessThanOrEqual(166);
+    expect(goal.textContent!.endsWith('…')).toBe(true);
   });
 
   it('a reload resumes the same operation: it is read, never sent again', async () => {
@@ -215,7 +264,6 @@ describe('CreateOperationPage', () => {
 
     renderPage({ post, get });
     expect(await heading('Creating specification')).toBeTruthy();
-    expect(screen.getByText('Payment limits')).toBeTruthy();
     await waitFor(() => expect(get.mock.calls.length).toBeGreaterThanOrEqual(2));
     expect(post).not.toHaveBeenCalled();
   });
@@ -309,8 +357,9 @@ describe('CreateOperationPage', () => {
     it('shows an operation still running without a title, and sends nothing', async () => {
       const post = vi.fn();
       renderPage({ post, get: vi.fn().mockResolvedValue(accepted) });
-      expect(await heading('Creating specification')).toBeTruthy();
-      expect(screen.queryByText('Payment limits')).toBeNull();
+      expect(await heading('Creating specification', false)).toBeTruthy();
+      expect(screen.queryByText(/Payment limits/)).toBeNull();
+      expect(screen.queryByLabelText('Creation settings')).toBeNull();
       await waitFor(() => expect(screen.getByText('Preparing your specification.')).toBeTruthy());
       expect(post).not.toHaveBeenCalled();
     });
@@ -327,7 +376,7 @@ describe('CreateOperationPage', () => {
           .fn()
           .mockResolvedValue({ ...accepted, status: 'failed', code: 'BRANCH_ALREADY_EXISTS' }),
       });
-      expect(await heading('Specification was not created')).toBeTruthy();
+      expect(await heading('Specification was not created', false)).toBeTruthy();
       expect(screen.getByRole('button', { name: 'Back to form' })).toBeTruthy();
     });
 
@@ -337,7 +386,7 @@ describe('CreateOperationPage', () => {
         post,
         get: vi.fn().mockRejectedValue(httpError(404, 'CREATE_NOT_FOUND')),
       });
-      expect(await heading('Operation not found')).toBeTruthy();
+      expect(await heading('Operation not found', false)).toBeTruthy();
       expect(screen.getByText('This operation does not exist')).toBeTruthy();
       fireEvent.click(screen.getByRole('button', { name: 'Back to Create' }));
       expect(onBackToForm).toHaveBeenCalledOnce();
@@ -362,7 +411,7 @@ describe('CreateOperationPage', () => {
       expect(news.closest('[role="status"]')?.textContent).toMatch(/branch/i);
       // It is information, not the outcome: the page still works and offers no action on it.
       expect(
-        screen.getByRole('heading', { level: 1, name: 'Creating specification' }),
+        screen.getByRole('heading', { level: 1, name: 'Creating specification: Payment limits' }),
       ).toBeTruthy();
       expect(screen.queryByRole('alert')).toBeNull();
       expect(screen.queryByRole('button', { name: 'Back to form' })).toBeNull();
@@ -399,7 +448,7 @@ describe('CreateOperationPage', () => {
       expect(
         await screen.findByRole(
           'heading',
-          { level: 1, name: 'Specification was not created' },
+          { level: 1, name: 'Specification was not created: Payment limits' },
           { timeout: 6000 },
         ),
       ).toBeTruthy();

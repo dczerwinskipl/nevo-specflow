@@ -917,13 +917,16 @@
         "announceSet": "Merge target set to {{branch}}.",
         "announceKept": "The merge target stays unchanged: {{branch}}.",
         "announceKeptNoTarget": "The merge target stays unchanged.",
-        "dirty": "We will not suggest merging back into <branch/>: that workspace has uncommitted Git changes. The merge target stays unchanged."
+        "dirty": "We will not suggest merging back into <branch/>: that workspace has uncommitted changes, so it cannot be a merge target until they are committed or stashed. The merge target stays unchanged."
       },
       "merge": {
         "pickTarget": "Choose a workspace",
         "notAvailable": "Not available",
         "notConfigured": "Not set",
-        "noteUnavailable": "Not available now: {{reason}}. Creation is not blocked.",
+        "noteDirty": "This workspace has uncommitted changes. You can still create the specification; commit or stash them before merging into it.",
+        "noteUnavailable": "This workspace cannot be a merge target right now: {{reason}}. You can still create the specification.",
+        "reasonDirty": "Uncommitted changes: commit or stash them before merging into it",
+        "reasonDirtyInline": "has uncommitted changes (commit or stash them before merging into it)",
         "noteOtherBranch": "The project target <target/> is not checked out in the current folder, which is on <current/>. Closing the work may need a change. Creation is not blocked.",
         "noteOtherBranchNone": "The project target <target/> is not checked out in the current folder, which has no branch. Closing the work may need a change. Creation is not blocked.",
         "noteNoTarget": "No project target is configured, so closing the work will need one. Creation is not blocked."
@@ -958,14 +961,22 @@
         "completed": "Specification created",
         "refused": "Specification was not created",
         "unknown": "Result not confirmed yet",
-        "notFound": "Operation not found"
+        "notFound": "Operation not found",
+        "workingNamed": "Creating specification: {{name}}",
+        "completedNamed": "Specification created: {{name}}",
+        "refusedNamed": "Specification was not created: {{name}}",
+        "unknownNamed": "Result not confirmed yet: {{name}}"
       },
-      "target": {
-        "newWorkspace": "In a new workspace.",
-        "newWorkspaceBranch": "In a new workspace on branch {{branch}}.",
-        "existing": "In the existing workspace {{name}}.",
-        "existingUnnamed": "In an existing workspace.",
-        "main": "In the current project checkout."
+      "settings": {
+        "label": "Creation settings",
+        "where": "Where",
+        "newWorkspace": "In a new workspace",
+        "addedToWorkspace": "Added to workspace <workspace/>",
+        "addedToExistingUnknown": "Added to an existing workspace",
+        "addedToFolder": "Added to the current folder, branch <branch/>",
+        "addedToFolderUnknown": "Added to the current folder",
+        "slug": "Name (slug)",
+        "goal": "Goal"
       },
       "status": {
         "sending": "Sending the request…",

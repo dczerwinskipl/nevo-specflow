@@ -13,7 +13,12 @@ import { BranchRef } from '../../../../shared/git/BranchRef';
 import { branchFieldValue, branchPreview, derivedSlug, effectiveSlug } from './createRequest';
 import { mergeSuggestion, effectiveTargetBranch } from './mergeSuggestion';
 import { defaultBaseValue, defaultTargetWorkspaceId } from './workspaceTiles';
-import { noBranchLabel, reasonText, reasonTextInline, specCountLabel } from './workspaceCopy';
+import {
+  noBranchLabel,
+  specCountLabel,
+  targetReasonText,
+  targetReasonTextInline,
+} from './workspaceCopy';
 import { slugError, type WorkspaceErrors } from './workspaceValidation';
 import { initialWorkspaceChoice, type WorkspaceChoice } from './workspaceChoice';
 import type { WorkspaceConflicts } from './workspaceConflicts';
@@ -50,7 +55,7 @@ export function WorkspaceRef({
   workspace,
   truncate = false,
 }: {
-  workspace: CreateOptions['workspaces'][number];
+  workspace: Pick<CreateOptions['workspaces'][number], 'name' | 'branch'>;
   truncate?: boolean;
 }) {
   const text = useMessage();
@@ -328,7 +333,7 @@ export function NewWorkspaceSettings({
                       value: workspace.workspaceId,
                       textValue: `${workspace.name} ${workspace.branch ?? text(noBranchLabel)}`,
                       unavailable: blocked,
-                      description: blocked ? text(reasonText(workspace.reason)) : undefined,
+                      description: blocked ? text(targetReasonText(workspace.reason)) : undefined,
                       meta: text(specCountLabel(workspace.specCount)),
                       label: (wraps) => <WorkspaceRef workspace={workspace} truncate={!wraps} />,
                     };
@@ -347,7 +352,7 @@ export function NewWorkspaceSettings({
                                 <span key={workspace.workspaceId}>
                                   <WorkspaceRef workspace={workspace} />{' '}
                                   {t('create.workspace.settings.unavailableReason', {
-                                    reason: text(reasonTextInline(workspace.reason)),
+                                    reason: text(targetReasonTextInline(workspace.reason)),
                                   })}
                                 </span>
                               ))}

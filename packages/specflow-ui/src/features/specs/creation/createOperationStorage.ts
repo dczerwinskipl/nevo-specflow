@@ -3,6 +3,7 @@ import { isCreateSpecRequest, type CreateSpecRequest } from '@nevo/specflow-cont
 import { useAppServices } from '../../../app/useAppServices';
 import { authSessionIdentity } from '../../../auth/store';
 import type { CreateFailure } from './createFailure';
+import { toCreateFacts, type CreateSettingsFacts } from './workspace/createFacts';
 import { initialWorkspaceChoice, type WorkspaceChoice } from './workspace/workspaceChoice';
 
 /** The request of an operation that was sent and whose outcome is not yet confirmed. */
@@ -25,8 +26,8 @@ export interface CreateDraft {
   readonly title: string;
   readonly goal: string;
   readonly choice: WorkspaceChoice;
-  /** Name of the chosen existing workspace as the owner saw it; the page names it, display only. */
-  readonly placeName?: string;
+  /** What the form said this Create does (workspace names, branches, folder); display only. */
+  readonly facts?: CreateSettingsFacts;
   readonly failure?: CreateFailure;
 }
 
@@ -54,12 +55,13 @@ function toDraft(value: unknown): CreateDraft | undefined {
     isRecord(value.failure) && typeof value.failure.kind === 'string'
       ? (value.failure as unknown as CreateFailure)
       : undefined;
+  const facts = toCreateFacts(value.facts);
   return {
     ...(typeof value.operationId === 'string' ? { operationId: value.operationId } : {}),
     title: value.title,
     goal: value.goal,
     choice: { ...initialWorkspaceChoice, ...(value.choice as Partial<WorkspaceChoice>) },
-    ...(typeof value.placeName === 'string' ? { placeName: value.placeName } : {}),
+    ...(facts ? { facts } : {}),
     ...(failure ? { failure } : {}),
   };
 }

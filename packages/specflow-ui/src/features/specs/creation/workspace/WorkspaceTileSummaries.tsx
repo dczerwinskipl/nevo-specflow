@@ -22,9 +22,9 @@ import {
 } from './workspaceTiles';
 import {
   defaultSettingsSummary,
+  mergeUnavailableNote,
   noBranchLabel,
   reasonText,
-  reasonTextInline,
   settingsSummary,
   sharedUseNote,
   specCountLabel,
@@ -44,7 +44,7 @@ const note = (children: ReactNode, tone: 'info' | 'attention' = 'info') => (
  * One row of the "default settings" list: label, value and an optional quiet note under the value.
  * A value the owner changed reads as primary, a default as secondary.
  */
-function SummaryRow({
+export function SummaryRow({
   label,
   override,
   note: rowNote,
@@ -94,9 +94,7 @@ function mergeRow(
       return {
         value: <WorkspaceRef workspace={status.workspace} />,
         override: false,
-        note: t('create.workspace.merge.noteUnavailable', {
-          reason: text(reasonTextInline(status.workspace.reason)),
-        }),
+        note: text(mergeUnavailableNote(status.workspace.reason)),
       };
     case 'other-branch':
       return {

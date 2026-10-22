@@ -9,7 +9,8 @@ import { CreateOperationProgress } from './CreateOperationProgress';
 import { CreateShell } from './CreateShell';
 import type { CreateFailure } from './createFailure';
 import { useCreateOperationStorage } from './createOperationStorage';
-import { createPageView, createTargetLine, type CreatePageView } from './createPageView';
+import { createPageView, createSettingsModel, type CreatePageView } from './createPageView';
+import { CreateSettingsList } from './CreateSettingsList';
 import { useCreateProjectSpecification } from './useCreateProjectSpecification';
 import { useStillWorking } from './useStillWorking';
 import { initialWorkspaceChoice, type WorkspaceChoice } from './workspace/workspaceChoice';
@@ -24,6 +25,14 @@ const headingKeys = {
   unknown: 'create.page.heading.unknown',
   'not-found': 'create.page.heading.notFound',
 } as const satisfies Record<CreatePageView, string>;
+
+/** The same headings with the specification name; the page uses them whenever the name is known. */
+const namedHeadingKeys = {
+  working: 'create.page.heading.workingNamed',
+  completed: 'create.page.heading.completedNamed',
+  refused: 'create.page.heading.refusedNamed',
+  unknown: 'create.page.heading.unknownNamed',
+} as const satisfies Partial<Record<CreatePageView, string>>;
 
 const withoutSnapshot = ({
   snapshot: _snapshot,
@@ -93,6 +102,7 @@ export function CreateOperationPage({
   const sent = state.sent ?? stored?.request;
   const title = [sent?.title, ownDraft?.title].map((value) => value?.trim()).find(Boolean);
   const target = sent?.target;
+  const settings = createSettingsModel(stored?.request, ownDraft?.goal, ownDraft?.facts);
   const failure = state.failure;
   // A failure that kept the operation (a lost session) is tried again here; a refusal ends it.
   const retainable = view === 'refused' && storage.load()?.request.operationId === operationId;
@@ -110,6 +120,14 @@ export function CreateOperationPage({
     }
     onBackToForm();
   };
+
+  // One heading carries the state and the name; the full name stays available as the tooltip.
+  const headingView = created ? 'completed' : view;
+  const headingName = title && view !== 'not-found' ? title : undefined;
+  const headingText =
+    headingName && headingView !== 'not-found'
+      ? t(namedHeadingKeys[headingView], { name: headingName })
+      : t(headingKeys[headingView]);
 
   const statusText = created
     ? t('create.page.status.completed')
@@ -140,20 +158,12 @@ export function CreateOperationPage({
               variant="title-lg"
               ref={headingRef}
               tabIndex={-1}
-              className="outline-none"
+              className="line-clamp-3 min-w-0 outline-none [overflow-wrap:anywhere]"
+              title={headingName}
             >
-              {t(headingKeys[created ? 'completed' : view])}
+              {headingText}
             </Typography>
-            {title && view !== 'not-found' && (
-              <Typography as="p" variant="title-md" className="min-w-0 break-words">
-                {title}
-              </Typography>
-            )}
-            {view !== 'not-found' && sent && (
-              <Typography as="p" variant="body-md" className="text-content-secondary">
-                {createTargetLine(target, ownDraft?.placeName, t)}
-              </Typography>
-            )}
+            {settings && view !== 'not-found' && <CreateSettingsList settings={settings} />}
           </header>
         </div>
         <Separator />

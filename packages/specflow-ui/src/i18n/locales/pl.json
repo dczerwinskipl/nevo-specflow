@@ -917,13 +917,16 @@
         "announceSet": "Cel scalenia ustawiony na {{branch}}.",
         "announceKept": "Cel scalenia pozostaje bez zmian: {{branch}}.",
         "announceKeptNoTarget": "Cel scalenia pozostaje bez zmian.",
-        "dirty": "Nie zaproponujemy scalenia z powrotem do <branch/>: to środowisko pracy ma niezapisane zmiany w Git. Cel scalenia zostaje bez zmian."
+        "dirty": "Nie zaproponujemy scalenia z powrotem do <branch/>: to środowisko pracy ma niezapisane zmiany, więc nie może być celem scalenia, dopóki ich nie zatwierdzisz lub nie odłożysz. Cel scalenia zostaje bez zmian."
       },
       "merge": {
         "pickTarget": "Wybierz środowisko pracy",
         "notAvailable": "Niedostępne",
         "notConfigured": "Nie ustawiono",
-        "noteUnavailable": "Teraz niedostępne: {{reason}}. Tworzenie nie jest blokowane.",
+        "noteDirty": "To środowisko pracy ma niezapisane zmiany. Specyfikację nadal możesz utworzyć; zatwierdź je (commit) lub odłóż (stash) przed scaleniem do niego.",
+        "noteUnavailable": "To środowisko pracy nie może teraz być celem scalenia: {{reason}}. Specyfikację nadal możesz utworzyć.",
+        "reasonDirty": "Niezapisane zmiany: zatwierdź je lub odłóż przed scaleniem do tego środowiska",
+        "reasonDirtyInline": "ma niezapisane zmiany (zatwierdź je lub odłóż przed scaleniem do tego środowiska)",
         "noteOtherBranch": "Cel projektu <target/> nie jest wybrany w bieżącym katalogu, który jest na gałęzi <current/>. Zamknięcie pracy może wymagać zmiany. Tworzenie nie jest blokowane.",
         "noteOtherBranchNone": "Cel projektu <target/> nie jest wybrany w bieżącym katalogu, który nie ma gałęzi. Zamknięcie pracy może wymagać zmiany. Tworzenie nie jest blokowane.",
         "noteNoTarget": "Nie skonfigurowano celu projektu, więc zamknięcie pracy będzie go wymagać. Tworzenie nie jest blokowane."
@@ -958,14 +961,22 @@
         "completed": "Specyfikacja utworzona",
         "refused": "Nie utworzono specyfikacji",
         "unknown": "Wynik jeszcze niepotwierdzony",
-        "notFound": "Nie znaleziono operacji"
+        "notFound": "Nie znaleziono operacji",
+        "workingNamed": "Tworzenie specyfikacji: {{name}}",
+        "completedNamed": "Specyfikacja utworzona: {{name}}",
+        "refusedNamed": "Nie utworzono specyfikacji: {{name}}",
+        "unknownNamed": "Wynik jeszcze niepotwierdzony: {{name}}"
       },
-      "target": {
-        "newWorkspace": "W nowym środowisku pracy.",
-        "newWorkspaceBranch": "W nowym środowisku pracy na gałęzi {{branch}}.",
-        "existing": "W istniejącym środowisku pracy {{name}}.",
-        "existingUnnamed": "W istniejącym środowisku pracy.",
-        "main": "W bieżącym katalogu projektu."
+      "settings": {
+        "label": "Ustawienia tworzenia",
+        "where": "Gdzie",
+        "newWorkspace": "W nowym środowisku pracy",
+        "addedToWorkspace": "Dodana do środowiska pracy <workspace/>",
+        "addedToExistingUnknown": "Dodana do istniejącego środowiska pracy",
+        "addedToFolder": "Dodana do bieżącego katalogu, gałąź <branch/>",
+        "addedToFolderUnknown": "Dodana do bieżącego katalogu",
+        "slug": "Nazwa (slug)",
+        "goal": "Cel"
       },
       "status": {
         "sending": "Wysyłanie żądania…",

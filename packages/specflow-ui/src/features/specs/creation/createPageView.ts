@@ -1,6 +1,6 @@
-import type { TFunction } from 'i18next';
 import type { CreateSpecRequest } from '@nevo/specflow-contracts/specs';
 import type { CreateOperationState } from './createOperationReducer';
+import type { CreateSettingsFacts, FactWorkspace } from './workspace/createFacts';
 
 /**
  * What the progress page shows, derived from the operation state (never stored):
@@ -31,22 +31,60 @@ export function createPageView(
   }
 }
 
+export const goalPreviewLength = 160;
+
+/** The goal as a short preview: whitespace collapsed, cut on a word edge with an ellipsis. */
+export function shortenGoal(goal: string | undefined, max = goalPreviewLength): string | undefined {
+  const flat = goal?.replace(/\s+/gu, ' ').trim();
+  if (!flat) return undefined;
+  if (flat.length <= max) return flat;
+  const cut = flat.slice(0, max);
+  const edge = cut.lastIndexOf(' ');
+  return `${(edge > max / 2 ? cut.slice(0, edge) : cut).trimEnd()}…`;
+}
+
 /**
- * The calm line about where the specification goes, from the request that was sent (never from
- * server text). `placeName` is the name of an existing workspace as the owner saw it in the form.
+ * What the progress page states about this Create, in plain facts. Built from the retained request
+ * and the facts the form saved with the draft (never from server text); a value that is not known
+ * is absent so the page omits that row instead of guessing. Undefined when nothing is known (a
+ * direct link to an operation this browser did not start).
  */
-export function createTargetLine(
-  target: CreateSpecRequest['target'] | undefined,
-  placeName: string | undefined,
-  t: TFunction,
-): string {
-  if (target?.kind === 'new-worktree')
-    return target.branch
-      ? t('create.page.target.newWorkspaceBranch', { branch: target.branch })
-      : t('create.page.target.newWorkspace');
-  if (target?.kind === 'existing')
-    return placeName
-      ? t('create.page.target.existing', { name: placeName })
-      : t('create.page.target.existingUnnamed');
-  return t('create.page.target.main');
+export interface CreateSettingsModel {
+  readonly place: 'new' | 'existing' | 'main';
+  readonly workspace?: FactWorkspace;
+  readonly base?: string;
+  readonly baseHead?: boolean;
+  readonly branch?: string;
+  readonly folder?: string;
+  readonly mergeInto?: FactWorkspace;
+  readonly mergeReason?: string;
+  readonly slug?: string;
+  readonly goal?: string;
+}
+
+export function createSettingsModel(
+  request: Pick<CreateSpecRequest, 'target' | 'slug' | 'goal'> | undefined,
+  draftGoal: string | undefined,
+  facts: CreateSettingsFacts | undefined,
+): CreateSettingsModel | undefined {
+  if (!request && !facts) return undefined;
+  const target = request?.target;
+  const place =
+    facts?.place ??
+    (target?.kind === 'new-worktree' ? 'new' : target?.kind === 'existing' ? 'existing' : 'main');
+  const goal = shortenGoal(request?.goal ?? draftGoal);
+  const slug = facts?.slug ?? request?.slug;
+  const branch = facts?.branch ?? (target?.kind === 'new-worktree' ? target.branch : undefined);
+  return {
+    place,
+    ...(facts?.workspace ? { workspace: facts.workspace } : {}),
+    ...(place === 'new' && facts?.base ? { base: facts.base } : {}),
+    ...(place === 'new' && facts?.baseHead ? { baseHead: true } : {}),
+    ...(place === 'new' && branch ? { branch } : {}),
+    ...(place === 'new' && facts?.folder ? { folder: facts.folder } : {}),
+    ...(place === 'new' && facts?.mergeInto ? { mergeInto: facts.mergeInto } : {}),
+    ...(place === 'new' && facts?.mergeReason ? { mergeReason: facts.mergeReason } : {}),
+    ...(slug ? { slug } : {}),
+    ...(goal ? { goal } : {}),
+  };
 }

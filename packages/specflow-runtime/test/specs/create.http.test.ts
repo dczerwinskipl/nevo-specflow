@@ -467,7 +467,10 @@ describe('E2.I01 — authorized read-only Create options', () => {
         expect(result.defaultBaseRef).toBe('HEAD');
         // Git disabled: answered from registry and filesystem only; no Git facts (refs, branches).
         expect(result.baseRefs).toEqual([]);
-        expect(response.body).not.toContain(root);
+        // Options expose registered display paths (workspace path, worktreesRoot) by contract,
+        // but no Git facts: no commits policy, no branches or refs.
+        expect(response.json<Record<string, unknown>>()).not.toHaveProperty('commits');
+        expect(response.body).not.toContain('refs/heads/');
         expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(registryBefore);
       } finally {
         await app.close();

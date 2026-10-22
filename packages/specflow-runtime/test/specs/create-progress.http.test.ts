@@ -165,6 +165,7 @@ describe('Create progress over the generic operations stream (real Git)', () => 
       { id: 'reserving', status: 'running' },
       { id: 'preparing-workspace', status: 'pending' },
       { id: 'writing-specification', status: 'pending' },
+      { id: 'committing-specification', status: 'pending' },
       { id: 'registering', status: 'pending' },
     ]);
     // The snapshot already shows `reserving` running; the rest streams live.
@@ -174,6 +175,8 @@ describe('Create progress over the generic operations stream (real Git)', () => 
       'preparing-workspace:done',
       'writing-specification:running',
       'writing-specification:done',
+      'committing-specification:running',
+      'committing-specification:done',
       'registering:running',
       'registering:done',
     ]);

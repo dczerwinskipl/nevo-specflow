@@ -42,6 +42,14 @@ export {
   validateBranchPattern,
 } from './version-control/worktrees/policy';
 
+export {
+  BRANCH_PATTERN_MAX_ENTRIES,
+  BRANCH_PATTERN_MAX_LENGTH,
+  branchPatternProblem,
+  matchesBranchPattern,
+  type BranchPatternProblem,
+} from './version-control/commits/branch-patterns';
+
 export { GitCapabilityError, type GitCapabilityErrorCode } from './git/errors';
 
 export {

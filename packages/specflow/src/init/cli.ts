@@ -7,10 +7,15 @@ import { basename, dirname, join, relative } from 'node:path';
 import {
   bootstrapProjectHome,
   assertPrimaryGitCheckout,
+  BRANCH_PATTERN_MAX_ENTRIES,
+  BRANCH_PATTERN_MAX_LENGTH,
+  branchPatternProblem,
   DEFAULT_BRANCH_PATTERN,
+  matchesBranchPattern,
   resolveWorktreesRoot,
   validateBranchPattern,
   resolveGitCheckoutLayout,
+  type BranchPatternProblem,
   type GitCheckoutLayout,
 } from '@nevo/specflow-engine';
 import {
@@ -168,6 +173,85 @@ export async function chooseWorktreesRoot(
   throw new Error('No valid worktree folder was provided.');
 }
 
+/** Branches offered as protected when they exist locally (the usual long-lived ones). */
+const SUGGESTED_PROTECTED_BRANCHES = ['main', 'master'] as const;
+
+const PATTERN_PROBLEMS: Record<BranchPatternProblem, string> = {
+  empty: 'Enter a branch name or pattern.',
+  'too-long': `The pattern is too long (at most ${BRANCH_PATTERN_MAX_LENGTH} characters).`,
+  characters:
+    'The pattern contains characters that are not allowed. Use letters, digits, ".", "-", "_", "/" and the wildcards "*", "**", "?" and "[a-z]".',
+  structure:
+    'The pattern has a layout that is not allowed: do not start or end with "/", do not use "..", "//", a "refs/" prefix or a ".lock" suffix, and close every "[" set.',
+};
+
+/** Why a protected-branch pattern is not accepted, or `undefined` when it is (Engine rule). */
+export function protectedBranchPatternProblem(pattern: string): string | undefined {
+  const problem = branchPatternProblem(pattern);
+  return problem ? PATTERN_PROBLEMS[problem] : undefined;
+}
+
+/**
+ * Branches on which the Nevo Engine never commits specification files (`git.commits.protectedBranches`).
+ * Step one asks about each of `main` and `master` that exists locally (kept by default), step two
+ * collects any number of custom patterns in the GitHub branch-protection style (`*` does not cross
+ * "/", `**` does, `?`, `[a-z]`), each checked by the Engine's own pattern validator so init can
+ * never write a pattern the Engine would later reject. Nothing selected means nothing is protected.
+ */
+export async function chooseProtectedBranches(ui: RuntimeSetupUi, root: string): Promise<string[]> {
+  const protectedBranches: string[] = [];
+  const add = (pattern: string): boolean => {
+    if (protectedBranches.includes(pattern)) return false;
+    protectedBranches.push(pattern);
+    return true;
+  };
+
+  const local = await listLocalBranches(root);
+  for (const name of SUGGESTED_PROTECTED_BRANCHES.filter((suggested) =>
+    local.includes(suggested),
+  )) {
+    if (
+      await ui.confirm(
+        `Protect branch '${name}'? Nevo will not commit specifications on it (use a new worktree instead).`,
+        true,
+      )
+    ) {
+      add(name);
+    }
+  }
+
+  while (
+    protectedBranches.length < BRANCH_PATTERN_MAX_ENTRIES &&
+    (await ui.confirm(
+      protectedBranches.length === 0
+        ? 'Protect other branches? (nothing is protected yet; patterns such as release/** are allowed)'
+        : 'Protect another branch or pattern? (for example release/**)',
+      false,
+    ))
+  ) {
+    const pattern = (
+      await ui.input('Branch name or pattern (* stays within a "/" segment, ** crosses it)')
+    ).trim();
+    const problem = protectedBranchPatternProblem(pattern);
+    if (problem) {
+      ui.note(problem, 'Invalid pattern');
+    } else if (!add(pattern)) {
+      ui.note(`'${pattern}' is already protected.`, 'Already listed');
+    }
+  }
+  return protectedBranches;
+}
+
+/** Quiet explanation when the integration target is itself protected (allowed, but good to know). */
+export function integrationTargetProtectedNote(
+  integrationTargetBranch: string,
+  protectedBranches: readonly string[],
+): string | undefined {
+  return protectedBranches.some((pattern) => matchesBranchPattern(pattern, integrationTargetBranch))
+    ? `The integration branch '${integrationTargetBranch}' is protected: Nevo cannot commit specifications directly on it, so specifications are created in a new or existing worktree. Merging worktrees into it is not affected.`
+    : undefined;
+}
+
 export function createProjectInitCommand(context: ProjectInitCommandContext): Command {
   return new Command('init')
     .description('Initialize Nevo SpecFlow configuration for this repository')
@@ -192,13 +276,23 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
         enabled: boolean;
         integrationTargetBranch?: string;
         worktrees?: { branchPattern: string };
+        commits?: { protectedBranches: string[] };
       } = { enabled: false };
+      let protectedBranches: string[] = [];
       if (gitEnabled) {
         const integrationTargetBranch = await chooseIntegrationTargetBranch(ui, layout.root);
         const branchPattern = await chooseBranchPattern(ui);
         gitConfig = { enabled: true, integrationTargetBranch, worktrees: { branchPattern } };
         worktreesRoot = await chooseWorktreesRoot(ui, layout.root);
+        protectedBranches = await chooseProtectedBranches(ui, layout.root);
+        if (protectedBranches.length > 0) {
+          gitConfig = { ...gitConfig, commits: { protectedBranches } };
+        }
       }
+      const protectedNote =
+        gitConfig.integrationTargetBranch !== undefined
+          ? integrationTargetProtectedNote(gitConfig.integrationTargetBranch, protectedBranches)
+          : undefined;
       const contribution = {
         projectConfig: { runtime: runtime.projectConfig, git: gitConfig },
         localConfig: {
@@ -220,8 +314,11 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
                 'Worktree folder: ' +
                   (worktreesRoot ??
                     join(dirname(layout.root), basename(layout.root) + '-worktrees')),
+                'Protected branches: ' +
+                  (protectedBranches.length > 0 ? protectedBranches.join(', ') : 'none'),
               ]
             : []),
+          ...(protectedNote ? ['', protectedNote] : []),
           '',
           `Project config: ${relative(layout.root, layout.projectConfigPath)}`,
           `Local config: ${relative(layout.root, layout.localConfigPath)}`,

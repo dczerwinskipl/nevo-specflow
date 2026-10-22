@@ -1,0 +1,7 @@
+Module ownership applies to any change that adds, moves or modifies feature code, components, stores, API ports or shared code. Load `engineering.shared.code-organization` (section "Module ownership and boundaries") and apply it. This is agent guidance; ESLint enforces only the package-level import boundaries configured on main.
+
+- A new component, store or port MUST be placed in the feature that owns the capability, not in the folder of the screen or task that first needed it.
+- `shared/` MUST hold only code used by several features and MUST NOT import a feature or composition root. Code SHOULD NOT be moved to `shared/` before a second feature needs it.
+- For new code and code touched during migration, features SHOULD import other features only through `features/<name>/index.ts`. Feature barrels may not exist yet; do not create one only to satisfy this rule.
+- Demo adapters (for example `api.demo.ts`) are allowed only for explicit Demo Runtime contracts or isolated test environments, are not frontend fixtures or mock-data modes, and do not decide ownership. A port is not required to have two adapters. Production fixture-based adapters remain forbidden.
+- If ownership is ambiguous, surface the decision instead of defaulting to the current screen's folder.

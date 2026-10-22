@@ -581,7 +581,9 @@ export const TargetListNeverEqualsBaseList: Story = {
     await expect(targets.some((o) => o.textContent?.includes('release/1.4'))).toBe(false);
     const dirty = targets.find((o) => o.textContent?.includes('feature/payments'))!;
     await expect(dirty).toHaveAttribute('aria-disabled', 'true');
-    await expect(dirty).toHaveTextContent('Ma niezapisane zmiany w Git');
+    await expect(dirty).toHaveTextContent(
+      'Niezapisane zmiany: zatwierdź je lub odłóż przed scaleniem do tego środowiska',
+    );
     // Selecting a blocked target does nothing: the preselected defaults stay.
     const before = request(canvas);
     await userEvent.click(dirty);
@@ -599,7 +601,9 @@ export const UnavailableTargetsStayReadableUnderTheField: Story = {
       canvas.getByRole('switch', { name: 'Scal później do innego środowiska' }),
     );
     const hint = canvas.getByText(/Niedostępne jako cel:/);
-    await expect(hint).toHaveTextContent('payments feature/payments – ma niezapisane zmiany w Git');
+    await expect(hint).toHaveTextContent(
+      'payments feature/payments – ma niezapisane zmiany (zatwierdź je lub odłóż przed scaleniem do tego środowiska)',
+    );
     await expect(canvas.getByText(/Nic nie zostanie scalone teraz/)).toBeVisible();
     await expect(
       canvas.getByRole('combobox', { name: 'Scal do' }).getAttribute('aria-describedby'),
@@ -900,7 +904,7 @@ export const ConfiguredTargetHasUnsavedChanges: Story = {
   play: async ({ canvas }) => {
     await expect(rowValue(canvas, 'Scal do')).toHaveTextContent('acme-app develop');
     await expect(summary(canvas)).toHaveTextContent(
-      'Teraz niedostępne: ma niezapisane zmiany w Git. Tworzenie nie jest blokowane.',
+      'To środowisko pracy ma niezapisane zmiany. Specyfikację nadal możesz utworzyć; zatwierdź je (commit) lub odłóż (stash) przed scaleniem do niego.',
     );
     await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute('data-problems', '');
   },

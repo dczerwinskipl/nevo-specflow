@@ -55,7 +55,7 @@ export function CreateSettingsList({ settings }: { settings: CreateSettingsModel
           <BranchRef name={settings.branch} />
         </SummaryRow>
       )}
-      {(settings.base || settings.baseHead) && (
+      {(settings.base !== undefined || settings.baseHead === true) && (
         <SummaryRow label={t('create.workspace.fact.base')} override={false}>
           {settings.base ? <BranchRef name={settings.base} /> : t('create.workspace.baseHead')}
         </SummaryRow>

@@ -47,6 +47,16 @@ shared presentational piece (`BranchRef`: one icon size, the `code-md` token, no
 colon variants). A caveat about the default merge target (for example uncommitted changes in the
 primary workspace) is a quiet inline note on the Merge row; it never blocks Create.
 
+**Uncommitted changes in a merge target.** Creating the specification is not affected. What it
+affects is closing/integrating the specification into that workspace later: the Engine refuses to
+integrate into a checkout with uncommitted changes (untracked files included) so as not to touch
+the owner's work. The copy says exactly that in plain words and gives the action: _"This workspace
+has uncommitted changes. You can still create the specification; commit or stash them before
+merging into it."_ The same fact reads consistently everywhere the reason appears for a merge
+target (the Merge row note, the unavailable item in the target select, the "unavailable as a
+target" list, the merge-back suggestion, and the progress page's settings); there is no vague "not
+available now" wording, and it stays a quiet inline note, never an alert.
+
 Each optional setting (Start from, Merge into, slug, branch name) is switched on with the
 **effective default prefilled** (current branch of the folder, the default target workspace, the
 slug derived from the name and the generated branch), so the user only adjusts it. An untouched
@@ -102,10 +112,22 @@ entered, and continues on a dedicated page, `/specs/new/creating/:operationId` (
 safe to reload). The page sends the request when the server has not seen it, follows the operation
 and tells the owner clearly what is going on:
 
-- The heading says **Creating specification**, followed by the title the owner typed and one calm
-  line about where it goes (a new workspace, with its branch when one was typed; an existing
-  workspace by name; the current project checkout). These come from what was sent, never from
-  server text. Focus moves to the heading on arrival.
+- ONE heading carries the state and the typed name: **Creating specification: \<name\>**, then
+  **Specification created: \<name\>**, **Specification was not created: \<name\>** and **Result not
+  confirmed yet: \<name\>** (the name is an interpolated value of the localised heading, never a
+  separate line under it). A long name wraps (clamped to three lines, no sideways scroll at 320 px)
+  and the full name stays in the heading's tooltip. Without a known name (a direct link) the heading
+  has no name. Focus moves to the heading on arrival.
+- Under it a description list states the **actual settings** of this creation in the words of the
+  form's workspace summary (the same rows and branch/workspace references): _Where_ (in a new
+  workspace; added to workspace NAME with its branch; added to the current folder with its branch),
+  and for a new workspace _Branch name_, _Start from_, _Worktree folder_ (from the create-options
+  `worktreesRoot`) and _Merge into_ (workspace and branch); then the explicit slug and, shortened,
+  the goal if the owner entered one. The values come from the retained request and from the facts
+  the form saved with the draft from the create-options it showed (workspace names, branches,
+  folder), never from server text. A value that is not known (a direct link, a lost draft) has no
+  row; nothing is guessed. The merge target row carries the quiet uncommitted-changes note below
+  when it applies.
 - Under it the step checklist (next section), a status line (`Preparing your specification.`,
   after a while `Still working — this can take a minute.`, in neutral colour) and a note that the
   owner can leave: creation continues on the server and is resumed from **New specification**.

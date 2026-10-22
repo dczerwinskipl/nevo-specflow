@@ -248,8 +248,8 @@ describe('CreateOperationPage', () => {
     ).toBeTruthy();
     expect(settings.getByText('limits')).toBeTruthy();
     const goal = settings.getByText(/^Goal long/);
-    expect(goal.textContent!.length).toBeLessThanOrEqual(166);
-    expect(goal.textContent!.endsWith('…')).toBe(true);
+    expect(goal.textContent.length).toBeLessThanOrEqual(166);
+    expect(goal.textContent.endsWith('…')).toBe(true);
   });
 
   it('a reload resumes the same operation: it is read, never sent again', async () => {

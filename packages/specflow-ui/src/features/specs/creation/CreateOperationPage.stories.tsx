@@ -21,6 +21,7 @@ import type { OperationsApi } from '../../../shared/operations/operationsApi';
 import { createOperationEventsUrl } from './api.project';
 import { CreateOperationScreen } from './CreateOperationScreen';
 import { createSessionOperationStorage } from './createOperationStorage';
+import type { CreateSettingsFacts } from './workspace/createFacts';
 import { initialWorkspaceChoice } from './workspace/workspaceChoice';
 
 const operationId = '3f0a6d4e-8f2a-4b6e-9d0a-1c2b3d4e5f60';
@@ -100,6 +101,8 @@ function inspect(server: Server): Promise<CreateOperationInspection> {
 interface FixtureProps {
   /** The request this browser stored when the form handed over; none is a direct link. */
   request?: CreateSpecRequest & { operationId?: string };
+  /** What the form saved with the draft about this Create (workspace names, folder, merge target). */
+  facts?: CreateSettingsFacts;
   server?: Server;
   stream?: Stream;
   onOpen?: (created: CreatedSpec) => void;
@@ -108,6 +111,7 @@ interface FixtureProps {
 
 function Fixture({
   request,
+  facts,
   server = 'running',
   stream = 'steps',
   onOpen = () => undefined,
@@ -125,10 +129,11 @@ function Fixture({
     storage.saveDraft({
       operationId,
       title: request?.title ?? '',
-      goal: '',
+      goal: request?.goal ?? '',
       choice: initialWorkspaceChoice,
+      ...(facts ? { facts } : {}),
     });
-  }, [request]);
+  }, [request, facts]);
   const services = useMemo(
     () =>
       createSpecFlowAppServices({
@@ -194,20 +199,42 @@ const steps = (canvasElement: HTMLElement) =>
 
 const newWorkspace = { title: 'Limity płatności', target: { kind: 'new-worktree' as const } };
 
+/** What the form saved for a new workspace: where it goes, the branch, the folder and the merge target. */
+const newWorkspaceFacts: CreateSettingsFacts = {
+  place: 'new',
+  base: 'develop',
+  branch: 'feature/limity-platnosci',
+  folder: '/work/acme-app-worktrees',
+  mergeInto: { name: 'acme-app', branch: 'develop' },
+};
+
+/** The heading names the state and the specification in one line; the settings follow in plain facts. */
+const settingsList = (canvas: { getByLabelText: (label: string) => HTMLElement }) =>
+  within(canvas.getByLabelText('Ustawienia tworzenia'));
+
 /**
- * Right after Create: the page says that the specification is being created, with the title the
- * owner typed, where it goes and the live steps; leaving is explained, nothing alarms.
+ * Right after Create: ONE heading says that the specification is being created and which one, the
+ * settings of this creation follow in plain language, then the live steps; leaving is explained,
+ * nothing alarms.
  */
 export const InProgressWithSteps: Story = {
-  args: { request: newWorkspace },
+  args: { request: newWorkspace, facts: newWorkspaceFacts },
   play: async ({ canvas }) => {
     const heading = await canvas.findByRole('heading', {
       level: 1,
-      name: 'Tworzenie specyfikacji',
+      name: 'Tworzenie specyfikacji: Limity płatności',
     });
     await waitFor(() => expect(document.activeElement).toBe(heading));
-    await expect(canvas.getByText('Limity płatności')).toBeInTheDocument();
-    await expect(canvas.getByText('W nowym środowisku pracy.')).toBeInTheDocument();
+    await expect(heading).toHaveAttribute('title', 'Limity płatności');
+    // The name is not repeated below the heading.
+    await expect(canvas.getAllByText(/Limity płatności/)).toHaveLength(1);
+    const settings = settingsList(canvas);
+    await expect(settings.getByText('W nowym środowisku pracy')).toBeInTheDocument();
+    await expect(settings.getByText('feature/limity-platnosci')).toBeInTheDocument();
+    await expect(settings.getByText('/work/acme-app-worktrees')).toBeInTheDocument();
+    await expect(settings.getByText('Zacznij od')).toBeInTheDocument();
+    await expect(settings.getByText('Scal do')).toBeInTheDocument();
+    await expect(settings.getByText('acme-app')).toBeInTheDocument();
     const running = await canvas.findByText('Przygotowanie środowiska pracy');
     await waitFor(() => expect(running.closest('li')).toHaveAttribute('aria-current', 'step'));
     await expect(canvas.getByText('Rezerwowanie nazwy').closest('li')).toHaveTextContent(/gotowe$/);
@@ -216,7 +243,61 @@ export const InProgressWithSteps: Story = {
   },
 };
 
-/** A long title, a long branch and no spaces to break at: it wraps inside 320 px, nothing scrolls sideways. */
+/**
+ * Added to a workspace that already exists: the page names it with its branch and does not invent
+ * a folder, a base or a merge target the owner never chose here.
+ */
+export const InProgressExistingWorkspace: Story = {
+  args: {
+    request: {
+      title: 'Limity płatności',
+      target: { kind: 'existing', workspaceId: '00000000-0000-4000-8000-0000000000bb' },
+    },
+    facts: { place: 'existing', workspace: { name: 'platform', branch: 'feature/platform' } },
+  },
+  play: async ({ canvas }) => {
+    await canvas.findByRole('heading', {
+      level: 1,
+      name: 'Tworzenie specyfikacji: Limity płatności',
+    });
+    const settings = settingsList(canvas);
+    await expect(settings.getByText(/Dodana do środowiska pracy/)).toBeInTheDocument();
+    await expect(settings.getByText('platform')).toBeInTheDocument();
+    await expect(settings.getByText('feature/platform')).toBeInTheDocument();
+    await expect(settings.queryByText('Katalog worktree')).not.toBeInTheDocument();
+    await expect(settings.queryByText('Scal do')).not.toBeInTheDocument();
+  },
+};
+
+/**
+ * The merge target has uncommitted changes: creating is not affected, so the row carries one quiet
+ * sentence with what to do before merging into it later; no alert.
+ */
+export const MergeTargetHasUncommittedChanges: Story = {
+  args: {
+    request: { ...newWorkspace, slug: 'limity', goal: 'Ograniczyć limity płatności cyklicznych.' },
+    facts: { ...newWorkspaceFacts, mergeReason: 'dirty', slug: 'limity' },
+  },
+  play: async ({ canvas }) => {
+    await canvas.findByLabelText('Ustawienia tworzenia');
+    const settings = settingsList(canvas);
+    await expect(
+      settings.getByText(
+        'To środowisko pracy ma niezapisane zmiany. Specyfikację nadal możesz utworzyć; zatwierdź je (commit) lub odłóż (stash) przed scaleniem do niego.',
+      ),
+    ).toBeVisible();
+    await expect(settings.getByText('limity')).toBeInTheDocument();
+    await expect(
+      settings.getByText('Ograniczyć limity płatności cyklicznych.'),
+    ).toBeInTheDocument();
+    await expect(canvas.queryByRole('alert')).not.toBeInTheDocument();
+  },
+};
+
+/**
+ * A long name, a long branch and no spaces to break at: the single heading wraps inside 320 px
+ * (clamped to three lines, the full name stays in its tooltip), nothing scrolls sideways.
+ */
 export const LongTitleAt320: Story = {
   args: {
     request: {
@@ -228,13 +309,19 @@ export const LongTitleAt320: Story = {
           'feature/ograniczenia-platnosci-cyklicznych-dla-klientow-korporacyjnych-w-kanalach-zdalnych',
       },
     },
+    facts: {
+      ...newWorkspaceFacts,
+      branch:
+        'feature/ograniczenia-platnosci-cyklicznych-dla-klientow-korporacyjnych-w-kanalach-zdalnych',
+    },
   },
   play: async ({ canvas, canvasElement }) => {
     await settleOwnerV4('creation-progress-320', 320, 740);
     await canvas.findByText('Przygotowanie środowiska pracy');
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320);
-    const heading = canvas.getByRole('heading', { level: 1, name: 'Tworzenie specyfikacji' });
+    const heading = canvas.getByRole('heading', { level: 1, name: /^Tworzenie specyfikacji: Ogr/ });
     await expect(heading.getBoundingClientRect().right).toBeLessThanOrEqual(320);
+    await expect(heading).toHaveAttribute('title', expect.stringMatching(/dostawcami rozliczeń$/));
     for (const row of steps(canvasElement).getAllByRole('listitem'))
       await expect(row.getBoundingClientRect().right).toBeLessThanOrEqual(320);
   },
@@ -251,10 +338,13 @@ export const NoLiveSteps: Story = {
 
 /** Done: every step is checked, the page says so and the specification opens by itself (or on the button). */
 export const Success: Story = {
-  args: { request: newWorkspace, server: 'completed', onOpen: fn() },
+  args: { request: newWorkspace, facts: newWorkspaceFacts, server: 'completed', onOpen: fn() },
   play: async ({ canvas, canvasElement, args }) => {
     await expect(
-      await canvas.findByRole('heading', { level: 1, name: 'Specyfikacja utworzona' }),
+      await canvas.findByRole('heading', {
+        level: 1,
+        name: 'Specyfikacja utworzona: Limity płatności',
+      }),
     ).toBeInTheDocument();
     await expect(canvas.getByRole('button', { name: 'Otwórz specyfikację' })).toBeInTheDocument();
     for (const row of steps(canvasElement).getAllByRole('listitem'))
@@ -272,7 +362,10 @@ export const Refused: Story = {
   },
   play: async ({ canvas, userEvent, args }) => {
     await expect(
-      await canvas.findByRole('heading', { level: 1, name: 'Nie utworzono specyfikacji' }),
+      await canvas.findByRole('heading', {
+        level: 1,
+        name: 'Nie utworzono specyfikacji: Limity płatności',
+      }),
     ).toBeInTheDocument();
     await expect(await canvas.findByRole('alert')).toBeInTheDocument();
     await userEvent.click(canvas.getByRole('button', { name: 'Wróć do formularza' }));
@@ -285,7 +378,10 @@ export const UnknownOutcome: Story = {
   args: { request: newWorkspace, server: 'unknown' },
   play: async ({ canvas }) => {
     await expect(
-      await canvas.findByRole('heading', { level: 1, name: 'Wynik jeszcze niepotwierdzony' }),
+      await canvas.findByRole('heading', {
+        level: 1,
+        name: 'Wynik jeszcze niepotwierdzony: Limity płatności',
+      }),
     ).toBeInTheDocument();
     await expect(await canvas.findByRole('button', { name: 'Sprawdź wynik' })).toBeEnabled();
     await expect(canvas.queryByRole('button', { name: 'Wróć do formularza' })).toBeNull();
@@ -312,6 +408,8 @@ export const DirectLinkInProgress: Story = {
       await canvas.findByRole('heading', { level: 1, name: 'Tworzenie specyfikacji' }),
     ).toBeInTheDocument();
     await canvas.findByText('Przygotowanie środowiska pracy');
-    await expect(canvas.queryByText('Limity płatności')).not.toBeInTheDocument();
+    // Nothing is known about this Create: no name in the heading and no settings are guessed.
+    await expect(canvas.queryByText(/Limity płatności/)).not.toBeInTheDocument();
+    await expect(canvas.queryByLabelText('Ustawienia tworzenia')).not.toBeInTheDocument();
   },
 };

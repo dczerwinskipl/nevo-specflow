@@ -905,8 +905,7 @@
         "slugSwitch": "Edit the name (slug)",
         "slugSwitchDescription": "The slug names the specification folder, the worktree folder and the new branch. It follows the specification name until you edit it.",
         "slugLabel": "Slug",
-        "slugPlaceholder": "payment-limits",
-        "slugHelp": "New branch: <branch/>"
+        "slugPlaceholder": "payment-limits"
       },
       "suggestion": {
         "title": "Do you want to merge the changes back into <branch/> later?",

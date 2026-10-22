@@ -10,7 +10,7 @@ import {
   type CreateOptions,
 } from '@nevo/specflow-contracts/specs';
 import { BranchRef } from '../../../../shared/git/BranchRef';
-import { branchFieldValue, branchPreview, derivedSlug, effectiveSlug } from './createRequest';
+import { branchFieldValue, derivedSlug } from './createRequest';
 import { mergeSuggestion, effectiveTargetBranch } from './mergeSuggestion';
 import { defaultBaseValue, defaultTargetWorkspaceId } from './workspaceTiles';
 import {
@@ -394,16 +394,6 @@ export function NewWorkspaceSettings({
                     set({ slug: { on: true, value: event.target.value, edited: true } })
                   }
                 />
-                <Field.Description>
-                  <Trans
-                    i18nKey="create.workspace.settings.slugHelp"
-                    components={{
-                      branch: (
-                        <BranchRef name={branchPreview(options, effectiveSlug(choice, title))} />
-                      ),
-                    }}
-                  />
-                </Field.Description>
                 {slugErrorText && <Field.Error>{slugErrorText}</Field.Error>}
               </Field>
             )}

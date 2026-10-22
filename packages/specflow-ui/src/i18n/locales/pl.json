@@ -905,8 +905,7 @@
         "slugSwitch": "Zmień nazwę (slug)",
         "slugSwitchDescription": "Slug nazywa katalog specyfikacji, katalog worktree i nową gałąź. Podąża za nazwą specyfikacji, dopóki go nie zmienisz.",
         "slugLabel": "Slug",
-        "slugPlaceholder": "limity-platnosci",
-        "slugHelp": "Nowa gałąź: <branch/>"
+        "slugPlaceholder": "limity-platnosci"
       },
       "suggestion": {
         "title": "Chcesz później scalić zmiany z powrotem do <branch/>?",

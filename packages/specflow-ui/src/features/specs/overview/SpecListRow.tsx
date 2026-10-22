@@ -97,7 +97,7 @@ function SpecRowIdentity({
   return (
     <div className="min-w-0">
       <Typography
-        as={item.collection === 'current' ? 'h3' : 'h2'}
+        as={item.collection === 'current' && !flat ? 'h3' : 'h2'}
         variant="title-sm"
         className="min-w-0 text-content-primary"
         data-spec-title

@@ -58,6 +58,7 @@ function setup(
   http: { post?: ReturnType<typeof vi.fn>; get?: ReturnType<typeof vi.fn> },
   stored?: StoredCreateOperation,
   operationId?: string,
+  snapshot = 'form-1',
 ) {
   const onCreated = vi.fn();
   const announce = vi.fn();
@@ -89,7 +90,7 @@ function setup(
     () => useCreateProjectSpecification({
         stored,
         operationId,
-        snapshot: 'form-1',
+        snapshot,
         onCreated,
         announce,
       }),
@@ -455,10 +456,11 @@ describe('useCreateProjectSpecification', () => {
       const get = vi
         .fn()
         .mockResolvedValue({ ...inProgress, status: 'failed', code: 'BRANCH_ALREADY_EXISTS' });
-      const { model } = setup({ get }, undefined, created.operationId);
+      const { model } = setup({ get }, undefined, created.operationId, '');
       await act(async () => {
         await vi.advanceTimersByTimeAsync(0);
       });
+      expect(model().state.phase).toBe('failed');
       expect(model().state.failure).toMatchObject({ kind: 'branch-exists' });
       expect(model().unknownOperation).toBe(false);
     });

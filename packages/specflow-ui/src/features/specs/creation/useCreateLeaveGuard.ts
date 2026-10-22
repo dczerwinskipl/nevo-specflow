@@ -15,17 +15,20 @@ export interface CreateLeaveGuard {
 }
 
 /**
- * Router leave guard of the Create form. An unfinished operation blocks silently; unsaved edits ask
- * first. Completing the operation navigates on purpose and is always allowed.
+ * Router leave guard of the Create form. Unsaved edits ask first. An unfinished operation never
+ * blocks navigation: the server finishes it and the stored operation is resumed when the user comes
+ * back to Create, so the form's own edits are not at risk either (they are the operation's request).
+ * Completing the operation navigates on purpose and is always allowed. Closing the tab is the one
+ * way to lose the resume, so the browser's own "leave site?" prompt covers an unfinished operation.
  */
 export function useCreateLeaveGuard(options: {
-  /** An in-flight or unresolved operation: leaving would abandon it. */
-  blocksLeave: boolean;
+  /** An operation is in flight or unresolved (see `CreateOperationFlags.unfinished`). */
+  unfinished: boolean;
   /** The form differs from its initial state. */
   dirty: boolean;
   isNavigationAllowed: () => boolean;
 }): CreateLeaveGuard {
-  const { blocksLeave, dirty, isNavigationAllowed } = options;
+  const { unfinished, dirty, isNavigationAllowed } = options;
   const [open, setOpen] = useState(false);
   const resolveLeave = useRef<((blocked: boolean) => void) | null>(null);
   const origin = useRef<HTMLElement | null>(null);
@@ -38,16 +41,18 @@ export function useCreateLeaveGuard(options: {
   useBlocker({
     shouldBlockFn: () => {
       if (isNavigationAllowed()) return false;
-      if (blocksLeave) return true;
-      if (!dirty) return false;
+      // The operation carries the form's content and outlives this screen: nothing to confirm.
+      if (unfinished || !dirty) return false;
       return new Promise<boolean>((resolve) => {
+        // A second navigation while the dialog is open must not orphan the first one.
+        resolveLeave.current?.(true);
         origin.current =
           document.activeElement instanceof HTMLElement ? document.activeElement : null;
         resolveLeave.current = resolve;
         setOpen(true);
       });
     },
-    enableBeforeUnload: blocksLeave || dirty,
+    enableBeforeUnload: unfinished || dirty,
   });
   return {
     open,

@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useRef,
-  type Dispatch,
-  type MutableRefObject,
-  type SetStateAction,
-} from 'react';
+import { useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import {
   Alert,
   Button,
@@ -16,30 +10,21 @@ import {
   Typography,
 } from '@nevo/ui';
 import { Trans, useTranslation } from 'react-i18next';
-import { useMessage } from '../../../i18n/message';
-import { OptionSelect } from '../../../shared/controls/OptionSelect';
-import type { DemoCreateOptions } from '@nevo/specflow-contracts/demo';
-import { BranchRef } from './BranchRef';
+import { useMessage } from '../../../../i18n/message';
+import { OptionSelect } from '../../../../shared/controls/OptionSelect';
 import {
-  branchFieldValue,
-  branchPreview,
-  defaultBaseValue,
-  defaultTargetWorkspaceId,
-  derivedSlug,
-  effectiveSlug,
-  effectiveTargetBranch,
-  initialWorkspaceChoice,
-  slugError,
-  mergeSuggestion,
-  noBranchLabel,
-  reasonText,
-  reasonTextInline,
-  specCountLabel,
-  type WorkspaceChoice,
-  type WorkspaceErrors,
-} from './workspaceChoice';
-
-type FocusTarget = 'base' | 'target' | 'branch' | 'slug';
+  BRANCH_NAME_MAX_LENGTH,
+  SPEC_SLUG_MAX_LENGTH,
+  type CreateOptions,
+} from '@nevo/specflow-contracts/specs';
+import { BranchRef } from '../../../../shared/git/BranchRef';
+import { branchFieldValue, branchPreview, derivedSlug, effectiveSlug } from './createRequest';
+import { mergeSuggestion, effectiveTargetBranch } from './mergeSuggestion';
+import { defaultBaseValue, defaultTargetWorkspaceId } from './workspaceTiles';
+import { noBranchLabel, reasonText, reasonTextInline, specCountLabel } from './workspaceCopy';
+import { slugError, type WorkspaceErrors } from './workspaceValidation';
+import { initialWorkspaceChoice, type WorkspaceChoice } from './workspaceChoice';
+import type { WorkspaceConflicts } from './workspaceConflicts';
 
 /** Focusable controls of the settings, so an owner can focus an invalid one without DOM queries. */
 export interface WorkspaceSettingsControls {
@@ -54,7 +39,7 @@ export function WorkspaceLabel({
   workspace,
   truncate = false,
 }: {
-  workspace: DemoCreateOptions['workspaces'][number];
+  workspace: CreateOptions['workspaces'][number];
   /** One line with an ellipsis (Select); the searchable list wraps so similar names stay distinct. */
   truncate?: boolean;
 }) {
@@ -73,7 +58,7 @@ export function WorkspaceRef({
   workspace,
   truncate = false,
 }: {
-  workspace: DemoCreateOptions['workspaces'][number];
+  workspace: CreateOptions['workspaces'][number];
   truncate?: boolean;
 }) {
   const text = useMessage();
@@ -98,29 +83,25 @@ export function NewWorkspaceSettings({
   choice,
   update,
   errors,
-  branchConflict,
-  focusBranchSignal = 0,
+  conflicts,
   title,
-  slugConflict,
-  focusSlugSignal = 0,
   onAnnounce,
   controls,
+  onRequestFocus,
 }: {
-  options: DemoCreateOptions;
+  options: CreateOptions;
   choice: WorkspaceChoice;
   update: Dispatch<SetStateAction<WorkspaceChoice>>;
   errors: WorkspaceErrors;
-  /** Branch name the server reported as taken; shown as the field error until it is edited. */
-  branchConflict?: string;
-  focusBranchSignal?: number;
+  /** What the server refused about the typed branch or slug; shown at the field until it is edited. */
+  conflicts?: WorkspaceConflicts;
   /** The specification name: the generated slug and branch preview derive from it. */
   title: string;
-  /** Slug the server reported as taken; shown as the field error until it is edited. */
-  slugConflict?: string;
-  focusSlugSignal?: number;
   onAnnounce: (message: string) => void;
   /** Owner-held refs; defaults to refs private to the settings. */
   controls?: WorkspaceSettingsControls;
+  /** Focus a control once the render this event causes is done (its field may not exist yet). */
+  onRequestFocus: (field: 'base' | 'target') => void;
 }) {
   const { t } = useTranslation();
   const text = useMessage();
@@ -131,27 +112,6 @@ export function NewWorkspaceSettings({
     slug: useRef<HTMLInputElement | null>(null),
   };
   const refs = controls ?? ownRefs;
-  const pendingFocus = useRef<FocusTarget | null>(null);
-  const seenSignal = useRef(0);
-  const seenSlugSignal = useRef(0);
-  useEffect(() => {
-    if (focusBranchSignal > seenSignal.current) {
-      seenSignal.current = focusBranchSignal;
-      pendingFocus.current = 'branch';
-    }
-    if (focusSlugSignal > seenSlugSignal.current) {
-      seenSlugSignal.current = focusSlugSignal;
-      pendingFocus.current = 'slug';
-    }
-    const next = pendingFocus.current;
-    if (!next) return;
-    const element = refs[next].current;
-    if (element) {
-      element.focus();
-      pendingFocus.current = null;
-    }
-  });
-
   const set = (patch: Partial<WorkspaceChoice>) => update((current) => ({ ...current, ...patch }));
   const primary = options.workspaces.find((w) => w.workspaceId === options.primaryWorkspaceId);
   const targets = options.workspaces;
@@ -160,19 +120,28 @@ export function NewWorkspaceSettings({
   const suggestion = mergeSuggestion(choice, options);
   const currentTarget = effectiveTargetBranch(choice, options);
 
+  // A value the (refreshed) options invalidated sits in this panel: keep it open so the flagged
+  // field is visible instead of a silently blocked Create.
+  const flagged = Boolean(errors.base ?? errors.target ?? errors.slug ?? errors.branch);
   const baseUnavailable = options.baseRefs.length === 0;
   const targetUnavailable = selectableTargets.length === 0;
   const branchError =
     errors.branch && choice.branch.name.trim()
       ? text(errors.branch)
-      : branchConflict && choice.branch.edited && choice.branch.name.trim() === branchConflict
-        ? t('create.workspace.errors.branchExists')
+      : conflicts?.branch &&
+          choice.branch.edited &&
+          choice.branch.name.trim() === conflicts.branch.value
+        ? t(
+            conflicts.branch.reason === 'invalid'
+              ? 'create.workspace.errors.branchRejected'
+              : 'create.workspace.errors.branchExists',
+          )
         : undefined;
   const slugValue = choice.slug.edited ? choice.slug.value : derivedSlug(title);
   const typedSlugError = choice.slug.edited ? slugError(choice.slug.value) : undefined;
   const slugErrorText = typedSlugError
     ? text(typedSlugError)
-    : slugConflict && choice.slug.edited && choice.slug.value === slugConflict
+    : conflicts?.slug && choice.slug.edited && choice.slug.value === conflicts.slug.value
       ? t('create.workspace.errors.slugTaken')
       : undefined;
   const branchValue = branchFieldValue(choice, options, title);
@@ -192,7 +161,7 @@ export function NewWorkspaceSettings({
   return (
     <Collapsible
       className="col-start-2 -ml-control-padding-compact"
-      isExpanded={choice.settingsOpen}
+      isExpanded={choice.settingsOpen || flagged}
       onExpandedChange={(open) => set({ settingsOpen: open })}
     >
       <Collapsible.Trigger className="w-full">
@@ -275,7 +244,7 @@ export function NewWorkspaceSettings({
                     size="sm"
                     variant="secondary"
                     onClick={() => {
-                      pendingFocus.current = 'target';
+                      onRequestFocus('target');
                       update((current) => ({
                         ...current,
                         settingsOpen: true,
@@ -294,7 +263,7 @@ export function NewWorkspaceSettings({
                     size="sm"
                     variant="ghost"
                     onClick={() => {
-                      pendingFocus.current = 'base';
+                      onRequestFocus('base');
                       update((current) => ({
                         ...current,
                         dismissedSuggestions: {
@@ -420,7 +389,7 @@ export function NewWorkspaceSettings({
                 <TextInput
                   ref={refs.slug}
                   value={slugValue}
-                  maxLength={200}
+                  maxLength={SPEC_SLUG_MAX_LENGTH}
                   placeholder={t('create.workspace.settings.slugPlaceholder')}
                   autoCapitalize="none"
                   autoCorrect="off"
@@ -463,7 +432,7 @@ export function NewWorkspaceSettings({
                 <TextInput
                   ref={refs.branch}
                   value={branchValue}
-                  maxLength={200}
+                  maxLength={BRANCH_NAME_MAX_LENGTH}
                   placeholder={t('create.workspace.settings.branchPlaceholder')}
                   autoCapitalize="none"
                   autoCorrect="off"

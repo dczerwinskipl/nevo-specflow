@@ -4,6 +4,7 @@ import {
   initialCreateOperation,
   phaseOfFailure,
   selectCreateOperationFlags,
+  visibleCreateOperation,
   type CreateOperationEvent,
   type CreateOperationState,
   type CreateOperationStatus,
@@ -176,10 +177,21 @@ describe('createOperationReducer legal transitions', () => {
     });
   });
 
-  it('editing the form retires only a definite failure of another form snapshot', () => {
-    expect(reduce(failed, { type: 'form-edited', snapshot: 'form-2' }).phase).toBe('idle');
-    expect(reduce(failed, { type: 'form-edited', snapshot }).phase).toBe('failed');
+  it('an edit hides only a definite failure of another form snapshot', () => {
+    expect(visibleCreateOperation(failed, 'form-2')).toMatchObject({
+      phase: 'idle',
+      failure: null,
+    });
+    expect(visibleCreateOperation(failed, snapshot)).toBe(failed);
   });
+
+  it.each(['outcome-unknown', 'recovery-required'] as const)(
+    'an edit never hides an unknown outcome (%s)',
+    (phase) => {
+      const unknown = { ...failed, phase };
+      expect(visibleCreateOperation(unknown, 'another')).toBe(unknown);
+    },
+  );
 });
 
 describe('createOperationReducer ignores illegal events', () => {
@@ -227,10 +239,9 @@ describe('createOperationReducer ignores illegal events', () => {
   );
 
   it.each(['idle', 'submitting', 'outcome-unknown', 'recovery-required', 'completed'] as const)(
-    'failure-dismissed and form-edited never end %s',
+    'failure-dismissed never ends %s',
     (phase) => {
       ignored(phase, { type: 'failure-dismissed' });
-      ignored(phase, { type: 'form-edited', snapshot: 'another' });
     },
   );
 });
@@ -246,7 +257,7 @@ describe('monitoring (the Runtime accepted the operation: 202, or a check found 
     expect(selectCreateOperationFlags(prepared)).toMatchObject({
       busy: true,
       monitoring: true,
-      blocksLeave: true,
+      unfinished: true,
     });
   });
 
@@ -295,21 +306,21 @@ describe('selectCreateOperationFlags', () => {
   it('derives the flags from phase and failure', () => {
     expect(selectCreateOperationFlags(initialCreateOperation)).toMatchObject({
       busy: false,
-      blocksLeave: false,
+      unfinished: false,
     });
-    expect(selectCreateOperationFlags(submitting)).toMatchObject({ busy: true, blocksLeave: true });
+    expect(selectCreateOperationFlags(submitting)).toMatchObject({ busy: true, unfinished: true });
     expect(selectCreateOperationFlags(uncertain)).toMatchObject({
       uncertain: true,
-      blocksLeave: true,
+      unfinished: true,
     });
     expect(selectCreateOperationFlags(recovery)).toMatchObject({
       recovery: true,
-      blocksLeave: true,
+      unfinished: true,
     });
     const forbidden = reduce(submitting, { type: 'submit-failed', failure: failure('forbidden') });
     expect(selectCreateOperationFlags(forbidden)).toMatchObject({
       forbidden: true,
-      blocksLeave: false,
+      unfinished: false,
     });
   });
 

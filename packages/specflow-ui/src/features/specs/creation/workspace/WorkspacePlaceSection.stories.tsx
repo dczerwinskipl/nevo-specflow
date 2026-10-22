@@ -1,22 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { browserPage } from '../../../test-support/browserPage';
+import { browserPage } from '../../../../test-support/browserPage';
 import { expect, waitFor, within } from 'storybook/test';
 import { TooltipProvider } from '@nevo/ui';
-import { WorkspaceSection, type WorkspaceOptionsState } from './WorkspaceSection';
 import {
-  buildCreateTarget,
-  initialWorkspaceChoice,
-  problems,
-  type WorkspaceChoice,
-} from './workspaceChoice';
+  WorkspacePlaceSection,
+  type WorkspaceOptionsState,
+  type WorkspacePlaceSectionHandle,
+} from './WorkspacePlaceSection';
+import { useAnnouncer } from '../../../../shared/a11y/useAnnouncer';
+import { buildCreateTarget } from './createRequest';
+import { initialWorkspaceChoice, type WorkspaceChoice } from './workspaceChoice';
+import { problems } from './workspaceValidation';
 import {
   createOptionsFixture,
   workspaceIds,
   type OptionsVariant,
-} from './creationOptions.stories-support';
-import { polishText } from '../../../i18n/testing';
-import { withLocale } from '../../../i18n/StoryLocalization';
+} from '../creationOptions.stories-support';
+import { polishText } from '../../../../i18n/testing';
+import { withLocale } from '../../../../i18n/StoryLocalization';
 
 /**
  * Presentation contract of "Gdzie chcesz pracować?" without any network: the options reach the
@@ -45,14 +47,20 @@ function Harness({
   branchConflict?: string;
 }) {
   const [choice, setChoice] = useState<WorkspaceChoice>({ ...initialWorkspaceChoice, ...initial });
-  const [announcement, setAnnouncement] = useState('');
+  const { announce, region } = useAnnouncer();
+  const handle = useRef<WorkspacePlaceSectionHandle>(null);
+  // The owner flags a refused typed field after the form was submitted; the story does it on mount.
+  useEffect(() => {
+    if (branchConflict) handle.current?.focusField('branch');
+    else if (slugConflict) handle.current?.focusField('slug');
+  }, [branchConflict, slugConflict]);
   const options = createOptionsFixture(variant);
   const state: WorkspaceOptionsState = status === 'ready' ? { status, options } : { status };
   return (
     <TooltipProvider>
       <div className="@container w-full" style={{ maxWidth: 1100, margin: '0 auto' }}>
         <form onSubmit={(event) => event.preventDefault()} className="grid gap-4 p-4">
-          <WorkspaceSection
+          <WorkspacePlaceSection
             headingId="workspace-heading"
             title={title}
             state={state}
@@ -61,14 +69,15 @@ function Harness({
             choice={choice}
             update={setChoice}
             locked={locked}
-            onRefresh={() => setAnnouncement('Opcje odświeżone.')}
-            announcement={announcement}
-            onAnnounce={setAnnouncement}
-            branchConflict={branchConflict}
-            focusBranchSignal={branchConflict ? 1 : 0}
-            slugConflict={slugConflict}
-            focusSlugSignal={slugConflict ? 1 : 0}
+            onRefresh={() => announce('Opcje odświeżone.')}
+            onAnnounce={announce}
+            conflicts={{
+              ...(branchConflict ? { branch: { value: branchConflict, reason: 'exists' } } : {}),
+              ...(slugConflict ? { slug: { value: slugConflict } } : {}),
+            }}
+            handleRef={handle}
           />
+          {region}
           <div
             role="note"
             className="break-all text-body-sm"

@@ -124,7 +124,7 @@ describe('useCreateSpecification', () => {
       await model().actions.submit(submission());
     });
     expect(model().state.phase).toBe('outcome-unknown');
-    expect(model().flags.blocksLeave).toBe(true);
+    expect(model().flags.unfinished).toBe(true);
     // The form changed meanwhile: the replay must still send the retained request.
     await act(async () => {
       await model().actions.submit(submission({ title: 'Changed', snapshot: 'form-2' }));

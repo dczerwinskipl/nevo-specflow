@@ -1,16 +1,14 @@
 import { useId, type ReactNode, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Button, Icon } from '@nevo/ui';
+import { Button, Icon } from '@nevo/ui';
 
 /**
- * Footer of the Create form: configuration warning, the failure alert region, the one reason Create
+ * Footer of the Create form: the region for the failure alert and progress, the one reason Create
  * is unavailable (or the note about what Create does) and the submit button.
  */
 export function CreateFooter({
   actionRegion,
   submitRef,
-  configurationUnavailable,
-  onRefreshConfiguration,
   failureAlert,
   prerequisite,
   note,
@@ -19,8 +17,6 @@ export function CreateFooter({
 }: {
   actionRegion: RefObject<HTMLDivElement | null>;
   submitRef: RefObject<HTMLButtonElement | null>;
-  configurationUnavailable: boolean;
-  onRefreshConfiguration: () => void;
   failureAlert: ReactNode;
   /** Translated reason Create is unavailable; undefined shows `note` instead. */
   prerequisite: string | undefined;
@@ -31,42 +27,37 @@ export function CreateFooter({
   const { t } = useTranslation();
   const prerequisiteId = useId();
   return (
-    <div className="grid gap-4">
-      {configurationUnavailable && (
-        <Alert tone="attention" title={t('create.configUnavailable.title')}>
-          <p>{t('create.configUnavailable.body')}</p>
-          <Button type="button" onClick={onRefreshConfiguration}>
-            {t('create.configUnavailable.refresh')}
+    <div
+      ref={actionRegion}
+      role="group"
+      className="grid gap-4 pb-2"
+      aria-label={t('create.formRegion')}
+    >
+      {failureAlert}
+      <footer className="flex flex-col gap-3 @lg:flex-row @lg:items-center @lg:justify-between">
+        {prerequisite ? (
+          <p
+            id={prerequisiteId}
+            className="flex min-w-0 items-start gap-2 text-body-sm text-content-secondary"
+          >
+            <Icon name="info" size="sm" />
+            <span className="min-w-0">{prerequisite}</span>
+          </p>
+        ) : (
+          <p className="min-w-0 text-body-sm text-content-secondary">{note}</p>
+        )}
+        <div className="w-full @lg:w-auto @lg:shrink-0">
+          <Button
+            ref={submitRef}
+            type="submit"
+            width="full"
+            aria-describedby={prerequisite ? prerequisiteId : undefined}
+            disabled={submitDisabled}
+          >
+            {submitLabel}
           </Button>
-        </Alert>
-      )}
-      <div ref={actionRegion} className="grid gap-4 pb-2" aria-label={t('create.formRegion')}>
-        {failureAlert}
-        <footer className="flex flex-col gap-3 @lg:flex-row @lg:items-center @lg:justify-between">
-          {prerequisite ? (
-            <p
-              id={prerequisiteId}
-              className="flex min-w-0 items-start gap-2 text-body-sm text-content-secondary"
-            >
-              <Icon name="info" size="sm" />
-              <span className="min-w-0">{prerequisite}</span>
-            </p>
-          ) : (
-            <p className="min-w-0 text-body-sm text-content-secondary">{note}</p>
-          )}
-          <div className="w-full @lg:w-auto @lg:shrink-0">
-            <Button
-              ref={submitRef}
-              type="submit"
-              width="full"
-              aria-describedby={prerequisite ? prerequisiteId : undefined}
-              disabled={submitDisabled}
-            >
-              {submitLabel}
-            </Button>
-          </div>
-        </footer>
-      </div>
+        </div>
+      </footer>
     </div>
   );
 }

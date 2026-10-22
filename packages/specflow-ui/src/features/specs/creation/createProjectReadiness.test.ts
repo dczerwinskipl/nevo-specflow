@@ -5,7 +5,7 @@ import {
   createTitleMaxLength,
   projectCreateReadiness,
 } from './createProjectReadiness';
-import { initialWorkspaceChoice } from './workspaceChoice';
+import { initialWorkspaceChoice } from './workspace/workspaceChoice';
 
 const ready = { status: 'ready', options: createOptionsFixture('default') } as const;
 const base = {

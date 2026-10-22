@@ -21,8 +21,8 @@ export interface CreateOperationStatus {
  *                      submit-started
  *   idle ───────────────────────────────────────┐
  *     ▲                                         ▼
- *     │ failure-dismissed /               ┌────────────┐  submit-succeeded   ┌───────────┐
- *     │ form-edited (snapshot changed)    │ submitting │────────────────────▶│ completed │ (terminal)
+ *     │ failure-dismissed                 ┌────────────┐  submit-succeeded   ┌───────────┐
+ *     │                                   │ submitting │────────────────────▶│ completed │ (terminal)
  *     │                                   └────────────┘  (201, sync answer) └───────────┘
  *   ┌────────┐   submit-failed (definite answer)  │ │ │ submit-failed (no / unreadable answer)
  *   │ failed │◀───────────────────────────────────┘ │ └──────────────────────────┐
@@ -49,7 +49,9 @@ export interface CreateOperationStatus {
  * An older Runtime that ignores async mode answers 201 directly (submitting -> completed).
  *
  * Illegal events for the current phase are ignored (the state object is returned unchanged).
- * `form-edited` never retires an unknown outcome: only the server's answer ends it.
+ * Editing the form retires the alert of a definite failure, but only in what is shown
+ * (`visibleCreateOperation`, derived in render): an unknown outcome is never retired by an edit, only
+ * the server's answer ends it.
  */
 export type CreatePhase =
   | 'idle'
@@ -101,12 +103,17 @@ export type CreateOperationEvent =
   | { type: 'check-started' }
   | { type: 'check-found-completed' }
   | { type: 'check-not-started'; status: CreateOperationStatus; snapshot: string }
-  | { type: 'check-failed-operation'; status: CreateOperationStatus; snapshot: string }
+  | {
+      type: 'check-failed-operation';
+      status: CreateOperationStatus;
+      snapshot: string;
+      /** What the failure code means; the plain "finished without a result" failure when absent. */
+      failure?: CreateFailure;
+    }
   | { type: 'check-unreadable'; status?: CreateOperationStatus }
   /** The checked operation is still open on the server (in progress / awaiting recovery). */
   | { type: 'check-still-open'; status: CreateOperationStatus }
-  | { type: 'failure-dismissed' }
-  | { type: 'form-edited'; snapshot: string };
+  | { type: 'failure-dismissed' };
 
 export const initialCreateOperation: CreateOperationState = {
   phase: 'idle',
@@ -224,8 +231,11 @@ export function createOperationReducer(
       return state.checking && isUnknown(state.phase)
         ? {
             ...state,
-            phase: 'failed',
-            failure: { kind: 'failed', operationFailed: true, snapshot: event.snapshot },
+            phase: event.failure ? phaseOfFailure(event.failure) : 'failed',
+            failure: {
+              ...(event.failure ?? { kind: 'failed', operationFailed: true }),
+              snapshot: event.snapshot,
+            },
             sent: null,
             status: event.status,
             checking: false,
@@ -246,12 +256,21 @@ export function createOperationReducer(
       return state.phase === 'failed'
         ? { ...state, phase: 'idle', failure: null, submitFailed: false }
         : state;
-    case 'form-edited':
-      // A conflict describes the attempt that produced it; an unknown outcome is never retired.
-      return state.phase === 'failed' && state.failure && state.failure.snapshot !== event.snapshot
-        ? { ...state, phase: 'idle', failure: null }
-        : state;
   }
+}
+
+/**
+ * What the screen shows for the form it currently has: a definite failure describes the attempt
+ * (form snapshot) that produced it, so for another snapshot it is not shown and the form is idle.
+ * An unknown outcome is never hidden by an edit.
+ */
+export function visibleCreateOperation(
+  state: CreateOperationState,
+  snapshot: string,
+): CreateOperationState {
+  return state.phase === 'failed' && state.failure && state.failure.snapshot !== snapshot
+    ? { ...state, phase: 'idle', failure: null }
+    : state;
 }
 
 /** What the presentation asks about the operation; derived, never stored. */
@@ -263,8 +282,11 @@ export interface CreateOperationFlags {
   uncertain: boolean;
   recovery: boolean;
   forbidden: boolean;
-  /** Leaving would abandon an in-flight or unresolved operation. */
-  blocksLeave: boolean;
+  /**
+   * An operation is in flight or unresolved. Leaving is allowed (the server finishes it and the
+   * stored operation is resumed on return); only closing the tab loses that, so it asks the browser.
+   */
+  unfinished: boolean;
 }
 
 export function selectCreateOperationFlags(state: CreateOperationState): CreateOperationFlags {
@@ -279,6 +301,6 @@ export function selectCreateOperationFlags(state: CreateOperationState): CreateO
     uncertain,
     recovery,
     forbidden: state.failure?.kind === 'forbidden',
-    blocksLeave: busy || uncertain || recovery,
+    unfinished: busy || uncertain || recovery,
   };
 }

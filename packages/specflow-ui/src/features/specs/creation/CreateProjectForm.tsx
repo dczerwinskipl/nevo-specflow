@@ -1,27 +1,18 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
-import { useVisitFreshOptions } from './visitFreshOptions';
-import { Alert, Field, Separator, TextArea, TextInput, Typography } from '@nevo/ui';
+import { Field, Separator, TextArea, TextInput, Typography } from '@nevo/ui';
 import type { CreatedSpec } from '@nevo/specflow-contracts/specs';
-import type { CreateFailure } from './createFailure';
 import { isApiError } from '../../../api';
 import { ApplicationContextLine } from '../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../app/useAppServices';
 import { useMessage } from '../../../i18n/message';
-import { OperationProgress } from '../../../shared/operations/OperationProgress';
-import { useOperationProgress } from '../../../shared/operations/useOperationProgress';
+import { useAnnouncer } from '../../../shared/a11y/useAnnouncer';
 import { projectCreationKeys } from './api.project';
-import { CreateFailureAlert, type CopyKind } from './CreateFailureAlert';
+import { CreateFailurePanel } from './CreateFailurePanel';
 import { CreateFooter } from './CreateFooter';
 import { CreateLeaveDialog } from './CreateLeaveDialog';
+import { CreateProgressPanel } from './CreateProgressPanel';
 import { CreateShell } from './CreateShell';
-import { buildOperationDetails } from './createOperationDetails';
-import {
-  createProgressLabel,
-  createProgressPlaceholderRows,
-  createProgressSteps,
-} from './createProgress';
 import { useCreateOperationStorage } from './createOperationStorage';
 import {
   createGoalMaxLength,
@@ -29,222 +20,103 @@ import {
   projectCreateReadiness,
 } from './createProjectReadiness';
 import { useCreateLeaveGuard } from './useCreateLeaveGuard';
+import { useCreateOptions } from './useCreateOptions';
 import { useCreateProjectSpecification } from './useCreateProjectSpecification';
-import type { StreamHint } from './watchCreateOperation';
 import { useRevealFailure } from './useRevealFailure';
-import {
-  WorkspaceSection,
-  type WorkspaceOptionsState,
-  type WorkspaceSectionHandle,
-} from './WorkspaceSection';
-import {
-  activeTile,
-  buildCreateSlug,
-  buildCreateTarget,
-  initialWorkspaceChoice,
-  requestChoiceSnapshot,
-  revalidate,
-  type WorkspaceChoice,
-} from './workspaceChoice';
+import { WorkspacePlaceSection } from './workspace/WorkspacePlaceSection';
+import { buildCreateSlug, buildCreateTarget } from './workspace/createRequest';
+import { requestChoiceSnapshot } from './workspace/workspaceChoice';
+import { useWorkspacePlace } from './workspace/useWorkspacePlace';
 
 /**
  * The Create form of a project Runtime: the specification name, an optional goal and where it
  * lives (new worktree, main workspace or an existing one). The agent session, workflow and initial
- * documents of the demo are not part of the real Create. The operation itself (retained id,
- * watching, check, resume) is `useCreateProjectSpecification`.
+ * documents of the demo are not part of the real Create. Each concern has its own owner: the
+ * options (`useCreateOptions`), the place choice (`useWorkspacePlace`), the operation itself
+ * (`useCreateProjectSpecification`: retained id, watching, check, resume) and what it shows
+ * (`CreateProgressPanel`, `CreateFailurePanel`); this component wires them to the form fields.
  */
 export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedSpec) => void }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const text = useMessage();
-  const { projectCreationApi, operationsApi } = useAppServices();
+  const { projectCreationApi } = useAppServices();
   const storage = useCreateOperationStorage();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const submitRef = useRef<HTMLButtonElement>(null);
-  const workspaceHandle = useRef<WorkspaceSectionHandle>(null);
   const gitHeadingId = useId();
+  const { announce, region } = useAnnouncer();
 
   // An operation the previous page left unconfirmed: the form starts from what was sent.
   const [stored] = useState(() => storage.load());
+  const [title, setTitle] = useState(stored?.request.title ?? '');
+  const [goal, setGoal] = useState(stored?.request.goal ?? '');
 
-  const createOptions = useQuery({
+  const createOptions = useCreateOptions({
     queryKey: projectCreationKeys.createOptions,
-    queryFn: ({ signal }) => projectCreationApi.createOptions(signal),
-    // The Git state changes outside the UI, and the answer is a snapshot, not a reservation.
-    staleTime: 0,
-    refetchOnMount: 'always',
-    // Each fetch inspects Git state (slow); the visit-fresh refetch on mount stays, focus does not.
+    fetch: (signal) => projectCreationApi.createOptions(signal),
+    isForbidden: (error) => isApiError(error) && error.kind === 'forbidden',
     refetchOnWindowFocus: false,
-    retry: false,
   });
-  const workspaceOptions = useVisitFreshOptions(createOptions);
-
-  const [title, setTitle] = useState(stored?.request.title ?? ''),
-    [goal, setGoal] = useState(stored?.request.goal ?? ''),
-    [choice, setChoice] = useState<WorkspaceChoice>(initialWorkspaceChoice);
-  const [announcement, setAnnouncement] = useState(''),
-    [branchConflict, setBranchConflict] = useState<string | undefined>(),
-    [focusBranchSignal, setFocusBranchSignal] = useState(0),
-    [slugConflict, setSlugConflict] = useState<string | undefined>(),
-    [focusSlugSignal, setFocusSlugSignal] = useState(0),
-    [refreshFocusPending, setRefreshFocusPending] = useState(false);
+  const { options: workspaceOptions } = createOptions;
+  const place = useWorkspacePlace(createOptions, announce);
 
   const configurationSnapshot = JSON.stringify({
     title,
     goal,
-    choice: requestChoiceSnapshot(choice),
+    choice: requestChoiceSnapshot(place.choice),
   });
   const [initialConfiguration] = useState(configurationSnapshot);
-  const configurationDirty = configurationSnapshot !== initialConfiguration;
 
   const { state, flags, actions } = useCreateProjectSpecification({
     stored,
     snapshot: configurationSnapshot,
     onCreated,
-    announce: setAnnouncement,
+    announce,
   });
-  const { busy, monitoring, uncertain, recovery, forbidden: forbiddenCreate } = flags;
+  const { busy, uncertain, recovery, forbidden: forbiddenCreate } = flags;
   const failure = state.failure;
-  // Display only: named steps while the Runtime works. The operation's own state (reducer, POST,
-  // inspection polling) never depends on this stream, which just falls silent if it fails.
-  const progress = useOperationProgress({
-    api: operationsApi,
-    streamUrl: state.sent
-      ? projectCreationApi.operationEventsUrl(state.sent.operationId)
-      : undefined,
-    enabled: busy,
-  });
-
-  // The stream only hastens the next inspection read (completed event) or switches the poll to the
-  // regular backoff (stream lost); the inspection endpoint stays the single source of truth.
-  const { setStreamHint } = actions;
-  const streamHint: StreamHint =
-    progress.outcome !== null && progress.outcome !== 'running'
-      ? 'terminal'
-      : progress.lost
-        ? 'lost'
-        : 'live';
-  useEffect(() => {
-    setStreamHint(streamHint);
-  }, [setStreamHint, streamHint]);
 
   const leaveGuard = useCreateLeaveGuard({
-    blocksLeave: flags.blocksLeave,
-    dirty: configurationDirty,
+    unfinished: flags.unfinished,
+    dirty: configurationSnapshot !== initialConfiguration,
     isNavigationAllowed: actions.isNavigationAllowed,
   });
   const reveal = useRevealFailure(state.submitFailed, state.errorSeq, failure);
 
-  const workspaceForbidden =
-    createOptions.isError &&
-    isApiError(createOptions.error) &&
-    createOptions.error.kind === 'forbidden';
-  const workspaceState: WorkspaceOptionsState = workspaceOptions
-    ? { status: 'ready', options: workspaceOptions }
-    : createOptions.isError
-      ? { status: workspaceForbidden ? 'forbidden' : 'error' }
-      : { status: 'loading' };
-  const locked = busy || uncertain || recovery || forbiddenCreate || workspaceForbidden;
+  const locked = busy || uncertain || recovery || forbiddenCreate || createOptions.forbidden;
   const { prerequisite, canSubmit } = projectCreateReadiness({
     title,
     goal,
-    workspaceState,
-    choice,
-    forbidden: forbiddenCreate || workspaceForbidden,
+    workspaceState: createOptions.state,
+    choice: place.choice,
+    forbidden: forbiddenCreate || createOptions.forbidden,
   });
 
   useEffect(() => {
     headingRef.current?.focus();
   }, []);
 
-  // A refetch (window focus, manual refresh) can invalidate a value that sits in the collapsed
-  // settings panel; open it so the flagged field is visible instead of a silently blocked Create.
-  useEffect(() => {
-    if (!workspaceOptions) return;
-    setChoice((current) => {
-      if (current.settingsOpen || activeTile(current, workspaceOptions) !== 'new') return current;
-      const { existing: _existing, ...settingsErrors } = revalidate(current, workspaceOptions);
-      return Object.keys(settingsErrors).length > 0 ? { ...current, settingsOpen: true } : current;
+  const refreshOptions = () =>
+    void place.refresh({
+      failure,
+      dismissFailure: actions.dismissFailure,
+      fallbackFocus: () => submitRef.current?.focus(),
     });
-  }, [workspaceOptions]);
 
-  // The alert (and the button that was focused in it) is gone: after the re-render, continue at
-  // the first field the refreshed options flagged, else at the submit button.
-  useEffect(() => {
-    if (!refreshFocusPending || failure) return;
-    setRefreshFocusPending(false);
-    if (!workspaceHandle.current?.focusFirstInvalid()) submitRef.current?.focus();
-  }, [refreshFocusPending, failure]);
-
-  const refreshOptions = async () => {
-    if (createOptions.isFetching) return;
-    const result = await createOptions.refetch();
-    // A failed refetch still resolves with the previous data: branch on the status, not on data.
-    if (result.isError || !result.data) {
-      setAnnouncement(t('create.announce.refreshFailed'));
-      return;
-    }
-    const stale = Object.keys(revalidate(choice, result.data)).length > 0;
-    setAnnouncement(stale ? t('create.announce.refreshedStale') : t('create.announce.refreshed'));
-    // The failure described the old options; the refreshed ones are validated field by field.
-    if (failure?.kind === 'stale' || failure?.kind === 'name-conflict') {
-      setRefreshFocusPending(true);
-      actions.dismissFailure();
-    }
-  };
-
-  const submission = () => ({
-    title,
-    goal,
-    slug: workspaceOptions ? buildCreateSlug(choice, workspaceOptions, title) : undefined,
-    buildTarget: () =>
-      workspaceOptions ? buildCreateTarget(choice, workspaceOptions, title) : undefined,
-    snapshot: configurationSnapshot,
-    onFailed: (next: CreateFailure) => {
-      if (next.kind === 'name-conflict') {
-        // A slug the owner typed may be the taken name: say so at the field, keep the form.
-        const sentSlug = workspaceOptions
-          ? buildCreateSlug(choice, workspaceOptions, title)
-          : undefined;
-        if (sentSlug) {
-          setSlugConflict(sentSlug);
-          setChoice((current) => ({ ...current, settingsOpen: true }));
-          setFocusSlugSignal((value) => value + 1);
-        }
-        return;
-      }
-      if (next.kind !== 'branch-exists') return;
-      if (next.automatic) setBranchConflict(undefined);
-      else {
-        setBranchConflict(choice.branch.name.trim());
-        setChoice((current) => ({ ...current, settingsOpen: true }));
-        setFocusBranchSignal((value) => value + 1);
-      }
-    },
-  });
-
-  const operationDetails = () =>
-    buildOperationDetails({
-      sent: state.sent,
-      status: state.status,
-      workspaceOptions,
-      typedTitle: title.trim(),
-      language: i18n.language,
-      t,
-      text,
-    });
-  const copyDetails = (kind: CopyKind) => {
-    const copied = operationDetails()
-      .map(({ id, value }) => `${t(`create.operation.detail.${id}`)}: ${value}`)
-      .join('\n');
-    void navigator.clipboard?.writeText(copied);
-    setAnnouncement(
-      t('create.announce.copied', {
-        label:
-          kind === 'operation'
-            ? t('create.operation.copyLabelOperation')
-            : t('create.operation.copyLabelDiagnostics'),
-      }),
-    );
+  const submission = () => {
+    const slug = workspaceOptions
+      ? buildCreateSlug(place.choice, workspaceOptions, title)
+      : undefined;
+    return {
+      title,
+      goal,
+      slug,
+      buildTarget: () =>
+        workspaceOptions ? buildCreateTarget(place.choice, workspaceOptions, title) : undefined,
+      snapshot: configurationSnapshot,
+      onFailed: (next: Parameters<typeof place.reportFailure>[0]) =>
+        place.reportFailure(next, { slug }),
+    };
   };
 
   const working = busy || state.checking;
@@ -319,78 +191,53 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
           </Field>
         </div>
         <Separator />
-        <WorkspaceSection
+        <WorkspacePlaceSection
           headingId={gitHeadingId}
-          state={workspaceState}
-          refreshing={createOptions.isFetching && Boolean(workspaceOptions)}
-          refreshFailed={createOptions.isRefetchError}
-          choice={choice}
-          update={setChoice}
+          state={createOptions.state}
+          refreshing={createOptions.fetching && Boolean(workspaceOptions)}
+          refreshFailed={createOptions.refreshFailed}
+          choice={place.choice}
+          update={place.setChoice}
           locked={locked}
-          onRefresh={() => void refreshOptions()}
-          announcement={announcement}
-          onAnnounce={setAnnouncement}
+          onRefresh={refreshOptions}
+          onAnnounce={announce}
           title={title}
-          branchConflict={branchConflict}
-          focusBranchSignal={focusBranchSignal}
-          slugConflict={slugConflict}
-          focusSlugSignal={focusSlugSignal}
-          handleRef={workspaceHandle}
+          conflicts={place.conflicts}
+          handleRef={place.handleRef}
         />
         <Separator />
         <CreateFooter
           actionRegion={reveal.actionRegion}
           submitRef={submitRef}
-          configurationUnavailable={false}
-          onRefreshConfiguration={() => undefined}
           failureAlert={
             <>
-              {busy && !failure && (
-                <OperationProgress
-                  steps={createProgressSteps(progress.steps)}
-                  label={createProgressLabel}
-                  placeholderRows={
-                    progress.available ? createProgressPlaceholderRows(state.sent?.target) : 0
-                  }
-                />
-              )}
-              {/* The calm note only when there is no live checklist to look at. */}
-              {monitoring && !failure && progress.lost && progress.steps.length === 0 && (
-                <Alert role="status" tone="info" title={t('create.monitoring.title')}>
-                  <p>{t('create.monitoring.body')}</p>
-                </Alert>
-              )}
+              <CreateProgressPanel
+                operationId={state.sent?.operationId}
+                target={state.sent?.target}
+                busy={busy}
+                monitoring={flags.monitoring}
+                concluded={Boolean(failure)}
+                onStreamHint={actions.setStreamHint}
+              />
               {failure && (
-                <CreateFailureAlert
+                <CreateFailurePanel
                   failure={failure}
-                  details={operationDetails()}
-                  status={state.status}
-                  statusUnreadable={state.statusUnreadable}
-                  connectionLost={state.connectionLost}
-                  refreshing={createOptions.isFetching}
-                  onCopy={copyDetails}
-                  onRefresh={() => void refreshOptions()}
+                  state={state}
+                  workspaceOptions={workspaceOptions}
+                  typedTitle={title.trim()}
+                  refreshing={createOptions.fetching}
+                  announce={announce}
+                  onRefresh={refreshOptions}
                   onUseAutomaticName={() => {
-                    setChoice((current) => ({
-                      ...current,
-                      branch: initialWorkspaceChoice.branch,
-                    }));
+                    place.chooseAutomaticBranch();
                     actions.dismissFailure();
                   }}
                   onUseCustomName={() => {
-                    setChoice((current) => ({
-                      ...current,
-                      settingsOpen: true,
-                      branch: current.branch.on
-                        ? current.branch
-                        : { on: true, name: '', edited: false },
-                    }));
-                    setFocusBranchSignal((value) => value + 1);
+                    place.chooseCustomBranch();
                     actions.dismissFailure();
                   }}
                 />
               )}
-              <CreateLeaveDialog guard={leaveGuard} />
             </>
           }
           prerequisite={showPrerequisite && prerequisite ? text(prerequisite) : undefined}
@@ -398,7 +245,9 @@ export function CreateProjectForm({ onCreated }: { onCreated: (created: CreatedS
           submitLabel={submitLabel}
           submitDisabled={working || (!uncertain && !recovery && !canSubmit)}
         />
+        {region}
       </form>
+      <CreateLeaveDialog guard={leaveGuard} />
     </CreateShell>
   );
 }

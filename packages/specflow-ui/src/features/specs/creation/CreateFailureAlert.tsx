@@ -1,7 +1,7 @@
 import { Alert, Button, Collapsible } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { MessageKey } from '../../../i18n/message';
-import { BranchRef } from './BranchRef';
+import { BranchRef } from '../../../shared/git/BranchRef';
 import type { CreateFailure } from './createFailure';
 import type { CreateOperationStatus } from './createOperationReducer';
 
@@ -14,7 +14,8 @@ function staleReason(code: string): MessageKey {
   }` as MessageKey;
 }
 
-function title(failure: CreateFailure): MessageKey {
+/** Catalogue key of the headline of a failure (also used where only the headline is shown). */
+export function createFailureTitleKey(failure: CreateFailure): MessageKey {
   switch (failure.kind) {
     case 'uncertain':
       return 'create.errors.uncertain.title';
@@ -24,6 +25,8 @@ function title(failure: CreateFailure): MessageKey {
       return failure.automatic
         ? 'create.errors.branchExistsAutomatic.title'
         : 'create.errors.branchExists.title';
+    case 'branch-invalid':
+      return 'create.errors.branchInvalid.title';
     case 'stale':
       return 'create.errors.stale.title';
     case 'operation-conflict':
@@ -51,6 +54,8 @@ function bodyKey(failure: CreateFailure): MessageKey {
       return failure.automatic
         ? 'create.errors.branchExistsAutomatic.body'
         : 'create.errors.branchExists.body';
+    case 'branch-invalid':
+      return 'create.errors.branchInvalid.body';
     case 'stale':
       return 'create.errors.stale.body';
     case 'operation-conflict':
@@ -116,7 +121,7 @@ export function CreateFailureAlert({
     <Alert
       role="alert"
       tone={danger ? 'danger' : 'attention'}
-      title={t(title(failure))}
+      title={t(createFailureTitleKey(failure))}
       className="max-w-content-narrow"
     >
       <p>

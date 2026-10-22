@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import type { CreateSpecRequest } from '@nevo/specflow-contracts/specs';
+import { useState } from 'react';
+import { isCreateSpecRequest, type CreateSpecRequest } from '@nevo/specflow-contracts/specs';
 import { useAppServices } from '../../../app/useAppServices';
 import { authSessionIdentity } from '../../../auth/store';
 
@@ -22,15 +22,17 @@ const keyPrefix = 'specflow.create.operation.v1:';
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
+/**
+ * The stored request is POSTed again on resume, so it is validated like any request: a tampered or
+ * outdated entry (for example a malformed target) is dropped, never sent.
+ */
 function isStored(value: unknown): value is StoredCreateOperation {
   if (typeof value !== 'object' || value === null) return false;
   const { request, startedAt } = value as Partial<StoredCreateOperation>;
   return (
     typeof startedAt === 'number' &&
-    typeof request === 'object' &&
-    request !== null &&
-    typeof request.operationId === 'string' &&
-    typeof request.title === 'string'
+    isCreateSpecRequest(request) &&
+    typeof request.operationId === 'string'
   );
 }
 
@@ -83,13 +85,17 @@ function browserSessionStorage(): StorageLike | undefined {
   }
 }
 
-/** Storage of the current identity (one entry per signed-in principal). */
+/**
+ * Storage of the signed-in identity at the moment the Create form opens. The key is captured once:
+ * saving, resuming and releasing an operation must all address the same entry even if the session
+ * is briefly not `ready` (refresh, recovery) while the operation runs.
+ */
 export function useCreateOperationStorage(): CreateOperationStorage {
   const { authStore } = useAppServices();
-  const state = authStore.getState();
-  const identity = state.status === 'ready' ? authSessionIdentity(state.session) : 'unknown';
-  return useMemo(
-    () => createSessionOperationStorage(identity, browserSessionStorage()),
-    [identity],
-  );
+  const [storage] = useState(() => {
+    const state = authStore.getState();
+    const identity = state.status === 'ready' ? authSessionIdentity(state.session) : 'unknown';
+    return createSessionOperationStorage(identity, browserSessionStorage());
+  });
+  return storage;
 }

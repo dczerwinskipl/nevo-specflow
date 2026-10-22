@@ -1,7 +1,8 @@
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
 import { message, type Message } from '../../../i18n/message';
-import type { WorkspaceOptionsState } from './WorkspaceSection';
-import { problems as workspaceProblems, type WorkspaceChoice } from './workspaceChoice';
+import type { WorkspaceOptionsState } from './workspace/WorkspacePlaceSection';
+import { problems as workspaceProblems } from './workspace/workspaceValidation';
+import { type WorkspaceChoice } from './workspace/workspaceChoice';
 
 /** Limits of the Runtime Create request (the contracts `CreateSpecRequestSchema`). */
 export const createTitleMaxLength = 200;

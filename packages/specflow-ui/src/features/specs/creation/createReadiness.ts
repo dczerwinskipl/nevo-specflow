@@ -1,8 +1,9 @@
 import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
 import { message, type Message } from '../../../i18n/message';
 import { providerDefaultEffort, type AgentChoice } from './agentChoice';
-import type { WorkspaceOptionsState } from './WorkspaceSection';
-import { problems as workspaceProblems, type WorkspaceChoice } from './workspaceChoice';
+import type { WorkspaceOptionsState } from './workspace/WorkspacePlaceSection';
+import { problems as workspaceProblems } from './workspace/workspaceValidation';
+import { type WorkspaceChoice } from './workspace/workspaceChoice';
 
 export interface CreateReadiness {
   /** Why Create is not available yet (first blocking reason), else undefined. */

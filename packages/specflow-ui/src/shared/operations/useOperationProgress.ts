@@ -22,6 +22,8 @@ export interface OperationProgressView {
   /** The checklist to draw: empty until the first snapshot; skipped steps are omitted. */
   readonly steps: readonly OperationStepView[];
   readonly outcome: OperationProgressState['outcome'];
+  /** Stable code the stream reported with a `failed` event; best effort, never the final word. */
+  readonly failureCode: string | undefined;
   /** False once the stream failed before saying anything: the caller shows no checklist. */
   readonly available: boolean;
   /**
@@ -94,6 +96,7 @@ export function useOperationProgress(options: UseOperationProgressOptions): Oper
   return {
     steps: enabled ? visibleProgressSteps(state.steps) : [],
     outcome: state.outcome,
+    failureCode: state.failureCode,
     available: state.available,
     lost: state.lost,
   };

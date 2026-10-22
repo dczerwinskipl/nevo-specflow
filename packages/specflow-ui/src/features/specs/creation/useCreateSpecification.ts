@@ -1,19 +1,24 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
+import { useCallback, useMemo, useReducer, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { DemoCreateRequest, DemoSessionInput } from '@nevo/specflow-contracts/demo';
 import { useAppServices } from '../../../app/useAppServices';
 import { useNotify } from '../../../shared/notifications/notifications';
-import { retainRequest } from '../../../shared/operations/retainedRequest';
+import { retainRequest, type RequestAttempt } from '../../../shared/operations/retainedRequest';
 import { useRequestSessionRecovery } from '../../sessions';
 import { specsOverviewKeys } from '../overview/queries';
 import { specificationKeys } from '../queries';
-import { continueDemoCreation, RequestNotSentError } from './creationPipeline';
-import { createOperationLedger, type CreateOperationLedger } from './createOperationLedger';
+import {
+  continueDemoCreation,
+  RequestNotSentError,
+  type CreationProgress,
+} from './creationPipeline';
+import { createOperationLedger } from './createOperationLedger';
 import {
   createOperationReducer,
   initialCreateOperation,
   selectCreateOperationFlags,
+  visibleCreateOperation,
   type CreateOperationFlags,
   type CreateOperationState,
   type UnknownPhase,
@@ -76,11 +81,20 @@ export interface UseCreateSpecificationOptions {
   announce: (message: string) => void;
 }
 
+/** The shared ledger plus what only the demo flow retains: the Session request and the committed result. */
+function createDemoLedger() {
+  return {
+    ...createOperationLedger<DemoCreateRequest>(),
+    sessionAttempt: { current: null } as { current: RequestAttempt<DemoSessionInput> | null },
+    progress: {} as CreationProgress,
+  };
+}
+
 /**
  * Orchestrates the Create operation: retained requests, replay of an unknown outcome, status check
  * and the optional initial Session. State transitions are decided by `createOperationReducer`;
  * this hook only performs the I/O and reports each result as an event. Effects exist for
- * synchronisation only (retiring a stale alert when the form changes).
+ * synchronisation only.
  */
 export function useCreateSpecification(
   options: UseCreateSpecificationOptions,
@@ -91,13 +105,9 @@ export function useCreateSpecification(
   const cache = useQueryClient();
   const notify = useNotify();
   const requestSessionRecovery = useRequestSessionRecovery();
-  const [state, dispatch] = useReducer(createOperationReducer, initialCreateOperation);
-  const [ledger] = useState<CreateOperationLedger>(createOperationLedger);
-
-  // A conflict describes the attempt that produced it: editing the form retires its alert.
-  useEffect(() => {
-    dispatch({ type: 'form-edited', snapshot });
-  }, [state.failure, snapshot]);
+  const [raw, dispatch] = useReducer(createOperationReducer, initialCreateOperation);
+  const state = useMemo(() => visibleCreateOperation(raw, snapshot), [raw, snapshot]);
+  const [ledger] = useState(createDemoLedger);
 
   const execute = useCallback(
     async (
@@ -107,7 +117,7 @@ export function useCreateSpecification(
       // The stored attempt is replayed verbatim while the outcome is unknown: the operation id,
       // the body and the session request never depend on the catalogue revision, refetched options
       // or later form state.
-      const replay = resumedFrom !== null && ledger.createAttempt.current !== null;
+      const replay = resumedFrom !== null && ledger.attempt.current !== null;
       const session = submission.session
         ? replay && ledger.sessionAttempt.current
           ? ledger.sessionAttempt.current.input
@@ -118,12 +128,12 @@ export function useCreateSpecification(
           existingSpecId: specId,
           create: async () => {
             const input =
-              replay && ledger.createAttempt.current
-                ? ledger.createAttempt.current.input
+              replay && ledger.attempt.current
+                ? ledger.attempt.current.input
                 : (() => {
                     const target = submission.buildTarget();
                     return retainRequest<DemoCreateRequest, 'operationId'>(
-                      ledger.createAttempt,
+                      ledger.attempt,
                       {
                         title: submission.title.trim(),
                         ...(submission.slug ? { slug: submission.slug } : {}),
@@ -165,7 +175,7 @@ export function useCreateSpecification(
           onCreated(created.specId, created.documentIds[0]);
           return { kind: 'completed' };
         }
-        const sentTarget = ledger.createAttempt.current?.input.target;
+        const sentTarget = ledger.attempt.current?.input.target;
         const next = classifyCreateFailure(error, {
           customBranch: sentTarget?.kind === 'new-worktree' ? sentTarget.branch : undefined,
         });
@@ -176,7 +186,7 @@ export function useCreateSpecification(
         }
         submission.onFailed?.(next);
         const discardSent = next.kind === 'operation-conflict';
-        if (discardSent) ledger.createAttempt.current = null;
+        if (discardSent) ledger.attempt.current = null;
         dispatch({
           type: 'submit-failed',
           failure: { ...next, snapshot: submission.snapshot },
@@ -204,7 +214,7 @@ export function useCreateSpecification(
   const checkOperation = useCallback(
     async (submission: CreateSubmission): Promise<CreateSubmitOutcome> => {
       dispatch({ type: 'check-started' });
-      const operationId = ledger.createAttempt.current?.input.operationId;
+      const operationId = ledger.attempt.current?.input.operationId;
       let status;
       try {
         if (!operationId) throw new Error('Operation id missing');
@@ -226,7 +236,7 @@ export function useCreateSpecification(
         announce(t('create.announce.notStarted'));
       } else if (status.status === 'failed') {
         // The server finished this operation without a result: the form is safe to use with a new id.
-        ledger.createAttempt.current = null;
+        ledger.attempt.current = null;
         dispatch({ type: 'check-failed-operation', status, snapshot: submission.snapshot });
         announce(t('create.announce.operationFailed'));
       } else {

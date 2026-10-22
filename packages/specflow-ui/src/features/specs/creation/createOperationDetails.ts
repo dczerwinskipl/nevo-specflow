@@ -1,9 +1,9 @@
 import type { TFunction } from 'i18next';
-import type { DemoCreateOptions } from '@nevo/specflow-contracts/demo';
-import type { Message } from '../../../i18n/message';
+import type { CreateOptions } from '@nevo/specflow-contracts/specs';
+import { message, type Message } from '../../../i18n/message';
 import type { OperationDetail } from './CreateFailureAlert';
 import type { CreateOperationStatus, SentRequest } from './createOperationReducer';
-import { formatOperationTime, operationStageLabel, primaryWorkspace } from './workspaceChoice';
+import { primaryWorkspace } from './workspace/workspaceTiles';
 
 /**
  * Facts of the operation as it was SENT: never rebuilt from the current form or options. A request
@@ -12,7 +12,7 @@ import { formatOperationTime, operationStageLabel, primaryWorkspace } from './wo
 export function buildOperationDetails(input: {
   sent: SentRequest | null;
   status: CreateOperationStatus | null;
-  workspaceOptions: DemoCreateOptions | undefined;
+  workspaceOptions: CreateOptions | undefined;
   typedTitle: string;
   language: string;
   t: TFunction;
@@ -46,4 +46,17 @@ export function buildOperationDetails(input: {
   return entries
     .filter((entry): entry is [OperationDetail['id'], string] => Boolean(entry[1]))
     .map(([id, value]) => ({ id, value }));
+}
+
+const stageKeys: Readonly<Record<string, Message>> = {
+  'workspace-prepared': message('create.operation.stageWorkspacePrepared'),
+};
+/** Reader-facing stage of a half-finished operation; an unknown server step is a diagnostic code shown as it is. */
+export const operationStageLabel = (step: string): Message | string => stageKeys[step] ?? step;
+/** Localised "last attempt" time; an unreadable value is shown as it is. */
+export function formatOperationTime(iso: string, locale: string): string {
+  const time = new Date(iso);
+  return Number.isNaN(time.getTime())
+    ? iso
+    : new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'medium' }).format(time);
 }

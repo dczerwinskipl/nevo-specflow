@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { FolderPlus, Layers, Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useMessage, type Message } from '../../../i18n/message';
+import { useMessage, type Message } from '../../../../i18n/message';
 import {
   AccentBlock,
   Alert,
@@ -30,30 +30,36 @@ import {
   cn,
   type IconGlyph,
 } from '@nevo/ui';
-import type { DemoCreateOptions } from '@nevo/specflow-contracts/demo';
-import { BranchRef } from './BranchRef';
+import type { CreateOptions } from '@nevo/specflow-contracts/specs';
+import { useFocusRequest } from '../../../../shared/a11y/useFocusRequest';
+import { BranchRef } from '../../../../shared/git/BranchRef';
 import { ExistingSummary, MainSummary, NewSummary } from './WorkspaceTileSummaries';
-import {
-  activeTile,
-  availableCountLabel,
-  primaryWorkspace,
-  revalidate,
-  staleMessages,
-  tileAvailability,
-  type Tile,
-  type WorkspaceChoice,
-} from './workspaceChoice';
+import { activeTile, primaryWorkspace, tileAvailability } from './workspaceTiles';
+import { availableCountLabel } from './workspaceCopy';
+import { revalidate, staleMessages } from './workspaceValidation';
+import type { Tile, WorkspaceChoice } from './workspaceChoice';
+import type { WorkspaceConflicts } from './workspaceConflicts';
 
-export interface WorkspaceSectionHandle {
-  /** Focuses the first invalid field; false when none is flagged or mounted. */
-  focusFirstInvalid: () => boolean;
+/**
+ * Moves focus inside the section once its next render is done (the owner has just changed what is
+ * shown: a failure alert is gone, options were refreshed, a field was flagged).
+ */
+export interface WorkspacePlaceSectionHandle {
+  /** Opens the settings if needed and focuses the typed field the server refused. */
+  focusField: (field: 'branch' | 'slug') => void;
+  /** Focuses the first field the current options flag as invalid, else calls `fallback`. */
+  focusFirstInvalid: (fallback?: () => void) => void;
 }
+
+type FocusRequest =
+  | { readonly field: 'base' | 'target' | 'branch' | 'slug' }
+  | { readonly firstInvalid: true; readonly fallback?: () => void };
 
 export type WorkspaceOptionsState =
   | { status: 'loading' }
   | { status: 'error' }
   | { status: 'forbidden' }
-  | { status: 'ready'; options: DemoCreateOptions };
+  | { status: 'ready'; options: CreateOptions };
 
 interface TileDefinition {
   id: Tile;
@@ -97,7 +103,7 @@ function TileSkeleton() {
  * "Gdzie chcesz pracować?": three radio tiles (new, main, existing) and one summary block after
  * the whole group. The section is controlled: the form owns `choice` and builds the request.
  */
-export function WorkspaceSection({
+export function WorkspacePlaceSection({
   state,
   refreshing = false,
   refreshFailed = false,
@@ -105,13 +111,9 @@ export function WorkspaceSection({
   update,
   locked,
   onRefresh,
-  announcement,
   onAnnounce,
   title,
-  branchConflict,
-  focusBranchSignal,
-  slugConflict,
-  focusSlugSignal,
+  conflicts,
   headingId,
   handleRef,
 }: {
@@ -123,18 +125,15 @@ export function WorkspaceSection({
   update: Dispatch<SetStateAction<WorkspaceChoice>>;
   locked: boolean;
   onRefresh: () => void;
-  /** Latest polite announcement; the single `role=status` lives in this section's header. */
-  announcement: string;
+  /** Polite announcement of a result without a visible change (the owner renders the live region). */
   onAnnounce: (message: string) => void;
   /** The specification name (the generated slug and branch preview derive from it). */
   title: string;
-  branchConflict?: string;
-  focusBranchSignal?: number;
-  slugConflict?: string;
-  focusSlugSignal?: number;
+  /** What the server refused about the typed branch or slug (shown at the field). */
+  conflicts?: WorkspaceConflicts;
   headingId: string;
   /** Lets the owner move focus to the first field the options flagged as invalid. */
-  handleRef?: Ref<WorkspaceSectionHandle>;
+  handleRef?: Ref<WorkspacePlaceSectionHandle>;
 }) {
   const { t } = useTranslation();
   const text = useMessage();
@@ -152,23 +151,29 @@ export function WorkspaceSection({
   const active = options ? activeTile(choice, options) : null;
   const errors = options ? revalidate(choice, options) : {};
   const nothing = Boolean(options) && active === null;
+  const resolveFocus = (request: FocusRequest) => {
+    if ('field' in request) {
+      controls[request.field].current?.focus();
+      return;
+    }
+    const order = [
+      ['existing', existingControl],
+      ['base', controls.base],
+      ['target', controls.target],
+      ['slug', controls.slug],
+      ['branch', controls.branch],
+    ] as const;
+    const invalid = order.find(([key, ref]) => errors[key] && ref.current);
+    if (invalid) invalid[1].current?.focus();
+    else request.fallback?.();
+  };
+  const requestFocus = useFocusRequest(resolveFocus);
   useImperativeHandle(handleRef, () => ({
-    focusFirstInvalid: () => {
-      const order = [
-        ['existing', existingControl],
-        ['base', controls.base],
-        ['target', controls.target],
-        ['slug', controls.slug],
-        ['branch', controls.branch],
-      ] as const;
-      for (const [key, ref] of order) {
-        if (errors[key] && ref.current) {
-          ref.current.focus();
-          return true;
-        }
-      }
-      return false;
+    focusField: (field) => {
+      update((current) => ({ ...current, settingsOpen: true }));
+      requestFocus({ field });
     },
+    focusFirstInvalid: (fallback) => requestFocus({ firstInvalid: true, fallback }),
   }));
 
   const select = (tile: Tile) => {
@@ -353,12 +358,10 @@ export function WorkspaceSection({
                   update={update}
                   errors={errors}
                   title={title}
-                  branchConflict={branchConflict}
-                  focusBranchSignal={focusBranchSignal}
-                  slugConflict={slugConflict}
-                  focusSlugSignal={focusSlugSignal}
+                  conflicts={conflicts}
                   onAnnounce={onAnnounce}
                   controls={controls}
+                  onRequestFocus={(field) => requestFocus({ field })}
                 />
               ) : active === 'main' ? (
                 <MainSummary options={ready} />
@@ -407,7 +410,7 @@ export function WorkspaceSection({
         role="status"
         className={cn('text-body-sm text-content-secondary', !refreshing && 'sr-only')}
       >
-        {refreshing ? t('create.workspace.refreshing') : announcement}
+        {refreshing ? t('create.workspace.refreshing') : null}
       </p>
       {refreshFailed && state.status === 'ready' && !refreshing && (
         <Alert

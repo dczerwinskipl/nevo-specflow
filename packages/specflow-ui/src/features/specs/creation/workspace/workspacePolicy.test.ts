@@ -3,11 +3,24 @@ import {
   createOptionsFixture,
   workspaceIds as ids,
   type OptionsVariant,
-} from './creationOptions.stories-support';
-import { polishText } from '../../../i18n/testing';
+} from '../creationOptions.stories-support';
+import { polishText } from '../../../../i18n/testing';
 import {
   activeTile,
+  defaultBaseValue,
+  defaultTargetWorkspaceId,
+  defaultTile,
+  inheritedTarget,
+  targetStatus,
+  tileAvailability as rawTileAvailability,
+} from './workspaceTiles';
+import {
   branchNameError as rawBranchNameError,
+  slugError as rawSlugError,
+  problems as rawProblems,
+  revalidate as rawRevalidate,
+} from './workspaceValidation';
+import {
   branchFieldValue,
   branchPrefill,
   branchPreview,
@@ -15,28 +28,24 @@ import {
   buildCreateSlug,
   buildCreateTarget,
   createOverrides,
-  defaultBaseValue,
-  defaultTargetWorkspaceId,
   derivedSlug,
   effectiveSlug,
-  slugError as rawSlugError,
-  defaultTile,
-  effectiveTargetBranch,
+} from './createRequest';
+import { effectiveTargetBranch, mergeSuggestion } from './mergeSuggestion';
+import {
   formatOperationTime as rawFormatOperationTime,
-  inheritedTarget,
-  initialWorkspaceChoice,
-  mergeSuggestion,
   operationStageLabel as rawOperationStageLabel,
-  problems as rawProblems,
+} from '../createOperationDetails';
+import {
+  initialWorkspaceChoice,
   requestChoiceSnapshot,
-  revalidate as rawRevalidate,
+  type WorkspaceChoice,
+} from './workspaceChoice';
+import {
   settingsSummary as rawSettingsSummary,
   sharedUseNote as rawSharedUseNote,
   specCountLabel as rawSpecCountLabel,
-  targetStatus,
-  tileAvailability as rawTileAvailability,
-  type WorkspaceChoice,
-} from './workspaceChoice';
+} from './workspaceCopy';
 
 // The policy returns catalogue messages; these tests assert the Polish text they render to.
 const branchNameError = (...args: Parameters<typeof rawBranchNameError>) =>
@@ -253,13 +262,14 @@ describe('branchNameError', () => {
   it.each(['', '   '])('asks for a name when %j', (name) =>
     expect(branchNameError(name, options())).toBe('Wpisz nazwę gałęzi lub wyłącz tę opcję.'),
   );
-  const characters = 'Nazwa gałęzi zawiera niedozwolone znaki. Użyj liter, cyfr, „-”, „_” i „/”.';
+  const characters =
+    'Nazwa gałęzi zawiera niedozwolone znaki. Zacznij od litery lub cyfry i użyj tylko liter, cyfr oraz „.”, „-”, „_” i „/”.';
   it.each(['bad name', 'a~b', 'a^b', 'a:b', 'a?b', 'a*b', 'a[b', 'a\b', 'tab	name'])(
     'names the characters when %j has an illegal one',
     (name) => expect(branchNameError(name, options())).toBe(characters),
   );
   // F-07: every character is legal, only the structure is wrong, so the message must say so.
-  it.each(['feature//x', 'a..b', 'a@{b', '/a', 'a/', '-a', '@', 'x.lock', 'a/.hidden', 'a.'])(
+  it.each(['feature//x', 'a..b', 'a/', 'x.lock', 'a/.hidden', 'a.', 'a/b.lock/c'])(
     'names the structure when %j has only legal characters',
     (name) => {
       const message = branchNameError(name, options());
@@ -268,7 +278,9 @@ describe('branchNameError', () => {
     },
   );
   it('rejects an over-long name with its own message', () =>
-    expect(branchNameError('x'.repeat(201), options())).toBe('Nazwa gałęzi jest zbyt długa.'));
+    expect(branchNameError('x'.repeat(241), options())).toBe(
+      'Nazwa gałęzi jest zbyt długa. Użyj co najwyżej 240 znaków.',
+    ));
   it('rejects a collision with a local branch or a workspace branch', () => {
     expect(branchNameError('feature/platform', options())).toBe(
       'Gałąź o tej nazwie już istnieje. Wpisz inną nazwę.',

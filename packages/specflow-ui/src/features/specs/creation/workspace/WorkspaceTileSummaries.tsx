@@ -2,35 +2,36 @@ import { FolderPlus, Layers } from 'lucide-react';
 import { type Dispatch, type MutableRefObject, type ReactNode, type SetStateAction } from 'react';
 import type { TFunction } from 'i18next';
 import { Trans, useTranslation } from 'react-i18next';
-import { useMessage } from '../../../i18n/message';
+import { useMessage } from '../../../../i18n/message';
 import { Badge, Field, Icon, Typography, cn } from '@nevo/ui';
-import { OptionSelect } from '../../../shared/controls/OptionSelect';
-import type { DemoCreateOptions } from '@nevo/specflow-contracts/demo';
-import { BranchRef } from './BranchRef';
+import { OptionSelect } from '../../../../shared/controls/OptionSelect';
+import type { CreateOptions } from '@nevo/specflow-contracts/specs';
+import { BranchRef } from '../../../../shared/git/BranchRef';
 import {
   NewWorkspaceSettings,
   WorkspaceLabel,
   WorkspaceRef,
   type WorkspaceSettingsControls,
 } from './NewWorkspaceSettings';
+import { branchPreview, createOverrides, effectiveSlug } from './createRequest';
 import {
-  branchPreview,
-  createOverrides,
-  defaultSettingsSummary,
-  defaultTargetWorkspaceId,
-  effectiveSlug,
   inheritedTarget,
-  noBranchLabel,
   primaryWorkspace,
+  targetStatus,
+  defaultTargetWorkspaceId,
+} from './workspaceTiles';
+import {
+  defaultSettingsSummary,
+  noBranchLabel,
   reasonText,
   reasonTextInline,
-  revalidate,
   settingsSummary,
   sharedUseNote,
   specCountLabel,
-  targetStatus,
-  type WorkspaceChoice,
-} from './workspaceChoice';
+} from './workspaceCopy';
+import type { revalidate } from './workspaceValidation';
+import type { WorkspaceChoice } from './workspaceChoice';
+import type { WorkspaceConflicts } from './workspaceConflicts';
 
 /** What the chosen workspace tile means: facts, notes and the settings summary below the tiles. */
 const note = (children: ReactNode, tone: 'muted' | 'attention' = 'muted') => (
@@ -81,7 +82,7 @@ function SummaryRow({
 
 /** Where the changes will be merged back: a workspace (never a bare branch) and, quietly, a caveat. */
 function mergeRow(
-  options: DemoCreateOptions,
+  options: CreateOptions,
   choice: WorkspaceChoice,
   t: TFunction,
   text: ReturnType<typeof useMessage>,
@@ -140,7 +141,7 @@ function mergeRow(
   }
 }
 
-function BaseValue({ options, base }: { options: DemoCreateOptions; base?: string }) {
+function BaseValue({ options, base }: { options: CreateOptions; base?: string }) {
   const { t } = useTranslation();
   if (base) return <BranchRef name={base} />;
   const primary = primaryWorkspace(options);
@@ -159,25 +160,21 @@ export function NewSummary({
   update,
   errors,
   title,
-  branchConflict,
-  focusBranchSignal,
-  slugConflict,
-  focusSlugSignal,
+  conflicts,
   onAnnounce,
   controls,
+  onRequestFocus,
 }: {
-  options: DemoCreateOptions;
+  options: CreateOptions;
   choice: WorkspaceChoice;
   update: Dispatch<SetStateAction<WorkspaceChoice>>;
   errors: ReturnType<typeof revalidate>;
   /** The specification name; the generated branch preview derives from it. */
   title: string;
-  branchConflict?: string;
-  focusBranchSignal?: number;
-  slugConflict?: string;
-  focusSlugSignal?: number;
+  conflicts?: WorkspaceConflicts;
   onAnnounce: (message: string) => void;
   controls: WorkspaceSettingsControls;
+  onRequestFocus: (field: 'base' | 'target') => void;
 }) {
   const { t } = useTranslation();
   const text = useMessage();
@@ -236,18 +233,16 @@ export function NewSummary({
         update={update}
         errors={errors}
         title={title}
-        branchConflict={branchConflict}
-        focusBranchSignal={focusBranchSignal}
-        slugConflict={slugConflict}
-        focusSlugSignal={focusSlugSignal}
+        conflicts={conflicts}
         onAnnounce={onAnnounce}
         controls={controls}
+        onRequestFocus={onRequestFocus}
       />
     </>
   );
 }
 
-export function MainSummary({ options }: { options: DemoCreateOptions }) {
+export function MainSummary({ options }: { options: CreateOptions }) {
   const { t } = useTranslation();
   const text = useMessage();
   const primary = primaryWorkspace(options);
@@ -278,8 +273,8 @@ function InheritedTargetNote({
   options,
   workspace,
 }: {
-  options: DemoCreateOptions;
-  workspace: DemoCreateOptions['workspaces'][number];
+  options: CreateOptions;
+  workspace: CreateOptions['workspaces'][number];
 }): ReactNode {
   const { t } = useTranslation();
   const target = inheritedTarget(options, workspace);
@@ -318,7 +313,7 @@ export function ExistingSummary({
   errors,
   controlRef,
 }: {
-  options: DemoCreateOptions;
+  options: CreateOptions;
   choice: WorkspaceChoice;
   update: Dispatch<SetStateAction<WorkspaceChoice>>;
   errors: ReturnType<typeof revalidate>;

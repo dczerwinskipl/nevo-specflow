@@ -1,4 +1,4 @@
-import type { ApiError, ErrorCodeTable } from '../../../api';
+import { ApiError, type ErrorCodeTable } from '../../../api';
 import type { CreateFailure } from './createFailure';
 
 /**
@@ -11,6 +11,7 @@ import type { CreateFailure } from './createFailure';
  */
 export const createSpecErrorCodes: ErrorCodeTable = {
   CREATE_OPERATION_INVALID: { kind: 'validation', outcome: 'not-applied' },
+  BRANCH_NAME_INVALID: { kind: 'validation', outcome: 'not-applied' },
   SPEC_VALIDATION_ERROR: { kind: 'validation', outcome: 'not-applied' },
   CREATE_CONFLICT: { kind: 'conflict', outcome: 'not-applied' },
   BRANCH_ALREADY_EXISTS: { kind: 'conflict', outcome: 'not-applied' },
@@ -21,8 +22,8 @@ export const createSpecErrorCodes: ErrorCodeTable = {
   GIT_DISABLED: { kind: 'precondition', outcome: 'not-applied' },
   BASE_REF_NOT_FOUND: { kind: 'precondition', outcome: 'not-applied' },
   GIT_BASE_CONFIG_MISSING: { kind: 'precondition', outcome: 'not-applied' },
-  // The Engine answers a malformed branch name with 503 although it is a rejected input.
-  GIT_POLICY_INVALID: { kind: 'precondition', outcome: 'not-applied' },
+  // The project's own Git configuration is unusable (a typed branch has `BRANCH_NAME_INVALID`).
+  GIT_POLICY_INVALID: { kind: 'unavailable', outcome: 'not-applied' },
   // A workspace or Specification vanished between reading the options and creating (answered 503).
   SPEC_NOT_FOUND: { kind: 'precondition', outcome: 'not-applied' },
   CREATE_RECOVERY_REQUIRED: { kind: 'recovery-required', outcome: 'unknown' },
@@ -61,6 +62,7 @@ export function toCreateFailure(
         return { kind: 'branch-exists', automatic: !sent.customBranch };
       return { kind: 'stale', code };
     case 'validation':
+      if (code === 'BRANCH_NAME_INVALID') return { kind: 'branch-invalid' };
       return malformedCodes.has(code) ? { kind: 'failed' } : { kind: 'stale', code };
     case 'precondition':
       return { kind: 'stale', code };
@@ -74,4 +76,27 @@ export function toCreateFailure(
       // Whatever may have reached the server and was not declared harmless stays uncertain.
       return error.outcome === 'unknown' ? { kind: 'uncertain' } : { kind: 'failed' };
   }
+}
+
+/**
+ * What the form shows for a failure the inspection endpoint reports (the Runtime saw the operation
+ * fail after reserving it). Same table and same retry semantics as a refused request: a code that
+ * declares nothing was applied is a definite failure, anything else (or a code this build does not
+ * know) leaves the outcome unknown.
+ */
+export function toOperationFailure(
+  code: string,
+  sent: { readonly customBranch?: string } = {},
+): CreateFailure {
+  const rule = Object.hasOwn(createSpecErrorCodes, code) ? createSpecErrorCodes[code] : undefined;
+  return toCreateFailure(
+    new ApiError({
+      kind: rule?.kind ?? 'server',
+      operation: 'specs.create.inspect',
+      outcome: rule?.outcome ?? 'unknown',
+      retryable: rule?.retryable ?? false,
+      code,
+    }),
+    sent,
+  );
 }

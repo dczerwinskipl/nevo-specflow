@@ -25,6 +25,14 @@ const snapshot: OperationProgressEvent = {
 };
 
 describe('operation progress reducer', () => {
+  it('keeps the stable code of a failed event', () => {
+    const state = operationProgressReducer(
+      operationProgressReducer(initialOperationProgress, snapshot),
+      { ...base, type: 'failed', code: 'BASE_REF_NOT_FOUND' },
+    );
+    expect(state).toMatchObject({ outcome: 'failed', failureCode: 'BASE_REF_NOT_FOUND' });
+  });
+
   it('starts empty and unknown', () => {
     expect(initialOperationProgress).toEqual({ steps: [], outcome: null });
   });

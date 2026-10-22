@@ -6,6 +6,11 @@ export type CreateFailure =
   | { kind: 'branch-exists'; automatic: boolean }
   /** `code` selects the explanation; the server's own text is never displayed. */
   | { kind: 'stale'; code: string }
+  /**
+   * The branch name the owner typed is not a valid Git name (the Engine's `BRANCH_NAME_INVALID`).
+   * Field-level: the form flags the branch input, refreshing the options cannot help.
+   */
+  | { kind: 'branch-invalid' }
   | { kind: 'operation-conflict' }
   /** The project Runtime CREATE_CONFLICT: the name (slug) may be taken or the state changed. */
   | { kind: 'name-conflict' }

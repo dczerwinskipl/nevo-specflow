@@ -2,7 +2,7 @@ import { HttpClientError } from '@nevo/http-client';
 import { describe, expect, it } from 'vitest';
 import { ApiError, classifyHttpError } from '../../../api';
 import type { CreateFailure } from './createFailure';
-import { createSpecErrorCodes, toCreateFailure } from './createSpecErrors';
+import { createSpecErrorCodes, toCreateFailure, toOperationFailure } from './createSpecErrors';
 
 function fail(status: number, code?: string, method = 'POST'): ApiError {
   const classified = classifyHttpError(
@@ -31,7 +31,8 @@ describe('Create error codes', () => {
     [422, 'GIT_DISABLED', 'stale'],
     [422, 'BASE_REF_NOT_FOUND', 'stale'],
     [422, 'GIT_BASE_CONFIG_MISSING', 'stale'],
-    [503, 'GIT_POLICY_INVALID', 'stale'],
+    [503, 'GIT_POLICY_INVALID', 'failed'],
+    [422, 'BRANCH_NAME_INVALID', 'branch-invalid'],
     [503, 'SPEC_NOT_FOUND', 'stale'],
     [503, 'CREATE_RECOVERY_REQUIRED', 'recovery-required'],
     [503, 'CREATE_JOURNAL_CORRUPT', 'recovery-required'],
@@ -102,5 +103,26 @@ describe('Create error codes', () => {
     expect(toCreateFailure(notSent)).toEqual({ kind: 'offline' });
     expect(toCreateFailure(lost)).toEqual({ kind: 'uncertain' });
     expect(toCreateFailure(timeout)).toEqual({ kind: 'uncertain' });
+  });
+});
+
+describe('toOperationFailure (a failure the inspection endpoint reported)', () => {
+  it.each<[string, CreateFailure['kind']]>([
+    ['BRANCH_ALREADY_EXISTS', 'branch-exists'],
+    ['BASE_REF_NOT_FOUND', 'stale'],
+    ['CONTROL_LOCK_BUSY', 'failed'],
+    ['GIT_OPERATION_UNCERTAIN', 'recovery-required'],
+    ['GIT_OPERATION_FAILED', 'uncertain'],
+    ['INTERNAL_ERROR', 'uncertain'],
+    ['SOMETHING_NEW', 'uncertain'],
+  ])('%s becomes the %s failure', (code, kind) => {
+    expect(toOperationFailure(code)).toMatchObject({ kind });
+  });
+
+  it('names whether the rejected branch name was typed', () => {
+    expect(toOperationFailure('BRANCH_ALREADY_EXISTS', { customBranch: 'feature/x' })).toEqual({
+      kind: 'branch-exists',
+      automatic: false,
+    });
   });
 });

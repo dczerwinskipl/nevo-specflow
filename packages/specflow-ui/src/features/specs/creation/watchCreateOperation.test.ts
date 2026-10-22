@@ -165,6 +165,61 @@ describe('submitCreateOperation', () => {
     await expect(result).resolves.toEqual({ kind: 'unresolved' });
   });
 
+  it('ends at once with the stable code when the inspection reports the operation failed', async () => {
+    const { api, raw } = fakeApi([
+      () =>
+        Promise.resolve<CreateOperationInspection>({
+          operationId,
+          kind: 'specification-create',
+          status: 'failed',
+          code: 'GIT_OPERATION_FAILED',
+        }),
+    ]);
+    await expect(submitCreateOperation(api, input)).resolves.toEqual({
+      kind: 'operation-failed',
+      code: 'GIT_OPERATION_FAILED',
+    });
+    expect(raw.inspectOperation).toHaveBeenCalledOnce();
+  });
+
+  it.each(['unauthenticated', 'forbidden'] as const)(
+    'stops polling when the session or the capability is gone (%s)',
+    async (kind) => {
+      const error = apiError(kind, 'not-applied');
+      const { api, raw } = fakeApi([() => Promise.reject(error)]);
+      await expect(submitCreateOperation(api, input)).resolves.toEqual({
+        kind: 'unresolved',
+        error,
+      });
+      expect(raw.inspectOperation).toHaveBeenCalledOnce();
+    },
+  );
+
+  it('backs off for the time a 429 asks for, then keeps watching', async () => {
+    const limited = new ApiError({
+      kind: 'rate-limited',
+      operation: 'specs.create.inspect',
+      outcome: 'not-applied',
+      retryable: true,
+      retryAfterMs: 20_000,
+    });
+    const { api, raw } = fakeApi([() => Promise.reject(limited), () => Promise.resolve(created)]);
+    const result = submitCreateOperation(api, input);
+    await vi.advanceTimersByTimeAsync(19_000);
+    expect(raw.inspectOperation).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1_000);
+    await expect(result).resolves.toEqual({ kind: 'completed', created });
+  });
+
+  it('keeps the regular interval after a 429 without Retry-After', async () => {
+    const limited = apiError('rate-limited', 'not-applied');
+    const { api, raw } = fakeApi([() => Promise.reject(limited), () => Promise.resolve(created)]);
+    const result = submitCreateOperation(api, input);
+    await vi.advanceTimersByTimeAsync(3_000);
+    await expect(result).resolves.toEqual({ kind: 'completed', created });
+    expect(raw.inspectOperation).toHaveBeenCalledTimes(2);
+  });
+
   describe('polling follows what the progress stream says', () => {
     it('without a stream: every 3 s for the first minute, every 10 s afterwards', async () => {
       const { api, raw } = fakeApi([inProgress]);

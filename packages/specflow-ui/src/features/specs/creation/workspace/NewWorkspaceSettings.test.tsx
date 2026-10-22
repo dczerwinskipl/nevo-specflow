@@ -2,15 +2,12 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
+import { LocalizationProvider, createSpecFlowI18n } from '../../../../i18n';
 import { NewWorkspaceSettings } from './NewWorkspaceSettings';
-import { createOptionsFixture } from './creationOptions.stories-support';
-import {
-  buildCreateRequest,
-  initialWorkspaceChoice,
-  revalidate,
-  type WorkspaceChoice,
-} from './workspaceChoice';
+import { createOptionsFixture } from '../creationOptions.stories-support';
+import { buildCreateRequest } from './createRequest';
+import { initialWorkspaceChoice, type WorkspaceChoice } from './workspaceChoice';
+import { revalidate } from './workspaceValidation';
 
 const options = createOptionsFixture('default');
 const operationId = '7f3a91c2-4b6e-4d1a-9c0e-2f5a1b8d3e77';
@@ -31,6 +28,7 @@ function Harness({ title }: { title: string }) {
       errors={revalidate(choice, options)}
       title={title}
       onAnnounce={vi.fn()}
+      onRequestFocus={vi.fn()}
     />
   );
 }

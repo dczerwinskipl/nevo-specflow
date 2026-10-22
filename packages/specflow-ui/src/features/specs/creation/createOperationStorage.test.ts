@@ -39,6 +39,30 @@ describe('create operation storage', () => {
     expect(backing.values.size).toBe(0);
   });
 
+  it.each([
+    [
+      'a malformed target',
+      {
+        title: 'T',
+        operationId: operation.request.operationId,
+        target: { kind: 'new-worktree', baseRef: 5 },
+      },
+    ],
+    ['an unknown field', { title: 'T', operationId: operation.request.operationId, path: 'C:/x' }],
+    ['a missing operation id', { title: 'T' }],
+    [
+      'an over-long slug',
+      { title: 'T', operationId: operation.request.operationId, slug: 'a'.repeat(81) },
+    ],
+  ])('drops an entry with %s instead of POSTing it again', (_name, request) => {
+    const backing = memoryStorage({
+      'specflow.create.operation.v1:user:a': JSON.stringify({ request, startedAt: 1 }),
+    });
+    const storage = createSessionOperationStorage('user:a', backing);
+    expect(storage.load()).toBeUndefined();
+    expect(backing.values.size).toBe(0);
+  });
+
   it('treats unreadable JSON as absent', () => {
     const backing = memoryStorage({ 'specflow.create.operation.v1:user:a': '{nope' });
     expect(createSessionOperationStorage('user:a', backing).load()).toBeUndefined();

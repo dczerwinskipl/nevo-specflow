@@ -7,6 +7,8 @@ export type OperationReading =
   | { kind: 'completed'; created: CreatedSpec }
   | { kind: 'in-progress' }
   | { kind: 'recovery-required' }
+  /** The Runtime observed the run fail after reserving it; `code` is its stable Create code. */
+  | { kind: 'failed'; code: string }
   /** 404: the Engine has no record, so nothing was started under this operation id. */
   | { kind: 'not-started' }
   /** The status could not be read (connection, server); it says nothing about the operation. */
@@ -18,6 +20,8 @@ export type CreateWatchResult =
   /** The server declared the request refused before doing anything (definite failure). */
   | { kind: 'failed'; error: unknown }
   | { kind: 'recovery-required' }
+  /** The inspection reported the operation failed after it was accepted (stable code only). */
+  | { kind: 'operation-failed'; code: string }
   | { kind: 'not-started' }
   /** The outcome stays unknown (lost answer, hard limit); only the same operation may be checked. */
   | { kind: 'unresolved'; error?: unknown };
@@ -114,12 +118,24 @@ export async function readOperation(
   try {
     const inspection = await api.inspectOperation(operationId, signal);
     if ('specId' in inspection) return { kind: 'completed', created: inspection };
+    if (inspection.status === 'failed') return { kind: 'failed', code: inspection.code };
     return { kind: inspection.status };
   } catch (error) {
     if (isApiError(error) && error.kind === 'not-found') return { kind: 'not-started' };
     return { kind: 'unreadable', error };
   }
 }
+
+const isAuthFailure = (error: unknown) =>
+  isApiError(error) && (error.kind === 'unauthenticated' || error.kind === 'forbidden');
+
+/** How long the server asked a rate-limited client to wait (`Retry-After`); 0 when it said nothing. */
+const retryAfterOf = (reading: OperationReading): number =>
+  reading.kind === 'unreadable' &&
+  isApiError(reading.error) &&
+  reading.error.kind === 'rate-limited'
+    ? (reading.error.retryAfterMs ?? 0)
+    : 0;
 
 /** A definite refusal proves the server changed nothing; anything else may have been committed. */
 function interpretRejection(error: unknown): CreateWatchResult {
@@ -186,6 +202,11 @@ async function watchOperation(
     const reading = await readOperation(api, operationId, hooks.signal);
     if (reading.kind === 'completed') return reading;
     if (reading.kind === 'recovery-required') return reading;
+    if (reading.kind === 'failed') return { kind: 'operation-failed', code: reading.code };
+    // The session or the Create capability is gone: polling cannot succeed, so the owner is told
+    // (the operation itself is unaffected and stays stored for a check after signing in again).
+    if (reading.kind === 'unreadable' && isAuthFailure(reading.error))
+      return { kind: 'unresolved', error: reading.error };
     // The operation was accepted (or found stored), so a missing record is final.
     if (reading.kind === 'not-started') return reading;
     // The limit bounds how long this page waits; one reading is always made, even after a reload.
@@ -196,7 +217,7 @@ async function watchOperation(
       timing.now() - watchStartedAt,
       hooks.stream?.current() ?? 'lost',
     );
-    await pause(interval, hooks, timing);
+    await pause(Math.max(interval, retryAfterOf(reading)), hooks, timing);
   }
 }
 

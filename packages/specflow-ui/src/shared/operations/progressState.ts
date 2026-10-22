@@ -18,6 +18,8 @@ export interface OperationProgressState {
   readonly steps: readonly OperationStepView[];
   /** `null` until the stream said anything. */
   readonly outcome: 'running' | 'completed' | 'failed' | 'recovery-required' | null;
+  /** Stable code of a `failed` event (never server text); absent until one arrived. */
+  readonly failureCode?: string;
 }
 
 export const initialOperationProgress: OperationProgressState = { steps: [], outcome: null };
@@ -42,8 +44,9 @@ export function operationProgressReducer(
             ),
           }
         : state;
-    case 'completed':
     case 'failed':
+      return { ...state, outcome: 'failed', failureCode: event.code };
+    case 'completed':
     case 'recovery-required':
       return { ...state, outcome: event.type };
     default: {

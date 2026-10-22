@@ -608,7 +608,8 @@
       "notStarted": "The operation has not started yet. Retry the same operation — it keeps the same identifier.",
       "operationFailed": "The operation failed. You can create the specification again.",
       "copied": "Copied {{label}}.",
-      "monitoring": "Preparing the workspace can take a few minutes. We are watching the operation."
+      "monitoring": "Preparing the workspace can take a few minutes. We are watching the operation.",
+      "copyFailed": "Could not copy to the clipboard."
     },
     "operation": {
       "copyLabelOperation": "operation details",
@@ -736,6 +737,10 @@
       "nameConflict": {
         "title": "A specification with this name may already exist",
         "body": "The specification was not created: the name is already taken or the state of the workspaces changed. Change the name or refresh the options. The next attempt uses a new operation identifier."
+      },
+      "branchInvalid": {
+        "title": "The branch name is not valid",
+        "body": "The specification was not created. The branch name you typed is not accepted by Git. Enter a different branch name or let Nevo generate one automatically."
       }
     },
     "workspace": {
@@ -846,9 +851,9 @@
       },
       "errors": {
         "branchEmpty": "Enter a branch name or turn this option off.",
-        "branchTooLong": "The branch name is too long.",
-        "branchCharacters": "The branch name contains characters that are not allowed. Use letters, digits, \"-\", \"_\" and \"/\".",
-        "branchStructure": "The branch name has a layout that is not allowed: do not start with \"-\" or \"/\", do not end with \"/\", \".\" or \".lock\", and do not use \"..\", \"//\" or \"@{\".",
+        "branchTooLong": "The branch name is too long. Use at most 240 characters.",
+        "branchCharacters": "The branch name contains characters that are not allowed. Start with a letter or digit and use only letters, digits, \".\", \"-\", \"_\" and \"/\".",
+        "branchStructure": "The branch name has a layout that is not allowed: do not end with \"/\", \".\" or \".lock\", do not use \"..\" or \"//\", and do not start a segment with \".\".",
         "branchExists": "A branch with this name already exists. Enter a different name.",
         "noWorkspace": "No workspace is available.",
         "pickWorkspace": "Choose a workspace.",
@@ -858,7 +863,8 @@
         "slugTooLong": "The slug is too long. Use at most 80 characters.",
         "slugFormat": "Use lowercase letters, digits and single hyphens, for example payment-limits.",
         "slugReserved": "This name is reserved by the operating system. Choose another one.",
-        "slugTaken": "A specification with this slug already exists. Enter a different one."
+        "slugTaken": "A specification with this slug already exists. Enter a different one.",
+        "branchRejected": "This branch name is not accepted. Enter a different name."
       },
       "stale": {
         "tile": "This option is no longer available. Choose another one.",
@@ -932,7 +938,9 @@
     },
     "monitoring": {
       "title": "Preparing the workspace",
-      "body": "This can take a few minutes. Keep this page open: we are checking the operation for you and will open the specification when it is ready."
+      "body": "This can take a few minutes. Keep this page open: we are checking the operation for you and will open the specification when it is ready.",
+      "reportedTitle": "The server reported a problem",
+      "reportedBody": "{{reason}}. Nevo is confirming the result with the server; this message is replaced by the details."
     },
     "progress": {
       "label": "Specification creation progress",

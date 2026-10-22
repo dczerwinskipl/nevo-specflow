@@ -245,7 +245,7 @@ describe('useCreateProjectSpecification', () => {
     });
     expect(post.mock.calls[0]![2]).toMatchObject({ headers: { Prefer: 'respond-async' } });
     expect(model().state.phase).toBe('monitoring');
-    expect(model().flags).toMatchObject({ monitoring: true, busy: true, blocksLeave: true });
+    expect(model().flags).toMatchObject({ monitoring: true, busy: true, unfinished: true });
     expect(announce).toHaveBeenCalledWith(expect.stringContaining('few minutes'));
     // The stored operation survives a reload while it is being watched.
     expect(storageKey().load()).toBeDefined();
@@ -451,5 +451,53 @@ describe('useCreateProjectSpecification', () => {
       await model().actions.submit(submission());
     });
     expect(model().state.phase).toBe('completed');
+  });
+
+  it('shows the failure the inspection reports after acceptance, by its code, and releases the stored operation', async () => {
+    const post = vi.fn().mockResolvedValue(inProgress);
+    const get = vi.fn().mockResolvedValue({
+      operationId: created.operationId,
+      kind: 'specification-create',
+      status: 'failed',
+      code: 'BASE_REF_NOT_FOUND',
+    });
+    const { model, onCreated } = setup({ post, get });
+    await act(async () => {
+      await model().actions.submit(submission());
+    });
+    expect(get).toHaveBeenCalledOnce();
+    expect(model().state.phase).toBe('failed');
+    expect(model().state.failure).toMatchObject({ kind: 'stale', code: 'BASE_REF_NOT_FOUND' });
+    expect(storageKey().load()).toBeUndefined();
+    expect(onCreated).not.toHaveBeenCalled();
+  });
+
+  it('keeps an operation whose reported failure code leaves the outcome open and offers the check', async () => {
+    const post = vi.fn().mockResolvedValue(inProgress);
+    const get = vi.fn().mockResolvedValue({
+      operationId: created.operationId,
+      kind: 'specification-create',
+      status: 'failed',
+      code: 'INTERNAL_ERROR',
+    });
+    const { model } = setup({ post, get });
+    await act(async () => {
+      await model().actions.submit(submission());
+    });
+    expect(model().state.phase).toBe('outcome-unknown');
+    expect(storageKey().load()).toBeDefined();
+  });
+
+  it('stops watching and surfaces a lost session instead of polling until the hard limit', async () => {
+    const post = vi.fn().mockResolvedValue(inProgress);
+    const get = vi.fn().mockRejectedValue(httpError(401, 'authentication_required'));
+    const { model } = setup({ post, get });
+    await act(async () => {
+      await model().actions.submit(submission());
+    });
+    expect(get).toHaveBeenCalledOnce();
+    expect(model().state.failure).toMatchObject({ kind: 'unauthenticated' });
+    // The operation is not abandoned: it stays stored and a resubmit replays the same id.
+    expect(storageKey().load()).toBeDefined();
   });
 });

@@ -608,7 +608,8 @@
       "notStarted": "Operacja jeszcze się nie rozpoczęła. Ponów tę samą operację — zachowuje ten sam identyfikator.",
       "operationFailed": "Operacja zakończyła się niepowodzeniem. Możesz utworzyć specyfikację ponownie.",
       "copied": "Skopiowano {{label}}.",
-      "monitoring": "Przygotowanie środowiska może potrwać kilka minut. Obserwujemy operację."
+      "monitoring": "Przygotowanie środowiska może potrwać kilka minut. Obserwujemy operację.",
+      "copyFailed": "Nie udało się skopiować do schowka."
     },
     "operation": {
       "copyLabelOperation": "dane operacji",
@@ -736,6 +737,10 @@
       "nameConflict": {
         "title": "Specyfikacja o tej nazwie może już istnieć",
         "body": "Specyfikacja nie została utworzona: nazwa jest zajęta lub zmienił się stan środowisk. Zmień nazwę albo odśwież opcje. Przy następnej próbie użyjemy nowego identyfikatora operacji."
+      },
+      "branchInvalid": {
+        "title": "Nazwa gałęzi jest nieprawidłowa",
+        "body": "Specyfikacja nie została utworzona. Git nie przyjmuje wpisanej nazwy gałęzi. Wpisz inną nazwę gałęzi albo pozwól Nevo wygenerować ją automatycznie."
       }
     },
     "workspace": {
@@ -846,9 +851,9 @@
       },
       "errors": {
         "branchEmpty": "Wpisz nazwę gałęzi lub wyłącz tę opcję.",
-        "branchTooLong": "Nazwa gałęzi jest zbyt długa.",
-        "branchCharacters": "Nazwa gałęzi zawiera niedozwolone znaki. Użyj liter, cyfr, „-”, „_” i „/”.",
-        "branchStructure": "Nazwa gałęzi ma niedozwolony układ: nie zaczynaj od „-” ani „/”, nie kończ na „/”, „.” ani „.lock” i nie używaj „..”, „//” ani „@{”.",
+        "branchTooLong": "Nazwa gałęzi jest zbyt długa. Użyj co najwyżej 240 znaków.",
+        "branchCharacters": "Nazwa gałęzi zawiera niedozwolone znaki. Zacznij od litery lub cyfry i użyj tylko liter, cyfr oraz „.”, „-”, „_” i „/”.",
+        "branchStructure": "Nazwa gałęzi ma niedozwolony układ: nie kończ jej znakiem „/”, „.” ani „.lock”, nie używaj „..” ani „//” i nie zaczynaj segmentu od „.”.",
         "branchExists": "Gałąź o tej nazwie już istnieje. Wpisz inną nazwę.",
         "noWorkspace": "Brak dostępnego środowiska pracy.",
         "pickWorkspace": "Wybierz środowisko pracy.",
@@ -858,7 +863,8 @@
         "slugTooLong": "Slug jest zbyt długi. Użyj najwyżej 80 znaków.",
         "slugFormat": "Użyj małych liter, cyfr i pojedynczych myślników, na przykład limity-platnosci.",
         "slugReserved": "Ta nazwa jest zarezerwowana przez system operacyjny. Wybierz inną.",
-        "slugTaken": "Specyfikacja z takim slugiem już istnieje. Wpisz inny."
+        "slugTaken": "Specyfikacja z takim slugiem już istnieje. Wpisz inny.",
+        "branchRejected": "Ta nazwa gałęzi nie jest akceptowana. Wpisz inną nazwę."
       },
       "stale": {
         "tile": "Ten wariant nie jest już dostępny. Wybierz inną opcję.",
@@ -932,7 +938,9 @@
     },
     "monitoring": {
       "title": "Przygotowujemy środowisko pracy",
-      "body": "To może potrwać kilka minut. Zostaw tę stronę otwartą: sprawdzamy operację za Ciebie i otworzymy specyfikację, gdy będzie gotowa."
+      "body": "To może potrwać kilka minut. Zostaw tę stronę otwartą: sprawdzamy operację za Ciebie i otworzymy specyfikację, gdy będzie gotowa.",
+      "reportedTitle": "Serwer zgłosił problem",
+      "reportedBody": "{{reason}}. Nevo potwierdza wynik z serwerem; ten komunikat zostanie zastąpiony szczegółami."
     },
     "progress": {
       "label": "Postęp tworzenia specyfikacji",

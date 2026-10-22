@@ -132,7 +132,7 @@ describe('GET /api/specs/create/operations/:id agrees with the operations list',
   it('reports an idle journal without a live writer as recovery-required, like the list', async () => {
     const clock = { now: new Date() };
     const { stuckJournal, inspect, list } = await fixture(clock);
-    const idle = await stuckJournal('commit-writing', 10 * 60_000);
+    const idle = await stuckJournal('registry-writing', 10 * 60_000);
     const fresh = await stuckJournal('manifest-writing', 1_000);
 
     expect(await inspect(idle)).toEqual({

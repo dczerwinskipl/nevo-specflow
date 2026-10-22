@@ -9,8 +9,8 @@ import { useOperationProgress } from '../../../shared/operations/useOperationPro
 import { createFailureTitleKey } from './CreateFailureAlert';
 import {
   createCompletedSteps,
+  createNeutralProgress,
   createProgressLabel,
-  createProgressPlaceholderRows,
   createProgressSteps,
 } from './createProgress';
 import { toOperationFailure } from './createSpecErrors';
@@ -18,7 +18,8 @@ import type { StreamHint } from './watchCreateOperation';
 
 /**
  * The step checklist of the progress page, with what the Runtime says while a Create runs: the
- * named steps, a calm note when the live stream is unavailable and, best effort, the failure code
+ * named steps (or ONE neutral row while none is known, calmer still when the live stream is
+ * unavailable; steps are never simulated) and, best effort, the failure code
  * the stream reported before the inspection endpoint (the authority) has concluded. Display only:
  * it never decides, delays or fails the operation; it only tells the owner how soon to read the
  * inspection again. A finished Create shows every step done.
@@ -68,7 +69,6 @@ export function CreateOperationProgress({
     progress.failureCode !== OPERATION_NOT_FOUND_CODE
       ? toOperationFailure(progress.failureCode)
       : undefined;
-  const checklistPossible = progress.available && !reportedFailure && progress.outcome !== 'failed';
 
   if (completed)
     return <OperationProgress steps={createCompletedSteps(target)} label={createProgressLabel} />;
@@ -78,14 +78,8 @@ export function CreateOperationProgress({
       <OperationProgress
         steps={createProgressSteps(progress.steps)}
         label={createProgressLabel}
-        placeholderRows={checklistPossible ? createProgressPlaceholderRows(target) : 0}
+        neutral={createNeutralProgress(monitoring && progress.lost)}
       />
-      {/* The calm note only when there is no live checklist to look at. */}
-      {monitoring && progress.lost && progress.steps.length === 0 && !reportedFailure && (
-        <Alert role="status" tone="info" title={t('create.monitoring.title')}>
-          <p>{t('create.monitoring.body')}</p>
-        </Alert>
-      )}
       {reportedFailure && (
         <Alert role="status" tone="attention" title={t('create.monitoring.reportedTitle')}>
           <p>

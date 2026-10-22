@@ -452,8 +452,7 @@ export const SlugFollowsTheTitleUntilEditedAndIsValidated: Story = {
     await expect(request(canvas)).toBe('{"kind":"new-worktree"}');
     await userEvent.clear(slug);
     await userEvent.type(slug, 'moj-slug');
-    // The branch preview follows the typed slug; the slug itself is a top-level request field.
-    await expect(canvas.getByText('Nowa gałąź:', { exact: false })).toBeVisible();
+    // The branch row of the summary follows the typed slug; the slug itself is a top-level request field.
     await expect(rowValue(canvas, 'Nazwa gałęzi')).toHaveTextContent('feature/moj-slug');
     await expect(summary(canvas)).toHaveTextContent('Zmienione ustawienia (1): slug');
     await userEvent.clear(slug);

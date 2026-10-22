@@ -361,7 +361,14 @@
       "archived": "Zarchiwizowano"
     },
     "more_few": "+{{count}} więcej",
-    "more_many": "+{{count}} więcej"
+    "more_many": "+{{count}} więcej",
+    "creating": {
+      "named": "Tworzenie: {{name}}…",
+      "unnamed": "Tworzenie specyfikacji…",
+      "inProgress": "(w toku)",
+      "open": "Pokaż postęp",
+      "aria": "Pokaż postęp tworzenia: {{name}}"
+    }
   },
   "taskWorkspace": {
     "readMore": "Czytaj więcej",
@@ -905,8 +912,7 @@
         "slugSwitch": "Zmień nazwę (slug)",
         "slugSwitchDescription": "Slug nazywa katalog specyfikacji, katalog worktree i nową gałąź. Podąża za nazwą specyfikacji, dopóki go nie zmienisz.",
         "slugLabel": "Slug",
-        "slugPlaceholder": "limity-platnosci",
-        "slugHelp": "Nowa gałąź: <branch/>"
+        "slugPlaceholder": "limity-platnosci"
       },
       "suggestion": {
         "title": "Chcesz później scalić zmiany z powrotem do <branch/>?",
@@ -941,18 +947,43 @@
       "goalHelp": "Zapisujemy w przeglądzie specyfikacji. Aplikacja jeszcze go nie wyświetla."
     },
     "monitoring": {
-      "title": "Nadal pracujemy",
-      "body": "Kroki na żywo są niedostępne, więc sprawdzamy operację za Ciebie. To może potrwać kilka minut; możesz opuścić tę stronę, a tworzenie trwa dalej.",
       "reportedTitle": "Serwer zgłosił problem",
       "reportedBody": "{{reason}}. Nevo potwierdza wynik z serwerem; ten komunikat zostanie zastąpiony szczegółami."
     },
     "progress": {
       "label": "Postęp tworzenia specyfikacji",
       "steps": {
-        "reserving": "Rezerwowanie nazwy",
-        "preparing-workspace": "Przygotowanie środowiska pracy",
-        "writing-specification": "Zapisywanie plików specyfikacji",
-        "registering": "Rejestrowanie środowiska pracy"
+        "reserving": {
+          "title": "Rezerwowanie nazwy",
+          "running": "Sprawdzamy, czy nazwa i gałąź są wolne",
+          "done": "Nazwa i gałąź zarezerwowane"
+        },
+        "preparing-workspace": {
+          "title": "Przygotowanie środowiska pracy",
+          "running": "Tworzymy środowisko pracy",
+          "done": "Środowisko pracy gotowe"
+        },
+        "writing-specification": {
+          "title": "Tworzenie specyfikacji",
+          "running": "Zapisujemy pliki specyfikacji",
+          "done": "Pliki specyfikacji zapisane"
+        },
+        "registering": {
+          "title": "Kończenie konfiguracji",
+          "running": "Rejestrujemy nową specyfikację",
+          "done": "Specyfikacja zarejestrowana"
+        },
+        "unknown": {
+          "title": "Kolejny krok",
+          "running": "W toku",
+          "done": "Zakończony"
+        }
+      },
+      "waiting": "Czeka na poprzedni krok",
+      "neutral": {
+        "title": "Tworzenie specyfikacji",
+        "description": "To może chwilę potrwać.",
+        "descriptionLost": "Kroki na żywo są niedostępne, więc sprawdzamy operację za Ciebie. To może potrwać kilka minut."
       }
     },
     "page": {
@@ -962,7 +993,7 @@
         "refused": "Nie utworzono specyfikacji",
         "unknown": "Wynik jeszcze niepotwierdzony",
         "notFound": "Nie znaleziono operacji",
-        "workingNamed": "Tworzenie specyfikacji: {{name}}",
+        "workingNamed": "Tworzenie: {{name}}",
         "completedNamed": "Specyfikacja utworzona: {{name}}",
         "refusedNamed": "Nie utworzono specyfikacji: {{name}}",
         "unknownNamed": "Wynik jeszcze niepotwierdzony: {{name}}"
@@ -980,12 +1011,13 @@
       },
       "status": {
         "sending": "Wysyłanie żądania…",
-        "working": "Przygotowujemy Twoją specyfikację.",
+        "working": "Przygotowujemy specyfikację.",
         "stillWorking": "Nadal pracujemy — to może potrwać minutę.",
         "reading": "Odczytywanie operacji…",
-        "completed": "Gotowe. Otwieramy specyfikację…"
+        "completed": "Gotowe. Otwieramy specyfikację…",
+        "workingNew": "Przygotowujemy nowe środowisko pracy i specyfikację."
       },
-      "leaveNote": "Możesz opuścić tę stronę: tworzenie trwa dalej na serwerze. Wróć do niego przez Nowa specyfikacja.",
+      "leaveNote": "Możesz opuścić tę stronę. Tworzenie trwa dalej na serwerze, a jego stan sprawdzisz, wracając z listy specyfikacji.",
       "openSpecification": "Otwórz specyfikację",
       "backToForm": "Wróć do formularza",
       "tryAgain": "Spróbuj ponownie",
@@ -993,7 +1025,14 @@
       "notFound": {
         "title": "Ta operacja nie istnieje",
         "body": "Serwer nie ma po niej śladu. Link może być błędny albo operacja wygasła. Nic nie jest tworzone."
-      }
+      },
+      "configuration": "Konfiguracja",
+      "details": {
+        "title": "Szczegóły techniczne"
+      },
+      "backToSpecifications": "Wróć do specyfikacji",
+      "notCreated": "Nic nie zostało utworzone. Wpisane dane są zachowane, więc możesz to poprawić i spróbować ponownie.",
+      "location": "Tworzenie specyfikacji"
     }
   },
   "documents": {

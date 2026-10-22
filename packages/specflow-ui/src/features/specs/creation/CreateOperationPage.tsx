@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Button, InlineNote, Separator, Typography } from '@nevo/ui';
 import type { CreatedSpec } from '@nevo/specflow-contracts/specs';
 import { ApplicationContextLine } from '../../../app/navigation/ApplicationLocation';
 import { useAnnouncer } from '../../../shared/a11y/useAnnouncer';
+import {
+  OperationStatusTile,
+  type OperationStatusTone,
+} from '../../../shared/operations/OperationStatusTile';
 import { CreateFailurePanel } from './CreateFailurePanel';
 import { CreateOperationProgress } from './CreateOperationProgress';
 import { CreateShell } from './CreateShell';
@@ -11,6 +15,7 @@ import type { CreateFailure } from './createFailure';
 import { useCreateOperationStorage } from './createOperationStorage';
 import { createPageView, createSettingsModel, type CreatePageView } from './createPageView';
 import { CreateSettingsList } from './CreateSettingsList';
+import { CreateTechnicalDetails } from './CreateTechnicalDetails';
 import { useCreateProjectSpecification } from './useCreateProjectSpecification';
 import { useStillWorking } from './useStillWorking';
 import { initialWorkspaceChoice, type WorkspaceChoice } from './workspace/workspaceChoice';
@@ -34,6 +39,25 @@ const namedHeadingKeys = {
   unknown: 'create.page.heading.unknownNamed',
 } as const satisfies Partial<Record<CreatePageView, string>>;
 
+/** Refusals that happen before anything is done: the page may say nothing was created. */
+const nothingCreatedKinds: ReadonlySet<CreateFailure['kind']> = new Set([
+  'branch-exists',
+  'branch-invalid',
+  'stale',
+  'name-conflict',
+  'offline',
+  'forbidden',
+  'unauthenticated',
+]);
+
+const toneOf = {
+  working: 'running',
+  completed: 'success',
+  refused: 'danger',
+  unknown: 'attention',
+  'not-found': 'attention',
+} as const satisfies Record<CreatePageView, OperationStatusTone>;
+
 const withoutSnapshot = ({
   snapshot: _snapshot,
   ...failure
@@ -54,17 +78,21 @@ export function CreateOperationPage({
   operationId,
   onOpen,
   onBackToForm,
+  onBackToSpecifications,
 }: {
   operationId: string;
   /** Opens the created specification (automatically after a short moment, or on the button). */
   onOpen: (created: CreatedSpec) => void;
   /** Returns to the Create form; it finds the draft the page kept. */
   onBackToForm: () => void;
+  /** Leaves for the specification list; the operation goes on and is shown there. */
+  onBackToSpecifications: () => void;
 }) {
   const { t } = useTranslation();
   const storage = useCreateOperationStorage();
   const { announce, region } = useAnnouncer();
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const configurationId = useId();
   const [created, setCreated] = useState<CreatedSpec>();
 
   // The request this browser sent, if any; a direct link has none and shows what the server knows.
@@ -129,17 +157,22 @@ export function CreateOperationPage({
       ? t(namedHeadingKeys[headingView], { name: headingName })
       : t(headingKeys[headingView]);
 
+  const newWorkspace =
+    (settings?.place ?? (target?.kind === 'new-worktree' ? 'new' : 'main')) === 'new';
+  // What is going on now (subtitle), or, for a refusal that changed nothing, what was NOT created.
   const statusText = created
     ? t('create.page.status.completed')
-    : working
-      ? stillWorking
-        ? t('create.page.status.stillWorking')
-        : flags.monitoring
-          ? t('create.page.status.working')
-          : state.sent && state.resumedFrom
-            ? t('create.page.status.reading')
-            : t('create.page.status.sending')
-      : undefined;
+    : view === 'refused' && failure && nothingCreatedKinds.has(failure.kind)
+      ? t('create.page.notCreated')
+      : working
+        ? stillWorking
+          ? t('create.page.status.stillWorking')
+          : flags.monitoring
+            ? t(newWorkspace ? 'create.page.status.workingNew' : 'create.page.status.working')
+            : state.sent && state.resumedFrom
+              ? t('create.page.status.reading')
+              : t('create.page.status.sending')
+        : undefined;
 
   const checkLabel = state.checking
     ? t('create.submit.checking')
@@ -148,11 +181,12 @@ export function CreateOperationPage({
       : t('create.submit.checkResult');
 
   return (
-    <CreateShell>
+    <CreateShell width="narrow" title={t('create.page.location')}>
       <div className="grid gap-8">
-        <div className="grid gap-6">
-          <ApplicationContextLine className="mb-0" view="new-specification" />
-          <header className="grid gap-2">
+        <ApplicationContextLine className="mb-0" view="new-specification" />
+        <header className="flex min-w-0 items-start gap-4">
+          <OperationStatusTile tone={created ? 'success' : toneOf[view]} />
+          <div className="grid min-w-0 gap-1">
             <Typography
               as="h1"
               variant="title-lg"
@@ -163,21 +197,6 @@ export function CreateOperationPage({
             >
               {headingText}
             </Typography>
-            {settings && view !== 'not-found' && <CreateSettingsList settings={settings} />}
-          </header>
-        </div>
-        <Separator />
-
-        {(working || created) && (
-          <section className="grid gap-4" aria-label={t('create.progress.label')}>
-            <CreateOperationProgress
-              operationId={operationId}
-              target={target}
-              working={working}
-              completed={Boolean(created)}
-              monitoring={flags.monitoring}
-              onStreamHint={actions.setStreamHint}
-            />
             <Typography
               as="p"
               variant="body-md"
@@ -187,6 +206,19 @@ export function CreateOperationPage({
             >
               {statusText}
             </Typography>
+          </div>
+        </header>
+
+        {(working || created) && (
+          <section aria-label={t('create.progress.label')}>
+            <CreateOperationProgress
+              operationId={operationId}
+              target={target}
+              working={working}
+              completed={Boolean(created)}
+              monitoring={flags.monitoring}
+              onStreamHint={actions.setStreamHint}
+            />
           </section>
         )}
 
@@ -228,6 +260,21 @@ export function CreateOperationPage({
           />
         )}
 
+        {view !== 'not-found' && (
+          <section className="grid gap-4" aria-labelledby={settings ? configurationId : undefined}>
+            <Separator />
+            {settings && (
+              <>
+                <Typography as="h2" variant="title-sm" id={configurationId}>
+                  {t('create.page.configuration')}
+                </Typography>
+                <CreateSettingsList settings={settings} />
+              </>
+            )}
+            <CreateTechnicalDetails settings={settings} operationId={operationId} />
+          </section>
+        )}
+
         {(working || view === 'unknown') && <InlineNote>{t('create.page.leaveNote')}</InlineNote>}
 
         <div className="flex flex-col gap-3 @lg:flex-row">
@@ -248,6 +295,11 @@ export function CreateOperationPage({
           {view === 'not-found' && (
             <Button variant="secondary" onClick={onBackToForm}>
               {t('create.page.backToCreate')}
+            </Button>
+          )}
+          {!created && (
+            <Button variant="secondary" onClick={onBackToSpecifications}>
+              {t('create.page.backToSpecifications')}
             </Button>
           )}
         </div>

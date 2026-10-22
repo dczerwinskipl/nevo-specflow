@@ -361,7 +361,14 @@
       "archived": "Archived"
     },
     "more_few": "+{{count}} more",
-    "more_many": "+{{count}} more"
+    "more_many": "+{{count}} more",
+    "creating": {
+      "named": "Creating {{name}}…",
+      "unnamed": "Creating a specification…",
+      "inProgress": "(in progress)",
+      "open": "Show progress",
+      "aria": "Show the progress of creating {{name}}"
+    }
   },
   "taskWorkspace": {
     "readMore": "Read more",
@@ -905,8 +912,7 @@
         "slugSwitch": "Edit the name (slug)",
         "slugSwitchDescription": "The slug names the specification folder, the worktree folder and the new branch. It follows the specification name until you edit it.",
         "slugLabel": "Slug",
-        "slugPlaceholder": "payment-limits",
-        "slugHelp": "New branch: <branch/>"
+        "slugPlaceholder": "payment-limits"
       },
       "suggestion": {
         "title": "Do you want to merge the changes back into <branch/> later?",
@@ -941,18 +947,43 @@
       "goalHelp": "Saved in the specification overview. The app does not display it yet."
     },
     "monitoring": {
-      "title": "Still working",
-      "body": "The live steps are unavailable, so we are checking the operation for you. This can take a few minutes; you can leave this page and creation continues.",
       "reportedTitle": "The server reported a problem",
       "reportedBody": "{{reason}}. Nevo is confirming the result with the server; this message is replaced by the details."
     },
     "progress": {
       "label": "Specification creation progress",
       "steps": {
-        "reserving": "Reserving the name",
-        "preparing-workspace": "Preparing the workspace",
-        "writing-specification": "Writing the specification files",
-        "registering": "Registering the workspace"
+        "reserving": {
+          "title": "Reserving the name",
+          "running": "Checking that the name and branch are free",
+          "done": "Name and branch reserved"
+        },
+        "preparing-workspace": {
+          "title": "Preparing the workspace",
+          "running": "Creating the working environment",
+          "done": "Workspace ready"
+        },
+        "writing-specification": {
+          "title": "Creating the specification",
+          "running": "Writing the specification files",
+          "done": "Specification files written"
+        },
+        "registering": {
+          "title": "Finishing setup",
+          "running": "Registering the new specification",
+          "done": "Specification registered"
+        },
+        "unknown": {
+          "title": "Next step",
+          "running": "In progress",
+          "done": "Finished"
+        }
+      },
+      "waiting": "Waiting for previous step",
+      "neutral": {
+        "title": "Creating specification",
+        "description": "This can take a moment.",
+        "descriptionLost": "Live steps are unavailable, so we are checking the operation for you. This can take a few minutes."
       }
     },
     "page": {
@@ -962,7 +993,7 @@
         "refused": "Specification was not created",
         "unknown": "Result not confirmed yet",
         "notFound": "Operation not found",
-        "workingNamed": "Creating specification: {{name}}",
+        "workingNamed": "Creating {{name}}",
         "completedNamed": "Specification created: {{name}}",
         "refusedNamed": "Specification was not created: {{name}}",
         "unknownNamed": "Result not confirmed yet: {{name}}"
@@ -980,12 +1011,13 @@
       },
       "status": {
         "sending": "Sending the request…",
-        "working": "Preparing your specification.",
+        "working": "Preparing the specification.",
         "stillWorking": "Still working — this can take a minute.",
         "reading": "Reading the operation…",
-        "completed": "Done. Opening the specification…"
+        "completed": "Done. Opening the specification…",
+        "workingNew": "Preparing a new workspace and the specification."
       },
-      "leaveNote": "You can leave this page: creation continues on the server. Open New specification to return to it.",
+      "leaveNote": "You can leave this page. Creation continues on the server, and you can return to check its status from the specification list.",
       "openSpecification": "Open specification",
       "backToForm": "Back to form",
       "tryAgain": "Try again",
@@ -993,7 +1025,14 @@
       "notFound": {
         "title": "This operation does not exist",
         "body": "The server has no record of it. The link may be wrong or the operation may have expired. Nothing is being created."
-      }
+      },
+      "configuration": "Configuration",
+      "details": {
+        "title": "Technical details"
+      },
+      "backToSpecifications": "Back to specifications",
+      "notCreated": "Nothing was created. Your entries are kept, so you can fix this and try again.",
+      "location": "Creating specification"
     }
   },
   "documents": {

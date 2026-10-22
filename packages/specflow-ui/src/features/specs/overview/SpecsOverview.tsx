@@ -15,6 +15,7 @@ import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
 import { ViewPageTitle } from '../../../app/navigation/ApplicationLocation';
 import type { SpecsCollection, SpecsOverviewState, CurrentSpecTarget } from './model';
 import { SpecsOverviewCollection } from './SpecsOverviewCollection';
+import { SpecsOverviewCreating, type CreatingSpecification } from './SpecsOverviewCreating';
 import { SpecsOverviewEmpty } from './SpecsOverviewEmpty';
 import { SpecsOverviewHeader } from './SpecsOverviewHeader';
 import { SpecsOverviewNotice } from './SpecsOverviewNotice';
@@ -30,6 +31,8 @@ export interface SpecsOverviewProps {
   /** Create is offered but cannot be used yet (for example the Runtime mode is still unknown). */
   readonly createDisabled?: boolean;
   readonly onCreateSession?: () => void;
+  /** An unfinished Create operation: a row above the current list leads back to its progress page. */
+  readonly creating?: CreatingSpecification;
   readonly sample?: boolean;
   readonly specificationHref?: (specId: string) => string;
   readonly renderSpecificationLink?: (
@@ -47,6 +50,7 @@ export function SpecsOverview({
   onCreate,
   createDisabled = false,
   onCreateSession,
+  creating,
   sample = false,
   specificationHref,
   renderSpecificationLink,
@@ -124,6 +128,9 @@ export function SpecsOverview({
                   busy={busy}
                   onRetry={onRefresh}
                 />
+              ) : null}
+              {creating && state.collection === 'current' ? (
+                <SpecsOverviewCreating creating={creating} />
               ) : null}
               <div ref={appearance} className="min-w-0">
                 {state.loading || state.paused ? (

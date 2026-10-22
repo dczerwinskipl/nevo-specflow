@@ -208,4 +208,33 @@ describe('SpecsOverview collections', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Archive' }));
     expect(onCollectionChange).toHaveBeenCalledWith('archive');
   });
+
+  describe('an unfinished Create', () => {
+    const creating = { title: 'Payment limits', href: '/specs/new/creating/op-1' };
+
+    it('shows a way back to its progress page above the current list', () => {
+      renderOverview(loaded(), { creating });
+      const link = screen.getByRole('link', {
+        name: 'Show the progress of creating Payment limits',
+      });
+      expect(link.getAttribute('href')).toBe('/specs/new/creating/op-1');
+      expect(link.textContent).toContain('Creating Payment limits…');
+      expect(link.textContent).toContain('(in progress)');
+    });
+
+    it('names no specification it does not know', () => {
+      renderOverview(loaded(), { creating: { href: creating.href } });
+      expect(screen.getByRole('link', { name: 'Show progress' }).textContent).toContain(
+        'Creating a specification…',
+      );
+    });
+
+    it('is absent when nothing is unfinished and in the archive', () => {
+      renderOverview(loaded());
+      expect(screen.queryByText(/in progress/)).toBeNull();
+      cleanup();
+      renderOverview(loaded('archive'), { creating });
+      expect(screen.queryByText(/in progress/)).toBeNull();
+    });
+  });
 });

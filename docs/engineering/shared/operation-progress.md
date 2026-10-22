@@ -52,12 +52,14 @@ stream must never fail or block the operation.
    `GET /api/specs/create/operations/:operationId/events` in `features/specs/create/endpoint.ts`).
    `authorize` is the same capability check as the inspection endpoint, so the route reveals
    nothing before it passes. There is no global operations route and no `kind` query parameter.
-5. **UI feature.** Add the step labels to the feature's i18n namespace (pl and en), map them with
-   `satisfies Record<StepId, Message>` so a new step cannot ship unlabelled, and render
+5. **UI feature.** Add the step copy (a title and, per state, one line) to the feature's i18n namespace
+   (pl and en), map it with `satisfies Record<StepId, StepCopy>` so a new step cannot ship
+   unlabelled (a step id the build does not know is drawn generically, never dropped), and render
    `<OperationProgress>` while the operation is running, with the hook
    `useOperationProgress({api, streamUrl, enabled})`, where `streamUrl` comes from the feature's
    own API port (`operationEventsUrl(operationId)`). Keep progress out of the operation's
-   reducer: it is display state. Pass `placeholderRows` so the checklist does not move the page.
+   reducer: it is display state. Pass `neutral` (ONE honest running row) for the time before any step is known or
+   when there is no live stream; never simulate steps or percentages.
    Give an operation that takes seconds to minutes its own page (a route carrying the
    `operationId`, Create: `/specs/new/creating/$operationId`) rather than a panel under the form
    that started it: the form only stores the request and navigates; the page owns sending,

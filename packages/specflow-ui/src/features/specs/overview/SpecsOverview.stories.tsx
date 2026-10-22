@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { waitFor } from 'storybook/test';
+import { expect, waitFor } from 'storybook/test';
 import { AppShell, Typography } from '@nevo/ui';
 import {
   Outlet,
@@ -31,6 +31,7 @@ import type {
   CurrentSpecTarget,
 } from './model';
 import { SpecsOverview } from './SpecsOverview';
+import type { CreatingSpecification } from './SpecsOverviewCreating';
 import { useSpecsOverview } from './useSpecsOverview';
 import type { SpecsOverviewApi } from './api';
 
@@ -114,10 +115,12 @@ function OverviewFixture({
   state,
   locale = 'en',
   interactive = true,
+  creating,
 }: {
   state: SpecsOverviewState;
   locale?: AppLocale;
   interactive?: boolean;
+  creating?: CreatingSpecification;
 }) {
   const queryClient = useMemo(() => createSpecFlowQueryClient(), []);
   const router = useMemo(() => {
@@ -156,7 +159,7 @@ function OverviewFixture({
       path: '/',
       component: () => (
         <SpecFlowShell auth={auth}>
-          <OverviewFixtureContent state={state} interactive={interactive} />
+          <OverviewFixtureContent state={state} interactive={interactive} creating={creating} />
         </SpecFlowShell>
       ),
     });
@@ -178,7 +181,7 @@ function OverviewFixture({
       routeTree: root.addChildren([overview, login, playground]),
       history: createMemoryHistory({ initialEntries: ['/'] }),
     });
-  }, [state, interactive]);
+  }, [state, interactive, creating]);
   return (
     <QueryClientProvider client={queryClient}>
       <StoryLocalization locale={locale}>
@@ -191,9 +194,11 @@ function OverviewFixture({
 function OverviewFixtureContent({
   state,
   interactive,
+  creating,
 }: {
   state: SpecsOverviewState;
   interactive: boolean;
+  creating?: CreatingSpecification;
 }) {
   const [collectionOverride, setCollectionOverride] = useState<SpecsOverviewState>();
   const [target, setTarget] = useState<CurrentSpecTarget>();
@@ -203,6 +208,7 @@ function OverviewFixtureContent({
     <>
       <SpecsOverview
         state={collectionOverride ?? state}
+        creating={creating}
         onCollectionChange={(collection) =>
           setCollectionOverride({
             collection,
@@ -583,6 +589,37 @@ export const CollectionSwitch: Story = {
 };
 export const LongContent: Story = {
   args: { state: { ...loaded, projection: createLongContentFixture() } },
+};
+/**
+ * A Create that was started and has not concluded: one quiet row above the list leads back to its
+ * progress page (read from the client-side ledger; it disappears when the operation concludes).
+ */
+export const CreatingInProgress: Story = {
+  args: { creating: { title: 'Limity płatności', href: '/specs/new/creating/op-1' } },
+  play: async ({ canvas }) => {
+    const link = await canvas.findByRole('link', {
+      name: 'Show the progress of creating Limity płatności',
+    });
+    await expect(link).toHaveAttribute('href', '/specs/new/creating/op-1');
+    await expect(link).toHaveTextContent('Creating Limity płatności…');
+    await expect(link).toHaveTextContent('(in progress)');
+  },
+};
+
+/** The notice at 320 px with a long name: it wraps inside the row and nothing scrolls sideways. */
+export const CreatingInProgressMobile: Story = {
+  args: {
+    creating: {
+      title:
+        'Ograniczenia płatności cyklicznych dla klientów korporacyjnych w kanałach zdalnych oraz integracji z dostawcami',
+      href: '/specs/new/creating/op-1',
+    },
+  },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas }) => {
+    const link = await canvas.findByRole('link', { name: /Show the progress of creating/ });
+    await expect(link.getBoundingClientRect().right).toBeLessThanOrEqual(window.innerWidth);
+  },
 };
 export const Polish: Story = { args: { locale: 'pl' } };
 export const ProgressStates: Story = {

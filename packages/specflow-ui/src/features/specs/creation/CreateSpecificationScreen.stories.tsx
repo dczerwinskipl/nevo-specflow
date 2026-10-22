@@ -33,7 +33,10 @@ export type CreateBehavior =
   | 'forbidden'
   | 'timeout'
   | 'failed'
-  | 'recovery-required';
+  | 'recovery-required'
+  | 'branch-protected'
+  | 'commit-blocked'
+  | 'commit-failed';
 // Real Engine shape: `error` repeats the code; only demo-only codes carry a message.
 const failure = (status: number, code: string, error: string = code) =>
   new HttpClientError(error, { kind: 'http', status, data: { error, code } });
@@ -65,6 +68,10 @@ const createFailures: Partial<Record<CreateBehavior, HttpClientError>> = {
     data: { error: 'demo_invalid_selection' },
   }),
   'recovery-required': failure(503, 'CREATE_RECOVERY_REQUIRED'),
+  // Git enabled: nothing created (422, 409) / files written but not committed (503).
+  'branch-protected': failure(422, 'BRANCH_PROTECTED'),
+  'commit-blocked': failure(409, 'COMMIT_BLOCKED'),
+  'commit-failed': failure(503, 'COMMIT_FAILED'),
 };
 type OptionsBehavior = 'ok' | 'loading' | 'error' | 'forbidden';
 function Fixture({
@@ -876,6 +883,75 @@ export const RecoveryRequiredLocksTheFormAndNeverCreatesAgain: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Sprawdź stan operacji' }));
     await waitFor(() => expect(canvas.queryByText('Tworzenie wymaga dokończenia')).toBeNull());
     // The same operation id was checked; creation itself was sent exactly once.
+    await expect(createRequests).toHaveLength(1);
+  },
+};
+
+export const ProtectedTypedBranchIsFlaggedAtItsFieldAndNothingWasCreated: Story = {
+  render: () => <Fixture createBehavior="branch-protected" optionsVariants={['commits']} />,
+  parameters: { a11y: { test: 'off' } },
+  play: async ({ canvas, userEvent }) => {
+    await openManualForm(canvas, userEvent);
+    await userEvent.click(canvas.getByRole('button', { name: /Zmień ustawienia/ }));
+    await userEvent.click(canvas.getByRole('switch', { name: 'Użyj własnej nazwy gałęzi' }));
+    await userEvent.clear(canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' }));
+    await userEvent.type(
+      canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' }),
+      'feature/payments-v2',
+    );
+    await userEvent.click(submit(canvas));
+    await canvas.findByText('Gałąź jest chroniona');
+    const input = canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' });
+    await waitFor(() => expect(input).toHaveFocus());
+    await expect(input).toHaveAttribute('aria-invalid', 'true');
+    await expect(canvas.getByText(/Nie utworzono specyfikacji/)).toBeVisible();
+    await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toHaveValue(
+      'Nowa obsługa płatności',
+    );
+  },
+};
+
+export const ProtectedWorkspaceOffersARefreshAndKeepsTheForm: Story = {
+  render: () => <Fixture createBehavior="branch-protected" optionsVariants={['commits']} />,
+  parameters: { a11y: { test: 'off' } },
+  play: async ({ canvas, userEvent }) => {
+    await openManualForm(canvas, userEvent);
+    await userEvent.click(await canvas.findByRole('radio', { name: 'Bieżący katalog' }));
+    await userEvent.click(submit(canvas));
+    await canvas.findByText('Gałąź jest chroniona');
+    await expect(canvas.getByText(/Gałąź wybranego środowiska pracy jest chroniona/)).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Odśwież opcje' })).toBeVisible();
+    await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toBeEnabled();
+  },
+};
+
+export const CommitBlockedExplainsWhatToDoAndKeepsTheForm: Story = {
+  render: () => <Fixture createBehavior="commit-blocked" optionsVariants={['commits']} />,
+  parameters: { a11y: { test: 'off' } },
+  play: async ({ canvas, userEvent }) => {
+    await openManualForm(canvas, userEvent);
+    await userEvent.click(submit(canvas));
+    await canvas.findByText('Git nie może teraz przyjąć commita');
+    await expect(canvas.getByText(/Nie utworzono specyfikacji/)).toBeVisible();
+    await expect(canvas.getByText(/trwa scalanie lub rebase/)).toBeVisible();
+    await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toBeEnabled();
+    await expect(submit(canvas)).toBeEnabled();
+  },
+};
+
+export const CommitFailedIsRecoveryNotARetry: Story = {
+  render: () => <Fixture createBehavior="commit-failed" optionsVariants={['commits']} />,
+  parameters: { a11y: { test: 'off' } },
+  play: async ({ canvas, userEvent }) => {
+    await openManualForm(canvas, userEvent);
+    await userEvent.click(submit(canvas));
+    await canvas.findByText('Pliki specyfikacji powstały, ale nie udało się ich zapisać w Git');
+    await expect(canvas.getByText(/Nie twórz jej ponownie/)).toBeVisible();
+    await expect(canvas.queryByText(/Nie utworzono specyfikacji/)).toBeNull();
+    await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toBeDisabled();
+    await expect(canvas.queryByRole('button', { name: 'Utwórz specyfikację' })).toBeNull();
+    await expect(canvas.getAllByRole('button', { name: /^Sprawdź (stan|wynik)/ })).toHaveLength(1);
+    // Created once; the check reads the same operation.
     await expect(createRequests).toHaveLength(1);
   },
 };

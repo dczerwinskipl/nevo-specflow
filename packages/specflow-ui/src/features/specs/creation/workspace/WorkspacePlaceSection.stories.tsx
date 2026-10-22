@@ -82,7 +82,7 @@ function Harness({
             role="note"
             className="break-all text-body-sm"
             aria-label="Żądanie"
-            data-problems={problems(choice, options)
+            data-problems={problems(choice, options, title)
               .map((entry) => polishText(entry))
               .join('|')}
           >
@@ -1225,5 +1225,137 @@ export const FailedRefreshKeepsTheOptionsAndSaysSo: Story = {
   play: async ({ canvas }) => {
     await expect(canvas.getByRole('alert')).toHaveTextContent('Nie udało się odświeżyć opcji');
     await expect(canvas.getByRole('radio', { name: 'Nowe środowisko pracy' })).toBeChecked();
+  },
+};
+
+export const CommitRowNamesTheBranchOfANewWorkspace: Story = {
+  args: { variant: 'commits' },
+  tags: ['contract'],
+  play: async ({ canvas }) => {
+    await expect(rowValue(canvas, 'Commit')).toHaveTextContent(
+      'Pliki specyfikacji zostaną zapisane w commicie na gałęzi feature/limity-platnosci.',
+    );
+  },
+};
+
+export const GitOffHasNoCommitRowAndNoProtectionText: Story = {
+  args: { variant: 'default' },
+  tags: ['contract'],
+  play: async ({ canvas }) => {
+    await expect(within(summary(canvas)).queryByText('Commit', { selector: 'dt' })).toBeNull();
+    await expect(canvas.queryByText(/chronion/)).toBeNull();
+    await expect(canvas.queryByRole('button', { name: 'Użyj nowego środowiska pracy' })).toBeNull();
+  },
+};
+
+export const CommitNoteOfTheCurrentFolderAndAnExistingWorkspace: Story = {
+  args: { variant: 'commits', initial: { tile: 'main' } },
+  tags: ['contract'],
+  play: async ({ canvas, userEvent }) => {
+    await expect(summary(canvas)).toHaveTextContent(
+      'Pliki specyfikacji zostaną zapisane w commicie na gałęzi develop.',
+    );
+    await userEvent.click(label(tiles(canvas)[2]));
+    await userEvent.click(canvas.getByRole('combobox', { name: 'Środowisko pracy' }));
+    await userEvent.click(await within(document.body).findByRole('option', { name: /platform/ }));
+    await expect(summary(canvas)).toHaveTextContent(
+      'Pliki specyfikacji zostaną zapisane w commicie na gałęzi feature/platform.',
+    );
+  },
+};
+
+export const ProtectedCurrentFolderIsDisabledAndSuggestsANewWorkspace: Story = {
+  args: { variant: 'protected-primary', initial: { tile: 'existing' } },
+  tags: ['contract'],
+  play: async ({ canvas, userEvent }) => {
+    const [fresh, main, existing] = tiles(canvas);
+    await expect(main).toHaveAttribute('aria-disabled', 'true');
+    await expect(
+      canvas.getByText(
+        'Gałąź main jest chroniona: Nevo nie zapisuje tam zmian. Utwórz specyfikację w nowym środowisku pracy.',
+      ),
+    ).toBeVisible();
+    await expect(existing).toBeChecked();
+    // One click leads to the way out.
+    await userEvent.click(canvas.getByRole('button', { name: 'Użyj nowego środowiska pracy' }));
+    await expect(fresh).toBeChecked();
+    await expect(canvas.queryByRole('button', { name: 'Użyj nowego środowiska pracy' })).toBeNull();
+  },
+};
+
+export const ProtectedCurrentFolderNeverBecomesTheDefault: Story = {
+  args: { variant: 'protected-primary' },
+  tags: ['contract'],
+  play: async ({ canvas }) => {
+    const [fresh, main] = tiles(canvas);
+    await expect(fresh).toBeChecked();
+    await expect(main).not.toBeChecked();
+    await expect(request(canvas)).toBe('{"kind":"new-worktree"}');
+  },
+};
+
+export const BranchOutsideTheAllowedListIsDisabled: Story = {
+  args: { variant: 'not-allowed-primary', initial: { tile: 'existing' } },
+  tags: ['contract'],
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByText(/nie jest na liście gałęzi, na których Nevo może zapisywać zmiany/),
+    ).toBeVisible();
+  },
+};
+
+export const AllLinkedWorkspacesProtected: Story = {
+  args: { variant: 'protected-all-linked' },
+  tags: ['contract'],
+  play: async ({ canvas }) => {
+    const [, , existing] = tiles(canvas);
+    await expect(existing).toHaveAttribute('aria-disabled', 'true');
+    await expect(
+      canvas.getByText(/Wszystkie pozostałe środowiska pracy są na chronionych gałęziach/),
+    ).toBeVisible();
+  },
+};
+
+export const GeneratedBranchIsProtectedSoOwnNameIsRequired: Story = {
+  args: { variant: 'new-branch-protected' },
+  parameters: { a11y: { test: 'off' } },
+  tags: ['contract'],
+  play: async ({ canvas, userEvent }) => {
+    // The tile stays selectable; the problem is named before submit and blocks Create.
+    await expect(tiles(canvas)[0]).toBeChecked();
+    await expect(rowValue(canvas, 'Nazwa gałęzi')).toHaveTextContent(
+      'Wygenerowana gałąź release/limity-platnosci jest chroniona',
+    );
+    await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute(
+      'data-problems',
+      expect.stringContaining('Wygenerowana gałąź release/limity-platnosci jest chroniona'),
+    );
+    // A typed name that is protected as well is flagged at the field.
+    await userEvent.click(canvas.getByRole('switch', { name: 'Użyj własnej nazwy gałęzi' }));
+    const input = canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' });
+    await userEvent.clear(input);
+    await userEvent.type(input, 'release/hotfix');
+    await expect(canvas.getByText(/Ta gałąź jest chroniona/)).toBeVisible();
+    await expect(input).toHaveAttribute('aria-invalid', 'true');
+    // A name outside the protected ones frees the form and is the one sent.
+    await userEvent.clear(input);
+    await userEvent.type(input, 'feature/hotfix');
+    await expect(canvas.queryByText(/jest chroniona/)).toBeNull();
+    await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute('data-problems', '');
+    await expect(request(canvas)).toBe('{"kind":"new-worktree","branch":"feature/hotfix"}');
+  },
+};
+
+export const InvalidGitConfigurationDisablesOnlyTheNewWorkspace: Story = {
+  args: { variant: 'git-policy-invalid' },
+  tags: ['contract'],
+  play: async ({ canvas }) => {
+    const [fresh, main, existing] = tiles(canvas);
+    await expect(fresh).toHaveAttribute('aria-disabled', 'true');
+    await expect(
+      canvas.getByText('Konfiguracja Git projektu jest nieprawidłowa. Sprawdź .nevo/config.yaml.'),
+    ).toBeVisible();
+    await expect(main).toBeChecked();
+    await expect(existing).not.toHaveAttribute('aria-disabled', 'true');
   },
 };

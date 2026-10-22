@@ -37,8 +37,17 @@ const createdSpec: CreatedSpec = {
 };
 const event = { ...base, at: '2026-10-20T14:32:08Z' };
 
-type Server = 'running' | 'completed' | 'unknown' | 'failed-branch' | 'refuses-branch' | 'lost';
-type Stream = 'steps' | 'unavailable';
+type Server =
+  | 'running'
+  | 'completed'
+  | 'unknown'
+  | 'failed-branch'
+  | 'refuses-branch'
+  | 'lost'
+  | 'refuses-protected'
+  | 'refuses-blocked'
+  | 'commit-failed';
+type Stream = 'steps' | 'unavailable' | 'commit-steps' | 'commit-steps-existing';
 
 const apiError = (init: Partial<ConstructorParameters<typeof ApiError>[0]>) =>
   new ApiError({
@@ -51,21 +60,53 @@ const apiError = (init: Partial<ConstructorParameters<typeof ApiError>[0]>) =>
 
 /** Plays the Runtime's stream with short delays; the run keeps going so the steps stay visible. */
 function operationsFor(behavior: Stream): OperationsApi {
-  const events: readonly OperationProgressEvent[] = [
-    {
-      ...event,
-      type: 'snapshot',
-      status: 'running',
-      steps: [
-        { id: 'reserving', status: 'running' },
-        { id: 'preparing-workspace', status: 'pending' },
-        { id: 'writing-specification', status: 'pending' },
-        { id: 'registering', status: 'pending' },
-      ],
-    },
-    { ...event, type: 'step', step: 'reserving', status: 'done' },
-    { ...event, type: 'step', step: 'preparing-workspace', status: 'running' },
-  ];
+  // Git enabled: the Runtime lists `committing-specification` (and an existing workspace has no
+  // workspace step).
+  const committing = behavior === 'commit-steps' || behavior === 'commit-steps-existing';
+  const existing = behavior === 'commit-steps-existing';
+  const events: readonly OperationProgressEvent[] = committing
+    ? [
+        {
+          ...event,
+          type: 'snapshot',
+          status: 'running',
+          steps: [
+            { id: 'reserving', status: 'running' },
+            ...(existing ? [] : [{ id: 'preparing-workspace', status: 'pending' as const }]),
+            { id: 'writing-specification', status: 'pending' },
+            { id: 'committing-specification', status: 'pending' },
+            { id: 'registering', status: 'pending' },
+          ],
+        },
+        { ...event, type: 'step', step: 'reserving', status: 'done' },
+        ...(existing
+          ? []
+          : [
+              {
+                ...event,
+                type: 'step' as const,
+                step: 'preparing-workspace',
+                status: 'done' as const,
+              },
+            ]),
+        { ...event, type: 'step', step: 'writing-specification', status: 'done' },
+        { ...event, type: 'step', step: 'committing-specification', status: 'running' },
+      ]
+    : [
+        {
+          ...event,
+          type: 'snapshot',
+          status: 'running',
+          steps: [
+            { id: 'reserving', status: 'running' },
+            { id: 'preparing-workspace', status: 'pending' },
+            { id: 'writing-specification', status: 'pending' },
+            { id: 'registering', status: 'pending' },
+          ],
+        },
+        { ...event, type: 'step', step: 'reserving', status: 'done' },
+        { ...event, type: 'step', step: 'preparing-workspace', status: 'running' },
+      ];
   return {
     list: () => Promise.resolve({ kind: 'unavailable' as const }),
     async *watchProgress(_streamUrl, signal) {
@@ -93,6 +134,9 @@ function inspect(server: Server): Promise<CreateOperationInspection> {
       return Promise.resolve({ ...accepted, status: 'failed', code: 'BRANCH_ALREADY_EXISTS' });
     case 'unknown':
     case 'refuses-branch':
+    case 'refuses-protected':
+    case 'refuses-blocked':
+    case 'commit-failed':
       return Promise.reject(apiError({ kind: 'not-found', outcome: 'not-applied', status: 404 }));
     case 'lost':
       return Promise.reject(apiError({ kind: 'network' }));
@@ -145,18 +189,45 @@ function Fixture({
           createOptions: () => Promise.reject(new Error('not used by the page')),
           // The Runtime that has not seen the request: the page sends it, the answer follows `server`.
           create: () =>
-            server === 'refuses-branch'
+            server === 'refuses-protected'
               ? Promise.reject(
                   apiError({
-                    kind: 'conflict',
+                    kind: 'precondition',
                     outcome: 'not-applied',
-                    status: 409,
-                    code: 'BRANCH_ALREADY_EXISTS',
+                    status: 422,
+                    code: 'BRANCH_PROTECTED',
                   }),
                 )
-              : server === 'unknown'
-                ? Promise.reject(apiError({ kind: 'network' }))
-                : Promise.resolve(accepted),
+              : server === 'refuses-blocked'
+                ? Promise.reject(
+                    apiError({
+                      kind: 'conflict',
+                      outcome: 'not-applied',
+                      status: 409,
+                      code: 'COMMIT_BLOCKED',
+                    }),
+                  )
+                : server === 'commit-failed'
+                  ? Promise.reject(
+                      apiError({
+                        kind: 'recovery-required',
+                        outcome: 'unknown',
+                        status: 503,
+                        code: 'COMMIT_FAILED',
+                      }),
+                    )
+                  : server === 'refuses-branch'
+                    ? Promise.reject(
+                        apiError({
+                          kind: 'conflict',
+                          outcome: 'not-applied',
+                          status: 409,
+                          code: 'BRANCH_ALREADY_EXISTS',
+                        }),
+                      )
+                    : server === 'unknown'
+                      ? Promise.reject(apiError({ kind: 'network' }))
+                      : Promise.resolve(accepted),
           inspectOperation: () => inspect(server),
           operationEventsUrl: createOperationEventsUrl,
         },
@@ -436,5 +507,121 @@ export const DirectLinkInProgress: Story = {
     // Nothing is known about this Create: no name in the heading and no settings are guessed.
     await expect(canvas.queryByText(/Limity płatności/)).not.toBeInTheDocument();
     await expect(canvas.queryByLabelText('Ustawienia tworzenia')).not.toBeInTheDocument();
+  },
+};
+
+/**
+ * Git enabled: the checklist has its own step "Zapisywanie specyfikacji w Git" between writing the
+ * files and registering, and the configuration says on which branch the files are committed.
+ */
+export const InProgressWithTheCommitStep: Story = {
+  args: {
+    request: newWorkspace,
+    facts: { ...newWorkspaceFacts, commit: true },
+    stream: 'commit-steps',
+  },
+  play: async ({ canvas, canvasElement }) => {
+    const running = await canvas.findByText('Zapisywanie specyfikacji w Git');
+    await waitFor(() => expect(running.closest('li')).toHaveAttribute('aria-current', 'step'));
+    await expect(canvas.getByText('Zapisujemy pliki specyfikacji w commicie')).toBeVisible();
+    await expect(steps(canvasElement).getAllByRole('listitem')).toHaveLength(5);
+    await expect(canvas.getByText('Pliki specyfikacji zapisane')).toBeVisible();
+    const settings = settingsList(canvas);
+    await expect(settings.getByText('Commit')).toBeInTheDocument();
+    await expect(settings.getAllByText('feature/limity-platnosci')).toHaveLength(2);
+  },
+};
+
+export const InProgressWithTheCommitStepInAnExistingWorkspace: Story = {
+  args: {
+    request: {
+      title: 'Limity płatności',
+      target: { kind: 'existing', workspaceId: '00000000-0000-4000-8000-0000000000bb' },
+    },
+    facts: {
+      place: 'existing',
+      workspace: { name: 'platform', branch: 'feature/platform' },
+      commit: true,
+    },
+    stream: 'commit-steps-existing',
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByText('Zapisywanie specyfikacji w Git');
+    // No workspace step for an existing workspace: four rows.
+    await expect(steps(canvasElement).getAllByRole('listitem')).toHaveLength(4);
+    await expect(
+      settingsList(canvas).getAllByText('feature/platform').length,
+    ).toBeGreaterThanOrEqual(2);
+  },
+};
+
+/** A protected branch: nothing was created, the page says so and the form keeps the values. */
+export const RefusedBecauseTheBranchIsProtected: Story = {
+  args: {
+    request: {
+      title: 'Limity płatności',
+      target: { kind: 'existing', workspaceId: '00000000-0000-4000-8000-0000000000bb' },
+    },
+    facts: { place: 'existing', workspace: { name: 'platform', branch: 'main' }, commit: true },
+    server: 'refuses-protected',
+    onBackToForm: fn(),
+  },
+  play: async ({ canvas, userEvent, args }) => {
+    await canvas.findByRole('heading', {
+      level: 1,
+      name: 'Nie utworzono specyfikacji: Limity płatności',
+    });
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('Gałąź jest chroniona');
+    await expect(canvas.getByText(/^Nic nie zostało utworzone./)).toBeVisible();
+    await expect(canvas.getByText(/Gałąź wybranego środowiska pracy jest chroniona/)).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'Odśwież opcje' }));
+    await expect(args.onBackToForm).toHaveBeenCalledOnce();
+  },
+};
+
+/** Git is busy in the checkout: nothing was created; finish the merge or rebase and try again. */
+export const RefusedBecauseGitCannotCommitNow: Story = {
+  args: {
+    request: newWorkspace,
+    facts: { ...newWorkspaceFacts, commit: true },
+    server: 'refuses-blocked',
+  },
+  play: async ({ canvas }) => {
+    await canvas.findByRole('heading', {
+      level: 1,
+      name: 'Nie utworzono specyfikacji: Limity płatności',
+    });
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      'Git nie może teraz przyjąć commita',
+    );
+    await expect(canvas.getByText(/^Nic nie zostało utworzone./)).toBeVisible();
+    await expect(canvas.getByText(/trwa scalanie lub rebase/)).toBeVisible();
+  },
+};
+
+/**
+ * The files were written but the commit failed: calm recovery, the truth that the files exist, no
+ * "nothing was created" line and no way to create again, only a check of the same operation.
+ */
+export const CreatedButNotCommitted: Story = {
+  args: {
+    request: newWorkspace,
+    facts: { ...newWorkspaceFacts, commit: true },
+    server: 'commit-failed',
+  },
+  play: async ({ canvas }) => {
+    await canvas.findByRole('heading', {
+      level: 1,
+      name: 'Wynik jeszcze niepotwierdzony: Limity płatności',
+    });
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      'Pliki specyfikacji powstały, ale nie udało się ich zapisać w Git',
+    );
+    await expect(
+      canvas.getByText('Pliki specyfikacji powstały, ale nie udało się ich zapisać w Git.'),
+    ).toBeVisible();
+    await expect(canvas.queryByText(/Nic nie zostało utworzone/)).toBeNull();
+    await expect(canvas.getByRole('button', { name: 'Sprawdź stan operacji' })).toBeEnabled();
+    await expect(canvas.queryByRole('button', { name: 'Wróć do formularza' })).toBeNull();
   },
 };

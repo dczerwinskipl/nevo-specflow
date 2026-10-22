@@ -21,6 +21,21 @@ describe('conflictsOfFailure', () => {
     });
   });
 
+  it('flags a typed protected branch at its field; a generated name or a workspace is no field', () => {
+    expect(
+      conflictsOfFailure(
+        { kind: 'branch-protected', cause: 'typed-branch' },
+        { branch: 'release/x' },
+      ),
+    ).toEqual({ branch: { value: 'release/x', reason: 'protected' } });
+    expect(
+      conflictsOfFailure({ kind: 'branch-protected', cause: 'generated-branch' }, { branch: '' }),
+    ).toBeUndefined();
+    expect(
+      conflictsOfFailure({ kind: 'branch-protected', cause: 'workspace' }, { branch: '' }),
+    ).toBeUndefined();
+  });
+
   it('ignores failures that concern no field', () => {
     expect(conflictsOfFailure({ kind: 'failed' }, { branch: 'x' })).toBeUndefined();
   });

@@ -17,6 +17,7 @@ import { SummaryRow } from './workspace/WorkspaceTileSummaries';
 export function CreateSettingsList({ settings }: { settings: CreateSettingsModel }) {
   const { t } = useTranslation();
   const { place, workspace } = settings;
+  const commitBranch = place === 'new' ? settings.branch : workspace?.branch;
 
   const where =
     place === 'new' ? (
@@ -57,6 +58,14 @@ export function CreateSettingsList({ settings }: { settings: CreateSettingsModel
       {settings.mergeInto && (
         <SummaryRow label={t('create.workspace.fact.target')} override={false}>
           <WorkspaceRef workspace={settings.mergeInto} />
+        </SummaryRow>
+      )}
+      {settings.commit && commitBranch && (
+        <SummaryRow label={t('create.workspace.fact.commit')} override={false}>
+          <Trans
+            i18nKey="create.page.settings.committedTo"
+            components={{ branch: <BranchRef name={commitBranch} /> }}
+          />
         </SummaryRow>
       )}
       {settings.goal && (

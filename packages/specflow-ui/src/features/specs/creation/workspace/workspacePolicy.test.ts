@@ -777,3 +777,95 @@ describe('slug and branch defaults', () => {
     expect(defaultTargetWorkspaceId(o)).toBe(ids.main);
   });
 });
+
+describe('protected branches (Git enabled, commits present)', () => {
+  it('a protected primary checkout explains itself and never becomes the default tile', () => {
+    const value = options('protected-primary');
+    const main = tileAvailability(value).main;
+    expect(main.ok).toBe(false);
+    expect(main.reason).toContain('Gałąź main jest chroniona');
+    expect(main.reason).toContain('nowym środowisku pracy');
+    expect(rawTileAvailability(value).main.protected).toBe(true);
+    expect(defaultTile(value)).toBe('new');
+    // The protected checkout is still a merge target (the Engine does not commit there now).
+    expect(targetStatus(value).kind).not.toBe('none');
+  });
+  it('a branch outside the allowed list says so', () => {
+    expect(tileAvailability(options('not-allowed-primary')).main.reason).toContain(
+      'nie jest na liście',
+    );
+  });
+  it('linked workspaces that are all protected give the existing tile its own reason', () => {
+    const value = options('protected-all-linked');
+    expect(tileAvailability(value).existing.ok).toBe(false);
+    expect(tileAvailability(value).existing.reason).toContain('chronionych gałęziach');
+    expect(rawTileAvailability(value).existing.protected).toBe(true);
+    expect(tileAvailability(value).new.ok).toBe(true);
+  });
+  it('a mix of protected and otherwise unavailable linked workspaces stays "none available"', () => {
+    const value = options('protected-all-linked');
+    value.workspaces = value.workspaces.map((w) =>
+      w.workspaceId === ids.platform ? { ...w, reason: 'detached' as const } : w,
+    );
+    expect(tileAvailability(value).existing.reason).toBe(
+      'Żadne środowisko pracy nie jest teraz dostępne.',
+    );
+  });
+  it('an invalid Git configuration disables only the new workspace, calmly', () => {
+    const value = options('git-policy-invalid');
+    expect(tileAvailability(value).new).toEqual({
+      ok: false,
+      reason: 'Konfiguracja Git projektu jest nieprawidłowa. Sprawdź .nevo/config.yaml.',
+    });
+    expect(tileAvailability(value).main.ok).toBe(true);
+    expect(tileAvailability(value).existing.ok).toBe(true);
+    expect(defaultTile(value)).toBe('main');
+  });
+
+  describe('the generated branch is protected', () => {
+    it('keeps the tile selectable but blocks Create until a name outside the protected ones is typed', () => {
+      const value = options('new-branch-protected');
+      expect(tileAvailability(value).new.ok).toBe(true);
+      expect(problems(choice(), value, 'Płatności')[0]).toContain(
+        'Wygenerowana gałąź release/platnosci jest chroniona',
+      );
+      expect(
+        problems(
+          choice({ branch: { on: true, name: 'feature/own', edited: true } }),
+          value,
+          'Płatności',
+        ),
+      ).toEqual([]);
+    });
+    it('flags a typed name that is protected, at the field, before submit', () => {
+      const value = options('new-branch-protected');
+      const typed = choice({ branch: { on: true, name: 'release/own', edited: true } });
+      expect(branchNameError('release/own', value)).toContain('Ta gałąź jest chroniona');
+      expect(revalidate(typed, value).branch).toContain('Ta gałąź jest chroniona');
+      expect(problems(typed, value, 'Płatności')[0]).toContain('Ta gałąź jest chroniona');
+    });
+    it('checks the slug-based name against the patterns even without the Runtime verdict', () => {
+      const value = options('commits');
+      value.commits = { protectedBranches: ['feature/pay*'] };
+      expect(problems(choice(), value, 'Payments')[0]).toContain(
+        'Wygenerowana gałąź feature/payments jest chroniona',
+      );
+      expect(problems(choice(), value, 'Orders')).toEqual([]);
+    });
+    it('says "allowed list" for a typed or generated name outside it', () => {
+      const value = options('commits');
+      value.commits = { protectedBranches: [], allowedBranches: ['spec/**'] };
+      expect(branchNameError('hotfix/x', value)).toContain('liście dozwolonych');
+      expect(problems(choice(), value, 'Orders')[0]).toContain('liście dozwolonych');
+    });
+  });
+
+  it('is inert without `commits` (Git disabled or older Runtime): no protection text, no blocks', () => {
+    const value = options();
+    expect(value.commits).toBeUndefined();
+    value.newWorktree = { status: 'available' };
+    expect(branchNameError('release/own', value)).toBeUndefined();
+    expect(problems(choice(), value, 'Orders')).toEqual([]);
+    expect(rawTileAvailability(value).main.protected).toBeUndefined();
+  });
+});

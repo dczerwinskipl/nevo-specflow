@@ -793,6 +793,20 @@
       "branchInvalid": {
         "title": "The branch name is not valid",
         "body": "The specification was not created. The branch name you typed is not accepted by Git. Enter a different branch name or let Nevo generate one automatically."
+      },
+      "branchProtected": {
+        "title": "The branch is protected",
+        "bodyTyped": "The specification was not created. The branch name you typed is protected: Nevo does not commit there. Enter a different branch name — the other settings are kept.",
+        "bodyGenerated": "The specification was not created. The branch Nevo would generate is protected: Nevo does not commit there. Enter your own branch name — the other settings are kept.",
+        "bodyWorkspace": "The specification was not created. The branch of the selected workspace is protected: Nevo does not commit there. Create the specification in a new workspace instead, or refresh the options."
+      },
+      "commitBlocked": {
+        "title": "Git cannot take a commit right now",
+        "body": "The specification was not created. Git is busy in this folder — for example a merge or rebase is in progress, no branch is checked out, or Git has the index locked. Finish or abort that operation, then try again. The form is kept."
+      },
+      "commitFailed": {
+        "title": "The specification files were created but could not be committed",
+        "body": "Nevo wrote the specification files but could not save them in Git history, so the specification is not registered yet. Do not create it again. Ask the project operator to resume this operation, or to commit the new files, and then check the operation again."
       }
     },
     "workspace": {
@@ -824,7 +838,11 @@
         "mainDetached": "No branch is checked out in the current folder (detached state).",
         "mainUnavailable": "The current folder is unavailable.",
         "existingNone": "There are no other workspaces in the project.",
-        "existingUnavailable": "No workspace is available right now."
+        "existingUnavailable": "No workspace is available right now.",
+        "mainProtected": "The branch {{branch}} is protected: Nevo does not commit there. Create the specification in a new workspace.",
+        "mainNotAllowed": "The branch {{branch}} is not on the project's list of branches Nevo may commit to. Create the specification in a new workspace.",
+        "existingProtected": "All other workspaces are on protected branches. Create the specification in a new workspace.",
+        "newPolicyInvalid": "The project's Git configuration is invalid. Check .nevo/config.yaml."
       },
       "reason": {
         "dirty": "Has uncommitted Git changes",
@@ -833,7 +851,10 @@
         "git-membership-mismatch": "The folder does not belong to this repository",
         "git-disabled": "Git disabled",
         "git-unavailable": "Git unavailable",
-        "other": "Unavailable"
+        "other": "Unavailable",
+        "branch-protected": "Protected branch: Nevo does not commit there",
+        "branch-not-allowed": "Branch is not on the project's list for commits",
+        "git-policy-invalid": "The project's Git configuration is invalid"
       },
       "reasonInline": {
         "dirty": "has uncommitted Git changes",
@@ -842,7 +863,10 @@
         "git-membership-mismatch": "the folder does not belong to this repository",
         "git-disabled": "Git disabled",
         "git-unavailable": "Git unavailable",
-        "other": "unavailable"
+        "other": "unavailable",
+        "branch-protected": "is on a protected branch (Nevo does not commit there)",
+        "branch-not-allowed": "is on a branch outside the project's list for commits",
+        "git-policy-invalid": "the project's Git configuration is invalid"
       },
       "specCount_one": "{{count}} specification",
       "specCount_few": "{{count}} specifications",
@@ -879,7 +903,8 @@
         "base": "Start from",
         "target": "Merge into",
         "branch": "Branch name",
-        "folder": "Worktree folder"
+        "folder": "Worktree folder",
+        "commit": "Commit"
       },
       "main": {
         "onBranch": "The specification will be created on branch <branch/>. We do not create a new branch or worktree and do not switch the current branch.",
@@ -916,7 +941,11 @@
         "slugFormat": "Use lowercase letters, digits and single hyphens, for example payment-limits.",
         "slugReserved": "This name is reserved by the operating system. Choose another one.",
         "slugTaken": "A specification with this slug already exists. Enter a different one.",
-        "branchRejected": "This branch name is not accepted. Enter a different name."
+        "branchRejected": "This branch name is not accepted. Enter a different name.",
+        "branchProtected": "This branch is protected: Nevo does not commit there. Enter a different name.",
+        "branchNotAllowed": "Nevo may not commit on this branch (it is not on the project's allowed list). Enter a different name.",
+        "generatedBranchProtected": "The generated branch {{branch}} is protected: Nevo does not commit there. Use your own branch name.",
+        "generatedBranchNotAllowed": "The generated branch {{branch}} is not on the project's allowed list. Use your own branch name."
       },
       "stale": {
         "tile": "This option is no longer available. Choose another one.",
@@ -981,7 +1010,14 @@
         "noteOtherBranchNone": "The project target <target/> is not checked out in the current folder, which has no branch. Closing the work may need a change. Creation is not blocked.",
         "noteNoTarget": "No project target is configured, so closing the work will need one. Creation is not blocked."
       },
-      "folderWillBeCreated": "Created together with the workspace."
+      "folderWillBeCreated": "Created together with the workspace.",
+      "commit": {
+        "willCommit": "The specification files will be committed to branch <branch/>."
+      },
+      "protectedSuggestion": {
+        "text": "A new workspace is not affected by protected branches.",
+        "action": "Use New workspace"
+      }
     },
     "project": {
       "subheading": "Name it, add the goal if you have one, and choose where its files will live.",
@@ -1056,7 +1092,8 @@
         "addedToFolder": "Added to the current folder, branch <branch/>",
         "addedToFolderUnknown": "Added to the current folder",
         "slug": "Name (slug)",
-        "goal": "Goal"
+        "goal": "Goal",
+        "committedTo": "The specification files are committed to <branch/>"
       },
       "status": {
         "sending": "Sending the request…",
@@ -1081,7 +1118,8 @@
       },
       "backToSpecifications": "Back to specifications",
       "notCreated": "Nothing was created. Your entries are kept, so you can fix this and try again.",
-      "location": "Creating specification"
+      "location": "Creating specification",
+      "createdNotCommitted": "The specification files were created but could not be committed."
     },
     "operations": {
       "kind": "Creating a specification"

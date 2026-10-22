@@ -30,7 +30,7 @@ export function projectCreateReadiness(input: {
         ? message('create.prerequisite.workspaceError')
         : workspaceState.status === 'forbidden'
           ? message('create.prerequisite.forbidden')
-          : workspaceProblems(choice, workspaceState.options satisfies CreateOptions)[0];
+          : workspaceProblems(choice, workspaceState.options satisfies CreateOptions, title)[0];
   const tooLong =
     title.trim().length > createTitleMaxLength || goal.trim().length > createGoalMaxLength;
   const prerequisite = input.forbidden

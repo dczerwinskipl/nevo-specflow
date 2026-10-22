@@ -183,6 +183,7 @@ export function useCreateProjectSpecification(
       const sentTarget = ledger.attempt.current?.input.target;
       const outcome = interpretWatchResult(result, {
         customBranch: sentTarget?.kind === 'new-worktree' ? sentTarget.branch : undefined,
+        newWorkspace: sentTarget?.kind === 'new-worktree',
       });
       if (outcome.kind === 'completed') {
         storage.clear();

@@ -37,7 +37,19 @@ export type OptionsVariant =
   | 'many-workspaces'
   | 'managed-false'
   | 'long-names'
-  | 'no-selectable-targets';
+  | 'no-selectable-targets'
+  /** Git enabled: the Engine commits the scaffold; `main` is protected, nothing else is. */
+  | 'commits'
+  /** Git enabled, the primary checkout is on the protected `main`. */
+  | 'protected-primary'
+  /** Git enabled, the primary checkout is on a branch outside `allowedBranches`. */
+  | 'not-allowed-primary'
+  /** Git enabled, every linked workspace is on a protected branch. */
+  | 'protected-all-linked'
+  /** Git enabled, the generated branch (`release/<slug>`) is protected. */
+  | 'new-branch-protected'
+  /** Git enabled, but the project's Git configuration is invalid. */
+  | 'git-policy-invalid';
 
 export function seedOptions(): DemoCreateOptions {
   const ids = workspaceIds;
@@ -166,6 +178,52 @@ export function createOptionsFixture(variant: OptionsVariant = 'default'): DemoC
   };
   switch (variant) {
     case 'default':
+      break;
+    case 'commits':
+      next.commits = { protectedBranches: ['main'] };
+      break;
+    case 'protected-primary':
+      next.commits = { protectedBranches: ['main'] };
+      mapWorkspaces(
+        (w) =>
+          strip({
+            ...w,
+            branch: 'main',
+            selectable: false,
+            integrationSelectable: true,
+            reason: 'branch-protected',
+          }),
+        (w) => w.kind === 'primary',
+      );
+      next.baseRefs = next.baseRefs.map((b) =>
+        b.ref === 'develop'
+          ? { ref: b.ref }
+          : b.ref === 'main'
+            ? { ...b, checkedOutWorkspaceId: workspaceIds.main }
+            : b,
+      );
+      break;
+    case 'not-allowed-primary':
+      next.commits = { protectedBranches: [], allowedBranches: ['feature/**', 'spec/**'] };
+      mapWorkspaces(
+        (w) => strip({ ...w, selectable: false, reason: 'branch-not-allowed' }),
+        (w) => w.kind === 'primary',
+      );
+      break;
+    case 'protected-all-linked':
+      next.commits = { protectedBranches: ['main', 'feature/**', 'spec/**'] };
+      mapWorkspaces(
+        (w) => ({ ...w, selectable: false, reason: 'branch-protected' }),
+        (w) => w.kind === 'linked' && w.branch !== undefined,
+      );
+      break;
+    case 'new-branch-protected':
+      next.branchPattern = 'release/{slug}';
+      next.commits = { protectedBranches: ['main', 'release/**'] };
+      next.newWorktree = { status: 'available', branchProtected: true };
+      break;
+    case 'git-policy-invalid':
+      next.newWorktree = { status: 'unavailable', reason: 'git-policy-invalid' };
       break;
     case 'git-disabled':
       next.newWorktree = { status: 'disabled', reason: 'git-disabled' };

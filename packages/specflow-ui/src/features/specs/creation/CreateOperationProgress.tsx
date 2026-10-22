@@ -29,6 +29,7 @@ export function CreateOperationProgress({
   target,
   working,
   completed,
+  commits = false,
   monitoring,
   onStreamHint,
 }: {
@@ -38,6 +39,8 @@ export function CreateOperationProgress({
   target: CreateSpecRequest['target'];
   working: boolean;
   completed: boolean;
+  /** The Engine commits the scaffold (Git enabled): a finished checklist includes that step. */
+  commits?: boolean;
   /** The Runtime accepted the operation and it is watched through the inspection endpoint. */
   monitoring: boolean;
   onStreamHint: (hint: StreamHint) => void;
@@ -71,7 +74,12 @@ export function CreateOperationProgress({
       : undefined;
 
   if (completed)
-    return <OperationProgress steps={createCompletedSteps(target)} label={createProgressLabel} />;
+    return (
+      <OperationProgress
+        steps={createCompletedSteps(target, commits)}
+        label={createProgressLabel}
+      />
+    );
   if (!working) return null;
   return (
     <>

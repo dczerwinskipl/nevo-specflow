@@ -32,6 +32,8 @@ export interface CreateSettingsFacts {
   readonly mergeReason?: string;
   /** The specification slug when the owner set it explicitly. */
   readonly slug?: string;
+  /** Git is enabled: the Engine commits the specification files (to `branch` or the workspace's). */
+  readonly commit?: true;
 }
 
 const named = (workspace: CreateOptions['workspaces'][number]): FactWorkspace => ({
@@ -46,13 +48,14 @@ export function buildCreateFacts(
   title: string,
 ): CreateSettingsFacts | undefined {
   const tile = activeTile(choice, options);
+  const commit = options.commits ? ({ commit: true } as const) : {};
   if (tile === 'existing') {
     const selected = options.workspaces.find((w) => w.workspaceId === choice.existingWorkspaceId);
-    return { place: 'existing', ...(selected ? { workspace: named(selected) } : {}) };
+    return { place: 'existing', ...(selected ? { workspace: named(selected) } : {}), ...commit };
   }
   if (tile === 'main') {
     const primary = primaryWorkspace(options);
-    return { place: 'main', ...(primary ? { workspace: named(primary) } : {}) };
+    return { place: 'main', ...(primary ? { workspace: named(primary) } : {}), ...commit };
   }
   if (tile !== 'new') return undefined;
 
@@ -78,6 +81,7 @@ export function buildCreateFacts(
     ...(mergeInto ? { mergeInto: named(mergeInto) } : {}),
     ...(mergeReason ? { mergeReason } : {}),
     ...(overrides.slug ? { slug: overrides.slug } : {}),
+    ...commit,
   };
 }
 
@@ -114,5 +118,6 @@ export function toCreateFacts(value: unknown): CreateSettingsFacts | undefined {
     ...(mergeInto ? { mergeInto } : {}),
     ...(mergeReason ? { mergeReason } : {}),
     ...(slug ? { slug } : {}),
+    ...(value.commit === true ? { commit: true as const } : {}),
   };
 }

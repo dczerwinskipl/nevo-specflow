@@ -103,7 +103,11 @@ export function useWorkspacePlace(
       }
       const stale = Object.keys(revalidate(choice, result.options)).length > 0;
       announce(stale ? t('create.announce.refreshedStale') : t('create.announce.refreshed'));
-      if (failure?.kind === 'stale' || failure?.kind === 'name-conflict') {
+      if (
+        failure?.kind === 'stale' ||
+        failure?.kind === 'name-conflict' ||
+        (failure?.kind === 'branch-protected' && failure.cause === 'workspace')
+      ) {
         dismissFailure();
         // The alert that held focus is gone after this render.
         handleRef.current?.focusFirstInvalid(fallbackFocus);

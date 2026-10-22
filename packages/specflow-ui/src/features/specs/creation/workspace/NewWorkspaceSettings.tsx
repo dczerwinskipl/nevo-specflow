@@ -19,7 +19,7 @@ import {
   targetReasonText,
   targetReasonTextInline,
 } from './workspaceCopy';
-import { slugError, type WorkspaceErrors } from './workspaceValidation';
+import { generatedBranchProblem, slugError, type WorkspaceErrors } from './workspaceValidation';
 import { initialWorkspaceChoice, type WorkspaceChoice } from './workspaceChoice';
 import type { WorkspaceConflicts } from './workspaceConflicts';
 
@@ -119,7 +119,11 @@ export function NewWorkspaceSettings({
 
   // A value the (refreshed) options invalidated sits in this panel: keep it open so the flagged
   // field is visible instead of a silently blocked Create.
-  const flagged = Boolean(errors.base ?? errors.target ?? errors.slug ?? errors.branch);
+  // The generated branch is one the Engine will not commit on: the owner has to type another name.
+  const generatedProblem = generatedBranchProblem(choice, options, title);
+  const flagged = Boolean(
+    errors.base ?? errors.target ?? errors.slug ?? errors.branch ?? generatedProblem,
+  );
   const baseUnavailable = options.baseRefs.length === 0;
   const targetUnavailable = selectableTargets.length === 0;
   const branchError =
@@ -131,9 +135,13 @@ export function NewWorkspaceSettings({
         ? t(
             conflicts.branch.reason === 'invalid'
               ? 'create.workspace.errors.branchRejected'
-              : 'create.workspace.errors.branchExists',
+              : conflicts.branch.reason === 'protected'
+                ? 'create.workspace.errors.branchProtected'
+                : 'create.workspace.errors.branchExists',
           )
-        : undefined;
+        : generatedProblem
+          ? text(generatedProblem)
+          : undefined;
   const slugValue = choice.slug.edited ? choice.slug.value : derivedSlug(title);
   const typedSlugError = choice.slug.edited ? slugError(choice.slug.value) : undefined;
   const slugErrorText = typedSlugError
@@ -403,7 +411,13 @@ export function NewWorkspaceSettings({
             <SwitchField
               label={t('create.workspace.settings.branchSwitch')}
               checked={choice.branch.on}
-              description={t('create.workspace.settings.branchSwitchDescription')}
+              description={
+                generatedProblem && !choice.branch.on ? (
+                  <span className="text-status-attention">{text(generatedProblem)}</span>
+                ) : (
+                  t('create.workspace.settings.branchSwitchDescription')
+                )
+              }
               onCheckedChange={(on) =>
                 set({
                   branch: on

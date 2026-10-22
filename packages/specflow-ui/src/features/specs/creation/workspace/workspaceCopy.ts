@@ -10,6 +10,9 @@ const knownReasons = new Set([
   'git-membership-mismatch',
   'git-disabled',
   'git-unavailable',
+  'branch-protected',
+  'branch-not-allowed',
+  'git-policy-invalid',
 ]);
 const reasonSuffix = (reason?: string) => (reason && knownReasons.has(reason) ? reason : 'other');
 /** Reader-facing reason of an unavailable workspace; falls back to a neutral word. */

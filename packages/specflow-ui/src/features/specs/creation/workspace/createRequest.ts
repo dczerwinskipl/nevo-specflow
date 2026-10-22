@@ -1,4 +1,4 @@
-import { deriveSpecSlug } from '@nevo/specflow-contracts/specs';
+import { deriveSpecSlug, engineCommitRefusal } from '@nevo/specflow-contracts/specs';
 import type { CreateOptions, CreateSpecRequest } from '@nevo/specflow-contracts/specs';
 import type { WorkspaceChoice } from './workspaceChoice';
 import { activeTile, defaultBaseValue, defaultTargetWorkspaceId } from './workspaceTiles';
@@ -21,6 +21,24 @@ export function branchPreview(options: CreateOptions, slug: string): string {
   return options.branchPattern
     .replaceAll('{slug}', slug || '<slug>')
     .replaceAll('{shortId}', '<id>');
+}
+
+/**
+ * Whether the Engine will refuse the branch Nevo generates (Git enabled, `commits` present): the
+ * Runtime's representative-name verdict (`newWorktree.branchProtected`) or the pattern applied to
+ * the actual slug, checked with the same rule the Engine uses. Absent: nothing to say.
+ */
+export function generatedBranchRefusal(
+  options: CreateOptions,
+  slug: string,
+): 'branch-protected' | 'branch-not-allowed' | undefined {
+  if (!options.commits) return undefined;
+  if (options.newWorktree.branchProtected) return 'branch-protected';
+  if (!slug) return undefined;
+  const generated = options.branchPattern
+    .replaceAll('{slug}', slug)
+    .replaceAll('{shortId}', '0000000');
+  return engineCommitRefusal(options.commits, generated);
 }
 
 /**

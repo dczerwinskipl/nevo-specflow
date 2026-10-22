@@ -17,6 +17,7 @@ import {
   Button,
   Icon,
   IconButton,
+  InlineNote,
   Skeleton,
   StatusIndicator,
   Tooltip,
@@ -282,6 +283,21 @@ export function WorkspacePlaceSection({
             );
           })}
         </ChoiceTileGroup>
+        {available.new.ok &&
+          active !== 'new' &&
+          (available.main.protected === true || available.existing.protected === true) && (
+            <InlineNote className="max-w-content-narrow">
+              {t('create.workspace.protectedSuggestion.text')}{' '}
+              <Button
+                size="sm"
+                variant="secondary"
+                className="ml-1 align-middle"
+                onClick={() => select('new')}
+              >
+                {t('create.workspace.protectedSuggestion.action')}
+              </Button>
+            </InlineNote>
+          )}
         {nothing && (
           <Alert
             role="alert"

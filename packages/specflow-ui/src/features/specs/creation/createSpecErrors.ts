@@ -23,6 +23,11 @@ export const createSpecErrorCodes: ErrorCodeTable = {
   BASE_REF_NOT_FOUND: { kind: 'precondition', outcome: 'not-applied' },
   GIT_BASE_CONFIG_MISSING: { kind: 'precondition', outcome: 'not-applied' },
   // The project's own Git configuration is unusable (a typed branch has `BRANCH_NAME_INVALID`).
+  // The Engine does not commit on the branch (project configuration) / cannot commit right now.
+  BRANCH_PROTECTED: { kind: 'precondition', outcome: 'not-applied' },
+  COMMIT_BLOCKED: { kind: 'conflict', outcome: 'not-applied' },
+  // The files were written, the commit failed: an operator resumes the journalled operation.
+  COMMIT_FAILED: { kind: 'recovery-required', outcome: 'unknown' },
   GIT_POLICY_INVALID: { kind: 'unavailable', outcome: 'not-applied' },
   // A workspace or Specification vanished between reading the options and creating (answered 503).
   SPEC_NOT_FOUND: { kind: 'precondition', outcome: 'not-applied' },
@@ -44,18 +49,33 @@ const branchConflictCodes = new Set([
 /** Codes meaning "the request itself is malformed", not "an option went stale". */
 const malformedCodes = new Set(['FST_ERR_VALIDATION', 'SPEC_VALIDATION_ERROR']);
 
+/** What the request carried that decides which remedy a refusal calls for. */
+export interface SentCreate {
+  /** The branch name the owner typed into a new workspace, if any. */
+  readonly customBranch?: string;
+  /** The request asked for a new workspace (its branch is then generated or typed). */
+  readonly newWorkspace?: boolean;
+}
+
+/** Why the Engine refused to commit on a branch, from what was sent (never from server text). */
+export const protectedBranchFailure = (sent: SentCreate): CreateFailure => ({
+  kind: 'branch-protected',
+  cause: sent.customBranch ? 'typed-branch' : sent.newWorkspace ? 'generated-branch' : 'workspace',
+});
+
 /**
  * Maps a classified failure of the Create request to what the form shows. The server text is
  * never used; the code only selects the explanation.
  */
-export function toCreateFailure(
-  error: ApiError,
-  sent: { readonly customBranch?: string } = {},
-): CreateFailure {
+export function toCreateFailure(error: ApiError, sent: SentCreate = {}): CreateFailure {
   const code = error.code ?? 'unknown';
+  if (code === 'BRANCH_PROTECTED') return protectedBranchFailure(sent);
+  if (code === 'COMMIT_BLOCKED') return { kind: 'commit-blocked' };
   switch (error.kind) {
     case 'recovery-required':
-      return { kind: 'recovery-required' };
+      return code === 'COMMIT_FAILED'
+        ? { kind: 'recovery-required', committed: true }
+        : { kind: 'recovery-required' };
     case 'conflict':
       if (code === 'CREATE_CONFLICT') return { kind: 'name-conflict' };
       if (branchConflictCodes.has(code))
@@ -84,10 +104,7 @@ export function toCreateFailure(
  * declares nothing was applied is a definite failure, anything else (or a code this build does not
  * know) leaves the outcome unknown.
  */
-export function toOperationFailure(
-  code: string,
-  sent: { readonly customBranch?: string } = {},
-): CreateFailure {
+export function toOperationFailure(code: string, sent: SentCreate = {}): CreateFailure {
   const rule = Object.hasOwn(createSpecErrorCodes, code) ? createSpecErrorCodes[code] : undefined;
   return toCreateFailure(
     new ApiError({

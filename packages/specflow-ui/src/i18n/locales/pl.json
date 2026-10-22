@@ -793,6 +793,20 @@
       "branchInvalid": {
         "title": "Nazwa gałęzi jest nieprawidłowa",
         "body": "Specyfikacja nie została utworzona. Git nie przyjmuje wpisanej nazwy gałęzi. Wpisz inną nazwę gałęzi albo pozwól Nevo wygenerować ją automatycznie."
+      },
+      "branchProtected": {
+        "title": "Gałąź jest chroniona",
+        "bodyTyped": "Nie utworzono specyfikacji. Wpisana nazwa gałęzi jest chroniona: Nevo nie zapisuje tam zmian. Wpisz inną nazwę gałęzi — pozostałe ustawienia zostają.",
+        "bodyGenerated": "Nie utworzono specyfikacji. Gałąź, którą wygenerowałoby Nevo, jest chroniona: Nevo nie zapisuje tam zmian. Wpisz własną nazwę gałęzi — pozostałe ustawienia zostają.",
+        "bodyWorkspace": "Nie utworzono specyfikacji. Gałąź wybranego środowiska pracy jest chroniona: Nevo nie zapisuje tam zmian. Utwórz specyfikację w nowym środowisku pracy albo odśwież opcje."
+      },
+      "commitBlocked": {
+        "title": "Git nie może teraz przyjąć commita",
+        "body": "Nie utworzono specyfikacji. Git jest zajęty w tym folderze — na przykład trwa scalanie lub rebase, nie wybrano gałęzi albo Git ma zablokowany indeks. Zakończ lub przerwij tę operację i spróbuj ponownie. Formularz zostaje."
+      },
+      "commitFailed": {
+        "title": "Pliki specyfikacji powstały, ale nie udało się ich zapisać w Git",
+        "body": "Nevo zapisało pliki specyfikacji, ale nie zdołało ich zapisać w historii Git, więc specyfikacja nie jest jeszcze zarejestrowana. Nie twórz jej ponownie. Poproś operatora projektu o wznowienie tej operacji lub o zapisanie nowych plików w commicie, a potem sprawdź operację ponownie."
       }
     },
     "workspace": {
@@ -824,7 +838,11 @@
         "mainDetached": "W bieżącym katalogu nie wybrano gałęzi (odłączony stan).",
         "mainUnavailable": "Bieżący katalog jest niedostępny.",
         "existingNone": "Brak innych środowisk pracy w projekcie.",
-        "existingUnavailable": "Żadne środowisko pracy nie jest teraz dostępne."
+        "existingUnavailable": "Żadne środowisko pracy nie jest teraz dostępne.",
+        "mainProtected": "Gałąź {{branch}} jest chroniona: Nevo nie zapisuje tam zmian. Utwórz specyfikację w nowym środowisku pracy.",
+        "mainNotAllowed": "Gałąź {{branch}} nie jest na liście gałęzi, na których Nevo może zapisywać zmiany. Utwórz specyfikację w nowym środowisku pracy.",
+        "existingProtected": "Wszystkie pozostałe środowiska pracy są na chronionych gałęziach. Utwórz specyfikację w nowym środowisku pracy.",
+        "newPolicyInvalid": "Konfiguracja Git projektu jest nieprawidłowa. Sprawdź .nevo/config.yaml."
       },
       "reason": {
         "dirty": "Ma niezapisane zmiany w Git",
@@ -833,7 +851,10 @@
         "git-membership-mismatch": "Katalog nie należy do tego repozytorium",
         "git-disabled": "Git wyłączony",
         "git-unavailable": "Git niedostępny",
-        "other": "Niedostępny"
+        "other": "Niedostępny",
+        "branch-protected": "Chroniona gałąź: Nevo nie zapisuje tam zmian",
+        "branch-not-allowed": "Gałąź spoza listy projektu dla commitów",
+        "git-policy-invalid": "Konfiguracja Git projektu jest nieprawidłowa"
       },
       "reasonInline": {
         "dirty": "ma niezapisane zmiany w Git",
@@ -842,7 +863,10 @@
         "git-membership-mismatch": "katalog nie należy do tego repozytorium",
         "git-disabled": "Git wyłączony",
         "git-unavailable": "Git niedostępny",
-        "other": "niedostępny"
+        "other": "niedostępny",
+        "branch-protected": "jest na chronionej gałęzi (Nevo nie zapisuje tam zmian)",
+        "branch-not-allowed": "jest na gałęzi spoza listy projektu dla commitów",
+        "git-policy-invalid": "konfiguracja Git projektu jest nieprawidłowa"
       },
       "specCount_one": "{{count}} specyfikacja",
       "specCount_few": "{{count}} specyfikacje",
@@ -879,7 +903,8 @@
         "base": "Zacznij od",
         "target": "Scal do",
         "branch": "Nazwa gałęzi",
-        "folder": "Katalog worktree"
+        "folder": "Katalog worktree",
+        "commit": "Commit"
       },
       "main": {
         "onBranch": "Specyfikacja powstanie na gałęzi <branch/>. Nie tworzymy nowej gałęzi ani worktree i nie przełączamy aktualnej gałęzi.",
@@ -916,7 +941,11 @@
         "slugFormat": "Użyj małych liter, cyfr i pojedynczych myślników, na przykład limity-platnosci.",
         "slugReserved": "Ta nazwa jest zarezerwowana przez system operacyjny. Wybierz inną.",
         "slugTaken": "Specyfikacja z takim slugiem już istnieje. Wpisz inny.",
-        "branchRejected": "Ta nazwa gałęzi nie jest akceptowana. Wpisz inną nazwę."
+        "branchRejected": "Ta nazwa gałęzi nie jest akceptowana. Wpisz inną nazwę.",
+        "branchProtected": "Ta gałąź jest chroniona: Nevo nie zapisuje tam zmian. Wpisz inną nazwę.",
+        "branchNotAllowed": "Nevo nie może zapisywać zmian na tej gałęzi (nie ma jej na liście dozwolonych w projekcie). Wpisz inną nazwę.",
+        "generatedBranchProtected": "Wygenerowana gałąź {{branch}} jest chroniona: Nevo nie zapisuje tam zmian. Wpisz własną nazwę gałęzi.",
+        "generatedBranchNotAllowed": "Wygenerowanej gałęzi {{branch}} nie ma na liście dozwolonych w projekcie. Wpisz własną nazwę gałęzi."
       },
       "stale": {
         "tile": "Ten wariant nie jest już dostępny. Wybierz inną opcję.",
@@ -981,7 +1010,14 @@
         "noteOtherBranchNone": "Cel projektu <target/> nie jest wybrany w bieżącym katalogu, który nie ma gałęzi. Zamknięcie pracy może wymagać zmiany. Tworzenie nie jest blokowane.",
         "noteNoTarget": "Nie skonfigurowano celu projektu, więc zamknięcie pracy będzie go wymagać. Tworzenie nie jest blokowane."
       },
-      "folderWillBeCreated": "Zostanie utworzony razem ze środowiskiem."
+      "folderWillBeCreated": "Zostanie utworzony razem ze środowiskiem.",
+      "commit": {
+        "willCommit": "Pliki specyfikacji zostaną zapisane w commicie na gałęzi <branch/>."
+      },
+      "protectedSuggestion": {
+        "text": "Chronione gałęzie nie dotyczą nowego środowiska pracy.",
+        "action": "Użyj nowego środowiska pracy"
+      }
     },
     "project": {
       "subheading": "Nadaj jej nazwę, opisz cel, jeśli go masz, i wybierz, gdzie mają leżeć jej pliki.",
@@ -1056,7 +1092,8 @@
         "addedToFolder": "Dodana do bieżącego katalogu, gałąź <branch/>",
         "addedToFolderUnknown": "Dodana do bieżącego katalogu",
         "slug": "Nazwa (slug)",
-        "goal": "Cel"
+        "goal": "Cel",
+        "committedTo": "Pliki specyfikacji trafią do commita na gałęzi <branch/>"
       },
       "status": {
         "sending": "Wysyłanie żądania…",
@@ -1081,7 +1118,8 @@
       },
       "backToSpecifications": "Wróć do specyfikacji",
       "notCreated": "Nic nie zostało utworzone. Wpisane dane są zachowane, więc możesz to poprawić i spróbować ponownie.",
-      "location": "Tworzenie specyfikacji"
+      "location": "Tworzenie specyfikacji",
+      "createdNotCommitted": "Pliki specyfikacji powstały, ale nie udało się ich zapisać w Git."
     },
     "operations": {
       "kind": "Tworzenie specyfikacji"

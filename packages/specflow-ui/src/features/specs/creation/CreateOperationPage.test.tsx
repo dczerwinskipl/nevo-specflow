@@ -284,6 +284,60 @@ describe('CreateOperationPage', () => {
     expect(onBackToSpecifications).toHaveBeenCalledOnce();
   });
 
+  it.each([
+    [422, 'BRANCH_PROTECTED', 'The branch of the selected workspace is protected'],
+    [409, 'COMMIT_BLOCKED', 'a merge or rebase is in progress'],
+  ])(
+    '%i %s: nothing was created, and the page says so in plain words',
+    async (status, code, copy) => {
+      store({ target: { kind: 'existing', workspaceId: operationId } });
+      const post = vi.fn().mockRejectedValue(httpError(status, code));
+      const get = vi.fn().mockRejectedValue(httpError(404, 'CREATE_NOT_FOUND'));
+      renderPage({ post, get });
+      expect(await heading('Specification was not created')).toBeTruthy();
+      expect(screen.getByText(/^Nothing was created./)).toBeTruthy();
+      expect(screen.getByText(new RegExp(copy))).toBeTruthy();
+      expect(screen.queryByText(code)).toBeNull();
+    },
+  );
+
+  it('COMMIT_FAILED: the files exist but are not committed; no new create, only a check', async () => {
+    store({ target: { kind: 'new-worktree' } });
+    const post = vi.fn().mockRejectedValue(httpError(503, 'COMMIT_FAILED'));
+    const get = vi.fn().mockRejectedValue(httpError(404, 'CREATE_NOT_FOUND'));
+    renderPage({ post, get });
+    expect(await heading('Result not confirmed yet')).toBeTruthy();
+    expect(
+      (
+        await screen.findAllByText(
+          /The specification files were created but could not be committed/,
+        )
+      ).length,
+    ).toBeGreaterThan(0);
+    // Truthful: never "Nothing was created", and no way to submit a fresh create.
+    expect(screen.queryByText(/^Nothing was created./)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Check operation status' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+  });
+
+  it('states the commit target in the configuration when Git is enabled', async () => {
+    store({ target: { kind: 'new-worktree' } });
+    storage().saveDraft({
+      operationId,
+      title: 'Payment limits',
+      goal: '',
+      choice: initialWorkspaceChoice,
+      facts: { place: 'new', branch: 'feature/limits', commit: true },
+    });
+    renderPage({
+      post: vi.fn().mockResolvedValue(accepted),
+      get: vi.fn().mockResolvedValue(accepted),
+    });
+    const settings = within(await screen.findByLabelText('Creation settings'));
+    expect(settings.getByText('Commit')).toBeTruthy();
+    expect(settings.getAllByText('feature/limits')).toHaveLength(2);
+  });
+
   it('while it runs: steps in user language with a description each, waiting steps muted, no merge-target warning', async () => {
     store({ target: { kind: 'new-worktree' } });
     storage().saveDraft({

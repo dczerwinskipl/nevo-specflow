@@ -42,6 +42,26 @@ describe('classifyDemoCreateFailure', () => {
       classifyDemoCreateFailure(http(503, { error: 'demo_specification_creation_failed' })),
     ).toEqual({ kind: 'failed' }); // a code-like value is never shown as a message
   });
+  it('maps the commit codes: nothing created (422, 409) or created but not committed (503)', () => {
+    expect(
+      classifyDemoCreateFailure(
+        http(422, { error: 'BRANCH_PROTECTED', code: 'BRANCH_PROTECTED' }),
+        {
+          customBranch: 'release/x',
+          newWorkspace: true,
+        },
+      ),
+    ).toEqual({ kind: 'branch-protected', cause: 'typed-branch' });
+    expect(
+      classifyDemoCreateFailure(http(422, { error: 'BRANCH_PROTECTED', code: 'BRANCH_PROTECTED' })),
+    ).toEqual({ kind: 'branch-protected', cause: 'workspace' });
+    expect(
+      classifyDemoCreateFailure(http(409, { error: 'COMMIT_BLOCKED', code: 'COMMIT_BLOCKED' })),
+    ).toEqual({ kind: 'commit-blocked' });
+    expect(
+      classifyDemoCreateFailure(http(503, { error: 'COMMIT_FAILED', code: 'COMMIT_FAILED' })),
+    ).toEqual({ kind: 'recovery-required', committed: true });
+  });
   it('a lost answer is uncertain and must be checked, never repeated as a new create', () => {
     expect(classifyDemoCreateFailure(new Error('Lost create ACK')).kind).toBe('uncertain');
     expect(classifyDemoCreateFailure(new HttpClientError('net', { kind: 'network' })).kind).toBe(

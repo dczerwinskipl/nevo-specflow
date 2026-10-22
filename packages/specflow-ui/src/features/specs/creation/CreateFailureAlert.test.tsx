@@ -37,6 +37,60 @@ describe('CreateFailureAlert copy', () => {
     expect(html).not.toContain('SOMETHING_NEW');
   });
 
+  it.each<[CreateFailure, string, string]>([
+    [
+      { kind: 'branch-protected', cause: 'workspace' },
+      'Gałąź jest chroniona',
+      'The branch of the selected workspace is protected',
+    ],
+    [
+      { kind: 'branch-protected', cause: 'typed-branch' },
+      'Gałąź jest chroniona',
+      'The branch name you typed is protected',
+    ],
+    [
+      { kind: 'branch-protected', cause: 'generated-branch' },
+      'Gałąź jest chroniona',
+      'The branch Nevo would generate is protected',
+    ],
+    [
+      { kind: 'commit-blocked' },
+      'Git nie może teraz przyjąć commita',
+      'a merge or rebase is in progress',
+    ],
+    [
+      { kind: 'recovery-required', committed: true },
+      'Pliki specyfikacji powstały, ale nie udało się ich zapisać w Git',
+      'Do not create it again',
+    ],
+  ])('says in plain words what happened to %j', (failure, polish, english) => {
+    expect(render(failure, 'pl')).toContain(polish);
+    expect(render(failure, 'en')).toContain(english);
+  });
+
+  it('a refusal that created nothing says so; the commit failure says the files exist', () => {
+    expect(render({ kind: 'commit-blocked' }, 'en')).toContain('The specification was not created');
+    expect(render({ kind: 'branch-protected', cause: 'workspace' }, 'en')).toContain(
+      'The specification was not created',
+    );
+    const committed = render({ kind: 'recovery-required', committed: true }, 'en');
+    expect(committed).toContain('could not be committed');
+    expect(committed).not.toContain('was not created');
+    expect(committed).toContain('Copy diagnostic data');
+  });
+
+  it('offers a remedy only where one exists in the form', () => {
+    expect(render({ kind: 'branch-protected', cause: 'workspace' }, 'en')).toContain(
+      'Refresh options',
+    );
+    expect(render({ kind: 'branch-protected', cause: 'generated-branch' }, 'en')).toContain(
+      'Enter your own name',
+    );
+    expect(render({ kind: 'branch-protected', cause: 'typed-branch' }, 'en')).not.toContain(
+      '<button',
+    );
+  });
+
   it('renders a translated title for a generic failure', () => {
     expect(render({ kind: 'failed' }, 'pl')).toContain('Nie udało się utworzyć specyfikacji');
     expect(render({ kind: 'failed' }, 'en')).toContain('Unable to create the specification');

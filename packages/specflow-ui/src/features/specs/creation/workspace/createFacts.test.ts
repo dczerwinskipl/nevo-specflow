@@ -78,3 +78,30 @@ describe('toCreateFacts', () => {
     expect(toCreateFacts({ place: 'new', workspace: { branch: 'b' } })).toEqual({ place: 'new' });
   });
 });
+
+describe('commit fact (Git enabled only)', () => {
+  it('is carried only when the options say the Engine commits', () => {
+    for (const tile of ['new', 'main'] as const) {
+      expect(
+        buildCreateFacts(choice({ tile }), createOptionsFixture('commits'), 'x'),
+      ).toMatchObject({
+        commit: true,
+      });
+      expect(buildCreateFacts(choice({ tile }), createOptionsFixture(), 'x')).not.toHaveProperty(
+        'commit',
+      );
+    }
+    expect(
+      buildCreateFacts(
+        choice({ tile: 'existing', existingWorkspaceId: ids.platform }),
+        createOptionsFixture('commits'),
+        'x',
+      ),
+    ).toMatchObject({ place: 'existing', commit: true });
+  });
+
+  it('survives storing and reading; a damaged flag is dropped', () => {
+    expect(toCreateFacts({ place: 'main', commit: true })).toEqual({ place: 'main', commit: true });
+    expect(toCreateFacts({ place: 'main', commit: 'yes' })).toEqual({ place: 'main' });
+  });
+});

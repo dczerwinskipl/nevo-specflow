@@ -32,6 +32,9 @@ describe('Create error codes', () => {
     [422, 'BASE_REF_NOT_FOUND', 'stale'],
     [422, 'GIT_BASE_CONFIG_MISSING', 'stale'],
     [503, 'GIT_POLICY_INVALID', 'failed'],
+    [422, 'BRANCH_PROTECTED', 'branch-protected'],
+    [409, 'COMMIT_BLOCKED', 'commit-blocked'],
+    [503, 'COMMIT_FAILED', 'recovery-required'],
     [422, 'BRANCH_NAME_INVALID', 'branch-invalid'],
     [503, 'SPEC_NOT_FOUND', 'stale'],
     [503, 'CREATE_RECOVERY_REQUIRED', 'recovery-required'],
@@ -47,6 +50,38 @@ describe('Create error codes', () => {
     [429, 'rate_limited', 'failed'],
   ])('%i %s becomes the %s failure', (status, code, kind) => {
     expect(toCreateFailure(fail(status, code))).toMatchObject({ kind });
+  });
+
+  it('tells which remedy a protected branch calls for from what was sent, never from server text', () => {
+    const refused = fail(422, 'BRANCH_PROTECTED');
+    expect(toCreateFailure(refused, { customBranch: 'release/x', newWorkspace: true })).toEqual({
+      kind: 'branch-protected',
+      cause: 'typed-branch',
+    });
+    expect(toCreateFailure(refused, { newWorkspace: true })).toEqual({
+      kind: 'branch-protected',
+      cause: 'generated-branch',
+    });
+    expect(toCreateFailure(refused)).toEqual({ kind: 'branch-protected', cause: 'workspace' });
+    expect(toOperationFailure('BRANCH_PROTECTED', { newWorkspace: true })).toEqual({
+      kind: 'branch-protected',
+      cause: 'generated-branch',
+    });
+  });
+
+  it('a commit that failed after the files were written is recovery, marked as committed', () => {
+    expect(toCreateFailure(fail(503, 'COMMIT_FAILED'))).toEqual({
+      kind: 'recovery-required',
+      committed: true,
+    });
+    expect(toOperationFailure('COMMIT_FAILED')).toEqual({
+      kind: 'recovery-required',
+      committed: true,
+    });
+    // The other journal codes stay the generic recovery.
+    expect(toCreateFailure(fail(503, 'CREATE_RECOVERY_REQUIRED'))).toEqual({
+      kind: 'recovery-required',
+    });
   });
 
   it('declares every table entry as not leaving state behind, except the journal codes', () => {

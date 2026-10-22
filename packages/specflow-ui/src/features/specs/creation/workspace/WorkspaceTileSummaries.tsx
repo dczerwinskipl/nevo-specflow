@@ -14,6 +14,7 @@ import {
   type WorkspaceSettingsControls,
 } from './NewWorkspaceSettings';
 import { branchPreview, createOverrides, effectiveSlug } from './createRequest';
+import { generatedBranchProblem } from './workspaceValidation';
 import {
   inheritedTarget,
   primaryWorkspace,
@@ -39,6 +40,15 @@ const note = (children: ReactNode, tone: 'info' | 'attention' = 'info') => (
     {children}
   </InlineNote>
 );
+
+/** Quiet statement of where the Engine commits the specification files (Git enabled only). */
+const commitNote = (branch: string) =>
+  note(
+    <Trans
+      i18nKey="create.workspace.commit.willCommit"
+      components={{ branch: <BranchRef name={branch} /> }}
+    />,
+  );
 
 /**
  * One row of the "default settings" list: label, value and an optional quiet note under the value.
@@ -165,6 +175,8 @@ export function NewSummary({
   const summary = settingsSummary(choice, options, title);
   const merge = mergeRow(options, choice, t, text);
   const slug = effectiveSlug(choice, title);
+  const branch = overrides.branch ?? branchPreview(options, slug);
+  const generatedProblem = generatedBranchProblem(choice, options, title);
   return (
     <>
       <Icon name={FolderPlus} className="text-status-info" />
@@ -195,9 +207,22 @@ export function NewSummary({
         <SummaryRow
           label={t('create.workspace.fact.branch')}
           override={Boolean(overrides.branch ?? overrides.slug)}
+          note={
+            generatedProblem ? (
+              <span className="text-status-attention">{text(generatedProblem)}</span>
+            ) : undefined
+          }
         >
-          <BranchRef name={overrides.branch ?? branchPreview(options, slug)} />
+          <BranchRef name={branch} />
         </SummaryRow>
+        {options.commits && (
+          <SummaryRow label={t('create.workspace.fact.commit')} override={false}>
+            <Trans
+              i18nKey="create.workspace.commit.willCommit"
+              components={{ branch: <BranchRef name={branch} /> }}
+            />
+          </SummaryRow>
+        )}
         <SummaryRow
           label={t('create.workspace.fact.folder')}
           override={false}
@@ -242,6 +267,7 @@ export function MainSummary({ options }: { options: CreateOptions }) {
           t('create.workspace.main.noBranch')
         )}
       </Typography>
+      {options.commits && primary?.branch && commitNote(primary.branch)}
       {primary?.state === 'dirty' && note(t('create.workspace.dirtyNote'))}
       {primary && primary.specCount > 0 && note(text(sharedUseNote(primary.specCount, 'folder')))}
     </>
@@ -359,6 +385,7 @@ export function ExistingSummary({
               t('create.workspace.existing.joinsNoBranch')
             )}
           </Typography>
+          {options.commits && selected.branch && commitNote(selected.branch)}
           {selected.specCount > 0 && note(text(sharedUseNote(selected.specCount, 'workspace')))}
           <InheritedTargetNote options={options} workspace={selected} />
           {!selected.managed && note(t('create.workspace.existing.unmanagedNote'))}

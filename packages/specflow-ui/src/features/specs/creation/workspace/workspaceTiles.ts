@@ -9,8 +9,14 @@ export const primaryWorkspace = (options: CreateOptions) =>
 const linkedWorkspaces = (options: CreateOptions) =>
   options.workspaces.filter((w) => w.kind === 'linked');
 
+/** The Engine does not commit on this workspace's branch (project configuration, Git enabled). */
+export const isProtectedReason = (reason?: string): boolean =>
+  reason === 'branch-protected' || reason === 'branch-not-allowed';
+
 export interface TileAvailability {
   ok: boolean;
+  /** Unavailable because of the project's protected-branch policy: a new workspace is the way out. */
+  protected?: true;
   /** Visible reason that replaces the description when the tile is unavailable. */
   reason?: Message;
   /** Selectable linked workspaces (existing tile). */
@@ -22,6 +28,10 @@ export function tileAvailability(options: CreateOptions): Record<Tile, TileAvail
   const primary = primaryWorkspace(options);
   const linked = linkedWorkspaces(options);
   const selectable = linked.filter((w) => w.selectable);
+  // Every linked checkout that has a branch is on one the Engine will not commit on (workspaces
+  // without a branch are unusable anyway and are not candidates).
+  const branched = linked.filter((w) => w.branch);
+  const allProtected = branched.length > 0 && branched.every((w) => isProtectedReason(w.reason));
   return {
     new:
       created.status === 'available'
@@ -29,30 +39,49 @@ export function tileAvailability(options: CreateOptions): Record<Tile, TileAvail
         : {
             ok: false,
             reason: message(
-              created.status === 'disabled'
-                ? 'create.workspace.tileReason.newDisabled'
-                : created.reason === 'git-membership-mismatch'
-                  ? 'create.workspace.tileReason.newMismatch'
-                  : created.reason === 'checkout-unavailable'
-                    ? 'create.workspace.tileReason.newCheckoutUnavailable'
-                    : 'create.workspace.tileReason.newGitUnavailable',
+              created.reason === 'git-policy-invalid'
+                ? 'create.workspace.tileReason.newPolicyInvalid'
+                : created.status === 'disabled'
+                  ? 'create.workspace.tileReason.newDisabled'
+                  : created.reason === 'git-membership-mismatch'
+                    ? 'create.workspace.tileReason.newMismatch'
+                    : created.reason === 'checkout-unavailable'
+                      ? 'create.workspace.tileReason.newCheckoutUnavailable'
+                      : 'create.workspace.tileReason.newGitUnavailable',
             ),
           },
     main: primary?.selectable
       ? { ok: true }
-      : {
-          ok: false,
-          reason: message(
-            primary?.state === 'detached'
-              ? 'create.workspace.tileReason.mainDetached'
-              : 'create.workspace.tileReason.mainUnavailable',
-          ),
-        },
+      : isProtectedReason(primary?.reason)
+        ? {
+            ok: false,
+            protected: true,
+            reason: message(
+              primary?.reason === 'branch-not-allowed'
+                ? 'create.workspace.tileReason.mainNotAllowed'
+                : 'create.workspace.tileReason.mainProtected',
+              { branch: primary?.branch ?? '' },
+            ),
+          }
+        : {
+            ok: false,
+            reason: message(
+              primary?.state === 'detached'
+                ? 'create.workspace.tileReason.mainDetached'
+                : 'create.workspace.tileReason.mainUnavailable',
+            ),
+          },
     existing:
       linked.length === 0
         ? { ok: false, reason: message('create.workspace.tileReason.existingNone') }
         : selectable.length === 0
-          ? { ok: false, reason: message('create.workspace.tileReason.existingUnavailable') }
+          ? allProtected
+            ? {
+                ok: false,
+                protected: true,
+                reason: message('create.workspace.tileReason.existingProtected'),
+              }
+            : { ok: false, reason: message('create.workspace.tileReason.existingUnavailable') }
           : { ok: true, count: selectable.length },
   };
 }

@@ -1,7 +1,17 @@
-import { branchNameProblem, specSlugProblem } from '@nevo/specflow-contracts/specs';
+import {
+  branchNameProblem,
+  engineCommitRefusal,
+  specSlugProblem,
+} from '@nevo/specflow-contracts/specs';
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
 import { message, type Message } from '../../../../i18n/message';
 import type { WorkspaceChoice } from './workspaceChoice';
+import {
+  branchPreview,
+  createOverrides,
+  effectiveSlug,
+  generatedBranchRefusal,
+} from './createRequest';
 import { activeTile, tileAvailability } from './workspaceTiles';
 
 export type WorkspaceErrors = Partial<
@@ -49,7 +59,7 @@ export function revalidate(choice: WorkspaceChoice, options: CreateOptions): Wor
 }
 
 /** The blocking problems of the active tile, ordered like the footer prerequisite. */
-export function problems(choice: WorkspaceChoice, options: CreateOptions): Message[] {
+export function problems(choice: WorkspaceChoice, options: CreateOptions, title = ''): Message[] {
   const tile = activeTile(choice, options);
   const availability = tileAvailability(options);
   if (!tile) return [message('create.workspace.errors.noWorkspace')];
@@ -74,8 +84,31 @@ export function problems(choice: WorkspaceChoice, options: CreateOptions): Messa
       const error = branchNameError(choice.branch.name, options);
       if (error) list.push(error);
     }
+    const generated = generatedBranchProblem(choice, options, title);
+    if (generated) list.push(generated);
   }
   return list;
+}
+
+/**
+ * The generated branch is one the Engine will not commit on and the owner has not typed another
+ * name: Create stays unavailable until a name outside the protected ones is typed (the server
+ * would refuse it as well; this says so before submit).
+ */
+export function generatedBranchProblem(
+  choice: WorkspaceChoice,
+  options: CreateOptions,
+  title: string,
+): Message | undefined {
+  const slug = effectiveSlug(choice, title);
+  const refusal = generatedBranchRefusal(options, slug);
+  if (!refusal || createOverrides(choice, options, title).branch) return undefined;
+  return message(
+    refusal === 'branch-protected'
+      ? 'create.workspace.errors.generatedBranchProtected'
+      : 'create.workspace.errors.generatedBranchNotAllowed',
+    { branch: branchPreview(options, slug) },
+  );
 }
 
 /** Why a typed slug is unusable (shared contract rule), else undefined. */
@@ -114,5 +147,12 @@ export function branchNameError(name: string, options: CreateOptions): Message |
     options.workspaces.some((item) => item.branch === branch)
   )
     return message('create.workspace.errors.branchExists');
+  const refusal = options.commits ? engineCommitRefusal(options.commits, branch) : undefined;
+  if (refusal)
+    return message(
+      refusal === 'branch-protected'
+        ? 'create.workspace.errors.branchProtected'
+        : 'create.workspace.errors.branchNotAllowed',
+    );
   return undefined;
 }

@@ -36,7 +36,7 @@ export function createReadiness(input: {
         ? message('create.prerequisite.workspaceError')
         : workspaceState.status === 'forbidden'
           ? message('create.prerequisite.forbidden')
-          : workspaceProblems(choice, workspaceState.options)[0];
+          : workspaceProblems(choice, workspaceState.options, title)[0];
   const canSubmit =
     !input.configurationUnavailable &&
     !input.forbiddenCreate &&

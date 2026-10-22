@@ -1,7 +1,7 @@
 import type { CreatedSpec } from '@nevo/specflow-contracts/specs';
 import { isApiError } from '../../../api';
 import type { CreateFailure } from './createFailure';
-import { toCreateFailure, toOperationFailure } from './createSpecErrors';
+import { toCreateFailure, toOperationFailure, type SentCreate } from './createSpecErrors';
 import type { CreateWatchResult } from './watchCreateOperation';
 
 /** What the hook does with one ended submit or watch. Pure: the hook only carries it out. */
@@ -28,12 +28,12 @@ const isDefinite = (failure: CreateFailure) =>
 /**
  * Decides what became of a Create from how its submit or watch ended.
  *
- * `sent.customBranch` is the branch name the owner typed into the request, if any: whether a taken
- * branch was typed or generated decides the remedy.
+ * `sent` says what the request carried: whether a taken or protected branch was typed or generated
+ * decides the remedy.
  */
 export function interpretWatchResult(
   result: CreateWatchResult,
-  sent: { readonly customBranch?: string } = {},
+  sent: SentCreate = {},
 ): InterpretedResult {
   switch (result.kind) {
     case 'completed':

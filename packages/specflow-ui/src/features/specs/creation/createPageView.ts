@@ -59,6 +59,8 @@ export interface CreateSettingsModel {
   readonly mergeInto?: FactWorkspace;
   readonly slug?: string;
   readonly goal?: string;
+  /** Git is enabled: the specification files are committed (the branch is `branch` or the workspace's). */
+  readonly commit?: true;
 }
 
 export function createSettingsModel(
@@ -84,5 +86,6 @@ export function createSettingsModel(
     ...(place === 'new' && facts?.mergeInto ? { mergeInto: facts.mergeInto } : {}),
     ...(slug ? { slug } : {}),
     ...(goal ? { goal } : {}),
+    ...(facts?.commit ? { commit: true as const } : {}),
   };
 }

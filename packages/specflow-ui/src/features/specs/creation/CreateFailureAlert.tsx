@@ -20,7 +20,13 @@ export function createFailureTitleKey(failure: CreateFailure): MessageKey {
     case 'uncertain':
       return 'create.errors.uncertain.title';
     case 'recovery-required':
-      return 'create.errors.recovery.title';
+      return failure.committed
+        ? 'create.errors.commitFailed.title'
+        : 'create.errors.recovery.title';
+    case 'branch-protected':
+      return 'create.errors.branchProtected.title';
+    case 'commit-blocked':
+      return 'create.errors.commitBlocked.title';
     case 'branch-exists':
       return failure.automatic
         ? 'create.errors.branchExistsAutomatic.title'
@@ -49,7 +55,15 @@ function bodyKey(failure: CreateFailure): MessageKey {
     case 'uncertain':
       return 'create.errors.uncertain.body';
     case 'recovery-required':
-      return 'create.errors.recovery.body';
+      return failure.committed ? 'create.errors.commitFailed.body' : 'create.errors.recovery.body';
+    case 'branch-protected':
+      return failure.cause === 'typed-branch'
+        ? 'create.errors.branchProtected.bodyTyped'
+        : failure.cause === 'generated-branch'
+          ? 'create.errors.branchProtected.bodyGenerated'
+          : 'create.errors.branchProtected.bodyWorkspace';
+    case 'commit-blocked':
+      return 'create.errors.commitBlocked.body';
     case 'branch-exists':
       return failure.automatic
         ? 'create.errors.branchExistsAutomatic.body'
@@ -115,7 +129,9 @@ export function CreateFailureAlert({
   onUseCustomName: () => void;
 }) {
   const { t } = useTranslation();
-  const danger = failure.kind === 'recovery-required' || failure.kind === 'forbidden';
+  // Files written but not committed is calm: nothing is lost, an operator finishes it.
+  const danger =
+    (failure.kind === 'recovery-required' && !failure.committed) || failure.kind === 'forbidden';
   const unknown = failure.kind === 'uncertain' || failure.kind === 'recovery-required';
   return (
     <Alert
@@ -186,6 +202,23 @@ export function CreateFailureAlert({
           onClick={onRefresh}
         >
           {t('create.workspace.refreshOptionsAction')}
+        </Button>
+      )}
+      {failure.kind === 'branch-protected' && failure.cause === 'workspace' && (
+        <Button
+          className="mt-3"
+          size="sm"
+          variant="secondary"
+          leadingIcon="refresh"
+          disabled={refreshing}
+          onClick={onRefresh}
+        >
+          {t('create.workspace.refreshOptionsAction')}
+        </Button>
+      )}
+      {failure.kind === 'branch-protected' && failure.cause === 'generated-branch' && (
+        <Button className="mt-3" size="sm" variant="secondary" onClick={onUseCustomName}>
+          {t('create.errors.useCustomName')}
         </Button>
       )}
       {failure.kind === 'branch-exists' && failure.automatic && (

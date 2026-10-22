@@ -5,8 +5,11 @@ import type { CreateFailure } from '../createFailure';
  * edited. The values are what was sent: a different edit makes the remembered refusal irrelevant.
  */
 export interface WorkspaceConflicts {
-  /** `exists`: the branch name is taken; `invalid`: Git does not accept it. */
-  branch?: { readonly value: string; readonly reason: 'exists' | 'invalid' };
+  /**
+   * `exists`: the branch name is taken; `invalid`: Git does not accept it; `protected`: the
+   * project does not let the Engine commit on it.
+   */
+  branch?: { readonly value: string; readonly reason: 'exists' | 'invalid' | 'protected' };
   slug?: { readonly value: string };
 }
 
@@ -22,6 +25,10 @@ export function conflictsOfFailure(
   if (failure.kind === 'name-conflict')
     return sent.slug ? { slug: { value: sent.slug } } : undefined;
   if (failure.kind === 'branch-exists' && failure.automatic) return { branch: undefined };
+  if (failure.kind === 'branch-protected')
+    return failure.cause === 'typed-branch'
+      ? { branch: { value: sent.branch, reason: 'protected' } }
+      : undefined;
   if (failure.kind !== 'branch-exists' && failure.kind !== 'branch-invalid') return undefined;
   return {
     branch: {

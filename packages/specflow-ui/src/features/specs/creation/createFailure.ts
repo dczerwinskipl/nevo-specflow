@@ -19,7 +19,24 @@ export type CreateFailure =
   | { kind: 'forbidden' }
   /** 401: the session is not authenticated (the form is kept). */
   | { kind: 'unauthenticated' }
-  | { kind: 'recovery-required' }
+  /**
+   * `committed`: the Engine wrote the specification files but could not commit them
+   * (`COMMIT_FAILED`): the files exist, an operator resumes the operation. Absent: the generic
+   * journal recovery, the details of which the code does not tell.
+   */
+  | { kind: 'recovery-required'; committed?: true }
+  /**
+   * The Engine does not commit on the branch (`BRANCH_PROTECTED`, project configuration), so
+   * nothing was created. `cause` says which choice led there: the owner's own branch name
+   * (flagged at its field), the generated name (typing one resolves it) or the chosen workspace
+   * (choose a new workspace or refresh).
+   */
+  | { kind: 'branch-protected'; cause: 'typed-branch' | 'generated-branch' | 'workspace' }
+  /**
+   * The checkout cannot take a commit right now (`COMMIT_BLOCKED`: a merge or rebase in progress, no
+   * branch checked out, a locked index): nothing was created, trying again after it is resolved works.
+   */
+  | { kind: 'commit-blocked' }
   | { kind: 'uncertain' }
   /** The request was provably never sent (no connection at dispatch): nothing was created. */
   | { kind: 'offline' }

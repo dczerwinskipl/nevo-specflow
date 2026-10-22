@@ -1,5 +1,6 @@
 import { isHttpClientError } from '@nevo/http-client';
 import type { CreateFailure } from './createFailure';
+import { protectedBranchFailure, type SentCreate } from './createSpecErrors';
 import { RequestNotSentError } from './creationPipeline';
 
 /**
@@ -19,10 +20,7 @@ const staleCodes = new Set([
  * after dispatch without a coded answer (timeout, reset, abort, answer without a body) may have
  * been committed by the server, so it is uncertain and only the same operation may be checked.
  */
-export function classifyDemoCreateFailure(
-  error: unknown,
-  sent: { customBranch?: string } = {},
-): CreateFailure {
+export function classifyDemoCreateFailure(error: unknown, sent: SentCreate = {}): CreateFailure {
   if (error instanceof RequestNotSentError) return { kind: 'offline' };
   if (!isHttpClientError(error) || error.kind === 'cancelled') return { kind: 'uncertain' };
   if (error.kind !== 'http') return { kind: 'uncertain' };
@@ -40,6 +38,11 @@ export function classifyDemoCreateFailure(
   if (code && staleCodes.has(code)) return { kind: 'stale', code };
   if (code === 'CREATE_CONFLICT') return { kind: 'operation-conflict' };
   if (code === 'CREATE_RECOVERY_REQUIRED') return { kind: 'recovery-required' };
+  // The files were written but could not be committed (503): recovery, never a blind retry.
+  if (code === 'COMMIT_FAILED') return { kind: 'recovery-required', committed: true };
+  // Nothing was created: the branch is protected (422) / the checkout cannot commit now (409).
+  if (code === 'BRANCH_PROTECTED') return protectedBranchFailure(sent);
+  if (code === 'COMMIT_BLOCKED') return { kind: 'commit-blocked' };
   // Authorization answers carry no `code`: `{ error: 'forbidden' }` (403) / `authentication_required` (401).
   if (error.status === 403) return { kind: 'forbidden' };
   if (error.status === 401) return { kind: 'unauthenticated' };

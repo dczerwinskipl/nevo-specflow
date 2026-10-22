@@ -48,6 +48,8 @@ const nothingCreatedKinds: ReadonlySet<CreateFailure['kind']> = new Set([
   'offline',
   'forbidden',
   'unauthenticated',
+  'branch-protected',
+  'commit-blocked',
 ]);
 
 const toneOf = {
@@ -164,15 +166,17 @@ export function CreateOperationPage({
     ? t('create.page.status.completed')
     : view === 'refused' && failure && nothingCreatedKinds.has(failure.kind)
       ? t('create.page.notCreated')
-      : working
-        ? stillWorking
-          ? t('create.page.status.stillWorking')
-          : flags.monitoring
-            ? t(newWorkspace ? 'create.page.status.workingNew' : 'create.page.status.working')
-            : state.sent && state.resumedFrom
-              ? t('create.page.status.reading')
-              : t('create.page.status.sending')
-        : undefined;
+      : view === 'unknown' && failure?.kind === 'recovery-required' && failure.committed
+        ? t('create.page.createdNotCommitted')
+        : working
+          ? stillWorking
+            ? t('create.page.status.stillWorking')
+            : flags.monitoring
+              ? t(newWorkspace ? 'create.page.status.workingNew' : 'create.page.status.working')
+              : state.sent && state.resumedFrom
+                ? t('create.page.status.reading')
+                : t('create.page.status.sending')
+          : undefined;
 
   const checkLabel = state.checking
     ? t('create.submit.checking')
@@ -216,6 +220,7 @@ export function CreateOperationPage({
               target={target}
               working={working}
               completed={Boolean(created)}
+              commits={settings?.commit === true}
               monitoring={flags.monitoring}
               onStreamHint={actions.setStreamHint}
             />

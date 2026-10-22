@@ -179,6 +179,7 @@ export function useCreateSpecification(
         const sentTarget = ledger.attempt.current?.input.target;
         const next = classifyDemoCreateFailure(error, {
           customBranch: sentTarget?.kind === 'new-worktree' ? sentTarget.branch : undefined,
+          newWorkspace: sentTarget?.kind === 'new-worktree',
         });
         if (next.kind === 'offline' && replay) {
           // Nothing was dispatched, so the earlier unknown outcome is unchanged.

@@ -11,6 +11,7 @@ import {
   inspectCreateOptions,
   inspectPublicCreateOperation,
   projectCreatedSpecification,
+  readRegistrySnapshot,
   type CreateSpecificationRequest,
   type CreateStageObservation,
   type SpecFlowEngine,
@@ -319,7 +320,10 @@ async function resolveCreateTarget(
 ): Promise<CreateSpecificationRequest['target']> {
   switch (target?.kind) {
     case undefined:
-      return { kind: 'existing', workspaceId: (await engine.readRegistry()).primaryWorkspaceId };
+      return {
+        kind: 'existing',
+        workspaceId: (await readRegistrySnapshot(engine)).primaryWorkspaceId,
+      };
     case 'existing':
       return { kind: 'existing', workspaceId: target.workspaceId };
     case 'new-worktree':

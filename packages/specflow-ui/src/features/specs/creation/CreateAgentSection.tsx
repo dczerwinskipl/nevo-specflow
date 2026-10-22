@@ -1,15 +1,6 @@
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  choiceSurfaceCheckClassName,
-  choiceSurfaceClassName,
-  choiceSurfaceTracksClassName,
-  cn,
-  Field,
-  Icon,
-  SegmentedControl,
-  StatusIndicator,
-  Typography,
-} from '@nevo/ui';
+import { cn, Field, SegmentedControl, StatusIndicator, Typography } from '@nevo/ui';
 import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
 import { useMessage } from '../../../i18n/message';
 import { SessionProviderIcon } from '../../sessions';
@@ -21,6 +12,7 @@ import {
   supportedModes,
   type AgentChoice,
 } from './agentChoice';
+import { ChoiceTile, ChoiceTileGroup } from '../../../shared/controls/ChoiceTile';
 import { LocalizedOptionPicker } from '../../../shared/controls/LocalizedOptionPicker';
 import { providerStatus } from './providerStatus';
 
@@ -40,11 +32,11 @@ export function CreateAgentSection({
 }) {
   const { t } = useTranslation();
   const text = useMessage();
+  const legendId = useId();
   const { providerId, modelId, effort, mode } = choice;
   const provider = catalogue.providers.find((p) => p.id === providerId);
   const model = provider?.models.find((m) => m.id === modelId);
-  const providerGrid = cn(
-    'grid items-stretch gap-3',
+  const providerColumns = cn(
     catalogue.providers.length === 3
       ? '@2xl:grid-cols-3'
       : catalogue.providers.length > 1 && '@lg:grid-cols-2',
@@ -54,7 +46,7 @@ export function CreateAgentSection({
     <div className="grid gap-4">
       <fieldset disabled={locked} className="grid gap-4">
         <div className="grid gap-1">
-          <Typography as="legend" variant="title-md" className="p-0">
+          <Typography as="legend" id={legendId} variant="title-md" className="p-0">
             {specId ? t('create.agent.sessionTitle') : t('create.agent.initialTitle')}
           </Typography>
           <Typography as="p" variant="body-md" className="text-content-secondary">
@@ -66,66 +58,35 @@ export function CreateAgentSection({
             {t('create.agent.noProviders')}
           </Typography>
         )}
-        <div className={providerGrid}>
+        <ChoiceTileGroup aria-labelledby={legendId} columns={providerColumns}>
           {catalogue.providers.map((p) => {
             const status = providerStatus(p, catalogue);
-            const selected = providerId === p.id;
             return (
-              <label
+              <ChoiceTile
                 key={p.id}
-                className={cn(choiceSurfaceClassName, choiceSurfaceTracksClassName)}
-              >
-                <input
-                  className="sr-only"
-                  type="radio"
-                  name="provider"
-                  checked={selected}
-                  disabled={!p.available}
-                  onChange={() => onChange(selectProvider(choice, p.id))}
-                />
-                <span className={cn(!p.available && 'text-content-muted')}>
-                  <SessionProviderIcon providerId={p.mark} />
-                </span>
-                <span className="min-w-0 break-words">
-                  <strong
-                    className={cn(
-                      'block text-title-sm',
-                      p.available ? 'text-content-primary' : 'text-content-secondary',
-                    )}
-                  >
-                    {p.title}
-                  </strong>
-                  {status.access && (
-                    <span className="mt-1 block text-body-sm text-content-secondary">
-                      {text(status.access)}
+                name="provider"
+                value={p.id}
+                checked={providerId === p.id}
+                disabled={!p.available}
+                onSelect={() => onChange(selectProvider(choice, p.id))}
+                icon={<SessionProviderIcon providerId={p.mark} />}
+                title={p.title}
+                description={status.access ? text(status.access) : undefined}
+                meta={
+                  p.available ? (
+                    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                      {status.tone && <StatusIndicator tone={status.tone} />}
+                      {text(status.availability)}
                     </span>
-                  )}
-                  <span className="mt-2 flex flex-wrap items-center gap-x-1 text-body-sm text-content-secondary">
-                    {p.available ? (
-                      <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                        {status.tone && <StatusIndicator tone={status.tone} />}
-                        {text(status.availability)}
-                      </span>
-                    ) : (
-                      <span>{text(status.availability)}</span>
-                    )}
-                  </span>
-                  {status.note && (
-                    <span className="mt-1 block text-body-sm text-content-secondary">
-                      {status.note}
-                    </span>
-                  )}
-                </span>
-                <span
-                  className={cn(choiceSurfaceCheckClassName, !selected && 'invisible')}
-                  aria-hidden="true"
-                >
-                  <Icon name="check" size="sm" />
-                </span>
-              </label>
+                  ) : (
+                    <span>{text(status.availability)}</span>
+                  )
+                }
+                note={status.note}
+              />
             );
           })}
-        </div>
+        </ChoiceTileGroup>
       </fieldset>
       <div
         className={cn('grid gap-4', model && model.efforts.length > 0 && '@sm:grid-cols-[2fr_1fr]')}

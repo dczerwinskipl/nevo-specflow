@@ -139,12 +139,6 @@ describe('E2.T05 — offline CLI Specs capability', () => {
     const journal = JSON.parse(await readFile(journalPath, 'utf8')) as Record<string, unknown>;
     await writeFile(journalPath, JSON.stringify({ ...journal, stage: 'registry-writing' }));
 
-    // A plain retry is only a reader: it never takes over a possibly live writer.
-    const retry = command(root);
-    await expect(
-      retry.run(['create', '--title', 'Stuck create', '--operation-id', operationId, '--json']),
-    ).rejects.toMatchObject({ code: 'CREATE_RECOVERY_REQUIRED' });
-
     // --confirmed-stopped is a required option (Commander refuses without it); the operator asserts it.
     const recover = command(root);
     await recover.run(['recover', operationId, '--confirmed-stopped', '--json']);

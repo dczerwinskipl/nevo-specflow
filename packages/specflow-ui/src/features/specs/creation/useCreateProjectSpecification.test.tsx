@@ -429,4 +429,27 @@ describe('useCreateProjectSpecification', () => {
     expect(onCreated).not.toHaveBeenCalled();
     expect(storageKey().load()).toBeDefined();
   });
+
+  it('ends a synchronous failure while preparing the request as a definite failure and keeps the form usable', async () => {
+    const post = vi.fn().mockResolvedValue(created);
+    const { model } = setup({ post });
+    await act(async () => {
+      await model().actions.submit(
+        submission({
+          buildTarget: () => {
+            throw new TypeError('crypto.randomUUID is not a function');
+          },
+        }),
+      );
+    });
+    expect(post).not.toHaveBeenCalled();
+    expect(model().state.phase).toBe('failed');
+    expect(model().state.failure).toMatchObject({ kind: 'failed' });
+    expect(storageKey().load()).toBeUndefined();
+
+    await act(async () => {
+      await model().actions.submit(submission());
+    });
+    expect(model().state.phase).toBe('completed');
+  });
 });

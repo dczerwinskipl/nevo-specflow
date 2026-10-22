@@ -1,4 +1,5 @@
 import { useRef, useState, type RefObject } from 'react';
+import { newId } from '../../../shared/ids/newId';
 import { useMessage } from '../../../i18n/message';
 import { entryOriginKey, entryResultKey, resolveEntry, type InlineEntry } from './inlineEntry';
 import type { EntryKind } from './documentTreePolicy';
@@ -61,7 +62,7 @@ export function useInlineEntry(options: {
       if (rename && kind === 'document' && !document) throw new Error('Missing document');
       onOpenFolder(parent);
       put({
-        key: crypto.randomUUID(),
+        key: newId(),
         kind,
         parent,
         name: rename?.path.split('/').at(-1) ?? '',

@@ -1,6 +1,7 @@
 import { createContext, useContext, useSyncExternalStore, type ReactNode } from 'react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { newId } from '../ids/newId';
 import { ToastProvider, Toast, ToastTitle, ToastClose, ToastViewport } from '@nevo/ui';
 
 export interface Notification {
@@ -25,7 +26,7 @@ export function createNotificationStore(): NotificationStore {
   };
   return {
     get: () => current,
-    notify: (message) => write({ id: crypto.randomUUID(), message }),
+    notify: (message) => write({ id: newId(), message }),
     dismiss: () => {
       if (current) write(undefined);
     },

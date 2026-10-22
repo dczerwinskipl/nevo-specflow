@@ -1,3 +1,5 @@
+import { newId as randomId } from '../ids/newId';
+
 export interface RequestAttempt<T> {
   signature: string;
   input: T;
@@ -9,7 +11,7 @@ export interface RequestAttempt<T> {
 export function retainRequest<T extends Record<K, string>, K extends string = 'requestId'>(
   holder: { current: RequestAttempt<T> | null },
   body: Omit<T, K>,
-  newId: () => string = () => crypto.randomUUID(),
+  newId: () => string = randomId,
   key: K = 'requestId' as K,
 ): T {
   const signature = JSON.stringify(body);

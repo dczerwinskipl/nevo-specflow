@@ -286,19 +286,28 @@ export function useCreateProjectSpecification(
 
   const start = useCallback(
     async (submission: ProjectSubmission) => {
-      const target = submission.buildTarget();
-      const goal = submission.goal.trim();
-      const input = retainRequest<SentCreateRequest, 'operationId'>(
-        ledger.attempt,
-        {
-          title: submission.title.trim(),
-          ...(goal ? { goal } : {}),
-          ...(submission.slug ? { slug: submission.slug } : {}),
-          ...(target ? { target } : {}),
-        },
-        undefined,
-        'operationId',
-      );
+      let input: SentCreateRequest;
+      try {
+        const target = submission.buildTarget();
+        const goal = submission.goal.trim();
+        input = retainRequest<SentCreateRequest, 'operationId'>(
+          ledger.attempt,
+          {
+            title: submission.title.trim(),
+            ...(goal ? { goal } : {}),
+            ...(submission.slug ? { slug: submission.slug } : {}),
+            ...(target ? { target } : {}),
+          },
+          undefined,
+          'operationId',
+        );
+      } catch {
+        // Nothing was sent, so this is a definite failure and the form stays usable.
+        const failure: CreateFailure = { kind: 'failed' };
+        submission.onFailed?.(failure);
+        dispatch({ type: 'submit-failed', failure: { ...failure, snapshot: submission.snapshot } });
+        return;
+      }
       ledger.startedAt = Date.now();
       storage.save({ request: input, startedAt: ledger.startedAt });
       dispatch({

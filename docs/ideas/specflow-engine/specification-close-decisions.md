@@ -47,7 +47,7 @@ related:
 | DC24 | Known conflict after archived source commit settles in retained linked archive with proven scratch disposition and releases only proven-safe shared reservations, allowing later CloseWorktree                                               | Infinite per-Spec lock or false integrated success                                 | Independent review P1 required                                 |
 | DC25 | Only integrated and direct-primary outcomes require project target admission; linked archive-only does not need configured/available target                                                                                                  | Block local archive due to unrelated missing primary target                        | Independent review P2 required                                 |
 
-| DC26 | Until first public release or verified real user data, simplify evolving PR #53 schemas directly; exceptions require explicit migration rationale | Perpetual internal prototype compatibility | Owner-approved pre-release policy |
+| DC26 | Until first public release or verified real user data, simplify the evolving Create schemas directly; exceptions require explicit migration rationale | Perpetual internal prototype compatibility | Owner-approved pre-release policy |
 
 ## Owner-confirmed direction and remaining engineering reviews
 

@@ -245,9 +245,9 @@ The existing 16 MiB batch and 2 MiB save request limits remain unchanged.
 
 ## Workspace target and create-options extension (demo)
 
-**Demo-only mirror of PR #53.** Schemas live in the demo contract namespace (`DemoCreateOptionsSchema`,
+**Demo schemas are the real create contract.** `DemoCreateOptionsSchema` and the two target schemas are re-exports of the real `CreateOptionsSchema` and target schemas (an equivalence test pins them), under the demo contract namespace (`DemoCreateOptionsSchema`,
 `DemoExistingTargetSchema`, `DemoNewWorktreeTargetSchema`, `DemoCreateTargetSchema`,
-`DemoOperationStatusSchema`) with the PR #53 field names, so a later switch to the real engine is a
+`DemoOperationStatusSchema`) with the real field names, so a later switch to the real engine is a
 mapping. Names marked "proposed" are not confirmed by the backend owner.
 
 | Method | Path                                      | Result                                                                                                |
@@ -278,7 +278,7 @@ Create body requires `operationId` (UUID, idempotency key; the legacy `requestId
   Git-style name that collides with no `baseRefs`/workspace branch. Requires `newWorktree.status` `available`.
 
 Fields outside the tile semantics (for example `existing` + `baseRef`) fail schema validation with a 400
-`Bad Request` body. Success is the PR #53 `CreatedSpec` plus demo `documentIds`: `operationId`, `specId`,
+`Bad Request` body. Success is the real `CreatedSpec` plus demo `documentIds`: `operationId`, `specId`,
 `kind: 'specification-create'`, `status: 'completed'`, `slug`, `workspaceId`, `relativeManifestPath`,
 with HTTP **201** (also when a completed operation is replayed). Create increments the target workspace `specCount`; a new worktree adds a `linked` workspace and its
 branch to later create-options. Create also fixes the specification location (simulated for linked workspaces).
@@ -295,7 +295,7 @@ a selected workspace or a generated or typed new-worktree branch that `commits` 
 unavailable or unknown workspace) and 400 `DEMO_INVALID_SCENARIO`. Replaying the same `operationId` and
 body returns the original result.
 
-### `integrationDestination` semantics (Engine facts, PR #53)
+### `integrationDestination` semantics (Engine facts)
 
 - `workspaces[].integrationDestination = { workspaceId, branch }` is the **pinned, immutable** integration
   target of a `linked` workspace. It exists only if Create received an explicit

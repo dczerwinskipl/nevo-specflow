@@ -61,7 +61,7 @@ describe('target-aware demo create', () => {
     expect(plain).toBeDefined();
     expect(plain?.integrationDestination).toBeUndefined();
   });
-  it('main (no target) increments the primary workspace and returns the PR #53 shape', () => {
+  it('main (no target) increments the primary workspace and returns the real create shape', () => {
     const { env, body, count } = setup();
     const result = env.specs.create('alice', body(1));
     expect(result).toMatchObject({

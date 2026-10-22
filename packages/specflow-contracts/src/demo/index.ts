@@ -1,4 +1,6 @@
 import { Type, type Static } from 'typebox';
+import { ExistingSpecTargetSchema, NewSpecWorktreeTargetSchema } from '../specs/create';
+import { CreateOptionsSchema } from '../specs/create-options';
 import { SPEC_SLUG_MAX_LENGTH, SPEC_SLUG_PATTERN } from '../specs/slug';
 const Id = Type.String({ minLength: 1, maxLength: 200, pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]*$' });
 const Text = Type.String({ maxLength: 200000 });
@@ -93,123 +95,23 @@ const Uuid = Type.String({
   pattern:
     '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
 });
-const WorkspaceReason = Type.Union([
-  Type.Literal('git-disabled'),
-  Type.Literal('git-unavailable'),
-  Type.Literal('checkout-unavailable'),
-  Type.Literal('git-membership-mismatch'),
-  Type.Literal('detached'),
-  Type.Literal('dirty'),
-  Type.Literal('branch-protected'),
-  Type.Literal('branch-not-allowed'),
-  Type.Literal('git-policy-invalid'),
-]);
 /**
- * Demo mirror of the PR #53 `CreateOptionsSchema` (same field names and semantics).
- * Swapping to the real engine is a mapping of names, not a redesign.
- *
- * `integrationDestination` is the PINNED, immutable integration target of a `linked` workspace,
- * chosen when it was created (`{ workspaceId, branch }`; `branch` is the branch attached at that
- * moment, not the live one). It is never present on the primary workspace and never points at the
- * workspace itself. Absent = no pin: Close follows the project target through the primary
- * workspace. `integrationSelectable` = `state === 'available' && (primary || managed)`.
+ * The demo answers EXACTLY the real create contract: these are the real schemas, re-exported under
+ * demo names, so the two can never drift (swapping to the real Engine changes no shape). See
+ * `specs/create-options.ts` (`CreateOptionsSchema`, incl. the pinned `integrationDestination`
+ * and the `integrationSelectable` rule) and `specs/create.ts` (the targets).
  */
-export const DemoCreateOptionsSchema = Type.Object(
-  {
-    primaryWorkspaceId: Uuid,
-    workspaces: Type.Array(
-      Type.Object(
-        {
-          workspaceId: Uuid,
-          kind: Type.Union([Type.Literal('primary'), Type.Literal('linked')]),
-          /** Display label: the checkout folder name (the repository folder for the primary one). */
-          name: Type.String({ minLength: 1 }),
-          /** Display path of the registered checkout. */
-          path: Type.String({ minLength: 1 }),
-          managed: Type.Boolean(),
-          specCount: Type.Integer({ minimum: 0 }),
-          state: Type.Union([
-            Type.Literal('available'),
-            Type.Literal('unavailable'),
-            Type.Literal('detached'),
-            Type.Literal('dirty'),
-          ]),
-          selectable: Type.Boolean(),
-          integrationSelectable: Type.Optional(Type.Boolean()),
-          integrationDestination: Type.Optional(
-            Type.Object(
-              { workspaceId: Uuid, branch: Type.String({ minLength: 1 }) },
-              { additionalProperties: false },
-            ),
-          ),
-          branch: Type.Optional(Type.String({ minLength: 1 })),
-          reason: Type.Optional(WorkspaceReason),
-        },
-        { additionalProperties: false },
-      ),
-    ),
-    newWorktree: Type.Object(
-      {
-        status: Type.Union([
-          Type.Literal('available'),
-          Type.Literal('disabled'),
-          Type.Literal('unavailable'),
-        ]),
-        reason: Type.Optional(WorkspaceReason),
-        branchProtected: Type.Optional(Type.Literal(true)),
-      },
-      { additionalProperties: false },
-    ),
-    defaultBaseRef: Type.String({ minLength: 1 }),
-    /** Effective pattern; `{shortId}` is optional, so `feature/{slug}` previews as `feature/<slug>`. */
-    branchPattern: Type.String({ minLength: 1 }),
-    /** Effective folder for new worktrees (machine-local `git.worktreesRoot` or the default). */
-    worktreesRoot: Type.Object(
-      { path: Type.String({ minLength: 1 }), exists: Type.Boolean() },
-      { additionalProperties: false },
-    ),
-    integrationTargetBranch: Type.Optional(Type.String({ minLength: 1 })),
-    /** Present exactly when git is enabled (the Engine commits the scaffold). */
-    commits: Type.Optional(
-      Type.Object(
-        {
-          protectedBranches: Type.Array(Type.String({ minLength: 1 })),
-          allowedBranches: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
-        },
-        { additionalProperties: false },
-      ),
-    ),
-    baseRefs: Type.Array(
-      Type.Object(
-        { ref: Type.String({ minLength: 1 }), checkedOutWorkspaceId: Type.Optional(Uuid) },
-        { additionalProperties: false },
-      ),
-    ),
-  },
-  { additionalProperties: false },
-);
-/** Demo mirror of PR #53 `ExistingSpecTargetSchema`. */
-export const DemoExistingTargetSchema = Type.Object(
-  { kind: Type.Literal('existing'), workspaceId: Uuid },
-  { additionalProperties: false },
-);
-/** Demo mirror of PR #53 `NewSpecWorktreeTargetSchema`. Omitted fields mean "use the default". */
-export const DemoNewWorktreeTargetSchema = Type.Object(
-  {
-    kind: Type.Literal('new-worktree'),
-    baseRef: Type.Optional(Type.String({ minLength: 1 })),
-    branch: Type.Optional(Type.String({ minLength: 1 })),
-    integrationTargetWorkspaceId: Type.Optional(Uuid),
-  },
-  { additionalProperties: false },
-);
+export const DemoCreateOptionsSchema = CreateOptionsSchema;
+export const DemoExistingTargetSchema = ExistingSpecTargetSchema;
+/** Omitted fields mean "use the default". */
+export const DemoNewWorktreeTargetSchema = NewSpecWorktreeTargetSchema;
 /** Absent target = the main (primary) workspace. */
 export const DemoCreateTargetSchema = Type.Union([
   DemoExistingTargetSchema,
   DemoNewWorktreeTargetSchema,
 ]);
 /**
- * Create error codes (shape `{ error, code }` as in PR #53 `CreateSpecErrorSchema`, where `error`
+ * Create error codes (shape `{ error, code }` as in the real `CreateSpecErrorSchema`, where `error`
  * repeats the code). The first five are the REAL Engine codes with their real HTTP statuses:
  * `BRANCH_ALREADY_EXISTS` 409, `BASE_REF_NOT_FOUND` 422, `CREATE_CONFLICT` 409,
  * `CREATE_OPERATION_INVALID` 400, `CREATE_RECOVERY_REQUIRED` 503, plus the commit codes
@@ -239,7 +141,7 @@ export const DemoCreateErrorSchema = Type.Object(
 );
 export const DemoCreateInputSchema = Type.Object(
   {
-    /** Idempotency key of the atomic create (PR #53 `operationId`). */
+    /** Idempotency key of the atomic create (the real `operationId`). */
     operationId: Uuid,
     /** Where the specification lives. Absent = main (primary) workspace. */
     target: Type.Optional(DemoCreateTargetSchema),
@@ -262,7 +164,7 @@ export const DemoCreateInputSchema = Type.Object(
   },
   { additionalProperties: false },
 );
-/** PR #53 `CreatedSpec` plus the demo-only `documentIds` of the scaffolded documents. */
+/** The real `CreatedSpec` plus the demo-only `documentIds` of the scaffolded documents. */
 export const DemoCreateResultSchema = Type.Object({
   specId: Id,
   documentIds: Type.Array(Id),
@@ -273,7 +175,7 @@ export const DemoCreateResultSchema = Type.Object({
   workspaceId: Uuid,
   relativeManifestPath: Type.String(),
 });
-/** Demo-PROPOSED operation status read (IMPLEMENTATION-SPEC section 10.5). */
+/** Demo-PROPOSED operation status read (not part of the real contract). */
 export const DemoOperationStatusSchema = Type.Object(
   {
     operationId: Uuid,
@@ -351,9 +253,9 @@ export const DemoErrorSchema = Type.Object({
   ]),
 });
 export type DemoCatalogue = Static<typeof DemoCatalogueSchema>;
-/** Create body keyed by `operationId` with the optional `target` (PR #53 shape). */
+/** Create body keyed by `operationId` with the optional `target` (the real create request shape). */
 export type DemoCreateRequest = Static<typeof DemoCreateInputSchema>;
-/** Full create response (PR #53 `CreatedSpec` + `documentIds`). */
+/** Full create response (the real `CreatedSpec` + `documentIds`). */
 export type DemoCreatedSpec = Static<typeof DemoCreateResultSchema>;
 export type DemoCreateOptions = Static<typeof DemoCreateOptionsSchema>;
 export type DemoCreateTarget = Static<typeof DemoCreateTargetSchema>;

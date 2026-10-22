@@ -150,4 +150,4 @@ Recommended routes: POST /api/specs/{specId}/worktree/close and POST /api/specs/
 
 Deferred: custom rebase/PR flows; unsafe unmanaged/shared cleanup; auto branch deletion; remote push; distributed fencing of arbitrary OS writers; session-native resume migration; Task/Attempt gates; actual Specification exit gates/actions; workflow evaluator/action implementation. Do not simulate deferred capabilities in Foundation. Plan 03 claims and Plan 04 Sessions will later strengthen close admission; they are not runtime dependencies for the explicitly limited Plan 02 close.
 
-Test and gate mapping: see Plan 02 and lifecycle LC01–LC40 in test-plan.md. Before PR #53 merge promote approved persistent decisions out of this draft tree and delete temporary execution-plans as the runbook requires.
+Test and gate mapping: see Plan 02 and lifecycle LC01–LC40 in test-plan.md. Before the Create branch merges, promote approved persistent decisions out of this draft tree and delete temporary execution-plans as the runbook requires.

@@ -207,4 +207,4 @@ read-only through I04; a recovery-required result is an instruction to
 inspect/reconcile through established operator processes, not a license
 for UI automatic retries that might repeat uncertain Git or filesystem
 effects. Changes for I04 are separate from E2.I03 shared-worktree lifecycle,
-with one PR #53 implementation branch and independent CI/re-review gates.
+with one Create implementation branch and independent CI/re-review gates.

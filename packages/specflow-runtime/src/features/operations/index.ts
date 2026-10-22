@@ -8,6 +8,7 @@ export {
   createOperationProgressRegistry,
   OPERATION_NOT_FOUND_CODE,
   type BeginOperationProgress,
+  type OperationProgressListing,
   type OperationProgressOutcome,
   type OperationProgressReporter,
   type OperationProgressRegistry,

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -79,7 +79,12 @@ interface Seen {
 }
 
 /** Connects first and resolves `events` when the server closes the stream after its terminal event. */
-async function subscribe(url: string, headers: Record<string, string>, operationId: string) {
+async function subscribe(
+  url: string,
+  headers: Record<string, string>,
+  operationId: string,
+  onEvent?: (event: Seen) => void,
+) {
   const response = await fetch(`${url}/api/specs/create/operations/${operationId}/events`, {
     headers,
   });
@@ -98,12 +103,33 @@ async function subscribe(url: string, headers: Record<string, string>, operation
         buffer = buffer.slice(split + 2);
         const event = /^event: (.+)$/m.exec(raw)?.[1];
         const data = /^data: (.+)$/m.exec(raw)?.[1];
-        if (event && data) seen.push({ event, data: JSON.parse(data) as Record<string, unknown> });
+        if (event && data) {
+          const item = { event, data: JSON.parse(data) as Record<string, unknown> };
+          seen.push(item);
+          onEvent?.(item);
+        }
       }
     }
     return seen;
   })();
   return { events };
+}
+
+/** The Create journal of an operation (located by file name: its directory is an Engine detail). */
+async function readJournal(root: string, operationId: string): Promise<string | undefined> {
+  const walk = async (dir: string): Promise<string | undefined> => {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        const found = await walk(path);
+        if (found !== undefined) return found;
+      } else if (entry.name === operationId + '.json') {
+        return readFile(path, 'utf8');
+      }
+    }
+    return undefined;
+  };
+  return walk(join(root, '.nevo'));
 }
 
 const trail = (events: Seen[]): string[] =>
@@ -198,5 +224,59 @@ describe('Create progress over the generic operations stream (real Git)', () => 
       'operationId',
       'type',
     ]);
+  }, 240000);
+
+  // BE-LONG: the Create work must outlive the HTTP request that started it.
+  it('finishes and journals a new-worktree create when the client aborts the POST mid-way', async () => {
+    const { root, url, headers } = await server(true);
+    const operationId = randomUUID();
+    const watching = await subscribe(url, headers, operationId, (event) => {
+      // First live step: the request is in flight and the worktree is being prepared.
+      if (event.event === 'step') abort.abort();
+    });
+    const abort = new AbortController();
+    const request = fetch(`${url}/api/specs`, {
+      method: 'POST',
+      headers: { ...headers, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        operationId,
+        title: 'Client disconnects',
+        target: { kind: 'new-worktree', baseRef: 'HEAD' },
+      }),
+      signal: abort.signal,
+    });
+    await expect(request).rejects.toThrow();
+    expect(abort.signal.aborted).toBe(true);
+
+    const events = await watching.events;
+    expect(events.at(-1)?.event).toBe('completed');
+    expect(events.some((item) => item.event === 'recovery-required')).toBe(false);
+
+    const inspection = await fetch(`${url}/api/specs/create/operations/${operationId}`, {
+      headers,
+    });
+    expect(inspection.status).toBe(200);
+    const inspected = (await inspection.json()) as Record<string, unknown>;
+    expect(inspected.status).toBe('completed');
+    expect(typeof inspected.specId).toBe('string');
+
+    // The journal reached `completed` and the worktree really exists.
+    const journal = await readJournal(root, operationId);
+    expect(journal).toBeDefined();
+    expect(JSON.parse(journal!)).toMatchObject({ operationId, stage: 'completed' });
+    const worktrees = execFileSync('git', ['worktree', 'list', '--porcelain'], {
+      cwd: root,
+      encoding: 'utf8',
+    });
+    expect(worktrees.match(/^worktree /gm)?.length).toBeGreaterThanOrEqual(2);
+
+    // Replay of the same request returns the completed result, not a conflict.
+    const replay = await post(url, headers, {
+      operationId,
+      title: 'Client disconnects',
+      target: { kind: 'new-worktree', baseRef: 'HEAD' },
+    });
+    expect(replay.status).toBe(201);
+    expect(await replay.json()).toMatchObject({ specId: inspected.specId });
   }, 240000);
 });

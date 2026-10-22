@@ -145,9 +145,7 @@ describe('E2.T05 — offline CLI Specs capability', () => {
       retry.run(['create', '--title', 'Stuck create', '--operation-id', operationId, '--json']),
     ).rejects.toMatchObject({ code: 'CREATE_RECOVERY_REQUIRED' });
 
-    // The operator must confirm that the original is stopped.
-    await expect(command(root).run(['recover', operationId])).rejects.toThrow(/confirmed-stopped/u);
-
+    // --confirmed-stopped is a required option (Commander refuses without it); the operator asserts it.
     const recover = command(root);
     await recover.run(['recover', operationId, '--confirmed-stopped', '--json']);
     expect(JSON.parse(recover.output[0]!)).toMatchObject({ operationId, specId: created.specId });

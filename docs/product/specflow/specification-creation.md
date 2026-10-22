@@ -163,16 +163,52 @@ Lifecycle states keep their semantics:
   operation the server has no record of is shown calmly as **Operation not found**, with a way back
   to Create; nothing is sent.
 
-### Way back from elsewhere
+### Way back from elsewhere: the operations panel
 
-While a Create is unfinished, the specification list (current collection) shows one quiet row
-above the list: **Creating \<name\>… (in progress)**, linking to the progress page of the
-operation. It is derived from the client-side operation ledger (the stored request in
-`sessionStorage`, `useUnfinishedCreate`); no endpoint is involved. It disappears when the
-operation completes, is refused or is released, and is not shown in the archive. It is read when
-the list opens, so a Create that finished on the server while the owner was away is reconciled when
-the owner follows the row back to its page. Opening Create while an unfinished operation is stored
-continues on its page instead of offering a second create. Leaving the page never blocks.
+While a Create is running, needs a check, failed or finished moments ago, the specification list
+(current collection, not the archive) shows a **Background operations** panel above the table. It
+is drawn only from the Runtime's operation list, never from client storage, so a Create started in
+another tab, another browser or the CLI shows up as well. The panel only informs: it shows
+**create** operations (no other kinds), no diagnostics, and offers no resume or scheduling.
+
+- **Hidden when empty** and while the first read is pending; the table owns loading. A Runtime
+  that does not serve the list (404/403) shows nothing and no error. A failed first read is one
+  compact notice with **Retry**; a failed refresh keeps the rows and adds "Cannot refresh.
+  Retrying".
+- **Header**: the title, a summary ("1 running, 1 needs attention") and a collapse button. The
+  owner's collapse lasts for the session and the panel opens again by itself when a row starts to
+  need a check.
+- **Rows**: status mark, title, kind and branch, the current step ("Step 2 of 4: Preparing the
+  workspace", counted without skipped steps), and when it started or last changed. A row is one
+  link to the operation's progress page (`/specs/new/creating/<operationId>`). Five rows are
+  shown; **Show all (N)** expands the rest inline, "Showing N of M" says when the server cut the
+  list. At 320 px a row wraps onto lines; touch targets stay at least 44 px.
+- **Needs a check** (`recovery-required`): the row says **Check result** and, for a run with no
+  activity (`OPERATION_INTERRUPTED`), "No activity for N min. Check the result". It never says
+  "failed" and offers no retry; it cannot be hidden.
+- **Failed** rows stay for 60 minutes in the Runtime's memory (after a Runtime restart they read
+  "needs a check" instead). **Completed** rows leave after 10 minutes. Failed and completed rows
+  can be hidden for the session (in memory only; a reload brings them back).
+- **Updates**: the list is read every 3 s while something runs and every 15 s otherwise, not at all
+  in a hidden tab, again when the tab or window gets focus, and with a 3 to 60 s backoff while reads
+  fail. When a row completes, the specification list and the Create options refresh by themselves.
+- **Accessibility**: the list is not a live region; a separate polite status announces only status
+  changes ("<name> is done", "<name> needs a check"), never step changes.
+- **Visibility** follows the specification: anyone who can view the specification sees its
+  operations (the journal records no initiator).
+- An unknown kind, status or step id (a newer Runtime) is drawn as a generic row without a link.
+
+The way back no longer depends on the tab's own memory: `sessionStorage` keeps only the form draft
+and the request being resumed on the progress page. Opening Create while an unfinished operation is
+stored continues on its page instead of offering a second create. Leaving the page never blocks.
+
+#### API contract
+
+The panel renders `OperationListResponse` from `@nevo/specflow-contracts/operations`
+(`GET /api/specs/operations` on a project Runtime, `GET /api/demo/specifications/operations` on the
+demo Runtime; query `status` as a comma-separated filter and `limit` 1 to 50). The endpoint is
+delivered by the backend slice that follows this UI work; until it exists a 404 simply leaves the
+panel hidden. See `engineering.shared.operation-progress`.
 
 ## Live progress while creating
 

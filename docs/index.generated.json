@@ -2256,9 +2256,10 @@
       "read_when": [
         "an operation can run for seconds or minutes and the UI should show its steps",
         "adding a kind to the operation progress stream",
-        "consuming operation progress in the UI"
+        "consuming operation progress in the UI",
+        "listing the running operations of a feature (the operations panel)"
       ],
-      "summary": "How the generic operation progress mechanism is layered (contracts registry, Runtime broadcaster and route helper, UI port, hook and checklist) and a recipe to add it to another operation: one feature route plus an adapter.",
+      "summary": "How the generic operation progress mechanism is layered (contracts registry, Runtime broadcaster and route helper, UI port, hook and checklist), the operation list and its panel above a feature's list, and a recipe to add progress to another operation: one feature route plus an adapter.",
       "related": [
         "reference.api.operation-progress",
         "engineering.shared.async-and-lifecycle",

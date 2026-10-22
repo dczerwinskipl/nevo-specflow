@@ -7,10 +7,12 @@ read_when:
   - an operation can run for seconds or minutes and the UI should show its steps
   - adding a kind to the operation progress stream
   - consuming operation progress in the UI
+  - listing the running operations of a feature (the operations panel)
 summary: >
   How the generic operation progress mechanism is layered (contracts registry, Runtime
-  broadcaster and route helper, UI port, hook and checklist) and a recipe to add it to another
-  operation: one feature route plus an adapter.
+  broadcaster and route helper, UI port, hook and checklist), the operation list and its panel
+  above a feature's list, and a recipe to add progress to another operation: one feature route plus
+  an adapter.
 related:
   - reference.api.operation-progress
   - engineering.shared.async-and-lifecycle
@@ -107,3 +109,42 @@ stream must never fail or block the operation.
   open (a lost session) stays stored and is tried again on the page.
 - A page opened by id alone (direct link) reads the inspection and shows what the server knows; a
   404 is "operation not found" and sends nothing, because there is no retained request to send.
+
+## Listing operations (the operations panel)
+
+A feature that wants its running operations visible next to its list owns a read-only list route
+(Specifications: `GET /api/specs/operations`) and shows them with the generic panel. There is no
+global operations index; authorization is the owning feature's capability (for Specifications,
+view of the specification of each row).
+
+| Layer      | Owner                                                       | Knows                                                                                                                                                                                         |
+| ---------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contracts  | `specflow-contracts/src/operations/list.ts`                 | `OperationListResponse` (items, counts, truncated, generatedAt), `OperationSummary` row, statuses `in-progress`, `recovery-required`, `failed`, `completed` (reserved: `queued`, `scheduled`) |
+| UI shared  | `specflow-ui/src/shared/operations/`                        | port `OperationsApi.list(url, {signal, etag?})`, `useOperationsList`, `OperationsPanel` and `OperationsPanelHost`, row model, session-only hide and collapse; no kind, no route               |
+| UI feature | the operation's feature (Create: `features/specs/creation`) | list URL by Runtime mode, `OperationKindPresentation` (kind label, step titles through the feature's step mapping, detail and events links), what to refresh on completion                    |
+
+Rules:
+
+- The server sends no link and no copy: rows carry `kind`, `operationId`, `status`, step ids and a
+  stable `code`. The UI renders exclusively from these and from the kind adapter. An unknown
+  `kind`, `status`, step id or `code` is a generic row; the reader is lenient on purpose (it drops
+  a row it cannot identify, not the list).
+- Polling is the live mechanism: 3 s while a row runs, 15 s otherwise, paused in a hidden tab,
+  refetch on focus, 3 to 60 s backoff on errors with the last rows kept. A 404/403 means "no list
+  here" (panel hidden, no retry). The port accepts an `etag` and treats 304 as not modified; the
+  shared HTTP client does not expose response headers yet, so the tag is not sent until it does.
+- `shared/operations` never imports a feature: the host passes `onCompleted` (a row went from
+  running to completed, or first showed up completed after the first read) and the composition
+  refreshes what the operation produced (the specification list).
+- The feature contributes its panel to the host list through an extension point (Specifications:
+  `specsOverviewPanels`, contributed by `creationUiModule`), because creation is private to
+  `features/specs/creation`.
+- Failed rows are retained 60 minutes in the Runtime's memory and completed rows 10 minutes; after
+  a restart a failure is shown as `recovery-required` with `OPERATION_INTERRUPTED`. Only completed
+  and failed rows can be hidden, for the session and in memory.
+
+**API contract.** The list endpoint, the registry timestamps and the journal-derived rows are
+delivered by the backend slice that follows the UI; until it ships, the panel treats a 404 as "no
+operations" and stays hidden. The step ids of a row reuse the kind's step vocabulary
+(`SPECIFICATION_CREATE_STEPS`, plus `committing-specification` once the commit slice lands, which
+the Create presentation then labels in `createProgress.ts`).

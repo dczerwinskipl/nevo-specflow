@@ -127,6 +127,9 @@ describe('SpecsOverview states', () => {
 });
 
 describe('SpecsOverview search', () => {
+  const searchBox = () =>
+    screen.getByRole<HTMLInputElement>('textbox', { name: 'Search specifications' });
+
   it('is offered from twelve rows, never before in the current list', () => {
     const view = renderOverview(manyCurrent(11));
     expect(screen.queryByRole('textbox', { name: 'Search specifications' })).toBeNull();
@@ -173,14 +176,10 @@ describe('SpecsOverview search', () => {
       target: { value: 'zzz' },
     });
     view.rerender(manyCurrent(12));
-    expect(
-      (screen.getByRole('textbox', { name: 'Search specifications' }) as HTMLInputElement).value,
-    ).toBe('');
+    expect(searchBox().value).toBe('');
     // The term stays with the collection it was typed in.
     view.rerender(loaded('archive'));
-    expect(
-      (screen.getByRole('textbox', { name: 'Search specifications' }) as HTMLInputElement).value,
-    ).toBe('zzz');
+    expect(searchBox().value).toBe('zzz');
   });
 });
 

@@ -255,6 +255,8 @@ Prefer tests that prove the changed policy or behavior at the narrowest stable b
 
 Follow the ownership-based placement rules in `engineering.shared.testing`: focused module/component tests and stories stay beside their owner; package-level `test/` is for genuine cross-boundary verification. Do not infer placement from neighboring legacy files when they conflict with the current documentation.
 
+Run slow integration tests on Linux. Real-Git tests (Engine, Runtime HTTP, CLI and any test that spawns many Git processes or creates many repositories) take minutes per file on Windows and seconds on Linux, and running many of them at once can exhaust the machine. When the host is Windows (or otherwise slow) and Docker is available, run them with `tools/dev/linux-test.sh` (see `engineering.repository.local-setup`, section "Running slow tests on Linux"): it clones the committed branch inside a Node container and runs the command there. Commit before running, because only committed changes are tested. Use the host for fast unit tests and the targeted test you are iterating on; use Linux for real-Git files, the full package suites and the final verification. A failure that appears only on the host (for example a symlink privilege error) is an environment limit: confirm it on Linux before changing code or tests.
+
 ## Storybook and visual verification
 
 **Applies when:** creating or changing UI components, product screens, stories, or visual behavior.

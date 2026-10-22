@@ -15,24 +15,26 @@ function renderDocument({
   revision = 'r1',
   expectedRevision = 'r1',
   network = false,
+  timeout = false,
 }: {
   status?: number;
   id?: string;
   revision?: string;
   expectedRevision?: string;
   network?: boolean;
+  timeout?: boolean;
 } = {}) {
   const client = createSpecFlowQueryClient();
   const key = documentKeys.detail('spec', 'doc', expectedRevision);
   client.setQueryData(key, { id, revision, title: 'Document', content: 'Protected document body' });
-  if (status || network)
+  if (status || network || timeout)
     client
       .getQueryCache()
       .find({ queryKey: key, exact: true })!
       .setState({
         status: 'error',
         error: new HttpClientError('Refresh failed', {
-          kind: network ? 'network' : 'http',
+          kind: timeout ? 'timeout' : network ? 'network' : 'http',
           status,
         }),
         fetchStatus: 'idle',
@@ -57,6 +59,8 @@ describe('query-facing Document content retention', () => {
   });
   it('retains matching content after a network failure', () =>
     expect(renderDocument({ network: true })).toContain('Protected document body'));
+  it('retains matching content after a timeout (the client reports it apart from a network failure)', () =>
+    expect(renderDocument({ timeout: true })).toContain('Protected document body'));
   it.each([400, 401, 403, 404, 409, 422])(
     'removes retained content on blocking HTTP %s',
     (status) => {

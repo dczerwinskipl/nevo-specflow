@@ -1,15 +1,25 @@
 import { Icon } from '@nevo/ui';
-import { useTranslation } from 'react-i18next';
 
-export function RefreshStatus({ active }: { readonly active: boolean }) {
-  const { t } = useTranslation();
+/**
+ * Icon-only "refreshing" indicator. The live region carries real text (visually hidden): a screen
+ * reader announces a changed text node, but not a changed `aria-label` of an icon.
+ */
+export function RefreshStatus({
+  active,
+  label,
+}: {
+  readonly active: boolean;
+  /** What is refreshing, already translated by the owner of the surface. */
+  readonly label: string;
+}) {
   return (
-    <span
-      className="inline-flex h-4 w-4 shrink-0 items-center"
-      role="status"
-      aria-label={active ? t('specifications.refreshing') : undefined}
-    >
-      {active ? <Icon name="refresh" size="sm" aria-hidden="true" /> : null}
+    <span className="inline-flex h-4 w-4 shrink-0 items-center" role="status">
+      {active ? (
+        <>
+          <Icon name="refresh" size="sm" aria-hidden="true" />
+          <span className="sr-only">{label}</span>
+        </>
+      ) : null}
     </span>
   );
 }

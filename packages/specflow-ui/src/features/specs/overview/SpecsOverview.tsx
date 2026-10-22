@@ -86,7 +86,7 @@ export function SpecsOverview({
                     view="specifications"
                   />
                 </div>
-                <RefreshStatus active={state.refreshing} />
+                <RefreshStatus active={state.refreshing} label={t('specifications.refreshing')} />
               </div>
             }
             title={t('specifications.title')}

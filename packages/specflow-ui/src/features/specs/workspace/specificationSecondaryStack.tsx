@@ -201,7 +201,9 @@ export function TaskPreviewHeader({
       headingLevel={2}
       title={t('specification.taskPreviewTitle')}
       icon="list-checks"
-      status={<RefreshStatus active={Boolean(data.refreshing)} />}
+      status={
+        <RefreshStatus active={Boolean(data.refreshing)} label={t('specifications.refreshing')} />
+      }
     />
   );
 }

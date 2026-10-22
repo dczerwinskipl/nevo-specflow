@@ -236,7 +236,7 @@ function SpecificationWorkspaceInner({
                         specId={specId}
                       />
                     </div>
-                    <RefreshStatus active={refreshing} />
+                    <RefreshStatus active={refreshing} label={t('specifications.refreshing')} />
                   </div>
                 }
                 icon="file"

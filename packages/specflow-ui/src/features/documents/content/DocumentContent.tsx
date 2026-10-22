@@ -35,7 +35,9 @@ export function DocumentContent({
   const status = isHttpClientError(query.error) ? query.error.status : undefined;
   const transient =
     isHttpClientError(query.error) &&
-    (query.error.kind === 'network' || (status !== undefined && status >= 500));
+    (query.error.kind === 'network' ||
+      query.error.kind === 'timeout' ||
+      (status !== undefined && status >= 500));
   const blocked = query.isError && !transient;
   const usable = matching && !blocked;
   const appearance = useInitialAppearance(

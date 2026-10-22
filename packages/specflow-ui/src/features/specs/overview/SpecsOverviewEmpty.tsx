@@ -8,11 +8,13 @@ export function SpecsOverviewEmpty({
   searching,
   onClearSearch,
   onCreate,
+  createDisabled,
 }: {
   readonly collection: SpecsCollection;
   readonly searching: boolean;
   readonly onClearSearch: () => void;
   readonly onCreate?: () => void;
+  readonly createDisabled: boolean;
 }) {
   const { t } = useTranslation();
   const kind = searching ? 'noResults' : collection === 'current' ? 'emptyCurrent' : 'emptyArchive';
@@ -27,7 +29,7 @@ export function SpecsOverviewEmpty({
             {t('specifications.clearSearch')}
           </Button>
         ) : onCreate && collection === 'current' ? (
-          <Button leadingIcon="plus" onClick={onCreate}>
+          <Button leadingIcon="plus" disabled={createDisabled} onClick={onCreate}>
             {t('specifications.create')}
           </Button>
         ) : undefined

@@ -126,6 +126,25 @@ describe('SpecsOverview states', () => {
   });
 });
 
+describe('SpecsOverview create', () => {
+  const createButtons = () => screen.getAllByRole('button', { name: 'New specification' });
+
+  it('keeps Create visible but disabled until it can be used (header and empty state)', () => {
+    renderOverview(
+      { ...loaded(), projection: { ...createSpecsFixture(), items: [] } },
+      { createDisabled: true },
+    );
+    const buttons = createButtons();
+    expect(buttons.length).toBeGreaterThan(1);
+    expect(buttons.every((button) => button.hasAttribute('disabled'))).toBe(true);
+  });
+
+  it('has no Create control at all when the host does not offer one', () => {
+    renderOverview(loaded(), { onCreate: undefined });
+    expect(screen.queryByRole('button', { name: 'New specification' })).toBeNull();
+  });
+});
+
 describe('SpecsOverview search', () => {
   const searchBox = () =>
     screen.getByRole<HTMLInputElement>('textbox', { name: 'Search specifications' });

@@ -8,12 +8,14 @@ export function SpecsOverviewHeader({
   refreshing,
   busy,
   onCreate,
+  createDisabled,
   onCreateSession,
   onRefresh,
 }: {
   readonly refreshing: boolean;
   readonly busy: boolean;
   readonly onCreate?: () => void;
+  readonly createDisabled: boolean;
   readonly onCreateSession?: () => void;
   readonly onRefresh: () => void;
 }) {
@@ -42,6 +44,7 @@ export function SpecsOverviewHeader({
                 label: t('specifications.create'),
                 icon: 'plus' as const,
                 primary: true,
+                disabled: createDisabled,
                 onPress: onCreate,
               },
             ]

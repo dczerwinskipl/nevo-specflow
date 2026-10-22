@@ -27,6 +27,8 @@ export interface SpecsOverviewProps {
   readonly onRefresh: () => void;
   readonly onOpenTarget?: (target: CurrentSpecTarget) => void;
   readonly onCreate?: () => void;
+  /** Create is offered but cannot be used yet (for example the Runtime mode is still unknown). */
+  readonly createDisabled?: boolean;
   readonly onCreateSession?: () => void;
   readonly sample?: boolean;
   readonly specificationHref?: (specId: string) => string;
@@ -43,6 +45,7 @@ export function SpecsOverview({
   onRefresh,
   onOpenTarget,
   onCreate,
+  createDisabled = false,
   onCreateSession,
   sample = false,
   specificationHref,
@@ -72,6 +75,7 @@ export function SpecsOverview({
             refreshing={state.refreshing}
             busy={busy}
             onCreate={onCreate}
+            createDisabled={createDisabled}
             onCreateSession={onCreateSession}
             onRefresh={onRefresh}
           />
@@ -144,6 +148,7 @@ export function SpecsOverview({
                     searching={Boolean(search.term)}
                     onClearSearch={search.clear}
                     onCreate={onCreate}
+                    createDisabled={createDisabled}
                   />
                 ) : null}
               </div>

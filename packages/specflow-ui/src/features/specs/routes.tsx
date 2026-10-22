@@ -176,11 +176,9 @@ function SpecsRouteScreen() {
       state={state}
       onRefresh={refresh}
       sample={mode === 'demo'}
-      onCreate={
-        mode !== 'loading' && mode !== 'unavailable'
-          ? () => void navigate({ to: '/specs/new', search: { collection } })
-          : undefined
-      }
+      onCreate={() => void navigate({ to: '/specs/new', search: { collection } })}
+      // Create waits for the Runtime mode (it picks the flow); the control stays, disabled.
+      createDisabled={mode === 'loading' || mode === 'unavailable'}
       onCollectionChange={(value) => void navigate({ search: { collection: value } })}
       specificationHref={(specId) =>
         `/specs/${encodeURIComponent(specId)}?collection=${collection}`

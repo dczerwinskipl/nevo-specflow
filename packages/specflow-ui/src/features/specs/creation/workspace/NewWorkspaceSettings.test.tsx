@@ -137,7 +137,7 @@ describe('New workspace settings prefill their switches with the effective defau
 });
 
 describe('unavailable settings', () => {
-  it('disable the switch with the design-system pattern and keep the reason readable', () => {
+  it('mark the switch unavailable with the design-system pattern and keep the reason readable', () => {
     render(
       <LocalizationProvider instance={createSpecFlowI18n('en')}>
         <NewWorkspaceSettings
@@ -152,7 +152,8 @@ describe('unavailable settings', () => {
       </LocalizationProvider>,
     );
     const base = screen.getByRole('switch', { name: /different branch/ });
-    expect(base.hasAttribute('disabled')).toBe(true);
+    // Unavailable, not disabled: it stays reachable by keyboard and its reason is its description.
+    expect(base.getAttribute('aria-disabled')).toBe('true');
     const reason = screen.getByText('There are no local branches to choose from.');
     // The reason is not faded with the control: no ancestor of it carries an opacity class.
     expect(reason.closest('[class*="opacity-"]')).toBeNull();

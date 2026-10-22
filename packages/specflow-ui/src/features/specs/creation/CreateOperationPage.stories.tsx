@@ -272,6 +272,9 @@ type Story = StoryObj<typeof meta>;
 const steps = (canvasElement: HTMLElement) =>
   within(within(canvasElement).getByRole('group', { name: 'Postęp tworzenia specyfikacji' }));
 
+/** The page subtitle, not the screen-reader announcer that repeats it (`sr-only`). */
+const visibleText = { selector: 'p:not(.sr-only)' } as const;
+
 const newWorkspace = { title: 'Limity płatności', target: { kind: 'new-worktree' as const } };
 
 /** What the form saved for a new workspace: where it goes, the branch, the folder and the merge target. */
@@ -301,12 +304,12 @@ export const InProgressWithSteps: Story = {
       name: 'Tworzenie: Limity płatności',
     });
     await waitFor(() => expect(document.activeElement).toBe(heading));
-    await expect(heading).toHaveAttribute('title', 'Limity płatności');
+    // No tooltip: the full name is the first row of the configuration list.
+    await expect(heading).not.toHaveAttribute('title');
     await expect(
-      canvas.getByText('Przygotowujemy nowe środowisko pracy i specyfikację.'),
+      canvas.getByText('Przygotowujemy nowe środowisko pracy i specyfikację.', visibleText),
     ).toBeVisible();
-    // The name is not repeated below the heading.
-    await expect(canvas.getAllByText(/Limity płatności/)).toHaveLength(1);
+    await expect(settingsList(canvas).getByText('Limity płatności')).toBeInTheDocument();
     const running = await canvas.findByText('Przygotowanie środowiska pracy');
     await waitFor(() => expect(running.closest('li')).toHaveAttribute('aria-current', 'step'));
     await expect(canvas.getByText('Tworzymy środowisko pracy')).toBeVisible();
@@ -359,7 +362,7 @@ export const InProgressExistingWorkspace: Story = {
     await expect(settings.getByText('feature/platform')).toBeInTheDocument();
     await expect(settings.queryByText('Katalog worktree')).not.toBeInTheDocument();
     await expect(settings.queryByText('Scal do')).not.toBeInTheDocument();
-    await expect(canvas.getByText('Przygotowujemy specyfikację.')).toBeVisible();
+    await expect(canvas.getByText('Przygotowujemy specyfikację.', visibleText)).toBeVisible();
   },
 };
 
@@ -467,7 +470,7 @@ export const Refused: Story = {
     ).toBeInTheDocument();
     await expect(await canvas.findByRole('alert')).toBeInTheDocument();
     // What was NOT created, and the safe repair action.
-    await expect(canvas.getByText(/^Nic nie zostało utworzone./)).toBeVisible();
+    await expect(canvas.getByText(/^Nic nie zostało utworzone./, visibleText)).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Wróć do specyfikacji' })).toBeEnabled();
     await userEvent.click(canvas.getByRole('button', { name: 'Wróć do formularza' }));
     await expect(args.onBackToForm).toHaveBeenCalledOnce();
@@ -580,7 +583,7 @@ export const RefusedBecauseTheBranchIsProtected: Story = {
       name: 'Nie utworzono specyfikacji: Limity płatności',
     });
     await expect(await canvas.findByRole('alert')).toHaveTextContent('Gałąź jest chroniona');
-    await expect(canvas.getByText(/^Nic nie zostało utworzone./)).toBeVisible();
+    await expect(canvas.getByText(/^Nic nie zostało utworzone./, visibleText)).toBeVisible();
     await expect(canvas.getByText(/Gałąź wybranego środowiska pracy jest chroniona/)).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Odśwież opcje' }));
     await expect(args.onBackToForm).toHaveBeenCalledOnce();
@@ -602,7 +605,7 @@ export const RefusedBecauseGitCannotCommitNow: Story = {
     await expect(await canvas.findByRole('alert')).toHaveTextContent(
       'Git nie może teraz przyjąć commita',
     );
-    await expect(canvas.getByText(/^Nic nie zostało utworzone./)).toBeVisible();
+    await expect(canvas.getByText(/^Nic nie zostało utworzone./, visibleText)).toBeVisible();
     await expect(canvas.getByText(/trwa scalanie lub rebase/)).toBeVisible();
   },
 };
@@ -626,7 +629,10 @@ export const CreatedButNotCommitted: Story = {
       'Pliki specyfikacji powstały, ale nie udało się zapisać ich w commicie',
     );
     await expect(
-      canvas.getByText('Pliki specyfikacji powstały, ale nie udało się zapisać ich w commicie.'),
+      canvas.getByText(
+        'Pliki specyfikacji powstały, ale nie udało się zapisać ich w commicie.',
+        visibleText,
+      ),
     ).toBeVisible();
     await expect(canvas.queryByText(/Nic nie zostało utworzone/)).toBeNull();
     await expect(canvas.getByRole('button', { name: 'Sprawdź stan operacji' })).toBeEnabled();

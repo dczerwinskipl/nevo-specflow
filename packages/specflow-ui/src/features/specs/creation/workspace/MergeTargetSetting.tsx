@@ -57,9 +57,10 @@ export function MergeTargetSetting({
       <SwitchField
         label={t('create.workspace.settings.targetSwitch')}
         checked={choice.target.on}
-        disabled={unavailable}
+        aria-disabled={unavailable ? true : undefined}
         description={description}
         onCheckedChange={(on) => {
+          if (unavailable && on) return;
           // On starts from the default target workspace; it is sent only once it differs.
           update.set({ target: { on, workspaceId: on ? defaultTargetWorkspaceId(options) : '' } });
         }}

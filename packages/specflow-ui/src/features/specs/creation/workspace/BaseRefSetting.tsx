@@ -70,9 +70,10 @@ export function BaseRefSetting({
       <SwitchField
         label={t('create.workspace.settings.baseSwitch')}
         checked={choice.base.on}
-        disabled={unavailable}
+        aria-disabled={unavailable ? true : undefined}
         description={description}
         onCheckedChange={(on) => {
+          if (unavailable && on) return;
           // On starts from the effective default (never an empty select, F-08); off restores it.
           update.set({ base: { on, ref: on ? defaultBaseValue(options) : '' } });
         }}

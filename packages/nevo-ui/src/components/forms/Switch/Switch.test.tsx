@@ -15,6 +15,20 @@ describe('Switch', () => {
     expect(html).toContain('Notify the account team.');
   });
 
+  it('mutes the label of an unavailable (aria-disabled) switch but not its description', () => {
+    const html = renderToStaticMarkup(
+      <SwitchField
+        aria-disabled
+        description={<span className="reason">No branches.</span>}
+        label="Different branch"
+      />,
+    );
+    expect(html).toContain('cursor-not-allowed text-content-muted');
+    // The field is not faded as a whole, so the reason keeps its contrast.
+    expect(html).not.toMatch(/<div class="flex[^"]*opacity-60/);
+    expect(html).toContain('aria-disabled="true"');
+  });
+
   it('merges consumer classes onto the control while keeping field layout classes', () => {
     const html = renderToStaticMarkup(
       <SwitchField className="consumer-control" fieldClassName="consumer-field" label="Enabled" />,

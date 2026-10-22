@@ -296,6 +296,10 @@ Rules:
 - Already applied: `Checkbox`, `RadioGroupItem`, `Switch`, every `IconButton` size, the label of
   `SwitchField`/`CheckboxField`/`RadioGroupOption` (`SwitchField` label also spans the row), and
   `Link layout="standalone"`. `Link` defaults to `layout="inline"` (exempt, unchanged).
+- An unavailable `SwitchField` (nothing to switch to) is `aria-disabled`, not `disabled`: it stays
+  reachable, the label and the control are muted, and the description holds the reason at normal
+  strength. Never fade the whole field with an opacity class; that also fades the reason. The owner
+  ignores the toggle (`onCheckedChange`) while the switch is unavailable.
 - Hit areas of neighbours can overlap when controls are closer than the target size; the later DOM
   sibling wins. Keep at least the 24px spacing between small targets or rely on the `::after` size
   staying within the row.

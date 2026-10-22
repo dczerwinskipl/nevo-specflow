@@ -39,7 +39,7 @@ export const Switch = forwardRef<
       className={cn(
         hitAreaClassName,
         'inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-border-control bg-surface-control p-0.5 outline-none transition-colors',
-        'data-[state=checked]:border-action-primary data-[state=checked]:bg-action-primary disabled:cursor-not-allowed disabled:opacity-60',
+        'data-[state=checked]:border-action-primary data-[state=checked]:bg-action-primary disabled:cursor-not-allowed disabled:opacity-60 aria-disabled:cursor-not-allowed aria-disabled:opacity-60',
         className,
       )}
       checked={checked}
@@ -76,6 +76,9 @@ export function SwitchField({
   const generatedId = useId();
   const id = idProp ?? `switch-${generatedId}`;
   const descriptionId = description ? `${id}-description` : undefined;
+  // `aria-disabled` keeps the control reachable (its reason is the description); it reads as muted too.
+  const unavailable =
+    disabled || props['aria-disabled'] === true || props['aria-disabled'] === 'true';
   const describedBy = [ariaDescribedBy, descriptionId].filter(Boolean).join(' ') || undefined;
 
   return (
@@ -86,7 +89,7 @@ export function SwitchField({
           className={cn(
             hitAreaBlockClassName,
             'block text-body-sm',
-            disabled
+            unavailable
               ? 'cursor-not-allowed text-content-muted'
               : 'cursor-pointer text-content-primary',
           )}

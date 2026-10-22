@@ -12,7 +12,7 @@ function setup() {
   });
   const attempt = { current: null };
   const draft = { title: '  Payment limits ', goal: ' ', choice: initialWorkspaceChoice };
-  return { storage, attempt, draft };
+  return { storage, attempt, draft, values };
 }
 
 describe('startCreate', () => {
@@ -28,8 +28,11 @@ describe('startCreate', () => {
     expect(request).toMatchObject({ title: 'Payment limits', target: { kind: 'new-worktree' } });
     expect(request).not.toHaveProperty('goal');
     expect(request?.operationId).toMatch(/^[0-9a-f-]{36}$/);
-    expect(storage.load()).toEqual({ request, startedAt: 42 });
-    expect(storage.loadDraft()).toMatchObject({ title: '  Payment limits ' });
+    expect(storage.load(request?.operationId ?? '')).toEqual({ request, startedAt: 42 });
+    expect(storage.loadDraft(request?.operationId ?? '')).toMatchObject({
+      title: '  Payment limits ',
+      operationId: request?.operationId,
+    });
   });
 
   it('keeps the operation id of an identical second submit and changes it for an edited one', () => {
@@ -47,8 +50,28 @@ describe('startCreate', () => {
     expect(edited?.operationId).not.toBe(first?.operationId);
   });
 
+  it('keeps the first operation resumable when a second one is started', () => {
+    const { storage, draft } = setup();
+    const first = startCreate({
+      attempt: { current: null },
+      storage,
+      draft,
+      buildTarget: () => undefined,
+    });
+    const second = startCreate({
+      attempt: { current: null },
+      storage,
+      draft: { ...draft, title: 'Second' },
+      buildTarget: () => undefined,
+    });
+    expect(second?.operationId).not.toBe(first?.operationId);
+    expect(storage.load(first?.operationId ?? '')?.request).toEqual(first);
+    expect(storage.load(second?.operationId ?? '')?.request).toEqual(second);
+    expect(storage.loadDraft(first?.operationId ?? '')?.title).toBe('  Payment limits ');
+  });
+
   it('stores nothing when the request cannot be prepared', () => {
-    const { storage, attempt, draft } = setup();
+    const { storage, attempt, draft, values } = setup();
     const request = startCreate({
       attempt,
       storage,
@@ -58,7 +81,6 @@ describe('startCreate', () => {
       },
     });
     expect(request).toBeUndefined();
-    expect(storage.load()).toBeUndefined();
-    expect(storage.loadDraft()).toBeUndefined();
+    expect(values.size).toBe(0);
   });
 });

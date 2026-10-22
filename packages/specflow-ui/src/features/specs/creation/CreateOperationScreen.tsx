@@ -14,7 +14,7 @@ import { CreateShell } from './CreateShell';
 export function CreateOperationScreen(props: {
   operationId: string;
   onOpen: (created: CreatedSpec) => void;
-  onBackToForm: () => void;
+  onBackToForm: (restoreDraftOf?: string) => void;
   onBackToSpecifications: () => void;
 }) {
   const { t } = useTranslation();

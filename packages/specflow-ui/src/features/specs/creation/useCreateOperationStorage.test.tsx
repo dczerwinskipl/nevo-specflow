@@ -41,13 +41,13 @@ describe('useCreateOperationStorage', () => {
 
     set({ status: 'loading' });
     rerender();
-    expect(result.current.load()).toEqual(operation);
-    result.current.clear();
+    expect(result.current.load(operation.request.operationId)).toEqual(operation);
+    result.current.clear(operation.request.operationId);
 
     const sameIdentity = createSessionOperationStorage(
       'required:authenticated:user:u1',
       sessionStorage,
     );
-    expect(sameIdentity.load()).toBeUndefined();
+    expect(sameIdentity.load(operation.request.operationId)).toBeUndefined();
   });
 });

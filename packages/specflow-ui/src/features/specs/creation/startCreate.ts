@@ -11,7 +11,7 @@ export interface StartCreateInput {
   attempt: { current: RequestAttempt<SentCreateRequest> | null };
   storage: CreateOperationStorage;
   /** The form as the owner entered it; "Back to form" restores it. */
-  draft: CreateDraft;
+  draft: Omit<CreateDraft, 'operationId'>;
   /** Real slug override the owner typed (never an untouched default), else undefined. */
   slug?: string;
   /** Lazy: building the target may throw, and that must not escape the submit. */

@@ -14,11 +14,13 @@ import { CreateSpecificationForm } from './CreateSpecificationForm';
 interface Props {
   specId?: string;
   onCreated: (id: string, document?: string) => void;
+  /** A Create on a project Runtime was handed over: continue on the page of its operation. */
+  onProjectStarted: (operationId: string) => void;
   /**
-   * A Create on a project Runtime was handed over: continue on the page of its operation. A stored
-   * unfinished operation is resumed with `replace`, so Back does not return to the empty form.
+   * The operation whose draft the form restores: set only by "Back to form" of that operation's
+   * page. Without it the form is always empty.
    */
-  onProjectStarted: (operationId: string, options: { replace: boolean }) => void;
+  restoreDraftOf?: string;
   onSession: (spec: string, session: string) => void;
   onBack: () => void;
 }
@@ -55,7 +57,11 @@ export function CreateSpecificationScreen(props: Props) {
     return props.specId ? (
       fallback(<FeatureUnavailable />)
     ) : (
-      <CreateProjectForm onStarted={props.onProjectStarted} />
+      <CreateProjectForm
+        key={props.restoreDraftOf ?? 'new'}
+        onStarted={props.onProjectStarted}
+        restoreDraftOf={props.restoreDraftOf}
+      />
     );
   return <DemoCreateSpecification {...props} fallback={fallback} />;
 }

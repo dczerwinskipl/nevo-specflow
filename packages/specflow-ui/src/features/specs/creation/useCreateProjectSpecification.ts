@@ -181,13 +181,17 @@ export function useCreateProjectSpecification(
       // The page is gone: nothing may navigate or publish for it; the stored operation stays.
       if (lifetime.aborted) return;
       const sentTarget = ledger.attempt.current?.input.target;
+      // The ledger entry of this operation only: another operation's entry is never touched.
+      const id = ledger.attempt.current?.input.operationId ?? operationId;
       const outcome = interpretWatchResult(result, {
         customBranch: sentTarget?.kind === 'new-worktree' ? sentTarget.branch : undefined,
         newWorkspace: sentTarget?.kind === 'new-worktree',
       });
       if (outcome.kind === 'completed') {
-        storage.clear();
-        storage.clearDraft();
+        if (id) {
+          storage.clear(id);
+          storage.clearDraft(id);
+        }
         ledger.navigationAllowed = true;
         void cache.invalidateQueries({ queryKey: specsOverviewKeys.all });
         void cache.invalidateQueries({ queryKey: projectCreationKeys.createOptions });
@@ -197,7 +201,7 @@ export function useCreateProjectSpecification(
         return;
       }
       if (outcome.announce) announce(t(`create.announce.${outcome.announce}`));
-      if (outcome.releaseStorage) storage.clear();
+      if (outcome.releaseStorage && id) storage.clear(id);
       if (outcome.discardAttempt) ledger.attempt.current = null;
       if (outcome.releaseStorage) submission.onFailed?.(outcome.failure);
       dispatch({
@@ -206,7 +210,7 @@ export function useCreateProjectSpecification(
         discardSent: outcome.discardAttempt,
       });
     },
-    [announce, cache, ledger, lifetime, notify, onCreated, storage, t],
+    [announce, cache, ledger, lifetime, notify, onCreated, operationId, storage, t],
   );
 
   const hooksOf = useCallback(

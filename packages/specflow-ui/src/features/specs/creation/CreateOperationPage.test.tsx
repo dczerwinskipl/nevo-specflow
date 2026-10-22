@@ -420,7 +420,7 @@ describe('CreateOperationPage', () => {
     await waitFor(() => expect(onOpen).toHaveBeenCalledWith(created), {
       timeout: openAfterCreatedMs + 1500,
     });
-    expect(storage().load()).toBeUndefined();
+    expect(storage().load(operationId)).toBeUndefined();
   });
 
   it('success: the button opens the specification at once', async () => {
@@ -446,10 +446,12 @@ describe('CreateOperationPage', () => {
     const { onBackToForm } = renderPage({ post, get });
     expect(await heading('Specification was not created')).toBeTruthy();
     expect(await screen.findByRole('alert')).toBeTruthy();
-    expect(storage().load()).toBeUndefined();
+    expect(storage().load(operationId)).toBeUndefined();
     fireEvent.click(screen.getByRole('button', { name: 'Back to form' }));
     expect(onBackToForm).toHaveBeenCalledOnce();
-    expect(storage().loadDraft()).toMatchObject({
+    // The explicit path: the form is told which operation's draft to restore.
+    expect(onBackToForm).toHaveBeenCalledWith(operationId);
+    expect(storage().loadDraft(operationId)).toMatchObject({
       title: 'Payment limits',
       goal: 'Goal',
       choice: { tile: 'new' },

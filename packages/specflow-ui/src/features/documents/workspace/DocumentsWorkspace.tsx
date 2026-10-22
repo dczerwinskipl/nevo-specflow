@@ -17,7 +17,8 @@ import { applicationLocationHeader } from '../../../app/navigation/ApplicationLo
 import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
 import { useAppServices } from '../../../app/useAppServices';
 import { DocumentRouteGuard } from '../editor/DocumentRouteGuard';
-import { documentHeaderModel, useDocumentEditor } from '../editor/DocumentEditorProvider';
+import { useDocumentEditor } from '../editor/DocumentEditorProvider';
+import { documentHeaderModel } from '../editor/documentHeaderModel';
 import { documentRootActions, type DocumentTreeController } from '../explorer/DocumentsExplorer';
 import { documentTreeKeys } from '../read-model/queries';
 import { DocumentPane, UnsavedMarker } from './DocumentPane';

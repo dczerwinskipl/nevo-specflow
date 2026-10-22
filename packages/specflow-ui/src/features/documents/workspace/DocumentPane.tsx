@@ -23,7 +23,8 @@ import { useAppServices } from '../../../app/useAppServices';
 import { translateNow } from '../../../i18n/message';
 import { SessionRecoveryNotice, useSessionReturn } from '../../sessions';
 import { DocumentEditor } from '../editor/DocumentEditor';
-import { documentHeaderModel, useDocumentEditor } from '../editor/DocumentEditorProvider';
+import { useDocumentEditor } from '../editor/DocumentEditorProvider';
+import { documentHeaderModel } from '../editor/documentHeaderModel';
 import { documentKeys } from '../read-model/queries';
 
 export interface DocumentParams {

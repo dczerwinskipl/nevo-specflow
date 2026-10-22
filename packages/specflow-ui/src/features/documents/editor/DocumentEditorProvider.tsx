@@ -1,7 +1,4 @@
-import { Pencil } from 'lucide-react';
-import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { EditorView } from '@codemirror/view';
 import {
   createContext,
   useCallback,
@@ -13,7 +10,6 @@ import {
   type MutableRefObject,
   type ReactNode,
 } from 'react';
-import type { WorkspaceHeaderAction } from '@nevo/ui';
 import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/specs/workspace';
 import { documentDraftKey, draftFor, type DocumentDraft } from './documentDraftStore';
 import { useDocumentDraft, useDocumentDraftStore } from './DocumentDraftProvider';
@@ -21,6 +17,7 @@ import { UnsavedChangesDialog } from './UnsavedChangesDialog';
 import { DocumentPathDialog } from './DocumentPathDialog';
 import type { ScrollAnchor } from './documentScrollAnchor';
 import { useDocumentSave } from './useDocumentSave';
+import { useEditorFocus } from './useEditorFocus';
 
 /**
  * One owner of the open document's edit session (draft, save, discard guard). The workspace
@@ -71,7 +68,6 @@ export function DocumentEditorProvider({
   const { t } = useTranslation();
   const store = useDocumentDraftStore();
   const anchorReader = useRef<(() => ScrollAnchor | undefined) | null>(null);
-  const editorRoot = useRef<HTMLDivElement | null>(null);
   const focusAfterDiscard = useRef(false);
   const [guardFor, setGuardFor] = useState<string>();
   const [pathOpen, setPathOpen] = useState(false);
@@ -87,21 +83,8 @@ export function DocumentEditorProvider({
   const owner = useDocumentSave({ specId, document, draft });
   const { save: saveOwned } = owner;
 
-  const focusEditor = useCallback(() => {
-    const element = editorRoot.current?.querySelector<HTMLElement>('.cm-editor');
-    if (element) EditorView.findFromDOM(element)?.focus();
-  }, []);
-  const focusContent = useCallback(() => {
-    // The header action that changed the mode may be replaced or disabled; keep focus in the document.
-    const root = editorRoot.current;
-    if (root?.querySelector('.cm-editor')) {
-      // Touch: focusing the editor raises the keyboard and jumps the view; the user taps the text.
-      if (window.matchMedia('(pointer: coarse)').matches)
-        root.querySelector<HTMLElement>('[data-document-source]')?.focus({ preventScroll: true });
-      else focusEditor();
-    } else
-      root?.querySelector<HTMLElement>('[data-document-preview]')?.focus({ preventScroll: true });
-  }, [focusEditor]);
+  const { editorRoot, focusEditor, focusContent, focusEditorSoon, focusContentSoon } =
+    useEditorFocus();
   const setDraft = useCallback(
     (change: Partial<DocumentDraft>) => {
       const { document: record } = shown.current;
@@ -125,11 +108,11 @@ export function DocumentEditorProvider({
           active === globalThis.document.body ||
           active.closest('[data-workspace-header]')
         )
-          requestAnimationFrame(focusEditor);
+          focusEditorSoon();
       }
       return open.draft?.content === result.content;
     },
-    [saveOwned, focusEditor],
+    [saveOwned, focusEditorSoon],
   );
   const toggleEditing = useCallback(() => {
     const { specId: openSpec, document: openDocument, draft: openDraft } = shown.current;
@@ -141,8 +124,8 @@ export function DocumentEditorProvider({
     if (active instanceof HTMLElement && editorRoot.current?.contains(active)) active.blur();
     setDraft({ editing: !openDraft.editing });
     // Wait for the mode switch to render before moving focus into its content.
-    requestAnimationFrame(() => requestAnimationFrame(focusContent));
-  }, [store, setDraft, focusContent]);
+    focusContentSoon();
+  }, [store, setDraft, focusContentSoon, editorRoot]);
   const requestDiscard = useCallback(() => {
     const { document: open, draft: openDraft } = shown.current;
     if (open && openDraft && openDraft.content !== openDraft.baseline) setGuardFor(open.id);
@@ -189,6 +172,7 @@ export function DocumentEditorProvider({
     save,
     requestDiscard,
     showPath,
+    editorRoot,
     focusEditor,
     focusContent,
     rememberAnchor,
@@ -220,82 +204,11 @@ export function DocumentEditorProvider({
             if (focusAfterDiscard.current) {
               event.preventDefault();
               focusAfterDiscard.current = false;
-              requestAnimationFrame(focusEditor);
+              focusEditorSoon();
             }
           }}
         />
       )}
     </Context.Provider>
   );
-}
-
-/**
- * Header presentation for the open document: title, unsaved marker and workspace header actions.
- * Exactly one mode action exists at a time. View: the pencil icon (direct on every width). Edit:
- * the preview eye is direct beside Save on wide headers and moves to the overflow on narrow ones;
- * Discard and "Show path" (full path dialog) always live in the overflow. The DS resolves wide/narrow, so there is no duplicate.
- */
-export function documentHeaderModel(
-  session: DocumentEditorSession | null,
-  t: TFunction,
-): {
-  actions: readonly WorkspaceHeaderAction[];
-  dirty: boolean;
-} {
-  if (!session) return { actions: [], dirty: false };
-  const { draft, dirty, saving } = session;
-  const showPath: WorkspaceHeaderAction = {
-    id: 'document-path',
-    label: t('documents.actions.showPath'),
-    icon: 'info',
-    onPress: session.showPath,
-  };
-  if (!draft.editing)
-    return {
-      dirty,
-      actions: [
-        {
-          id: 'document-edit',
-          label: t('documents.actions.edit'),
-          icon: Pencil,
-          presentation: 'icon',
-          direct: 'always',
-          onPress: session.toggleEditing,
-        },
-        showPath,
-      ],
-    };
-  return {
-    dirty,
-    actions: [
-      {
-        id: 'document-preview',
-        label: t('documents.actions.preview'),
-        icon: 'eye',
-        presentation: 'icon',
-        direct: 'wide',
-        // In the overflow, the menu must not return focus to its trigger (which now persists in view
-        // mode for the path action): `toggleEditing` moves focus into the document content itself.
-        onMenuClosed: () => undefined,
-        onPress: session.toggleEditing,
-      },
-      {
-        id: 'document-save',
-        label: t('documents.actions.save'),
-        icon: 'save',
-        primary: true,
-        direct: 'always',
-        disabled: !dirty || saving,
-        onPress: () => void session.save({ restoreFocus: true }),
-      },
-      {
-        id: 'document-discard',
-        label: t('documents.actions.discard'),
-        icon: 'close',
-        disabled: !dirty || saving,
-        onPress: session.requestDiscard,
-      },
-      showPath,
-    ],
-  };
 }

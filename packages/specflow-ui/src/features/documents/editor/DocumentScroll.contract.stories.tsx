@@ -9,11 +9,8 @@ import { TestServicesRouterContext } from '../../../../test-support/app/TestServ
 import { VisitStateProvider } from '../../../app/VisitStateProvider';
 import { invokeDocumentAction } from './documentHeaderActions.stories-support';
 import { DocumentEditor } from './DocumentEditor';
-import {
-  DocumentEditorProvider,
-  documentHeaderModel,
-  useDocumentEditor,
-} from './DocumentEditorProvider';
+import { DocumentEditorProvider, useDocumentEditor } from './DocumentEditorProvider';
+import { documentHeaderModel } from './documentHeaderModel';
 import { readPreviewAnchor } from './previewScroll';
 import { withLocale } from '../../../i18n/StoryLocalization';
 import { useTranslation } from 'react-i18next';

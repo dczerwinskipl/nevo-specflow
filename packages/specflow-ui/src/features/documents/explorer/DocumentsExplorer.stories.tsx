@@ -36,11 +36,8 @@ import {
   type DocumentTreeController,
 } from './DocumentsExplorer';
 import { DocumentEditor } from '../editor/DocumentEditor';
-import {
-  DocumentEditorProvider,
-  documentHeaderModel,
-  useDocumentEditor,
-} from '../editor/DocumentEditorProvider';
+import { DocumentEditorProvider, useDocumentEditor } from '../editor/DocumentEditorProvider';
+import { documentHeaderModel } from '../editor/documentHeaderModel';
 import { settleOwnerV4 } from '../../../test-support/ownerV4Capture.stories-support';
 import { invokeDocumentAction } from '../editor/documentHeaderActions.stories-support';
 import { withLocale } from '../../../i18n/StoryLocalization';

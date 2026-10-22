@@ -13,8 +13,8 @@ import {
   WorkspaceHeader,
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import { useSpecificationWorkspace } from '../useSpecificationWorkspace';
-import type { SpecificationSectionId, SpecificationWorkspaceData } from '../workspace/model';
+import { useSpecificationWorkspace } from '../read-model/useSpecificationWorkspace';
+import type { SpecificationSectionId, SpecificationWorkspaceData } from '../read-model/model';
 import {
   ApplicationLocationIdentity,
   ApplicationContextLine,

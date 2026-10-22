@@ -1,6 +1,6 @@
 import { Button, InformationList, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import { sessionActivityLabel, type SessionSummary } from '../../specs';
+import { sessionActivityLabel, type SessionSummary } from '../../specs/read-model';
 import { OperationalRow } from '../../../shared/operational-list';
 
 export interface SessionsViewProps {

@@ -7,5 +7,5 @@ const polish = createSpecFlowI18n('pl');
 export function polishText(value: Message | string): string;
 export function polishText(value: Message | string | undefined): string | undefined;
 export function polishText(value: Message | string | undefined): string | undefined {
-  return value === undefined ? undefined : translateMessage(polish.t, value);
+  return value === undefined ? undefined : translateMessage(polish.t, value, 'pl');
 }

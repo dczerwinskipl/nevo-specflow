@@ -511,9 +511,11 @@ export const BaseSuggestionAcceptMovesFocusAndAnnounces: Story = {
     ).toBeLessThanOrEqual(canvas.getByRole('button', { name: 'Ustaw cel scalenia' }).clientWidth);
     await userEvent.click(canvas.getByRole('button', { name: 'Ustaw cel scalenia' }));
     await waitFor(() => expect(canvas.getByRole('combobox', { name: 'Scal do' })).toHaveFocus());
-    await expect(canvas.getByRole('status')).toHaveTextContent(
-      'Cel scalenia ustawiony na feature/platform.',
-    );
+    await expect(
+      canvas.getByText('Cel scalenia ustawiony na feature/platform.', {
+        selector: '[role="status"]',
+      }),
+    ).toBeInTheDocument();
     await expect(request(canvas)).toBe(
       JSON.stringify({
         kind: 'new-worktree',
@@ -537,9 +539,11 @@ export const BaseSuggestionDeclineKeepsTarget: Story = {
     );
     await userEvent.click(canvas.getByRole('button', { name: 'Zostaw bez zmian' }));
     await waitFor(() => expect(canvas.getByRole('combobox', { name: 'Zacznij od' })).toHaveFocus());
-    await expect(canvas.getByRole('status')).toHaveTextContent(
-      'Cel scalenia pozostaje bez zmian: develop.',
-    );
+    await expect(
+      canvas.getByText('Cel scalenia pozostaje bez zmian: develop.', {
+        selector: '[role="status"]',
+      }),
+    ).toBeInTheDocument();
     await expect(request(canvas)).toBe('{"kind":"new-worktree","baseRef":"feature/platform"}');
   },
 };
@@ -698,9 +702,11 @@ export const StaleRememberedValueIsFlaggedOnReturn: Story = {
     // While inactive the stale values neither block Create nor reach the request.
     await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute('data-problems', '');
     await userEvent.click(canvas.getByRole('radio', { name: 'Nowe środowisko pracy' }));
-    await expect(canvas.getByRole('status')).toHaveTextContent(
-      'Wybrana wcześniej wartość nie jest już dostępna.',
-    );
+    await expect(
+      canvas.getByText('Wybrana wcześniej wartość nie jest już dostępna.', {
+        selector: '[role="status"]',
+      }),
+    ).toBeInTheDocument();
     await expect(canvas.getByText(/Ta gałąź nie jest już dostępna/)).toBeVisible();
     await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute(
       'data-problems',
@@ -809,7 +815,9 @@ export const NothingAvailable: Story = {
       'Brak dostępnego środowiska pracy.',
     );
     await userEvent.click(canvas.getByRole('button', { name: 'Odśwież opcje' }));
-    await expect(canvas.getByRole('status')).toHaveTextContent('Opcje odświeżone.');
+    await expect(
+      canvas.getByText('Opcje odświeżone.', { selector: '[role="status"]' }),
+    ).toBeInTheDocument();
   },
 };
 
@@ -934,8 +942,9 @@ export const Refreshing: Story = {
   args: { refreshing: true },
   tags: ['contract'],
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole('status')).toHaveTextContent('Odświeżamy opcje…');
-    await expect(canvas.getByRole('status')).toBeVisible();
+    await expect(
+      canvas.getByText('Odświeżamy opcje…', { selector: '[role="status"]' }),
+    ).toBeVisible();
     // Content stays while refreshing.
     await expect(canvas.getByRole('radio', { name: 'Nowe środowisko pracy' })).toBeChecked();
   },
@@ -1123,8 +1132,8 @@ export const DisclosureMetaWrapsAtWordBoundariesAt320: Story = {
       await expect(brokenWords(canvas.getByText(/Zmienione ustawienia/))).toEqual([]);
       await expect(trigger.scrollWidth).toBeLessThanOrEqual(trigger.clientWidth + 1);
     }
-    // F-10: the accessible name has no stray separator.
-    await expect(canvas.getByText('Zmienione ustawienia (2): baza, nazwa')).toBeVisible();
+    // F-10: the accessible name has no stray separator (the list is joined the Polish way).
+    await expect(canvas.getByText('Zmienione ustawienia (2): baza i nazwa')).toBeVisible();
     await expectNoOverflow(320);
   },
 };

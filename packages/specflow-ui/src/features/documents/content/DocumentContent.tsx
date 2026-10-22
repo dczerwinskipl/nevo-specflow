@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useAppServices } from '../../../app/useAppServices';
 import { markdownIntro } from '../description/markdownIntro';
 import { useMarkdownLabels } from '../useMarkdownLabels';
-import { documentKeys } from '../queries';
+import { documentKeys } from '../read-model/queries';
 
 export function DocumentContent({
   specId,

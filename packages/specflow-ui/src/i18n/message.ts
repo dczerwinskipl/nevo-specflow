@@ -1,11 +1,12 @@
 import type { ParseKeys, TFunction } from 'i18next';
 import { useCallback } from 'react';
 import { getI18n, useTranslation } from 'react-i18next';
+import { formatList } from './formatList';
 
 /** A catalogue key understood by the typed `t` function (plural suffixes are resolved by i18next). */
 export type MessageKey = ParseKeys;
 
-/** Interpolation value: plain text/number, or another message (lists are joined with ", "). */
+/** Interpolation value: plain text/number, or another message (a list is joined by the locale: "a, b and c"). */
 export type MessageValue = string | number | Message | readonly Message[];
 export type MessageValues = Readonly<Record<string, MessageValue>>;
 
@@ -25,8 +26,15 @@ export const message = (key: MessageKey, values?: MessageValues): Message =>
 const isMessage = (value: MessageValue): value is Message =>
   typeof value === 'object' && !Array.isArray(value) && 'key' in value;
 
-/** Translates a {@link Message} with an existing `t` function. */
-export function translateMessage(t: TFunction, value: Message | string): string {
+/**
+ * Translates a {@link Message} with an existing `t` function. `locale` decides how a list value is
+ * joined; it defaults to the language `t` is bound to.
+ */
+export function translateMessage(
+  t: TFunction,
+  value: Message | string,
+  locale: string | undefined = (t as { lng?: string }).lng,
+): string {
   if (typeof value === 'string') return value;
   const resolved: Record<string, string | number> = {};
   for (const [name, entry] of Object.entries(value.values ?? {})) {
@@ -34,8 +42,11 @@ export function translateMessage(t: TFunction, value: Message | string): string 
       typeof entry === 'string' || typeof entry === 'number'
         ? entry
         : isMessage(entry)
-          ? translateMessage(t, entry)
-          : entry.map((item) => translateMessage(t, item)).join(', ');
+          ? translateMessage(t, entry, locale)
+          : formatList(
+              entry.map((item) => translateMessage(t, item, locale)),
+              locale,
+            );
   }
   return (t as (key: string, options?: Record<string, string | number>) => string)(
     value.key,
@@ -45,8 +56,11 @@ export function translateMessage(t: TFunction, value: Message | string): string 
 
 /** Hook form of {@link translateMessage}: `const text = useMessage(); text(policy.reason)`. */
 export function useMessage(): (value: Message | string) => string {
-  const { t } = useTranslation();
-  return useCallback((value: Message | string) => translateMessage(t, value), [t]);
+  const { t, i18n } = useTranslation();
+  return useCallback(
+    (value: Message | string) => translateMessage(t, value, i18n.resolvedLanguage),
+    [t, i18n.resolvedLanguage],
+  );
 }
 
 /**
@@ -56,5 +70,5 @@ export function useMessage(): (value: Message | string) => string {
  */
 export function translateNow(key: MessageKey, values?: MessageValues): string {
   const instance = getI18n();
-  return translateMessage(instance.t, message(key, values));
+  return translateMessage(instance.t, message(key, values), instance.resolvedLanguage);
 }

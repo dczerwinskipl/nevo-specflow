@@ -36,7 +36,7 @@ import type { SpecsOverviewApi } from './api';
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createSpecFlowQueryClient } from '../../../app/queryClient';
-import { specPrimaryLinkClassName } from './SpecListRow';
+import { specPrimaryLinkClassName } from './SpecPrimaryLink';
 
 function SourceLifecycleFixture() {
   const queryClient = useMemo(() => createSpecFlowQueryClient(), []);

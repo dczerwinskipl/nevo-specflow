@@ -9,17 +9,25 @@ export const runtimeKeys = { info: ['runtime-info'] as const };
  */
 export type RuntimeMode = 'loading' | 'project' | 'demo' | 'unavailable';
 
-/** The single reader of `GET /api/runtime/info`; every mode decision goes through it. */
-export function useRuntimeMode(): RuntimeMode {
+/**
+ * The single observer configuration of `GET /api/runtime/info`; every reader of this key goes
+ * through it so the cache entry is observed with one set of options.
+ */
+export function useRuntimeInfo() {
   const router = useRouter({ warn: false });
   const services = router?.options.context?.services;
-  const runtime = useQuery({
+  return useQuery({
     queryKey: runtimeKeys.info,
     queryFn: ({ signal }) => services.runtimeInfoApi.getInfo(signal),
     enabled: Boolean(services),
     // The data mode of a running Runtime does not change.
     staleTime: 10 * 60 * 1000,
   });
+}
+
+/** The single reader of the Runtime mode; every mode decision goes through it. */
+export function useRuntimeMode(): RuntimeMode {
+  const runtime = useRuntimeInfo();
   if (runtime.data) return runtime.data.dataMode;
   return runtime.isError ? 'unavailable' : 'loading';
 }

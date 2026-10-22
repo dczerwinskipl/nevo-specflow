@@ -22,7 +22,7 @@ import {
   ApplicationContextLine,
 } from '../../../app/navigation/ApplicationLocation';
 import { WorkspaceRouteLeaveGuard } from '../../../app/navigation/WorkspaceRouteLeaveGuard';
-import type { FullTaskData } from '../model';
+import type { FullTaskData } from '../read-model/model';
 import { TaskContent } from '../detail/TaskContent';
 import { inspectionAnchor, type TaskInspectionAnchor } from '../detail/taskInspectionModel';
 import {
@@ -30,11 +30,11 @@ import {
   type TaskHistoryResourceParams,
 } from '../detail/TaskHistoryResourceInspection';
 import { TaskHistory } from '../detail/TaskHistory';
+import type { TaskEvidenceParams } from '../detail/taskInspectionModel';
 import {
   TaskInspection,
   TaskEvidenceInspection,
   TaskEvidenceHeader,
-  type TaskEvidenceParams,
   TaskResourceInspection,
   TaskContextHeader,
   TaskFlowHeader,

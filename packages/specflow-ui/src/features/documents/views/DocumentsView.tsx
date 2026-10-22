@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button, InformationList, TextInput, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import { type DocumentItem } from '../../specs';
+import { type DocumentItem } from '../../specs/read-model';
 import { OperationalRow } from '../../../shared/operational-list';
 
 export interface DocumentsViewProps {

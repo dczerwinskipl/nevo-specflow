@@ -18,7 +18,7 @@ import {
   WorkspaceHeader,
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { SpecificationWorkspaceData } from './model';
+import type { SpecificationWorkspaceData } from '../read-model/model';
 import { WorkView } from './WorkView';
 import { ActivityHistory } from './ActivityHistory';
 import { ExecuteModal } from './ExecuteModal';

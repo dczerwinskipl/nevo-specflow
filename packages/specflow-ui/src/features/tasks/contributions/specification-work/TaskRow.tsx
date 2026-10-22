@@ -1,7 +1,7 @@
 import { Checkbox, MenuItem, OverflowMenu } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { OperationalRow } from '../../../../shared/operational-list';
-import type { TaskItem } from '../../model';
+import type { TaskItem } from '../../read-model/model';
 import { getTaskStatePresentation } from './presentation';
 import { taskStatusLabel } from '../../status';
 

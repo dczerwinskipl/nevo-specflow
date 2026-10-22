@@ -1,7 +1,7 @@
 import { Button, EmptyState, Icon, Timeline, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { FeatureUnavailable } from '../../../../app/errors/FeatureUnavailable';
-import type { ActivityEvent } from '../model';
+import type { ActivityEvent } from '../../read-model/model';
 import { TaskActivityItem } from './TaskActivityItem';
 import { SessionActivityItem } from './SessionActivityItem';
 import { DocumentActivityItem } from './DocumentActivityItem';

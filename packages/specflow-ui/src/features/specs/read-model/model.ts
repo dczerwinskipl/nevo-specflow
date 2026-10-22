@@ -1,5 +1,5 @@
 import type { IconName } from '@nevo/ui';
-import { type TaskExecutionReadiness, type TaskGroup } from '../../tasks';
+import { type TaskExecutionReadiness, type TaskGroup } from '../../tasks/read-model';
 
 export {
   getTaskStatePresentation,
@@ -10,7 +10,7 @@ export {
   type TaskItem,
   type TaskGroup,
   type TaskStatePresentation,
-} from '../../tasks';
+} from '../../tasks/read-model';
 
 export interface DocumentSection {
   readonly heading: string;

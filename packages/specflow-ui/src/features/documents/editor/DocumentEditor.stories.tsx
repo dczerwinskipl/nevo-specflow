@@ -9,11 +9,8 @@ import { VisitStateProvider } from '../../../app/VisitStateProvider';
 import type { DemoSaveInput } from '@nevo/specflow-contracts/demo';
 import { invokeDocumentAction } from './documentHeaderActions.stories-support';
 import { DocumentEditor } from './DocumentEditor';
-import {
-  DocumentEditorProvider,
-  documentHeaderModel,
-  useDocumentEditor,
-} from './DocumentEditorProvider';
+import { DocumentEditorProvider, useDocumentEditor } from './DocumentEditorProvider';
+import { documentHeaderModel } from './documentHeaderModel';
 import { withLocale } from '../../../i18n/StoryLocalization';
 import { useTranslation } from 'react-i18next';
 

@@ -1,6 +1,6 @@
 import { getHttpErrorStatus } from '../../../shared/http/httpErrorStatus';
-import type { SpecificationWorkspaceData } from '../workspace/model';
-import { useSpecificationWorkspace } from '../useSpecificationWorkspace';
+import type { SpecificationWorkspaceData } from '../read-model/model';
+import { useSpecificationWorkspace } from '../read-model/useSpecificationWorkspace';
 
 export interface SpecificationNavigationMetadata {
   readonly title: string;

@@ -2,8 +2,8 @@ import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/specs/workspace';
 import { useAppServices } from '../../../app/useAppServices';
-import { documentKeys } from '../queries';
-import { specificationKeys } from '../../specs';
+import { documentKeys } from '../read-model/queries';
+import { specificationKeys } from '../../specs/read-model';
 import { documentDraftKey, reconcileSavedDraft, type DocumentDraft } from './documentDraftStore';
 import { useDocumentDraftStore } from './DocumentDraftProvider';
 

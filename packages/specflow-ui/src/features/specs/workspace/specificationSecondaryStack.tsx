@@ -16,7 +16,12 @@ import {
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { appI18n } from '../../../i18n';
-import type { ActivityEvent, SpecificationWorkspaceData, TaskGroup, TaskItem } from './model';
+import type {
+  ActivityEvent,
+  SpecificationWorkspaceData,
+  TaskGroup,
+  TaskItem,
+} from '../read-model/model';
 import {
   TaskContextHeader,
   TaskEvidenceHeader,
@@ -27,13 +32,13 @@ import {
   TaskResourceHeader,
   TaskResourceInspection,
   inspectionAnchor,
-  mapFullTaskResponse,
   mergeTaskResources,
   type TaskEvidenceParams,
   type TaskInspectionAnchor,
   useSpecificationTask,
   useTaskResources,
 } from '../../tasks';
+import { mapFullTaskResponse } from '../../tasks/read-model';
 
 import { ActivityHistory } from './ActivityHistory';
 import { DocumentContent } from '../../documents';

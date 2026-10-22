@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createRuntimeDocumentApi } from './api';
-import { documentKeys } from './queries';
+import { documentKeys } from './read-model/queries';
 import { createHttpClient } from '@nevo/http-client';
 describe('DocumentApi', () => {
   it('fetches Document Detail by identity independently of the workspace projection', async () => {

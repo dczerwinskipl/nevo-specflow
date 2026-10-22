@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AppShell, AppWorkspaceProvider } from '@nevo/ui';
-import type { OperationProgressEvent } from '@nevo/specflow-contracts/operations';
+import {
+  OPERATION_NOT_FOUND_CODE,
+  type OperationProgressEvent,
+} from '@nevo/specflow-contracts/operations';
 import type { CreatedSpec } from '@nevo/specflow-contracts/specs';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { HttpClientError } from '@nevo/http-client';
@@ -226,12 +229,9 @@ describe('CreateOperationPage', () => {
     const items = within(
       screen.getByRole('status', { name: 'Specification creation progress' }),
     ).getAllByRole('listitem');
-    expect(items.map((item) => item.getAttribute('data-status'))).toEqual([
-      'done',
-      'done',
-      'done',
-      'done',
-    ]);
+    // Every step says "done" in text, not only by its icon.
+    expect(items).toHaveLength(4);
+    for (const item of items) expect(item.textContent).toMatch(/ done$/);
     expect(onOpen).not.toHaveBeenCalled();
     await waitFor(() => expect(onOpen).toHaveBeenCalledWith(created), {
       timeout: openAfterCreatedMs + 1500,
@@ -343,6 +343,68 @@ describe('CreateOperationPage', () => {
       expect(onBackToForm).toHaveBeenCalledOnce();
       expect(post).not.toHaveBeenCalled();
       expect(screen.queryByRole('alert')).toBeNull();
+    });
+  });
+
+  describe('a failure the live stream reports', () => {
+    const streamFailed = (code: string) => ({ type: 'failed' as const, ...event, code });
+
+    it('is shown as news while the inspection has not concluded, naming the reason', async () => {
+      store();
+      const operations = controlledOperations();
+      renderPage(
+        { post: vi.fn().mockResolvedValue(accepted), get: vi.fn().mockResolvedValue(accepted) },
+        operations.api,
+      );
+      await heading('Creating specification');
+      operations.push(streamFailed('BRANCH_ALREADY_EXISTS'));
+      const news = await screen.findByText('The server reported a problem');
+      expect(news.closest('[role="status"]')?.textContent).toMatch(/branch/i);
+      // It is information, not the outcome: the page still works and offers no action on it.
+      expect(
+        screen.getByRole('heading', { level: 1, name: 'Creating specification' }),
+      ).toBeTruthy();
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Back to form' })).toBeNull();
+    });
+
+    it('is not news when the Runtime merely does not know the operation yet', async () => {
+      store();
+      const operations = controlledOperations();
+      renderPage(
+        { post: vi.fn().mockResolvedValue(accepted), get: vi.fn().mockResolvedValue(accepted) },
+        operations.api,
+      );
+      await heading('Creating specification');
+      operations.push(streamFailed(OPERATION_NOT_FOUND_CODE));
+      await waitFor(() => expect(screen.getByText('Preparing your specification.')).toBeTruthy());
+      expect(screen.queryByText('The server reported a problem')).toBeNull();
+    });
+
+    it('is replaced, not repeated, once the inspection concludes the same failure', async () => {
+      store();
+      const operations = controlledOperations();
+      let concluded = false;
+      const get = vi.fn(() =>
+        Promise.resolve(
+          concluded ? { ...accepted, status: 'failed', code: 'BRANCH_ALREADY_EXISTS' } : accepted,
+        ),
+      );
+      renderPage({ post: vi.fn().mockResolvedValue(accepted), get }, operations.api);
+      await heading('Creating specification');
+      operations.push(streamFailed('BRANCH_ALREADY_EXISTS'));
+      await screen.findByText('The server reported a problem');
+      concluded = true;
+      // The failed event is also the hint to read the inspection again soon (within one poll).
+      expect(
+        await screen.findByRole(
+          'heading',
+          { level: 1, name: 'Specification was not created' },
+          { timeout: 6000 },
+        ),
+      ).toBeTruthy();
+      expect(screen.queryByText('The server reported a problem')).toBeNull();
+      expect(screen.getAllByRole('alert')).toHaveLength(1);
     });
   });
 

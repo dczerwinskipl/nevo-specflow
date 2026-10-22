@@ -13,7 +13,7 @@ import { SpecificationWorkspace } from '../../specs/workspace/SpecificationWorks
 import { createSpecificationWorkspaceFixture } from '../../../../test-support/specs/workspace/fixtures';
 import { createTaskDetailFixture, type TaskScenario } from '../detail/taskDetail.test-support';
 import { taskKeys } from '../queries';
-import { mapFullTaskResponse } from '../model';
+import { mapFullTaskResponse } from '../read-model/model';
 import { SpecificationTaskPage } from './SpecificationTaskPage';
 import { useSpecificationTask } from '../useSpecificationTask';
 import { HttpClientError } from '@nevo/http-client';

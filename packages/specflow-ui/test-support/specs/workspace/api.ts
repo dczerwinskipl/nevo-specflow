@@ -1,4 +1,4 @@
-import type { SpecificationApi } from '../../../src/features/specs/api';
+import type { SpecificationApi } from '../../../src/features/specs/read-model/api';
 import type { TaskApi } from '../../../src/features/tasks/api';
 import type { DocumentApi } from '../../../src/features/documents/api';
 import type { SpecificationWorkspaceResponse } from '@nevo/specflow-contracts/specs/workspace';

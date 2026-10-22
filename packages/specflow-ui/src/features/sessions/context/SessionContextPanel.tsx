@@ -20,8 +20,8 @@ import {
 } from '@nevo/ui';
 import type { DemoSessionDetail } from '@nevo/specflow-contracts/demo';
 import { useAppServices } from '../../../app/useAppServices';
-import { useSpecificationWorkspace } from '../../specs';
-import { documentKeys } from '../../documents';
+import { useSpecificationWorkspace } from '../../specs/read-model';
+import { documentKeys } from '../../documents/read-model';
 import { sessionKeys } from '../queries';
 import { useRememberSessionReturn } from '../SessionStateProvider';
 interface Params {

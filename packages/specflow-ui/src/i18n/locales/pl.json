@@ -353,6 +353,7 @@
     "situationColumn": "Sytuacja",
     "progressColumn": "Postęp",
     "milestoneColumn": "Etap",
+    "pullRequestColumn": "PR",
     "newestMilestoneFirst": "Najnowszy etap najpierw",
     "dateUnavailable": "Data niedostępna",
     "milestone": {
@@ -893,7 +894,7 @@
         "targetUnconfigured": "Cel integracji nie jest skonfigurowany.",
         "targetLabel": "Scal do",
         "targetNote": "Nic nie zostanie scalone teraz. To tylko wskazanie miejsca na później. Wybór przypina cel przy tworzeniu i już się nie zmieni, a domyślny cel podąża za konfiguracją projektu.",
-        "targetUnavailable": "Niedostępne jako cel:",
+        "targetUnavailable": "Niedostępne jako cel: <targets/>.",
         "branchSwitch": "Użyj własnej nazwy gałęzi",
         "branchSwitchDescription": "Nevo buduje nazwę ze sluga. Włącz tylko wtedy, gdy potrzebujesz konkretnej nazwy gałęzi.",
         "branchLabel": "Nazwa nowej gałęzi",

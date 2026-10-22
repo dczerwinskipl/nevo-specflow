@@ -5,7 +5,7 @@ import { createWorkspaceIntegrationApi } from '../../../../test-support/specs/wo
 import { UiModulesProvider } from '../../../app/ui-modules/UiModulesProvider';
 import { builtInUiModuleRegistry } from '../../../app/ui-modules/builtInUiModules';
 import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
-import { mapWorkspaceResponse } from './mapWorkspaceResponse';
+import { mapWorkspaceResponse } from '../read-model/mapWorkspaceResponse';
 import { SpecificationAttentionOutlet } from './SpecificationAttentionOutlet';
 import { createFakeWorkspaceRuntime, WorkspaceProvider } from './WorkspaceContext';
 

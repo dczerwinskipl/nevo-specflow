@@ -24,14 +24,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
   Typography,
-  choiceSurfaceCheckClassName,
-  choiceSurfaceClassName,
-  choiceSurfaceTracksClassName,
   cn,
   type IconGlyph,
 } from '@nevo/ui';
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
 import { useFocusRequest } from '../../../../shared/a11y/useFocusRequest';
+import { ChoiceTile, ChoiceTileGroup } from '../../../../shared/controls/ChoiceTile';
 import { BranchRef } from '../../../../shared/git/BranchRef';
 import { ExistingSummary, MainSummary, NewSummary } from './WorkspaceTileSummaries';
 import { activeTile, primaryWorkspace, tileAvailability } from './workspaceTiles';
@@ -145,7 +143,6 @@ export function WorkspacePlaceSection({
     slug: useRef<HTMLInputElement | null>(null),
   };
   const existingControl = useRef<HTMLElement | null>(null);
-  const ids = useId();
   const options = state.status === 'ready' ? state.options : undefined;
   const availability = options ? tileAvailability(options) : undefined;
   const active = options ? activeTile(choice, options) : null;
@@ -262,66 +259,29 @@ export function WorkspacePlaceSection({
     const available = tileAvailability(ready);
     return (
       <>
-        <div
-          role="radiogroup"
-          aria-labelledby={headingId}
-          className="grid items-stretch gap-3 @2xl:grid-cols-3"
-        >
+        <ChoiceTileGroup aria-labelledby={headingId} columns="@2xl:grid-cols-3">
           {tiles.map((tile) => {
             const tileState = available[tile.id];
             const blocked = !tileState.ok;
-            const selected = active === tile.id;
-            const titleId = `${ids}-${tile.id}-title`;
-            const textId = `${ids}-${tile.id}-text`;
             return (
-              <label
+              <ChoiceTile
                 key={tile.id}
-                aria-disabled={blocked || undefined}
-                className={cn(choiceSurfaceClassName, choiceSurfaceTracksClassName)}
-              >
-                <input
-                  className="sr-only"
-                  type="radio"
-                  name={groupName}
-                  value={tile.id}
-                  checked={selected}
-                  aria-disabled={blocked || undefined}
-                  aria-labelledby={titleId}
-                  aria-describedby={textId}
-                  onChange={() => select(tile.id)}
-                />
-                <span className={cn(blocked ? 'text-content-muted' : 'text-content-secondary')}>
-                  <Icon name={tile.icon} />
-                </span>
-                <span className="min-w-0 break-words">
-                  <strong
-                    id={titleId}
-                    className={cn(
-                      'block text-title-sm',
-                      blocked ? 'text-content-secondary' : 'text-content-primary',
-                    )}
-                  >
-                    {text(tile.title)}
-                  </strong>
-                  <span id={textId} className="mt-1 block text-body-sm text-content-secondary">
-                    {blocked && tileState.reason ? text(tileState.reason) : text(tile.description)}
-                  </span>
-                  {!blocked && (
-                    <span className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-body-sm text-content-secondary">
-                      {meta(tile.id)}
-                    </span>
-                  )}
-                </span>
-                <span
-                  className={cn(choiceSurfaceCheckClassName, !selected && 'invisible')}
-                  aria-hidden="true"
-                >
-                  <Icon name="check" size="sm" />
-                </span>
-              </label>
+                name={groupName}
+                value={tile.id}
+                checked={active === tile.id}
+                blocked={blocked}
+                onSelect={() => select(tile.id)}
+                iconClassName="text-content-secondary"
+                icon={<Icon name={tile.icon} />}
+                title={text(tile.title)}
+                description={
+                  blocked && tileState.reason ? text(tileState.reason) : text(tile.description)
+                }
+                meta={blocked ? undefined : meta(tile.id)}
+              />
             );
           })}
-        </div>
+        </ChoiceTileGroup>
         {nothing && (
           <Alert
             role="alert"

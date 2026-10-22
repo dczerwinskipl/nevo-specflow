@@ -5,7 +5,7 @@ import { Alert, Button } from '@nevo/ui';
 import { ApplicationContextLine } from '../../../app/navigation/ApplicationLocation';
 import { FeatureUnavailable } from '../../../app/errors/FeatureUnavailable';
 import { useAppServices } from '../../../app/useAppServices';
-import { runtimeKeys, useRuntimeMode } from '../../../app/useRuntimeMode';
+import { runtimeKeys, useRuntimeInfo, useRuntimeMode } from '../../../app/useRuntimeMode';
 import { creationKeys } from './api';
 import { CreateProjectForm } from './CreateProjectForm';
 import { CreateShell } from './CreateShell';
@@ -63,10 +63,7 @@ export function CreateSpecificationScreen(props: Props) {
 function DemoCreateSpecification(props: Props & { fallback: (children: ReactNode) => ReactNode }) {
   const { t } = useTranslation();
   const services = useAppServices();
-  const runtime = useQuery({
-    queryKey: runtimeKeys.info,
-    queryFn: ({ signal }) => services.runtimeInfoApi.getInfo(signal),
-  });
+  const runtime = useRuntimeInfo();
   const catalogue = useQuery({
     queryKey: creationKeys.catalogue(props.specId),
     queryFn: ({ signal }) => services.creationApi.catalogue(props.specId, signal),

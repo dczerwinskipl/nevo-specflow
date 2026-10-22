@@ -1,6 +1,14 @@
 import { useId, type ReactNode } from 'react';
 import { useTaskViewState } from './TaskViewState';
-import { AccentBlock, Button, InformationList, MenuItem, OverflowMenu, Typography } from '@nevo/ui';
+import {
+  AccentBlock,
+  Button,
+  DescriptionList,
+  InformationList,
+  MenuItem,
+  OverflowMenu,
+  Typography,
+} from '@nevo/ui';
 import type {
   TaskResource,
   TaskHumanRequirement,
@@ -11,7 +19,7 @@ import { OperationalRow } from '../../../shared/operational-list';
 import { WorkspaceSection } from '../../../shared/workspace-section';
 
 import { DocumentDescription } from '../../documents';
-import type { FullTaskData } from '../model';
+import type { FullTaskData } from '../read-model/model';
 import { matchesWork } from './taskInspectionModel';
 import { taskStatusLabel } from '../status';
 import { canInspectTaskReference } from './taskReference';
@@ -155,28 +163,22 @@ export function TaskDetails({
         {document && document.state !== 'available' ? (
           <TaskSourceState state={document.state} />
         ) : null}
-        <dl className="mt-3 grid gap-2 @min-[40rem]/task:grid-cols-2">
-          <div className="flex min-w-0 gap-2 @min-[40rem]/task:block">
-            <dt className="shrink-0 text-body-sm text-content-muted">
-              {t('specification.taskStateLabel')}
-            </dt>
-            <dd className="min-w-0 text-body-sm text-content-primary [overflow-wrap:anywhere]">
-              {status}
-            </dd>
-          </div>
-          <div className="flex min-w-0 gap-2 @min-[40rem]/task:block">
-            <dt className="shrink-0 text-body-sm text-content-muted">{t('common.flow')}</dt>
-            <dd className="min-w-0 text-body-sm text-content-primary [overflow-wrap:anywhere]">
-              {workData ? (
-                workData.definition.title || workData.definition.id
-              ) : (
-                <TaskSourceState
-                  state={work?.state === 'forbidden' ? 'forbidden' : 'unavailable'}
-                />
-              )}
-            </dd>
-          </div>
-        </dl>
+        <DescriptionList layout="inline" className="mt-3 gap-2 @min-[40rem]/task:grid-cols-2">
+          <DescriptionList.Item>
+            <DescriptionList.Term>{t('specification.taskStateLabel')}</DescriptionList.Term>
+            <DescriptionList.Detail>{status}</DescriptionList.Detail>
+          </DescriptionList.Item>
+          <DescriptionList.Item>
+            <DescriptionList.Term>{t('common.flow')}</DescriptionList.Term>
+            <DescriptionList.Detail>
+              {workData
+                ? workData.definition.title || workData.definition.id
+                : work?.state === 'forbidden'
+                  ? t('specification.resourceAccessDeniedDescription')
+                  : t('taskDetails.sourceUnavailable')}
+            </DescriptionList.Detail>
+          </DescriptionList.Item>
+        </DescriptionList>
       </div>
       <WorkspaceSection
         className={requirements.length ? 'pb-4 pt-1 @min-[40rem]/task:pb-5' : boundaries}

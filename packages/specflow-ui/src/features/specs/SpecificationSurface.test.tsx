@@ -9,7 +9,7 @@ import { createSpecFlowAppServices } from '../../services';
 import { TestServicesRouterContext } from '../../../test-support/app/TestServicesRouterContext';
 import { SpecificationSurface } from './SpecificationSurface';
 import { HttpClientError } from '@nevo/http-client';
-import { specificationKeys } from './queries';
+import { specificationKeys } from './read-model/queries';
 import { createSpecificationWorkspaceFixture } from '../../../test-support/specs/workspace/fixtures';
 
 import { AppShell } from '@nevo/ui';

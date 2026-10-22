@@ -1,5 +1,5 @@
-import type { TaskGroup } from '../../model';
-export { getTaskStatePresentation, type TaskStatePresentation } from '../../model';
+import type { TaskGroup } from '../../read-model/model';
+export { getTaskStatePresentation, type TaskStatePresentation } from '../../read-model/model';
 
 export function getGroupTone(group: TaskGroup): 'attention' | 'info' | 'neutral' | 'success' {
   if (group.tasks.some((t) => t.lifecycle === 'blocked' || t.attention)) {

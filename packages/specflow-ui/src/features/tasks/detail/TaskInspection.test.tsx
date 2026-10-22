@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { createSpecFlowI18n, LocalizationProvider } from '../../../i18n';
-import { mapFullTaskResponse } from '../model';
+import { mapFullTaskResponse } from '../read-model/model';
 import { TaskEvidenceInspection, TaskInspection } from './TaskInspection';
 import { TaskHints } from './TaskStepInspection';
 import { createTaskDetailFixture } from './taskDetail.test-support';

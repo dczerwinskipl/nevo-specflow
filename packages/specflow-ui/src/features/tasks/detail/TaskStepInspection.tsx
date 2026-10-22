@@ -3,11 +3,15 @@ import { useTranslation } from 'react-i18next';
 import { canInspectTaskReference } from './taskReference';
 import { TaskReferenceAvailability } from './TaskReferenceAvailability';
 import { useTaskInspectionScroll } from './useTaskInspectionScroll';
-import type { FullTaskData } from '../model';
+import type { FullTaskData } from '../read-model/model';
 import { OperationalRow } from '../../../shared/operational-list';
 import { TaskSourceState } from './TaskDetails';
-import { inspectionStep, matchesWork, type TaskInspectionAnchor } from './taskInspectionModel';
-import type { TaskEvidenceParams } from './TaskInspection';
+import {
+  inspectionStep,
+  matchesWork,
+  type TaskEvidenceParams,
+  type TaskInspectionAnchor,
+} from './taskInspectionModel';
 
 import { TaskHints } from './TaskHints';
 export { TaskHints } from './TaskHints';

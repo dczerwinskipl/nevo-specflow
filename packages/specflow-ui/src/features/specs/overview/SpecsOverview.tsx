@@ -1,29 +1,25 @@
-import { RefreshStatus } from '../../../app/loading/RefreshStatus';
-import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
-import { useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Alert,
   AppContent,
   AppContentContainer,
   AppWorkspace,
   AppWorkspaceBody,
-  Button,
-  EmptyState,
   SegmentedControl,
-  useInitialAppearance,
   TextInput,
   Typography,
-  WorkspaceHeader,
+  useInitialAppearance,
 } from '@nevo/ui';
 
+import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
+import { ViewPageTitle } from '../../../app/navigation/ApplicationLocation';
 import type { SpecsCollection, SpecsOverviewState, CurrentSpecTarget } from './model';
 import { SpecsOverviewCollection } from './SpecsOverviewCollection';
-import { filterSpecsOverview } from './search';
-import {
-  ApplicationLocationIdentity,
-  ViewPageTitle,
-} from '../../../app/navigation/ApplicationLocation';
+import { SpecsOverviewEmpty } from './SpecsOverviewEmpty';
+import { SpecsOverviewHeader } from './SpecsOverviewHeader';
+import { SpecsOverviewNotice } from './SpecsOverviewNotice';
+import { filterSpecsOverview, isSearchable } from './search';
+import { useCollectionSearch } from './useCollectionSearch';
 
 export interface SpecsOverviewProps {
   readonly state: SpecsOverviewState;
@@ -31,6 +27,8 @@ export interface SpecsOverviewProps {
   readonly onRefresh: () => void;
   readonly onOpenTarget?: (target: CurrentSpecTarget) => void;
   readonly onCreate?: () => void;
+  /** Create is offered but cannot be used yet (for example the Runtime mode is still unknown). */
+  readonly createDisabled?: boolean;
   readonly onCreateSession?: () => void;
   readonly sample?: boolean;
   readonly specificationHref?: (specId: string) => string;
@@ -47,20 +45,17 @@ export function SpecsOverview({
   onRefresh,
   onOpenTarget,
   onCreate,
+  createDisabled = false,
   onCreateSession,
   sample = false,
   specificationHref,
   renderSpecificationLink,
 }: SpecsOverviewProps) {
   const { t } = useTranslation();
-  const [search, setSearch] = useState({ collection: state.collection, value: '' });
-  const term = search.collection === state.collection ? search.value : '';
+  const search = useCollectionSearch(state.collection);
   const projection =
     state.projection?.collection === state.collection ? state.projection : undefined;
-  const searchable = Boolean(
-    state.collection === 'archive' || term.trim() || (projection && projection.items.length >= 12),
-  );
-  const visible = projection ? filterSpecsOverview(projection, term) : undefined;
+  const visible = projection ? filterSpecsOverview(projection, search.term) : undefined;
   const busy = state.loading || state.refreshing;
   const appearance = useInitialAppearance(state.collection, state.loading, Boolean(projection));
 
@@ -76,51 +71,13 @@ export function SpecsOverview({
     >
       <AppWorkspace.Primary
         header={
-          <WorkspaceHeader
-            as="span"
-            identityContent={
-              <div className="flex min-w-0 items-center gap-2">
-                <div className="min-w-0 flex-1">
-                  <ApplicationLocationIdentity
-                    title={t('specifications.title')}
-                    view="specifications"
-                  />
-                </div>
-                <RefreshStatus active={state.refreshing} label={t('specifications.refreshing')} />
-              </div>
-            }
-            title={t('specifications.title')}
-            labels={{
-              moreActions: t('specifications.moreActions'),
-              menuScope: t('specifications.title'),
-            }}
-            actions={[
-              ...(onCreate
-                ? [
-                    {
-                      id: 'create',
-                      label: t('specifications.create'),
-                      icon: 'plus' as const,
-                      primary: true,
-                      onPress: onCreate,
-                    },
-                  ]
-                : []),
-              {
-                id: 'create-session',
-                icon: 'chat-plus',
-                label: t('specifications.createSession'),
-                disabled: !onCreateSession,
-                onPress: () => onCreateSession?.(),
-              },
-              {
-                id: 'refresh',
-                icon: 'refresh',
-                label: busy ? t('specifications.refreshing') : t('specifications.refresh'),
-                disabled: busy,
-                onPress: onRefresh,
-              },
-            ]}
+          <SpecsOverviewHeader
+            refreshing={state.refreshing}
+            busy={busy}
+            onCreate={onCreate}
+            createDisabled={createDisabled}
+            onCreateSession={onCreateSession}
+            onRefresh={onRefresh}
           />
         }
       >
@@ -152,36 +109,21 @@ export function SpecsOverview({
                   {t('specifications.previewDescription')}
                 </Typography>
               ) : null}
-              {searchable ? (
+              {isSearchable(state.collection, search.term, projection) ? (
                 <TextInput
                   aria-label={t('specifications.search')}
                   placeholder={t('specifications.search')}
-                  value={term}
-                  onChange={(event) =>
-                    setSearch({ collection: state.collection, value: event.target.value })
-                  }
+                  value={search.term}
+                  onChange={(event) => search.setTerm(event.target.value)}
                   className="w-full"
                 />
               ) : null}
               {state.error ? (
-                <Alert
-                  role="alert"
-                  tone={projection ? 'attention' : 'danger'}
-                  title={t(
-                    projection ? 'specifications.refreshFailed' : 'specifications.unavailable',
-                  )}
-                >
-                  <p>
-                    {t(
-                      projection
-                        ? 'specifications.refreshFailedDescription'
-                        : 'specifications.unavailableDescription',
-                    )}
-                  </p>
-                  <Button className="mt-3" onClick={onRefresh} disabled={busy} variant="secondary">
-                    {t('common.retry')}
-                  </Button>
-                </Alert>
+                <SpecsOverviewNotice
+                  hasRows={Boolean(projection)}
+                  busy={busy}
+                  onRetry={onRefresh}
+                />
               ) : null}
               <div ref={appearance} className="min-w-0">
                 {state.loading || state.paused ? (
@@ -194,43 +136,19 @@ export function SpecsOverview({
                 {visible && !state.loading ? (
                   <SpecsOverviewCollection
                     projection={visible}
-                    searching={term.trim().length > 0}
+                    searching={search.term.trim().length > 0}
                     onOpenTarget={onOpenTarget}
                     specificationHref={specificationHref}
                     renderSpecificationLink={renderSpecificationLink}
                   />
                 ) : null}
                 {visible && !visible.items.length && !state.loading ? (
-                  <EmptyState
-                    className="border-0"
-                    title={t(
-                      term
-                        ? 'specifications.noResults'
-                        : state.collection === 'current'
-                          ? 'specifications.emptyCurrent'
-                          : 'specifications.emptyArchive',
-                    )}
-                    description={t(
-                      term
-                        ? 'specifications.noResultsDescription'
-                        : state.collection === 'current'
-                          ? 'specifications.emptyCurrentDescription'
-                          : 'specifications.emptyArchiveDescription',
-                    )}
-                    actions={
-                      term ? (
-                        <Button
-                          variant="secondary"
-                          onClick={() => setSearch({ collection: state.collection, value: '' })}
-                        >
-                          {t('specifications.clearSearch')}
-                        </Button>
-                      ) : onCreate && state.collection === 'current' ? (
-                        <Button leadingIcon="plus" onClick={onCreate}>
-                          {t('specifications.create')}
-                        </Button>
-                      ) : undefined
-                    }
+                  <SpecsOverviewEmpty
+                    collection={state.collection}
+                    searching={Boolean(search.term)}
+                    onClearSearch={search.clear}
+                    onCreate={onCreate}
+                    createDisabled={createDisabled}
                   />
                 ) : null}
               </div>

@@ -210,10 +210,7 @@ export const InProgressWithSteps: Story = {
     await expect(canvas.getByText('W nowym środowisku pracy.')).toBeInTheDocument();
     const running = await canvas.findByText('Przygotowanie środowiska pracy');
     await waitFor(() => expect(running.closest('li')).toHaveAttribute('aria-current', 'step'));
-    await expect(canvas.getByText('Rezerwowanie nazwy').closest('li')).toHaveAttribute(
-      'data-status',
-      'done',
-    );
+    await expect(canvas.getByText('Rezerwowanie nazwy').closest('li')).toHaveTextContent(/gotowe$/);
     await expect(canvas.getByText(/Możesz opuścić tę stronę/)).toBeInTheDocument();
     await expect(canvas.queryByRole('alert')).not.toBeInTheDocument();
   },
@@ -261,7 +258,7 @@ export const Success: Story = {
     ).toBeInTheDocument();
     await expect(canvas.getByRole('button', { name: 'Otwórz specyfikację' })).toBeInTheDocument();
     for (const row of steps(canvasElement).getAllByRole('listitem'))
-      await expect(row).toHaveAttribute('data-status', 'done');
+      await expect(row).toHaveTextContent(/gotowe$/);
     await waitFor(() => expect(args.onOpen).toHaveBeenCalledWith(createdSpec), { timeout: 4000 });
   },
 };

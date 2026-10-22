@@ -29,7 +29,8 @@ export interface SpecsOverviewState {
   readonly paused?: boolean;
   readonly refreshing: boolean;
   readonly error: boolean;
-  readonly errorStatus?: number;
+  /** The session may not use the Specs area at all (not a single forbidden resource). */
+  readonly accessDenied?: boolean;
 }
 
 export const sectionTone: Record<CurrentSpecSectionId, StatusTone> = {

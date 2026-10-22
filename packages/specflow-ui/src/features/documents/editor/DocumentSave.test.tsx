@@ -13,13 +13,13 @@ import { TestServicesRouterContext } from '../../../../test-support/app/TestServ
 import { createDocumentDraftStore } from './documentDraftStore';
 import { DocumentDraftProvider } from './DocumentDraftProvider';
 import type { DocumentsApi } from '../api';
-import { documentKeys } from '../queries';
+import { documentKeys } from '../read-model/queries';
 import {
   DocumentEditorProvider,
-  documentHeaderModel,
   useDocumentEditor,
   type DocumentEditorSession,
 } from './DocumentEditorProvider';
+import { documentHeaderModel } from './documentHeaderModel';
 import { DocumentRouteGuard } from './DocumentRouteGuard';
 
 const SPEC = 'spec';

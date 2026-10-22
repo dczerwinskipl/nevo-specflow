@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import type { RuntimeSetupUi } from '@nevo/specflow-runtime';
@@ -10,6 +10,7 @@ import {
   chooseBranchPattern,
   chooseIntegrationTargetBranch,
   chooseWorktreesRoot,
+  expandHomeFolder,
 } from '../src/init/cli';
 
 function git(root: string, ...args: string[]): void {
@@ -141,6 +142,13 @@ describe('chooseWorktreesRoot', () => {
     expect(await chooseWorktreesRoot(scripted(['../trees']).ui, root)).toBe('../trees');
     const absolute = join(tmpdir(), 'elsewhere-trees');
     expect(await chooseWorktreesRoot(scripted([absolute]).ui, root)).toBe(absolute);
+  });
+
+  it('expands ~ to the home folder instead of treating it as a folder inside the repository', async () => {
+    const stored = await chooseWorktreesRoot(scripted(['~/nevo-trees']).ui, root);
+    expect(stored).toBe(join(homedir(), 'nevo-trees'));
+    expect(expandHomeFolder('~', '/home/me')).toBe('/home/me');
+    expect(expandHomeFolder('~x/a', '/home/me')).toBe('~x/a');
   });
 
   it('rejects a folder inside the working tree or .git and asks again', async () => {

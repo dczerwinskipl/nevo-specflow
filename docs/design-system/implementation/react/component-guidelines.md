@@ -149,7 +149,12 @@ ordinary query refreshes preserve its existing reading DOM.
 
 `choiceSurfaceClassName` is the only shared appearance for a selectable multi-line card (a command
 `button`, an `aria-checked` radio, or a `label` containing one native radio). There is no
-`SelectableCard` component: the consumer owns semantics, layout and content.
+`SelectableCard` component: the consumer owns semantics, layout and content. SpecFlow UI composes the
+single-choice case once in `shared/controls/ChoiceTile.tsx` (`ChoiceTileGroup` + `ChoiceTile`: native
+radio in a `label`, title/description wired with `aria-labelledby`/`aria-describedby`, always-rendered
+check, `disabled` for a skipped option and `blocked` for one whose reason must stay readable);
+Create's workspace place and agent provider use it. A command tile that is a `button` (the Create method
+choice) is not a radio and keeps the recipe directly.
 
 - Display/layout is composition-owned. Use `choiceSurfaceTracksClassName` for the standard
   icon / text / trailing-check tracks (`var(--spacing-icon-md)` · `minmax(0,1fr)` ·

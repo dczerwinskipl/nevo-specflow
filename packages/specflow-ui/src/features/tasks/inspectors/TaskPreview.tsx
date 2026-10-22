@@ -1,6 +1,6 @@
 import { IconButton } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { TaskGroup, TaskItem } from '../model';
+import type { TaskGroup, TaskItem } from '../read-model/model';
 import { TaskContent } from '../detail/TaskContent';
 import type { TaskDetailsProps } from '../detail/TaskDetails';
 import { useLayoutEffect, useRef } from 'react';

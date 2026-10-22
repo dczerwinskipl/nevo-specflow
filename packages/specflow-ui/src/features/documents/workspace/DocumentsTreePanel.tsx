@@ -6,7 +6,7 @@ import { ApplicationContextLine } from '../../../app/navigation/ApplicationLocat
 import { useAppServices } from '../../../app/useAppServices';
 import { SessionRecoveryNotice } from '../../sessions';
 import { DocumentsExplorer, type DocumentTreeController } from '../explorer/DocumentsExplorer';
-import { documentTreeKeys } from '../queries';
+import { documentTreeKeys } from '../read-model/queries';
 import type { DocumentTreeOperations } from './useDocumentTreeOperations';
 
 /** The Primary pane: the document tree with its loading and error states. */

@@ -11,6 +11,7 @@ import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import type { OperationsApi } from '../../../shared/operations/operationsApi';
 import { createSessionOperationStorage } from './createOperationStorage';
+import type { CreateFailure } from './createFailure';
 import { initialWorkspaceChoice } from './workspace/workspaceChoice';
 import { createOperationEventsUrl, type ProjectCreationApi } from './api.project';
 import { CreateSpecificationScreen } from './CreateSpecificationScreen';
@@ -194,6 +195,57 @@ describe('CreateSpecificationScreen on a project Runtime', () => {
     );
     // Consumed: a reload of the form starts clean.
     expect(storage().loadDraft()).toBeUndefined();
+  });
+
+  describe('Back to form after a refusal', () => {
+    const refused = (failure: CreateFailure, branch: string) =>
+      storage().saveDraft({
+        operationId: created.operationId,
+        title: 'Payment limits',
+        goal: '',
+        choice: {
+          ...initialWorkspaceChoice,
+          tile: 'new',
+          settingsOpen: true,
+          branch: { on: true, name: branch, edited: true },
+        },
+        failure,
+      });
+    const options = { createOptions: () => Promise.resolve(createOptionsFixture('default')) };
+
+    it('flags the refused branch name on its own field, opens it and puts focus there', async () => {
+      refused({ kind: 'branch-exists', automatic: false }, 'taken');
+      renderScreen('project', options);
+      const branch = await screen.findByLabelText<HTMLInputElement>('New branch name');
+      expect(branch.value).toBe('taken');
+      await waitFor(() => expect(branch.getAttribute('aria-invalid')).toBe('true'));
+      expect(
+        screen.getByText('A branch with this name already exists. Enter a different name.'),
+      ).toBeTruthy();
+      await waitFor(() => expect(document.activeElement).toBe(branch));
+    });
+
+    it('lets the owner fix it: editing the name clears the remembered refusal', async () => {
+      refused({ kind: 'branch-exists', automatic: false }, 'taken');
+      renderScreen('project', options);
+      const branch = await screen.findByLabelText<HTMLInputElement>('New branch name');
+      await waitFor(() => expect(branch.getAttribute('aria-invalid')).toBe('true'));
+      fireEvent.change(branch, { target: { value: 'feature/payment-limits' } });
+      await waitFor(() => expect(branch.getAttribute('aria-invalid')).not.toBe('true'));
+      expect(
+        screen.queryByText('A branch with this name already exists. Enter a different name.'),
+      ).toBeNull();
+    });
+
+    it('does not blame a field for a taken name the server generated', async () => {
+      refused({ kind: 'branch-exists', automatic: true }, '');
+      renderScreen('project', options);
+      await screen.findByLabelText('Specification name');
+      expect(
+        screen.queryByText('A branch with this name already exists. Enter a different name.'),
+      ).toBeNull();
+      expect(screen.queryByRole('alert')).toBeNull();
+    });
   });
 
   it('re-entering the screen never shows options cached from the previous visit as current', async () => {

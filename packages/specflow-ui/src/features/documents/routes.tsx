@@ -18,12 +18,13 @@ import {
   ViewPageTitle,
 } from '../../app/navigation/ApplicationLocation';
 import { parseSpecificationCollection } from '../../app/router/search';
-import { SpecificationAggregatePage, specificationRoute } from '../specs';
+import { SpecificationAggregatePage } from '../specs';
+import { specificationRoute } from '../specs/routes';
 
 import { DocumentsView } from './views/DocumentsView';
 import { DocumentContent } from './content/DocumentContent';
 import { DocumentsLayout } from './workspace/DocumentsLayout';
-import { documentKeys } from './queries';
+import { documentKeys } from './read-model/queries';
 /**
  * Pathless layout of the two Documents routes: the URLs stay `documents` and
  * `documents/$documentId`, but one layout instance spans them (see `DocumentsLayout`).

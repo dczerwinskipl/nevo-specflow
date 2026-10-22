@@ -3,12 +3,12 @@ import { createRoute, Link, Outlet, redirect } from '@tanstack/react-router';
 import { appRoute, rootRoute } from '../../app/router/root';
 import { parseSpecificationCollection } from '../../app/router/search';
 import { SpecsOverview } from './overview/SpecsOverview';
-import { useSpecificationWorkspace } from './useSpecificationWorkspace';
+import { useSpecificationWorkspace } from './read-model/useSpecificationWorkspace';
 import { useRuntimeMode } from '../../app/useRuntimeMode';
 import { useSpecsOverview } from './overview/useSpecsOverview';
 import { SpecsAccessDenied } from './overview/SpecsAccessDenied';
 import { SpecificationSurface } from './SpecificationSurface';
-import { specPrimaryLinkClassName } from './overview/SpecListRow';
+import { specPrimaryLinkClassName } from './overview/SpecPrimaryLink';
 
 export const specsForbiddenRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -166,21 +166,19 @@ function SpecsRouteScreen() {
   useEffect(() => {
     // Overview authorization denotes application-wide Specs access, unlike
     // a forbidden individual Task or Document resource.
-    if (state.errorStatus === 403) void navigate({ to: '/access-denied', replace: true });
-  }, [state.errorStatus, navigate]);
+    if (state.accessDenied) void navigate({ to: '/access-denied', replace: true });
+  }, [state.accessDenied, navigate]);
 
-  if (state.errorStatus === 403) return null;
+  if (state.accessDenied) return null;
 
   return (
     <SpecsOverview
       state={state}
       onRefresh={refresh}
       sample={mode === 'demo'}
-      onCreate={
-        mode !== 'loading' && mode !== 'unavailable'
-          ? () => void navigate({ to: '/specs/new', search: { collection } })
-          : undefined
-      }
+      onCreate={() => void navigate({ to: '/specs/new', search: { collection } })}
+      // Create waits for the Runtime mode (it picks the flow); the control stays, disabled.
+      createDisabled={mode === 'loading' || mode === 'unavailable'}
       onCollectionChange={(value) => void navigate({ search: { collection: value } })}
       specificationHref={(specId) =>
         `/specs/${encodeURIComponent(specId)}?collection=${collection}`

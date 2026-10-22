@@ -36,10 +36,10 @@ describe('OperationProgress', () => {
     const region = screen.getByRole('status', { name: 'Specification creation progress' });
     expect(region.getAttribute('aria-live')).toBe('polite');
     const items = within(region).getAllByRole('listitem');
-    expect(items.map((item) => item.getAttribute('data-step'))).toEqual([
-      'reserving',
-      'preparing-workspace',
-      'registering',
+    expect(items.map((item) => item.textContent)).toEqual([
+      'Reserving the name done',
+      'Preparing the workspace in progress',
+      'Registering the workspace waiting',
     ]);
   });
 

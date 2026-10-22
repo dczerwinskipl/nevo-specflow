@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { appI18n } from '../../../../i18n';
 import { ActivityHistory } from './ActivityHistory';
-import type { ActivityEvent } from '../model';
+import type { ActivityEvent } from '../../read-model/model';
 
 describe('ActivityHistory', () => {
   beforeEach(async () => {

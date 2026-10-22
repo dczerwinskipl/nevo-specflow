@@ -48,7 +48,6 @@ export function OperationProgress({
       aria-live="polite"
       aria-label={text(label)}
       className={cn('grid min-w-0 gap-2', className)}
-      data-testid="operation-progress"
     >
       {steps.length === 0 ? (
         <div aria-hidden="true" className="grid min-w-0 gap-2">
@@ -65,8 +64,6 @@ export function OperationProgress({
             <li
               key={step.id}
               className={rowClassName}
-              data-step={step.id}
-              data-status={step.status}
               aria-current={step.status === 'running' ? 'step' : undefined}
             >
               <span className="inline-flex size-4 items-center justify-center" aria-hidden="true">

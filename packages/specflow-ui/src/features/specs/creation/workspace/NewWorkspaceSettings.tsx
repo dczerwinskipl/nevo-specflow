@@ -1,15 +1,7 @@
 import { useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
-import {
-  Alert,
-  Button,
-  Collapsible,
-  Field,
-  Icon,
-  SwitchField,
-  TextInput,
-  Typography,
-} from '@nevo/ui';
+import { Alert, Button, Collapsible, Field, InlineNote, SwitchField, TextInput } from '@nevo/ui';
 import { Trans, useTranslation } from 'react-i18next';
+import { FormattedList } from '../../../../i18n/formatList';
 import { useMessage } from '../../../../i18n/message';
 import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
 import {
@@ -286,19 +278,12 @@ export function NewWorkspaceSettings({
               </Alert>
             )}
             {choice.base.on && suggestion?.kind === 'dirty' && (
-              <Typography
-                as="p"
-                variant="body-sm"
-                className="flex items-start gap-2 text-content-secondary"
-              >
-                <Icon name="info" size="sm" className="mt-0.5 shrink-0 text-content-muted" />
-                <span className="min-w-0">
-                  <Trans
-                    i18nKey="create.workspace.suggestion.dirty"
-                    components={{ branch: <BranchRef name={suggestion.branch} /> }}
-                  />
-                </span>
-              </Typography>
+              <InlineNote>
+                <Trans
+                  i18nKey="create.workspace.suggestion.dirty"
+                  components={{ branch: <BranchRef name={suggestion.branch} /> }}
+                />
+              </InlineNote>
             )}
           </div>
 
@@ -353,17 +338,23 @@ export function NewWorkspaceSettings({
                   {t('create.workspace.settings.targetNote')}
                   {unavailableTargets.length > 0 && (
                     <span className="mt-1 block">
-                      {t('create.workspace.settings.targetUnavailable')}{' '}
-                      {unavailableTargets.map((workspace, index) => (
-                        <span key={workspace.workspaceId}>
-                          {index > 0 ? ', ' : ''}
-                          <WorkspaceRef workspace={workspace} />{' '}
-                          {t('create.workspace.settings.unavailableReason', {
-                            reason: text(reasonTextInline(workspace.reason)),
-                          })}
-                        </span>
-                      ))}
-                      .
+                      <Trans
+                        i18nKey="create.workspace.settings.targetUnavailable"
+                        components={{
+                          targets: (
+                            <FormattedList
+                              items={unavailableTargets.map((workspace) => (
+                                <span key={workspace.workspaceId}>
+                                  <WorkspaceRef workspace={workspace} />{' '}
+                                  {t('create.workspace.settings.unavailableReason', {
+                                    reason: text(reasonTextInline(workspace.reason)),
+                                  })}
+                                </span>
+                              ))}
+                            />
+                          ),
+                        }}
+                      />
                     </span>
                   )}
                 </Field.Description>

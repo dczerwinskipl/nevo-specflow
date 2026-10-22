@@ -16,7 +16,7 @@ import { createSpecFlowQueryClient } from '../../../app/queryClient';
 import { StoryLocalization } from '../../../i18n/StoryLocalization';
 import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
-import { documentKeys } from '../queries';
+import { documentKeys } from '../read-model/queries';
 import { DocumentContent } from './DocumentContent';
 
 function DocumentLifecycle({

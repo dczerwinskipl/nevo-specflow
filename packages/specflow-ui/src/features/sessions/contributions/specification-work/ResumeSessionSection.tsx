@@ -1,6 +1,6 @@
 import { Button, InformationList, MenuItem, OverflowMenu } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import { sessionActivityLabel, type SessionSummary } from '../../../specs';
+import { sessionActivityLabel, type SessionSummary } from '../../../specs/read-model';
 import { OperationalRow, type CompactFacts } from '../../../../shared/operational-list';
 import { WorkspaceSection } from '../../../../shared/workspace-section';
 

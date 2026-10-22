@@ -7,7 +7,7 @@ import { useNotify } from '../../../shared/notifications/notifications';
 import { retainRequest, type RequestAttempt } from '../../../shared/operations/retainedRequest';
 import { useRequestSessionRecovery } from '../../sessions';
 import { specsOverviewKeys } from '../overview/queries';
-import { specificationKeys } from '../queries';
+import { specificationKeys } from '../read-model/queries';
 import {
   continueDemoCreation,
   RequestNotSentError,
@@ -23,7 +23,8 @@ import {
   type CreateOperationState,
   type UnknownPhase,
 } from './createOperationReducer';
-import { classifyCreateFailure, type CreateFailure } from './createFailure';
+import { classifyDemoCreateFailure } from './classifyDemoCreateFailure';
+import type { CreateFailure } from './createFailure';
 
 /** Everything the form contributes to one submit, captured when the user submits. */
 export interface CreateSubmission {
@@ -176,7 +177,7 @@ export function useCreateSpecification(
           return { kind: 'completed' };
         }
         const sentTarget = ledger.attempt.current?.input.target;
-        const next = classifyCreateFailure(error, {
+        const next = classifyDemoCreateFailure(error, {
           customBranch: sentTarget?.kind === 'new-worktree' ? sentTarget.branch : undefined,
         });
         if (next.kind === 'offline' && replay) {

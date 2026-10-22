@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next';
-import type { TaskItem } from './model';
+import type { TaskItem } from './read-model/model';
 
 const TASK_STATUS_KEYS = {
   pending: 'specification.taskStatusPending',

@@ -310,16 +310,19 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
       b.relativeManifestPath,
       'specs/active/' + b.slug + '/overview.md',
     );
-    git(
-      a.workspaceRoot,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'add HTTP sibling',
-    );
+    // Create commits the scaffold itself when Git is enabled; commit by hand only what is still staged.
+    if (git(a.workspaceRoot, 'diff', '--cached', '--name-only') !== '') {
+      git(
+        a.workspaceRoot,
+        '-c',
+        'user.name=SpecFlow Test',
+        '-c',
+        'user.email=test@example.invalid',
+        'commit',
+        '-qm',
+        'add HTTP sibling',
+      );
+    }
     const operationId = randomUUID();
     const url = '/api/workspaces/' + workspaceId + '/close';
     const developer = await authedApp(engine, 'developer');

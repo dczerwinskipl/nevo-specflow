@@ -377,16 +377,19 @@ describe('E2.T07 — live canonical refresh', () => {
       created.relativeManifestPath,
       'specs/active/' + created.slug + '/overview.md',
     );
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'commit canonical Specification before Close',
-    );
+    // Create commits the scaffold itself when Git is enabled; commit by hand only what is still staged.
+    if (git(root, 'diff', '--cached', '--name-only') !== '') {
+      git(
+        root,
+        '-c',
+        'user.name=SpecFlow Test',
+        '-c',
+        'user.email=test@example.invalid',
+        'commit',
+        '-qm',
+        'commit canonical Specification before Close',
+      );
+    }
     const runtime = await startRuntime({
       projectRoot: root,
       projectConfigPath: configPath,

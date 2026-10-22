@@ -6,7 +6,7 @@ import { Type, type TSchema } from 'typebox';
  * generic envelope. Events never carry paths, journal internals or server error text.
  */
 
-const OperationIdSchema = Type.String({
+export const OperationIdSchema = Type.String({
   pattern:
     '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
 });

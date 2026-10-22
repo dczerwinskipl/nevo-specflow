@@ -221,51 +221,99 @@ extensionless relative-source convention.
 Repository tooling under `tools/**` may use NodeNext-style `.js` specifiers when it executes
 raw `tsc` output. See ADR 0009 for the product-package build model.
 
-## UI module ownership and boundaries
+## Module ownership and boundaries
 
-A component, store or API port lives in the module that owns the capability, regardless of which
-screen first implemented it. A screen's folder (for example Create) must not become the storage of
-every element that screen happened to need first.
+A component, store or API port MUST live in the module (feature) that owns the capability,
+regardless of which screen or task first needed it. A screen's folder MUST NOT become the storage
+of every element that screen happened to need first. Screen coordination does not change
+ownership.
+
+- Each feature owns its capabilities: components, state stores and API ports. A port SHOULD be
+  an interface with a named adapter beside it, provided as a separate service from the
+  composition root, when that separation buys substitutability or isolation; a separate
+  interface is not required where it adds nothing.
+- `shared/` MUST hold only code that several features genuinely use and MUST NOT import a feature
+  or a composition root. Code SHOULD NOT be promoted to `shared/` for convenience; promote it when
+  a second feature needs it.
+- Target rule for new code and code touched during migration: features SHOULD reach other features
+  only through the target feature's public boundary (`features/<name>/index.ts`), which exports
+  what others may use. This is not an existing invariant, and creating a barrel only to satisfy
+  this rule is not required. A feature-private sub-slice SHOULD NOT be imported from outside.
+- If ownership is ambiguous, surface the decision instead of defaulting to the current screen's
+  folder.
+
+Example: demo adapters (for example `api.demo.ts`) do not decide ownership. A demo adapter MAY
+exist only for an explicit Demo Runtime contract (a real backend demo endpoint) or an isolated
+test environment. It is not a frontend fixture or mock-data mode, and a port is not required to
+have two adapters. Production fixture-based adapters remain forbidden.
+
+### What tooling enforces today
+
+- ESLint enforces the package-level `no-restricted-imports` product boundaries in
+  `eslint.config.mjs` (which package may import which). Inside `packages/specflow-ui` it also
+  enforces the feature-boundary rules described below (feature barrels, the `shared/` direction)
+  and the local `specflow-i18n/no-hardcoded-copy` rule, and `react-hooks/rules-of-hooks` (error)
+  and `react-hooks/exhaustive-deps` are configured with zero warnings.
+- Other packages have no feature-boundary rules. Where a rule is not enforced by tooling, the
+  module ownership and state/effect review gate is agent guidance applied through agent
+  instructions and review; nothing blocks a merge automatically.
+
+### Current layout of `packages/specflow-ui`
 
 - `features/documents/` owns the Documents explorer, editor, document draft store and the
-  documents port (`explorer/`, `editor/`, `content/`, `workspace/`, `api.ts`).
-  `features/sessions/` owns Session screens, context, composer drafts, recovery and the sessions
-  port. `features/specs/creation/` owns only the Create flow and its creation port.
-- Each port is an interface plus a named adapter beside it (`api.ts`, `api.demo.ts`) and is
-  provided as a separate service by `createSpecFlowAppServices` (`documentsApi`, `sessionsApi`,
-  `creationApi`). Demo adapters stay demo adapters; they do not decide where product components live.
-- Visit-scoped state is a small external store owned by its feature and subscribed per entry
-  (for example one document's draft), not one global React context whose every update re-renders
-  all consumers.
+  documents port. `features/sessions/` owns Session screens, context, composer drafts, recovery and
+  the sessions port. `features/specs/creation/` owns only the Create flow and its creation ports.
+- Ports are provided as separate services by `createSpecFlowAppServices` (`documentsApi`,
+  `sessionsApi`, `creationApi`). Demo adapters stay demo adapters; they do not decide where
+  product components live.
 - `src/shared/` holds only code that several features genuinely use (generic controls, the
-  retained-request mechanism, the keyed store, notifications, and the product presentational
-  pieces `operational-list/` (`OperationalRow`, `OperationalGroupHeader`) and `workspace-section/`
-  (`WorkspaceSection`) that Documents, Sessions, Tasks, Git and Specs all render). It imports no
-  feature and no composition root. A purely presentational piece used by several features lives
-  here instead of in the feature that happened to create it; features do not re-export it.
-- Features reach other features only through the target's barrel (`features/<name>/index.ts`),
-  which deliberately exports what others may use. `features/specs/creation` is private to Create;
-  its entry exposes only its routes. Composition roots (`app/`, `services/`) and tests, stories and
-  story-support files are not restricted. ESLint (`no-restricted-imports` in `eslint.config.mjs`)
-  enforces these rules for production sources.
+  retained-request mechanism, the keyed store, notifications, `operations/`, and the product
+  presentational pieces `operational-list/` and `workspace-section/` that Documents, Sessions,
+  Tasks, Git and Specs all render). It imports no feature and no composition root.
+- Features reach other features only through the target's barrel (`features/<name>/index.ts`);
+  `features/specs/creation` is private to Create and contributes to the specs screens through
+  extension points. Composition roots (`app/`, `services/`) and tests, stories and story-support
+  files are not restricted. ESLint enforces this for production sources.
+- Create is a pure reducer over named phases plus a hook that performs the I/O (see the diagram at
+  the top of `features/specs/creation/createOperationReducer.ts`). Mutable bookkeeping that async
+  continuations must read synchronously lives in one small ledger/lock object created once per
+  owner, never in scattered refs and never read while rendering.
 
-### Operations and state machines in UI
+## React UI state, effects and async operations
 
-- A user operation with several outcomes (Create) is modelled as an explicit state machine: a pure
-  reducer over named phases (`idle | submitting | outcome-unknown | recovery-required | completed |
-failed`), unit-tested for every legal transition and for illegal events being ignored. The ASCII
-  diagram sits at the top of the reducer (`features/specs/creation/createOperationReducer.ts`).
-  A hook performs the I/O and reports each result as an event; the component renders the state.
-  No state-machine library.
-- Mutable bookkeeping that async continuations and router callbacks must read synchronously
-  (retained request ids, in-flight guard) lives in one small ledger/lock object created once per
-  owner (`createOperationLedger`, `operationLock`); never in scattered `useRef`s and never read
-  while rendering. Refs are for DOM nodes and imperative handles.
-- Routes that share one workspace (Documents list and document) share one pathless layout route
-  that owns that workspace's state; one-shot signals between them are instance state, never module
-  variables.
+These rules apply only to React UI code (`packages/specflow-ui`, `packages/nevo-ui`). They apply
+when adding, moving or modifying components, hooks, effects, mutations or stores.
 
-Review state ownership, effects and async operations of a UI change against this section.
+- Values computable from props, state or query data MUST be derived during render (or memoized)
+  and MUST NOT be copied into state or synchronized by an effect.
+- Effects MUST synchronize with external systems (DOM, subscriptions, timers). Operation logic
+  (submit, save, retry) MUST live in event handlers or a dedicated hook, not in effects reacting to
+  state.
+- Each user action (for example Save) MUST have a single owner operation; header buttons,
+  shortcuts and leave dialogs MUST call that same operation rather than reimplement it.
+- An async operation MUST act on the resource it was started for. A closure over an immutable
+  resource identity captured at request start is acceptable; reading a mutable "current resource"
+  (from a ref, store or closure) when the operation settles MUST NOT decide what is updated.
+  Passing identity as mutation variables is one way to do this, not the only one.
+- Late results (after supersession, owner change or unmount) are not always discarded; they MUST
+  NOT corrupt newer state or the state or cache of another resource.
+- Refs MUST NOT be written during render, and UI-relevant state MUST NOT be hidden in refs. Refs
+  are fine for data that does not affect rendering. A concurrency-control mechanism (ledger,
+  lock) MUST have one owner and a defined lifecycle.
+- State MUST live at the lowest common owner that matches its required lifetime (a state that
+  must outlive an owner's unmount belongs higher or in a store), and its updates MUST be isolated so unrelated
+  consumers do not re-render. Example: an external store with selective subscription is one
+  acceptable option when state must outlive unmount or is shared by independent components.
+- A complex, domain-specific multi-phase operation (recovery, retry, conflict, uncertain outcome)
+  SHOULD be modeled as an explicit state machine when its transition rules are not already owned
+  by the framework or query library. Example: a pure reducer over named phases, tested for legal
+  and illegal transitions. TanStack Query `useMutation` already covers plain save and error
+  handling, so such operations need no extra reducer.
+- Where `react-hooks/*` rules are configured, separate synchronization effects from operation
+  logic instead of blindly adding dependencies.
+
+Ownership, state derivation, effects and async operations of a React UI change SHOULD be reviewed
+against this section. Component line count is an inspection trigger, not a rule.
 
 ## File size is an inspection trigger
 

@@ -22,7 +22,7 @@ import {
   reserveCloseOperation,
   closeJournalPath,
 } from '../src/testing';
-import { createGitTestProject, git } from './support/git-project';
+import { createGitTestProject, git, commitStaged } from './support/git-project';
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -43,16 +43,7 @@ async function project(withInheritedSpec = false) {
     'runtime: {}\ngit:\n  enabled: true\n  integrationTargetBranch: ' + branch + '\n',
   );
   git(root, 'add', '.nevo/config.yaml');
-  git(
-    root,
-    '-c',
-    'user.name=SpecFlow Test',
-    '-c',
-    'user.email=specflow@example.invalid',
-    'commit',
-    '-qm',
-    'set integration target',
-  );
+  commitStaged(root, 'set integration target');
   const engine = await bootstrapProjectHome(root);
   if (withInheritedSpec) {
     const other = await createSpecificationForTesting(engine, {
@@ -68,16 +59,7 @@ async function project(withInheritedSpec = false) {
       other.relativeManifestPath,
       'specs/active/' + other.slug + '/overview.md',
     );
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'commit separate primary Specification before linked checkout',
-    );
+    commitStaged(root, 'commit separate primary Specification before linked checkout');
   }
   const spec = await createSpecificationForTesting(engine, {
     operationId: randomUUID(),
@@ -93,16 +75,7 @@ async function project(withInheritedSpec = false) {
     spec.relativeManifestPath,
     'specs/active/' + spec.slug + '/overview.md',
   );
-  git(
-    spec.workspaceRoot,
-    '-c',
-    'user.name=SpecFlow Test',
-    '-c',
-    'user.email=specflow@example.invalid',
-    'commit',
-    '-qm',
-    'commit spec',
-  );
+  commitStaged(spec.workspaceRoot, 'commit spec');
   return { root, engine, spec };
 }
 
@@ -122,16 +95,7 @@ describe('E2.T11 — read-only pinned Git integration proof', () => {
       '# Other Spec changed by linked branch\n',
     );
     git(spec.workspaceRoot, 'add', '--', foreignPath);
-    git(
-      spec.workspaceRoot,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'edit unrelated inherited Specification',
-    );
+    commitStaged(spec.workspaceRoot, 'edit unrelated inherited Specification');
     const primaryHead = git(root, 'rev-parse', 'HEAD');
     // Git diff -z emits the owned alpha path BEFORE the foreign zeta path.
     // A parser splitting on literal backslash-zero would incorrectly treat
@@ -173,16 +137,7 @@ describe('E2.T11 — read-only pinned Git integration proof', () => {
     const foreignPath = 'specs/active/zeta-spec/overview.md';
     await writeFile(join(root, foreignPath), '# Updated only in primary\n');
     git(root, 'add', '--', foreignPath);
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'primary updates its own other Specification',
-    );
+    commitStaged(root, 'primary updates its own other Specification');
     const primaryHead = git(root, 'rev-parse', 'HEAD');
     const operationId = await reserve(engine, spec.specId);
     const prepared = await prepareCloseGitIntegration(engine, operationId);
@@ -201,28 +156,10 @@ describe('E2.T11 — read-only pinned Git integration proof', () => {
     await mkdir(join(spec.workspaceRoot, 'src'), { recursive: true });
     await writeFile(join(spec.workspaceRoot, 'src/full-branch-source.ts'), 'source only\n');
     git(spec.workspaceRoot, 'add', 'src/full-branch-source.ts');
-    git(
-      spec.workspaceRoot,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'source code outside specs',
-    );
+    commitStaged(spec.workspaceRoot, 'source code outside specs');
     await writeFile(join(root, 'target-only.txt'), 'target remains present\n');
     git(root, 'add', 'target-only.txt');
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'target independent commit',
-    );
+    commitStaged(root, 'target independent commit');
     const target = git(root, 'rev-parse', 'HEAD');
     const source = git(spec.workspaceRoot, 'rev-parse', 'HEAD');
     const id = await reserve(engine, spec.specId);
@@ -257,16 +194,7 @@ describe('E2.T11 — read-only pinned Git integration proof', () => {
     const { root, engine, spec } = await project();
     await writeFile(join(root, 'target-advance.txt'), 'target advance\n');
     git(root, 'add', 'target-advance.txt');
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'advance target',
-    );
+    commitStaged(root, 'advance target');
     const target = git(root, 'rev-parse', 'HEAD');
     const id = await reserve(engine, spec.specId);
     await prepareCloseGitIntegration(engine, id);
@@ -304,28 +232,10 @@ describe('E2.T11 — read-only pinned Git integration proof', () => {
     const { root, engine, spec } = await project();
     await writeFile(join(root, 'conflict-owner.txt'), 'target\n');
     git(root, 'add', 'conflict-owner.txt');
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'target conflict',
-    );
+    commitStaged(root, 'target conflict');
     await writeFile(join(spec.workspaceRoot, 'conflict-owner.txt'), 'source\n');
     git(spec.workspaceRoot, 'add', 'conflict-owner.txt');
-    git(
-      spec.workspaceRoot,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'source conflict',
-    );
+    commitStaged(spec.workspaceRoot, 'source conflict');
     const target = git(root, 'rev-parse', 'HEAD');
     const id = await reserve(engine, spec.specId);
     await prepareCloseGitIntegration(engine, id);
@@ -355,28 +265,10 @@ describe('E2.T11 — read-only pinned Git integration proof', () => {
       'export const source = true;\n',
     );
     git(spec.workspaceRoot, 'add', 'src/from-source.ts');
-    git(
-      spec.workspaceRoot,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'source side of divergent history',
-    );
+    commitStaged(spec.workspaceRoot, 'source side of divergent history');
     await writeFile(join(root, 'target-note.txt'), 'target side\n');
     git(root, 'add', 'target-note.txt');
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'target side of divergent history',
-    );
+    commitStaged(root, 'target side of divergent history');
     const source = git(spec.workspaceRoot, 'rev-parse', 'HEAD');
     const target = git(root, 'rev-parse', 'HEAD');
     const registry = await engine.readRegistry();
@@ -410,28 +302,10 @@ describe('E2.T11 — read-only pinned Git integration proof', () => {
     const { root, engine, spec } = await project();
     await writeFile(join(root, 'shared-conflict.txt'), 'target version\n');
     git(root, 'add', 'shared-conflict.txt');
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'conflicting target',
-    );
+    commitStaged(root, 'conflicting target');
     await writeFile(join(spec.workspaceRoot, 'shared-conflict.txt'), 'source version\n');
     git(spec.workspaceRoot, 'add', 'shared-conflict.txt');
-    git(
-      spec.workspaceRoot,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'conflicting source',
-    );
+    commitStaged(spec.workspaceRoot, 'conflicting source');
     const targetHead = git(root, 'rev-parse', 'HEAD');
     const sourceHead = git(spec.workspaceRoot, 'rev-parse', 'HEAD');
     const operationId = await reserve(engine, spec.specId);
@@ -461,16 +335,7 @@ describe('E2.T11 — read-only pinned Git integration proof', () => {
     const { root, engine, spec } = await project();
     await writeFile(join(root, 'target-only.txt'), 'target version\n');
     git(root, 'add', 'target-only.txt');
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'target advance',
-    );
+    commitStaged(root, 'target advance');
     const operationId = await reserve(engine, spec.specId);
     await prepareCloseGitIntegration(engine, operationId);
     await expect(
@@ -503,16 +368,7 @@ describe('E2.T11 — read-only pinned Git integration proof', () => {
     git(root, 'merge', '--ff-only', sourceHead);
     await writeFile(join(root, 'target-after-source.txt'), 'unrelated target commit\\n');
     git(root, 'add', 'target-after-source.txt');
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'continue primary after integrating source',
-    );
+    commitStaged(root, 'continue primary after integrating source');
     const before = git(root, 'rev-parse', 'HEAD');
     const operationId = await reserve(engine, spec.specId);
     await prepareCloseGitIntegration(engine, operationId);
@@ -529,16 +385,7 @@ describe('E2.T11 — read-only pinned Git integration proof', () => {
     const overview = 'specs/active/' + spec.slug + '/overview.md';
     await writeFile(join(root, overview), 'changed in primary after integration\\n');
     git(root, 'add', overview);
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'rewrite canonical Spec in target',
-    );
+    commitStaged(root, 'rewrite canonical Spec in target');
     const operationId = await reserve(engine, spec.specId);
     await prepareCloseGitIntegration(engine, operationId);
     await expect(proveAlreadyIntegratedClose(engine, operationId)).rejects.toMatchObject({
@@ -612,32 +459,14 @@ describe('E2.T11 — read-only pinned Git integration proof', () => {
     await mkdir(join(spec.workspaceRoot, 'src'), { recursive: true });
     await writeFile(join(spec.workspaceRoot, sourceCode), 'export const sourceOnly = true;\n');
     git(spec.workspaceRoot, 'add', sourceCode);
-    git(
-      spec.workspaceRoot,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'add source-only code outside spec',
-    );
+    commitStaged(spec.workspaceRoot, 'add source-only code outside spec');
 
     const sourceCommit = git(spec.workspaceRoot, 'rev-parse', 'HEAD');
     const specPath = 'specs/active/' + spec.slug;
     // Copy only the complete Spec subtree; never merge the source commit
     // or its unrelated code. Target now contains byte-identical Spec objects.
     git(root, 'restore', '--source=' + sourceCommit, '--staged', '--worktree', '--', specPath);
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'copy only spec content to target',
-    );
+    commitStaged(root, 'copy only spec content to target');
     const targetCommit = git(root, 'rev-parse', 'HEAD');
     expect(git(root, 'rev-parse', sourceCommit + ':' + specPath)).toBe(
       git(root, 'rev-parse', targetCommit + ':' + specPath),
@@ -764,16 +593,7 @@ describe('E2.T11 — read-only pinned Git integration proof', () => {
     const { root, engine, spec } = await project();
     await writeFile(join(root, 'unrelated.txt'), 'target diverges\\n');
     git(root, 'add', 'unrelated.txt');
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'divergent target',
-    );
+    commitStaged(root, 'divergent target');
     const operationId = await reserve(engine, spec.specId);
     await prepareCloseGitIntegration(engine, operationId);
     const before = git(root, 'rev-parse', 'HEAD');
@@ -793,16 +613,7 @@ describe('E2.T11 — read-only pinned Git integration proof', () => {
       'runtime: {}\\ngit:\\n  enabled: true\\n  integrationTargetBranch: other-branch\\n',
     );
     git(spec.workspaceRoot, 'add', '.nevo/config.yaml');
-    git(
-      spec.workspaceRoot,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'change project policy',
-    );
+    commitStaged(spec.workspaceRoot, 'change project policy');
     const operationId = await reserve(engine, spec.specId);
     await prepareCloseGitIntegration(engine, operationId);
     const before = git(root, 'rev-parse', 'HEAD');
@@ -912,16 +723,7 @@ describe('E2.T11 — read-only pinned Git integration proof', () => {
     git(root, 'merge', '--ff-only', sourceHead);
     await writeFile(join(root, 'later-target-change.txt'), 'target commit after merge\\n');
     git(root, 'add', 'later-target-change.txt');
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'target continues after source integration',
-    );
+    commitStaged(root, 'target continues after source integration');
     const targetHead = git(root, 'rev-parse', 'HEAD');
     const evidence = await inspectCloseGitIntegration(engine, await reserve(engine, spec.specId));
     expect(evidence.relationship).toBe('already-integrated');
@@ -940,16 +742,7 @@ describe('E2.T11 — read-only pinned Git integration proof', () => {
       'runtime: {}\\ngit:\\n  enabled: true\\n  integrationTargetBranch: other-branch\\n',
     );
     git(spec.workspaceRoot, 'add', '.nevo/config.yaml');
-    git(
-      spec.workspaceRoot,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'change project git policy in source branch',
-    );
+    commitStaged(spec.workspaceRoot, 'change project git policy in source branch');
     const primaryHead = git(root, 'rev-parse', 'HEAD');
     const evidence = await inspectCloseGitIntegration(engine, await reserve(engine, spec.specId));
     expect(evidence.relationship).toBe('fast-forward');
@@ -963,16 +756,7 @@ describe('E2.T11 — read-only pinned Git integration proof', () => {
     const { root, engine, spec } = await project();
     await writeFile(join(root, 'project-change.txt'), 'separate target change\n');
     git(root, 'add', 'project-change.txt');
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'target diverged',
-    );
+    commitStaged(root, 'target diverged');
     const operationId = await reserve(engine, spec.specId);
     const targetHead = git(root, 'rev-parse', 'HEAD');
     const evidence = await inspectCloseGitIntegration(engine, operationId);
@@ -988,16 +772,7 @@ describe('E2.T11 — read-only pinned Git integration proof', () => {
     await mkdir(join(spec.workspaceRoot, 'other'), { recursive: true });
     await writeFile(join(spec.workspaceRoot, 'other', 'change.txt'), 'new file\n');
     git(spec.workspaceRoot, 'add', 'other/change.txt');
-    git(
-      spec.workspaceRoot,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'source changed',
-    );
+    commitStaged(spec.workspaceRoot, 'source changed');
     await expect(inspectCloseGitIntegration(engine, operationId)).rejects.toMatchObject({
       code: 'CLOSE_CONFLICT',
     });

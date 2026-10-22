@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Button, InformationList, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { TaskExecutionReadiness, TaskGroup } from '../../model';
-import { WorkspaceSection } from '../../../specs/workspace/sections/WorkspaceSection';
+import type { TaskExecutionReadiness, TaskGroup } from '../../read-model/model';
+import { WorkspaceSection } from '../../../../shared/workspace-section';
 import { getGroupTone } from './presentation';
 import { TaskGroupHeader } from './TaskGroupHeader';
 import { TaskRow } from './TaskRow';
@@ -66,9 +66,10 @@ export function TasksSection({
   // Drop vanished Task IDs; if the same ID reappears later it must not be
   // silently re-selected from an earlier Workspace revision.
   useEffect(() => {
+    const available = new Set(taskGroups.flatMap((group) => group.tasks).map((task) => task.id));
     setSelectedTasks((prev) => {
-      if ([...prev].every((id) => availableIds.has(id))) return prev;
-      return new Set([...prev].filter((id) => availableIds.has(id)));
+      if ([...prev].every((id) => available.has(id))) return prev;
+      return new Set([...prev].filter((id) => available.has(id)));
     });
   }, [taskGroups]);
   const completedCount =
@@ -108,7 +109,7 @@ export function TasksSection({
         actions={
           effectiveSelectedTasks.length > 0 ? (
             <div className="flex items-center gap-3">
-              <span className="text-body-xs text-content-muted">
+              <span className="text-body-sm text-content-muted">
                 {t('specification.selectedTasksCount', { count: effectiveSelectedTasks.length })}
               </span>
               <Button

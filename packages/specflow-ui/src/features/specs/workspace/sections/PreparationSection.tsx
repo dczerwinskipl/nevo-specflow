@@ -39,7 +39,7 @@ export function PreparationSection() {
         <button
           type="button"
           onClick={runtime.openHistory}
-          className="text-body-xs font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring lg:hidden"
+          className="text-body-sm font-medium text-accent-primary hover:underline focus-visible:outline-2 focus-visible:outline-focus-ring lg:hidden"
         >
           {t('specification.activityHistoryLink')}
         </button>

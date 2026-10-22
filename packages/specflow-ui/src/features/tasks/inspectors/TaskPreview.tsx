@@ -1,11 +1,11 @@
 import { IconButton } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { TaskGroup, TaskItem } from '../model';
+import type { TaskGroup, TaskItem } from '../read-model/model';
 import { TaskContent } from '../detail/TaskContent';
 import type { TaskDetailsProps } from '../detail/TaskDetails';
 import { useLayoutEffect, useRef } from 'react';
 import { useTaskViewState } from '../detail/TaskViewState';
-import { descriptionScrollOwner } from '../../documents/description/DocumentDescription';
+import { descriptionScrollOwner, restoreScrollPosition } from '../../documents';
 
 export interface TaskPreviewProps {
   readonly task: TaskItem;
@@ -29,21 +29,15 @@ export function TaskPreview({
   const initialScroll = useRef(state.scrollTop ?? 0);
   const preparedNavigation = useRef(false);
   useLayoutEffect(() => {
-    if (!root.current) return;
-    const owner = descriptionScrollOwner(root.current);
-    owner.scrollTop = initialScroll.current;
-    // The workspace resets its mobile viewport and restores the opener in the next frame.
-    // Restore Task scroll after that shared navigation lifecycle has settled.
-    let secondFrame = 0;
-    const firstFrame = requestAnimationFrame(() => {
-      secondFrame = requestAnimationFrame(() => {
-        owner.scrollTop = initialScroll.current;
-      });
-    });
+    const node = root.current;
+    if (!node) return;
+    // The workspace resets its mobile viewport and restores the opener in the next frame, and a
+    // preserved long description lays out after mounting. Keep restoring until the position
+    // holds instead of assuming a fixed number of frames.
+    const stopRestoring = restoreScrollPosition(node, () => initialScroll.current);
     return () => {
-      cancelAnimationFrame(firstFrame);
-      cancelAnimationFrame(secondFrame);
-      if (!preparedNavigation.current) saveScroll(owner.scrollTop);
+      stopRestoring();
+      if (!preparedNavigation.current) saveScroll(descriptionScrollOwner(node).scrollTop);
     };
   }, [saveScroll]);
   const rememberScroll = () => {

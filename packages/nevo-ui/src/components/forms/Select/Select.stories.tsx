@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
+import { Badge } from '../../feedback/Badge';
+import { Icon } from '../../foundations/Icon';
+import { Typography } from '../../foundations/Typography';
 import { Field } from '../Field';
 import {
   Select,
@@ -156,6 +159,82 @@ function SelectItemMatrix() {
           </SelectContent>
         </Select>
       </div>
+    </div>
+  );
+}
+
+function BranchLabel({ name }: { name: string }) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1">
+      <Icon name="branch" size="sm" />
+      <Typography as="span" className="min-w-0 truncate" variant="code-md">
+        {name}
+      </Typography>
+    </span>
+  );
+}
+
+const longBranch = 'feature/platform-wide-integration-of-the-new-workspace-lifecycle-and-recovery';
+const longReason =
+  'Has unsaved changes in the working tree. Save or discard them before using this branch as a merge target.';
+
+/** Branch option contract: icon + code-md name, wrapping description, trailing meta badge. */
+function BranchSelect({
+  defaultValue = 'develop',
+  open,
+}: {
+  defaultValue?: string;
+  open?: boolean;
+}) {
+  const [value, setValue] = useState(defaultValue);
+  return (
+    <div data-value={value}>
+      <Field className="w-80">
+        <Field.Label>Merge into</Field.Label>
+        <Select defaultOpen={open} onValueChange={setValue} value={value}>
+          <SelectTrigger tabIndex={open ? -1 : undefined}>
+            <SelectValue placeholder="Choose a branch" />
+          </SelectTrigger>
+          <SelectContent aria-label="Branches">
+            <SelectItem
+              description="Main workspace"
+              meta={<Badge tone="success">main</Badge>}
+              textValue="develop"
+              value="develop"
+            >
+              <BranchLabel name="develop" />
+            </SelectItem>
+            <SelectItem
+              description="Shared with another spec"
+              meta="2 specs"
+              textValue="feature/platform"
+              value="feature/platform"
+            >
+              <BranchLabel name="feature/platform" />
+            </SelectItem>
+            <SelectItem
+              description="Unsaved changes. Save or discard them first."
+              textValue="feature/payments"
+              unavailable
+              value="feature/payments"
+            >
+              <BranchLabel name="feature/payments" />
+            </SelectItem>
+            <SelectItem
+              description="Workspace is being removed."
+              disabled
+              textValue="feature/legacy"
+              value="feature/legacy"
+            >
+              <BranchLabel name="feature/legacy" />
+            </SelectItem>
+            <SelectItem description={longReason} meta="2 specs" textValue={longBranch} value="long">
+              <BranchLabel name={longBranch} />
+            </SelectItem>
+            <SelectItem value="plain">Plain single-line option</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
     </div>
   );
 }
@@ -317,5 +396,167 @@ export const ItemStateCapture: Story = {
       kind: 'component',
       order: 38,
     },
+  },
+};
+
+function openListbox() {
+  return document.querySelector<HTMLElement>('[role="listbox"]');
+}
+
+function optionByText(text: string) {
+  const option = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find(
+    (node) => node.textContent?.includes(text),
+  );
+  assert(option, `Option "${text}" should exist.`);
+  return option;
+}
+
+function valueOf(trigger: HTMLElement) {
+  return trigger.closest('[data-value]')?.getAttribute('data-value');
+}
+
+export const DescribedItems: Story = {
+  render: () => <BranchSelect open />,
+  tags: ['contract', '!autodocs'],
+  // A statically open listbox has no focused item, so axe flags the scrollable viewport.
+  parameters: { a11y: { test: 'off' }, layout: 'fullscreen' },
+  play: async () => {
+    await waitFor(openListbox, 'The listbox should be open.');
+    const develop = optionByText('Main workspace');
+    const describedBy = develop.getAttribute('aria-describedby')?.split(' ') ?? [];
+    assert(describedBy.length === 2, 'Description and meta should both describe the option.');
+    for (const id of describedBy) {
+      assert(document.getElementById(id), 'aria-describedby should reference rendered nodes.');
+    }
+    const meta = develop.querySelector<HTMLElement>('[data-select-item-part="meta"]');
+    const label = develop.querySelector<HTMLElement>('[data-design-slot="label"]');
+    assert(meta && label, 'Meta and label should render.');
+    assert(
+      meta.getBoundingClientRect().left >= label.getBoundingClientRect().right,
+      'Meta should sit to the right of the label.',
+    );
+    const plain = optionByText('Plain single-line option');
+    assert(plain.getAttribute('aria-describedby') === null, 'Plain items stay unchanged.');
+  },
+};
+
+export const BranchOption: Story = {
+  render: () => <BranchSelect open />,
+  tags: ['contract', '!autodocs'],
+  // A statically open listbox has no focused item, so axe flags the scrollable viewport.
+  parameters: { a11y: { test: 'off' }, layout: 'fullscreen' },
+  play: async () => {
+    await waitFor(openListbox, 'The listbox should be open.');
+    const option = optionByText('Main workspace');
+    assert(option.querySelector('svg'), 'A branch option should render the branch icon.');
+    const name = option.querySelector<HTMLElement>('.font-mono');
+    assert(name, 'The branch name should render.');
+    assert(
+      /monospace/i.test(getComputedStyle(name).fontFamily),
+      'The branch name should use the code-md monospace role.',
+    );
+  },
+};
+
+export const DisabledWithReason: Story = {
+  render: () => <BranchSelect open />,
+  tags: ['contract', '!autodocs'],
+  // A statically open listbox has no focused item, so axe flags the scrollable viewport.
+  parameters: { a11y: { test: 'off' }, layout: 'fullscreen' },
+  play: async () => {
+    await waitFor(openListbox, 'The listbox should be open.');
+    for (const [text, kind] of [
+      ['Unsaved changes', 'unavailable'],
+      ['Workspace is being removed.', 'disabled'],
+    ] as const) {
+      const option = optionByText(text);
+      assert(option.getAttribute('aria-disabled') === 'true', `${kind} item is aria-disabled.`);
+      const reason = option.querySelector<HTMLElement>('[data-select-item-part="description"]');
+      assert(reason, `${kind} reason should render.`);
+      assert(
+        getComputedStyle(option).opacity === '1' && getComputedStyle(reason).opacity === '1',
+        `${kind} reason should not be faded with the item.`,
+      );
+      const label = option.querySelector<HTMLElement>('[data-design-slot="label"]');
+      assert(
+        label && Number(getComputedStyle(label.parentElement!).opacity) < 1,
+        `${kind} label should be muted.`,
+      );
+    }
+  },
+};
+
+export const LongTextAt320: Story = {
+  decorators: [
+    (Story) => (
+      <div className="w-80 bg-canvas text-content-primary">
+        <Story />
+      </div>
+    ),
+  ],
+  render: () => <BranchSelect defaultValue="long" open />,
+  tags: ['contract', '!autodocs'],
+  // A statically open listbox has no focused item, so axe flags the scrollable viewport.
+  parameters: { a11y: { test: 'off' }, layout: 'fullscreen' },
+  play: async ({ canvas }) => {
+    const listbox = await waitFor(openListbox, 'The listbox should be open.');
+    const option = optionByText('Has unsaved changes in the working tree');
+    const description = option.querySelector<HTMLElement>('[data-select-item-part="description"]');
+    assert(description, 'The long description should render.');
+    const lineHeight = parseFloat(getComputedStyle(description).lineHeight);
+    assert(
+      description.getBoundingClientRect().height > lineHeight * 1.5,
+      'The description should wrap onto several lines.',
+    );
+    const label = option.querySelector<HTMLElement>('[data-design-slot="label"]');
+    assert(label, 'The label should render.');
+    assert(label.scrollWidth >= label.clientWidth, 'The main label stays single-line.');
+    assert(
+      listbox.scrollWidth <= listbox.clientWidth + 1,
+      'Long text must not overflow the listbox horizontally.',
+    );
+    const trigger = canvas.getByRole('combobox', { name: 'Merge into', hidden: true });
+    assert(trigger.getBoundingClientRect().width <= 320, 'The trigger fits 320 px.');
+  },
+};
+
+export const KeyboardNavigation: Story = {
+  render: () => <BranchSelect />,
+  tags: ['contract', '!autodocs'],
+  play: async ({ canvas, userEvent }) => {
+    const trigger = canvas.getByRole('combobox', { name: 'Merge into' });
+    const initialHeight = trigger.getBoundingClientRect().height;
+    trigger.focus();
+    await userEvent.keyboard('{Enter}');
+    await waitFor(openListbox, 'Select should open from the keyboard.');
+
+    await userEvent.keyboard('{ArrowDown}{ArrowDown}');
+    const unavailable = optionByText('Unsaved changes');
+    await waitFor(
+      () => document.activeElement === unavailable,
+      'The unavailable item should be reachable with the arrow keys.',
+    );
+    await userEvent.keyboard('{Enter}');
+    assert(openListbox() !== null, 'Enter on an unavailable item must not close the listbox.');
+    assert(valueOf(trigger) === 'develop', 'Enter on an unavailable item must not select it.');
+    await userEvent.keyboard(' ');
+    assert(valueOf(trigger) === 'develop', 'Space on an unavailable item must not select it.');
+    await userEvent.click(unavailable);
+    assert(openListbox() !== null, 'Clicking an unavailable item must keep the listbox open.');
+
+    await userEvent.keyboard('{ArrowUp}{Enter}');
+    await waitFor(() => openListbox() === null, 'Enter on an available item should close.');
+    assert(valueOf(trigger) === 'feature/platform', 'The available item should be chosen.');
+    const text = trigger.textContent ?? '';
+    assert(
+      text === 'feature/platform' &&
+        !text.includes('Shared with another spec') &&
+        !text.includes('2 specs'),
+      'The trigger shows only the main label, without description or meta.',
+    );
+    assert(
+      trigger.getBoundingClientRect().height === initialHeight,
+      'The trigger stays a single line.',
+    );
   },
 };

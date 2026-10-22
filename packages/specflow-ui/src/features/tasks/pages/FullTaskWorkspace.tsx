@@ -1,3 +1,4 @@
+import { translateNow } from '../../../i18n/message';
 import { createContext, useContext } from 'react';
 import {
   Alert,
@@ -21,7 +22,7 @@ import {
   ApplicationContextLine,
 } from '../../../app/navigation/ApplicationLocation';
 import { WorkspaceRouteLeaveGuard } from '../../../app/navigation/WorkspaceRouteLeaveGuard';
-import type { FullTaskData } from '../model';
+import type { FullTaskData } from '../read-model/model';
 import { TaskContent } from '../detail/TaskContent';
 import { inspectionAnchor, type TaskInspectionAnchor } from '../detail/taskInspectionModel';
 import {
@@ -29,11 +30,11 @@ import {
   type TaskHistoryResourceParams,
 } from '../detail/TaskHistoryResourceInspection';
 import { TaskHistory } from '../detail/TaskHistory';
+import type { TaskEvidenceParams } from '../detail/taskInspectionModel';
 import {
   TaskInspection,
   TaskEvidenceInspection,
   TaskEvidenceHeader,
-  type TaskEvidenceParams,
   TaskResourceInspection,
   TaskContextHeader,
   TaskFlowHeader,
@@ -94,7 +95,7 @@ function RequirementHeader({
 function WorkScreen({ data }: SecondaryScreenProps<TaskContextData, Record<never, never>>) {
   return (
     <AppContent className="w-content-standard max-w-full">
-      <AppWorkspaceBody padding="none">
+      <AppWorkspaceBody padding="none" scroll="area">
         <TaskInspection task={data.task} page="work" anchor={data.anchor} />
       </AppWorkspaceBody>
     </AppContent>
@@ -103,7 +104,7 @@ function WorkScreen({ data }: SecondaryScreenProps<TaskContextData, Record<never
 function FlowScreen({ data }: SecondaryScreenProps<TaskContextData, Record<never, never>>) {
   return (
     <AppContent className="w-content-standard max-w-full">
-      <AppWorkspaceBody padding="none">
+      <AppWorkspaceBody padding="none" scroll="area">
         <TaskInspection task={data.task} page="flow" />
       </AppWorkspaceBody>
     </AppContent>
@@ -115,7 +116,7 @@ function EvidenceScreen({
 }: SecondaryScreenProps<TaskContextData, TaskEvidenceParams>) {
   return (
     <AppContent className="w-content-standard max-w-full">
-      <AppWorkspaceBody padding="none">
+      <AppWorkspaceBody padding="none" scroll="area">
         <div className="p-4">
           <TaskEvidenceInspection task={data.task} params={params} />
         </div>
@@ -130,7 +131,7 @@ function RequirementScreen({
   const nav = useSecondaryStack<Pages>();
   return (
     <AppContent className="w-content-standard max-w-full">
-      <AppWorkspaceBody padding="none">
+      <AppWorkspaceBody padding="none" scroll="area">
         <TaskInspection
           task={data.task}
           page="requirement"
@@ -156,7 +157,7 @@ function ResourceScreen({
   );
   return (
     <AppContent className="w-content-standard max-w-full">
-      <AppWorkspaceBody padding="none">
+      <AppWorkspaceBody padding="none" scroll="area">
         <div className="p-4">
           <TaskResourceInspection
             resource={refs.find((ref) => ref.id === (params.id ?? data.itemId))}
@@ -172,7 +173,7 @@ function HistoryResourceScreen({
 }: SecondaryScreenProps<TaskContextData, TaskHistoryResourceParams>) {
   return (
     <AppContent className="w-content-standard max-w-full">
-      <AppWorkspaceBody padding="none">
+      <AppWorkspaceBody padding="none" scroll="area">
         <div className="p-4">
           <TaskHistoryResourceInspection
             specId={data.specId}
@@ -189,7 +190,7 @@ function HistoryScreen({ data }: SecondaryScreenProps<TaskContextData, Record<ne
   const nav = useSecondaryStack<Pages>();
   return (
     <AppContent className="w-content-standard max-w-full">
-      <AppWorkspaceBody padding="none">
+      <AppWorkspaceBody padding="none" scroll="area">
         <TaskHistory
           specId={data.specId}
           taskId={data.task.id}
@@ -207,21 +208,55 @@ const stack = defineSecondaryStack<RootParams, TaskContextData, Pages>({
   initial: 'work',
   useData: useTaskContext,
   screens: {
-    work: { title: 'Step details', header: WorkHeader, component: WorkScreen },
-    flow: { title: 'Flow', header: TaskFlowHeader, component: FlowScreen },
+    work: {
+      get title() {
+        return translateNow('taskDetails.stepDetails');
+      },
+      header: WorkHeader,
+      component: WorkScreen,
+    },
+    flow: {
+      get title() {
+        return translateNow('common.flow');
+      },
+      header: TaskFlowHeader,
+      component: FlowScreen,
+    },
     requirement: {
-      title: 'Requirement',
+      get title() {
+        return translateNow('taskDetails.requirement');
+      },
       header: RequirementHeader,
       component: RequirementScreen,
     },
-    evidence: { title: 'Evidence', header: TaskEvidenceHeader, component: EvidenceScreen },
-    resource: { title: 'Resource', header: TaskResourceHeader, component: ResourceScreen },
+    evidence: {
+      get title() {
+        return translateNow('taskDetails.evidence');
+      },
+      header: TaskEvidenceHeader,
+      component: EvidenceScreen,
+    },
+    resource: {
+      get title() {
+        return translateNow('taskDetails.resource');
+      },
+      header: TaskResourceHeader,
+      component: ResourceScreen,
+    },
     historyResource: {
-      title: 'Resource',
+      get title() {
+        return translateNow('taskDetails.resource');
+      },
       header: TaskResourceHeader,
       component: HistoryResourceScreen,
     },
-    history: { title: 'History', header: TaskHistoryHeader, component: HistoryScreen },
+    history: {
+      get title() {
+        return translateNow('taskDetails.historyTitle');
+      },
+      header: TaskHistoryHeader,
+      component: HistoryScreen,
+    },
   },
 });
 const workStack = defineSecondaryStack<RootParams, TaskContextData, Pages>({
@@ -316,6 +351,7 @@ function Workspace({
               />
             }
             icon="list-checks"
+            labels={{ moreActions: t('common.moreActions') }}
             actions={
               !supportsSplit
                 ? [
@@ -334,7 +370,7 @@ function Workspace({
         }
       >
         <AppContent className="w-content-xwide max-w-full">
-          <AppWorkspaceBody className="py-6">
+          <AppWorkspaceBody scroll="area" contentClassName="py-6">
             <AppContentContainer align="start" size="full">
               <ApplicationContextLine specId={specId} view="task" />
               {stale ? (
@@ -373,7 +409,7 @@ function Workspace({
         }
       >
         <AppContent className="w-content-standard max-w-full">
-          <AppWorkspaceBody padding="none">
+          <AppWorkspaceBody padding="none" scroll="area">
             <TaskHistory
               specId={specId}
               taskId={task.id}

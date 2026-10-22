@@ -5,7 +5,9 @@ import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { setTimeout as sleep } from 'node:timers/promises';
 
+import { verifyCheckoutOnDisk, verifyProjectHomeOnDisk } from './disk-verification';
 import { resolveProjectHome, type ResolvedProjectHome } from './project-home';
+import { isReadRequest } from './request-verification-memo';
 import { assertProjectHomeLockProof, captureProjectHomeLockProof } from './project-home-lock-proof';
 
 export const PROJECT_CONTROL_LOCK_RELATIVE_PATH = 'engine/control.lock';
@@ -292,6 +294,12 @@ async function ensureSafeLockDirectory(context: ResolvedProjectHome, dir: string
 
 async function assertCurrentProjectHome(context: ResolvedProjectHome): Promise<void> {
   try {
+    if (isReadRequest()) {
+      // Git-free mutation: on-disk evidence only (see request-verification-memo).
+      await verifyProjectHomeOnDisk(context);
+      await verifyCheckoutOnDisk(context, context.workspace.root);
+      return;
+    }
     const current = await resolveProjectHome({
       cwd: context.workspace.root,
       projectRoot: context.project.homeRoot,

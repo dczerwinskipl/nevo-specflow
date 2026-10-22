@@ -34,6 +34,22 @@ describe('AppWorkspaceBody scroll ownership', () => {
     expect(markup).toContain('scroll-area-indicator-bottom');
     expect(markup).toContain('aria-label="Materials"');
   });
+  it('refines the padded content box of the ScrollArea with contentClassName', () => {
+    const markup = renderToStaticMarkup(
+      <AppWorkspaceBody scroll="area" contentClassName="py-6">
+        Content
+      </AppWorkspaceBody>,
+    );
+    expect(markup).toContain('scroll-area-content');
+    expect(markup).toMatch(/scroll-area-content[^"]*p-4 py-6/);
+  });
+  it('keeps contentClassName on the native body when the body owns no scroll area', () => {
+    const markup = renderToStaticMarkup(
+      <AppWorkspaceBody contentClassName="py-6">Content</AppWorkspaceBody>,
+    );
+    expect(markup).toContain('py-6');
+    expect(markup).not.toContain('scroll-area-viewport');
+  });
   it('leaves scrolling to the stacked workspace host', () => {
     const markup = renderToStaticMarkup(
       <AppContentScrollProvider>

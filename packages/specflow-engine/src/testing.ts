@@ -1,6 +1,7 @@
 /** Internal integration-test surface. Not used by production adapters. */
 export * from './index';
 
+export { normalizeCreateClientIntent } from './specs/create-intent';
 export {
   PROJECT_HOME_MARKER_RELATIVE_PATH,
   PROJECT_STATE_RELATIVE_PATH,

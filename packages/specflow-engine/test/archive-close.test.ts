@@ -22,7 +22,7 @@ import {
   readWorkspaceSpecification,
   reserveCloseOperation,
 } from '../src/testing';
-import { createGitTestProject, git } from './support/git-project';
+import { createGitTestProject, git, commitStaged } from './support/git-project';
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -43,16 +43,7 @@ async function fixture(includeUnicodeFile = false) {
     'runtime: {}\ngit:\n  enabled: true\n  integrationTargetBranch: ' + branch + '\n',
   );
   git(root, 'add', '.nevo/config.yaml');
-  git(
-    root,
-    '-c',
-    'user.name=Test',
-    '-c',
-    'user.email=test@example.invalid',
-    'commit',
-    '-qm',
-    'target branch',
-  );
+  commitStaged(root, 'target branch');
   const engine = await bootstrapProjectHome(root);
   const registry = await engine.readRegistry();
   const spec = await createSpecificationForTesting(engine, {
@@ -62,31 +53,13 @@ async function fixture(includeUnicodeFile = false) {
     target: { kind: 'existing', workspaceId: registry.primaryWorkspaceId },
   });
   git(root, 'add', '--', spec.relativeManifestPath, 'specs/active/' + spec.slug + '/overview.md');
-  git(
-    root,
-    '-c',
-    'user.name=Test',
-    '-c',
-    'user.email=test@example.invalid',
-    'commit',
-    '-qm',
-    'create spec',
-  );
+  commitStaged(root, 'create spec');
   if (includeUnicodeFile) {
     const filename = 'Notes [draft] Żółć.txt';
     const active = 'specs/active/' + spec.slug + '/' + filename;
     await writeFile(join(root, active), 'portable archive data\\n');
     git(root, 'add', '--', ':(literal)' + active);
-    git(
-      root,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'add literal Unicode archive file',
-    );
+    commitStaged(root, 'add literal Unicode archive file');
   }
   const operationId = randomUUID();
   await reserveCloseOperation(engine, {
@@ -161,16 +134,7 @@ describe('E2.T14 physical archive and exact scoped Git commit', () => {
       'runtime: {}\ngit:\n  enabled: true\n  integrationTargetBranch: ' + branch + '\n',
     );
     git(root, 'add', '.nevo/config.yaml');
-    git(
-      root,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'configure',
-    );
+    commitStaged(root, 'configure');
     const engine = await bootstrapProjectHome(root);
     const spec = await createSpecificationForTesting(engine, {
       operationId: randomUUID(),
@@ -186,40 +150,13 @@ describe('E2.T14 physical archive and exact scoped Git commit', () => {
       spec.relativeManifestPath,
       'specs/active/' + spec.slug + '/overview.md',
     );
-    git(
-      spec.workspaceRoot,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'canonical source',
-    );
+    commitStaged(spec.workspaceRoot, 'canonical source');
     await writeFile(join(spec.workspaceRoot, 'conflicting.txt'), 'linked version\n');
     git(spec.workspaceRoot, 'add', 'conflicting.txt');
-    git(
-      spec.workspaceRoot,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'linked edit',
-    );
+    commitStaged(spec.workspaceRoot, 'linked edit');
     await writeFile(join(root, 'conflicting.txt'), 'primary version\n');
     git(root, 'add', 'conflicting.txt');
-    git(
-      root,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'primary edit',
-    );
+    commitStaged(root, 'primary edit');
     const primaryHead = git(root, 'rev-parse', 'HEAD');
     const operationId = randomUUID();
     await reserveCloseOperation(engine, {
@@ -295,16 +232,7 @@ describe('E2.T14 physical archive and exact scoped Git commit', () => {
       'runtime: {}\ngit:\n  enabled: true\n  integrationTargetBranch: ' + branch + '\n',
     );
     git(root, 'add', '.nevo/config.yaml');
-    git(
-      root,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'pin integration target',
-    );
+    commitStaged(root, 'pin integration target');
     const engine = await bootstrapProjectHome(root);
     const spec = await createSpecificationForTesting(engine, {
       operationId: randomUUID(),
@@ -320,16 +248,7 @@ describe('E2.T14 physical archive and exact scoped Git commit', () => {
       spec.relativeManifestPath,
       'specs/active/' + spec.slug + '/overview.md',
     );
-    git(
-      spec.workspaceRoot,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'spec active',
-    );
+    commitStaged(spec.workspaceRoot, 'spec active');
     const original = git(spec.workspaceRoot, 'rev-parse', 'HEAD');
     const operationId = randomUUID();
     await reserveCloseOperation(engine, {

@@ -1,9 +1,10 @@
-import { createElement, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '../../../lib';
 import { Link } from '../../actions/Link';
 import { Typography } from '../../foundations/Typography';
+import { ScrollArea } from '../../layout/ScrollArea';
 
 export interface MarkdownDocumentLinkProps {
   children: ReactNode;
@@ -23,16 +24,29 @@ export interface MarkdownDocumentProps {
    * Markdown parsing or normal external-link styling.
    */
   renderLink?: (props: MarkdownDocumentLinkProps) => ReactNode;
+  /**
+   * Opt-in source map: emits `data-source-line="<1-based start line>"` on top-level block elements
+   * and on every list item, so a product can keep an edit/preview scroll position by source line
+   * (find the last block whose top is at or above the viewport top). Off by default; the rendered
+   * markup and classes are otherwise identical.
+   */
+  sourceLines?: boolean;
 }
 
 export interface MarkdownDocumentLabels {
   completedTask: string;
   incompleteTask: string;
+  /** Accessible name of a horizontally scrollable table region. */
+  table: string;
+  /** Accessible name of a horizontally scrollable code block region. */
+  codeBlock: string;
 }
 
 const defaultMarkdownDocumentLabels: MarkdownDocumentLabels = {
   completedTask: 'Completed task',
   incompleteTask: 'Incomplete task',
+  table: 'Table',
+  codeBlock: 'Code block',
 };
 
 function DefaultMarkdownLink({ children, href, title }: MarkdownDocumentLinkProps) {
@@ -43,6 +57,40 @@ function DefaultMarkdownLink({ children, href, title }: MarkdownDocumentLinkProp
   );
 }
 
+interface SourceNode {
+  type: string;
+  tagName?: string;
+  properties?: Record<string, unknown>;
+  position?: { start?: { line?: number } };
+  children?: SourceNode[];
+}
+
+/** Rehype step for `sourceLines`: top-level block elements and every `li` carry their start line. */
+function rehypeSourceLines() {
+  const mark = (node: SourceNode) => {
+    const line = node.position?.start?.line;
+    if (node.type === 'element' && line !== undefined) {
+      node.properties = { ...node.properties, dataSourceLine: line };
+    }
+  };
+  const walkItems = (node: SourceNode) => {
+    for (const child of node.children ?? []) {
+      if (child.type === 'element' && child.tagName === 'li') mark(child);
+      walkItems(child);
+    }
+  };
+  return (tree: SourceNode) => {
+    for (const child of tree.children ?? []) mark(child);
+    walkItems(tree);
+  };
+}
+
+/** react-markdown forwards hast properties as props; keep the source line on the rendered block. */
+function sourceLine(props: object): { 'data-source-line'?: number } {
+  const line = (props as { 'data-source-line'?: number })['data-source-line'];
+  return line === undefined ? {} : { 'data-source-line': line };
+}
+
 function markdownComponents(
   labels: MarkdownDocumentLabels,
   renderLink?: (props: MarkdownDocumentLinkProps) => ReactNode,
@@ -51,8 +99,9 @@ function markdownComponents(
   const heading = (level: number) =>
     `h${Math.min(6, level + headingOffset)}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
   return {
-    h1: ({ children }) => (
+    h1: ({ children, ...rest }) => (
       <Typography
+        {...sourceLine(rest)}
         as={heading(1)}
         className="mb-3 mt-8 text-content-primary first:mt-0"
         variant="title-lg"
@@ -60,8 +109,9 @@ function markdownComponents(
         {children}
       </Typography>
     ),
-    h2: ({ children }) => (
+    h2: ({ children, ...rest }) => (
       <Typography
+        {...sourceLine(rest)}
         as={heading(2)}
         className="mb-3 mt-6 border-b border-divider pb-2 text-content-primary first:mt-0"
         variant="title-md"
@@ -69,8 +119,9 @@ function markdownComponents(
         {children}
       </Typography>
     ),
-    h3: ({ children }) => (
+    h3: ({ children, ...rest }) => (
       <Typography
+        {...sourceLine(rest)}
         as={heading(3)}
         className="mb-2 mt-5 text-content-primary first:mt-0"
         variant="title-sm"
@@ -78,8 +129,9 @@ function markdownComponents(
         {children}
       </Typography>
     ),
-    h4: ({ children }) => (
+    h4: ({ children, ...rest }) => (
       <Typography
+        {...sourceLine(rest)}
         as={heading(4)}
         className="mb-2 mt-4 text-content-primary first:mt-0"
         variant="label-md"
@@ -87,10 +139,29 @@ function markdownComponents(
         {children}
       </Typography>
     ),
-    h5: ({ children }) => createElement(heading(5), undefined, children),
-    h6: ({ children }) => createElement(heading(6), undefined, children),
-    p: ({ children }) => (
+    h5: ({ children, ...rest }) => (
       <Typography
+        {...sourceLine(rest)}
+        as={heading(5)}
+        className="mb-2 mt-4 text-content-primary first:mt-0"
+        variant="label-md"
+      >
+        {children}
+      </Typography>
+    ),
+    h6: ({ children, ...rest }) => (
+      <Typography
+        {...sourceLine(rest)}
+        as={heading(6)}
+        className="mb-2 mt-4 text-content-muted first:mt-0"
+        variant="label-sm"
+      >
+        {children}
+      </Typography>
+    ),
+    p: ({ children, ...rest }) => (
+      <Typography
+        {...sourceLine(rest)}
         as="p"
         className="my-3 text-content-secondary first:mt-0 last:mb-0"
         variant="body-lg"
@@ -98,11 +169,12 @@ function markdownComponents(
         {children}
       </Typography>
     ),
-    ul: ({ children, className }) => (
+    ul: ({ children, className, ...rest }) => (
       <Typography
+        {...sourceLine(rest)}
         as="ul"
         className={cn(
-          'my-3 list-disc pl-6 text-content-secondary first:mt-0 last:mb-0',
+          'my-3 list-disc pl-6 text-content-secondary first:mt-0 last:mb-0 [li_&]:my-1',
           className?.includes('contains-task-list') && 'list-none pl-0',
         )}
         variant="body-lg"
@@ -110,17 +182,20 @@ function markdownComponents(
         {children}
       </Typography>
     ),
-    ol: ({ children }) => (
+    ol: ({ children, ...rest }) => (
       <Typography
+        {...sourceLine(rest)}
         as="ol"
-        className="my-3 list-decimal pl-6 text-content-secondary first:mt-0 last:mb-0"
+        className="my-3 list-decimal pl-6 text-content-secondary first:mt-0 last:mb-0 [li_&]:my-1"
         variant="body-lg"
       >
         {children}
       </Typography>
     ),
-    li: ({ children, className }) => (
-      <li className={cn('mt-1 first:mt-0', className)}>{children}</li>
+    li: ({ children, className, ...rest }) => (
+      <li {...sourceLine(rest)} className={cn('mt-1 first:mt-0', className)}>
+        {children}
+      </li>
     ),
     strong: ({ children }) => (
       <strong className="font-semibold text-content-primary">{children}</strong>
@@ -131,8 +206,11 @@ function markdownComponents(
           {children}
         </DefaultMarkdownLink>
       ),
-    blockquote: ({ children }) => (
-      <blockquote className="my-3 border-l-2 border-border-strong pl-4 text-content-muted first:mt-0 last:mb-0 [&_p]:text-body-md [&_p]:text-content-muted">
+    blockquote: ({ children, ...rest }) => (
+      <blockquote
+        {...sourceLine(rest)}
+        className="my-3 border-l-2 border-border-strong pl-4 text-content-muted first:mt-0 last:mb-0 [&_p]:text-body-md [&_p]:text-content-muted"
+      >
         {children}
       </blockquote>
     ),
@@ -148,12 +226,22 @@ function markdownComponents(
         {children}
       </Typography>
     ),
-    pre: ({ children }) => (
-      <pre className="my-3 max-w-full overflow-x-auto rounded-composite border border-border-default bg-canvas px-4 py-3 text-content-secondary first:mt-0 last:mb-0 [&_code]:border-0 [&_code]:bg-transparent [&_code]:p-0">
-        {children}
-      </pre>
+    pre: ({ children, ...rest }) => (
+      // The block scrolls horizontally in its own keyboard-focusable region; lines never wrap.
+      <ScrollArea
+        {...sourceLine(rest)}
+        aria-label={labels.codeBlock}
+        className="my-3 rounded-composite border border-border-default bg-canvas first:mt-0 last:mb-0"
+        direction="horizontal"
+        labelRole="group"
+        viewportClassName="rounded-composite"
+      >
+        <pre className="w-max min-w-full px-4 py-3 text-content-secondary [&_code]:border-0 [&_code]:bg-transparent [&_code]:p-0">
+          {children}
+        </pre>
+      </ScrollArea>
     ),
-    hr: () => <hr className="my-6 border-0 border-t border-divider" />,
+    hr: (props) => <hr {...sourceLine(props)} className="my-6 border-0 border-t border-divider" />,
     input: ({ node: _node, type, ...props }) => (
       <input
         {...props}
@@ -163,20 +251,39 @@ function markdownComponents(
         type={type}
       />
     ),
-    table: ({ children }) => (
-      <div className="my-3 w-full max-w-full overflow-x-auto first:mt-0 last:mb-0">
-        <table className="min-w-full border-collapse">{children}</table>
-      </div>
+    img: ({ node: _node, alt, src, title }) => (
+      <img alt={alt ?? ''} className="my-3 h-auto max-w-full" src={src} title={title} />
     ),
-    th: ({ children }) => (
-      <th className="border border-border-default bg-surface-raised px-3 py-2 text-left">
+    table: ({ children, ...rest }) => (
+      // A wide table scrolls in its own keyboard-focusable region and never widens the page.
+      <ScrollArea
+        {...sourceLine(rest)}
+        aria-label={labels.table}
+        className="my-3 rounded-composite border border-border-default first:mt-0 last:mb-0"
+        direction="horizontal"
+        labelRole="group"
+        viewportClassName="rounded-composite"
+      >
+        <table className="min-w-full border-collapse [&_tbody_tr:nth-child(even)]:bg-surface-subtle [&_tbody_tr+tr]:border-t [&_tbody_tr+tr]:border-divider">
+          {children}
+        </table>
+      </ScrollArea>
+    ),
+    th: ({ children, style }) => (
+      <th
+        className="min-w-40 border-b border-border-default bg-surface-raised px-3 py-2 text-left align-bottom [overflow-wrap:break-word]"
+        style={{ textAlign: style?.textAlign }}
+      >
         <Typography as="span" className="text-content-primary" variant="label-md">
           {children}
         </Typography>
       </th>
     ),
-    td: ({ children }) => (
-      <td className="border border-border-default px-3 py-2 text-left">
+    td: ({ children, style }) => (
+      <td
+        className="min-w-40 px-3 py-2 text-left align-top [overflow-wrap:break-word]"
+        style={{ textAlign: style?.textAlign }}
+      >
         <Typography as="span" className="text-content-secondary" variant="body-md">
           {children}
         </Typography>
@@ -190,13 +297,28 @@ export function MarkdownDocument({
   labels: labelsProp,
   renderLink,
   source,
+  sourceLines = false,
   headingOffset = 0,
 }: MarkdownDocumentProps) {
-  const labels = { ...defaultMarkdownDocumentLabels, ...labelsProp };
+  const { completedTask, incompleteTask, table, codeBlock } = {
+    ...defaultMarkdownDocumentLabels,
+    ...labelsProp,
+  };
+  // Stable renderer types preserve mounted links, selection and reading DOM on ordinary refresh.
+  const components = useMemo(
+    () =>
+      markdownComponents(
+        { completedTask, incompleteTask, table, codeBlock },
+        renderLink,
+        headingOffset,
+      ),
+    [completedTask, incompleteTask, table, codeBlock, renderLink, headingOffset],
+  );
   return (
     <div className={cn('w-full min-w-0 max-w-full [overflow-wrap:anywhere]', className)}>
       <ReactMarkdown
-        components={markdownComponents(labels, renderLink, headingOffset)}
+        components={components}
+        rehypePlugins={sourceLines ? [rehypeSourceLines] : []}
         remarkPlugins={[remarkGfm]}
       >
         {source}

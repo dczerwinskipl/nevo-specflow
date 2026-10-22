@@ -1,7 +1,5 @@
 import { Typography } from '@nevo/ui';
-import { DocumentDescription } from '../../../documents/description/DocumentDescription';
-import { markdownIntro } from '../../../documents/description/markdownIntro';
-import { DocumentContent } from '../../../documents/connected/DocumentContent';
+import { DocumentContent, DocumentDescription, markdownIntro } from '../../../documents';
 
 export interface SpecificationSummarySectionProps {
   readonly title: string;

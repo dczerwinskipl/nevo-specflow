@@ -40,10 +40,32 @@
   );
 }
 
+/*
+ * Stacked workspaces float the navigation row over the top of the scroll viewport. One expression
+ * owns where that row sits (--workspace-overlay-top) and the zone it covers
+ * (--workspace-overlay-inset-top = row top + control height + gap). The viewport turns the zone into
+ * scroll-padding-top, so hash anchors, scrollIntoView and focus scrolling never land under it.
+ * Descendants may read --workspace-overlay-inset-top (e.g. for scroll-margin-top).
+ */
+.mobile-workspace-scroll-area,
+.mobile-floating-navigation {
+  --workspace-overlay-top: max(0.75rem, env(safe-area-inset-top));
+}
+
+.mobile-workspace-scroll-area {
+  --workspace-overlay-inset-top: calc(
+    var(--workspace-overlay-top) + var(--spacing-control-height-default) + 0.5rem
+  );
+}
+
+.mobile-workspace-scroll {
+  scroll-padding-top: var(--workspace-overlay-inset-top);
+}
+
 .mobile-floating-navigation {
   position: absolute;
   z-index: 20;
-  top: max(0.75rem, env(safe-area-inset-top));
+  top: var(--workspace-overlay-top);
   left: max(0.75rem, env(safe-area-inset-left));
   right: max(0.75rem, env(safe-area-inset-right));
   display: flex;

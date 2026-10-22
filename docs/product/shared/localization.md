@@ -67,6 +67,38 @@ packages/specflow-ui/src/i18n/
 
 Do not add an i18n dependency to `@nevo/ui`.
 
+## Authoring SpecFlow UI copy
+
+- **Namespaces follow the owning feature**: `create.*` (Create flow), `documents.*` (Documents
+  explorer, editor, dialogs), `sessions.*`, `specification.*`, and so on. Shared words live in
+  `common.*`. Add a section per feature instead of growing a flat list.
+- **Components** call `useTranslation()`. Use interpolation (`{{name}}`) rather than string
+  concatenation, and `<Trans>` with named components (`<branch/>`) only when markup sits inside a
+  sentence. Do not put HTML in messages.
+- **Plurals** use i18next suffixes. Polish needs `_one`, `_few`, `_many` and `_other`; every plural
+  key defines all four forms in both catalogs (English repeats `other`).
+- **Pure modules** (policies, error mappers, view models) never import the i18n instance. They return
+  a `Message` (`message('create.workspace.errors.branchEmpty', { ... })` from `i18n/message`) or a
+  discriminated reason code, and the rendering component translates it with `useMessage()`.
+- **Server text is not UI copy.** The UI maps a Runtime error `code` to a catalogue key with a safe
+  fallback key and never displays the server message by default.
+- **Design-system strings**: Nevo UI keeps neutral English defaults; the product passes translated
+  labels through the component `labels` / `messages` props. A design-system API that needs a plain
+  string outside React (for example a Secondary screen `title`) uses `translateNow(key)` in a getter.
+- **Formatting** of dates and numbers uses the active language (`i18n.resolvedLanguage`, the language actually in use after fallback), never a fixed
+  locale.
+- **Terminology**: one concept has one rendering per language. The Git and workspace terms
+  (workspace, worktree, commit, branch, merge target) and their Polish forms are defined in
+  [Product vocabulary](./vocabulary.md); English stays the source of truth.
+- **Stories and tests** that assert text render in a fixed locale (`withLocale('pl')` decorator,
+  `polishText(message)` for policy messages).
+
+Guard rails: `i18n/catalog.test.ts` checks identical key sets, complete plural forms and that every
+literal key used in source exists in both catalogs; the local ESLint rule
+`specflow-i18n/no-hardcoded-copy` (`tools/eslint/no-hardcoded-copy.mjs`) rejects JSX text and
+copy-bearing attributes (`aria-label`, `title`, `placeholder`, `label`, ...) written as string
+literals in `packages/specflow-ui/src/**/*.tsx`.
+
 ## Locale resolution and persistence
 
 Initial locale resolution is deterministic:

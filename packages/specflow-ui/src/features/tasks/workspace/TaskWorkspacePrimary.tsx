@@ -2,12 +2,12 @@ import { Badge, Button, Icon, MarkdownDocument, Typography } from '@nevo/ui';
 import { ArrowLeft, ChevronDown, ChevronRight } from 'lucide-react';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
-import { WorkspaceSection } from '../../specs/workspace/sections/WorkspaceSection';
+import { WorkspaceSection } from '../../../shared/workspace-section';
 import { TaskWorkspaceMaterials } from './TaskWorkspaceMaterials';
 import { TaskWorkspaceSessions } from './TaskWorkspaceSessions';
 import { TaskWorkspaceDecision } from './TaskWorkspaceDecision';
 import { useTaskWorkspace, useWorkspaceScroll } from './TaskWorkspaceState';
-import { DocumentDescription } from '../../documents/description/DocumentDescription';
+import { DocumentDescription } from '../../documents';
 
 export function TaskWorkspacePrimary({
   onMaterial,

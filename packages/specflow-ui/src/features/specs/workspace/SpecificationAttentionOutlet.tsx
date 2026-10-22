@@ -4,7 +4,7 @@ import { useUiModules } from '../../../app/ui-modules/UiModulesProvider';
 import { specificationAttentionItems } from '../extensions/specificationAttentionItems';
 import { useWorkspaceRuntime } from './WorkspaceContext';
 import { AttentionSection } from './sections/AttentionSection';
-import type { SpecificationWorkspaceData } from './model';
+import type { SpecificationWorkspaceData } from '../read-model/model';
 
 /** Specification hosts the slot; domain modules supply data, actions and priority. */
 export function SpecificationAttentionOutlet({

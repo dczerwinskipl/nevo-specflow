@@ -1,4 +1,4 @@
-import { DocumentContent } from '../../documents/connected/DocumentContent';
+import { DocumentContent } from '../../documents';
 import { TaskDetails, type TaskDetailsProps } from './TaskDetails';
 import { useTaskResources } from './useTaskPages';
 

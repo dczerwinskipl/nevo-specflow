@@ -122,11 +122,13 @@ export const CollapsibleContent = forwardRef<
 >(function CollapsibleContent({ children, className, ...props }, ref) {
   const { showIndicator } = useCollapsibleVisualContext('Collapsible.Content');
 
+  // Only the block axis is clipped (the height animation): clipping the inline axis too would cut
+  // the hit area and focus ring of controls that sit flush with the panel edge.
   return (
     <AriaDisclosurePanel
       ref={ref}
       className={cn(
-        'h-[var(--disclosure-panel-height)] min-w-0 overflow-clip transition-[height] [transition-duration:var(--motion-duration-normal)] [transition-timing-function:var(--motion-ease-standard)] motion-reduce:transition-none',
+        'h-[var(--disclosure-panel-height)] min-w-0 overflow-x-visible overflow-y-clip transition-[height] [transition-duration:var(--motion-duration-normal)] [transition-timing-function:var(--motion-ease-standard)] motion-reduce:transition-none',
         className,
       )}
       {...props}

@@ -13,8 +13,12 @@ import {
 import type { SpecFlowEngine } from '../../application';
 import { GitCapabilityError } from '../../git/errors';
 import { createLocalGitClient, type LocalWorktreeFacts } from '../git/client';
-import { loadGitWorktreePolicy } from './config';
-import { resolveWorktreeBranch, validateBranchName } from './policy';
+import { effectiveWorktreesRoot, loadGitWorktreePolicy } from './config';
+import {
+  assertWorktreeTargetOutsideRepository,
+  resolveWorktreeBranch,
+  validateBranchName,
+} from './policy';
 import type { WorktreeEffect, WorktreePlan, WorktreePort } from './port';
 
 /**
@@ -24,7 +28,6 @@ import type { WorktreeEffect, WorktreePlan, WorktreePort } from './port';
 export function createGitWorktreePort(engine: SpecFlowEngine): WorktreePort {
   const home = engine.context.project.homeRoot;
   const git = createLocalGitClient(home);
-  const parent = join(dirname(home), basename(home) + '-worktrees');
 
   const assertRepository = async (): Promise<void> => {
     // Check the Git executable first so capability discovery can report an
@@ -56,10 +59,16 @@ export function createGitWorktreePort(engine: SpecFlowEngine): WorktreePort {
     if (
       !isAbsolute(path) ||
       resolve(path) !== path ||
-      !sameFilesystemPath(dirname(path), parent) ||
       !basename(path) ||
       basename(path).startsWith('.')
     ) {
+      throw new GitCapabilityError('WORKTREE_PATH_CONFLICT', 'Unsafe managed worktree target.');
+    }
+    // The parent folder is whatever was reserved (it may predate a later git.worktreesRoot
+    // change); it only has to stay outside the repository working tree and Git directory.
+    try {
+      assertWorktreeTargetOutsideRepository(home, project.gitCommonDir, path);
+    } catch {
       throw new GitCapabilityError('WORKTREE_PATH_CONFLICT', 'Unsafe managed worktree target.');
     }
     validateBranchName(plan.branch);
@@ -133,7 +142,8 @@ export function createGitWorktreePort(engine: SpecFlowEngine): WorktreePort {
         request.shortId,
         request.branchOverride,
       );
-      const targetPath = request.targetPath ?? join(parent, request.slug);
+      const targetPath =
+        request.targetPath ?? join(effectiveWorktreesRoot(engine.context, policy), request.slug);
       const baseRef = request.baseRefOverride ?? policy.baseRef;
       const baseCommit = await git.resolveCommit(baseRef);
       const result: WorktreePlan = {
@@ -168,6 +178,7 @@ export function createGitWorktreePort(engine: SpecFlowEngine): WorktreePort {
           'Git state changed after preflight.',
         );
       }
+      const parent = dirname(plan.targetPath);
       await mkdir(parent, { recursive: true });
       const stat = await lstat(parent);
       if (

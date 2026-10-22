@@ -30,6 +30,9 @@ export const WorkspaceTaskGroupSchema = Type.Object({
 export const WorkspaceDocumentSchema = Type.Object({
   id: IdSchema,
   title: Type.String(),
+  filename: Type.Optional(Type.String()),
+  required: Type.Optional(Type.Boolean()),
+  revision: Type.Optional(Type.String()),
   kind: Type.String(),
   summary: Type.Optional(Type.String()),
 });
@@ -92,7 +95,10 @@ const TaskCollectionSchema = Type.Object({
   total: Type.Integer({ minimum: 0 }),
   attention: Type.Array(WorkspaceAttentionSchema),
 });
-const DocumentCollectionSchema = Type.Object({ items: Type.Array(WorkspaceDocumentSchema) });
+const DocumentCollectionSchema = Type.Object({
+  items: Type.Array(WorkspaceDocumentSchema),
+  folders: Type.Optional(Type.Array(Type.String())),
+});
 const SessionCollectionSchema = Type.Object({
   items: Type.Array(WorkspaceSessionSchema),
   attention: Type.Array(WorkspaceAttentionSchema),
@@ -107,6 +113,8 @@ export const SpecificationWorkspaceResponseSchema = Type.Object({
   recommendedSessionId: Type.Optional(IdSchema),
   specification: Type.Object({
     id: IdSchema,
+    /** Optional human-facing Specification key (for example `UI-1234`). */
+    key: Type.Optional(Type.String()),
     title: Type.String(),
     summary: Type.String(),
     preparationState: Type.Union([

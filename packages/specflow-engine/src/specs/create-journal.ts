@@ -7,6 +7,7 @@ export {
   type NewWorktreeJournalTarget,
   type CreateJournalTarget,
   type CreateJournalFile,
+  type CreateCommitEvidence,
   type CreateJournal,
 } from './create/journal-model';
 export {
@@ -18,3 +19,8 @@ export {
   withCreateJournalLock,
   publishCreateJournal,
 } from './create/journal-store';
+export {
+  COMPLETED_OPERATION_JOURNAL_RETENTION_DAYS,
+  MAX_JOURNAL_REMOVALS_PER_SWEEP,
+  removeExpiredCompletedCreateJournals,
+} from './create/journal-retention';

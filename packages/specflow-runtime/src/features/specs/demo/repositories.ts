@@ -4,15 +4,17 @@ import type { SpecsOverviewRepository } from '../overview/repository/read-reposi
 import type { CurrentSpecRecord, ArchivedSpecRecord } from '../overview/repository/model';
 import type { SpecificationWorkspaceRepository } from '../workspace/repository';
 import { buildDemoTaskContribution } from '../../tasks';
-import { buildDemoSessionContribution } from '../../sessions';
-import { buildDemoDocumentManifest } from '../../documents';
+import { createDemoSessions, type DemoSessions } from '../../sessions';
+import { createDemoDocuments, type DemoDocuments } from '../../documents';
 import type { DemoCatalogue, DemoSpecification } from '../../demo-catalogue';
+import { createDemoState, type DemoState } from '../../../demo/state';
 
 type DemoSpec = DemoSpecification;
 
 function normalizeDemoSpec(record: CurrentSpecRecord | ArchivedSpecRecord): DemoSpec {
   return {
     id: record.id,
+    ...(record.key ? { key: record.key } : {}),
     title: record.title,
     progress: record.progress ?? { completed: 0, total: 0 },
     ...('currentExecutions' in record
@@ -50,6 +52,7 @@ function buildSpecification(record: DemoSpec): SpecificationReadModel {
     revision: 'demo-workspace-1',
     specification: {
       id: record.id,
+      ...(record.key ? { key: record.key } : {}),
       title: record.title,
       summary: record.title,
       preparationState:
@@ -72,13 +75,40 @@ function buildSpecification(record: DemoSpec): SpecificationReadModel {
   };
 }
 
-export function createDemoSpecsRepositories(): {
+/** The demo environment parts the read side needs; each section is delegated to its owner module. */
+export interface DemoSpecsRepositoriesDeps {
+  readonly state: DemoState;
+  readonly documents: Pick<DemoDocuments, 'contribution'>;
+  readonly sessions: Pick<DemoSessions, 'contribution'>;
+}
+
+export function createDemoSpecsRepositories(deps?: DemoSpecsRepositoriesDeps): {
   overviewRepository: SpecsOverviewRepository;
   workspaceRepository: SpecificationWorkspaceRepository;
   catalogue: DemoCatalogue;
   contributions: import('../workspace/repository').WorkspaceContributions;
 } {
-  const overviewRepository = createSampleSpecsOverviewRepository();
+  const state = deps?.state;
+  // Without an environment the read side serves the seeded catalogue only (empty state).
+  const empty = deps ? undefined : createDemoState();
+  const documents = deps?.documents ?? createDemoDocuments(empty!);
+  const sessions = deps?.sessions ?? createDemoSessions(empty!);
+  const seeded = createSampleSpecsOverviewRepository();
+  const overviewRepository: SpecsOverviewRepository = {
+    async readCurrent() {
+      const snapshot = await seeded.readCurrent();
+      const created = state?.specifications.size ?? 0;
+      return {
+        // The seeded revision is kept as is until something is created, so the packaged Runtime
+        // contract stays stable; every created specification then advances the revision.
+        revision: created ? snapshot.revision + '-' + created : snapshot.revision,
+        items: [...(state?.specifications.values() ?? [])]
+          .map((item) => item.record)
+          .concat([...snapshot.items]),
+      };
+    },
+    readArchive: () => seeded.readArchive(),
+  };
 
   async function find(specId: string): Promise<DemoSpec | undefined> {
     const [current, archive] = await Promise.all([
@@ -95,7 +125,20 @@ export function createDemoSpecsRepositories(): {
       async readSpecification(specId) {
         const record = await find(specId);
         if (!record) return null;
-        return buildSpecification(record);
+        const specification = buildSpecification(record);
+        const created = state?.specifications.get(specId);
+        return {
+          ...specification,
+          specification: {
+            ...specification.specification,
+            preparationState: created
+              ? created.documents.size
+                ? 'preparing'
+                : 'empty'
+              : specification.specification.preparationState,
+          },
+          actions: { ...specification.actions, startSession: { available: !!state } },
+        };
       },
     },
     contributions: {
@@ -106,15 +149,10 @@ export function createDemoSpecsRepositories(): {
           : { state: 'unavailable', reason: 'source_unavailable' };
       },
       async documents(specId) {
-        const record = await find(specId);
-        return record
-          ? { state: 'available', data: { items: buildDemoDocumentManifest(record) } }
-          : { state: 'unavailable', reason: 'source_unavailable' };
+        return documents.contribution(specId, find);
       },
       async sessions(specId) {
-        const record = await find(specId);
-        if (!record) return { section: { state: 'unavailable', reason: 'source_unavailable' } };
-        return buildDemoSessionContribution(record);
+        return sessions.contribution(specId, find);
       },
     },
     catalogue: {

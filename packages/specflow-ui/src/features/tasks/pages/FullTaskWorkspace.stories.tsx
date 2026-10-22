@@ -13,7 +13,7 @@ import { SpecificationWorkspace } from '../../specs/workspace/SpecificationWorks
 import { createSpecificationWorkspaceFixture } from '../../../../test-support/specs/workspace/fixtures';
 import { createTaskDetailFixture, type TaskScenario } from '../detail/taskDetail.test-support';
 import { taskKeys } from '../queries';
-import { mapFullTaskResponse } from '../model';
+import { mapFullTaskResponse } from '../read-model/model';
 import { SpecificationTaskPage } from './SpecificationTaskPage';
 import { useSpecificationTask } from '../useSpecificationTask';
 import { HttpClientError } from '@nevo/http-client';
@@ -426,24 +426,27 @@ const previewScrollContract: NonNullable<Story['play']> = async ({
   const restored = await canvas.findByRole('button', {
     name: 'Verification material 2',
   });
-  await new Promise<void>((resolve) =>
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+  // Restoration follows the host's navigation lifecycle; wait for the condition, not a frame count.
+  await waitFor(
+    () => {
+      let restoredOwner = restored.parentElement;
+      while (
+        restoredOwner &&
+        !(
+          /auto|scroll/.test(getComputedStyle(restoredOwner).overflowY) &&
+          restoredOwner.scrollHeight > restoredOwner.clientHeight + 1
+        )
+      )
+        restoredOwner = restoredOwner.parentElement;
+      if (!restoredOwner || Math.abs(restoredOwner.scrollTop - savedTop) > 2)
+        throw new Error(
+          `Back must restore the exact viewport position: ${savedTop} -> ${restoredOwner?.scrollTop}`,
+        );
+      if (canvasElement.ownerDocument.activeElement !== restored)
+        throw new Error('Back must restore resource focus');
+    },
+    { timeout: 5000 },
   );
-  let restoredOwner = restored.parentElement;
-  while (
-    restoredOwner &&
-    !(
-      /auto|scroll/.test(getComputedStyle(restoredOwner).overflowY) &&
-      restoredOwner.scrollHeight > restoredOwner.clientHeight + 1
-    )
-  )
-    restoredOwner = restoredOwner.parentElement;
-  if (!restoredOwner || Math.abs(restoredOwner.scrollTop - savedTop) > 2)
-    throw new Error(
-      `Back must restore the exact viewport position: ${savedTop} -> ${restoredOwner?.scrollTop}`,
-    );
-  if (canvasElement.ownerDocument.activeElement !== restored)
-    throw new Error('Back must restore resource focus');
   const returned = canvasElement.querySelector<HTMLElement>('[data-task-details="preview"]');
   if (!returned) throw new Error('Expected preview after Back');
   const less = within(returned).getAllByRole('button', { name: 'Show less' });

@@ -1,3 +1,5 @@
+import { join, resolve } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -6,22 +8,43 @@ import {
   normalizeBaseRef,
   parseGitWorktreePolicy,
   resolveWorktreeBranch,
+  resolveWorktreesRoot,
+  assertWorktreeTargetOutsideRepository,
   validateBaseRef,
   validateBranchName,
   validateBranchPattern,
 } from '../src/version-control/worktrees/policy';
 
 describe('Version Control worktree policy (VC01)', () => {
+  it('defaults to the git-flavoured feature/{slug} pattern', () => {
+    expect(DEFAULT_BRANCH_PATTERN).toBe('feature/{slug}');
+    const policy = parseGitWorktreePolicy({ git: { enabled: true } });
+    expect(resolveWorktreeBranch(policy, 'my-spec', '12345678')).toBe('feature/my-spec');
+  });
+
+  it.each(['feature/{slug}', 'feature/{slug}-{shortId}', 'spec/{shortId}', '{slug}'])(
+    'accepts pattern %s with {shortId} optional',
+    (pattern) => {
+      expect(() => validateBranchPattern(pattern)).not.toThrow();
+    },
+  );
+
+  it('rejects a static pattern that would collide on every create', () => {
+    expect(() => validateBranchPattern('feature/static')).toThrow();
+  });
+
   it('keeps the legacy defaults without worktrees configuration', () => {
     expect(parseGitWorktreePolicy({ git: { enabled: true } })).toEqual({
       enabled: true,
       branchPattern: DEFAULT_BRANCH_PATTERN,
       baseRef: DEFAULT_BASE_REF,
+      commits: { protectedBranches: [] },
     });
     expect(parseGitWorktreePolicy({})).toEqual({
       enabled: false,
       branchPattern: DEFAULT_BRANCH_PATTERN,
       baseRef: DEFAULT_BASE_REF,
+      commits: { protectedBranches: [] },
     });
   });
 
@@ -66,7 +89,6 @@ describe('Version Control worktree policy (VC01)', () => {
   });
 
   it.each([
-    '{slug}',
     'feature/{slug}-{unknown}',
     'feature/{shortId}-{shortId}',
     'feature/{slug-{shortId}',
@@ -109,6 +131,125 @@ describe('Version Control worktree policy (VC01)', () => {
     ]) {
       expect(() => parseGitWorktreePolicy(project)).toThrow();
     }
-    expect(() => parseGitWorktreePolicy({ git: { enabled: true } }, { git: {} })).toThrow();
+    expect(() => parseGitWorktreePolicy({ git: { enabled: true } }, { git: {} })).not.toThrow();
+    for (const local of [
+      { git: { enabled: true } },
+      { git: { branchPattern: 'x/{slug}' } },
+      { git: { worktreesRoot: 17 } },
+      { git: { worktreesRoot: '' } },
+      { git: 'nope' },
+    ]) {
+      expect(() => parseGitWorktreePolicy({ git: { enabled: true } }, local)).toThrow();
+    }
+  });
+
+  describe('git.worktreesRoot (workstation-local)', () => {
+    const home = resolve('/work/repo');
+    const common = join(home, '.git');
+
+    it('is read only from the local config and kept out of the committed policy', () => {
+      const policy = parseGitWorktreePolicy(
+        { git: { enabled: true } },
+        { git: { worktreesRoot: '../elsewhere' } },
+      );
+      expect(policy.worktreesRoot).toBe('../elsewhere');
+      expect(parseGitWorktreePolicy({ git: { enabled: true } }).worktreesRoot).toBeUndefined();
+      expect(() =>
+        parseGitWorktreePolicy({ git: { enabled: true, worktreesRoot: '/x' } }),
+      ).toThrow();
+    });
+
+    it('defaults to <repo>-worktrees next to the repository', () => {
+      expect(resolveWorktreesRoot(home, common, undefined)).toBe(resolve('/work/repo-worktrees'));
+    });
+
+    it('resolves a relative root against the repository and accepts an absolute one', () => {
+      expect(resolveWorktreesRoot(home, common, '../trees')).toBe(resolve('/work/trees'));
+      expect(resolveWorktreesRoot(home, common, resolve('/abs/trees'))).toBe(resolve('/abs/trees'));
+    });
+
+    it.each(['.', 'inside', '.git/trees', '.git', 'a/../b'])(
+      'rejects %s inside the working tree or .git',
+      (value) => {
+        expect(() => resolveWorktreesRoot(home, common, value)).toThrow();
+      },
+    );
+
+    it('rejects a root inside a Git directory located outside the working tree', () => {
+      const elsewhere = resolve('/work/gitdirs/repo.git');
+      expect(() => resolveWorktreesRoot(home, elsewhere, join(elsewhere, 'trees'))).toThrow();
+    });
+
+    it('checks a persisted target independently of the current configuration', () => {
+      expect(() =>
+        assertWorktreeTargetOutsideRepository(home, common, resolve('/old/root/slug')),
+      ).not.toThrow();
+      expect(() =>
+        assertWorktreeTargetOutsideRepository(home, common, join(home, 'slug')),
+      ).toThrow();
+    });
+  });
+});
+
+describe('git.commits policy (protected and allowed branches)', () => {
+  const parse = (commits: unknown, enabled = true, local?: unknown) =>
+    parseGitWorktreePolicy({ git: { enabled, commits } }, local);
+
+  it('protects nothing by default', () => {
+    expect(parseGitWorktreePolicy({ git: { enabled: true } }).commits).toEqual({
+      protectedBranches: [],
+    });
+    expect(parseGitWorktreePolicy({}).commits).toEqual({ protectedBranches: [] });
+    expect(parse({}).commits).toEqual({ protectedBranches: [] });
+  });
+
+  it('parses protected and allowed patterns, trimmed and without an empty allow-list', () => {
+    expect(
+      parse({ protectedBranches: [' main ', 'release/**'], allowedBranches: ['feature/**'] })
+        .commits,
+    ).toEqual({ protectedBranches: ['main', 'release/**'], allowedBranches: ['feature/**'] });
+    expect(parse({ protectedBranches: ['main'], allowedBranches: [] }).commits).toEqual({
+      protectedBranches: ['main'],
+    });
+  });
+
+  it('stays syntax-validated while Git is disabled', () => {
+    expect(parse({ protectedBranches: ['main'] }, false).commits.protectedBranches).toEqual([
+      'main',
+    ]);
+    expect(() => parse({ protectedBranches: ['a b'] }, false)).toThrow(/invalid branch pattern/);
+  });
+
+  it.each([
+    ['a scalar block', 'main'],
+    ['an unknown key', { protectedBranches: [], other: [] }],
+    ['a non-list', { protectedBranches: 'main' }],
+    ['a non-string entry', { protectedBranches: [1] }],
+    ['an empty entry', { protectedBranches: [''] }],
+    ['a refs/ prefix', { protectedBranches: ['refs/heads/main'] }],
+    ['a leading slash', { protectedBranches: ['/main'] }],
+    ['whitespace inside', { protectedBranches: ['ma in'] }],
+    ['a literal that is no branch name', { protectedBranches: ['-main'] }],
+    ['an unbalanced set', { protectedBranches: ['rel[0-9'] }],
+    ['a duplicate', { protectedBranches: ['main', ' main'] }],
+    [
+      'an entry that is both protected and allowed',
+      {
+        protectedBranches: ['main'],
+        allowedBranches: ['main'],
+      },
+    ],
+    ['too many entries', { protectedBranches: Array.from({ length: 51 }, (_, i) => 'b' + i) }],
+  ])('rejects %s with GIT_POLICY_INVALID', (_name, commits) => {
+    expect(() => parse(commits)).toThrow(expect.objectContaining({ code: 'GIT_POLICY_INVALID' }));
+  });
+
+  it('cannot be set from the workstation-local configuration', () => {
+    expect(() =>
+      parseGitWorktreePolicy(
+        { git: { enabled: true } },
+        { git: { commits: { protectedBranches: ['main'] } } },
+      ),
+    ).toThrow(/worktreesRoot/);
   });
 });

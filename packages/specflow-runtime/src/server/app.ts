@@ -17,27 +17,28 @@ import type { RuntimeConfig } from '../config/types';
 import {
   createSessionsFeature,
   SessionCapabilities,
-  createDemoSessionReferences,
   type SessionReferenceOwner,
 } from '../features/sessions';
-import {
-  createTasksFeature,
-  createDemoTaskSources,
-  type TasksFeatureDependencies,
-} from '../features/tasks';
-import {
-  createDocumentsFeature,
-  createDemoDocumentSource,
-  type DocumentsFeatureDependencies,
-} from '../features/documents';
+import { createTasksFeature, type TasksFeatureDependencies } from '../features/tasks';
+import { createDocumentsFeature, type DocumentsFeatureDependencies } from '../features/documents';
 import { createSettingsFeature, SettingsCapabilities } from '../features/settings';
 import {
   createSpecsFeature,
-  createDemoSpecsRepositories,
   SpecCapabilities,
   ProjectGitCapabilities,
   type SpecsFeatureDependencies,
 } from '../features/specs';
+import {
+  createDemoEnvironment,
+  createDemoRuntime,
+  registerDemoRoutes,
+  type DemoEnvironment,
+} from '../demo';
+import {
+  createOperationProgressRegistry,
+  type OperationEventsStreamOptions,
+  type OperationProgressRegistry,
+} from '../features/operations';
 import type { RuntimeFeature } from '../features/runtime-feature';
 import { registerRuntimeErrorHandler } from './error-handler';
 import { registerEndpointPolicy } from './endpoint-policy';
@@ -46,13 +47,28 @@ import { isRequestAtPublicOrigin } from './origin';
 import { registerRuntimeWebApp, type RuntimeWebApp } from './web-app';
 
 export interface RuntimeAppDependencies {
+  readonly demoEnvironment?: DemoEnvironment;
   readonly dataMode?: 'project' | 'demo';
+  /** Enable the demo scenario seam (default off; demo data mode only, ignored otherwise). */
+  readonly demoScenarios?: boolean;
   readonly tasks?: TasksFeatureDependencies;
   readonly documents?: DocumentsFeatureDependencies;
   readonly sessions?: { references?: SessionReferenceOwner };
   readonly auth?: AuthFeatureDependencies;
   readonly specs?: SpecsFeatureDependencies;
   readonly webApp?: RuntimeWebApp;
+  /** Generic long-running operation progress (SSE). Injectable for tests. */
+  readonly operations?: {
+    readonly registry?: OperationProgressRegistry;
+    readonly heartbeatMs?: number;
+    readonly waitMs?: number;
+    readonly maxStreams?: number;
+    readonly maxStreamsPerPrincipal?: number;
+    readonly maxWaiting?: number;
+    /** Injectable clock and idle threshold of the operation status derivation (tests). */
+    readonly now?: () => Date;
+    readonly staleAfterMs?: number;
+  };
 }
 
 export const RUNTIME_FASTIFY_OPTIONS = {
@@ -90,10 +106,41 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   await registerEndpointPolicy(app, config.server.rateLimit);
 
   const mode = dependencies.dataMode ?? 'project';
-  const demo = mode === 'demo' ? createDemoSpecsRepositories() : undefined;
-  const sessionReferences =
-    dependencies.sessions?.references ??
-    (demo ? createDemoSessionReferences(demo.catalogue) : undefined);
+  const demo =
+    mode === 'demo'
+      ? createDemoRuntime(
+          dependencies.demoEnvironment ??
+            createDemoEnvironment({
+              showcase: true,
+              scenarios: dependencies.demoScenarios === true,
+            }),
+          {
+            references: dependencies.sessions?.references,
+            documentSource: dependencies.documents?.source,
+          },
+        )
+      : undefined;
+  const progressRegistry = dependencies.operations?.registry ?? createOperationProgressRegistry();
+  const progressStream: OperationEventsStreamOptions = {
+    ...(dependencies.operations?.heartbeatMs !== undefined
+      ? { heartbeatMs: dependencies.operations.heartbeatMs }
+      : {}),
+    ...(dependencies.operations?.waitMs !== undefined
+      ? { waitMs: dependencies.operations.waitMs }
+      : {}),
+    ...(dependencies.operations?.maxStreams !== undefined
+      ? { maxStreams: dependencies.operations.maxStreams }
+      : {}),
+    ...(dependencies.operations?.maxStreamsPerPrincipal !== undefined
+      ? { maxStreamsPerPrincipal: dependencies.operations.maxStreamsPerPrincipal }
+      : {}),
+    ...(dependencies.operations?.maxWaiting !== undefined
+      ? { maxWaiting: dependencies.operations.maxWaiting }
+      : {}),
+  };
+  const sessionReferences: SessionReferenceOwner | undefined =
+    demo?.sessionReferences ?? dependencies.sessions?.references;
+  const documentSource = demo?.documentSource ?? dependencies.documents?.source;
   const productFeatures: readonly RuntimeFeature[] = [
     createSpecsFeature({
       ...(config.specs ? { config: config.specs } : {}),
@@ -103,17 +150,28 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
         workspaceRepository: dependencies.specs?.workspaceRepository ?? demo?.workspaceRepository,
         contributions: dependencies.specs?.contributions ?? demo?.contributions,
         sessions: sessionReferences,
+        // The demo Runtime serves its own Create routes (and events route) below.
+        ...(demo
+          ? {}
+          : {
+              progress: {
+                registry: progressRegistry,
+                stream: progressStream,
+                ...(dependencies.operations?.now ? { now: dependencies.operations.now } : {}),
+                ...(dependencies.operations?.staleAfterMs !== undefined
+                  ? { staleAfterMs: dependencies.operations.staleAfterMs }
+                  : {}),
+              },
+            }),
       },
     }),
     createTasksFeature({
-      ...(demo ? createDemoTaskSources(demo.catalogue) : {}),
+      ...(demo ? demo.taskSources : {}),
       ...dependencies.tasks,
       sessions: dependencies.tasks?.sessions ?? sessionReferences,
     }),
     createDocumentsFeature({
-      source:
-        dependencies.documents?.source ??
-        (demo ? createDemoDocumentSource(demo.catalogue) : undefined),
+      source: documentSource,
     }),
     createSessionsFeature(),
     createSettingsFeature(),
@@ -148,6 +206,8 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   for (const feature of productFeatures) {
     await feature.register?.(app);
   }
+
+  if (demo) registerDemoRoutes(app, demo, { registry: progressRegistry, stream: progressStream });
 
   if (dependencies.webApp) {
     registerRuntimeWebApp(app, dependencies.webApp);

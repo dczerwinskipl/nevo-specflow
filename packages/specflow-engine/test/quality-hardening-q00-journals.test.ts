@@ -51,7 +51,7 @@ describe('Q00 Create journal current-format acceptance baseline', () => {
       target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
     });
     const original: CreateJournal = {
-      version: 2,
+      version: 1,
       projectId: engine.context.project.projectId,
       operationId: randomUUID(),
       requestIntent,
@@ -69,13 +69,23 @@ describe('Q00 Create journal current-format acceptance baseline', () => {
       files: scaffold.files.map(({ relativePath, sha256 }) => ({ relativePath, sha256 })),
     };
 
+    // The commit stages exist only for a journal that pins commit evidence at reservation.
+    const commitEvidence = (stage: string) => ({
+      required: true as const,
+      branch: 'main',
+      parentHead: 'a'.repeat(40),
+      ...(stage === 'commit-written' ? { commitSha: 'b'.repeat(40) } : {}),
+    });
     for (const stage of CREATE_STAGES) {
-      const value = { ...original, stage };
+      const needsCommit = stage === 'commit-writing' || stage === 'commit-written';
+      const value = needsCommit
+        ? { ...original, stage, commit: commitEvidence(stage) }
+        : { ...original, stage };
       expect(parseCreateJournal(engine.context, value, original.operationId)).toEqual(value);
     }
 
     const rejected: readonly [string, unknown][] = [
-      ['version 1', { ...original, version: 1 }],
+      ['version 2', { ...original, version: 2 }],
       ['foreign Project Home', { ...original, projectId: randomUUID() }],
       ['forged fingerprint', { ...original, inputFingerprint: 'a'.repeat(64) }],
       [

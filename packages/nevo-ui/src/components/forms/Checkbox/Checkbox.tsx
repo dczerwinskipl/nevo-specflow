@@ -8,6 +8,7 @@ import {
 } from 'react';
 import { cn } from '../../../lib';
 import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
+import { hitAreaBlockClassName, hitAreaClassName } from '../../../design-system/interactionRecipes';
 import { Icon } from '../../foundations/Icon';
 import { useFieldControl } from '../Field';
 
@@ -55,7 +56,8 @@ export const Checkbox = forwardRef<ComponentRef<typeof CheckboxPrimitive.Root>, 
         checked={state}
         defaultChecked={defaultChecked}
         className={cn(
-          'inline-flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-control-inline border border-border-default bg-surface-control text-content-on-primary outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring',
+          hitAreaClassName,
+          'inline-flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-control-inline border border-border-control bg-surface-control text-content-on-primary outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring',
           'data-[state=checked]:border-action-primary data-[state=checked]:bg-action-primary data-[state=indeterminate]:border-action-primary data-[state=indeterminate]:bg-action-primary',
           'disabled:cursor-not-allowed disabled:border-border-subtle disabled:bg-surface-subtle disabled:opacity-60',
           className,
@@ -102,7 +104,7 @@ export function CheckboxField({
   const describedBy = [ariaDescribedBy, descriptionId].filter(Boolean).join(' ') || undefined;
 
   return (
-    <div className={cn('flex items-start gap-2.5', disabled && 'opacity-60', fieldClassName)}>
+    <div className={cn('flex items-start gap-2.5', fieldClassName)}>
       <Checkbox
         {...props}
         aria-describedby={describedBy}
@@ -114,8 +116,11 @@ export function CheckboxField({
         <label
           htmlFor={id}
           className={cn(
-            'block text-body-sm text-content-primary',
-            disabled ? 'cursor-not-allowed' : 'cursor-pointer',
+            hitAreaBlockClassName,
+            'block text-body-sm',
+            disabled
+              ? 'cursor-not-allowed text-content-muted'
+              : 'cursor-pointer text-content-primary',
           )}
         >
           {label}

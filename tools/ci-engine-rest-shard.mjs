@@ -36,7 +36,7 @@ const allFiles = discover(testRoot).sort();
 if (!allFiles.includes(hot)) throw new Error('Pinned hot test file is missing from the suite.');
 const files = allFiles.filter((name) => name !== hot);
 
-// Historical durations in seconds from PR #53 Windows run 39288746460.
+// Historical durations in seconds from the Windows run 39288746460 of the Create branch.
 // New test files are discovered automatically and assigned a conservative weight.
 const known = {
   'close-sigkill': 742,

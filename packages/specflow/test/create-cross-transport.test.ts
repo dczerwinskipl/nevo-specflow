@@ -284,7 +284,12 @@ describe('E2.T05 — real HTTP and offline CLI share one Engine authority', () =
     roots.push(dirname(workspaceRoot));
     expect(workspaceRoot).not.toBe(root);
     expect(git(root, 'rev-parse', 'HEAD')).toBe(before);
-    expect(git(workspaceRoot, 'rev-parse', 'HEAD')).toBe(before);
+    // Create commits its one scaffold commit on the new branch, based on the primary HEAD.
+    expect(git(workspaceRoot, 'rev-parse', 'HEAD~1')).toBe(before);
+    expect(git(workspaceRoot, 'diff', '--name-only', 'HEAD~1', 'HEAD')).toContain(
+      created.relativeManifestPath,
+    );
+    expect(git(workspaceRoot, 'status', '--porcelain')).toBe('');
     expect(git(root, 'worktree', 'list', '--porcelain').match(/worktree /gu)).toHaveLength(2);
 
     const linkedEngine = await openSpecFlowEngine({ cwd: workspaceRoot });
@@ -377,16 +382,19 @@ describe('E2.T07 — live canonical refresh', () => {
       created.relativeManifestPath,
       'specs/active/' + created.slug + '/overview.md',
     );
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'commit canonical Specification before Close',
-    );
+    // Create commits the scaffold itself when Git is enabled; commit by hand only what is still staged.
+    if (git(root, 'diff', '--cached', '--name-only') !== '') {
+      git(
+        root,
+        '-c',
+        'user.name=SpecFlow Test',
+        '-c',
+        'user.email=test@example.invalid',
+        'commit',
+        '-qm',
+        'commit canonical Specification before Close',
+      );
+    }
     const runtime = await startRuntime({
       projectRoot: root,
       projectConfigPath: configPath,

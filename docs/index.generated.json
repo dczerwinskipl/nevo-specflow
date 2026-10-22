@@ -1776,6 +1776,36 @@
       ]
     },
     {
+      "id": "adr.0013-engine-owned-commits-and-protected-branches",
+      "type": "adr",
+      "title": "Engine-owned scoped commits and protected branches",
+      "status": "current",
+      "file": "docs/architecture/decisions/0013-engine-owned-commits-and-protected-branches.md",
+      "read_when": [],
+      "summary": "When Git is enabled, Specification Create commits its scaffold through one path-limited Engine commit capability that never commits on branches the project protects. Protection comes only from committed project configuration (git.commits); with Git disabled none of this applies.",
+      "related": [
+        "architecture.runtime.specflow-lifecycle",
+        "reference.configuration.specflow-git-worktrees",
+        "reference.api.specflow-specification-operations",
+        "engineering.shared.specflow-git-recovery"
+      ]
+    },
+    {
+      "id": "adr.0014-feature-owned-operation-lists",
+      "type": "adr",
+      "title": "Feature-owned operation lists over a shared operation model",
+      "status": "current",
+      "file": "docs/architecture/decisions/0014-feature-owned-operation-lists.md",
+      "read_when": [],
+      "summary": "Operations are a shared entity (model, journal and registry index, per-kind adapters) read through feature-owned, read-only list routes registered by one helper. Specifications exposes GET /api/specs/operations, authorized by spec view; status comes from one documented table; freshness is by polling with ETag; there is no global operations index.",
+      "related": [
+        "reference.api.specs-operations-list",
+        "reference.api.operation-progress",
+        "engineering.shared.operation-progress",
+        "adr.0013-engine-owned-commits-and-protected-branches"
+      ]
+    },
+    {
       "id": "design-system.implementation.library-packaging",
       "type": "engineering",
       "title": "UI library packaging boundary",
@@ -2245,6 +2275,25 @@
         "engineering.shared.code-organization",
         "engineering.shared.async-and-lifecycle",
         "engineering.shared.testing"
+      ]
+    },
+    {
+      "id": "engineering.shared.operation-progress",
+      "type": "engineering",
+      "title": "Adding live progress to a long-running operation",
+      "status": "current",
+      "file": "docs/engineering/shared/operation-progress.md",
+      "read_when": [
+        "an operation can run for seconds or minutes and the UI should show its steps",
+        "adding a kind to the operation progress stream",
+        "consuming operation progress in the UI",
+        "listing the running operations of a feature (the operations panel)"
+      ],
+      "summary": "How the generic operation progress mechanism is layered (contracts registry, Runtime broadcaster and route helper, UI port, hook and checklist), the operation list and its panel above a feature's list, and a recipe to add progress to another operation: one feature route plus an adapter.",
+      "related": [
+        "reference.api.operation-progress",
+        "engineering.shared.async-and-lifecycle",
+        "engineering.shared.effects-and-io"
       ]
     },
     {
@@ -4581,6 +4630,38 @@
       ]
     },
     {
+      "id": "ideas.specflow-ui.screens.specification-creation",
+      "type": "product",
+      "title": "Specification creation, Documents and Session UX redesign",
+      "status": "draft",
+      "file": "docs/ideas/specflow-ui/screens/specification-creation-ui-spec.md",
+      "read_when": [
+        "reviewing Specification creation and manual or AI preparation in the demo",
+        "reviewing the Documents explorer and editor interactions"
+      ],
+      "summary": "Owner-approved Create and Documents contract of the bounded demo: workflow-led single-column creation, first-session configuration, branch/worktree choice, preview-first documents in a larger Secondary, and folder-context inline file operations through bounded Runtime demo capabilities.",
+      "related": [
+        "ideas.specflow-ui.screens.specs-overview",
+        "ideas.specflow-ui.navigation-route-model",
+        "product.specflow.ui.interaction-model",
+        "product.specflow.ui.ai-session-ux",
+        "product.specflow.specification-creation",
+        "reference.api.specification-creation-demo",
+        "design-system.principles.system-boundary"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui"
+      ],
+      "tags": [
+        "specification",
+        "session",
+        "creation",
+        "worktree",
+        "mock"
+      ]
+    },
+    {
       "id": "ideas.specflow-ui.screens.specification-workspace",
       "type": "product",
       "title": "Specification UI spec",
@@ -4842,6 +4923,7 @@
       "summary": "User-facing E2 Create choices and recovery wording without inferred future Git or workflow behavior.",
       "related": [
         "reference.api.specflow-specification-operations",
+        "reference.api.operation-progress",
         "architecture.runtime.specflow-lifecycle"
       ],
       "scope": "specflow",
@@ -4989,6 +5071,30 @@
       ]
     },
     {
+      "id": "reference.api.operation-progress",
+      "type": "reference",
+      "title": "Operation progress events (SSE) HTTP reference",
+      "status": "current",
+      "file": "docs/reference/api/operation-progress.md",
+      "read_when": [
+        "showing live progress of a long-running operation",
+        "adding a new operation kind to the progress stream",
+        "changing the progress event schemas or the events endpoint"
+      ],
+      "summary": "Server-Sent Events stream of long-running operations: per-feature routes over one shared mechanism, event model, step vocabulary per operation kind, replay, waiting and fallback rules.",
+      "related": [
+        "reference.api.specflow-specification-operations",
+        "engineering.shared.operation-progress",
+        "product.specflow.specification-creation"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "ui"
+      ]
+    },
+    {
       "id": "reference.api.specflow-specification-operations",
       "type": "reference",
       "title": "Specification Create and Close HTTP reference",
@@ -5002,13 +5108,40 @@
       "related": [
         "architecture.runtime.specflow-lifecycle",
         "product.specflow.specification-creation",
-        "reference.configuration.specflow-git-worktrees"
+        "reference.configuration.specflow-git-worktrees",
+        "reference.api.operation-progress"
       ],
       "scope": "specflow",
       "areas": [
         "runtime",
         "server",
         "security"
+      ]
+    },
+    {
+      "id": "reference.api.specification-creation-demo",
+      "type": "reference",
+      "title": "Specification creation demo integration contract",
+      "status": "current",
+      "file": "docs/reference/api/specification-creation-demo.md",
+      "read_when": [
+        "implementing or testing the temporary Specification creation demo"
+      ],
+      "summary": "Temporary Runtime-owned in-memory integration for creating demonstration Specifications, documents and allocated Session placeholders without real provider or worktree execution.",
+      "related": [
+        "reference.api.specification-workspace",
+        "product.specflow.ui.data-loading-and-integration",
+        "ideas.specflow-ui.screens.specification-creation"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "ui",
+        "runtime"
+      ],
+      "tags": [
+        "demo",
+        "specification",
+        "session"
       ]
     },
     {
@@ -5030,6 +5163,32 @@
       ]
     },
     {
+      "id": "reference.api.specs-operations-list",
+      "type": "reference",
+      "title": "Specifications operation list HTTP API",
+      "status": "current",
+      "file": "docs/reference/api/specs-operations-list.md",
+      "read_when": [
+        "showing the background operations above the Specifications list",
+        "adding a new operation kind or a new feature-owned operation list",
+        "changing the operation list schema, retention or status derivation"
+      ],
+      "summary": "GET /api/specs/operations lists Specification Create operations from the Engine journals and the live progress registry: schema, status table, retention, authorization, ETag, query, error codes and the demo mirror.",
+      "related": [
+        "reference.api.operation-progress",
+        "reference.api.specflow-specification-operations",
+        "reference.api.specs-overview",
+        "engineering.shared.operation-progress",
+        "adr.0014-feature-owned-operation-lists"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "ui"
+      ]
+    },
+    {
       "id": "reference.api.specs-overview",
       "type": "reference",
       "title": "Specs Overview HTTP API",
@@ -5042,6 +5201,7 @@
       "summary": "Typed Current/Archive Specs Overview read endpoint with feature-owned classification, real session authentication, and per-item spec.view filtering.",
       "related": [
         "architecture.runtime.authorization",
+        "reference.api.specs-operations-list",
         "product.specflow.ui.application-architecture"
       ]
     },

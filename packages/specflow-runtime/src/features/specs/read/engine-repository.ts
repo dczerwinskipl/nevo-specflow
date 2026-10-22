@@ -1,6 +1,6 @@
 import {
   readCanonicalSpecDocument,
-  resolveSpecification,
+  resolveSpecificationForRead,
   type DiscoveredSpecification,
   type SpecFlowEngine,
 } from '@nevo/specflow-engine';
@@ -36,7 +36,7 @@ export interface EngineSpecsReadRepository {
 }
 
 export function createEngineSpecsReadRepository(engine: SpecFlowEngine): EngineSpecsReadRepository {
-  const resolve = (specId: string) => resolveSpecification(engine, specId);
+  const resolve = (specId: string) => resolveSpecificationForRead(engine, specId);
 
   return {
     async readWorkspace(specId) {

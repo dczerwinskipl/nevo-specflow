@@ -27,11 +27,20 @@ export const typographyVariantClasses = {
   'code-md': 'font-mono text-code-md',
 } as const satisfies Record<TypographyVariant, string>;
 
+// `code-md` owns its own (monospace) family; `font-sans` must not also be applied or the
+// utility order lets sans win over mono.
+const sansTypographyVariants = Object.keys(typographyVariantClasses).filter(
+  (variant) => variant !== 'code-md',
+);
+
 export const typographyVariants = tv({
-  base: 'font-sans',
+  base: '',
   variants: {
     variant: typographyVariantClasses,
   },
+  compoundVariants: [
+    { variant: sansTypographyVariants as TypographyVariant[], class: 'font-sans' },
+  ],
   defaultVariants: { variant: 'body-md' },
 });
 

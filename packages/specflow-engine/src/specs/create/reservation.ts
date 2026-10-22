@@ -15,6 +15,8 @@ import {
   type ExplicitIntegrationPreflight,
 } from './integration-destination';
 import { openVersionControl } from '../../version-control';
+import { readProjectGitPolicy } from '../../version-control/worktrees/config';
+import { admitExistingCreateCommit, admitNewWorktreeCreateCommit } from '../create-commit';
 import { fingerprintCreateClientIntent, type CreateClientIntent } from '../create-intent';
 import {
   CreateOperationError,
@@ -24,6 +26,7 @@ import {
   withCreateJournalLock,
   type CreateJournal,
 } from '../create-journal';
+import { removeExpiredCompletedCreateJournals } from './journal-retention';
 import { discoverSpecificationsForCreateAdmission } from '../discovery';
 import {
   createSpecificationScaffold,
@@ -54,6 +57,8 @@ export async function reserveCreateOperation(
         )
       : undefined;
   return withCreateJournalLock(engine.context, async () => {
+    // Retention sweep of settled journals under the reservation lock: bounded, Git-free, best effort.
+    await removeExpiredCompletedCreateJournals(engine.context, { keepOperationId: operationId });
     const operations = await listCreateJournals(engine.context);
     const previous = operations.find((item) => item.operationId === operationId);
     if (previous) {
@@ -85,6 +90,7 @@ export async function reserveCreateOperation(
       title: intent.title,
       created,
       goal: intent.goal,
+      slug: intent.slug,
     });
     if (
       canonical.some(
@@ -95,6 +101,10 @@ export async function reserveCreateOperation(
       throw new CreateOperationError('CREATE_CONFLICT', 'Specification slug is already reserved.');
     }
 
+    // With Git enabled the Engine commits the scaffold: every refusal below happens BEFORE a journal,
+    // a file or a Git effect exists. With Git disabled none of this runs.
+    const policy = (await readProjectGitPolicy(engine.context)).policy;
+    let commit: CreateJournal['commit'];
     let target: CreateJournal['target'];
     let gitPlan: { readonly projectRoot: string; readonly gitInstanceId: string } | undefined;
     if (intent.target.kind === 'existing') {
@@ -137,6 +147,19 @@ export async function reserveCreateOperation(
               ' canonical Specifications, including reserved Creates. Select another worktree.',
           );
         }
+      }
+      if (policy.enabled) {
+        commit = {
+          required: true,
+          branch: await admitExistingCreateCommit(engine, {
+            root: inspected.root,
+            paths: scaffold.files.map((file) => file.relativePath),
+            operationId,
+            slug: scaffold.slug,
+            title: intent.title,
+            specId,
+          }),
+        };
       }
       target = {
         kind: 'existing',
@@ -189,6 +212,8 @@ export async function reserveCreateOperation(
           'Git branch or worktree path is reserved.',
         );
       }
+      admitNewWorktreeCreateCommit(policy.commits, plan.branch);
+      commit = { required: true, branch: plan.branch };
       target = {
         kind: 'new-worktree',
         workspaceId: randomUUID(),
@@ -205,7 +230,7 @@ export async function reserveCreateOperation(
     }
 
     const record: CreateJournal = {
-      version: 2,
+      version: 1,
       projectId: engine.context.project.projectId,
       operationId,
       inputFingerprint: fingerprintCreateClientIntent(intent),
@@ -214,10 +239,12 @@ export async function reserveCreateOperation(
       slug: scaffold.slug,
       title: intent.title,
       created,
+      startedAt: new Date().toISOString(),
       ...(intent.goal ? { goal: intent.goal } : {}),
       stage: 'reserved',
       target,
       ...(gitPlan ? { gitPlan } : {}),
+      ...(commit ? { commit } : {}),
       files: scaffold.files.map(({ relativePath, sha256 }) => ({ relativePath, sha256 })),
     };
     try {

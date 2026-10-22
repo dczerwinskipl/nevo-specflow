@@ -2,10 +2,15 @@ import { InformationList, Typography, WorkspaceHeaderIdentity } from '@nevo/ui';
 import type { TaskResource, TaskLink } from '@nevo/specflow-contracts/specs/workspace';
 import { useTranslation } from 'react-i18next';
 import { TaskStepInspection } from './TaskStepInspection';
-import { matchesWork, inspectionStep, type TaskInspectionAnchor } from './taskInspectionModel';
-import { DocumentContent } from '../../documents/connected/DocumentContent';
-import { OperationalRow } from '../../specs/shared/OperationalList';
-import type { FullTaskData } from '../model';
+import {
+  matchesWork,
+  inspectionStep,
+  type TaskEvidenceParams,
+  type TaskInspectionAnchor,
+} from './taskInspectionModel';
+import { DocumentContent } from '../../documents';
+import { OperationalRow } from '../../../shared/operational-list';
+import type { FullTaskData } from '../read-model/model';
 import { TaskSourceState } from './TaskDetails';
 
 export function TaskInspection({
@@ -94,11 +99,6 @@ export function TaskInspection({
   );
 }
 
-export interface TaskEvidenceParams {
-  readonly requirementId: string;
-  readonly index: number;
-  readonly revision: string;
-}
 export function TaskEvidenceInspection({
   task,
   params,

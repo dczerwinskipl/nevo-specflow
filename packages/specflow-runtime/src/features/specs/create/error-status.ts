@@ -1,10 +1,15 @@
-import type {
+import {
   CreateOperationError,
-  GitCapabilityErrorCode,
-  ProjectControlLockErrorCode,
-  ProjectHomeErrorCode,
-  SpecificationErrorCode,
-  WorkspaceRegistryErrorCode,
+  GitCapabilityError,
+  ProjectControlLockError,
+  ProjectHomeError,
+  SpecificationError,
+  WorkspaceRegistryError,
+  type GitCapabilityErrorCode,
+  type ProjectControlLockErrorCode,
+  type ProjectHomeErrorCode,
+  type SpecificationErrorCode,
+  type WorkspaceRegistryErrorCode,
 } from '@nevo/specflow-engine';
 
 export type CreateErrorCode =
@@ -30,9 +35,12 @@ export function statusForCreateError(code: CreateErrorCode): CreateHttpStatus {
     case 'BRANCH_ALREADY_EXISTS':
     case 'BRANCH_ALREADY_CHECKED_OUT':
     case 'WORKTREE_PATH_CONFLICT':
+    case 'COMMIT_BLOCKED':
       return 409;
 
+    case 'BRANCH_NAME_INVALID':
     case 'GIT_DISABLED':
+    case 'BRANCH_PROTECTED':
     case 'BASE_REF_NOT_FOUND':
     case 'GIT_BASE_CONFIG_MISSING':
       return 422;
@@ -59,6 +67,7 @@ export function statusForCreateError(code: CreateErrorCode): CreateHttpStatus {
     case 'NOT_GIT_REPOSITORY':
     case 'GIT_OPERATION_UNCERTAIN':
     case 'GIT_OPERATION_FAILED':
+    case 'COMMIT_FAILED':
     case 'WORKTREE_MEMBERSHIP_MISMATCH':
     case 'SPEC_SOURCE_INVALID':
     case 'SPEC_NOT_FOUND':
@@ -68,4 +77,23 @@ export function statusForCreateError(code: CreateErrorCode): CreateHttpStatus {
       return exhaustive;
     }
   }
+}
+
+/**
+ * Only the Engine's public, typed failures are safe transport errors. A Node filesystem error such
+ * as EACCES is not a client validation failure and must never be misreported as HTTP 4xx (it falls
+ * through to the Runtime error handler, which answers a generic 500).
+ */
+export function createErrorCode(error: unknown): CreateErrorCode | undefined {
+  if (
+    error instanceof CreateOperationError ||
+    error instanceof ProjectControlLockError ||
+    error instanceof GitCapabilityError ||
+    error instanceof SpecificationError ||
+    error instanceof WorkspaceRegistryError ||
+    error instanceof ProjectHomeError
+  ) {
+    return error.code;
+  }
+  return undefined;
 }

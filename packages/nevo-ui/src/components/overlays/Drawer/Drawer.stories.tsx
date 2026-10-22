@@ -15,7 +15,13 @@ import {
 } from './Drawer';
 import { Typography } from '../../foundations/Typography';
 
-function DrawerExample({ canonical = false }: { canonical?: boolean }) {
+function DrawerExample({
+  canonical = false,
+  longContent = false,
+}: {
+  canonical?: boolean;
+  longContent?: boolean;
+}) {
   const [open, setOpen] = useState(canonical);
 
   return (
@@ -66,6 +72,18 @@ function DrawerExample({ canonical = false }: { canonical?: boolean }) {
                   </Typography>
                 </div>
               ))}
+              {longContent
+                ? Array.from({ length: 40 }, (_, index) => (
+                    <div
+                      className="rounded-lg border border-border-default bg-surface px-4 py-3"
+                      key={index}
+                    >
+                      <Typography as="p" className="m-0" variant="body-sm">
+                        Earlier activity entry {index + 1}
+                      </Typography>
+                    </div>
+                  ))
+                : null}
             </div>
           </DrawerBody>
 
@@ -150,6 +168,54 @@ export const InteractionContract: Story = {
     await waitFor(
       () => (document.activeElement === trigger ? trigger : null),
       'Closing should restore focus to the trigger.',
+    );
+  },
+};
+
+export const LongBodyContract: Story = {
+  tags: ['contract', '!autodocs'],
+  args: { longContent: true },
+  play: async ({ canvas, userEvent }) => {
+    const trigger = canvas.getByRole('button', { name: 'View activity' });
+    await userEvent.click(trigger);
+    const dialog = await waitFor(
+      () => document.querySelector<HTMLElement>('[role="dialog"]'),
+      'Drawer should open as a dialog.',
+    );
+    const viewport = dialog.querySelector<HTMLElement>('.scroll-area-viewport');
+    assert(viewport !== null, 'The Drawer body is a DS ScrollArea, not a native scroller.');
+    assert(
+      getComputedStyle(viewport).scrollbarWidth === 'thin',
+      'The scrollbar is the DS thin one.',
+    );
+    assert(viewport.scrollHeight > viewport.clientHeight, 'Long content scrolls inside the body.');
+    const footer = dialog.querySelector<HTMLElement>('[data-design-slot="footer"]');
+    assert(footer !== null, 'The footer stays rendered below the body.');
+    assert(
+      footer.getBoundingClientRect().bottom <= window.innerHeight + 0.5,
+      'The footer remains visible while the body scrolls.',
+    );
+    const root = viewport.parentElement!;
+    await waitFor(
+      () => root.dataset.edgeBottom === 'true',
+      'A bottom edge indicator shows more content.',
+    );
+    viewport.scrollTop = viewport.scrollHeight;
+    await waitFor(
+      () => root.dataset.edgeBottom === 'false',
+      'The bottom indicator clears at the end.',
+    );
+
+    // Focus trap and initial focus stay inside the dialog; the scroll region is one Tab stop.
+    assert(dialog.contains(document.activeElement), 'Focus is inside the Drawer.');
+    for (let step = 0; step < 6; step += 1) {
+      await userEvent.tab();
+      assert(dialog.contains(document.activeElement), 'Tab never leaves the Drawer.');
+    }
+    await userEvent.keyboard('{Escape}');
+    await waitFor(
+      () => (document.activeElement === trigger ? trigger : null),
+      'Closing restores focus to the trigger.',
     );
   },
 };

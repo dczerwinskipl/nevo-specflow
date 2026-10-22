@@ -79,16 +79,19 @@ async function fixture(linked: boolean) {
     spec.relativeManifestPath,
     'specs/active/' + spec.slug + '/overview.md',
   );
-  git(
-    spec.workspaceRoot,
-    '-c',
-    'user.name=Test',
-    '-c',
-    'user.email=test@example.invalid',
-    'commit',
-    '-qm',
-    'canonical source',
-  );
+  // Create commits its own scaffold when git.enabled; only commit what is still staged.
+  if (git(spec.workspaceRoot, 'diff', '--cached', '--name-only') !== '') {
+    git(
+      spec.workspaceRoot,
+      '-c',
+      'user.name=Test',
+      '-c',
+      'user.email=test@example.invalid',
+      'commit',
+      '-qm',
+      'canonical source',
+    );
+  }
   return { root, engine, spec };
 }
 
@@ -310,16 +313,19 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
       b.relativeManifestPath,
       'specs/active/' + b.slug + '/overview.md',
     );
-    git(
-      a.workspaceRoot,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'add HTTP sibling',
-    );
+    // Create commits the scaffold itself when Git is enabled; commit by hand only what is still staged.
+    if (git(a.workspaceRoot, 'diff', '--cached', '--name-only') !== '') {
+      git(
+        a.workspaceRoot,
+        '-c',
+        'user.name=SpecFlow Test',
+        '-c',
+        'user.email=test@example.invalid',
+        'commit',
+        '-qm',
+        'add HTTP sibling',
+      );
+    }
     const operationId = randomUUID();
     const url = '/api/workspaces/' + workspaceId + '/close';
     const developer = await authedApp(engine, 'developer');

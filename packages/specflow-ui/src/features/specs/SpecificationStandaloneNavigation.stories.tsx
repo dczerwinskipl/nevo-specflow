@@ -11,7 +11,7 @@ import { createSpecFlowAppServices } from '../../services';
 import { UiModulesProvider } from '../../app/ui-modules/UiModulesProvider';
 import { builtInUiModuleRegistry } from '../../app/ui-modules/builtInUiModules';
 import { StoryLocalization } from '../../i18n/StoryLocalization';
-import { specificationKeys } from './queries';
+import { specificationKeys } from './read-model/queries';
 
 function StandaloneSurface({
   state = 'ready',

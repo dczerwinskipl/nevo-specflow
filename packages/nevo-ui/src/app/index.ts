@@ -18,7 +18,9 @@ export {
   type AppWorkspaceSlot,
   type AppWorkspaceSlotsProps,
   type WorkspaceHeaderAction,
+  type WorkspaceHeaderActionDirect,
   type WorkspaceHeaderActionTone,
+  type WorkspaceHeaderDensity,
   type WorkspaceHeaderProps,
 } from './workspace/AppWorkspace';
 export {
@@ -39,6 +41,7 @@ export type {
   AppWorkspaceSplitMode,
   AppWorkspaceShare,
   AppWorkspaceSplit,
+  AppWorkspaceFit,
 } from './workspace/workspaceSizing';
 export { APP_NAVIGATION_INLINE_PADDING, APP_SHELL_GAP } from './workspace/workspaceSizing';
 export * from './floating';

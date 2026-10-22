@@ -13,6 +13,7 @@ function expectedScaffold(record: CreateJournal): SpecificationScaffold {
     title: record.title,
     created: record.created,
     goal: record.goal,
+    slug: record.requestIntent.slug,
   });
   if (
     scaffold.slug !== record.slug ||

@@ -31,7 +31,7 @@ import {
   reserveCloseOperation,
   withProjectControlLock,
 } from '../src/testing';
-import { createGitTestProject, git } from './support/git-project';
+import { createGitTestProject, git, commitStaged } from './support/git-project';
 import {
   awaitProcessMarker,
   readProcessCheckpoint,
@@ -62,16 +62,7 @@ async function project(
     'runtime: {}\ngit:\n  enabled: true\n  integrationTargetBranch: ' + branch + '\n',
   );
   git(root, 'add', '.nevo/config.yaml');
-  git(
-    root,
-    '-c',
-    'user.name=SpecFlow Test',
-    '-c',
-    'user.email=specflow@example.invalid',
-    'commit',
-    '-qm',
-    'configure target',
-  );
+  commitStaged(root, 'configure target');
   const engine = await bootstrapProjectHome(root);
   const spec = await createSpecificationForTesting(engine, {
     operationId: randomUUID(),
@@ -87,16 +78,7 @@ async function project(
     spec.relativeManifestPath,
     'specs/active/' + spec.slug + '/overview.md',
   );
-  git(
-    spec.workspaceRoot,
-    '-c',
-    'user.name=SpecFlow Test',
-    '-c',
-    'user.email=specflow@example.invalid',
-    'commit',
-    '-qm',
-    'commit source spec',
-  );
+  commitStaged(spec.workspaceRoot, 'commit source spec');
   const siblings: { specId: string; slug: string }[] = [];
   if (kind === 'workspace-close') {
     const registry = await engine.readRegistry();
@@ -116,16 +98,7 @@ async function project(
         'specs/active/' + child.slug + '/overview.md',
       );
     }
-    git(
-      spec.workspaceRoot,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'commit two shared SIGKILL siblings',
-    );
+    commitStaged(spec.workspaceRoot, 'commit two shared SIGKILL siblings');
     expect(
       (await engine.readRegistry()).specBindings.filter((x) => x.workspaceId === spec.workspaceId),
     ).toHaveLength(3);
@@ -144,29 +117,11 @@ async function project(
     await writeFile(join(spec.workspaceRoot, '.gitattributes'), '*.nevo-smudge filter=nevoT17\n');
     await writeFile(join(spec.workspaceRoot, 'hold.nevo-smudge'), 'checkout data\n');
     git(spec.workspaceRoot, 'add', '.gitattributes', 'hold.nevo-smudge');
-    git(
-      spec.workspaceRoot,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'prepare filtered checkout',
-    );
+    commitStaged(spec.workspaceRoot, 'prepare filtered checkout');
   } else {
     await writeFile(join(root, 'target-only.txt'), 'target changes independently\n');
     git(root, 'add', 'target-only.txt');
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'advance primary',
-    );
+    commitStaged(root, 'advance primary');
   }
   const operationId = randomUUID();
   if (kind === 'worktree-close' || kind === 'workspace-close') {

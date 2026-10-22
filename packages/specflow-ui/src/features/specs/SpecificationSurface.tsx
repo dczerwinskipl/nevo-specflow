@@ -1,3 +1,4 @@
+import { LoadingPresentation } from '../../app/loading/LoadingPresentation';
 import {
   ApplicationLocationIdentity,
   ApplicationContextLine,
@@ -11,18 +12,17 @@ import {
   AppWorkspace,
   AppWorkspaceBody,
   Button,
-  Spinner,
   Typography,
   WorkspaceHeader,
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
-import { invalidateSpecificationWorkspace } from './queries';
+import { invalidateSpecificationWorkspace } from './read-model/queries';
 
-import type { SpecificationWorkspaceData } from './workspace/model';
+import type { SpecificationWorkspaceData } from './read-model/model';
 import { SpecificationWorkspace } from './workspace/SpecificationWorkspace';
 import { SpecificationStandaloneBack } from './workspace/SpecificationStandaloneBack';
-import { useSpecificationWorkspace } from './useSpecificationWorkspace';
+import { useSpecificationWorkspace } from './read-model/useSpecificationWorkspace';
 
 export interface SpecificationSurfaceProps {
   readonly specId: string;
@@ -75,8 +75,16 @@ function SpecificationSurfaceConnected({
 }: SpecificationSurfaceProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { data, isLoading, isError, errorStatus, isDomainNotFound, refetch } =
-    useSpecificationWorkspace(specId);
+  const {
+    data,
+    isLoading,
+    isError,
+    errorStatus,
+    isDomainNotFound,
+    refetch,
+    isRefetching,
+    fetchStatus,
+  } = useSpecificationWorkspace(specId);
 
   if (isError && (!data || errorStatus === 401 || errorStatus === 403 || errorStatus === 404)) {
     return (
@@ -104,7 +112,7 @@ function SpecificationSurfaceConnected({
           }
         >
           <AppContent className="w-content-xwide max-w-full">
-            <AppWorkspaceBody className="py-8">
+            <AppWorkspaceBody scroll="area" contentClassName="py-8">
               <AppContentContainer align="start" size="full" className="grid gap-6">
                 <div>
                   <ApplicationContextLine specId={specId} view="overview" />
@@ -175,22 +183,19 @@ function SpecificationSurfaceConnected({
           }
         >
           <AppContent className="w-content-xwide max-w-full">
-            <AppWorkspaceBody className="py-12">
-              <AppContentContainer
-                align="start"
-                size="full"
-                className="flex flex-col items-center justify-center gap-4 text-center"
-              >
+            <AppWorkspaceBody scroll="area" contentClassName="py-6">
+              <AppContentContainer align="start" size="full" className="grid gap-6">
                 <SpecificationStandaloneBack
                   overviewHref={overviewHref}
                   renderBackLink={renderBackLink}
                   onBack={onBack}
                 />
                 <ViewPageTitle>{t('specification.title')}</ViewPageTitle>
-                <Spinner size="md" aria-label={t('common.loading')} />
-                <Typography variant="body-sm" className="text-content-muted">
-                  {t('specification.loadingWorkspace', { id: specId })}
-                </Typography>
+                <LoadingPresentation
+                  shape="specification"
+                  label={t('specification.loadingWorkspace', { id: specId })}
+                  fetching={fetchStatus !== 'paused' && Boolean(specId)}
+                />
               </AppContentContainer>
             </AppWorkspaceBody>
           </AppContent>
@@ -222,6 +227,7 @@ function SpecificationSurfaceConnected({
       onNewConversation={onNewConversation}
       onOpenSession={onOpenSession}
       refreshFailed={isError && Boolean(data)}
+      refreshing={isRefetching}
     />
   );
 }

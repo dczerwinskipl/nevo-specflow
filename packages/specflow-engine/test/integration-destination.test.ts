@@ -23,7 +23,7 @@ import {
   readWorkspaceSpecification,
   closeSpecification,
 } from '../src/testing';
-import { createGitTestProject, git } from './support/git-project';
+import { createGitTestProject, git, commitStaged } from './support/git-project';
 
 const cleanup: string[] = [];
 afterEach(async () => {
@@ -54,16 +54,7 @@ async function fixture() {
     feature.relativeManifestPath,
     'specs/active/' + feature.slug + '/overview.md',
   );
-  git(
-    feature.workspaceRoot,
-    '-c',
-    'user.name=SpecFlow Test',
-    '-c',
-    'user.email=specflow@example.invalid',
-    'commit',
-    '-qm',
-    'feature workspace baseline',
-  );
+  commitStaged(feature.workspaceRoot, 'feature workspace baseline');
   return { root, engine, feature };
 }
 
@@ -89,16 +80,7 @@ async function createCommittedChild(
     child.relativeManifestPath,
     'specs/active/' + child.slug + '/overview.md',
   );
-  git(
-    child.workspaceRoot,
-    '-c',
-    'user.name=SpecFlow Test',
-    '-c',
-    'user.email=specflow@example.invalid',
-    'commit',
-    '-qm',
-    'source spec commit',
-  );
+  commitStaged(child.workspaceRoot, 'source spec commit');
   return child;
 }
 
@@ -144,16 +126,7 @@ describe('E2.I02 workspace-owned integration destination', () => {
     await mkdir(join(created.workspaceRoot, 'src'), { recursive: true });
     await writeFile(join(created.workspaceRoot, 'src/feature-y.txt'), 'published to feature/x\n');
     git(created.workspaceRoot, 'add', '--', 'src/feature-y.txt');
-    git(
-      created.workspaceRoot,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'complete destination-specific Spec',
-    );
+    commitStaged(created.workspaceRoot, 'complete destination-specific Spec');
     const sourceHead = git(created.workspaceRoot, 'rev-parse', 'HEAD');
     const closed = await closeWorktree(engine, {
       operationId: randomUUID(),
@@ -192,16 +165,7 @@ describe('E2.I02 workspace-owned integration destination', () => {
       sibling.relativeManifestPath,
       'specs/active/' + sibling.slug + '/overview.md',
     );
-    git(
-      child.workspaceRoot,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'shared child sibling',
-    );
+    commitStaged(child.workspaceRoot, 'shared child sibling');
     const sourceCommit = git(child.workspaceRoot, 'rev-parse', 'HEAD');
     const operationId = randomUUID();
     const result = await closeWorkspace(engine, {
@@ -255,16 +219,7 @@ describe('E2.I02 workspace-owned integration destination', () => {
       created.relativeManifestPath,
       'specs/active/' + created.slug + '/overview.md',
     );
-    git(
-      created.workspaceRoot,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'default target source commit',
-    );
+    commitStaged(created.workspaceRoot, 'default target source commit');
     const preview = await previewCloseOperation(engine, {
       kind: 'worktree-close',
       specId: created.specId,
@@ -313,16 +268,7 @@ describe('E2.I02 workspace-owned integration destination', () => {
     const child = await createCommittedChild(engine, feature, 'Divergent linked destination');
     await writeFile(join(feature.workspaceRoot, 'target-only.txt'), 'target branch change\n');
     git(feature.workspaceRoot, 'add', '--', 'target-only.txt');
-    git(
-      feature.workspaceRoot,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'advance target independently',
-    );
+    commitStaged(feature.workspaceRoot, 'advance target independently');
     const targetHead = git(feature.workspaceRoot, 'rev-parse', 'HEAD');
     const sourceHead = git(child.workspaceRoot, 'rev-parse', 'HEAD');
     const result = await closeWorktree(engine, {
@@ -346,42 +292,15 @@ describe('E2.I02 workspace-owned integration destination', () => {
     const { root, engine, feature } = await fixture();
     await writeFile(join(feature.workspaceRoot, 'shared.txt'), 'baseline\n');
     git(feature.workspaceRoot, 'add', '--', 'shared.txt');
-    git(
-      feature.workspaceRoot,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'shared base',
-    );
+    commitStaged(feature.workspaceRoot, 'shared base');
     const child = await createCommittedChild(engine, feature, 'Conflicting linked destination');
     await writeFile(join(feature.workspaceRoot, 'shared.txt'), 'changed by target\n');
     git(feature.workspaceRoot, 'add', '--', 'shared.txt');
-    git(
-      feature.workspaceRoot,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'target edit',
-    );
+    commitStaged(feature.workspaceRoot, 'target edit');
     const targetHead = git(feature.workspaceRoot, 'rev-parse', 'HEAD');
     await writeFile(join(child.workspaceRoot, 'shared.txt'), 'changed by source\n');
     git(child.workspaceRoot, 'add', '--', 'shared.txt');
-    git(
-      child.workspaceRoot,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'source edit',
-    );
+    commitStaged(child.workspaceRoot, 'source edit');
     const result = await closeWorktree(engine, {
       operationId: randomUUID(),
       specId: child.specId,

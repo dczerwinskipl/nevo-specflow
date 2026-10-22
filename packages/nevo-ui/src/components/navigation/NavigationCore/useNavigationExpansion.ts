@@ -34,8 +34,11 @@ export function useNavigationExpansion<TTarget>({
     controlled ? controlledExpandedKeys : uncontrolledExpandedKeys,
   );
   const normalizedExpandedSignature = normalizedExpandedKeys.join('\u0000');
+  // Keyed by the signature (the array is rebuilt every render): the Set identity changes only when
+  // the expanded keys do, which keeps consumers of `expandedKeys` from re-rendering needlessly.
   const expandedKeys = useMemo(
     () => new Set(normalizedExpandedKeys),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [normalizedExpandedSignature],
   );
 

@@ -92,6 +92,10 @@ responsive layouts and extension-point behavior; it does not become the owner of
 - `features/tasks/` owns Full Task, Task Preview presentation, and Task-group/row controls.
   `features/specs/` owns Specification routing, Workspace composition and Secondary stack
   navigation. The existing aggregate Workspace projection remains an explicit migration seam.
+  `features/documents/` owns the Documents explorer and editor, and `features/sessions/` the Session
+  screens, composer and recovery, even though Create and the Specification surfaces display them.
+  Module ownership, barrels and shared code rules: see
+  [Code organization](../../../engineering/shared/code-organization.md#ui-module-ownership-and-boundaries).
 - The existing backend `RuntimeFeature` is a separate composition boundary from `UiModule`.
   HTTP contracts connect those layers; neither UI modules nor plugins instantiate independent
   application HTTP transports or QueryClient lifecycles.
@@ -459,20 +463,32 @@ product presentation resolves those codes using the current i18next locale. A si
 
 ### Sidebar navigation read model
 
-`ProductNavigation` reads a cached Specification title and small document-count/Git-availability projection from
-an existing TanStack Query Workspace cache entry, using a disabled observer.
-It does not issue `GET /api/specs/:specId/workspace` merely because the user
-opened Full Task or Full Document directly. When the Workspace has not yet
-been loaded, those optional navigation hints stay unknown (document count
-is omitted; Git destinations are not hidden based on missing metadata).
-An explicitly unsupported (`not_implemented`) or forbidden Git source hides the Git
-navigation entries, while `source_unavailable` remains unknown instead of being treated
-as an absent capability. No unavailable document collection is misrepresented as
-an authoritative zero. A resource-wide HTTP 401, 403 or 404 suppresses previously cached
-sidebar metadata, even if TanStack Query retains the earlier successful response.
-This is a cache-only transitional adapter, not a second authoritative
-read model. A dedicated lightweight Runtime navigation endpoint may replace
-it if fresh sidebar metadata becomes a product requirement.
+Navigation is deterministic: the same canonical URL settles to the same navigation (text and
+links) whether it was reached by client navigation or opened cold (direct link, F5).
+
+- **Source.** The Specification route (`/specs/$specId`, parent of every per-spec route) owns the
+  Specification Workspace query (`specificationKeys.detail(specId)`,
+  `GET /api/specs/:specId/workspace`); `ProductNavigation` and the location trail observe the
+  same entry as an _active_ query. When the
+  Workspace is already cached (Overview, Documents, Sessions) the same key is reused and no
+  duplicate request is issued; when it is cold (Full Task, Full Document, Session) it is fetched
+  once. Title, the optional Specification `key`, document count, Git capability and the
+  Sessions summary all come from that one snapshot. The Overview catalogue is not a navigation
+  source.
+- **Loading.** Until the read settles, the switcher shows a neutral placeholder and the
+  Sessions entry renders without count or previews. No failure copy or activity status is shown, and the Git destinations
+  (Changes, Repository) are not rendered, so a cold load never flashes items that the settled
+  metadata would remove.
+- **Failure.** "Unable to load Specification information" is shown only after the Workspace
+  request actually failed without a snapshot, with Retry wired to that query. A failed refresh
+  keeps the last snapshot and marks it stale. A resource-wide HTTP 401, 403 or 404 suppresses
+  any retained metadata. The wide location trail does not repeat the notice (the navigation
+  owns it); the narrow context line shows it because navigation is hidden there.
+- **Capabilities.** An explicitly unsupported (`not_implemented`) or forbidden Git source hides
+  the Git entries; a settled `source_unavailable` remains unknown and keeps them (unknown is not
+  absent). An unavailable document collection is never presented as an authoritative zero.
+- A dedicated lightweight Runtime navigation endpoint remains a possible later optimisation, not
+  a requirement.
 
 ### Authentication recovery boundary
 

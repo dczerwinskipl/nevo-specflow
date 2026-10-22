@@ -15,9 +15,16 @@ const config: StorybookConfig = {
   },
   addons: ['@storybook/addon-docs', '@storybook/addon-a11y', '@storybook/addon-vitest'],
   framework: '@storybook/react-vite',
+  core: { disableTelemetry: true },
+  typescript: { reactDocgen: 'react-docgen', check: false },
   viteFinal: (config) =>
     mergeConfig(config, {
-      optimizeDeps: { include: ['@tanstack/react-router'] },
+      server: {
+        watch: {
+          ignored: ['**/.turbo/**', '**/.artifacts/**', '**/.local/**', '**/dist/**'],
+        },
+      },
+      optimizeDeps: { include: ['@tanstack/react-router', 'yaml'] },
       plugins: [tailwindcss()],
     }),
 };

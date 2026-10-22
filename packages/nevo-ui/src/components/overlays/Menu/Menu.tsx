@@ -254,3 +254,35 @@ export const MenuSeparator = forwardRef<
     />
   );
 });
+
+export interface MenuNoteProps extends Omit<ComponentPropsWithoutRef<'div'>, 'id'> {
+  /** Required: pass the same value as `MenuContent aria-describedby` so the note is announced on open. */
+  id: string;
+}
+
+/**
+ * Non-interactive, wrapping helper text for a menu (for example why actions are unavailable).
+ * Rendered inside a `role="group"` (the only non-item child `role="menu"` allows) and referenced by
+ * `MenuContent aria-describedby`. Not focusable: roving focus skips it. One note per menu, after the
+ * last item and a `MenuSeparator`. Titles and reasons must not go in `MenuLabel` (it truncates).
+ */
+export const MenuNote = forwardRef<HTMLDivElement, MenuNoteProps>(function MenuNote(
+  { children, className, id, ...props },
+  ref,
+) {
+  return (
+    <DropdownMenu.Group>
+      <div
+        ref={ref}
+        className={cn(
+          'px-control-padding-compact py-1.5 text-body-sm text-content-muted [overflow-wrap:anywhere]',
+          className,
+        )}
+        id={id}
+        {...props}
+      >
+        {children}
+      </div>
+    </DropdownMenu.Group>
+  );
+});

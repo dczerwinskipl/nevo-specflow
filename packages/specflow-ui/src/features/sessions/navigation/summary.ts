@@ -1,8 +1,10 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { useCachedQueryState } from '../../../app/useCachedQueryState';
-import { specificationKeys } from '../../specs/queries';
-import { getHttpErrorStatus } from '../../specs/httpErrorStatus';
-import type { SpecificationWorkspaceData, SessionSummary } from '../../specs/workspace/model';
+import { getHttpErrorStatus } from '../../../shared/http/httpErrorStatus';
+import {
+  type SessionSummary,
+  type SpecificationWorkspaceData,
+  useSpecificationWorkspace,
+} from '../../specs/read-model';
+
 export type SessionNavigationEntry = SessionSummary & {
   readonly activityCode: 'active' | 'attention';
 };
@@ -14,7 +16,7 @@ export type SessionNavigationSummary =
       readonly attention: boolean;
     }
   | { readonly state: 'unknown' | 'loading' | 'unavailable' | 'forbidden' };
-/** Sessions owns interpretation; reads only the snapshot already loaded by its owner. */
+/** Sessions owns interpretation of the Workspace snapshot for navigation. */
 export function projectSessionNavigation(
   data: SpecificationWorkspaceData | undefined,
   error: unknown,
@@ -44,21 +46,16 @@ export function projectSessionNavigation(
     attention: entries.some((item) => item.activityCode === 'attention'),
   };
 }
+/** Reads the same route-owned Workspace query as the Specification navigation identity. */
 export function useSessionNavigationSummary(specId: string | null) {
-  const client = useQueryClient();
-  const key = specificationKeys.detail(specId ?? '');
-  const query = useCachedQueryState<SpecificationWorkspaceData>(key);
-  const canRetry = Boolean(client.getQueryCache().find({ queryKey: key, exact: true })?.isActive());
+  const query = useSpecificationWorkspace(specId ?? '');
   return {
     ...projectSessionNavigation(
-      specId ? query?.data : undefined,
-      query?.error,
-      query?.fetchStatus === 'fetching',
+      specId ? query.data : undefined,
+      specId ? query.error : undefined,
+      Boolean(specId) && (query.status === 'pending' || query.fetchStatus === 'fetching'),
     ),
-    canRetry,
-    retry: () =>
-      canRetry
-        ? client.refetchQueries({ queryKey: key, exact: true, type: 'active' })
-        : Promise.resolve(),
+    canRetry: Boolean(specId),
+    retry: () => (specId ? query.refetch() : Promise.resolve()),
   };
 }

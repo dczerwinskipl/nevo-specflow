@@ -1,3 +1,6 @@
+import { useWorkspaceLabels } from '../../../app/navigation/useWorkspaceLabels';
+import { FeatureUnavailable } from '../../../app/errors/FeatureUnavailable';
+import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
 import type { ReactNode } from 'react';
 import {
   Alert,
@@ -6,13 +9,12 @@ import {
   AppWorkspace,
   AppWorkspaceBody,
   Button,
-  Spinner,
   Typography,
   WorkspaceHeader,
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import { useSpecificationWorkspace } from '../useSpecificationWorkspace';
-import type { SpecificationSectionId, SpecificationWorkspaceData } from '../workspace/model';
+import { useSpecificationWorkspace } from '../read-model/useSpecificationWorkspace';
+import type { SpecificationSectionId, SpecificationWorkspaceData } from '../read-model/model';
 import {
   ApplicationLocationIdentity,
   ApplicationContextLine,
@@ -38,13 +40,18 @@ export function SpecificationAggregatePage({
   title,
   section,
   children,
+  loading,
+  loadingShape = 'list',
 }: {
+  loading?: ReactNode;
+  loadingShape?: 'list' | 'summary';
   specId: string;
   title: string;
   section?: SpecificationSectionId;
   children: (data: SpecificationWorkspaceData) => ReactNode;
 }) {
   const { t } = useTranslation();
+  const workspaceLabels = useWorkspaceLabels();
   const query = useSpecificationWorkspace(specId);
   const availability = section && query.data?.sectionAvailability?.[section];
   const accessDenied = query.errorStatus === 403;
@@ -72,8 +79,12 @@ export function SpecificationAggregatePage({
   // as stale and let the user retry. Auth and not-found errors remain blocking.
   const showingStaleData = query.isError && Boolean(query.data) && !mustShowError;
   const sectionCopy = sectionDenied ? deniedCopy : unavailableCopy;
+  const sectionNotInRuntime =
+    availability === 'unavailable' &&
+    section !== undefined &&
+    query.data?.sectionUnavailableReason?.[section] === 'not_implemented';
   return (
-    <AppWorkspace split="primary">
+    <AppWorkspace labels={workspaceLabels} split="primary">
       <AppWorkspace.Primary
         header={
           <WorkspaceHeader
@@ -90,12 +101,22 @@ export function SpecificationAggregatePage({
         }
       >
         <AppContent className="w-content-xwide max-w-full">
-          <AppWorkspaceBody className="py-6">
+          <AppWorkspaceBody scroll="area" contentClassName="py-6">
             <AppContentContainer align="start" size="full">
               <ApplicationContextLine specId={specId} view={sectionViews[section ?? 'activity']} />
               <ViewPageTitle>{title}</ViewPageTitle>
               {query.isPending ? (
-                <Spinner label={t('specification.loadingWorkspace', { id: specId })} />
+                loading !== undefined ? (
+                  loading
+                ) : (
+                  <LoadingPresentation
+                    shape={loadingShape}
+                    label={t('specification.loadingWorkspace', { id: specId })}
+                    fetching={query.fetchStatus !== 'paused' && Boolean(specId)}
+                  />
+                )
+              ) : mustShowError && query.isNotInRuntime ? (
+                <FeatureUnavailable />
               ) : mustShowError ? (
                 <Alert role="alert" tone="attention" title={errorCopy.title}>
                   <Typography variant="body-sm">{errorCopy.message}</Typography>
@@ -115,7 +136,9 @@ export function SpecificationAggregatePage({
                       </Button>
                     </Alert>
                   ) : null}
-                  {availability && availability !== 'available' ? (
+                  {sectionNotInRuntime ? (
+                    <FeatureUnavailable />
+                  ) : availability && availability !== 'available' ? (
                     <Alert role="status" tone="attention" title={sectionCopy.title}>
                       {sectionCopy.message}
                     </Alert>

@@ -10,7 +10,7 @@ import {
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 
-import type { TaskExecutionReadiness } from './model';
+import type { TaskExecutionReadiness } from '../read-model/model';
 
 export interface ExecuteModalProps {
   readonly open: boolean;

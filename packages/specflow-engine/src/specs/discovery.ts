@@ -4,6 +4,8 @@ import {
   type RegisteredWorkspaceInspection,
   type WorkspaceRegistry,
 } from '../project/workspace-registry';
+import { runReadRequest } from '../project/request-verification-memo';
+import { READ_GIT_CONCURRENCY, mapBounded } from '../concurrency';
 import { isValidSpecificationId, SpecificationError } from './model';
 import { listWorkspaceSpecifications, type WorkspaceSpecification } from './repository';
 
@@ -102,11 +104,40 @@ async function discoverWithAdmission(
     });
   }
 
-  const inspected = new Map<string, RegisteredWorkspaceInspection>([
-    [registry.primaryWorkspaceId, primary],
-  ]);
   const manifests = new Map<string, readonly WorkspaceSpecification[]>([
     [registry.primaryWorkspaceId, primarySpecifications],
+  ]);
+
+  // Linked workspaces are independent: inspect and list them concurrently, then
+  // consume the outcomes in binding order below. A failure is rethrown only when
+  // the sequential walk reaches it, so error precedence is unchanged.
+  const linkedIds: string[] = [];
+  for (const binding of registry.specBindings) {
+    if (!isValidSpecificationId(binding.specId)) break;
+    if (isIncluded && !isIncluded(binding.specId)) continue;
+    if (binding.workspaceId === registry.primaryWorkspaceId) continue;
+    if (!linkedIds.includes(binding.workspaceId)) linkedIds.push(binding.workspaceId);
+  }
+  const prefetched = new Map<string, LinkedOutcome>();
+  const settled = await mapBounded(linkedIds, READ_GIT_CONCURRENCY, async (workspaceId) => {
+    try {
+      const inspection = await inspectRegisteredWorkspace(engine.context, registry, workspaceId);
+      const listed =
+        inspection.status === 'available'
+          ? await listWorkspaceSpecifications(
+              inspection.root,
+              writingSlugsByWorkspace?.get(inspection.root),
+            )
+          : undefined;
+      return { inspection, listed } satisfies LinkedOutcome;
+    } catch (error) {
+      return { error } satisfies LinkedOutcome;
+    }
+  });
+  linkedIds.forEach((id, index) => prefetched.set(id, settled[index]!));
+
+  const inspected = new Map<string, RegisteredWorkspaceInspection>([
+    [registry.primaryWorkspaceId, primary],
   ]);
 
   for (const binding of registry.specBindings) {
@@ -123,8 +154,11 @@ async function discoverWithAdmission(
 
     let inspection = inspected.get(binding.workspaceId);
     if (!inspection) {
-      inspection = await inspectRegisteredWorkspace(engine.context, registry, binding.workspaceId);
+      const outcome = prefetched.get(binding.workspaceId)!;
+      if ('error' in outcome) throw outcome.error;
+      inspection = outcome.inspection;
       inspected.set(binding.workspaceId, inspection);
+      if (outcome.listed) manifests.set(binding.workspaceId, outcome.listed);
     }
     if (inspection.status === 'unavailable') {
       found.set(binding.specId, {
@@ -195,6 +229,18 @@ export async function resolveSpecification(
   return selected;
 }
 
+/**
+ * READ-path resolution: same result as {@link resolveSpecification}, but workspace
+ * availability is established with filesystem evidence only (no Git process).
+ * Mutation preflights keep using {@link resolveSpecification}.
+ */
+export function resolveSpecificationForRead(
+  engine: SpecFlowEngine,
+  specId: string,
+): Promise<DiscoveredSpecification> {
+  return runReadRequest(() => resolveSpecification(engine, specId));
+}
+
 function assertCanonicalSlugs(found: ReadonlyMap<string, DiscoveredSpecification>): void {
   const owners = new Map<string, string>();
   for (const item of found.values()) {
@@ -225,3 +271,10 @@ async function ensureBindingRevisionUnchanged(
     );
   }
 }
+
+type LinkedOutcome =
+  | {
+      readonly inspection: RegisteredWorkspaceInspection;
+      readonly listed: readonly WorkspaceSpecification[] | undefined;
+    }
+  | { readonly error: unknown };

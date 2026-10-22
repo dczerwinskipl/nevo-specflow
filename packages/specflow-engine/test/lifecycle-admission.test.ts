@@ -15,7 +15,7 @@ import {
   reserveCloseOperation,
   type SpecFlowEngine,
 } from '../src/testing';
-import { createGitTestProject, git } from './support/git-project';
+import { createGitTestProject, git, commitStaged } from './support/git-project';
 import { closeJournalPath } from '../src/specs/lifecycle/journal-store';
 
 const roots: string[] = [];
@@ -45,16 +45,7 @@ async function fixture(target: 'current' | 'different' | 'none' = 'current') {
   // With target=none, createGitTestProject already committed the identical
   // config. Do not invent a second empty commit just to satisfy this fixture.
   if (git(root, 'status', '--porcelain', '--', '.nevo/config.yaml')) {
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'project branch policy',
-    );
+    commitStaged(root, 'project branch policy');
   }
   return { root, engine: await bootstrapProjectHome(root), branch };
 }
@@ -76,16 +67,7 @@ async function specification(engine: SpecFlowEngine, title: string, linked = fal
     created.relativeManifestPath,
     'specs/active/' + created.slug + '/overview.md',
   );
-  git(
-    created.workspaceRoot,
-    '-c',
-    'user.name=SpecFlow Test',
-    '-c',
-    'user.email=specflow@example.invalid',
-    'commit',
-    '-qm',
-    'commit authored source',
-  );
+  commitStaged(created.workspaceRoot, 'commit authored source');
   return created;
 }
 
@@ -183,16 +165,7 @@ describe('E2.T10 — read-only lifecycle admission and durable shared Git resour
         await symlink(redirect, manifest, 'file');
       }
       git(spec.workspaceRoot, 'add', '-A', '--', 'specs/');
-      git(
-        spec.workspaceRoot,
-        '-c',
-        'user.name=SpecFlow Test',
-        '-c',
-        'user.email=specflow@example.invalid',
-        'commit',
-        '-qm',
-        'commit invalid canonical source variant',
-      );
+      commitStaged(spec.workspaceRoot, 'commit invalid canonical source variant');
       const primaryHead = git(root, 'rev-parse', 'HEAD');
       const sourceHead = git(spec.workspaceRoot, 'rev-parse', 'HEAD');
       const before = await engine.readRegistry();
@@ -230,16 +203,7 @@ describe('E2.T10 — read-only lifecycle admission and durable shared Git resour
       second.relativeManifestPath,
       'specs/active/' + second.slug + '/overview.md',
     );
-    git(
-      first.workspaceRoot,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'commit second canonical linked occupant',
-    );
+    commitStaged(first.workspaceRoot, 'commit second canonical linked occupant');
     const primaryHead = git(root, 'rev-parse', 'HEAD');
     const sourceHead = git(first.workspaceRoot, 'rev-parse', 'HEAD');
     const registry = await engine.readRegistry();

@@ -9,6 +9,7 @@ import { designLayerMetadata, designSlot, useDesignMetadata } from '@nevo/figma-
 import { cn } from '../../../lib';
 import { typographyTextStyleRef } from '../../../design-system/resources';
 import { IconButton } from '../../actions/IconButton';
+import { ScrollArea } from '../../layout/ScrollArea';
 
 export const Drawer = Dialog.Root;
 export const DrawerTrigger = Dialog.Trigger;
@@ -74,7 +75,7 @@ export const DrawerContent = forwardRef<ComponentRef<typeof Dialog.Content>, Dra
             <Dialog.Close asChild>
               <IconButton
                 aria-label={closeLabel!}
-                className="absolute right-4 top-4"
+                className="absolute! right-4 top-4"
                 icon="close"
                 size="sm"
                 variant="ghost"
@@ -147,15 +148,25 @@ export const DrawerDescription = forwardRef<
   );
 });
 
+/**
+ * The scrolling body of a Drawer: a DS `ScrollArea` (thin scrollbar, edge indicators), so a drawer
+ * never shows a native unstyled scrollbar. The viewport is a keyboard-focusable scroll region
+ * (`tabIndex` 0) so content without focusable children can still be scrolled with the keyboard.
+ * `className` styles the padded content wrapper (default `px-5 py-5`).
+ */
 export const DrawerBody = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
-  function DrawerBody({ className, ...props }, ref) {
+  function DrawerBody({ children, className, ...props }, ref) {
     return (
-      <div
+      <ScrollArea
         ref={ref}
-        className={cn('min-h-0 flex-1 overflow-y-auto px-5 py-5', className)}
+        className="min-h-0 flex-1"
+        contentClassName={cn('px-5 py-5', className)}
+        direction="vertical"
         {...props}
         {...designSlot('Drawer', 'body')}
-      />
+      >
+        {children}
+      </ScrollArea>
     );
   },
 );

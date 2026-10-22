@@ -10,7 +10,7 @@ import {
   createSpecificationForTesting,
   listCloseJournals,
 } from '../src/testing';
-import { createGitTestProject, git } from './support/git-project';
+import { createGitTestProject, git, commitStaged } from './support/git-project';
 import {
   awaitProcessMarker,
   readProcessCheckpoint,
@@ -42,16 +42,7 @@ async function project() {
     'runtime: {}\ngit:\n  enabled: true\n  integrationTargetBranch: ' + branch + '\n',
   );
   git(root, 'add', '.nevo/config.yaml');
-  git(
-    root,
-    '-c',
-    'user.name=SpecFlow Test',
-    '-c',
-    'user.email=specflow@example.invalid',
-    'commit',
-    '-qm',
-    'configure target branch',
-  );
+  commitStaged(root, 'configure target branch');
   const engine = await bootstrapProjectHome(root);
   return { root, engine };
 }
@@ -77,16 +68,7 @@ async function specification(
     spec.relativeManifestPath,
     'specs/active/' + spec.slug + '/overview.md',
   );
-  git(
-    spec.workspaceRoot,
-    '-c',
-    'user.name=SpecFlow Test',
-    '-c',
-    'user.email=specflow@example.invalid',
-    'commit',
-    '-qm',
-    'commit source ' + title,
-  );
+  commitStaged(spec.workspaceRoot, 'commit source ' + title);
   return spec;
 }
 
@@ -269,16 +251,7 @@ describe('E2.T17 LC17/LC39 independent OS-process Close contention', () => {
     const otherSpec = await specification(fixture, 'Second linked contender', true);
     await writeFile(join(fixture.root, 'primary-independent.txt'), 'primary change\n');
     git(fixture.root, 'add', '--', 'primary-independent.txt');
-    git(
-      fixture.root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'diverge primary independently',
-    );
+    commitStaged(fixture.root, 'diverge primary independently');
     const before = git(fixture.root, 'rev-parse', 'HEAD');
     const publishReady = join(tmpdir(), 'close-publish-ready-' + randomUUID());
     const publishRelease = join(tmpdir(), 'close-publish-release-' + randomUUID());
@@ -354,16 +327,7 @@ describe('E2.T17 LC17/LC39 independent OS-process Close contention', () => {
     const contender = await specification(fixture, 'Retained linked contender', true);
     await writeFile(join(fixture.root, 'primary-diverges.txt'), 'independent target\n');
     git(fixture.root, 'add', '--', 'primary-diverges.txt');
-    git(
-      fixture.root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'independent primary candidate',
-    );
+    commitStaged(fixture.root, 'independent primary candidate');
     const primaryHead = git(fixture.root, 'rev-parse', 'HEAD');
     const publishReady = join(tmpdir(), 'close-publish-kill-ready-' + randomUUID());
     const publishRelease = join(tmpdir(), 'close-publish-kill-release-' + randomUUID());
@@ -452,16 +416,7 @@ describe('E2.T17 LC17/LC39 independent OS-process Close contention', () => {
         'specs/active/' + child.slug + '/overview.md',
       );
     }
-    git(
-      a.workspaceRoot,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'shared A B C for OS contention',
-    );
+    commitStaged(a.workspaceRoot, 'shared A B C for OS contention');
     const registry = await fixture.engine.readRegistry();
     expect(registry.specBindings.filter((x) => x.workspaceId === a.workspaceId)).toHaveLength(3);
     const head = git(a.workspaceRoot, 'rev-parse', 'HEAD');
@@ -514,16 +469,7 @@ describe('E2.T17 LC17/LC39 independent OS-process Close contention', () => {
       child.relativeManifestPath,
       'specs/active/' + child.slug + '/overview.md',
     );
-    git(
-      a.workspaceRoot,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'commit both shared specs',
-    );
+    commitStaged(a.workspaceRoot, 'commit both shared specs');
     const workers = [0, 1].map(() =>
       spawnCloseWorker(fixture.root, {
         kind: 'workspace-close' as const,
@@ -592,6 +538,8 @@ describe('E2.T17 LC17/LC39 independent OS-process Close contention', () => {
     const registry = await fixture.engine.readRegistry();
     expect(registry.specBindings).toHaveLength(2);
     expect(registry.specBindings.some((item) => item.specId === existing.specId)).toBe(true);
-    expect(git(fixture.root, 'rev-parse', 'HEAD')).toBe(primaryHead);
+    // The released Create commits its own scaffold: exactly one new commit, clean checkout.
+    expect(git(fixture.root, 'rev-list', '--count', primaryHead + '..HEAD')).toBe('1');
+    expect(git(fixture.root, 'status', '--porcelain')).toBe('');
   }, 240000);
 });

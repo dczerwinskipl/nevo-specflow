@@ -6,9 +6,9 @@ export type {
   InformationalActivityEvent,
   SessionActivityEvent,
   TaskActivityEvent,
-} from '../model';
+} from '../../read-model/model';
 
-import type { ActivityEvent } from '../model';
+import type { ActivityEvent } from '../../read-model/model';
 
 export type WorkspaceActivityEvent = ActivityEvent;
 

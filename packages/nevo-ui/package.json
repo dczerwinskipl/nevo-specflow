@@ -45,6 +45,7 @@
   "scripts": {
     "build": "pnpm generate:brand-environment && vite build && tsc -p tsconfig.build.json && node scripts/verify-package.mjs",
     "generate:brand-environment": "tsx scripts/generate-brand-environment.mts",
+    "check:token-classes": "tsx scripts/token-classes.ts",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json && tsc -p tsconfig.tools.json",
     "test": "pnpm build && vitest run"
   },

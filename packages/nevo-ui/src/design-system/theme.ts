@@ -108,6 +108,11 @@ export const colorTokens = [
   { stableId: 'Color/border-strong', name: 'Border/Strong', cssVariable: '--color-border-strong' },
   { stableId: 'Color/border-subtle', name: 'Border/Subtle', cssVariable: '--color-border-subtle' },
   {
+    stableId: 'Color/border-control',
+    name: 'Border/Control',
+    cssVariable: '--color-border-control',
+  },
+  {
     stableId: 'Color/workspace-edge',
     name: 'Border/Workspace edge',
     cssVariable: '--color-workspace-edge',

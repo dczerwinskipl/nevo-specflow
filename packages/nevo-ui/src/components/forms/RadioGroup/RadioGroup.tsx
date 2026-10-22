@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { cn } from '../../../lib';
+import { hitAreaBlockClassName, hitAreaClassName } from '../../../design-system/interactionRecipes';
 import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 
 export const RadioGroup = forwardRef<
@@ -41,7 +42,8 @@ export const RadioGroupItem = forwardRef<
     <RadioGroupPrimitive.Item
       ref={ref}
       className={cn(
-        'inline-flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border-default bg-surface-control outline-none',
+        hitAreaClassName,
+        'inline-flex size-4 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border-control bg-surface-control outline-none',
         'data-[state=checked]:border-action-primary disabled:cursor-not-allowed disabled:opacity-60',
         className,
       )}
@@ -74,7 +76,7 @@ export function RadioGroupOption({
   const describedBy = [ariaDescribedBy, descriptionId].filter(Boolean).join(' ') || undefined;
 
   return (
-    <div className={cn('flex items-start gap-2.5', disabled && 'opacity-60', optionClassName)}>
+    <div className={cn('flex items-start gap-2.5', optionClassName)}>
       <RadioGroupItem
         {...props}
         aria-describedby={describedBy}
@@ -86,8 +88,11 @@ export function RadioGroupOption({
         <label
           htmlFor={id}
           className={cn(
-            'block text-body-sm text-content-primary',
-            disabled ? 'cursor-not-allowed' : 'cursor-pointer',
+            hitAreaBlockClassName,
+            'block text-body-sm',
+            disabled
+              ? 'cursor-not-allowed text-content-muted'
+              : 'cursor-pointer text-content-primary',
           )}
         >
           {label}

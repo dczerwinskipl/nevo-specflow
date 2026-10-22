@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { OperationalGroupHeader } from '../shared/OperationalList';
+import { OperationalGroupHeader } from '../../../shared/operational-list';
 import { sectionTone, type CurrentSpecSectionId } from './model';
 
 export function SpecSectionHeader({

@@ -1,3 +1,4 @@
+import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
 import { Typography } from '@nevo/ui';
 import type { TaskSnapshot } from '@nevo/specflow-contracts/specs/workspace';
 import { useTranslation } from 'react-i18next';
@@ -38,9 +39,11 @@ export function TaskHistoryResourceInspection({
     );
   if (query.isPending)
     return (
-      <Typography as="p" variant="body-sm">
-        {t('common.loading')}
-      </Typography>
+      <LoadingPresentation
+        shape="detail"
+        label={t('loading.detail')}
+        fetching={query.fetchStatus === 'fetching'}
+      />
     );
   const entry = query.data?.pages
     .filter((page) => page.token === params.token)

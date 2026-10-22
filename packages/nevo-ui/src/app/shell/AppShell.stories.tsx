@@ -1,3 +1,4 @@
+import { TextInput } from '../../components';
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
@@ -392,4 +393,87 @@ export const SecondaryStackMobile: Story = {
 export const CombinedMobileStress: Story = {
   render: () => <ShellInteractionFixture combined width={390} />,
   globals: { viewport: { value: 'mobile1', isRotated: false } },
+};
+
+function StatefulWorkspaceDraft() {
+  const [title, setTitle] = useState('');
+  return (
+    <AppWorkspace fit="available" split="primary">
+      <AppWorkspace.Primary header={<WorkspaceHeader title="Draft" />}>
+        <AppContent className="w-full">
+          <AppWorkspaceBody>
+            <label htmlFor="responsive-shell-draft">Draft title</label>
+            <TextInput
+              id="responsive-shell-draft"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+            />
+          </AppWorkspaceBody>
+        </AppContent>
+      </AppWorkspace.Primary>
+      <AppWorkspace.Secondary header={<WorkspaceHeader title="Preview" />}>
+        <AppContent className="w-full">
+          <AppWorkspaceBody>Read-only contextual preview</AppWorkspaceBody>
+        </AppContent>
+      </AppWorkspace.Secondary>
+    </AppWorkspace>
+  );
+}
+function ResponsiveDraftFrame() {
+  const [width, setWidth] = useState(1280);
+  return (
+    <div>
+      <div className="flex gap-2 p-2">
+        <Button onClick={() => setWidth(390)}>Narrow</Button>
+        <Button onClick={() => setWidth(1280)}>Wide</Button>
+      </div>
+      <AppShell navigation={<AppShellNavigationFixture />} style={{ width, height: 600 }}>
+        <StatefulWorkspaceDraft />
+      </AppShell>
+    </div>
+  );
+}
+/** Resizing changes shell material ownership, never the identity of application content. */
+export const ResponsiveDraftLifetime: Story = {
+  render: () => <ResponsiveDraftFrame />,
+  play: async ({ canvasElement }) => {
+    const input = await waitFor(
+      () => canvasElement.querySelector<HTMLInputElement>('#responsive-shell-draft'),
+      'Draft input unavailable',
+    );
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+      input,
+      'Keep this draft',
+    );
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    const click = (label: string) => {
+      const button = Array.from(canvasElement.querySelectorAll<HTMLButtonElement>('button')).find(
+        (element) => element.textContent === label,
+      );
+      if (!button) throw new Error(`Missing ${label} control`);
+      button.click();
+    };
+    click('Narrow');
+    await waitFor(
+      () => canvasElement.querySelector('[data-app-shell-workspace-material-owner="panel"]'),
+      'Narrow material ownership not applied',
+    );
+    await waitFor(
+      () =>
+        canvasElement.querySelector<HTMLInputElement>('#responsive-shell-draft')?.value ===
+        'Keep this draft',
+      'Narrow resize lost the application draft',
+    );
+    click('Wide');
+    await waitFor(
+      () => canvasElement.querySelector('[data-app-shell-workspace-fit]'),
+      'Wide material ownership not applied',
+    );
+    await waitFor(
+      () =>
+        canvasElement.querySelector<HTMLInputElement>('#responsive-shell-draft')?.value ===
+        'Keep this draft',
+      'Wide resize lost the application draft',
+    );
+  },
 };

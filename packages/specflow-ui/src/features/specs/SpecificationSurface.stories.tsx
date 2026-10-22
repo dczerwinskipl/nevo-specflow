@@ -171,7 +171,7 @@ export const Documents: Story = {
  * direct and list-origin Full Documents fall back to Documents List.
  */
 export const DocumentReturnNavigation: Story = {
-  args: { path: '/specs/docs-spec?collection=current' },
+  args: { path: '/specs/docs-spec?collection=current', dataMode: 'project' },
   play: async ({ canvas, userEvent }) => {
     await canvas.findByRole('heading', {
       name: 'Odświeżanie sesji i zachowanie kontekstu użytkownika',
@@ -193,7 +193,7 @@ export const DocumentReturnNavigation: Story = {
 
 /** Clicking a document in Primary Documents must return to the owning list. */
 export const DocumentBackFromList: Story = {
-  args: { path: '/specs/docs-spec/documents?collection=archive' },
+  args: { path: '/specs/docs-spec/documents?collection=archive', dataMode: 'project' },
   play: async ({ canvas, userEvent }) => {
     await canvas.findByRole('heading', { name: 'Documents', level: 1 });
     const read = await canvas.findAllByRole('button', { name: 'Read' });
@@ -215,7 +215,7 @@ export const DocumentBackFromList: Story = {
 /** Direct links have no ephemeral origin and must fall back to the Documents List. */
 export const DocumentBackFromDirectLink: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
-  args: { path: '/specs/docs-spec/documents/spec?collection=current' },
+  args: { path: '/specs/docs-spec/documents/spec?collection=current', dataMode: 'project' },
   play: async ({ canvas, userEvent }) => {
     const back = await canvas.findByRole('link', { name: 'Documents' });
     if (back.getAttribute('href') !== '/specs/docs-spec/documents?collection=current')
@@ -227,7 +227,7 @@ export const DocumentBackFromDirectLink: Story = {
 
 export const ArchivedDocumentBackFromDirectLink: Story = {
   ...DocumentBackFromDirectLink,
-  args: { path: '/specs/docs-spec/documents/spec?collection=archive' },
+  args: { path: '/specs/docs-spec/documents/spec?collection=archive', dataMode: 'project' },
   play: async ({ canvas, userEvent }) => {
     const back = await canvas.findByRole('link', { name: 'Documents' });
     if (back.getAttribute('href') !== '/specs/docs-spec/documents?collection=archive')
@@ -337,7 +337,7 @@ export const ApiDtoToTaskScreen: Story = {
 };
 
 export const ApiDtoToDocumentScreen: Story = {
-  args: { path: '/specs/api-integration/documents', integrationDto: true },
+  args: { path: '/specs/api-integration/documents', integrationDto: true, dataMode: 'project' },
   play: async ({ canvas, userEvent }) => {
     await canvas.findByRole('heading', { name: 'Documents', level: 1 }, { timeout: 10000 });
     const button = await canvas.findByRole('button', { name: 'Read' }, { timeout: 10000 });
@@ -350,4 +350,28 @@ export const ApiDtoToDocumentScreen: Story = {
       { timeout: 10000 },
     );
   },
+};
+
+export const PendingSpecification: Story = {
+  args: { path: '/specs/api-integration', integrationDto: true, loadingDelayMs: 30000 },
+};
+export const PendingTask: Story = {
+  args: {
+    path: '/specs/api-integration/tasks/TASK-01',
+    integrationDto: true,
+    loadingDelayMs: 30000,
+  },
+};
+export const PendingDocument: Story = {
+  args: {
+    path: '/specs/api-integration/documents/spec',
+    integrationDto: true,
+    loadingDelayMs: 30000,
+  },
+};
+export const PendingDocuments: Story = {
+  args: { path: '/specs/api-integration/documents', integrationDto: true, loadingDelayMs: 30000 },
+};
+export const PendingRepository: Story = {
+  args: { path: '/specs/api-integration/repository', integrationDto: true, loadingDelayMs: 30000 },
 };

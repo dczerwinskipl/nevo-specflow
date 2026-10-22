@@ -81,6 +81,7 @@ describe('Specification Workspace Runtime HTTP integration', () => {
       const workspace = response.json<SpecificationWorkspaceResponse>();
       expect(workspace.specification.id).toBe(admission?.id);
       expect(workspace.specification.title).toBe(admission?.title);
+      expect(workspace.specification.key).toBe(admission?.key);
       const taskSection = workspace.sections.tasks;
       expect(taskSection.state).toBe('available');
       if (taskSection.state !== 'available') throw new Error('Expected demo Tasks');
@@ -114,7 +115,10 @@ describe('Specification Workspace Runtime HTTP integration', () => {
 
       const docResponse = await app.inject('/api/specs/admission/documents/spec');
       expect(docResponse.statusCode).toBe(200);
-      expect(docResponse.json<SpecificationDocumentResponse>().content).toContain(admission?.title);
+      // The seeded admission specification carries the rich synthetic showcase document.
+      expect(docResponse.json<SpecificationDocumentResponse>().content).toContain(
+        '# Deterministyczna admisja zadań i granice wykonania',
+      );
     } finally {
       await app.close();
     }

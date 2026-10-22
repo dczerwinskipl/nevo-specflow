@@ -1,6 +1,7 @@
 // Supported application and transport boundary. Test/fixture internals live in ./testing.
 export {
   isGitIgnored,
+  areGitIgnored,
   LOCAL_CONFIG_RELATIVE_PATH,
   LOCAL_IGNORE_ENTRY,
   PROJECT_CONFIG_RELATIVE_PATH,
@@ -25,7 +26,7 @@ export {
 
 export { ProjectControlLockError, type ProjectControlLockErrorCode } from './project/control-lock';
 
-export { openSpecFlowEngine, type SpecFlowEngine } from './application';
+export { openSpecFlowEngine, readRegistrySnapshot, type SpecFlowEngine } from './application';
 export { bootstrapProjectHome, assertPrimaryGitCheckout } from './project/bootstrap';
 
 export {
@@ -35,11 +36,28 @@ export {
   type SpecificationManifest,
 } from './specs/model';
 
+export {
+  DEFAULT_BRANCH_PATTERN,
+  parseCommitsPolicy,
+  resolveWorktreesRoot,
+  validateBranchPattern,
+} from './version-control/worktrees/policy';
+
+export {
+  BRANCH_PATTERN_MAX_ENTRIES,
+  BRANCH_PATTERN_MAX_LENGTH,
+  branchPatternProblem,
+  matchesBranchPattern,
+  type BranchPatternProblem,
+} from './version-control/commits/branch-patterns';
+
 export { GitCapabilityError, type GitCapabilityErrorCode } from './git/errors';
+export { inspectLocalBranches, type LocalBranches } from './version-control/git/branches';
 
 export {
   discoverSpecifications,
   resolveSpecification,
+  resolveSpecificationForRead,
   type DiscoveredSpecification,
 } from './specs/discovery';
 
@@ -54,8 +72,12 @@ export { CreateOperationError } from './specs/create-journal';
 
 export {
   createSpecificationFromRequest,
+  resumeInterruptedCreateOperation,
+  type ResumeCreateOptions,
   type CreateSpecificationRequest,
+  type CreateSpecificationRequestOptions,
 } from './specs/create-request';
+export type { CreateStageObservation, CreateStageObserver } from './specs/durable-create';
 
 export {
   inspectPublicCreateOperation,
@@ -63,7 +85,17 @@ export {
 } from './specs/create-inspection';
 
 export {
+  listPublicCreateOperations,
+  readPublicCreateOperationRow,
+  type PublicCreateListingRow,
+  type PublicCreateListingState,
+} from './specs/create-listing';
+export { createStepForStage, type PublicCreateStepId } from './specs/create/step-mapping';
+
+export {
   inspectCreateOptions,
+  type InspectCreateOptionsOptions,
+  willCommitCreatedScaffold,
   type PublicCreateOptions,
   type CreateWorkspaceOption,
   type CreateBaseRefOption,

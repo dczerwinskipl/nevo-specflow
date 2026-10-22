@@ -30,6 +30,7 @@ export function parseCreateJournal(
     !isValidJournalIdentity(context, value, operationId) ||
     !isValidJournalTarget(value.target) ||
     !isValidJournalFiles(value.files, value.slug) ||
+    !isValidJournalCommit(value) ||
     !isValidJournalIntent(context, value)
   ) {
     throw invalidJournal();
@@ -44,7 +45,7 @@ function isValidJournalIdentity(
   operationId: string,
 ): boolean {
   return (
-    value.version === 2 &&
+    value.version === 1 &&
     value.projectId === context.project.projectId &&
     value.operationId === operationId &&
     UUID.test(operationId) &&
@@ -55,6 +56,8 @@ function isValidJournalIdentity(
     typeof value.slug === 'string' &&
     typeof value.title === 'string' &&
     typeof value.created === 'string' &&
+    (value.startedAt === undefined ||
+      (typeof value.startedAt === 'string' && !Number.isNaN(Date.parse(value.startedAt)))) &&
     (value.goal === undefined || typeof value.goal === 'string') &&
     isCreateStage(value.stage) &&
     (value.reason === undefined || typeof value.reason === 'string')
@@ -105,6 +108,43 @@ function isValidJournalTarget(value: unknown): boolean {
   );
 }
 
+/** Optional `commit` evidence and its consistency with the stage and the target. */
+function isValidJournalCommit(value: Record<string, unknown>): boolean {
+  const commit = value.commit;
+  const stage = value.stage;
+  const needsCommit = stage === 'commit-writing' || stage === 'commit-written';
+  if (commit === undefined) return !needsCommit;
+  if (
+    !isRecord(commit) ||
+    commit.required !== true ||
+    typeof commit.branch !== 'string' ||
+    commit.branch.length === 0 ||
+    commit.branch.length > 240 ||
+    (commit.parentHead !== undefined && !isObjectId(commit.parentHead)) ||
+    (commit.commitSha !== undefined && !isObjectId(commit.commitSha)) ||
+    Object.keys(commit).some(
+      (key) =>
+        key !== 'required' && key !== 'branch' && key !== 'parentHead' && key !== 'commitSha',
+    )
+  ) {
+    return false;
+  }
+  if (isRecord(value.target) && value.target.kind === 'new-worktree') {
+    if (value.target.branch !== commit.branch) return false;
+  }
+  if (needsCommit && commit.parentHead === undefined) return false;
+  const committed =
+    stage === 'commit-written' ||
+    stage === 'registry-writing' ||
+    stage === 'registry-linked' ||
+    stage === 'completed';
+  return !committed || commit.commitSha !== undefined;
+}
+
+function isObjectId(value: unknown): boolean {
+  return typeof value === 'string' && /^[a-f0-9]{40}(?:[a-f0-9]{24})?$/iu.test(value);
+}
+
 function isValidJournalFiles(value: unknown, slug: unknown): boolean {
   if (!Array.isArray(value) || value.length !== 2 || typeof slug !== 'string') return false;
   return (
@@ -135,8 +175,11 @@ function isValidJournalIntent(
     intent.title !== value.title ||
     (intent.goal !== undefined && typeof intent.goal !== 'string') ||
     intent.goal !== value.goal ||
+    (intent.slug !== undefined && intent.slug !== value.slug) ||
     !isRecord(intent.target) ||
-    Object.keys(intent).some((key) => key !== 'title' && key !== 'goal' && key !== 'target')
+    Object.keys(intent).some(
+      (key) => key !== 'title' && key !== 'goal' && key !== 'slug' && key !== 'target',
+    )
   ) {
     return false;
   }
@@ -190,6 +233,7 @@ function isValidJournalIntent(
     const normalized = normalizeCreateClientIntent({
       title: persisted.title,
       goal: persisted.goal,
+      slug: persisted.slug,
       target:
         persisted.target.kind === 'existing'
           ? persisted.target

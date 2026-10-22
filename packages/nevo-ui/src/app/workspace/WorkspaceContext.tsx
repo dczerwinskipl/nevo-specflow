@@ -216,7 +216,8 @@ function ScreenOutlet({
 
   let notice: ReactNode = null;
   if (result.status === 'loading') {
-    notice = <div role="status">Loading…</div>;
+    notice =
+      result.presentation !== undefined ? result.presentation : <div role="status">Loading…</div>;
   } else if (result.status === 'unavailable') {
     notice = <div role="status">{result.message ?? 'This item is no longer available.'}</div>;
   } else if (result.status === 'access-denied') {
@@ -248,7 +249,7 @@ function ScreenOutlet({
     <ScreenNavigationContext.Provider value={navigation}>
       {notice}
       {preserve ? (
-        <div hidden={!visible} inert={!visible}>
+        <div className="h-full min-h-0 min-w-0" hidden={!visible} inert={!visible}>
           <Component data={data} params={entry.params} />
         </div>
       ) : visible ? (
@@ -343,10 +344,12 @@ export function AppWorkspaceProvider({
 
   useEffect(() => {
     mounted.current = true;
+    // The map is created once and only mutated: this is the instance to clear on unmount.
+    const registeredGuards = guards.current;
     return () => {
       mounted.current = false;
       flowRef.current = null;
-      guards.current.clear();
+      registeredGuards.clear();
     };
   }, []);
 

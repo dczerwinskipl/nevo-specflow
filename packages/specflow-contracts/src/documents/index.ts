@@ -17,6 +17,7 @@ export const SpecificationDocumentParamsSchema = Type.Object(
 export const SpecificationDocumentResponseSchema = Type.Object({
   id: IdSchema,
   title: Type.String(),
+  filename: Type.Optional(Type.String()),
   content: Type.String(),
   revision: Type.String(),
 });

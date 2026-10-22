@@ -1,4 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { VisitStateProvider } from '../VisitStateProvider';
+import { authSessionIdentity } from '../../auth/store';
 import {
   createRootRouteWithContext,
   createRoute,
@@ -8,14 +10,12 @@ import {
 } from '@tanstack/react-router';
 import type { AuthStore } from '../../auth/store';
 import { resolveAppAccess, safeReturnTo } from '../../auth/access';
-import type { SpecsOverviewApi } from '../../features/specs/overview/api';
 import type { SpecFlowAppServices } from '../dependencies';
 import { SpecFlowShell } from '../SpecFlowShell';
 
 export interface SpecFlowRouterContext {
   readonly services: SpecFlowAppServices;
   readonly auth: AuthStore;
-  readonly specs: SpecsOverviewApi;
 }
 
 export const rootRoute = createRootRouteWithContext<SpecFlowRouterContext>()({
@@ -71,9 +71,20 @@ export const appRoute = createRoute({
 
 function AppRouteLayout() {
   const { auth } = appRoute.useRouteContext();
+  const authState = useSyncExternalStore(
+    (listener) => auth.subscribe(listener),
+    () => auth.getState(),
+  );
+  const priorIdentity = useRef('initial');
+  if (authState.status === 'ready') priorIdentity.current = authSessionIdentity(authState.session);
+  else if (authState.status === 'loading' && authState.reason === 'logout')
+    priorIdentity.current = 'logout';
+  const identity = priorIdentity.current;
   return (
-    <SpecFlowShell auth={auth}>
-      <Outlet />
-    </SpecFlowShell>
+    <VisitStateProvider key={identity}>
+      <SpecFlowShell auth={auth}>
+        <Outlet />
+      </SpecFlowShell>
+    </VisitStateProvider>
   );
 }

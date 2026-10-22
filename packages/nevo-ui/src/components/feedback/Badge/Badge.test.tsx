@@ -12,4 +12,10 @@ describe('Badge', () => {
       'text-status-danger',
     );
   });
+
+  it('has a compact size without minimum height or vertical padding', () => {
+    const html = renderToStaticMarkup(<Badge size="compact">Required</Badge>);
+    expect(html).toContain('py-0');
+    expect(html).not.toContain('min-h-5');
+  });
 });

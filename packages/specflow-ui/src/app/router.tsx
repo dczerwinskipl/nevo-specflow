@@ -1,3 +1,8 @@
+import {
+  createOperationRoute,
+  createSpecificationRoute,
+  newSessionRoute,
+} from '../features/specs/creation/routes';
 import { createRoute, createRouter, type RouterHistory } from '@tanstack/react-router';
 
 import { authRoutes, loginRoute, runtimeUnavailableRoute } from '../auth/routes';
@@ -24,6 +29,8 @@ import { sessionsAppRoutes } from '../features/sessions/routes';
 import { gitAppRoutes } from '../features/git/routes';
 import { createSpecFlowAppServices, type SpecFlowAppServices } from './dependencies';
 import { UiPlaygroundScreen } from './screens';
+import { NotFoundView } from './errors/NotFoundView';
+import { RouteErrorView } from './errors/RouteErrorView';
 import { rootRoute, appRoute, type SpecFlowRouterContext } from './router/root';
 
 export {
@@ -55,11 +62,14 @@ export const routeTree = rootRoute.addChildren([
   ...specsRootRoutes,
   appRoute.addChildren([
     ...specsAppRoutes,
+    createSpecificationRoute,
+    createOperationRoute,
     specificationRoute.addChildren([
       specificationIndexRoute,
       ...taskAppRoutes,
       ...documentsAppRoutes,
       ...sessionsAppRoutes,
+      newSessionRoute,
       ...gitAppRoutes,
     ]),
     uiPlaygroundRoute,
@@ -73,12 +83,15 @@ export function createSpecFlowRouter(
   const context: SpecFlowRouterContext = {
     services,
     auth: services.authStore,
-    specs: services.specsOverviewApi,
   };
 
   return createRouter({
     routeTree,
     context,
+    defaultErrorComponent: RouteErrorView,
+    defaultNotFoundComponent: NotFoundView,
+    // Defects reach the console (no remote telemetry in a local product); the boundary shows a generic screen.
+    defaultOnCatch: (error) => console.error('Route render failed', error),
     ...(history ? { history } : {}),
   });
 }

@@ -1,8 +1,5 @@
 import { contributeTo, type UiModule } from '../../app/ui-modules/contracts';
-import {
-  specificationWorkSections,
-  type SpecificationWorkSectionContext,
-} from '../specs/extensions/specificationWorkSections';
+import { specificationWorkSections, type SpecificationWorkSectionContext } from '../specs';
 import { DocumentsSummarySection } from './contributions/specification-work/DocumentsSummarySection';
 
 function SpecificationDocuments({ data, actions }: SpecificationWorkSectionContext) {

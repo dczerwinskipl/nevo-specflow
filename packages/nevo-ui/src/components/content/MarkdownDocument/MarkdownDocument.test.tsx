@@ -78,3 +78,61 @@ describe('MarkdownDocument', () => {
     expect(html).toContain('aria-label="Zadanie nieukończone"');
   });
 });
+
+describe('MarkdownDocument source lines', () => {
+  const source =
+    '# Title\n\nParagraph\n\n- one\n- two\n  - nested\n\n```ts\nconst a = 1;\n```\n\n| A |\n| - |\n| 1 |\n\n> quote\n';
+
+  it('is off by default and leaves the markup untouched', () => {
+    const off = renderToStaticMarkup(<MarkdownDocument source={source} />);
+    expect(off).not.toContain('data-source-line');
+  });
+
+  it('adds the start line to top-level blocks and list items only when opted in', () => {
+    const on = renderToStaticMarkup(<MarkdownDocument source={source} sourceLines />);
+    expect(on).toMatch(/<h1[^>]*data-source-line="1"/);
+    expect(on).toMatch(/<p[^>]*data-source-line="3"/);
+    expect(on).toMatch(/<ul[^>]*data-source-line="5"/);
+    expect(on).toMatch(/<li[^>]*data-source-line="5"/);
+    expect(on).toMatch(/<li[^>]*data-source-line="6"/);
+    expect(on).toMatch(/<li[^>]*data-source-line="7"/);
+    // The code block scrolls in a ScrollArea region that carries the line.
+    expect(on).toMatch(/<div[^>]*data-source-line="9"/);
+    expect(on).toMatch(/data-source-line="13"/);
+    expect(on).toMatch(/<blockquote[^>]*data-source-line="17"/);
+    // Nested non-item blocks do not carry a line (only top-level blocks and li).
+    expect((on.match(/<ul/g) ?? []).length).toBe(2);
+    expect((on.match(/<ul[^>]*data-source-line/g) ?? []).length).toBe(1);
+  });
+
+  it('keeps the rendered classes identical to the default output', () => {
+    const strip = (html: string) => html.replace(/ data-source-line="\d+"/g, '');
+    expect(strip(renderToStaticMarkup(<MarkdownDocument source={source} sourceLines />))).toBe(
+      renderToStaticMarkup(<MarkdownDocument source={source} />),
+    );
+  });
+
+  it('puts wide tables and code blocks in named, focusable horizontal scroll regions', () => {
+    const html = renderToStaticMarkup(
+      <MarkdownDocument
+        labels={{ table: 'Tabela', codeBlock: 'Blok kodu' }}
+        source={['| A | B |', '| :- | -: |', '| 1 | 2 |', '', '```ts', 'const a = 1;', '```'].join(
+          String.fromCharCode(10),
+        )}
+      />,
+    );
+    expect(html).toContain('aria-label="Tabela"');
+    expect(html).toContain('aria-label="Blok kodu"');
+    expect(html.match(/role="group"/g)).toHaveLength(2);
+    expect(html.match(/tabindex="0"/g)).toHaveLength(2);
+    expect(html).toContain('text-align:right');
+  });
+
+  it('keeps images within the column', () => {
+    const html = renderToStaticMarkup(
+      <MarkdownDocument source={'![Alt](https://example.com/a.png)'} />,
+    );
+    expect(html).toContain('max-w-full');
+    expect(html).toContain('alt="Alt"');
+  });
+});

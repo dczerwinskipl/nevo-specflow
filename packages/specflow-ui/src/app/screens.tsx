@@ -24,7 +24,7 @@ function Screen({ children, title }: { children: React.ReactNode; title: string 
     >
       <AppWorkspace.Primary header={<WorkspaceHeader title={title} />}>
         <AppContent>
-          <AppWorkspaceBody>
+          <AppWorkspaceBody scroll="area">
             <AppContentContainer className="grid gap-5" size="wide">
               {children}
             </AppContentContainer>

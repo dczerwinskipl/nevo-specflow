@@ -30,8 +30,8 @@ function StaticWorkspaceSlotRegion({
   slot: AppWorkspaceSlot;
   slotName: 'primary' | 'secondary';
 }) {
-  const { availableWidth } = useAppWorkspace();
-  const width = resolveSlotMaxWidth(availableWidth, share);
+  const { availableWidth, contentWidth = availableWidth } = useAppWorkspace();
+  const width = resolveSlotMaxWidth(contentWidth, share);
 
   return (
     <div
@@ -54,7 +54,7 @@ export function AppWorkspaceSlots({
   secondary,
   split = 'balanced',
 }: AppWorkspaceSlotsProps) {
-  const { availableWidth } = useAppWorkspace();
+  const { availableWidth, contentWidth = availableWidth } = useAppWorkspace();
   const resolvedSplit = resolveWorkspaceSplit(split, secondary !== undefined, availableWidth);
   const layout = secondary ? split : 'single';
   const capture = useDesignMetadata('AppWorkspaceSlots', { layout });
@@ -63,7 +63,7 @@ export function AppWorkspaceSlots({
     <div
       className="flex h-full max-w-full items-stretch overflow-hidden"
       style={{
-        width: availableWidth === undefined ? '100%' : `${availableWidth}px`,
+        width: contentWidth === undefined ? '100%' : `${contentWidth}px`,
       }}
       {...capture}
     >

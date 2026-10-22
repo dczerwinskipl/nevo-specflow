@@ -42,3 +42,7 @@ export const Tones: Story = {
     </div>
   ),
 };
+
+export const Compact: Story = {
+  args: { size: 'compact', children: 'Required' },
+};

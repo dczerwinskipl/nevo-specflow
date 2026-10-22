@@ -7,11 +7,16 @@ export const floatingSurfaceClassName =
 
 export const floatingContentClassName = `${floatingSurfaceClassName} min-w-48 p-1`;
 
-export const floatingItemDefaults = { state: 'default' } as const;
+export const floatingItemDefaults = { state: 'default', fadeDisabled: true } as const;
 
 export const floatingItemVariants = tv({
-  base: `relative flex min-h-control-height-compact w-full select-none items-center gap-2 rounded-control px-control-padding-compact py-1.5 text-left text-body-sm text-content-secondary outline-none data-[highlighted]:bg-surface-hover data-[highlighted]:text-content-primary data-[design-prop-state=highlighted]:bg-surface-hover data-[design-prop-state=highlighted]:text-content-primary data-[disabled]:pointer-events-none data-[disabled]:text-content-muted data-[disabled]:opacity-50 ${fastColorTransitionClassName}`,
+  base: `relative flex min-h-control-height-compact w-full select-none items-center gap-2 rounded-control px-control-padding-compact py-1.5 text-left text-body-sm text-content-secondary outline-none data-[highlighted]:bg-surface-hover data-[highlighted]:text-content-primary data-[design-prop-state=highlighted]:bg-surface-hover data-[design-prop-state=highlighted]:text-content-primary data-[disabled]:pointer-events-none data-[disabled]:text-content-muted ${fastColorTransitionClassName}`,
   variants: {
+    /** `false` lets an item that carries a readable reason fade only its own label/meta. */
+    fadeDisabled: {
+      true: 'data-[disabled]:opacity-50',
+      false: '',
+    },
     state: {
       default: '',
       highlighted: 'bg-surface-hover text-content-primary',

@@ -42,14 +42,19 @@ groups and document manifest ordering are authoritative.
 
 ## Data source
 
-Normal `nevo-specflow start` uses project mode. A missing project-side
-read repository returns `503 { "error": "specification_source_unavailable" }`
-rather than demonstration data. The explicit `nevo-specflow start --demo`
+Normal `nevo-specflow start` uses project mode. The workspace identity (id, title, revision of the
+canonical manifest, `preparationState`) is read from the Engine-verified manifest; the Task,
+document, Session, activity, repository and change sections are `unavailable` with reason
+`not_implemented` and every action is unavailable, because the Engine owns no verified projection of
+them yet. A bound specification whose canonical source cannot be read (unavailable workspace,
+missing or invalid manifest, registry or Git failure) and a Runtime without any source return
+`503 { "error": "specification_source_unavailable" }`; both cases share this body, so the UI cannot tell
+an outage from a missing adapter. Demonstration data is never substituted. The explicit `nevo-specflow start --demo`
 selects Runtime-owned demonstration repositories over the same endpoints.
 Demo Overview and Workspace derive from one consistent sample catalogue.
 
-This increment does **not** implement a real project Specification storage
-adapter, mutations, multi-project routing, or multi-worktree execution.
+This increment does **not** implement project Task, document or Session sections, mutations,
+multi-project routing, or multi-worktree execution.
 Availability and action states describe only what actually exists.
 
 ## Authorization and errors
@@ -76,7 +81,8 @@ The internal Specification source supplies its own identity and lightweight fact
 composer joins public Task, Document and Session contributions and applies visibility. Specs owns
 no Task detail, history, resources or document-body repository methods or routes. The HTTP endpoint
 only maps the application result; root composition selects project or explicit demo dependencies.
-The actual project reader is still a separate future increment.
+The project reader (`createEngineWorkspaceRepository`) supplies the identity only; contributions for the
+other sections are a later increment.
 
 Task lifecycle is a semantic code. The UI does not persist translated status labels in
 its Query cache; translation happens during rendering. Full Task uses the current

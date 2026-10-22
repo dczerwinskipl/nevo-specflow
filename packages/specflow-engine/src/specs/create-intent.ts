@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 
 import { CreateOperationError } from './create-error';
+import { validateBranchName } from '../version-control/git/refs';
+import { isExplicitSpecificationSlug } from './model';
 
 export type ClientOverride =
   { readonly kind: 'omitted' } | { readonly kind: 'explicit'; readonly value: string };
@@ -22,6 +24,8 @@ export type ClientCreateTarget =
 export interface CreateClientIntent {
   readonly title: string;
   readonly goal?: string;
+  /** Omitted keeps the title-derived slug and the legacy intent fingerprint. */
+  readonly slug?: string;
   readonly target: ClientCreateTarget;
 }
 
@@ -37,6 +41,7 @@ export type CreateClientTargetInput =
 export function normalizeCreateClientIntent(input: {
   readonly title: string;
   readonly goal?: string;
+  readonly slug?: string;
   readonly target: CreateClientTargetInput;
 }): CreateClientIntent {
   const title = input.title.replace(/\s+/gu, ' ').trim();
@@ -44,8 +49,23 @@ export function normalizeCreateClientIntent(input: {
   if (!title || title.length > 200) {
     throw new CreateOperationError('CREATE_OPERATION_INVALID', 'Invalid specification title.');
   }
+  if (input.slug !== undefined && !isExplicitSpecificationSlug(input.slug)) {
+    throw new CreateOperationError('CREATE_OPERATION_INVALID', 'Invalid specification slug.');
+  }
+  if (
+    input.target.kind === 'new-worktree' &&
+    input.target.branch !== undefined &&
+    !isValidBranchName(input.target.branch)
+  ) {
+    throw new CreateOperationError('BRANCH_NAME_INVALID', 'Invalid branch name.');
+  }
   const target = normalizeClientTarget(input.target);
-  return { title, ...(goal ? { goal } : {}), target };
+  return {
+    title,
+    ...(goal ? { goal } : {}),
+    ...(input.slug !== undefined ? { slug: input.slug } : {}),
+    target,
+  };
 }
 
 export function fingerprintCreateClientIntent(intent: CreateClientIntent): string {
@@ -69,6 +89,15 @@ function normalizeClientTarget(input: CreateClientTargetInput): ClientCreateTarg
       const exhaustive: never = input;
       return exhaustive;
     }
+  }
+}
+
+function isValidBranchName(branch: string): boolean {
+  try {
+    validateBranchName(branch);
+    return true;
+  } catch {
+    return false;
   }
 }
 

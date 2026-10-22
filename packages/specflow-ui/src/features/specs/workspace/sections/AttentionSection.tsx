@@ -30,7 +30,7 @@ export function AttentionSection({ items }: AttentionSectionProps) {
             className="font-semibold text-content-primary"
           >
             {t('specification.requiresAttention')}{' '}
-            <span className="text-body-xs font-normal normal-case tracking-normal text-content-muted">
+            <span className="text-body-sm font-normal normal-case tracking-normal text-content-muted">
               {items.length}
             </span>
           </Typography>

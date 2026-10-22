@@ -11,7 +11,7 @@ import {
   reserveCloseOperation,
 } from '../src/testing';
 import { closeJournalPath } from '../src/specs/lifecycle/journal-store';
-import { createGitTestProject, git } from './support/git-project';
+import { createGitTestProject, git, commitStaged } from './support/git-project';
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -31,16 +31,7 @@ describe('E2.T10 Close journal destination ownership', () => {
       'runtime: {}\ngit:\n  enabled: true\n  integrationTargetBranch: ' + branch + '\n',
     );
     git(root, 'add', '.nevo/config.yaml');
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'select integration target',
-    );
+    commitStaged(root, 'select integration target');
     const engine = await bootstrapProjectHome(root);
     const spec = await createSpecificationForTesting(engine, {
       operationId: randomUUID(),
@@ -49,16 +40,7 @@ describe('E2.T10 Close journal destination ownership', () => {
       target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
     });
     git(root, 'add', '--', spec.relativeManifestPath, 'specs/active/' + spec.slug + '/overview.md');
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'commit authored specification',
-    );
+    commitStaged(root, 'commit authored specification');
     const operationId = randomUUID();
     await reserveCloseOperation(engine, {
       kind: 'specification-close',

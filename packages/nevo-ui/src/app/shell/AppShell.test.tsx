@@ -3,7 +3,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { DesignMetadataProvider } from '@nevo/figma-capture/metadata';
 import { AppShell, resolveAppShellLayout } from './AppShell';
-import { WIDE_SHELL_MIN_WIDTH } from '../workspace/workspaceSizing';
+import {
+  APP_WORKSPACE_EDGE_BORDER,
+  WIDE_SHELL_MIN_WIDTH,
+  resolveWorkspaceContentWidth,
+} from '../workspace/workspaceSizing';
 
 describe('AppShell', () => {
   it('does not assume a desktop layout before width is known during SSR or hydration', () => {
@@ -79,5 +83,26 @@ describe('AppShell', () => {
     expect(markup).toContain('data-design-component="AppShell"');
     expect(markup).not.toContain('data-design-component="AppBackground"');
     expect(markup).not.toContain('data-design-component="WorkspaceSurface"');
+  });
+});
+
+describe('workspace content width', () => {
+  it('subtracts the surface edge borders from the published slot width, not from thresholds', () => {
+    for (const width of [1280, 1366, 1440, 1600]) {
+      const { availableWidth, wide } = resolveAppShellLayout(width);
+      expect(wide).toBe(true);
+      expect(availableWidth).toBe(width - 268);
+      expect(resolveWorkspaceContentWidth(availableWidth, { bordered: true, inset: false })).toBe(
+        width - 268 - APP_WORKSPACE_EDGE_BORDER,
+      );
+    }
+    expect(resolveWorkspaceContentWidth(1172, { bordered: true, inset: true })).toBe(1170);
+  });
+
+  it('leaves panel-owned (stacked) workspaces untouched', () => {
+    expect(resolveWorkspaceContentWidth(480, { bordered: false, inset: false })).toBe(480);
+    expect(
+      resolveWorkspaceContentWidth(undefined, { bordered: true, inset: false }),
+    ).toBeUndefined();
   });
 });

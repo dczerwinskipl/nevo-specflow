@@ -9,7 +9,6 @@ import {
   bootstrapProjectHome,
   createSpecification,
   inspectCreateSpecification,
-  openSpecFlowEngine,
   inspectProjectControlLock,
   projectControlLockPath,
   workspaceRegistryPath,
@@ -218,7 +217,7 @@ describe('E2.T04 — actual process termination and fresh-process recovery', () 
     expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(registryBefore);
   }, 120000);
 
-  it('SIGKILL during atomic journal publication retains orphan lock and staged temp; no silent cleanup', async () => {
+  it('SIGKILL during atomic journal publication retains orphan lock and staged temp; the temp never wedges Create', async () => {
     const { root, engine } = await project();
     const input = request(engine, 'Crash inside atomic rename');
     expect(await killAtCheckpoint(root, input, 'atomic', 'atomic-write')).toBe('staged');
@@ -234,15 +233,11 @@ describe('E2.T04 — actual process termination and fresh-process recovery', () 
     // inspect/preserve the staged journal, release its verified orphan lock,
     // then move the abandoned .tmp out of the authoritative journal directory.
     await rm(projectControlLockPath(engine.context));
-    const initial = await openSpecFlowEngine({ cwd: root });
-    await expect(createSpecification(initial, input)).rejects.toMatchObject({
-      code: 'CREATE_JOURNAL_CORRUPT',
-    });
-    expect((await readdir(dir)).filter((name) => name.endsWith('.tmp'))).toEqual(temps);
-    await rm(join(dir, temps[0]!));
+    // The staged temp is never a journal: it neither wedges Create nor is deleted while young.
     const output = JSON.parse(await replay(root, input)) as { specId: string };
     expect(output.specId).toMatch(/^[0-9a-f-]{36}$/u);
     expect((await engine.readRegistry()).specBindings).toHaveLength(1);
+    expect((await readdir(dir)).filter((name) => name.endsWith('.tmp'))).toEqual(temps);
   }, 120000);
 
   it('unavailable unrelated bound Spec blocks create intentionally until global slug ownership is provable', async () => {

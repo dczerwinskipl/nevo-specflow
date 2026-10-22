@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { waitFor } from 'storybook/test';
+import { expect, waitFor } from 'storybook/test';
 import { AppShell, Typography } from '@nevo/ui';
 import {
   Outlet,
@@ -31,12 +31,21 @@ import type {
   CurrentSpecTarget,
 } from './model';
 import { SpecsOverview } from './SpecsOverview';
+import { OperationsPanelHost } from '../../../shared/operations';
+import type { OperationListItem } from '../../../shared/operations/operationList';
+import {
+  operationList,
+  operationsStub,
+  runningItem,
+  operationItem,
+  stubCreateKind,
+} from '../../../../test-support/operations/fixtures';
 import { useSpecsOverview } from './useSpecsOverview';
 import type { SpecsOverviewApi } from './api';
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createSpecFlowQueryClient } from '../../../app/queryClient';
-import { specPrimaryLinkClassName } from './SpecListRow';
+import { specPrimaryLinkClassName } from './SpecPrimaryLink';
 
 function SourceLifecycleFixture() {
   const queryClient = useMemo(() => createSpecFlowQueryClient(), []);
@@ -114,10 +123,12 @@ function OverviewFixture({
   state,
   locale = 'en',
   interactive = true,
+  operations,
 }: {
   state: SpecsOverviewState;
   locale?: AppLocale;
   interactive?: boolean;
+  operations?: readonly OperationListItem[];
 }) {
   const queryClient = useMemo(() => createSpecFlowQueryClient(), []);
   const router = useMemo(() => {
@@ -156,7 +167,7 @@ function OverviewFixture({
       path: '/',
       component: () => (
         <SpecFlowShell auth={auth}>
-          <OverviewFixtureContent state={state} interactive={interactive} />
+          <OverviewFixtureContent state={state} interactive={interactive} operations={operations} />
         </SpecFlowShell>
       ),
     });
@@ -178,7 +189,7 @@ function OverviewFixture({
       routeTree: root.addChildren([overview, login, playground]),
       history: createMemoryHistory({ initialEntries: ['/'] }),
     });
-  }, [state, interactive]);
+  }, [state, interactive, operations]);
   return (
     <QueryClientProvider client={queryClient}>
       <StoryLocalization locale={locale}>
@@ -191,10 +202,23 @@ function OverviewFixture({
 function OverviewFixtureContent({
   state,
   interactive,
+  operations,
 }: {
   state: SpecsOverviewState;
   interactive: boolean;
+  operations?: readonly OperationListItem[];
 }) {
+  const operationsPanel = useMemo(
+    () =>
+      operations ? (
+        <OperationsPanelHost
+          api={operationsStub(operationList(operations))}
+          listUrl="/api/specs/operations"
+          kinds={[stubCreateKind]}
+        />
+      ) : undefined,
+    [operations],
+  );
   const [collectionOverride, setCollectionOverride] = useState<SpecsOverviewState>();
   const [target, setTarget] = useState<CurrentSpecTarget>();
   const [refreshes, setRefreshes] = useState(0);
@@ -203,6 +227,7 @@ function OverviewFixtureContent({
     <>
       <SpecsOverview
         state={collectionOverride ?? state}
+        operationsPanel={operationsPanel}
         onCollectionChange={(collection) =>
           setCollectionOverride({
             collection,
@@ -457,6 +482,71 @@ export const ReadyAndDraft: Story = {
     },
   },
 };
+/**
+ * A project Runtime that knows the specifications but not their work status or progress: ONE flat
+ * list (name, key facts, when it was updated), no group of "unavailable" and no empty columns.
+ * The choice is data-driven: it follows what the Runtime provides, not the runtime mode.
+ */
+const noStatus = (id: string, title: string, extra: Parameters<typeof createSpecItem>[0] = {}) =>
+  createSpecItem({
+    id,
+    title,
+    classification: { section: 'unknown' },
+    progress: null,
+    signals: null,
+    currentExecutions: null,
+    ...extra,
+  });
+const flatState: SpecsOverviewState = {
+  ...loaded,
+  projection: {
+    ...createSpecsFixture(),
+    sections: ['unknown'],
+    items: [
+      noStatus('a', 'Payment limits', { key: 'PAY-12', updatedAt: '2026-10-20T09:00:00Z' }),
+      noStatus('b', 'Audit trail', { tags: ['Runtime'], updatedAt: '2026-10-12T09:00:00Z' }),
+      noStatus('c', 'Offline mode', { updatedAt: '2026-09-30T09:00:00Z' }),
+    ],
+  },
+};
+export const FlatListWithoutStatus: Story = {
+  args: { state: flatState },
+  tags: ['visual'],
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByRole('link', { name: 'Open specification: Payment limits' });
+    await expect(canvasElement.querySelector('[data-spec-layout="flat"]')).not.toBeNull();
+    await expect(canvas.queryByText('Status unavailable')).toBeNull();
+    await expect(canvas.queryByText('Work status not available yet')).toBeNull();
+    await expect(canvasElement.querySelector('[data-spec-columns]')).toBeNull();
+    await expect(canvas.queryByRole('button', { name: /Specification actions: / })).toBeNull();
+  },
+};
+/** Only progress exists: the flat list keeps one progress column, still no status column. */
+export const FlatListWithProgressOnly: Story = {
+  args: {
+    state: {
+      ...flatState,
+      projection: {
+        ...flatState.projection!,
+        items: (flatState.projection!.items as ReturnType<typeof createSpecItem>[]).map(
+          (item, index) => ({ ...item, progress: { completed: index, total: 4 } }),
+        ),
+      },
+    },
+  },
+};
+export const FlatListMobile: Story = {
+  args: { state: flatState },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+};
+export const FlatListPolish: Story = { args: { state: flatState, locale: 'pl' } };
+/** Real status data: grouped by status, with the situation and progress columns. */
+export const GroupedByStatus: Story = {
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByRole('heading', { name: 'Requires attention' });
+    await expect(canvasElement.querySelector('[data-spec-layout="grouped"]')).not.toBeNull();
+  },
+};
 export const Loading: Story = {
   args: { state: { collection: 'current', loading: true, refreshing: false, error: false } },
 };
@@ -583,6 +673,40 @@ export const CollectionSwitch: Story = {
 };
 export const LongContent: Story = {
   args: { state: { ...loaded, projection: createLongContentFixture() } },
+};
+/**
+ * A Create that is running: the operations panel sits above the list (rendered from API data, no
+ * client-side ledger) and its row leads to the progress page.
+ */
+export const CreatingInProgress: Story = {
+  args: {
+    operations: [runningItem(1, { title: 'Limity płatności', operationId: 'op-1' })],
+  },
+  play: async ({ canvas }) => {
+    const link = await canvas.findByRole('link', { name: /^Limity płatności/ });
+    await expect(link).toHaveAttribute('href', '/specs/new/creating/op-1');
+    await expect(link).toHaveTextContent('Step 2 of 4');
+    await expect(canvas.getByRole('region', { name: 'Background operations' })).toBeVisible();
+  },
+};
+
+/** The panel at 320 px with a long name and a check-result row: it wraps and nothing scrolls sideways. */
+export const CreatingInProgressMobile: Story = {
+  args: {
+    operations: [
+      runningItem(2, {
+        title:
+          'Ograniczenia płatności cyklicznych dla klientów korporacyjnych w kanałach zdalnych oraz integracji z dostawcami',
+      }),
+      operationItem({ status: 'recovery-required', title: 'Faktury' }),
+    ],
+  },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas }) => {
+    const links = await canvas.findAllByRole('link', { name: /Background|,/ });
+    for (const link of links)
+      await expect(link.getBoundingClientRect().right).toBeLessThanOrEqual(window.innerWidth);
+  },
 };
 export const Polish: Story = { args: { locale: 'pl' } };
 export const ProgressStates: Story = {

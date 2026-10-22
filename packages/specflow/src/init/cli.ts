@@ -1,7 +1,4 @@
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-
-import { relative } from 'node:path';
+import { join, relative, dirname, basename } from 'node:path';
 
 import {
   bootstrapProjectHome,
@@ -22,8 +19,13 @@ import {
   type InitializeProjectOptions,
   type InitializeProjectResult,
 } from './initialize-project';
-
-const gitProcess = promisify(execFile);
+import {
+  chooseBranchPattern,
+  chooseIntegrationTargetBranch,
+  chooseProtectedBranches,
+  chooseWorktreesRoot,
+  integrationTargetProtectedNote,
+} from './prompts';
 
 export interface ProjectInitCommandContext {
   readonly cwd: string;
@@ -53,36 +55,34 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
         'Enable managed Git worktrees and lifecycle operations?',
         true,
       );
-      let gitConfig: { enabled: boolean; integrationTargetBranch?: string } = { enabled: false };
+      let worktreesRoot: string | undefined;
+      let gitConfig: {
+        enabled: boolean;
+        integrationTargetBranch?: string;
+        worktrees?: { branchPattern: string };
+        commits?: { protectedBranches: string[] };
+      } = { enabled: false };
+      let protectedBranches: string[] = [];
       if (gitEnabled) {
-        const currentBranch = (
-          await gitProcess('git', ['symbolic-ref', '--quiet', '--short', 'HEAD'], {
-            cwd: layout.root,
-          })
-        ).stdout.trim();
-        const integrationTargetBranch = (
-          await ui.input('Branch receiving integrated worktrees', currentBranch)
-        ).trim();
-        if (!integrationTargetBranch) throw new Error('Git integration target branch is required.');
-        // Validate the exact committed ref before initialization; do not
-        // silently substitute a workstation-local default on another machine.
-        try {
-          await gitProcess('git', ['check-ref-format', '--branch', integrationTargetBranch], {
-            cwd: layout.root,
-          });
-          await gitProcess(
-            'git',
-            ['show-ref', '--verify', 'refs/heads/' + integrationTargetBranch],
-            { cwd: layout.root },
-          );
-        } catch {
-          throw new Error('Integration target must be an existing, valid local Git branch.');
+        const integrationTargetBranch = await chooseIntegrationTargetBranch(ui, layout.root);
+        const branchPattern = await chooseBranchPattern(ui);
+        gitConfig = { enabled: true, integrationTargetBranch, worktrees: { branchPattern } };
+        worktreesRoot = await chooseWorktreesRoot(ui, layout.root);
+        protectedBranches = await chooseProtectedBranches(ui, layout.root);
+        if (protectedBranches.length > 0) {
+          gitConfig = { ...gitConfig, commits: { protectedBranches } };
         }
-        gitConfig = { enabled: true, integrationTargetBranch };
       }
+      const protectedNote =
+        gitConfig.integrationTargetBranch !== undefined
+          ? integrationTargetProtectedNote(gitConfig.integrationTargetBranch, protectedBranches)
+          : undefined;
       const contribution = {
         projectConfig: { runtime: runtime.projectConfig, git: gitConfig },
-        localConfig: { runtime: runtime.localConfig },
+        localConfig: {
+          runtime: runtime.localConfig,
+          ...(worktreesRoot !== undefined ? { git: { worktreesRoot } } : {}),
+        },
       };
 
       ui.note(
@@ -92,6 +92,17 @@ export function createProjectInitCommand(context: ProjectInitCommandContext): Co
           ...(gitConfig.integrationTargetBranch
             ? ['Integration branch: ' + gitConfig.integrationTargetBranch]
             : []),
+          ...(gitConfig.worktrees ? ['Branch pattern: ' + gitConfig.worktrees.branchPattern] : []),
+          ...(gitConfig.enabled
+            ? [
+                'Worktree folder: ' +
+                  (worktreesRoot ??
+                    join(dirname(layout.root), basename(layout.root) + '-worktrees')),
+                'Protected branches: ' +
+                  (protectedBranches.length > 0 ? protectedBranches.join(', ') : 'none'),
+              ]
+            : []),
+          ...(protectedNote ? ['', protectedNote] : []),
           '',
           `Project config: ${relative(layout.root, layout.projectConfigPath)}`,
           `Local config: ${relative(layout.root, layout.localConfigPath)}`,

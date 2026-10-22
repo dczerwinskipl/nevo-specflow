@@ -1,3 +1,4 @@
+import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
 import {
   Alert,
   AppContent,
@@ -5,13 +6,11 @@ import {
   AppWorkspace,
   AppWorkspaceBody,
   Button,
-  Spinner,
-  Typography,
   WorkspaceHeader,
 } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { FullTaskWorkspace } from './FullTaskWorkspace';
-import { mapFullTaskResponse } from '../model';
+import { mapFullTaskResponse } from '../read-model/model';
 import type { useSpecificationTask } from '../useSpecificationTask';
 import {
   ApplicationLocationIdentity,
@@ -39,7 +38,7 @@ export function SpecificationTaskPage({
   const backHref = `/specs/${encodeURIComponent(specId)}?collection=${collection}`;
   if (
     taskState.data?.task.id === taskId &&
-    !(taskState.isError && (taskState.errorStatus === 403 || taskState.isTaskNotFound))
+    !(taskState.isError && [401, 403, 404, 409].includes(taskState.errorStatus ?? 0))
   ) {
     return (
       <FullTaskWorkspace
@@ -78,17 +77,16 @@ export function SpecificationTaskPage({
         }
       >
         <AppContent className="w-content-xwide max-w-full">
-          <AppWorkspaceBody className="py-6">
+          <AppWorkspaceBody scroll="area" contentClassName="py-6">
             <AppContentContainer align="start" size="full">
               <ApplicationContextLine specId={specId} view="task" />
               <ViewPageTitle>{t('specification.viewTasks')}</ViewPageTitle>
               {taskState.isPending ? (
-                <div className="flex items-center gap-3 py-8" role="status">
-                  <Spinner size="md" aria-label={t('common.loading')} />
-                  <Typography variant="body-sm">
-                    {t('specification.loadingWorkspace', { id: taskId })}
-                  </Typography>
-                </div>
+                <LoadingPresentation
+                  shape="task"
+                  label={t('loading.task')}
+                  fetching={taskState.fetchStatus === 'fetching'}
+                />
               ) : taskState.isError ? (
                 <div className="grid max-w-content-standard gap-3">
                   <Alert

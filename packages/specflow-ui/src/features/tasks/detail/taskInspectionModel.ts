@@ -1,5 +1,12 @@
 import type { TaskHumanRequirement, TaskSnapshot } from '@nevo/specflow-contracts/specs/workspace';
 
+/** Identifies one human-requirement evidence a screen opens. */
+export interface TaskEvidenceParams {
+  readonly requirementId: string;
+  readonly index: number;
+  readonly revision: string;
+}
+
 export interface TaskInspectionAnchor {
   readonly revision?: string;
 }

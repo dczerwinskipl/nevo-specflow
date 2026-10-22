@@ -4,7 +4,10 @@ import {
   APP_NAVIGATION_INLINE_PADDING,
   APP_NAVIGATION_WIDTH,
   APP_SHELL_GAP,
+  APP_WORKSPACE_EDGE_BORDER,
   resolveSlotMaxWidth,
+  resolveWorkspaceContentWidth,
+  resolveWorkspaceFit,
   resolveWorkspacePixelSplit,
   resolveWorkspaceSplit,
   supportsRuntimeWorkspaceSplit,
@@ -109,5 +112,47 @@ describe('resolveWorkspacePixelSplit', () => {
     ['primary', false, { primary: 1124 }],
   ] as const)('derives the %s layout from one canonical width', (split, hasSecondary, expected) => {
     expect(resolveWorkspacePixelSplit(1124, split, hasSecondary)).toEqual(expected);
+  });
+});
+
+describe('resolveWorkspaceFit', () => {
+  it.each([
+    ['content', 'split', true, 'content'],
+    ['content', 'split', false, 'available'],
+    ['content', 'stacked', true, 'available'],
+    ['available', 'split', true, 'available'],
+    ['available', 'split', false, 'available'],
+    ['bounded', 'split', false, 'content'],
+    ['bounded', 'split', true, 'content'],
+    ['bounded', 'stacked', false, 'available'],
+  ] as const)(
+    'fit=%s in %s layout (secondary: %s) resolves to %s',
+    (fit, mode, secondary, expected) => {
+      expect(resolveWorkspaceFit(fit, mode, secondary)).toBe(expected);
+    },
+  );
+});
+
+describe('resolveWorkspaceContentWidth', () => {
+  it('removes one edge border for an edge-fit surface and two for an inset one', () => {
+    expect(APP_WORKSPACE_EDGE_BORDER).toBe(1);
+    expect(resolveWorkspaceContentWidth(1172, { bordered: true, inset: false })).toBe(1171);
+    expect(resolveWorkspaceContentWidth(1172, { bordered: true, inset: true })).toBe(1170);
+  });
+
+  it('keeps unbordered and unknown widths, and never goes negative', () => {
+    expect(resolveWorkspaceContentWidth(900, { bordered: false, inset: false })).toBe(900);
+    expect(
+      resolveWorkspaceContentWidth(undefined, { bordered: true, inset: true }),
+    ).toBeUndefined();
+    expect(resolveWorkspaceContentWidth(1, { bordered: true, inset: true })).toBe(0);
+  });
+
+  it('makes primary + secondary fit the content box at 25/75 and 50/50 splits', () => {
+    for (const split of ['primary', 'balanced', 'secondary'] as const) {
+      const content = resolveWorkspaceContentWidth(1172, { bordered: true, inset: false })!;
+      const pixels = resolveWorkspacePixelSplit(content, split, true);
+      expect(pixels.primary + pixels.secondary!).toBeCloseTo(content);
+    }
   });
 });

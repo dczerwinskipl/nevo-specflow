@@ -1,10 +1,11 @@
 import { lstat, readFile } from 'node:fs/promises';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, isAbsolute, join, resolve } from 'node:path';
 
 import type { SpecFlowEngine } from '../application';
 import { GitCapabilityError } from '../git/errors';
 import { executeGit } from '../git/process';
 import { openVersionControl } from '../version-control';
+import { assertWorktreeTargetOutsideRepository } from '../version-control/worktrees/policy';
 import type { WorktreePlan, WorktreeEffect } from '../version-control/worktrees/port';
 import {
   inspectRegisteredWorkspace,
@@ -18,6 +19,7 @@ import {
 } from '../project/workspace-identity';
 import { CreateOperationError, type CreateJournal } from './create-journal';
 import { registrationOf } from './create/registration';
+import { requireCommitLineage } from './create-commit';
 
 /**
  * Reconstruct a fixed plan from durable evidence, never from the latest naming
@@ -34,16 +36,23 @@ export function planFromCreateJournal(engine: SpecFlowEngine, record: CreateJour
   ) {
     throw recovery('Create journal has no valid pinned Git worktree plan.');
   }
-  // The managed target path is derived from the reserved slug and immutable
-  // Project Home location. A different child is NOT equivalent.
+  // The target is the absolute path pinned at reservation: it may live under a worktree
+  // folder that was configured at that time. It must still be the reserved slug's folder,
+  // and outside the repository; a different child is NOT equivalent.
   const home = engine.context.project.homeRoot;
-  const expectedTarget = join(dirname(home), basename(home) + '-worktrees', record.slug);
   const actualTarget = target.workspaceRoot;
-  const matchesTarget =
-    process.platform === 'win32'
-      ? actualTarget.toLowerCase() === expectedTarget.toLowerCase()
-      : actualTarget === expectedTarget;
-  if (resolve(actualTarget) !== actualTarget || !matchesTarget) {
+  let outside = true;
+  try {
+    assertWorktreeTargetOutsideRepository(home, engine.context.project.gitCommonDir, actualTarget);
+  } catch {
+    outside = false;
+  }
+  if (
+    !isAbsolute(actualTarget) ||
+    resolve(actualTarget) !== actualTarget ||
+    basename(actualTarget) !== record.slug ||
+    !outside
+  ) {
     throw recovery('Journal worktree target does not match the originally reserved slug.');
   }
   return {
@@ -190,13 +199,15 @@ export async function requireTargetIdentity(
   if (record.target.kind === 'existing') {
     await requireRegisteredTarget(engine, record);
   } else {
-    if (record.stage === 'completed') {
+    if (record.stage === 'completed' || (record.commit && isCommitPhase(record.stage))) {
       // After successful create, legitimate agents may advance HEAD. Validate
       // membership and the original branch, but not the provisioning commit.
       // Physical checkout incarnation remains verified below.
       await openVersionControl(engine).worktrees.inspectCreated(
         planFromCreateJournal(engine, record),
       );
+      // From the commit stage on HEAD is the base or advanced by the Engine's scaffold commit.
+      if (record.stage !== 'completed') await requireCommitLineage(engine, record);
     } else if ((await inspectPlannedGitEffect(engine, record)) !== 'present') {
       // Before terminal completion, exact base HEAD is still critical evidence
       // that this is the worktree produced by the planned Git mutation.
@@ -210,6 +221,16 @@ export async function requireTargetIdentity(
       await verifyPinnedIntegrationDestination(engine, record);
     }
   }
+}
+
+/** Stages in which the scaffold commit may already exist (only journals that carry `commit`). */
+function isCommitPhase(stage: CreateJournal['stage']): boolean {
+  return (
+    stage === 'commit-writing' ||
+    stage === 'commit-written' ||
+    stage === 'registry-writing' ||
+    stage === 'registry-linked'
+  );
 }
 
 function recovery(message: string): CreateOperationError {

@@ -1,3 +1,4 @@
+import { runReadRequest } from './project/request-verification-memo';
 import {
   resolveProjectHome,
   type ResolveProjectHomeOptions,
@@ -53,4 +54,13 @@ export async function openSpecFlowEngine(
       return latest;
     },
   };
+}
+
+/**
+ * READ-path registry snapshot: no Git process. Project Home identity is the one
+ * verified when the Engine was opened; this only re-checks on-disk evidence.
+ * Mutations must call `engine.readRegistry()` directly (full Git verification).
+ */
+export function readRegistrySnapshot(engine: SpecFlowEngine): Promise<WorkspaceRegistry> {
+  return runReadRequest(() => engine.readRegistry());
 }

@@ -1,4 +1,5 @@
 import type { DemoSpecification } from '../../demo-catalogue';
+import { groupDemoTasks } from './groups';
 import { buildDemoTasks } from './sources';
 export function buildDemoTaskContribution(record: DemoSpecification) {
   const tasks = buildDemoTasks(record);
@@ -19,7 +20,7 @@ export function buildDemoTaskContribution(record: DemoSpecification) {
   return {
     state: 'available' as const,
     data: {
-      groups: tasks.length ? [{ id: 'tasks', name: 'Tasks', tasks }] : [],
+      groups: groupDemoTasks(tasks),
       completed: record.progress.completed,
       total: record.progress.total,
       attention,

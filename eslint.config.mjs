@@ -7,6 +7,8 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import globals from 'globals';
 import prettier from 'eslint-config-prettier';
+import reactHooks from 'eslint-plugin-react-hooks';
+import i18nCopy from './tools/eslint/no-hardcoded-copy.mjs';
 
 const productRelativeImportPattern = {
   regex: '^\\.{1,2}/.*\\.(?:js|jsx|mjs|cjs|ts|tsx|mts|cts)$',
@@ -15,6 +17,128 @@ const productRelativeImportPattern = {
 
 function productImportRestrictions(...patterns) {
   return ['error', { patterns: [productRelativeImportPattern, ...patterns] }];
+}
+
+const specflowUiSharedPatterns = [
+  {
+    regex: '^@nevo/(?:authorization|specflow|specflow-engine|specflow-runtime)(?:/|$)',
+    message:
+      'SpecFlow UI consumes shared contracts and client boundaries; it must not depend on Runtime, the product shell, or authorization policy implementation.',
+  },
+];
+const nonProductionUiSources = [
+  'packages/specflow-ui/src/**/*.{test,stories}.{ts,tsx}',
+  'packages/specflow-ui/src/**/*.stories-support.{ts,tsx}',
+  'packages/specflow-ui/src/**/*.test-support.{ts,tsx}',
+];
+
+// Other features are reached through their barrel only: `../specs` is fine, `../specs/queries` is not.
+// Two more entries are public: `<feature>/read-model` (data other features may depend on; a leaf that
+// imports only other read models) and `<feature>/routes` (route objects, for composition files).
+function featureBarrelPattern(others) {
+  return {
+    regex: String.raw`^(?:\.\./)+(?:${others.join('|')})/(?!(?:read-model|routes)$).`,
+    message:
+      'Import another feature through its public barrel (features/<name>/index.ts) or its read-model entry, not its internals. A capability belongs to the module that owns it; if the barrel lacks it, the owner exports it deliberately.',
+  };
+}
+
+function specflowUiBoundaryBlocks() {
+  const features = ['documents', 'sessions', 'specs', 'tasks', 'git'];
+  const blocks = features.map((feature) => {
+    const patterns = [
+      ...specflowUiSharedPatterns,
+      featureBarrelPattern(features.filter((other) => other !== feature)),
+    ];
+    return {
+      files: [`packages/specflow-ui/src/features/${feature}/**/*.{ts,tsx}`],
+      ignores: nonProductionUiSources,
+      rules: { 'no-restricted-imports': productImportRestrictions(...patterns) },
+    };
+  });
+  // Specification creation is internal to specs/creation: the rest of specs does not import it; the
+  // application wires only its routes (`creation/routes`).
+  blocks.push({
+    files: ['packages/specflow-ui/src/features/specs/**/*.{ts,tsx}'],
+    ignores: [...nonProductionUiSources, 'packages/specflow-ui/src/features/specs/creation/**'],
+    rules: {
+      'no-restricted-imports': productImportRestrictions(
+        ...specflowUiSharedPatterns,
+        featureBarrelPattern(features.filter((other) => other !== 'specs')),
+        {
+          regex: '(?:^|/)creation(?:/|$)',
+          message:
+            'Specification creation is private to features/specs/creation; the application wires its routes (creation/routes).',
+        },
+      ),
+    },
+  });
+  // A read-model entry is a leaf: it may use other features' read models, never their screens
+  // (barrels), so features that only need data stay out of each other's UI. The import-cycle test
+  // checks the resulting graph.
+  blocks.push({
+    files: features.map(
+      (feature) => `packages/specflow-ui/src/features/${feature}/read-model/**/*.{ts,tsx}`,
+    ),
+    ignores: nonProductionUiSources,
+    rules: {
+      'no-restricted-imports': productImportRestrictions(...specflowUiSharedPatterns, {
+        regex: String.raw`^(?:\.\./)+(?:${features.join('|')})(?:/(?!read-model$).*)?$`,
+        message:
+          'A read-model entry is a leaf: import only other features read-model entries (features/<name>/read-model), never their barrel or internals.',
+      }),
+    },
+  });
+  // shared/ is cross-feature code: it depends on no feature and on no composition root.
+  blocks.push({
+    files: ['packages/specflow-ui/src/shared/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': productImportRestrictions(...specflowUiSharedPatterns, {
+        regex: String.raw`^(?:\.\./)+(?:features|app|services)(?:/|$)`,
+        message:
+          'shared/ holds only cross-feature code and must not import features or the composition roots.',
+      }),
+    },
+  });
+  return blocks;
+}
+
+// Runtime module ownership mirrors the UI rule: a capability lives in the feature that owns it and
+// features reach each other only through the public barrel (`features/<name>/index.ts`). The demo
+// environment composition root (`src/demo/index`) is wired only by the server; features may use the
+// shared demo state, catalogue and HTTP helpers (`src/demo/state`, `catalogue`, `http`).
+const runtimeSharedPatterns = [
+  {
+    regex: '^@nevo/(?:specflow|specflow-ui)(?:/|$)',
+    message: 'Runtime must not depend on the product composition root or UI.',
+  },
+  {
+    regex: '^@nevo/specflow-engine/testing(?:/|$)',
+    message: 'Production Runtime must use Engine application APIs, not the testing backdoor.',
+  },
+];
+const runtimeFeatures = ['auth', 'documents', 'sessions', 'settings', 'specs', 'tasks'];
+function runtimeBoundaryBlocks() {
+  const nonProduction = ['packages/specflow-runtime/src/**/*.test.ts'];
+  return runtimeFeatures.map((feature) => ({
+    files: [`packages/specflow-runtime/src/features/${feature}/**/*.ts`],
+    ignores: nonProduction,
+    rules: {
+      'no-restricted-imports': productImportRestrictions(
+        ...runtimeSharedPatterns,
+        {
+          regex: String.raw`^(?:\.\./)+(?:${runtimeFeatures.filter((other) => other !== feature).join('|')})/.`,
+          message:
+            'Import another Runtime feature through its public barrel (features/<name>/index.ts), not its internals. The owning feature exports what others may use.',
+        },
+        {
+          regex: String.raw`^(?:\.\./)+demo(?:/index)?$`,
+          message:
+            'The demo composition root (src/demo) wires features together; features import only src/demo/state, catalogue or http.',
+        },
+      ),
+    },
+  }));
 }
 
 export default tseslint.config(
@@ -61,7 +185,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['packages/nevo-ui/scripts/**/*.mts', 'packages/nevo-ui/vite.config.ts'],
+    files: ['packages/nevo-ui/scripts/**/*.{ts,mts}', 'packages/nevo-ui/vite.config.ts'],
     languageOptions: {
       parserOptions: {
         projectService: false,
@@ -187,6 +311,7 @@ export default tseslint.config(
       ),
     },
   },
+  ...runtimeBoundaryBlocks(),
   {
     files: ['packages/specflow/src/**/*.{ts,tsx,mts,cts}'],
     rules: {
@@ -204,6 +329,44 @@ export default tseslint.config(
         message:
           'SpecFlow UI consumes shared contracts and client boundaries; it must not depend on Runtime, the product shell, or authorization policy implementation.',
       }),
+    },
+  },
+
+  // SpecFlow UI module ownership: a component lives in the module that owns the capability and
+  // features talk to each other only through their public barrel (`features/<name>/index.ts`).
+  // Composition roots (`app/`, `services/`) and tests/stories/story-support are not restricted.
+  // A file matched here replaces the generic package rule above, so the shared patterns repeat.
+  ...specflowUiBoundaryBlocks(),
+
+  // Reader-facing copy in SpecFlow UI components comes from the i18n catalogue
+  // (`packages/specflow-ui/src/i18n/locales`). See docs: frontend localization.
+  {
+    files: ['packages/specflow-ui/src/**/*.tsx'],
+    ignores: [
+      'packages/specflow-ui/src/**/*.{test,stories}.tsx',
+      'packages/specflow-ui/src/**/*.figma.tsx',
+      'packages/specflow-ui/src/**/*.stories-support.tsx',
+      'packages/specflow-ui/src/test-support/**',
+    ],
+    plugins: { 'specflow-i18n': i18nCopy },
+    rules: { 'specflow-i18n/no-hardcoded-copy': 'error' },
+  },
+
+  // Static React Hooks checks for product and design-system UI sources. Rules of Hooks is a hard
+  // gate; Exhaustive Deps is analysed per finding (separate synchronisation from operation logic)
+  // rather than fixed by blindly adding dependencies.
+  {
+    files: ['packages/specflow-ui/src/**/*.{ts,tsx}', 'packages/nevo-ui/src/**/*.{ts,tsx}'],
+    ignores: [
+      'packages/*/src/**/*.{test,stories}.{ts,tsx}',
+      'packages/*/src/**/*.stories-support.{ts,tsx}',
+      'packages/*/src/**/*.test-support.{ts,tsx}',
+      'packages/specflow-ui/src/test-support/**',
+    ],
+    plugins: { 'react-hooks': reactHooks },
+    rules: {
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
     },
   },
 

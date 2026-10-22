@@ -60,23 +60,32 @@ describe('internal Git worktree adapter (VC02)', () => {
     });
   });
 
-  it('rejects a different-case sibling directory on POSIX without Git or FS effects', async () => {
+  it('accepts any reserved parent outside the repository (even a different-case sibling) but rejects targets inside it without Git or FS effects', async () => {
     if (process.platform === 'win32') return;
     const { root, worktrees } = await project();
     const plan = await worktrees.plan({ slug: 'case-proof', shortId: '1234abcd' });
-    const unexpectedParent = join(dirname(root), basename(root) + '-WORKTREES');
-    const unexpectedTarget = join(unexpectedParent, 'case-proof');
-    const tampered = { ...plan, targetPath: unexpectedTarget };
     const refsBefore = git(root, 'for-each-ref', '--format=%(refname)', 'refs/heads');
     const worktreesBefore = git(root, 'worktree', 'list', '--porcelain');
 
-    await expect(worktrees.validateReservedPlan(tampered)).rejects.toMatchObject({
-      code: 'WORKTREE_PATH_CONFLICT',
-    });
-    await expect(worktrees.create(tampered)).rejects.toMatchObject({
-      code: 'WORKTREE_PATH_CONFLICT',
-    });
-    await expect(lstat(unexpectedParent)).rejects.toMatchObject({ code: 'ENOENT' });
+    // git.worktreesRoot may change after a target was reserved, so the reserved parent is not
+    // pinned to <repo>-worktrees any more: a different-case sibling outside the repo is valid.
+    const siblingParent = join(dirname(root), basename(root) + '-WORKTREES');
+    await expect(
+      worktrees.validateReservedPlan({ ...plan, targetPath: join(siblingParent, 'case-proof') }),
+    ).resolves.toBeUndefined();
+    await expect(lstat(siblingParent)).rejects.toMatchObject({ code: 'ENOENT' });
+
+    // Targets inside the working tree or the Git directory stay unsafe.
+    for (const unsafe of [join(root, 'inside', 'case-proof'), join(root, '.git', 'case-proof')]) {
+      const tampered = { ...plan, targetPath: unsafe };
+      await expect(worktrees.validateReservedPlan(tampered)).rejects.toMatchObject({
+        code: 'WORKTREE_PATH_CONFLICT',
+      });
+      await expect(worktrees.create(tampered)).rejects.toMatchObject({
+        code: 'WORKTREE_PATH_CONFLICT',
+      });
+    }
+    await expect(lstat(join(root, 'inside'))).rejects.toMatchObject({ code: 'ENOENT' });
     expect(git(root, 'for-each-ref', '--format=%(refname)', 'refs/heads')).toBe(refsBefore);
     expect(git(root, 'worktree', 'list', '--porcelain')).toBe(worktreesBefore);
   });

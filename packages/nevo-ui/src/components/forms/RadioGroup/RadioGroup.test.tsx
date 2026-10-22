@@ -38,4 +38,23 @@ describe('RadioGroup', () => {
     expect(html).toContain('consumer-option');
     expect(html).toContain('mt-0.5 consumer-control');
   });
+  it('keeps a disabled description readable while the label shows the disabled role', () => {
+    const html = renderToStaticMarkup(
+      <RadioGroup>
+        <RadioGroupOption
+          value="b"
+          disabled
+          label="Unavailable"
+          description="Reason stays readable."
+        />
+      </RadioGroup>,
+    );
+    const wrapper = /class="(flex items-start gap-2.5[^"]*)"/.exec(html)?.[1] ?? 'missing';
+    expect(wrapper).not.toContain('opacity');
+    expect(html).toMatch(/<label[^>]*class="[^"]*cursor-not-allowed text-content-muted/);
+    expect(html).toMatch(
+      /<div id="[^"]*-description" class="mt-0.5 text-body-sm text-content-muted">/,
+    );
+    expect(html).toContain('disabled:opacity-60');
+  });
 });

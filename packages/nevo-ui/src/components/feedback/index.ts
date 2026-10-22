@@ -1,4 +1,5 @@
 export * from './Alert';
+export * from './InlineNote';
 export * from './Badge';
 export * from './EmptyState';
 export * from './Skeleton';
@@ -7,3 +8,4 @@ export * from './Toast';
 export type { StatusTone } from '../../design-system/statusTone';
 export * from './StatusIndicator';
 export * from './Progress';
+export { useInitialAppearance } from './useInitialAppearance';

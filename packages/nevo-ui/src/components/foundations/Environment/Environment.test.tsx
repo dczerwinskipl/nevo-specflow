@@ -25,6 +25,19 @@ describe('environment foundations', () => {
     expect(capture).not.toContain('backdrop-blur-sm');
   });
 
+  it('retains the semantic host and content when a descendant owns the material', () => {
+    const html = renderToStaticMarkup(
+      <WorkspaceSurface as="main" material={false} className="h-full">
+        Draft content
+      </WorkspaceSurface>,
+    );
+    expect(html).toContain('<main');
+    expect(html).toContain('Draft content');
+    expect(html).not.toContain('workspace-surface-material');
+    expect(html).not.toContain('backdrop-blur-sm');
+    expect(html).toContain('h-full');
+  });
+
   it('keeps Storybook previews wired to the production foundations', async () => {
     const [appStory, workspaceStory] = await Promise.all([
       readFile('src/components/foundations/Environment/AppBackground.stories.tsx', 'utf8'),

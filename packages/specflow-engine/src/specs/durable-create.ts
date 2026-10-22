@@ -8,6 +8,8 @@ import { followExistingCreateOperation } from './create/observation';
 import type { CreateSpecificationInput } from './create/create-input';
 export type { CreateSpecificationInput, CreateSpecificationTarget } from './create/create-input';
 import { commitBinding } from './create-binding';
+import { ensureScaffoldCommitted } from './create-commit';
+import { openVersionControl } from '../version-control';
 import {
   createPlannedGitWorktree,
   ensureLinkedIdentity,
@@ -17,6 +19,8 @@ import {
   validateNewGitReservation,
 } from './create-git';
 
+import { runGitFreeMutation } from '../project/request-verification-memo';
+import { readProjectGitPolicy } from '../version-control/worktrees/config';
 import { readWorkspaceSpecification } from './repository';
 import {
   CreateOperationError,
@@ -55,11 +59,45 @@ export interface CreateSpecificationOptions {
    * Neither recovery assertion is available to CLI/HTTP requests.
    */
   readonly resumeInterruptedOperation?: boolean;
+  /**
+   * Observes durable stage transitions (including the stage found at reservation). A pure read-only
+   * notification seam for progress reporting: it receives no paths or journal data and a failing
+   * observer can never affect the operation.
+   */
+  readonly onStage?: CreateStageObserver;
+}
+
+export interface CreateStageObservation {
+  readonly stage: CreateStage;
+  readonly target: 'existing' | 'new-worktree';
+  /**
+   * Present (true) only on the reservation observation of a retry that found an already reserved
+   * operation: the stage is then the one found, and this call is at most a reader of that work.
+   */
+  readonly replayed?: true;
+}
+export type CreateStageObserver = (observation: CreateStageObservation) => void;
+
+function notifyStage(
+  observer: CreateStageObserver | undefined,
+  record: CreateJournal,
+  replayed = false,
+): void {
+  if (!observer) return;
+  try {
+    observer({
+      stage: record.stage,
+      target: record.target.kind,
+      ...(replayed ? { replayed: true as const } : {}),
+    });
+  } catch {
+    // Progress is best effort and must never change the outcome of the operation.
+  }
 }
 
 /** Internal fault-injection seam, deliberately absent from CreateSpecificationOptions. */
 export type CreateEffectHook = (
-  effect: 'reservation' | 'git' | 'manifest-opened' | 'manifest' | 'registry',
+  effect: 'reservation' | 'git' | 'manifest-opened' | 'manifest' | 'commit' | 'registry',
 ) => Promise<void>;
 
 export async function inspectCreateSpecification(
@@ -103,9 +141,43 @@ export async function createSpecificationWithIntent(
   options: CreateSpecificationOptions = {},
   afterEffect?: CreateEffectHook,
 ): Promise<CreatedSpecification> {
+  const run = () =>
+    createWithVerifiedIntent(engine, operationId, intent, creationDate, options, afterEffect);
+  // Not a Git operation: an existing-workspace create in a project with Git disabled
+  // verifies Project Home/workspace on disk and spawns no Git process. Anything that
+  // can involve Git (new worktree, Git enabled, unreadable policy) keeps full verification.
+  return intent.target.kind === 'existing' && (await isGitDisabled(engine))
+    ? runGitFreeMutation(run)
+    : run();
+}
+
+async function isGitDisabled(engine: SpecFlowEngine): Promise<boolean> {
+  try {
+    return !(await readProjectGitPolicy(engine.context)).policy.enabled;
+  } catch {
+    return false;
+  }
+}
+
+async function createWithVerifiedIntent(
+  engine: SpecFlowEngine,
+  operationId: string,
+  intent: CreateClientIntent,
+  creationDate: () => string,
+  options: CreateSpecificationOptions,
+  afterEffect?: CreateEffectHook,
+): Promise<CreatedSpecification> {
   validateOperationId(operationId);
   const reservation = await reserveCreateOperation(engine, intent, operationId, creationDate);
   let record = reservation.record;
+  // A retry that finds the operation still reserved is announced only after the reserved plan
+  // validated again, so a transport never accepts it ahead of the original run's rejection.
+  const replayAwaitsValidation =
+    reservation.existing &&
+    record.stage === 'reserved' &&
+    record.target.kind === 'new-worktree' &&
+    !options.resumeInterruptedOperation;
+  if (!replayAwaitsValidation) notifyStage(options.onStage, record, reservation.existing);
   // The journal intent is durable at this point. A test process can now be
   // terminated without any later mutation having started.
   await afterEffect?.('reservation');
@@ -117,6 +189,10 @@ export async function createSpecificationWithIntent(
   // Only resumeInterruptedOperation permits takeover of Create. The separate
   // confirmInterruptedGitSettled flag cannot bypass this writer boundary.
   if (reservation.existing && record.stage !== 'completed' && !options.resumeInterruptedOperation) {
+    if (replayAwaitsValidation) {
+      await rejectInvalidReservedReplay(engine, record);
+      notifyStage(options.onStage, record, true);
+    }
     const observed = await followExistingCreateOperation(engine, operationId);
     if (observed.stage !== 'completed') {
       throw recovery(
@@ -150,9 +226,9 @@ export async function createSpecificationWithIntent(
           }
           const state = await inspectPlannedGitEffect(engine, record);
           if (state === 'present') {
-            record = await transition(engine, record, 'git-provisioned');
+            record = await transition(engine, record, 'git-provisioned', options.onStage);
           } else if (state === 'absent') {
-            record = await transition(engine, record, 'reserved');
+            record = await transition(engine, record, 'reserved', options.onStage);
           } else {
             throw recovery(
               'Git branch/worktree does not match the intent; manual recovery required.',
@@ -164,7 +240,7 @@ export async function createSpecificationWithIntent(
         case 'reserved': {
           if (record.target.kind === 'new-worktree') {
             await validateNewGitReservation(engine, record);
-            record = await transition(engine, record, 'git-initiated');
+            record = await transition(engine, record, 'git-initiated', options.onStage);
             // WorktreePort owns every filesystem/Git side effect. The durable
             // git-initiated transition was committed above, before this call.
             await createPlannedGitWorktree(engine, record);
@@ -172,9 +248,9 @@ export async function createSpecificationWithIntent(
             if ((await inspectPlannedGitEffect(engine, record)) !== 'present') {
               throw recovery('Created Git worktree does not match the recorded intent.');
             }
-            record = await transition(engine, record, 'git-provisioned');
+            record = await transition(engine, record, 'git-provisioned', options.onStage);
           } else {
-            record = await transition(engine, record, 'git-provisioned');
+            record = await transition(engine, record, 'git-provisioned', options.onStage);
           }
           continue;
         }
@@ -188,7 +264,7 @@ export async function createSpecificationWithIntent(
           } else {
             await requireRegisteredTarget(engine, record);
           }
-          record = await transition(engine, record, 'manifest-writing');
+          record = await transition(engine, record, 'manifest-writing', options.onStage);
           continue;
         }
 
@@ -199,13 +275,42 @@ export async function createSpecificationWithIntent(
             afterEffect ? () => afterEffect('manifest-opened') : undefined,
           );
           await afterEffect?.('manifest');
-          record = await transition(engine, record, 'manifest-written');
+          record = await transition(engine, record, 'manifest-written', options.onStage);
           continue;
         }
 
         case 'manifest-written': {
           await verifyScaffold(record);
-          record = await transition(engine, record, 'registry-writing');
+          if (record.commit) {
+            // The commit intent (parent HEAD) is durable BEFORE the Git effect.
+            const parentHead = await openVersionControl(engine).commits.head(
+              record.target.workspaceRoot,
+            );
+            if (!parentHead) throw recovery('Target checkout has no commit to build on.');
+            record = await transition(engine, record, 'commit-writing', options.onStage, {
+              parentHead,
+            });
+          } else {
+            record = await transition(engine, record, 'registry-writing', options.onStage);
+          }
+          continue;
+        }
+
+        case 'commit-writing': {
+          await requireTargetIdentity(engine, record);
+          await verifyScaffold(record);
+          const commitSha = await ensureScaffoldCommitted(engine, record);
+          await afterEffect?.('commit');
+          record = await transition(engine, record, 'commit-written', options.onStage, {
+            commitSha,
+          });
+          continue;
+        }
+
+        case 'commit-written': {
+          await requireTargetIdentity(engine, record);
+          await verifyScaffold(record);
+          record = await transition(engine, record, 'registry-writing', options.onStage);
           continue;
         }
 
@@ -214,13 +319,13 @@ export async function createSpecificationWithIntent(
           await verifyScaffold(record);
           await commitBinding(engine, record);
           await afterEffect?.('registry');
-          record = await transition(engine, record, 'registry-linked');
+          record = await transition(engine, record, 'registry-linked', options.onStage);
           continue;
         }
 
         case 'registry-linked': {
           await verifyResult(engine, record);
-          record = await transition(engine, record, 'completed');
+          record = await transition(engine, record, 'completed', options.onStage);
           continue;
         }
         default: {
@@ -245,12 +350,31 @@ export async function createSpecificationWithIntent(
   }
 }
 
+/**
+ * The original run answers an invalid reserved plan (missing base ref, disabled Git, a taken
+ * branch) with its own rejection; its retry must not be told the work is under way. A failure that
+ * only appears because the original run advanced meanwhile is not a rejection: the journal moved on.
+ */
+async function rejectInvalidReservedReplay(
+  engine: SpecFlowEngine,
+  record: CreateJournal,
+): Promise<void> {
+  try {
+    await validateNewGitReservation(engine, record);
+  } catch (error) {
+    const current = await readCreateJournal(engine.context, record.operationId);
+    if (current?.stage === 'reserved') throw error;
+  }
+}
+
 async function transition(
   engine: SpecFlowEngine,
   record: CreateJournal,
   stage: CreateStage,
+  observer?: CreateStageObserver,
+  commit?: Partial<Pick<NonNullable<CreateJournal['commit']>, 'parentHead' | 'commitSha'>>,
 ): Promise<CreateJournal> {
-  return withCreateJournalLock(engine.context, async () => {
+  const next = await withCreateJournalLock(engine.context, async () => {
     const current = await readCreateJournal(engine.context, record.operationId);
     if (!current || !isDeepStrictEqual(current, record)) {
       throw new CreateOperationError(
@@ -258,10 +382,16 @@ async function transition(
         'Create journal changed concurrently; restart from the latest durable state.',
       );
     }
-    const next: CreateJournal = { ...current, stage };
+    const next: CreateJournal = {
+      ...current,
+      stage,
+      ...(commit && current.commit ? { commit: { ...current.commit, ...commit } } : {}),
+    };
     await publishCreateJournal(engine.context, next);
     return next;
   });
+  notifyStage(observer, next);
+  return next;
 }
 
 async function verifyResult(engine: SpecFlowEngine, record: CreateJournal): Promise<void> {

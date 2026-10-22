@@ -1,10 +1,10 @@
 import { contributeTo, type UiModule } from '../../app/ui-modules/contracts';
 import {
+  specificationAttentionItems,
   specificationWorkSections,
   type SpecificationWorkSectionContext,
-} from '../specs/extensions/specificationWorkSections';
+} from '../specs';
 import { RepositorySection } from './contributions/specification-work/RepositorySection';
-import { specificationAttentionItems } from '../specs/extensions/specificationAttentionItems';
 
 function SpecificationRepository({ data, actions }: SpecificationWorkSectionContext) {
   if (!data.repoContext) return null;

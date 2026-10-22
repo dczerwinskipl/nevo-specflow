@@ -6,7 +6,7 @@ import type {
   SessionSummary,
   SpecificationWorkspaceData,
   TaskGroup,
-} from '../../../src/features/specs/workspace/model';
+} from '../../../src/features/specs/read-model/model';
 
 export type SpecificationScenario =
   | 'working'
@@ -280,7 +280,7 @@ export function createSpecificationWorkspaceFixture(
       kind: 'task',
       title: 'TASK-03 · Rozstrzygnij zachowanie po cofnięciu uprawnień',
       reason: 'Review wymaga decyzji właściciela',
-      actionLabel: 'Podgląd taska',
+      actionLabel: 'Podgląd zadania',
       targetId: 'TASK-03',
     });
     attentionItems.push({

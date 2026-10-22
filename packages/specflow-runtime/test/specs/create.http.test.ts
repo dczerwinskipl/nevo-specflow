@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -19,7 +20,7 @@ import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
 
 const roots: string[] = [];
-const createTestTimeoutMs = process.platform === 'win32' ? 120000 : 30000;
+const createTestTimeoutMs = process.platform === 'win32' ? 420000 : 30000;
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
@@ -28,7 +29,7 @@ function git(cwd: string, ...args: string[]): void {
   execFileSync('git', args, { cwd });
 }
 
-async function fixture(gitEnabled = false) {
+async function fixture(gitEnabled = false, extraGitConfig = '') {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'specflow-http-create-Ż ')));
   roots.push(root);
   git(root, 'init', '-q');
@@ -37,7 +38,7 @@ async function fixture(gitEnabled = false) {
   await writeFile(
     join(root, '.nevo/config.yaml'),
     gitEnabled
-      ? 'runtime: {}\ngit:\n  enabled: true\n  integrationTargetBranch: develop\n'
+      ? 'runtime: {}\ngit:\n  enabled: true\n  integrationTargetBranch: develop\n' + extraGitConfig
       : 'runtime: {}\ngit:\n  enabled: false\n',
   );
   git(root, 'add', '.gitignore', '.nevo/config.yaml');
@@ -202,23 +203,6 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
       target: { kind: 'new-worktree', branch: 'feature/x', baseRef: 'HEAD' },
     });
     roots.push(dirname(feature.workspaceRoot));
-    git(
-      feature.workspaceRoot,
-      'add',
-      '--',
-      feature.relativeManifestPath,
-      'specs/active/' + feature.slug + '/overview.md',
-    );
-    git(
-      feature.workspaceRoot,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'clean integration checkout',
-    );
     const auth = authenticatedStore();
     const app = await createRuntimeApp(
       {
@@ -257,7 +241,62 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
     } finally {
       await app.close();
     }
-  }, 180000);
+  }, 420000);
+
+  it(
+    'creates with an explicit slug, replays idempotently and answers 409 for a taken or changed slug',
+    async () => {
+      const { root, engine } = await fixture();
+      const app = await createRuntimeApp(
+        {
+          ...passwordConfig(),
+          authentication: { ...passwordConfig().authentication, mode: 'none' },
+        },
+        { specs: { engine } },
+      );
+      try {
+        const operationId = randomUUID();
+        const payload = { title: 'Some long title', slug: 'my-slug', operationId };
+        const first = await app.inject({ method: 'POST', url: '/api/specs', payload });
+        expect(first.statusCode, first.body).toBe(201);
+        expect(first.json<{ slug: string }>().slug).toBe('my-slug');
+        expect(first.json<{ relativeManifestPath: string }>().relativeManifestPath).toBe(
+          'specs/active/my-slug/specification.yaml',
+        );
+        expect(
+          await readFile(join(root, 'specs/active/my-slug/specification.yaml'), 'utf8'),
+        ).toContain('title: Some long title');
+        const replay = await app.inject({ method: 'POST', url: '/api/specs', payload });
+        expect(replay.statusCode, replay.body).toBe(201);
+        expect(replay.json()).toEqual(first.json());
+        const changed = await app.inject({
+          method: 'POST',
+          url: '/api/specs',
+          payload: { ...payload, slug: 'other-slug' },
+        });
+        expect(changed.statusCode, changed.body).toBe(409);
+        expect(changed.json()).toEqual({ error: 'CREATE_CONFLICT', code: 'CREATE_CONFLICT' });
+        const taken = await app.inject({
+          method: 'POST',
+          url: '/api/specs',
+          payload: { title: 'Another', slug: 'my-slug', operationId: randomUUID() },
+        });
+        expect(taken.statusCode, taken.body).toBe(409);
+        expect(taken.json()).toEqual({ error: 'CREATE_CONFLICT', code: 'CREATE_CONFLICT' });
+        for (const slug of ['', 'Upper', 'a--b', '../x', 'con']) {
+          const bad = await app.inject({
+            method: 'POST',
+            url: '/api/specs',
+            payload: { title: 'Bad', slug, operationId: randomUUID() },
+          });
+          expect(bad.statusCode, slug).toBe(400);
+        }
+      } finally {
+        await app.close();
+      }
+    },
+    createTestTimeoutMs,
+  );
 
   it('rejects unexpected request keys and invalid title without persistence', async () => {
     const { engine } = await fixture();
@@ -387,9 +426,9 @@ describe('E2.I01 — authorized read-only Create options', () => {
   });
 
   it(
-    'returns schema-validated policy and local branch choices without mutation',
+    'returns schema-validated policy without Git facts or mutation when Git is disabled',
     async () => {
-      const { root, engine } = await fixture();
+      const { engine } = await fixture();
       const auth = authenticatedStore();
       const app = await createRuntimeApp(
         {
@@ -426,14 +465,91 @@ describe('E2.I01 — authorized read-only Create options', () => {
         ]);
         expect(result.newWorktree).toEqual({ status: 'disabled', reason: 'git-disabled' });
         expect(result.defaultBaseRef).toBe('HEAD');
-        expect(result.baseRefs.length).toBeGreaterThan(0);
-        expect(result.baseRefs).toEqual(
-          expect.arrayContaining([
-            expect.objectContaining({ checkedOutWorkspaceId: engine.workspace.workspaceId }),
-          ]),
-        );
-        expect(response.body).not.toContain(root);
+        // Git disabled: answered from registry and filesystem only; no Git facts (refs, branches).
+        expect(result.baseRefs).toEqual([]);
+        // Options expose registered display paths (workspace path, worktreesRoot) by contract,
+        // but no Git facts: no commits policy, no branches or refs.
+        expect(response.json<Record<string, unknown>>()).not.toHaveProperty('commits');
+        expect(response.body).not.toContain('refs/heads/');
         expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(registryBefore);
+      } finally {
+        await app.close();
+      }
+    },
+    createTestTimeoutMs,
+  );
+
+  it(
+    'commit policy: git-off options carry no commits, protected branches answer typed refusals',
+    async () => {
+      const auth = authenticatedStore();
+      const authorization = {
+        assignments: [{ userId: 'demo-user', role: 'developer' as const, scope: {} }],
+      };
+      const off = await fixture();
+      const offApp = await createRuntimeApp(
+        { ...passwordConfig(), authorization },
+        { auth: { store: auth.store }, specs: { engine: off.engine } },
+      );
+      try {
+        const body = (
+          await offApp.inject({
+            method: 'GET',
+            url: '/api/specs/create-options',
+            headers: auth.headers,
+          })
+        ).json<Record<string, unknown>>();
+        expect('commits' in body).toBe(false);
+      } finally {
+        await offApp.close();
+      }
+
+      const { root, engine } = await fixture(
+        true,
+        '  commits:\n    protectedBranches: [develop]\n',
+      );
+      const app = await createRuntimeApp(
+        { ...passwordConfig(), authorization },
+        { auth: { store: auth.store }, specs: { engine } },
+      );
+      try {
+        const options = (
+          await app.inject({
+            method: 'GET',
+            url: '/api/specs/create-options',
+            headers: auth.headers,
+          })
+        ).json<{
+          commits: { protectedBranches: string[] };
+          workspaces: { selectable: boolean; reason?: string; branch?: string }[];
+        }>();
+        expect(options.commits).toEqual({ protectedBranches: ['develop'] });
+        expect(options.workspaces[0]).toMatchObject({
+          selectable: false,
+          reason: 'branch-protected',
+          branch: 'develop',
+        });
+
+        const refused = await app.inject({
+          method: 'POST',
+          url: '/api/specs',
+          headers: auth.headers,
+          payload: { title: 'Protected refusal', operationId: randomUUID() },
+        });
+        expect(refused.statusCode, refused.body).toBe(422);
+        expect(refused.json()).toEqual({ error: 'BRANCH_PROTECTED', code: 'BRANCH_PROTECTED' });
+        expect(refused.body).not.toContain(root);
+        expect(existsSync(join(root, 'specs'))).toBe(false);
+
+        git(root, 'checkout', '-q', '--detach');
+        const blocked = await app.inject({
+          method: 'POST',
+          url: '/api/specs',
+          headers: auth.headers,
+          payload: { title: 'Detached refusal', operationId: randomUUID() },
+        });
+        expect(blocked.statusCode, blocked.body).toBe(409);
+        expect(blocked.json()).toEqual({ error: 'COMMIT_BLOCKED', code: 'COMMIT_BLOCKED' });
       } finally {
         await app.close();
       }

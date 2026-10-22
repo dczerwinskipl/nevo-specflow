@@ -9,6 +9,7 @@ import {
   MenuGroup,
   MenuItem,
   MenuLabel,
+  MenuNote,
   MenuRadioGroup,
   MenuRadioItem,
   MenuSeparator,
@@ -373,5 +374,93 @@ export const CanonicalCapture: Story = {
       kind: 'component',
       order: 34,
     },
+  },
+};
+
+function MenuNoteExample() {
+  return (
+    <div className="flex min-h-64 flex-col items-center justify-center bg-canvas p-8 text-content-primary">
+      <div className="w-72">
+        <Menu>
+          <MenuTrigger asChild>
+            <Button variant="secondary">Folder actions</Button>
+          </MenuTrigger>
+          <MenuContent aria-describedby="folder-menu-note" aria-label="Folder actions">
+            <MenuItem leadingIcon="file">Add document</MenuItem>
+            <MenuItem disabled leadingIcon="archive">
+              Move folder
+            </MenuItem>
+            <MenuItem disabled leadingIcon="trash" tone="danger">
+              Delete folder
+            </MenuItem>
+            <MenuSeparator />
+            <MenuNote id="folder-menu-note">
+              Operations on this example are unavailable because the folder is read-only in this
+              workspace. Ask an owner to change the access.
+            </MenuNote>
+          </MenuContent>
+        </Menu>
+      </div>
+    </div>
+  );
+}
+
+export const WithNote: Story = {
+  tags: ['contract', '!autodocs'],
+  render: () => <MenuNoteExample />,
+  play: async ({ canvas, userEvent }) => {
+    const trigger = canvas.getByRole('button', { name: 'Folder actions' });
+    trigger.focus();
+    await userEvent.keyboard('{Enter}');
+    const menu = await waitFor(
+      () => document.querySelector<HTMLElement>('[role="menu"][data-side]'),
+      'Menu should open.',
+    );
+    const note = document.getElementById('folder-menu-note');
+    assert(note !== null, 'The note renders.');
+    assert(
+      menu.getAttribute('aria-describedby') === 'folder-menu-note',
+      'The menu is described by the note.',
+    );
+    assert(note.closest('[role="group"]') !== null, 'The note sits inside a role=group.');
+    assert(note.scrollHeight <= note.clientHeight + 1, 'The note wraps instead of clipping.');
+    assert(note.getBoundingClientRect().height > 30, 'A long note wraps onto several lines.');
+    assert(note.getAttribute('tabindex') === null, 'The note is not focusable.');
+    await userEvent.keyboard('{ArrowDown}');
+    assert(
+      document.activeElement?.textContent?.includes('Add document') === true,
+      'Roving focus never lands on the note.',
+    );
+    await userEvent.keyboard('{Escape}');
+  },
+};
+
+export const MenuLabelTruncatesByContract: Story = {
+  tags: ['contract', '!autodocs'],
+  render: () => (
+    <div className="flex min-h-64 items-center justify-center bg-canvas p-8">
+      <Menu defaultOpen modal={false}>
+        <MenuTrigger asChild>
+          <Button variant="secondary">Labels</Button>
+        </MenuTrigger>
+        <MenuContent aria-label="Labels" onCloseAutoFocus={(event) => event.preventDefault()}>
+          <MenuLabel>Operacje na tej przykładowej wersji dokumentu</MenuLabel>
+          <MenuItem>Open</MenuItem>
+        </MenuContent>
+      </Menu>
+    </div>
+  ),
+  play: async () => {
+    const label = await waitFor(
+      () =>
+        document.querySelector<HTMLElement>(
+          '[role="menu"] [role="presentation"] span, [role="menu"] div > span',
+        ),
+      'The label renders.',
+    );
+    assert(
+      label.scrollWidth > label.clientWidth,
+      'MenuLabel is a short caption: long text is truncated, so reasons belong in MenuNote.',
+    );
   },
 };

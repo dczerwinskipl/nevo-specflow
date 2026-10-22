@@ -127,9 +127,11 @@ function statusForCloseError(code: SafeCode): 400 | 404 | 409 | 422 | 503 {
     case 'BRANCH_ALREADY_EXISTS':
     case 'BRANCH_ALREADY_CHECKED_OUT':
     case 'WORKTREE_PATH_CONFLICT':
+    case 'COMMIT_BLOCKED':
       return 409;
     case 'CLOSE_PREFLIGHT':
     case 'GIT_DISABLED':
+    case 'BRANCH_PROTECTED':
     case 'BASE_REF_NOT_FOUND':
     case 'GIT_BASE_CONFIG_MISSING':
       return 422;
@@ -158,6 +160,7 @@ function statusForCloseError(code: SafeCode): 400 | 404 | 409 | 422 | 503 {
     case 'NOT_GIT_REPOSITORY':
     case 'GIT_OPERATION_UNCERTAIN':
     case 'GIT_OPERATION_FAILED':
+    case 'COMMIT_FAILED':
     case 'WORKTREE_MEMBERSHIP_MISMATCH':
     case 'SPEC_SOURCE_INVALID':
       return 503;

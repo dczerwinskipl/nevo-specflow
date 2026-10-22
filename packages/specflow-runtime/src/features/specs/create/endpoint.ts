@@ -1,15 +1,7 @@
 import {
-  CreateOperationError,
-  GitCapabilityError,
-  ProjectControlLockError,
-  ProjectHomeError,
-  SpecificationError,
-  WorkspaceRegistryError,
-  createSpecificationFromRequest,
   inspectCreateOptions,
   inspectPublicCreateOperation,
-  projectCreatedSpecification,
-  type CreateSpecificationRequest,
+  readPublicCreateOperationRow,
   type SpecFlowEngine,
 } from '@nevo/specflow-engine';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
@@ -19,6 +11,8 @@ import {
   AuthorizationForbiddenErrorResponseSchema,
 } from '@nevo/specflow-contracts/authorization';
 import {
+  CREATE_RESPOND_ASYNC_PREFERENCE,
+  CreateOperationAcceptedSchema,
   CreateOperationInspectionSchema,
   CreateOperationParamsSchema,
   CreateOptionsSchema,
@@ -29,10 +23,29 @@ import {
 } from '@nevo/specflow-contracts/specs';
 
 import { requireCapability } from '../../auth';
-import { statusForCreateError, type CreateErrorCode } from './error-status';
+import {
+  deriveOperationStatus,
+  registerOperationEventsRoute,
+  type OperationEventsStreamOptions,
+  type OperationProgressRegistry,
+} from '../../operations';
+import { createErrorCode, statusForCreateError } from './error-status';
+import { prefersRespondAsync } from './respond-async';
+import { createOperationPath, runCreate } from './run-create';
+
+const DEFAULT_CLOSE_GRACE_MS = 30_000;
 
 export interface SpecsCreateEndpointOptions {
   readonly engine?: SpecFlowEngine;
+  /** Optional live progress (SSE) for operations that carry a client `operationId`. */
+  readonly progress?: OperationProgressRegistry;
+  readonly stream?: OperationEventsStreamOptions;
+  /** Idle time after which a journal without a live writer is interrupted (tests; default 5 min). */
+  readonly staleAfterMs?: number;
+  /** How long `close()` waits for Creates still running (default 30 s). */
+  readonly closeGraceMs?: number;
+  /** Injectable clock (tests). */
+  readonly now?: () => Date;
 }
 
 /**
@@ -45,6 +58,29 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
   options,
   done,
 ) => {
+  // Creates are not bound to their request, so shutdown has to wait for them: a Create killed
+  // mid-stage leaves a non terminal journal that only an operator can recover.
+  const inFlight = new Set<Promise<unknown>>();
+  const track = (finished: Promise<unknown>): void => {
+    inFlight.add(finished);
+    const forget = () => inFlight.delete(finished);
+    finished.then(forget, forget);
+  };
+  const closeGraceMs = options.closeGraceMs ?? DEFAULT_CLOSE_GRACE_MS;
+  app.addHook('onClose', async () => {
+    if (inFlight.size === 0) return;
+    let timer: NodeJS.Timeout | undefined;
+    const expired = new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, closeGraceMs);
+      timer.unref();
+    });
+    try {
+      await Promise.race([Promise.allSettled([...inFlight]), expired]);
+    } finally {
+      clearTimeout(timer);
+    }
+  });
+
   app.withTypeProvider<TypeBoxTypeProvider>().get(
     '/api/specs/create-options',
     {
@@ -65,7 +101,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         },
       },
     },
-    async (_request, reply) => {
+    async (request, reply) => {
       reply.header('Cache-Control', 'no-store');
       const engine = options.engine;
       if (!engine) {
@@ -75,14 +111,30 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         });
       }
       try {
-        const options = await inspectCreateOptions(engine);
+        const { commits, ...read } = await inspectCreateOptions(engine, {
+          // An invalid Git section degrades the answer (reason `git-policy-invalid`); the problem
+          // goes to the server log only, never into the response.
+          onPolicyProblem: (problem) =>
+            request.log.warn({ problem }, 'Invalid Git policy: create-options served without Git'),
+        });
         return reply.code(200).send({
-          ...options,
-          workspaces: [...options.workspaces],
-          baseRefs: [...options.baseRefs],
+          ...read,
+          workspaces: [...read.workspaces],
+          baseRefs: [...read.baseRefs],
+          // Present exactly when Git is enabled (the Engine then commits the scaffold).
+          ...(commits
+            ? {
+                commits: {
+                  protectedBranches: [...commits.protectedBranches],
+                  ...(commits.allowedBranches
+                    ? { allowedBranches: [...commits.allowedBranches] }
+                    : {}),
+                },
+              }
+            : {}),
         });
       } catch (error) {
-        const code = errorCode(error);
+        const code = createErrorCode(error);
         if (!code) throw error;
         return reply.code(statusForCreateError(code)).send({ error: code, code });
       }
@@ -126,14 +178,56 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
             code: 'CREATE_NOT_FOUND',
             error: 'CREATE_NOT_FOUND',
           });
-        return reply.code(200).send(result);
+        // The journal has no failed state: a run that failed after reservation leaves it non-terminal.
+        // The status is derived exactly like the operations list does (one shared status table):
+        // the registry overlay (also a recently failed run), else the journal idle time.
+        if (result.status === 'completed') {
+          return reply.code(200).send(result);
+        }
+        const row = await readPublicCreateOperationRow(engine, request.params.operationId);
+        if (!row) return reply.code(200).send(result);
+        const derived = deriveOperationStatus(
+          { state: result.status, updatedAt: row.updatedAt },
+          options.progress?.recall(request.params.operationId, 'specification-create'),
+          (options.now ?? (() => new Date()))().getTime(),
+          options.staleAfterMs,
+        );
+        if (derived.status === 'failed' && derived.code !== undefined) {
+          return reply.code(200).send({
+            operationId: request.params.operationId,
+            kind: 'specification-create',
+            status: 'failed',
+            code: derived.code,
+          });
+        }
+        return reply.code(200).send({
+          operationId: request.params.operationId,
+          kind: 'specification-create',
+          status: derived.status === 'recovery-required' ? 'recovery-required' : 'in-progress',
+          ...(derived.status === 'recovery-required' && derived.code ? { code: derived.code } : {}),
+        });
       } catch (error) {
-        const code = errorCode(error);
+        const code = createErrorCode(error);
         if (!code) throw error;
         return reply.code(statusForCreateError(code)).send({ code, error: code });
       }
     },
   );
+
+  // Live progress of the same operation: authorized exactly like the inspection endpoint above.
+  if (options.progress) {
+    registerOperationEventsRoute(app, {
+      path: '/api/specs/create/operations/:operationId/events',
+      kind: 'specification-create',
+      authorize: requireCapability({
+        resource: SpecCapabilities,
+        capability: SpecCapabilities.capabilities.Create,
+        scope: {},
+      }),
+      registry: options.progress,
+      ...(options.stream ? { stream: options.stream } : {}),
+    });
+  }
 
   app.withTypeProvider<TypeBoxTypeProvider>().post(
     '/api/specs',
@@ -147,6 +241,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
         body: CreateSpecRequestSchema,
         response: {
           201: CreatedSpecSchema,
+          202: CreateOperationAcceptedSchema,
           400: CreateSpecErrorSchema,
           401: AuthenticationRequiredErrorResponseSchema,
           403: AuthorizationForbiddenErrorResponseSchema,
@@ -157,7 +252,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
       },
     },
     async (request, reply) => {
-      reply.header('Cache-Control', 'no-store');
+      reply.header('Cache-Control', 'no-store').header('Vary', 'Prefer');
       const engine = options.engine;
       if (!engine) {
         return reply.code(503).send({
@@ -167,75 +262,32 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
       }
 
       try {
-        const body = request.body;
-        // Resolve default from the verified Project Home (not the HTTP server
-        // process cwd or a user-provided, unverified root).
-        const target = await resolveCreateTarget(engine, body.target);
-        const result = await createSpecificationFromRequest(engine, {
-          operationId: body.operationId,
-          title: body.title,
-          goal: body.goal,
-          target,
+        const outcome = await runCreate({
+          engine,
+          body: request.body,
+          respondAsync: prefersRespondAsync(request.headers.prefer),
+          progress: options.progress,
+          track,
+          onDetachedFailure: (error) => request.log.error({ err: error }, 'Detached Create failed'),
         });
-        return reply.code(201).send(projectCreatedSpecification(result));
+        if (outcome.kind === 'accepted') {
+          return reply
+            .code(202)
+            .header('Location', createOperationPath(outcome.operationId))
+            .header('Preference-Applied', CREATE_RESPOND_ASYNC_PREFERENCE)
+            .send({
+              operationId: outcome.operationId,
+              kind: 'specification-create',
+              status: 'in-progress',
+            });
+        }
+        return reply.code(201).send(outcome.created);
       } catch (error) {
-        const code = errorCode(error);
+        const code = createErrorCode(error);
         if (!code) throw error;
-
-        const status = statusForCreateError(code);
-        return reply.code(status).send({ error: code, code });
+        return reply.code(statusForCreateError(code)).send({ error: code, code });
       }
     },
   );
   done();
 };
-
-async function resolveCreateTarget(
-  engine: SpecFlowEngine,
-  target:
-    | { readonly kind: 'existing'; readonly workspaceId: string }
-    | {
-        readonly kind: 'new-worktree';
-        readonly baseRef?: string;
-        readonly branch?: string;
-        readonly integrationTargetWorkspaceId?: string;
-      }
-    | undefined,
-): Promise<CreateSpecificationRequest['target']> {
-  switch (target?.kind) {
-    case undefined:
-      return { kind: 'existing', workspaceId: (await engine.readRegistry()).primaryWorkspaceId };
-    case 'existing':
-      return { kind: 'existing', workspaceId: target.workspaceId };
-    case 'new-worktree':
-      return {
-        kind: 'new-worktree',
-        ...(target.baseRef !== undefined ? { baseRef: target.baseRef } : {}),
-        ...(target.branch !== undefined ? { branch: target.branch } : {}),
-        ...(target.integrationTargetWorkspaceId !== undefined
-          ? { integrationTargetWorkspaceId: target.integrationTargetWorkspaceId }
-          : {}),
-      };
-    default: {
-      const exhaustive: never = target;
-      return exhaustive;
-    }
-  }
-}
-
-function errorCode(error: unknown): CreateErrorCode | undefined {
-  // Only Engine's public, typed failures are safe transport errors. A Node
-  // filesystem error such as EACCES is not a client validation failure and
-  // must never be misreported as HTTP 422.
-  if (
-    error instanceof CreateOperationError ||
-    error instanceof ProjectControlLockError ||
-    error instanceof GitCapabilityError ||
-    error instanceof SpecificationError ||
-    error instanceof WorkspaceRegistryError ||
-    error instanceof ProjectHomeError
-  ) {
-    return error.code;
-  }
-  return undefined;
-}

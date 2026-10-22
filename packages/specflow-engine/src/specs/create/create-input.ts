@@ -13,5 +13,6 @@ export interface CreateSpecificationInput {
   readonly title: string;
   readonly created: string;
   readonly goal?: string;
+  readonly slug?: string;
   readonly target: CreateSpecificationTarget;
 }

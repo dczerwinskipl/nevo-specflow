@@ -1,10 +1,7 @@
 import { Icon, InformationList } from '@nevo/ui';
 import { Download, FileArchive, Image } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import {
-  OperationalRow,
-  operationalPrimaryLinkClassName,
-} from '../../specs/shared/OperationalList';
+import { OperationalRow, operationalPrimaryLinkClassName } from '../../../shared/operational-list';
 import type { WorkspaceMaterial } from './taskWorkspaceModel';
 import { TaskCopyValue, TaskDetailDisclosure } from '../detail/TaskDetailDisclosure';
 

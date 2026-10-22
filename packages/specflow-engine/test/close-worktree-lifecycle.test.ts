@@ -22,7 +22,7 @@ import {
   rebindVerifiedClose,
   reserveCloseOperation,
 } from '../src/testing';
-import { createGitTestProject, git } from './support/git-project';
+import { createGitTestProject, git, commitStaged } from './support/git-project';
 
 const cleanup: string[] = [];
 afterEach(async () => {
@@ -43,16 +43,7 @@ async function fixture() {
     'runtime: {}\ngit:\n  enabled: true\n  integrationTargetBranch: ' + branch + '\n',
   );
   git(root, 'add', '.nevo/config.yaml');
-  git(
-    root,
-    '-c',
-    'user.name=Test',
-    '-c',
-    'user.email=test@example.invalid',
-    'commit',
-    '-qm',
-    'pin integration target',
-  );
+  commitStaged(root, 'pin integration target');
   const engine = await bootstrapProjectHome(root);
   const spec = await createSpecificationForTesting(engine, {
     operationId: randomUUID(),
@@ -68,16 +59,7 @@ async function fixture() {
     spec.relativeManifestPath,
     'specs/active/' + spec.slug + '/overview.md',
   );
-  git(
-    spec.workspaceRoot,
-    '-c',
-    'user.name=Test',
-    '-c',
-    'user.email=test@example.invalid',
-    'commit',
-    '-qm',
-    'spec source commit',
-  );
+  commitStaged(spec.workspaceRoot, 'spec source commit');
   return { root, engine, spec };
 }
 
@@ -89,16 +71,7 @@ describe('E2.T12–T13 linked Worktree Close lifecycle', () => {
     await mkdir(join(spec.workspaceRoot, 'src'), { recursive: true });
     await writeFile(join(spec.workspaceRoot, relative), content);
     git(spec.workspaceRoot, 'add', '--', relative);
-    git(
-      spec.workspaceRoot,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'commit real Unicode and bracketed source path',
-    );
+    commitStaged(spec.workspaceRoot, 'commit real Unicode and bracketed source path');
     const before = git(root, 'rev-parse', 'HEAD');
     const sourceHead = git(spec.workspaceRoot, 'rev-parse', 'HEAD');
     expect(git(spec.workspaceRoot, 'ls-files', '--', ':(literal)' + relative)).not.toBe('');
@@ -261,16 +234,7 @@ describe('E2.T12–T13 linked Worktree Close lifecycle', () => {
     const { root, engine, spec } = await fixture();
     await writeFile(join(root, 'only-on-primary.txt'), 'a divergent primary edit\n');
     git(root, 'add', 'only-on-primary.txt');
-    git(
-      root,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'advance target branch',
-    );
+    commitStaged(root, 'advance target branch');
     const operationId = randomUUID();
     const result = await closeWorktree(engine, { operationId, specId: spec.specId });
     expect(result.status).toBe('completed');
@@ -294,16 +258,7 @@ describe('E2.T12–T13 linked Worktree Close lifecycle', () => {
     const { root, engine, spec } = await fixture();
     await writeFile(join(root, 'target-advance.txt'), 'diverge\n');
     git(root, 'add', 'target-advance.txt');
-    git(
-      root,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'divergent target',
-    );
+    commitStaged(root, 'divergent target');
     const operationId = randomUUID();
     await reserveCloseOperation(engine, {
       kind: 'worktree-close',

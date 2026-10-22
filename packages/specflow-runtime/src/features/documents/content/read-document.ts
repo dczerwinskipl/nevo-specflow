@@ -9,7 +9,14 @@ export interface DocumentContentSource {
   ): Promise<
     | {
         kind: 'ok';
-        document: { specId: string; id: string; title: string; content: string; revision: string };
+        document: {
+          specId: string;
+          id: string;
+          title: string;
+          filename?: string;
+          content: string;
+          revision: string;
+        };
       }
     | { kind: 'not_found' | 'revision_unavailable' | 'unavailable' }
   >;
@@ -39,6 +46,7 @@ export async function readDocumentContent(
     value: {
       id: document.id,
       title: document.title,
+      ...(document.filename !== undefined ? { filename: document.filename } : {}),
       content: document.content,
       revision: document.revision,
     },

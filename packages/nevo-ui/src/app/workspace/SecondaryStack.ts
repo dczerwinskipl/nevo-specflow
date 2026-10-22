@@ -2,7 +2,7 @@ import type { ComponentType, ReactNode } from 'react';
 import type { WorkspaceHeaderAction, WorkspaceHeaderLabels } from './WorkspaceHeader';
 
 export type SecondaryData<T> =
-  | { status: 'loading' }
+  | { status: 'loading'; presentation?: ReactNode }
   | { status: 'ready'; data: T }
   | { status: 'unavailable'; message?: ReactNode }
   | { status: 'error'; message?: ReactNode; retry?: () => void }

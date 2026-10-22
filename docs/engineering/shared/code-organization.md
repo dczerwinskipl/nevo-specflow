@@ -140,6 +140,24 @@ src/
   init/
 ```
 
+### Runtime demo environment
+
+The demo Runtime (`dataMode: demo`) has one shared in-memory state per Runtime instance
+(`src/demo/state.ts`: catalogue, created Specifications, Sessions, locations, idempotent requests,
+failure injection). That state is data plus a few invariants; it is not a place for operations.
+Operations, validation and endpoints belong to the feature that owns the capability:
+`features/documents/demo/` (document tree, import, rename/move/delete, read/save with revisions,
+seeded content), `features/sessions/demo/` (Session allocation, seeded details, references, context),
+`features/specs/demo/` (workspace registry and Create options, atomic Create with idempotency and
+operation inspection, the scenario seam) and `features/tasks/demo/`. Each module exposes its demo
+surface through its barrel; a module needs another module's capability only through that barrel or
+an injected narrow function (for example Create validates and seeds documents through
+`documents.plan`/`append`, and the Session routes receive `documentPaths`). `src/demo/index.ts` is
+the composition root: it builds the state, constructs each module's operations over it and
+registers every route under `/api/demo/**`; only `server/app.ts` imports it. ESLint
+(`no-restricted-imports`) enforces barrel-only cross-feature imports for `src/features/**` and keeps
+features from importing the demo composition root.
+
 A feature owns the authorization resource definitions and capabilities it exposes. Cross-cutting
 authorization evaluates them but does not import product feature definitions. The Runtime composition root collects feature authorization
 resource definitions, defines the product role-to-capability policy, and injects both into Auth. Product
@@ -231,14 +249,61 @@ have two adapters. Production fixture-based adapters remain forbidden.
 
 ### What tooling enforces today
 
-- Enforced by ESLint on main: the package-level `no-restricted-imports` product boundaries in
-  `eslint.config.mjs` (which package may import which). Feature-barrel imports and the `shared/`
-  direction are NOT enforced by ESLint, and no rule is added for them.
-- `react-hooks/*` ESLint rules are not configured on main. Where a package later configures them,
-  they MUST pass; until then the state and effect rules below are guidance applied by agents and
-  reviewers, not automatic enforcement.
-- The module ownership and state/effect review gate is agent guidance applied through agent
-  instructions and review. Nothing blocks a merge automatically.
+- ESLint enforces the package-level `no-restricted-imports` product boundaries in
+  `eslint.config.mjs` (which package may import which). Inside `packages/specflow-ui` it also
+  enforces the feature-boundary rules described below (feature barrels, the `shared/` direction)
+  and the local `specflow-i18n/no-hardcoded-copy` rule, and `react-hooks/rules-of-hooks` (error)
+  and `react-hooks/exhaustive-deps` are configured with zero warnings.
+- Other packages have no feature-boundary rules. Where a rule is not enforced by tooling, the
+  module ownership and state/effect review gate is agent guidance applied through agent
+  instructions and review; nothing blocks a merge automatically.
+
+### Current layout of `packages/specflow-ui`
+
+- `features/documents/` owns the Documents explorer, editor, document draft store and the
+  documents port (`explorer/`, `editor/`, `content/`, `workspace/`, `api.ts`).
+  `features/sessions/` owns Session screens, context, composer drafts, recovery and the sessions
+  port. `features/specs/creation/` owns only the Create flow and its creation port.
+- Each port is an interface plus a named adapter beside it (`api.ts`, `api.demo.ts`) and is
+  provided as a separate service by `createSpecFlowAppServices` (`documentsApi`, `sessionsApi`,
+  `creationApi`). Demo adapters stay demo adapters; they do not decide where product components live.
+  The project Runtime has its own contract (`@nevo/specflow-contracts/specs`), so a capability that
+  differs between Runtimes gets a second port rather than one port with two adapters
+  (`projectCreationApi` beside `creationApi`); the Runtime mode (`useRuntimeMode`) selects the flow in one
+  place. Project adapters use `src/api` (`ApiTransport`): every failure is an `ApiError` classified once
+  (kind, mutation `outcome`), the server text is never shown, and a mutation is never retried blindly.
+- Visit-scoped state is a small external store owned by its feature and subscribed per entry
+  (for example one document's draft), not one global React context whose every update re-renders
+  all consumers.
+- `src/shared/` holds only code that several features genuinely use (generic controls, the
+  retained-request mechanism, the keyed store, notifications, `operations/`, and the product presentational
+  pieces `operational-list/` (`OperationalRow`, `OperationalGroupHeader`) and `workspace-section/`
+  (`WorkspaceSection`) that Documents, Sessions, Tasks, Git and Specs all render). It imports no
+  feature and no composition root. A purely presentational piece used by several features lives
+  here instead of in the feature that happened to create it; features do not re-export it.
+- Features reach other features only through the target's public entries. A feature has up to
+  three: the barrel (`features/<name>/index.ts`: screens and behaviour the feature deliberately
+  exports), `features/<name>/read-model` (the data other features may depend on: model types, query
+  keys, the read hook) and `features/<name>/routes` (route objects, for composition files only).
+  `features/specs/creation` is private to Create; the application wires only its `routes`.
+  Composition roots (`app/`, `services/`) and tests, stories and story-support files are not
+  restricted. ESLint (`no-restricted-imports` in `eslint.config.mjs`) enforces these rules for
+  production sources.
+- The import graph of the features has no cycles. Each feature is three nodes: the feature itself
+  (screens), its `read-model` and its composition files (`routes`, `uiModule`, `contributions/`). A
+  read model is a leaf: it imports only other features' read models, so a feature that needs another
+  feature's data (documents needing `specificationKeys`, sessions needing the workspace hook) never
+  depends on that feature's screens. Only composition files depend on other features' composition
+  files (a feature plugging into the specification workspace imports `specs/routes` and the specs
+  extension points); a screen never imports composition. When a new need would close a cycle,
+  move the shared data to the owner's read model, or invert the dependency (the owner renders what
+  the other contributes through props or the `ui-modules` contribution mechanism). The module graph
+  test (`src/features/moduleGraph.test.ts`, analysis in `importCycles.ts`) fails on a cycle between
+  nodes or files, on a read model that imports a screen and on a screen that imports composition.
+- Create is a pure reducer over named phases plus a hook that performs the I/O (see the diagram at
+  the top of `features/specs/creation/createOperationReducer.ts`). Mutable bookkeeping that async
+  continuations must read synchronously lives in one small ledger/lock object created once per
+  owner, never in scattered refs and never read while rendering.
 
 ## React UI state, effects and async operations
 

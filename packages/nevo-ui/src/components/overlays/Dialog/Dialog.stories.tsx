@@ -13,6 +13,16 @@ import {
   DialogTrigger,
 } from './Dialog';
 
+/** Polls until the portal content exists (no storybook/test import in the design-system package). */
+async function until<T>(read: () => T | null | undefined): Promise<T> {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const value = read();
+    if (value) return value;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error('Timed out waiting for the dialog.');
+}
+
 const meta = {
   title: 'Nevo UI/Overlays/Dialog',
   component: Dialog,
@@ -90,5 +100,30 @@ export const InteractionContract: Story = {
     await userEvent.keyboard('{Escape}');
     assert(document.querySelector('[role="dialog"]') === null, 'Escape should close the dialog.');
     assert(document.activeElement === trigger, 'Closing should restore trigger focus.');
+  },
+};
+
+/** The IconButton hit area makes it `relative`; the close action must still sit in the corner. */
+export const CloseActionIsPinnedToTheCorner: Story = {
+  render: () => (
+    <Dialog defaultOpen>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Pinned close</DialogTitle>
+        </DialogHeader>
+        <DialogBody>Body</DialogBody>
+      </DialogContent>
+    </Dialog>
+  ),
+  tags: ['contract', '!autodocs'],
+  play: async () => {
+    const dialog = await until(() => document.querySelector<HTMLElement>('[role="dialog"]'));
+    const close = dialog.querySelector<HTMLElement>('button[aria-label="Close dialog"]');
+    assert(close, 'The close action should render.');
+    assert(getComputedStyle(close).position === 'absolute', 'Close must be absolutely positioned.');
+    const box = dialog.getBoundingClientRect();
+    const rect = close.getBoundingClientRect();
+    assert(box.right - rect.right < 24, 'Close should sit at the right edge.');
+    assert(rect.top - box.top < 24, 'Close should sit at the top edge.');
   },
 };

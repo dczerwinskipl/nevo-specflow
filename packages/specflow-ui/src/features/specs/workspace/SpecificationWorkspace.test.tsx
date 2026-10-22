@@ -77,7 +77,7 @@ describe('SpecificationWorkspace', () => {
     expect(markup).toContain('<h3');
     expect(markup).toContain('text-section-label');
     expect(markup).toContain('Repozytorium');
-    expect(markup).toContain('Taski');
+    expect(markup).toContain('Zadania');
 
     // h4 for task groups
     expect(markup).toContain('<h4');
@@ -99,6 +99,7 @@ describe('SpecificationWorkspace', () => {
   it('renders empty scenario with preparation banner and no task list', () => {
     const markup = renderWorkspaceMarkup({
       data: createSpecificationWorkspaceFixture('empty', 'UI-1234'),
+      onNewConversation: () => undefined,
     });
 
     expect(markup).toContain('Przygotuj specyfikację do realizacji');
@@ -111,7 +112,7 @@ describe('SpecificationWorkspace', () => {
       data: createSpecificationWorkspaceFixture('preparing', 'UI-1234'),
     });
 
-    expect(markup).toContain('Taski są jeszcze w przygotowaniu');
+    expect(markup).toContain('Zadania są jeszcze w przygotowaniu');
     expect(markup).toContain('Przygotowanie do review');
     expect(markup).toContain('w przygotowaniu');
   });
@@ -194,7 +195,7 @@ describe('SpecificationWorkspace', () => {
   it('renders Specification Overview independently of the previous tab-view selection model', () => {
     const markup = renderWorkspaceMarkup();
     expect(markup).toContain('Wymaga Twojej uwagi');
-    expect(markup).toContain('Taski');
+    expect(markup).toContain('Zadania');
   });
 
   it('does not manufacture a technical-id eyebrow or duplicate content Back', () => {
@@ -205,13 +206,44 @@ describe('SpecificationWorkspace', () => {
     expect(markup.match(/<h1\b/g)).toHaveLength(1);
   });
 
-  it('renders honest capabilities: disabled conversation action when onNewConversation is not provided', () => {
+  it('hides the conversation actions a Runtime cannot serve instead of showing disabled ones', () => {
+    const markup = renderWorkspaceMarkup({ onNewConversation: undefined });
+
+    expect(markup).not.toContain('Nowa rozmowa');
+  });
+
+  it('project mode right after Create: calm "not available yet" state, no warning, no broken actions', () => {
+    const base = createSpecificationWorkspaceFixture('empty', 'UI-1234');
+    const notImplemented = 'not_implemented' as const;
     const markup = renderWorkspaceMarkup({
       onNewConversation: undefined,
+      data: {
+        ...base,
+        sectionAvailability: {
+          tasks: 'unavailable',
+          documents: 'unavailable',
+          sessions: 'unavailable',
+          activity: 'unavailable',
+          repository: 'unavailable',
+          changes: 'unavailable',
+        },
+        sectionUnavailableReason: {
+          tasks: notImplemented,
+          documents: notImplemented,
+          sessions: notImplemented,
+          activity: notImplemented,
+          repository: notImplemented,
+          changes: notImplemented,
+        },
+      },
     });
 
-    // In ResumeSessionSection, button should be disabled and have title "Niezaimplementowane"
-    expect(markup).toContain('disabled=""');
-    expect(markup).toContain('Niezaimplementowane');
+    expect(markup).toContain('Niedostępne na tym serwerze');
+    expect(markup).not.toContain('Rozpocznij rozmowę');
+    expect(markup).not.toContain('Przygotuj specyfikację do realizacji');
+    expect(markup).not.toContain('Nie udało się wczytać historii');
+    expect(markup).not.toContain('Specyfikacja jest niedostępna');
+    expect(markup).not.toContain('Spróbuj ponownie');
+    expect(markup).not.toContain('role="alert"');
   });
 });

@@ -39,6 +39,8 @@ export interface SpecificationScaffoldInput {
   /** An explicit creation date supplied by the application operation. */
   readonly created: string;
   readonly goal?: string;
+  /** Explicit, already validated slug; omitted: derived from the title. */
+  readonly slug?: string;
 }
 
 export interface SpecificationScaffoldFile {
@@ -79,6 +81,16 @@ export function validateSpecificationSlug(value: unknown): string {
     );
   }
   return value;
+}
+
+/** Slug a client may request: lowercase kebab-case ASCII (the shape derived slugs already have). */
+const EXPLICIT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
+
+export function isExplicitSpecificationSlug(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length > 80 || !EXPLICIT_SLUG_PATTERN.test(value)) {
+    return false;
+  }
+  return !WINDOWS_DEVICE_PATTERN.test(value);
 }
 
 export function specificationSlugFromTitle(title: string, specId: string): string {
@@ -162,7 +174,13 @@ export function createSpecificationScaffold(
   }
   validateSpecificationScaffoldInput(input);
   const title = input.title.replace(/\s+/gu, ' ').trim();
-  const slug = specificationSlugFromTitle(title, input.specId);
+  if (input.slug !== undefined && !isExplicitSpecificationSlug(input.slug)) {
+    throw new SpecificationError(
+      'SPEC_VALIDATION_ERROR',
+      'Specification slug must be lowercase kebab-case ASCII of at most 80 characters.',
+    );
+  }
+  const slug = input.slug ?? specificationSlugFromTitle(title, input.specId);
   const base = 'specs/active/' + slug + '/';
   const manifest = stringify({
     id: slug,
@@ -189,6 +207,8 @@ export function createSpecificationScaffold(
     '## Context',
     '',
     '## Goal',
+    '',
+    '<!-- Initial goal captured when this specification was created; refine or rewrite it freely. -->',
     '',
     goal?.length ? goal : 'Describe the intended outcome of this specification.',
     '',

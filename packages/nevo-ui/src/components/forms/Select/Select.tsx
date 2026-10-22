@@ -3,6 +3,8 @@ import {
   createContext,
   forwardRef,
   useContext,
+  useId,
+  type ReactNode,
   type ComponentPropsWithoutRef,
   type ComponentRef,
 } from 'react';
@@ -10,7 +12,6 @@ import { tv } from 'tailwind-variants/lite';
 import { designSlot, useDesignMetadata } from '@nevo/figma-capture/metadata';
 import {
   floatingContentClassName,
-  floatingItemVariants,
   floatingLabelClassName,
   floatingSeparatorClassName,
 } from '../../../design-system/floatingRecipes';
@@ -18,6 +19,12 @@ import { cn } from '../../../lib';
 import { Icon } from '../../foundations/Icon';
 import { Typography } from '../../foundations/Typography';
 import { useFieldControl } from '../Field';
+import {
+  optionDescriptionClassName,
+  optionItemClassName,
+  optionLabelClassName,
+  optionMetaClassName,
+} from '../shared/optionRecipes';
 import { isAriaInvalid } from '../shared/textControlState';
 
 interface SelectContextValue {
@@ -169,32 +176,125 @@ export const SelectContent = forwardRef<
   );
 });
 
-export type SelectItemProps = ComponentPropsWithoutRef<typeof SelectPrimitive.Item>;
+export type SelectItemProps = ComponentPropsWithoutRef<typeof SelectPrimitive.Item> & {
+  /** Secondary line under the label. Wraps, stays readable when the item is disabled/unavailable. */
+  description?: ReactNode;
+  /** Trailing right-aligned slot (text or Badge). Never shown in the trigger value. */
+  meta?: ReactNode;
+  /**
+   * Keeps the item reachable (focus, arrow keys, screen readers) but blocks selection.
+   * Radix removes natively `disabled` items from keyboard navigation, so use this together
+   * with `description` when the user must be able to reach and read the reason.
+   */
+  unavailable?: boolean;
+};
+
+const selectItemLabelClassName = optionLabelClassName;
+
+/** Root class contract for an item; shared with `Combobox` through `optionRecipes`. */
+export const selectItemClassName = optionItemClassName;
 
 export const SelectItem = forwardRef<ComponentRef<typeof SelectPrimitive.Item>, SelectItemProps>(
-  function SelectItem({ autoFocus, children, className, disabled, ...props }, ref) {
+  function SelectItem(
+    {
+      autoFocus,
+      children,
+      className,
+      description,
+      disabled,
+      meta,
+      onClick,
+      onKeyDown,
+      onPointerUp,
+      unavailable = false,
+      ...props
+    },
+    ref,
+  ) {
+    const baseId = useId();
+    const descriptionId = `${baseId}-description`;
+    const metaId = `${baseId}-meta`;
+    const hasDescription =
+      description !== undefined && description !== null && description !== false;
+    const hasMeta = meta !== undefined && meta !== null && meta !== false;
+    const structured = hasDescription || hasMeta;
+    const blocked = disabled === true || unavailable;
+    const keepsReasonReadable = structured && blocked;
     const capture = useDesignMetadata('SelectItem', {
-      state: disabled ? 'disabled' : autoFocus ? 'highlighted' : 'default',
+      state: blocked ? 'disabled' : autoFocus ? 'highlighted' : 'default',
     });
+    const describedBy =
+      [hasDescription ? descriptionId : null, hasMeta ? metaId : null].filter(Boolean).join(' ') ||
+      undefined;
+    const block = (event: { preventDefault: () => void }) => event.preventDefault();
+
+    const label = (
+      <SelectPrimitive.ItemText asChild>
+        <Typography
+          className={cn(selectItemLabelClassName, !structured && 'flex-1')}
+          {...designSlot('SelectItem', 'label')}
+          variant="body-sm"
+        >
+          {children}
+        </Typography>
+      </SelectPrimitive.ItemText>
+    );
+
     return (
       <SelectPrimitive.Item
         ref={ref}
+        aria-describedby={describedBy}
+        {...(unavailable ? { 'aria-disabled': true } : {})}
         autoFocus={autoFocus}
-        className={cn('pr-8', floatingItemVariants(), className)}
+        className={cn(selectItemClassName({ keepsReasonReadable, unavailable }), className)}
         data-design-token-background={autoFocus ? 'Color/surface-hover' : undefined}
+        data-unavailable={unavailable ? '' : undefined}
         disabled={disabled}
+        onClick={(event) => {
+          onClick?.(event);
+          if (unavailable) block(event);
+        }}
+        onKeyDown={(event) => {
+          onKeyDown?.(event);
+          if (unavailable && (event.key === 'Enter' || event.key === ' ')) block(event);
+        }}
+        onPointerUp={(event) => {
+          onPointerUp?.(event);
+          if (unavailable) block(event);
+        }}
         {...props}
         {...capture}
       >
-        <SelectPrimitive.ItemText asChild>
-          <Typography
-            className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-current"
-            {...designSlot('SelectItem', 'label')}
-            variant="body-sm"
-          >
-            {children}
-          </Typography>
-        </SelectPrimitive.ItemText>
+        {structured ? (
+          <>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className={cn('flex min-w-0', keepsReasonReadable && 'opacity-50')}>
+                {label}
+              </span>
+              {hasDescription ? (
+                <Typography
+                  className={optionDescriptionClassName}
+                  id={descriptionId}
+                  data-select-item-part="description"
+                  variant="body-sm"
+                >
+                  {description}
+                </Typography>
+              ) : null}
+            </span>
+            {hasMeta ? (
+              <span
+                className={cn(optionMetaClassName, keepsReasonReadable && 'opacity-50')}
+                id={metaId}
+                data-select-item-part="meta"
+              >
+                {meta}
+              </span>
+            ) : null}
+          </>
+        ) : (
+          label
+        )}
         <SelectPrimitive.ItemIndicator asChild>
           <span
             className="absolute right-control-padding-compact inline-flex text-content-primary"

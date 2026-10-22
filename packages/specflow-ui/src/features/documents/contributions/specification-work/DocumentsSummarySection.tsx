@@ -1,9 +1,9 @@
 import { useId, useState } from 'react';
 import { Button, InformationList, MenuItem, OverflowMenu } from '@nevo/ui';
-import { OperationalRow } from '../../../specs/shared/OperationalList';
+import { type DocumentItem } from '../../../specs/read-model';
+import { OperationalRow } from '../../../../shared/operational-list';
+import { WorkspaceSection } from '../../../../shared/workspace-section';
 import { useTranslation } from 'react-i18next';
-import type { DocumentItem } from '../../../specs/workspace/model';
-import { WorkspaceSection } from '../../../specs/workspace/sections/WorkspaceSection';
 
 export interface DocumentsSummarySectionProps {
   readonly documents: readonly DocumentItem[];

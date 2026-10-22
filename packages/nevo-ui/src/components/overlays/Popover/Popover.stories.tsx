@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { DesignCaptureProvider } from '@nevo/figma-capture/metadata';
 import { Button } from '../../actions/Button';
@@ -110,5 +111,114 @@ export const CanonicalCapture: Story = {
       kind: 'component',
       order: 30,
     },
+  },
+};
+
+function EdgeAnchoredExample() {
+  return (
+    <div className="flex min-h-64 justify-end bg-canvas p-2 text-content-primary">
+      <Popover defaultOpen>
+        <PopoverTrigger asChild>
+          <Button variant="secondary">Path</Button>
+        </PopoverTrigger>
+        <PopoverContent aria-label="Full document path" className="w-96 p-3">
+          <Typography as="p" className="m-0 break-all" variant="body-sm">
+            specifications/admission/documents/decisions/adr-001-keep-the-specification-history-readable-on-narrow-screens.md
+          </Typography>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+export const EdgeAnchoredNarrow: Story = {
+  render: () => <EdgeAnchoredExample />,
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+};
+
+export const EdgeAnchoredNarrowContract: Story = {
+  ...EdgeAnchoredNarrow,
+  tags: ['contract', '!autodocs'],
+  play: async () => {
+    const content = await waitFor(
+      () => document.querySelector<HTMLElement>('[role="dialog"][aria-label="Full document path"]'),
+      'The popover opens.',
+    );
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const rect = content.getBoundingClientRect();
+    assert(window.innerWidth <= 360, 'The contract runs on a narrow viewport.');
+    assert(
+      rect.left >= 0 && rect.right <= window.innerWidth,
+      `The popover is clamped inside the viewport (${rect.left}-${rect.right} of ${window.innerWidth}).`,
+    );
+    assert(
+      content.scrollWidth <= content.clientWidth,
+      'Long unbroken content wraps inside the clamped popover.',
+    );
+  },
+};
+
+/**
+ * A software keyboard shrinks the visible viewport. The story stands in for it with a boundary of
+ * constrained height (`collisionBoundary`), the same input the browser viewport gives the popover.
+ */
+function KeyboardConstrainedExample() {
+  const [boundary, setBoundary] = useState<HTMLDivElement | null>(null);
+  return (
+    <div
+      ref={setBoundary}
+      className="relative flex h-56 items-end justify-start overflow-hidden bg-canvas p-4 text-content-primary"
+      data-testid="visible-viewport"
+    >
+      <Popover defaultOpen>
+        <PopoverTrigger asChild>
+          <Button variant="secondary">Change record</Button>
+        </PopoverTrigger>
+        <PopoverContent
+          aria-label="Change record"
+          className="w-72 p-3"
+          collisionBoundary={boundary}
+          container={boundary}
+          onOpenAutoFocus={(event) => event.preventDefault()}
+        >
+          <TextInput aria-label="Search records" />
+          <ul className="m-0 mt-2 grid list-none gap-1 p-0">
+            {Array.from({ length: 24 }, (_, index) => (
+              <li key={index}>
+                <Typography variant="body-sm">Record {index + 1}</Typography>
+              </li>
+            ))}
+          </ul>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+export const VisibleViewportContract: Story = {
+  render: () => <KeyboardConstrainedExample />,
+  tags: ['contract', '!autodocs'],
+  play: async () => {
+    const content = await waitFor(
+      () => document.querySelector<HTMLElement>('[role="dialog"][aria-label="Change record"]'),
+      'The popover opens.',
+    );
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const boundary = document.querySelector<HTMLElement>('[data-testid="visible-viewport"]')!;
+    const area = boundary.getBoundingClientRect();
+    const rect = content.getBoundingClientRect();
+    assert(
+      rect.top >= area.top - 0.5 && rect.bottom <= area.bottom + 0.5,
+      `The popover stays inside the visible area (${rect.top}-${rect.bottom} of ${area.top}-${area.bottom}).`,
+    );
+    const input = content.querySelector<HTMLInputElement>('input')!.getBoundingClientRect();
+    assert(input.top >= area.top && input.bottom <= area.bottom, 'The first control is visible.');
+    const body = content.firstElementChild as HTMLElement;
+    assert(
+      body.scrollHeight > body.clientHeight,
+      'Overflowing content scrolls inside the popover.',
+    );
+    body.scrollTop = body.scrollHeight;
+    assert(body.scrollTop > 0, 'The popover body is scrollable.');
   },
 };

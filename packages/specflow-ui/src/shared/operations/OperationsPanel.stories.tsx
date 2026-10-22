@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { StoryLocalization } from '../../i18n/StoryLocalization';
 import type { AppLocale } from '../../i18n';
@@ -18,6 +18,16 @@ import { OperationsPanelHost } from './OperationsPanelHost';
 import { resetOperationsSession } from './operationsSession';
 
 type Answer = OperationList | OperationListResult | Error;
+
+/** The port of the story on screen, so a story can wait for the read it asserts about. */
+let currentApi: ReturnType<typeof operationsStub> | undefined;
+
+/** Resolves once the panel has read the list and React has rendered that answer. */
+async function afterFirstRead() {
+  await waitFor(() => expect(currentApi?.calls.length ?? 0).toBeGreaterThan(0));
+  for (let frame = 0; frame < 2; frame += 1)
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+}
 
 /**
  * The connected panel over an in-memory operations port: each read takes the next answer (the last
@@ -38,6 +48,9 @@ function PanelFixture({
       api: operationsStub(...answers),
     };
   }, [answers]);
+  useEffect(() => {
+    currentApi = api;
+  }, [api]);
   return (
     <QueryClientProvider client={client}>
       <StoryLocalization locale={locale}>
@@ -65,7 +78,7 @@ const one = (items: OperationListItem[], extras: Partial<Omit<OperationList, 'it
 export const EmptyHidden: Story = {
   args: { answers: one([]) },
   play: async ({ canvasElement }) => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await afterFirstRead();
     await expect(canvasElement.querySelector('[data-operations-panel]')).toBeNull();
   },
 };
@@ -74,7 +87,7 @@ export const EmptyHidden: Story = {
 export const NotServedHidden: Story = {
   args: { answers: [{ kind: 'unavailable' } as const] },
   play: async ({ canvasElement }) => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await afterFirstRead();
     await expect(canvasElement.querySelector('[data-operations-panel]')).toBeNull();
     await expect(canvasElement.querySelector('[role="alert"]')).toBeNull();
   },

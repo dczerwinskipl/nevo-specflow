@@ -1,7 +1,7 @@
 import { Alert, Button, InlineNote } from '@nevo/ui';
 import { Trans, useTranslation } from 'react-i18next';
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
-import { BranchRef } from '../../../../shared/git/BranchRef';
+import { BranchRef } from '../BranchRef';
 import { effectiveTargetBranch, mergeSuggestion } from './mergeSuggestion';
 import type { SettingsFocusRequest, SettingsUpdate } from './settingsTypes';
 import type { WorkspaceChoice } from './workspaceChoice';

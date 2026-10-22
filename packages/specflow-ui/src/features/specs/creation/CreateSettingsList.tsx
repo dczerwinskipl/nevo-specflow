@@ -1,6 +1,6 @@
 import { Trans, useTranslation } from 'react-i18next';
 import { DescriptionList } from '@nevo/ui';
-import { BranchRef } from '../../../shared/git/BranchRef';
+import { BranchRef } from './BranchRef';
 import type { CreateSettingsModel } from './createPageView';
 import { WorkspaceRef } from './workspace/WorkspaceRef';
 import { SummaryRow } from './workspace/WorkspaceTileSummaries';

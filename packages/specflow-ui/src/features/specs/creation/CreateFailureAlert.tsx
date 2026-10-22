@@ -1,7 +1,7 @@
 import { Alert, Button, Collapsible, DescriptionList } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { MessageKey } from '../../../i18n/message';
-import { BranchRef } from '../../../shared/git/BranchRef';
+import { BranchRef } from './BranchRef';
 import type { CreateFailure } from './createFailure';
 import type { CreateOperationStatus } from './createOperationReducer';
 

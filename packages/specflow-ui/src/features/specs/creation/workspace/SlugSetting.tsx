@@ -1,9 +1,8 @@
 import type { MutableRefObject } from 'react';
 import { Field, SwitchField, TextInput } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import { SPEC_SLUG_MAX_LENGTH } from '@nevo/specflow-contracts/specs';
+import { SPEC_SLUG_MAX_LENGTH, deriveSpecSlug } from '@nevo/specflow-contracts/specs';
 import { useMessage, type Message } from '../../../../i18n/message';
-import { derivedSlug } from './createRequest';
 import type { SettingsUpdate } from './settingsTypes';
 import { initialWorkspaceChoice, type WorkspaceChoice } from './workspaceChoice';
 
@@ -24,7 +23,7 @@ export function SlugSetting({
 }) {
   const { t } = useTranslation();
   const text = useMessage();
-  const value = choice.slug.edited ? choice.slug.value : derivedSlug(title);
+  const value = choice.slug.edited ? choice.slug.value : deriveSpecSlug(title);
   return (
     <div className="grid grid-cols-1 gap-3 py-3">
       <SwitchField

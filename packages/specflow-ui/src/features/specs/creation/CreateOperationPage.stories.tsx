@@ -12,7 +12,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, waitFor, within } from 'storybook/test';
 
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
-import { settleOwnerV4 } from '../../../test-support/ownerV4Capture.stories-support';
+import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 import { ApiError } from '../../../api';
 import { VisitStateProvider } from '../../../app/VisitStateProvider';
 import { withLocale } from '../../../i18n/StoryLocalization';
@@ -408,7 +408,7 @@ export const LongTitleAt320: Story = {
     },
   },
   play: async ({ canvas, canvasElement }) => {
-    await settleOwnerV4('creation-progress-320', 320, 740);
+    await settleViewport(320, 740);
     await canvas.findByText('Przygotowanie środowiska pracy');
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320);
     const heading = canvas.getByRole('heading', { level: 1, name: /^Tworzenie: Ogr/ });
@@ -526,8 +526,8 @@ export const InProgressWithTheCommitStep: Story = {
     stream: 'commit-steps',
   },
   play: async ({ canvas, canvasElement, userEvent }) => {
-    const running = (await canvas.findAllByText('Zapisywanie specyfikacji w commicie')).find((node) =>
-      node.closest('li'),
+    const running = (await canvas.findAllByText('Zapisywanie specyfikacji w commicie')).find(
+      (node) => node.closest('li'),
     )!;
     await waitFor(() => expect(running.closest('li')).toHaveAttribute('aria-current', 'step'));
     await expect(canvas.getByText('Zapisujemy pliki specyfikacji w commicie')).toBeVisible();

@@ -16,11 +16,13 @@ import {
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import { createSpecFlowAppServices } from '../../../services';
 import { VisitStateProvider } from '../../../app/VisitStateProvider';
-import { settleOwnerV4 } from '../../../test-support/ownerV4Capture.stories-support';
+import { settleViewport } from '../../../test-support/viewportSettle.stories-support';
 import { CreateSpecificationScreen } from './CreateSpecificationScreen';
 import { withLocale } from '../../../i18n/StoryLocalization';
 /** Requests the form sent through the `create` seam (reset by every Fixture mount). */
 export const createRequests: DemoCreateRequest[] = [];
+/** How many create requests the fixture has answered (resolved or rejected), to wait on instead of sleeping. */
+export const createAnswers = { count: 0 };
 /** How the fixture answers `create`; every failure keeps the operation retryable except the last two. */
 export type CreateBehavior =
   | 'ok'
@@ -116,6 +118,7 @@ function Fixture({
     brokenOptions = useRef(optionsBehavior === 'error');
   useState(() => {
     createRequests.length = 0;
+    createAnswers.count = 0;
   });
   const [reads, setReads] = useState({ catalogue: 0, options: 0 });
   const [calls, setCalls] = useState(0),
@@ -169,11 +172,15 @@ function Fixture({
                 );
               return Promise.resolve(createdSpecFixture(input.operationId));
             };
+            const answered = () => {
+              createAnswers.count += 1;
+            };
+            const settle = () => answer().finally(answered);
             return createDelayMs
               ? new Promise((resolve, reject) =>
-                  setTimeout(() => void answer().then(resolve, reject), createDelayMs),
+                  setTimeout(() => void settle().then(resolve, reject), createDelayMs),
                 )
-              : answer();
+              : settle();
           },
           operationStatus: (operationId) => {
             statusReads.current += 1;
@@ -275,7 +282,7 @@ type Story = StoryObj<typeof meta>;
 export const ChoiceAndConfiguration: Story = {
   play: async ({ canvas, userEvent }) => {
     await canvas.findByRole('button', { name: /Z agentem/ });
-    await settleOwnerV4('choice-wide');
+    await settleViewport();
     const cards = [
       canvas.getByRole('button', { name: /Z agentem/ }),
       canvas.getByRole('button', { name: /Samodzielnie/ }),
@@ -285,7 +292,7 @@ export const ChoiceAndConfiguration: Story = {
     ).toBeLessThan(1);
     for (const card of cards)
       await expect(card.scrollHeight).toBeLessThanOrEqual(card.clientHeight);
-    await settleOwnerV4('choice-mobile', 390, 844);
+    await settleViewport(390, 844);
     await userEvent.click(canvas.getByRole('button', { name: /Samodzielnie/ }));
     await userEvent.type(
       canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' }),
@@ -298,9 +305,9 @@ export const ChoiceAndConfiguration: Story = {
     ).not.toBeInTheDocument();
     await expect(canvas.queryByText('Pliki do utworzenia')).not.toBeInTheDocument();
     await expect(canvas.queryByRole('button', { name: 'Wgraj pliki' })).not.toBeInTheDocument();
-    await settleOwnerV4('create-manual-wide');
-    await settleOwnerV4('create-manual-mobile', 390, 844);
-    await settleOwnerV4('create-manual-mobile-footer', 390, 844, () =>
+    await settleViewport();
+    await settleViewport(390, 844);
+    await settleViewport(390, 844, () =>
       canvas.getByRole('button', { name: 'Utwórz specyfikację' }),
     );
     await userEvent.click(canvas.getByRole('button', { name: /Zmień sposób pracy/ }));
@@ -311,9 +318,9 @@ export const ChoiceAndConfiguration: Story = {
     await expect(canvas.getByRole('combobox', { name: 'Model' })).toHaveTextContent(
       'Wybierz model',
     );
-    await settleOwnerV4('create-ai-wide');
-    await settleOwnerV4('create-ai-mobile', 390, 844);
-    await settleOwnerV4('create-ai-mobile-footer', 390, 844, () =>
+    await settleViewport();
+    await settleViewport(390, 844);
+    await settleViewport(390, 844, () =>
       canvas.getByRole('button', { name: 'Utwórz i otwórz sesję' }),
     );
   },
@@ -331,7 +338,7 @@ export const ExplicitModelCapabilities: Story = {
     await expect(
       Number.parseFloat(getComputedStyle(focusedProvider.closest('label')!).outlineWidth),
     ).toBeGreaterThanOrEqual(2);
-    await settleOwnerV4('provider-keyboard-focus-wide');
+    await settleViewport();
     await userEvent.click(canvas.getByRole('combobox', { name: 'Model' }));
     await userEvent.click(
       await within(document.body).findByRole('option', { name: 'codex model B' }),
@@ -945,7 +952,9 @@ export const CommitFailedIsRecoveryNotARetry: Story = {
   play: async ({ canvas, userEvent }) => {
     await openManualForm(canvas, userEvent);
     await userEvent.click(submit(canvas));
-    await canvas.findByText('Pliki specyfikacji powstały, ale nie udało się zapisać ich w commicie');
+    await canvas.findByText(
+      'Pliki specyfikacji powstały, ale nie udało się zapisać ich w commicie',
+    );
     await expect(canvas.getByText(/Nie twórz jej ponownie/)).toBeVisible();
     await expect(canvas.queryByText(/Nie utworzono specyfikacji/)).toBeNull();
     await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toBeDisabled();
@@ -1150,7 +1159,8 @@ export const DoubleClickOnCreateSendsOneRequest: Story = {
   play: async ({ canvas, userEvent }) => {
     await openManualForm(canvas, userEvent);
     await userEvent.dblClick(submit(canvas));
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Both clicks are done: the answer of the one request in flight settles before asserting.
+    await waitFor(() => expect(createAnswers.count).toBe(1));
     await expect(createRequests).toHaveLength(1);
   },
 };
@@ -1162,7 +1172,8 @@ export const DoubleClickOnTheCheckSendsOneReplay: Story = {
     await userEvent.click(submit(canvas));
     await canvas.findByText('Sprawdzamy wynik tworzenia', {}, { timeout: 3000 });
     await userEvent.dblClick(canvas.getByRole('button', { name: 'Sprawdź wynik' }));
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    // The original request and ONE replay have been answered; a second replay would be a third request.
+    await waitFor(() => expect(createAnswers.count).toBe(2));
     await expect(createRequests).toHaveLength(2);
     await expect(createRequests[1]).toEqual(createRequests[0]);
   },

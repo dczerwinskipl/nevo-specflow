@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LocalizationProvider, createSpecFlowI18n } from '../../../../i18n';
 import { NewWorkspaceSettings } from './NewWorkspaceSettings';
 import { createOptionsFixture } from '../creationOptions.stories-support';
-import { buildCreateRequest } from './createRequest';
+import { buildCreateRequest } from './createRequest.test-support';
 import { initialWorkspaceChoice, type WorkspaceChoice } from './workspaceChoice';
 import { revalidate } from './workspaceValidation';
 

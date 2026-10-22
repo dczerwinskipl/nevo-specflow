@@ -101,11 +101,7 @@ export function OperationProgress({
   if (steps.length === 0 && !neutral && placeholderRows === 0) return null;
 
   return (
-    <div
-      role="group"
-      aria-label={text(label)}
-      className={cn('grid min-w-0 gap-3', className)}
-    >
+    <div role="group" aria-label={text(label)} className={cn('grid min-w-0 gap-3', className)}>
       {steps.length === 0 && neutral ? (
         <div className={rowClassName} data-operation-progress="neutral">
           <span className={markerClassName} aria-hidden="true">

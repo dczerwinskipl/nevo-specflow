@@ -147,6 +147,10 @@ remain outside the overview row.
 
 Avoid miniature detail screens inside rows.
 
+Dates in rows follow one rule in both collections: an instant (Current **Updated**, Archive
+milestones with a time) is shown as the calendar day in the reader's own time zone, and a value that
+is only a calendar day (`2026-09-01`) is shown as that day whatever the zone.
+
 ## 7. Pseudo-layout
 
 ```text

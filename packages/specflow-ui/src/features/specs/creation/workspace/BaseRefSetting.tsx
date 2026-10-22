@@ -4,7 +4,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
 import { useMessage, type Message } from '../../../../i18n/message';
 import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
-import { BranchRef } from '../../../../shared/git/BranchRef';
+import { BranchRef } from '../BranchRef';
 import { MergeSuggestionNotice } from './MergeSuggestionNotice';
 import { UnavailableReason } from './UnavailableReason';
 import type { SettingsFocusRequest, SettingsUpdate } from './settingsTypes';

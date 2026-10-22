@@ -12,7 +12,7 @@ import {
   supportedModes,
   type AgentChoice,
 } from './agentChoice';
-import { ChoiceTile, ChoiceTileGroup } from '../../../shared/controls/ChoiceTile';
+import { ChoiceTile, ChoiceTileGroup } from './ChoiceTile';
 import { LocalizedOptionPicker } from '../../../shared/controls/LocalizedOptionPicker';
 import { providerStatus } from './providerStatus';
 

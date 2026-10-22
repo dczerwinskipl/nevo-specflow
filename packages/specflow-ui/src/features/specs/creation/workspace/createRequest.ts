@@ -5,12 +5,9 @@ import { activeTile, defaultBaseValue, defaultTargetWorkspaceId } from './worksp
 
 type CreateTarget = NonNullable<CreateSpecRequest['target']>;
 
-/** Slug the Engine derives from the title (shared rule); empty while the title has no usable text. */
-export const derivedSlug = (title: string): string => deriveSpecSlug(title);
-
 /** Slug in effect: the typed one when the owner edited it, otherwise the title-derived one. */
 export function effectiveSlug(choice: WorkspaceChoice, title: string): string {
-  return choice.slug.on && choice.slug.edited ? choice.slug.value : derivedSlug(title);
+  return choice.slug.on && choice.slug.edited ? choice.slug.value : deriveSpecSlug(title);
 }
 
 /**
@@ -91,7 +88,7 @@ export function createOverrides(
   )
     overrides.integrationTargetWorkspaceId = choice.target.workspaceId;
   const slug = choice.slug.on && choice.slug.edited ? choice.slug.value : '';
-  if (slug && slug !== derivedSlug(title)) overrides.slug = slug;
+  if (slug && slug !== deriveSpecSlug(title)) overrides.slug = slug;
   const branch = choice.branch.on && choice.branch.edited ? choice.branch.name.trim() : '';
   const exactDefault = options.branchPattern.includes('{shortId}')
     ? undefined
@@ -134,20 +131,4 @@ export function buildCreateSlug(
   return activeTile(choice, options) === 'new'
     ? createOverrides(choice, options, title).slug
     : undefined;
-}
-
-export function buildCreateRequest(
-  choice: WorkspaceChoice,
-  options: CreateOptions,
-  title: string,
-  operationId: string,
-): CreateTargetFields & { operationId: string } {
-  const target = buildCreateTarget(choice, options, title);
-  const slug = buildCreateSlug(choice, options, title);
-  return {
-    title: title.trim(),
-    operationId,
-    ...(slug ? { slug } : {}),
-    ...(target ? { target } : {}),
-  };
 }

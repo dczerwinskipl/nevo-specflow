@@ -1,20 +1,14 @@
 import { Icon } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { SpecRowModel } from './presentation';
+import { formatSpecDate } from './specDate';
 
 export function SpecRowSummary({ item }: { readonly item: SpecRowModel }) {
   const { t, i18n } = useTranslation();
   if (item.collection === 'archive') {
     const history = item.history;
     const validDate = history.timestamp && Number.isFinite(Date.parse(history.timestamp));
-    const date = validDate
-      ? new Intl.DateTimeFormat(i18n.resolvedLanguage, {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          timeZone: 'UTC',
-        }).format(new Date(history.timestamp!))
-      : undefined;
+    const date = validDate ? formatSpecDate(history.timestamp!, i18n.resolvedLanguage) : undefined;
     return (
       <span className="flex flex-wrap gap-x-1 @min-[48rem]/collection:flex-col">
         <span className="@min-[48rem]/collection:order-2">

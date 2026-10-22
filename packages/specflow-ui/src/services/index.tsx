@@ -50,8 +50,6 @@ export interface SpecFlowAppServices {
   readonly operationsApi: OperationsApi;
 }
 
-export type SpecFlowServices = SpecFlowAppServices;
-
 export interface SpecFlowServicesOptions {
   readonly http?: HttpClient;
   readonly runtimeInfoApi?: RuntimeInfoApi;

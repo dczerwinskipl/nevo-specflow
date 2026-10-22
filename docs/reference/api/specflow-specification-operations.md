@@ -63,6 +63,11 @@ worktree. Omitted/explicit overrides have distinct durable fingerprints.
 Successful result:
 `{operationId,specId,kind:"specification-create",status:"completed",slug,workspaceId,relativeManifestPath}`.
 The Create result exposes no absolute checkout paths; create-options do (see `path` and `worktreesRoot` below).
+**Workspace path exposure (decision).** `GET /api/specs/create-options` returns the absolute checkout path of every
+registered workspace and the worktree folder to every principal that holds the `Create` capability (scope `{}`): the
+Create dialog needs them to explain where a spec lands. The Runtime does not hide them behind a separate capability,
+so a Create-capable role can read the workstation directory layout (including user names inside paths); grant `Create`
+only to roles that may see it. Restricting `path`/`worktreesRoot` to an operator capability is a follow-up.
 
 Create options include `primaryWorkspaceId`, `workspaces[]` (`workspaceId,kind,name,path,managed,specCount,
 state,selectable,integrationSelectable,branch?,reason?,integrationDestination?`),
@@ -86,7 +91,9 @@ workspaces verified on disk, each with `state:'unavailable'`, `selectable:false`
 `newWorktree: {status:'unavailable', reason:'git-policy-invalid'}`, `baseRefs: []`, no `commits` and no
 `integrationTargetBranch`, and the default `branchPattern`/`defaultBaseRef`/`worktreesRoot` (display only). No Git
 process runs. The cause is logged on the server only (a warning with the Engine's own description, no path) and is
-never part of the response. Create (every target, existing included) and the lifecycle mutations still **fail
+never part of the response. A machine-local `git.worktreesRoot` inside the repository or `.git` is handled the same way:
+`newWorktree` becomes `unavailable/git-policy-invalid` and `worktreesRoot` shows the default folder with `exists:false` (existing-workspace
+Creates stay possible). Create (every target, existing included) and the lifecycle mutations still **fail
 closed** with `GIT_POLICY_INVALID`/503, because they read the policy to decide whether the Engine commits;
 fixing the configuration restores everything. Overview, workspace and document reads never read the policy and are
 unaffected.
@@ -94,9 +101,12 @@ Local `baseRefs[].ref` values are `refs/heads/...`; project default may instead 
 `HEAD`, a SHA or a tag. An existing dirty workspace may be selectable for Create but is
 not an integration-selectable destination. All options are a snapshot, not a reservation.
 
-Operation lookup returns `{operationId,kind:"specification-create",status:"in-progress"|"recovery-required"}`
-or completed `CreatedSpec`. It is read-only and never proves process liveness or initiates
-recovery. After timeout, reuse the **same** operation ID.
+Operation lookup returns `{operationId,kind:"specification-create",status:"in-progress"|"recovery-required",code?}`,
+`{…,status:"failed",code}` or completed `CreatedSpec`. The status uses the SAME derivation as the operations list
+(journal stage, then the live registry outcome, which keeps a failure for 60 minutes, else a journal idle for more
+than 5 minutes without a live writer is `recovery-required` with `code: "OPERATION_INTERRUPTED"`), so the two never
+disagree. It is read-only, never proves process liveness and initiates no recovery (there is no HTTP resume; see the
+lifecycle document for the operator CLI `specs recover`). After timeout, reuse the **same** operation ID.
 
 Async mode (`Prefer: respond-async`, RFC 7240): a client that cannot hold a request open for a
 worktree create sends the request header `Prefer: respond-async` (a token in a comma-separated list,

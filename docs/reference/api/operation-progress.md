@@ -42,6 +42,8 @@ kind, and the registry is keyed by (kind, operationId).
   401/403 use the existing Auth schemas. An operation of another kind is indistinguishable from an
   unknown one.
 - `Cache-Control: no-store`. A comment line `: heartbeat` is sent about every 15 s while quiet.
+  Open streams are capped per route: 200 in total, 20 per principal and 20 waiting for an id this Runtime does not know yet; a
+  refused stream answers `429` `{error,code:"OPERATION_STREAMS_LIMIT"}` with `Retry-After`.
   The stream closes after the terminal event (`completed`, `failed` or `recovery-required`).
 - `Last-Event-ID` is honoured: events after that id are replayed. An id the Runtime does not know
   (for example after a restart) yields a fresh `snapshot` instead.

@@ -71,6 +71,14 @@ the Engine must never commit on some branches (for example `main` or `release/**
    the commit capability (so protection guards it too) is a follow-up. Previously created untracked
    specifications are not adopted automatically.
 
+## Known gap: no product path to resume or abandon a stuck Create
+
+The journal-first design (stage `commit-writing`, no rolled-back stage) leaves a crashed Create non terminal. There
+is no HTTP or UI action to resume or abandon it; the operator uses `nevo-specflow specs recover <operation-id>
+--confirmed-stopped` (Engine `resumeInterruptedCreateOperation`) or removes a journal without effects by hand. The
+journal holds slug, branch and workspace capacity until then. See
+[Recovering a stuck Create](../runtime/specification-lifecycle.md#recovering-a-stuck-create-operator-procedure-and-known-gap).
+
 ## Consequences
 
 - A Specification cannot be created on a protected branch; "New workspace" remains the way forward

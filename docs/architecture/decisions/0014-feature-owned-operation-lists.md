@@ -68,6 +68,16 @@ from API data alone.
 - The Create journal format is `version: 1`; there was never a released version 2 and no migration or
   compatibility reader exists.
 
+## Known gap: no product path to resume or abandon
+
+The list shows a stuck Create as `recovery-required` (also `OPERATION_INTERRUPTED` after 5 minutes without a live
+writer) but offers no action: neither the Runtime nor the UI can resume or abandon it, and its journal keeps holding
+the slug, the branch/worktree path and workspace capacity (only `completed` journals are garbage collected). The
+operator resumes it with `nevo-specflow specs recover <operation-id> --confirmed-stopped` or removes a journal that
+has no effects by hand; see
+[Recovering a stuck Create](../runtime/specification-lifecycle.md#recovering-a-stuck-create-operator-procedure-and-known-gap).
+The reserved `resumable` status and a runner stay out of scope.
+
 ## Rejected
 
 - A global operations index as the product API (couples features, centralises authorization).

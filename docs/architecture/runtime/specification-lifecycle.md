@@ -73,6 +73,31 @@ operation trailer makes replay idempotent. See
 - Specifications created untracked earlier are not adopted automatically; Close archive and
   integration are unchanged by this behaviour.
 
+### Recovering a stuck Create (operator procedure and known gap)
+
+A crash, `kill -9`, power loss or a late error after reservation leaves the Create journal non terminal
+(`recovery-required` in the operation panel, or `OPERATION_INTERRUPTED` after 5 minutes without a live
+writer). The journal keeps holding its slug, its branch/worktree path and (for a linked workspace) a
+capacity slot until it is resolved; the 7 day retention only removes `completed` journals. **There is no HTTP
+or UI action to resume or abandon a Create (known gap).** The Runtime never takes a journal over on its own:
+elapsed time proves nothing about a possibly live writer. What the operator can do:
+
+1. **Resume (preferred).** Stop whatever may still run the Create, then run
+   `nevo-specflow specs recover <operation-id> --confirmed-stopped` (add `--confirmed-git-stopped` when the
+   journal is at the Git stage, i.e. a new worktree was being provisioned). It calls the Engine's
+   `resumeInterruptedCreateOperation` (the `resumeInterruptedOperation` / `confirmInterruptedGitSettled`
+   assertions), replays the journal with the intent it recorded and drives it to `completed`. The Engine
+   still verifies refs, paths, HEAD and committed bytes and fails closed on a mismatch.
+2. **Abandon (manual).** Only when no branch, worktree, spec folder, commit or registry entry of that operation
+   exists (check `git worktree list`, `git branch`, `specs/active/<slug>` and the registry): delete
+   `<Project Home>/.nevo/local/state/engine/operations/create/<operation-id>.json` while no Create runs. A
+   journal whose effects exist must be resumed, not deleted, or the slug/branch is orphaned.
+3. A crash between creating and renaming a journal write can leave `.<id>.json.<uuid>.tmp` files in the same
+   folder; they are ignored by every reader and swept after one hour by the next reservation.
+
+A UI/HTTP resume or abandon action, and garbage collection of journals that never produced a Git effect, remain
+follow-ups.
+
 ## Explicit Close intents
 
 | Operation                                                | Effect                                                                                                                                                                      |

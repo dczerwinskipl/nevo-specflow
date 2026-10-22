@@ -20,10 +20,13 @@ export type GitCapabilityErrorCode =
 
 export class GitCapabilityError extends Error {
   readonly code: GitCapabilityErrorCode;
+  /** Internal diagnostic detail for logs and tests; never part of a transport response. */
+  readonly reason?: string;
 
-  constructor(code: GitCapabilityErrorCode, message: string) {
+  constructor(code: GitCapabilityErrorCode, message: string, reason?: string) {
     super(message);
     this.name = 'GitCapabilityError';
     this.code = code;
+    if (reason !== undefined) this.reason = reason;
   }
 }

@@ -56,6 +56,8 @@ function isValidJournalIdentity(
     typeof value.slug === 'string' &&
     typeof value.title === 'string' &&
     typeof value.created === 'string' &&
+    (value.startedAt === undefined ||
+      (typeof value.startedAt === 'string' && !Number.isNaN(Date.parse(value.startedAt)))) &&
     (value.goal === undefined || typeof value.goal === 'string') &&
     isCreateStage(value.stage) &&
     (value.reason === undefined || typeof value.reason === 'string')

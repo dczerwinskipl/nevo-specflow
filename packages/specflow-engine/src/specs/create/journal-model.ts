@@ -67,6 +67,8 @@ export interface CreateJournal {
   readonly slug: string;
   readonly title: string;
   readonly created: string;
+  /** ISO instant of the reservation. Optional: journals reserved before it existed have none. */
+  readonly startedAt?: string;
   readonly goal?: string;
   readonly stage: CreateStage;
   readonly target: CreateJournalTarget;

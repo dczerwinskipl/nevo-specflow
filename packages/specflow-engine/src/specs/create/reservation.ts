@@ -236,6 +236,7 @@ export async function reserveCreateOperation(
       slug: scaffold.slug,
       title: intent.title,
       created,
+      startedAt: new Date().toISOString(),
       ...(intent.goal ? { goal: intent.goal } : {}),
       stage: 'reserved',
       target,

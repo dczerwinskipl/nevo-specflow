@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Field, TextInput } from '@nevo/ui';
 import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
 import { ArchetypeSummary } from './ArchetypeSummary';
-import { LabelledOptionSelect } from './LabelledOptionSelect';
+import { LocalizedOptionPicker } from '../../../shared/controls/LocalizedOptionPicker';
 
 /** Name and workflow of a new specification. */
 export function CreateBasicsSection({
@@ -35,13 +35,19 @@ export function CreateBasicsSection({
         />
       </Field>
       <div>
-        <LabelledOptionSelect
-          label={t('create.workflowLabel')}
-          value={archetypeId}
-          disabled={locked}
-          onChange={onArchetypeChange}
-          options={catalogue.archetypes.map((item) => ({ value: item.id, label: item.title }))}
-        />
+        <Field>
+          <Field.Label>{t('create.workflowLabel')}</Field.Label>
+          <LocalizedOptionPicker
+            value={archetypeId}
+            disabled={locked}
+            onValueChange={onArchetypeChange}
+            items={catalogue.archetypes.map((item) => ({
+              value: item.id,
+              textValue: item.title,
+              label: item.title,
+            }))}
+          />
+        </Field>
         <ArchetypeSummary key={archetypeId} archetype={archetype} />
       </div>
     </div>

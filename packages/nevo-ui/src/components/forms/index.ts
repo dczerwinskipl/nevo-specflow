@@ -4,6 +4,7 @@ export * from './DateTime';
 export * from './Field';
 export * from './InputGroup';
 export * from './NumberInput';
+export * from './OptionPicker';
 export * from './PasswordInput';
 export * from './RadioGroup';
 export * from './SegmentedControl';

@@ -3,8 +3,8 @@ import { type Dispatch, type MutableRefObject, type ReactNode, type SetStateActi
 import type { TFunction } from 'i18next';
 import { Trans, useTranslation } from 'react-i18next';
 import { useMessage } from '../../../../i18n/message';
-import { Badge, Field, Icon, Typography, cn } from '@nevo/ui';
-import { OptionSelect } from '../../../../shared/controls/OptionSelect';
+import { Badge, DescriptionList, Field, Icon, InlineNote, Typography, cn } from '@nevo/ui';
+import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
 import { BranchRef } from '../../../../shared/git/BranchRef';
 import {
@@ -34,27 +34,15 @@ import type { WorkspaceChoice } from './workspaceChoice';
 import type { WorkspaceConflicts } from './workspaceConflicts';
 
 /** What the chosen workspace tile means: facts, notes and the settings summary below the tiles. */
-const note = (children: ReactNode, tone: 'muted' | 'attention' = 'muted') => (
-  <Typography
-    as="p"
-    variant="body-sm"
-    className="col-start-2 flex min-w-0 items-start gap-2 text-content-secondary"
-  >
-    <Icon
-      name={tone === 'attention' ? 'triangle-alert' : 'info'}
-      size="sm"
-      className={cn(
-        'mt-0.5 shrink-0',
-        tone === 'attention' ? 'text-status-attention' : 'text-content-muted',
-      )}
-    />
-    <span className="min-w-0">{children}</span>
-  </Typography>
+const note = (children: ReactNode, tone: 'info' | 'attention' = 'info') => (
+  <InlineNote tone={tone} className="col-start-2">
+    {children}
+  </InlineNote>
 );
 
 /**
- * One row of the "default settings" definition list: label, value and an optional quiet note under
- * the value. Rows are `contents` so all labels share one column and every value starts aligned.
+ * One row of the "default settings" list: label, value and an optional quiet note under the value.
+ * A value the owner changed reads as primary, a default as secondary.
  */
 function SummaryRow({
   label,
@@ -68,15 +56,12 @@ function SummaryRow({
   children: ReactNode;
 }) {
   return (
-    <div className="contents">
-      <dt className="text-content-muted">{label}</dt>
-      <dd className="min-w-0">
-        <span className={override ? 'text-content-primary' : 'text-content-secondary'}>
-          {children}
-        </span>
-        {rowNote ? <span className="mt-0.5 block text-content-muted">{rowNote}</span> : null}
-      </dd>
-    </div>
+    <DescriptionList.Item>
+      <DescriptionList.Term>{label}</DescriptionList.Term>
+      <DescriptionList.Detail emphasis={override ? 'primary' : 'secondary'} note={rowNote}>
+        {children}
+      </DescriptionList.Detail>
+    </DescriptionList.Item>
   );
 }
 
@@ -195,7 +180,7 @@ export function NewSummary({
       >
         {text(summary)}
       </Typography>
-      <dl className="col-start-2 grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-4 gap-y-2 text-body-sm">
+      <DescriptionList className="col-start-2" aria-label={t('create.workspace.summaryLabel')}>
         <SummaryRow label={t('create.workspace.fact.base')} override={Boolean(overrides.baseRef)}>
           <BaseValue
             options={options}
@@ -226,7 +211,7 @@ export function NewSummary({
             {options.worktreesRoot.path}
           </Typography>
         </SummaryRow>
-      </dl>
+      </DescriptionList>
       <NewWorkspaceSettings
         options={options}
         choice={choice}
@@ -328,7 +313,7 @@ export function ExistingSummary({
       <div className="col-span-2 max-w-content-narrow">
         <Field invalid={Boolean(errors.existing)}>
           <Field.Label>{t('create.workspace.existing.label')}</Field.Label>
-          <OptionSelect
+          <LocalizedOptionPicker
             value={choice.existingWorkspaceId}
             invalid={Boolean(errors.existing)}
             controlRef={controlRef}

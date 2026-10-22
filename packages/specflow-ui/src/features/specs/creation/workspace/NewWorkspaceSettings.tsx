@@ -11,7 +11,7 @@ import {
 } from '@nevo/ui';
 import { Trans, useTranslation } from 'react-i18next';
 import { useMessage } from '../../../../i18n/message';
-import { OptionSelect } from '../../../../shared/controls/OptionSelect';
+import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
 import {
   BRANCH_NAME_MAX_LENGTH,
   SPEC_SLUG_MAX_LENGTH,
@@ -204,7 +204,7 @@ export function NewWorkspaceSettings({
             {choice.base.on && (
               <Field invalid={Boolean(errors.base)}>
                 <Field.Label>{t('create.workspace.fact.base')}</Field.Label>
-                <OptionSelect
+                <LocalizedOptionPicker
                   value={choice.base.ref}
                   invalid={Boolean(errors.base)}
                   placeholder={t('create.workspace.settings.basePlaceholder')}
@@ -331,7 +331,7 @@ export function NewWorkspaceSettings({
             {choice.target.on && (
               <Field invalid={Boolean(errors.target)}>
                 <Field.Label>{t('create.workspace.settings.targetLabel')}</Field.Label>
-                <OptionSelect
+                <LocalizedOptionPicker
                   value={choice.target.workspaceId}
                   invalid={Boolean(errors.target)}
                   placeholder={t('create.workspace.existing.placeholder')}

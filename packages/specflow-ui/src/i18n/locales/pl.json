@@ -15,7 +15,12 @@
     "notImplemented": "Niezaimplementowane",
     "unknown": "Nieznane",
     "flow": "Flow",
-    "pullRequestNumber": "PR #{{number}}"
+    "pullRequestNumber": "PR #{{number}}",
+    "options": {
+      "show": "Pokaż opcje",
+      "noResults": "Brak wyników",
+      "loading": "Wczytywanie"
+    }
   },
   "navigation": {
     "product": "Nawigacja produktu",
@@ -654,11 +659,6 @@
       "body": "Specyfikacja i jej workspace już istnieją. Ponowimy wyłącznie początkową sesję z zapamiętaną konfiguracją.",
       "stillUnconfirmed": "Nadal brak potwierdzenia. Możesz ponowić tę samą operację.",
       "retry": "Ponów otwarcie sesji"
-    },
-    "options": {
-      "show": "Pokaż opcje",
-      "noResults": "Brak wyników",
-      "loading": "Wczytywanie"
     },
     "archetype": {
       "unavailable": "Wybrany workflow jest niedostępny. Wybierz inną pozycję.",

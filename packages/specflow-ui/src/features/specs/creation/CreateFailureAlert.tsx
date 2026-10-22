@@ -1,4 +1,4 @@
-import { Alert, Button, Collapsible } from '@nevo/ui';
+import { Alert, Button, Collapsible, DescriptionList } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { MessageKey } from '../../../i18n/message';
 import { BranchRef } from '../../../shared/git/BranchRef';
@@ -160,16 +160,18 @@ export function CreateFailureAlert({
           <Collapsible className="mt-1 -ml-control-padding-compact">
             <Collapsible.Trigger>{t('create.errors.diagnostics')}</Collapsible.Trigger>
             <Collapsible.Content>
-              <dl className="ml-control-padding-compact grid gap-1 pb-2">
+              <DescriptionList layout="inline" className="ml-control-padding-compact pb-2">
                 {details.map(({ id, value }) => (
-                  <div key={id} className="flex min-w-0 flex-wrap gap-x-2">
-                    <dt className="text-content-muted">{t(`create.operation.detail.${id}`)}</dt>
-                    <dd className="min-w-0 text-content-primary wrap-anywhere">
+                  <DescriptionList.Item key={id}>
+                    <DescriptionList.Term>
+                      {t(`create.operation.detail.${id}`)}
+                    </DescriptionList.Term>
+                    <DescriptionList.Detail>
                       {id === 'branch' ? <BranchRef name={value} /> : value}
-                    </dd>
-                  </div>
+                    </DescriptionList.Detail>
+                  </DescriptionList.Item>
                 ))}
-              </dl>
+              </DescriptionList>
             </Collapsible.Content>
           </Collapsible>
         </>

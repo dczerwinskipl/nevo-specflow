@@ -1,4 +1,5 @@
 export * from './Alert';
+export * from './InlineNote';
 export * from './Badge';
 export * from './EmptyState';
 export * from './Skeleton';

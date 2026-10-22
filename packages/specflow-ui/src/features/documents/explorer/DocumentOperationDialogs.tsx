@@ -17,7 +17,7 @@ import {
   Field,
 } from '@nevo/ui';
 import type { DemoDocumentTree as Tree } from '@nevo/specflow-contracts/demo';
-import { OptionSelect } from '../../../shared/controls/OptionSelect';
+import { LocalizedOptionPicker } from '../../../shared/controls/LocalizedOptionPicker';
 import type { DocumentDialogRequest } from './useDocumentOperations';
 
 /** The confirmation dialogs of a move and a delete; the request decides which one is open. */
@@ -63,7 +63,7 @@ export function DocumentOperationDialogs({
             {request?.action === 'move' && (
               <Field>
                 <Field.Label>{t('documents.tree.targetFolder')}</Field.Label>
-                <OptionSelect
+                <LocalizedOptionPicker
                   value={'path:' + target}
                   disabled={busy || unknown}
                   onValueChange={(value) => onTargetChange(value.slice(5))}

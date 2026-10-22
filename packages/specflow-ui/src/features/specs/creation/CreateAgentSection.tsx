@@ -21,7 +21,7 @@ import {
   supportedModes,
   type AgentChoice,
 } from './agentChoice';
-import { LabelledOptionSelect } from './LabelledOptionSelect';
+import { LocalizedOptionPicker } from '../../../shared/controls/LocalizedOptionPicker';
 import { providerStatus } from './providerStatus';
 
 /** Provider, model, effort and mode of the agent that writes the specification or runs the Session. */
@@ -130,25 +130,37 @@ export function CreateAgentSection({
       <div
         className={cn('grid gap-4', model && model.efforts.length > 0 && '@sm:grid-cols-[2fr_1fr]')}
       >
-        <LabelledOptionSelect
-          label={t('create.model')}
-          value={modelId}
-          placeholder={t('create.chooseModel')}
-          disabled={locked}
-          onChange={(id) => onChange(selectModel(choice, provider, id))}
-          options={provider?.models.map((m) => ({ value: m.id, label: m.title })) ?? []}
-        />
-        {model && model.efforts.length > 0 && (
-          <LabelledOptionSelect
-            label={t('create.effort')}
-            value={effort}
+        <Field>
+          <Field.Label>{t('create.model')}</Field.Label>
+          <LocalizedOptionPicker
+            value={modelId}
+            placeholder={t('create.chooseModel')}
             disabled={locked}
-            onChange={(next) => onChange({ ...choice, effort: next })}
-            options={[
-              { value: providerDefaultEffort, label: t('create.providerDefault') },
-              ...model.efforts.map((e) => ({ value: e, label: e })),
-            ]}
+            onValueChange={(id) => onChange(selectModel(choice, provider, id))}
+            items={(provider?.models ?? []).map((m) => ({
+              value: m.id,
+              textValue: m.title,
+              label: m.title,
+            }))}
           />
+        </Field>
+        {model && model.efforts.length > 0 && (
+          <Field>
+            <Field.Label>{t('create.effort')}</Field.Label>
+            <LocalizedOptionPicker
+              value={effort}
+              disabled={locked}
+              onValueChange={(next) => onChange({ ...choice, effort: next })}
+              items={[
+                {
+                  value: providerDefaultEffort,
+                  textValue: t('create.providerDefault'),
+                  label: t('create.providerDefault'),
+                },
+                ...model.efforts.map((e) => ({ value: e, textValue: e, label: e })),
+              ]}
+            />
+          </Field>
         )}
       </div>
       {model && (

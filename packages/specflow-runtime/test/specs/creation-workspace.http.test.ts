@@ -9,7 +9,7 @@ import type {
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createDemoEnvironment } from '../../src/demo';
-import { demoWorkspaceIds as ids } from '../../src/features/specs/demo/create-options';
+import { demoWorkspaceIds as ids } from '../../src/features/specs/demo/seed';
 import { createRuntimeApp } from '../../src/server/app';
 import { noAuthConfig } from '../auth/support/config';
 

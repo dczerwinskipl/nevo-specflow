@@ -28,7 +28,8 @@ import {
   isDemoOperationError,
 } from '../../../demo/http';
 import type { DemoState } from '../../../demo/state';
-import { DemoTargetError, parseScenarios, type DemoScenario } from './create-options';
+import { DemoTargetError } from './create-target';
+import { parseScenarios, type DemoScenario } from './scenarios';
 import type { DemoSpecs } from './operations';
 import {
   matchesEtag,

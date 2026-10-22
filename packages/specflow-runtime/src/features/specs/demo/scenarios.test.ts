@@ -1,15 +1,12 @@
-import { describe, expect, it } from 'vitest';
 import {
-  applyOptionsScenario,
-  demoOptionsScenarios,
-  demoWorkspaceIds as ids,
-  DemoTargetError,
+  BRANCH_NAME_MAX_LENGTH,
+  deriveSpecSlug,
   isValidBranchName,
-  parseScenarios,
-  resolveTarget,
-  seedCreateOptions,
-  slugify,
-} from './create-options';
+} from '@nevo/specflow-contracts/specs';
+import { describe, expect, it } from 'vitest';
+import { DemoTargetError, demoSlugFor, resolveTarget } from './create-target';
+import { applyOptionsScenario, demoOptionsScenarios, parseScenarios } from './scenarios';
+import { demoWorkspaceIds as ids, seedCreateOptions } from './seed';
 
 const options = seedCreateOptions;
 const code = (fn: () => unknown) => {
@@ -162,8 +159,23 @@ describe('branch names and slugs', () => {
     (name) => expect(isValidBranchName(name)).toBe(false),
   );
   it('slugifies titles with Polish diacritics', () => {
-    expect(slugify('  Nowa obsługa płatności! ')).toBe('nowa-obsluga-platnosci');
-    expect(slugify('???')).toBe('specification');
+    expect(demoSlugFor('  Nowa obsługa płatności! ')).toBe('nowa-obsluga-platnosci');
+    expect(demoSlugFor('???')).toBe('specification');
+  });
+  it('derives the same slug and accepts the same branches as the real Create for long titles', () => {
+    const title = 'Bardzo długi tytuł specyfikacji '.repeat(8);
+    expect(demoSlugFor(title)).toBe(deriveSpecSlug(title));
+    expect(demoSlugFor(title).length).toBeLessThanOrEqual(80);
+    // A branch up to the shared limit is valid in demo exactly as in the real flow.
+    const branch = 'feature/' + 'a'.repeat(BRANCH_NAME_MAX_LENGTH - 8);
+    expect(isValidBranchName(branch)).toBe(true);
+    const demo = seedCreateOptions();
+    const outcome = () =>
+      resolveTarget(demo, { kind: 'new-worktree', branch }, 'x') as { branch?: string };
+    expect(outcome().branch).toBe(branch);
+    expect(() => resolveTarget(demo, { kind: 'new-worktree', branch: branch + 'a' }, 'x')).toThrow(
+      DemoTargetError,
+    );
   });
 });
 

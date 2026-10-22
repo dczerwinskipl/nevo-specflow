@@ -8,17 +8,14 @@ import type {
 import { isValidSpecSlug } from '@nevo/specflow-contracts/specs';
 import { DemoOperationError, fingerprintInput, type DemoState } from '../../../demo/state';
 import type { DemoDocuments } from '../../documents';
+import { DemoTargetError, demoSlugFor, resolveTarget, type ResolvedTarget } from './create-target';
 import {
   applyOptionsScenario,
-  DemoTargetError,
-  resolveTarget,
-  seedCreateOptions,
-  slugify,
   demoOptionsScenarios,
   type DemoOptionsScenario,
   type DemoScenario,
-  type ResolvedTarget,
-} from './create-options';
+} from './scenarios';
+import { seedCreateOptions } from './seed';
 import type { DemoOperationRecord } from './operation-list';
 
 interface CreateOperation {
@@ -119,7 +116,7 @@ export function createDemoSpecs(
         throw new DemoTargetError(409, 'CREATE_CONFLICT', 'CREATE_CONFLICT');
       slug = input.slug;
     } else {
-      const baseSlug = slugify(input.title);
+      const baseSlug = demoSlugFor(input.title);
       slug = baseSlug;
       for (let n = 2; usedSlugs.has(slug); n += 1) slug = baseSlug + '-' + n;
     }

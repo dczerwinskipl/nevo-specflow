@@ -12,7 +12,7 @@ import {
   type OperationProgressListing,
   type ShapeOperationListInput,
 } from '../../operations';
-import type { DemoScenario } from './create-options';
+import type { DemoScenario } from './scenarios';
 
 const KIND = 'specification-create';
 

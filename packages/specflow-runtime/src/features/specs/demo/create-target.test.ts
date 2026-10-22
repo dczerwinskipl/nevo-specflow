@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { DemoCreateRequest } from '@nevo/specflow-contracts/demo';
 import { createDemoEnvironment } from '../../../demo';
-import { DemoTargetError, demoWorkspaceIds as ids } from './create-options';
+import { DemoTargetError } from './create-target';
+import { demoWorkspaceIds as ids } from './seed';
 
 const op = (n: number) => `7f3a91c2-4b6e-4d1a-9c0e-${String(n).padStart(12, '0')}`;
 function setup() {

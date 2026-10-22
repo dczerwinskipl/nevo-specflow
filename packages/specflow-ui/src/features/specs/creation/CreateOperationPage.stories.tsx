@@ -516,7 +516,7 @@ export const DirectLinkInProgress: Story = {
 };
 
 /**
- * Git enabled: the checklist has its own step "Zapisywanie specyfikacji w Git" between writing the
+ * Git enabled: the checklist has its own step "Zapisywanie specyfikacji w commicie" between writing the
  * files and registering, and the configuration says on which branch the files are committed.
  */
 export const InProgressWithTheCommitStep: Story = {
@@ -526,7 +526,7 @@ export const InProgressWithTheCommitStep: Story = {
     stream: 'commit-steps',
   },
   play: async ({ canvas, canvasElement, userEvent }) => {
-    const running = (await canvas.findAllByText('Zapisywanie specyfikacji w Git')).find((node) =>
+    const running = (await canvas.findAllByText('Zapisywanie specyfikacji w commicie')).find((node) =>
       node.closest('li'),
     )!;
     await waitFor(() => expect(running.closest('li')).toHaveAttribute('aria-current', 'step'));
@@ -554,7 +554,7 @@ export const InProgressWithTheCommitStepInAnExistingWorkspace: Story = {
     stream: 'commit-steps-existing',
   },
   play: async ({ canvas, canvasElement }) => {
-    await canvas.findAllByText('Zapisywanie specyfikacji w Git');
+    await canvas.findAllByText('Zapisywanie specyfikacji w commicie');
     // No workspace step for an existing workspace: four rows.
     await expect(steps(canvasElement).getAllByRole('listitem')).toHaveLength(4);
     await expect(
@@ -623,10 +623,10 @@ export const CreatedButNotCommitted: Story = {
       name: 'Wynik jeszcze niepotwierdzony: Limity płatności',
     });
     await expect(await canvas.findByRole('alert')).toHaveTextContent(
-      'Pliki specyfikacji powstały, ale nie udało się ich zapisać w Git',
+      'Pliki specyfikacji powstały, ale nie udało się zapisać ich w commicie',
     );
     await expect(
-      canvas.getByText('Pliki specyfikacji powstały, ale nie udało się ich zapisać w Git.'),
+      canvas.getByText('Pliki specyfikacji powstały, ale nie udało się zapisać ich w commicie.'),
     ).toBeVisible();
     await expect(canvas.queryByText(/Nic nie zostało utworzone/)).toBeNull();
     await expect(canvas.getByRole('button', { name: 'Sprawdź stan operacji' })).toBeEnabled();

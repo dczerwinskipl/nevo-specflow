@@ -139,7 +139,7 @@
     "repositoryHeading": "Repozytorium",
     "baseBranchLabel": "baza {{base}}",
     "gitLocalChangesUnknown": "Zmiany lokalne: brak danych",
-    "uncommittedFilesCount": "{{count}} pliki niecommitowane",
+    "uncommittedFilesCount": "{{count}} pliki niezapisane w commicie",
     "gitSyncUnknown": "Synchronizacja: brak danych",
     "gitConflictsUnknown": "Konflikty lokalne: nieznane",
     "prReviewLink": "Przegląd PR",
@@ -194,10 +194,10 @@
     "changesWorktreeContext": "Repozytorium crm · worktree tej specyfikacji",
     "changesSourceLabel": "Źródło zmian",
     "changesSourceBase": "Względem main",
-    "changesSourceUncommitted": "Niecommitowane",
+    "changesSourceUncommitted": "Niezapisane w commicie",
     "changesSourcePr": "PR #128",
     "changesBaseDescription": "Porównanie feature/session-refresh do main",
-    "changesUncommittedDescription": "Zmiany w worktree, które nie zostały zacommitowane",
+    "changesUncommittedDescription": "Zmiany w worktree, które nie zostały zapisane w commicie",
     "changesPrDescription": "Powiązany pull request: Odświeżanie sesji",
     "diffAction": "Diff",
     "repoFactLastPr": "Ostatni powiązany PR",
@@ -386,7 +386,7 @@
     "materials": "Materiały przekazania",
     "eventMaterials": "Materiały tego przekazania",
     "hideMaterials": "Ukryj materiały",
-    "openMaterial": "Otwórz materiał w tym workspace",
+    "openMaterial": "Otwórz materiał w tym środowisku pracy",
     "download": "Pobierz archiwum demonstracyjne",
     "history": "Historia zadania",
     "emptyHistory": "Brak wykonanych kroków",
@@ -659,7 +659,7 @@
       "notStarted": "Operacja jeszcze się nie rozpoczęła. Ponów tę samą operację — zachowuje ten sam identyfikator.",
       "operationFailed": "Operacja zakończyła się niepowodzeniem. Możesz utworzyć specyfikację ponownie.",
       "copied": "Skopiowano {{label}}.",
-      "monitoring": "Przygotowanie środowiska może potrwać kilka minut. Obserwujemy operację.",
+      "monitoring": "Przygotowanie środowiska pracy może potrwać kilka minut. Obserwujemy operację.",
       "copyFailed": "Nie udało się skopiować do schowka."
     },
     "operation": {
@@ -702,7 +702,7 @@
     },
     "recovery": {
       "title": "Nie udało się otworzyć sesji",
-      "body": "Specyfikacja i jej workspace już istnieją. Ponowimy wyłącznie początkową sesję z zapamiętaną konfiguracją.",
+      "body": "Specyfikacja i jej środowisko pracy już istnieją. Ponowimy wyłącznie początkową sesję z zapamiętaną konfiguracją.",
       "stillUnconfirmed": "Nadal brak potwierdzenia. Możesz ponowić tę samą operację.",
       "retry": "Ponów otwarcie sesji"
     },
@@ -782,7 +782,7 @@
       "useAutomaticName": "Użyj automatycznej nazwy",
       "nameConflict": {
         "title": "Specyfikacja o tej nazwie może już istnieć",
-        "body": "Specyfikacja nie została utworzona: nazwa jest zajęta lub zmienił się stan środowisk. Zmień nazwę albo odśwież opcje. Przy następnej próbie użyjemy nowego identyfikatora operacji."
+        "body": "Specyfikacja nie została utworzona: nazwa jest zajęta lub zmienił się stan środowisk pracy. Zmień nazwę albo odśwież opcje. Przy następnej próbie użyjemy nowego identyfikatora operacji."
       },
       "branchInvalid": {
         "title": "Nazwa gałęzi jest nieprawidłowa",
@@ -790,17 +790,17 @@
       },
       "branchProtected": {
         "title": "Gałąź jest chroniona",
-        "bodyTyped": "Nie utworzono specyfikacji. Wpisana nazwa gałęzi jest chroniona: Nevo nie zapisuje tam zmian. Wpisz inną nazwę gałęzi — pozostałe ustawienia zostają.",
-        "bodyGenerated": "Nie utworzono specyfikacji. Gałąź, którą wygenerowałoby Nevo, jest chroniona: Nevo nie zapisuje tam zmian. Wpisz własną nazwę gałęzi — pozostałe ustawienia zostają.",
-        "bodyWorkspace": "Nie utworzono specyfikacji. Gałąź wybranego środowiska pracy jest chroniona: Nevo nie zapisuje tam zmian. Utwórz specyfikację w nowym środowisku pracy albo odśwież opcje."
+        "bodyTyped": "Nie utworzono specyfikacji. Wpisana nazwa gałęzi jest chroniona: Nevo nie tworzy tam commitów. Wpisz inną nazwę gałęzi — pozostałe ustawienia zostają.",
+        "bodyGenerated": "Nie utworzono specyfikacji. Gałąź, którą wygenerowałoby Nevo, jest chroniona: Nevo nie tworzy tam commitów. Wpisz własną nazwę gałęzi — pozostałe ustawienia zostają.",
+        "bodyWorkspace": "Nie utworzono specyfikacji. Gałąź wybranego środowiska pracy jest chroniona: Nevo nie tworzy tam commitów. Utwórz specyfikację w nowym środowisku pracy albo odśwież opcje."
       },
       "commitBlocked": {
         "title": "Git nie może teraz przyjąć commita",
         "body": "Nie utworzono specyfikacji. Git jest zajęty w tym folderze — na przykład trwa scalanie lub rebase, nie wybrano gałęzi albo Git ma zablokowany indeks. Zakończ lub przerwij tę operację i spróbuj ponownie. Formularz zostaje."
       },
       "commitFailed": {
-        "title": "Pliki specyfikacji powstały, ale nie udało się ich zapisać w Git",
-        "body": "Nevo zapisało pliki specyfikacji, ale nie zdołało ich zapisać w historii Git, więc specyfikacja nie jest jeszcze zarejestrowana. Nie twórz jej ponownie. Poproś operatora projektu o wznowienie tej operacji lub o zapisanie nowych plików w commicie, a potem sprawdź operację ponownie."
+        "title": "Pliki specyfikacji powstały, ale nie udało się zapisać ich w commicie",
+        "body": "Nevo zapisało pliki specyfikacji, ale nie zdołało zapisać ich w commicie, więc specyfikacja nie jest jeszcze zarejestrowana. Nie twórz jej ponownie. Poproś operatora projektu o wznowienie tej operacji lub o zapisanie nowych plików w commicie, a potem sprawdź operację ponownie."
       }
     },
     "workspace": {
@@ -813,7 +813,7 @@
       "recommended": "Zalecane",
       "currentCheckout": "bieżący checkout",
       "dirtyBadge": "zmiany",
-      "dirtyNote": "Katalog ma niezapisane zmiany w Git. Nowe pliki specyfikacji pojawią się obok nich.",
+      "dirtyNote": "Katalog ma zmiany niezapisane w commicie. Nowe pliki specyfikacji pojawią się obok nich.",
       "noBranch": "Środowisko bez gałęzi",
       "staleAnnouncement": "Wybrana wcześniej wartość nie jest już dostępna.",
       "tile": {
@@ -833,32 +833,32 @@
         "mainUnavailable": "Bieżący katalog jest niedostępny.",
         "existingNone": "Brak innych środowisk pracy w projekcie.",
         "existingUnavailable": "Żadne środowisko pracy nie jest teraz dostępne.",
-        "mainProtected": "Gałąź {{branch}} jest chroniona: Nevo nie zapisuje tam zmian. Utwórz specyfikację w nowym środowisku pracy.",
+        "mainProtected": "Gałąź {{branch}} jest chroniona: Nevo nie tworzy tam commitów. Utwórz specyfikację w nowym środowisku pracy.",
         "mainNotAllowed": "Gałąź {{branch}} nie jest na liście gałęzi, na których Nevo może zapisywać zmiany. Utwórz specyfikację w nowym środowisku pracy.",
         "existingProtected": "Wszystkie pozostałe środowiska pracy są na chronionych gałęziach. Utwórz specyfikację w nowym środowisku pracy.",
         "newPolicyInvalid": "Konfiguracja Git projektu jest nieprawidłowa. Sprawdź .nevo/config.yaml."
       },
       "reason": {
-        "dirty": "Ma niezapisane zmiany w Git",
+        "dirty": "Ma zmiany niezapisane w commicie",
         "detached": "Nie wybrano gałęzi (odłączony stan)",
         "checkout-unavailable": "Katalog niedostępny",
         "git-membership-mismatch": "Katalog nie należy do tego repozytorium",
         "git-disabled": "Git wyłączony",
         "git-unavailable": "Git niedostępny",
         "other": "Niedostępny",
-        "branch-protected": "Chroniona gałąź: Nevo nie zapisuje tam zmian",
+        "branch-protected": "Chroniona gałąź: Nevo nie tworzy tam commitów",
         "branch-not-allowed": "Gałąź spoza listy projektu dla commitów",
         "git-policy-invalid": "Konfiguracja Git projektu jest nieprawidłowa"
       },
       "reasonInline": {
-        "dirty": "ma niezapisane zmiany w Git",
+        "dirty": "ma zmiany niezapisane w commicie",
         "detached": "nie wybrano gałęzi (odłączony stan)",
         "checkout-unavailable": "katalog niedostępny",
         "git-membership-mismatch": "katalog nie należy do tego repozytorium",
         "git-disabled": "Git wyłączony",
         "git-unavailable": "Git niedostępny",
         "other": "niedostępny",
-        "branch-protected": "jest na chronionej gałęzi (Nevo nie zapisuje tam zmian)",
+        "branch-protected": "jest na chronionej gałęzi (Nevo nie tworzy tam commitów)",
         "branch-not-allowed": "jest na gałęzi spoza listy projektu dla commitów",
         "git-policy-invalid": "konfiguracja Git projektu jest nieprawidłowa"
       },
@@ -936,9 +936,9 @@
         "slugReserved": "Ta nazwa jest zarezerwowana przez system operacyjny. Wybierz inną.",
         "slugTaken": "Specyfikacja z takim slugiem już istnieje. Wpisz inny.",
         "branchRejected": "Ta nazwa gałęzi nie jest akceptowana. Wpisz inną nazwę.",
-        "branchProtected": "Ta gałąź jest chroniona: Nevo nie zapisuje tam zmian. Wpisz inną nazwę.",
+        "branchProtected": "Ta gałąź jest chroniona: Nevo nie tworzy tam commitów. Wpisz inną nazwę.",
         "branchNotAllowed": "Nevo nie może zapisywać zmian na tej gałęzi (nie ma jej na liście dozwolonych w projekcie). Wpisz inną nazwę.",
-        "generatedBranchProtected": "Wygenerowana gałąź {{branch}} jest chroniona: Nevo nie zapisuje tam zmian. Wpisz własną nazwę gałęzi.",
+        "generatedBranchProtected": "Wygenerowana gałąź {{branch}} jest chroniona: Nevo nie tworzy tam commitów. Wpisz własną nazwę gałęzi.",
         "generatedBranchNotAllowed": "Wygenerowanej gałęzi {{branch}} nie ma na liście dozwolonych w projekcie. Wpisz własną nazwę gałęzi."
       },
       "stale": {
@@ -996,10 +996,10 @@
         "pickTarget": "Wybierz środowisko pracy",
         "notAvailable": "Niedostępne",
         "notConfigured": "Nie ustawiono",
-        "noteDirty": "To środowisko pracy ma niezapisane zmiany. Specyfikację nadal możesz utworzyć; zatwierdź je (commit) lub odłóż (stash) przed scaleniem do niego.",
+        "noteDirty": "To środowisko pracy ma niezapisane zmiany. Specyfikację nadal możesz utworzyć; zapisz je w commicie lub odłóż (stash) przed scaleniem do niego.",
         "noteUnavailable": "To środowisko pracy nie może teraz być celem scalenia: {{reason}}. Specyfikację nadal możesz utworzyć.",
-        "reasonDirty": "Niezapisane zmiany: zatwierdź je lub odłóż przed scaleniem do tego środowiska",
-        "reasonDirtyInline": "ma niezapisane zmiany (zatwierdź je lub odłóż przed scaleniem do tego środowiska)",
+        "reasonDirty": "Niezapisane zmiany: zapisz je w commicie lub odłóż przed scaleniem do tego środowiska",
+        "reasonDirtyInline": "ma niezapisane zmiany (zapisz je w commicie lub odłóż przed scaleniem do tego środowiska)",
         "noteOtherBranch": "Cel projektu <target/> nie jest wybrany w bieżącym katalogu, który jest na gałęzi <current/>. Zamknięcie pracy może wymagać zmiany. Tworzenie nie jest blokowane.",
         "noteOtherBranchNone": "Cel projektu <target/> nie jest wybrany w bieżącym katalogu, który nie ma gałęzi. Zamknięcie pracy może wymagać zmiany. Tworzenie nie jest blokowane.",
         "noteNoTarget": "Nie skonfigurowano celu projektu, więc zamknięcie pracy będzie go wymagać. Tworzenie nie jest blokowane."
@@ -1043,9 +1043,9 @@
           "done": "Pliki specyfikacji zapisane"
         },
         "committing-specification": {
-          "title": "Zapisywanie specyfikacji w Git",
+          "title": "Zapisywanie specyfikacji w commicie",
           "running": "Zapisujemy pliki specyfikacji w commicie",
-          "done": "Pliki specyfikacji zapisane w Git"
+          "done": "Pliki specyfikacji zapisane w commicie"
         },
         "registering": {
           "title": "Kończenie konfiguracji",
@@ -1113,7 +1113,7 @@
       "backToSpecifications": "Wróć do specyfikacji",
       "notCreated": "Nic nie zostało utworzone. Wpisane dane są zachowane, więc możesz to poprawić i spróbować ponownie.",
       "location": "Tworzenie specyfikacji",
-      "createdNotCommitted": "Pliki specyfikacji powstały, ale nie udało się ich zapisać w Git."
+      "createdNotCommitted": "Pliki specyfikacji powstały, ale nie udało się zapisać ich w commicie."
     },
     "operations": {
       "kind": "Tworzenie specyfikacji"

@@ -42,7 +42,7 @@ export function CreateFailurePanel({
     status: state.status,
     workspaceOptions,
     typedTitle,
-    language: i18n.language,
+    language: i18n.resolvedLanguage ?? i18n.language,
     t,
     text,
   });

@@ -245,16 +245,21 @@ The existing 16 MiB batch and 2 MiB save request limits remain unchanged.
 
 ## Workspace target and create-options extension (demo)
 
-**Demo-only mirror of PR #53.** Schemas live in the demo contract namespace (`DemoCreateOptionsSchema`,
-`DemoExistingTargetSchema`, `DemoNewWorktreeTargetSchema`, `DemoCreateTargetSchema`,
-`DemoOperationStatusSchema`) with the PR #53 field names, so a later switch to the real engine is a
-mapping. Names marked "proposed" are not confirmed by the backend owner.
+**Demo-only mirror of the real Create contract** (`specs/create.ts`). Schemas live in the demo contract
+namespace (`DemoCreateOptionsSchema`, `DemoExistingTargetSchema`, `DemoNewWorktreeTargetSchema`,
+`DemoCreateTargetSchema`, `DemoOperationStatusSchema`) with the real field names, so a later switch to
+the real engine is a mapping.
 
-| Method | Path                                      | Result                                                                                                |
-| ------ | ----------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| GET    | `/api/demo/specs/create-options`          | `DemoCreateOptions` from the in-memory workspace registry                                             |
-| POST   | `/api/demo/specifications`                | Create; accepts `operationId` and `target`                                                            |
-| GET    | `/api/demo/specifications/operations/:id` | Operation status (proposed): `completed`, `in-progress`, `recovery-required`, `not-started`, `failed` |
+| Method | Path                                             | Result                                                                                                                                              |
+| ------ | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/demo/specs/create-options`                 | `DemoCreateOptions` from the in-memory workspace registry                                                                                           |
+| POST   | `/api/demo/specifications`                       | Create; accepts `operationId` and `target`                                                                                                          |
+| GET    | `/api/demo/specifications/operations`            | `OperationListResponse`, the same contract as `GET /api/specs/operations` over the demo state (query `status`, `limit`; `ETag`/304; `View` per row) |
+| GET    | `/api/demo/specifications/operations/:id`        | Operation status: `completed`, `in-progress`, `recovery-required`, `not-started`, `failed`                                                          |
+| GET    | `/api/demo/specifications/operations/:id/events` | Live progress (SSE), the shared operation-progress stream of the real Runtime; requires the `Create` capability                                     |
+
+The operations list and the status read honour the `demoScenario` query like the other demo routes;
+an unknown scenario answers 400.
 
 Create-options require `spec.create` at the demo project scope. The default registry is a realistic
 happy path: primary `develop` (0 specs, not Nevo-managed, no pin), linked `feature/platform` (2),

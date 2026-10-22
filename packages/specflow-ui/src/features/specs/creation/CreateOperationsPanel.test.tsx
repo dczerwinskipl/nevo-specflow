@@ -58,7 +58,7 @@ describe('Create operation kind', () => {
       'Tworzenie specyfikacji',
     );
     expect(polishText(createOperationKind.stepTitle('committing-specification'))).toBe(
-      'Zapisywanie specyfikacji w Git',
+      'Zapisywanie specyfikacji w commicie',
     );
     expect(createOperationKind.stepTitle('a-future-step')).toEqual({
       key: 'create.progress.steps.unknown.title',

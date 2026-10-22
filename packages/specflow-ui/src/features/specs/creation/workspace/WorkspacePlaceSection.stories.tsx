@@ -207,7 +207,7 @@ export const MainWorkspaceDirty: Story = {
   args: { variant: 'primary-dirty', initial: { tile: 'main' } },
   tags: ['contract'],
   play: async ({ canvas }) => {
-    await expect(summary(canvas)).toHaveTextContent('Katalog ma niezapisane zmiany w Git.');
+    await expect(summary(canvas)).toHaveTextContent('Katalog ma zmiany niezapisane w commicie.');
     await expect(canvas.getAllByText('zmiany')[0]).toBeVisible();
   },
 };
@@ -248,7 +248,7 @@ export const ExistingWorkspaceSelection: Story = {
     const platform = await list.findByRole('option', { name: /feature\/platform/ });
     await expect(platform).toHaveTextContent('2 specyfikacje');
     const dirty = list.getByRole('option', { name: /feature\/payments/ });
-    await expect(dirty).toHaveTextContent('Ma niezapisane zmiany w Git');
+    await expect(dirty).toHaveTextContent('Ma zmiany niezapisane w commicie');
     // The Engine gives detached and unavailable workspaces no branch, so both read the same.
     const [detached, unavailable] = list.getAllByRole('option', { name: /Środowisko bez gałęzi/ });
     await expect(detached).toHaveAttribute('aria-disabled', 'true');
@@ -581,7 +581,7 @@ export const TargetListNeverEqualsBaseList: Story = {
     const dirty = targets.find((o) => o.textContent?.includes('feature/payments'))!;
     await expect(dirty).toHaveAttribute('aria-disabled', 'true');
     await expect(dirty).toHaveTextContent(
-      'Niezapisane zmiany: zatwierdź je lub odłóż przed scaleniem do tego środowiska',
+      'Niezapisane zmiany: zapisz je w commicie lub odłóż przed scaleniem do tego środowiska',
     );
     // Selecting a blocked target does nothing: the preselected defaults stay.
     const before = request(canvas);
@@ -601,7 +601,7 @@ export const UnavailableTargetsStayReadableUnderTheField: Story = {
     );
     const hint = canvas.getByText(/Niedostępne jako cel:/);
     await expect(hint).toHaveTextContent(
-      'payments feature/payments – ma niezapisane zmiany (zatwierdź je lub odłóż przed scaleniem do tego środowiska)',
+      'payments feature/payments – ma niezapisane zmiany (zapisz je w commicie lub odłóż przed scaleniem do tego środowiska)',
     );
     await expect(canvas.getByText(/Nic nie zostanie scalone teraz/)).toBeVisible();
     await expect(
@@ -903,7 +903,7 @@ export const ConfiguredTargetHasUnsavedChanges: Story = {
   play: async ({ canvas }) => {
     await expect(rowValue(canvas, 'Scal do')).toHaveTextContent('acme-app develop');
     await expect(summary(canvas)).toHaveTextContent(
-      'To środowisko pracy ma niezapisane zmiany. Specyfikację nadal możesz utworzyć; zatwierdź je (commit) lub odłóż (stash) przed scaleniem do niego.',
+      'To środowisko pracy ma niezapisane zmiany. Specyfikację nadal możesz utworzyć; zapisz je w commicie lub odłóż (stash) przed scaleniem do niego.',
     );
     await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute('data-problems', '');
   },
@@ -1272,7 +1272,7 @@ export const ProtectedCurrentFolderIsDisabledAndSuggestsANewWorkspace: Story = {
     await expect(main).toHaveAttribute('aria-disabled', 'true');
     await expect(
       canvas.getByText(
-        'Gałąź main jest chroniona: Nevo nie zapisuje tam zmian. Utwórz specyfikację w nowym środowisku pracy.',
+        'Gałąź main jest chroniona: Nevo nie tworzy tam commitów. Utwórz specyfikację w nowym środowisku pracy.',
       ),
     ).toBeVisible();
     await expect(existing).toBeChecked();

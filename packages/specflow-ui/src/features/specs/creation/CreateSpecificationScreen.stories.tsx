@@ -945,7 +945,7 @@ export const CommitFailedIsRecoveryNotARetry: Story = {
   play: async ({ canvas, userEvent }) => {
     await openManualForm(canvas, userEvent);
     await userEvent.click(submit(canvas));
-    await canvas.findByText('Pliki specyfikacji powstały, ale nie udało się ich zapisać w Git');
+    await canvas.findByText('Pliki specyfikacji powstały, ale nie udało się zapisać ich w commicie');
     await expect(canvas.getByText(/Nie twórz jej ponownie/)).toBeVisible();
     await expect(canvas.queryByText(/Nie utworzono specyfikacji/)).toBeNull();
     await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toBeDisabled();

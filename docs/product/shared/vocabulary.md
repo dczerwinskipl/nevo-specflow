@@ -72,3 +72,22 @@ product copy, code, packages, and documentation MUST NOT introduce a competing s
 | **Commentary**           | Human-readable agent narration separate from structured Work.                                                                     |
 | **Finalize**             | A product operation that completes a workflow according to its configured gates and outcomes.                                     |
 | **Forward-port**         | Applying a fix from a maintained release line to another maintained line, normally including `main`.                              |
+
+## Git and workspace vocabulary
+
+English is the source of truth. The Polish column is the only accepted rendering in the product UI
+(`pl.json`); a term that stays in English is a Git term that Polish users know by that name. Do not
+mix the renderings of one concept inside a catalogue.
+
+| Term                 | Meaning                                                                                                                | Polish rendering                                                                                                    |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Workspace**        | A checkout of the project (the primary folder or a linked worktree) in which specifications are created and worked on. | **środowisko pracy**. Not "workspace" and not "obszar roboczy" for a checkout; a bare "środowisko" only repeats it. |
+| **Worktree**         | The Git mechanism and folder behind a linked workspace (technical detail such as "worktree folder").                   | **worktree** (kept), e.g. "katalog worktree"; the user-facing object is still the środowisko pracy.                 |
+| **Workspace area**   | The application page or region of the UI in which a specification or task is worked on (not a checkout).               | **obszar roboczy**                                                                                                  |
+| **Environment**      | The deployment of the product (for example the demo Runtime); unrelated to a workspace.                                | **środowisko** with a qualifier ("środowisko demo"), never alone for a checkout.                                    |
+| **Branch**           | A Git branch.                                                                                                          | **gałąź**                                                                                                           |
+| **Commit** (noun)    | A Git commit, including the scaffold commit Nevo makes when Git is enabled.                                            | **commit** (declined: "commita", "w commicie"). Not "zatwierdzenie" or "zatwierdź".                                 |
+| **Commit** (verb)    | Record changes in a commit.                                                                                            | **zapisać w commicie** ("zapisz je w commicie"). Not "zacommitować" or "niecommitowane".                            |
+| **Uncommitted**      | Changes not recorded in any commit yet.                                                                                | **niezapisane w commicie** ("zmiany niezapisane w commicie").                                                       |
+| **Protected branch** | A branch on which the Engine never commits (committed project configuration).                                          | **chroniona gałąź**; the effect reads "Nevo nie tworzy tam commitów".                                               |
+| **Merge target**     | The workspace (and its branch) the changes return to later.                                                            | **cel scalenia** / "scal do środowiska".                                                                            |

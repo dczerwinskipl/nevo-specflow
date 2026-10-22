@@ -20,7 +20,7 @@ import {
   readWorkspaceSpecification,
   reserveCloseOperation,
 } from '../src/testing';
-import { createGitTestProject, git } from './support/git-project';
+import { createGitTestProject, git, commitStaged } from './support/git-project';
 
 const cleanup: string[] = [];
 afterEach(async () => {
@@ -40,16 +40,7 @@ async function fixture(linked: boolean) {
     'runtime: {}\ngit:\n  enabled: true\n  integrationTargetBranch: ' + branch + '\n',
   );
   git(root, 'add', '.nevo/config.yaml');
-  git(
-    root,
-    '-c',
-    'user.name=Test',
-    '-c',
-    'user.email=test@example.invalid',
-    'commit',
-    '-qm',
-    'pin integration target',
-  );
+  commitStaged(root, 'pin integration target');
   const engine = await bootstrapProjectHome(root);
   const registry = await engine.readRegistry();
   const spec = await createSpecificationForTesting(engine, {
@@ -68,16 +59,7 @@ async function fixture(linked: boolean) {
     spec.relativeManifestPath,
     'specs/active/' + spec.slug + '/overview.md',
   );
-  git(
-    spec.workspaceRoot,
-    '-c',
-    'user.name=Test',
-    '-c',
-    'user.email=test@example.invalid',
-    'commit',
-    '-qm',
-    'commit authored specification',
-  );
+  commitStaged(spec.workspaceRoot, 'commit authored specification');
   return { root, engine, spec };
 }
 
@@ -176,16 +158,7 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
       'specs/active/' + b.slug + '/overview.md',
       'specs/active/' + c.slug + '/overview.md',
     );
-    git(
-      a.workspaceRoot,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'commit sibling specifications',
-    );
+    commitStaged(a.workspaceRoot, 'commit sibling specifications');
     const before = await engine.readRegistry();
     const primaryHead = git(root, 'rev-parse', 'HEAD');
     const op = randomUUID();
@@ -290,16 +263,7 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
       'specs/active/' + b.slug + '/overview.md',
       'specs/active/' + c.slug + '/overview.md',
     );
-    git(
-      a.workspaceRoot,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'add sibling Specs',
-    );
+    commitStaged(a.workspaceRoot, 'add sibling Specs');
     await closeSpecification(engine, {
       operationId: randomUUID(),
       specId: b.specId,
@@ -356,16 +320,7 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
       b.relativeManifestPath,
       'specs/active/' + b.slug + '/overview.md',
     );
-    git(
-      a.workspaceRoot,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'sibling before CAS crash',
-    );
+    commitStaged(a.workspaceRoot, 'sibling before CAS crash');
     const revision = (await engine.readRegistry()).revision;
     const operationId = randomUUID();
     await reserveCloseOperation(engine, { kind: 'workspace-close', operationId, workspaceId });
@@ -414,16 +369,7 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
       b.relativeManifestPath,
       'specs/active/' + b.slug + '/overview.md',
     );
-    git(
-      a.workspaceRoot,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'commit shared source before ignored user file',
-    );
+    commitStaged(a.workspaceRoot, 'commit shared source before ignored user file');
     const unknown = join(a.workspaceRoot, '.nevo/local/state/notes-not-owned.txt');
     await mkdir(dirname(unknown), { recursive: true });
     await writeFile(unknown, 'preserve me exactly');
@@ -462,16 +408,7 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
       );
       siblings.push(item);
     }
-    git(
-      a.workspaceRoot,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'committed shared siblings',
-    );
+    commitStaged(a.workspaceRoot, 'committed shared siblings');
     await closeSpecification(engine, {
       operationId: randomUUID(),
       specId: siblings[0]!.specId,
@@ -479,16 +416,7 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
     });
     await writeFile(join(root, 'target-independent.txt'), 'diverge destination\n');
     git(root, 'add', '--', 'target-independent.txt');
-    git(
-      root,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'advance target without touching Specs',
-    );
+    commitStaged(root, 'advance target without touching Specs');
     const targetHead = git(root, 'rev-parse', 'HEAD');
     const sourceHead = git(a.workspaceRoot, 'rev-parse', 'HEAD');
     const oldRevision = (await engine.readRegistry()).revision;
@@ -530,40 +458,13 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
       b.relativeManifestPath,
       'specs/active/' + b.slug + '/overview.md',
     );
-    git(
-      a.workspaceRoot,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'shared conflict siblings',
-    );
+    commitStaged(a.workspaceRoot, 'shared conflict siblings');
     await writeFile(join(root, 'shared-conflict.txt'), 'target owns text\n');
     git(root, 'add', '--', 'shared-conflict.txt');
-    git(
-      root,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'target introduces conflict',
-    );
+    commitStaged(root, 'target introduces conflict');
     await writeFile(join(a.workspaceRoot, 'shared-conflict.txt'), 'source owns different text\n');
     git(a.workspaceRoot, 'add', '--', 'shared-conflict.txt');
-    git(
-      a.workspaceRoot,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'source introduces conflict',
-    );
+    commitStaged(a.workspaceRoot, 'source introduces conflict');
     const targetHead = git(root, 'rev-parse', 'HEAD');
     const sourceHead = git(a.workspaceRoot, 'rev-parse', 'HEAD');
     const before = await engine.readRegistry();
@@ -599,16 +500,7 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
       b.relativeManifestPath,
       'specs/active/' + b.slug + '/overview.md',
     );
-    git(
-      a.workspaceRoot,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'shared identity sources',
-    );
+    commitStaged(a.workspaceRoot, 'shared identity sources');
     const operationId = randomUUID();
     await reserveCloseOperation(engine, {
       kind: 'workspace-close',
@@ -678,16 +570,7 @@ describe('E2.T15 Specification Close (real Git filesystem)', () => {
       'runtime: {}\ngit:\n  enabled: true\n  integrationTargetBranch: other-ref\n',
     );
     git(root, 'add', '.nevo/config.yaml');
-    git(
-      root,
-      '-c',
-      'user.name=Test',
-      '-c',
-      'user.email=test@example.invalid',
-      'commit',
-      '-qm',
-      'change configured integration branch',
-    );
+    commitStaged(root, 'change configured integration branch');
     const head = git(root, 'rev-parse', 'HEAD');
     const operationId = randomUUID();
     await expect(

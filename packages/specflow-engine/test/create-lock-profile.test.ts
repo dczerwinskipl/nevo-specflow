@@ -11,7 +11,7 @@ import {
   createSpecificationFromRequest,
   type CreateSpecificationInput,
 } from '../src/testing';
-import { createGitTestProject, git } from './support/git-project';
+import { createGitTestProject, git, commitStaged } from './support/git-project';
 
 /**
  * Run explicitly with NEVO_PROFILE_CREATE_LOCK=1 pnpm --filter @nevo/specflow-engine test.
@@ -38,16 +38,7 @@ describe('Create reservation lock profile (opt-in)', () => {
           }
           if (size) {
             git(root, 'add', 'specs');
-            git(
-              root,
-              '-c',
-              'user.name=SpecFlow Test',
-              '-c',
-              'user.email=specflow@example.invalid',
-              'commit',
-              '-qm',
-              'profile fixtures',
-            );
+            commitStaged(root, 'profile fixtures');
           }
 
           for (let i = 0; i < size; i++) {

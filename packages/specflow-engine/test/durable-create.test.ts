@@ -3,7 +3,7 @@ import { lstat, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 
 import { createJournalPath } from '../src/specs/create-journal';
-import { createGitTestProject, git } from './support/git-project';
+import { createGitTestProject, git, commitStaged } from './support/git-project';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -545,16 +545,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     expect(originalManifest).toContain('status: draft');
     await writeFile(manifestPath, originalManifest.replace('status: draft', 'status: approved'));
     git(checkout, 'add', '--', first.relativeManifestPath);
-    git(
-      checkout,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'normal specification update',
-    );
+    commitStaged(checkout, 'normal specification update');
     const advancedHead = git(checkout, 'rev-parse', 'HEAD');
     expect(advancedHead).not.toBe(baseHead);
 
@@ -693,16 +684,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     const { root, engine } = await project();
     await writeFile(join(root, '.nevo/config.yaml'), 'runtime: false\ngit:\n  enabled: true\n');
     git(root, 'add', '.nevo/config.yaml');
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'invalid config',
-    );
+    commitStaged(root, 'invalid config');
     await writeFile(join(root, '.nevo/config.yaml'), 'runtime: {}\ngit:\n  enabled: true\n');
     const input = linked('Invalid base');
     await expect(createSpecification(engine, input)).rejects.toMatchObject({

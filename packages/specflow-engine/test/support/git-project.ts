@@ -35,3 +35,24 @@ export async function createGitTestProject(prefix: string, configYaml: string): 
   );
   return root;
 }
+
+/**
+ * Commit whatever is staged with the standard test identity; no-op when nothing is staged.
+ * Specification Create commits its own scaffold when Git is enabled, so a by-hand commit
+ * after Create must tolerate "nothing to commit" while still working for Git-disabled projects.
+ * Returns true when a commit was made.
+ */
+export function commitStaged(root: string, message: string): boolean {
+  if (git(root, 'diff', '--cached', '--name-only') === '') return false;
+  git(
+    root,
+    '-c',
+    'user.name=SpecFlow Test',
+    '-c',
+    'user.email=specflow@example.invalid',
+    'commit',
+    '-qm',
+    message,
+  );
+  return true;
+}

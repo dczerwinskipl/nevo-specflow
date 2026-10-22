@@ -15,11 +15,17 @@ const choice = (patch: Partial<WorkspaceChoice> = {}): WorkspaceChoice => ({
 const html = (node: React.ReactNode, locale: AppLocale = 'en') =>
   renderToStaticMarkup(<StoryLocalization locale={locale}>{node}</StoryLocalization>);
 // Markup splits a sentence around the branch chip; compare the readable text.
-const text = (markup: string) =>
-  (new DOMParser().parseFromString(markup, 'text/html').body.textContent ?? '').replace(
-    /\s+/g,
-    ' ',
-  );
+const text = (markup: string) => {
+  // Drop everything between '<' and '>' with a scanner (rendered by React, so tags are balanced).
+  let readable = '';
+  let inTag = false;
+  for (const character of markup) {
+    if (character === '<') inTag = true;
+    else if (character === '>') inTag = false;
+    else if (!inTag) readable += character;
+  }
+  return readable.replace(/\s+/g, ' ');
+};
 
 const newSummary = (variant: Parameters<typeof createOptionsFixture>[0], title = 'Payments') => {
   const options = createOptionsFixture(variant);

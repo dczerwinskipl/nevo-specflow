@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { isGitIgnored } from './git-checkout';
 import type { ResolvedProjectHome } from './project-home';
 import { WorkspaceRegistryError, type WorkspaceRegistration } from './workspace-registry-types';
+import { isReadRequest } from './request-verification-memo';
 import { verifyWorkspaceMembership } from './workspace-membership';
 
 export const WORKSPACE_IDENTITY_RELATIVE_PATH = '.nevo/local/state/workspace-identity.json';
@@ -151,7 +152,11 @@ export async function verifyLinkedWorkspaceIdentity(
       'Linked workspace incarnation marker is corrupt.',
     );
   }
-  if (!(await isGitIgnored(registration.root, WORKSPACE_IDENTITY_RELATIVE_PATH))) {
+  // The ignore-rule audit needs Git: mutations only (reads never spawn Git).
+  if (
+    !isReadRequest() &&
+    !(await isGitIgnored(registration.root, WORKSPACE_IDENTITY_RELATIVE_PATH))
+  ) {
     throw new WorkspaceRegistryError(
       'REGISTRY_WORKSPACE_MISMATCH',
       'Linked identity marker is no longer protected by Git ignore rules.',

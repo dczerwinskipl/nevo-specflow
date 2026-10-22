@@ -26,7 +26,7 @@ export {
 
 export { ProjectControlLockError, type ProjectControlLockErrorCode } from './project/control-lock';
 
-export { openSpecFlowEngine, type SpecFlowEngine } from './application';
+export { openSpecFlowEngine, readRegistrySnapshot, type SpecFlowEngine } from './application';
 export { bootstrapProjectHome, assertPrimaryGitCheckout } from './project/bootstrap';
 
 export {
@@ -47,6 +47,7 @@ export { GitCapabilityError, type GitCapabilityErrorCode } from './git/errors';
 export {
   discoverSpecifications,
   resolveSpecification,
+  resolveSpecificationForRead,
   type DiscoveredSpecification,
 } from './specs/discovery';
 

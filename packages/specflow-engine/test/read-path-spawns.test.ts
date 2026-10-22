@@ -28,7 +28,7 @@ async function countGit<T>(work: () => Promise<T>): Promise<{ result: T; spawns:
 }
 
 describe('read-path Git process budget (per request)', () => {
-  it('verifies each workspace once per request and again on every new request', async () => {
+  it('reads spawn no Git verification; create-options only runs inherent Git facts', async () => {
     const root = await createGitTestProject(
       'specflow-read-spawns-',
       'runtime: {}\ngit:\n  enabled: true\n',
@@ -46,11 +46,11 @@ describe('read-path Git process budget (per request)', () => {
     const second = await countGit(() => inspectCreateOptions(engine));
     const overview = await countGit(() => readCanonicalSpecSources(engine));
 
-    // Baseline before the per-request memo: 55 (create-options) and 37 (overview).
-    expect(first.spawns.length).toBeLessThanOrEqual(22);
-    // Nothing is cached across requests: full verification runs again.
-    expect(second.spawns.length).toBeGreaterThanOrEqual(10);
-    expect(overview.spawns.length).toBeLessThanOrEqual(16);
+    // Reads verify with the filesystem only: worktree list + for-each-ref + 1 status per
+    // attached workspace (2 here). Overview/workspace/document reads spawn nothing.
+    expect(first.spawns.length).toBeLessThanOrEqual(8);
+    expect(second.spawns.length).toBe(first.spawns.length);
+    expect(overview.spawns).toEqual([]);
     expect(first.result.workspaces.find((w) => w.workspaceId === linked.workspaceId)).toBeDefined();
   }, 240000);
 });

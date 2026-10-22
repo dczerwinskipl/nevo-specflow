@@ -1,7 +1,9 @@
 import { realpath } from 'node:fs/promises';
 import { isAbsolute } from 'node:path';
 
+import { verifyCheckoutOnDisk, verifyProjectHomeOnDisk } from './disk-verification';
 import { resolveProjectHome, type ResolvedProjectHome } from './project-home';
+import { isReadRequest, memoizeVerification } from './request-verification-memo';
 import { WorkspaceRegistryError } from './workspace-registry-types';
 
 /** Git and Project Home admission without linked-marker verification. */
@@ -30,6 +32,12 @@ export async function verifyWorkspaceMembership(
       'REGISTRY_WORKSPACE_MISMATCH',
       'Workspace root changed identity, moved or points through a symlink.',
     );
+  }
+  if (isReadRequest()) {
+    // READ path: no Git. Identity proven at open + cheap on-disk evidence.
+    await memoizeVerification('project-home-on-disk', () => verifyProjectHomeOnDisk(context));
+    await verifyCheckoutOnDisk(context, canonical);
+    return canonical;
   }
   try {
     const verified = await resolveProjectHome({

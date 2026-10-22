@@ -17,6 +17,8 @@ import {
   validateNewGitReservation,
 } from './create-git';
 
+import { runGitFreeMutation } from '../project/request-verification-memo';
+import { readProjectGitPolicy } from '../version-control/worktrees/config';
 import { readWorkspaceSpecification } from './repository';
 import {
   CreateOperationError,
@@ -135,6 +137,32 @@ export async function createSpecificationWithIntent(
   intent: CreateClientIntent,
   creationDate: () => string,
   options: CreateSpecificationOptions = {},
+  afterEffect?: CreateEffectHook,
+): Promise<CreatedSpecification> {
+  const run = () =>
+    createWithVerifiedIntent(engine, operationId, intent, creationDate, options, afterEffect);
+  // Not a Git operation: an existing-workspace create in a project with Git disabled
+  // verifies Project Home/workspace on disk and spawns no Git process. Anything that
+  // can involve Git (new worktree, Git enabled, unreadable policy) keeps full verification.
+  return intent.target.kind === 'existing' && (await isGitDisabled(engine))
+    ? runGitFreeMutation(run)
+    : run();
+}
+
+async function isGitDisabled(engine: SpecFlowEngine): Promise<boolean> {
+  try {
+    return !(await readProjectGitPolicy(engine.context)).policy.enabled;
+  } catch {
+    return false;
+  }
+}
+
+async function createWithVerifiedIntent(
+  engine: SpecFlowEngine,
+  operationId: string,
+  intent: CreateClientIntent,
+  creationDate: () => string,
+  options: CreateSpecificationOptions,
   afterEffect?: CreateEffectHook,
 ): Promise<CreatedSpecification> {
   validateOperationId(operationId);

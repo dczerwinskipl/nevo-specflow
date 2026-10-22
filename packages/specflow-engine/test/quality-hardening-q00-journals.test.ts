@@ -69,8 +69,18 @@ describe('Q00 Create journal current-format acceptance baseline', () => {
       files: scaffold.files.map(({ relativePath, sha256 }) => ({ relativePath, sha256 })),
     };
 
+    // The commit stages exist only for a journal that pins commit evidence at reservation.
+    const commitEvidence = (stage: string) => ({
+      required: true as const,
+      branch: 'main',
+      parentHead: 'a'.repeat(40),
+      ...(stage === 'commit-written' ? { commitSha: 'b'.repeat(40) } : {}),
+    });
     for (const stage of CREATE_STAGES) {
-      const value = { ...original, stage };
+      const needsCommit = stage === 'commit-writing' || stage === 'commit-written';
+      const value = needsCommit
+        ? { ...original, stage, commit: commitEvidence(stage) }
+        : { ...original, stage };
       expect(parseCreateJournal(engine.context, value, original.operationId)).toEqual(value);
     }
 

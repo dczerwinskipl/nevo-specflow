@@ -58,16 +58,19 @@ describe('Q01 pure Close journal codec and durable store boundary', () => {
       target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
     });
     git(root, 'add', '--', spec.relativeManifestPath, 'specs/active/' + spec.slug + '/overview.md');
-    git(
-      root,
-      '-c',
-      'user.name=SpecFlow Test',
-      '-c',
-      'user.email=specflow@example.invalid',
-      'commit',
-      '-qm',
-      'commit canonical spec',
-    );
+    // Create commits the scaffold itself when Git is enabled; commit by hand only what is still staged.
+    if (git(root, 'diff', '--cached', '--name-only') !== '') {
+      git(
+        root,
+        '-c',
+        'user.name=SpecFlow Test',
+        '-c',
+        'user.email=specflow@example.invalid',
+        'commit',
+        '-qm',
+        'commit canonical spec',
+      );
+    }
 
     const operationId = randomUUID();
     const reserved = await reserveCloseOperation(engine, {

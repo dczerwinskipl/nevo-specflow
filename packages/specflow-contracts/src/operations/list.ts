@@ -1,6 +1,6 @@
 import { Type, type Static } from 'typebox';
 
-import { OPERATION_STEP_STATUSES, OperationIdSchema } from './progress';
+import { OperationIdSchema } from './progress';
 
 /**
  * Operation list model: the read-only listing of operations a feature owns, served by that
@@ -50,9 +50,21 @@ export const OPERATION_JOURNAL_CORRUPT_CODE = 'CREATE_JOURNAL_CORRUPT';
  */
 export const OperationListStepIdSchema = Type.String({ minLength: 1 });
 
-const StatusSchema = Type.Union(OPERATION_LIST_ALL_STATUSES.map((status) => Type.Literal(status)));
+const StatusSchema = Type.Union([
+  Type.Literal('in-progress'),
+  Type.Literal('recovery-required'),
+  Type.Literal('failed'),
+  Type.Literal('completed'),
+  Type.Literal('queued'),
+  Type.Literal('scheduled'),
+]);
 
-const StepStatusSchema = Type.Union(OPERATION_STEP_STATUSES.map((s) => Type.Literal(s)));
+const StepStatusSchema = Type.Union([
+  Type.Literal('pending'),
+  Type.Literal('running'),
+  Type.Literal('done'),
+  Type.Literal('skipped'),
+]);
 
 export const OperationSummarySchema = Type.Object(
   {

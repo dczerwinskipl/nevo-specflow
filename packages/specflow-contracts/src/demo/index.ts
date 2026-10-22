@@ -100,6 +100,8 @@ const WorkspaceReason = Type.Union([
   Type.Literal('git-membership-mismatch'),
   Type.Literal('detached'),
   Type.Literal('dirty'),
+  Type.Literal('branch-protected'),
+  Type.Literal('branch-not-allowed'),
 ]);
 /**
  * Demo mirror of the PR #53 `CreateOptionsSchema` (same field names and semantics).
@@ -153,6 +155,7 @@ export const DemoCreateOptionsSchema = Type.Object(
           Type.Literal('unavailable'),
         ]),
         reason: Type.Optional(WorkspaceReason),
+        branchProtected: Type.Optional(Type.Literal(true)),
       },
       { additionalProperties: false },
     ),
@@ -165,6 +168,16 @@ export const DemoCreateOptionsSchema = Type.Object(
       { additionalProperties: false },
     ),
     integrationTargetBranch: Type.Optional(Type.String({ minLength: 1 })),
+    /** Present exactly when git is enabled (the Engine commits the scaffold). */
+    commits: Type.Optional(
+      Type.Object(
+        {
+          protectedBranches: Type.Array(Type.String({ minLength: 1 })),
+          allowedBranches: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
+        },
+        { additionalProperties: false },
+      ),
+    ),
     baseRefs: Type.Array(
       Type.Object(
         { ref: Type.String({ minLength: 1 }), checkedOutWorkspaceId: Type.Optional(Uuid) },
@@ -198,7 +211,8 @@ export const DemoCreateTargetSchema = Type.Union([
  * Create error codes (shape `{ error, code }` as in PR #53 `CreateSpecErrorSchema`, where `error`
  * repeats the code). The first five are the REAL Engine codes with their real HTTP statuses:
  * `BRANCH_ALREADY_EXISTS` 409, `BASE_REF_NOT_FOUND` 422, `CREATE_CONFLICT` 409,
- * `CREATE_OPERATION_INVALID` 400, `CREATE_RECOVERY_REQUIRED` 503. The Engine reuses
+ * `CREATE_OPERATION_INVALID` 400, `CREATE_RECOVERY_REQUIRED` 503, plus the commit codes
+ * `BRANCH_PROTECTED` 422, `COMMIT_BLOCKED` 409 and `COMMIT_FAILED` 503. The Engine reuses
  * `CREATE_OPERATION_INVALID` for an unusable integration target and for bad input alike.
  * Demo-only additions (no Engine counterpart): `DEMO_WORKSPACE_UNAVAILABLE` (409; the Engine
  * overloads `CREATE_RECOVERY_REQUIRED`/`REGISTRY_CONFLICT` for this) and `DEMO_INVALID_SCENARIO` (400).
@@ -210,6 +224,9 @@ export const DemoCreateErrorCodeSchema = Type.Union([
   Type.Literal('CREATE_CONFLICT'),
   Type.Literal('CREATE_OPERATION_INVALID'),
   Type.Literal('CREATE_RECOVERY_REQUIRED'),
+  Type.Literal('BRANCH_PROTECTED'),
+  Type.Literal('COMMIT_BLOCKED'),
+  Type.Literal('COMMIT_FAILED'),
   Type.Literal('DEMO_WORKSPACE_UNAVAILABLE'),
   Type.Literal('DEMO_INVALID_SCENARIO'),
 ]);

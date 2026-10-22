@@ -8,17 +8,25 @@ export const SPECIFICATION_CREATE_STEPS = [
   'reserving',
   'preparing-workspace',
   'writing-specification',
+  'committing-specification',
   'registering',
 ] as const;
 export type SpecificationCreateStep = (typeof SPECIFICATION_CREATE_STEPS)[number];
 
-/** An `existing` target has no workspace to prepare, so the step is not part of its checklist. */
+/**
+ * An `existing` target has no workspace to prepare, so that step is not part of its checklist.
+ * `committing-specification` exists only when the Engine commits the scaffold (`git.enabled`);
+ * `commits` defaults to false, so a project with Git disabled keeps its former checklist.
+ */
 export function specificationCreateSteps(
   target: 'existing' | 'new-worktree',
+  commits = false,
 ): readonly SpecificationCreateStep[] {
-  return target === 'existing'
-    ? SPECIFICATION_CREATE_STEPS.filter((step) => step !== 'preparing-workspace')
-    : SPECIFICATION_CREATE_STEPS;
+  return SPECIFICATION_CREATE_STEPS.filter(
+    (step) =>
+      !(step === 'preparing-workspace' && target === 'existing') &&
+      !(step === 'committing-specification' && !commits),
+  );
 }
 
 const specificationCreateEventSchema = createOperationProgressEventSchema(

@@ -19,17 +19,30 @@ describe('operation progress contract', () => {
       'reserving',
       'preparing-workspace',
       'writing-specification',
+      'committing-specification',
       'registering',
     ]);
   });
 
-  it('omits the workspace step for an existing target', () => {
+  it('omits the workspace step for an existing target and the commit step without commits', () => {
     expect(specificationCreateSteps('existing')).toEqual([
       'reserving',
       'writing-specification',
       'registering',
     ]);
     expect(specificationCreateSteps('new-worktree')).toEqual([
+      'reserving',
+      'preparing-workspace',
+      'writing-specification',
+      'registering',
+    ]);
+    expect(specificationCreateSteps('existing', true)).toEqual([
+      'reserving',
+      'writing-specification',
+      'committing-specification',
+      'registering',
+    ]);
+    expect(specificationCreateSteps('new-worktree', true)).toEqual([
       ...OPERATION_KINDS['specification-create'].steps,
     ]);
   });

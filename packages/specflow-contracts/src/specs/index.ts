@@ -1,7 +1,18 @@
 export { SpecCapabilities } from './capabilities';
 export { ProjectGitCapabilities } from './close-capabilities';
 export * from './close';
-export { CreateOptionsSchema, type CreateOptions } from './create-options';
+export { CreateCommitsSchema, CreateOptionsSchema, type CreateOptions } from './create-options';
+
+export {
+  BRANCH_PATTERN_MAX_ENTRIES,
+  BRANCH_PATTERN_MAX_LENGTH,
+  branchPatternProblem,
+  engineCommitRefusal,
+  isValidBranchPattern,
+  matchesBranchPattern,
+  type BranchPatternProblem,
+  type EngineCommitRefusal,
+} from './branch-protection';
 
 export {
   CREATE_RESPOND_ASYNC_PREFERENCE,

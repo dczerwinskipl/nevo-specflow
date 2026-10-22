@@ -618,7 +618,7 @@ export const CreatingInProgress: Story = {
     operations: [runningItem(1, { title: 'Limity płatności', operationId: 'op-1' })],
   },
   play: async ({ canvas }) => {
-    const link = await canvas.findByRole('link', { name: /^Limity płatności, / });
+    const link = await canvas.findByRole('link', { name: /^Limity płatności/ });
     await expect(link).toHaveAttribute('href', '/specs/new/creating/op-1');
     await expect(link).toHaveTextContent('Step 2 of 4');
     await expect(canvas.getByRole('region', { name: 'Background operations' })).toBeVisible();

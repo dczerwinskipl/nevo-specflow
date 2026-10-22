@@ -83,7 +83,7 @@ describe('CreateOperationsPanel', () => {
     const item = runningItem(1, { title: 'Payment limits' });
     const api = operationsStub(operationList([item]));
     renderPanel(api, 'project');
-    const link = await screen.findByRole('link', { name: /^Payment limits, / });
+    const link = await screen.findByRole('link', { name: /^Payment limits/ });
     expect(link.getAttribute('href')).toBe(`/specs/new/creating/${item.operationId}`);
     expect(api.calls[0]?.url).toBe('/api/specs/operations');
   });

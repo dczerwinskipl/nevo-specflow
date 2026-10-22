@@ -75,9 +75,9 @@ describe('OperationsPanel rows', () => {
     renderPanel({ list: operationList([item]) });
     const link = screen.getByRole('link');
     expect(link.getAttribute('href')).toBe(`/specs/new/creating/${item.operationId}`);
-    expect(link.getAttribute('aria-label')).toBe(
-      'Payment limits, Creating a specification, In progress, Step 2 of 4: Preparing the workspace',
-    );
+    // The accessible name is the visible text plus the status word for assistive technology.
+    expect(link.textContent).toContain('Payment limits, Creating a specification');
+    expect(link.textContent).toContain('In progress. Step 2 of 4: Preparing the workspace');
     expect(link.textContent).toContain('spec/payment-limits');
     expect(link.textContent).toContain('Step 2 of 4');
     expect(link.querySelector('time')?.textContent).toBe('Started 2 minutes ago');

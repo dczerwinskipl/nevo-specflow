@@ -13,7 +13,6 @@ import { formatRelativeTime } from './relativeTime';
 export type RenderOperationLink = (
   href: string,
   children: ReactNode,
-  ariaLabel: string,
   className: string,
 ) => ReactNode;
 
@@ -60,7 +59,6 @@ export function OperationRow({ item, kind, now, renderLink, onDismiss }: Operati
       )
     : undefined;
   const href = kind?.detailHref(item);
-  const ariaLabel = [title, kindLabel, status, detail, action].filter(Boolean).join(', ');
 
   const content = (
     <>
@@ -68,9 +66,11 @@ export function OperationRow({ item, kind, now, renderLink, onDismiss }: Operati
       <span className="grid min-w-0 flex-1 gap-0.5">
         <Typography as="span" variant="body-md" className="min-w-0 break-words">
           {title}
+          <span className="sr-only">, </span>
         </Typography>
         <Typography as="span" variant="body-sm" className="min-w-0 break-words text-content-muted">
           {[kindLabel, branch].filter(Boolean).join(' · ')}
+          <span className="sr-only">, </span>
         </Typography>
         <span className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
           <Typography
@@ -78,6 +78,7 @@ export function OperationRow({ item, kind, now, renderLink, onDismiss }: Operati
             variant="body-sm"
             className="min-w-0 break-words text-content-secondary"
           >
+            {detail ? <span className="sr-only">{status}. </span> : null}
             {detail ?? status}
           </Typography>
           {action ? (
@@ -107,9 +108,9 @@ export function OperationRow({ item, kind, now, renderLink, onDismiss }: Operati
     >
       {href ? (
         renderLink ? (
-          renderLink(href, content, ariaLabel, linkClassName)
+          renderLink(href, content, linkClassName)
         ) : (
-          <a href={href} aria-label={ariaLabel} className={linkClassName}>
+          <a href={href} className={linkClassName}>
             {content}
           </a>
         )

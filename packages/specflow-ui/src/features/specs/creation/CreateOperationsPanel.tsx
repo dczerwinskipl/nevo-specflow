@@ -15,10 +15,9 @@ const kinds = [createOperationKind];
 function useRouterLink(): RenderOperationLink {
   const router = useRouter({ warn: false });
   return useCallback(
-    (href: string, children: ReactNode, ariaLabel: string, className: string) => (
+    (href: string, children: ReactNode, className: string) => (
       <a
         href={href}
-        aria-label={ariaLabel}
         className={className}
         onClick={(event) => {
           if (

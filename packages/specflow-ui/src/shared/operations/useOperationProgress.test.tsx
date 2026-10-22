@@ -16,6 +16,7 @@ function controlledApi() {
   const signals: AbortSignal[] = [];
   const opened = vi.fn();
   const api: OperationsApi = {
+    list: () => Promise.resolve({ kind: 'unavailable' as const }),
     async *watchProgress(streamUrl, signal) {
       opened(streamUrl);
       if (signal) signals.push(signal);

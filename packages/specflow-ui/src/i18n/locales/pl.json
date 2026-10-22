@@ -543,6 +543,57 @@
         "running": "w toku",
         "done": "gotowe"
       }
+    },
+    "panel": {
+      "title": "Operacje w tle",
+      "collapse": "Ukryj operacje",
+      "expand": "Pokaż operacje",
+      "loadFailed": "Nie udało się wczytać operacji w tle",
+      "refreshFailed": "Nie można odświeżyć. Ponawiam",
+      "showAll": "Pokaż wszystkie ({{total}})",
+      "showFewer": "Pokaż mniej",
+      "showing": "Wyświetlono {{shown}} z {{total}}",
+      "running_one": "{{count}} w toku",
+      "running_few": "{{count}} w toku",
+      "running_many": "{{count}} w toku",
+      "running_other": "{{count}} w toku",
+      "attention_one": "{{count}} wymaga uwagi",
+      "attention_few": "{{count}} wymaga uwagi",
+      "attention_many": "{{count}} wymaga uwagi",
+      "attention_other": "{{count}} wymaga uwagi",
+      "failed_one": "{{count}} nie powiodło się",
+      "failed_few": "{{count}} nie powiodło się",
+      "failed_many": "{{count}} nie powiodło się",
+      "failed_other": "{{count}} nie powiodło się",
+      "finished_one": "{{count}} zakończono",
+      "finished_few": "{{count}} zakończono",
+      "finished_many": "{{count}} zakończono",
+      "finished_other": "{{count}} zakończono"
+    },
+    "kind": {
+      "unknown": "Operacja"
+    },
+    "status": {
+      "inProgress": "W toku",
+      "recoveryRequired": "Wymaga sprawdzenia",
+      "failed": "Nie powiodło się",
+      "completed": "Zakończono",
+      "queued": "W kolejce",
+      "scheduled": "Zaplanowano",
+      "unknown": "Nieznany stan"
+    },
+    "row": {
+      "checkResult": "Sprawdź wynik",
+      "dismiss": "Ukryj: {{name}}",
+      "step": "Krok {{current}} z {{total}}: {{title}}",
+      "interrupted": "Brak aktywności od {{minutes}} min. Sprawdź wynik",
+      "started": "Rozpoczęto {{time}}",
+      "updated": "Zaktualizowano {{time}}"
+    },
+    "announce": {
+      "completed": "{{name}}: zakończono",
+      "attention": "{{name}} wymaga sprawdzenia",
+      "failed": "{{name}}: operacja nie powiodła się"
     }
   },
   "loading": {
@@ -1033,6 +1084,9 @@
       "backToSpecifications": "Wróć do specyfikacji",
       "notCreated": "Nic nie zostało utworzone. Wpisane dane są zachowane, więc możesz to poprawić i spróbować ponownie.",
       "location": "Tworzenie specyfikacji"
+    },
+    "operations": {
+      "kind": "Tworzenie specyfikacji"
     }
   },
   "documents": {

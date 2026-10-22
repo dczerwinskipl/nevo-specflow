@@ -543,6 +543,57 @@
         "running": "in progress",
         "done": "done"
       }
+    },
+    "panel": {
+      "title": "Background operations",
+      "collapse": "Hide operations",
+      "expand": "Show operations",
+      "loadFailed": "Background operations can't be loaded",
+      "refreshFailed": "Cannot refresh. Retrying",
+      "showAll": "Show all ({{total}})",
+      "showFewer": "Show fewer",
+      "showing": "Showing {{shown}} of {{total}}",
+      "running_one": "{{count}} running",
+      "running_few": "{{count}} running",
+      "running_many": "{{count}} running",
+      "running_other": "{{count}} running",
+      "attention_one": "{{count}} needs attention",
+      "attention_few": "{{count}} need attention",
+      "attention_many": "{{count}} need attention",
+      "attention_other": "{{count}} need attention",
+      "failed_one": "{{count}} failed",
+      "failed_few": "{{count}} failed",
+      "failed_many": "{{count}} failed",
+      "failed_other": "{{count}} failed",
+      "finished_one": "{{count}} finished",
+      "finished_few": "{{count}} finished",
+      "finished_many": "{{count}} finished",
+      "finished_other": "{{count}} finished"
+    },
+    "kind": {
+      "unknown": "Operation"
+    },
+    "status": {
+      "inProgress": "In progress",
+      "recoveryRequired": "Needs a check",
+      "failed": "Failed",
+      "completed": "Completed",
+      "queued": "Queued",
+      "scheduled": "Scheduled",
+      "unknown": "Status unknown"
+    },
+    "row": {
+      "checkResult": "Check result",
+      "dismiss": "Hide {{name}}",
+      "step": "Step {{current}} of {{total}}: {{title}}",
+      "interrupted": "No activity for {{minutes}} min. Check the result",
+      "started": "Started {{time}}",
+      "updated": "Updated {{time}}"
+    },
+    "announce": {
+      "completed": "{{name}} is done",
+      "attention": "{{name}} needs a check",
+      "failed": "{{name}} failed"
     }
   },
   "loading": {
@@ -1033,6 +1084,9 @@
       "backToSpecifications": "Back to specifications",
       "notCreated": "Nothing was created. Your entries are kept, so you can fix this and try again.",
       "location": "Creating specification"
+    },
+    "operations": {
+      "kind": "Creating a specification"
     }
   },
   "documents": {

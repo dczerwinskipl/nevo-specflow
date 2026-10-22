@@ -1,4 +1,9 @@
-import type { HttpRequestClient, SseRequestConfig, SseStream } from '@nevo/http-client';
+import {
+  HttpClientError,
+  type HttpRequestClient,
+  type SseRequestConfig,
+  type SseStream,
+} from '@nevo/http-client';
 import type { OperationProgressEvent } from '@nevo/specflow-contracts/operations';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -78,5 +83,51 @@ describe('operations API (SSE)', () => {
     }
     expect(seen).toHaveLength(1);
     expect(sse.mock.calls[0]?.[1]?.signal).toBe(controller.signal);
+  });
+});
+
+describe('operations API (list)', () => {
+  const listUrl = '/api/specs/operations';
+  const answer = {
+    items: [{ operationId, kind: 'specification-create', status: 'in-progress', updatedAt: 'now' }],
+    counts: { inProgress: 1, recoveryRequired: 0, failed: 0, completed: 0 },
+    truncated: false,
+    generatedAt: 'now',
+  };
+  const httpWith = (get: ReturnType<typeof vi.fn>) => ({ get }) as unknown as HttpRequestClient;
+  const failure = (status: number) => new HttpClientError('failed', { kind: 'http', status });
+
+  it('reads and decodes the list, sending the held tag when there is one', async () => {
+    const get = vi.fn().mockResolvedValue(answer);
+    const result = await createRuntimeOperationsApi(httpWith(get)).list(listUrl, { etag: 'W/"1"' });
+    expect(result.kind).toBe('list');
+    expect(get.mock.calls[0]?.[0]).toBe(listUrl);
+    expect(get.mock.calls[0]?.[1]).toMatchObject({ headers: { 'If-None-Match': 'W/"1"' } });
+  });
+
+  it('treats 304 as not modified', async () => {
+    const get = vi.fn().mockRejectedValue(failure(304));
+    expect(await createRuntimeOperationsApi(httpWith(get)).list(listUrl)).toEqual({
+      kind: 'not-modified',
+    });
+  });
+
+  it.each([404, 403, 501])(
+    'treats %i as no list on this Runtime, not as an error',
+    async (status) => {
+      const get = vi.fn().mockRejectedValue(failure(status));
+      expect(await createRuntimeOperationsApi(httpWith(get)).list(listUrl)).toEqual({
+        kind: 'unavailable',
+      });
+    },
+  );
+
+  it('fails on a server error and on an answer that is not a list', async () => {
+    await expect(
+      createRuntimeOperationsApi(httpWith(vi.fn().mockRejectedValue(failure(503)))).list(listUrl),
+    ).rejects.toBeInstanceOf(HttpClientError);
+    await expect(
+      createRuntimeOperationsApi(httpWith(vi.fn().mockResolvedValue('<html>'))).list(listUrl),
+    ).rejects.toThrow('unexpected shape');
   });
 });

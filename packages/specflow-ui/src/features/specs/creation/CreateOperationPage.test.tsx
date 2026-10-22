@@ -51,6 +51,7 @@ function controlledOperations() {
   const queue: (OperationProgressEvent | Error)[] = [];
   let wake: (() => void) | undefined;
   const api: OperationsApi = {
+    list: () => Promise.resolve({ kind: 'unavailable' as const }),
     async *watchProgress(_url, signal) {
       for (;;) {
         while (queue.length === 0) {
@@ -76,6 +77,7 @@ function controlledOperations() {
 }
 const silentOperations: OperationsApi = {
   // eslint-disable-next-line require-yield
+  list: () => Promise.resolve({ kind: 'unavailable' as const }),
   async *watchProgress() {
     await Promise.resolve();
   },

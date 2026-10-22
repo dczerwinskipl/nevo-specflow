@@ -67,6 +67,7 @@ function operationsFor(behavior: Stream): OperationsApi {
     { ...event, type: 'step', step: 'preparing-workspace', status: 'running' },
   ];
   return {
+    list: () => Promise.resolve({ kind: 'unavailable' as const }),
     async *watchProgress(_streamUrl, signal) {
       if (behavior === 'unavailable') throw new Error('Stream unavailable');
       for (const next of events) {

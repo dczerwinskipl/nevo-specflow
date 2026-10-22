@@ -244,9 +244,10 @@ describe('protected branches', () => {
 describe('crash recovery and replay at commit-writing', () => {
   const crashAfter =
     (effect: 'manifest' | 'commit') =>
-    async (current: string): Promise<void> => {
-      if (current === effect) throw new Crash('simulated crash after ' + effect);
-    };
+    (current: string): Promise<void> =>
+      current === effect
+        ? Promise.reject(new Crash('simulated crash after ' + effect))
+        : Promise.resolve();
 
   it('resumes after a crash between the Git commit and the journal and does not commit twice', async () => {
     const { root, engine } = await project();
@@ -418,9 +419,10 @@ describe('Git disabled keeps Create exactly as it was', () => {
     const input = existing(engine);
     await expect(
       createSpecification(engine, input, {
-        afterEffect: async (effect) => {
-          if (effect === 'reservation') throw new Crash('after reservation');
-        },
+        afterEffect: (effect) =>
+          effect === 'reservation'
+            ? Promise.reject(new Crash('after reservation'))
+            : Promise.resolve(),
       }),
     ).rejects.toBeInstanceOf(Crash);
     // Simulates a journal reserved before commits existed.

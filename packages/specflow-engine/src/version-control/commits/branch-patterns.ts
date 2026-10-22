@@ -44,7 +44,7 @@ export function isValidBranchPattern(pattern: string): boolean {
 export function matchesBranchPattern(pattern: string, branch: string): boolean {
   if (branchPatternProblem(pattern) !== undefined) return false;
   const expression = compile(pattern);
-  return expression !== undefined && expression.test(branch);
+  return expression?.test(branch) === true;
 }
 
 export type EngineCommitRefusal = 'branch-protected' | 'branch-not-allowed';

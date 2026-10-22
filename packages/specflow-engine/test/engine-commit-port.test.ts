@@ -168,15 +168,17 @@ describe('Engine commit port (real Git)', () => {
   it.each<[string, (root: string) => Promise<void>, string]>([
     [
       'detached HEAD',
-      async (root) => {
+      (root) => {
         git(root, 'checkout', '-q', '--detach');
+        return Promise.resolve();
       },
       'detached',
     ],
     [
       'another branch checked out',
-      async (root) => {
+      (root) => {
         git(root, 'checkout', '-q', '-b', 'elsewhere');
+        return Promise.resolve();
       },
       'branch-changed',
     ],

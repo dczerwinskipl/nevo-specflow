@@ -341,7 +341,7 @@ async function withLockRetry(
   let result = await run();
   for (
     let attempt = 0;
-    attempt < LOCK_RETRIES * 4 && result.exitCode !== 0 && /index\.lock/u.test(result.stderr);
+    attempt < LOCK_RETRIES * 4 && result.exitCode !== 0 && result.stderr.includes('index.lock');
     attempt++
   ) {
     await delay(LOCK_RETRY_MS);

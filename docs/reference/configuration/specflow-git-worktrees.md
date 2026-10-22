@@ -31,14 +31,14 @@ git:
     allowedBranches: ['feature/**', develop]
 ```
 
-| Field                         | Effect                                                                                                                          |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `git.enabled`                 | Required boolean if `git` exists; absent `git` disables managed new-worktree creation                                           |
-| `git.worktrees.baseRef`       | Default `HEAD` at **Project Home**; accepted overrides also include local branches, full commit IDs and supported tags          |
-| `git.worktrees.branchPattern` | Default `feature/{slug}`; supports `{slug}` and an optional `{shortId}` (each at most once, at least one required)              |
-| `git.integrationTargetBranch` | Optional short local branch name for later default Close into **primary**; primary must physically have that branch checked out |
+| Field                           | Effect                                                                                                                                                                  |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `git.enabled`                   | Required boolean if `git` exists; absent `git` disables managed new-worktree creation                                                                                   |
+| `git.worktrees.baseRef`         | Default `HEAD` at **Project Home**; accepted overrides also include local branches, full commit IDs and supported tags                                                  |
+| `git.worktrees.branchPattern`   | Default `feature/{slug}`; supports `{slug}` and an optional `{shortId}` (each at most once, at least one required)                                                      |
+| `git.integrationTargetBranch`   | Optional short local branch name for later default Close into **primary**; primary must physically have that branch checked out                                         |
 | `git.commits.protectedBranches` | Optional list of branch patterns on which the Engine never commits (default: none). See [Engine commits and protected branches](#engine-commits-and-protected-branches) |
-| `git.commits.allowedBranches` | Optional allow-list of branch patterns; when non-empty the Engine commits only on matching branches (default: none = any branch) |
+| `git.commits.allowedBranches`   | Optional allow-list of branch patterns; when non-empty the Engine commits only on matching branches (default: none = any branch)                                        |
 
 `nevo-specflow init` asks for the pattern right after the integration target: presets
 `feature/{slug}` (default, recommended), `feature/{slug}-{shortId}`, `spec/{slug}-{shortId}` or a
@@ -75,7 +75,7 @@ short local branch name, never `refs/heads/...`):
 | `*`                      | any run of characters except `/` (`release/*` matches `release/1.0`, not `release/1.0/rc`) |
 | `**`                     | any run of characters including `/` (`release/**` matches `release/1.0/rc`)                |
 | `?`                      | exactly one character except `/`                                                           |
-| `[a-z]` `[abc]` `[!0-9]` | one character of the set (`!` or `^` negates; never `/`)                                  |
+| `[a-z]` `[abc]` `[!0-9]` | one character of the set (`!` or `^` negates; never `/`)                                   |
 | anything else            | itself                                                                                     |
 
 Validation is fail-closed with `GIT_POLICY_INVALID`: at most 50 entries per list, each 1-200 characters

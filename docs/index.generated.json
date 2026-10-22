@@ -1776,6 +1776,21 @@
       ]
     },
     {
+      "id": "adr.0013-engine-owned-commits-and-protected-branches",
+      "type": "adr",
+      "title": "Engine-owned scoped commits and protected branches",
+      "status": "current",
+      "file": "docs/architecture/decisions/0013-engine-owned-commits-and-protected-branches.md",
+      "read_when": [],
+      "summary": "When Git is enabled, Specification Create commits its scaffold through one path-limited Engine commit capability that never commits on branches the project protects. Protection comes only from committed project configuration (git.commits); with Git disabled none of this applies.",
+      "related": [
+        "architecture.runtime.specflow-lifecycle",
+        "reference.configuration.specflow-git-worktrees",
+        "reference.api.specflow-specification-operations",
+        "engineering.shared.specflow-git-recovery"
+      ]
+    },
+    {
       "id": "design-system.implementation.library-packaging",
       "type": "engineering",
       "title": "UI library packaging boundary",

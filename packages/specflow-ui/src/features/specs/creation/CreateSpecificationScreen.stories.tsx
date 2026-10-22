@@ -792,7 +792,9 @@ export const StaleWorkspaceConflictRefreshPreservesTheForm: Story = {
     const refresh = canvas.getByRole('button', { name: 'Odśwież opcje' });
     await userEvent.click(refresh);
     await waitFor(() =>
-      expect(canvas.getByRole('status')).toHaveTextContent('Opcje odświeżone. Formularz zachowany'),
+      expect(
+        canvas.getByText(/^Opcje odświeżone. Formularz zachowany/, { selector: '[role="status"]' }),
+      ).toBeInTheDocument(),
     );
     // Nothing was reset: name, tile, switch and the now-invalid value stay and are flagged.
     await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toHaveValue(
@@ -868,7 +870,9 @@ export const RecoveryRequiredLocksTheFormAndNeverCreatesAgain: Story = {
     await expect(canvas.getByText('Środowisko pracy przygotowane')).toBeVisible();
     await expect(canvas.queryByText('workspace-prepared')).toBeNull();
     await expect(canvas.queryByText(/2026-10-20T14:32:08Z/)).toBeNull();
-    await expect(canvas.getByText('Nowe środowisko pracy', { selector: 'dd' })).toBeVisible();
+    await expect(
+      canvas.getByText('Nowe środowisko pracy', { selector: 'dd > span' }),
+    ).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Sprawdź stan operacji' }));
     await waitFor(() => expect(canvas.queryByText('Tworzenie wymaga dokończenia')).toBeNull());
     // The same operation id was checked; creation itself was sent exactly once.
@@ -1028,8 +1032,10 @@ export const DiagnosticsDescribeTheSentOperation: Story = {
     await waitFor(() => expect(canvas.getByLabelText('Odczyty')).toHaveTextContent('opcje:2'));
     await userEvent.click(canvas.getByRole('button', { name: 'Dane diagnostyczne' }));
     // Q2: the place comes from the sent request, not from the refetched options / current tile.
-    await expect(canvas.getByText('Nowe środowisko pracy', { selector: 'dd' })).toBeVisible();
-    await expect(canvas.queryByText('Bieżący katalog', { selector: 'dd' })).toBeNull();
+    await expect(
+      canvas.getByText('Nowe środowisko pracy', { selector: 'dd > span' }),
+    ).toBeVisible();
+    await expect(canvas.queryByText('Bieżący katalog', { selector: 'dd > span' })).toBeNull();
   },
 };
 
@@ -1153,7 +1159,9 @@ export const FailedRefreshDoesNotClaimSuccess: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Odśwież opcje środowiska pracy' }));
     // Q3: the refetch failed; the old options stay, but the user is told so, visibly.
     await canvas.findByText('Nie udało się odświeżyć opcji', { selector: 'div' });
-    await expect(canvas.getByRole('status')).toHaveTextContent('Nie udało się odświeżyć opcji');
+    await expect(
+      canvas.getByText(/^Nie udało się odświeżyć opcji/, { selector: '[role="status"]' }),
+    ).toBeInTheDocument();
     await expect(canvas.queryByText('Opcje odświeżone.')).toBeNull();
     await expect(canvas.getByRole('radio', { name: 'Nowe środowisko pracy' })).toBeChecked();
     await expect(canvas.getByRole('textbox', { name: 'Nazwa specyfikacji' })).toHaveValue(

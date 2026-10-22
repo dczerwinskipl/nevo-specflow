@@ -33,6 +33,13 @@ Create does not switch primary or promise that Close can merge in the future.
 A Specification can instead be created inside a verified existing workspace without provisioning
 another branch. Multiple Spec bindings in the same workspace deliberately share Git history.
 
+### Create journal retention
+
+The Create journal format is `version: 1`. Reserving a new Create (under the same control lock, without Git)
+deletes `completed` journals older than 7 days, at most 50 per reservation; in-progress, `recovery-required`
+and corrupt journals are never removed automatically. Retries within the window replay idempotently; afterwards
+the same operationId is a new operation and slug protection comes from the Specification on disk and the registry.
+
 ### Create commits the scaffold when Git is enabled
 
 When `git.enabled` is true Create commits the scaffold (`specs/active/<slug>/specification.yaml` and

@@ -108,8 +108,13 @@ Order: `recovery-required`, `failed`, `in-progress` (by `updatedAt`, newest firs
 
 ## Retention
 
-- Journals are never deleted by Nevo; completed ones leave the list after 10 minutes, `recovery-required`
-  ones stay until someone resolves them.
+- Completed rows leave the list after 10 minutes. The journal file is a separate, longer retention: when a
+  new Create is reserved the Engine deletes `completed` journals older than 7 days
+  (`COMPLETED_OPERATION_JOURNAL_RETENTION_DAYS`, file mtime, at most 50 per reservation, under the
+  reservation control lock, no Git). In-progress, `recovery-required` and corrupt journals are never
+  deleted automatically and stay until someone resolves them. Inside the window the same operationId
+  replays idempotently; after it the same operationId is a new operation (slug protection then comes from
+  the Specification existing on disk and in the registry). The retention is a constant, not configuration.
 - The progress registry keeps its 60 s replay window for the event stream and, **separately**, a listing
   record: completed 10 minutes, failed and recovery-required 60 minutes, capped at 200 finished entries (the
   oldest drops first). A new run with the same id replaces its record.

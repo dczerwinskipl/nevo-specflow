@@ -894,7 +894,7 @@
         "targetUnconfigured": "The integration target is not configured.",
         "targetLabel": "Merge into",
         "targetNote": "Nothing will be merged now. This only marks the place for later. The choice pins the target at creation and will not change, while the default target follows the project configuration.",
-        "targetUnavailable": "Unavailable as a target:",
+        "targetUnavailable": "Unavailable as a target: <targets/>.",
         "branchSwitch": "Use your own branch name",
         "branchSwitchDescription": "Nevo builds the name from the slug. Turn this on only if you need a specific branch name.",
         "branchLabel": "New branch name",

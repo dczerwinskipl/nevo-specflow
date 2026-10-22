@@ -504,7 +504,7 @@ describe('copy helpers', () => {
         o,
         'T',
       ),
-    ).toBe('Zmienione ustawienia (4): baza, cel, slug, nazwa');
+    ).toBe('Zmienione ustawienia (4): baza, cel, slug i nazwa');
     expect(settingsSummary(choice({ base: { on: true, ref: '' } }), o, 'T')).toBe(
       'Ustawienia domyślne',
     );

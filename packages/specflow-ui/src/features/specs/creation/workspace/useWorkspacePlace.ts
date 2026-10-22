@@ -1,10 +1,10 @@
-import { useRef, useState, type RefObject } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CreateFailure } from '../createFailure';
 import type { CreateOptionsModel } from '../useCreateOptions';
 import type { WorkspacePlaceSectionHandle } from './WorkspacePlaceSection';
 import { initialWorkspaceChoice, type WorkspaceChoice } from './workspaceChoice';
-import type { WorkspaceConflicts } from './workspaceConflicts';
+import { conflictsOfFailure, type WorkspaceConflicts } from './workspaceConflicts';
 import { revalidate } from './workspaceValidation';
 
 export interface WorkspacePlace {
@@ -41,11 +41,33 @@ export interface WorkspacePlace {
 export function useWorkspacePlace(
   createOptions: CreateOptionsModel,
   announce: (message: string) => void,
+  /** The form came back from the progress page: its choice, and the refusal to flag at a field. */
+  initial?: { choice: WorkspaceChoice; failure?: CreateFailure },
 ): WorkspacePlace {
   const { t } = useTranslation();
-  const [choice, setChoice] = useState<WorkspaceChoice>(initialWorkspaceChoice);
-  const [conflicts, setConflicts] = useState<WorkspaceConflicts>({});
+  const [choice, setChoice] = useState<WorkspaceChoice>(
+    () => initial?.choice ?? initialWorkspaceChoice,
+  );
+  const [conflicts, setConflicts] = useState<WorkspaceConflicts>(() => {
+    if (!initial?.failure) return {};
+    const { choice: restored } = initial;
+    const slug = restored.slug.on && restored.slug.edited ? restored.slug.value : undefined;
+    return conflictsOfFailure(initial.failure, { slug, branch: restored.branch.name.trim() }) ?? {};
+  });
   const handleRef = useRef<WorkspacePlaceSectionHandle>(null);
+
+  // Back from the progress page with a refused field: the section (and its field) exists only once
+  // the options are there, so focus is handed over then, once.
+  const pendingFocus = useRef<'branch' | 'slug' | undefined>(
+    conflicts.slug ? 'slug' : conflicts.branch ? 'branch' : undefined,
+  );
+  const optionsReady = createOptions.state.status === 'ready';
+  useEffect(() => {
+    if (!optionsReady || !pendingFocus.current) return;
+    const field = pendingFocus.current;
+    pendingFocus.current = undefined;
+    handleRef.current?.focusField(field);
+  }, [optionsReady]);
 
   return {
     choice,
@@ -53,23 +75,14 @@ export function useWorkspacePlace(
     conflicts,
     handleRef,
     reportFailure(failure, sent) {
-      if (failure.kind === 'name-conflict') {
-        // A slug the owner typed may be the taken name: say so at the field, keep the form.
-        if (!sent.slug) return;
-        const value = sent.slug;
-        setConflicts((current) => ({ ...current, slug: { value } }));
-        handleRef.current?.focusField('slug');
-        return;
-      }
-      if (failure.kind === 'branch-exists' && failure.automatic) {
-        setConflicts((current) => ({ ...current, branch: undefined }));
-        return;
-      }
-      if (failure.kind !== 'branch-exists' && failure.kind !== 'branch-invalid') return;
-      const value = choice.branch.name.trim();
-      const reason = failure.kind === 'branch-invalid' ? 'invalid' : 'exists';
-      setConflicts((current) => ({ ...current, branch: { value, reason } }));
-      handleRef.current?.focusField('branch');
+      const change = conflictsOfFailure(failure, {
+        slug: sent.slug,
+        branch: choice.branch.name.trim(),
+      });
+      if (!change) return;
+      setConflicts((current) => ({ ...current, ...change }));
+      if (change.slug) handleRef.current?.focusField('slug');
+      else if (change.branch) handleRef.current?.focusField('branch');
     },
     chooseAutomaticBranch() {
       setChoice((current) => ({ ...current, branch: initialWorkspaceChoice.branch }));

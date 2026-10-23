@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, MarkdownDocument, ScrollArea } from '@nevo/ui';
 import { apiErrorCode } from '../../../shared/http/apiErrorCode';
+import { documentKindOf, documentViewOf } from '../content-kinds/documentContentKinds';
 import { MarkdownSourceEditor } from './MarkdownSourceEditor';
 import { useDocumentEditor } from './DocumentEditorProvider';
 import { restoreWhileIdle, trackUserScroll, type ScrollAnchor } from './documentScrollAnchor';
@@ -16,7 +17,8 @@ export function DocumentEditor() {
   const session = useDocumentEditor();
   if (!session) return null;
   const { document, draft, editorRoot, save, setDraft } = session;
-  const plainText = Boolean(document.filename?.toLowerCase().endsWith('.txt'));
+  const kind = documentKindOf(document.filename ?? document.title);
+  const plainText = kind.id === 'text';
   return (
     <div ref={editorRoot} className="flex h-full min-h-0 w-full flex-col">
       {session.saveError !== undefined && (
@@ -30,7 +32,7 @@ export function DocumentEditor() {
           }
         />
       )}
-      {draft.editing ? (
+      {documentViewOf(kind, draft) === 'edit' ? (
         <MarkdownSourceEditor
           key={document.id}
           plainText={plainText}
@@ -48,7 +50,6 @@ export function DocumentEditor() {
         <PreviewScroller
           key={document.id}
           content={draft.content}
-          plainText={plainText}
           anchor={session.anchor}
           onAnchorChange={session.rememberAnchor}
           readerRef={session.anchorReader}
@@ -63,13 +64,11 @@ const lineCountOf = (text: string) => text.split('\n').length;
 /** The rendered preview: one scroller whose position is the shared anchor of the document. */
 function PreviewScroller({
   content,
-  plainText,
   anchor,
   onAnchorChange,
   readerRef,
 }: {
   content: string;
-  plainText: boolean;
   anchor?: ScrollAnchor;
   onAnchorChange: (anchor: ScrollAnchor) => void;
   readerRef: { current: (() => ScrollAnchor | undefined) | null };
@@ -77,10 +76,7 @@ function PreviewScroller({
   const markdownLabels = useMarkdownLabels();
   // Preview only: the raw `---` block is hidden and shown as read-only properties. Edit mode never
   // reaches this view, so the source stays unchanged there.
-  const frontmatter = useMemo(
-    () => (plainText ? null : parseFrontmatter(content)),
-    [content, plainText],
-  );
+  const frontmatter = useMemo(() => parseFrontmatter(content), [content]);
   const viewport = useRef<HTMLDivElement | null>(null);
   const latest = useRef({ content, anchor, onAnchorChange });
   useLayoutEffect(() => {
@@ -114,18 +110,12 @@ function PreviewScroller({
         node?.setAttribute('data-document-preview', '');
       }}
     >
-      {plainText ? (
-        <pre className="whitespace-pre-wrap break-words text-body-sm">{content}</pre>
-      ) : (
-        <>
-          {frontmatter && <DocumentProperties properties={frontmatter.properties} />}
-          <MarkdownDocument
-            labels={markdownLabels}
-            source={frontmatter ? frontmatter.body : content}
-            sourceLines
-          />
-        </>
-      )}
+      {frontmatter && <DocumentProperties properties={frontmatter.properties} />}
+      <MarkdownDocument
+        labels={markdownLabels}
+        source={frontmatter ? frontmatter.body : content}
+        sourceLines
+      />
     </ScrollArea>
   );
 }

@@ -11,6 +11,8 @@ import {
   DialogTitle,
   EmptyState,
   WorkspaceHeader,
+  getItemTabId,
+  getItemTabPanelId,
   useWorkspaceCapabilities,
 } from '@nevo/ui';
 import { applicationLocationHeader } from '../../../app/navigation/ApplicationLocation';
@@ -21,8 +23,9 @@ import { useDocumentEditor } from '../editor/DocumentEditorProvider';
 import { documentHeaderModel } from '../editor/documentHeaderModel';
 import { documentRootActions, type DocumentTreeController } from '../explorer/DocumentsExplorer';
 import { documentTreeKeys } from '../read-model/queries';
-import { DocumentTabsProvider } from '../tabs/DocumentTabsProvider';
-import { DocumentPane, UnsavedMarker } from './DocumentPane';
+import { DocumentTabStrip, documentTabsScope } from '../tabs/DocumentTabStrip';
+import { DocumentTabsProvider, useDocumentTabs } from '../tabs/DocumentTabsProvider';
+import { DocumentPane } from './DocumentPane';
 import { DocumentsTreePanel } from './DocumentsTreePanel';
 import { useDocumentOpening } from './useDocumentOpening';
 import { useDocumentTreeOperations } from './useDocumentTreeOperations';
@@ -58,11 +61,14 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
     queryFn: ({ signal }) => documentsApi.documentTree(specId, signal),
   });
   const editor = useDocumentEditor();
-  const documentHeader = documentHeaderModel(editor, t);
+  const tabs = useDocumentTabs();
+  const documentHeader = documentHeaderModel(editor, t, {
+    onCloseTab: documentId ? () => void tabs.requestClose(documentId) : undefined,
+  });
   const [demoNotice, setDemoNotice] = useState(false);
   const treeController = useRef<DocumentTreeController>(null);
   const requestRef = useRef<(() => Promise<boolean>) | null>(null);
-  const operations = useDocumentTreeOperations({ specId, documentId });
+  const operations = useDocumentTreeOperations({ specId });
   const opening = useDocumentOpening({ specId, documentId, requestRef });
   const rootActions = documentRootActions(
     treeController,
@@ -71,7 +77,14 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
     t,
   );
   const pane = documentId ? (
-    <DocumentPane data={{ specId, documentId }} />
+    <div
+      role="tabpanel"
+      id={getItemTabPanelId(documentTabsScope, documentId)}
+      aria-labelledby={getItemTabId(documentTabsScope, documentId)}
+      className="h-full min-h-0 w-full"
+    >
+      <DocumentPane data={{ specId, documentId }} />
+    </div>
   ) : (
     <EmptyState
       className="border-none"
@@ -81,7 +94,7 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
   );
   return (
     <>
-      <DocumentRouteGuard specId={specId} documentId={documentId} requestRef={requestRef} />
+      <DocumentRouteGuard specId={specId} requestRef={requestRef} />
       <AppWorkspace
         scroll="content"
         fit="available"
@@ -117,22 +130,29 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
             onSelect={opening.select}
           />
         </AppWorkspace.Primary>
-        {documentId ? (
+        {documentId || tabs.tabs.length > 0 ? (
           <AppWorkspace.Secondary
-            open={opening.open}
-            onOpenChange={opening.setOpen}
+            open
+            // The region's close closes every tab, asking once about the unsaved documents.
+            onOpenChange={(next) => {
+              if (!next) opening.closeAll();
+            }}
             header={
               <WorkspaceHeader
                 actions={documentHeader.actions}
-                labels={{ moreActions: t('common.moreActions') }}
+                menu="complete"
+                labels={{
+                  moreActions: t('common.moreActions'),
+                  menuActions: t('documents.menuActions'),
+                }}
                 headingLevel={2}
-                status={documentHeader.dirty ? <UnsavedMarker /> : undefined}
                 title={
                   tree.data?.documents
                     .find((item) => item.id === documentId)
                     ?.path.split('/')
                     .at(-1) ?? t('specification.documentPreviewTitle')
                 }
+                identityContent={<DocumentTabStrip />}
               />
             }
           >

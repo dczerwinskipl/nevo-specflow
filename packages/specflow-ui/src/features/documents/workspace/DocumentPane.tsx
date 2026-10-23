@@ -23,7 +23,7 @@ import { SessionRecoveryNotice, useSessionReturn } from '../../sessions';
 import { DocumentEditor } from '../editor/DocumentEditor';
 import { useDocumentEditor } from '../editor/DocumentEditorProvider';
 import { documentHeaderModel } from '../editor/documentHeaderModel';
-import { useDocumentRecord } from '../tabs/DocumentTabsProvider';
+import { useDocumentRecord, useDocumentTabs } from '../tabs/DocumentTabsProvider';
 
 export interface DocumentParams {
   specId: string;
@@ -62,6 +62,10 @@ export function DocumentPane({ data }: { data: DocumentParams }) {
   });
   // The workspace loads the document on screen once; the pane only reports its state.
   const record = useDocumentRecord();
+  const tabs = useDocumentTabs();
+  const closeFailed = tabs.closeFailed && (
+    <Alert tone="attention" role="alert" title={t('documents.tabs.closeFailed')} />
+  );
   const query = record?.documentId === data.documentId ? record.query : undefined;
   const status = isHttpClientError(query?.error) ? query.error.status : undefined;
   if (!query || query.isPending)
@@ -76,6 +80,10 @@ export function DocumentPane({ data }: { data: DocumentParams }) {
         tone="attention"
         title={status === 403 ? t('documents.noAccess') : t('documents.unavailable')}
       >
+        {closeFailed}
+        {tabs.tabs.find((tab) => tab.id === data.documentId)?.dirty && (
+          <p>{t('documents.tabs.missingHint')}</p>
+        )}
         <Button onClick={() => void query.refetch()}>{t('common.retry')}</Button>
       </Alert>
     );
@@ -103,6 +111,7 @@ export function DocumentPane({ data }: { data: DocumentParams }) {
             </BackLink>
           </Typography>
         )}
+        {closeFailed}
         {!supportsSplit && <SessionRecoveryNotice specId={data.specId} />}
         <DocumentEditor />
       </div>

@@ -72,6 +72,7 @@ function Header() {
     <WorkspaceHeader
       title="dokument"
       actions={actions}
+      menu="complete"
       labels={{ moreActions: 'Więcej akcji' }}
       status={dirty ? <span role="status">Niezapisane zmiany</span> : undefined}
     />
@@ -205,7 +206,7 @@ async function waitForPreview(canvasElement: HTMLElement) {
 /** Header contract: exactly one mode action at a time, state-dependent, per header width. */
 export const WideHeaderContract: Story = {
   args: { width: 900 },
-  play: async ({ canvas, userEvent }) => {
+  play: async ({ canvas, canvasElement, userEvent }) => {
     const edit = await canvas.findByRole('button', { name: 'Edytuj dokument' });
     await expect(canvas.queryByRole('button', { name: 'Pokaż podgląd' })).not.toBeInTheDocument();
     // An icon with a tooltip, not a text button.
@@ -219,15 +220,19 @@ export const WideHeaderContract: Story = {
     const preview = await canvas.findByRole('button', { name: 'Pokaż podgląd' });
     await expect(canvas.queryByRole('button', { name: 'Edytuj dokument' })).not.toBeInTheDocument();
     await expect(preview).toHaveTextContent('');
-    await expect(canvas.getByRole('button', { name: 'Zapisz' })).toBeVisible();
-    // The overflow holds Discard and the path action: the toggle never exists twice.
+    // Save exists only while the draft differs.
+    await expect(canvas.queryByRole('button', { name: 'Zapisz' })).not.toBeInTheDocument();
+    const view = EditorView.findFromDOM(canvasElement.querySelector<HTMLElement>('.cm-editor')!)!;
+    view.dispatch({ changes: { from: 0, insert: 'x' } });
+    await expect(await canvas.findByRole('button', { name: 'Zapisz' })).toBeVisible();
+    // The complete menu lists every action once, promoted ones included.
     await userEvent.click(canvas.getByRole('button', { name: 'Więcej akcji' }));
     const menu = await within(document.body).findByRole('menu');
     await expect(
       within(menu)
         .getAllByRole('menuitem')
         .map((item) => item.textContent),
-    ).toEqual(['Cofnij zmiany', 'Pokaż ścieżkę']);
+    ).toEqual(['Pokaż podgląd', 'ZapiszCtrl+S', 'Cofnij zmiany', 'Pokaż ścieżkę']);
     await userEvent.keyboard('{Escape}');
     await userEvent.click(preview);
     await expect(await canvas.findByRole('button', { name: 'Edytuj dokument' })).toBeVisible();
@@ -236,19 +241,23 @@ export const WideHeaderContract: Story = {
 
 export const NarrowHeaderContract: Story = {
   args: { width: 340 },
-  play: async ({ canvas, userEvent }) => {
+  play: async ({ canvas, canvasElement, userEvent }) => {
     // View mode: the pencil is the single direct action (also on a narrow header).
     await expect(await canvas.findByRole('button', { name: 'Edytuj dokument' })).toBeVisible();
-    // The overflow offers only the full path (no mode toggle is hidden there).
+    // The complete menu repeats the promoted action and adds the path.
     await userEvent.click(canvas.getByRole('button', { name: 'Więcej akcji' }));
     await expect(
       within(await within(document.body).findByRole('menu'))
         .getAllByRole('menuitem')
         .map((item) => item.textContent),
-    ).toEqual(['Pokaż ścieżkę']);
+    ).toEqual(['Edytuj dokument', 'Pokaż ścieżkę']);
     await userEvent.keyboard('{Escape}');
     await userEvent.click(canvas.getByRole('button', { name: 'Edytuj dokument' }));
-    // Edit mode: Save is direct; the preview toggle lives in the overflow, never in both places.
+    // Edit mode, clean: the preview toggle keeps the slot.
+    await expect(await canvas.findByRole('button', { name: 'Pokaż podgląd' })).toBeVisible();
+    const view = EditorView.findFromDOM(canvasElement.querySelector<HTMLElement>('.cm-editor')!)!;
+    view.dispatch({ changes: { from: 0, insert: 'x' } });
+    // Edit mode, dirty: Save replaces the toggle in the single direct slot; the toggle is in the menu.
     await expect(await canvas.findByRole('button', { name: 'Zapisz' })).toBeVisible();
     await expect(canvas.queryByRole('button', { name: 'Pokaż podgląd' })).not.toBeInTheDocument();
     await userEvent.click(canvas.getByRole('button', { name: 'Więcej akcji' }));
@@ -257,7 +266,7 @@ export const NarrowHeaderContract: Story = {
       within(menu)
         .getAllByRole('menuitem')
         .map((item) => item.textContent),
-    ).toEqual(['Pokaż podgląd', 'Cofnij zmiany', 'Pokaż ścieżkę']);
+    ).toEqual(['Pokaż podgląd', 'ZapiszCtrl+S', 'Cofnij zmiany', 'Pokaż ścieżkę']);
     await userEvent.click(within(menu).getByRole('menuitem', { name: 'Pokaż podgląd' }));
     await expect(await canvas.findByRole('button', { name: 'Edytuj dokument' })).toBeVisible();
   },
@@ -420,22 +429,15 @@ export const TouchEntryDoesNotFocusTheEditor: Story = {
   },
 };
 
-/** S10: plain text has no source-line map; the proportional fallback never jumps to the top. */
-export const PlainTextFallsBackToProportion: Story = {
+/** S10: plain text has one view: it opens as the source editor, with no preview and no mode switch. */
+export const PlainTextIsEditOnly: Story = {
   args: { initial: 'txt' },
-  play: async (context) => {
-    const { canvasElement } = context;
-    await waitFor(() => {
-      if (!previewOf(canvasElement)?.querySelector('pre')) throw new Error('Preview pending');
-    });
-    const preview = previewOf(canvasElement)!;
-    await userScroll(preview, 0.5 * (preview.scrollHeight - preview.clientHeight));
-    const view = await openEditor(context);
-    await waitFor(() => expect(view.scrollDOM.scrollTop).toBeGreaterThan(0));
-    const ratio =
-      view.scrollDOM.scrollTop / (view.scrollDOM.scrollHeight - view.scrollDOM.clientHeight);
-    await expect(ratio).toBeGreaterThan(0.3);
-    await expect(ratio).toBeLessThan(0.7);
+  play: async ({ canvas, canvasElement }) => {
+    const view = await openEditorOnly(canvasElement);
+    await expect(view.state.doc.toString()).toBe(textDocument);
+    await expect(previewOf(canvasElement)).toBeNull();
+    await expect(canvas.queryByRole('button', { name: 'Edytuj dokument' })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('button', { name: 'Pokaż podgląd' })).not.toBeInTheDocument();
   },
 };
 

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook } from '@testing-library/react';
-import { createRef, StrictMode } from 'react';
+import { createRef, StrictMode, type RefObject } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useDocumentOpening } from './useDocumentOpening';
 
@@ -11,6 +11,7 @@ interface Controller {
 const mocks = vi.hoisted(() => ({
   controller: undefined as unknown as Controller,
   supportsSplit: false,
+  tabs: { show: vi.fn(() => Promise.resolve()), closeAll: vi.fn(() => Promise.resolve()) },
 }));
 
 vi.mock('@nevo/ui', async (importOriginal) => ({
@@ -19,10 +20,7 @@ vi.mock('@nevo/ui', async (importOriginal) => ({
   useSecondaryNavigation: () => ({ ...mocks.controller }),
   useWorkspaceCapabilities: () => ({ supportsSplit: mocks.supportsSplit }),
 }));
-vi.mock('@tanstack/react-router', () => ({ useNavigate: () => vi.fn() }));
-vi.mock('../../../app/navigation/ApplicationLocation', () => ({
-  useApplicationCollection: () => 'current',
-}));
+vi.mock('../tabs/DocumentTabsProvider', () => ({ useDocumentTabs: () => mocks.tabs }));
 vi.mock('./DocumentPane', () => ({ documentStack: { id: 'document-stack' } }));
 
 const deferred = () => {
@@ -32,10 +30,14 @@ const deferred = () => {
 };
 const flush = () => act(() => Promise.resolve());
 
-function render(initial: string | undefined, strict = false) {
+function render(
+  initial: string | undefined,
+  strict = false,
+  requestRef: RefObject<(() => Promise<boolean>) | null> = createRef(),
+) {
   return renderHook(
     ({ documentId }: { documentId?: string }) =>
-      useDocumentOpening({ specId: 's', documentId, requestRef: createRef() }),
+      useDocumentOpening({ specId: 's', documentId, requestRef }),
     { initialProps: { documentId: initial }, ...(strict ? { wrapper: StrictMode } : {}) },
   );
 }
@@ -129,5 +131,39 @@ describe('useDocumentOpening stacked navigation (narrow layout)', () => {
     closes.forEach((pending) => pending.resolve());
     await flush();
     expect(mocks.controller.open).not.toHaveBeenCalled();
+  });
+});
+
+describe('useDocumentOpening tabs', () => {
+  beforeEach(() => {
+    mocks.supportsSplit = true;
+    mocks.tabs.show.mockClear();
+    mocks.tabs.closeAll.mockClear();
+    mocks.controller = {
+      open: vi.fn(() => Promise.resolve()),
+      close: vi.fn(() => Promise.resolve()),
+    };
+  });
+  afterEach(cleanup);
+
+  it('shows another document through the tabs and not the one already on screen', () => {
+    const view = render('A');
+    act(() => view.result.current.select('B'));
+    expect(mocks.tabs.show).toHaveBeenCalledWith('B');
+    act(() => view.result.current.select('A'));
+    expect(mocks.tabs.show).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes every tab only after the one question is answered yes', async () => {
+    const answers = [false, true];
+    const ask = { current: vi.fn(() => Promise.resolve(answers.shift()!)) };
+    const view = render('A', false, ask);
+    act(() => view.result.current.closeAll());
+    await flush();
+    expect(mocks.tabs.closeAll).not.toHaveBeenCalled();
+    act(() => view.result.current.closeAll());
+    await flush();
+    expect(ask.current).toHaveBeenCalledTimes(2);
+    expect(mocks.tabs.closeAll).toHaveBeenCalledTimes(1);
   });
 });

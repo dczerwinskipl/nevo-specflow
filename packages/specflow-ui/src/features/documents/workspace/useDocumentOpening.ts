@@ -1,20 +1,24 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
-import { useNavigate } from '@tanstack/react-router';
 import { useSecondaryNavigation, useWorkspaceCapabilities } from '@nevo/ui';
-import { useApplicationCollection } from '../../../app/navigation/ApplicationLocation';
+import { useDocumentTabs } from '../tabs/DocumentTabsProvider';
 import { documentStack } from './DocumentPane';
 
 export interface DocumentOpening {
-  /** The document pane is shown (wide layout; the user can close it without leaving the route). */
-  open: boolean;
-  /** Opens a document from the tree and, in the wide layout, focuses its heading once shown. */
+  /**
+   * Opens a document from the tree as a new tab, or activates its tab; in the wide layout the
+   * active tab receives focus once shown.
+   */
   select: (id: string) => void;
-  /** Shows the pane again, or asks to leave unsaved edits before closing it. */
-  setOpen: (next: boolean) => void;
+  /** Closes every tab after asking ONCE about the unsaved documents (the region's close). */
+  closeAll: () => void;
 }
 
-const headingSelector =
-  '[data-workspace-surface="secondary"][data-workspace-active="true"] [data-workspace-header-title="true"]';
+const secondaryHeader = '[data-workspace-surface="secondary"][data-workspace-active="true"]';
+// The active tab, else the region heading (a list without an active tab).
+const focusSelectors = [
+  `${secondaryHeader} [role="tab"][aria-selected="true"]`,
+  `${secondaryHeader} [data-workspace-header-title="true"]`,
+];
 const focusAttempts = 20;
 
 /**
@@ -30,12 +34,9 @@ export function useDocumentOpening(options: {
   requestRef: RefObject<(() => Promise<boolean>) | null>;
 }): DocumentOpening {
   const { specId, documentId, requestRef } = options;
-  const navigate = useNavigate();
+  const tabs = useDocumentTabs();
   const navigation = useSecondaryNavigation();
-  const collection = useApplicationCollection();
   const { supportsSplit } = useWorkspaceCapabilities();
-  // The document whose pane the user closed; any other document opens its pane again.
-  const [closedFor, setClosedFor] = useState<string>();
   // A document the user opened from the tree and that still has to receive focus once shown.
   const [focusFor, setFocusFor] = useState<string>();
   // Guards the stack effect: the navigation controller changes identity whenever it opens or closes.
@@ -82,9 +83,11 @@ export function useDocumentOpening(options: {
     let attempts = 0;
     let frame = 0;
     const tryFocus = () => {
-      const heading = document.querySelector<HTMLElement>(headingSelector);
-      if (heading) {
-        heading.focus({ preventScroll: true });
+      const target = focusSelectors
+        .map((selector) => document.querySelector<HTMLElement>(selector))
+        .find(Boolean);
+      if (target) {
+        target.focus({ preventScroll: true });
         setFocusFor(undefined);
         return;
       }
@@ -96,27 +99,18 @@ export function useDocumentOpening(options: {
   }, [documentId, supportsSplit, focusFor]);
 
   const select = (id: string) => {
-    setClosedFor(undefined);
     if (id === documentId) {
       if (!supportsSplit) void navigation.open(documentStack, { specId, documentId: id });
       return;
     }
     if (supportsSplit) setFocusFor(id);
-    void navigate({
-      to: '/specs/$specId/documents/$documentId',
-      params: { specId, documentId: id },
-      search: { collection },
-    });
+    void tabs.show(id);
   };
-  const setOpen = (next: boolean) => {
-    if (next) {
-      setClosedFor(undefined);
-      return;
-    }
+  const closeAll = () => {
     void (async () => {
       if (requestRef.current && !(await requestRef.current())) return;
-      setClosedFor(documentId);
+      await tabs.closeAll();
     })();
   };
-  return { open: closedFor === undefined || closedFor !== documentId, select, setOpen };
+  return { select, closeAll };
 }

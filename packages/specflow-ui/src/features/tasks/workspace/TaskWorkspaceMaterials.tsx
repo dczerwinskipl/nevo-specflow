@@ -3,7 +3,7 @@ import { Download, FileArchive, Image } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { OperationalRow, operationalPrimaryLinkClassName } from '../../../shared/operational-list';
 import type { WorkspaceMaterial } from './taskWorkspaceModel';
-import { TaskCopyValue, TaskDetailDisclosure } from '../detail/TaskDetailDisclosure';
+import { TaskCopyValue, TaskDetailDisclosure } from '../detail/hints/TaskDetailDisclosure';
 
 export function TaskWorkspaceMaterials({
   materials,

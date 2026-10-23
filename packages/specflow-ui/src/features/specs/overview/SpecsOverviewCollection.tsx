@@ -10,10 +10,10 @@ import {
   sortArchiveItems,
   type OverviewCapabilities,
 } from './presentation';
-import { SpecSectionHeader } from './SpecSectionHeader';
-import { SpecListRow } from './SpecListRow';
-import type { RenderSpecificationLink } from './SpecPrimaryLink';
-import { specRowColumns } from './specRowColumns';
+import { SpecSectionHeader } from './rows/SpecSectionHeader';
+import { SpecListRow } from './rows/SpecListRow';
+import type { RenderSpecificationLink } from './rows/SpecPrimaryLink';
+import { specRowColumns } from './rows/specRowColumns';
 
 export function SpecsOverviewCollection({
   projection,

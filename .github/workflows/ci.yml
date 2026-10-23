@@ -77,6 +77,9 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup
 
+      - name: Storybook scope self-test
+        run: node tools/ci-storybook-scope.mjs --self-test
+
       # Resolve the Turbo task graph and fan out independent package jobs.
       # PRs select affected workspaces, then defer known process/browser-heavy packages;
       # main, release, scheduled and manual runs execute the full package suite.
@@ -87,6 +90,7 @@ jobs:
           pnpm exec turbo run test ${{ env.AFFECTED }} --dry=json > .turbo-test-plan.json
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
+          import { execFileSync } from 'node:child_process';
 
           const plan = JSON.parse(fs.readFileSync('.turbo-test-plan.json', 'utf8'));
           const packages = [
@@ -104,22 +108,42 @@ jobs:
 
           // These packages run subprocess/transport/browser integration tests.
           // Keep them for main/nightly/manual runs, not the PR feedback loop.
-          const deferredOnPr = new Set([
-            '@nevo/specflow',
-            '@nevo/specflow-runtime',
-            'nevo-repo-storybook',
-          ]);
-          const selectedPackages =
-            process.env.GITHUB_EVENT_NAME === 'pull_request'
-              ? packages.filter((packageName) => !deferredOnPr.has(packageName))
-              : packages;
+          // Storybook is scoped by changed path instead (tools/ci-storybook-scope.mjs):
+          // nevo-ui => full corpus, specflow-ui => its stories, otherwise nothing extra.
+          const isPr = process.env.GITHUB_EVENT_NAME === 'pull_request';
+          const storybook = 'nevo-repo-storybook';
+          const deferredOnPr = new Set(['@nevo/specflow', '@nevo/specflow-runtime', storybook]);
+          const selectedPackages = isPr
+            ? packages.filter((packageName) => !deferredOnPr.has(packageName))
+            : packages;
 
-          const tests = selectedPackages.map((packageName) => ({
+          const toTest = (packageName, filters = []) => ({
             package: packageName,
             label: packageName.startsWith('nevo-repo-')
               ? `tool/${packageName.slice('nevo-repo-'.length)}`
               : packageName,
-          }));
+            // Space-separated vitest path filters; empty = the whole package suite.
+            filters: filters.join(' '),
+          });
+          const tests = selectedPackages.map((packageName) => toTest(packageName));
+
+          if (isPr) {
+            const scope = JSON.parse(
+              execFileSync(
+                'node',
+                [
+                  'tools/ci-storybook-scope.mjs',
+                  process.env.TURBO_SCM_BASE,
+                  process.env.TURBO_SCM_HEAD,
+                ],
+                { encoding: 'utf8' },
+              ),
+            );
+            console.log(`Storybook PR scope: ${JSON.stringify(scope)}`);
+            if (scope.mode !== 'none') {
+              tests.push(toTest(storybook, scope.filters));
+            }
+          }
 
           fs.appendFileSync(
             process.env.GITHUB_OUTPUT,
@@ -132,6 +156,7 @@ jobs:
     needs: test-plan
     if: needs.test-plan.outputs.has_tests == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.test-plan.outputs.matrix) }}
@@ -146,8 +171,20 @@ jobs:
       - name: Engine unit tests (PR only)
         if: github.event_name == 'pull_request' && matrix.package == '@nevo/specflow-engine'
         run: pnpm --filter @nevo/specflow-engine test:unit
+      # PR: all stories of a changed design-system / SpecFlow UI package, or the
+      # directly changed stories (scope planned by tools/ci-storybook-scope.mjs).
+      - name: Test nevo-repo-storybook (PR scope)
+        if: github.event_name == 'pull_request' && matrix.package == 'nevo-repo-storybook'
+        env:
+          STORYBOOK_FILTERS: ${{ matrix.filters }}
+        shell: bash
+        # Space-separated vitest path filters; empty runs the whole corpus.
+        run: |
+          read -r -a filters <<< "$STORYBOOK_FILTERS"
+          # turbo keeps the ^build dependency; args after -- reach `vitest run --project=storybook`.
+          pnpm exec turbo run test --filter=nevo-repo-storybook -- "${filters[@]}"
       - name: Test ${{ matrix.package }} (full on main / nightly)
-        if: github.event_name != 'pull_request' || matrix.package != '@nevo/specflow-engine'
+        if: github.event_name != 'pull_request' || (matrix.package != '@nevo/specflow-engine' && matrix.package != 'nevo-repo-storybook')
         env:
           PACKAGE: ${{ matrix.package }}
         run: pnpm exec turbo run test --filter="$PACKAGE"

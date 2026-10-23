@@ -2,9 +2,9 @@ import { lstat, readFile, realpath } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 
 import { verifyGitInstance } from './git-instance';
-import { PROJECT_HOME_MARKER_RELATIVE_PATH, type ResolvedProjectHome } from './project-home';
-import { WorkspaceRegistryError } from './workspace-registry-types';
-import { pathKey } from './workspace-registry-validation';
+import { PROJECT_HOME_MARKER_RELATIVE_PATH, type ResolvedProjectHome } from './home/home';
+import { WorkspaceRegistryError } from './workspace/registry/types';
+import { pathKey } from './workspace/registry/validation';
 
 /**
  * Filesystem-only evidence used by READ paths instead of Git (no child process).

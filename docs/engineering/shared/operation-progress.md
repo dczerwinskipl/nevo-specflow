@@ -78,7 +78,7 @@ stream must never fail or block the operation.
   The hook reports `lost` when the stream failed, dropped or ended without a terminal event, so the
   owner can switch its polling from a slow safety net to its regular backoff; a terminal event is a
   reason to read the inspection at once, never the outcome itself (Create:
-  `watchCreateOperation.ts`, hints `live`, `terminal`, `lost`).
+  `creation/operation/watchCreateOperation.ts`, hints `live`, `terminal`, `lost`).
 - Abort the stream when the owner stops needing it (finished, unmounted, another operation).
 - Do not retry or poll the stream from the UI: the SSE client already reconnects with
   `Last-Event-ID` and the server answers with a fresh snapshot.

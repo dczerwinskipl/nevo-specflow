@@ -1,4 +1,4 @@
-import type { SpecsOverviewApi } from '../../../src/features/specs/overview/api';
+import type { SpecsOverviewApi } from '../../../src/features/specs/overview/data/api';
 import { createSpecsFixture } from './fixtures';
 
 export function createFixtureSpecsOverviewApi(): SpecsOverviewApi {

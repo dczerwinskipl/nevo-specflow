@@ -11,9 +11,9 @@ import {
   generatedBranchProblem,
   workspaceFieldErrors,
   type WorkspaceErrors,
-} from './workspaceValidation';
-import type { WorkspaceChoice } from './workspaceChoice';
-import type { WorkspaceConflicts } from './workspaceConflicts';
+} from './model/workspaceValidation';
+import type { WorkspaceChoice } from './model/workspaceChoice';
+import type { WorkspaceConflicts } from './model/workspaceConflicts';
 
 /** Focusable controls of the settings, so an owner can focus an invalid one without DOM queries. */
 export interface WorkspaceSettingsControls {

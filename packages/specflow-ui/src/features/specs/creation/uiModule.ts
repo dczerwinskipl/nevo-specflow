@@ -2,7 +2,7 @@ import { createElement } from 'react';
 
 import { contributeTo, type UiModule } from '../../../app/ui-modules/contracts';
 import { specsOverviewPanels } from '../extensions/specsOverviewPanels';
-import { CreateOperationsPanel } from './CreateOperationsPanel';
+import { CreateOperationsPanel } from './operations-panel/CreateOperationsPanel';
 
 /**
  * Specification creation contributes the panel of its running operations to the specification list

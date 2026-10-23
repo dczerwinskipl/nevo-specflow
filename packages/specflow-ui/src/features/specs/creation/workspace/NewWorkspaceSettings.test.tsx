@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LocalizationProvider, createSpecFlowI18n } from '../../../../i18n';
 import { NewWorkspaceSettings } from './NewWorkspaceSettings';
-import { createOptionsFixture } from '../creationOptions.stories-support';
-import { buildCreateRequest } from './createRequest.test-support';
-import { initialWorkspaceChoice, type WorkspaceChoice } from './workspaceChoice';
-import { revalidate } from './workspaceValidation';
+import { createOptionsFixture } from '../options/creationOptions.stories-support';
+import { buildCreateRequest } from './model/createRequest.test-support';
+import { initialWorkspaceChoice, type WorkspaceChoice } from './model/workspaceChoice';
+import { revalidate } from './model/workspaceValidation';
 
 const options = createOptionsFixture('default');
 const operationId = '7f3a91c2-4b6e-4d1a-9c0e-2f5a1b8d3e77';

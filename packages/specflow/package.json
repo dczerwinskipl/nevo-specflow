@@ -16,6 +16,7 @@
   "scripts": {
     "build": "node packaging/bin.ts bundle",
     "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint .",
     "test": "vitest run --no-file-parallelism",
     "artifact:pack": "node packaging/bin.ts pack",
     "dogfood": "node packaging/bin.ts dogfood",

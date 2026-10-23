@@ -150,7 +150,7 @@ ordinary query refreshes preserve its existing reading DOM.
 `choiceSurfaceClassName` is the only shared appearance for a selectable multi-line card (a command
 `button`, an `aria-checked` radio, or a `label` containing one native radio). There is no
 `SelectableCard` component: the consumer owns semantics, layout and content. SpecFlow UI composes the
-single-choice case once in `features/specs/creation/ChoiceTile.tsx` (`ChoiceTileGroup` + `ChoiceTile`: native
+single-choice case once in `features/specs/creation/options/ChoiceTile.tsx` (`ChoiceTileGroup` + `ChoiceTile`: native
 radio in a `label`, title/description wired with `aria-labelledby`/`aria-describedby`, always-rendered
 check, `disabled` for a skipped option and `blocked` for one whose reason must stay readable);
 Create's workspace place and agent provider use it. A command tile that is a `button` (the Create method
@@ -178,7 +178,7 @@ in the trigger, so the trigger always stays one line and never contains descript
 - Branch-like values compose the label as `Icon name="branch"` (`size="sm"`) + `Typography
 as="span" variant="code-md"`; `textValue` carries the plain name.
   In the Create workspace section this composition is the single `BranchRef` piece
-  (`specflow-ui/src/features/specs/creation/BranchRef.tsx`, a product component, not part of the design system) used by summary rows, switch descriptions, notes and
+  (`specflow-ui/src/features/specs/creation/workspace/BranchRef.tsx`, a product component, not part of the design system) used by summary rows, switch descriptions, notes and
   select items alike; do not restyle a branch locally or wrap it in parentheses.
 - Native `disabled` is removed from keyboard navigation by Radix. When the user must reach and read
   why an option is not available, use `unavailable` (plus `description` as the reason): the item

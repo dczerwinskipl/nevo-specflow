@@ -5,7 +5,7 @@ import type { SpecFlowEngine } from '../../application';
 import { GitCapabilityError } from '../../git/errors';
 import { executeGitMutation } from '../../git/mutation';
 import { executeGit } from '../../git/process';
-import { disabledIntegrationHooksDirectory } from '../../specs/lifecycle/git-scratch';
+import { disabledIntegrationHooksDirectory } from '../../specs/lifecycle';
 import { readProjectGitPolicy } from '../worktrees/config';
 import { engineCommitRefusal } from './branch-patterns';
 import type { CommitPort, EngineCommitRequest, FoundCommit, PathsState } from './port';
@@ -213,86 +213,89 @@ export function createGitCommitPort(
     inspectPaths,
     fileAt,
     isAncestor,
-    async commit(request) {
-      await preflight(request);
-      const { root } = request;
-      const parentHead = await head(root);
-      if (!parentHead) throw blocked('no-commits');
-      const hooks = await disabledIntegrationHooksDirectory(engine);
-      const literals = request.paths.map((path) => ':(literal)' + path);
+    // Commits in one checkout run one at a time inside this process (they all move the same HEAD);
+    // another process is covered by the lost-race retries below.
+    commit: (request) =>
+      serializePerCheckout(request.root, async () => {
+        await preflight(request);
+        const { root } = request;
+        const parentHead = await head(root);
+        if (!parentHead) throw blocked('no-commits');
+        const hooks = await disabledIntegrationHooksDirectory(engine);
+        const literals = request.paths.map((path) => ':(literal)' + path);
 
-      // Makes untracked scaffold files "known" to Git (so `--only` accepts them) without staging
-      // their content; nothing else in the index is touched.
-      const added = await withLockRetry(() =>
-        executeGitMutation(root, ['add', '--intent-to-add', '--', ...literals]),
-      );
-      if (added.exitCode !== 0) throw failed('intent-to-add');
+        // Makes untracked scaffold files "known" to Git (so `--only` accepts them) without staging
+        // their content; nothing else in the index is touched.
+        const added = await withLockRetry(() =>
+          executeGitMutation(root, ['add', '--intent-to-add', '--', ...literals]),
+        );
+        if (added.exitCode !== 0) throw failed('intent-to-add');
 
-      const author = await userAuthor(root);
-      // `git commit` commits on whatever HEAD is at that moment: confirm the branch (and its
-      // protection) once more immediately before it, and verify where the commit landed after.
-      await testHooks?.afterPreflight?.();
-      await assertAttachedToExpected(request);
-      await testHooks?.afterRecheck?.();
-      const committed = await withLockRetry(() =>
-        executeGitMutation(root, [
-          '-c',
-          'core.hooksPath=' + hooks,
-          '-c',
-          'commit.gpgSign=false',
-          '-c',
-          'user.name=' + ENGINE_NAME,
-          '-c',
-          'user.email=' + ENGINE_EMAIL,
-          'commit',
-          '--only',
-          '--no-verify',
-          '--no-gpg-sign',
-          ...(author ? ['--author=' + author] : []),
-          ...messageArguments(request),
-          '--',
-          ...literals,
-        ]),
-      );
-      // A non-zero exit does not prove "nothing happened": look for our commit by its trailer.
-      const found = await findByOperation(root, request.operationId, parentHead);
-      if (found.status === 'found') {
-        if (!sameSet(found.paths, request.paths)) {
+        const author = await userAuthor(root);
+        // `git commit` commits on whatever HEAD is at that moment: confirm the branch (and its
+        // protection) once more immediately before it, and verify where the commit landed after.
+        await testHooks?.afterPreflight?.();
+        await assertAttachedToExpected(request);
+        await testHooks?.afterRecheck?.();
+        const committed = await withLockRetry(() =>
+          executeGitMutation(root, [
+            '-c',
+            'core.hooksPath=' + hooks,
+            '-c',
+            'commit.gpgSign=false',
+            '-c',
+            'user.name=' + ENGINE_NAME,
+            '-c',
+            'user.email=' + ENGINE_EMAIL,
+            'commit',
+            '--only',
+            '--no-verify',
+            '--no-gpg-sign',
+            ...(author ? ['--author=' + author] : []),
+            ...messageArguments(request),
+            '--',
+            ...literals,
+          ]),
+        );
+        // A non-zero exit does not prove "nothing happened": look for our commit by its trailer.
+        const found = await findByOperation(root, request.operationId, parentHead);
+        if (found.status === 'found') {
+          if (!sameSet(found.paths, request.paths)) {
+            throw new GitCapabilityError(
+              'GIT_OPERATION_UNCERTAIN',
+              'The Engine commit does not contain exactly the expected paths.',
+              'unexpected-commit-content',
+            );
+          }
+          const landed = await executeGit(root, [
+            'merge-base',
+            '--is-ancestor',
+            found.sha,
+            'refs/heads/' + request.expectedBranch,
+          ]);
+          if (landed.exitCode !== 0) {
+            throw new GitCapabilityError(
+              'GIT_OPERATION_UNCERTAIN',
+              'The Engine commit did not land on the expected branch.',
+              'commit-on-unexpected-branch',
+            );
+          }
+          return { sha: found.sha, parentHead };
+        }
+        if (found.status === 'history-changed') {
           throw new GitCapabilityError(
             'GIT_OPERATION_UNCERTAIN',
-            'The Engine commit does not contain exactly the expected paths.',
-            'unexpected-commit-content',
+            'Git history changed during the Engine commit.',
+            'history-changed',
           );
         }
-        const landed = await executeGit(root, [
-          'merge-base',
-          '--is-ancestor',
-          found.sha,
-          'refs/heads/' + request.expectedBranch,
-        ]);
-        if (landed.exitCode !== 0) {
-          throw new GitCapabilityError(
-            'GIT_OPERATION_UNCERTAIN',
-            'The Engine commit did not land on the expected branch.',
-            'commit-on-unexpected-branch',
-          );
-        }
-        return { sha: found.sha, parentHead };
-      }
-      if (found.status === 'history-changed') {
+        if (committed.exitCode !== 0) throw failed('commit-exit-' + String(committed.exitCode));
         throw new GitCapabilityError(
           'GIT_OPERATION_UNCERTAIN',
-          'Git history changed during the Engine commit.',
-          'history-changed',
+          'The Engine commit reported success but cannot be found.',
+          'commit-not-found',
         );
-      }
-      if (committed.exitCode !== 0) throw failed('commit-exit-' + String(committed.exitCode));
-      throw new GitCapabilityError(
-        'GIT_OPERATION_UNCERTAIN',
-        'The Engine commit reported success but cannot be found.',
-        'commit-not-found',
-      );
-    },
+      }),
   };
 }
 
@@ -382,20 +385,44 @@ async function indexUnlocked(lockPath: string): Promise<boolean> {
   return false;
 }
 
-/** A refused index lock proves the command changed nothing, so retrying it is safe. */
+/**
+ * Git refused to take a lock or to move the ref because another writer got there first: the index
+ * lock, or the compare-and-swap on HEAD ("cannot lock ref 'HEAD': is at X but expected Y",
+ * "Unable to create '...lock'"). Git refuses these before changing anything, so the command
+ * provably changed nothing and retrying it is safe.
+ */
+function lostWriteRace(stderr: string): boolean {
+  return /index.lock|cannot lock ref|Unable to create '[^']*.lock'/u.test(stderr);
+}
+
+/** A refused lock or ref update proves the command changed nothing, so retrying it is safe. */
 async function withLockRetry(
   run: () => Promise<{ readonly exitCode: number; readonly stderr: string }>,
 ): Promise<{ readonly exitCode: number; readonly stderr: string }> {
   let result = await run();
   for (
     let attempt = 0;
-    attempt < LOCK_RETRIES * 4 && result.exitCode !== 0 && result.stderr.includes('index.lock');
+    attempt < LOCK_RETRIES * 4 && result.exitCode !== 0 && lostWriteRace(result.stderr);
     attempt++
   ) {
     await delay(LOCK_RETRY_MS);
     result = await run();
   }
   return result;
+}
+
+const checkoutQueues = new Map<string, Promise<unknown>>();
+
+/** Runs `task` after every earlier task for the same checkout settled (failures do not block the queue). */
+function serializePerCheckout<T>(root: string, task: () => Promise<T>): Promise<T> {
+  const previous = checkoutQueues.get(root) ?? Promise.resolve();
+  const run = previous.then(task, task);
+  const tail = run.catch(() => undefined);
+  checkoutQueues.set(root, tail);
+  void tail.then(() => {
+    if (checkoutQueues.get(root) === tail) checkoutQueues.delete(root);
+  });
+  return run;
 }
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));

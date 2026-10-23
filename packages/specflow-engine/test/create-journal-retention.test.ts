@@ -10,7 +10,7 @@ import { bootstrapProjectHome, createSpecificationScaffold } from '../src/testin
 import {
   fingerprintCreateClientIntent,
   normalizeCreateClientIntent,
-} from '../src/specs/create-intent';
+} from '../src/specs/create/intent';
 import {
   COMPLETED_OPERATION_JOURNAL_RETENTION_DAYS,
   createJournalPath,
@@ -21,13 +21,17 @@ import {
   withCreateJournalLock,
   type CreateJournal,
   type CreateStage,
-} from '../src/specs/create-journal';
+} from '../src/specs/create/journal';
 
 const roots: string[] = [];
 const DAY = 24 * 60 * 60 * 1000;
 
 afterEach(async () => {
-  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    roots
+      .splice(0)
+      .map((root) => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })),
+  );
 });
 
 async function fixture() {

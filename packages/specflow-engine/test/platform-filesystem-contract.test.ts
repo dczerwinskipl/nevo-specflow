@@ -7,13 +7,17 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { bootstrapProjectHome } from '../src/testing';
-import { writeJsonAtomically } from '../src/project/atomic-json';
+import { writeJsonAtomically } from '../src/project/fs/atomic-json';
 import { projectControlLockPath, withProjectControlLock } from '../src/project/control-lock';
 
 const roots: string[] = [];
 
 afterEach(async () => {
-  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    roots
+      .splice(0)
+      .map((root) => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })),
+  );
 });
 
 async function project() {

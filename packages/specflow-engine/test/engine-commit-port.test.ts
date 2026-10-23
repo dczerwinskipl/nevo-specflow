@@ -15,7 +15,11 @@ const roots: string[] = [];
 
 afterEach(async () => {
   vi.unstubAllEnvs();
-  await Promise.all(roots.splice(0).map((path) => rm(path, { recursive: true, force: true })));
+  await Promise.all(
+    roots
+      .splice(0)
+      .map((path) => rm(path, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })),
+  );
 });
 
 const PATHS = ['specs/active/demo/specification.yaml', 'specs/active/demo/overview.md'];
@@ -317,6 +321,32 @@ describe('Engine commit port (real Git)', () => {
     ]);
     expect(one.sha).not.toBe(two.sha);
     expect(git(root, 'rev-list', '--count', 'HEAD')).toBe('3');
+    expect(git(root, 'status', '--porcelain=v1', '--untracked-files=all')).toBe('');
+  }, 240000);
+
+  it('lands every one of several concurrent disjoint-path commits (ref-update races are retried)', async () => {
+    const { root, engine } = await project();
+    const commits = openVersionControl(engine).commits;
+    const names = ['a', 'b', 'c', 'd', 'e', 'f'];
+    for (const name of names) {
+      await mkdir(join(root, 'specs/active/' + name), { recursive: true });
+      await writeFile(
+        join(root, 'specs/active/' + name + '/specification.yaml'),
+        'id: ' + name + '\n',
+      );
+    }
+    const results = await Promise.all(
+      names.map((name) =>
+        commits.commit(
+          request(root, {
+            paths: ['specs/active/' + name + '/specification.yaml'],
+            subject: 'spec(create): ' + name,
+          }),
+        ),
+      ),
+    );
+    expect(new Set(results.map((result) => result.sha)).size).toBe(names.length);
+    expect(git(root, 'rev-list', '--count', 'HEAD')).toBe(String(names.length + 1));
     expect(git(root, 'status', '--porcelain=v1', '--untracked-files=all')).toBe('');
   }, 240000);
 

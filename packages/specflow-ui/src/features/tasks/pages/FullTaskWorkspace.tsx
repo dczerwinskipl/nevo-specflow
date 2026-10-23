@@ -28,8 +28,8 @@ import { inspectionAnchor, type TaskInspectionAnchor } from '../detail/taskInspe
 import {
   TaskHistoryResourceInspection,
   type TaskHistoryResourceParams,
-} from '../detail/TaskHistoryResourceInspection';
-import { TaskHistory } from '../detail/TaskHistory';
+} from '../detail/history/TaskHistoryResourceInspection';
+import { TaskHistory } from '../detail/history/TaskHistory';
 import type { TaskEvidenceParams } from '../detail/taskInspectionModel';
 import {
   TaskInspection,

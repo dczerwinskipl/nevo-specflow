@@ -10,12 +10,12 @@ import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
 import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import type { OperationsApi } from '../../../shared/operations/operationsApi';
-import { createSessionOperationStorage } from './createOperationStorage';
-import type { CreateFailure } from './createFailure';
-import { initialWorkspaceChoice } from './workspace/workspaceChoice';
-import { createOperationEventsUrl, type ProjectCreationApi } from './api.project';
+import { createSessionOperationStorage } from './operation/createOperationStorage';
+import type { CreateFailure } from './errors/createFailure';
+import { initialWorkspaceChoice } from './workspace/model/workspaceChoice';
+import { createOperationEventsUrl, type ProjectCreationApi } from './api/api.project';
 import { CreateSpecificationScreen } from './CreateSpecificationScreen';
-import { createOptionsFixture } from './creationOptions.stories-support';
+import { createOptionsFixture } from './options/creationOptions.stories-support';
 
 const created: CreatedSpec = {
   operationId: '00000000-0000-4000-8000-000000000001',

@@ -12,14 +12,14 @@ import {
 import {
   fingerprintCreateClientIntent,
   normalizeCreateClientIntent,
-} from '../src/specs/create-intent';
-import { parseCreateJournal } from '../src/specs/create/journal-codec';
-import { CREATE_STAGES, type CreateJournal } from '../src/specs/create/journal-model';
+} from '../src/specs/create/intent';
+import { parseCreateJournal } from '../src/specs/create/journal/codec';
+import { CREATE_STAGES, type CreateJournal } from '../src/specs/create/journal/model';
 import {
   closeJournalPath,
   publishCloseJournal,
   readCloseJournal,
-} from '../src/specs/lifecycle/journal-store';
+} from '../src/specs/lifecycle/journal/store';
 import {
   fingerprintCloseIntent,
   resourcesForClosePlan,
@@ -35,7 +35,11 @@ import { createGitTestProject, git } from './support/git-project';
  */
 const roots: string[] = [];
 afterEach(async () => {
-  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    roots
+      .splice(0)
+      .map((root) => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })),
+  );
 });
 
 describe('Q00 Create journal current-format acceptance baseline', () => {

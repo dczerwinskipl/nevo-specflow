@@ -12,13 +12,17 @@ import {
   type CreateSpecificationInput,
   type SpecFlowEngine,
 } from '../src/testing';
-import { CREATE_JOURNAL_RELATIVE_DIR } from '../src/specs/create-journal';
+import { CREATE_JOURNAL_RELATIVE_DIR } from '../src/specs/create/journal';
 import { createGitTestProject, git } from './support/git-project';
 
 const roots: string[] = [];
 
 afterEach(async () => {
-  await Promise.all(roots.splice(0).map((path) => rm(path, { recursive: true, force: true })));
+  await Promise.all(
+    roots
+      .splice(0)
+      .map((path) => rm(path, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })),
+  );
 });
 
 const BASE_CONFIG = 'runtime: {}\ngit:\n  enabled: true\n';

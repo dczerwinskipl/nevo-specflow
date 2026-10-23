@@ -3,14 +3,14 @@ import {
   resolveProjectHome,
   type ResolveProjectHomeOptions,
   type ResolvedProjectHome,
-} from './project/project-home';
+} from './project/home/home';
 import {
   WorkspaceRegistryError,
   readWorkspaceRegistry,
   verifyWorkspaceRoot,
   type WorkspaceRegistration,
   type WorkspaceRegistry,
-} from './project/workspace-registry';
+} from './project/workspace/registry/registry';
 
 /** Offline application boundary shared by product CLI and Runtime. */
 export interface SpecFlowEngine {

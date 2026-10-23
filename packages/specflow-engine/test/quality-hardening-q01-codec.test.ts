@@ -11,20 +11,24 @@ import {
   withProjectControlLock,
   type CloseJournal,
 } from '../src/testing';
-import { publishCloseCheckpoint } from '../src/specs/lifecycle/close-checkpoint';
-import { isCloseJournal } from '../src/specs/lifecycle/journal-codec';
-import { readWorkspaceRegistry } from '../src/project/workspace-registry';
+import { publishCloseCheckpoint } from '../src/specs/lifecycle/close/checkpoint';
+import { isCloseJournal } from '../src/specs/lifecycle/journal/codec';
+import { readWorkspaceRegistry } from '../src/project/workspace/registry/registry';
 import {
   closeJournalPath,
   publishCloseJournal,
   readCloseJournal,
-} from '../src/specs/lifecycle/journal-store';
+} from '../src/specs/lifecycle/journal/store';
 import { createGitTestProject, git } from './support/git-project';
 
 const roots: string[] = [];
 
 afterEach(async () => {
-  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    roots
+      .splice(0)
+      .map((root) => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })),
+  );
 });
 
 describe('Q01 pure Close journal codec and durable store boundary', () => {

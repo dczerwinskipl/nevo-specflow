@@ -7,7 +7,7 @@ import { executeGit } from '../../git/process';
 import {
   MAX_MANAGED_WORKSPACE_SPECIFICATIONS,
   inspectRegisteredWorkspace,
-} from '../../project/workspace-registry';
+} from '../../project/workspace/registry/registry';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import { resolveSpecification } from '../discovery';
 import { listWorkspaceSpecifications } from '../repository';

@@ -32,7 +32,11 @@ vi.setConfig({ testTimeout: 90_000 });
 const roots: string[] = [];
 
 afterEach(async () => {
-  await Promise.all(roots.splice(0).map((path) => rm(path, { recursive: true, force: true })));
+  await Promise.all(
+    roots
+      .splice(0)
+      .map((path) => rm(path, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })),
+  );
 });
 
 async function project(): Promise<{ root: string; engine: SpecFlowEngine }> {
@@ -107,7 +111,7 @@ describe('E2.T03 — canonical Specification binding and discovery (real Git)', 
       bindSpecToWorkspace(registry, specId, linked.workspaceId),
     );
     const registryBefore = await readFile(workspaceRegistryPath(engine.context), 'utf8');
-    await rm(linked.root, { recursive: true, force: true });
+    await rm(linked.root, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 });
 
     const expected = {
       status: 'workspace_unavailable',

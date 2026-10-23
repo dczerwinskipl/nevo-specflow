@@ -30,8 +30,8 @@ import {
   type SpecificationScenario,
 } from '../../test-support/specs/workspace/fixtures';
 import { createSpecsFixture } from '../../test-support/specs/overview/fixtures';
-import { specsOverviewKeys } from '../features/specs/overview/queries';
-import type { SpecsOverviewApi } from '../features/specs/overview/api';
+import { specsOverviewKeys } from '../features/specs/overview/data/queries';
+import type { SpecsOverviewApi } from '../features/specs/overview/data/api';
 import { createFixtureSpecsOverviewApi } from '../../test-support/specs/overview/api';
 import {
   createWorkspaceIntegrationApi,

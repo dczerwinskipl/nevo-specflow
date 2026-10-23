@@ -10,7 +10,7 @@ import { bootstrapProjectHome } from '../src/testing';
 import {
   fingerprintCreateClientIntent,
   normalizeCreateClientIntent,
-} from '../src/specs/create-intent';
+} from '../src/specs/create/intent';
 import {
   createJournalPath,
   listCreateJournals,
@@ -18,12 +18,16 @@ import {
   readCreateJournal,
   withCreateJournalLock,
   type CreateJournal,
-} from '../src/specs/create-journal';
+} from '../src/specs/create/journal';
 
 const roots: string[] = [];
 
 afterEach(async () => {
-  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    roots
+      .splice(0)
+      .map((root) => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })),
+  );
 });
 
 async function fixture() {
@@ -115,7 +119,7 @@ describe('E2.T04 journal persistence and explicit recovery boundaries', () => {
     roots.push(outside);
     const path = join(context.project.stateRoot, 'engine/operations/create');
     await withCreateJournalLock(context, () => Promise.resolve(undefined));
-    await rm(path, { recursive: true, force: true });
+    await rm(path, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 });
     const { symlink } = await import('node:fs/promises');
     await symlink(outside, path, process.platform === 'win32' ? 'junction' : 'dir');
 

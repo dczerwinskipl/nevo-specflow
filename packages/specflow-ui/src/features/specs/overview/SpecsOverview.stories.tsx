@@ -40,12 +40,12 @@ import {
   operationItem,
   stubCreateKind,
 } from '../../../../test-support/operations/fixtures';
-import { useSpecsOverview } from './useSpecsOverview';
-import type { SpecsOverviewApi } from './api';
+import { useSpecsOverview } from './data/useSpecsOverview';
+import type { SpecsOverviewApi } from './data/api';
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createSpecFlowQueryClient } from '../../../app/queryClient';
-import { specPrimaryLinkClassName } from './SpecPrimaryLink';
+import { specPrimaryLinkClassName } from './rows/SpecPrimaryLink';
 
 function SourceLifecycleFixture() {
   const queryClient = useMemo(() => createSpecFlowQueryClient(), []);

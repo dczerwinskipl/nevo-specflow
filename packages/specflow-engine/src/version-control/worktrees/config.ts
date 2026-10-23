@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { lstat, readFile } from 'node:fs/promises';
 import { parse as parseYaml } from 'yaml';
 
-import type { ResolvedProjectHome } from '../../project/project-home';
+import type { ResolvedProjectHome } from '../../project/home/home';
 import { GitCapabilityError } from '../../git/errors';
 import { parseGitWorktreePolicy, resolveWorktreesRoot, type GitWorktreePolicy } from './policy';
 

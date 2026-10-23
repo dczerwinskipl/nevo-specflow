@@ -1,6 +1,6 @@
 {
   "$schema": "https://turborepo.com/schema.json",
-  "//": "Only genuinely cross-package build inputs are global. Repo-wide quality config (Prettier, EditorConfig, ESLint) affects `pnpm format`/`pnpm lint`, which are not Turbo tasks, so it is deliberately NOT listed here. The lockfile and root package.json are hashed by Turbo automatically.",
+  "//": "Only genuinely cross-package build inputs are global. Prettier/EditorConfig affect `pnpm format`, which is not a Turbo task, so they are deliberately NOT listed here. ESLint is a per-package `lint` task whose inputs name the shared lint config explicitly. The lockfile and root package.json are hashed by Turbo automatically.",
   "globalDependencies": [
     "tsconfig.base.json",
     "tsconfig.package-neutral.json",
@@ -23,6 +23,19 @@
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
       "outputs": ["*.tsbuildinfo", ".tsbuild/**"]
+    },
+    "lint": {
+      "dependsOn": ["^build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/*.md",
+        "$TURBO_ROOT$/eslint.base.mjs",
+        "$TURBO_ROOT$/tools/eslint/*.mjs"
+      ],
+      "outputs": []
+    },
+    "//#lint:root": {
+      "cache": false
     },
     "test": {
       "dependsOn": ["^build"],

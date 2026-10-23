@@ -93,6 +93,30 @@ over central technical buckets such as `feature/routes/`, `feature/services/`, o
 shared adapter concern may stay at the feature root, but provider/operation-specific transport code
 belongs beside the operation it adapts.
 
+### UI feature folders
+
+A UI feature is organized by responsibility, not as a flat list of files. Keep a folder at about 15
+to 20 direct files at most; when it grows, extract a sub-folder named after what it owns, and keep
+tests, stories and story-support next to their owner. The feature root keeps only the entry files
+(`routes.tsx`, `uiModule.ts`) and the screens that compose the sub-folders. Do not create
+`utils/` or `common/` folders.
+
+Example, `features/specs/creation` (private to Create; the application wires only its routes and UI
+module):
+
+```text
+creation/
+  routes.tsx, uiModule.ts, CreateSpecificationScreen.tsx, CreateOperationScreen.tsx, CreateShell.tsx
+  form/              form shells, footer, leave guard, readiness
+  options/           archetype, agent, method choice and the options hook
+  workspace/         workspace place section and settings (model/: pure choice, policy and request)
+  operation/         reducer, ledger, storage and hooks driving the operation lifecycle
+  progress/          progress page, step and page view mapping
+  errors/            failure classification, copy mapping and failure panels
+  api/               project and demo creation ports
+  operations-panel/  the Create operations list contribution
+```
+
 ## Runtime feature boundaries
 
 Runtime product capabilities live under `src/features/<feature-name>/`. Infrastructure and
@@ -199,6 +223,33 @@ For example, prefer `overview/current/get-overview.ts` over
 This convention applies to Runtime/backend modules in this architecture. UI component filename
 casing is a separate repository convention and is not defined by this rule.
 
+### Engine capability folders
+
+The Engine (`packages/specflow-engine/src`) follows the same vertical-slice rule: capability
+folders, no prefix families. A group of files sharing a name prefix (`create-*.ts`, `close-*.ts`,
+`git-*.ts`, `project-home-*.ts`) is a missing folder: the prefix becomes the folder and the files
+drop it (`create-journal.ts` becomes `create/journal/`).
+
+Each capability folder exposes a small `index.ts`. Code in another capability and the package
+surfaces (`index.ts`, `testing.ts`, `diagnostics.ts`) import the capability only through that
+index; its internals are free to move. Package-level tests under `test/` may use explicit internal
+seams. A leaf sub-capability with no upward dependencies may be imported directly when going through
+the capability index would create a runtime cycle (for example `specs/create/journal` from
+`specs/coordination` and `specs/lifecycle/model`).
+
+```text
+src/specs/
+  model.ts  repository.ts  discovery.ts  canonical-source.ts   Specification core
+  coordination/                    shared resource claims across Create and Lifecycle
+  create/                          index.ts, request, durable, scaffold, intent, input, error
+    journal/  reservation/  git/  binding/  inspect/
+  lifecycle/                       index.ts, preflight, reservation, model, archive and disposal effects
+    close/  git/  journal/
+  operations/                      public operation API and DTO projection
+src/project/
+  home/  workspace/registry/  fs/  bootstrap, control-lock, git-checkout ...
+```
+
 ## TypeScript imports in product packages
 
 Code under `packages/**` uses TypeScript's bundler resolution. Relative TypeScript
@@ -250,7 +301,8 @@ have two adapters. Production fixture-based adapters remain forbidden.
 ### What tooling enforces today
 
 - ESLint enforces the package-level `no-restricted-imports` product boundaries in
-  `eslint.config.mjs` (which package may import which). Inside `packages/specflow-ui` it also
+  `tools/eslint/boundaries.mjs` (which package may import which), loaded by each package's
+  `eslint.config.mjs`. Inside `packages/specflow-ui` it also
   enforces the feature-boundary rules described below (feature barrels, the `shared/` direction)
   and the local `specflow-i18n/no-hardcoded-copy` rule, and `react-hooks/rules-of-hooks` (error)
   and `react-hooks/exhaustive-deps` are configured with zero warnings.
@@ -287,7 +339,7 @@ have two adapters. Production fixture-based adapters remain forbidden.
   keys, the read hook) and `features/<name>/routes` (route objects, for composition files only).
   `features/specs/creation` is private to Create; the application wires only its `routes`.
   Composition roots (`app/`, `services/`) and tests, stories and story-support files are not
-  restricted. ESLint (`no-restricted-imports` in `eslint.config.mjs`) enforces these rules for
+  restricted. ESLint (`no-restricted-imports` in `tools/eslint/specflow-ui.mjs`) enforces these rules for
   production sources.
 - The import graph of the features has no cycles. Each feature is three nodes: the feature itself
   (screens), its `read-model` and its composition files (`routes`, `uiModule`, `contributions/`). A
@@ -301,7 +353,7 @@ have two adapters. Production fixture-based adapters remain forbidden.
   test (`src/features/moduleGraph.test.ts`, analysis in `importCycles.ts`) fails on a cycle between
   nodes or files, on a read model that imports a screen and on a screen that imports composition.
 - Create is a pure reducer over named phases plus a hook that performs the I/O (see the diagram at
-  the top of `features/specs/creation/createOperationReducer.ts`). Mutable bookkeeping that async
+  the top of `features/specs/creation/operation/createOperationReducer.ts`). Mutable bookkeeping that async
   continuations must read synchronously lives in one small ledger/lock object created once per
   owner, never in scattered refs and never read while rendering.
 

@@ -28,7 +28,11 @@ const activeProcesses: IndependentVitestWorker[] = [];
 afterEach(async () => {
   // Reap *every* real child before deleting its Git worktrees/marker files.
   await Promise.all(activeProcesses.splice(0).map((worker) => reapVitestWorker(worker)));
-  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    roots
+      .splice(0)
+      .map((root) => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })),
+  );
 });
 
 async function project() {
@@ -143,7 +147,7 @@ describe('E2.T04 — cross-process durable create reservation and registry CAS',
       outcomes.map((x) => x.code),
       JSON.stringify(outcomes),
     ).toEqual([0, 0]);
-    const { readCreateJournal } = await import('../src/specs/create-journal');
+    const { readCreateJournal } = await import('../src/specs/create/journal');
     const journal = await readCreateJournal(engine.context, operationId);
     expect(journal?.version).toBe(1);
     expect(['2026-10-14', '2026-10-15']).toContain(journal?.created);
@@ -176,7 +180,7 @@ describe('E2.T04 — cross-process durable create reservation and registry CAS',
         const writer = spawnCreateWorker(root, original, { pauseEffect: pausedAt });
         await startTogether([writer]);
         await waitForFile(writer.paused, writer);
-        const { readCreateJournal } = await import('../src/specs/create-journal');
+        const { readCreateJournal } = await import('../src/specs/create/journal');
         const journal = await readCreateJournal(engine.context, operationId);
         expect(journal?.version).toBe(1);
         expect(journal?.stage).toBe(pausedAt === 'git' ? 'git-initiated' : 'manifest-writing');
@@ -320,7 +324,7 @@ describe('E2.T04 — cross-process durable create reservation and registry CAS',
       await startTogether([writer]);
       await waitForFile(writer.paused, writer);
 
-      const { readCreateJournal } = await import('../src/specs/create-journal');
+      const { readCreateJournal } = await import('../src/specs/create/journal');
       const journal = await readCreateJournal(engine.context, original.operationId);
       expect(journal?.stage).toBe('manifest-writing');
       const manifest = join(root, journal!.files[0]!.relativePath);
@@ -337,7 +341,7 @@ describe('E2.T04 — cross-process durable create reservation and registry CAS',
           ),
         ).rejects.toMatchObject({ code: 'SPEC_SOURCE_INVALID' });
       } finally {
-        await rm(unowned, { recursive: true, force: true });
+        await rm(unowned, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 });
       }
 
       independent = spawnCreateWorker(

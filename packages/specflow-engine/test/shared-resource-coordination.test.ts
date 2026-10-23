@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import { overlaps, resourcesForCreate } from '../src/specs/coordination/resources';
-import type { CreateJournal } from '../src/specs/create-journal';
+import type { CreateJournal } from '../src/specs/create/journal';
 
 function claim(specId: string, target: CreateJournal['target']): CreateJournal {
   return {

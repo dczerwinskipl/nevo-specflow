@@ -10,12 +10,16 @@ import {
   listCloseJournals,
   reserveCloseOperation,
 } from '../src/testing';
-import { closeJournalPath } from '../src/specs/lifecycle/journal-store';
+import { closeJournalPath } from '../src/specs/lifecycle/journal/store';
 import { createGitTestProject, git, commitStaged } from './support/git-project';
 
 const roots: string[] = [];
 afterEach(async () => {
-  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    roots
+      .splice(0)
+      .map((root) => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })),
+  );
 });
 
 describe('E2.T10 Close journal destination ownership', () => {

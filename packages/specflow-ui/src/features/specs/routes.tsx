@@ -7,10 +7,10 @@ import { useUiModules } from '../../app/ui-modules/UiModulesProvider';
 import { specsOverviewPanels } from './extensions/specsOverviewPanels';
 import { useSpecificationWorkspace } from './read-model/useSpecificationWorkspace';
 import { useRuntimeMode } from '../../app/useRuntimeMode';
-import { useSpecsOverview } from './overview/useSpecsOverview';
+import { useSpecsOverview } from './overview/data/useSpecsOverview';
 import { SpecsAccessDenied } from './overview/SpecsAccessDenied';
 import { SpecificationSurface } from './SpecificationSurface';
-import { specPrimaryLinkClassName } from './overview/SpecPrimaryLink';
+import { specPrimaryLinkClassName } from './overview/rows/SpecPrimaryLink';
 
 export const specsForbiddenRoute = createRoute({
   getParentRoute: () => rootRoute,

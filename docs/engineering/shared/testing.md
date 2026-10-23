@@ -149,6 +149,11 @@ failure in one package must not prevent unrelated package test jobs from complet
 Package tests must therefore be runnable through their package's Turbo target without
 depending on another package's test process or execution order.
 
+Storybook stories are the exception to "defer on PRs": a pull request that changes
+`packages/nevo-ui` runs the full Storybook corpus, and one that changes `packages/specflow-ui`
+runs all of its stories (see [CI](../repository/ci.md)). Do not rely on `main` to catch a
+design-system contract or accessibility regression.
+
 ## Determinism
 
 Tests must not depend accidentally on wall-clock time, locale, network, ambient
@@ -157,6 +162,22 @@ they affect behavior.
 
 Generated artifacts should be compared against deterministic regenerated output and
 must not embed incidental timestamps.
+
+### Storybook play functions
+
+Storybook play functions run in a shared browser and the whole corpus is executed on `main` and
+nightly, while pull requests run only the changed stories. A play function must therefore be
+order independent and load independent:
+
+- no fixed sleeps or timeouts as synchronization: wait on the condition (`findBy*`, `waitFor`,
+  a polling helper with a clear failure message);
+- after typing or clicking, assert through a retrying query; React state commits and live-region
+  announcements are asynchronous;
+- query the element you mean (role, `selector`, scoped container) when the same text can also
+  appear in an `sr-only` announcer or a duplicate region;
+- close the overlays you open (menus, listboxes, dialogs, popovers) and restore global state
+  (viewport, theme, storage) before the story ends;
+- keep accessibility checks on: fix the component rather than disabling the rule for a story.
 
 ## Characterization before behavior change
 

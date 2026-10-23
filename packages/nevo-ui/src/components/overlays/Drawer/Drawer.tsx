@@ -41,19 +41,15 @@ const drawerPanelBaseClassName =
 const drawerSideClassNames: Record<DrawerSide, string> = {
   right: 'inset-y-0 right-0 w-full border-l border-border-default sm:w-[28rem] md:w-[30rem]',
   left: 'inset-y-0 left-0 w-full border-r border-border-default sm:w-[28rem] md:w-[30rem]',
-  // Sheets: full width on phones, a centred `content-narrow` column from the medium breakpoint.
+  // Sheets: full width on phones, a centred 30rem column (the side-panel width) from the medium breakpoint.
   // Centring uses auto margins (not a transform) so the slide animation owns `transform`.
   bottom:
-    'inset-x-0 bottom-0 max-h-[calc(100dvh-3rem)] w-full rounded-t-surface border border-b-0 border-border-default pb-[env(safe-area-inset-bottom)] md:mx-auto md:w-content-narrow md:max-w-full',
-  top: 'inset-x-0 top-0 max-h-[calc(100dvh-3rem)] w-full rounded-b-surface border border-t-0 border-border-default pt-[env(safe-area-inset-top)] md:mx-auto md:w-content-narrow md:max-w-full',
+    'inset-x-0 bottom-0 max-h-[calc(100dvh-3rem)] w-full rounded-t-surface border border-b-0 border-border-default pb-[env(safe-area-inset-bottom)] md:mx-auto md:w-[30rem] md:max-w-full',
+  top: 'inset-x-0 top-0 max-h-[calc(100dvh-3rem)] w-full rounded-b-surface border border-t-0 border-border-default pt-[env(safe-area-inset-top)] md:mx-auto md:w-[30rem] md:max-w-full',
 };
 
-const drawerCloseClassNames: Record<DrawerSide, string> = {
-  left: 'absolute! right-4 top-4',
-  right: 'absolute! right-4 top-4',
-  bottom: 'absolute! right-4 top-4',
-  top: 'absolute! right-4 top-[calc(1rem+env(safe-area-inset-top))]',
-};
+const drawerCloseClassName = 'absolute! right-4 top-4';
+const drawerTopCloseClassName = 'absolute! right-4 top-[calc(1rem+env(safe-area-inset-top))]';
 
 export type DrawerContentProps = ComponentPropsWithoutRef<typeof Dialog.Content> & {
   container?: HTMLElement | null;
@@ -92,7 +88,7 @@ export const DrawerContent = forwardRef<ComponentRef<typeof Dialog.Content>, Dra
             <Dialog.Close asChild>
               <IconButton
                 aria-label={closeLabel!}
-                className={drawerCloseClassNames[side]}
+                className={side === 'top' ? drawerTopCloseClassName : drawerCloseClassName}
                 icon="close"
                 size="sm"
                 variant="ghost"

@@ -9,6 +9,7 @@ import {
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
+  type DrawerContentProps,
   type DrawerSide,
 } from './Drawer';
 
@@ -28,11 +29,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function renderDrawer(side?: DrawerSide) {
+function renderDrawer(side?: DrawerSide, contentProps: Partial<DrawerContentProps> = {}) {
   render(
     <Drawer>
       <DrawerTrigger>Open</DrawerTrigger>
-      <DrawerContent closeLabel="Close sheet" side={side}>
+      <DrawerContent closeLabel="Close sheet" side={side} {...(contentProps as object)}>
         <DrawerHeader>
           <DrawerTitle>Contents</DrawerTitle>
           <DrawerDescription>Jump to a section</DrawerDescription>
@@ -75,7 +76,7 @@ describe('DrawerContent side', () => {
     expect(panel.className).toContain('rounded-t-surface');
     expect(panel.className).toContain('max-h-[calc(100dvh-3rem)]');
     expect(panel.className).toContain('pb-[env(safe-area-inset-bottom)]');
-    expect(panel.className).toContain('md:w-content-narrow');
+    expect(panel.className).toContain('md:w-[30rem]');
     expect(panel.className).toContain('md:mx-auto');
     expect(panel.className).toContain('md:max-w-full');
     expect(panel.className).not.toContain('inset-y-0');
@@ -88,7 +89,7 @@ describe('DrawerContent side', () => {
     expect(panel.className).toContain('top-0');
     expect(panel.className).toContain('rounded-b-surface');
     expect(panel.className).toContain('pt-[env(safe-area-inset-top)]');
-    expect(panel.className).toContain('md:w-content-narrow');
+    expect(panel.className).toContain('md:w-[30rem]');
     expect(screen.getByRole('button', { name: 'Close sheet' }).className).toContain(
       'safe-area-inset-top',
     );
@@ -117,5 +118,52 @@ describe.each<DrawerSide>(['left', 'right', 'top', 'bottom'])('%s accessibility'
     renderDrawer(side);
     fireEvent.click(screen.getByRole('button', { name: 'Close sheet' }));
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+});
+
+describe('DrawerContent sheet behaviour', () => {
+  it('lets the consumer take over open and close focus', async () => {
+    const onOpenAutoFocus = vi.fn((event: Event) => event.preventDefault());
+    const onCloseAutoFocus = vi.fn((event: Event) => {
+      event.preventDefault();
+      document.getElementById('elsewhere')?.focus();
+    });
+    render(
+      <button id="elsewhere" type="button">
+        Elsewhere
+      </button>,
+    );
+    renderDrawer('bottom', { onOpenAutoFocus, onCloseAutoFocus });
+    expect(onOpenAutoFocus).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Close sheet' }));
+    await waitFor(() => expect(onCloseAutoFocus).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(document.activeElement).toBe(document.getElementById('elsewhere')));
+  });
+
+  it('closes on overlay click', async () => {
+    renderDrawer('bottom');
+    const overlay = document.querySelector<HTMLElement>('.drawer-overlay');
+    expect(overlay).not.toBeNull();
+    // Radix registers its outside-pointer listener on the next tick.
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    fireEvent.pointerDown(overlay!, { pointerType: 'mouse', button: 0, ctrlKey: false });
+    fireEvent.pointerUp(overlay!);
+    fireEvent.click(overlay!);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  it('omits the close action when showClose is false', () => {
+    renderDrawer('top', { showClose: false });
+    expect(screen.queryByRole('button', { name: 'Close sheet' })).toBeNull();
+  });
+
+  it('renders the body as a DS scroll area that can shrink inside a content-sized sheet', () => {
+    const panel = renderDrawer('bottom');
+    const viewport = panel.querySelector('.scroll-area-viewport');
+    expect(viewport).not.toBeNull();
+    const root = viewport!.parentElement!;
+    expect(root.className).toContain('flex-col');
+    expect(root.className).toContain('min-h-0');
   });
 });

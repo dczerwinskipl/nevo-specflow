@@ -189,7 +189,7 @@ export const BottomSheetPhoneShort: Story = {
   globals: { viewport: { value: 'phone390', isRotated: false } },
 };
 
-/** From the medium breakpoint the sheet is a centred content-narrow column. */
+/** From the medium breakpoint the sheet is a centred 30rem column. */
 export const BottomSheetTablet: Story = {
   args: { defaultOpen: true, side: 'bottom', sheetRowCount: 24 },
   parameters: sheetParameters,
@@ -277,8 +277,8 @@ export const SheetWideContract: Story = {
     );
     const rect = dialog.getBoundingClientRect();
     assert(
-      Math.abs(rect.width - 760) < 1,
-      'Wide viewports constrain the sheet to the content-narrow width.',
+      Math.abs(rect.width - 480) < 1,
+      'Wide viewports constrain the sheet to the 30rem width.',
     );
     assert(
       Math.abs(rect.left + rect.width / 2 - window.innerWidth / 2) < 1,

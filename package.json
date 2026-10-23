@@ -12,7 +12,8 @@
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test",
-    "lint": "node --max-old-space-size=6144 ./node_modules/eslint/bin/eslint.js .",
+    "lint": "turbo run lint //#lint:root",
+    "lint:root": "eslint -c eslint.config.mjs . && node tools/eslint/check-coverage.mjs",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

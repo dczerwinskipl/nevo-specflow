@@ -16,7 +16,8 @@
   },
   "scripts": {
     "build": "node ../../tools/build-package.mjs",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@nevo/figma-core": "workspace:*"

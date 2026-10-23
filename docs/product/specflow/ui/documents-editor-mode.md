@@ -29,9 +29,21 @@ document owns only what they mean in the product. Approved mock: Storybook
 - **Layout.** The document tree is Primary and the document area is Secondary of the existing
   workspace (`fit="available"`): Wide 25 / 75, Compact 1/3 / 2/3. The tree MUST be permanently
   visible whenever the workspace splits (>= 840 px); it MUST NOT be a drawer or toggle there.
+- **Contents and properties (preview only).** A markdown preview with at least two headings (h1-h4) offers
+  its contents. When the document panel is at least 1000 px wide (measured on the panel, so the text keeps
+  about 60 characters beside a 320 px column) the text keeps its 760 px measure and a sticky column beside
+  it holds the properties and the contents, the current heading marked while reading. In a narrower panel
+  there is no column and no box in the text: a contents icon (`list`) follows the tab strip or the narrow
+  switcher in the header and opens the contents as a bottom sheet, and the same entry is the first item of
+  the Display group of the `...` menu. The icon is region navigation, not a header action, so it costs no
+  direct slot. Choosing a heading closes the sheet, scrolls to the heading and focuses it; closing without a
+  choice returns focus to the icon. The properties stay one collapsed row in the text. Editing, plain text
+  and documents with fewer than two headings have no contents. Split view (editor beside preview) is deferred
+  to a later change, and a permanent contents bar was considered and rejected in review.
 - **Narrow.** The workspace stacks: tree, then the document with Back to the tree. Tabs are not
   shown; the document header carries the `name (N)` switcher. Back only returns to the tree and
-  MUST NOT close tabs or change the route. The stacked screen follows the active tab, so a tab switch
+  MUST NOT close tabs or change the route. The region has no close of its own while stacked (it would repeat
+  Back); the split layouts keep it as "close every tab". The stacked screen follows the active tab, so a tab switch
   while it is open does not close and reopen it.
 - **Open rule.** Opening a file from the tree opens a new tab; opening an open file activates its
   tab. There is no preview tab.

@@ -1,6 +1,7 @@
 import { Pencil } from 'lucide-react';
 import type { TFunction } from 'i18next';
 import type { WorkspaceHeaderAction } from '@nevo/ui';
+import { kindIdOf, type DocumentKindId } from './kindId';
 import type { DocumentEditorSession } from '../editor/DocumentEditorProvider';
 
 /**
@@ -17,7 +18,7 @@ export interface DocumentActionContext {
 }
 
 export interface DocumentContentKind {
-  id: 'markdown' | 'text';
+  id: DocumentKindId;
   matches: (filename: string) => boolean;
   /** Only kinds whose views differ list more than one. */
   views: readonly DocumentView[];
@@ -93,7 +94,7 @@ const markdown: DocumentContentKind = {
 /** Plain text: one editable view, no preview and no properties. */
 const text: DocumentContentKind = {
   id: 'text',
-  matches: (filename) => filename.toLowerCase().endsWith('.txt'),
+  matches: (filename) => kindIdOf(filename) === 'text',
   views: ['edit'],
   defaultView: 'edit',
   actions: (view, context) => saveActions(view, context),

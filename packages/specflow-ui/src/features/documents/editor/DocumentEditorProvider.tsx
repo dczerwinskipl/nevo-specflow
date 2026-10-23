@@ -15,6 +15,13 @@ import { documentDraftKey, draftFor, isDraftDirty, type DocumentDraft } from './
 import { useDocumentDraft, useDocumentDraftStore } from './DocumentDraftProvider';
 import { UnsavedChangesDialog } from './UnsavedChangesDialog';
 import { DocumentPathDialog } from './DocumentPathDialog';
+import { kindIdOf } from '../content-kinds/kindId';
+import {
+  documentOutline,
+  type DocumentOutlineData,
+  type OutlineNavigator,
+} from '../outline/outlineData';
+import { DocumentOutlineSheet } from '../outline/DocumentOutlineSheet';
 import type { ScrollAnchor } from './documentScrollAnchor';
 import { useDocumentSave, type DocumentSaveOwner } from './useDocumentSave';
 import { useEditorFocus } from './useEditorFocus';
@@ -47,6 +54,19 @@ export interface DocumentEditorSession {
   rememberAnchor: (anchor: ScrollAnchor) => void;
   /** The mounted content view registers a synchronous reader of its current position. */
   anchorReader: MutableRefObject<(() => ScrollAnchor | undefined) | null>;
+  /** Headings and properties of the text, parsed once per change. */
+  outline: DocumentOutlineData;
+  /** The mounted preview registers how to scroll to a heading and which one the reader is at. */
+  outlineNavigator: MutableRefObject<OutlineNavigator | null>;
+  /** The preview reports whether its panel shows the contents in a column (undefined: no preview). */
+  reportColumnShown: (shown: boolean | undefined) => void;
+  /**
+   * The contents can be opened as a sheet: previewing markdown with at least two headings in a panel
+   * that has no contents column. The header icon and the menu item exist exactly then.
+   */
+  outlineAvailable: boolean;
+  outlineOpen: boolean;
+  openOutline: () => void;
 }
 
 const Context = createContext<DocumentEditorSession | null>(null);
@@ -89,6 +109,11 @@ export function DocumentEditorProvider({
   const focusAfterDiscard = useRef(false);
   const [guardFor, setGuardFor] = useState<string>();
   const [pathOpen, setPathOpen] = useState(false);
+  const outlineNavigator = useRef<OutlineNavigator | null>(null);
+  const [columnShown, setColumnShown] = useState<boolean>();
+  const [outlineOpen, setOutlineOpen] = useState(false);
+  // The heading the reader was at when the sheet opened: measured once, at that moment.
+  const [outlineActive, setOutlineActive] = useState<number>();
   const documentId = document?.id ?? '';
   const key = documentDraftKey(specId, documentId);
   const stored = useDocumentDraft(specId, documentId);
@@ -98,6 +123,20 @@ export function DocumentEditorProvider({
   useLayoutEffect(() => {
     shown.current = { specId, key, document, draft };
   });
+  const markdown = kindIdOf(document?.filename ?? document?.title) === 'markdown';
+  const content = draft?.content ?? '';
+  const outline = useMemo(() => documentOutline(content, markdown), [content, markdown]);
+  const outlineAvailable =
+    markdown && draft?.editing === false && columnShown === false && outline.headings.length > 0;
+  const outlineOpener = useRef<HTMLElement | null>(null);
+  const openOutline = useCallback(() => {
+    outlineOpener.current =
+      globalThis.document.activeElement instanceof HTMLElement
+        ? globalThis.document.activeElement
+        : null;
+    setOutlineActive(outlineNavigator.current?.activeLine());
+    setOutlineOpen(true);
+  }, []);
   const owner = useDocumentSave({ specId, document, draft });
   const { save: saveOwned } = owner;
 
@@ -177,6 +216,12 @@ export function DocumentEditorProvider({
       anchor: document ? store.getAnchor(specId, document.id) : undefined,
       rememberAnchor,
       anchorReader,
+      outline,
+      outlineNavigator,
+      reportColumnShown: setColumnShown,
+      outlineAvailable,
+      outlineOpen,
+      openOutline,
     };
   }, [
     specId,
@@ -194,6 +239,10 @@ export function DocumentEditorProvider({
     focusEditor,
     focusContent,
     rememberAnchor,
+    outline,
+    outlineAvailable,
+    outlineOpen,
+    openOutline,
   ]);
 
   const name = document?.filename ?? document?.title ?? '';
@@ -202,6 +251,16 @@ export function DocumentEditorProvider({
       <Context.Provider value={session}>
         {children}
         {session && <DocumentPathDialog open={pathOpen} path={name} onOpenChange={setPathOpen} />}
+        {session && (
+          <DocumentOutlineSheet
+            open={outlineOpen && outlineAvailable}
+            headings={outline.headings}
+            activeLine={outlineActive}
+            onOpenChange={setOutlineOpen}
+            onSelected={(line) => outlineNavigator.current?.goTo(line)}
+            restoreFocusTo={() => outlineOpener.current}
+          />
+        )}
         {session && (
           <UnsavedChangesDialog
             open={guardFor === document?.id}

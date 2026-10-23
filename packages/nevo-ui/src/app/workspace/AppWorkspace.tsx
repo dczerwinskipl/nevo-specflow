@@ -100,6 +100,12 @@ interface CommonAppWorkspaceProps {
   labels?: Partial<AppWorkspaceLabels>;
   /** Close the active page (returning to its parent) or the entire contextual flow. */
   secondaryCloseBehavior?: 'page' | 'flow';
+  /**
+   * What the Secondary shows as its own close action when the layout is stacked. In a stack the
+   * Back action already leaves the Secondary, so `hide` removes the duplicate (the compact row loses
+   * its close item too). Split layouts always keep the close action. Default `show`.
+   */
+  stackedSecondaryClose?: 'show' | 'hide';
 }
 
 export type AppWorkspaceProps = CommonAppWorkspaceProps & {
@@ -586,6 +592,7 @@ function AppWorkspaceRoot({
   primaryMaxPx,
   fit = 'content',
   secondaryCloseBehavior = 'flow',
+  stackedSecondaryClose = 'show',
   scroll = 'workspace',
 }: AppWorkspaceProps) {
   const staticSurfaces = resolveComposedWorkspace(children);
@@ -646,11 +653,13 @@ function AppWorkspaceRoot({
       (state.mode === 'split' && secondaryPresentation.canStack)) ? (
       <BackAction label={labels.backToPrimary} onBack={secondaryPresentation.onBack} />
     ) : undefined;
-  const secondaryCloseAction = secondaryPresentation?.onClose ? (
-    <CloseAction label={labels.closeSecondary} onClose={secondaryPresentation.onClose} />
-  ) : undefined;
+  const hideClose = state.mode === 'stacked' && stackedSecondaryClose === 'hide';
+  const secondaryCloseAction =
+    secondaryPresentation?.onClose && !hideClose ? (
+      <CloseAction label={labels.closeSecondary} onClose={secondaryPresentation.onClose} />
+    ) : undefined;
   const compactSecondaryCloseAction: WorkspaceHeaderAction | undefined =
-    secondaryPresentation?.onClose
+    secondaryPresentation?.onClose && !hideClose
       ? {
           id: 'close-secondary-navigation',
           label: labels.closeSecondary,
@@ -661,9 +670,10 @@ function AppWorkspaceRoot({
   const outgoingBackAction = outgoingSecondaryPresentation ? (
     <BackAction label={labels.backToPrimary} onBack={() => undefined} />
   ) : undefined;
-  const outgoingCloseAction = outgoingSecondaryPresentation ? (
-    <CloseAction label={labels.closeSecondary} onClose={() => undefined} />
-  ) : undefined;
+  const outgoingCloseAction =
+    outgoingSecondaryPresentation && !hideClose ? (
+      <CloseAction label={labels.closeSecondary} onClose={() => undefined} />
+    ) : undefined;
 
   useLayoutEffect(() => {
     if (!secondaryPresentation?.canStack) return;

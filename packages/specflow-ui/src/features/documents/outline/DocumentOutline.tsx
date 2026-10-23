@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Collapsible, Typography, cn } from '@nevo/ui';
+import { Typography, cn } from '@nevo/ui';
 import type { OutlineHeading } from './markdownOutline';
 
 const indent = { 1: 'pl-0', 2: 'pl-3', 3: 'pl-6', 4: 'pl-9' } as const;
@@ -38,46 +38,26 @@ function Entries({
 }
 
 /**
- * The headings of the previewed document as a list of links. `column` is the always-visible list
- * of a wide document panel; `collapsible` is the same list folded into a block above the text.
+ * The headings of the previewed document as a column of links, beside the text of a wide panel.
+ * Narrower panels open the same list as a sheet (`DocumentOutlineSheet`).
  */
 export function DocumentOutline({
   headings,
-  variant,
   activeLine,
   onSelect,
 }: {
   headings: readonly OutlineHeading[];
-  variant: 'column' | 'collapsible';
   activeLine?: number;
   onSelect: (line: number) => void;
 }) {
   const { t } = useTranslation();
   const label = t('documents.outline.label');
-  if (variant === 'column')
-    return (
-      <nav aria-label={label} className="min-w-0">
-        <Typography as="p" variant="label-md" className="mb-2 px-2 text-content-muted">
-          {label}
-        </Typography>
-        <Entries headings={headings} activeLine={activeLine} onSelect={onSelect} />
-      </nav>
-    );
   return (
-    <nav aria-label={label} className="mb-4 min-w-0 rounded-composite border border-border-default">
-      <Collapsible>
-        <Collapsible.Trigger>
-          <Typography as="span" variant="label-md">
-            {label}
-          </Typography>
-          <Typography as="span" variant="body-sm" className="ml-2 text-content-muted">
-            {headings.length}
-          </Typography>
-        </Collapsible.Trigger>
-        <Collapsible.Content className="px-3 pb-2">
-          <Entries headings={headings} activeLine={activeLine} onSelect={onSelect} />
-        </Collapsible.Content>
-      </Collapsible>
+    <nav aria-label={label} className="min-w-0">
+      <Typography as="p" variant="label-md" className="mb-2 px-2 text-content-muted">
+        {label}
+      </Typography>
+      <Entries headings={headings} activeLine={activeLine} onSelect={onSelect} />
     </nav>
   );
 }

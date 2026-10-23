@@ -95,6 +95,8 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
       <AppWorkspace
         scroll="content"
         fit="available"
+        // Back already leaves the stacked document; its own close would repeat it.
+        stackedSecondaryClose="hide"
         // The tree stops growing at 360 px; the document gets the rest on wide screens.
         primaryMaxPx={360}
         split="secondary"
@@ -144,6 +146,7 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
                 labels={{
                   moreActions: t('common.moreActions'),
                   menuActions: t('documents.menuActions'),
+                  menuDisplay: t('documents.menuDisplay'),
                 }}
                 headingLevel={2}
                 title={

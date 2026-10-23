@@ -245,6 +245,11 @@ intrinsic bound and behaves like `content`. Do not combine `bounded` with ad-hoc
 centring wrappers. `AppWorkspaceFit.contract.stories.tsx` covers the three values (`Available*`, `Content*`,
 `BoundedPrimaryOnly*` contracts at 1024/1440/1920/2560 and 390).
 
+**Stacked close (opt-in).** `stackedSecondaryClose="hide"` removes the Secondary's own close action (the trailing
+`x`, and the matching item of the compact row) while the layout is stacked, where Back already leaves the
+Secondary and the second control only repeats it. Split layouts keep the close action. The default is
+`show`; `AppWorkspace` tests cover both values.
+
 **Capped Primary (opt-in).** `primaryMaxPx` is the maximum width of the Primary region in px. Primary is
 its share of the split but never wider than the cap, and Secondary takes the rest (`capPrimaryWidth`), so a
 list beside a document does not grow to 575 px at 2560 while the document keeps empty space. It applies to

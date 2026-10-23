@@ -12,6 +12,7 @@ import { DocumentEditor } from './DocumentEditor';
 import { DocumentEditorProvider, useDocumentEditor } from './DocumentEditorProvider';
 import { documentHeaderModel } from './documentHeaderModel';
 import { readPreviewAnchor } from './previewScroll';
+import { OutlineButton } from '../outline/OutlineButton';
 import { withLocale } from '../../../i18n/StoryLocalization';
 import { useTranslation } from 'react-i18next';
 
@@ -91,13 +92,18 @@ const documents: Record<string, Source> = {
 function Header() {
   const { actions, dirty } = documentHeaderModel(useDocumentEditor(), useTranslation().t);
   return (
-    <WorkspaceHeader
-      title="dokument"
-      actions={actions}
-      menu="complete"
-      labels={{ moreActions: 'Więcej akcji' }}
-      status={dirty ? <span role="status">Niezapisane zmiany</span> : undefined}
-    />
+    <div className="flex items-center gap-1">
+      <div className="min-w-0 flex-1">
+        <WorkspaceHeader
+          title="dokument"
+          actions={actions}
+          menu="complete"
+          labels={{ moreActions: 'Więcej akcji' }}
+          status={dirty ? <span role="status">Niezapisane zmiany</span> : undefined}
+        />
+      </div>
+      <OutlineButton />
+    </div>
   );
 }
 
@@ -272,7 +278,7 @@ export const NarrowHeaderContract: Story = {
       within(await within(document.body).findByRole('menu'))
         .getAllByRole('menuitem')
         .map((item) => item.textContent),
-    ).toEqual(['Edytuj dokument', 'Pokaż ścieżkę']);
+    ).toEqual(['Spis treści', 'Edytuj dokument', 'Pokaż ścieżkę']);
     await userEvent.keyboard('{Escape}');
     await userEvent.click(canvas.getByRole('button', { name: 'Edytuj dokument' }));
     // Edit mode, clean: the preview toggle keeps the slot.
@@ -517,17 +523,93 @@ export const WidePanelShowsContentsColumn: Story = {
   },
 };
 
-export const NarrowPanelFoldsContentsAboveTheText: Story = {
+/**
+ * A panel below the column threshold has no column and no inline box: the header icon opens the
+ * contents as a sheet. Choosing a heading closes it, scrolls and focuses the heading; closing
+ * without a choice returns focus to the icon.
+ */
+export const NarrowPanelOpensContentsAsSheet: Story = {
   args: { width: 900, height: 700, initial: 'withProps' },
   play: async ({ canvas, canvasElement, userEvent }) => {
     await waitForPreview(canvasElement);
-    const trigger = await canvas.findByRole('button', { name: /Spis treści/ });
-    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
     await expect(canvasElement.querySelector('aside')).toBeNull();
-    await expect(canvas.getByRole('button', { name: /Właściwości/ })).toBeVisible();
-    await userEvent.click(trigger);
-    await userEvent.click(await canvas.findByRole('link', { name: 'Sekcja 3' }));
+    await expect(canvas.queryByRole('button', { name: /Spis treści/ })).toBeNull();
+    // Properties stay one collapsed row in the flow.
+    await expect(canvas.getByRole('button', { name: /Właściwości/ })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    const icon = await canvas.findByRole('button', { name: 'Otwórz spis treści' });
+    await userEvent.click(icon);
+    const sheet = await within(document.body).findByRole('dialog', { name: /Spis treści \(\d+\)/ });
+    await expect(sheet).toBeVisible();
+    // The current section (the first at the top) is marked and holds focus.
+    const current = within(sheet).getByRole('link', { current: 'location' });
+    await waitFor(() => expect(current).toHaveFocus());
+    for (const link of within(sheet).getAllByRole('link'))
+      await expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    await userEvent.click(within(sheet).getByRole('link', { name: 'Sekcja 3' }));
+    await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
     await waitFor(() => expect(previewOf(canvasElement)!.scrollTop).toBeGreaterThan(200));
+    await waitFor(() => expect(document.activeElement).toHaveTextContent('Sekcja 3'));
+    // Closing without a choice gives focus back to the icon.
+    await userEvent.click(canvas.getByRole('button', { name: 'Otwórz spis treści' }));
+    await within(document.body).findByRole('dialog');
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
+    await waitFor(() =>
+      expect(canvas.getByRole('button', { name: 'Otwórz spis treści' })).toHaveFocus(),
+    );
+  },
+};
+
+export const NarrowPanelMenuStartsWithContents: Story = {
+  args: { width: 900, height: 700, initial: 'a' },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await waitForPreview(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Więcej akcji' }));
+    const menu = await within(document.body).findByRole('menu');
+    const items = within(menu).getAllByRole('menuitem');
+    await expect(items[0]).toHaveTextContent('Spis treści');
+    await userEvent.click(items[0]!);
+    await within(document.body).findByRole('dialog', { name: /Spis treści/ });
+    await userEvent.keyboard('{Escape}');
+  },
+};
+
+export const EditingHidesTheContentsIcon: Story = {
+  args: { width: 900, height: 700, initial: 'a' },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await waitForPreview(canvasElement);
+    await canvas.findByRole('button', { name: 'Otwórz spis treści' });
+    await invokeDocumentAction(canvas, userEvent, 'Edytuj dokument');
+    await waitFor(() =>
+      expect(canvas.queryByRole('button', { name: 'Otwórz spis treści' })).toBeNull(),
+    );
+  },
+};
+
+/** The column threshold: 1000 px of panel. Measured on the panel, not the viewport. */
+export const ColumnAppearsAtThePanelThreshold: Story = {
+  args: { width: 1030, height: 700, initial: 'a' },
+  play: async ({ canvas, canvasElement }) => {
+    await waitForPreview(canvasElement);
+    await expect(await canvas.findByRole('navigation', { name: 'Spis treści' })).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Otwórz spis treści' })).toBeNull();
+    const text = canvasElement.querySelector<HTMLElement>('[data-source-line="1"]')!;
+    // About 60+ characters per line: at least 560 px of text beside the 320 px column.
+    await expect(text.getBoundingClientRect().width).toBeGreaterThanOrEqual(560);
+    const panel = previewOf(canvasElement)!;
+    await expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth + 1);
+  },
+};
+
+export const NoColumnJustBelowTheThreshold: Story = {
+  args: { width: 990, height: 700, initial: 'a' },
+  play: async ({ canvas, canvasElement }) => {
+    await waitForPreview(canvasElement);
+    await expect(await canvas.findByRole('button', { name: 'Otwórz spis treści' })).toBeVisible();
+    await expect(canvasElement.querySelector('aside')).toBeNull();
   },
 };
 
@@ -535,6 +617,7 @@ export const ShortDocumentWithoutHeadingsReservesNoColumn: Story = {
   args: { width: 1400, height: 500, initial: 'short' },
   play: async ({ canvas, canvasElement }) => {
     await canvas.findByText('Krótki dokument bez nagłówków.');
+    await expect(canvas.queryByRole('button', { name: 'Otwórz spis treści' })).toBeNull();
     await expect(canvasElement.querySelector('aside')).toBeNull();
     await expect(canvas.queryByRole('navigation', { name: 'Spis treści' })).toBeNull();
     await expect(canvas.queryByRole('button', { name: /Spis treści/ })).toBeNull();

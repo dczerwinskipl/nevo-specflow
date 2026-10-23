@@ -59,12 +59,18 @@ function stackWith(menu?: 'complete') {
 
 const flags: { isOpen: boolean[] } = { isOpen: [] };
 let close: () => Promise<boolean> = () => Promise.resolve(false);
-function Host({ stack }: { stack: ReturnType<typeof stackWith> }) {
+function Host({
+  stack,
+  stackedClose,
+}: {
+  stack: ReturnType<typeof stackWith>;
+  stackedClose?: 'show' | 'hide';
+}) {
   const navigation = useSecondaryNavigation();
   flags.isOpen.push(navigation.isOpen);
   close = navigation.close;
   return (
-    <AppWorkspace split="primary">
+    <AppWorkspace split="primary" stackedSecondaryClose={stackedClose}>
       <AppWorkspace.Primary header={<WorkspaceHeader title="Primary" />}>
         <button type="button" onClick={() => void navigation.open(stack, {})}>
           Open stack
@@ -74,12 +80,12 @@ function Host({ stack }: { stack: ReturnType<typeof stackWith> }) {
     </AppWorkspace>
   );
 }
-function mount(stack: ReturnType<typeof stackWith>) {
+function mount(stack: ReturnType<typeof stackWith>, stackedClose?: 'show' | 'hide') {
   flags.isOpen = [];
   render(
     <AppWorkspaceProvider>
       <AppShell navigation={<div>Nav</div>}>
-        <Host stack={stack} />
+        <Host stack={stack} stackedClose={stackedClose} />
       </AppShell>
     </AppWorkspaceProvider>,
   );
@@ -138,5 +144,29 @@ describe('screen definition menu', () => {
     expect(within(menu).queryByRole('menuitem', { name: 'Save' })).toBeNull();
     expect(within(menu).getByRole('menuitem', { name: 'Show path' })).toBeTruthy();
     expect(menu.querySelector('[role="group"]')).toBeNull();
+  });
+});
+
+describe('stackedSecondaryClose', () => {
+  const closeButtons = () =>
+    screen.queryAllByRole('button', { name: 'Close secondary content', hidden: true });
+
+  it('keeps the close action in a stacked Secondary by default', async () => {
+    mount(stackWith());
+    await openStack();
+    expect(closeButtons().length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Back', hidden: true }).length).toBeGreaterThan(0);
+  });
+
+  it('hides the duplicate close action of a stacked Secondary, and keeps Back', async () => {
+    mount(stackWith(), 'hide');
+    await openStack();
+    expect(closeButtons()).toHaveLength(0);
+    expect(screen.getAllByRole('button', { name: 'Back', hidden: true }).length).toBeGreaterThan(0);
+    // The compact row loses the close item too.
+    const menu = menuOf(
+      screen.getAllByRole('button', { name: 'Screen actions', hidden: true }).length - 1,
+    );
+    expect(within(menu).queryByRole('menuitem', { name: 'Close secondary content' })).toBeNull();
   });
 });

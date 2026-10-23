@@ -34,6 +34,18 @@ export function documentHeaderModel(
   return {
     dirty: session.dirty,
     actions: [
+      // Only while the contents are not a column beside the text: same condition as the header icon.
+      ...(session.outlineAvailable
+        ? [
+            {
+              id: 'document-outline',
+              label: t('documents.outline.label'),
+              icon: 'list',
+              group: 'display',
+              onPress: session.openOutline,
+            } satisfies WorkspaceHeaderAction,
+          ]
+        : []),
       ...kind.actions(view, { session, t }),
       {
         id: 'document-path',

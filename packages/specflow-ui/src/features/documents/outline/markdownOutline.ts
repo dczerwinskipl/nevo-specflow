@@ -1,8 +1,10 @@
 /**
  * The document panel is wide enough (px, measured on the panel, not the viewport) to show the
- * contents and properties in a column beside the text instead of in blocks above it.
+ * contents and properties in a column beside the text; narrower panels open the contents as a
+ * sheet. The text keeps at least about 60 characters: 1000 - 48 (panel padding) - 40 (gap) -
+ * 320 (column) = 592 px.
  */
-export const outlineColumnMinWidth = 1100;
+export const outlineColumnMinWidth = 1000;
 
 /** One heading of a document: where it is (source line, 1-based) and how deep. */
 export interface OutlineHeading {

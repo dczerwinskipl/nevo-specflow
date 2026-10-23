@@ -121,7 +121,8 @@ function Connected({
               title: 'Plan',
               filename: 'plan.md',
               revision: '1',
-              content: '# Plan wdrożenia\n\nKroki wdrożenia logowania SSO.',
+              content:
+                '# Plan wdrożenia\n\nKroki wdrożenia logowania SSO.\n\n## Etap 1\n\nPrzygotowanie.\n\n## Etap 2\n\nWdrożenie.\n\n## Etap 3\n\nOdbiór.',
             },
           }
         : {}),
@@ -648,6 +649,47 @@ export const MissingDocumentDeepLink: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Zamknij kartę' }));
     await waitFor(() => expect(canvas.queryByRole('tab')).toBeNull());
     await expect(canvas.getByLabelText('Bieżąca trasa')).not.toHaveTextContent('nie-ma-takiego');
+  },
+};
+
+/**
+ * Stacked: the header is Back, the switcher, the contents icon, Edit and the menu. The region close
+ * (a second way back) is gone; the contents sheet and its Display item are there for 2+ headings.
+ */
+export const NarrowHeaderHasContentsAndNoDuplicateClose: Story = {
+  args: { path: '/specs/api-integration/documents?collection=archive', threeDocuments: true },
+  play: async ({ canvas, userEvent }) => {
+    await viewport(390, 844);
+    await openFromTree(canvas, userEvent, /^plan.md/);
+    await canvas.findByRole('button', { name: 'Wróć do listy dokumentów' });
+    await expect(canvas.queryByRole('button', { name: 'Zamknij wszystkie dokumenty' })).toBeNull();
+    const icon = await canvas.findByRole('button', { name: 'Otwórz spis treści' });
+    await userEvent.click(icon);
+    const sheet = await within(document.body).findByRole('dialog', { name: 'Spis treści (4)' });
+    await userEvent.click(within(sheet).getByRole('link', { name: 'Etap 3' }));
+    await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(document.activeElement).toHaveTextContent('Etap 3'));
+    // Plain text has no contents.
+    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do listy dokumentów' }));
+    await openFromTree(canvas, userEvent, /^CLIENT.TXT$/);
+    await canvas.findByRole('textbox', { name: 'Treść notes/CLIENT.TXT' });
+    await expect(canvas.queryByRole('button', { name: 'Otwórz spis treści' })).toBeNull();
+  },
+};
+
+/** Medium (split, document panel below the column threshold): strip, contents icon and the close. */
+export const MediumHeaderHasContentsIconAfterTheStrip: Story = {
+  args: { path: '/specs/api-integration/documents?collection=archive', threeDocuments: true },
+  play: async ({ canvas, userEvent }) => {
+    await viewport(1280, 900);
+    await openFromTree(canvas, userEvent, /^plan.md/);
+    await waitFor(() => expect(canvas.getAllByRole('tab')).toHaveLength(1));
+    const icon = await canvas.findByRole('button', { name: 'Otwórz spis treści' });
+    const tab = canvas.getByRole('tab');
+    await expect(icon.getBoundingClientRect().left).toBeGreaterThan(
+      tab.getBoundingClientRect().right,
+    );
+    await expect(canvas.getByRole('button', { name: 'Zamknij wszystkie dokumenty' })).toBeVisible();
   },
 };
 

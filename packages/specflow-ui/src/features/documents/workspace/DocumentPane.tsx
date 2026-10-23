@@ -184,6 +184,7 @@ export const documentStack = defineSecondaryStack<
         return {
           moreActions: translateNow('common.moreActions'),
           menuActions: translateNow('documents.menuActions'),
+          menuDisplay: translateNow('documents.menuDisplay'),
         };
       },
       // Every action, promoted ones included, is in the menu (the compact row has no direct ones).

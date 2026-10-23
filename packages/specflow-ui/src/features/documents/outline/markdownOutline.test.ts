@@ -3,7 +3,13 @@ import { createElement } from 'react';
 import { render, cleanup } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { MarkdownDocument } from '@nevo/ui';
-import { markdownOutline } from './markdownOutline';
+import {
+  markdownOutline,
+  outlineColumnMinWidth,
+  outlineColumnWidth,
+  outlineTextMinWidth,
+  outlineTextWidth,
+} from './markdownOutline';
 
 beforeAll(() => {
   vi.stubGlobal(
@@ -93,5 +99,21 @@ describe('markdown outline', () => {
     expect(markdownOutline(source).map((heading) => [heading.line, heading.text])).toEqual(
       rendered,
     );
+  });
+});
+
+describe('contents column geometry', () => {
+  it('is 28% of the panel between 240 and 320 px', () => {
+    expect(outlineColumnWidth(880)).toBe(246);
+    expect(outlineColumnWidth(700)).toBe(240);
+    expect(outlineColumnWidth(1290)).toBe(320);
+    expect(outlineColumnWidth(4000)).toBe(320);
+  });
+
+  it('leaves the text at least 520 px (about 65 characters) from the threshold up', () => {
+    expect(outlineColumnMinWidth).toBe(880);
+    for (const width of [880, 900, 922, 997, 1035, 1100, 1290])
+      expect(outlineTextWidth(width)).toBeGreaterThanOrEqual(outlineTextMinWidth);
+    expect(outlineTextWidth(860)).toBeLessThan(outlineTextWidth(880));
   });
 });

@@ -110,8 +110,11 @@ export function DocumentEditorProvider({
   const [guardFor, setGuardFor] = useState<string>();
   const [pathOpen, setPathOpen] = useState(false);
   const outlineNavigator = useRef<OutlineNavigator | null>(null);
+  // Reported by the mounted preview, which alone can measure its panel: an exception to deriving
+  // state in the owner, kept as one boolean the header reads.
   const [columnShown, setColumnShown] = useState<boolean>();
-  const [outlineOpen, setOutlineOpen] = useState(false);
+  // The document the contents sheet was opened for; the sheet is open only while that still holds.
+  const [openedFor, setOpenedFor] = useState<string>();
   // The heading the reader was at when the sheet opened: measured once, at that moment.
   const [outlineActive, setOutlineActive] = useState<number>();
   const documentId = document?.id ?? '';
@@ -128,6 +131,9 @@ export function DocumentEditorProvider({
   const outline = useMemo(() => documentOutline(content, markdown), [content, markdown]);
   const outlineAvailable =
     markdown && draft?.editing === false && columnShown === false && outline.headings.length > 0;
+  const outlineOpen = openedFor !== undefined && openedFor === documentId && outlineAvailable;
+  // Editing, a wide panel or another document ends the question, so coming back never reopens it.
+  if (openedFor !== undefined && !outlineOpen) setOpenedFor(undefined);
   const outlineOpener = useRef<HTMLElement | null>(null);
   const openOutline = useCallback(() => {
     outlineOpener.current =
@@ -135,8 +141,8 @@ export function DocumentEditorProvider({
         ? globalThis.document.activeElement
         : null;
     setOutlineActive(outlineNavigator.current?.activeLine());
-    setOutlineOpen(true);
-  }, []);
+    setOpenedFor(documentId);
+  }, [documentId]);
   const owner = useDocumentSave({ specId, document, draft });
   const { save: saveOwned } = owner;
 
@@ -253,12 +259,21 @@ export function DocumentEditorProvider({
         {session && <DocumentPathDialog open={pathOpen} path={name} onOpenChange={setPathOpen} />}
         {session && (
           <DocumentOutlineSheet
-            open={outlineOpen && outlineAvailable}
+            open={outlineOpen}
             headings={outline.headings}
             activeLine={outlineActive}
-            onOpenChange={setOutlineOpen}
+            onOpenChange={(next) => {
+              if (!next) setOpenedFor(undefined);
+            }}
             onSelected={(line) => outlineNavigator.current?.goTo(line)}
-            restoreFocusTo={() => outlineOpener.current}
+            restoreFocusTo={() =>
+              // A menu item that opened the sheet is gone by now: the document heading is the next best place.
+              outlineOpener.current?.isConnected
+                ? outlineOpener.current
+                : globalThis.document.querySelector<HTMLElement>(
+                    '[data-workspace-surface][data-workspace-active="true"] [data-workspace-header-title="true"], [data-workspace-header-title="true"]',
+                  )
+            }
           />
         )}
         {session && (

@@ -8,7 +8,8 @@ import { useDocumentEditor } from './DocumentEditorProvider';
 import { restoreWhileIdle, trackUserScroll, type ScrollAnchor } from './documentScrollAnchor';
 import { DocumentOutline } from '../outline/DocumentOutline';
 import type { DocumentOutlineData, OutlineNavigator } from '../outline/outlineData';
-import { outlineColumnMinWidth } from '../outline/markdownOutline';
+import { lastInputWasKeyboard } from '../outline/inputModality';
+import { outlineColumnMinWidth, outlineColumnWidth } from '../outline/markdownOutline';
 import { DocumentProperties } from '../frontmatter/DocumentProperties';
 import { useMarkdownLabels } from '../useMarkdownLabels';
 import { applyPreviewAnchor, readPreviewAnchor } from './previewScroll';
@@ -145,6 +146,10 @@ function PreviewScroller({
   const measureActive = useCallback(() => {
     const scroller = viewport.current;
     if (!scroller) return undefined;
+    // At the very end the last section is the one being read, even if its heading never reaches the top.
+    const scrollable = scroller.scrollHeight - scroller.clientHeight > 2;
+    if (scrollable && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2)
+      return headings.at(-1)?.line;
     const top = scroller.getBoundingClientRect().top + 48;
     let current: number | undefined;
     for (const heading of headings) {
@@ -182,6 +187,16 @@ function PreviewScroller({
         element.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 16;
       scroller.dispatchEvent(new Event('scroll'));
       element.tabIndex = -1;
+      // After a pointer the heading takes focus quietly (a brief tint shows where it is); after the
+      // keyboard the usual focus ring stays.
+      if (!lastInputWasKeyboard()) {
+        element.style.outline = 'none';
+        element.classList.add('bg-surface-selected');
+        window.setTimeout(() => element.classList.remove('bg-surface-selected'), 600);
+        element.addEventListener('blur', () => element.style.removeProperty('outline'), {
+          once: true,
+        });
+      }
       element.focus({ preventScroll: true });
       setActiveLine(line);
     },
@@ -207,9 +222,12 @@ function PreviewScroller({
       {wide && hasAside ? (
         // Two columns: the text keeps its readable measure and the contents and properties stay in
         // view beside it, so a wide panel is not an empty band.
-        <div className="flex items-start gap-10">
+        <div className="flex items-start gap-8">
           <div className="min-w-0 max-w-content-narrow flex-1">{text}</div>
-          <aside className="sticky top-0 grid w-80 shrink-0 gap-4">
+          <aside
+            className="sticky top-0 grid shrink-0 grid-cols-1 gap-4"
+            style={{ width: outlineColumnWidth(panelWidth) }}
+          >
             {properties && <DocumentProperties properties={properties} anchored={false} />}
             {headings.length > 0 && (
               <DocumentOutline headings={headings} activeLine={activeLine} onSelect={goToHeading} />
@@ -219,7 +237,7 @@ function PreviewScroller({
       ) : (
         // A readable measure (about 80 characters) aligned with the tabs; the editor keeps the full width.
         <div className="max-w-content-narrow">
-          {properties && <DocumentProperties properties={properties} />}
+          {properties && <DocumentProperties properties={properties} variant="row" />}
           {text}
         </div>
       )}

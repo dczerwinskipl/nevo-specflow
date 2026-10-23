@@ -529,7 +529,7 @@ export const WidePanelShowsContentsColumn: Story = {
  * without a choice returns focus to the icon.
  */
 export const NarrowPanelOpensContentsAsSheet: Story = {
-  args: { width: 900, height: 700, initial: 'withProps' },
+  args: { width: 800, height: 700, initial: 'withProps' },
   play: async ({ canvas, canvasElement, userEvent }) => {
     await waitForPreview(canvasElement);
     await expect(canvasElement.querySelector('aside')).toBeNull();
@@ -564,7 +564,7 @@ export const NarrowPanelOpensContentsAsSheet: Story = {
 };
 
 export const NarrowPanelMenuStartsWithContents: Story = {
-  args: { width: 900, height: 700, initial: 'a' },
+  args: { width: 800, height: 700, initial: 'a' },
   play: async ({ canvas, canvasElement, userEvent }) => {
     await waitForPreview(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Więcej akcji' }));
@@ -574,11 +574,14 @@ export const NarrowPanelMenuStartsWithContents: Story = {
     await userEvent.click(items[0]!);
     await within(document.body).findByRole('dialog', { name: /Spis treści/ });
     await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
+    // The menu item that opened the sheet is gone: focus lands on the header, not on the page body.
+    await waitFor(() => expect(document.activeElement).not.toBe(document.body));
   },
 };
 
 export const EditingHidesTheContentsIcon: Story = {
-  args: { width: 900, height: 700, initial: 'a' },
+  args: { width: 800, height: 700, initial: 'a' },
   play: async ({ canvas, canvasElement, userEvent }) => {
     await waitForPreview(canvasElement);
     await canvas.findByRole('button', { name: 'Otwórz spis treści' });
@@ -589,27 +592,92 @@ export const EditingHidesTheContentsIcon: Story = {
   },
 };
 
-/** The column threshold: 1000 px of panel. Measured on the panel, not the viewport. */
+/**
+ * The column threshold: 880 px of panel (measured on the panel, not the viewport). The text keeps
+ * about 65 characters, the column is 28% of the panel, and nothing pushes the panel sideways (the
+ * document has a table).
+ */
 export const ColumnAppearsAtThePanelThreshold: Story = {
-  args: { width: 1030, height: 700, initial: 'a' },
+  args: { width: 900, height: 700, initial: 'a' },
   play: async ({ canvas, canvasElement }) => {
     await waitForPreview(canvasElement);
-    await expect(await canvas.findByRole('navigation', { name: 'Spis treści' })).toBeVisible();
+    const nav = await canvas.findByRole('navigation', { name: 'Spis treści' });
+    await expect(nav).toBeVisible();
     await expect(canvas.queryByRole('button', { name: 'Otwórz spis treści' })).toBeNull();
     const text = canvasElement.querySelector<HTMLElement>('[data-source-line="1"]')!;
-    // About 60+ characters per line: at least 560 px of text beside the 320 px column.
-    await expect(text.getBoundingClientRect().width).toBeGreaterThanOrEqual(560);
+    await expect(text.getBoundingClientRect().width).toBeGreaterThanOrEqual(520);
     const panel = previewOf(canvasElement)!;
     await expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth + 1);
+    // The column fits its own width: even the document title (the longest row) does not spread out.
+    const aside = nav.closest('aside')!;
+    await expect(nav.getBoundingClientRect().right).toBeLessThanOrEqual(
+      aside.getBoundingClientRect().right + 1,
+    );
+    await expect(aside.getBoundingClientRect().right).toBeLessThanOrEqual(
+      panel.getBoundingClientRect().right,
+    );
   },
 };
 
 export const NoColumnJustBelowTheThreshold: Story = {
-  args: { width: 990, height: 700, initial: 'a' },
+  args: { width: 860, height: 700, initial: 'a' },
   play: async ({ canvas, canvasElement }) => {
     await waitForPreview(canvasElement);
     await expect(await canvas.findByRole('button', { name: 'Otwórz spis treści' })).toBeVisible();
     await expect(canvasElement.querySelector('aside')).toBeNull();
+  },
+};
+
+/** At the end of the document the last section is the current one, whether or not its heading reached the top. */
+export const SheetMarksTheLastSectionAtTheEnd: Story = {
+  args: { width: 800, height: 600, initial: 'a' },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await waitForPreview(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Otwórz spis treści' }));
+    let sheet = await within(document.body).findByRole('dialog');
+    await userEvent.click(within(sheet).getByRole('link', { name: 'Sekcja 16' }));
+    await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
+    const panel = previewOf(canvasElement)!;
+    await waitFor(() =>
+      expect(panel.scrollTop + panel.clientHeight).toBeGreaterThanOrEqual(panel.scrollHeight - 2),
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Otwórz spis treści' }));
+    sheet = await within(document.body).findByRole('dialog');
+    await expect(within(sheet).getByRole('link', { current: 'location' })).toHaveTextContent(
+      'Sekcja 16',
+    );
+    await userEvent.keyboard('{Escape}');
+  },
+};
+
+/** After a pointer the chosen heading takes focus without the thick outline around the whole heading. */
+export const ChosenHeadingHasNoFocusRingAfterAPointer: Story = {
+  args: { width: 800, height: 600, initial: 'a' },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await waitForPreview(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Otwórz spis treści' }));
+    const sheet = await within(document.body).findByRole('dialog');
+    await userEvent.click(within(sheet).getByRole('link', { name: 'Sekcja 4' }));
+    await waitFor(() => expect(document.activeElement?.tagName).toMatch(/^H[1-4]$/));
+    await expect(document.activeElement).toHaveTextContent('Sekcja 4');
+    await expect(getComputedStyle(document.activeElement!).outlineStyle).toBe('none');
+  },
+};
+
+/** The properties are a plain row in the flow (no frame around empty space), 44 px tall. */
+export const PropertiesAreAPlainRowInTheFlow: Story = {
+  args: { width: 800, height: 600, initial: 'withProps' },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await waitForPreview(canvasElement);
+    const block = canvasElement.querySelector<HTMLElement>('[data-document-properties]')!;
+    const style = getComputedStyle(block);
+    await expect(style.borderLeftWidth).toBe('0px');
+    await expect(style.borderTopWidth).toBe('0px');
+    const trigger = canvas.getByRole('button', { name: /Właściwości/ });
+    await expect(trigger.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    await userEvent.click(trigger);
+    await expect(await canvas.findByText('zespół')).toBeVisible();
+    await expect(getComputedStyle(block).borderLeftWidth).toBe('0px');
   },
 };
 

@@ -61,7 +61,7 @@ export function DocumentTabStrip({ variant = 'auto' }: { variant?: 'auto' | 'swi
       </h2>
       {/* The contents icon follows the strip (or the switcher) as region navigation. */}
       <div className="flex min-w-0 items-center gap-1">
-        <div className="min-w-0 flex-1">
+        <div className={variant === 'switcher' ? 'min-w-0' : 'min-w-0 flex-1'}>
           <ItemTabs
             items={items}
             activeId={tabs.activeId}

@@ -48,9 +48,12 @@ export function DocumentOutlineSheet({
       <DrawerContent
         side="bottom"
         showClose={false}
+        // Ten headings must not take most of a phone: the list scrolls inside.
+        className="max-h-[65dvh]!"
         onOpenAutoFocus={(event) => {
           // Focus the heading the reader is at (it scrolls into view with it), else the first one.
           event.preventDefault();
+          chosen.current = undefined;
           // The scroll body mounts its list a frame later than the sheet itself.
           requestAnimationFrame(() => entry.current?.focus());
         }}
@@ -70,7 +73,7 @@ export function DocumentOutlineSheet({
           onSelected(line);
         }}
       >
-        <DrawerHeader className="flex items-center justify-between gap-3 pr-3">
+        <DrawerHeader className="flex items-center justify-between gap-3 pr-3!">
           <DrawerTitle>{title}</DrawerTitle>
           <DrawerClose asChild>
             <IconButton
@@ -106,7 +109,12 @@ export function DocumentOutlineSheet({
                         onOpenChange(false);
                       }}
                     >
-                      <span className="line-clamp-2">{heading.text}</span>
+                      <span
+                        className={heading.level === 1 ? 'truncate' : 'line-clamp-2'}
+                        title={heading.level === 1 ? heading.text : undefined}
+                      >
+                        {heading.text}
+                      </span>
                     </a>
                   </li>
                 );

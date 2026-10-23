@@ -12,6 +12,7 @@ import { DocumentDraftProvider } from '../editor/DocumentDraftProvider';
 import { DocumentEditorProvider, useDocumentEditor } from '../editor/DocumentEditorProvider';
 import type { DocumentEditorSession } from '../editor/DocumentEditorProvider';
 import { documentHeaderModel } from '../editor/documentHeaderModel';
+import { createDocumentDraftStore } from '../editor/documentDraftStore';
 import { OutlineButton } from './OutlineButton';
 
 beforeAll(() => {
@@ -54,20 +55,24 @@ function setup(document: SpecificationDocumentResponse) {
     seen.groups = actions.map((action) => String(action.group));
     return <OutlineButton />;
   }
-  render(
+  const store = createDocumentDraftStore();
+  const tree = (shown: SpecificationDocumentResponse) => (
     <QueryClientProvider client={queryClient}>
       <TestServicesRouterContext services={services}>
         <LocalizationProvider instance={createSpecFlowI18n('en')}>
-          <DocumentDraftProvider>
-            <DocumentEditorProvider specId="s" document={document}>
+          <DocumentDraftProvider store={store}>
+            <DocumentEditorProvider specId="s" document={shown}>
               <Probe />
             </DocumentEditorProvider>
           </DocumentDraftProvider>
         </LocalizationProvider>
       </TestServicesRouterContext>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
-  return seen;
+  const view = render(tree(document));
+  return Object.assign(seen, {
+    show: (next: SpecificationDocumentResponse) => view.rerender(tree(next)),
+  });
 }
 const icon = () => screen.queryByRole('button', { name: 'Open contents' });
 
@@ -152,5 +157,50 @@ describe('the contents of a previewed document', () => {
     fireEvent.keyDown(sheet, { key: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(goTo).not.toHaveBeenCalled();
+  });
+
+  it('does not reopen the sheet when the reader comes back from editing', async () => {
+    const seen = setup(record(markdown));
+    seen.session!.outlineNavigator.current = { goTo: vi.fn(), activeLine: () => 1 };
+    act(() => seen.session!.reportColumnShown(false));
+    fireEvent.click(icon()!);
+    await screen.findByRole('dialog');
+    act(() => seen.session!.setDraft({ editing: true }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    act(() => seen.session!.setDraft({ editing: false }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(icon()!.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('does not reopen the sheet when the panel turns wide and narrow again', async () => {
+    const seen = setup(record(markdown));
+    act(() => seen.session!.reportColumnShown(false));
+    fireEvent.click(icon()!);
+    await screen.findByRole('dialog');
+    act(() => seen.session!.reportColumnShown(true));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    act(() => seen.session!.reportColumnShown(false));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('closes the sheet when another document is shown', async () => {
+    const seen = setup(record(markdown));
+    act(() => seen.session!.reportColumnShown(false));
+    fireEvent.click(icon()!);
+    await screen.findByRole('dialog');
+    seen.show({ ...record(markdown), id: 'b', title: 'b', filename: 'b.md' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    act(() => seen.session!.reportColumnShown(false));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('chooses a heading without a mounted preview and without throwing', async () => {
+    const seen = setup(record(markdown));
+    seen.session!.outlineNavigator.current = null;
+    act(() => seen.session!.reportColumnShown(false));
+    fireEvent.click(icon()!);
+    const sheet = await screen.findByRole('dialog');
+    fireEvent.click(within(sheet).getAllByRole('link')[1]!);
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 });

@@ -14,11 +14,12 @@ function Entries({
   onSelect: (line: number) => void;
 }) {
   return (
-    <ol className="grid gap-0.5">
+    <ol className="grid grid-cols-1 gap-0.5">
       {headings.map((heading) => (
-        <li key={heading.line} className={indent[heading.level]}>
+        <li key={heading.line} className={cn('min-w-0', indent[heading.level])}>
           <a
             href={`#line-${heading.line}`}
+            title={heading.text}
             aria-current={heading.line === activeLine ? 'location' : undefined}
             className={cn(
               'block truncate rounded-control px-2 py-1 text-body-sm text-content-secondary no-underline hover:bg-surface-hover hover:text-content-primary',

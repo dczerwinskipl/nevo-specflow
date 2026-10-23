@@ -1,0 +1,100 @@
+---
+id: design-system.implementation.react.item-tabs
+type: engineering
+title: Item tabs and content tabs host
+status: draft
+scope: nevo-ui
+read_when:
+  - opening several documents, previews or files as tabs in a workspace region
+  - using or changing ItemTabs or useOpenedItems
+  - defining what a tab's content shows and which header actions it offers
+summary: >
+  Product-neutral contract of the ItemTabs strip and the useOpenedItems state, and the Content tabs
+  host pattern in which a blind host renders content that declares its own views and actions.
+related:
+  - design-system.implementation.react.secondary-navigation
+  - design-system.principles.ui-ux-guidelines
+  - design-system.principles.layout-and-containment
+  - design-system.implementation.react.component-authoring-contract
+  - product.specflow.ui.documents-editor-mode
+---
+
+# Item tabs and content tabs host
+
+`ItemTabs` and `useOpenedItems` live in `@nevo/ui` (`components/navigation/ItemTabs/`). They know
+ids, labels and states only. Product terms, file types and editors MUST NOT enter them. Runnable
+examples: Storybook `SpecFlow/Screens/Editor mode (mock)` and the `ItemTabs` stories.
+
+## ItemTabs
+
+A controlled strip of opened items (`items`, `activeId`, `onActivate`, `onClose`, `scope`). The host
+owns state, guards and the tab panel; the strip renders no panel.
+
+- **Placement.** The strip MUST be the content of a region header (`h-14`), left of the header
+  actions. It MUST NOT add a second row under the header. Tabs fill the header height; the active
+  tab's underline sits on the header border.
+- **Width.** A tab is 140-180 px. If `N x 140` fits, all tabs are visible; otherwise
+  `floor((width - 52) / 140)` tabs are visible, the active one always among them, and the rest go to
+  the `Opened (N)` menu. Labels truncate in the middle so the extension stays visible; the tooltip
+  and the menu row show the full description (path).
+- **Switcher.** Below `switcherBelow` (default 480 px of strip width) the strip MUST become one
+  button `name (N)` opening the same menu (`variant="auto"`).
+- **Tab anatomy.** Icon, label, close `x` at the label's right edge. The unsaved state is a badge on
+  the icon, visible on every pointer and in the switcher; it MUST NOT share the close slot. `loading`
+  shows a spinner, `missing` a warning icon and muted label; neither changes tab geometry.
+- **Close.** The `x` is shown on hover, focus and on the active tab, always on coarse pointers, with
+  a 44 px hit area there. It is outside the tablist and not in the tab order.
+- **Menu.** `Opened (N)` lists every item with description, dirty badge and a pointer-only `x`.
+- **No preview tab.** Every open creates a tab; opening an open item activates it.
+- **Keyboard.** `activation="manual"` (default): arrows, Home and End move focus, Enter/Space
+  activates. `Delete` on a tab or menu row closes it; middle-click closes a tab. The strip MUST NOT
+  bind Ctrl+W (the browser owns it).
+- **A11y.** `tablist`/`tab` with roving tabindex; one tab panel per active item, referenced through
+  `getItemTabId` / `getItemTabPanelId`. Dirty, loading, missing and current are announced.
+- **Copy.** All strings are replaceable through `labels`.
+
+## useOpenedItems
+
+Headless state: `{ items, activeId, open, activate, close, requestClose, closeAll }`.
+
+- `open` MUST activate an item whose `id` is already open instead of adding another.
+- Closing the active item activates its right neighbour, else the left one; closing the last leaves
+  `activeId` null.
+- `requestClose` MUST consult the async `canClose(id)` guard; `false` keeps the item open. The host
+  MUST route every close trigger (`x`, Delete, middle-click, menu) through it. `close` and
+  `closeAll` do not ask.
+- A change of `scope` resets to the initial values; late async closes of an old scope are ignored.
+
+## Content tabs host (pattern, not implemented in nevo-ui)
+
+A **host** composes `useOpenedItems`, `ItemTabs` and a header action slot, and renders the active
+item. The host MUST be content-blind: it receives from each item `label`, `description`, `dirty`,
+`state`, `render()` and `actions()` and MUST NOT import code specific to a kind of content. Each
+product supplies a provider; other hosts (read-only previews, diffs) bring their own.
+
+A **content descriptor** declares `views`, `defaultView`, optional `viewMinWidth` per view (measured
+on the content area, not the viewport) and `actions(view, context)`.
+
+- **Views.** A view switch exists only where views differ. The chosen view is per tab. A view whose
+  `viewMinWidth` is not met MUST fall back to its nearest narrower view.
+- **Action shape.** `{ id, label, icon, group: 'display' | 'actions', promoted?, checked?, tone?,
+disabled?, shortcut?, onPress }`.
+- **Complete menu.** The `...` menu MUST list every action of the active tab: `display` group
+  (options and toggles) above `actions`. A promoted action is a shortcut to the same action (same
+  `id` and label); the duplicate is intended. A shortcut hint appears only where the key works.
+- **Icon = action.** An icon names the action it performs, never the current state. State is shown
+  in the menu's trailing slot (`checked`) and, for icon toggles, through `aria-pressed`.
+- **Promotion.** Direct header actions follow the header action budget of the workspace header. The
+  action that persists changes while there are unsaved changes wins first; then lower `promoted`;
+  the rest stay menu-only. The header MUST NOT change geometry when state changes.
+- **Height.** `ItemTabs` sets its own height (the workspace header slot minus its divider), so a
+  host renders it inside `WorkspaceHeader.identityContent` without sizing it.
+
+## Gaps to close in nevo-ui
+
+1. `WorkspaceHeaderFrame` needs an opt-in complete menu (`menu: 'complete'`) that includes direct
+   actions and renders groups, without changing existing screens.
+2. Icon header actions need `aria-pressed` for toggles.
+3. The `Icon` set needs "Open Preview to the Side".
+4. `ItemTabs` duplicates the workspace header height. A header content slot that stretches to the
+   header height would remove that coupling.

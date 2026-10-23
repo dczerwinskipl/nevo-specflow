@@ -22,3 +22,4 @@ these files.
 | [Application architecture](application-architecture.md)     | Runtime composition, routing, ownership boundaries, and current foundation screens.                |
 | [Data/loading/integration](data-loading-and-integration.md) | Read-model coherence, API readiness, freshness, loading, refresh, batching, and failure ownership. |
 | [AI-session UX](ai-session-ux.md)                           | Turn state, Work information levels, commentary, live vs historical.                               |
+| [Documents editor mode](documents-editor-mode.md)           | Documents with several open tabs, read-only tabs in a Session, tablet threshold.                   |

@@ -21,8 +21,8 @@ import type { OperationsApi } from '../../../../shared/operations/operationsApi'
 import { createOperationEventsUrl } from '../api/api.project';
 import { CreateOperationScreen } from '../CreateOperationScreen';
 import { createSessionOperationStorage } from '../operation/createOperationStorage';
-import type { CreateSettingsFacts } from '../workspace/createFacts';
-import { initialWorkspaceChoice } from '../workspace/workspaceChoice';
+import type { CreateSettingsFacts } from '../workspace/model/createFacts';
+import { initialWorkspaceChoice } from '../workspace/model/workspaceChoice';
 
 const operationId = '3f0a6d4e-8f2a-4b6e-9d0a-1c2b3d4e5f60';
 const base = { operationId, kind: 'specification-create' as const };

@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import type { WorkspaceChoice } from './workspaceChoice';
+import type { WorkspaceChoice } from './model/workspaceChoice';
 
 /** How a setting changes the choice: a patch of its own fields, or a full update of the choice. */
 export interface SettingsUpdate {

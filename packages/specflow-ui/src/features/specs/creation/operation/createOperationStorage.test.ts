@@ -3,7 +3,7 @@ import {
   createSessionOperationStorage,
   type StoredCreateOperation,
 } from './createOperationStorage';
-import { initialWorkspaceChoice } from '../workspace/workspaceChoice';
+import { initialWorkspaceChoice } from '../workspace/model/workspaceChoice';
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const values = new Map(Object.entries(initial));

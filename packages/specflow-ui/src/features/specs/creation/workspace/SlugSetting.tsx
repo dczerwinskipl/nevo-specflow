@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { SPEC_SLUG_MAX_LENGTH, deriveSpecSlug } from '@nevo/specflow-contracts/specs';
 import { useMessage, type Message } from '../../../../i18n/message';
 import type { SettingsUpdate } from './settingsTypes';
-import { initialWorkspaceChoice, type WorkspaceChoice } from './workspaceChoice';
+import { initialWorkspaceChoice, type WorkspaceChoice } from './model/workspaceChoice';
 
 /** The specification name (slug) the Engine derives from the title, or the owner's own. */
 export function SlugSetting({

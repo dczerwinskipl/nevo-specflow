@@ -5,8 +5,8 @@ import type { AppLocale } from '../../../../i18n';
 import { createOptionsFixture, workspaceIds as ids } from '../options/creationOptions.stories-support';
 import { WorkspacePlaceSection } from './WorkspacePlaceSection';
 import { ExistingSummary, MainSummary, NewSummary } from './WorkspaceTileSummaries';
-import { initialWorkspaceChoice, type WorkspaceChoice } from './workspaceChoice';
-import { revalidate } from './workspaceValidation';
+import { initialWorkspaceChoice, type WorkspaceChoice } from './model/workspaceChoice';
+import { revalidate } from './model/workspaceValidation';
 
 const choice = (patch: Partial<WorkspaceChoice> = {}): WorkspaceChoice => ({
   ...initialWorkspaceChoice,

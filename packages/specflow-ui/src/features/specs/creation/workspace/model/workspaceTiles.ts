@@ -1,5 +1,5 @@
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
-import { message, type Message } from '../../../../i18n/message';
+import { message, type Message } from '../../../../../i18n/message';
 import type { Tile, WorkspaceChoice } from './workspaceChoice';
 
 type Workspace = CreateOptions['workspaces'][number];

@@ -2,9 +2,9 @@ import { Alert, Button, InlineNote } from '@nevo/ui';
 import { Trans, useTranslation } from 'react-i18next';
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
 import { BranchRef } from './BranchRef';
-import { effectiveTargetBranch, mergeSuggestion } from './mergeSuggestion';
+import { effectiveTargetBranch, mergeSuggestion } from './model/mergeSuggestion';
 import type { SettingsFocusRequest, SettingsUpdate } from './settingsTypes';
-import type { WorkspaceChoice } from './workspaceChoice';
+import type { WorkspaceChoice } from './model/workspaceChoice';
 
 /**
  * What the chosen base suggests about the merge target: offer the workspace that has the base

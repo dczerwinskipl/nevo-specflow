@@ -3,8 +3,8 @@ import { isCreateSpecRequest, type CreateSpecRequest } from '@nevo/specflow-cont
 import { useAppServices } from '../../../../app/useAppServices';
 import { authSessionIdentity, type AuthStore } from '../../../../auth/store';
 import type { CreateFailure } from '../errors/createFailure';
-import { toCreateFacts, type CreateSettingsFacts } from '../workspace/createFacts';
-import { initialWorkspaceChoice, type WorkspaceChoice } from '../workspace/workspaceChoice';
+import { toCreateFacts, type CreateSettingsFacts } from '../workspace/model/createFacts';
+import { initialWorkspaceChoice, type WorkspaceChoice } from '../workspace/model/workspaceChoice';
 
 /** The request of an operation that was sent and whose outcome is not yet confirmed. */
 export type SentCreateRequest = CreateSpecRequest & { operationId: string };

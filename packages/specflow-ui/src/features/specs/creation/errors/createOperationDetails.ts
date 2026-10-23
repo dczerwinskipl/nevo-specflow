@@ -3,7 +3,7 @@ import type { CreateOptions } from '@nevo/specflow-contracts/specs';
 import { message, type Message } from '../../../../i18n/message';
 import type { OperationDetail } from './CreateFailureAlert';
 import type { CreateOperationStatus, SentRequest } from '../operation/createOperationReducer';
-import { primaryWorkspace } from '../workspace/workspaceTiles';
+import { primaryWorkspace } from '../workspace/model/workspaceTiles';
 
 /**
  * Facts of the operation as it was SENT: never rebuilt from the current form or options. A request

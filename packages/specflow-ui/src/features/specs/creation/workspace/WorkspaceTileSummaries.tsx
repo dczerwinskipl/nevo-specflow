@@ -9,14 +9,14 @@ import type { CreateOptions } from '@nevo/specflow-contracts/specs';
 import { BranchRef } from './BranchRef';
 import { NewWorkspaceSettings, type WorkspaceSettingsControls } from './NewWorkspaceSettings';
 import { WorkspaceLabel, WorkspaceRef } from './WorkspaceRef';
-import { branchPreview, createOverrides, effectiveSlug } from './createRequest';
-import { generatedBranchProblem } from './workspaceValidation';
+import { branchPreview, createOverrides, effectiveSlug } from './model/createRequest';
+import { generatedBranchProblem } from './model/workspaceValidation';
 import {
   inheritedTarget,
   primaryWorkspace,
   targetStatus,
   defaultTargetWorkspaceId,
-} from './workspaceTiles';
+} from './model/workspaceTiles';
 import {
   defaultSettingsSummary,
   mergeUnavailableNote,
@@ -25,10 +25,10 @@ import {
   settingsSummary,
   sharedUseNote,
   specCountLabel,
-} from './workspaceCopy';
-import type { revalidate } from './workspaceValidation';
-import type { WorkspaceChoice } from './workspaceChoice';
-import type { WorkspaceConflicts } from './workspaceConflicts';
+} from './model/workspaceCopy';
+import type { revalidate } from './model/workspaceValidation';
+import type { WorkspaceChoice } from './model/workspaceChoice';
+import type { WorkspaceConflicts } from './model/workspaceConflicts';
 
 /** What the chosen workspace tile means: facts, notes and the settings summary below the tiles. */
 const note = (children: ReactNode, tone: 'info' | 'attention' = 'info') => (

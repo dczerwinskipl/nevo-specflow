@@ -20,7 +20,7 @@ import { createProjectCreationApi } from '../api/api.project';
 import { CreateOperationScreen } from '../CreateOperationScreen';
 import { createSessionOperationStorage } from '../operation/createOperationStorage';
 import { createSpecErrorCodes } from '../errors/createSpecErrors';
-import { initialWorkspaceChoice } from '../workspace/workspaceChoice';
+import { initialWorkspaceChoice } from '../workspace/model/workspaceChoice';
 import { openAfterCreatedMs } from './CreateOperationPage';
 
 const operationId = '00000000-0000-4000-8000-000000000001';

@@ -3,8 +3,8 @@ import {
   createOptionsFixture,
   workspaceIds as ids,
   type OptionsVariant,
-} from '../options/creationOptions.stories-support';
-import { polishText } from '../../../../i18n/testing';
+} from '../../options/creationOptions.stories-support';
+import { polishText } from '../../../../../i18n/testing';
 import {
   activeTile,
   defaultBaseValue,
@@ -35,7 +35,7 @@ import { effectiveTargetBranch, mergeSuggestion } from './mergeSuggestion';
 import {
   formatOperationTime as rawFormatOperationTime,
   operationStageLabel as rawOperationStageLabel,
-} from '../errors/createOperationDetails';
+} from '../../errors/createOperationDetails';
 import {
   initialWorkspaceChoice,
   requestChoiceSnapshot,

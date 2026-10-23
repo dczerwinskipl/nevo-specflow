@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next';
 import type { CreateFailure } from '../errors/createFailure';
 import type { CreateOptionsModel } from '../options/useCreateOptions';
 import type { WorkspacePlaceSectionHandle } from './WorkspacePlaceSection';
-import { initialWorkspaceChoice, type WorkspaceChoice } from './workspaceChoice';
-import { conflictsOfFailure, type WorkspaceConflicts } from './workspaceConflicts';
-import { revalidate } from './workspaceValidation';
+import { initialWorkspaceChoice, type WorkspaceChoice } from './model/workspaceChoice';
+import { conflictsOfFailure, type WorkspaceConflicts } from './model/workspaceConflicts';
+import { revalidate } from './model/workspaceValidation';
 
 export interface WorkspacePlace {
   choice: WorkspaceChoice;

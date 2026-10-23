@@ -32,11 +32,11 @@ import { useFocusRequest } from '../../../../shared/a11y/useFocusRequest';
 import { ChoiceTile, ChoiceTileGroup } from '../options/ChoiceTile';
 import { BranchRef } from './BranchRef';
 import { ExistingSummary, MainSummary, NewSummary } from './WorkspaceTileSummaries';
-import { activeTile, primaryWorkspace, tileAvailability } from './workspaceTiles';
-import { availableCountLabel } from './workspaceCopy';
-import { revalidate, staleMessages } from './workspaceValidation';
-import type { Tile, WorkspaceChoice, WorkspaceOptionsState } from './workspaceChoice';
-import type { WorkspaceConflicts } from './workspaceConflicts';
+import { activeTile, primaryWorkspace, tileAvailability } from './model/workspaceTiles';
+import { availableCountLabel } from './model/workspaceCopy';
+import { revalidate, staleMessages } from './model/workspaceValidation';
+import type { Tile, WorkspaceChoice, WorkspaceOptionsState } from './model/workspaceChoice';
+import type { WorkspaceConflicts } from './model/workspaceConflicts';
 
 /**
  * Moves focus inside the section once its next render is done (the owner has just changed what is

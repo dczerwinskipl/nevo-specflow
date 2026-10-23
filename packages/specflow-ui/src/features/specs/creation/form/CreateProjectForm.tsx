@@ -22,9 +22,9 @@ import { startCreate } from '../operation/startCreate';
 import { useCreateLeaveGuard } from './useCreateLeaveGuard';
 import { useCreateOptions } from '../options/useCreateOptions';
 import { CreateWorkspaceSection } from './CreateWorkspaceSection';
-import { buildCreateFacts } from '../workspace/createFacts';
-import { buildCreateSlug, buildCreateTarget } from '../workspace/createRequest';
-import { requestChoiceSnapshot, type WorkspaceChoice } from '../workspace/workspaceChoice';
+import { buildCreateFacts } from '../workspace/model/createFacts';
+import { buildCreateSlug, buildCreateTarget } from '../workspace/model/createRequest';
+import { requestChoiceSnapshot, type WorkspaceChoice } from '../workspace/model/workspaceChoice';
 import { useWorkspacePlace } from '../workspace/useWorkspacePlace';
 
 /**

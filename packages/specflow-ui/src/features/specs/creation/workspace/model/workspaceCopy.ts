@@ -1,4 +1,4 @@
-import { message, type Message } from '../../../../i18n/message';
+import { message, type Message } from '../../../../../i18n/message';
 import type { WorkspaceChoice } from './workspaceChoice';
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
 import { createOverrides } from './createRequest';

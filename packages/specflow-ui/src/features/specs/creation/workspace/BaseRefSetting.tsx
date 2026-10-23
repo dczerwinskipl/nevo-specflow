@@ -8,8 +8,8 @@ import { BranchRef } from './BranchRef';
 import { MergeSuggestionNotice } from './MergeSuggestionNotice';
 import { UnavailableReason } from './UnavailableReason';
 import type { SettingsFocusRequest, SettingsUpdate } from './settingsTypes';
-import type { WorkspaceChoice } from './workspaceChoice';
-import { defaultBaseValue } from './workspaceTiles';
+import type { WorkspaceChoice } from './model/workspaceChoice';
+import { defaultBaseValue } from './model/workspaceTiles';
 
 /** The base branch the new workspace starts from: a switch and, when on, the branch picker. */
 export function BaseRefSetting({

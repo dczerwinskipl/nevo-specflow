@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createSessionOperationStorage } from './createOperationStorage';
 import { startCreate } from './startCreate';
-import { initialWorkspaceChoice } from '../workspace/workspaceChoice';
+import { initialWorkspaceChoice } from '../workspace/model/workspaceChoice';
 
 function setup() {
   const values = new Map<string, string>();

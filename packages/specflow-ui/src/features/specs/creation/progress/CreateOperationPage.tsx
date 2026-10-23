@@ -27,7 +27,7 @@ import { CreateTechnicalDetails } from './CreateTechnicalDetails';
 import { useCreateOperationProgress } from './useCreateOperationProgress';
 import { useCreateProjectSpecification } from '../operation/useCreateProjectSpecification';
 import { useStillWorking } from './useStillWorking';
-import { initialWorkspaceChoice, type WorkspaceChoice } from '../workspace/workspaceChoice';
+import { initialWorkspaceChoice, type WorkspaceChoice } from '../workspace/model/workspaceChoice';
 
 /** How long the finished checklist stays in view before the new specification opens. */
 export const openAfterCreatedMs = 1500;

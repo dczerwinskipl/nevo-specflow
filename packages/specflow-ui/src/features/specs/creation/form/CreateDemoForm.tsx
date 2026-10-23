@@ -28,8 +28,8 @@ import { useCreateOptions } from '../options/useCreateOptions';
 import { useCreateDemoSpecification, type CreateSubmission } from '../operation/useCreateDemoSpecification';
 import { useRevealFailure } from '../errors/useRevealFailure';
 import { CreateWorkspaceSection } from './CreateWorkspaceSection';
-import { buildCreateSlug, buildCreateTarget } from '../workspace/createRequest';
-import { requestChoiceSnapshot } from '../workspace/workspaceChoice';
+import { buildCreateSlug, buildCreateTarget } from '../workspace/model/createRequest';
+import { requestChoiceSnapshot } from '../workspace/model/workspaceChoice';
 import { useWorkspacePlace } from '../workspace/useWorkspacePlace';
 
 export interface CreateDemoFormProps {

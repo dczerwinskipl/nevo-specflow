@@ -22,6 +22,16 @@ describe('document draft keys', () => {
 });
 
 describe('dirty documents', () => {
+  it('advances a draft incarnation on removal but not on edits', () => {
+    const store = createDocumentDraftStore();
+    expect(store.incarnation('s', 'a')).toBe(0);
+    store.set('s', 'a', draft('one'));
+    store.patch('s', 'a', { content: 'two' }, () => draft('one'));
+    expect(store.incarnation('s', 'a')).toBe(0);
+    store.remove('s', 'a');
+    store.set('s', 'a', draft('three'));
+    expect(store.incarnation('s', 'a')).toBe(1);
+  });
   it('lists drafts of one spec whose content differs from the baseline', () => {
     const store = createDocumentDraftStore();
     store.set('s', 'a', draft('base'));

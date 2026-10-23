@@ -5,6 +5,7 @@ import { act, cleanup, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createSpecFlowQueryClient } from '../../../app/queryClient';
+import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
 import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import { createDocumentDraftStore, type DocumentDraft } from './documentDraftStore';
@@ -12,6 +13,7 @@ import { DocumentDraftProvider } from './DocumentDraftProvider';
 import type { DocumentsApi } from '../api';
 import { documentKeys } from '../read-model/queries';
 import { useDocumentSave } from './useDocumentSave';
+import { DocumentEditorProvider, useDocumentSaveOwner } from './DocumentEditorProvider';
 
 afterEach(cleanup);
 
@@ -57,7 +59,7 @@ function setup(failIds: string[] = []) {
     () => useDocumentSave({ specId: SPEC, document: record('a'), draft: store.get(SPEC, 'a') }),
     { wrapper },
   );
-  return { save, store, view };
+  return { save, store, view, queryClient };
 }
 
 describe('useDocumentSave for any document', () => {
@@ -154,5 +156,93 @@ describe('useDocumentSave for any document', () => {
     });
     expect(store.get(SPEC, 'b')).toMatchObject({ content: 'B2', baseline: 'B1', revision: 'b2' });
     expect(store.dirtyIds(SPEC)).toContain('b');
+  });
+
+  it('does not recreate a draft removed while its save is in flight', async () => {
+    const { save, store, view } = setup();
+    save.mockImplementationOnce((_spec: string, id: string) => {
+      store.remove(SPEC, id);
+      return Promise.resolve({ revision: `${id}2` });
+    });
+    await act(async () => {
+      await view.result.current.save('b');
+    });
+    expect(store.get(SPEC, 'b')).toBeUndefined();
+  });
+
+  it('does not reconcile an old save into a newly opened draft with the same id', async () => {
+    const { save, store, view, queryClient } = setup();
+    const reopened = draft('B reopened', 'b0', 'b1');
+    save.mockImplementationOnce((_spec: string, id: string) => {
+      store.remove(SPEC, id);
+      store.set(SPEC, id, reopened);
+      return Promise.resolve({ revision: `${id}2` });
+    });
+    await act(async () => {
+      await view.result.current.save('b');
+    });
+    expect(store.get(SPEC, 'b')).toBe(reopened);
+    expect(queryClient.getQueryData(documentKeys.detail(SPEC, 'b'))).toEqual(record('b'));
+  });
+
+  it('reads the latest stored draft of the shown document during a batch', async () => {
+    const { save, store, view } = setup();
+    save.mockImplementationOnce((_spec: string, id: string) => {
+      // No React commit is required to make the store's new content authoritative.
+      store.patch(SPEC, 'a', { content: 'A2' }, () => draft('A2', 'a0', 'a1'));
+      return Promise.resolve({ revision: `${id}2` });
+    });
+    await act(async () => {
+      await view.result.current.saveAll(['b', 'a']);
+    });
+    expect(save).toHaveBeenNthCalledWith(2, SPEC, 'a', {
+      content: 'A2',
+      expectedRevision: 'a1',
+    });
+  });
+
+  it('deduplicates batch ids while retaining their original order', async () => {
+    const { save, view } = setup();
+    await act(async () => {
+      expect(await view.result.current.saveAll(['b', 'b', 'c'])).toEqual({
+        saved: ['b', 'c'],
+        failed: [],
+        skipped: [],
+      });
+    });
+    expect(save.mock.calls.map((call) => call[1])).toEqual(['b', 'c']);
+  });
+
+  it('exposes the same save owner without an active editor session', async () => {
+    const queryClient = createSpecFlowQueryClient();
+    const save = vi.fn(async () => ({ revision: 'b2' }));
+    const services = createSpecFlowAppServices({
+      documentsApi: { save } as unknown as DocumentsApi,
+    });
+    const store = createDocumentDraftStore();
+    store.set(SPEC, 'b', draft('B1', 'b0', 'b1'));
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>
+        <TestServicesRouterContext services={services}>
+          <LocalizationProvider instance={createSpecFlowI18n('en')}>
+            <DocumentDraftProvider store={store}>
+              <DocumentEditorProvider specId={SPEC}>{children}</DocumentEditorProvider>
+            </DocumentDraftProvider>
+          </LocalizationProvider>
+        </TestServicesRouterContext>
+      </QueryClientProvider>
+    );
+    const view = renderHook(() => useDocumentSaveOwner(), { wrapper });
+    await act(async () => {
+      expect(await view.result.current.saveAll(['b'])).toEqual({
+        saved: ['b'],
+        failed: [],
+        skipped: [],
+      });
+    });
+    expect(save).toHaveBeenCalledWith(SPEC, 'b', {
+      content: 'B1',
+      expectedRevision: 'b1',
+    });
   });
 });

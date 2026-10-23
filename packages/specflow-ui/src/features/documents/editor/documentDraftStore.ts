@@ -81,6 +81,8 @@ export interface DocumentDraftStore {
     initial: () => DocumentDraft,
   ): void;
   remove(specId: string, documentId: string): void;
+  /** Changes whenever a draft is explicitly removed, even if reopened with the same id. */
+  incarnation(specId: string, documentId: string): number;
   subscribe(specId: string, documentId: string, listener: () => void): () => void;
   /** Ids of the documents of one spec whose draft has unsaved changes, in insertion order. */
   dirtyIds(specId: string): string[];
@@ -93,6 +95,7 @@ export interface DocumentDraftStore {
 export function createDocumentDraftStore(): DocumentDraftStore {
   const drafts: KeyedStore<DocumentDraft> = createKeyedStore();
   const anchors = new Map<string, ScrollAnchor>();
+  const incarnations = new Map<string, number>();
   return {
     get: (s, d) => drafts.get(documentDraftKey(s, d)),
     set: (s, d, draft) => drafts.set(documentDraftKey(s, d), draft),
@@ -102,7 +105,12 @@ export function createDocumentDraftStore(): DocumentDraftStore {
         ...(current ?? initial()),
         ...change,
       })),
-    remove: (s, d) => drafts.remove(documentDraftKey(s, d)),
+    remove: (s, d) => {
+      const key = documentDraftKey(s, d);
+      incarnations.set(key, (incarnations.get(key) ?? 0) + 1);
+      drafts.remove(key);
+    },
+    incarnation: (s, d) => incarnations.get(documentDraftKey(s, d)) ?? 0,
     subscribe: (s, d, listener) => drafts.subscribe(documentDraftKey(s, d), listener),
     dirtyIds: (specId) => {
       const ids: string[] = [];

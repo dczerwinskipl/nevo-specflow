@@ -18,6 +18,8 @@ export interface SaveVariables {
   readonly documentId: string;
   readonly content: string;
   readonly expectedRevision: string;
+  /** Captured at submission time so a late response cannot overwrite a reopened draft. */
+  readonly incarnation: number;
 }
 
 export interface SaveResult {
@@ -46,7 +48,7 @@ export interface DocumentSaveOwner {
    */
   save: (documentId?: string) => Promise<SaveResult | undefined>;
   /**
-   * Saves the documents one after another and stops at the first failure; ids after it are
+   * Saves each distinct document once, in input order, and stops at the first failure; ids after it are
    * neither saved nor listed. `saved` also holds clean documents (no request), `skipped` holds ids
    * without a draft. Edits made during IO stay dirty after their save succeeds, so callers MUST
    * re-check `dirtyIds` afterwards instead of trusting `saved` alone. The loop deliberately runs
@@ -96,23 +98,24 @@ export function useDocumentSave({
         expectedRevision: variables.expectedRevision,
       }),
     onSuccess: async (result, variables) => {
-      store.update(variables.specId, variables.documentId, (saved) =>
-        saved
-          ? reconcileSavedDraft(saved, variables.content, result.revision)
-          : {
-              content: variables.content,
-              baseline: variables.content,
-              revision: result.revision,
-              editing: false,
-            },
-      );
-      cache.setQueryData<SpecificationDocumentResponse>(
-        documentKeys.detail(variables.specId, variables.documentId),
-        (existing) =>
-          existing
-            ? { ...existing, content: variables.content, revision: result.revision }
-            : existing,
-      );
+      // A response from a discarded incarnation cannot modify a new draft or its cache.
+      if (store.incarnation(variables.specId, variables.documentId) === variables.incarnation) {
+        store.update(variables.specId, variables.documentId, (saved) =>
+          saved ? reconcileSavedDraft(saved, variables.content, result.revision) : undefined,
+        );
+        cache.setQueryData<SpecificationDocumentResponse>(
+          documentKeys.detail(variables.specId, variables.documentId),
+          (existing) =>
+            existing
+              ? { ...existing, content: variables.content, revision: result.revision }
+              : existing,
+        );
+      } else {
+        await cache.invalidateQueries({
+          queryKey: documentKeys.detail(variables.specId, variables.documentId),
+          exact: true,
+        });
+      }
       await cache.invalidateQueries({
         queryKey: specificationKeys.detail(variables.specId),
         exact: true,
@@ -126,8 +129,9 @@ export function useDocumentSave({
       const { specId: openSpec, document: open, draft: openDraft } = current.current;
       const id = documentId ?? open?.id;
       if (id === undefined) return undefined;
-      // The shown document may only exist as a draft derived from its record; others live in the store.
-      const source = id === open?.id ? openDraft : store.get(openSpec, id);
+      // The store is authoritative, including after a previous save updated the revision.
+      // Only the shown document may fall back to a draft derived from its loaded record.
+      const source = store.get(openSpec, id) ?? (id === open?.id ? openDraft : undefined);
       if (!source) return undefined;
       const key = documentDraftKey(openSpec, id);
       const joined = inFlight.current.get(key);
@@ -137,6 +141,7 @@ export function useDocumentSave({
         documentId: id,
         content: source.content,
         expectedRevision: source.revision,
+        incarnation: store.incarnation(openSpec, id),
       };
       const base = {
         specId: variables.specId,
@@ -171,7 +176,7 @@ export function useDocumentSave({
   const saveAll = useCallback(
     async (ids: readonly string[]): Promise<SaveAllResult> => {
       const outcome: SaveAllResult = { saved: [], failed: [], skipped: [] };
-      for (const id of ids) {
+      for (const id of new Set(ids)) {
         const result = await save(id);
         if (result?.ok === false) {
           outcome.failed.push({ id, error: result.error });

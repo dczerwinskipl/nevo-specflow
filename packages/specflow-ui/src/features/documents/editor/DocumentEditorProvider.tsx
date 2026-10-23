@@ -16,7 +16,7 @@ import { useDocumentDraft, useDocumentDraftStore } from './DocumentDraftProvider
 import { UnsavedChangesDialog } from './UnsavedChangesDialog';
 import { DocumentPathDialog } from './DocumentPathDialog';
 import type { ScrollAnchor } from './documentScrollAnchor';
-import { useDocumentSave } from './useDocumentSave';
+import { useDocumentSave, type DocumentSaveOwner } from './useDocumentSave';
 import { useEditorFocus } from './useEditorFocus';
 
 /**
@@ -50,6 +50,14 @@ export interface DocumentEditorSession {
 }
 
 const Context = createContext<DocumentEditorSession | null>(null);
+const SaveOwnerContext = createContext<DocumentSaveOwner | null>(null);
+
+/** One workspace-scoped save owner, available even while no document is shown. */
+export function useDocumentSaveOwner(): DocumentSaveOwner {
+  const owner = useContext(SaveOwnerContext);
+  if (!owner) throw new Error('Document save owner missing');
+  return owner;
+}
 
 export function useDocumentEditor() {
   return useContext(Context);
@@ -180,35 +188,37 @@ export function DocumentEditorProvider({
 
   const name = document?.filename ?? document?.title ?? '';
   return (
-    <Context.Provider value={session}>
-      {children}
-      {session && <DocumentPathDialog open={pathOpen} path={name} onOpenChange={setPathOpen} />}
-      {session && (
-        <UnsavedChangesDialog
-          open={guardFor === document?.id}
-          description={t('documents.dialogs.unsaved.discardDescription', { name })}
-          saveLabel={t('documents.dialogs.unsaved.save')}
-          pending={session.saving}
-          onContinue={() => setGuardFor(undefined)}
-          onDiscard={() => {
-            focusAfterDiscard.current = true;
-            session.setDraft({ content: session.draft.baseline, editing: true });
-            setGuardFor(undefined);
-          }}
-          onSave={() =>
-            void session.save().then((saved) => {
-              if (saved) setGuardFor(undefined);
-            })
-          }
-          onCloseAutoFocus={(event) => {
-            if (focusAfterDiscard.current) {
-              event.preventDefault();
-              focusAfterDiscard.current = false;
-              focusEditorSoon();
+    <SaveOwnerContext.Provider value={owner}>
+      <Context.Provider value={session}>
+        {children}
+        {session && <DocumentPathDialog open={pathOpen} path={name} onOpenChange={setPathOpen} />}
+        {session && (
+          <UnsavedChangesDialog
+            open={guardFor === document?.id}
+            description={t('documents.dialogs.unsaved.discardDescription', { name })}
+            saveLabel={t('documents.dialogs.unsaved.save')}
+            pending={session.saving}
+            onContinue={() => setGuardFor(undefined)}
+            onDiscard={() => {
+              focusAfterDiscard.current = true;
+              session.setDraft({ content: session.draft.baseline, editing: true });
+              setGuardFor(undefined);
+            }}
+            onSave={() =>
+              void session.save().then((saved) => {
+                if (saved) setGuardFor(undefined);
+              })
             }
-          }}
-        />
-      )}
-    </Context.Provider>
+            onCloseAutoFocus={(event) => {
+              if (focusAfterDiscard.current) {
+                event.preventDefault();
+                focusAfterDiscard.current = false;
+                focusEditorSoon();
+              }
+            }}
+          />
+        )}
+      </Context.Provider>
+    </SaveOwnerContext.Provider>
   );
 }

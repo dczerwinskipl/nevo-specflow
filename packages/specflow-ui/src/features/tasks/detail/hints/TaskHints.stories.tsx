@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn, waitFor } from 'storybook/test';
-import { StoryLocalization } from '../../../i18n/StoryLocalization';
+import { StoryLocalization } from '../../../../i18n/StoryLocalization';
 import { TaskHints } from './TaskHints';
 
 const hints = [

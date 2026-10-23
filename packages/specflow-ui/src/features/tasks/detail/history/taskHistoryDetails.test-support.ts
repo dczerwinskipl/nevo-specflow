@@ -1,5 +1,5 @@
 import type { TaskHistoryPage } from '@nevo/specflow-contracts/specs/workspace';
-import { createTaskDetailFixture } from './taskDetail.test-support';
+import { createTaskDetailFixture } from '../taskDetail.test-support';
 
 export function createHistoryDetailsFixture(): TaskHistoryPage['items'][number] {
   const fixture = createTaskDetailFixture('rich-human');

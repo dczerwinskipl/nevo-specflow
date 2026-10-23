@@ -1,10 +1,10 @@
-import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
+import { LoadingPresentation } from '../../../../app/loading/LoadingPresentation';
 import { Typography } from '@nevo/ui';
 import type { TaskSnapshot } from '@nevo/specflow-contracts/specs/workspace';
 import { useTranslation } from 'react-i18next';
-import { useTaskHistory } from './useTaskPages';
-import { TaskSourceState } from './TaskDetails';
-import { TaskResourceInspection } from './TaskInspection';
+import { useTaskHistory } from '../useTaskPages';
+import { TaskSourceState } from '../TaskDetails';
+import { TaskResourceInspection } from '../TaskInspection';
 
 export interface TaskHistoryResourceParams {
   readonly entryId: string;

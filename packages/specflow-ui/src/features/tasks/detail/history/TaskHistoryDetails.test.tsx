@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { createSpecFlowI18n, LocalizationProvider } from '../../../i18n';
+import { createSpecFlowI18n, LocalizationProvider } from '../../../../i18n';
 import { TaskHistoryDetails } from './TaskHistoryDetails';
 import { createHistoryDetailsFixture } from './taskHistoryDetails.test-support';
 

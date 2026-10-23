@@ -1,15 +1,15 @@
-import { LoadingPresentation } from '../../../app/loading/LoadingPresentation';
+import { LoadingPresentation } from '../../../../app/loading/LoadingPresentation';
 import { useLayoutEffect, useRef, useId } from 'react';
 import { TaskHistoryDetails } from './TaskHistoryDetails';
-import { useTaskViewState } from './TaskViewState';
-import { descriptionScrollOwner, restoreScrollPosition } from '../../documents';
+import { useTaskViewState } from '../TaskViewState';
+import { descriptionScrollOwner, restoreScrollPosition } from '../../../documents';
 
 import type { TaskHistoryResourceParams } from './TaskHistoryResourceInspection';
 import { Button, Timeline, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { TaskSnapshot } from '@nevo/specflow-contracts/specs/workspace';
-import { TaskSourceState } from './TaskDetails';
-import { useTaskHistory } from './useTaskPages';
+import { TaskSourceState } from '../TaskDetails';
+import { useTaskHistory } from '../useTaskPages';
 
 export function TaskHistory({
   specId,

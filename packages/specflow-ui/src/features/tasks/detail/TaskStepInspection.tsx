@@ -13,8 +13,8 @@ import {
   type TaskInspectionAnchor,
 } from './taskInspectionModel';
 
-import { TaskHints } from './TaskHints';
-export { TaskHints } from './TaskHints';
+import { TaskHints } from './hints/TaskHints';
+export { TaskHints } from './hints/TaskHints';
 
 export function TaskStepInspection({
   task,

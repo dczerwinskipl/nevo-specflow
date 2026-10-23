@@ -1,12 +1,12 @@
 import { InformationList, Typography } from '@nevo/ui';
 import type { TaskHistoryPage } from '@nevo/specflow-contracts/specs/workspace';
 import { useTranslation } from 'react-i18next';
-import { OperationalRow } from '../../../shared/operational-list';
-import { TaskHints } from './TaskHints';
-import { TaskCopyValue, TaskDetailDisclosure } from './TaskDetailDisclosure';
-import { TaskSourceState } from './TaskDetails';
+import { OperationalRow } from '../../../../shared/operational-list';
+import { TaskHints } from '../hints/TaskHints';
+import { TaskCopyValue, TaskDetailDisclosure } from '../hints/TaskDetailDisclosure';
+import { TaskSourceState } from '../TaskDetails';
 import type { TaskHistoryResourceParams } from './TaskHistoryResourceInspection';
-import { canInspectTaskReference } from './taskReference';
+import { canInspectTaskReference } from '../taskReference';
 
 export function TaskHistoryDetails({
   entry,

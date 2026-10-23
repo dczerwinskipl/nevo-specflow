@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { waitFor } from 'storybook/test';
-import { StoryLocalization } from '../../../i18n/StoryLocalization';
+import { StoryLocalization } from '../../../../i18n/StoryLocalization';
 import { TaskHistoryDetails } from './TaskHistoryDetails';
 import { createHistoryDetailsFixture } from './taskHistoryDetails.test-support';
 

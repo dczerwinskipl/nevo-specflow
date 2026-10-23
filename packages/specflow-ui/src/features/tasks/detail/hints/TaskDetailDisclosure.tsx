@@ -1,7 +1,7 @@
 import { useId, useState, type ReactNode } from 'react';
 import { Button, Typography } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import { useTaskViewState } from './TaskViewState';
+import { useTaskViewState } from '../TaskViewState';
 
 /** Product inspection depth; only expansion flags survive a keyed document round trip. */
 export function TaskDetailDisclosure({

@@ -93,6 +93,30 @@ over central technical buckets such as `feature/routes/`, `feature/services/`, o
 shared adapter concern may stay at the feature root, but provider/operation-specific transport code
 belongs beside the operation it adapts.
 
+### UI feature folders
+
+A UI feature is organized by responsibility, not as a flat list of files. Keep a folder at about 15
+to 20 direct files at most; when it grows, extract a sub-folder named after what it owns, and keep
+tests, stories and story-support next to their owner. The feature root keeps only the entry files
+(`routes.tsx`, `uiModule.ts`) and the screens that compose the sub-folders. Do not create
+`utils/` or `common/` folders.
+
+Example, `features/specs/creation` (private to Create; the application wires only its routes and UI
+module):
+
+```text
+creation/
+  routes.tsx, uiModule.ts, CreateSpecificationScreen.tsx, CreateOperationScreen.tsx, CreateShell.tsx
+  form/              form shells, footer, leave guard, readiness
+  options/           archetype, agent, method choice and the options hook
+  workspace/         workspace place section and settings (model/: pure choice, policy and request)
+  operation/         reducer, ledger, storage and hooks driving the operation lifecycle
+  progress/          progress page, step and page view mapping
+  errors/            failure classification, copy mapping and failure panels
+  api/               project and demo creation ports
+  operations-panel/  the Create operations list contribution
+```
+
 ## Runtime feature boundaries
 
 Runtime product capabilities live under `src/features/<feature-name>/`. Infrastructure and
@@ -302,7 +326,7 @@ have two adapters. Production fixture-based adapters remain forbidden.
   test (`src/features/moduleGraph.test.ts`, analysis in `importCycles.ts`) fails on a cycle between
   nodes or files, on a read model that imports a screen and on a screen that imports composition.
 - Create is a pure reducer over named phases plus a hook that performs the I/O (see the diagram at
-  the top of `features/specs/creation/createOperationReducer.ts`). Mutable bookkeeping that async
+  the top of `features/specs/creation/operation/createOperationReducer.ts`). Mutable bookkeeping that async
   continuations must read synchronously lives in one small ledger/lock object created once per
   owner, never in scattered refs and never read while rendering.
 

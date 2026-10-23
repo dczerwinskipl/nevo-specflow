@@ -13,19 +13,27 @@ const options = createOptionsFixture('default');
 const operationId = '7f3a91c2-4b6e-4d1a-9c0e-2f5a1b8d3e77';
 let latest: WorkspaceChoice = initialWorkspaceChoice;
 
-function Harness({ title }: { title: string }) {
+function Harness({
+  title,
+  options: harnessOptions = options,
+  settingsOpen = true,
+}: {
+  title: string;
+  options?: typeof options;
+  settingsOpen?: boolean;
+}) {
   const [choice, setChoice] = useState<WorkspaceChoice>({
     ...initialWorkspaceChoice,
     tile: 'new',
-    settingsOpen: true,
+    settingsOpen,
   });
   latest = choice;
   return (
     <NewWorkspaceSettings
-      options={options}
+      options={harnessOptions}
       choice={choice}
       update={setChoice}
-      errors={revalidate(choice, options)}
+      errors={revalidate(choice, harnessOptions)}
       title={title}
       onAnnounce={vi.fn()}
       onRequestFocus={vi.fn()}
@@ -158,5 +166,26 @@ describe('unavailable settings', () => {
     // The reason is not faded with the control: no ancestor of it carries an opacity class.
     expect(reason.closest('[class*="opacity-"]')).toBeNull();
     expect(reason.className).toContain('text-content-secondary');
+  });
+});
+
+describe('flagged settings', () => {
+  it('stay open once the typed fix clears the flag, so the rest of the name is not lost', () => {
+    const protectedOptions = createOptionsFixture('new-branch-protected');
+    render(
+      <LocalizationProvider instance={createSpecFlowI18n('en')}>
+        <Harness title="Payment limits" options={protectedOptions} settingsOpen={false} />
+      </LocalizationProvider>,
+    );
+    // The generated branch is protected: the panel is forced open although the choice says closed.
+    toggle(/Use your own branch name/);
+    fireEvent.change(field('New branch name'), { target: { value: 'release/hotfix' } });
+    expect(latest.settingsOpen).toBe(true);
+    // The unflagged name no longer forces the panel open; it must stay open on its own.
+    fireEvent.change(field('New branch name'), { target: { value: 'feature' } });
+    expect(latest.settingsOpen).toBe(true);
+    expect(screen.getByRole('button', { name: /settings/i }).getAttribute('aria-expanded')).toBe(
+      'true',
+    );
   });
 });

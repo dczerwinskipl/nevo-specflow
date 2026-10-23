@@ -56,14 +56,17 @@ interface WorkspaceHeaderActionBase {
   tone?: WorkspaceHeaderActionTone;
   /** Defaults: `primary` is direct on wide and narrow headers, every other action is `'never'`. */
   direct?: WorkspaceHeaderActionDirect;
-  /** `menu="complete"` only: the menu section. Defaults to `'actions'`; `'display'` is listed first. */
+  /** `menu="complete"` only (ignored by the default menu): the section. Defaults to `'actions'`; `'display'` is listed first. */
   group?: WorkspaceHeaderActionGroup;
   /**
-   * Menu toggle state, shown as a check in the trailing slot (the leading icon keeps naming the
-   * action). An icon action falls back to its `pressed` state.
+   * Menu toggle state (both menu modes): the row becomes a `menuitemcheckbox` with a check in the
+   * trailing slot; the leading icon keeps naming the action. Wins over an icon action's `pressed`.
    */
   checked?: boolean;
-  /** Keyboard shortcut hint in the menu's trailing slot, for example `Ctrl+S`. */
+  /**
+   * Keyboard shortcut hint in the menu's trailing slot (both menu modes), for example `Ctrl+S`.
+   * On a toggle it precedes the check.
+   */
   shortcut?: string;
   /**
    * Menu actions only. When set, closing the menu does not return focus to its trigger: this runs
@@ -81,12 +84,17 @@ export interface WorkspaceHeaderButtonAction extends WorkspaceHeaderActionBase {
 }
 
 /** `IconButton` + `Tooltip(label)` when direct; `icon` is required. `label` is the accessible name. */
-export interface WorkspaceHeaderIconAction extends WorkspaceHeaderActionBase {
+interface WorkspaceHeaderIconActionBase extends WorkspaceHeaderActionBase {
   icon: IconGlyph;
   presentation: 'icon';
-  /** Icon toggle: renders `aria-pressed` and a subtle pressed state. The icon names the action, not the state. */
-  pressed?: boolean;
 }
+
+/**
+ * Icon toggle: `pressed` renders `aria-pressed` and a subtle pressed state. The icon names the
+ * action, not the state. The filled `primary` look has no pressed state, so a primary cannot be a toggle.
+ */
+export type WorkspaceHeaderIconAction = WorkspaceHeaderIconActionBase &
+  ({ primary?: false; pressed?: boolean } | { primary: true; pressed?: never });
 
 export type WorkspaceHeaderAction = WorkspaceHeaderButtonAction | WorkspaceHeaderIconAction;
 
@@ -212,6 +220,13 @@ function WorkspaceMenuEntry({
 }) {
   const checked = menuCheckedState(action);
   const toggle = checked !== undefined;
+  const mark = toggle ? (
+    checked ? (
+      <Icon className="text-content-primary" name="check" size="sm" />
+    ) : (
+      <span aria-hidden="true" className="inline-block size-icon-sm" />
+    )
+  ) : null;
   return (
     <MenuItem
       disabled={action.disabled}
@@ -220,14 +235,13 @@ function WorkspaceMenuEntry({
       tone={action.tone ?? 'neutral'}
       {...(toggle ? { role: 'menuitemcheckbox', 'aria-checked': checked } : {})}
       shortcut={
-        toggle ? (
-          checked ? (
-            <Icon name="check" size="sm" />
-          ) : (
-            <span aria-hidden="true" className="inline-block size-icon-sm" />
-          )
+        action.shortcut && mark ? (
+          <span className="inline-flex items-center gap-2">
+            {action.shortcut}
+            {mark}
+          </span>
         ) : (
-          action.shortcut
+          (mark ?? action.shortcut)
         )
       }
     >
@@ -334,17 +348,21 @@ function WorkspaceActionMenu({
   );
 }
 
-function DirectIconAction({ action }: { action: WorkspaceHeaderIconAction }) {
+function DirectIconAction({
+  action,
+}: {
+  action: WorkspaceHeaderIconActionBase & { pressed?: boolean };
+}) {
   return (
     <TooltipProvider delayDuration={400}>
       <Tooltip>
         <TooltipTrigger asChild>
           <IconButton
             aria-label={action.label}
-            aria-pressed={action.pressed}
+            aria-pressed={action.primary ? undefined : action.pressed}
             className={
               action.pressed && !action.primary
-                ? 'bg-surface-selected text-content-primary'
+                ? 'bg-surface-selected! text-content-primary!'
                 : undefined
             }
             disabled={action.disabled}

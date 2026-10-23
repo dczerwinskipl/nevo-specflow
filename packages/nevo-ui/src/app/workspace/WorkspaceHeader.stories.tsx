@@ -1,7 +1,11 @@
 import { useRef, useState, type ComponentProps } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
-import { WorkspaceHeader, type WorkspaceHeaderAction } from './WorkspaceHeader';
+import {
+  CompactWorkspaceActions,
+  WorkspaceHeader,
+  type WorkspaceHeaderAction,
+} from './WorkspaceHeader';
 
 const meta = {
   title: 'Nevo UI/Layout/Workspace Header',
@@ -414,4 +418,15 @@ export const PressedIconToggle: Story = {
     assert(toggle.getAttribute('aria-pressed') === 'true', 'Press toggles aria-pressed.');
     assert(toggle.getAttribute('aria-label') === 'Show preview', 'The name does not follow state.');
   },
+};
+
+/** The stacked floating row reads `menu="complete"` from the header: every action, grouped, none direct. */
+export const CompactFloatingRowCompleteMenu: Story = {
+  tags: ['visual', '!autodocs'],
+  args: { title: 'Document title', menu: 'complete', actions: completeMenuActions },
+  render: (args) => (
+    <div className="flex justify-end">
+      <CompactWorkspaceActions header={<WorkspaceHeader {...args} />} />
+    </div>
+  ),
 };

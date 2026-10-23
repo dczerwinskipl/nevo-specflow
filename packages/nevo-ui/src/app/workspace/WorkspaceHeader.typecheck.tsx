@@ -37,3 +37,19 @@ const onPress = () => undefined;
     },
   ]}
 />;
+
+<WorkspaceHeader
+  title="Document"
+  actions={[
+    {
+      id: 'save',
+      label: 'Save',
+      icon: 'file',
+      presentation: 'icon',
+      primary: true,
+      // @ts-expect-error A primary action has no pressed state.
+      pressed: true,
+      onPress,
+    },
+  ]}
+/>;

@@ -112,5 +112,8 @@ disabled?, shortcut?, onPress }`.
 The complete menu (`menu="complete"`) and `aria-pressed` for icon toggles exist on `WorkspaceHeader`; see
 `design-system.implementation.react.secondary-navigation`, section Header actions.
 
+Still open: the complete menu is not supported by `HeaderOutlet` and `CompactScreenActions` (runtime
+Secondary stack screens) until the narrow integration; pass `menu` through the screen definition then.
+
 1. `ItemTabs` duplicates the workspace header height. A header content slot that stretches to the
    header height would remove that coupling.

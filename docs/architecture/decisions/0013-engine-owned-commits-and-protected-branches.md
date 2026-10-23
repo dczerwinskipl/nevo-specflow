@@ -13,6 +13,7 @@ related:
   - reference.configuration.specflow-git-worktrees
   - reference.api.specflow-specification-operations
   - engineering.shared.specflow-git-recovery
+  - adr.0016-engine-owned-document-commits
 ---
 
 # 0013 — Engine-owned scoped commits and protected branches
@@ -69,7 +70,8 @@ the Engine must never commit on some branches (for example `main` or `release/**
 7. **Scope.** Close archive and integration are not changed by this decision: they keep their own
    commit code and integration into a protected target branch is not forbidden. Migrating archive onto
    the commit capability (so protection guards it too) is a follow-up. Previously created untracked
-   specifications are not adopted automatically.
+   specifications are not adopted automatically. Specification document operations reuse this
+   mechanism and are decided in [ADR 0016](0016-engine-owned-document-commits.md) (proposed).
 
 ## Known gap: no product path to resume or abandon a stuck Create
 

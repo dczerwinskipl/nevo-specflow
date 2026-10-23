@@ -772,6 +772,40 @@
       ]
     },
     {
+      "id": "architecture.runtime.specification-documents",
+      "type": "architecture",
+      "title": "Specification documents layer - registry, archetypes, ownership and invariants",
+      "status": "draft",
+      "file": "docs/architecture/runtime/specification-documents.md",
+      "read_when": [
+        "changing the Specification manifest, archetypes or document types",
+        "implementing document reads or document write operations in the Engine or Runtime",
+        "deciding where document logic lives"
+      ],
+      "summary": "Ownership, manifest schema, identity and path rules, content kinds, validation results and invariants of the backend documents layer. The Engine owns all logic; Runtime and CLI are adapters. Draft until D0 is accepted.",
+      "related": [
+        "adr.0015-specification-manifest-as-document-registry",
+        "adr.0016-engine-owned-document-commits",
+        "product.specflow.specification-documents",
+        "reference.api.specification-documents",
+        "architecture.runtime.specflow-engine",
+        "architecture.runtime.specflow-lifecycle",
+        "architecture.principles.enforceable-invariants"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "workflow",
+        "server"
+      ],
+      "tags": [
+        "specifications",
+        "documents",
+        "archetypes",
+        "manifest"
+      ]
+    },
+    {
       "id": "architecture.runtime.task-read-composition",
       "type": "architecture",
       "title": "Task read composition and domain ownership",
@@ -1787,7 +1821,8 @@
         "architecture.runtime.specflow-lifecycle",
         "reference.configuration.specflow-git-worktrees",
         "reference.api.specflow-specification-operations",
-        "engineering.shared.specflow-git-recovery"
+        "engineering.shared.specflow-git-recovery",
+        "adr.0016-engine-owned-document-commits"
       ]
     },
     {
@@ -1803,6 +1838,38 @@
         "reference.api.operation-progress",
         "engineering.shared.operation-progress",
         "adr.0013-engine-owned-commits-and-protected-branches"
+      ]
+    },
+    {
+      "id": "adr.0015-specification-manifest-as-document-registry",
+      "type": "adr",
+      "title": "The Specification manifest is the document registry; archetypes are Engine-owned catalogue entries",
+      "status": "draft",
+      "file": "docs/architecture/decisions/0015-specification-manifest-as-document-registry.md",
+      "read_when": [],
+      "summary": "specification.yaml becomes the canonical registry of a Specification's documents (stable id, path, type) and records the selected archetype with a snapshot of its requirements. Archetypes and document types are an Engine-built-in catalogue shaped like future YAML. Frontmatter is optional and never authoritative; files outside the registry are unclassified. Structural completeness is a computed validation result.",
+      "related": [
+        "architecture.runtime.specification-documents",
+        "adr.0016-engine-owned-document-commits",
+        "adr.0013-engine-owned-commits-and-protected-branches",
+        "architecture.runtime.specflow-engine",
+        "product.specflow.specification-documents"
+      ]
+    },
+    {
+      "id": "adr.0016-engine-owned-document-commits",
+      "type": "adr",
+      "title": "Document operations are file change plus one Engine-owned path-limited commit",
+      "status": "draft",
+      "file": "docs/architecture/decisions/0016-engine-owned-document-commits.md",
+      "read_when": [],
+      "summary": "Every state-changing Specification document operation (save, create, rename, move, delete, classify and later folder/import) changes files and the registry and lands as one Engine-owned path-limited commit under the ADR 0013 mechanism, through a journalled, idempotent operation. Protected branches block document edits too. Extends ADR 0013 instead of amending it. Outlines the later commit queue with coalescing.",
+      "related": [
+        "adr.0013-engine-owned-commits-and-protected-branches",
+        "adr.0015-specification-manifest-as-document-registry",
+        "architecture.runtime.specification-documents",
+        "engineering.shared.specflow-git-recovery",
+        "reference.api.specification-documents"
       ]
     },
     {
@@ -4212,6 +4279,43 @@
       ]
     },
     {
+      "id": "ideas.specflow-engine.specification-documents-delivery",
+      "type": "product",
+      "title": "Specification documents layer - delivery specification (slices D0 to D5)",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/specification-documents-delivery.md",
+      "read_when": [
+        "planning or executing any slice of the Specification documents layer",
+        "decomposing the documents layer into tasks",
+        "checking which tests may run on Windows"
+      ],
+      "summary": "Decision-complete specification for slices D0 to D3 (contracts and docs, Engine model and validation, Create with an archetype, reading) and a design-level outline for D4 (write operations with commits) and D5 (UI consolidation and demo cleanup). Planning artefact; durable rules live in the architecture, ADR and reference documents it links.",
+      "related": [
+        "product.specflow.specification-documents",
+        "architecture.runtime.specification-documents",
+        "reference.api.specification-documents",
+        "adr.0015-specification-manifest-as-document-registry",
+        "adr.0016-engine-owned-document-commits",
+        "adr.0013-engine-owned-commits-and-protected-branches",
+        "engineering.shared.testing",
+        "engineering.repository.local-setup"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "workflow",
+        "server",
+        "testing"
+      ],
+      "tags": [
+        "specifications",
+        "documents",
+        "archetypes",
+        "delivery",
+        "slices"
+      ]
+    },
+    {
       "id": "ideas.specflow-ui.components.session-conversation",
       "type": "product",
       "title": "Session conversation UI spec",
@@ -4954,6 +5058,39 @@
       ]
     },
     {
+      "id": "product.specflow.specification-documents",
+      "type": "product",
+      "title": "Specification archetypes and documents",
+      "status": "draft",
+      "file": "docs/product/specflow/specification-documents.md",
+      "read_when": [
+        "defining or changing Specification archetypes, document types or their descriptions",
+        "changing what users and AI agents see in a Specification's documents",
+        "deciding how document operations behave for the user"
+      ],
+      "summary": "Product behaviour of Specification archetypes (minimal, feature, architecture), document types and requirements, the document tree states (registered, unclassified, dangling), content kinds, and the user-visible behaviour of document operations on a Git-backed workspace.",
+      "related": [
+        "architecture.runtime.specification-documents",
+        "adr.0015-specification-manifest-as-document-registry",
+        "adr.0016-engine-owned-document-commits",
+        "reference.api.specification-documents",
+        "product.specflow.specification-creation",
+        "product.specflow.ui.documents-editor-mode"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "workflow",
+        "runtime",
+        "ui"
+      ],
+      "tags": [
+        "specifications",
+        "documents",
+        "archetypes",
+        "requirements"
+      ]
+    },
+    {
       "id": "product.specflow.ui.ai-session-ux",
       "type": "product",
       "title": "AI session UX",
@@ -5182,6 +5319,38 @@
         "demo",
         "specification",
         "session"
+      ]
+    },
+    {
+      "id": "reference.api.specification-documents",
+      "type": "reference",
+      "title": "Specification documents HTTP contract",
+      "status": "draft",
+      "file": "docs/reference/api/specification-documents.md",
+      "read_when": [
+        "implementing or consuming the archetype catalogue, document tree, document read or document operations",
+        "swapping the documents demo endpoints for the real backend",
+        "mapping document error codes in the UI"
+      ],
+      "summary": "Target contract of the Specification documents layer shared by the Runtime demo and the real backend: endpoints, schema outline, content kinds and raw-content headers, operation shape, error codes and the explicit UI impact list. Exact schemas live in @nevo/specflow-contracts/documents once D0 lands.",
+      "related": [
+        "architecture.runtime.specification-documents",
+        "product.specflow.specification-documents",
+        "adr.0016-engine-owned-document-commits",
+        "reference.api.specflow-specification-operations",
+        "reference.api.specification-creation-demo"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "server",
+        "ui"
+      ],
+      "tags": [
+        "specifications",
+        "documents",
+        "archetypes",
+        "contracts"
       ]
     },
     {

@@ -357,6 +357,13 @@ export const CompleteMenu: Story = {
         menu.querySelectorAll('[role="separator"]').length === 1,
       'Two groups are separated once.',
     );
+    assert(getComputedStyle(menu).overflowY === 'auto', 'Complete menu is vertically scrollable.');
+    const displayGroup = menu.querySelector<HTMLElement>('[role="group"]');
+    const displayLabel = displayGroup?.querySelector<HTMLElement>('[id]');
+    assert(
+      displayGroup?.getAttribute('aria-labelledby') === displayLabel?.id,
+      'The visible section label names its menu group.',
+    );
     const preview = menu.querySelector('[role="menuitemcheckbox"]');
     assert(
       preview?.getAttribute('aria-checked') === 'true',

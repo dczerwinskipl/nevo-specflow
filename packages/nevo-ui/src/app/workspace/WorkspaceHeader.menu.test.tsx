@@ -127,9 +127,18 @@ describe('WorkspaceHeader open menu', () => {
       />,
     );
     const menu = openMenu('Więcej');
-    expect(within(menu).getByText('Widok')).toBeTruthy();
-    expect(within(menu).getByText('Działania')).toBeTruthy();
+    expect(within(menu).getByRole('group', { name: 'Widok' })).toBeTruthy();
+    expect(within(menu).getByRole('group', { name: 'Działania' })).toBeTruthy();
     expect(within(menu).queryByText('Display')).toBeNull();
+  });
+
+  it('keeps the complete menu scrollable within the available viewport height', () => {
+    render(<WorkspaceHeader title="Doc" menu="complete" actions={[wrap, save]} />);
+    const menu = openMenu();
+    expect(menu.className).toContain(
+      'max-h-[var(--radix-dropdown-menu-content-available-height)]',
+    );
+    expect(menu.className).toContain('overflow-y-auto');
   });
 
   it('lists a danger action with its tone and never promotes it', () => {
@@ -142,7 +151,7 @@ describe('WorkspaceHeader open menu', () => {
     expect(row.getAttribute('data-tone')).toBe('danger');
   });
 
-  it('lets checked win over pressed and reflects pressed when checked is absent', () => {
+  it('keeps the direct icon and menu toggle in sync when checked overrides pressed', () => {
     render(
       <WorkspaceHeader
         title="Doc"
@@ -152,6 +161,12 @@ describe('WorkspaceHeader open menu', () => {
           { ...preview, id: 'b', label: 'Checked wins', pressed: true, checked: false },
         ]}
       />,
+    );
+    expect(screen.getByRole('button', { name: 'Pressed only' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Checked wins' }).getAttribute('aria-pressed')).toBe(
+      'false',
     );
     const menu = openMenu();
     expect(
@@ -164,6 +179,24 @@ describe('WorkspaceHeader open menu', () => {
         .getByRole('menuitemcheckbox', { name: /Checked wins/ })
         .getAttribute('aria-checked'),
     ).toBe('false');
+  });
+
+  it('uses checked as the direct icon state even when pressed is omitted', () => {
+    render(
+      <WorkspaceHeader
+        title="Doc"
+        menu="complete"
+        actions={[{ ...preview, pressed: undefined, checked: true }]}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Show preview' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    expect(
+      within(openMenu())
+        .getByRole('menuitemcheckbox', { name: /Show preview/ })
+        .getAttribute('aria-checked'),
+    ).toBe('true');
   });
 
   it('keeps the direct icon aria-pressed while the promoted row is a checked menu item', () => {
@@ -195,6 +228,8 @@ describe('CompactWorkspaceActions menu', () => {
     );
     const menu = openMenu('Więcej');
     expect(within(menu).getAllByRole('group')).toHaveLength(2);
+    expect(within(menu).getByRole('group', { name: 'Widok' })).toBeTruthy();
+    expect(within(menu).getByRole('group', { name: 'Działania' })).toBeTruthy();
     expect(within(menu).getByText('Widok')).toBeTruthy();
     expect(
       within(menu).getAllByRole('menuitem').length +

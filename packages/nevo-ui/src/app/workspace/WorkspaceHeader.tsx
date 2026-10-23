@@ -1,6 +1,7 @@
 import {
   Fragment,
   isValidElement,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -60,7 +61,8 @@ interface WorkspaceHeaderActionBase {
   group?: WorkspaceHeaderActionGroup;
   /**
    * Menu toggle state (both menu modes): the row becomes a `menuitemcheckbox` with a check in the
-   * trailing slot; the leading icon keeps naming the action. Wins over an icon action's `pressed`.
+   * trailing slot; the leading icon keeps naming the action. Also drives direct icon `aria-pressed`,
+   * so the two representations cannot disagree. Wins over an icon action's `pressed`.
    */
   checked?: boolean;
   /**
@@ -185,7 +187,7 @@ export function resolveWorkspaceHeaderActions(
   };
 }
 
-/** Toggle state of a menu row: explicit `checked`, else the `pressed` of an icon action. */
+/** Shared toggle state of an icon button and its menu row: explicit `checked`, then `pressed`. */
 function menuCheckedState(action: WorkspaceHeaderAction): boolean | undefined {
   return action.checked ?? (action.presentation === 'icon' ? action.pressed : undefined);
 }
@@ -267,6 +269,7 @@ function WorkspaceActionMenu({
   scope?: string;
 }) {
   const closedHandler = useRef<(() => void) | undefined>(undefined);
+  const groupLabelId = useId();
   if (actions.length === 0 && !navigationAction) return null;
 
   const select = (action: WorkspaceHeaderAction) => () => {
@@ -288,8 +291,10 @@ function WorkspaceActionMenu({
         ? groups.map((entry, index) => (
             <Fragment key={entry.group}>
               {index > 0 ? <MenuSeparator /> : null}
-              <MenuGroup>
-                <MenuLabel>{groupLabels[entry.group]}</MenuLabel>
+              <MenuGroup aria-labelledby={`${groupLabelId}-${entry.group}`}>
+                <MenuLabel id={`${groupLabelId}-${entry.group}`}>
+                  {groupLabels[entry.group]}
+                </MenuLabel>
                 {entry.actions.map((action) => (
                   <WorkspaceMenuEntry action={action} key={action.id} onSelect={select(action)} />
                 ))}
@@ -339,7 +344,11 @@ function WorkspaceActionMenu({
         align="end"
         sideOffset={4}
         aria-label={label}
-        className={groupLabels ? 'w-60' : 'w-auto'}
+        className={
+          groupLabels
+            ? 'w-60 max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto'
+            : 'w-auto'
+        }
         onCloseAutoFocus={onCloseAutoFocus}
       >
         {items}
@@ -359,7 +368,7 @@ function DirectIconAction({
         <TooltipTrigger asChild>
           <IconButton
             aria-label={action.label}
-            aria-pressed={action.primary ? undefined : action.pressed}
+            aria-pressed={action.primary ? undefined : menuCheckedState(action)}
             className={
               action.primary
                 ? undefined

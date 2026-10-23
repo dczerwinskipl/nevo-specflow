@@ -9,4 +9,4 @@ export {
   DrawerTitle,
   DrawerTrigger,
 } from './Drawer';
-export type { DrawerContentProps } from './Drawer';
+export type { DrawerContentProps, DrawerSide } from './Drawer';

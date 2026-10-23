@@ -52,6 +52,42 @@
   }
 }
 
+@keyframes drawer-panel-bottom-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes drawer-panel-bottom-out {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes drawer-panel-top-in {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes drawer-panel-top-out {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-100%);
+  }
+}
+
 .drawer-overlay[data-state='open'] {
   animation: drawer-overlay-in 180ms ease-out;
 }
@@ -74,6 +110,22 @@
 
 .drawer-panel[data-side='left'][data-state='closed'] {
   animation: drawer-panel-left-out 170ms ease-in;
+}
+
+.drawer-panel[data-side='bottom'][data-state='open'] {
+  animation: drawer-panel-bottom-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.drawer-panel[data-side='bottom'][data-state='closed'] {
+  animation: drawer-panel-bottom-out 170ms ease-in;
+}
+
+.drawer-panel[data-side='top'][data-state='open'] {
+  animation: drawer-panel-top-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.drawer-panel[data-side='top'][data-state='closed'] {
+  animation: drawer-panel-top-out 170ms ease-in;
 }
 
 @media (prefers-reduced-motion: reduce) {

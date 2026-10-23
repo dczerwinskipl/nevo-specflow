@@ -1335,14 +1335,17 @@ export const GeneratedBranchIsProtectedSoOwnNameIsRequired: Story = {
     const input = canvas.getByRole('textbox', { name: 'Nazwa nowej gałęzi' });
     await userEvent.clear(input);
     await userEvent.type(input, 'release/hotfix');
-    await expect(canvas.getByText(/Ta gałąź jest chroniona/)).toBeVisible();
-    await expect(input).toHaveAttribute('aria-invalid', 'true');
+    // The state commit after the last keystroke is asynchronous: wait on the condition, not on time.
+    await expect(await canvas.findByText(/Ta gałąź jest chroniona/)).toBeVisible();
+    await waitFor(() => expect(input).toHaveAttribute('aria-invalid', 'true'));
     // A name outside the protected ones frees the form and is the one sent.
     await userEvent.clear(input);
     await userEvent.type(input, 'feature/hotfix');
-    await expect(canvas.queryByText(/jest chroniona/)).toBeNull();
-    await expect(canvas.getByLabelText('Żądanie')).toHaveAttribute('data-problems', '');
-    await expect(request(canvas)).toBe('{"kind":"new-worktree","branch":"feature/hotfix"}');
+    await waitFor(() => expect(canvas.queryByText(/jest chroniona/)).toBeNull());
+    await waitFor(() => expect(canvas.getByLabelText('Żądanie')).toHaveAttribute('data-problems', ''));
+    await waitFor(() =>
+      expect(request(canvas)).toBe('{"kind":"new-worktree","branch":"feature/hotfix"}'),
+    );
   },
 };
 

@@ -1195,7 +1195,8 @@
       "switcherDirty": "{{name}}, niezapisane zmiany, otwarte: {{n}}",
       "noItem": "Brak dokumentu",
       "closeFailed": "Nie udało się zamknąć dokumentu. Spróbuj ponownie.",
-      "missingHint": "Tego dokumentu nie ma już w drzewie. Szkic zostaje do zamknięcia karty."
+      "missingHint": "Tego dokumentu nie ma już w drzewie. Szkic zostaje do zamknięcia karty.",
+      "closeBusy": "Najpierw dokończ pytanie o niezapisane zmiany, potem zamknij ten dokument."
     }
   },
   "sessions": {

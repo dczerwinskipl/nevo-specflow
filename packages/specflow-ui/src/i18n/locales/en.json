@@ -1195,7 +1195,8 @@
       "switcherDirty": "{{name}}, unsaved changes, {{n}} opened",
       "noItem": "No document",
       "closeFailed": "Could not close the document. Try again.",
-      "missingHint": "This document is no longer in the tree. Your draft is kept until you close the tab."
+      "missingHint": "This document is no longer in the tree. Your draft is kept until you close the tab.",
+      "closeBusy": "Finish the open question about unsaved changes first, then close this document."
     }
   },
   "sessions": {

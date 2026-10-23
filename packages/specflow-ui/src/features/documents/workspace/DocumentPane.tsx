@@ -75,8 +75,12 @@ export function DocumentPane({ data }: { data: DocumentParams }) {
   // The workspace loads the document on screen once; the pane only reports its state.
   const record = useDocumentRecord();
   const tabs = useDocumentTabs();
-  const closeFailed = tabs.closeFailed && (
-    <Alert tone="attention" role="alert" title={t('documents.tabs.closeFailed')} />
+  const closeFailed = (tabs.closeFailed || tabs.closeBusy) && (
+    <Alert
+      tone="attention"
+      role="alert"
+      title={tabs.closeFailed ? t('documents.tabs.closeFailed') : t('documents.tabs.closeBusy')}
+    />
   );
   const query = record?.documentId === data.documentId ? record.query : undefined;
   const status = isHttpClientError(query?.error) ? query.error.status : undefined;

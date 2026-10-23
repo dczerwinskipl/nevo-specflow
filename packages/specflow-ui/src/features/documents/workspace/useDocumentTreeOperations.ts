@@ -7,7 +7,7 @@ import { apiErrorCode } from '../../../shared/http/apiErrorCode';
 import { sendRetained, type RequestAttempt } from '../../../shared/operations/retainedRequest';
 import { useDocumentDraftStore } from '../editor/DocumentDraftProvider';
 import { draftFor } from '../editor/documentDraftStore';
-import { isWithinSpecDocuments } from '../tabs/documentsLocation';
+import { isWithinSpecDocuments } from '../../../app/navigation/routeScope';
 import { useDocumentTabs } from '../tabs/DocumentTabsProvider';
 import type { DocumentOperation } from '../explorer/DocumentsExplorer';
 import { documentKeys } from '../read-model/queries';

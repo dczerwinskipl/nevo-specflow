@@ -628,8 +628,11 @@ export const MultiTabNarrow: Story = {
     await expect(canvas.queryByRole('tab')).toBeNull();
     await userEvent.click(switcher);
     const menu = await within(document.body).findByRole('menu');
+    const stacked = document.querySelector('[data-workspace-surface="secondary"]');
     await userEvent.click(within(menu).getByRole('menuitem', { name: /^specification.md/ }));
     await canvas.findByRole('button', { name: /specification.md, otwarte: 2/ });
+    // A tab switch follows the route inside the open stacked screen: it is not rebuilt.
+    await expect(document.querySelector('[data-workspace-surface="secondary"]')).toBe(stacked);
     // Back returns to the tree without closing anything.
     await userEvent.click(canvas.getByRole('button', { name: 'Wróć do listy dokumentów' }));
     await openFromTree(canvas, userEvent, /^plan.md/);

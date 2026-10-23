@@ -101,6 +101,7 @@ function setup({
           {tabs.tabs.map((tab) => `${tab.id}:${tab.state}${tab.dirty ? '*' : ''}`).join(',')}
         </output>
         <output data-testid="failed">{String(tabs.closeFailed)}</output>
+        <output data-testid="busy">{String(tabs.closeBusy)}</output>
         <output data-testid="content">{session?.draft.content ?? '-'}</output>
         <button type="button" onClick={() => session?.setDraft({ content: 'EDIT', editing: true })}>
           edit-active
@@ -409,6 +410,65 @@ describe('closing tabs', () => {
   });
 });
 
+describe('closing when navigation or questions get in the way', () => {
+  it('keeps the draft and the tab when Discard cannot leave the active tab', async () => {
+    const t = setup();
+    await ready(t, 'a');
+    await t.click('edit-active');
+    await t.click('show-b');
+    await ready(t, 'b');
+    await t.click('show-a');
+    await ready(t, 'a');
+    // The router refuses to move (a blocker, an error): the tab cannot step aside.
+    const navigate = vi.spyOn(t.router, 'navigate').mockResolvedValue(undefined);
+    await t.click('close-a');
+    await screen.findByRole('alertdialog');
+    await t.click('Discard changes');
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    expect(navigate).toHaveBeenCalled();
+    expect(t.text('tabs')).toBe('a:ready*,b:ready');
+    expect(t.store.get(SPEC, 'a')).toMatchObject({ content: 'EDIT' });
+  });
+
+  it('tells the user when a second close arrives while a question is open', async () => {
+    const t = setup();
+    await ready(t, 'a');
+    await t.click('edit-active');
+    await t.click('show-b');
+    await ready(t, 'b');
+    await t.click('edit-active');
+    await t.click('close-a');
+    await screen.findByRole('alertdialog');
+    await t.click('close-b');
+    await waitFor(() => expect(t.text('busy')).toBe('true'));
+    // The first question is untouched; answering it works and clears the notice.
+    expect(screen.getAllByRole('alertdialog')).toHaveLength(1);
+    await t.click('Discard changes');
+    await waitFor(() => expect(t.text('tabs')).toBe('b:ready*'));
+    await t.click('close-b');
+    await screen.findByRole('alertdialog');
+    await t.click('Discard changes');
+    await waitFor(() => expect(t.text('tabs')).toBe(''));
+    expect(t.text('busy')).toBe('false');
+  });
+
+  it('reopens the tab of an address that the browser Back returns to after the tab was closed', async () => {
+    const t = setup();
+    await ready(t, 'a');
+    await t.click('show-b');
+    await ready(t, 'b');
+    await t.click('show-c');
+    await ready(t, 'c');
+    await t.click('close-a');
+    await waitFor(() => expect(t.text('tabs')).toBe('b:ready,c:ready'));
+    act(() => t.history.back());
+    act(() => t.history.back());
+    await ready(t, 'a');
+    // The route is the source of the active tab: an address always has its tab.
+    expect(t.text('tabs')).toBe('b:ready,c:ready,a:ready');
+  });
+});
+
 describe('leaving the screen', () => {
   it('lets tab switches inside the specification pass without a question', async () => {
     const t = setup();
@@ -442,6 +502,9 @@ describe('leaving the screen', () => {
     expect(items).toEqual(['a.md', 'b.md']);
     await t.click('Discard all');
     await act(() => leaving);
+    // Discarding everything leaves no draft behind, not even a reset one.
+    expect(t.store.get(SPEC, 'a')).toBeUndefined();
+    expect(t.store.get(SPEC, 'b')).toBeUndefined();
     expect(t.router.state.location.pathname).toBe('/elsewhere');
   });
 

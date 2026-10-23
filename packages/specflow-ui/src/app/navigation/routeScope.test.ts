@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createMemoryHistory } from '@tanstack/react-router';
-import { createSpecFlowRouter } from '../../../app/router';
-import { createSpecFlowAppServices } from '../../../services';
-import { isDocumentsLocation, isWithinSpecDocuments } from './documentsLocation';
+import { createSpecFlowRouter } from '../router';
+import { createSpecFlowAppServices } from '../../services';
+import { isDocumentsLocation, isWithinSpecDocuments } from './routeScope';
 
 // The full paths the router hands to blockers, read from the application's real route tree.
 const router = createSpecFlowRouter(

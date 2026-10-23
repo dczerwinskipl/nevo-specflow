@@ -4,7 +4,7 @@ import { useBlocker } from '@tanstack/react-router';
 import { UnsavedChangesDialog } from './UnsavedChangesDialog';
 import { useDirtyDocuments, useDocumentDraftStore } from './DocumentDraftProvider';
 import { useDocumentSaveOps } from './DocumentEditorProvider';
-import { isWithinSpecDocuments } from '../tabs/documentsLocation';
+import { isWithinSpecDocuments } from '../../../app/navigation/routeScope';
 import { useDocumentTabs } from '../tabs/DocumentTabsProvider';
 
 /**
@@ -77,16 +77,19 @@ export function DocumentRouteGuard({
   });
 
   const discardAll = () => {
-    for (const id of store.dirtyIds(specId))
-      store.update(specId, id, (draft) => (draft ? { ...draft, content: draft.baseline } : draft));
+    // Same contract as discarding a tab: no draft stays behind, so a reopened document is clean.
+    for (const id of store.dirtyIds(specId)) store.remove(specId, id);
     finish(true);
   };
   const saveAll = async () => {
     setSaving(true);
     setFailed([]);
-    await ops.saveAll(store.dirtyIds(specId));
+    try {
+      await ops.saveAll(store.dirtyIds(specId));
+    } finally {
+      if (mounted.current) setSaving(false);
+    }
     if (!mounted.current) return;
-    setSaving(false);
     // `saved` is not proof: edits made during IO stay dirty, failures and skipped ids as well.
     const left = store.dirtyIds(specId);
     if (left.length === 0) finish(true);

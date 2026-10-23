@@ -60,6 +60,8 @@ export interface DocumentTabs {
   /** Closes the tabs of deleted documents and drops their drafts; the user already confirmed. */
   removeTabs: (ids: readonly string[]) => Promise<void>;
   closeFailed: boolean;
+  /** A close was refused because another tab's question was still open. */
+  closeBusy: boolean;
   dismissCloseFailed: () => void;
 }
 
@@ -142,6 +144,7 @@ function TabsHost({
   const dirty = useDirtyDocuments(specId);
   const record = useDocumentRecord();
   const [closeFailed, setCloseFailed] = useState(false);
+  const [closeBusy, setCloseBusy] = useState(false);
   // Every path the tree has shown, so a tab keeps its name when its document disappears. Adjusted
   // while rendering (the tree is the source), not synchronised by an effect.
   const [known, setKnown] = useState<{
@@ -155,7 +158,7 @@ function TabsHost({
     });
   // The tab whose unsaved-changes question is on screen, and whether its Save failed.
   const [asking, setAsking] = useState<{ id: string; saveFailed: boolean } | null>(null);
-  const answer = useRef<((allowed: boolean) => void) | null>(null);
+  const answer = useRef<((decision: boolean | 'discard') => void) | null>(null);
   const mounted = useRef(false);
   const canCloseRef = useRef<(id: string) => Promise<boolean>>(() => Promise.resolve(false));
 
@@ -228,7 +231,7 @@ function TabsHost({
     [goTo, routeShows],
   );
 
-  const settle = useCallback((allowed: boolean) => {
+  const settle = useCallback((allowed: boolean | 'discard') => {
     const resolve = answer.current;
     answer.current = null;
     setAsking(null);
@@ -239,13 +242,20 @@ function TabsHost({
     canCloseRef.current = async (id) => {
       const draft = store.get(specId, id);
       if (draft && isDraftDirty(draft)) {
-        // One question at a time: another close meanwhile is refused instead of overwriting it.
-        if (answer.current) return false;
-        const allowed = await new Promise<boolean>((resolve) => {
+        // One question at a time: another close meanwhile is refused, and the user is told.
+        if (answer.current) {
+          if (mounted.current) setCloseBusy(true);
+          return false;
+        }
+        const decision = await new Promise<boolean | 'discard'>((resolve) => {
           answer.current = resolve;
           setAsking({ id, saveFailed: false });
         });
-        if (!allowed) return false;
+        if (!decision) return false;
+        const left = await leave(id);
+        // The draft goes only once the tab really leaves: a refused navigation keeps the edits.
+        if (left && decision === 'discard') store.remove(specId, id);
+        return left;
       }
       return leave(id);
     };
@@ -264,7 +274,10 @@ function TabsHost({
   const requestClose = useCallback(async (id: string) => {
     try {
       const closed = await latest.current.requestClose(id);
-      if (closed && mounted.current) setCloseFailed(false);
+      if (closed && mounted.current) {
+        setCloseFailed(false);
+        setCloseBusy(false);
+      }
       return closed;
     } catch {
       // A guard that throws is a refusal; the tab stays open and the user is told.
@@ -312,9 +325,24 @@ function TabsHost({
       closeAll,
       removeTabs,
       closeFailed,
-      dismissCloseFailed: () => setCloseFailed(false),
+      closeBusy,
+      dismissCloseFailed: () => {
+        setCloseFailed(false);
+        setCloseBusy(false);
+      },
     }),
-    [specId, tabs, documentId, ids, show, requestClose, closeAll, removeTabs, closeFailed],
+    [
+      specId,
+      tabs,
+      documentId,
+      ids,
+      show,
+      requestClose,
+      closeAll,
+      removeTabs,
+      closeFailed,
+      closeBusy,
+    ],
   );
 
   const askedName = tabs.find((tab) => tab.id === asking?.id)?.label ?? asking?.id ?? '';
@@ -328,11 +356,9 @@ function TabsHost({
         pending={asking ? ops.savingOf(asking.id) : false}
         saveFailed={asking?.saveFailed ?? false}
         onContinue={() => settle(false)}
-        onDiscard={() => {
-          // A discarded tab leaves no draft behind: reopening it shows the saved document.
-          if (asking) store.remove(specId, asking.id);
-          settle(true);
-        }}
+        // A discarded tab leaves no draft behind (removed once it has left): reopening it shows
+        // the saved document.
+        onDiscard={() => settle('discard')}
         onSave={() => {
           const target = asking?.id;
           if (!target) return;

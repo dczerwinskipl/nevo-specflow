@@ -1,7 +1,7 @@
 import { useBlocker, useRouter } from '@tanstack/react-router';
 import { useSecondaryNavigation } from '@nevo/ui';
 import { useRef } from 'react';
-import { isWithinSpecDocuments } from '../../features/documents/tabs/documentsLocation';
+import { isWithinSpecDocuments } from './routeScope';
 import { useNavigationTransition } from './NavigationTransition';
 /** Product bridge only. The existing Secondary stack still owns its guards. */
 export function WorkspaceRouteLeaveGuard() {

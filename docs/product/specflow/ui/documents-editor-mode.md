@@ -42,7 +42,7 @@ document owns only what they mean in the product. Approved mock: Storybook
   reload) opens exactly one tab. Switching to an open tab replaces the history entry; opening a new tab
   (from the tree, a new file, an import) pushes one. Both keep the location state, so the return link to a
   Session or the Specification overview survives tab changes. Closing the active tab moves to its right
-  neighbour, else the left one, by replacing the entry; closing the last tab shows the document list.
+  neighbour, else the left one, by replacing the entry; closing the last tab shows the document list. The browser Back button may return to the address of a tab that was closed: the route is the source of the active tab, so that address opens its tab again.
 - **Unsaved changes.** Closing a tab with edits asks (Save / Discard / Cancel) for that tab, also for a tab
   that is not on screen; Discard removes its draft, so reopening shows the saved document. Leaving the
   screen, switching specification, a tree operation, closing every tab (the region's close) or unloading

@@ -214,9 +214,9 @@ describe('WorkspaceHeader pressed icon toggles', () => {
     renderToStaticMarkup(<WorkspaceHeader title="Doc" actions={[action]} />);
 
   it('renders aria-pressed only when pressed is defined', () => {
-    expect(render(toggle)).not.toContain('aria-pressed');
-    expect(render({ ...toggle, pressed: true })).toContain('aria-pressed="true"');
-    expect(render({ ...toggle, pressed: false })).toContain('aria-pressed="false"');
+    expect(render(toggle)).not.toContain(' aria-pressed=');
+    expect(render({ ...toggle, pressed: true })).toContain(' aria-pressed="true"');
+    expect(render({ ...toggle, pressed: false })).toContain(' aria-pressed="false"');
   });
 
   it('styles the pressed state through the aria-pressed variant and keeps the action name as label', () => {

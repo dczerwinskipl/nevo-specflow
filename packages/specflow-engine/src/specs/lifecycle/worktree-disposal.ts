@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import type { SpecFlowEngine } from '../../application';
 import { executeGitMutation } from '../../git/mutation';
 import { executeGit } from '../../git/process';
-import { publishCloseCheckpoint } from './close-checkpoint';
+import { publishCloseCheckpoint } from './close/checkpoint';
 import {
   WorkspaceRegistryError,
   inspectRegisteredWorkspace,
@@ -25,9 +25,9 @@ import {
   proveIntegrationScratchAbsent,
   removeVerifiedIntegrationScratch,
   requireRecordedDivergentCandidate,
-} from './git-scratch';
-import { requireVerifiedCloseIntegration } from './git-publication';
-import { readCloseJournal } from './journal-store';
+} from './git/scratch';
+import { requireVerifiedCloseIntegration } from './git/publication';
+import { readCloseJournal } from './journal/store';
 import { CloseOperationError, type CloseJournal } from './model';
 import { inspectCleanGitWorkspace } from './preflight';
 import { assertResourcesAvailable } from './resources';

@@ -10,7 +10,7 @@ import {
   listCloseJournals,
   reserveCloseOperation,
 } from '../src/testing';
-import { closeJournalPath } from '../src/specs/lifecycle/journal-store';
+import { closeJournalPath } from '../src/specs/lifecycle/journal/store';
 import { createGitTestProject, git, commitStaged } from './support/git-project';
 
 const roots: string[] = [];

@@ -1,27 +1,27 @@
 import { randomUUID } from 'node:crypto';
 import { lstat, mkdir, open, readFile, readdir, realpath } from 'node:fs/promises';
 
-import { executeGit } from '../../git/process';
-import { executeGitMutation } from '../../git/mutation';
+import { executeGit } from '../../../git/process';
+import { executeGitMutation } from '../../../git/mutation';
 import { join } from 'node:path';
 
-import type { SpecFlowEngine } from '../../application';
-import { readWorkspaceSpecification } from '../repository';
-import { GitCapabilityError } from '../../git/errors';
-import { isGitIgnored } from '../../project/git-checkout';
-import { publishCloseCheckpoint } from './close-checkpoint';
-import { readWorkspaceRegistry } from '../../project/workspace-registry';
+import type { SpecFlowEngine } from '../../../application';
+import { readWorkspaceSpecification } from '../../repository';
+import { GitCapabilityError } from '../../../git/errors';
+import { isGitIgnored } from '../../../project/git-checkout';
+import { publishCloseCheckpoint } from '../close/checkpoint';
+import { readWorkspaceRegistry } from '../../../project/workspace-registry';
 import {
   createDetachedIntegrationCheckout,
   inspectDetachedIntegrationCheckout,
   mergeDivergentInScratch,
   verifyIntegrationCandidate,
   verifyIsolatedMergeConflict,
-} from '../../version-control/git/integration-scratch';
-import { readProjectGitPolicy } from '../../version-control/worktrees/config';
-import { inspectCloseGitIntegration } from './git-integration';
-import { readCloseJournal } from './journal-store';
-import { CloseOperationError, type CloseJournal, type CloseIntegrationScratch } from './model';
+} from '../../../version-control/git/integration-scratch';
+import { readProjectGitPolicy } from '../../../version-control/worktrees/config';
+import { inspectCloseGitIntegration } from './integration';
+import { readCloseJournal } from '../journal/store';
+import { CloseOperationError, type CloseJournal, type CloseIntegrationScratch } from '../model';
 
 const OWNER_MARKER = '.nevo/local/state/integration-scratch-owner.json';
 

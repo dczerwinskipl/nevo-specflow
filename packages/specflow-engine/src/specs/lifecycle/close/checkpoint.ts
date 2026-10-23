@@ -1,9 +1,9 @@
 import { isDeepStrictEqual } from 'node:util';
 
-import type { SpecFlowEngine } from '../../application';
-import { withProjectControlLock } from '../../project/control-lock';
-import { publishCloseJournal, readCloseJournal } from './journal-store';
-import { CloseOperationError, type CloseJournal, type CloseOperationErrorCode } from './model';
+import type { SpecFlowEngine } from '../../../application';
+import { withProjectControlLock } from '../../../project/control-lock';
+import { publishCloseJournal, readCloseJournal } from '../journal/store';
+import { CloseOperationError, type CloseJournal, type CloseOperationErrorCode } from '../model';
 
 /**
  * Close-only journal compare-and-publish. All eligibility checks supplied by

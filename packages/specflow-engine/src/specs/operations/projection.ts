@@ -1,5 +1,5 @@
 import type { CreatedSpecification } from '../create';
-import type { CloseJournal, CloseOutcome, ClosePlan, CloseKind } from '../lifecycle/model';
+import type { CloseJournal, CloseOutcome, ClosePlan, CloseKind } from '../lifecycle';
 
 export interface PublicCreateOperation {
   readonly operationId: string;

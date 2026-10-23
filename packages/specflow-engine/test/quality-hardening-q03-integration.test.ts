@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import type { SpecFlowEngine } from '../src/application';
-import { advanceCloseIntegration } from '../src/specs/lifecycle/close-integration';
+import { advanceCloseIntegration } from '../src/specs/lifecycle/close/integration';
 import type { CloseJournal, CloseKind } from '../src/specs/lifecycle/model';
 
 describe('Q03 shared Close integration progression', () => {

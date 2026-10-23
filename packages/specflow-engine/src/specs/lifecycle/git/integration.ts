@@ -1,15 +1,15 @@
-import type { SpecFlowEngine } from '../../application';
-import { GitCapabilityError } from '../../git/errors';
-import { executeGit } from '../../git/process';
-import { inspectRegisteredWorkspace } from '../../project/workspace-registry';
+import type { SpecFlowEngine } from '../../../application';
+import { GitCapabilityError } from '../../../git/errors';
+import { executeGit } from '../../../git/process';
+import { inspectRegisteredWorkspace } from '../../../project/workspace-registry';
 import {
   inspectGitIntegrationEvidence,
   type GitIntegrationEvidence,
-} from '../../version-control/git/integration';
-import { readProjectGitPolicy } from '../../version-control/worktrees/config';
-import { inspectCleanGitWorkspace } from './preflight';
-import { readCloseJournal } from './journal-store';
-import { CloseOperationError, type CloseWorkspaceEvidence } from './model';
+} from '../../../version-control/git/integration';
+import { readProjectGitPolicy } from '../../../version-control/worktrees/config';
+import { inspectCleanGitWorkspace } from '../preflight';
+import { readCloseJournal } from '../journal/store';
+import { CloseOperationError, type CloseWorkspaceEvidence } from '../model';
 
 export interface GitIntegrationInspection extends GitIntegrationEvidence {
   readonly operationId: string;

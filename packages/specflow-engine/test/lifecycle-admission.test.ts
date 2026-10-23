@@ -16,7 +16,7 @@ import {
   type SpecFlowEngine,
 } from '../src/testing';
 import { createGitTestProject, git, commitStaged } from './support/git-project';
-import { closeJournalPath } from '../src/specs/lifecycle/journal-store';
+import { closeJournalPath } from '../src/specs/lifecycle/journal/store';
 
 const roots: string[] = [];
 afterEach(async () => {

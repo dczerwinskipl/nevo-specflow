@@ -1,7 +1,7 @@
 import type { ResolvedProjectHome } from '../../project/project-home';
 import { listCreateJournals, type CreateJournal } from '../create/journal';
-import { listCloseJournals } from '../lifecycle/journal-store';
-import { resourcesForClosePlan } from '../lifecycle/model';
+import { listCloseJournals } from '../lifecycle';
+import { resourcesForClosePlan } from '../lifecycle';
 
 export type MutationResource = string;
 

@@ -8,15 +8,15 @@ import { parse, stringify } from 'yaml';
 import type { SpecFlowEngine } from '../../application';
 import { executeGitMutation } from '../../git/mutation';
 import { executeGit } from '../../git/process';
-import { publishCloseCheckpoint } from './close-checkpoint';
+import { publishCloseCheckpoint } from './close/checkpoint';
 import {
   inspectRegisteredWorkspace,
   readWorkspaceRegistry,
 } from '../../project/workspace-registry';
 import { renameWindowsSafe } from '../../project/windows-safe-fs';
 import { inspectCleanGitWorkspace } from './preflight';
-import { disabledIntegrationHooksDirectory } from './git-scratch';
-import { readCloseJournal } from './journal-store';
+import { disabledIntegrationHooksDirectory } from './git/scratch';
+import { readCloseJournal } from './journal/store';
 import {
   CloseOperationError,
   type CloseJournal,

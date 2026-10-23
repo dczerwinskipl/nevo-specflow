@@ -5,7 +5,7 @@ import { withProjectControlLock } from '../../project/control-lock';
 import { readWorkspaceRegistry } from '../../project/workspace-registry';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import { CloseOperationError, type CloseJournal, type ClosePlan } from './model';
-import { readCloseJournal, publishCloseJournal } from './journal-store';
+import { readCloseJournal, publishCloseJournal } from './journal/store';
 import { assertResourcesAvailable } from './resources';
 import { previewCloseOperation, type CloseRequest } from './preflight';
 

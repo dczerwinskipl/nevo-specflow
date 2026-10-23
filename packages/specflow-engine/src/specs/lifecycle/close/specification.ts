@@ -1,16 +1,16 @@
 import { isDeepStrictEqual } from 'node:util';
 
-import type { SpecFlowEngine } from '../../application';
-import { publishCloseCheckpoint } from './close-checkpoint';
-import { readWorkspaceRegistry } from '../../project/workspace-registry';
-import { readWorkspaceSpecification } from '../repository';
-import { archiveSpecificationWithCommit, inspectArchivePhysicalRecovery } from './archive-effects';
-import { prepareCloseGitIntegration } from './git-preparation';
-import { settleArchivedLinkedConflict } from './git-scratch';
-import { readCloseJournal } from './journal-store';
-import { CloseOperationError, type CloseJournal } from './model';
-import { reserveCloseOperation } from './reservation';
-import { advanceCloseIntegration } from './close-integration';
+import type { SpecFlowEngine } from '../../../application';
+import { publishCloseCheckpoint } from './checkpoint';
+import { readWorkspaceRegistry } from '../../../project/workspace-registry';
+import { readWorkspaceSpecification } from '../../repository';
+import { archiveSpecificationWithCommit, inspectArchivePhysicalRecovery } from '../archive-effects';
+import { prepareCloseGitIntegration } from '../git/preparation';
+import { settleArchivedLinkedConflict } from '../git/scratch';
+import { readCloseJournal } from '../journal/store';
+import { CloseOperationError, type CloseJournal } from '../model';
+import { reserveCloseOperation } from '../reservation';
+import { advanceCloseIntegration } from './integration';
 
 export type CloseSpecificationResult =
   | { readonly status: 'completed'; readonly journal: CloseJournal }

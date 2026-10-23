@@ -11,14 +11,14 @@ import {
   withProjectControlLock,
   type CloseJournal,
 } from '../src/testing';
-import { publishCloseCheckpoint } from '../src/specs/lifecycle/close-checkpoint';
-import { isCloseJournal } from '../src/specs/lifecycle/journal-codec';
+import { publishCloseCheckpoint } from '../src/specs/lifecycle/close/checkpoint';
+import { isCloseJournal } from '../src/specs/lifecycle/journal/codec';
 import { readWorkspaceRegistry } from '../src/project/workspace-registry';
 import {
   closeJournalPath,
   publishCloseJournal,
   readCloseJournal,
-} from '../src/specs/lifecycle/journal-store';
+} from '../src/specs/lifecycle/journal/store';
 import { createGitTestProject, git } from './support/git-project';
 
 const roots: string[] = [];

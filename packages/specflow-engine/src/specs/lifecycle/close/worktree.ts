@@ -1,10 +1,13 @@
-import type { SpecFlowEngine } from '../../application';
-import { readWorkspaceSpecification } from '../repository';
-import { inspectDivergentCloseResolution, type DivergentCloseNeedsResolution } from './git-scratch';
-import { readCloseJournal } from './journal-store';
-import { CloseOperationError, type CloseJournal } from './model';
-import { reserveCloseOperation } from './reservation';
-import { advanceCloseIntegration } from './close-integration';
+import type { SpecFlowEngine } from '../../../application';
+import { readWorkspaceSpecification } from '../../repository';
+import {
+  inspectDivergentCloseResolution,
+  type DivergentCloseNeedsResolution,
+} from '../git/scratch';
+import { readCloseJournal } from '../journal/store';
+import { CloseOperationError, type CloseJournal } from '../model';
+import { reserveCloseOperation } from '../reservation';
+import { advanceCloseIntegration } from './integration';
 
 export type CloseWorktreeResult =
   { readonly status: 'completed'; readonly journal: CloseJournal } | DivergentCloseNeedsResolution;

@@ -1,26 +1,23 @@
-import type { SpecFlowEngine } from '../../application';
-import { GitCapabilityError } from '../../git/errors';
-import { publishCloseCheckpoint } from './close-checkpoint';
+import type { SpecFlowEngine } from '../../../application';
+import { GitCapabilityError } from '../../../git/errors';
+import { publishCloseCheckpoint } from '../close/checkpoint';
 import {
   inspectRegisteredWorkspace,
   readWorkspaceRegistry,
-} from '../../project/workspace-registry';
+} from '../../../project/workspace-registry';
 import {
   inspectGitIntegrationEvidence,
   publishGitFastForward,
   verifyGitTreePathEquivalent,
   verifyPublishedGitCheckout,
-} from '../../version-control/git/integration';
-import { readProjectGitPolicy } from '../../version-control/worktrees/config';
-import { readWorkspaceSpecification, listWorkspaceSpecifications } from '../repository';
-import { inspectCloseGitIntegration } from './git-integration';
-import {
-  disabledIntegrationHooksDirectory,
-  requireRecordedDivergentCandidate,
-} from './git-scratch';
-import { readCloseJournal } from './journal-store';
-import { CloseOperationError, type CloseJournal } from './model';
-import { inspectCleanGitWorkspace } from './preflight';
+} from '../../../version-control/git/integration';
+import { readProjectGitPolicy } from '../../../version-control/worktrees/config';
+import { readWorkspaceSpecification, listWorkspaceSpecifications } from '../../repository';
+import { inspectCloseGitIntegration } from './integration';
+import { disabledIntegrationHooksDirectory, requireRecordedDivergentCandidate } from './scratch';
+import { readCloseJournal } from '../journal/store';
+import { CloseOperationError, type CloseJournal } from '../model';
+import { inspectCleanGitWorkspace } from '../preflight';
 
 function conflict(message: string): CloseOperationError {
   return new CloseOperationError('CLOSE_CONFLICT', message);

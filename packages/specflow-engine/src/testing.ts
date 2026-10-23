@@ -63,18 +63,18 @@ export { CREATE_JOURNAL_RELATIVE_DIR } from './specs/create';
 export { createSpecificationForTesting, type TestCreateOptions } from './specs/create';
 
 // Internal verification surface for planned lifecycle operations; no transport mutations yet.
-export { previewCloseOperation, type CloseRequest } from './specs/lifecycle/preflight';
-export { reserveCloseOperation, inspectCloseOperation } from './specs/lifecycle/reservation';
-export { CloseOperationError, type CloseJournal, type ClosePlan } from './specs/lifecycle/model';
-export { assertResourcesAvailable, resourcesForCreate } from './specs/lifecycle/resources';
-export { listCloseJournals, closeJournalPath } from './specs/lifecycle/journal-store';
+export { previewCloseOperation, type CloseRequest } from './specs/lifecycle';
+export { reserveCloseOperation, inspectCloseOperation } from './specs/lifecycle';
+export { CloseOperationError, type CloseJournal, type ClosePlan } from './specs/lifecycle';
+export { assertResourcesAvailable, resourcesForCreate } from './specs/lifecycle';
+export { listCloseJournals, closeJournalPath } from './specs/lifecycle';
 
 /** E2.T11 read-only Git integration evidence; no publication side effects. */
-export { inspectCloseGitIntegration } from './specs/lifecycle/git-integration';
-export type { GitIntegrationInspection } from './specs/lifecycle/git-integration';
+export { inspectCloseGitIntegration } from './specs/lifecycle';
+export type { GitIntegrationInspection } from './specs/lifecycle';
 
 /** T11 internal durable preparation; no Git publication yet. */
-export { prepareCloseGitIntegration } from './specs/lifecycle/git-preparation';
+export { prepareCloseGitIntegration } from './specs/lifecycle';
 
 /** Internal T11 fast-forward publication/reconciliation, no CLI/HTTP route. */
 export {
@@ -82,22 +82,19 @@ export {
   reconcileCloseGitPublication,
   requireVerifiedCloseIntegration,
   proveAlreadyIntegratedClose,
-} from './specs/lifecycle/git-publication';
+} from './specs/lifecycle';
 
 // E2.T11 detached divergent candidate: internal only, no primary publication.
-export {
-  prepareDivergentCloseCandidate,
-  verifyDivergentCloseCandidate,
-} from './specs/lifecycle/git-scratch';
+export { prepareDivergentCloseCandidate, verifyDivergentCloseCandidate } from './specs/lifecycle';
 
 /** T11 internal divergent publication and verified conflict inspection. */
-export { publishDivergentCloseCandidate } from './specs/lifecycle/git-publication';
-export { verifyDivergentCloseConflict } from './specs/lifecycle/git-scratch';
+export { publishDivergentCloseCandidate } from './specs/lifecycle';
+export { verifyDivergentCloseConflict } from './specs/lifecycle';
 
 export {
   inspectDivergentCloseResolution,
   type DivergentCloseNeedsResolution,
-} from './specs/lifecycle/git-scratch';
+} from './specs/lifecycle';
 
 /** T14 Engine-owned archive: no public CLI/HTTP close effect yet. */
 export {
@@ -105,34 +102,27 @@ export {
   reconcileArchiveCommit,
   inspectArchiveRecovery,
   inspectArchivePhysicalRecovery,
-} from './specs/lifecycle/archive-effects';
+} from './specs/lifecycle';
 
 /** E2.T12 scoped registry handover and non-force managed disposal. */
 export {
   rebindVerifiedClose,
   disposeReboundWorktree,
   reconcileDisposedWorktree,
-} from './specs/lifecycle/worktree-disposal';
+} from './specs/lifecycle';
 
 /** E2.T13 Worktree Close use case (not a public transport endpoint). */
-export {
-  closeWorktree,
-  closeWorkspace,
-  type CloseWorktreeResult,
-} from './specs/lifecycle/close-worktree';
+export { closeWorktree, closeWorkspace, type CloseWorktreeResult } from './specs/lifecycle';
 
 /** Verified archived linked conflict: retains scratch metadata claim. */
-export { settleArchivedLinkedConflict } from './specs/lifecycle/git-scratch';
+export { settleArchivedLinkedConflict } from './specs/lifecycle';
 
 /** Recovery inspection does not re-adopt a replaced linked checkout. */
-export { inspectPendingDisposal } from './specs/lifecycle/worktree-disposal';
+export { inspectPendingDisposal } from './specs/lifecycle';
 
-export {
-  closeSpecification,
-  type CloseSpecificationResult,
-} from './specs/lifecycle/close-specification';
+export { closeSpecification, type CloseSpecificationResult } from './specs/lifecycle';
 
-export { reconcileArchivedConflictScratch } from './specs/lifecycle/git-scratch';
+export { reconcileArchivedConflictScratch } from './specs/lifecycle';
 
 // Internal persistence/diagnostics APIs are intentionally NOT exported from the
 // application package root. Low-level integration suites use this test surface.

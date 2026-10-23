@@ -99,7 +99,7 @@ export {
 } from './specs/create';
 
 // Supported operation endpoints project the Engine's durable state to stable DTOs.
-export { CloseOperationError } from './specs/lifecycle/model';
+export { CloseOperationError } from './specs/lifecycle';
 export {
   closeWorktreeOperation,
   closeWorkspaceOperation,

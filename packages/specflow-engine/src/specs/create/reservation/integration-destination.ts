@@ -4,7 +4,7 @@ import {
   type WorkspaceIntegrationDestination,
 } from '../../../project/workspace-registry';
 import { CreateOperationError } from '../error';
-import { inspectCleanGitWorkspace } from '../../lifecycle/preflight';
+import { inspectCleanGitWorkspace } from '../../lifecycle';
 
 export interface ExplicitIntegrationPreflight {
   readonly registryRevision: number;

@@ -1,9 +1,9 @@
 import { join } from 'node:path';
 
-import type { ResolvedProjectHome } from '../../project/project-home';
-import { MAX_MANAGED_WORKSPACE_SPECIFICATIONS } from '../../project/workspace-registry';
-import { validateSpecificationSlug } from '../model';
-import { fingerprintCloseIntent, resourcesForClosePlan, type CloseJournal } from './model';
+import type { ResolvedProjectHome } from '../../../project/project-home';
+import { MAX_MANAGED_WORKSPACE_SPECIFICATIONS } from '../../../project/workspace-registry';
+import { validateSpecificationSlug } from '../../model';
+import { fingerprintCloseIntent, resourcesForClosePlan, type CloseJournal } from '../model';
 
 export const CLOSE_UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;

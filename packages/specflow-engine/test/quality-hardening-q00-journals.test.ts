@@ -19,7 +19,7 @@ import {
   closeJournalPath,
   publishCloseJournal,
   readCloseJournal,
-} from '../src/specs/lifecycle/journal-store';
+} from '../src/specs/lifecycle/journal/store';
 import {
   fingerprintCloseIntent,
   resourcesForClosePlan,

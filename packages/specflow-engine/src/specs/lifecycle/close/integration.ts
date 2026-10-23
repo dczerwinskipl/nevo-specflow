@@ -1,14 +1,14 @@
-import type { SpecFlowEngine } from '../../application';
-import { prepareCloseGitIntegration } from './git-preparation';
+import type { SpecFlowEngine } from '../../../application';
+import { prepareCloseGitIntegration } from '../git/preparation';
 import {
   proveAlreadyIntegratedClose,
   publishCloseGitFastForward,
   publishDivergentCloseCandidate,
   requireVerifiedCloseIntegration,
-} from './git-publication';
-import { prepareDivergentCloseCandidate } from './git-scratch';
-import { CloseOperationError, type CloseJournal } from './model';
-import { disposeReboundWorktree, rebindVerifiedClose } from './worktree-disposal';
+} from '../git/publication';
+import { prepareDivergentCloseCandidate } from '../git/scratch';
+import { CloseOperationError, type CloseJournal } from '../model';
+import { disposeReboundWorktree, rebindVerifiedClose } from '../worktree-disposal';
 
 /**
  * Shared Close integration progression. The caller owns archive admission,

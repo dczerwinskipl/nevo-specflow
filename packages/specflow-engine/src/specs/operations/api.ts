@@ -1,10 +1,10 @@
 import type { SpecFlowEngine } from '../../application';
-import { closeSpecification } from '../lifecycle/close-specification';
-import { closeWorktree, closeWorkspace } from '../lifecycle/close-worktree';
-import { previewCloseOperation, type CloseRequest } from '../lifecycle/preflight';
-import { inspectCloseOperation } from '../lifecycle/reservation';
-import { reconcileArchivedConflictScratch } from '../lifecycle/git-scratch';
-import { CloseOperationError } from '../lifecycle/model';
+import { closeSpecification } from '../lifecycle';
+import { closeWorktree, closeWorkspace } from '../lifecycle';
+import { previewCloseOperation, type CloseRequest } from '../lifecycle';
+import { inspectCloseOperation } from '../lifecycle';
+import { reconcileArchivedConflictScratch } from '../lifecycle';
+import { CloseOperationError } from '../lifecycle';
 import {
   projectCloseOperation,
   projectClosePreview,

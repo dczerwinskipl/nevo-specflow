@@ -1,10 +1,10 @@
-import type { SpecFlowEngine } from '../../application';
-import { publishCloseCheckpoint } from './close-checkpoint';
-import { readWorkspaceRegistry } from '../../project/workspace-registry';
-import { readProjectGitPolicy } from '../../version-control/worktrees/config';
-import { inspectCloseGitIntegration } from './git-integration';
-import { readCloseJournal } from './journal-store';
-import { CloseOperationError, type CloseJournal } from './model';
+import type { SpecFlowEngine } from '../../../application';
+import { publishCloseCheckpoint } from '../close/checkpoint';
+import { readWorkspaceRegistry } from '../../../project/workspace-registry';
+import { readProjectGitPolicy } from '../../../version-control/worktrees/config';
+import { inspectCloseGitIntegration } from './integration';
+import { readCloseJournal } from '../journal/store';
+import { CloseOperationError, type CloseJournal } from '../model';
 
 /**
  * T11 checkpoint before any mutating Git subprocess is permitted.

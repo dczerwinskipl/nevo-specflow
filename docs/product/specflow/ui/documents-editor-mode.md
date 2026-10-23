@@ -31,22 +31,33 @@ document owns only what they mean in the product. Approved mock: Storybook
   visible whenever the workspace splits (>= 840 px); it MUST NOT be a drawer or toggle there.
 - **Narrow.** The workspace stacks: tree, then the document with Back to the tree. Tabs are not
   shown; the document header carries the `name (N)` switcher. Back only returns to the tree and
-  MUST NOT close tabs.
+  MUST NOT close tabs or change the route. The stacked screen follows the active tab, so a tab switch
+  while it is open does not close and reopen it.
 - **Open rule.** Opening a file from the tree opens a new tab; opening an open file activates its
   tab. There is no preview tab.
 - **Scope.** Open tabs live for the visit to one specification and are not persisted. Unsaved drafts
   stay in the visit-scoped draft store, so switching tabs MUST NOT lose edits.
 - **URL.** The active tab is the route `documents/$documentId`; the set of other open tabs is not in
-  the URL.
-- **Unsaved changes.** Closing a tab with edits MUST ask (Save / Discard / Cancel) for that tab.
-  Leaving the screen or switching specification MUST ask once, listing the unsaved documents.
-  `DocumentRouteGuard` is single-document today and MUST be extended to this.
+  the URL. The route is the single source of the active tab: a document in the URL (a deep link, a
+  reload) opens exactly one tab. Switching to an open tab replaces the history entry; opening a new tab
+  (from the tree, a new file, an import) pushes one. Both keep the location state, so the return link to a
+  Session or the Specification overview survives tab changes. Closing the active tab moves to its right
+  neighbour, else the left one, by replacing the entry; closing the last tab shows the document list.
+- **Unsaved changes.** Closing a tab with edits asks (Save / Discard / Cancel) for that tab, also for a tab
+  that is not on screen; Discard removes its draft, so reopening shows the saved document. Leaving the
+  screen, switching specification, a tree operation, closing every tab (the region's close) or unloading
+  the page asks once, listing the unsaved documents (Save all / Discard all / Cancel). When Save all
+  cannot save everything the dialog stays open and lists the documents that are still unsaved.
 - **Switching tabs is not leaving.** Moving between open tabs changes the route
   `documents/$documentId` but stays on the Documents screen, so it MUST NOT trigger the leave guard
   or its Save / Discard / Cancel dialog. Drafts of the other tabs are kept. Only closing a tab, leaving
   the screen or switching specification asks.
-- **Missing document.** A tab whose document disappeared stays open, marked missing; a draft is not
-  discarded silently.
+- **Missing document.** A tab whose document disappeared stays open, marked missing, with its last known
+  name; a draft is not discarded silently.
+- **Tree operations.** Rename and move keep the tab (the document id is stable) and its draft; the tab name
+  follows the tree. Deleting documents closes their tabs without a second question (the user confirmed
+  the delete) and drops their drafts. A new empty file opens as a new tab in edit; an import opens its
+  first file as a new tab in preview; a new folder opens nothing.
 
 ## Session
 
@@ -63,6 +74,8 @@ document owns only what they mean in the product. Approved mock: Storybook
 Each kind declares its views and actions to the host; the rules for descriptors, promotion and the
 `...` menu are in the design-system document.
 
+- **Plain text (`.txt`).** One editable view: it opens as the source, with no preview, no mode action and
+  no properties. Save is promoted only while there are unsaved changes.
 - **Markdown.** Opens in preview. Edit/Preview is promoted (pencil in preview, eye in edit). Split
   (icon `columns-2`, from the existing lucide set) exists only when the document area is at least 1000 px; below
   that the view falls back to edit. Word wrap and line numbers are editor preferences in the
@@ -98,13 +111,13 @@ are comparison frames only.
 - A separate editor layout (tree and tabbed area as peers, outside Primary/Secondary) is deferred
   until after the integration.
 
-## Follow-ups for the integration PR
+## Follow-ups after the integration
 
-- Complete menu (`menu: 'complete'`) with groups in `WorkspaceHeaderFrame`.
-- `aria-pressed` on icon header actions.
-- Close guard for several tabs (extend `DocumentRouteGuard`); tab switching MUST NOT trigger it.
-- Mapping of the active tab to the route `documents/$documentId`.
+Integrated for Markdown and plain text on the demo Runtime: the complete header menu and `aria-pressed`,
+the guard for several tabs, the route as the active tab, the narrow switcher and tree operations.
+
+- Split view (>= 1000 px) and the editor preferences (word wrap, line numbers) for markdown.
+- Code, image and binary kinds (the registry in `features/documents/content-kinds` takes a descriptor each).
 - Confirm the 44 px hit area.
-- Verify the tree/document geometry on the real `AppWorkspace`: the Storybook mock composes the
-  layout by hand (own sections, proportions and measuring), so it is a concept and interaction
-  demonstration and does not prove scroll, borders, region widths or breakpoints.
+- Verify the tree/document geometry on the real `AppWorkspace` at the tablet widths: the Storybook mock
+  composes the layout by hand, so it does not prove scroll, borders, region widths or breakpoints.

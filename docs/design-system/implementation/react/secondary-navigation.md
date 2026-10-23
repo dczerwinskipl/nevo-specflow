@@ -340,9 +340,11 @@ through `location.hash`) and a safe-area override.
   The direct budget, one primary last and never-direct danger are unchanged. The default
   (`menu="default"`) keeps the overflow-only menu
   (`group` is ignored there).
-- **Not wired into the Secondary runtime yet.** The complete menu is not supported by `HeaderOutlet` and
-  `CompactScreenActions` (runtime Secondary stack screens) until the narrow integration; pass `menu`
-  through the screen definition then.
+- **Secondary stack screens.** A screen definition takes `menu?: 'default' | 'complete'` next to `actions` and
+  `actionLabels`; the runtime passes it to `HeaderOutlet` (in-flow header) and `CompactScreenActions`
+  (floating row), so the stacked layout lists every action too. `useSecondaryNavigation()` also reports
+  `isOpen`, true while a contextual flow is open (false as soon as it closes, even while it slides out), so
+  a host can tell an open stack from one the user has just left.
 - `resolveWorkspaceHeaderActions(actions, 'wide' | 'narrow' | 'compact')` is the pure resolver
   (`true`/`false` still mean compact/wide). Document view: `[{ id: 'edit', icon: 'edit',
 presentation: 'icon', direct: 'always', ... }]`; edit: `[preview (icon, direct: 'wide'), save (primary,

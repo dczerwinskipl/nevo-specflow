@@ -1,5 +1,3 @@
-import type { DemoDocumentTree } from '@nevo/specflow-contracts/demo';
-
 /** What the strip shows of one open document. The label comes from the tree, never from a request. */
 export interface DocumentTab {
   id: string;
@@ -32,19 +30,22 @@ export function survivorOf(ids: readonly string[], id: string, removed: readonly
 
 export function documentTabs(options: {
   ids: readonly string[];
-  tree: Pick<DemoDocumentTree, 'documents'> | undefined;
+  tree: { documents: readonly { id: string; path: string }[] } | undefined;
   dirty: readonly string[];
   /** Documents the Runtime reported as gone although the tree may still list them. */
   unavailable?: readonly string[];
+  /** The last path the tree had for a document: a missing tab keeps its name. */
+  knownPaths?: Readonly<Record<string, string>>;
 }): DocumentTab[] {
-  const { ids, tree, dirty, unavailable = [] } = options;
+  const { ids, tree, dirty, unavailable = [], knownPaths = {} } = options;
   return ids.map((id) => {
     const entry = tree?.documents.find((document) => document.id === id);
     const missing = unavailable.includes(id) || (tree !== undefined && !entry);
+    const path = entry?.path ?? knownPaths[id] ?? id;
     return {
       id,
-      label: fileNameOf(entry?.path ?? id),
-      path: entry?.path ?? id,
+      label: fileNameOf(path),
+      path,
       dirty: dirty.includes(id),
       state: missing ? 'missing' : tree ? 'ready' : 'loading',
     };

@@ -7,6 +7,7 @@ import { useDocumentOpening } from './useDocumentOpening';
 interface Controller {
   open: ReturnType<typeof vi.fn>;
   close: ReturnType<typeof vi.fn>;
+  isOpen?: boolean;
 }
 const mocks = vi.hoisted(() => ({
   controller: undefined as unknown as Controller,
@@ -14,7 +15,6 @@ const mocks = vi.hoisted(() => ({
   tabs: {
     show: vi.fn(() => Promise.resolve()),
     closeAll: vi.fn(() => Promise.resolve()),
-    isStackOpen: vi.fn(() => false),
   },
 }));
 
@@ -141,7 +141,6 @@ describe('useDocumentOpening stacked navigation (narrow layout)', () => {
 describe('useDocumentOpening narrow tabs', () => {
   beforeEach(() => {
     mocks.supportsSplit = false;
-    mocks.tabs.isStackOpen.mockReset().mockReturnValue(false);
     mocks.controller = {
       open: vi.fn(() => Promise.resolve()),
       close: vi.fn(() => Promise.resolve()),
@@ -153,7 +152,7 @@ describe('useDocumentOpening narrow tabs', () => {
     const view = render('A');
     await flush();
     expect(opened()).toEqual(['A']);
-    mocks.tabs.isStackOpen.mockReturnValue(true);
+    mocks.controller.isOpen = true;
     view.rerender({ documentId: 'B' });
     await flush();
     expect(opened()).toEqual(['A']);
@@ -164,7 +163,7 @@ describe('useDocumentOpening narrow tabs', () => {
     const view = render('A');
     await flush();
     // Back closed the stacked screen (it unregistered); the route still shows A.
-    mocks.tabs.isStackOpen.mockReturnValue(false);
+    mocks.controller.isOpen = false;
     view.rerender({ documentId: 'B' });
     await flush();
     expect(opened()).toEqual(['A', 'B']);

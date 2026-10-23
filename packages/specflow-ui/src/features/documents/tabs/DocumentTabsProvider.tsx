@@ -61,12 +61,6 @@ export interface DocumentTabs {
   removeTabs: (ids: readonly string[]) => Promise<void>;
   closeFailed: boolean;
   dismissCloseFailed: () => void;
-  /**
-   * The narrow layout stacks the document over the tree. While that screen is mounted it follows
-   * the route's active tab by itself, so a tab change must not close and reopen (remount) it.
-   */
-  isStackOpen: () => boolean;
-  registerStack: () => () => void;
 }
 
 const TabsContext = createContext<DocumentTabs | null>(null);
@@ -148,11 +142,21 @@ function TabsHost({
   const dirty = useDirtyDocuments(specId);
   const record = useDocumentRecord();
   const [closeFailed, setCloseFailed] = useState(false);
+  // Every path the tree has shown, so a tab keeps its name when its document disappears. Adjusted
+  // while rendering (the tree is the source), not synchronised by an effect.
+  const [known, setKnown] = useState<{
+    tree?: DemoDocumentTree;
+    paths: Readonly<Record<string, string>>;
+  }>({ paths: {} });
+  if (tree && known.tree !== tree)
+    setKnown({
+      tree,
+      paths: { ...known.paths, ...Object.fromEntries(tree.documents.map((d) => [d.id, d.path])) },
+    });
   // The tab whose unsaved-changes question is on screen, and whether its Save failed.
   const [asking, setAsking] = useState<{ id: string; saveFailed: boolean } | null>(null);
   const answer = useRef<((allowed: boolean) => void) | null>(null);
   const mounted = useRef(false);
-  const stacks = useRef(0);
   const canCloseRef = useRef<(id: string) => Promise<boolean>>(() => Promise.resolve(false));
 
   const opened = useOpenedItems<OpenedItem>({
@@ -293,8 +297,9 @@ function TabsHost({
         tree,
         dirty,
         unavailable: recordGone && record ? [record.documentId] : [],
+        knownPaths: known.paths,
       }),
-    [ids, tree, dirty, recordGone, record],
+    [ids, tree, dirty, recordGone, record, known.paths],
   );
   const value = useMemo<DocumentTabs>(
     () => ({
@@ -308,13 +313,6 @@ function TabsHost({
       removeTabs,
       closeFailed,
       dismissCloseFailed: () => setCloseFailed(false),
-      isStackOpen: () => stacks.current > 0,
-      registerStack: () => {
-        stacks.current += 1;
-        return () => {
-          stacks.current -= 1;
-        };
-      },
     }),
     [specId, tabs, documentId, ids, show, requestClose, closeAll, removeTabs, closeFailed],
   );

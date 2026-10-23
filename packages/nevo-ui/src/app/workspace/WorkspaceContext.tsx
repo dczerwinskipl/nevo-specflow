@@ -609,13 +609,16 @@ export function AppWorkspaceProvider({
 /** Open an entirely new contextual flow from Primary, a toolbar or another feature component. */
 export function useSecondaryNavigation() {
   const workspace = useWorkspace();
+  const isOpen = workspace.secondaryDepth > 0;
   return useMemo(
     () => ({
       open: workspace.open,
       close: workspace.close,
       canLeaveScope: workspace.canLeaveScope,
+      /** A contextual flow is open now (false as soon as it closes, even while it slides out). */
+      isOpen,
     }),
-    [workspace.open, workspace.close, workspace.canLeaveScope],
+    [workspace.open, workspace.close, workspace.canLeaveScope, isOpen],
   );
 }
 

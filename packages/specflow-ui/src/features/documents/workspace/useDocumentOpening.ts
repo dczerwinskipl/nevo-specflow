@@ -78,7 +78,7 @@ export function useDocumentOpening(options: {
     stackLayout.current = layout;
     // The stacked screen follows the active tab by itself: a tab switch changes nothing there, and
     // closing then reopening it would remount the editor. Only a new layout or specification does.
-    if (sameLayout && tabs.isStackOpen()) return;
+    if (sameLayout && navigation.isOpen) return;
     stackRequest.current += 1;
     const request = stackRequest.current;
     void (async () => {
@@ -86,7 +86,7 @@ export function useDocumentOpening(options: {
       if (request !== stackRequest.current) return;
       if (!supportsSplit) await navigation.open(documentStack, { specId, documentId });
     })();
-  }, [documentId, specId, supportsSplit, navigation, tabs]);
+  }, [documentId, specId, supportsSplit, navigation]);
 
   useEffect(() => {
     if (!supportsSplit || !documentId || focusFor !== documentId) return;

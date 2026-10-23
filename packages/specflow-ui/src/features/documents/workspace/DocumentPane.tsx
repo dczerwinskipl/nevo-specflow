@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRouterState } from '@tanstack/react-router';
 import { isHttpClientError } from '@nevo/http-client';
@@ -138,9 +137,6 @@ function DocumentStackHeader() {
 }
 
 function DocumentPaneScreen({ data }: { data: DocumentScreenData }) {
-  const { registerStack } = useDocumentTabs();
-  // While this screen is mounted the workspace does not close and reopen it on a tab switch.
-  useEffect(() => registerStack(), [registerStack]);
   return <DocumentPane data={data} />;
 }
 

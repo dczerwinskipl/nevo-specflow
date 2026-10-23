@@ -113,6 +113,7 @@ function HeaderActionsWorkspace({ menu }: { menu?: 'complete' }) {
     <AppWorkspace split="primary">
       <AppWorkspace.Primary header={<WorkspaceHeader title="Primary records" />}>
         <div className="p-4">
+          <output data-header-test-open>{String(navigation.isOpen)}</output>
           <Button onClick={() => void navigation.open(stack, {})}>Open editor</Button>
         </div>
       </AppWorkspace.Primary>
@@ -159,7 +160,15 @@ function findMenuItem(container: Document, label: string) {
 export const DesktopCustomHeaderActions: Story = {
   args: { width: 1400 },
   play: async ({ canvas, canvasElement, userEvent }) => {
+    assert(
+      canvasElement.querySelector('[data-header-test-open]')?.textContent === 'false',
+      'The navigation reports no open flow before opening',
+    );
     await userEvent.click(canvas.getByRole('button', { name: 'Open editor' }));
+    assert(
+      canvasElement.querySelector('[data-header-test-open]')?.textContent === 'true',
+      'The navigation reports the open flow',
+    );
     assert(
       canvas.getByRole('heading', { name: 'Record revision 1' }),
       'Custom header should render',

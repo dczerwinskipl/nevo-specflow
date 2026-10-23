@@ -76,19 +76,24 @@ function setup({
   const services = createSpecFlowAppServices({
     documentApi: { getDocument } as unknown as DocumentApi,
     documentsApi: {
-      documentTree: () => Promise.resolve(tree(['a', 'b', 'c'])),
+      documentTree: () => Promise.resolve(tree(treeIds)),
       save,
     } as unknown as DocumentsApi,
   });
   const leave = createRef<(() => Promise<boolean>) | null>() as {
     current: (() => Promise<boolean>) | null;
   };
-  const seen: { tabs?: ReturnType<typeof useDocumentTabs> } = {};
+  const seen: {
+    tabs?: ReturnType<typeof useDocumentTabs>;
+    session?: ReturnType<typeof useDocumentEditor>;
+  } = {};
+  const treeIds: Id[] = ['a', 'b', 'c'];
 
   function Probe() {
     const tabs = useDocumentTabs();
     const session = useDocumentEditor();
     seen.tabs = tabs;
+    seen.session = session;
     return (
       <div>
         <output data-testid="active">{tabs.activeId ?? 'none'}</output>
@@ -169,7 +174,19 @@ function setup({
       await Promise.resolve();
     });
   const text = (id: string) => screen.getByTestId(id).textContent;
-  return { router, history, store, save, getDocument, leave, seen, click, text };
+  return {
+    router,
+    history,
+    store,
+    save,
+    getDocument,
+    leave,
+    seen,
+    click,
+    text,
+    treeIds,
+    queryClient,
+  };
 }
 
 const ready = async (t: ReturnType<typeof setup>, active: string) =>
@@ -227,6 +244,35 @@ describe('tabs follow the route', () => {
     await t.click('show-a');
     await ready(t, 'a');
     expect(t.getDocument).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('tabs keep the state of their documents', () => {
+  it('keeps content and view state of a tab while another tab is shown', async () => {
+    const t = setup();
+    await ready(t, 'a');
+    const viewState = { anchor: 3, head: 5, scrollTop: 120, scrollLeft: 0 };
+    await t.click('edit-active');
+    act(() => t.seen.session!.setDraft({ viewState }));
+    await t.click('show-b');
+    await ready(t, 'b');
+    expect(t.store.get(SPEC, 'a')).toMatchObject({ content: 'EDIT', editing: true, viewState });
+    await t.click('show-a');
+    await ready(t, 'a');
+    expect(t.text('content')).toBe('EDIT');
+    expect(t.store.get(SPEC, 'a')?.viewState).toEqual(viewState);
+  });
+
+  it('keeps a tab open as missing, with its draft, when its document disappears', async () => {
+    const t = setup();
+    await ready(t, 'a');
+    await t.click('edit-active');
+    t.treeIds.splice(0, t.treeIds.length, 'b', 'c');
+    await act(async () => {
+      await t.queryClient.invalidateQueries();
+    });
+    await waitFor(() => expect(t.text('tabs')).toBe('a:missing*'));
+    expect(t.store.get(SPEC, 'a')).toMatchObject({ content: 'EDIT' });
   });
 });
 

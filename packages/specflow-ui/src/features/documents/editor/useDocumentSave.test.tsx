@@ -215,7 +215,7 @@ describe('useDocumentSave for any document', () => {
 
   it('exposes the same save owner without an active editor session', async () => {
     const queryClient = createSpecFlowQueryClient();
-    const save = vi.fn(async () => ({ revision: 'b2' }));
+    const save = vi.fn(() => Promise.resolve({ revision: 'b2' }));
     const services = createSpecFlowAppServices({
       documentsApi: { save } as unknown as DocumentsApi,
     });

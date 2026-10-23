@@ -11,6 +11,7 @@
     "dev": "vite --host 127.0.0.1 --port 4173",
     "export": "tsx src/export.ts",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.importer.json",
+    "lint": "eslint .",
     "test": "vitest run"
   },
   "dependencies": {

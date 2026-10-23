@@ -87,14 +87,15 @@ import Runtime internals. The enforceable directions and the `apps/*` criterion 
 
 ## Task graph (Turborepo)
 
-Turborepo owns package-level task orchestration. Tasks: `build`, `typecheck`, `test`
+Turborepo owns package-level task orchestration. Tasks: `build`, `typecheck`, `lint`, `test`
 (and `dev`, non-cached, persistent). All depend on `^build` (dependencies build
 first). Outputs (`dist/**`, `coverage/**`, `*.tsbuildinfo`) are declared so caching is
 correct.
 
-Lint is **not** a Turborepo task: one ESLint flat config covers the whole repository,
-so `pnpm lint` runs `eslint .` in a single pass — like formatting, it does not use
-affected filtering.
+Lint is a per-package Turborepo task: each package owns an `eslint.config.mjs` composed from the
+shared `eslint.base.mjs` and the fragments in `tools/eslint/`, and a root `//#lint:root` task
+lints the few files outside packages and checks that every tracked source file is covered by
+exactly one config. Formatting stays a single repository-wide Prettier run.
 
 Cross-package execution order comes from **declared workspace dependencies**, not a
 hard-coded list. A shared package must declare its dependents correctly for affected
@@ -120,9 +121,9 @@ environment variables. When affected calculation is uncertain, CI fails safe by 
 **Global invalidation.** Turbo hashes `pnpm-lock.yaml` and root `package.json`
 automatically; `turbo.json#globalDependencies` adds `tsconfig.base.json`, both product-package
 profiles, and `tools/build-package.mjs`. Those inputs legitimately change package
-build/test/typecheck output across the graph. Repo-wide quality config (Prettier,
-EditorConfig, ESLint) is not global — it only affects `pnpm format` / `pnpm lint`,
-which run over the whole repo outside Turbo.
+build/test/typecheck output across the graph. Prettier and EditorConfig are not
+global — they only affect `pnpm format`, which runs over the whole repo outside Turbo. ESLint
+configuration is an explicit input of the per-package `lint` task, not a global dependency.
 
 Required CI checks are the stable jobs `pr-title`, `quality`, `dependency review`, `verify tests`, `build`, `product smoke`, and `codeql`.
 A check still reports success when affected filtering skipped its inner work, so a PR is

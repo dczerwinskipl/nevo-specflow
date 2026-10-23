@@ -16,6 +16,7 @@
     "build": "vite build",
     "dev": "vite --host 127.0.0.1",
     "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint .",
     "test": "vitest run"
   },
   "dependencies": {

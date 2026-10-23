@@ -250,7 +250,8 @@ have two adapters. Production fixture-based adapters remain forbidden.
 ### What tooling enforces today
 
 - ESLint enforces the package-level `no-restricted-imports` product boundaries in
-  `eslint.config.mjs` (which package may import which). Inside `packages/specflow-ui` it also
+  `tools/eslint/boundaries.mjs` (which package may import which), loaded by each package's
+  `eslint.config.mjs`. Inside `packages/specflow-ui` it also
   enforces the feature-boundary rules described below (feature barrels, the `shared/` direction)
   and the local `specflow-i18n/no-hardcoded-copy` rule, and `react-hooks/rules-of-hooks` (error)
   and `react-hooks/exhaustive-deps` are configured with zero warnings.
@@ -287,7 +288,7 @@ have two adapters. Production fixture-based adapters remain forbidden.
   keys, the read hook) and `features/<name>/routes` (route objects, for composition files only).
   `features/specs/creation` is private to Create; the application wires only its `routes`.
   Composition roots (`app/`, `services/`) and tests, stories and story-support files are not
-  restricted. ESLint (`no-restricted-imports` in `eslint.config.mjs`) enforces these rules for
+  restricted. ESLint (`no-restricted-imports` in `tools/eslint/specflow-ui.mjs`) enforces these rules for
   production sources.
 - The import graph of the features has no cycles. Each feature is three nodes: the feature itself
   (screens), its `read-model` and its composition files (`routes`, `uiModule`, `contributions/`). A

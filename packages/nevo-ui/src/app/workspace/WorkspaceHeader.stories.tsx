@@ -1,7 +1,11 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ComponentProps } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 
-import { WorkspaceHeader } from './WorkspaceHeader';
+import {
+  CompactWorkspaceActions,
+  WorkspaceHeader,
+  type WorkspaceHeaderAction,
+} from './WorkspaceHeader';
 
 const meta = {
   title: 'Nevo UI/Layout/Workspace Header',
@@ -287,4 +291,149 @@ export const MenuActionMayMoveFocusItself: Story = {
       throw new Error('The menu took focus back from the input the action focused.');
     }
   },
+};
+
+const completeMenuActions: readonly WorkspaceHeaderAction[] = [
+  {
+    id: 'preview',
+    label: 'Show preview',
+    icon: 'eye',
+    presentation: 'icon',
+    direct: 'wide',
+    group: 'display',
+    pressed: true,
+    onPress: () => undefined,
+  },
+  {
+    id: 'wrap',
+    label: 'Word wrap',
+    icon: 'file',
+    group: 'display',
+    checked: false,
+    onPress: () => undefined,
+  },
+  {
+    id: 'save',
+    label: 'Save',
+    primary: true,
+    direct: 'always',
+    shortcut: 'Ctrl+S',
+    onPress: () => undefined,
+  },
+  { id: 'discard', label: 'Discard changes', icon: 'close', onPress: () => undefined },
+];
+
+const menuItemTexts = () =>
+  [...document.querySelectorAll('[role^="menuitem"]')].map((item) => item.textContent?.trim());
+
+/** `menu="complete"`: every action is in the `...` menu, display group above actions, promoted ones duplicated. */
+export const CompleteMenu: Story = {
+  tags: ['contract', '!autodocs'],
+  args: {
+    title: 'Document title',
+    icon: undefined,
+    subtitle: undefined,
+    menu: 'complete',
+    actions: completeMenuActions,
+  },
+  play: async ({ canvas, userEvent }) => {
+    const header = canvas
+      .getByRole('button', { name: 'Show preview' })
+      .closest('[data-workspace-header]');
+    assert(header, 'The header renders.');
+    assert(
+      canvas.getByRole('button', { name: 'Show preview' }).getAttribute('aria-pressed') === 'true',
+      'The direct icon toggle exposes aria-pressed.',
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'More actions' }));
+    const menu = document.querySelector<HTMLElement>('[role="menu"]');
+    assert(menu, 'The menu opens.');
+    assert(
+      menuItemTexts().join('|') === 'Show preview|Word wrap|SaveCtrl+S|Discard changes',
+      `Complete menu lists every action in groups: ${menuItemTexts().join('|')}`,
+    );
+    assert(
+      [...menu.querySelectorAll('[role="group"]')].length === 2 &&
+        menu.querySelectorAll('[role="separator"]').length === 1,
+      'Two groups are separated once.',
+    );
+    assert(getComputedStyle(menu).overflowY === 'auto', 'Complete menu is vertically scrollable.');
+    const displayGroup = menu.querySelector<HTMLElement>('[role="group"]');
+    const displayLabel = displayGroup?.querySelector<HTMLElement>('[id]');
+    assert(
+      displayGroup?.getAttribute('aria-labelledby') === displayLabel?.id,
+      'The visible section label names its menu group.',
+    );
+    const preview = menu.querySelector('[role="menuitemcheckbox"]');
+    assert(
+      preview?.getAttribute('aria-checked') === 'true',
+      'The pressed icon toggle is a checked menu row.',
+    );
+    await userEvent.keyboard('{Escape}');
+  },
+};
+
+/** Without `menu="complete"` the same actions keep the default overflow-only menu. */
+export const DefaultMenuUnchanged: Story = {
+  tags: ['contract', '!autodocs'],
+  args: {
+    title: 'Document title',
+    icon: undefined,
+    subtitle: undefined,
+    actions: completeMenuActions,
+  },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'More actions' }));
+    assert(
+      menuItemTexts().join('|') === 'Word wrap|Discard changes',
+      `Default menu lists the overflow only: ${menuItemTexts().join('|')}`,
+    );
+    assert(!document.querySelector('[role="group"]'), 'The default menu has no groups.');
+    await userEvent.keyboard('{Escape}');
+  },
+};
+
+function PressedToggle(args: ComponentProps<typeof WorkspaceHeader>) {
+  const [pressed, setPressed] = useState(false);
+  return (
+    <WorkspaceHeader
+      {...args}
+      actions={[
+        {
+          id: 'preview',
+          label: 'Show preview',
+          icon: 'eye',
+          presentation: 'icon',
+          direct: 'always',
+          pressed,
+          onPress: () => setPressed((current) => !current),
+        },
+      ]}
+    />
+  );
+}
+
+/** An icon toggle exposes `aria-pressed`; the icon and label keep naming the action. */
+export const PressedIconToggle: Story = {
+  tags: ['contract', '!autodocs'],
+  args: { title: 'Document title', icon: undefined, subtitle: undefined },
+  render: (args) => <PressedToggle {...args} />,
+  play: async ({ canvas, userEvent }) => {
+    const toggle = canvas.getByRole('button', { name: 'Show preview' });
+    assert(toggle.getAttribute('aria-pressed') === 'false', 'Starts not pressed.');
+    await userEvent.click(toggle);
+    assert(toggle.getAttribute('aria-pressed') === 'true', 'Press toggles aria-pressed.');
+    assert(toggle.getAttribute('aria-label') === 'Show preview', 'The name does not follow state.');
+  },
+};
+
+/** The stacked floating row reads `menu="complete"` from the header: every action, grouped, none direct. */
+export const CompactFloatingRowCompleteMenu: Story = {
+  tags: ['visual', '!autodocs'],
+  args: { title: 'Document title', menu: 'complete', actions: completeMenuActions },
+  render: (args) => (
+    <div className="flex justify-end">
+      <CompactWorkspaceActions header={<WorkspaceHeader {...args} />} />
+    </div>
+  ),
 };

@@ -1,7 +1,7 @@
 /** Internal integration-test surface. Not used by production adapters. */
 export * from './index';
 
-export { normalizeCreateClientIntent } from './specs/create-intent';
+export { normalizeCreateClientIntent } from './specs/create';
 export {
   PROJECT_HOME_MARKER_RELATIVE_PATH,
   PROJECT_STATE_RELATIVE_PATH,
@@ -58,9 +58,9 @@ export {
   type CreateSpecificationInput,
   type CreateSpecificationOptions,
   type CreateSpecificationTarget,
-} from './specs/durable-create';
-export { CREATE_JOURNAL_RELATIVE_DIR } from './specs/create-journal';
-export { createSpecificationForTesting, type TestCreateOptions } from './specs/create-test-support';
+} from './specs/create';
+export { CREATE_JOURNAL_RELATIVE_DIR } from './specs/create';
+export { createSpecificationForTesting, type TestCreateOptions } from './specs/create';
 
 // Internal verification surface for planned lifecycle operations; no transport mutations yet.
 export { previewCloseOperation, type CloseRequest } from './specs/lifecycle/preflight';
@@ -136,6 +136,6 @@ export { reconcileArchivedConflictScratch } from './specs/lifecycle/git-scratch'
 
 // Internal persistence/diagnostics APIs are intentionally NOT exported from the
 // application package root. Low-level integration suites use this test surface.
-export { inspectCreateSpecification, type CreatedSpecification } from './specs/durable-create';
-export { type CreateJournal, type CreateStage } from './specs/create-journal';
-export { projectCloseOperation, projectClosePreview } from './specs/operation-projection';
+export { inspectCreateSpecification, type CreatedSpecification } from './specs/create';
+export { type CreateJournal, type CreateStage } from './specs/create';
+export { projectCloseOperation, projectClosePreview } from './specs/operations/projection';

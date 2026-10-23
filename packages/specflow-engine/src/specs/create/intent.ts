@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 
-import { CreateOperationError } from './create-error';
-import { validateBranchName } from '../version-control/git/refs';
-import { isExplicitSpecificationSlug } from './model';
+import { CreateOperationError } from './error';
+import { validateBranchName } from '../../version-control/git/refs';
+import { isExplicitSpecificationSlug } from '../model';
 
 export type ClientOverride =
   { readonly kind: 'omitted' } | { readonly kind: 'explicit'; readonly value: string };

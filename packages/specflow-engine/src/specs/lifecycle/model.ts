@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import { validateOperationId } from '../create-journal';
+import { validateOperationId } from '../create/journal';
 import { isValidSpecificationId } from '../model';
 
 export type CloseKind = 'worktree-close' | 'specification-close' | 'workspace-close';

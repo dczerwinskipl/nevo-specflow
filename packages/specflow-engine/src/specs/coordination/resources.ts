@@ -1,5 +1,5 @@
 import type { ResolvedProjectHome } from '../../project/project-home';
-import { listCreateJournals, type CreateJournal } from '../create-journal';
+import { listCreateJournals, type CreateJournal } from '../create/journal';
 import { listCloseJournals } from '../lifecycle/journal-store';
 import { resourcesForClosePlan } from '../lifecycle/model';
 

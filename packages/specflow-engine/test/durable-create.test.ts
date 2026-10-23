@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { lstat, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 
-import { createJournalPath } from '../src/specs/create-journal';
+import { createJournalPath } from '../src/specs/create/journal';
 import { createGitTestProject, git, commitStaged } from './support/git-project';
 
 import { afterEach, describe, expect, it } from 'vitest';
@@ -481,8 +481,8 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
       title: 'Omitted defaults pinned',
       target: { kind: 'new-worktree' as const },
     };
-    const { createSpecificationWithIntent } = await import('../src/specs/durable-create');
-    const { normalizeCreateClientIntent } = await import('../src/specs/create-intent');
+    const { createSpecificationWithIntent } = await import('../src/specs/create/durable');
+    const { normalizeCreateClientIntent } = await import('../src/specs/create/intent');
     await expect(
       createSpecificationWithIntent(
         engine,

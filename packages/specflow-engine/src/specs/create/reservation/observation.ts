@@ -1,7 +1,7 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 
-import type { SpecFlowEngine } from '../../application';
-import { CreateOperationError, readCreateJournal, type CreateJournal } from '../create-journal';
+import type { SpecFlowEngine } from '../../../application';
+import { CreateOperationError, readCreateJournal, type CreateJournal } from '../journal';
 
 // Observation is bounded; timing out never grants permission to resume the writer.
 const OBSERVATION_TIMEOUT_MS = 90_000;

@@ -1,12 +1,12 @@
-import type { SpecFlowEngine } from '../application';
-import { normalizeCreateClientIntent } from './create-intent';
+import type { SpecFlowEngine } from '../../application';
+import { normalizeCreateClientIntent } from './intent';
 import {
   createSpecificationWithIntent,
   type CreateEffectHook,
   type CreateSpecificationInput,
   type CreateSpecificationOptions,
   type CreatedSpecification,
-} from './durable-create';
+} from './durable';
 
 export interface TestCreateOptions extends CreateSpecificationOptions {
   readonly afterEffect?: CreateEffectHook;

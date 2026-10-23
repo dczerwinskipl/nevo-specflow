@@ -1,10 +1,10 @@
 import { lstat, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import type { ResolvedProjectHome } from '../../project/project-home';
-import { readFileWindowsSafe, removeFileWindowsSafe } from '../../project/windows-safe-fs';
-import { CREATE_JOURNAL_RELATIVE_DIR, isStrayJournalTempName } from './journal-store';
-import { UUID, parseCreateJournal } from './journal-codec';
+import type { ResolvedProjectHome } from '../../../project/project-home';
+import { readFileWindowsSafe, removeFileWindowsSafe } from '../../../project/windows-safe-fs';
+import { CREATE_JOURNAL_RELATIVE_DIR, isStrayJournalTempName } from './store';
+import { UUID, parseCreateJournal } from './codec';
 
 /**
  * How long a settled (`completed`) Create journal is kept before a later reservation may delete it.

@@ -12,9 +12,9 @@ import {
 import {
   fingerprintCreateClientIntent,
   normalizeCreateClientIntent,
-} from '../src/specs/create-intent';
-import { parseCreateJournal } from '../src/specs/create/journal-codec';
-import { CREATE_STAGES, type CreateJournal } from '../src/specs/create/journal-model';
+} from '../src/specs/create/intent';
+import { parseCreateJournal } from '../src/specs/create/journal/codec';
+import { CREATE_STAGES, type CreateJournal } from '../src/specs/create/journal/model';
 import {
   closeJournalPath,
   publishCloseJournal,

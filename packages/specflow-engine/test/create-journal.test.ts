@@ -10,7 +10,7 @@ import { bootstrapProjectHome } from '../src/testing';
 import {
   fingerprintCreateClientIntent,
   normalizeCreateClientIntent,
-} from '../src/specs/create-intent';
+} from '../src/specs/create/intent';
 import {
   createJournalPath,
   listCreateJournals,
@@ -18,7 +18,7 @@ import {
   readCreateJournal,
   withCreateJournalLock,
   type CreateJournal,
-} from '../src/specs/create-journal';
+} from '../src/specs/create/journal';
 
 const roots: string[] = [];
 

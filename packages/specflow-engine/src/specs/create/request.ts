@@ -1,14 +1,14 @@
 import { randomUUID } from 'node:crypto';
 
-import type { SpecFlowEngine } from '../application';
-import { normalizeCreateClientIntent, type CreateClientTargetInput } from './create-intent';
-import { CreateOperationError } from './create-error';
+import type { SpecFlowEngine } from '../../application';
+import { normalizeCreateClientIntent, type CreateClientTargetInput } from './intent';
+import { CreateOperationError } from './error';
 import {
   createSpecificationWithIntent,
   inspectCreateSpecification,
   type CreatedSpecification,
   type CreateStageObserver,
-} from './durable-create';
+} from './durable';
 
 /** Transport-neutral request: optional overrides preserve user omission. */
 export interface CreateSpecificationRequest {

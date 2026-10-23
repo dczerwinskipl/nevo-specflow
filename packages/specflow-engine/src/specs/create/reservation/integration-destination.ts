@@ -1,10 +1,10 @@
-import type { SpecFlowEngine } from '../../application';
+import type { SpecFlowEngine } from '../../../application';
 import {
   inspectRegisteredWorkspace,
   type WorkspaceIntegrationDestination,
-} from '../../project/workspace-registry';
-import { CreateOperationError } from '../create-error';
-import { inspectCleanGitWorkspace } from '../lifecycle/preflight';
+} from '../../../project/workspace-registry';
+import { CreateOperationError } from '../error';
+import { inspectCleanGitWorkspace } from '../../lifecycle/preflight';
 
 export interface ExplicitIntegrationPreflight {
   readonly registryRevision: number;

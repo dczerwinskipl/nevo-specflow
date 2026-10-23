@@ -1,22 +1,28 @@
 import { stat } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 
-import type { SpecFlowEngine } from '../application';
-import { GitCapabilityError } from '../git/errors';
-import { executeGit } from '../git/process';
-import { WorkspaceRegistryError, inspectRegisteredWorkspace } from '../project/workspace-registry';
-import { READ_GIT_CONCURRENCY, mapBounded } from '../concurrency';
-import { createLocalGitClient, type LocalWorktreeFacts } from '../version-control/git/client';
-import { validateBaseRef } from '../version-control/git/refs';
-import { engineCommitRefusal } from '../version-control/commits/branch-patterns';
-import { effectiveWorktreesRoot, readProjectGitPolicy } from '../version-control/worktrees/config';
+import type { SpecFlowEngine } from '../../../application';
+import { GitCapabilityError } from '../../../git/errors';
+import { executeGit } from '../../../git/process';
+import {
+  WorkspaceRegistryError,
+  inspectRegisteredWorkspace,
+} from '../../../project/workspace-registry';
+import { READ_GIT_CONCURRENCY, mapBounded } from '../../../concurrency';
+import { createLocalGitClient, type LocalWorktreeFacts } from '../../../version-control/git/client';
+import { validateBaseRef } from '../../../version-control/git/refs';
+import { engineCommitRefusal } from '../../../version-control/commits/branch-patterns';
+import {
+  effectiveWorktreesRoot,
+  readProjectGitPolicy,
+} from '../../../version-control/worktrees/config';
 import {
   DEFAULT_BASE_REF,
   DEFAULT_BRANCH_PATTERN,
   type GitWorktreePolicy,
-} from '../version-control/worktrees/policy';
-import { runReadRequest } from '../project/request-verification-memo';
-import { discoverSpecifications } from './discovery';
+} from '../../../version-control/worktrees/policy';
+import { runReadRequest } from '../../../project/request-verification-memo';
+import { discoverSpecifications } from '../../discovery';
 
 export type CreateWorkspaceState = 'available' | 'unavailable' | 'detached' | 'dirty';
 export type CreateOptionsReason =

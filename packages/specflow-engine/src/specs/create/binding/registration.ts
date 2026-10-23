@@ -1,6 +1,6 @@
-import type { WorkspaceRegistration } from '../../project/workspace-registry';
-import { CreateOperationError } from '../create-error';
-import type { CreateJournal } from './journal-model';
+import type { WorkspaceRegistration } from '../../../project/workspace-registry';
+import { CreateOperationError } from '../error';
+import type { CreateJournal } from '../journal/model';
 
 /** Translate durable create intent into the canonical linked-workspace registration. */
 export function registrationOf(

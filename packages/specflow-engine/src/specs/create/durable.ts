@@ -1,15 +1,15 @@
 import { isDeepStrictEqual } from 'node:util';
 
-import type { SpecFlowEngine } from '../application';
-import { normalizeCreateClientIntent, type CreateClientIntent } from './create-intent';
-import { verifyScaffold, writeScaffoldWithEvidence } from './create-scaffold';
-import { reserveCreateOperation, writingSlugsByWorkspace } from './create/reservation';
-import { followExistingCreateOperation } from './create/observation';
-import type { CreateSpecificationInput } from './create/create-input';
-export type { CreateSpecificationInput, CreateSpecificationTarget } from './create/create-input';
-import { commitBinding } from './create-binding';
-import { ensureScaffoldCommitted } from './create-commit';
-import { openVersionControl } from '../version-control';
+import type { SpecFlowEngine } from '../../application';
+import { normalizeCreateClientIntent, type CreateClientIntent } from './intent';
+import { verifyScaffold, writeScaffoldWithEvidence } from './scaffold';
+import { reserveCreateOperation, writingSlugsByWorkspace } from './reservation/reservation';
+import { followExistingCreateOperation } from './reservation/observation';
+import type { CreateSpecificationInput } from './input';
+export type { CreateSpecificationInput, CreateSpecificationTarget } from './input';
+import { commitBinding } from './binding/binding';
+import { ensureScaffoldCommitted } from './git/commit';
+import { openVersionControl } from '../../version-control';
 import {
   createPlannedGitWorktree,
   ensureLinkedIdentity,
@@ -17,11 +17,11 @@ import {
   requireRegisteredTarget,
   requireTargetIdentity,
   validateNewGitReservation,
-} from './create-git';
+} from './git/worktree';
 
-import { runGitFreeMutation } from '../project/request-verification-memo';
-import { readProjectGitPolicy } from '../version-control/worktrees/config';
-import { readWorkspaceSpecification } from './repository';
+import { runGitFreeMutation } from '../../project/request-verification-memo';
+import { readProjectGitPolicy } from '../../version-control/worktrees/config';
+import { readWorkspaceSpecification } from '../repository';
 import {
   CreateOperationError,
   listCreateJournals,
@@ -31,7 +31,7 @@ import {
   withCreateJournalLock,
   type CreateJournal,
   type CreateStage,
-} from './create-journal';
+} from './journal';
 
 export interface CreatedSpecification {
   readonly operationId: string;

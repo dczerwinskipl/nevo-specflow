@@ -8,7 +8,7 @@ import {
   type CreateSpecificationInput,
 } from '../../src/testing';
 import { writeJsonAtomically } from '../../src/project/atomic-json';
-import { withCreateJournalLock, createJournalPath } from '../../src/specs/create-journal';
+import { withCreateJournalLock, createJournalPath } from '../../src/specs/create/journal';
 
 const enabled = process.env.NEVO_CREATE_CRASH_WORKER === '1';
 

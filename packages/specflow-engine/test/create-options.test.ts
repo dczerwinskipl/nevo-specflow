@@ -5,7 +5,7 @@ import { basename, join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { inspectCreateOptions } from '../src/specs/create-options';
+import { inspectCreateOptions } from '../src/specs/create/inspect/options';
 import {
   bootstrapProjectHome,
   createSpecificationForTesting,

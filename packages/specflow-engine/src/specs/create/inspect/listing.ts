@@ -1,10 +1,10 @@
 import { lstat, readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import type { SpecFlowEngine } from '../application';
-import { UUID, parseCreateJournal } from './create/journal-codec';
-import { CREATE_JOURNAL_RELATIVE_DIR } from './create/journal-store';
-import { createStepForStage, type PublicCreateStepId } from './create/step-mapping';
+import type { SpecFlowEngine } from '../../../application';
+import { UUID, parseCreateJournal } from '../journal/codec';
+import { CREATE_JOURNAL_RELATIVE_DIR } from '../journal/store';
+import { createStepForStage, type PublicCreateStepId } from './step-mapping';
 
 /** Same size ceiling as the strict journal reader. */
 const MAX_JOURNAL_BYTES = 65536;

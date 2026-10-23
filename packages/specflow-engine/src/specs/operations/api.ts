@@ -1,10 +1,10 @@
-import type { SpecFlowEngine } from '../application';
-import { closeSpecification } from './lifecycle/close-specification';
-import { closeWorktree, closeWorkspace } from './lifecycle/close-worktree';
-import { previewCloseOperation, type CloseRequest } from './lifecycle/preflight';
-import { inspectCloseOperation } from './lifecycle/reservation';
-import { reconcileArchivedConflictScratch } from './lifecycle/git-scratch';
-import { CloseOperationError } from './lifecycle/model';
+import type { SpecFlowEngine } from '../../application';
+import { closeSpecification } from '../lifecycle/close-specification';
+import { closeWorktree, closeWorkspace } from '../lifecycle/close-worktree';
+import { previewCloseOperation, type CloseRequest } from '../lifecycle/preflight';
+import { inspectCloseOperation } from '../lifecycle/reservation';
+import { reconcileArchivedConflictScratch } from '../lifecycle/git-scratch';
+import { CloseOperationError } from '../lifecycle/model';
 import {
   projectCloseOperation,
   projectClosePreview,
@@ -14,7 +14,7 @@ import {
   type PublicWorkspaceCloseOperation,
   type PublicCloseOperation,
   type PublicClosePreview,
-} from './operation-projection';
+} from './projection';
 
 /**
  * Supported Engine application API for CLI and HTTP.

@@ -2,10 +2,10 @@ import {
   fingerprintCreateClientIntent,
   normalizeCreateClientIntent,
   type CreateClientIntent,
-} from '../create-intent';
-import { CreateOperationError } from '../create-error';
-import type { ResolvedProjectHome } from '../../project/project-home';
-import { CREATE_STAGES, type CreateJournal, type CreateStage } from './journal-model';
+} from '../intent';
+import { CreateOperationError } from '../error';
+import type { ResolvedProjectHome } from '../../../project/project-home';
+import { CREATE_STAGES, type CreateJournal, type CreateStage } from './model';
 
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const SHA256 = /^[0-9a-f]{64}$/u;

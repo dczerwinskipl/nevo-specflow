@@ -1,4 +1,4 @@
-import type { CreateStage } from './journal-model';
+import type { CreateStage } from '../journal/model';
 
 /** Stable public step vocabulary of a Create (never raw journal stages). */
 export type PublicCreateStepId =

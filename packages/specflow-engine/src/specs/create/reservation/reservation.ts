@@ -1,23 +1,23 @@
 import { randomUUID } from 'node:crypto';
 
-import type { SpecFlowEngine } from '../../application';
+import type { SpecFlowEngine } from '../../../application';
 import {
   assertSharedResourcesAvailable,
   resourcesForCreate,
   SharedResourceError,
-} from '../coordination/resources';
+} from '../../coordination/resources';
 import {
   MAX_MANAGED_WORKSPACE_SPECIFICATIONS,
   inspectRegisteredWorkspace,
-} from '../../project/workspace-registry';
+} from '../../../project/workspace-registry';
 import {
   inspectExplicitIntegrationDestination,
   type ExplicitIntegrationPreflight,
 } from './integration-destination';
-import { openVersionControl } from '../../version-control';
-import { readProjectGitPolicy } from '../../version-control/worktrees/config';
-import { admitExistingCreateCommit, admitNewWorktreeCreateCommit } from '../create-commit';
-import { fingerprintCreateClientIntent, type CreateClientIntent } from '../create-intent';
+import { openVersionControl } from '../../../version-control';
+import { readProjectGitPolicy } from '../../../version-control/worktrees/config';
+import { admitExistingCreateCommit, admitNewWorktreeCreateCommit } from '../git/commit';
+import { fingerprintCreateClientIntent, type CreateClientIntent } from '../intent';
 import {
   CreateOperationError,
   listCreateJournals,
@@ -25,14 +25,14 @@ import {
   readCreateJournal,
   withCreateJournalLock,
   type CreateJournal,
-} from '../create-journal';
-import { removeExpiredCompletedCreateJournals } from './journal-retention';
-import { discoverSpecificationsForCreateAdmission } from '../discovery';
+} from '../journal';
+import { removeExpiredCompletedCreateJournals } from '../journal/retention';
+import { discoverSpecificationsForCreateAdmission } from '../../discovery';
 import {
   createSpecificationScaffold,
   isValidSpecificationId,
   validateSpecificationScaffoldInput,
-} from '../model';
+} from '../../model';
 
 /**
  * First lock winner owns the creation date and pinned Git effect plan.

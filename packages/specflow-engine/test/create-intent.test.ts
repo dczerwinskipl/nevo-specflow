@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizeCreateClientIntent } from '../src/specs/create-intent';
+import { normalizeCreateClientIntent } from '../src/specs/create/intent';
 
 const intent = (branch: string) =>
   normalizeCreateClientIntent({

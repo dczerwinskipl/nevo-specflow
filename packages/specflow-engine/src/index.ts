@@ -68,7 +68,7 @@ export {
   type CanonicalSpecSource,
 } from './specs/canonical-source';
 
-export { CreateOperationError } from './specs/create-journal';
+export { CreateOperationError } from './specs/create';
 
 export {
   createSpecificationFromRequest,
@@ -76,21 +76,18 @@ export {
   type ResumeCreateOptions,
   type CreateSpecificationRequest,
   type CreateSpecificationRequestOptions,
-} from './specs/create-request';
-export type { CreateStageObservation, CreateStageObserver } from './specs/durable-create';
+} from './specs/create';
+export type { CreateStageObservation, CreateStageObserver } from './specs/create';
 
-export {
-  inspectPublicCreateOperation,
-  type PublicCreateInspection,
-} from './specs/create-inspection';
+export { inspectPublicCreateOperation, type PublicCreateInspection } from './specs/create';
 
 export {
   listPublicCreateOperations,
   readPublicCreateOperationRow,
   type PublicCreateListingRow,
   type PublicCreateListingState,
-} from './specs/create-listing';
-export { createStepForStage, type PublicCreateStepId } from './specs/create/step-mapping';
+} from './specs/create';
+export { createStepForStage, type PublicCreateStepId } from './specs/create';
 
 export {
   inspectCreateOptions,
@@ -99,7 +96,7 @@ export {
   type PublicCreateOptions,
   type CreateWorkspaceOption,
   type CreateBaseRefOption,
-} from './specs/create-options';
+} from './specs/create';
 
 // Supported operation endpoints project the Engine's durable state to stable DTOs.
 export { CloseOperationError } from './specs/lifecycle/model';
@@ -114,7 +111,7 @@ export {
   planPublicCloseOperation,
   reconcileArchivedConflictScratchOperation,
   type PublicCloseInspection,
-} from './specs/operation-api';
+} from './specs/operations/api';
 
 // Stable, transport-neutral operation summaries. Durable journals stay diagnostic.
 export {
@@ -125,4 +122,4 @@ export {
   type PublicCloseStatus,
   type PublicWorkspaceClosePreview,
   type PublicWorkspaceCloseOperation,
-} from './specs/operation-projection';
+} from './specs/operations/projection';

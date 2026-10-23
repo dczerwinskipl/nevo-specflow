@@ -1,13 +1,13 @@
 import { lstat, mkdir, readdir, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { writeJsonAtomically } from '../../project/atomic-json';
-import { readFileWindowsSafe } from '../../project/windows-safe-fs';
-import { withProjectControlLock } from '../../project/control-lock';
-import type { ResolvedProjectHome } from '../../project/project-home';
-import { CreateOperationError } from '../create-error';
-import type { CreateJournal } from './journal-model';
-import { UUID, invalidJournal, parseCreateJournal } from './journal-codec';
+import { writeJsonAtomically } from '../../../project/atomic-json';
+import { readFileWindowsSafe } from '../../../project/windows-safe-fs';
+import { withProjectControlLock } from '../../../project/control-lock';
+import type { ResolvedProjectHome } from '../../../project/project-home';
+import { CreateOperationError } from '../error';
+import type { CreateJournal } from './model';
+import { UUID, invalidJournal, parseCreateJournal } from './codec';
 
 export const CREATE_JOURNAL_RELATIVE_DIR = 'engine/operations/create';
 

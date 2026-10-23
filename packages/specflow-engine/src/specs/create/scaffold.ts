@@ -3,8 +3,8 @@ import { isDeepStrictEqual } from 'node:util';
 import { lstat, mkdir, open, readFile, realpath } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-import { createSpecificationScaffold, type SpecificationScaffold } from './model';
-import { CreateOperationError, type CreateJournal } from './create-journal';
+import { createSpecificationScaffold, type SpecificationScaffold } from '../model';
+import { CreateOperationError, type CreateJournal } from './journal';
 
 /** Durable scaffold contents are immutable until the operation completes. */
 function expectedScaffold(record: CreateJournal): SpecificationScaffold {

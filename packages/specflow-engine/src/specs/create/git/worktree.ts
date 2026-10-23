@@ -1,25 +1,25 @@
 import { lstat, readFile } from 'node:fs/promises';
 import { basename, isAbsolute, join, resolve } from 'node:path';
 
-import type { SpecFlowEngine } from '../application';
-import { GitCapabilityError } from '../git/errors';
-import { executeGit } from '../git/process';
-import { openVersionControl } from '../version-control';
-import { assertWorktreeTargetOutsideRepository } from '../version-control/worktrees/policy';
-import type { WorktreePlan, WorktreeEffect } from '../version-control/worktrees/port';
+import type { SpecFlowEngine } from '../../../application';
+import { GitCapabilityError } from '../../../git/errors';
+import { executeGit } from '../../../git/process';
+import { openVersionControl } from '../../../version-control';
+import { assertWorktreeTargetOutsideRepository } from '../../../version-control/worktrees/policy';
+import type { WorktreePlan, WorktreeEffect } from '../../../version-control/worktrees/port';
 import {
   inspectRegisteredWorkspace,
   verifyWorkspaceRoot,
   type WorkspaceRegistration,
-} from '../project/workspace-registry';
+} from '../../../project/workspace-registry';
 import {
   WORKSPACE_IDENTITY_RELATIVE_PATH,
   provisionLinkedWorkspaceIdentity,
   verifyLinkedWorkspaceIdentity,
-} from '../project/workspace-identity';
-import { CreateOperationError, type CreateJournal } from './create-journal';
-import { registrationOf } from './create/registration';
-import { requireCommitLineage } from './create-commit';
+} from '../../../project/workspace-identity';
+import { CreateOperationError, type CreateJournal } from '../journal';
+import { registrationOf } from '../binding/registration';
+import { requireCommitLineage } from './commit';
 
 /**
  * Reconstruct a fixed plan from durable evidence, never from the latest naming

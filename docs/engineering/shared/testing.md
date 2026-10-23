@@ -149,6 +149,11 @@ failure in one package must not prevent unrelated package test jobs from complet
 Package tests must therefore be runnable through their package's Turbo target without
 depending on another package's test process or execution order.
 
+Storybook stories are the exception to "defer on PRs": a pull request that changes
+`packages/nevo-ui` runs the full Storybook corpus, and one that changes `packages/specflow-ui`
+runs all of its stories (see [CI](../repository/ci.md)). Do not rely on `main` to catch a
+design-system contract or accessibility regression.
+
 ## Determinism
 
 Tests must not depend accidentally on wall-clock time, locale, network, ambient

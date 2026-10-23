@@ -40,6 +40,37 @@ dependents. On pushes to `main` and `release/v*`, package tasks run across the f
 Repository-wide formatting, lint, docs/agent validation and version transition checks are not
 affected-filtered.
 
+## Storybook tests on pull requests
+
+`test (tool/storybook)` runs the shared Storybook stories (`vitest run --project=storybook`: play
+functions, contract and axe checks). The full corpus runs on `main`, nightly and manual runs. A
+pull request used to skip it, so a design-system change could break contract or a11y stories only
+after merge. Pull requests now run a scope chosen from the changed paths by
+`tools/ci-storybook-scope.mjs` (called from the `plan tests` job):
+
+| Changed path                                                                           | Stories run on the PR                                        |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `packages/nevo-ui/**` (not Markdown), `tools/storybook/**`, `pnpm-lock.yaml`/workspace | full corpus (the design system is consumed by every package) |
+| `packages/specflow-ui/**` (not Markdown)                                               | all stories of `packages/specflow-ui`                        |
+| `examples/<name>/src/**`                                                               | all stories of that example                                  |
+| any other `*.stories.*` file                                                           | that story file                                              |
+| docs-only or unrelated changes                                                         | no Storybook job                                             |
+
+The job keeps the name `test (tool/storybook)` and is aggregated by `verify tests`; when the scope
+is empty the matrix entry is absent, as for other unaffected packages. Expect roughly 2-4 minutes
+for the full corpus on a runner (recent `main` runs: about 2.3 minutes green, 3.8 minutes with a
+failure); the job runs in parallel with the other package tests, so PR wall-clock time grows only
+when Storybook is the slowest job. Per-job `timeout-minutes` is 20.
+
+Run the same scope locally:
+
+```bash
+node tools/ci-storybook-scope.mjs origin/main HEAD   # prints {"mode","filters"}
+pnpm exec turbo run test --filter=nevo-repo-storybook                      # full
+pnpm exec turbo run test --filter=nevo-repo-storybook -- packages/specflow-ui/   # filtered
+node tools/ci-storybook-scope.mjs --self-test
+```
+
 ## Dependency Review
 
 Pull requests run the official Dependency Review Action and fail when a newly introduced dependency

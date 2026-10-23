@@ -94,7 +94,7 @@ ArchetypeCatalogue = {
       id: string                       // template id = document type id
       type: string; title: string; filename: string
       include: 'always' | 'optional'   // replaces the template flag `required`
-      content: string                  // template text (<= 200000)
+      content: string                  // template text (template limit: architecture document, Limits)
     }>
     workflow?: { phases; requiredDocuments; suggestedDocuments }   // optional, demo-only; the real backend omits it
   }>
@@ -106,14 +106,16 @@ ArchetypeCatalogue = {
 ```ts
 archetypeId: string; archetypeVersion: integer; catalogueRevision: string
 optionalDocumentIds?: string[]                       // suggested template ids; unique
-addedDocuments?: Array<{ path: string; type?: string; content: string }>   // <= 10; no `title`
-folders?: string[]                                   // <= 100, unique
+addedDocuments?: Array<{ path: string; type?: string; content: string }>   // counts and bytes: Limits; no `title`
+folders?: string[]                                   // unique; count: Limits
 ```
 
 `catalogueRevision` / `archetypeVersion` not matching the Engine catalogue -> `CATALOGUE_STALE` (409). Unknown
 archetype or template id -> `ARCHETYPE_UNKNOWN` (422). `addedDocuments` without `type` are created unclassified.
-The response `CreatedSpec` is unchanged and gains `documentIds: string[]` (registered ids; the demo already has
-it). Body limit for Create grows to 1 MiB (added content is stored in the journal).
+The response `CreatedSpec` keeps its existing fields and gains `documentIds: string[]` (registered ids; the demo
+result already has it). `POST /api/specs` sets its own `bodyLimit` (value: architecture document, Limits); the server
+has no global body-limit override. Content sizes are UTF-8 bytes. Content is not stored in the Create journal (see
+the delivery specification, D2).
 
 ## D3 - Tree, read, raw
 
@@ -127,7 +129,7 @@ DocumentTree = {
     classification: Classification
     type?: string                      // present iff registered
     kind: ContentKind; mediaType: string; size: integer
-    revision: string                   // sha256 of the bytes for files <= 1 MiB; `stat:<size>-<mtimeNs>` above (never editable)
+    revision: string                   // content hash or stat signature (rule and size threshold: architecture document, Limits)
     protected: boolean                 // true only for overview
     editable: boolean                  // md, txt in the first release
     satisfiesRequirement: boolean      // registered and its type has a requirement with minCount > 0
@@ -142,6 +144,7 @@ DocumentTree = {
     createFile: Action; createFolder: Action; import: Action; classify: Action
     formats: string[]                  // extensions creatable/editable as text: ['md','txt']
   }
+  issues: Array<{ code: string; path?: string; documentType?: string }>
   truncated: boolean; skippedEntries: integer
 }
 ```
@@ -149,24 +152,26 @@ DocumentTree = {
 Replaces the demo's `DemoDocumentTree`: removed `documents[].required`, `reason: 'required_document_path'`,
 folder reason `required_document_path`; added `protected`, `type`, `classification`, `kind`, `mediaType`, `size`,
 `editable`, `satisfiesRequirement`, `dangling`, `completeness`, `archetype`, `truncated`, `skippedEntries`.
-Limits: 2000 listed files, depth 8; beyond that `truncated: true`.
+Listing limits and `truncated`: architecture document, Limits. `issues` lists `dangling`, `unclassified`,
+`requirement-unmet`, `skipped-entry`, `path-case-collision` and `archive-limit` entries as
+`{ code; path?: string; documentType?: string }`; the last two mean Close archive will refuse.
 
 ```ts
 DocumentContent = {                    // GET /documents/:documentId
   id; path; title: string              // title derived (first H1 of markdown, else file stem)
   classification; type?: string; kind; mediaType; size; revision; editable
-  content?: string                     // present for kind 'text' up to 1 MiB; absent otherwise
+  content?: string                     // present for kind 'text' within the JSON read limit; absent otherwise
 }
 ```
 
 Replaces `SpecificationDocumentResponse` (`filename` is replaced by `path`; `title` stays; new fields above). The
 `?revision=` query is kept: a revision other than the current one -> `DOCUMENT_REVISION_UNAVAILABLE` (409); there
-is no history read. Text over 1 MiB -> `DOCUMENT_TOO_LARGE` (413) with the hint to use `raw`. A dangling id ->
+is no history read. Text above the JSON read limit -> `DOCUMENT_TOO_LARGE` (413) with the hint to use `raw`. A dangling id ->
 `DOCUMENT_FILE_MISSING` (404). Unknown id -> `DOCUMENT_NOT_FOUND` (404).
 
 ### Raw content
 
-`GET .../raw[?download=1]` streams the file bytes (<= 25 MiB, else `DOCUMENT_TOO_LARGE` 413; no `Range` in D3).
+`GET .../raw[?download=1]` streams the file bytes (up to the raw limit, else `DOCUMENT_TOO_LARGE` 413; no `Range` in D3).
 
 | Header                         | Value                                                                                                                                                                                                                                                                             |
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -187,7 +192,8 @@ All state changes share the Create operation shape: `operationId` (UUID, idempot
 `requestId`. Replays with an equal body return the stored result; a different body -> `DOCUMENT_OPERATION_CONFLICT`.
 
 ```ts
-SaveInput  = { operationId; content: string(<= 1 MiB of UTF-8 bytes); expectedRevision: string }
+SaveInput  = { operationId; content: string(UTF-8 bytes <= the save limit); expectedRevision: string }
+// route bodyLimit and content cap: architecture document, Limits
 SaveResult = { operationId; revision: string; committed: boolean; commit?: { sha: string } }
 
 DocumentOperationInput = {            // rename | move | delete | classify
@@ -208,35 +214,36 @@ commit after files were written is `DOCUMENT_RECOVERY_REQUIRED` and the operatio
 
 ## Errors
 
-Every document endpoint answers `{ error: <CODE>, code: <CODE>, details?: { reason?: ActionReason } }` (the shape
-of the Create errors). 401/403 keep the existing authentication/authorization bodies.
+Every document endpoint answers `{ error: <CODE>, code: <CODE>, details?: { reason?: ActionReason; blockedBy?: string; cause?: string } }` (the shape
+of the Create errors; `details` is new and optional: the shared error schema is a superset of `CreateSpecErrorSchema`, and Create keeps answering without it). 401/403 keep the existing authentication/authorization bodies.
 
-| Code                            | HTTP | Meaning                                                                                               |
-| ------------------------------- | ---- | ----------------------------------------------------------------------------------------------------- |
-| `DOCUMENT_NOT_FOUND`            | 404  | Unknown document or Specification id (replaces `specification_document_not_found`)                    |
-| `DOCUMENT_FILE_MISSING`         | 404  | Registered document without file (dangling)                                                           |
-| `SPEC_SOURCE_UNAVAILABLE`       | 503  | Workspace or manifest unreadable/invalid (replaces `specification_source_unavailable`)                |
-| `DOCUMENT_REVISION_UNAVAILABLE` | 409  | Requested `?revision=` is not current (replaces `document_revision_unavailable`)                      |
-| `DOCUMENT_REVISION_CONFLICT`    | 409  | `expectedRevision` differs from the file on disk                                                      |
-| `DOCUMENT_PATH_INVALID`         | 400  | Path breaks the portable path rules or is reserved (`specification.yaml`)                             |
-| `DOCUMENT_PATH_CONFLICT`        | 409  | Target path (case-insensitive) already exists or collides with a file/folder                          |
-| `DOCUMENT_PROTECTED`            | 409  | Delete/rename/move of `overview` (`details.reason: 'protected'`)                                      |
-| `DOCUMENT_TYPE_INVALID`         | 400  | Type id breaks the pattern                                                                            |
-| `DOCUMENT_ALREADY_CLASSIFIED`   | 409  | Classify of a registered document                                                                     |
-| `DOCUMENT_NOT_EDITABLE`         | 415  | Save to a kind/extension that is not editable                                                         |
-| `DOCUMENT_TOO_LARGE`            | 413  | Above the JSON, raw or save limits                                                                    |
-| `DOCUMENT_OPERATION_INVALID`    | 400  | Malformed combination of fields                                                                       |
-| `DOCUMENT_OPERATION_CONFLICT`   | 409  | `operationId` reused with a different body                                                            |
-| `DOCUMENT_RECOVERY_REQUIRED`    | 503  | Files written, commit not made; operation must be resumed                                             |
-| `SPEC_MANIFEST_DIRTY`           | 409  | Registry change requested while `specification.yaml` has uncommitted changes                          |
-| `SPEC_ARCHIVED`                 | 409  | Specification is in `archive/` (`details.reason: 'archived'`)                                         |
-| `SPEC_BUSY`                     | 409  | Close/Create/other write in progress                                                                  |
-| `BRANCH_PROTECTED`              | 422  | Engine must not commit on this branch; `details.reason` is `branch-protected` or `branch-not-allowed` |
-| `COMMIT_BLOCKED`                | 409  | Checkout cannot take a commit now; `details.reason: 'commit-blocked'`                                 |
-| `COMMIT_FAILED`                 | 503  | Git failed before any file was written (admission) - nothing changed                                  |
-| `GIT_POLICY_INVALID`            | 503  | Project Git configuration invalid (existing code)                                                     |
-| `CATALOGUE_STALE`               | 409  | Create with an outdated catalogue revision/archetype version                                          |
-| `ARCHETYPE_UNKNOWN`             | 422  | Unknown archetype or optional template id                                                             |
+| Code                            | HTTP | Meaning                                                                                                                                                                                                                                                                                                                            |
+| ------------------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DOCUMENT_NOT_FOUND`            | 404  | Unknown document or Specification id (replaces `specification_document_not_found`)                                                                                                                                                                                                                                                 |
+| `DOCUMENT_FILE_MISSING`         | 404  | Registered document without file (dangling)                                                                                                                                                                                                                                                                                        |
+| `SPEC_SOURCE_UNAVAILABLE`       | 503  | Workspace or manifest unreadable/invalid (replaces `specification_source_unavailable`)                                                                                                                                                                                                                                             |
+| `DOCUMENT_REVISION_UNAVAILABLE` | 409  | Requested `?revision=` is not current (replaces `document_revision_unavailable`)                                                                                                                                                                                                                                                   |
+| `DOCUMENT_REVISION_CONFLICT`    | 409  | `expectedRevision` differs from the file on disk                                                                                                                                                                                                                                                                                   |
+| `DOCUMENT_PATH_INVALID`         | 400  | Path breaks the portable path rules or is reserved (`specification.yaml`)                                                                                                                                                                                                                                                          |
+| `DOCUMENT_PATH_CONFLICT`        | 409  | Target path (case-insensitive) already exists or collides with a file/folder                                                                                                                                                                                                                                                       |
+| `DOCUMENT_PROTECTED`            | 409  | Delete/rename/move of `overview` (`details.reason: 'protected'`)                                                                                                                                                                                                                                                                   |
+| `DOCUMENT_TYPE_INVALID`         | 400  | Type id breaks the pattern                                                                                                                                                                                                                                                                                                         |
+| `DOCUMENT_ALREADY_CLASSIFIED`   | 409  | Classify of a registered document                                                                                                                                                                                                                                                                                                  |
+| `DOCUMENT_NOT_EDITABLE`         | 415  | Save to a kind/extension that is not editable                                                                                                                                                                                                                                                                                      |
+| `DOCUMENT_TOO_LARGE`            | 413  | Above the JSON, raw or save limits                                                                                                                                                                                                                                                                                                 |
+| `DOCUMENT_OPERATION_INVALID`    | 400  | Malformed combination of fields                                                                                                                                                                                                                                                                                                    |
+| `DOCUMENT_OPERATION_CONFLICT`   | 409  | `operationId` reused with a different body                                                                                                                                                                                                                                                                                         |
+| `DOCUMENT_RECOVERY_REQUIRED`    | 503  | Files written, commit not made; operation must be resumed                                                                                                                                                                                                                                                                          |
+| `SPEC_MANIFEST_DIRTY`           | 409  | Registry change requested while `specification.yaml` has uncommitted changes                                                                                                                                                                                                                                                       |
+| `SPEC_ARCHIVED`                 | 409  | Specification is in `archive/` (`details.reason: 'archived'`)                                                                                                                                                                                                                                                                      |
+| `SPEC_BUSY`                     | 409  | Close/Create/other write in progress                                                                                                                                                                                                                                                                                               |
+| `BRANCH_PROTECTED`              | 422  | Engine must not commit on this branch; `details.reason` is `branch-protected` or `branch-not-allowed`                                                                                                                                                                                                                              |
+| `COMMIT_BLOCKED`                | 409  | Checkout cannot take a commit now; `details.reason: 'commit-blocked'` and `details.blockedBy` is the Engine commit port's own reason (`detached`, `branch-changed`, `git-busy`, `index-locked`, `unmerged-paths`, `path-ignored`, `no-commits`, `intent-to-add`, `git-path-unreadable`, `ignore-check-failed`, `index-unreadable`) |
+| `COMMIT_FAILED`                 | 503  | Only as `details.cause` of `DOCUMENT_RECOVERY_REQUIRED` (and of Create recovery): the Git commit failed after files existed. Document endpoints do not return it directly                                                                                                                                                          |
+| `GIT_POLICY_INVALID`            | 503  | Project Git configuration invalid (existing code)                                                                                                                                                                                                                                                                                  |
+| `CREATE_JOURNAL_UNSUPPORTED`    | 503  | A Create journal written by an older format is read by operation id (inspection or replay). It never blocks Create or Close admission (see delivery D2; PROPOSAL pending owner sign-off)                                                                                                                                           |
+| `CATALOGUE_STALE`               | 409  | Create with an outdated catalogue revision/archetype version                                                                                                                                                                                                                                                                       |
+| `ARCHETYPE_UNKNOWN`             | 422  | Unknown archetype or optional template id                                                                                                                                                                                                                                                                                          |
 
 Demo-only codes (`DEMO_WORKSPACE_UNAVAILABLE`, `DEMO_INVALID_SCENARIO`) stay; the demo's `demo_*` lowercase document
 errors are replaced by the codes above (demo emits the same codes).
@@ -259,7 +266,8 @@ integrates D2/D3/D4; items marked _demo_ also change the demo contract and the d
    the real backend (`ArchetypeSummary` already falls back); `archetype.requirements` is new. Real catalogue is
    served by `GET /api/specs/archetypes`; the demo keeps embedding it in `GET /api/demo/specification-creation`.
 5. _demo_ Create request: `addedDocuments[].title` removed (title is derived), `addedDocuments[].type` optional;
-   `requestId` is `operationId` in all document operations (save, tree operations, add, folders).
+   (Create already uses `operationId`.) Separately, the demo's document endpoints (save, tree operations, add,
+   folders) rename `requestId` to `operationId`.
 6. _demo_ Save: result gains `operationId`, `committed`, optional `commit`; body gains `operationId`.
 7. Document read: `SpecificationDocumentResponse.filename` -> `path`; new fields `classification`, `type`, `kind`,
    `mediaType`, `size`, `editable`; `content` is absent for `image` and `binary`; the UI chooses the viewer from
@@ -274,3 +282,9 @@ integrates D2/D3/D4; items marked _demo_ also change the demo contract and the d
 11. Operations are synchronous commits; Save latency includes a Git commit. A saved draft is only clean once the
     response arrives; a `DOCUMENT_REVISION_CONFLICT` MUST keep the draft.
 12. Display titles are derived by the Engine (first H1 or file stem); there is no stored per-document title.
+13. D2 changes the real Create contract (required `archetypeId`, `archetypeVersion`, `catalogueRevision`). The
+    project-mode Create client (`features/specs/creation/api/api.project.ts`), the error map
+    (`errors/createSpecErrors.ts`, which gains `CATALOGUE_STALE`, `ARCHETYPE_UNKNOWN`, `DOCUMENT_PATH_*` and
+    `CREATE_JOURNAL_UNSUPPORTED`) and their tests are adapted **inside D2** (owner decision), not at D5.
+14. The tree gains `issues[]` (including `skipped-entry`, `path-case-collision`, `archive-limit`); the UI shows
+    those that make Close refuse.

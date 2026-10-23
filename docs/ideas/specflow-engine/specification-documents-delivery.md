@@ -40,7 +40,7 @@ through Engine-owned committed operations; the UI integrates by swapping demo fo
 **One specification, six slices.** The slices share one manifest model, one contract and one error vocabulary, so
 they stay one specification with ordered, independently reviewable deliveries. Recommended **separate** later
 specifications (they have their own lifecycle and can be built without this one's UI): (a) the document commit
-queue with coalescing (post-D4, design in ADR 0016 section 9); (b) binary import/replace (after D4);
+queue with coalescing (post-D4, design in ADR 0016 section 10); (b) binary import/replace (after D4);
 (c) project-defined archetypes and template overrides (`.nevo/archetypes`) plus archetype switching and CLI
 authoring; (d) a readiness/acceptance validation capability (distinct from structural completeness);
 (e) the `ux` and `exploration` archetypes. None of these is started or approved by this document.
@@ -77,17 +77,21 @@ the D2/D3 outputs are prerequisites. D5: outline; depends on the parallel UI wor
    has no Specification in the old shape: `git ls-files | grep -E "(specification|change)\.yaml$"` returned nothing
    at specification time (no tracked `specs/` directory); re-run it at D1 and fail the slice if a manifest exists.
    Local, untracked Specifications on developer machines are expected to break and are repaired by hand.
-3. **Interim Create (D1 to D2).** D1 changes the scaffold shape, so Create MUST keep producing valid manifests:
-   the single Create call site passes the archetype `minimal` internally (not an API default) until D2 replaces
-   it. A Create journal reserved before D1 holds scaffold hashes of the old shape and fails recovery by design;
-   operators abandon such a journal (existing procedure). Same for v1 journals at D2 (section 6).
+3. **Interim Create (D1 to D2).** D1 changes the scaffold shape, so Create MUST keep producing valid manifests.
+   Observed: `createSpecificationScaffold` has **two** call sites, `create/reservation/reservation.ts:88`
+   (reservation) and `create/scaffold.ts:11` (`expectedScaffold`, regenerating the scaffold for writing and
+   recovery). Both pass the archetype `minimal` internally (not an API default) until D2 replaces them. A Create
+   journal reserved before D1 holds scaffold hashes of the old shape and fails recovery by design; operators abandon
+   such a journal (existing procedure). Journals of the older format at D2 follow section 6, item 2.
 4. **Error vocabulary.** One list (reference page) shared by Engine (`DocumentError` with these codes plus the
    existing `SpecificationError`, `CreateOperationError`, `GitCapabilityError`) and the Runtime status table.
-5. **Ids.** Registered ids `^[a-z0-9][a-z0-9-]{0,63}$`, never `u-` prefixed; unclassified ids are derived
-   (`u-` + 16 hex of sha256 of the lower-cased path).
+5. **Ids.** Rules (pattern, deterministic suffix, `u-` derived ids from the exact path) are owned by the
+   architecture document; slices implement them, they are not restated here.
 6. **Authorization.** Reads: spec `View`. State changes: spec `Manage`. Catalogue: same capability as
    `create-options`.
-7. **Testing rule (owner).** Unit tests run anywhere. Tests that use real Git, real worktrees, many files,
+7. **Limits.** Every size, count and body limit is owned by the Limits table of the architecture document
+   (bytes, not characters); slices reference it.
+8. **Testing rule (owner).** Unit tests run anywhere. Tests that use real Git, real worktrees, many files,
    symlinks, SIGKILL or the Engine commit port are **Linux-only integration** and MUST NOT be run on Windows by
    agents or developers: run them in CI or with `tools/dev/linux-test.sh` after committing, for example
    `tools/dev/linux-test.sh -- 'pnpm turbo run build --filter=@nevo/specflow-engine^... && cd packages/specflow-engine && npx vitest run test/<file>.test.ts --testTimeout=240000'`
@@ -132,11 +136,10 @@ lint, typecheck, build, `pnpm docs:check`. No L tests.
 **Scope** (`@nevo/specflow-engine`, `src/specs/`):
 
 1. **Catalogue module** (`specs/archetypes/`): typed plain data for document types and archetypes exactly as the
-   product document's tables; each entry carries mandatory non-empty `description` and `useWhen` (and archetypes
-   `title`); templates (outline sections: overview = the present scaffold; behaviour: Scenarios, Rules, Edge cases,
-   Acceptance scenarios; ux: Flows, Screens and states, Copy, Responsive behaviour, Accessibility; backend:
-   Contracts, Data and ownership, Invariants, Errors and recovery, Verification; architecture: Context, Options,
-   Chosen structure, Constraints; decisions, research, user-story: short heading skeletons) as strings; a pure
+   product document's tables; each entry carries mandatory non-empty `description` and `useWhen` (archetypes also
+   `title`: "Minimal", "Feature", "Architecture"). Default filenames per type (including `note.md` and
+   `user-story.md`), archetype texts and the generated template skeletons are fixed by the product document
+   ("Template skeletons"); the Engine reproduces them verbatim and a test compares them with that table. A pure
    `catalogueRevision()` (sha256 of canonical JSON); lookup functions. Shaped so that a future YAML loader yields the
    same type (`ArchetypeDefinition`), but no loader exists.
 2. **Manifest model and parser** (`model.ts`): `SpecificationManifest` loses `type`, gains `archetype`,
@@ -148,22 +151,21 @@ lint, typecheck, build, `pnpm docs:check`. No L tests.
    `folders` and returns files (manifest first, then documents in catalogue order, then added) with sha256; the
    manifest carries the archetype, requirements snapshot and registry; scaffold ids per the id rule; added
    documents without type are not registered. Throws `SPEC_VALIDATION_ERROR` for unknown archetype/template ids,
-   path conflicts (case-insensitive, against scaffold paths and each other), counts/size limits (<=10 documents,
-   <=100 folders, content <=200000 chars).
+   path conflicts (case-insensitive, against scaffold paths and each other) and the Create limits of the Limits table.
 4. **Pure modules**: `documentPaths` (validate/normalise/case-fold keys, parents, folder derivation),
    `contentKinds` (extension table, media types, `classifyContent(ext, firstBytes)`), `documentIds` (allocate,
    derive `u-` ids), `documentValidation` (requirements results, issues from a registry plus an observed file set).
-5. **Interim Create call site** passes `minimal` (section 3.3). `archive-effects.ts` keeps round-tripping the parsed
+5. **Interim Create call sites** (both, section 3.3) pass `minimal`. `archive-effects.ts` keeps round-tripping the parsed
    manifest; add an assertion test that archive preserves `archetype` and `documents`.
-6. **Fixture rewrite.** Every test or fixture that writes or compares a manifest uses the new shape, preferably via
-   one shared helper (`writeSpecificationManifestFixture`) in Engine test support. Known writers (from
-   `git grep -l "specification.yaml\|spec_id"`): Engine `test/specifications.test.ts`, `archive-close`,
-   `close-sigkill`, `close-worktree-lifecycle`, `create-commit`, `create-journal-contract`, `create-journal`,
-   `create-listing`, `create-multiprocess`, `durable-create`, `engine-commit-port`, `integration-destination`,
-   `lifecycle-admission`, `quality-hardening-q00/q01/q05`; Runtime `test/specs/create.http.test.ts`,
-   `close.http.test.ts`, `engine-overview.http.test.ts`, `features/specs/create/progress.test.ts`; CLI
-   `packages/specflow/test/create-cross-transport.test.ts`; contracts `operations/progress.test.ts` (path strings
-   only); UI tests mention the string only. The slice's definition of done includes re-running
+6. **Fixture rewrite.** Re-derived with `git grep -l "specification.yaml" -- packages` (31 files mention the file
+   name) and `git grep -lE "spec_id:|stringify|writeFile.*specification.yaml" -- packages`: only a few files
+   write or compare **manifest content by hand** and need the new shape: Engine `test/specifications.test.ts`,
+   `test/create-multiprocess.test.ts`, `test/engine-commit-port.test.ts`, Runtime
+   `test/specs/engine-overview.http.test.ts`, plus production code `model.ts` and `lifecycle/archive-effects.ts`
+   (which round-trips the parsed manifest). All other suites obtain manifests from Create or only mention paths
+   and therefore change only if they assert scaffold hashes or manifest text; those are found by running them on
+   Linux after the change. Use one shared helper (`writeSpecificationManifestFixture`) in Engine test support for
+   the hand-written ones. The earlier estimate of "25+ rewritten fixtures" was wrong. Definition of done includes
    `git grep -n "type: 'standard'\|type: standard"` with zero hits and the audit of section 3.2.
 7. **Docs**: lifecycle document gets the by-hand repair note; `docs/ideas/.../specification-and-worktree-close-design.md`
    needs no change (it only mentions `spec_id`).
@@ -188,64 +190,103 @@ directory with one old-shape manifest throws and names the slug; (7) the reposit
 manifest string via the pure serializer; engine lint, typecheck, build. L: the rewritten real-Git suites listed in
 item 6 (they only change fixtures) and the listing test with a real directory; run on Linux. Windows: unit only.
 
-## 6. D2 - Create with an archetype (Engine, Runtime, contracts, CLI)
+## 6. D2 - Create with an archetype (Engine, Runtime, contracts, CLI, UI Create adaptation)
 
 **Scope.**
 
 1. **Engine input** (`CreateSpecificationInput`/`CreateClientIntent`): adds `archetype: {id, version}`,
-   `catalogueRevision?` (checked when present), `optionalDocumentIds` (normalised: sorted, unique),
-   `addedDocuments` (path, type?, content), `folders` (sorted, unique). The intent fingerprint covers all of it, so
-   replay with a different archetype is `CREATE_OPERATION_INVALID`-style conflict as today.
-2. **Journal intent versioning**: `CreateJournal.version` becomes `2`; the codec accepts only 2; `requestIntent`
-   carries the new fields; added-document content is stored in the journal (cap 1 MiB total, enforced at admission);
-   `files[]` evidence lists every scaffold file; `commit.paths` = `files[].relativePath`. A journal of version 1
-   is unsupported: listing reports it as `CREATE_JOURNAL_UNSUPPORTED` naming the file, Create admission fails
-   closed with that code until the operator deletes it (documented next to the existing recovery procedure; the
-   product is pre-release; ADR 0014's "version 1, no migration" sentence is updated).
-3. **Scaffold writing and commit** generalise from two files to N files plus `folders[]` directories (directories
-   created under the existing no-symlink checks; empty folders are registered only in the manifest). The commit
-   covers all scaffold files in the one Create commit (ADR 0013 unchanged). Replay and the "byte-identical, clean
-   human commit" acceptance operate on the full list. Git disabled: no commit, as today.
-4. **Admission** (before reservation, nothing written): unknown archetype/template (`ARCHETYPE_UNKNOWN`), stale
-   catalogue or version (`CATALOGUE_STALE`), invalid/colliding path (`DOCUMENT_PATH_INVALID`,
-   `DOCUMENT_PATH_CONFLICT`), limits (`DOCUMENT_OPERATION_INVALID`). Existing codes unchanged.
-5. **Runtime**: `GET /api/specs/archetypes` (catalogue; same capability as create-options; ETag = revision);
-   `CreateSpecRequestSchema` gains the required `archetypeId`, `archetypeVersion`, `catalogueRevision` and the
-   optional lists (reference page); `CreatedSpecSchema` gains `documentIds`; error-status table gains
-   `CATALOGUE_STALE` 409, `ARCHETYPE_UNKNOWN` 422, `DOCUMENT_PATH_INVALID` 400, `DOCUMENT_PATH_CONFLICT` 409,
-   `CREATE_JOURNAL_UNSUPPORTED` 503; body limit raised to 1 MiB for this route only. Progress vocabulary unchanged.
-6. **CLI** (`nevo-specflow specs create`): `--archetype <id>` (default `minimal`, a CLI presentation default, not an
-   Engine one), repeatable `--with <templateId>`; result prints created document ids; cross-transport parity test
-   updated. Reference CLI page updated.
-7. **Docs**: reference pages for Create (`reference.api.specflow-specification-operations`), lifecycle document,
-   CLI reference.
+   `catalogueRevision?` (checked when present; the HTTP schema requires it), `optionalDocumentIds` (normalised:
+   sorted, unique), `addedDocuments` (path, type?, content) and `folders` (sorted, unique). The intent
+   fingerprint covers all of it (for `addedDocuments`, path, type and the sha256 of the content), so a replay with
+   a different archetype or content under the same `operationId` conflicts as today.
+2. **Journal v2 and its size caps.** Observed caps: the journal file is read with a 65536-byte ceiling in three
+   separate places (`journal/store.ts` `readCreateJournal` line 42, `inspect/listing.ts` line 10,
+   `journal/retention.ts` line 24); the strict codec requires `version === 1`, `files.length === 2` with the
+   exact manifest and overview paths (`codec.ts` `isValidJournalFiles`) and allows only the intent keys
+   `title|goal|slug|target` (`isValidJournalIntent`). **Decision: file contents are not stored in the journal.**
+   Instead each scaffold file (manifest, overview, templates, added documents) is written once, before the journal
+   is published, to a hash-addressed payload file `<operations>/create/<operationId>.payload/<sha256>` (temp file,
+   fsync, rename; the folder name does not end in `.json`, so journal readers ignore it). The journal keeps only
+   evidence: `files[]` (path, sha256, bytes; first two fixed as manifest and overview, then at most the documented
+   count, unique paths) and an intent that lists `archetype`, `optionalDocumentIds`, `addedDocuments` as
+   `{path, type?, sha256, bytes}`, and `folders`. Recovery and `expectedScaffold` read the payload files and verify
+   each against `files[].sha256`; a missing or mismatching payload is `CREATE_RECOVERY_REQUIRED` (reason payload).
+   Payload folders are deleted with the journal by the retention sweep. Why not raising the cap: contents of up to
+   ~1 MiB would be rewritten on each of ~10 stage transitions, three constants would have to change in lockstep, and
+   every reader (including the tolerant listing that must stay cheap) would parse megabytes. The payload store keeps
+   the journal under the existing cap, which stays but becomes **one exported constant** used by all three readers.
+   `CreateJournal.version` becomes `2`; the codec accepts `files` of the new shape and the new intent keys, and
+   the journal pins `catalogueRevision` (diagnostic only: recovery uses the payload, never the live catalogue, so
+   a catalogue that changed between crash and resume has **no effect** on the outcome).
+3. **Older journals - narrow handling (PROPOSAL, owner sign-off required; not a compatibility reader).** Observed:
+   `listCreateJournals` is strict and throws on any invalid file, and it is used by Create admission
+   (`reservation.ts:62`, `durable.ts:406`) and, through `assertSharedResourcesAvailable`
+   (`coordination/resources.ts:89`), by **Close** admission. One old-format file would therefore block Create and
+   Close permanently. The proposal: (a) `listCreateJournals` classifies a file whose `version` field is not the
+   current one as _unsupported_ (read nothing else from it), returns it separately and does **not** throw and
+   does **not** count it as a resource claim; Create and Close are never blocked by it; (b) the existing
+   retention sweep deletes unsupported-version files whose mtime is older than the 7-day retention (no parsing of
+   their content; a file that is not valid JSON or has no numeric `version` is "unsupported" the same way);
+   (c) reading such a journal **by operation id** (inspection, replay) answers the new code
+   `CREATE_JOURNAL_UNSUPPORTED` (503, distinct from `CREATE_JOURNAL_CORRUPT`); (d) the tolerant operations list
+   shows the row as `recovery-required` with that code. No old format is ever interpreted. Cost accepted: the
+   evidence of a v1 journal that still had effects is lost after 7 days; the operator procedure (resume before
+   upgrading) is documented. Alternative if the owner declines: none that avoids permanent blocking, because
+   deleting at once would destroy live evidence.
+4. **Scaffold writing and commit** generalise from two files to N files plus `folders[]` directories (created under
+   the existing no-symlink checks; empty folders are registered only in the manifest). The commit covers all
+   scaffold files in the one Create commit (ADR 0013 unchanged; `commit.paths` = `files[].relativePath`). Replay
+   and the "byte-identical, clean human commit" acceptance operate on the full list. Git disabled: no commit.
+5. **Admission** (before reservation, nothing written): `ARCHETYPE_UNKNOWN`, `CATALOGUE_STALE`,
+   `DOCUMENT_PATH_INVALID`, `DOCUMENT_PATH_CONFLICT`, `DOCUMENT_OPERATION_INVALID` (limits). Existing codes
+   unchanged.
+6. **Runtime.** `GET /api/specs/archetypes` (same capability as create-options; ETag = revision).
+   `CreateSpecRequestSchema` gains the required fields of the reference. **Body limits (observed: the server has no
+   global `bodyLimit`; only password-login and the demo document routes set one)**: `POST /api/specs` declares its
+   own `bodyLimit` and the future Save route its own, both above the content cap and equal to the value in the
+   Limits table (the demo already uses 2 MiB for save and 16 MiB for its batch). Oversized bodies answer 413.
+   `error-status.ts` is an exhaustive switch: add `CATALOGUE_STALE` 409, `ARCHETYPE_UNKNOWN` 422,
+   `DOCUMENT_PATH_INVALID` 400, `DOCUMENT_PATH_CONFLICT` 409, `DOCUMENT_OPERATION_INVALID` 400,
+   `CREATE_JOURNAL_UNSUPPORTED` 503 and extend `error-status.test.ts`.
+7. **CLI** (`nevo-specflow specs create`): `--archetype <id>` is **required** (no default in any layer, matching the
+   contract rule), repeatable `--with <templateId>`; result prints created document ids. Justification for removing
+   the earlier `minimal` default: a CLI default would be a hidden second place that decides the shape of work.
+8. **UI Create adaptation (owner decision: inside D2).** The project-mode Create client
+   (`packages/specflow-ui/src/features/specs/creation/api/api.project.ts` and `api.project.test.ts`), the project form
+   (`CreateProjectForm.tsx`, catalogue loading and the archetype choice already built for the demo form), the
+   submit hook (`useCreateProjectSpecification.ts` and test) and the error map (`errors/createSpecErrors.ts` and
+   test: `CATALOGUE_STALE`, `ARCHETYPE_UNKNOWN`, `DOCUMENT_PATH_*`, `CREATE_JOURNAL_UNSUPPORTED`) send and handle
+   the new fields. Owner: the UI implementation profile, as part of the D2 delivery.
+9. **Docs**: reference pages for Create (`reference.api.specflow-specification-operations`), lifecycle document,
+   CLI reference, and **ADR 0014**: replace the sentence "The Create journal format is `version: 1`; there was never a
+   released version 2 and no migration or compatibility reader exists." (line 68; also in the lifecycle document)
+   with the version 2 statement and the item 3 handling.
 
-**Non-goals.** No document operations; no tree/read changes; no UI change (the UI adaptation is a coordinated
-dependency, see UI impact and open question 1); archetype switching; project archetypes.
+**Non-goals.** Document operations; tree/read changes; demo convergence (D5); archetype switching; project archetypes.
 
-**Contract/schema outline.** Reference page, section D2. Journal: `version: 2`, intent extension as item 2.
+**Contract/schema outline.** Reference, section D2. Journal: `version: 2`, items 2 and 3.
 
-**Invariants.** Intent immutability (fingerprint); the scaffold is regenerated from the journal and must match
-`files[]` hashes; exactly one commit for the whole scaffold; nothing is written when admission fails; completeness
-of a new Specification equals the archetype's requirements (the scaffold satisfies them by construction).
+**Invariants.** Intent immutability (fingerprint); the scaffold is read from the verified payload, not regenerated;
+exactly one commit for the whole scaffold; nothing is written when admission fails; completeness of a new
+Specification equals the archetype's requirements; no old journal can block Create or Close.
 
-**Error codes.** As item 4/5 plus existing Create codes (`BRANCH_PROTECTED`, `COMMIT_BLOCKED`, `COMMIT_FAILED`,
-`CREATE_RECOVERY_REQUIRED`, ...).
+**Acceptance.** (1) Each archetype on a Git-enabled checkout yields one commit with exactly the scaffold files and
+the manifest, a clean tree, the archetype snapshot and registry in the manifest, and `documentIds` in the response;
+(2) suggestions and added documents appear (typed registered, untyped unclassified); (3) replay with the same
+`operationId` returns the same result, a different archetype conflicts; (4) stale catalogue revision is
+`CATALOGUE_STALE` with nothing written; (5) protected branch refuses before writing; (6) Git-disabled project
+creates without a commit; (7) SIGKILL at each commit-related stage recovers with the full file list, also when the
+catalogue revision differs at resume; (8) a journal of an older version does not block Create or Close, is
+removed by the sweep after retention, and yields `CREATE_JOURNAL_UNSUPPORTED` by id; (9) CLI and HTTP produce the
+same Specification for the same input; (10) the UI creates a Specification in project mode with the chosen
+archetype end to end against the Runtime and shows each new error code; (11) a body above the route limit is 413.
 
-**Acceptance.** (1) Creating each archetype on a Git-enabled checkout yields one commit with exactly the scaffold
-files and the manifest, a clean tree, a manifest with the archetype snapshot and registry, and `documentIds`
-in the response; (2) optional suggestions and added documents appear (typed ones registered, untyped ones
-unclassified); (3) replay with the same `operationId` returns the same result; different archetype under the same
-id conflicts; (4) stale catalogue revision is `CATALOGUE_STALE` with nothing written; (5) protected branch refuses
-before writing; (6) Git-disabled project creates without a commit; (7) SIGKILL at each commit-related stage
-recovers via `specs recover` with the full file list; (8) a v1 journal yields `CREATE_JOURNAL_UNSUPPORTED`;
-(9) CLI and HTTP produce the same Specification for the same input.
-
-**Verification.** U: intent normalisation and fingerprint, catalogue-driven admission (pure), journal codec v2
-round-trip and v1 rejection, route schema/validation/error-status mapping with a fake Engine
-(`app.inject`), CLI argument parsing. L: `create-commit`, `durable-create`, `create-journal`, `create-multiprocess`,
-SIGKILL stage tests, `create.http.test.ts` and `create-cross-transport.test.ts` extended for archetypes; run on
-Linux only.
+**Verification.** U (anywhere): intent normalisation and fingerprint, catalogue-driven admission, journal codec v2
+round-trip and old-version classification (pure, with in-memory file contents), payload hashing helpers, route
+validation and `error-status` mapping with a fake Engine (`app.inject`), CLI argument parsing, UI unit tests for
+`api.project`, form, hook and error map. L (Linux only): `create-commit`, `durable-create`, `create-journal`,
+`create-multiprocess`, SIGKILL stage tests, the sweep with real files and the Close-not-blocked case,
+`test/specs/create.http.test.ts` and `packages/specflow/test/create-cross-transport.test.ts` extended for archetypes.
 
 ## 7. D3 - Reading: projection, real content source, content kinds, raw
 
@@ -254,19 +295,17 @@ Linux only.
 1. **Engine** `specs/documents/read.ts`: `readSpecificationDocumentTree(engine, specId)` and
    `readSpecificationDocument(engine, specId, documentId)`; both start from `DiscoveredSpecification` (explicit
    workspace), take one manifest read, then list the Specification directory (no symlink following, skip + count,
-   depth <= 8, <= 2000 files, hidden entries and `specification.yaml` excluded), stat registered files and compute
+   limits per the Limits table, hidden entries and `specification.yaml` excluded), stat registered files and compute
    the projection of the architecture document: registered / unclassified / dangling, `kind` by the closed
-   table, `protected`, `editable` (md, txt, size <= 1 MiB, active location), `satisfiesRequirement`,
-   `completeness`, folders (from files plus `folders[]`), actions with advisory reasons. Revisions: sha256 of
-   bytes for files <= 1 MiB (memoised by path + size + mtimeNs + ino, bounded cache), `stat:<size>-<mtimeNs>`
-   above. Tree `revision` = sha256 over manifest bytes plus the sorted `path:revision` list. Advisory reasons
+   table, `protected`, `editable` (md, txt, within the save limit, active location), `satisfiesRequirement`,
+   `completeness`, folders (from files plus `folders[]`), actions with advisory reasons. Revisions per the Limits table (hash or stat signature, bounded memo). Tree `revision` = sha256 over manifest bytes plus the sorted `path:revision` list. Advisory reasons
    `branch-protected` / `branch-not-allowed` / `git-policy-invalid` come from the same policy evaluation as
    create-options (read-only; no Git process other than what `currentBranch` already costs; if the branch cannot be
    determined cheaply the reason is omitted and enforcement still happens on write). Archived location: all
    actions `archived`.
 2. **Raw access**: `openSpecificationDocument(engine, specId, documentId)` returns `{ metadata, stream }`; it
    re-verifies the physical path (lstat, realpath equality, regular file) before and after open (fstat identity),
-   enforces 25 MiB.
+   enforces the raw limit.
 3. **Runtime**: implements the real `DocumentContentSource` over the Engine and wires it in project mode
    (`server/app.ts` replaces the unwired `dependencies.documents?.source`; tests may still inject);
    routes `GET /api/specs/:specId/document-tree`, `GET /documents/:documentId` (new `DocumentContent`),
@@ -291,8 +330,11 @@ directory (cannot occur after parsing, defence in depth) is `SPEC_SOURCE_UNAVAIL
 satisfied; (2) a file added by hand appears `unclassified` with a derived id and can be read; (3) deleting a
 registered file by hand makes it `dangling` and reading it is `DOCUMENT_FILE_MISSING`; (4) png/svg open as images
 with correct MIME and the sandbox CSP header, a `.zip` is `binary` with `attachment`, a `.md` containing NUL is
-`binary`; (5) html is served `text/plain`; (6) > 1 MiB text read is 413 on JSON and served by raw; > 25 MiB raw is
-413; (7) revision query mismatch is 409; (8) a symlink in the folder is skipped and counted, never read;
+`binary`; (5) html is served `text/plain`; (6) text above the JSON limit is 413 on JSON and served by raw; above the raw limit is 413; (7) revision query mismatch is 409; (8) a symlink in the folder is skipped, counted, reported as the `skipped-entry` issue and never read; a
+Specification with more files than Close archive allows, or a file above its per-file limit, reports
+`archive-limit` (Close archive refuses symlinks and special files, 4096 files and 32 MiB per file; the document
+limits are chosen below those on purpose); (13) on a case-sensitive filesystem `A.md` and `a.md` both appear with
+different `u-` ids and a `path-case-collision` issue, both readable;
 (9) archived Specification: all actions `archived`; (10) project-mode GET of the existing document URL no longer
 returns 503 for a valid document; (11) 403 without `View`; (12) the workspace `documents` section lists the
 registered documents.
@@ -310,7 +352,7 @@ project Runtime; Linux only.
 registration), classify, text import (md/txt/other text kinds); Runtime routes PUT `/documents/:documentId`, POST
 `/documents`, POST `/folders`, POST `/document-operations`; contract per reference section D4.
 
-**Design by operation** (all: reserve journal under the write lock, check preconditions, write via temp+rename,
+**Design by operation** (all: reserve a `document-change` journal as a resource claim under the control lock, check preconditions, write via temp+rename,
 registry rewrite last, commit once, complete):
 
 | Operation   | Files and registry                                            | Commit paths               | Key preconditions / refusals                                         |
@@ -326,12 +368,20 @@ registry rewrite last, commit once, complete):
 untracked new paths, deleted paths and rename pairs under `git commit --only` without disturbing other staged or
 unstaged changes; `preflight` ignores-check works for new paths. Not verified at specification time.
 
-**Journal and recovery** (ADR 0016 sections 6 and 8): stages, per-step physical evidence, two-state save, `specs`
-recovery command extended (`nevo-specflow specs recover <operation-id>` already generic by kind; verify), HTTP
-replay semantics, Git-disabled path, protected-branch admission, `SPEC_BUSY` against Close/Create via the checkout
-write lock.
+**Journal and recovery** (ADR 0016 sections 6 to 10). Corrections to earlier wording: (1) `specs recover` is
+**Create-only** today (`resumeInterruptedCreateOperation`); D4 must add a resume/abandon entry for document
+journals. (2) There is **no per-checkout write lock** in the Engine; document journals join the existing journal
+claim mechanism (`assertSharedResourcesAvailable`: journals are the claim records, checked under the short control
+lock) with resources for the Specification's documents and for the checkout index, so `SPEC_BUSY` comes from the
+overlap check against Create and Close journals, and a tolerant document-journal listing so a bad file never
+blocks others. (3) Replay after delete or rename needs the **per-path expected state** recorded in the journal
+(pre-state sha256/absent/untracked, post-state), decided per path on resume; a delete of a never-tracked file has
+nothing to commit (completes with `committed: false` when all paths are untracked). (4) The Engine verifies each
+path's **post-image hash** before committing and the committed content after (`fileAt`). (5) The manifest is
+rewritten by compare-and-swap against the pre-image hash stored in the journal. (6) A failed commit restores any
+intent-to-add index entries it created. Stages include a terminal `failed`.
 
-**Commit queue with coalescing** (design in ADR 0016 section 9; build after D4 as a follow-up, own specification
+**Commit queue with coalescing** (design in ADR 0016 section 10; build after D4 as a follow-up, own specification
 per section 1): ordering by journal sequence; coalescing of queued consecutive saves of the same document;
 idempotency through `Nevo-Operation` plus `Nevo-Coalesced` trailers; merged groups fail and recover as one unit.
 
@@ -350,31 +400,32 @@ emit the new shapes and codes; showcase fixtures and `required`/`required_docume
 superseded `Demo*` document schemas and the old read error bodies; the UI adopts the explicit **UI impact** list
 of [the reference](../../reference/api/specification-documents.md) (tree states, classify and remove-registration
 actions, completeness display, kind-based viewers, raw image/download, protected-branch read-only state, derived
-`u-` ids on classify, synchronous save with conflict handling, project-mode Create sends `archetypeId` /
-`archetypeVersion` / `catalogueRevision`). Verification: UI unit/Storybook tests and demo-vs-real contract tests
+`u-` ids on classify, synchronous save with conflict handling). The project-mode Create adaptation is **not** part
+of D5: it ships inside D2. Verification: UI unit/Storybook tests and demo-vs-real contract tests
 asserting both emit schema-valid payloads for the same scenarios. Sequencing: D5 is a flag day for the UI and
-the demo; real endpoints (D2/D3) ship first and are consumed by the UI at D5. The UI project-mode Create must send
-the archetype fields no later than D2 (open question 1).
+the demo; real endpoints (D2/D3) ship first and are consumed by the UI at D5. The UI project-mode Create adaptation ships with D2.
 
-## 10. Open questions for the owner (defaults stated)
+## 10. Open questions for the owner
 
-1. **D2 breaks the shipped UI project-mode Create** (it sends no archetype; fields are required, no default).
-   Default: D2 is merged together with a minimal UI adaptation (select archetype from `GET /api/specs/archetypes`
-   and send the three fields; the demo form already has the selection UI), owned by the UI work.
-2. **`overview.md` rename/move.** Decision 4 says protected = cannot be deleted. Default: its id and path are also
-   fixed (parser rule), so rename/move are refused with the same `protected` reason.
-3. **Pre-D2 Create journals / v1 journals** are unsupported and must be abandoned by hand (`CREATE_JOURNAL_UNSUPPORTED`).
-   Default accepted as pre-release behaviour; say if a one-time cleanup tool is wanted.
-4. **`architecture` archetype requires one `decisions` document** (overview 1, architecture 1, decisions 1).
-   Default as stated; trivial to relax.
+Resolved by the owner: the UI Create adaptation is inside D2 (item 8); no compatibility readers or aliases.
+Still open (defaults stated, **unconfirmed**):
+
+1. **DEFAULT - `overview.md` rename/move.** Its id and path are fixed; rename and move are refused with `protected`
+   like delete.
+2. **PROPOSAL - old Create journals (D2 item 3).** Tolerant classification, never a claim, never blocking Create or
+   Close; the sweep deletes unsupported-version files after 7 days; `CREATE_JOURNAL_UNSUPPORTED` by id. Needs sign-off
+   because it deletes old evidence after retention.
+3. **DEFAULT - `architecture` archetype** requires overview 1, architecture 1, decisions 1.
+4. **DEFAULT - CLI `--archetype`** is required (no default `minimal`).
 
 ## 11. Not verified at specification time
 
 - The commit port with deleted, renamed and new paths (D4 gap above); behaviour of `commit --only` on rename pairs.
 - That `git ls-files` shows no old-shape manifest in the repository was checked only for tracked files in this
   worktree; developer-local specifications were not inspected.
-- The Create scaffold writer and the codec were read, not executed; the claim that generalising from two files to
-  N files needs no change in the multi-process locking was not tested.
+- The Create scaffold writer and the codec were read, not executed; that the payload store (D2 item 2) needs no
+  change in the multi-process locking was not tested. The behaviour of Close archive with hidden files (it includes
+  them) was read, not executed.
 - Authorization capability for the catalogue route (`create-options` equivalent) was inferred from the demo
   routes; D2 confirms.
 - No test suite was run (documentation-only change; Linux-only suites were not run on Windows by rule).

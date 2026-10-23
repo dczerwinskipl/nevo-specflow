@@ -83,7 +83,9 @@ Parser rules (strict, `SPEC_SOURCE_INVALID` otherwise; no alias, no default, no 
    derived ids of unclassified files). `type` matches `^[a-z][a-z0-9-]{0,31}$`; it need not exist in the current
    catalogue (a retired type stays valid and is shown by id).
 4. `documents[].path` is a normalised portable relative path (see "Paths"); paths are unique ignoring case.
-5. The registry contains exactly one entry with `id: overview`, `path: overview.md`, `type: overview`.
+5. The registry contains exactly one entry with `id: overview`, `path: overview.md`, `type: overview`. Its id
+   and path are fixed, so rename and move of `overview` are refused with the `protected` reason like delete
+   (**DEFAULT, pending owner confirmation**; the owner decision itself only says it cannot be deleted).
 6. `requirements[].documentType` matches the type pattern; `minCount` is an integer >= 0 (unique per type).
 7. `folders[]` entries are valid portable folder paths, unique ignoring case, not equal to a registered file.
 
@@ -95,18 +97,34 @@ the same parser before writing, preserves unknown top-level keys and SHOULD pres
 
 ## Identity, paths and the registry
 
-- `documentId` is stable for the life of the document; rename and move keep it. Scaffolded documents get the id
-  `<type>` for the first of a type (`overview`, `behaviour`, ...) and `<type>-<6 lowercase base32>` for later
-  ones. Ids are never reused for another document by the Engine.
-- Unclassified files have a **derived** id `u-<first 16 hex of sha256(path lowercased)>`. It is stable while the
-  path is stable, resolved by recomputation, and is replaced by a registered id on classification.
+- `documentId` is stable for the life of the document; rename and move keep it. The first document of a type
+  gets the id `<type>` (`overview`, `behaviour`, ...). Further ones get `<type>-<suffix>`, where `suffix` is
+  the first 6 characters of the lowercase base32 of `sha256(<specId>:<position>)` and `position` is the entry's
+  index in the registry at allocation; a collision with an existing id extends the suffix by one character until
+  unique. The allocation is therefore deterministic (replay of Create produces the same ids) and, for later
+  operations (D4), the allocated ids are persisted in the operation journal. Ids are never reused by the Engine.
+- Unclassified files have a **derived** id `u-<first 16 hex of sha256(exact path, case preserved)>`. It is stable
+  while the path is stable, resolved by recomputation over the listed files, and is replaced by a registered id on
+  classification. On a case-sensitive filesystem `A.md` and `a.md` are two files with two different ids; both are
+  listed and readable, the tree reports an issue `path-case-collision`, and the Engine refuses any operation that
+  would create, rename or move onto a path equal to another ignoring case.
 - **Paths**: POSIX `/`, relative to the Specification directory, at most 500 characters, no leading `/`, no
   `..`, no empty segment, no segment starting with `.` or ending with `.` or space, none of `\ : * ? " < > |` or
   control characters, no Windows reserved device name in any segment (with or without extension); folder depth
-  at most 8; uniqueness is case-insensitive. `specification.yaml` is reserved: it is never a document, never in
-  the tree and cannot be created, renamed to, or overwritten through the documents layer.
-- **Symlinks** are never followed and never listed; a symlinked entry is skipped and counted in
-  `skippedEntries` of the projection.
+  at most 8; uniqueness is case-insensitive. At the Specification root the names `specification.yaml` and
+  `change.yaml` are reserved **ignoring case**: they are never documents and cannot be created, renamed to, or
+  overwritten through the documents layer (`DOCUMENT_PATH_INVALID`). `specification.yaml` is never in the tree.
+  A hand-dropped root entry whose name equals `specification.yaml` or `change.yaml` ignoring case but is not the
+  canonical manifest is not a document problem: the existing Specification listing already fails closed for it
+  (`repository.ts` requires exactly one manifest-named entry, spelled `specification.yaml`), so the tree is never
+  reached; this is documented behaviour, not new.
+- **Symlinks and special files** are never followed and never listed; such an entry is skipped, counted in
+  `skippedEntries` and reported as the issue `skipped-entry`. Close archive refuses a directory that contains a
+  symlink or special file, so this issue means "Close will refuse until it is removed" (see Limits). Opening a file
+  re-verifies the physical path (lstat, `realpath` equality, regular file) before and after open and compares
+  `fstat` identity; `O_NOFOLLOW` is used where the platform has it (not on Windows, where the re-verification is
+  the only guard). A regular file with more than one hard link is readable; writes use temp file plus rename, which
+  replaces the directory entry and never writes through the link.
 - **Folders** are derived from file paths plus `folders[]`. Git cannot track an empty directory, so an empty
   folder exists only if it is in `folders[]` (committed with the registry change in D4).
 - **Display title** is derived, not stored: the first level-1 heading of a markdown text, else the file stem.
@@ -124,8 +142,26 @@ type served by the raw endpoint.
 | `image`  | `png jpg jpeg gif webp avif svg`                                                                    | Preview. `svg` is an image, never inline-rendered markup                |
 | `binary` | everything else, or text with NUL                                                                   | Info and download only. No archive (zip) inspection                     |
 
-Text sizes: the JSON read returns content up to 1 MiB; the raw endpoint serves up to 25 MiB; larger files are
-`DOCUMENT_TOO_LARGE`. Constants live in the Engine, not configuration. Binary import/replace is a later slice.
+Limits are in the Limits table below. Binary import/replace is a later slice.
+
+## Limits (the single authoritative table)
+
+Other documents refer to this table and MUST NOT restate the numbers. All sizes are **UTF-8 / raw bytes**, never
+characters. The constants live in the Engine (exported once and imported by Runtime where a route needs them), not
+in configuration.
+
+| Limit                            | Value                                                  | Notes                                                                                                                                                  |
+| -------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Text JSON read and Save content  | 1 MiB (bytes)                                          | Above: JSON read and Save are `DOCUMENT_TOO_LARGE` (413); use `raw` to read                                                                            |
+| Raw content                      | 25 MiB                                                 | Below Close's 32 MiB per-file archive limit on purpose                                                                                                 |
+| Content-hash revision            | files <= 1 MiB: sha256; above: `stat:<size>-<mtimeNs>` | Memo keyed by path+size+mtimeNs+ino, at most 5000 entries (LRU)                                                                                        |
+| Manifest size                    | 256 KiB                                                | Larger: `SPEC_SOURCE_INVALID`                                                                                                                          |
+| Listed files per Specification   | 2000, depth 8                                          | Beyond: `truncated: true`. Close archive allows 4096 files and fails above that                                                                        |
+| Added documents at Create        | 10 files, 100 folders, total content 1 MiB (bytes)     | Each file also <= 1 MiB; enforced at admission                                                                                                         |
+| Template text                    | 64 KiB each                                            |                                                                                                                                                        |
+| HTTP body, Save and Create       | 2 MiB each (route-level `bodyLimit`)                   | Above the content caps to leave room for JSON escaping; larger bodies answer 413. The server has no global override, so each route sets its own limit  |
+| HTTP body, other document writes | 256 KiB                                                | operations, folders, classify                                                                                                                          |
+| Create journal file              | 64 KiB (the existing cap)                              | Kept: file contents are not stored in the journal (delivery D2). One exported constant replaces the copies in `store.ts`, `listing.ts`, `retention.ts` |
 
 ## Validation results (never stored)
 
@@ -133,8 +169,10 @@ The Engine computes, as a pure function of the registry, the persisted requireme
 
 - **Requirement result** per requirement: `count` of registered documents of that type whose file exists, and
   `satisfied = count >= minCount`. **Structural completeness** = every requirement satisfied.
-- **Issues**: `dangling` (registry entry, file absent), `unclassified` (file not registered), `requirement-unmet`.
-  None blocks reading or any operation. Parse-level violations (duplicate id/path, missing overview entry,
+- **Issues** (the tree's `issues[]`): `dangling` (registry entry, file absent), `unclassified` (file not
+  registered), `requirement-unmet`, `skipped-entry` (symlink or special entry; Close archive will refuse),
+  `path-case-collision`, `archive-limit` (more files than the archive's file limit or a file above its per-file
+  limit; Close will refuse). None blocks reading or any document operation. Parse-level violations (duplicate id/path, missing overview entry,
   unknown keys) are not issues: they make the manifest invalid.
 - Completeness is **not** acceptance. No code path marks a document or a Specification "ready", "accepted" or
   "approved" in the manifest. A readiness check, when it exists, is a separate validation capability that
@@ -144,8 +182,8 @@ The Engine computes, as a pure function of the registry, the persisted requireme
 
 1. The manifest is the only authority for document identity, type and registration. Frontmatter, file names and
    the UI never are.
-2. `overview` is the only protected document: it cannot be deleted (by id, by its folder, by any operation) and
-   it is editable. No requirement, type, archetype or path rule protects any other file.
+2. `overview` is the only protected document: it cannot be deleted (by id, by its folder, by any operation),
+   its id and path are fixed (rename and move refused; DEFAULT pending owner confirmation) and it is editable. No requirement, type, archetype or path rule protects any other file.
 3. Every state-changing document operation is file change plus exactly one Engine-owned path-limited commit when
    Git is enabled, with the registry change in the same commit as the file (ADR 0016); no dirty worktree is
    left behind by a successful operation.
@@ -153,10 +191,13 @@ The Engine computes, as a pure function of the registry, the persisted requireme
 5. Existing Specifications never change completeness because the catalogue changed (persisted requirements).
 6. An operation never reads or writes outside the Specification directory; all path checks happen in the Engine
    on real paths (no symlink, `realpath` equals the expected path) at the moment of the effect.
-7. Read paths are free of Git processes and of the control lock; they may run while a write is in flight and
-   report either the previous or the next consistent state, never a mixture of registry and files, because the
-   projection is built from a single manifest read followed by a stat of the registered files, and carries a
-   `revision` that changes whenever either changes.
+7. Read paths are free of mutating Git processes and of the control lock. The projection is built from one
+   manifest read followed by a directory listing and a stat/hash of the files; it is **not** an atomic snapshot.
+   The guarantee delivered: every reported field was true of its file or of the manifest at some instant during
+   the read; writes put the manifest last, so a concurrent reader may transiently see a new file as
+   `unclassified` or a removed file as `dangling`, never an invented document; and the tree `revision` is
+   computed from exactly the bytes and stat signatures that were read, so a client that re-reads and compares
+   revisions detects any change.
 8. Unknown or unreadable parts never invent state: a registry entry without file is reported, never silently
    dropped or recreated.
 

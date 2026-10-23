@@ -79,14 +79,16 @@ evolve this later (project-defined archetypes, template overrides) without redef
 
 ## Consequences
 
-- Every Engine test and fixture that writes a manifest changes (25+ files; see the delivery specification).
+- Production code that builds or round-trips a manifest changes (`model.ts`, `lifecycle/archive-effects.ts`), as do the few tests that write manifest text by hand (four files; the delivery specification lists them). Suites that obtain manifests from Create change only if they assert scaffold content.
 - A checkout containing a manifest in the old shape fails closed. The Runtime reports the existing
   `SPEC_SOURCE_INVALID` (503) and logs the offending slug and field; operators repair the manifest by hand
   (add `archetype`, `documents`, drop `type`). There is no shim.
 - Rewriting the manifest (registry changes) must preserve unknown top-level keys and SHOULD preserve comments
   and key order (use a document-preserving YAML API); Close archive already round-trips the parsed manifest.
 - The Create journal intent grows (archetype, optional documents, added documents) and its format version
-  moves to 2 (see the delivery specification, D2).
+  moves to 2; file contents live in hash-addressed payload files, not in the journal. Journals of the older
+  format are handled by a narrow retention rule, not read (a PROPOSAL pending owner sign-off; see the delivery
+  specification, D2).
 - Reviews and Tasks remain separate resources; they are not documents and are not registered here.
 
 ## Rejected

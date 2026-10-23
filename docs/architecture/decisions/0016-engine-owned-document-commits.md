@@ -62,7 +62,7 @@ pointer under its Scope item (see below); its decisions are unchanged.
 4. **Protected branches apply.** `git.commits.protectedBranches` / `allowedBranches` guard document operations
    exactly as Create. The Engine evaluates the guard at admission (before any write) and again inside the
    commit capability. The refusal codes are `BRANCH_PROTECTED` (422) and `COMMIT_BLOCKED` (409) with a stable
-   `reason` (`branch-protected`, `branch-not-allowed`, `detached`, `merge-in-progress`, ...). The tree
+   `reason`: `branch-protected` / `branch-not-allowed` for the first, and for the second the commit port's own reason (`detached`, `branch-changed`, `git-busy`, `index-locked`, `unmerged-paths`, `path-ignored`, `no-commits`, `intent-to-add`, ...), exposed as `details.blockedBy` (see the reference). The tree
    projection additionally exposes the same decision as advisory action availability so the UI can disable
    editing with a clear reason before the user types.
 5. **Preconditions protect foreign edits.** Every operation names the document it changes by `documentId` plus
@@ -74,37 +74,61 @@ pointer under its Scope item (see below); its decisions are unchanged.
    already exists on disk is `DOCUMENT_PATH_CONFLICT`.
 6. **Journalled, idempotent operation.** Document operations use the Create operation shape: client
    `operationId` (UUID) is the idempotency key; a durable journal of kind `document-change` under the Project Home
-   engine operations directory records the intent fingerprint, the plan (per-file pre/post sha256, moves) and the
-   stage: `reserved` -> `files-writing` -> `files-written` -> `commit-writing` -> `commit-written` ->
-   `completed`, plus `recovery-required`. A replay with the same fingerprint returns the stored result; a
+   engine operations directory records the intent fingerprint, the plan and the stage: `reserved` ->
+   `files-writing` -> `files-written` -> `commit-writing` -> `commit-written` -> `completed`, plus the
+   terminal `failed` (a refusal or rollback with no remaining effect; it keeps the error code so a replay of the
+   same `operationId` returns the same error, and it holds no claim) and `recovery-required`. The plan records,
+   per path, the expected **pre-state** (`sha256`, `absent` or `untracked` with hash) and **post-state**
+   (`sha256` or `absent`), the pre-image hash of `specification.yaml` (compare-and-swap: the manifest is
+   rewritten only if its bytes still equal the recorded pre-image, else `SPEC_MANIFEST_DIRTY`/conflict), the
+   allocated document ids and the parent HEAD. A replay with the same fingerprint returns the stored result; a
    different fingerprint under the same id is `DOCUMENT_OPERATION_CONFLICT` (409). The call is synchronous (200
    after the commit, or after the write when Git is disabled); there is no 202 for documents in the first
    release. Completed journals share the Create retention rules.
-7. **Serialisation.** One Engine write lock per checkout serialises document operations with each other and with
-   Create/Close admission for the same checkout. A Specification in `archive/` is read-only
+7. **Serialisation.** There is no per-checkout write lock in the Engine today (observed: only the short Project
+   Home control lock and journals acting as claim records, `assertSharedResourcesAvailable`). Document journals
+   join that mechanism: a `document-change` journal is a claim on the resources `spec-documents:<workspaceId>:<slug>`
+   and `checkout-commit:<workspaceId>` (the checkout index, shared with Create and Close commits), reserved under the
+   control lock and released at `completed`/`failed`. Document, Create and Close journals then exclude each other
+   through the same overlap check, and `listDocumentJournals` is tolerant (a bad journal is a row and a claim on
+   its own id only, never a global failure; see delivery D2 for the same rule applied to Create). A Specification in `archive/` is read-only
    (`SPEC_ARCHIVED`, 409). A Specification whose Close or Create is in progress is `SPEC_BUSY` (409).
 8. **Failure and recovery.** Before the commit, a failure rolls the operation back by physical evidence (each
-   step is checkable: source/destination hash), leaving the checkout as it was; the journal ends `failed` with
-   no effects (reported as the error code, not retained as success). After files exist, a commit that cannot be
+   step is checkable against the recorded per-path pre/post state), leaving the checkout as it was; the journal
+   ends `failed`. Before every commit the Engine re-hashes each path against its recorded **post-image** and
+   after the commit verifies the committed content with `fileAt`; a mismatch is `recovery-required`, never a
+   silent commit. Replay after a delete or rename is decided per path from the recorded states (a step is done
+   when its post-state holds, pending when its pre-state holds, otherwise `recovery-required`). A delete of a
+   file that was **never tracked** has nothing to commit for that path; if every path of the operation is
+   untracked the operation completes with `committed: false` and no commit. If a commit fails after the Engine
+   made new paths intent-to-add, the Engine restores the index entries of exactly those paths before returning
+   (staging cleanup) so a failed operation leaves no foreign index state; if that cleanup is impossible the
+   operation is `recovery-required`. After files exist, a commit that cannot be
    made leaves `commit-writing` and the operation `recovery-required` (`DOCUMENT_RECOVERY_REQUIRED`, 503, with
    the underlying `COMMIT_FAILED` reason), exactly like Create: resume replays by the operation trailer
    (`findByOperation` on top of the recorded parent HEAD) and accepts a byte-identical, clean human commit.
    Save is two-state (atomic rename): after a crash the disk equals the pre-image (abandon, no effect) or the
    post-image (continue to commit); anything else is `recovery-required`.
-9. **Commit queue with coalescing (extension, designed here, built after D4).**
-   - A per-checkout FIFO owns commit execution; journals are reserved in arrival order and `sequence` is
-     recorded. Operations touching overlapping paths (or the manifest) execute strictly in sequence; the first
-     release of the queue MAY simply run all operations of a checkout in sequence.
-   - **Coalescing** merges consecutive queued `save` operations for the same document into one commit when:
-     the later save's `expectedRevision` equals the earlier save's result revision, nothing queued between them
-     touches the document or the manifest, and branch and parent HEAD are unchanged. The merged commit carries
-     `Nevo-Operation: <last>` and `Nevo-Coalesced: <earlier ids>`; each journal records `coalescedInto`; replay
-     finds the commit by any of those trailers; all merged operations complete with the same commit SHA.
-   - Coalescing never delays a commit artificially (no debounce timer in the first version): it only merges
-     operations that are already queued while a previous commit is running. A merged group fails and recovers
-     as one unit.
-   - Clients keep the synchronous contract: each request answers after the commit that includes its content.
-10. **Scope of this decision.** Close archive/integration, Create and the existing branch-guard behaviour are
+9. **Recovery entry point.** `nevo-specflow specs recover` is Create-only today (it calls
+   `resumeInterruptedCreateOperation`). D4 adds a resume/abandon entry for `document-change` journals (a new
+   Engine function and a command accepting the operation kind, or a generalised one); this is a D4 deliverable, not
+   an existing capability.
+10. **Commit queue with coalescing (extension, designed here, built after D4).**
+
+- A per-checkout FIFO owns commit execution; journals are reserved in arrival order and `sequence` is
+  recorded. Operations touching overlapping paths (or the manifest) execute strictly in sequence; the first
+  release of the queue MAY simply run all operations of a checkout in sequence.
+- **Coalescing** merges consecutive queued `save` operations for the same document into one commit when:
+  the later save's `expectedRevision` equals the earlier save's result revision, nothing queued between them
+  touches the document or the manifest, and branch and parent HEAD are unchanged. The merged commit carries
+  `Nevo-Operation: <last>` and `Nevo-Coalesced: <earlier ids>`; each journal records `coalescedInto`; replay
+  finds the commit by any of those trailers; all merged operations complete with the same commit SHA.
+- Coalescing never delays a commit artificially (no debounce timer in the first version): it only merges
+  operations that are already queued while a previous commit is running. A merged group fails and recovers
+  as one unit.
+- Clients keep the synchronous contract: each request answers after the commit that includes its content.
+
+11. **Scope of this decision.** Close archive/integration, Create and the existing branch-guard behaviour are
     unchanged. Reviews and Tasks are separate resources and do not use this mechanism.
 
 ## Consequences

@@ -24,6 +24,10 @@ export interface DocumentDraft {
 export const documentDraftKey = (spec: string, document: string) =>
   `${encodeURIComponent(spec)}:${document}`;
 
+/**
+ * Accepts only keys built by `documentDraftKey`; `decodeURIComponent` is not guarded against
+ * foreign input and may throw on it.
+ */
 export function parseDocumentDraftKey(key: string): { specId: string; documentId: string } {
   const at = key.indexOf(':');
   return {

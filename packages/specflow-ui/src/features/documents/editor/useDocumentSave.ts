@@ -32,8 +32,11 @@ export interface SaveResult {
 }
 
 export interface SaveAllResult {
+  /** Stored, or already clean (no request was sent). */
   readonly saved: string[];
   readonly failed: { id: string; error: unknown }[];
+  /** Had no draft to save by the time its turn came (e.g. discarded during the series). */
+  readonly skipped: string[];
 }
 
 export interface DocumentSaveOwner {
@@ -42,7 +45,13 @@ export interface DocumentSaveOwner {
    * Concurrent calls for the same document join the one in flight.
    */
   save: (documentId?: string) => Promise<SaveResult | undefined>;
-  /** Saves the documents one after another and stops at the first failure. */
+  /**
+   * Saves the documents one after another and stops at the first failure; ids after it are
+   * neither saved nor listed. `saved` also holds clean documents (no request), `skipped` holds ids
+   * without a draft. Edits made during IO stay dirty after their save succeeds, so callers MUST
+   * re-check `dirtyIds` afterwards instead of trusting `saved` alone. The loop deliberately runs
+   * to completion even if the caller unmounts, so no data is lost.
+   */
   saveAll: (ids: readonly string[]) => Promise<SaveAllResult>;
   savingOf: (id: string) => boolean;
   errorOf: (id: string) => unknown;
@@ -161,14 +170,15 @@ export function useDocumentSave({
 
   const saveAll = useCallback(
     async (ids: readonly string[]): Promise<SaveAllResult> => {
-      const outcome: SaveAllResult = { saved: [], failed: [] };
+      const outcome: SaveAllResult = { saved: [], failed: [], skipped: [] };
       for (const id of ids) {
         const result = await save(id);
         if (result?.ok === false) {
           outcome.failed.push({ id, error: result.error });
           break;
         }
-        outcome.saved.push(id);
+        if (result) outcome.saved.push(id);
+        else outcome.skipped.push(id);
       }
       return outcome;
     },

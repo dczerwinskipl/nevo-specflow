@@ -92,7 +92,7 @@ describe('useDocumentSave for any document', () => {
     await act(async () => {
       result = await view.result.current.saveAll(['b', 'c']);
     });
-    expect(result).toEqual({ saved: ['b', 'c'], failed: [] });
+    expect(result).toEqual({ saved: ['b', 'c'], failed: [], skipped: [] });
     expect(save.mock.calls.map((call) => call[1])).toEqual(['b', 'c']);
   });
 
@@ -106,5 +106,53 @@ describe('useDocumentSave for any document', () => {
     expect(result?.failed).toHaveLength(1);
     expect(result?.failed[0]).toMatchObject({ id: 'b' });
     expect(save).toHaveBeenCalledTimes(2);
+  });
+
+  it('skips an id whose draft disappears during the series', async () => {
+    const { save, store, view } = setup();
+    save.mockImplementationOnce((_spec: string, id: string) => {
+      store.remove(SPEC, 'c');
+      return Promise.resolve({ revision: `${id}2` });
+    });
+    let result: Awaited<ReturnType<typeof view.result.current.saveAll>> | undefined;
+    await act(async () => {
+      result = await view.result.current.saveAll(['b', 'c']);
+    });
+    expect(result).toEqual({ saved: ['b'], failed: [], skipped: ['c'] });
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it('counts a clean document in the middle as saved without a request', async () => {
+    const { save, store, view } = setup();
+    store.set(SPEC, 'b', draft('b0', 'b0', 'b1'));
+    let result: Awaited<ReturnType<typeof view.result.current.saveAll>> | undefined;
+    await act(async () => {
+      result = await view.result.current.saveAll(['a', 'b', 'c']);
+    });
+    expect(result).toEqual({ saved: ['a', 'b', 'c'], failed: [], skipped: [] });
+    expect(save.mock.calls.map((call) => call[1])).toEqual(['a', 'c']);
+  });
+
+  it('joins concurrent saves of the same non-shown document into one request', async () => {
+    const { save, view } = setup();
+    await act(async () => {
+      const [first, second] = await Promise.all([
+        view.result.current.save('b'),
+        view.result.current.save('b'),
+      ]);
+      expect(second).toBe(first);
+    });
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps edits made during IO dirty after a non-shown save succeeds', async () => {
+    const { store, view } = setup();
+    await act(async () => {
+      const pending = view.result.current.save('b');
+      store.patch(SPEC, 'b', { content: 'B2' }, () => draft('B2', 'b0', 'b1'));
+      await pending;
+    });
+    expect(store.get(SPEC, 'b')).toMatchObject({ content: 'B2', baseline: 'B1', revision: 'b2' });
+    expect(store.dirtyIds(SPEC)).toContain('b');
   });
 });

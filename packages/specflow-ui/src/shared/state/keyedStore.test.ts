@@ -35,4 +35,19 @@ describe('keyed store', () => {
     store.set('a', 1);
     expect(listener).not.toHaveBeenCalled();
   });
+  it('lists present keys and lets subscribers observe additions and removals', () => {
+    const store = createKeyedStore<number>();
+    const seen: string[] = [];
+    const off = store.subscribeAll((key) => seen.push(key));
+    store.set('a', 1);
+    store.set('b', 2);
+    store.set('a', 1);
+    expect(store.keys()).toEqual(['a', 'b']);
+    store.remove('a');
+    expect(store.keys()).toEqual(['b']);
+    expect(seen).toEqual(['a', 'b', 'a']);
+    off();
+    store.remove('b');
+    expect(seen).toHaveLength(3);
+  });
 });

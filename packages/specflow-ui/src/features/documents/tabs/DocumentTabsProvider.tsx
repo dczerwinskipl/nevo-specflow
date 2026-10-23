@@ -61,6 +61,12 @@ export interface DocumentTabs {
   removeTabs: (ids: readonly string[]) => Promise<void>;
   closeFailed: boolean;
   dismissCloseFailed: () => void;
+  /**
+   * The narrow layout stacks the document over the tree. While that screen is mounted it follows
+   * the route's active tab by itself, so a tab change must not close and reopen (remount) it.
+   */
+  isStackOpen: () => boolean;
+  registerStack: () => () => void;
 }
 
 const TabsContext = createContext<DocumentTabs | null>(null);
@@ -146,6 +152,7 @@ function TabsHost({
   const [asking, setAsking] = useState<{ id: string; saveFailed: boolean } | null>(null);
   const answer = useRef<((allowed: boolean) => void) | null>(null);
   const mounted = useRef(false);
+  const stacks = useRef(0);
   const canCloseRef = useRef<(id: string) => Promise<boolean>>(() => Promise.resolve(false));
 
   const opened = useOpenedItems<OpenedItem>({
@@ -301,6 +308,13 @@ function TabsHost({
       removeTabs,
       closeFailed,
       dismissCloseFailed: () => setCloseFailed(false),
+      isStackOpen: () => stacks.current > 0,
+      registerStack: () => {
+        stacks.current += 1;
+        return () => {
+          stacks.current -= 1;
+        };
+      },
     }),
     [specId, tabs, documentId, ids, show, requestClose, closeAll, removeTabs, closeFailed],
   );

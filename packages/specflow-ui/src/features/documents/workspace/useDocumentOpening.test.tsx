@@ -11,7 +11,11 @@ interface Controller {
 const mocks = vi.hoisted(() => ({
   controller: undefined as unknown as Controller,
   supportsSplit: false,
-  tabs: { show: vi.fn(() => Promise.resolve()), closeAll: vi.fn(() => Promise.resolve()) },
+  tabs: {
+    show: vi.fn(() => Promise.resolve()),
+    closeAll: vi.fn(() => Promise.resolve()),
+    isStackOpen: vi.fn(() => false),
+  },
 }));
 
 vi.mock('@nevo/ui', async (importOriginal) => ({
@@ -131,6 +135,50 @@ describe('useDocumentOpening stacked navigation (narrow layout)', () => {
     closes.forEach((pending) => pending.resolve());
     await flush();
     expect(mocks.controller.open).not.toHaveBeenCalled();
+  });
+});
+
+describe('useDocumentOpening narrow tabs', () => {
+  beforeEach(() => {
+    mocks.supportsSplit = false;
+    mocks.tabs.isStackOpen.mockReset().mockReturnValue(false);
+    mocks.controller = {
+      open: vi.fn(() => Promise.resolve()),
+      close: vi.fn(() => Promise.resolve()),
+    };
+  });
+  afterEach(cleanup);
+
+  it('does not close and reopen the stacked screen when only the active tab changes', async () => {
+    const view = render('A');
+    await flush();
+    expect(opened()).toEqual(['A']);
+    mocks.tabs.isStackOpen.mockReturnValue(true);
+    view.rerender({ documentId: 'B' });
+    await flush();
+    expect(opened()).toEqual(['A']);
+    expect(mocks.controller.close).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the stack again for another document after Back closed it', async () => {
+    const view = render('A');
+    await flush();
+    // Back closed the stacked screen (it unregistered); the route still shows A.
+    mocks.tabs.isStackOpen.mockReturnValue(false);
+    view.rerender({ documentId: 'B' });
+    await flush();
+    expect(opened()).toEqual(['A', 'B']);
+  });
+
+  it('keeps tabs and the route when the list is shown by Back', async () => {
+    const view = render('A');
+    await flush();
+    act(() => view.result.current.select('A'));
+    await flush();
+    // Selecting the document that is already active reopens the stack without touching the tabs.
+    expect(opened()).toEqual(['A', 'A']);
+    expect(mocks.tabs.show).not.toHaveBeenCalled();
+    expect(mocks.tabs.closeAll).not.toHaveBeenCalled();
   });
 });
 

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRouterState } from '@tanstack/react-router';
 import { isHttpClientError } from '@nevo/http-client';
@@ -6,7 +7,6 @@ import {
   AppContent,
   Button,
   Typography,
-  WorkspaceHeaderIdentity,
   defineSecondaryStack,
   useWorkspaceCapabilities,
   type SecondaryData,
@@ -23,6 +23,7 @@ import { SessionRecoveryNotice, useSessionReturn } from '../../sessions';
 import { DocumentEditor } from '../editor/DocumentEditor';
 import { useDocumentEditor } from '../editor/DocumentEditorProvider';
 import { documentHeaderModel } from '../editor/documentHeaderModel';
+import { DocumentTabStrip } from '../tabs/DocumentTabStrip';
 import { useDocumentRecord, useDocumentTabs } from '../tabs/DocumentTabsProvider';
 
 export interface DocumentParams {
@@ -35,15 +36,27 @@ interface DocumentScreenData extends DocumentParams {
   actions: readonly WorkspaceHeaderAction[];
 }
 
+/**
+ * The stacked screen shows the ACTIVE tab of the workspace, not the document it was opened for:
+ * the workspace loads one record and owns the edit session, so a tab switch only changes this data.
+ */
 function useDocument(params: DocumentParams): SecondaryData<DocumentScreenData> {
   const session = useDocumentEditor();
+  const tabs = useDocumentTabs();
   const { t } = useTranslation();
-  const { actions, dirty } = documentHeaderModel(session, t);
-  const name = session?.document.filename ?? session?.document.title;
+  const documentId = tabs.activeId ?? params.documentId;
+  const { actions, dirty } = documentHeaderModel(session, t, {
+    onCloseTab: () => void tabs.requestClose(documentId),
+  });
+  const name =
+    tabs.tabs.find((tab) => tab.id === documentId)?.label ??
+    session?.document.filename ??
+    session?.document.title;
   return {
     status: 'ready',
     data: {
       ...params,
+      documentId,
       title: name?.split('/').at(-1) ?? t('specification.documentPreviewTitle'),
       dirty,
       actions,
@@ -119,28 +132,15 @@ export function DocumentPane({ data }: { data: DocumentParams }) {
   );
 }
 
-/** Marks a document with unsaved edits in a header. */
-export function UnsavedMarker() {
-  const { t } = useTranslation();
-  return (
-    <span role="status" className="text-content-muted" title={t('documents.unsaved')}>
-      <span aria-hidden="true">•</span>
-      <span className="sr-only">{t('documents.unsaved')}</span>
-    </span>
-  );
-}
-
-function DocumentStackHeader({ data }: { data: DocumentScreenData }) {
-  return (
-    <WorkspaceHeaderIdentity
-      headingLevel={2}
-      title={data.title}
-      status={data.dirty ? <UnsavedMarker /> : undefined}
-    />
-  );
+/** The narrow header: the switcher `name (N)` opens the list of open documents. */
+function DocumentStackHeader() {
+  return <DocumentTabStrip variant="switcher" />;
 }
 
 function DocumentPaneScreen({ data }: { data: DocumentScreenData }) {
+  const { registerStack } = useDocumentTabs();
+  // While this screen is mounted the workspace does not close and reopen it on a tab switch.
+  useEffect(() => registerStack(), [registerStack]);
   return <DocumentPane data={data} />;
 }
 
@@ -150,7 +150,7 @@ export const documentStack = defineSecondaryStack<
   DocumentScreenData,
   { document: Record<string, never> }
 >({
-  id: 'demo-active-document-v4',
+  id: 'demo-active-document-v5',
   initial: 'document',
   useData: useDocument,
   screens: {
@@ -162,8 +162,13 @@ export const documentStack = defineSecondaryStack<
       header: DocumentStackHeader,
       actions: ({ data }) => data.actions,
       get actionLabels() {
-        return { moreActions: translateNow('common.moreActions') };
+        return {
+          moreActions: translateNow('common.moreActions'),
+          menuActions: translateNow('documents.menuActions'),
+        };
       },
+      // Every action, promoted ones included, is in the menu (the compact row has no direct ones).
+      menu: 'complete',
       component: DocumentPaneScreen,
       preserveOnDataLoss: true,
     },

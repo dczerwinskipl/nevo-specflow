@@ -63,7 +63,7 @@ function InspectorContent({ data }: SecondaryScreenProps<HeaderData, EditorPages
   );
 }
 
-function createInspectorStack(source: Source) {
+function createInspectorStack(source: Source, menu?: 'complete') {
   function useInspectorData(): SecondaryData<HeaderData> {
     const snapshot = useSyncExternalStore(source.subscribe, source.getSnapshot, source.getSnapshot);
     return { status: 'ready', data: { ...snapshot, recordAction: source.recordAction } };
@@ -78,6 +78,7 @@ function createInspectorStack(source: Source) {
         header: InspectorHeader,
         component: InspectorContent,
         actionLabels: { moreActions: 'Screen actions', menuScope: 'Editor' },
+        menu,
         actions: ({ data }) => [
           {
             id: 'save',
@@ -104,9 +105,9 @@ function createInspectorStack(source: Source) {
   });
 }
 
-function HeaderActionsWorkspace() {
+function HeaderActionsWorkspace({ menu }: { menu?: 'complete' }) {
   const [source] = useState(createSource);
-  const [stack] = useState(() => createInspectorStack(source));
+  const [stack] = useState(() => createInspectorStack(source, menu));
   const navigation = useSecondaryNavigation();
   return (
     <AppWorkspace split="primary">
@@ -120,12 +121,12 @@ function HeaderActionsWorkspace() {
   );
 }
 
-function HeaderActionsFixture({ width }: { width: number }) {
+function HeaderActionsFixture({ width, menu }: { width: number; menu?: 'complete' }) {
   return (
     <div style={{ width, maxWidth: '100%', height: 700 }}>
       <AppWorkspaceProvider>
         <AppShell navigation={<div>Global navigation</div>} style={{ height: 700, width: '100%' }}>
-          <HeaderActionsWorkspace />
+          <HeaderActionsWorkspace menu={menu} />
         </AppShell>
       </AppWorkspaceProvider>
     </div>
@@ -245,5 +246,49 @@ export const MobileCollapsedCustomHeaderActions: Story = {
       canvas.getByRole('button', { name: 'Back' }),
       'Back must remain available after custom actions',
     );
+  },
+};
+
+export const DesktopCompleteMenuFromScreenDefinition: Story = {
+  args: { width: 1400, menu: 'complete' },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Open editor' }));
+    // The primary action is direct AND listed in the menu (complete), above the rest.
+    assert(canvas.getByRole('button', { name: 'Save' }), 'Save must be direct');
+    await userEvent.click(canvas.getByRole('button', { name: 'Screen actions' }));
+    const doc = canvasElement.ownerDocument;
+    for (const label of ['Save', 'Refresh', 'Open full view'])
+      assert(findMenuItem(doc, label), `Complete menu must list ${label}`);
+    assert(
+      doc.querySelector('[role="menu"] [role="group"]'),
+      'Complete menu must render its action group',
+    );
+    await userEvent.keyboard('{Escape}');
+  },
+};
+
+export const MobileCompleteMenuFromScreenDefinition: Story = {
+  args: { width: 390, menu: 'complete' },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Open editor' }));
+    const viewport = canvasElement.querySelector<HTMLElement>(
+      '[data-workspace-surface="secondary"] .mobile-workspace-scroll',
+    );
+    assert(viewport, 'Secondary must expose a mobile scroll viewport');
+    viewport.scrollTop = 150;
+    viewport.dispatchEvent(new Event('scroll', { bubbles: true }));
+    await settleFrame();
+    await settleFrame();
+    const trigger = canvasElement.querySelector<HTMLButtonElement>(
+      '.mobile-floating-navigation:not([aria-hidden="true"]) button[aria-label="Screen actions"]',
+    );
+    assert(trigger, 'Collapsed header must expose the declared action menu');
+    await userEvent.click(trigger);
+    assert(
+      canvasElement.ownerDocument.querySelector('[role="menu"] [role="group"]'),
+      'The compact menu must pass the complete mode through',
+    );
+    await userEvent.keyboard('{Escape}');
   },
 };

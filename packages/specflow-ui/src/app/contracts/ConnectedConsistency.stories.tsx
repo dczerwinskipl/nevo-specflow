@@ -391,15 +391,20 @@ export const ResponsiveDirtyDocument: Story = {
       'Retained position',
     );
     await expect(canvas.getByLabelText('Bieżąca trasa')).toHaveTextContent('collection=archive');
+    // A tab switch is not leaving: the dirty document stays in its tab and nothing asks.
     await userEvent.click(canvas.getByRole('button', { name: /^CLIENT.TXT$/ }));
-    const dialog = within(document.body).getByRole('alertdialog');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Zapisz i przejdź' }));
-    // A document opened for the first time defaults to Preview.
-    await expect(canvasElement.querySelector('pre')).toHaveTextContent('# Rozmowa z klientem');
-    await expect(canvas.getByLabelText('Bieżąca trasa')).toHaveTextContent('collection=archive');
-    await settleViewport();
-    await invokeDocumentAction(canvas, userEvent, 'Edytuj dokument');
+    await expect(document.querySelector('[role="alertdialog"]')).toBeNull();
+    // Plain text has one view: it opens as the editable source.
     await canvas.findByRole('textbox', { name: 'Treść notes/CLIENT.TXT' });
+    await expect(canvas.getByLabelText('Bieżąca trasa')).toHaveTextContent('collection=archive');
+    await expect(
+      canvas.getAllByRole('tab').map((tab) => tab.getAttribute('aria-selected')),
+    ).toEqual(['false', 'true']);
+    // The first tab keeps its unsaved edits.
+    await userEvent.click(canvas.getByRole('tab', { name: /specification.md/ }));
+    await expect(
+      await canvas.findByRole('textbox', { name: 'Treść specification.md' }),
+    ).toHaveTextContent('Retained position');
   },
 };
 export const OpeningADocumentFromTheTreeMovesFocusToItsHeading: Story = {
@@ -414,8 +419,12 @@ export const OpeningADocumentFromTheTreeMovesFocusToItsHeading: Story = {
       await userEvent.keyboard('{Enter}');
       await waitFor(() => {
         const active = document.activeElement;
-        if (!active?.matches('[data-workspace-header-title="true"]'))
-          throw new Error(`Focus is on ${active?.tagName} at ${width}px`);
+        // Wide: the new tab. Narrow (no strip): the document heading.
+        const target =
+          width >= 840
+            ? active?.matches('[role="tab"][aria-selected="true"]')
+            : active?.matches('[data-workspace-header-title="true"]');
+        if (!target) throw new Error(`Focus is on ${active?.tagName} at ${width}px`);
         void expect(active).toHaveTextContent('specification.md');
       });
     }
@@ -483,27 +492,31 @@ export const ClosingADirtyDocumentAsksFirst: Story = {
     const input = await canvas.findByRole('textbox', { name: 'Treść specification.md' });
     await userEvent.click(input);
     await userEvent.keyboard('{Control>}{End}{/Control}{Enter}Unsaved line');
-    const close = () => userEvent.click(canvas.getByRole('button', { name: 'Zamknij dokument' }));
+    // The region's close closes every tab, asking once about the unsaved documents.
+    const close = () =>
+      userEvent.click(canvas.getByRole('button', { name: 'Zamknij wszystkie dokumenty' }));
     const dialog = () => within(document.body).findByRole('alertdialog');
 
     // Keep editing: the pane and the draft stay.
     await close();
     let choice = await dialog();
-    for (const name of ['Kontynuuj edycję', 'Odrzuć zmiany', 'Zapisz i przejdź'])
+    for (const name of ['Kontynuuj edycję', 'Odrzuć wszystkie', 'Zapisz wszystkie'])
       await expect(within(choice).getByRole('button', { name })).toBeVisible();
+    await expect(within(choice).getAllByRole('listitem')).toHaveLength(1);
     await userEvent.click(within(choice).getByRole('button', { name: 'Kontynuuj edycję' }));
     await waitFor(() => expect(document.querySelector('[role="alertdialog"]')).toBeNull());
     await expect(canvas.getByRole('textbox', { name: 'Treść specification.md' })).toHaveTextContent(
       'Unsaved line',
     );
 
-    // Discard: the pane closes and the draft is gone.
+    // Discard all: every tab closes and the draft is gone.
     await close();
     choice = await dialog();
-    await userEvent.click(within(choice).getByRole('button', { name: 'Odrzuć zmiany' }));
+    await userEvent.click(within(choice).getByRole('button', { name: 'Odrzuć wszystkie' }));
     await waitFor(() =>
       expect(canvas.queryByRole('textbox', { name: 'Treść specification.md' })).toBeNull(),
     );
+    await expect(canvas.queryByRole('tab')).toBeNull();
     await userEvent.click(await canvas.findByRole('button', { name: /^specification.md/ }));
     await waitFor(() =>
       expect(canvasElement.querySelector('[data-workspace-surface="secondary"]')).not.toBeNull(),

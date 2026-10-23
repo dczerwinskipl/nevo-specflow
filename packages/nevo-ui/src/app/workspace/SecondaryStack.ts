@@ -1,5 +1,9 @@
 import type { ComponentType, ReactNode } from 'react';
-import type { WorkspaceHeaderAction, WorkspaceHeaderLabels } from './WorkspaceHeader';
+import type {
+  WorkspaceHeaderAction,
+  WorkspaceHeaderLabels,
+  WorkspaceHeaderMenu,
+} from './WorkspaceHeader';
 
 export type SecondaryData<T> =
   | { status: 'loading'; presentation?: ReactNode }
@@ -20,6 +24,8 @@ export interface SecondaryScreenDefinition<TData, TParams extends object> {
   /** Pure action metadata, resolved against the same live data as Header and Content. */
   actions?: (props: SecondaryScreenProps<TData, TParams>) => readonly WorkspaceHeaderAction[];
   actionLabels?: Partial<WorkspaceHeaderLabels>;
+  /** `'complete'` lists every action in the `...` menu, promoted ones included. Default: overflow only. */
+  menu?: WorkspaceHeaderMenu;
   component: ComponentType<SecondaryScreenProps<TData, TParams>>;
   /** Keep an editor through loading or network errors; missing or denied content always unmounts. */
   preserveOnDataLoss?: boolean;

@@ -41,6 +41,8 @@ export function useDocumentOpening(options: {
   const [focusFor, setFocusFor] = useState<string>();
   // Guards the stack effect: the navigation controller changes identity whenever it opens or closes.
   const stackFor = useRef('');
+  // The specification and layout the stacked screen was last requested for.
+  const stackLayout = useRef('');
   // Identifies the latest stack request. `close()` is asynchronous, so a continuation that is no
   // longer the latest (superseded target, left the route, unmounted) must not open its document.
   // It is a ref, not an effect-local flag: the effect re-runs on every controller identity change
@@ -52,6 +54,7 @@ export function useDocumentOpening(options: {
       // Unmount (or a StrictMode remount): drop the pending request and let the next setup restart.
       stackRequest.current += 1;
       stackFor.current = '';
+      stackLayout.current = '';
     },
     [],
   );
@@ -62,13 +65,20 @@ export function useDocumentOpening(options: {
       stackRequest.current += 1;
       if (stackFor.current) {
         stackFor.current = '';
+        stackLayout.current = '';
         void navigation.close();
       }
       return;
     }
     const key = `${specId}:${documentId}:${supportsSplit}`;
     if (stackFor.current === key) return;
+    const layout = `${specId}:${supportsSplit}`;
+    const sameLayout = stackLayout.current === layout;
     stackFor.current = key;
+    stackLayout.current = layout;
+    // The stacked screen follows the active tab by itself: a tab switch changes nothing there, and
+    // closing then reopening it would remount the editor. Only a new layout or specification does.
+    if (sameLayout && tabs.isStackOpen()) return;
     stackRequest.current += 1;
     const request = stackRequest.current;
     void (async () => {
@@ -76,7 +86,7 @@ export function useDocumentOpening(options: {
       if (request !== stackRequest.current) return;
       if (!supportsSplit) await navigation.open(documentStack, { specId, documentId });
     })();
-  }, [documentId, specId, supportsSplit, navigation]);
+  }, [documentId, specId, supportsSplit, navigation, tabs]);
 
   useEffect(() => {
     if (!supportsSplit || !documentId || focusFor !== documentId) return;

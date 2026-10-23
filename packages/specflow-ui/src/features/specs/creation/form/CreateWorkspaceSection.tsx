@@ -1,6 +1,6 @@
-import type { CreateOptionsModel } from './useCreateOptions';
-import { WorkspacePlaceSection } from './workspace/WorkspacePlaceSection';
-import type { WorkspacePlace } from './workspace/useWorkspacePlace';
+import type { CreateOptionsModel } from '../options/useCreateOptions';
+import { WorkspacePlaceSection } from '../workspace/WorkspacePlaceSection';
+import type { WorkspacePlace } from '../workspace/useWorkspacePlace';
 
 /**
  * The "where does it live" section of a Create form, wired to the form's options and place choice.

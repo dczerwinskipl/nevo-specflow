@@ -3,7 +3,7 @@ import {
   createOptionsFixture,
   workspaceIds as ids,
   type OptionsVariant,
-} from '../creationOptions.stories-support';
+} from '../options/creationOptions.stories-support';
 import { polishText } from '../../../../i18n/testing';
 import {
   activeTile,

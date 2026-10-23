@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Field, TextInput } from '@nevo/ui';
 import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
 import { ArchetypeSummary } from './ArchetypeSummary';
-import { LocalizedOptionPicker } from '../../../shared/controls/LocalizedOptionPicker';
+import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
 
 /** Name and workflow of a new specification. */
 export function CreateBasicsSection({

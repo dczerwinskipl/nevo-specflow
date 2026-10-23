@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { StoryLocalization } from '../../../i18n/StoryLocalization';
+import { StoryLocalization } from '../../../../i18n/StoryLocalization';
 import { ArchetypeSummary as Summary } from './ArchetypeSummary';
 
 const ArchetypeSummary = (props: Parameters<typeof Summary>[0]) => (

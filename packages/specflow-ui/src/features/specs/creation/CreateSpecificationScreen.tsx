@@ -5,8 +5,8 @@ import { FeatureUnavailable } from '../../../app/errors/FeatureUnavailable';
 import { useAppServices } from '../../../app/useAppServices';
 import { useRuntimeInfo } from '../../../app/useRuntimeMode';
 import { demoCreationKeys } from './api/api.demo';
-import { CreateDemoForm } from './CreateDemoForm';
-import { CreateProjectForm } from './CreateProjectForm';
+import { CreateDemoForm } from './form/CreateDemoForm';
+import { CreateProjectForm } from './form/CreateProjectForm';
 import { CreateFallback, CreateRuntimeGate } from './CreateRuntimeGate';
 
 interface Props {

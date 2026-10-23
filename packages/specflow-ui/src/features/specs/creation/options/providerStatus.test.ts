@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { polishText } from '../../../i18n/testing';
+import { polishText } from '../../../../i18n/testing';
 import { providerStatus as rawProviderStatus } from './providerStatus';
 
 // The status carries catalogue messages; these tests assert the Polish text they render to.

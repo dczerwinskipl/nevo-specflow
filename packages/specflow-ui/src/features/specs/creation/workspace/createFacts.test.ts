@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createOptionsFixture, workspaceIds as ids } from '../creationOptions.stories-support';
+import { createOptionsFixture, workspaceIds as ids } from '../options/creationOptions.stories-support';
 import { buildCreateFacts, toCreateFacts } from './createFacts';
 import { initialWorkspaceChoice, type WorkspaceChoice } from './workspaceChoice';
 

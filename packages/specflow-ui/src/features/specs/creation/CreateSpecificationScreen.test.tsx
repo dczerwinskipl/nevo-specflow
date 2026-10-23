@@ -15,7 +15,7 @@ import type { CreateFailure } from './errors/createFailure';
 import { initialWorkspaceChoice } from './workspace/workspaceChoice';
 import { createOperationEventsUrl, type ProjectCreationApi } from './api/api.project';
 import { CreateSpecificationScreen } from './CreateSpecificationScreen';
-import { createOptionsFixture } from './creationOptions.stories-support';
+import { createOptionsFixture } from './options/creationOptions.stories-support';
 
 const created: CreatedSpec = {
   operationId: '00000000-0000-4000-8000-000000000001',

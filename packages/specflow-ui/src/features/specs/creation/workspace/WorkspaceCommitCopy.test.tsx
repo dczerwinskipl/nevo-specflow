@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { StoryLocalization } from '../../../../i18n/StoryLocalization';
 import type { AppLocale } from '../../../../i18n';
-import { createOptionsFixture, workspaceIds as ids } from '../creationOptions.stories-support';
+import { createOptionsFixture, workspaceIds as ids } from '../options/creationOptions.stories-support';
 import { WorkspacePlaceSection } from './WorkspacePlaceSection';
 import { ExistingSummary, MainSummary, NewSummary } from './WorkspaceTileSummaries';
 import { initialWorkspaceChoice, type WorkspaceChoice } from './workspaceChoice';

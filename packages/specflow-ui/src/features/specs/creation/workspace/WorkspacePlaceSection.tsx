@@ -29,7 +29,7 @@ import {
   type IconGlyph,
 } from '@nevo/ui';
 import { useFocusRequest } from '../../../../shared/a11y/useFocusRequest';
-import { ChoiceTile, ChoiceTileGroup } from '../ChoiceTile';
+import { ChoiceTile, ChoiceTileGroup } from '../options/ChoiceTile';
 import { BranchRef } from './BranchRef';
 import { ExistingSummary, MainSummary, NewSummary } from './WorkspaceTileSummaries';
 import { activeTile, primaryWorkspace, tileAvailability } from './workspaceTiles';

@@ -6,31 +6,31 @@ import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
 import {
   ApplicationContextLine,
   ApplicationFlowBack,
-} from '../../../app/navigation/ApplicationLocation';
-import { useAppServices } from '../../../app/useAppServices';
-import { useMessage } from '../../../i18n/message';
-import { useAnnouncer } from '../../../shared/a11y/useAnnouncer';
-import { initialAgentChoice, providerDefaultEffort, type AgentChoice } from './agentChoice';
-import { CreateAgentSection } from './CreateAgentSection';
-import { CreateBasicsSection } from './CreateBasicsSection';
+} from '../../../../app/navigation/ApplicationLocation';
+import { useAppServices } from '../../../../app/useAppServices';
+import { useMessage } from '../../../../i18n/message';
+import { useAnnouncer } from '../../../../shared/a11y/useAnnouncer';
+import { initialAgentChoice, providerDefaultEffort, type AgentChoice } from '../options/agentChoice';
+import { CreateAgentSection } from '../options/CreateAgentSection';
+import { CreateBasicsSection } from '../options/CreateBasicsSection';
 import { CreateConfigurationNotice } from './CreateConfigurationNotice';
-import { CreateFailurePanel } from './errors/CreateFailurePanel';
+import { CreateFailurePanel } from '../errors/CreateFailurePanel';
 import { CreateFooter } from './CreateFooter';
 import { CreateFormHeader } from './CreateFormHeader';
 import { CreateLeaveDialog } from './CreateLeaveDialog';
-import { CreateMethodChoice } from './CreateMethodChoice';
-import { CreateShell } from './CreateShell';
+import { CreateMethodChoice } from '../options/CreateMethodChoice';
+import { CreateShell } from '../CreateShell';
 import { createReadiness } from './createReadiness';
-import { demoCreationKeys } from './api/api.demo';
+import { demoCreationKeys } from '../api/api.demo';
 import { SessionWorkspaceSummary } from './SessionWorkspaceSummary';
 import { useCreateLeaveGuard } from './useCreateLeaveGuard';
-import { useCreateOptions } from './useCreateOptions';
-import { useCreateDemoSpecification, type CreateSubmission } from './operation/useCreateDemoSpecification';
-import { useRevealFailure } from './errors/useRevealFailure';
+import { useCreateOptions } from '../options/useCreateOptions';
+import { useCreateDemoSpecification, type CreateSubmission } from '../operation/useCreateDemoSpecification';
+import { useRevealFailure } from '../errors/useRevealFailure';
 import { CreateWorkspaceSection } from './CreateWorkspaceSection';
-import { buildCreateSlug, buildCreateTarget } from './workspace/createRequest';
-import { requestChoiceSnapshot } from './workspace/workspaceChoice';
-import { useWorkspacePlace } from './workspace/useWorkspacePlace';
+import { buildCreateSlug, buildCreateTarget } from '../workspace/createRequest';
+import { requestChoiceSnapshot } from '../workspace/workspaceChoice';
+import { useWorkspacePlace } from '../workspace/useWorkspacePlace';
 
 export interface CreateDemoFormProps {
   catalogue: DemoCatalogue;

@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createOptionsFixture } from './creationOptions.stories-support';
+import { createOptionsFixture } from '../options/creationOptions.stories-support';
 import {
   createGoalMaxLength,
   createTitleMaxLength,
   projectCreateReadiness,
 } from './createProjectReadiness';
-import { initialWorkspaceChoice } from './workspace/workspaceChoice';
+import { initialWorkspaceChoice } from '../workspace/workspaceChoice';
 
 const ready = { status: 'ready', options: createOptionsFixture('default') } as const;
 const base = {

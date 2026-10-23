@@ -16,7 +16,7 @@ import {
   createOptionsFixture,
   workspaceIds,
   type OptionsVariant,
-} from '../creationOptions.stories-support';
+} from '../options/creationOptions.stories-support';
 import { polishText } from '../../../../i18n/testing';
 import { withLocale } from '../../../../i18n/StoryLocalization';
 

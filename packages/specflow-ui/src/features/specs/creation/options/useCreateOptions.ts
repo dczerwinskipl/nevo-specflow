@@ -1,7 +1,7 @@
 import { useQuery, type QueryKey } from '@tanstack/react-query';
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
 import { useVisitFreshOptions } from './visitFreshOptions';
-import type { WorkspaceOptionsState } from './workspace/workspaceChoice';
+import type { WorkspaceOptionsState } from '../workspace/workspaceChoice';
 
 export interface CreateOptionsSource {
   queryKey: QueryKey;

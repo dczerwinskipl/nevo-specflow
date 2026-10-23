@@ -1,31 +1,31 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Field, Separator, TextArea, TextInput } from '@nevo/ui';
-import { isApiError } from '../../../api';
-import { ApplicationContextLine } from '../../../app/navigation/ApplicationLocation';
-import { useAppServices } from '../../../app/useAppServices';
-import { useMessage } from '../../../i18n/message';
-import { useAnnouncer } from '../../../shared/a11y/useAnnouncer';
-import type { RequestAttempt } from '../../../shared/operations/retainedRequest';
-import { projectCreationKeys } from './api/api.project';
+import { isApiError } from '../../../../api';
+import { ApplicationContextLine } from '../../../../app/navigation/ApplicationLocation';
+import { useAppServices } from '../../../../app/useAppServices';
+import { useMessage } from '../../../../i18n/message';
+import { useAnnouncer } from '../../../../shared/a11y/useAnnouncer';
+import type { RequestAttempt } from '../../../../shared/operations/retainedRequest';
+import { projectCreationKeys } from '../api/api.project';
 import { CreateFooter } from './CreateFooter';
 import { CreateFormHeader } from './CreateFormHeader';
 import { CreateLeaveDialog } from './CreateLeaveDialog';
-import { CreateShell } from './CreateShell';
-import { useCreateOperationStorage, type SentCreateRequest } from './operation/createOperationStorage';
+import { CreateShell } from '../CreateShell';
+import { useCreateOperationStorage, type SentCreateRequest } from '../operation/createOperationStorage';
 import {
   createGoalMaxLength,
   createTitleMaxLength,
   projectCreateReadiness,
 } from './createProjectReadiness';
-import { startCreate } from './operation/startCreate';
+import { startCreate } from '../operation/startCreate';
 import { useCreateLeaveGuard } from './useCreateLeaveGuard';
-import { useCreateOptions } from './useCreateOptions';
+import { useCreateOptions } from '../options/useCreateOptions';
 import { CreateWorkspaceSection } from './CreateWorkspaceSection';
-import { buildCreateFacts } from './workspace/createFacts';
-import { buildCreateSlug, buildCreateTarget } from './workspace/createRequest';
-import { requestChoiceSnapshot, type WorkspaceChoice } from './workspace/workspaceChoice';
-import { useWorkspacePlace } from './workspace/useWorkspacePlace';
+import { buildCreateFacts } from '../workspace/createFacts';
+import { buildCreateSlug, buildCreateTarget } from '../workspace/createRequest';
+import { requestChoiceSnapshot, type WorkspaceChoice } from '../workspace/workspaceChoice';
+import { useWorkspacePlace } from '../workspace/useWorkspacePlace';
 
 /**
  * The Create form of a project Runtime: the specification name, an optional goal and where it

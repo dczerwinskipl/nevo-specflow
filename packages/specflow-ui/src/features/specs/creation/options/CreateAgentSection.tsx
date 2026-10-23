@@ -2,8 +2,8 @@ import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn, Field, SegmentedControl, StatusIndicator, Typography } from '@nevo/ui';
 import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
-import { useMessage } from '../../../i18n/message';
-import { SessionProviderIcon } from '../../sessions';
+import { useMessage } from '../../../../i18n/message';
+import { SessionProviderIcon } from '../../../sessions';
 import {
   modeLabel,
   providerDefaultEffort,
@@ -13,7 +13,7 @@ import {
   type AgentChoice,
 } from './agentChoice';
 import { ChoiceTile, ChoiceTileGroup } from './ChoiceTile';
-import { LocalizedOptionPicker } from '../../../shared/controls/LocalizedOptionPicker';
+import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
 import { providerStatus } from './providerStatus';
 
 /** Provider, model, effort and mode of the agent that writes the specification or runs the Session. */

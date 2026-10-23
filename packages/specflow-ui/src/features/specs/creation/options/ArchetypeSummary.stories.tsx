@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect } from 'storybook/test';
 import { ArchetypeSummary } from './ArchetypeSummary';
 import { catalogue } from './creationCatalogue.stories-support';
-import { withLocale } from '../../../i18n/StoryLocalization';
+import { withLocale } from '../../../../i18n/StoryLocalization';
 
 const meta = {
   decorators: [withLocale('pl')],

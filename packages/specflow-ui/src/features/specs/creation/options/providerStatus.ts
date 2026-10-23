@@ -1,5 +1,5 @@
 import type { DemoCatalogue } from '@nevo/specflow-contracts/demo';
-import { message, type Message } from '../../../i18n/message';
+import { message, type Message } from '../../../../i18n/message';
 
 type Provider = DemoCatalogue['providers'][number];
 

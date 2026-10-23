@@ -1211,7 +1211,8 @@
       "open": "Otwórz spis treści",
       "title": "Spis treści ({{n}})",
       "description": "Przejdź do sekcji dokumentu",
-      "close": "Zamknij spis treści"
+      "close": "Zamknij spis treści",
+      "columnLabel": "Spis treści i właściwości dokumentu"
     },
     "menuDisplay": "Widok"
   },

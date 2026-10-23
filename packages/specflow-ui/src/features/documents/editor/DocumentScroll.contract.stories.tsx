@@ -593,7 +593,7 @@ export const EditingHidesTheContentsIcon: Story = {
 };
 
 /**
- * The column threshold: 880 px of panel (measured on the panel, not the viewport). The text keeps
+ * The column threshold: 840 px of panel (measured on the panel, not the viewport). The text keeps
  * about 65 characters, the column is 28% of the panel, and nothing pushes the panel sideways (the
  * document has a table).
  */
@@ -620,7 +620,7 @@ export const ColumnAppearsAtThePanelThreshold: Story = {
 };
 
 export const NoColumnJustBelowTheThreshold: Story = {
-  args: { width: 860, height: 700, initial: 'a' },
+  args: { width: 820, height: 700, initial: 'a' },
   play: async ({ canvas, canvasElement }) => {
     await waitForPreview(canvasElement);
     await expect(await canvas.findByRole('button', { name: 'Otwórz spis treści' })).toBeVisible();
@@ -700,5 +700,18 @@ export const OnlyPropertiesStillUseTheColumn: Story = {
     await expect(aside).not.toBeNull();
     await expect(canvas.queryByRole('navigation', { name: 'Spis treści' })).toBeNull();
     await expect(aside!.querySelector('[data-document-properties]')).not.toBeNull();
+  },
+};
+
+/** The panel of a 1440 px window (about 877 px) gets the column, with the text above 520 px. */
+export const ColumnAtThePanelOfA1440Window: Story = {
+  args: { width: 879, height: 700, initial: 'a' },
+  play: async ({ canvas, canvasElement }) => {
+    await waitForPreview(canvasElement);
+    await canvas.findByRole('navigation', { name: 'Spis treści' });
+    const text = canvasElement.querySelector<HTMLElement>('[data-source-line="1"]')!;
+    await expect(text.getBoundingClientRect().width).toBeGreaterThanOrEqual(520);
+    const panel = previewOf(canvasElement)!;
+    await expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth + 1);
   },
 };

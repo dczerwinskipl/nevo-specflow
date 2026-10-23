@@ -104,16 +104,18 @@ describe('markdown outline', () => {
 
 describe('contents column geometry', () => {
   it('is 28% of the panel between 240 and 320 px', () => {
-    expect(outlineColumnWidth(880)).toBe(246);
+    expect(outlineColumnWidth(840)).toBe(240);
+    expect(outlineColumnWidth(860)).toBe(241);
+    expect(outlineColumnWidth(877)).toBe(246);
     expect(outlineColumnWidth(700)).toBe(240);
     expect(outlineColumnWidth(1290)).toBe(320);
     expect(outlineColumnWidth(4000)).toBe(320);
   });
 
   it('leaves the text at least 520 px (about 65 characters) from the threshold up', () => {
-    expect(outlineColumnMinWidth).toBe(880);
-    for (const width of [880, 900, 922, 997, 1035, 1100, 1290])
+    expect(outlineColumnMinWidth).toBe(840);
+    for (const width of [840, 847, 860, 870, 877, 879, 900, 922, 997, 1035, 1100, 1290])
       expect(outlineTextWidth(width)).toBeGreaterThanOrEqual(outlineTextMinWidth);
-    expect(outlineTextWidth(860)).toBeLessThan(outlineTextWidth(880));
+    expect(outlineTextWidth(820)).toBeLessThan(outlineTextWidth(840));
   });
 });

@@ -86,6 +86,7 @@ function PreviewScroller({
   reportColumnShown: (shown: boolean | undefined) => void;
 }) {
   const markdownLabels = useMarkdownLabels();
+  const { t } = useTranslation();
   // Preview only: the raw `---` block is hidden and shown as read-only properties (`outline.body`).
   // Edit mode never reaches this view, so the source stays unchanged there.
   const { headings, properties, body } = outline;
@@ -225,6 +226,7 @@ function PreviewScroller({
         <div className="flex items-start gap-8">
           <div className="min-w-0 max-w-content-narrow flex-1">{text}</div>
           <aside
+            aria-label={t('documents.outline.columnLabel')}
             className="sticky top-0 grid shrink-0 grid-cols-1 gap-4"
             style={{ width: outlineColumnWidth(panelWidth) }}
           >

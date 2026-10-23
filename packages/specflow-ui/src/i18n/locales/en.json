@@ -1211,7 +1211,8 @@
       "open": "Open contents",
       "title": "Contents ({{n}})",
       "description": "Go to a section of the document",
-      "close": "Close contents"
+      "close": "Close contents",
+      "columnLabel": "Document contents and properties"
     },
     "menuDisplay": "Display"
   },

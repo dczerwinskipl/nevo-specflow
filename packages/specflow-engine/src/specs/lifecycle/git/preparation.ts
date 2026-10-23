@@ -1,6 +1,6 @@
 import type { SpecFlowEngine } from '../../../application';
 import { publishCloseCheckpoint } from '../close/checkpoint';
-import { readWorkspaceRegistry } from '../../../project/workspace-registry';
+import { readWorkspaceRegistry } from '../../../project/workspace/registry/registry';
 import { readProjectGitPolicy } from '../../../version-control/worktrees/config';
 import { inspectCloseGitIntegration } from './integration';
 import { readCloseJournal } from '../journal/store';

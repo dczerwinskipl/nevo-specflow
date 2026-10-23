@@ -15,14 +15,14 @@ export {
   type ProjectHomeErrorCode,
   type ResolveProjectHomeOptions,
   type ResolvedProjectHome,
-} from './project/project-home';
+} from './project/home/home';
 
 export {
   WorkspaceRegistryError,
   type WorkspaceRegistration,
   type WorkspaceRegistry,
   type WorkspaceRegistryErrorCode,
-} from './project/workspace-registry';
+} from './project/workspace/registry/registry';
 
 export { ProjectControlLockError, type ProjectControlLockErrorCode } from './project/control-lock';
 

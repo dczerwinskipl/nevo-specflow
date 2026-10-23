@@ -11,12 +11,12 @@ import {
   inspectRegisteredWorkspace,
   verifyWorkspaceRoot,
   type WorkspaceRegistration,
-} from '../../../project/workspace-registry';
+} from '../../../project/workspace/registry/registry';
 import {
   WORKSPACE_IDENTITY_RELATIVE_PATH,
   provisionLinkedWorkspaceIdentity,
   verifyLinkedWorkspaceIdentity,
-} from '../../../project/workspace-identity';
+} from '../../../project/workspace/identity';
 import { CreateOperationError, type CreateJournal } from '../journal';
 import { registrationOf } from '../binding/registration';
 import { requireCommitLineage } from './commit';

@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 
-import type { ResolvedProjectHome } from '../../../project/project-home';
-import { MAX_MANAGED_WORKSPACE_SPECIFICATIONS } from '../../../project/workspace-registry';
+import type { ResolvedProjectHome } from '../../../project/home/home';
+import { MAX_MANAGED_WORKSPACE_SPECIFICATIONS } from '../../../project/workspace/registry/registry';
 import { validateSpecificationSlug } from '../../model';
 import { fingerprintCloseIntent, resourcesForClosePlan, type CloseJournal } from '../model';
 

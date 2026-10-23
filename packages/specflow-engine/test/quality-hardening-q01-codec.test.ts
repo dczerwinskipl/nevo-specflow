@@ -13,7 +13,7 @@ import {
 } from '../src/testing';
 import { publishCloseCheckpoint } from '../src/specs/lifecycle/close/checkpoint';
 import { isCloseJournal } from '../src/specs/lifecycle/journal/codec';
-import { readWorkspaceRegistry } from '../src/project/workspace-registry';
+import { readWorkspaceRegistry } from '../src/project/workspace/registry/registry';
 import {
   closeJournalPath,
   publishCloseJournal,

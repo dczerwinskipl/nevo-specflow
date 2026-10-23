@@ -8,10 +8,10 @@ import {
   PROJECT_CONFIG_RELATIVE_PATH,
   resolveGitCheckoutLayout,
   runGit,
-} from './git-checkout';
-import { READ_GIT_CONCURRENCY, mapBounded } from '../concurrency';
-import { verifyGitInstance } from './git-instance';
-import { ProjectHomeError } from './project-home-error';
+} from '../git-checkout';
+import { READ_GIT_CONCURRENCY, mapBounded } from '../../concurrency';
+import { verifyGitInstance } from '../git-instance';
+import { ProjectHomeError } from './error';
 
 /**
  * Workstation-owned home designation. This is deliberately not committed:
@@ -21,7 +21,7 @@ import { ProjectHomeError } from './project-home-error';
 export const PROJECT_HOME_MARKER_RELATIVE_PATH = '.nevo/local/state/project-home.json';
 export const PROJECT_STATE_RELATIVE_PATH = '.nevo/local/state';
 
-export { ProjectHomeError, type ProjectHomeErrorCode } from './project-home-error';
+export { ProjectHomeError, type ProjectHomeErrorCode } from './error';
 
 export interface ResolveProjectHomeOptions {
   readonly cwd: string;

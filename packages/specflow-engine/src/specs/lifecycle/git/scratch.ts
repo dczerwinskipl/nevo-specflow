@@ -10,7 +10,7 @@ import { readWorkspaceSpecification } from '../../repository';
 import { GitCapabilityError } from '../../../git/errors';
 import { isGitIgnored } from '../../../project/git-checkout';
 import { publishCloseCheckpoint } from '../close/checkpoint';
-import { readWorkspaceRegistry } from '../../../project/workspace-registry';
+import { readWorkspaceRegistry } from '../../../project/workspace/registry/registry';
 import {
   createDetachedIntegrationCheckout,
   inspectDetachedIntegrationCheckout,

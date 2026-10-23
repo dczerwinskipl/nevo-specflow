@@ -1,10 +1,10 @@
 import { lstat, mkdir, readdir, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { writeJsonAtomically } from '../../../project/atomic-json';
-import { readFileWindowsSafe } from '../../../project/windows-safe-fs';
+import { writeJsonAtomically } from '../../../project/fs/atomic-json';
+import { readFileWindowsSafe } from '../../../project/fs/windows-safe-fs';
 import { withProjectControlLock } from '../../../project/control-lock';
-import type { ResolvedProjectHome } from '../../../project/project-home';
+import type { ResolvedProjectHome } from '../../../project/home/home';
 import { CreateOperationError } from '../error';
 import type { CreateJournal } from './model';
 import { UUID, invalidJournal, parseCreateJournal } from './codec';

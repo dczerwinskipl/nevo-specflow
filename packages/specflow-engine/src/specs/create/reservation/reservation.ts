@@ -9,7 +9,7 @@ import {
 import {
   MAX_MANAGED_WORKSPACE_SPECIFICATIONS,
   inspectRegisteredWorkspace,
-} from '../../../project/workspace-registry';
+} from '../../../project/workspace/registry/registry';
 import {
   inspectExplicitIntegrationDestination,
   type ExplicitIntegrationPreflight,

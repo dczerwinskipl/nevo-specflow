@@ -1,8 +1,8 @@
 import { lstat, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import type { ResolvedProjectHome } from '../../../project/project-home';
-import { readFileWindowsSafe, removeFileWindowsSafe } from '../../../project/windows-safe-fs';
+import type { ResolvedProjectHome } from '../../../project/home/home';
+import { readFileWindowsSafe, removeFileWindowsSafe } from '../../../project/fs/windows-safe-fs';
 import { CREATE_JOURNAL_RELATIVE_DIR, isStrayJournalTempName } from './store';
 import { UUID, parseCreateJournal } from './codec';
 

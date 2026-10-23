@@ -1,9 +1,9 @@
 import { lstat, mkdir, readdir, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { writeJsonAtomically } from '../../../project/atomic-json';
-import { readFileWindowsSafe } from '../../../project/windows-safe-fs';
-import type { ResolvedProjectHome } from '../../../project/project-home';
+import { writeJsonAtomically } from '../../../project/fs/atomic-json';
+import { readFileWindowsSafe } from '../../../project/fs/windows-safe-fs';
+import type { ResolvedProjectHome } from '../../../project/home/home';
 import { CLOSE_UUID, isCloseJournal } from './codec';
 import { CloseOperationError, type CloseJournal } from '../model';
 

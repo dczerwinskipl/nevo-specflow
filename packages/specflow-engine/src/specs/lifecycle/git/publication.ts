@@ -4,7 +4,7 @@ import { publishCloseCheckpoint } from '../close/checkpoint';
 import {
   inspectRegisteredWorkspace,
   readWorkspaceRegistry,
-} from '../../../project/workspace-registry';
+} from '../../../project/workspace/registry/registry';
 import {
   inspectGitIntegrationEvidence,
   publishGitFastForward,

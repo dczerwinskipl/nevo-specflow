@@ -2,12 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { lstat, readFile } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 
-import { PROJECT_HOME_MARKER_RELATIVE_PATH, type ResolvedProjectHome } from './project-home';
-import { verifyLinkedWorkspaceIdentity } from './workspace-identity';
-import { verifyWorkspaceMembership } from './workspace-membership';
-import { verifyGitInstance } from './git-instance';
-import { memoizeVerification } from './request-verification-memo';
-import { readFileWindowsSafe } from './windows-safe-fs';
+import { PROJECT_HOME_MARKER_RELATIVE_PATH, type ResolvedProjectHome } from '../../home/home';
+import { verifyLinkedWorkspaceIdentity } from '../identity';
+import { verifyWorkspaceMembership } from '../membership';
+import { verifyGitInstance } from '../../git-instance';
+import { memoizeVerification } from '../../request-verification-memo';
+import { readFileWindowsSafe } from '../../fs/windows-safe-fs';
 
 import {
   WORKSPACE_REGISTRY_RELATIVE_PATH,
@@ -16,19 +16,14 @@ import {
   type WorkspaceRegistration,
   type WorkspaceRegistry,
   type RegisteredWorkspaceInspection,
-} from './workspace-registry-types';
-import {
-  corrupt,
-  isIdentifier,
-  pathKey,
-  validateWorkspaceRegistry,
-} from './workspace-registry-validation';
+} from './types';
+import { corrupt, isIdentifier, pathKey, validateWorkspaceRegistry } from './validation';
 
 export {
   WORKSPACE_REGISTRY_RELATIVE_PATH,
   WORKSPACE_REGISTRY_VERSION,
   WorkspaceRegistryError,
-} from './workspace-registry-types';
+} from './types';
 export type {
   WorkspaceRegistryErrorCode,
   WorkspaceRegistration,
@@ -36,8 +31,8 @@ export type {
   SpecWorkspaceBinding,
   WorkspaceRegistry,
   RegisteredWorkspaceInspection,
-} from './workspace-registry-types';
-export { validateWorkspaceRegistry } from './workspace-registry-validation';
+} from './types';
+export { validateWorkspaceRegistry } from './validation';
 
 /** Product admission bound; Close journals can safely persist every bound occupant. */
 export const MAX_MANAGED_WORKSPACE_SPECIFICATIONS = 1024;

@@ -1,10 +1,10 @@
 import { realpath } from 'node:fs/promises';
 import { isAbsolute } from 'node:path';
 
-import { verifyCheckoutOnDisk, verifyProjectHomeOnDisk } from './disk-verification';
-import { resolveProjectHome, type ResolvedProjectHome } from './project-home';
-import { isReadRequest, memoizeVerification } from './request-verification-memo';
-import { WorkspaceRegistryError } from './workspace-registry-types';
+import { verifyCheckoutOnDisk, verifyProjectHomeOnDisk } from '../disk-verification';
+import { resolveProjectHome, type ResolvedProjectHome } from '../home/home';
+import { isReadRequest, memoizeVerification } from '../request-verification-memo';
+import { WorkspaceRegistryError } from './registry/types';
 
 /** Git and Project Home admission without linked-marker verification. */
 export async function verifyWorkspaceMembership(

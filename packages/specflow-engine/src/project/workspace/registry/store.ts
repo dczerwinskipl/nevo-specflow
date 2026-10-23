@@ -1,11 +1,11 @@
 import { lstat, readFile } from 'node:fs/promises';
 import { isDeepStrictEqual } from 'node:util';
 
-import { writeJsonAtomically } from './atomic-json';
-import { withProjectControlLock, type ProjectControlLockOptions } from './control-lock';
-import { PROJECT_HOME_MARKER_RELATIVE_PATH, type ResolvedProjectHome } from './project-home';
+import { writeJsonAtomically } from '../../fs/atomic-json';
+import { withProjectControlLock, type ProjectControlLockOptions } from '../../control-lock';
+import { PROJECT_HOME_MARKER_RELATIVE_PATH, type ResolvedProjectHome } from '../../home/home';
 import { join } from 'node:path';
-import { verifyGitInstance } from './git-instance';
+import { verifyGitInstance } from '../../git-instance';
 import {
   WorkspaceRegistryError,
   initialWorkspaceRegistry,
@@ -16,7 +16,7 @@ import {
   workspaceRegistryPath,
   type WorkspaceRegistry,
   type WorkspaceRegistration,
-} from './workspace-registry';
+} from './registry';
 
 export interface RegistryUpdateOptions {
   /** Optional compare-and-set revision, checked after obtaining the cross-process lock. */

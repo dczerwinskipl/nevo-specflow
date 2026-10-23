@@ -2,8 +2,8 @@ import { isDeepStrictEqual } from 'node:util';
 import { lstat, readFile, readdir, realpath } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 
-import { GIT_INSTANCE_SENTINEL_FILE, verifyGitInstance } from './git-instance';
-import { PROJECT_HOME_MARKER_RELATIVE_PATH, type ResolvedProjectHome } from './project-home';
+import { GIT_INSTANCE_SENTINEL_FILE, verifyGitInstance } from '../git-instance';
+import { PROJECT_HOME_MARKER_RELATIVE_PATH, type ResolvedProjectHome } from './home';
 
 interface PhysicalEntry {
   readonly path: string;

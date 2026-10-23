@@ -1,7 +1,7 @@
 import type { SpecFlowEngine } from '../../../application';
 import { GitCapabilityError } from '../../../git/errors';
 import { executeGit } from '../../../git/process';
-import { inspectRegisteredWorkspace } from '../../../project/workspace-registry';
+import { inspectRegisteredWorkspace } from '../../../project/workspace/registry/registry';
 import {
   inspectGitIntegrationEvidence,
   type GitIntegrationEvidence,

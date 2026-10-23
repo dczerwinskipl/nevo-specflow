@@ -2,7 +2,7 @@ import type { SpecFlowEngine } from '../../../application';
 import {
   inspectRegisteredWorkspace,
   type WorkspaceIntegrationDestination,
-} from '../../../project/workspace-registry';
+} from '../../../project/workspace/registry/registry';
 import { CreateOperationError } from '../error';
 import { inspectCleanGitWorkspace } from '../../lifecycle';
 

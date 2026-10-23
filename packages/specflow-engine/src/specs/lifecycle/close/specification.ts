@@ -2,7 +2,7 @@ import { isDeepStrictEqual } from 'node:util';
 
 import type { SpecFlowEngine } from '../../../application';
 import { publishCloseCheckpoint } from './checkpoint';
-import { readWorkspaceRegistry } from '../../../project/workspace-registry';
+import { readWorkspaceRegistry } from '../../../project/workspace/registry/registry';
 import { readWorkspaceSpecification } from '../../repository';
 import { archiveSpecificationWithCommit, inspectArchivePhysicalRecovery } from '../archive-effects';
 import { prepareCloseGitIntegration } from '../git/preparation';

@@ -7,7 +7,7 @@ import { executeGit } from '../../../git/process';
 import {
   WorkspaceRegistryError,
   inspectRegisteredWorkspace,
-} from '../../../project/workspace-registry';
+} from '../../../project/workspace/registry/registry';
 import { READ_GIT_CONCURRENCY, mapBounded } from '../../../concurrency';
 import { createLocalGitClient, type LocalWorktreeFacts } from '../../../version-control/git/client';
 import { validateBaseRef } from '../../../version-control/git/refs';

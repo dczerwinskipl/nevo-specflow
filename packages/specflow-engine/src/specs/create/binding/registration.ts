@@ -1,4 +1,4 @@
-import type { WorkspaceRegistration } from '../../../project/workspace-registry';
+import type { WorkspaceRegistration } from '../../../project/workspace/registry/registry';
 import { CreateOperationError } from '../error';
 import type { CreateJournal } from '../journal/model';
 

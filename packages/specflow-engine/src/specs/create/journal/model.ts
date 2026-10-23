@@ -1,5 +1,5 @@
 import type { CreateClientIntent } from '../intent';
-import type { WorkspaceIntegrationDestination } from '../../../project/workspace-registry';
+import type { WorkspaceIntegrationDestination } from '../../../project/workspace/registry/registry';
 
 export const CREATE_STAGES = [
   'reserved',

@@ -1,4 +1,4 @@
-import type { ResolvedProjectHome } from '../../project/project-home';
+import type { ResolvedProjectHome } from '../../project/home/home';
 import { assertSharedResourcesAvailable, SharedResourceError } from '../coordination/resources';
 import { CloseOperationError } from './model';
 

@@ -2,7 +2,7 @@ import { isDeepStrictEqual } from 'node:util';
 
 import type { SpecFlowEngine } from '../../application';
 import { withProjectControlLock } from '../../project/control-lock';
-import { readWorkspaceRegistry } from '../../project/workspace-registry';
+import { readWorkspaceRegistry } from '../../project/workspace/registry/registry';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import { CloseOperationError, type CloseJournal, type ClosePlan } from './model';
 import { readCloseJournal, publishCloseJournal } from './journal/store';

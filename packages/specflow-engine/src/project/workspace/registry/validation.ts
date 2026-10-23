@@ -1,6 +1,6 @@
 import { isAbsolute, resolve } from 'node:path';
 
-import type { ResolvedProjectHome } from './project-home';
+import type { ResolvedProjectHome } from '../../home/home';
 import {
   WORKSPACE_REGISTRY_VERSION,
   WorkspaceRegistryError,
@@ -8,7 +8,7 @@ import {
   type WorkspaceRegistration,
   type WorkspaceRegistry,
   type WorkspaceIntegrationDestination,
-} from './workspace-registry-types';
+} from './types';
 
 /** Pure schema and identity validation; never touches Git or the filesystem. */
 export function validateWorkspaceRegistry(

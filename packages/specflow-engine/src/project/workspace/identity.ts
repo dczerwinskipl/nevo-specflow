@@ -2,11 +2,11 @@ import { randomUUID } from 'node:crypto';
 import { lstat, mkdir, open, readFile, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { isGitIgnored } from './git-checkout';
-import type { ResolvedProjectHome } from './project-home';
-import { WorkspaceRegistryError, type WorkspaceRegistration } from './workspace-registry-types';
-import { isReadRequest } from './request-verification-memo';
-import { verifyWorkspaceMembership } from './workspace-membership';
+import { isGitIgnored } from '../git-checkout';
+import type { ResolvedProjectHome } from '../home/home';
+import { WorkspaceRegistryError, type WorkspaceRegistration } from './registry/types';
+import { isReadRequest } from '../request-verification-memo';
+import { verifyWorkspaceMembership } from './membership';
 
 export const WORKSPACE_IDENTITY_RELATIVE_PATH = '.nevo/local/state/workspace-identity.json';
 

@@ -10,8 +10,8 @@ import {
   inspectRegisteredWorkspace,
   readWorkspaceRegistry,
   type WorkspaceRegistry,
-} from '../../project/workspace-registry';
-import { WORKSPACE_IDENTITY_RELATIVE_PATH } from '../../project/workspace-identity';
+} from '../../project/workspace/registry/registry';
+import { WORKSPACE_IDENTITY_RELATIVE_PATH } from '../../project/workspace/identity';
 import {
   rebindLifecycleSpec,
   retireLifecycleWorkspace,

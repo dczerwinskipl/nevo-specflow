@@ -5,7 +5,7 @@ export { normalizeCreateClientIntent } from './specs/create';
 export {
   PROJECT_HOME_MARKER_RELATIVE_PATH,
   PROJECT_STATE_RELATIVE_PATH,
-} from './project/project-home';
+} from './project/home/home';
 export {
   WORKSPACE_REGISTRY_RELATIVE_PATH,
   WORKSPACE_REGISTRY_VERSION,
@@ -22,7 +22,7 @@ export {
   workspaceRegistryPath,
   type RegisteredWorkspaceInspection,
   type SpecWorkspaceBinding,
-} from './project/workspace-registry';
+} from './project/workspace/registry/registry';
 export {
   PROJECT_CONTROL_LOCK_RELATIVE_PATH,
   inspectProjectControlLock,
@@ -31,12 +31,15 @@ export {
   type ProjectControlLockInspection,
   type ProjectControlLockOptions,
 } from './project/control-lock';
-export { initializeWorkspaceRegistry, updateWorkspaceRegistry } from './project/registry-store';
+export {
+  initializeWorkspaceRegistry,
+  updateWorkspaceRegistry,
+} from './project/workspace/registry/store';
 export {
   WORKSPACE_IDENTITY_RELATIVE_PATH,
   provisionLinkedWorkspaceIdentity,
   verifyLinkedWorkspaceIdentity,
-} from './project/workspace-identity';
+} from './project/workspace/identity';
 export { GIT_INSTANCE_SENTINEL_FILE } from './project/git-instance';
 export {
   createSpecificationScaffold,

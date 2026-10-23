@@ -1,8 +1,8 @@
 import { isDeepStrictEqual } from 'node:util';
 
 import type { SpecFlowEngine } from '../../../application';
-import { updateWorkspaceRegistry } from '../../../project/registry-store';
-import { addWorkspace, bindSpecToWorkspace } from '../../../project/workspace-registry';
+import { updateWorkspaceRegistry } from '../../../project/workspace/registry/store';
+import { addWorkspace, bindSpecToWorkspace } from '../../../project/workspace/registry/registry';
 import { registrationOf } from './registration';
 import { CreateOperationError, type CreateJournal } from '../journal';
 

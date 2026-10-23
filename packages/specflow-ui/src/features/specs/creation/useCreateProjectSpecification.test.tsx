@@ -11,12 +11,12 @@ import { VisitStateProvider } from '../../../app/VisitStateProvider';
 import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
 import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
-import { createProjectCreationApi } from './api.project';
+import { createProjectCreationApi } from './api/api.project';
 import {
   createSessionOperationStorage,
   type StoredCreateOperation,
 } from './createOperationStorage';
-import { createSpecErrorCodes } from './createSpecErrors';
+import { createSpecErrorCodes } from './errors/createSpecErrors';
 import {
   useCreateProjectSpecification,
   type ProjectCreateModel,

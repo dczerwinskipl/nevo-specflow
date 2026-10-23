@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { StoryLocalization } from '../../../i18n/StoryLocalization';
-import type { AppLocale } from '../../../i18n';
+import { StoryLocalization } from '../../../../i18n/StoryLocalization';
+import type { AppLocale } from '../../../../i18n';
 import { CreateFailureAlert } from './CreateFailureAlert';
 import type { CreateFailure } from './createFailure';
 

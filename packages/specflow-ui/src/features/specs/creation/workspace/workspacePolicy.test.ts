@@ -35,7 +35,7 @@ import { effectiveTargetBranch, mergeSuggestion } from './mergeSuggestion';
 import {
   formatOperationTime as rawFormatOperationTime,
   operationStageLabel as rawOperationStageLabel,
-} from '../createOperationDetails';
+} from '../errors/createOperationDetails';
 import {
   initialWorkspaceChoice,
   requestChoiceSnapshot,

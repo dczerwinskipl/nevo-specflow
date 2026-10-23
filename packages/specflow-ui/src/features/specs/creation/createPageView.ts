@@ -1,6 +1,6 @@
 import type { CreateSpecRequest } from '@nevo/specflow-contracts/specs';
 import { message, type Message } from '../../../i18n/message';
-import type { CreateFailure } from './createFailure';
+import type { CreateFailure } from './errors/createFailure';
 import type { CreateOperationState } from './createOperationReducer';
 import type { CreateSettingsFacts, FactWorkspace } from './workspace/createFacts';
 

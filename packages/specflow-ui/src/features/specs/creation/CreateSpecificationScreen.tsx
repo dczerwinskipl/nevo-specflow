@@ -4,7 +4,7 @@ import { Alert, Button } from '@nevo/ui';
 import { FeatureUnavailable } from '../../../app/errors/FeatureUnavailable';
 import { useAppServices } from '../../../app/useAppServices';
 import { useRuntimeInfo } from '../../../app/useRuntimeMode';
-import { demoCreationKeys } from './api.demo';
+import { demoCreationKeys } from './api/api.demo';
 import { CreateDemoForm } from './CreateDemoForm';
 import { CreateProjectForm } from './CreateProjectForm';
 import { CreateFallback, CreateRuntimeGate } from './CreateRuntimeGate';

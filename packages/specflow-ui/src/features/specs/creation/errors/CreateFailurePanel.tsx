@@ -1,10 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
-import { useMessage } from '../../../i18n/message';
+import { useMessage } from '../../../../i18n/message';
 import { CreateFailureAlert, type CopyKind } from './CreateFailureAlert';
 import type { CreateFailure } from './createFailure';
 import { buildOperationDetails } from './createOperationDetails';
-import type { CreateOperationState } from './createOperationReducer';
+import type { CreateOperationState } from '../createOperationReducer';
 
 /**
  * The failure of a Create as the form shows it: the alert, and the facts of the operation as they

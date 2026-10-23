@@ -5,7 +5,7 @@ import type {
   CreateSpecRequest,
   CreatedSpec,
 } from '@nevo/specflow-contracts/specs';
-import type { ApiTransport } from '../../../api';
+import type { ApiTransport } from '../../../../api';
 
 /**
  * Create asks the Engine to prepare a Git worktree, which takes seconds to minutes and has no server

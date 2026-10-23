@@ -7,7 +7,7 @@ import { useAppServices } from '../../../app/useAppServices';
 import { useMessage } from '../../../i18n/message';
 import { useAnnouncer } from '../../../shared/a11y/useAnnouncer';
 import type { RequestAttempt } from '../../../shared/operations/retainedRequest';
-import { projectCreationKeys } from './api.project';
+import { projectCreationKeys } from './api/api.project';
 import { CreateFooter } from './CreateFooter';
 import { CreateFormHeader } from './CreateFormHeader';
 import { CreateLeaveDialog } from './CreateLeaveDialog';

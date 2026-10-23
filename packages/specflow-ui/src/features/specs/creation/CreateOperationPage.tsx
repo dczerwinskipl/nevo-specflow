@@ -9,11 +9,11 @@ import {
   OperationStatusTile,
   type OperationStatusTone,
 } from '../../../shared/operations/OperationStatusTile';
-import { CreateFailurePanel } from './CreateFailurePanel';
+import { CreateFailurePanel } from './errors/CreateFailurePanel';
 import { CreateOperationProgress } from './CreateOperationProgress';
 import { createRunningStepTitle } from './createProgress';
 import { CreateShell } from './CreateShell';
-import type { CreateFailure } from './createFailure';
+import type { CreateFailure } from './errors/createFailure';
 import { useCreateOperationStorage } from './createOperationStorage';
 import {
   createPageHeading,

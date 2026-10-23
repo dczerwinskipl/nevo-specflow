@@ -14,7 +14,7 @@ import { VisitStateProvider } from '../../../app/VisitStateProvider';
 import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
 import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
-import type { DemoCreationApi } from './api.demo';
+import type { DemoCreationApi } from './api/api.demo';
 import {
   useCreateDemoSpecification,
   type CreateSpecificationModel,

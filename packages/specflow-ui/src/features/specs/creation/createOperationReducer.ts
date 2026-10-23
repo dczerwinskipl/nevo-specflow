@@ -1,5 +1,5 @@
 import type { CreateSpecRequest } from '@nevo/specflow-contracts/specs';
-import type { CreateFailure } from './createFailure';
+import type { CreateFailure } from './errors/createFailure';
 
 /**
  * What the server said about an operation, as far as the UI displays it. Both Runtime flavours fit

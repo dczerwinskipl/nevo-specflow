@@ -5,7 +5,7 @@ import type {
 } from '@nevo/specflow-contracts/specs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../../../api';
-import type { ProjectCreationApi } from './api.project';
+import type { ProjectCreationApi } from './api/api.project';
 import {
   createStreamHints,
   readOperation,

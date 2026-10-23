@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { CreateFailure } from '../createFailure';
+import type { CreateFailure } from '../errors/createFailure';
 import type { CreateOptionsModel } from '../useCreateOptions';
 import type { WorkspacePlaceSectionHandle } from './WorkspacePlaceSection';
 import { initialWorkspaceChoice, type WorkspaceChoice } from './workspaceChoice';

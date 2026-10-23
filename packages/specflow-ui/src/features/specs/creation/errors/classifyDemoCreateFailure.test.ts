@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HttpClientError } from '@nevo/http-client';
-import { RequestNotSentError } from './creationPipeline';
+import { RequestNotSentError } from '../creationPipeline';
 import { classifyDemoCreateFailure } from './classifyDemoCreateFailure';
 
 describe('classifyDemoCreateFailure', () => {

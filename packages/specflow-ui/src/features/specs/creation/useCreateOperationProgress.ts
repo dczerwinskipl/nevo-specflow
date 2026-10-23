@@ -5,7 +5,7 @@ import {
   useOperationProgress,
   type OperationProgressView,
 } from '../../../shared/operations/useOperationProgress';
-import { toOperationFailure } from './createSpecErrors';
+import { toOperationFailure } from './errors/createSpecErrors';
 import type { StreamHint } from './watchCreateOperation';
 
 /**

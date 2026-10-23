@@ -1,6 +1,6 @@
 import { HttpClientError } from '@nevo/http-client';
 import { describe, expect, it } from 'vitest';
-import { ApiError, classifyHttpError } from '../../../api';
+import { ApiError, classifyHttpError } from '../../../../api';
 import type { CreateFailure } from './createFailure';
 import { createSpecErrorCodes, toCreateFailure, toOperationFailure } from './createSpecErrors';
 

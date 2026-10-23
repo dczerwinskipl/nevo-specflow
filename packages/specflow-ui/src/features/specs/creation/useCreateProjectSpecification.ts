@@ -8,8 +8,8 @@ import { useNotify } from '../../../shared/notifications/notifications';
 import { useUnmountSignal } from '../../../shared/operations/useUnmountSignal';
 import { retainRequest } from '../../../shared/operations/retainedRequest';
 import { specsOverviewKeys } from '../overview/queries';
-import { projectCreationKeys } from './api.project';
-import type { CreateFailure } from './createFailure';
+import { projectCreationKeys } from './api/api.project';
+import type { CreateFailure } from './errors/createFailure';
 import { createOperationLedger } from './createOperationLedger';
 import {
   createOperationReducer,
@@ -24,7 +24,7 @@ import {
   type SentCreateRequest,
   type StoredCreateOperation,
 } from './createOperationStorage';
-import { toOperationFailure } from './createSpecErrors';
+import { toOperationFailure } from './errors/createSpecErrors';
 import { interpretWatchResult } from './interpretWatchResult';
 import {
   createStreamHints,

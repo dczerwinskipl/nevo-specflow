@@ -1,8 +1,8 @@
 import { HttpClientError, type HttpRequestClient } from '@nevo/http-client';
 import { describe, expect, it, vi } from 'vitest';
-import { createApiTransport } from '../../../api';
+import { createApiTransport } from '../../../../api';
 import { createOperationHardLimitMs, createProjectCreationApi } from './api.project';
-import { createSpecErrorCodes } from './createSpecErrors';
+import { createSpecErrorCodes } from '../errors/createSpecErrors';
 
 function build(overrides: Partial<HttpRequestClient> = {}) {
   const http = {

@@ -1,4 +1,4 @@
-import type { CreateFailure } from '../createFailure';
+import type { CreateFailure } from '../errors/createFailure';
 
 /**
  * What the server refused about a typed field, remembered so the field can say so until it is

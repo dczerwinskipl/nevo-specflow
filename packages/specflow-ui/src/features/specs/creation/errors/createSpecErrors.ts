@@ -1,4 +1,4 @@
-import { ApiError, type ErrorCodeTable } from '../../../api';
+import { ApiError, type ErrorCodeTable } from '../../../../api';
 import type { CreateFailure } from './createFailure';
 
 /**

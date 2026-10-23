@@ -30,7 +30,7 @@ import {
 } from '@nevo/ui';
 import { useFocusRequest } from '../../../../shared/a11y/useFocusRequest';
 import { ChoiceTile, ChoiceTileGroup } from '../ChoiceTile';
-import { BranchRef } from '../BranchRef';
+import { BranchRef } from './BranchRef';
 import { ExistingSummary, MainSummary, NewSummary } from './WorkspaceTileSummaries';
 import { activeTile, primaryWorkspace, tileAvailability } from './workspaceTiles';
 import { availableCountLabel } from './workspaceCopy';

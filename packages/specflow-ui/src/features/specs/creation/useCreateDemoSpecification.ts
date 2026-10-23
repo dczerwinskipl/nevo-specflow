@@ -23,8 +23,8 @@ import {
   type CreateOperationState,
   type UnknownPhase,
 } from './createOperationReducer';
-import { classifyDemoCreateFailure } from './classifyDemoCreateFailure';
-import type { CreateFailure } from './createFailure';
+import { classifyDemoCreateFailure } from './errors/classifyDemoCreateFailure';
+import type { CreateFailure } from './errors/createFailure';
 
 /** Everything the form contributes to one submit, captured when the user submits. */
 export interface CreateSubmission {

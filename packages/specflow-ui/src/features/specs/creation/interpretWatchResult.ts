@@ -1,7 +1,7 @@
 import type { CreatedSpec } from '@nevo/specflow-contracts/specs';
 import { isApiError } from '../../../api';
-import type { CreateFailure } from './createFailure';
-import { toCreateFailure, toOperationFailure, type SentCreate } from './createSpecErrors';
+import type { CreateFailure } from './errors/createFailure';
+import { toCreateFailure, toOperationFailure, type SentCreate } from './errors/createSpecErrors';
 import type { CreateWatchResult } from './watchCreateOperation';
 
 /** What the hook does with one ended submit or watch. Pure: the hook only carries it out. */

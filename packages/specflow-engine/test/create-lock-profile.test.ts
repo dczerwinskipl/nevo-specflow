@@ -117,9 +117,9 @@ describe('Create reservation lock profile (opt-in)', () => {
             } catch {
               // The disposable fixture directory is removed below either way.
             }
-            await rm(linked, { recursive: true, force: true });
+            await rm(linked, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 });
           }
-          await rm(root, { recursive: true, force: true });
+          await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 });
         }
       }
     },

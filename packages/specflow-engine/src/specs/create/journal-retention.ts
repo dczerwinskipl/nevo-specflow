@@ -1,7 +1,8 @@
-import { lstat, readFile, readdir, rm } from 'node:fs/promises';
+import { lstat, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import type { ResolvedProjectHome } from '../../project/project-home';
+import { readFileWindowsSafe, removeFileWindowsSafe } from '../../project/windows-safe-fs';
 import { CREATE_JOURNAL_RELATIVE_DIR, isStrayJournalTempName } from './journal-store';
 import { UUID, parseCreateJournal } from './journal-codec';
 
@@ -73,11 +74,11 @@ export async function removeExpiredCompletedCreateJournals(
       if (now - stat.mtimeMs < retentionMs) continue;
       const parsed = parseCreateJournal(
         context,
-        JSON.parse(await readFile(path, 'utf8')) as unknown,
+        JSON.parse(await readFileWindowsSafe(path)) as unknown,
         operationId,
       );
       if (parsed.stage !== 'completed') continue;
-      await rm(path, { force: true });
+      await removeFileWindowsSafe(path);
       removed += 1;
     } catch {
       // Vanished, unreadable or corrupt: never deleted here, never fatal for the reservation.
@@ -101,7 +102,7 @@ async function removeStrayTemps(
     try {
       const stat = await lstat(path);
       if (!stat.isFile() || stat.isSymbolicLink() || now - stat.mtimeMs < maxAgeMs) continue;
-      await rm(path, { force: true });
+      await removeFileWindowsSafe(path);
       removed += 1;
     } catch {
       // Vanished or not removable: never fatal for the reservation.

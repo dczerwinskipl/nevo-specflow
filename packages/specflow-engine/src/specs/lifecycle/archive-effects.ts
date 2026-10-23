@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { lstat, mkdir, readFile, readdir, realpath, rename, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, readFile, readdir, realpath, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -13,6 +13,7 @@ import {
   inspectRegisteredWorkspace,
   readWorkspaceRegistry,
 } from '../../project/workspace-registry';
+import { renameWindowsSafe } from '../../project/windows-safe-fs';
 import { inspectCleanGitWorkspace } from './preflight';
 import { disabledIntegrationHooksDirectory } from './git-scratch';
 import { readCloseJournal } from './journal-store';
@@ -239,7 +240,9 @@ export async function archiveSpecificationWithCommit(
     (await realpath(archiveParent)) !== archiveParent
   )
     throw failure('Archive parent path is not a physical directory.');
-  await rename(join(source.root, oldPath), join(source.root, newPath));
+  await renameWindowsSafe(join(source.root, oldPath), join(source.root, newPath), {
+    directory: true,
+  });
   // Test-only OS crash boundary at the durable atomic rename, before rewriting
   // the manifest. No automatic replay of an uncertain archive move.
   await afterArchiveMove?.();

@@ -15,7 +15,11 @@ const roots: string[] = [];
 
 afterEach(async () => {
   vi.unstubAllEnvs();
-  await Promise.all(roots.splice(0).map((path) => rm(path, { recursive: true, force: true })));
+  await Promise.all(
+    roots
+      .splice(0)
+      .map((path) => rm(path, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })),
+  );
 });
 
 const PATHS = ['specs/active/demo/specification.yaml', 'specs/active/demo/overview.md'];

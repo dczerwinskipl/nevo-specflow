@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { channel } from 'node:diagnostics_channel';
-import { lstat, mkdir, open, readFile, realpath, unlink } from 'node:fs/promises';
+import { lstat, mkdir, open, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 import { verifyCheckoutOnDisk, verifyProjectHomeOnDisk } from './disk-verification';
 import { resolveProjectHome, type ResolvedProjectHome } from './project-home';
+import { unlinkWindowsSafe, readFileWindowsSafe } from './windows-safe-fs';
 import { isReadRequest } from './request-verification-memo';
 import { assertProjectHomeLockProof, captureProjectHomeLockProof } from './project-home-lock-proof';
 
@@ -70,7 +71,7 @@ export async function inspectProjectControlLock(
     if (!stat.isFile() || stat.isSymbolicLink()) {
       return { status: 'corrupt', reason: 'Control lock is not a regular file.' };
     }
-    source = await readFile(path, 'utf8');
+    source = await readFileWindowsSafe(path);
   } catch (error) {
     if (isNodeError(error, 'ENOENT')) return { status: 'free' };
     throw error;
@@ -145,11 +146,13 @@ export async function withProjectControlLock<T>(
       // holds an exclusively created lock file. Only treat it as contention
       // when lstat proves the lock path is an existing regular file; a missing
       // path or a permission error with no such proof remains a hard failure.
+      // A delete-pending lock (just released while a reader or scanner still holds a handle)
+      // reports EPERM/EACCES/EBUSY while lstat already says "missing": also contention.
       const busy =
         isNodeError(error, 'EEXIST') ||
         (process.platform === 'win32' &&
-          isNodeError(error, 'EPERM') &&
-          (await isExistingRegularLock(path)));
+          ['EPERM', 'EACCES', 'EBUSY'].some((code) => isNodeError(error, code)) &&
+          ((await isExistingRegularLock(path)) || (await isMissingPath(path))));
       if (!busy) throw error;
       if (Date.now() >= deadline) {
         const inspected = await inspectProjectControlLock(context);
@@ -227,6 +230,15 @@ export async function withProjectControlLock<T>(
   }
 }
 
+async function isMissingPath(path: string): Promise<boolean> {
+  try {
+    await lstat(path);
+    return false;
+  } catch (error) {
+    return isNodeError(error, 'ENOENT');
+  }
+}
+
 async function isExistingRegularLock(path: string): Promise<boolean> {
   try {
     const stat = await lstat(path);
@@ -248,7 +260,7 @@ async function releaseOwnedLock(path: string, token: string): Promise<void> {
   // account processes do not modify one another's lock files.
   let existing: unknown;
   try {
-    existing = JSON.parse(await readFile(path, 'utf8')) as unknown;
+    existing = JSON.parse(await readFileWindowsSafe(path)) as unknown;
   } catch {
     throw new ProjectControlLockError(
       'CONTROL_LOCK_OWNERSHIP_LOST',
@@ -261,7 +273,7 @@ async function releaseOwnedLock(path: string, token: string): Promise<void> {
       'Control lock ownership changed; refusing to release another writer.',
     );
   }
-  await unlink(path);
+  await unlinkWindowsSafe(path);
 }
 
 async function ensureSafeLockDirectory(context: ResolvedProjectHome, dir: string): Promise<void> {

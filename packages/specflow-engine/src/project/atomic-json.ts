@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { lstat, open, realpath, rename, rm } from 'node:fs/promises';
+import { lstat, open, realpath } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
+
+import { removeFileWindowsSafe, renameWindowsSafe } from './windows-safe-fs';
 
 /**
  * Local-filesystem atomic JSON publication. Requires an externally held short
@@ -44,14 +46,14 @@ export async function writeJsonAtomically(
 
     // The last durable old snapshot stays readable until this rename.
     await options.beforePublish?.();
-    await rename(staged, path);
+    await renameWindowsSafe(staged, path);
     published = true;
     await syncDirectoryWhenSupported(parent);
   } finally {
     if (!published) {
       // An ordinary exception removes its own stage file. SIGKILL/power failure
       // leaves evidence, never a silently-published partial registry.
-      await rm(staged, { force: true });
+      await removeFileWindowsSafe(staged).catch(() => undefined);
     }
   }
 }

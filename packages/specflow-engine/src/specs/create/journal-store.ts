@@ -1,7 +1,8 @@
-import { lstat, mkdir, readFile, readdir, realpath } from 'node:fs/promises';
+import { lstat, mkdir, readdir, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { writeJsonAtomically } from '../../project/atomic-json';
+import { readFileWindowsSafe } from '../../project/windows-safe-fs';
 import { withProjectControlLock } from '../../project/control-lock';
 import type { ResolvedProjectHome } from '../../project/project-home';
 import { CreateOperationError } from '../create-error';
@@ -41,7 +42,7 @@ export async function readCreateJournal(
     if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 65536) {
       throw invalidJournal();
     }
-    const parsed = JSON.parse(await readFile(path, 'utf8')) as unknown;
+    const parsed = JSON.parse(await readFileWindowsSafe(path)) as unknown;
     return parseCreateJournal(context, parsed, operationId);
   } catch (error) {
     if (isMissing(error)) return undefined;

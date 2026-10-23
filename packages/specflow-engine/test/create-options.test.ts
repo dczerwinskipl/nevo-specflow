@@ -15,7 +15,11 @@ import { createGitTestProject, git } from './support/git-project';
 
 const roots: string[] = [];
 afterEach(async () => {
-  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    roots
+      .splice(0)
+      .map((root) => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })),
+  );
 });
 
 describe('E2.I01 authorized create-options Engine read model', () => {
@@ -143,7 +147,12 @@ describe('E2.I01 authorized create-options Engine read model', () => {
     });
     const linkedRef = git(linked.workspaceRoot, 'symbolic-ref', 'HEAD');
     const registryBefore = await readFile(workspaceRegistryPath(engine.context), 'utf8');
-    await rm(linked.workspaceRoot, { recursive: true, force: true });
+    await rm(linked.workspaceRoot, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+      retryDelay: 250,
+    });
 
     const options = await inspectCreateOptions(engine);
     expect(
@@ -370,9 +379,10 @@ describe('E2.I01 authorized create-options Engine read model', () => {
       'git:\n  worktreesRoot: ' + JSON.stringify(custom + '/child') + '\n',
     );
     const engine = await bootstrapProjectHome(root);
-    // stat answers ENOTDIR, not ENOENT: still "does not exist yet", never an untyped failure.
+    // stat answers ENOTDIR on POSIX and ENOENT on Windows; any failure to stat the folder as a
+    // directory is "does not exist yet", never an untyped failure. The path is platform-normalized.
     expect((await inspectCreateOptions(engine)).worktreesRoot).toEqual({
-      path: custom + '/child',
+      path: join(custom, 'child'),
       exists: false,
     });
   }, 120000);

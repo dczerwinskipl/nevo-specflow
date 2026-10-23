@@ -219,10 +219,10 @@ describe('WorkspaceHeader pressed icon toggles', () => {
     expect(render({ ...toggle, pressed: false })).toContain('aria-pressed="false"');
   });
 
-  it('marks only a pressed icon with the selected surface and keeps the action name as label', () => {
-    expect(render({ ...toggle, pressed: true })).toContain('bg-surface-selected');
-    expect(render({ ...toggle, pressed: false })).not.toContain('bg-surface-selected');
+  it('styles the pressed state through the aria-pressed variant and keeps the action name as label', () => {
+    expect(render({ ...toggle, pressed: true })).toContain('aria-pressed:bg-surface-selected');
     expect(render({ ...toggle, pressed: true })).toContain('aria-label="Show preview"');
+    expect(render({ ...toggle, primary: true })).not.toContain('aria-pressed:bg-surface-selected');
   });
 
   it('does not change the direct budget', () => {

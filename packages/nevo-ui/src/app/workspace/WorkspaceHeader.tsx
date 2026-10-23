@@ -361,9 +361,9 @@ function DirectIconAction({
             aria-label={action.label}
             aria-pressed={action.primary ? undefined : action.pressed}
             className={
-              action.pressed && !action.primary
-                ? 'bg-surface-selected! text-content-primary!'
-                : undefined
+              action.primary
+                ? undefined
+                : 'aria-pressed:bg-surface-selected aria-pressed:text-content-primary'
             }
             disabled={action.disabled}
             icon={action.icon}

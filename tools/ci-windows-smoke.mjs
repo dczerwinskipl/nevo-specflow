@@ -70,16 +70,20 @@ try {
       for (const file of report.testResults ?? []) {
         for (const test of file.assertionResults ?? []) {
           if (test.status === 'passed') passedHere += 1;
-          else if (test.status === 'failed')
-            failed.push(`${entry.file} > ${test.fullName}`);
+          else if (test.status === 'failed') failed.push(`${entry.file} > ${test.fullName}`);
         }
       }
     }
     executed += passedHere;
     if (result.status !== 0 && !failed.some((name) => name.startsWith(entry.file + ' >'))) {
-      failed.push(`${entry.file} > (vitest exited ${result.status ?? result.signal} without a test result)`);
+      failed.push(
+        `${entry.file} > (vitest exited ${result.status ?? result.signal} without a test result)`,
+      );
     }
-    if (passedHere + failed.filter((n) => n.startsWith(entry.file + ' >')).length < entry.tests.length) {
+    if (
+      passedHere + failed.filter((n) => n.startsWith(entry.file + ' >')).length <
+      entry.tests.length
+    ) {
       failed.push(`${entry.file} > (fewer tests ran than the ${entry.tests.length} listed)`);
     }
   });

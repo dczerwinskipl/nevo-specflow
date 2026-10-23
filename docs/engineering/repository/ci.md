@@ -23,6 +23,8 @@ related:
 
 - `ci.yml`: repository quality, affected typecheck/tests/build, Dependency Review on pull requests,
   and the packaged-product smoke matrix.
+- `windows-smoke.yml`: small Windows slice on pull requests that touch Create/persistence code
+  (see [Windows smoke](#windows-smoke)).
 - `chromatic.yml`: shared Storybook publishing and visual regression on demand, plus automatic baseline publishing on `main`.
 - `codeql.yml`: JavaScript/TypeScript CodeQL on pull requests, protected-branch pushes, and weekly.
 - `pr-title.yml`: Conventional Commit PR-title validation.
@@ -57,6 +59,39 @@ A dedicated matrix runs `packages/specflow/test/packaging.smoke.test.ts` on:
 It packages and installs the actual tarball outside the workspace and executes the installed CLI and
 Runtime. `product smoke` is the aggregate required check. The full package test suite is not
 duplicated across operating systems.
+
+## Windows smoke
+
+The full Windows suite (`engine-filesystem.yml`, shards of about 15 minutes) runs on `main`,
+nightly and on pull requests labelled `ci:full-platform`. Ordinary pull requests otherwise never ran
+Windows, so Windows-only breakage in Create (real Git, worktrees, file locks, path separators)
+surfaced only after merge. The `windows smoke` check (`windows-smoke.yml`) closes that gap with a
+small slice: it runs only the tests listed in `tools/ci-windows-smoke-tests.json` (the tests that
+failed on `main` after the Create merge), with one worker, no file parallelism and a 120 s test
+timeout, in a job limited to 10 minutes. Expected duration is 5 to 7 minutes including install and
+build; the tests themselves take about 1 to 2 minutes when green.
+
+- It runs on pull requests only when files that affect Create, its journal or Git/worktree handling
+  change (engine `specs`, `git`, `version-control`, `project`, Runtime `features/specs`,
+  `features/operations`, `server`, contracts `specs`/`operations`, the smoke tests and tooling, the
+  workflow). UI-only and unrelated changes do not start a Windows runner.
+- It does not run on push or nightly (the full suite does) and is not a required check. It can be
+  started manually through **Actions → Windows smoke → Run workflow**.
+- A failure lists every failing test name in the log and the job summary. A listed test whose title
+  no longer exists fails the run instead of silently shrinking the slice.
+
+Add a test by appending its exact `it(...)` title to an entry in `tools/ci-windows-smoke-tests.json`
+(or a new entry with `package`, `dir`, `file`, `tests`), and add its source path to the workflow
+`paths` if it is not covered. Keep the list small; broad coverage belongs to the full suite. Check
+the path filter with `node tools/ci-windows-smoke-paths.mjs` (built-in cases: an engine Create
+journal change triggers, a UI-only change does not) or pass files to see their result.
+
+Run the same command locally on Windows:
+
+```bash
+pnpm exec turbo run build --filter=@nevo/specflow-runtime^...
+node tools/ci-windows-smoke.mjs        # add --list to audit the list only
+```
 
 ## CodeQL
 

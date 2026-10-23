@@ -31,7 +31,8 @@ const regexes = globs.map(toRegex);
 export const triggers = (file) => regexes.some((re) => re.test(file));
 
 if (process.argv.length > 2) {
-  for (const file of process.argv.slice(2)) console.log(`${triggers(file) ? 'RUNS ' : 'skips'} ${file}`);
+  for (const file of process.argv.slice(2))
+    console.log(`${triggers(file) ? 'RUNS ' : 'skips'} ${file}`);
   process.exit(0);
 }
 

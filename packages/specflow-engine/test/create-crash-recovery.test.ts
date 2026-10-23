@@ -37,7 +37,11 @@ const activeProcesses: IndependentVitestWorker[] = [];
 afterEach(async () => {
   // Reap *every* real child before deleting its Git worktrees/marker files.
   await Promise.all(activeProcesses.splice(0).map((worker) => reapVitestWorker(worker)));
-  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    roots
+      .splice(0)
+      .map((root) => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })),
+  );
 });
 
 async function project(gitEnabled = false): Promise<{ root: string; engine: SpecFlowEngine }> {
@@ -266,7 +270,7 @@ describe('E2.T04 — actual process termination and fresh-process recovery', () 
     await updateWorkspaceRegistry(engine.context, (registry) =>
       bindSpecToWorkspace(addWorkspace(registry, linked), existingId, linked.workspaceId),
     );
-    await rm(linkedRoot, { recursive: true, force: true });
+    await rm(linkedRoot, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 });
     const input = request(engine, 'Completely different title');
     const registryBefore = await readFile(workspaceRegistryPath(engine.context), 'utf8');
     await expect(createSpecification(engine, input)).rejects.toMatchObject({

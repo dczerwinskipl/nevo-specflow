@@ -1,7 +1,8 @@
-import { lstat, mkdir, readFile, readdir, realpath } from 'node:fs/promises';
+import { lstat, mkdir, readdir, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { writeJsonAtomically } from '../../project/atomic-json';
+import { readFileWindowsSafe } from '../../project/windows-safe-fs';
 import type { ResolvedProjectHome } from '../../project/project-home';
 import { CLOSE_UUID, isCloseJournal } from './journal-codec';
 import { CloseOperationError, type CloseJournal } from './model';
@@ -46,7 +47,7 @@ export async function readCloseJournal(
     await requireRealDirectory(join(context.project.stateRoot, JOURNAL_DIR));
     const stat = await lstat(path);
     if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 1024 * 1024) throw invalid();
-    const parsed = JSON.parse(await readFile(path, 'utf8')) as unknown;
+    const parsed = JSON.parse(await readFileWindowsSafe(path)) as unknown;
     if (!isCloseJournal(context, parsed, operationId)) throw invalid();
     return parsed;
   } catch (error) {

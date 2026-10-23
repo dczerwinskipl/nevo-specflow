@@ -28,7 +28,11 @@ const activeProcesses: IndependentVitestWorker[] = [];
 afterEach(async () => {
   // Reap *every* real child before deleting its Git worktrees/marker files.
   await Promise.all(activeProcesses.splice(0).map((worker) => reapVitestWorker(worker)));
-  await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+  await Promise.all(
+    roots
+      .splice(0)
+      .map((root) => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })),
+  );
 });
 
 async function project() {
@@ -337,7 +341,7 @@ describe('E2.T04 — cross-process durable create reservation and registry CAS',
           ),
         ).rejects.toMatchObject({ code: 'SPEC_SOURCE_INVALID' });
       } finally {
-        await rm(unowned, { recursive: true, force: true });
+        await rm(unowned, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 });
       }
 
       independent = spawnCreateWorker(

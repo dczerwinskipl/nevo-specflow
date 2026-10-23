@@ -7,6 +7,7 @@ import { verifyLinkedWorkspaceIdentity } from './workspace-identity';
 import { verifyWorkspaceMembership } from './workspace-membership';
 import { verifyGitInstance } from './git-instance';
 import { memoizeVerification } from './request-verification-memo';
+import { readFileWindowsSafe } from './windows-safe-fs';
 
 import {
   WORKSPACE_REGISTRY_RELATIVE_PATH,
@@ -86,7 +87,7 @@ export async function readWorkspaceRegistry(
   try {
     const stat = await lstat(path);
     if (!stat.isFile() || stat.isSymbolicLink()) throw corrupt('Registry is not a regular file.');
-    source = await readFile(path, 'utf8');
+    source = await readFileWindowsSafe(path);
   } catch (error) {
     if (isMissing(error)) {
       throw await missingRegistryDiagnostic(context);

@@ -1336,24 +1336,17 @@ export const GeneratedBranchIsProtectedSoOwnNameIsRequired: Story = {
     await userEvent.clear(input);
     await userEvent.type(input, 'release/hotfix');
     // The state commit after the last keystroke is asynchronous: wait on the condition, not on time.
-    // The default 1 s wait is too tight when the whole corpus runs in parallel, so allow 5 s.
-    await expect(
-      await canvas.findByText(/Ta gałąź jest chroniona/, undefined, { timeout: 5000 }),
-    ).toBeVisible();
-    await waitFor(() => expect(input).toHaveAttribute('aria-invalid', 'true'), { timeout: 5000 });
+    await expect(await canvas.findByText(/Ta gałąź jest chroniona/)).toBeVisible();
+    await waitFor(() => expect(input).toHaveAttribute('aria-invalid', 'true'));
     // A name outside the protected ones frees the form and is the one sent.
     await userEvent.clear(input);
     await userEvent.type(input, 'feature/hotfix');
-    await waitFor(() => expect(canvas.queryByText(/jest chroniona/)).toBeNull(), {
-      timeout: 5000,
-    });
-    await waitFor(
-      () => expect(canvas.getByLabelText('Żądanie')).toHaveAttribute('data-problems', ''),
-      { timeout: 5000 },
+    await waitFor(() => expect(canvas.queryByText(/jest chroniona/)).toBeNull());
+    await waitFor(() =>
+      expect(canvas.getByLabelText('Żądanie')).toHaveAttribute('data-problems', ''),
     );
-    await waitFor(
-      () => expect(request(canvas)).toBe('{"kind":"new-worktree","branch":"feature/hotfix"}'),
-      { timeout: 5000 },
+    await waitFor(() =>
+      expect(request(canvas)).toBe('{"kind":"new-worktree","branch":"feature/hotfix"}'),
     );
   },
 };

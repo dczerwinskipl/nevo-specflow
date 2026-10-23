@@ -11,11 +11,19 @@ import { SessionsHostMock } from './SessionsHostMock.stories-support';
 const meta = {
   title: 'SpecFlow/Screens/Editor mode (mock)',
   component: EditorModeMock,
-  parameters: { layout: 'fullscreen' },
+  parameters: {
+    layout: 'fullscreen',
+    docs: {
+      description: {
+        component:
+          'Concept and interaction demo. Layout is hand-composed and does not prove AppWorkspace geometry; verify against the real AppWorkspace during Documents integration.',
+      },
+    },
+  },
   args: { width: 1440, height: 900, preset: 'mixed' },
   argTypes: {
     width: { control: { type: 'number', min: 320, max: 1600, step: 10 } },
-    preset: { control: 'inline-radio', options: ['mixed', 'empty'] },
+    preset: { control: 'inline-radio', options: ['mixed', 'twoEditors', 'empty'] },
     active: {
       control: 'select',
       options: ['specification', 'decisions', 'auth-service', 'architecture-png'],
@@ -42,6 +50,18 @@ export const WideCodeView: Story = { args: { active: 'auth-service' } };
 export const WideImage: Story = { args: { active: 'architecture-png' } };
 export const WideOverflowMenu: Story = { parameters: menuOpen, play: openOpenedMenu };
 export const WideUnsavedChangesDialog: Story = { args: { dialog: true } };
+/** Scroll specification.md and move the cursor, switch to decisions.md and back: both come back as left. */
+export const EditorStatePerDocument: Story = {
+  args: { preset: 'twoEditors', height: 360 },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          'Two markdown tabs in edit. Scroll specification.md and click a line, switch to decisions.md and back: scroll and current line of each document are restored. Only the active editor is mounted.',
+      },
+    },
+  },
+};
 export const WideEmptyState: Story = { args: { preset: 'empty' } };
 
 /* Split view (markdown, document area >= 1000px): 1920 has it, 1440 does not. */

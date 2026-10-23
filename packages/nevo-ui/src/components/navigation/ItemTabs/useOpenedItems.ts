@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 export interface OpenedItem {
   /** Stable identity. Opening an item whose id is already open activates it instead. */
@@ -37,7 +37,11 @@ export interface OpenedItemsState<T extends OpenedItem> {
    * one; closing the last item leaves `activeId` null.
    */
   close: (id: string) => void;
-  /** Closes after `canClose` agrees. Resolves to whether the item was closed. */
+  /**
+   * Closes after `canClose` agrees. Resolves `true` only when this call actually closed the item:
+   * `false` when the guard refused, the item is not open (any more), the scope changed or the host
+   * unmounted while waiting. Concurrent requests for the same id share one guard call and result.
+   */
   requestClose: (id: string) => Promise<boolean>;
   /** Closes everything without asking. */
   closeAll: () => void;
@@ -45,19 +49,27 @@ export interface OpenedItemsState<T extends OpenedItem> {
 
 interface Snapshot<T extends OpenedItem> {
   scope: string | number | null;
+  /** Identifies one session of the state. Bumped on every scope reset, so A -> B -> A differs. */
+  generation: number;
   items: readonly T[];
   activeId: string | null;
 }
 
 function initialSnapshot<T extends OpenedItem>(
   scope: string | number | null,
+  generation: number,
   items: readonly T[],
   activeId: string | null | undefined,
 ): Snapshot<T> {
   // `undefined` means "first item"; an explicit `null` means "none active".
   const first = items[0]?.id ?? null;
   const known = activeId != null && items.some((item) => item.id === activeId);
-  return { scope, items, activeId: activeId === null ? null : known ? activeId : first };
+  return {
+    scope,
+    generation,
+    items,
+    activeId: activeId === null ? null : known ? activeId : first,
+  };
 }
 
 function openIn<T extends OpenedItem>(snapshot: Snapshot<T>, item: T): Snapshot<T> {
@@ -90,22 +102,25 @@ export function useOpenedItems<T extends OpenedItem>({
   scope = null,
   canClose,
 }: UseOpenedItemsOptions<T> = {}): OpenedItemsState<T> {
-  const [stored, setStored] = useState(() => initialSnapshot(scope, initialItems, initialActiveId));
+  const [stored, setStored] = useState(() =>
+    initialSnapshot(scope, 0, initialItems, initialActiveId),
+  );
 
-  // A new scope starts from the initial values. Adjusting state while rendering (instead of in an
-  // effect) avoids committing one frame of the previous scope's items.
+  // A new scope starts a new generation from the initial values. Adjusting state while rendering
+  // (instead of in an effect) avoids committing one frame of the previous scope's items.
   let current = stored;
   if (stored.scope !== scope) {
-    current = initialSnapshot(scope, initialItems, initialActiveId);
+    current = initialSnapshot(scope, stored.generation + 1, initialItems, initialActiveId);
     setStored(current);
   }
+  const { generation } = current;
 
-  // Updates only apply to the scope they were started in, so a late async close cannot touch a
-  // newer scope.
+  // Updates only apply to the generation they were started in, so a late async close cannot touch
+  // a newer session, even one that has the same scope value again (A -> B -> A).
   const update = useCallback(
     (apply: (snapshot: Snapshot<T>) => Snapshot<T>) =>
-      setStored((previous) => (previous.scope === scope ? apply(previous) : previous)),
-    [scope],
+      setStored((previous) => (previous.generation === generation ? apply(previous) : previous)),
+    [generation],
   );
 
   const open = useCallback((item: T) => update((snapshot) => openIn(snapshot, item)), [update]);
@@ -121,10 +136,42 @@ export function useOpenedItems<T extends OpenedItem>({
     () => update((snapshot) => ({ ...snapshot, items: [], activeId: null })),
     [update],
   );
-  const requestClose = async (id: string) => {
-    const allowed = canClose ? await canClose(id) : true;
-    if (allowed) close(id);
-    return allowed;
+
+  // Latest committed values for the async close, which outlives the render that started it.
+  const latest = useRef({ snapshot: current, canClose });
+  useLayoutEffect(() => {
+    latest.current = { snapshot: current, canClose };
+  });
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const inFlight = useRef(new Map<string, Promise<boolean>>());
+
+  const requestClose = (id: string) => {
+    const key = `${generation}:${id}`;
+    const running = inFlight.current.get(key);
+    if (running) return running;
+    const run = (async () => {
+      const guard = latest.current.canClose;
+      const allowed = guard ? await guard(id) : true;
+      const { snapshot } = latest.current;
+      if (
+        !allowed ||
+        !mounted.current ||
+        snapshot.generation !== generation ||
+        !snapshot.items.some((item) => item.id === id)
+      ) {
+        return false;
+      }
+      close(id);
+      return true;
+    })().finally(() => inFlight.current.delete(key));
+    inFlight.current.set(key, run);
+    return run;
   };
 
   return {

@@ -105,6 +105,21 @@ describe('ItemTabs', () => {
     }
   });
 
+  it('announces every status together, not only the first', () => {
+    renderTabs({
+      items: [
+        makeItem('a', { state: 'missing', dirty: true }),
+        makeItem('b', { state: 'loading', dirty: true }),
+      ],
+    });
+    expect(
+      screen.getByRole('tab', { name: /^a\.md\s*\(not found, unsaved changes\)$/ }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('tab', { name: /^b\.md\s*\(loading, unsaved changes\)$/ }),
+    ).toBeTruthy();
+  });
+
   it('announces dirty, loading and missing states', () => {
     renderTabs({
       items: [
@@ -248,6 +263,20 @@ describe('ItemTabs', () => {
       expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'item-1.md' }));
     });
 
+    it('keeps focus on the neighbouring tab when closing from the Opened menu removes its trigger', async () => {
+      containerWidth = 1000;
+      render(<Host initial={makeItems(8)} />);
+      const trigger = screen.getByRole('button', { name: 'Opened items (8)' });
+      fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: 'mouse' });
+      const menu = await screen.findByRole('menu');
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'Close item-7.md' }));
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+      expect(screen.queryByRole('button', { name: /^Opened items/ })).toBeNull();
+      expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'item-6.md' }));
+    });
+
     it('does not steal focus from outside the strip', () => {
       render(
         <>
@@ -287,13 +316,39 @@ describe('ItemTabs', () => {
       expect(screen.getAllByRole('tab')).toHaveLength(4);
     });
 
+    it('offers an accessible Close menuitem per row, for users without a keyboard', async () => {
+      containerWidth = 700;
+      const { onClose } = renderTabs({ items: makeItems(8) });
+      fireEvent.pointerDown(screen.getByRole('button', { name: 'Opened items (8)' }), {
+        button: 0,
+        ctrlKey: false,
+        pointerType: 'mouse',
+      });
+      const menu = await screen.findByRole('menu');
+      expect(within(menu).getAllByRole('menuitem', { name: /^Close / })).toHaveLength(8);
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'Close item-5.md' }));
+      expect(onClose).toHaveBeenCalledWith('item-5');
+    });
+
+    it('offers the same Close menuitem in the switcher', async () => {
+      const { onClose } = renderTabs({ variant: 'switcher', items: makeItems(3) });
+      fireEvent.pointerDown(screen.getByRole('button', { name: /opened$/ }), {
+        button: 0,
+        ctrlKey: false,
+        pointerType: 'mouse',
+      });
+      const menu = await screen.findByRole('menu');
+      fireEvent.click(within(menu).getByRole('menuitem', { name: 'Close item-1.md' }));
+      expect(onClose).toHaveBeenCalledWith('item-1');
+    });
+
     it('lists every item with its description in the Opened menu and activates from it', async () => {
       containerWidth = 700;
       const { onActivate } = renderTabs({ items: makeItems(8) });
       const trigger = screen.getByRole('button', { name: 'Opened items (8)' });
       fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: 'mouse' });
       const menu = await screen.findByRole('menu');
-      const rows = within(menu).getAllByRole('menuitem');
+      const rows = within(menu).getAllByRole('menuitem', { name: /^(?!Close )/ });
       expect(rows).toHaveLength(8);
       expect(within(menu).getAllByText('docs/item-7.md')).toHaveLength(1);
       fireEvent.click(rows[7]!);

@@ -41,6 +41,10 @@ document owns only what they mean in the product. Approved mock: Storybook
 - **Unsaved changes.** Closing a tab with edits MUST ask (Save / Discard / Cancel) for that tab.
   Leaving the screen or switching specification MUST ask once, listing the unsaved documents.
   `DocumentRouteGuard` is single-document today and MUST be extended to this.
+- **Switching tabs is not leaving.** Moving between open tabs changes the route
+  `documents/$documentId` but stays on the Documents screen, so it MUST NOT trigger the leave guard
+  or its Save / Discard / Cancel dialog. Drafts of the other tabs are kept. Only closing a tab, leaving
+  the screen or switching specification asks.
 - **Missing document.** A tab whose document disappeared stays open, marked missing; a draft is not
   discarded silently.
 
@@ -60,13 +64,13 @@ Each kind declares its views and actions to the host; the rules for descriptors,
 `...` menu are in the design-system document.
 
 - **Markdown.** Opens in preview. Edit/Preview is promoted (pencil in preview, eye in edit). Split
-  (icon "open preview to the side") exists only when the document area is at least 1000 px; below
+  (icon `columns-2`, from the existing lucide set) exists only when the document area is at least 1000 px; below
   that the view falls back to edit. Word wrap and line numbers are editor preferences in the
   `display` group, shared across tabs.
 - **Code.** One view, editable by property; no mode toggle. Save is promoted only while dirty.
-- **Image.** Opens as Fit. One promoted toggle, Fit <-> Actual size (100%). Zoom in/out and the
-  current zoom (info row) are in `display`; zoom is per tab; pinch and `+`/`-` zoom on input
-  devices.
+- **Image.** Opens as Fit. One promoted toggle, Fit <-> Actual size (100%). Zoom in/out are in
+  `display`, with the current zoom shown as a trailing value; zoom is per tab; pinch and `+`/`-`
+  zoom on input devices.
 - **Binary.** Download is promoted.
 - **Editor look.** Editable source MUST look like an editor: monospace, a line-number gutter sized
   to its digit count (at least 2 digits on Narrow), current-line highlight. There is no "Editing"
@@ -98,7 +102,9 @@ are comparison frames only.
 
 - Complete menu (`menu: 'complete'`) with groups in `WorkspaceHeaderFrame`.
 - `aria-pressed` on icon header actions.
-- "Open preview to the side" icon in the `nevo-ui` Icon set.
-- Close guard for several tabs (extend `DocumentRouteGuard`).
+- Close guard for several tabs (extend `DocumentRouteGuard`); tab switching MUST NOT trigger it.
 - Mapping of the active tab to the route `documents/$documentId`.
 - Confirm the 44 px hit area.
+- Verify the tree/document geometry on the real `AppWorkspace`: the Storybook mock composes the
+  layout by hand (own sections, proportions and measuring), so it is a concept and interaction
+  demonstration and does not prove scroll, borders, region widths or breakpoints.

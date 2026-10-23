@@ -1,7 +1,6 @@
 import {
   forwardRef,
   useCallback,
-  useRef,
   useLayoutEffect,
   useState,
   type HTMLAttributes,
@@ -16,17 +15,12 @@ import {
 import { resolveRovingIndex } from '../../behaviors/rovingSelection';
 import { Button } from '../../actions/Button';
 import { Spinner } from '../../feedback/Spinner';
-import { Icon, type IconGlyph } from '../../foundations/Icon';
-import {
-  Menu,
-  MenuContent,
-  MenuItem,
-  MenuLabel,
-  MenuNote,
-  MenuSeparator,
-  MenuTrigger,
-} from '../../overlays/Menu';
+import { Icon } from '../../foundations/Icon';
+import { Menu, MenuContent, MenuTrigger } from '../../overlays/Menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../overlays/Tooltip';
+import { DirtyDot, OpenedMenuBody, type OpenedMenuProps } from './OpenedMenu';
+import { useCloseFocus } from './useCloseFocus';
+import { resolveLabels, statusText, type ItemTab, type ItemTabsLabels } from './itemTabsTypes';
 import {
   ITEM_TABS_SWITCHER_BELOW,
   ITEM_TAB_MIN_WIDTH,
@@ -35,61 +29,8 @@ import {
   splitMiddle,
 } from './itemTabsLayout';
 
-export interface ItemTab {
-  /** Stable identity, unique within the strip. */
-  id: string;
-  /** Visible name. Middle-truncated when the tab is narrower than the name. */
-  label: string;
-  /** Full description (for example a path): tooltip and Opened menu rows. */
-  description?: string;
-  /** Leading glyph. Replaced by a spinner while loading and by a warning when missing. */
-  icon?: IconGlyph;
-  /** Shows the attention badge on the icon (left, always visible). */
-  dirty?: boolean;
-  state?: 'ready' | 'loading' | 'missing';
-}
-
-export interface ItemTabsLabels {
-  /** Accessible name of the tablist. */
-  tablist: string;
-  /** Accessible name of the overflow trigger. */
-  openedMenu: (count: number) => string;
-  /** Heading of the Opened menu. */
-  openedHeading: string;
-  /** Accessible name of one tab's close button. */
-  close: (label: string) => string;
-  /** Last line of every tab tooltip. */
-  closeHint: string;
-  /** Note at the bottom of the Opened menu. */
-  menuHint: string;
-  /** Pointer-only close affordance title inside Opened menu rows. */
-  menuClose: string;
-  /** Visually hidden suffixes announced after the item name. */
-  status: { loading: string; missing: string; dirty: string; current: string };
-  /** Accessible name of the switcher button. */
-  switcher: (info: { label: string; count: number; dirty: boolean }) => string;
-  /** Switcher text when no item is active. */
-  noItem: string;
-}
-
-export const defaultItemTabsLabels: ItemTabsLabels = {
-  tablist: 'Opened items',
-  openedMenu: (count) => `Opened items (${count})`,
-  openedHeading: 'Opened items',
-  close: (label) => `Close ${label}`,
-  closeHint: 'Close: Delete or middle-click',
-  menuHint: 'Delete closes the highlighted item.',
-  menuClose: 'Close',
-  status: {
-    loading: 'loading',
-    missing: 'not found',
-    dirty: 'unsaved changes',
-    current: 'current',
-  },
-  switcher: ({ label, count, dirty }) =>
-    `${label}${dirty ? ', unsaved changes' : ''}, ${count} opened`,
-  noItem: 'No item',
-};
+export type { ItemTab, ItemTabsLabels } from './itemTabsTypes';
+export { defaultItemTabsLabels } from './itemTabsTypes';
 
 export interface ItemTabsProps extends Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -124,29 +65,6 @@ export interface ItemTabsProps extends Omit<
 export const getItemTabId = (scope: string, id: string) => `${scope}-tab-${encodeURIComponent(id)}`;
 export const getItemTabPanelId = (scope: string, id: string) =>
   `${scope}-panel-${encodeURIComponent(id)}`;
-
-function resolveLabels(overrides: ItemTabsProps['labels']): ItemTabsLabels {
-  return {
-    ...defaultItemTabsLabels,
-    ...overrides,
-    status: { ...defaultItemTabsLabels.status, ...overrides?.status },
-  };
-}
-
-function statusText(item: ItemTab, labels: ItemTabsLabels) {
-  if (item.state === 'loading') return labels.status.loading;
-  if (item.state === 'missing') return labels.status.missing;
-  return item.dirty ? labels.status.dirty : '';
-}
-
-function DirtyDot({ className }: { className?: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={cn('size-2 shrink-0 rounded-full bg-status-attention', className)}
-    />
-  );
-}
 
 /** Keeps the tail (extension) visible. One accessible name: the visual halves are hidden. */
 function MiddleTruncate({ text, maxChars }: { text: string; maxChars?: number }) {
@@ -313,74 +231,6 @@ function CloseSlot({
   );
 }
 
-interface OpenedMenuProps {
-  items: readonly ItemTab[];
-  activeId: string | null;
-  labels: ItemTabsLabels;
-  hintId: string;
-  onActivate: (id: string) => void;
-  onClose: (id: string) => void;
-}
-
-function OpenedMenuBody({ items, activeId, labels, hintId, onActivate, onClose }: OpenedMenuProps) {
-  return (
-    <>
-      <MenuLabel>{labels.openedHeading}</MenuLabel>
-      {items.map((item) => (
-        <MenuItem
-          key={item.id}
-          onSelect={() => onActivate(item.id)}
-          onKeyDown={(event) => {
-            if (event.key === 'Delete') onClose(item.id);
-          }}
-          aria-current={item.id === activeId ? 'true' : undefined}
-          leadingIcon={item.state === 'missing' ? 'triangle-alert' : item.icon}
-          className={item.state === 'missing' ? 'text-content-muted' : undefined}
-        >
-          <span className="flex w-full min-w-0 items-center gap-2 whitespace-normal">
-            <span className="min-w-0 flex-1">
-              <span className="block break-all">{item.label}</span>
-              {item.description && item.description !== item.label ? (
-                <span className="block break-all text-content-muted">{item.description}</span>
-              ) : null}
-            </span>
-            {item.dirty ? (
-              <>
-                <DirtyDot />
-                <span className="sr-only">({labels.status.dirty})</span>
-              </>
-            ) : null}
-            {item.id === activeId ? (
-              <span className="sr-only">({labels.status.current})</span>
-            ) : null}
-            {/*
-             * A button inside a menuitem is nested-interactive, so this x is a pointer-only,
-             * aria-hidden affordance; the keyboard path is Delete on the highlighted row.
-             * 44px on coarse pointers.
-             */}
-            <span
-              aria-hidden="true"
-              title={labels.menuClose}
-              className="grid size-6 shrink-0 place-items-center rounded-control-inline text-content-muted hover:bg-surface-selected pointer-coarse:size-11"
-              onClick={(event) => {
-                event.stopPropagation();
-                event.preventDefault();
-                onClose(item.id);
-              }}
-            >
-              <Icon name="close" size="sm" />
-            </span>
-          </span>
-        </MenuItem>
-      ))}
-      <MenuSeparator />
-      <MenuNote id={hintId} className="pointer-coarse:hidden">
-        {labels.menuHint}
-      </MenuNote>
-    </>
-  );
-}
-
 /*
  * Measures the root width. Kept local: the other ResizeObserver users in this package (AppShell,
  * AppWorkspace, WorkspaceHeader, ScrollArea, Progress) each derive their own value from the
@@ -443,30 +293,7 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
   const hovered = items.some((item) => item.id === hoveredId) ? hoveredId : null;
   const focused = items.some((item) => item.id === focusedId) ? focusedId : null;
 
-  // After a close, focus moves to the right neighbour (else the left one) once the host has
-  // actually removed the item. A cancelled close (guard answered "no") leaves focus alone. When
-  // the last item closes there is nothing to focus: the host decides where focus goes next.
-  const afterClose = useRef<{ id: string; neighbourId: string | null } | null>(null);
-  const onClose = (id: string) => {
-    const index = items.findIndex((item) => item.id === id);
-    afterClose.current = {
-      id,
-      neighbourId: (items[index + 1] ?? items[index - 1])?.id ?? null,
-    };
-    onCloseItem(id);
-  };
-  useLayoutEffect(() => {
-    const pending = afterClose.current;
-    if (!pending || !root || items.some((item) => item.id === pending.id)) return;
-    afterClose.current = null;
-    const owner = document.activeElement;
-    if (owner && owner !== document.body && !root.contains(owner)) return;
-    const tabs = [...root.querySelectorAll<HTMLElement>('[role="tab"]')];
-    const target =
-      tabs.find((tab) => tab.dataset.itemId === pending.neighbourId) ??
-      tabs.find((tab) => tab.getAttribute('aria-selected') === 'true');
-    target?.focus();
-  }, [items, root]);
+  const { onClose, onCloseAutoFocus } = useCloseFocus(items, root, onCloseItem);
 
   const switcher =
     variant === 'switcher' || (variant === 'auto' && width !== undefined && width < switcherBelow);
@@ -540,6 +367,7 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
           </MenuTrigger>
           <MenuContent
             align="start"
+            onCloseAutoFocus={onCloseAutoFocus}
             // Arbitrary: 20rem, but never wider than the viewport minus the collision padding.
             className="w-[min(20rem,calc(100vw-1rem))]"
             aria-describedby={hintId}
@@ -608,7 +436,12 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
                 <span>{items.length}</span>
               </button>
             </MenuTrigger>
-            <MenuContent align="end" className="w-80" aria-describedby={hintId}>
+            <MenuContent
+              align="end"
+              className="w-80"
+              aria-describedby={hintId}
+              onCloseAutoFocus={onCloseAutoFocus}
+            >
               <OpenedMenuBody {...menu} />
             </MenuContent>
           </Menu>

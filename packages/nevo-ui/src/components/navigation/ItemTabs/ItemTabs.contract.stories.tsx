@@ -136,10 +136,14 @@ export const OverflowContract: Story = {
       () => document.querySelector<HTMLElement>('[role="menu"]'),
       'The Opened menu opens.',
     );
-    assert(
-      menu.querySelectorAll('[role="menuitem"]').length === manyItems.length,
-      'The menu lists every opened item.',
+    const closeItems = [...menu.querySelectorAll('[role="menuitem"]')].filter((row) =>
+      row.textContent?.startsWith('Close '),
     );
+    assert(
+      menu.querySelectorAll('[role="menuitem"]').length === manyItems.length * 2,
+      'The menu lists every opened item with an accessible Close action after it.',
+    );
+    assert(closeItems.length === manyItems.length, 'Every item has its own Close menuitem.');
     assert(
       menu.textContent?.includes('src/audit-log/audit-log.ts') === true,
       'Rows show the full description.',
@@ -165,6 +169,12 @@ export const SwitcherContract: Story = {
     const menu = await waitFor(
       () => document.querySelector<HTMLElement>('[role="menu"]'),
       'The switcher opens the Opened menu.',
+    );
+    assert(
+      [...menu.querySelectorAll('[role="menuitem"]')].some((row) =>
+        row.textContent?.startsWith('Close sign-in-flow.md'),
+      ),
+      'The switcher menu exposes a Close menuitem per item.',
     );
     assert(
       menu.getBoundingClientRect().right <= window.innerWidth,

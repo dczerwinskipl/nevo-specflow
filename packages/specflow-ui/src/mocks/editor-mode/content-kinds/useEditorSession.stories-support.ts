@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { DIRTY_SUFFIX, sourceOf } from './fixtures.stories-support';
 
 /**
@@ -17,6 +17,10 @@ export function useEditorSession(initial: { dirty: string[]; views?: Record<stri
   const [wrapPref, setWrapPref] = useState<boolean | null>(null);
   const [lineNumbers, setLineNumbers] = useState(true);
 
+  // Light per-document editor state (scroll and current line), kept outside the editor instance:
+  // only the active editor is mounted, so it is written while the user works and restored on mount.
+  const memory = useRef<Record<string, { top: number; line: number }>>({});
+
   const savedOf = (id: string) => saved[id] ?? sourceOf(id);
   const draftOf = (id: string) => drafts[id] ?? savedOf(id);
   return {
@@ -26,6 +30,10 @@ export function useEditorSession(initial: { dirty: string[]; views?: Record<stri
     setWrapPref,
     lineNumbers,
     setLineNumbers,
+    viewMemory: (id: string) => memory.current[id],
+    remember: (id: string, patch: Partial<{ top: number; line: number }>) => {
+      memory.current[id] = { top: 0, line: 0, ...memory.current[id], ...patch };
+    },
     draftOf,
     isDirty: (id: string) => draftOf(id) !== savedOf(id),
     save: (id: string) => setSaved((current) => ({ ...current, [id]: draftOf(id) })),

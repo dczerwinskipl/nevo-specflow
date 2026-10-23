@@ -1,18 +1,16 @@
 import { useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import {
+  Columns2,
   Download,
+  Maximize2,
   Scan,
   ListOrdered,
   Undo2,
   WrapText,
   Pencil,
-  Save,
   ZoomIn,
   ZoomOut,
-  type LucideIcon,
-  type LucideProps,
 } from 'lucide-react';
-import { forwardRef } from 'react';
 import { Button, Icon, MarkdownDocument, cn, ScrollArea, Typography } from '@nevo/ui';
 import { fileName, type ContentKind, type MockDocument } from './fixtures.stories-support';
 import type { TabAction } from '../tab-host/types.stories-support';
@@ -63,19 +61,6 @@ export interface ContentDescriptor {
 }
 
 const noop = () => undefined;
-
-/** Save icon with the unsaved dot: the Save action itself says there are changes. */
-const SaveWithDot = forwardRef<SVGSVGElement, LucideProps>(function SaveWithDot(props, ref) {
-  return (
-    <span className="relative inline-flex">
-      <Save ref={ref} {...props} />
-      <span
-        aria-hidden="true"
-        className="absolute -right-1 -top-1 size-2 rounded-full bg-status-attention"
-      />
-    </span>
-  );
-}) as unknown as LucideIcon;
 
 /* ------------------------------------------------------------------------------------------ */
 /* Highlighting (tokens as in MarkdownSourceEditor: link / link-hover / muted)                  */
@@ -215,7 +200,12 @@ function EditorSurface({
   narrow = false,
   lineNumbers = true,
   onScrollRatio,
+  restore,
+  remember,
 }: {
+  /** Scroll/line to restore on mount, and where to write them while editing. */
+  restore?: { top: number; line: number };
+  remember?: (patch: Partial<{ top: number; line: number }>) => void;
   lineNumbers?: boolean;
   onScrollRatio?: (ratio: number) => void;
   narrow?: boolean;
@@ -225,8 +215,8 @@ function EditorSurface({
   highlight: (line: string) => ReactNode;
   wrap?: boolean;
 }) {
-  const [scroll, setScroll] = useState({ top: 0, left: 0 });
-  const [current, setCurrent] = useState(0);
+  const [scroll, setScroll] = useState({ top: restore?.top ?? 0, left: 0 });
+  const [current, setCurrent] = useState(restore?.line ?? 0);
   const [areaWidth, setAreaWidth] = useState<number>();
   const area = useRef<HTMLTextAreaElement>(null);
   const rowRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -244,9 +234,16 @@ function EditorSurface({
   useLayoutEffect(() => {
     setHeights(wrap ? rowRefs.current.map((el) => el?.offsetHeight ?? LINE_HEIGHT) : undefined);
   }, [value, areaWidth, wrap]);
+  useLayoutEffect(() => {
+    if (restore && area.current) area.current.scrollTop = restore.top;
+    // Mount only: later scrolls are written, not restored.
+  }, []);
   const syncCurrent = () => {
     const el = area.current;
-    if (el) setCurrent(el.value.slice(0, el.selectionStart).split('\n').length - 1);
+    if (!el) return;
+    const line = el.value.slice(0, el.selectionStart).split('\n').length - 1;
+    setCurrent(line);
+    remember?.({ line });
   };
   return (
     <div className="flex min-h-0 flex-1 bg-canvas" data-editor-surface="true">
@@ -296,6 +293,7 @@ function EditorSurface({
           onScroll={(event) => {
             const el = event.currentTarget;
             setScroll({ top: el.scrollTop, left: el.scrollLeft });
+            remember?.({ top: el.scrollTop });
             const range = el.scrollHeight - el.clientHeight;
             onScrollRatio?.(range > 0 ? el.scrollTop / range : 0);
           }}
@@ -329,6 +327,9 @@ function MarkdownRenderer({ doc, files, view, narrow, wrap, lineNumbers }: Rende
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 basis-1/2 flex-col">
           <EditorSurface
+            key={doc.id}
+            restore={files.viewMemory(doc.id)}
+            remember={(patch) => files.remember(doc.id, patch)}
             label={`Source of ${name}`}
             value={files.draftOf(doc.id)}
             onChange={(value) => files.edit(doc.id, value)}
@@ -360,6 +361,9 @@ function MarkdownRenderer({ doc, files, view, narrow, wrap, lineNumbers }: Rende
   if (view === 'edit')
     return (
       <EditorSurface
+        key={doc.id}
+        restore={files.viewMemory(doc.id)}
+        remember={(patch) => files.remember(doc.id, patch)}
         label={`Source of ${name}`}
         value={files.draftOf(doc.id)}
         onChange={(value) => files.edit(doc.id, value)}
@@ -388,6 +392,9 @@ function MarkdownRenderer({ doc, files, view, narrow, wrap, lineNumbers }: Rende
 function CodeRenderer({ doc, files, narrow, wrap, lineNumbers }: RendererProps) {
   return (
     <EditorSurface
+      key={doc.id}
+      restore={files.viewMemory(doc.id)}
+      remember={(patch) => files.remember(doc.id, patch)}
       label={`Source of ${fileName(doc.path)}`}
       value={files.draftOf(doc.id)}
       onChange={(value) => files.edit(doc.id, value)}
@@ -475,52 +482,6 @@ export interface ContentAction {
   onPress: () => void;
 }
 
-/**
- * LOCAL ICON (not in the DS Icon set; candidate for nevo-ui): VS Code "Open Preview to the Side" =
- * a split page with a small magnifier. 24 grid, currentColor, stroke 2, round caps. The active
- * variant tints the preview half, because header actions have no pressed state.
- */
-function makeOpenPreviewSide(active: boolean) {
-  return forwardRef<SVGSVGElement, LucideProps>(function OpenPreviewSide(
-    { size = 24, strokeWidth = 2, ...props },
-    ref,
-  ) {
-    return (
-      <svg
-        ref={ref}
-        xmlns="http://www.w3.org/2000/svg"
-        width={size}
-        height={size}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={strokeWidth}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        {...props}
-      >
-        {active ? (
-          <rect
-            x="12"
-            y="3"
-            width="9"
-            height="8"
-            fill="currentColor"
-            fillOpacity="0.25"
-            stroke="none"
-          />
-        ) : null}
-        <path d="M13 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6" />
-        <path d="M12 3v8" />
-        <circle cx="17" cy="17" r="3" />
-        <path d="m21 21-1.9-1.9" />
-      </svg>
-    );
-  }) as unknown as LucideIcon;
-}
-const OpenPreviewSide = makeOpenPreviewSide(false);
-const OpenPreviewSideActive = makeOpenPreviewSide(true);
-
 /** Word wrap preference: shared by all tabs; default on for markdown and on Narrow, off for code. */
 export const wrapFor = (files: EditorSession, doc: MockDocument, narrow: boolean) =>
   files.wrapPref ?? (doc.kind === 'md' || narrow);
@@ -553,7 +514,7 @@ const saveActions = (ctx: ActionContext): ContentAction[] =>
         {
           id: 'save',
           label: 'Save',
-          icon: SaveWithDot,
+          icon: 'save',
           group: 'actions',
           promoted: 0,
           primary: true,
@@ -595,7 +556,7 @@ function mdActions(view: ViewId, ctx: ActionContext): ContentAction[] {
     actions.push({
       id: 'split',
       label: view === 'split' ? 'Close split' : 'Split view',
-      icon: view === 'split' ? OpenPreviewSideActive : OpenPreviewSide,
+      icon: Columns2,
       group: 'actions',
       promoted: 2,
       onPress: set(view === 'split' ? 'edit' : 'split'),
@@ -605,34 +566,9 @@ function mdActions(view: ViewId, ctx: ActionContext): ContentAction[] {
   return actions;
 }
 
-/** 1:1 icon (lucide has none): a framed "1:1". Candidate for nevo-ui. */
-const ActualSizeIcon = forwardRef<SVGSVGElement, LucideProps>(function ActualSizeIcon(
-  { size = 24, strokeWidth = 2, ...props },
-  ref,
-) {
-  return (
-    <svg
-      ref={ref}
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={strokeWidth}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <path d="M7 9.5 8.5 8.5V15.5M15.5 8.5V15.5M13.5 10.5h.01M13.5 13.5h.01" />
-    </svg>
-  );
-}) as unknown as LucideIcon;
-
 /**
  * Image: one toggle in the header, the target of the click (Fit <-> 100%); the rest in the menu.
- * Icons name the action (Fit = scan frame, Actual size = 1:1); state sits in the trailing slot
+ * Icons name the action (Fit = scan frame, Actual size = maximize); state sits in the trailing slot
  * (a check on the active mode, the current zoom next to the zoom steps).
  */
 function imageActions(_view: ViewId, ctx: ActionContext): ContentAction[] {
@@ -653,7 +589,7 @@ function imageActions(_view: ViewId, ctx: ActionContext): ContentAction[] {
     {
       id: 'actual-size',
       label: 'Actual size (100%)',
-      icon: ActualSizeIcon,
+      icon: Maximize2,
       group: 'display',
       promoted: fit ? 1 : undefined,
       checked: zoom === 1,

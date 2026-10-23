@@ -147,5 +147,70 @@ describe('useOpenedItems', () => {
       });
       expect(ids(result.current.items)).toEqual(['a', 'b']);
     });
+
+    it('ignores a late guard result after A -> B -> A: the new session keeps its item', async () => {
+      let settle: (value: boolean) => void = () => undefined;
+      const canClose = () => new Promise<boolean>((resolve) => (settle = resolve));
+      const items = [entry('x'), entry('y')];
+      const { result, rerender } = setup({ scope: 'A', initialItems: items, canClose });
+      let pending: Promise<boolean> = Promise.resolve(true);
+      act(() => {
+        pending = result.current.requestClose('x');
+      });
+      rerender({ scope: 'B', initialItems: items, canClose });
+      rerender({ scope: 'A', initialItems: items, canClose });
+      expect(ids(result.current.items)).toEqual(['x', 'y']);
+      let closed = true;
+      await act(async () => {
+        settle(true);
+        closed = await pending;
+      });
+      expect(closed).toBe(false);
+      expect(ids(result.current.items)).toEqual(['x', 'y']);
+    });
+
+    it('resolves false when the item is not open', async () => {
+      const canClose = vi.fn(() => true);
+      const { result } = setup({ initialItems: [entry('a')], canClose });
+      let closed = true;
+      await act(async () => {
+        closed = await result.current.requestClose('missing');
+      });
+      expect(closed).toBe(false);
+      expect(ids(result.current.items)).toEqual(['a']);
+    });
+
+    it('shares one guard call between parallel requests for the same id', async () => {
+      let settle: (value: boolean) => void = () => undefined;
+      const canClose = vi.fn(() => new Promise<boolean>((resolve) => (settle = resolve)));
+      const { result } = setup({ initialItems: [entry('a'), entry('b')], canClose });
+      let first: Promise<boolean> = Promise.resolve(false);
+      let second: Promise<boolean> = Promise.resolve(false);
+      act(() => {
+        first = result.current.requestClose('a');
+        second = result.current.requestClose('a');
+      });
+      let results: boolean[] = [];
+      await act(async () => {
+        settle(true);
+        results = await Promise.all([first, second]);
+      });
+      expect(canClose).toHaveBeenCalledTimes(1);
+      expect(results).toEqual([true, true]);
+      expect(ids(result.current.items)).toEqual(['b']);
+    });
+
+    it('does nothing when the host unmounts while the guard is pending', async () => {
+      let settle: (value: boolean) => void = () => undefined;
+      const canClose = () => new Promise<boolean>((resolve) => (settle = resolve));
+      const { result, unmount } = setup({ initialItems: [entry('a')], canClose });
+      let pending: Promise<boolean> = Promise.resolve(true);
+      act(() => {
+        pending = result.current.requestClose('a');
+      });
+      unmount();
+      settle(true);
+      await expect(pending).resolves.toBe(false);
+    });
   });
 });

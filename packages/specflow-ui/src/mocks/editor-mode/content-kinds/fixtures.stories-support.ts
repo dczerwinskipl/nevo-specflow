@@ -199,7 +199,7 @@ export const sessionMessages = [
   },
 ] as const;
 
-export type TabPreset = 'mixed' | 'empty';
+export type TabPreset = 'mixed' | 'twoEditors' | 'empty';
 
 export interface PresetState {
   open: string[];
@@ -225,6 +225,13 @@ export const presets: Record<TabPreset, PresetState> = {
     active: 'specification',
     dirty: ['decisions', 'migration'],
     views: { decisions: 'edit' },
+  },
+  // Two markdown tabs both in edit: scroll one, switch, come back (state is restored per document).
+  twoEditors: {
+    open: ['specification', 'decisions'],
+    active: 'specification',
+    dirty: [],
+    views: { specification: 'edit', decisions: 'edit' },
   },
   empty: { open: [], active: null, dirty: [] },
 };

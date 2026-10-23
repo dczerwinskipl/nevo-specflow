@@ -44,13 +44,20 @@ owns state, guards and the tab panel; the strip renders no panel.
   shows a spinner, `missing` a warning icon and muted label; neither changes tab geometry.
 - **Close.** The `x` is shown on hover, focus and on the active tab, always on coarse pointers, with
   a 44 px hit area there. It is outside the tablist and not in the tab order.
-- **Menu.** `Opened (N)` lists every item with description, dirty badge and a pointer-only `x`.
+- **Menu.** `Opened (N)` lists every item with description and dirty badge. Each item row is
+  followed by a `Close <label>` menu item, shown when its row is highlighted and always available to
+  assistive technology; the `x` in a row is a pointer shortcut only. The same menu serves the
+  switcher, so closing never depends on a keyboard.
+- **Focus after close.** After a close from a tab, the menu or the keyboard, focus MUST move to the
+  neighbouring tab (right, else left) and MUST NOT return to a trigger that may have unmounted.
+  Closing the last item leaves focus to the host.
 - **No preview tab.** Every open creates a tab; opening an open item activates it.
 - **Keyboard.** `activation="manual"` (default): arrows, Home and End move focus, Enter/Space
   activates. `Delete` on a tab or menu row closes it; middle-click closes a tab. The strip MUST NOT
   bind Ctrl+W (the browser owns it).
 - **A11y.** `tablist`/`tab` with roving tabindex; one tab panel per active item, referenced through
-  `getItemTabId` / `getItemTabPanelId`. Dirty, loading, missing and current are announced.
+  `getItemTabId` / `getItemTabPanelId`. Dirty, loading, missing and current are announced, and statuses combine: an item that is both
+  missing and dirty is announced as both ("not found, unsaved changes").
 - **Copy.** All strings are replaceable through `labels`.
 
 ## useOpenedItems
@@ -60,10 +67,14 @@ Headless state: `{ items, activeId, open, activate, close, requestClose, closeAl
 - `open` MUST activate an item whose `id` is already open instead of adding another.
 - Closing the active item activates its right neighbour, else the left one; closing the last leaves
   `activeId` null.
-- `requestClose` MUST consult the async `canClose(id)` guard; `false` keeps the item open. The host
-  MUST route every close trigger (`x`, Delete, middle-click, menu) through it. `close` and
-  `closeAll` do not ask.
-- A change of `scope` resets to the initial values; late async closes of an old scope are ignored.
+- `requestClose` MUST consult the async `canClose(id)` guard and resolve `true` only when the item
+  was actually closed. It resolves `false` when the guard refuses, the item is not open, the state
+  was reset meanwhile or the hook unmounted. Concurrent requests for the same item share one guard
+  call and one result. The host MUST route every close trigger (`x`, Delete, middle-click, menu)
+  through it. `close` and `closeAll` do not ask.
+- A change of `scope` resets to the initial values and starts a new state generation. A guard that
+  was pending in an earlier generation MUST NOT close anything, even if the scope later returns to
+  the same value.
 
 ## Content tabs host (pattern, not implemented in nevo-ui)
 
@@ -95,6 +106,5 @@ disabled?, shortcut?, onPress }`.
 1. `WorkspaceHeaderFrame` needs an opt-in complete menu (`menu: 'complete'`) that includes direct
    actions and renders groups, without changing existing screens.
 2. Icon header actions need `aria-pressed` for toggles.
-3. The `Icon` set needs "Open Preview to the Side".
-4. `ItemTabs` duplicates the workspace header height. A header content slot that stretches to the
+3. `ItemTabs` duplicates the workspace header height. A header content slot that stretches to the
    header height would remove that coupling.

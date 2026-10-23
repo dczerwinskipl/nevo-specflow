@@ -39,6 +39,10 @@ import { useTabHost } from './tab-host/useTabHost.stories-support';
 export type { MockLayout } from './content-kinds/contentKinds.stories-support';
 
 /*
+ * Concept and interaction demo. The layout is hand-composed (own sections, 25/75 and 1/3-2/3
+ * proportions, PaneHeader, width measuring) and does not prove AppWorkspace geometry; verify against
+ * the real AppWorkspace during Documents integration.
+ *
  * Composition only: the Documents shell (tree + document area) wires the generic tab host
  * (tab-host/) to the editor content layer (content-kinds/) through `editorProvider`.
  */

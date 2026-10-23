@@ -291,7 +291,7 @@ export function TabHostBody({
       }
     : { role: 'region' as const, 'aria-label': item.label };
   return (
-    <div {...panel} className="flex h-full min-h-0 flex-col">
+    <div key={id} {...panel} className="flex h-full min-h-0 flex-col">
       {item.render()}
     </div>
   );

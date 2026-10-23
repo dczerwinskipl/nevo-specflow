@@ -1,0 +1,30 @@
+{
+  "$comment": "Windows smoke slice: the single place to add or remove a test. See docs/engineering/repository/ci.md#windows-smoke. Each test name must be the exact it(...) title; the runner fails closed when a name is missing from its file.",
+  "testTimeoutMs": 120000,
+  "entries": [
+    {
+      "package": "@nevo/specflow-runtime",
+      "dir": "packages/specflow-runtime",
+      "file": "test/specs/create-async.http.test.ts",
+      "tests": [
+        "answers 202 with Location and keeps working detached until the journal completes",
+        "replay of a still running request returns the current state (202) or the result (201)"
+      ]
+    },
+    {
+      "package": "@nevo/specflow-engine",
+      "dir": "packages/specflow-engine",
+      "file": "test/create-commit.test.ts",
+      "tests": [
+        "commits the new-worktree scaffold on the new branch, one commit on top of the base",
+        "does not evaluate the base ref: a new worktree from a protected branch is fine"
+      ]
+    },
+    {
+      "package": "@nevo/specflow-engine",
+      "dir": "packages/specflow-engine",
+      "file": "test/create-options.test.ts",
+      "tests": ["treats an unreadable worktree folder as not existing"]
+    }
+  ]
+}

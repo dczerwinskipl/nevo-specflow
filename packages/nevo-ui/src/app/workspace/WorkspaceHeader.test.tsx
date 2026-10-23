@@ -222,7 +222,17 @@ describe('WorkspaceHeader pressed icon toggles', () => {
   it('styles the pressed state through the aria-pressed variant and keeps the action name as label', () => {
     expect(render({ ...toggle, pressed: true })).toContain('aria-pressed:bg-surface-selected');
     expect(render({ ...toggle, pressed: true })).toContain('aria-label="Show preview"');
-    expect(render({ ...toggle, primary: true })).not.toContain('aria-pressed:bg-surface-selected');
+    expect(
+      render({
+        id: 'save',
+        label: 'Save',
+        icon: 'eye',
+        presentation: 'icon',
+        primary: true,
+        direct: 'always',
+        onPress: vi.fn(),
+      }),
+    ).not.toContain('aria-pressed:bg-surface-selected');
   });
 
   it('does not change the direct budget', () => {

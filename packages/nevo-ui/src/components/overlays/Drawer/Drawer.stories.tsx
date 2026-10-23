@@ -102,7 +102,12 @@ function DrawerExample({
                 {sheetRows.map((row) => (
                   <li key={row.id}>
                     <DrawerClose asChild>
-                      <Button className="w-full justify-start" variant="ghost">
+                      <Button
+                        className="justify-start [&>span]:text-left"
+                        style={{ minHeight: 'var(--spacing-target-touch)' }}
+                        variant="ghost"
+                        width="full"
+                      >
                         {row.label}
                       </Button>
                     </DrawerClose>
@@ -286,6 +291,12 @@ export const SheetContract: Story = {
     const viewport = dialog.querySelector<HTMLElement>('.scroll-area-viewport');
     assert(viewport !== null, 'The sheet body is a DS ScrollArea.');
     assert(viewport.scrollHeight > viewport.clientHeight, 'Long content scrolls inside the sheet.');
+    const firstRow = dialog.querySelector<HTMLButtonElement>('.scroll-area-content li button');
+    assert(firstRow !== null, 'The contents list has actionable rows.');
+    assert(firstRow.getBoundingClientRect().height >= 44, 'Sheet rows meet the 44px touch target.');
+    const firstRowLabel = firstRow.querySelector('span');
+    assert(firstRowLabel !== null, 'The row exposes its text label.');
+    assert(getComputedStyle(firstRowLabel).textAlign === 'left', 'Row labels align left.');
     const close = dialog.querySelector<HTMLElement>('button[aria-label="Close customer drawer"]');
     assert(close !== null, 'The sheet exposes its named close action.');
     assert(close.getBoundingClientRect().top >= rect.top, 'The close action is inside the sheet.');

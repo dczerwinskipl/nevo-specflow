@@ -267,6 +267,17 @@ stacks full-width actions with the primary/destructive action on top; from `sm` 
 row that wraps (`sm:flex-wrap`) instead of clipping, which keeps 200% zoom readable. Use
 `AlertDialog` with a `destructive` action for irreversible or discarding confirmations.
 
+## Drawer sides and sheets
+
+`DrawerContent` takes `side: 'left' | 'right' | 'top' | 'bottom'` (default `'right'`; AppShell navigation uses `'left'`). All sides keep the Radix Dialog contract: focus trap, Esc, overlay click, `aria-modal`, focus return to the trigger, a required `DrawerTitle` as the accessible name and a named close action (`closeLabel`, 44 px hit area on coarse pointers through `IconButton`).
+
+- **`left` / `right`** are side panels: full height, full width on phones, `28rem` from `sm`, `30rem` from `md`.
+- **`bottom` / `top`** are sheets: they are content-sized up to `calc(100dvh - 3rem)` (a strip of the page stays visible), the `DrawerBody` scrolls inside, and the outer corners use `rounded-surface`. The edge padding honours `env(safe-area-inset-bottom)` (bottom) or `env(safe-area-inset-top)` (top; the close action is offset the same way). Full width on phones; from `md` the sheet is a centred `content-narrow` column instead of stretching across a wide viewport. The slide animation comes from the corresponding edge and is disabled under `prefers-reduced-motion`, like the side panels. There is no drag grabber: the DS has no drag convention, so closing is Esc, overlay click or the close action.
+
+Use a **bottom sheet** on phones for a short list, a picker or a document's contents / properties (touch rows of at least 44 px inside `DrawerBody`). Do not use it for primary navigation (that is the `left` drawer) or for long forms, which need a route or a Dialog. Use **top** for transient surfaces such as notifications or search. Keep one sheet open at a time and do not stack sheets.
+
+Known limitation: the system back gesture / browser Back button does not close a sheet (or any Drawer); it navigates away. Closing on Back needs history integration owned by the application and is not part of this component yet.
+
 ## Popover width
 
 `PopoverContent` clamps itself to the collision-aware available width

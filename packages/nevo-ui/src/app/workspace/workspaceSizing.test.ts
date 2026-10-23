@@ -173,6 +173,25 @@ describe('capPrimaryWidth', () => {
     expect(capPrimaryWidth(undefined, widths, 360)).toBe(widths);
   });
 
+  it('does not touch a Primary exactly at the cap', () => {
+    expect(capPrimaryWidth(2560, { primary: 360, secondary: 2200 }, 360)).toEqual({
+      primary: 360,
+      secondary: 2200,
+    });
+  });
+
+  it('ignores a cap wider than the whole content width', () => {
+    const narrow = { primary: 280, secondary: 560 };
+    expect(capPrimaryWidth(840, narrow, 5000)).toBe(narrow);
+  });
+
+  it('gives everything but the cap to Secondary, never a negative width', () => {
+    expect(capPrimaryWidth(800, { primary: 800, secondary: 0 }, 0)).toEqual({
+      primary: 0,
+      secondary: 800,
+    });
+  });
+
   it('keeps primary + secondary equal to the content width', () => {
     const capped = capPrimaryWidth(1171, { primary: 292.75, secondary: 878.25 }, 360);
     expect(capped.primary! + capped.secondary!).toBeCloseTo(1171);

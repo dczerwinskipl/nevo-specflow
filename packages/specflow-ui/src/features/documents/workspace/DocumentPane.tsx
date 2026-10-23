@@ -101,14 +101,15 @@ export function DocumentPane({ data }: { data: DocumentParams }) {
           tone="attention"
           title={
             missing
-              ? t('documents.notFound.title')
+              ? name
+                ? t('documents.notFound.titleNamed', { name })
+                : t('documents.notFound.title')
               : status === 403
                 ? t('documents.noAccess')
                 : t('documents.unavailable')
           }
         >
           {closeFailed}
-          {missing && name && <p>{t('documents.notFound.body', { name })}</p>}
           {tab?.dirty && <p>{t('documents.tabs.missingHint')}</p>}
           {missing ? (
             <Button onClick={() => void tabs.requestClose(data.documentId)}>

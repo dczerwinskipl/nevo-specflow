@@ -68,8 +68,9 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
   const [demoNotice, setDemoNotice] = useState(false);
   const treeController = useRef<DocumentTreeController>(null);
   const requestRef = useRef<(() => Promise<boolean>) | null>(null);
+  const commitRef = useRef<(() => void) | null>(null);
   const operations = useDocumentTreeOperations({ specId });
-  const opening = useDocumentOpening({ specId, documentId, requestRef });
+  const opening = useDocumentOpening({ specId, documentId, requestRef, commitRef });
   const rootActions = documentRootActions(
     treeController,
     tree.data?.capabilities,
@@ -90,7 +91,7 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
   );
   return (
     <>
-      <DocumentRouteGuard specId={specId} requestRef={requestRef} />
+      <DocumentRouteGuard specId={specId} requestRef={requestRef} commitRef={commitRef} />
       <AppWorkspace
         scroll="content"
         fit="available"
@@ -125,6 +126,7 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
             controllerRef={treeController}
             operations={operations}
             requestRef={requestRef}
+            commitRef={commitRef}
             onSelect={opening.select}
           />
         </AppWorkspace.Primary>

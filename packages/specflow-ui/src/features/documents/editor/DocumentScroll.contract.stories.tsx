@@ -64,6 +64,28 @@ const documents: Record<string, Source> = {
     content: sections.map((s) => `## B ${s}\n\nTreść B ${s}.\n`).join('\n'),
   },
   txt: { id: 'txt', filename: 'notes.txt', content: textDocument },
+  short: {
+    id: 'short',
+    filename: 'short.md',
+    content: 'Krótki dokument bez nagłówków.\n\nDrugi akapit tego dokumentu.',
+  },
+  props: {
+    id: 'props',
+    filename: 'props.md',
+    content: [
+      '---',
+      'title: Ocena',
+      'owner: zespół',
+      '---',
+      '',
+      'Dokument z samymi właściwościami.',
+    ].join('\n'),
+  },
+  withProps: {
+    id: 'withProps',
+    filename: 'with-props.md',
+    content: ['---', 'title: Ocena', 'owner: zespół', '---', '', longMarkdown].join('\n'),
+  },
 };
 
 function Header() {
@@ -461,5 +483,71 @@ export const RemovedLinesClampTheAnchor: Story = {
     } finally {
       window.removeEventListener('error', errors);
     }
+  },
+};
+
+/**
+ * Wide panel (measured on the panel): the text keeps its 760 px measure, and the contents list and
+ * the properties sit beside it, sticky, instead of folded above the text.
+ */
+export const WidePanelShowsContentsColumn: Story = {
+  args: { width: 1400, height: 700, initial: 'withProps' },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await waitForPreview(canvasElement);
+    const nav = await canvas.findByRole('navigation', { name: 'Spis treści' });
+    const aside = nav.closest('aside')!;
+    await expect(aside.querySelector('[data-document-properties]')).not.toBeNull();
+    // No folded block: the list is directly visible and no data-source-line stands for line 1.
+    await expect(aside.querySelector('[data-source-line]')).toBeNull();
+    await expect(within(nav).getAllByRole('link').length).toBeGreaterThan(10);
+    const text = canvasElement.querySelector<HTMLElement>('[data-source-line="6"]')!;
+    const measure = text.parentElement!.getBoundingClientRect().width;
+    await expect(measure).toBeLessThanOrEqual(761);
+    const gap =
+      nav.getBoundingClientRect().left - text.parentElement!.getBoundingClientRect().right;
+    await expect(gap).toBeLessThan(80);
+    // A click scrolls to the heading, marks it as current and keeps the panel position shared.
+    const link = within(nav).getByRole('link', { name: 'Sekcja 9' });
+    await userEvent.click(link);
+    await waitFor(() => expect(previewOf(canvasElement)!.scrollTop).toBeGreaterThan(500));
+    await waitFor(() => expect(link).toHaveAttribute('aria-current', 'location'));
+    await expect(within(nav).getAllByRole('link', { current: 'location' })).toHaveLength(1);
+    // The column stays in view while the text scrolls.
+    await expect(nav.getBoundingClientRect().top).toBeLessThan(200);
+  },
+};
+
+export const NarrowPanelFoldsContentsAboveTheText: Story = {
+  args: { width: 900, height: 700, initial: 'withProps' },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await waitForPreview(canvasElement);
+    const trigger = await canvas.findByRole('button', { name: /Spis treści/ });
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await expect(canvasElement.querySelector('aside')).toBeNull();
+    await expect(canvas.getByRole('button', { name: /Właściwości/ })).toBeVisible();
+    await userEvent.click(trigger);
+    await userEvent.click(await canvas.findByRole('link', { name: 'Sekcja 3' }));
+    await waitFor(() => expect(previewOf(canvasElement)!.scrollTop).toBeGreaterThan(200));
+  },
+};
+
+export const ShortDocumentWithoutHeadingsReservesNoColumn: Story = {
+  args: { width: 1400, height: 500, initial: 'short' },
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByText('Krótki dokument bez nagłówków.');
+    await expect(canvasElement.querySelector('aside')).toBeNull();
+    await expect(canvas.queryByRole('navigation', { name: 'Spis treści' })).toBeNull();
+    await expect(canvas.queryByRole('button', { name: /Spis treści/ })).toBeNull();
+  },
+};
+
+export const OnlyPropertiesStillUseTheColumn: Story = {
+  args: { width: 1400, height: 500, initial: 'props' },
+  play: async ({ canvas, canvasElement }) => {
+    await canvas.findByText('Dokument z samymi właściwościami.');
+    const aside = canvasElement.querySelector('aside');
+    await expect(aside).not.toBeNull();
+    await expect(canvas.queryByRole('navigation', { name: 'Spis treści' })).toBeNull();
+    await expect(aside!.querySelector('[data-document-properties]')).not.toBeNull();
   },
 };

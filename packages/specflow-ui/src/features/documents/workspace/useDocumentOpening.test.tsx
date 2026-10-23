@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
   supportsSplit: false,
   tabs: {
     show: vi.fn(() => Promise.resolve()),
-    closeAll: vi.fn(() => Promise.resolve()),
+    closeAll: vi.fn(() => Promise.resolve(true)),
   },
 }));
 
@@ -178,6 +178,31 @@ describe('useDocumentOpening narrow tabs', () => {
     expect(opened()).toEqual(['A', 'A']);
     expect(mocks.tabs.show).not.toHaveBeenCalled();
     expect(mocks.tabs.closeAll).not.toHaveBeenCalled();
+  });
+});
+
+describe('useDocumentOpening discards', () => {
+  afterEach(cleanup);
+
+  it('commits the allowed discard only when the tabs really closed', async () => {
+    mocks.supportsSplit = true;
+    mocks.controller = {
+      open: vi.fn(() => Promise.resolve()),
+      close: vi.fn(() => Promise.resolve()),
+    };
+    const commit = { current: vi.fn() };
+    const ask = { current: vi.fn(() => Promise.resolve(true)) };
+    const view = renderHook(() =>
+      useDocumentOpening({ specId: 's', documentId: 'A', requestRef: ask, commitRef: commit }),
+    );
+    mocks.tabs.closeAll.mockResolvedValueOnce(false);
+    act(() => view.result.current.closeAll());
+    await flush();
+    expect(commit.current).not.toHaveBeenCalled();
+    mocks.tabs.closeAll.mockResolvedValueOnce(true);
+    act(() => view.result.current.closeAll());
+    await flush();
+    expect(commit.current).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -56,7 +56,7 @@ export interface DocumentTabs {
    */
   requestClose: (id: string) => Promise<boolean>;
   /** Closes every tab and shows the list. Callers ask about unsaved changes first. */
-  closeAll: () => Promise<void>;
+  closeAll: () => Promise<boolean>;
   /** Closes the tabs of deleted documents and drops their drafts; the user already confirmed. */
   removeTabs: (ids: readonly string[]) => Promise<void>;
   closeFailed: boolean;
@@ -159,6 +159,8 @@ function TabsHost({
   // The tab whose unsaved-changes question is on screen, and whether its Save failed.
   const [asking, setAsking] = useState<{ id: string; saveFailed: boolean } | null>(null);
   const answer = useRef<((decision: boolean | 'discard') => void) | null>(null);
+  // A close is in flight (question, save, navigation): a second one is refused, not queued.
+  const closing = useRef(false);
   const mounted = useRef(false);
   const canCloseRef = useRef<(id: string) => Promise<boolean>>(() => Promise.resolve(false));
 
@@ -232,6 +234,8 @@ function TabsHost({
   );
 
   const settle = useCallback((allowed: boolean | 'discard') => {
+    // The refusal notice belongs to the question it was about: answering ends it.
+    setCloseBusy(false);
     const resolve = answer.current;
     answer.current = null;
     setAsking(null);
@@ -242,20 +246,26 @@ function TabsHost({
     canCloseRef.current = async (id) => {
       const draft = store.get(specId, id);
       if (draft && isDraftDirty(draft)) {
-        // One question at a time: another close meanwhile is refused, and the user is told.
-        if (answer.current) {
+        // One question at a time, until its tab has left: another close meanwhile is refused, and
+        // the user is told.
+        if (closing.current) {
           if (mounted.current) setCloseBusy(true);
           return false;
         }
-        const decision = await new Promise<boolean | 'discard'>((resolve) => {
-          answer.current = resolve;
-          setAsking({ id, saveFailed: false });
-        });
-        if (!decision) return false;
-        const left = await leave(id);
-        // The draft goes only once the tab really leaves: a refused navigation keeps the edits.
-        if (left && decision === 'discard') store.remove(specId, id);
-        return left;
+        closing.current = true;
+        try {
+          const decision = await new Promise<boolean | 'discard'>((resolve) => {
+            answer.current = resolve;
+            setAsking({ id, saveFailed: false });
+          });
+          if (!decision) return false;
+          const left = await leave(id);
+          // The draft goes only once the tab really leaves: a refused navigation keeps the edits.
+          if (left && decision === 'discard') store.remove(specId, id);
+          return left;
+        } finally {
+          closing.current = false;
+        }
       }
       return leave(id);
     };
@@ -288,8 +298,9 @@ function TabsHost({
 
   const closeAll = useCallback(async () => {
     await goTo(undefined, true);
-    if (routeShows()) return;
+    if (routeShows()) return false;
     closeEvery();
+    return true;
   }, [goTo, routeShows, closeEvery]);
 
   const removeTabs = useCallback(

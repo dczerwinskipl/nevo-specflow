@@ -245,11 +245,16 @@ intrinsic bound and behaves like `content`. Do not combine `bounded` with ad-hoc
 centring wrappers. `AppWorkspaceFit.contract.stories.tsx` covers the three values (`Available*`, `Content*`,
 `BoundedPrimaryOnly*` contracts at 1024/1440/1920/2560 and 390).
 
-**Capped Primary (opt-in).** `primaryMaxPx` (with `split="secondary"` and `fit="available"`) keeps Primary at
-its share of the split up to that many pixels and gives Secondary the rest (`capPrimaryWidth`), so a list
-beside a document does not grow to 575 px at 2560 while the document keeps empty space. The default is no
-cap: Primary is exactly its share. The cap never narrows Primary below its share and has no effect without
-a Secondary or in the stacked layout. `CappedPrimary*Contract` stories cover 1280/1440/1920/2560.
+**Capped Primary (opt-in).** `primaryMaxPx` is the maximum width of the Primary region in px. Primary is
+its share of the split but never wider than the cap, and Secondary takes the rest (`capPrimaryWidth`), so a
+list beside a document does not grow to 575 px at 2560 while the document keeps empty space. It applies to
+every `split` value whenever a Secondary is shown in a split layout; it does not apply to the stacked
+layout or to a Primary without Secondary, and it has no practical effect with `fit="content"`. Use it with
+`fit="available"`. The prop stays general (no type restriction to `split="secondary"`): the rule is one
+sentence and a cap that is not reached changes nothing. The default is no cap. In the 1/3 : 2/3 range
+(workspace below 1080 px) the share is below any sensible cap, so the share stays: 1108 px viewport
+(840 workspace) gives Primary 280 px. `CappedPrimary*Contract` stories cover 1108/1280/1440/1920/2560,
+the stacked layout and the uncapped share.
 
 The shell-owned workspace surface has an edge border (`border-l`, plus `border-r` when inset). `AppShell`
 publishes two widths through the workspace context: `availableWidth` (the surface border-box, which decides

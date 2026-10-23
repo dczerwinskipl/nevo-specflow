@@ -1203,8 +1203,11 @@
     },
     "notFound": {
       "title": "Document not found",
-      "body": "{{name}} is no longer in the document tree.",
-      "close": "Close tab"
+      "close": "Close tab",
+      "titleNamed": "Document not found: {{name}}"
+    },
+    "outline": {
+      "label": "Contents"
     }
   },
   "sessions": {

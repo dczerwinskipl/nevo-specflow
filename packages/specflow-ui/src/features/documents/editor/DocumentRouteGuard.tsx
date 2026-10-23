@@ -16,10 +16,16 @@ import { useDocumentTabs } from '../tabs/DocumentTabsProvider';
 export function DocumentRouteGuard({
   specId,
   requestRef,
+  commitRef,
 }: {
   specId: string;
   /** Asks to leave the unsaved documents (tree operations, closing every tab); false = keep editing. */
   requestRef?: RefObject<(() => Promise<boolean>) | null>;
+  /**
+   * Called by whoever asked, once what the answer allowed has happened (the tabs closed, the
+   * operation went on): only then do the drafts the user discarded go.
+   */
+  commitRef?: RefObject<(() => void) | null>;
 }) {
   const store = useDocumentDraftStore();
   const ops = useDocumentSaveOps();
@@ -29,6 +35,8 @@ export function DocumentRouteGuard({
   // The single owner of leave requests (tree operations, route departures, closing every tab):
   // they share the one open dialog and every waiting request settles with its decision.
   const waiting = useRef<((allow: boolean) => void)[]>([]);
+  // Documents the user chose to discard, removed once the departure has really happened.
+  const discarded = useRef<string[]>([]);
   const mounted = useRef(false);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -38,11 +46,15 @@ export function DocumentRouteGuard({
   const ask = useCallback(
     () =>
       new Promise<boolean>((resolve) => {
+        if (waiting.current.length === 0) discarded.current = [];
         waiting.current.push(resolve);
         setOpen(true);
       }),
     [],
   );
+  const commit = useCallback(() => {
+    for (const id of discarded.current.splice(0)) store.remove(specId, id);
+  }, [store, specId]);
   const finish = useCallback((allow: boolean) => {
     setOpen(false);
     setFailed([]);
@@ -58,6 +70,16 @@ export function DocumentRouteGuard({
       for (const resolve of queue.splice(0)) resolve(false);
     };
   }, []);
+  // The guard unmounts when the screen or the specification really changes: a discard that was
+  // granted for that departure is carried out now (a refused departure keeps the guard, and the drafts).
+  useEffect(() => commit, [commit]);
+  useEffect(() => {
+    if (!commitRef) return;
+    commitRef.current = commit;
+    return () => {
+      commitRef.current = null;
+    };
+  }, [commit, commitRef]);
   const anyUnsaved = useCallback(() => store.dirtyIds(specId).length > 0, [store, specId]);
 
   useEffect(() => {
@@ -78,7 +100,8 @@ export function DocumentRouteGuard({
 
   const discardAll = () => {
     // Same contract as discarding a tab: no draft stays behind, so a reopened document is clean.
-    for (const id of store.dirtyIds(specId)) store.remove(specId, id);
+    // It goes once the answer has been acted on, so a refused departure keeps the edits.
+    discarded.current = store.dirtyIds(specId);
     finish(true);
   };
   const saveAll = async () => {
@@ -86,6 +109,8 @@ export function DocumentRouteGuard({
     setFailed([]);
     try {
       await ops.saveAll(store.dirtyIds(specId));
+    } catch {
+      // A save that throws leaves its document unsaved: it is listed below like any other failure.
     } finally {
       if (mounted.current) setSaving(false);
     }

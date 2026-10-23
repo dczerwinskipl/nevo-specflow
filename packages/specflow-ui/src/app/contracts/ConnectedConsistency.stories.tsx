@@ -637,6 +637,20 @@ export const MultiTabNarrow: Story = {
   },
 };
 
+/** A deep link to a document that does not exist: a clear alert inside the panel, closing the tab. */
+export const MissingDocumentDeepLink: Story = {
+  args: { path: '/specs/api-integration/documents/nie-ma-takiego?collection=archive' },
+  play: async ({ canvas, userEvent }) => {
+    await viewport(1440, 900);
+    const alert = await canvas.findByText('Nie znaleziono dokumentu');
+    await expect(alert).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Spróbuj ponownie' })).toBeNull();
+    await userEvent.click(canvas.getByRole('button', { name: 'Zamknij kartę' }));
+    await waitFor(() => expect(canvas.queryByRole('tab')).toBeNull());
+    await expect(canvas.getByLabelText('Bieżąca trasa')).not.toHaveTextContent('nie-ma-takiego');
+  },
+};
+
 export const WorkspaceChromeIsPolishOnCreate: Story = {
   args: { path: '/specs/new?collection=archive' },
   play: async ({ canvas }) => {

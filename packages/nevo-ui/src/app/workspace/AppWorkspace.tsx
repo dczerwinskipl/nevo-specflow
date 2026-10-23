@@ -89,10 +89,12 @@ interface CommonAppWorkspaceProps {
   fit?: AppWorkspaceFit;
   split?: AppWorkspaceSplitMode;
   /**
-   * Opt-in cap of Primary in px for split layouts with a Secondary: Primary keeps its share up to
-   * this width and Secondary takes the rest, so a list beside a document stops growing on very wide
-   * screens. Use with `fit="available"` (a `content` workspace sizes by its content). Default: none,
-   * Primary is exactly its share of the split.
+   * Opt-in maximum width of the Primary region, in px. It applies whenever a Secondary is shown
+   * beside it in a split layout, for every `split` value: Primary is its share of the split but never
+   * wider than this, and Secondary takes the rest of the width. It does not apply to a stacked
+   * layout or to a Primary without Secondary, and it has no practical effect with `fit="content"`
+   * (the workspace then sizes by its content). Use it with `fit="available"` so a list beside a
+   * document stops growing on very wide screens. Default: none, Primary is exactly its share.
    */
   primaryMaxPx?: number;
   labels?: Partial<AppWorkspaceLabels>;

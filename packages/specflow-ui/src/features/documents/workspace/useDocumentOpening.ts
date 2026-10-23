@@ -30,8 +30,10 @@ export function useDocumentOpening(options: {
   documentId?: string;
   /** Asks to leave unsaved edits; resolves false when the user keeps editing. */
   requestRef: RefObject<(() => Promise<boolean>) | null>;
+  /** Carries out the discard the answer allowed, once the tabs have really closed. */
+  commitRef?: RefObject<(() => void) | null>;
 }): DocumentOpening {
-  const { specId, documentId, requestRef } = options;
+  const { specId, documentId, requestRef, commitRef } = options;
   const tabs = useDocumentTabs();
   const navigation = useSecondaryNavigation();
   const { supportsSplit } = useWorkspaceCapabilities();
@@ -117,7 +119,7 @@ export function useDocumentOpening(options: {
   const closeAll = () => {
     void (async () => {
       if (requestRef.current && !(await requestRef.current())) return;
-      await tabs.closeAll();
+      if (await tabs.closeAll()) commitRef?.current?.();
     })();
   };
   return { select, closeAll };

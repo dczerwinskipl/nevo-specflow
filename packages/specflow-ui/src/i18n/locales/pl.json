@@ -1203,8 +1203,11 @@
     },
     "notFound": {
       "title": "Nie znaleziono dokumentu",
-      "body": "{{name}} nie ma już w drzewie dokumentów.",
-      "close": "Zamknij kartę"
+      "close": "Zamknij kartę",
+      "titleNamed": "Nie znaleziono dokumentu: {{name}}"
+    },
+    "outline": {
+      "label": "Spis treści"
     }
   },
   "sessions": {

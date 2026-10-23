@@ -29,20 +29,17 @@ export function DocumentsEmptyState({
   const { t } = useTranslation();
   const suggested = suggestedDocuments(documents);
   return (
-    <div className="flex h-full min-h-0 flex-col items-center justify-center gap-4 p-6 text-center">
-      <Typography as="p" variant="body-md" className="text-content-secondary">
+    // Left-aligned on the reading measure under the header, like the document and the list.
+    <div className="flex h-full min-h-0 max-w-content-narrow flex-col gap-4 p-6">
+      <Typography as="p" variant="title-sm">
         {t('documents.empty.title')}
       </Typography>
       {suggested.length > 0 && (
-        <ul
-          aria-label={t('documents.empty.suggested')}
-          className="flex flex-col items-stretch gap-1"
-        >
+        <ul aria-label={t('documents.empty.suggested')} className="flex flex-col items-start gap-1">
           {suggested.map((document) => (
             <li key={document.id}>
               <Button
                 variant="ghost"
-                size="sm"
                 leadingIcon="file"
                 title={document.path}
                 aria-label={t('documents.empty.open', { name: fileNameOf(document.path) })}

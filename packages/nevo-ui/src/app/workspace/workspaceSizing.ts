@@ -97,9 +97,9 @@ export function resolveSlotMaxWidth(
 }
 
 /**
- * Opt-in pixel cap of Primary (`AppWorkspace primaryMaxPx`): Primary keeps its share until it
- * would exceed the cap, then stops there and Secondary takes the rest of the content width. It
- * never narrows Primary below its share and changes nothing without a cap or without Secondary.
+ * Opt-in pixel cap of Primary (`AppWorkspace primaryMaxPx`): Primary is its share of the split but
+ * never wider than the cap, and Secondary takes the rest of the content width. Below the cap, without
+ * a cap or without Secondary (stacked, Primary only) the widths are returned unchanged.
  */
 export function capPrimaryWidth(
   contentWidth: number | undefined,

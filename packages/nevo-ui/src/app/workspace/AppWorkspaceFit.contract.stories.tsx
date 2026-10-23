@@ -8,6 +8,7 @@ import type { AppWorkspaceFit } from './workspaceSizing';
 const viewports = {
   w390: { name: '390', styles: { width: '390px', height: '844px' }, type: 'mobile' },
   w1024: { name: '1024', styles: { width: '1024px', height: '768px' }, type: 'tablet' },
+  w1108: { name: '1108', styles: { width: '1108px', height: '800px' }, type: 'desktop' },
   w1280: { name: '1280', styles: { width: '1280px', height: '800px' }, type: 'desktop' },
   w1366: { name: '1366', styles: { width: '1366px', height: '768px' }, type: 'desktop' },
   w1440: { name: '1440', styles: { width: '1440px', height: '900px' }, type: 'desktop' },
@@ -365,7 +366,7 @@ async function verifyCappedPrimary(canvasElement: HTMLElement, width: number, ca
   const primaryWidth = primary.getBoundingClientRect().width;
   const secondaryWidth = secondary.getBoundingClientRect().width;
   // Below the dominance width the split is 1/3 : 2/3 instead of 1/4 : 3/4.
-  const share = layoutRect.width * (layoutRect.width < 1080 ? 1 / 3 : 0.25);
+  const share = layoutRect.width * (layoutRect.width + 1 < 1080 ? 1 / 3 : 0.25);
   assert(
     Math.abs(primaryWidth - Math.min(share, cap)) <= 1.5,
     `Primary is min(its share, ${cap}px): ${primaryWidth} (share ${share}).`,
@@ -377,6 +378,47 @@ async function verifyCappedPrimary(canvasElement: HTMLElement, width: number, ca
 }
 
 const cappedArgs = { fit: 'available', secondary: true, primaryMaxPx: 360 } as const;
+
+// Workspace 840 px (the split threshold): 1/3 share = 280, below the cap, so the share stays.
+export const CappedPrimary1108Contract: Story = {
+  tags: ['contract', '!autodocs'],
+  args: cappedArgs,
+  globals: { viewport: { value: 'w1108', isRotated: false } },
+  play: async ({ canvasElement }) => verifyCappedPrimary(canvasElement, 1108, 360),
+};
+
+/** Without a cap Primary is exactly its share of the split (here 75% for `split="primary"`). */
+export const UncappedPrimaryKeepsItsShare1440Contract: Story = {
+  tags: ['contract', '!autodocs'],
+  args: { fit: 'available', secondary: true },
+  globals: { viewport: { value: 'w1440', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const { layoutRect } = await measure(canvasElement, 1440);
+    const primary = canvasElement.querySelector<HTMLElement>('[data-workspace-surface="primary"]');
+    assert(primary, 'The Primary is rendered.');
+    const width = primary.getBoundingClientRect().width;
+    assert(
+      Math.abs(width - layoutRect.width * 0.75) <= 1.5,
+      `Primary keeps 75% without a cap: ${width} of ${layoutRect.width}.`,
+    );
+  },
+};
+
+/** The stacked layout ignores the cap: Primary fills the width. */
+export const CappedPrimaryStacked390Contract: Story = {
+  tags: ['contract', '!autodocs'],
+  args: cappedArgs,
+  globals: { viewport: { value: 'w390', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const { layoutRect } = await measure(canvasElement, 390);
+    const primary = canvasElement.querySelector<HTMLElement>('[data-workspace-surface="primary"]');
+    assert(primary, 'The Primary is rendered.');
+    assert(
+      primary.getBoundingClientRect().width >= layoutRect.width - 1,
+      'A stacked Primary fills the width; the cap does not apply.',
+    );
+  },
+};
 
 export const CappedPrimary1280Contract: Story = {
   tags: ['contract', '!autodocs'],

@@ -16,6 +16,7 @@ export function DocumentsTreePanel({
   controllerRef,
   operations,
   requestRef,
+  commitRef,
   onSelect,
 }: {
   specId: string;
@@ -25,6 +26,8 @@ export function DocumentsTreePanel({
   operations: DocumentTreeOperations;
   /** Asks to leave unsaved edits before a tree operation; resolves false to cancel it. */
   requestRef: RefObject<(() => Promise<boolean>) | null>;
+  /** Carries out a discard the answer allowed, once the operation may go on. */
+  commitRef?: RefObject<(() => void) | null>;
   onSelect: (id: string) => void;
 }) {
   const { t } = useTranslation();
@@ -59,6 +62,7 @@ export function DocumentsTreePanel({
             onOperate={operations.operate}
             beforeAction={async () => {
               if (requestRef.current && !(await requestRef.current())) return false;
+              commitRef?.current?.();
               const snapshot = await documentsApi.documentTree(specId);
               cache.setQueryData(documentTreeKeys.tree(specId), snapshot);
               return snapshot;

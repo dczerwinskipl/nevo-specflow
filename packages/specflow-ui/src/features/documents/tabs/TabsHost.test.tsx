@@ -83,6 +83,7 @@ function setup({
   const leave = createRef<(() => Promise<boolean>) | null>() as {
     current: (() => Promise<boolean>) | null;
   };
+  const commit = createRef<(() => void) | null>() as { current: (() => void) | null };
   const seen: {
     tabs?: ReturnType<typeof useDocumentTabs>;
     session?: ReturnType<typeof useDocumentEditor>;
@@ -129,7 +130,7 @@ function setup({
     const { documentId } = useParams({ strict: false });
     return (
       <DocumentTabsProvider specId={SPEC} documentId={documentId}>
-        <DocumentRouteGuard specId={SPEC} requestRef={leave} />
+        <DocumentRouteGuard specId={SPEC} requestRef={leave} commitRef={commit} />
         <Probe />
       </DocumentTabsProvider>
     );
@@ -182,6 +183,7 @@ function setup({
     save,
     getDocument,
     leave,
+    commit,
     seen,
     click,
     text,
@@ -450,6 +452,54 @@ describe('closing when navigation or questions get in the way', () => {
     await t.click('Discard changes');
     await waitFor(() => expect(t.text('tabs')).toBe(''));
     expect(t.text('busy')).toBe('false');
+  });
+
+  it('clears the refusal notice once the open question is answered', async () => {
+    const t = setup();
+    await ready(t, 'a');
+    await t.click('edit-active');
+    await t.click('show-b');
+    await ready(t, 'b');
+    await t.click('edit-active');
+    await t.click('close-a');
+    await screen.findByRole('alertdialog');
+    await t.click('close-b');
+    await waitFor(() => expect(t.text('busy')).toBe('true'));
+    await t.click('Keep editing');
+    await waitFor(() => expect(t.text('busy')).toBe('false'));
+    expect(t.text('tabs')).toBe('a:ready*,b:ready*');
+  });
+
+  it('does not leave a close hanging when the workspace goes away with a question open', async () => {
+    const t = setup();
+    await ready(t, 'a');
+    await t.click('edit-active');
+    let closing!: Promise<boolean>;
+    await act(async () => {
+      closing = t.seen.tabs!.requestClose('a');
+      await Promise.resolve();
+    });
+    await screen.findByRole('alertdialog');
+    cleanup();
+    await expect(closing).resolves.toBe(false);
+  });
+
+  it('keeps the drafts of a Discard all whose departure did not happen', async () => {
+    const t = setup();
+    await ready(t, 'a');
+    await t.click('edit-active');
+    let asked!: Promise<boolean>;
+    await act(async () => {
+      asked = t.leave.current!();
+      await Promise.resolve();
+    });
+    await screen.findByRole('alertdialog');
+    await t.click('Discard all');
+    await expect(asked).resolves.toBe(true);
+    // Nothing left yet (the caller has not acted on the answer): the edit is still there.
+    expect(t.store.get(SPEC, 'a')).toMatchObject({ content: 'EDIT' });
+    act(() => t.commit.current!());
+    expect(t.store.get(SPEC, 'a')).toBeUndefined();
   });
 
   it('reopens the tab of an address that the browser Back returns to after the tab was closed', async () => {

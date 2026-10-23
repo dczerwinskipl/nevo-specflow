@@ -168,7 +168,10 @@ export function MarkdownSourceEditor({
                 paddingLeft: 'var(--spacing-control-padding-default)',
               },
               // At least two digits wide, so the gutter does not jump from line 9 to 10.
-              '.cm-lineNumbers .cm-gutterElement': { minWidth: '2ch', padding: '0 8px 0 0' },
+              '.cm-lineNumbers .cm-gutterElement': {
+                minWidth: '2ch',
+                padding: '0 var(--spacing-control-padding-compact) 0 0',
+              },
               '.cm-activeLine, .cm-activeLineGutter': {
                 backgroundColor:
                   'color-mix(in srgb, var(--color-surface-selected) 55%, transparent)',

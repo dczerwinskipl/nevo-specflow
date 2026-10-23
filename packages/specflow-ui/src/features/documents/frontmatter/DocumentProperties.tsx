@@ -9,15 +9,18 @@ import type { FrontmatterProperty } from './frontmatter';
 export function DocumentProperties({
   properties,
   label,
+  anchored = true,
 }: {
   properties: readonly FrontmatterProperty[];
   label?: string;
+  /** False in a column beside the text: it must not stand for line 1 of the scroll anchor. */
+  anchored?: boolean;
 }) {
   const { t } = useTranslation();
   return (
     <div
       // The block stands for the file's first lines: the scroll anchor maps it to source line 1.
-      data-source-line={1}
+      data-source-line={anchored ? 1 : undefined}
       data-document-properties=""
       className="mb-4 min-w-0 rounded-composite border border-border-default"
     >

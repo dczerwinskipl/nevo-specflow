@@ -4,12 +4,12 @@ import { Trans, useTranslation } from 'react-i18next';
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
 import { useMessage, type Message } from '../../../../i18n/message';
 import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
-import { BranchRef } from '../BranchRef';
+import { BranchRef } from './BranchRef';
 import { MergeSuggestionNotice } from './MergeSuggestionNotice';
 import { UnavailableReason } from './UnavailableReason';
 import type { SettingsFocusRequest, SettingsUpdate } from './settingsTypes';
-import type { WorkspaceChoice } from './workspaceChoice';
-import { defaultBaseValue } from './workspaceTiles';
+import type { WorkspaceChoice } from './model/workspaceChoice';
+import { defaultBaseValue } from './model/workspaceTiles';
 
 /** The base branch the new workspace starts from: a switch and, when on, the branch picker. */
 export function BaseRefSetting({

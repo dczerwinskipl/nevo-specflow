@@ -5,18 +5,18 @@ import type { CreateOptions } from '@nevo/specflow-contracts/specs';
 import { FormattedList } from '../../../../i18n/formatList';
 import { useMessage, type Message } from '../../../../i18n/message';
 import { LocalizedOptionPicker } from '../../../../shared/controls/LocalizedOptionPicker';
-import { BranchRef } from '../BranchRef';
+import { BranchRef } from './BranchRef';
 import { UnavailableReason } from './UnavailableReason';
 import { WorkspaceRef } from './WorkspaceRef';
 import type { SettingsUpdate } from './settingsTypes';
-import type { WorkspaceChoice } from './workspaceChoice';
+import type { WorkspaceChoice } from './model/workspaceChoice';
 import {
   noBranchLabel,
   specCountLabel,
   targetReasonText,
   targetReasonTextInline,
-} from './workspaceCopy';
-import { defaultTargetWorkspaceId } from './workspaceTiles';
+} from './model/workspaceCopy';
+import { defaultTargetWorkspaceId } from './model/workspaceTiles';
 
 /** The workspace the changes return to later: a switch and, when on, the workspace picker. */
 export function MergeTargetSetting({

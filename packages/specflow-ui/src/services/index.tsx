@@ -1,11 +1,11 @@
 import { createRuntimeOperationsApi, type OperationsApi } from '../shared/operations/operationsApi';
-import type { DemoCreationApi } from '../features/specs/creation/api.demo';
-import { createDemoCreationApi } from '../features/specs/creation/api.demo';
+import type { DemoCreationApi } from '../features/specs/creation/api/api.demo';
+import { createDemoCreationApi } from '../features/specs/creation/api/api.demo';
 import {
   createProjectCreationApi,
   type ProjectCreationApi,
-} from '../features/specs/creation/api.project';
-import { createSpecErrorCodes } from '../features/specs/creation/createSpecErrors';
+} from '../features/specs/creation/api/api.project';
+import { createSpecErrorCodes } from '../features/specs/creation/errors/createSpecErrors';
 import { createApiTransport } from '../api';
 import type { SessionsApi } from '../features/sessions/api';
 import { createDemoSessionsApi } from '../features/sessions/api.demo';
@@ -19,7 +19,7 @@ import { createProtectedRuntimeHttpClient } from './createProtectedRuntimeHttpCl
 import {
   createRuntimeSpecsOverviewApi,
   type SpecsOverviewApi,
-} from '../features/specs/overview/api';
+} from '../features/specs/overview/data/api';
 import {
   createRuntimeSpecificationApi,
   type SpecificationApi,

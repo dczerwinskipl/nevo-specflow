@@ -1,7 +1,7 @@
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
 import { useMessage } from '../../../../i18n/message';
-import { BranchRef } from '../BranchRef';
-import { noBranchLabel } from './workspaceCopy';
+import { BranchRef } from './BranchRef';
+import { noBranchLabel } from './model/workspaceCopy';
 
 /** Names a workspace by its branch; a workspace without one has no value to show. */
 export function WorkspaceLabel({

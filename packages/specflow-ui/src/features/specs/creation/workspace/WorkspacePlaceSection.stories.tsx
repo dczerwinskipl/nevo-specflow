@@ -5,18 +5,18 @@ import { expect, waitFor, within } from 'storybook/test';
 import { TooltipProvider } from '@nevo/ui';
 import { WorkspacePlaceSection, type WorkspacePlaceSectionHandle } from './WorkspacePlaceSection';
 import { useAnnouncer } from '../../../../shared/a11y/useAnnouncer';
-import { buildCreateTarget } from './createRequest';
+import { buildCreateTarget } from './model/createRequest';
 import {
   initialWorkspaceChoice,
   type WorkspaceChoice,
   type WorkspaceOptionsState,
-} from './workspaceChoice';
-import { problems } from './workspaceValidation';
+} from './model/workspaceChoice';
+import { problems } from './model/workspaceValidation';
 import {
   createOptionsFixture,
   workspaceIds,
   type OptionsVariant,
-} from '../creationOptions.stories-support';
+} from '../options/creationOptions.stories-support';
 import { polishText } from '../../../../i18n/testing';
 import { withLocale } from '../../../../i18n/StoryLocalization';
 

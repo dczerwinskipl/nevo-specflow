@@ -6,13 +6,13 @@ import { browserPage } from '../../../test-support/browserPage';
 import { expect, waitFor, within } from 'storybook/test';
 import { HttpClientError } from '@nevo/http-client';
 import type { DemoCatalogue, DemoCreateRequest } from '@nevo/specflow-contracts/demo';
-import { catalogue } from './creationCatalogue.stories-support';
+import { catalogue } from './options/creationCatalogue.stories-support';
 import {
   createdSpecFixture,
   createOptionsFixture,
   workspaceIds,
   type OptionsVariant,
-} from './creationOptions.stories-support';
+} from './options/creationOptions.stories-support';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import { createSpecFlowAppServices } from '../../../services';
 import { VisitStateProvider } from '../../../app/VisitStateProvider';

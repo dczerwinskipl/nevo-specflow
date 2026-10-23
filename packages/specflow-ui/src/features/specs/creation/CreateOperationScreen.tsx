@@ -1,6 +1,6 @@
 import type { CreatedSpec } from '@nevo/specflow-contracts/specs';
 import { FeatureUnavailable } from '../../../app/errors/FeatureUnavailable';
-import { CreateOperationPage } from './CreateOperationPage';
+import { CreateOperationPage } from './progress/CreateOperationPage';
 import { CreateFallback, CreateRuntimeGate } from './CreateRuntimeGate';
 
 /**

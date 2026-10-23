@@ -3,10 +3,10 @@ import { Field, SwitchField, TextInput } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import { BRANCH_NAME_MAX_LENGTH, type CreateOptions } from '@nevo/specflow-contracts/specs';
 import { useMessage, type Message } from '../../../../i18n/message';
-import { branchFieldValue } from './createRequest';
+import { branchFieldValue } from './model/createRequest';
 import type { SettingsUpdate } from './settingsTypes';
-import { initialWorkspaceChoice, type WorkspaceChoice } from './workspaceChoice';
-import { generatedBranchProblem } from './workspaceValidation';
+import { initialWorkspaceChoice, type WorkspaceChoice } from './model/workspaceChoice';
+import { generatedBranchProblem } from './model/workspaceValidation';
 
 /** The new branch name: the one Nevo builds from the slug, or the owner's own. */
 export function BranchSetting({

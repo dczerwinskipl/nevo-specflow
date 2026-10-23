@@ -1,6 +1,6 @@
 import { HttpClientError } from '@nevo/http-client';
 import { createSpecsFixture } from '../../../test-support/specs/overview/fixtures';
-import { specsOverviewKeys } from '../../features/specs/overview/queries';
+import { specsOverviewKeys } from '../../features/specs/overview/data/queries';
 import { EditorView } from '@codemirror/view';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { RouterProvider, createMemoryHistory, createBrowserHistory } from '@tanstack/react-router';
@@ -18,12 +18,12 @@ import { builtInUiModuleRegistry } from '../ui-modules/builtInUiModules';
 import { StoryLocalization } from '../../i18n/StoryLocalization';
 import { createWorkspaceIntegrationApi } from '../../../test-support/specs/workspace/api';
 import { createFixtureSpecsOverviewApi } from '../../../test-support/specs/overview/api';
-import { catalogue } from '../../features/specs/creation/creationCatalogue.stories-support';
+import { catalogue } from '../../features/specs/creation/options/creationCatalogue.stories-support';
 import {
   createdSpecFixture,
   createOptionsFixture,
   type OptionsVariant,
-} from '../../features/specs/creation/creationOptions.stories-support';
+} from '../../features/specs/creation/options/creationOptions.stories-support';
 import { settleViewport } from '../../test-support/viewportSettle.stories-support';
 import {
   invokeDocumentAction,

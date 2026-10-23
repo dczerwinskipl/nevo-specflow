@@ -42,7 +42,7 @@ related:
 ## Source-of-truth and consistency checks
 
 - T09 removes the redundant mode marker, legacy scaffold renderer and obsolete Create journal formats as a single pre-release contract cleanup; the actual release-readiness gate remains real filesystem/Git recovery.
-- create-scaffold.ts.expectedScaffold continues to verify immutable scaffold hashes for the **current** journal; obsolete records fail closed instead of being migrated.
+- create/scaffold.ts `expectedScaffold` continues to verify immutable scaffold hashes for the **current** journal; obsolete records fail closed instead of being migrated.
 - Linked workspace physical identity marker is written to ignored .nevo/local/state/workspace-identity.json by workspace-identity.ts, proving the ignored-data disposal problem is relevant to this repository.
 - Registry store currently prohibits rebind and registration removal; T12 must introduce narrowly fenced lifecycle CAS without altering arbitrary create transitions.
 - Future Specification exit evaluation must never derive completion from tasks: unknown[] nor introduce a selectable execution mode. Task workflows in legacy Nevo are reference material only.

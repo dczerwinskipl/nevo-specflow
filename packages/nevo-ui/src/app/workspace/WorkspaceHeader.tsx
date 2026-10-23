@@ -1,4 +1,5 @@
 import {
+  Fragment,
   isValidElement,
   useLayoutEffect,
   useRef,
@@ -14,7 +15,9 @@ import { Typography } from '../../components/foundations/Typography';
 import {
   Menu,
   MenuContent,
+  MenuGroup,
   MenuItem,
+  MenuLabel,
   MenuSeparator,
   MenuTrigger,
   OverflowMenu,
@@ -39,6 +42,12 @@ export type WorkspaceHeaderActionDirect =
   /** Always in the overflow menu (default for every non-primary action). */
   | 'never';
 
+/** Section of the complete `...` menu: `display` (options and toggles) above `actions`. */
+export type WorkspaceHeaderActionGroup = 'display' | 'actions';
+
+/** What the `...` menu lists: only the overflow (default), or every action of the header. */
+export type WorkspaceHeaderMenu = 'default' | 'complete';
+
 interface WorkspaceHeaderActionBase {
   id: string;
   label: string;
@@ -47,6 +56,15 @@ interface WorkspaceHeaderActionBase {
   tone?: WorkspaceHeaderActionTone;
   /** Defaults: `primary` is direct on wide and narrow headers, every other action is `'never'`. */
   direct?: WorkspaceHeaderActionDirect;
+  /** `menu="complete"` only: the menu section. Defaults to `'actions'`; `'display'` is listed first. */
+  group?: WorkspaceHeaderActionGroup;
+  /**
+   * Menu toggle state, shown as a check in the trailing slot (the leading icon keeps naming the
+   * action). An icon action falls back to its `pressed` state.
+   */
+  checked?: boolean;
+  /** Keyboard shortcut hint in the menu's trailing slot, for example `Ctrl+S`. */
+  shortcut?: string;
   /**
    * Menu actions only. When set, closing the menu does not return focus to its trigger: this runs
    * instead, once the menu has closed and no longer traps focus. Use it when the action moves focus
@@ -66,6 +84,8 @@ export interface WorkspaceHeaderButtonAction extends WorkspaceHeaderActionBase {
 export interface WorkspaceHeaderIconAction extends WorkspaceHeaderActionBase {
   icon: IconGlyph;
   presentation: 'icon';
+  /** Icon toggle: renders `aria-pressed` and a subtle pressed state. The icon names the action, not the state. */
+  pressed?: boolean;
 }
 
 export type WorkspaceHeaderAction = WorkspaceHeaderButtonAction | WorkspaceHeaderIconAction;
@@ -82,6 +102,8 @@ export interface WorkspaceHeaderProps {
   className?: string;
   icon?: IconGlyph;
   labels?: Partial<WorkspaceHeaderLabels>;
+  /** `'complete'` lists every action in the `...` menu, promoted ones included. Default: overflow only. */
+  menu?: WorkspaceHeaderMenu;
   status?: ReactNode;
   subtitle?: ReactNode;
   title: ReactNode;
@@ -94,6 +116,10 @@ export interface WorkspaceHeaderProps {
 export interface WorkspaceHeaderLabels {
   moreActions: string;
   menuScope?: string;
+  /** Section label of the `display` group in the complete menu. Default `Display`. */
+  menuDisplay?: string;
+  /** Section label of the `actions` group in the complete menu. Default `Actions`. */
+  menuActions?: string;
 }
 
 const defaultWorkspaceHeaderLabels: WorkspaceHeaderLabels = {
@@ -151,15 +177,77 @@ export function resolveWorkspaceHeaderActions(
   };
 }
 
+/** Toggle state of a menu row: explicit `checked`, else the `pressed` of an icon action. */
+function menuCheckedState(action: WorkspaceHeaderAction): boolean | undefined {
+  return action.checked ?? (action.presentation === 'icon' ? action.pressed : undefined);
+}
+
+export interface WorkspaceHeaderMenuGroup {
+  group: WorkspaceHeaderActionGroup;
+  actions: readonly WorkspaceHeaderAction[];
+}
+
+/** Complete-menu sections in display order; an empty section is omitted (no orphan separator). */
+export function groupWorkspaceHeaderMenuActions(
+  actions: readonly WorkspaceHeaderAction[],
+): readonly WorkspaceHeaderMenuGroup[] {
+  return [
+    { group: 'display' as const, actions: actions.filter((action) => action.group === 'display') },
+    { group: 'actions' as const, actions: actions.filter((action) => action.group !== 'display') },
+  ].filter((entry) => entry.actions.length > 0);
+}
+
+function completeMenuGroupLabels(
+  labels: WorkspaceHeaderLabels,
+): Record<WorkspaceHeaderActionGroup, string> {
+  return { display: labels.menuDisplay ?? 'Display', actions: labels.menuActions ?? 'Actions' };
+}
+
+function WorkspaceMenuEntry({
+  action,
+  onSelect,
+}: {
+  action: WorkspaceHeaderAction;
+  onSelect: () => void;
+}) {
+  const checked = menuCheckedState(action);
+  const toggle = checked !== undefined;
+  return (
+    <MenuItem
+      disabled={action.disabled}
+      leadingIcon={action.icon}
+      onSelect={onSelect}
+      tone={action.tone ?? 'neutral'}
+      {...(toggle ? { role: 'menuitemcheckbox', 'aria-checked': checked } : {})}
+      shortcut={
+        toggle ? (
+          checked ? (
+            <Icon name="check" size="sm" />
+          ) : (
+            <span aria-hidden="true" className="inline-block size-icon-sm" />
+          )
+        ) : (
+          action.shortcut
+        )
+      }
+    >
+      {action.label}
+    </MenuItem>
+  );
+}
+
 function WorkspaceActionMenu({
   actions,
   className,
+  groupLabels,
   label,
   navigationAction,
   scope,
 }: {
   actions: readonly WorkspaceHeaderAction[];
   className?: string;
+  /** Set for the complete menu: renders `display` and `actions` sections with these labels. */
+  groupLabels?: Record<WorkspaceHeaderActionGroup, string>;
   label: string;
   navigationAction?: WorkspaceHeaderAction;
   scope?: string;
@@ -179,19 +267,24 @@ function WorkspaceActionMenu({
     handler();
   };
 
+  const groups = groupLabels ? groupWorkspaceHeaderMenuActions(actions) : null;
   const items = (
     <>
-      {actions.map((action) => (
-        <MenuItem
-          disabled={action.disabled}
-          key={action.id}
-          leadingIcon={action.icon}
-          onSelect={select(action)}
-          tone={action.tone ?? 'neutral'}
-        >
-          {action.label}
-        </MenuItem>
-      ))}
+      {groups && groupLabels
+        ? groups.map((entry, index) => (
+            <Fragment key={entry.group}>
+              {index > 0 ? <MenuSeparator /> : null}
+              <MenuGroup>
+                <MenuLabel>{groupLabels[entry.group]}</MenuLabel>
+                {entry.actions.map((action) => (
+                  <WorkspaceMenuEntry action={action} key={action.id} onSelect={select(action)} />
+                ))}
+              </MenuGroup>
+            </Fragment>
+          ))
+        : actions.map((action) => (
+            <WorkspaceMenuEntry action={action} key={action.id} onSelect={select(action)} />
+          ))}
       {navigationAction ? (
         <>
           {actions.length > 0 ? <MenuSeparator /> : null}
@@ -232,7 +325,7 @@ function WorkspaceActionMenu({
         align="end"
         sideOffset={4}
         aria-label={label}
-        className="w-auto"
+        className={groupLabels ? 'w-60' : 'w-auto'}
         onCloseAutoFocus={onCloseAutoFocus}
       >
         {items}
@@ -248,6 +341,12 @@ function DirectIconAction({ action }: { action: WorkspaceHeaderIconAction }) {
         <TooltipTrigger asChild>
           <IconButton
             aria-label={action.label}
+            aria-pressed={action.pressed}
+            className={
+              action.pressed && !action.primary
+                ? 'bg-surface-selected text-content-primary'
+                : undefined
+            }
             disabled={action.disabled}
             icon={action.icon}
             onClick={action.onPress}
@@ -361,11 +460,13 @@ export function WorkspaceHeaderFrame({
   content,
   actions = [],
   labels: labelsProp,
+  menu = 'default',
   className,
 }: {
   content: ReactNode;
   actions?: readonly WorkspaceHeaderAction[];
   labels?: Partial<WorkspaceHeaderLabels>;
+  menu?: WorkspaceHeaderMenu;
   className?: string;
 }) {
   const { ref, narrow } = useNarrowHeader();
@@ -386,7 +487,8 @@ export function WorkspaceHeaderFrame({
             <DirectPrimaryAction action={action} key={action.id} narrow={narrow} />
           ))}
           <WorkspaceActionMenu
-            actions={resolved.overflow}
+            actions={menu === 'complete' ? actions : resolved.overflow}
+            groupLabels={menu === 'complete' ? completeMenuGroupLabels(labels) : undefined}
             label={labels.moreActions}
             scope={labels.menuScope}
           />
@@ -402,6 +504,7 @@ export function WorkspaceHeader({
   className,
   icon,
   labels,
+  menu,
   status,
   subtitle,
   title,
@@ -413,6 +516,7 @@ export function WorkspaceHeader({
       actions={actions}
       className={className}
       labels={labels}
+      menu={menu}
       content={
         identityContent ?? (
           <WorkspaceHeaderIdentity
@@ -439,6 +543,10 @@ export function getWorkspaceHeaderActions(node: ReactNode): readonly WorkspaceHe
   return isWorkspaceHeaderElement(node) ? (node.props.actions ?? []) : [];
 }
 
+export function getWorkspaceHeaderMenu(node: ReactNode): WorkspaceHeaderMenu {
+  return (isWorkspaceHeaderElement(node) ? node.props.menu : undefined) ?? 'default';
+}
+
 export function getWorkspaceHeaderLabels(node: ReactNode): WorkspaceHeaderLabels {
   return {
     ...defaultWorkspaceHeaderLabels,
@@ -451,12 +559,15 @@ export function CompactWorkspaceActions({
   header,
   actions,
   labels: actionLabels,
+  menu,
   navigationAction,
 }: {
   className?: string;
   header?: ReactNode;
   actions?: readonly WorkspaceHeaderAction[];
   labels?: Partial<WorkspaceHeaderLabels>;
+  /** Defaults to the `menu` of `header`. */
+  menu?: WorkspaceHeaderMenu;
   navigationAction?: WorkspaceHeaderAction;
 }) {
   const labels = actionLabels
@@ -468,6 +579,11 @@ export function CompactWorkspaceActions({
         resolveWorkspaceHeaderActions(actions ?? getWorkspaceHeaderActions(header), true).overflow
       }
       className={className}
+      groupLabels={
+        (menu ?? getWorkspaceHeaderMenu(header)) === 'complete'
+          ? completeMenuGroupLabels(labels)
+          : undefined
+      }
       label={labels.moreActions}
       navigationAction={navigationAction}
       scope={labels.menuScope}

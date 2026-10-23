@@ -302,7 +302,11 @@ through `location.hash`) and a safe-area override.
 { id, label, primary?, disabled?, tone?: 'neutral' | 'danger', onPress,
   icon?: IconGlyph,
   presentation?: 'button' | 'icon',      // 'icon' requires `icon` (type-enforced): IconButton sm + Tooltip(label)
-  direct?: 'wide' | 'always' | 'never' } // default: primary -> shown directly, everything else -> 'never'
+  direct?: 'wide' | 'always' | 'never',  // default: primary -> shown directly, everything else -> 'never'
+  pressed?: boolean,                     // icon actions only: toggle state, see below
+  group?: 'display' | 'actions',         // complete menu only: section, default 'actions'
+  checked?: boolean,                     // menu toggle state (trailing check); falls back to `pressed`
+  shortcut?: string }                    // trailing hint in the menu row, e.g. 'Ctrl+S'
 ```
 
 - Budget: **2 direct actions on wide headers, 1 on narrow**; the rest go to the `•••` menu in input
@@ -319,6 +323,17 @@ through `location.hash`) and a safe-area override.
 - An icon action's `label` is its accessible name and its tooltip (also on keyboard focus).
 - The stacked floating row (`compact` density) lists **all** actions in `•••`, a superset of the in-flow
   header (which is `inert` while covered), so nothing is exposed twice.
+- **Icon toggles.** `pressed` on an icon action renders `aria-pressed` on the `IconButton` (absent when
+  `pressed` is undefined) and a subtle `bg-surface-selected` state. The icon and label keep naming the
+  action, never the state. In the menu the same action is a `menuitemcheckbox` whose check sits in the
+  trailing slot (`checked`, or `pressed` when `checked` is not set).
+- **Complete menu.** `menu="complete"` on `WorkspaceHeader` / `WorkspaceHeaderFrame` (and the header read by
+  `CompactWorkspaceActions`) makes the `•••` menu list **every** action, promoted ones included (same id
+  and label; the duplication is intended and carries no marker). Rows are split into DS `MenuGroup`s with
+  `MenuLabel`s, `display` (options and toggles) above `actions`, joined by one `MenuSeparator`; an empty
+  group renders nothing. Section labels come from `labels.menuDisplay` / `labels.menuActions` (default
+  `Display` / `Actions`); `shortcut` shows only where provided. The direct budget, one primary last and
+  never-direct danger are unchanged. The default (`menu="default"`) keeps the overflow-only menu.
 - `resolveWorkspaceHeaderActions(actions, 'wide' | 'narrow' | 'compact')` is the pure resolver
   (`true`/`false` still mean compact/wide). Document view: `[{ id: 'edit', icon: 'edit',
 presentation: 'icon', direct: 'always', ... }]`; edit: `[preview (icon, direct: 'wide'), save (primary,

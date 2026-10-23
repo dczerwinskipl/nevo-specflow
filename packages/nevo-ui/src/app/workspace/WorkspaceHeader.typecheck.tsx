@@ -18,3 +18,22 @@ const onPress = () => undefined;
     { id: 'edit', label: 'Edit', presentation: 'icon', onPress },
   ]}
 />;
+
+<WorkspaceHeader
+  title="Document"
+  menu="complete"
+  labels={{ moreActions: 'More', menuDisplay: 'View', menuActions: 'Do' }}
+  actions={[
+    {
+      id: 'preview',
+      label: 'Preview',
+      icon: 'eye',
+      presentation: 'icon',
+      pressed: true,
+      group: 'display',
+      checked: true,
+      shortcut: 'Ctrl+P',
+      onPress,
+    },
+  ]}
+/>;

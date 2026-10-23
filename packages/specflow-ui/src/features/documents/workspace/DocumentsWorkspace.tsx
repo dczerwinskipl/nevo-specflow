@@ -21,8 +21,8 @@ import { useDocumentEditor } from '../editor/DocumentEditorProvider';
 import { documentHeaderModel } from '../editor/documentHeaderModel';
 import { documentRootActions, type DocumentTreeController } from '../explorer/DocumentsExplorer';
 import { documentTreeKeys } from '../read-model/queries';
+import { DocumentTabsProvider } from '../tabs/DocumentTabsProvider';
 import { DocumentPane, UnsavedMarker } from './DocumentPane';
-import { DocumentSession } from './DocumentSession';
 import { DocumentsTreePanel } from './DocumentsTreePanel';
 import { useDocumentOpening } from './useDocumentOpening';
 import { useDocumentTreeOperations } from './useDocumentTreeOperations';
@@ -41,9 +41,9 @@ export function DocumentsWorkspace({
 }) {
   return (
     <AppWorkspaceProvider scopeKey={specId}>
-      <DocumentSession specId={specId} documentId={documentId}>
+      <DocumentTabsProvider specId={specId} documentId={documentId}>
         <Workspace specId={specId} documentId={documentId} />
-      </DocumentSession>
+      </DocumentTabsProvider>
     </AppWorkspaceProvider>
   );
 }

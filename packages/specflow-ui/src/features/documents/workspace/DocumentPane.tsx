@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
 import { useRouterState } from '@tanstack/react-router';
 import { isHttpClientError } from '@nevo/http-client';
 import {
@@ -19,13 +18,12 @@ import {
   useApplicationCollection,
 } from '../../../app/navigation/ApplicationLocation';
 import { BackLink } from '../../../app/navigation/LocationLink';
-import { useAppServices } from '../../../app/useAppServices';
 import { translateNow } from '../../../i18n/message';
 import { SessionRecoveryNotice, useSessionReturn } from '../../sessions';
 import { DocumentEditor } from '../editor/DocumentEditor';
 import { useDocumentEditor } from '../editor/DocumentEditorProvider';
 import { documentHeaderModel } from '../editor/documentHeaderModel';
-import { documentKeys } from '../read-model/queries';
+import { useDocumentRecord } from '../tabs/DocumentTabsProvider';
 
 export interface DocumentParams {
   specId: string;
@@ -55,7 +53,6 @@ function useDocument(params: DocumentParams): SecondaryData<DocumentScreenData> 
 
 /** The open document: loading and error states, the way back, and the editor. */
 export function DocumentPane({ data }: { data: DocumentParams }) {
-  const { documentApi } = useAppServices();
   const session = useSessionReturn(data.specId);
   const { supportsSplit } = useWorkspaceCapabilities();
   const collection = useApplicationCollection();
@@ -63,12 +60,11 @@ export function DocumentPane({ data }: { data: DocumentParams }) {
   const returnTo = useRouterState({
     select: (routerState) => routerState.location.state.specflowDocumentReturnTo,
   });
-  const query = useQuery({
-    queryKey: documentKeys.detail(data.specId, data.documentId),
-    queryFn: ({ signal }) => documentApi.getDocument(data.specId, data.documentId, signal),
-  });
-  const status = isHttpClientError(query.error) ? query.error.status : undefined;
-  if (query.isPending)
+  // The workspace loads the document on screen once; the pane only reports its state.
+  const record = useDocumentRecord();
+  const query = record?.documentId === data.documentId ? record.query : undefined;
+  const status = isHttpClientError(query?.error) ? query.error.status : undefined;
+  if (!query || query.isPending)
     return (
       <p role="status" className="p-5">
         {t('documents.loadingDocument')}

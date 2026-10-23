@@ -59,8 +59,18 @@ export function useDocumentSaveOwner(): DocumentSaveOwner {
   return owner;
 }
 
+/** The edit session of the document on screen, if it is loaded. */
 export function useDocumentEditor() {
   return useContext(Context);
+}
+
+/**
+ * The session of one document: the shown document's, or null for any other (a tab that is not
+ * on screen has a draft in the store but no mounted session).
+ */
+export function useDocumentSession(documentId: string): DocumentEditorSession | null {
+  const session = useContext(Context);
+  return session?.document.id === documentId ? session : null;
 }
 
 export function DocumentEditorProvider({

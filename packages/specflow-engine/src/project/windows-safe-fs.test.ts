@@ -14,13 +14,15 @@ const failing = (code: string, times: number) => {
     get calls() {
       return calls;
     },
-    run: async () => {
+    run: () => {
       calls += 1;
-      if (calls <= times) throw Object.assign(new Error(code), { code });
+      return calls <= times
+        ? Promise.reject(Object.assign(new Error(code), { code }))
+        : Promise.resolve();
     },
   };
 };
-const noSleep = async () => undefined;
+const noSleep = () => Promise.resolve();
 
 describe('windows-safe fs', () => {
   it.each(['EPERM', 'EBUSY', 'EACCES'])('retries %s on win32 until it clears', async (code) => {
@@ -84,8 +86,9 @@ describe('windows-safe fs', () => {
       platform: 'win32',
       baseDelayMs: 10,
       maxDelayMs: 100,
-      sleep: async (ms) => {
+      sleep: (ms) => {
         delays.push(ms);
+        return Promise.resolve();
       },
     });
     expect(delays).toEqual([10, 20, 40, 80, 100, 100]);
@@ -100,10 +103,11 @@ describe('windows-safe fs', () => {
       platform: 'win32',
       sleep: noSleep,
       fs: {
-        readFile: async () => {
+        readFile: () => {
           reads += 1;
-          if (reads < 3) throw Object.assign(new Error('x'), { code: 'EBUSY' });
-          return 'ok';
+          return reads < 3
+            ? Promise.reject(Object.assign(new Error('x'), { code: 'EBUSY' }))
+            : Promise.resolve('ok');
         },
       },
     });

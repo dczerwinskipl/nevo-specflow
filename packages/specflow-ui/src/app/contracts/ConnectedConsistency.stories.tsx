@@ -5,7 +5,7 @@ import { EditorView } from '@codemirror/view';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { RouterProvider, createMemoryHistory, createBrowserHistory } from '@tanstack/react-router';
 import { QueryClientProvider } from '@tanstack/react-query';
-import type { Meta, StoryObj } from '@storybook/react-vite';
+import type { Meta, StoryContext, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within } from 'storybook/test';
 import { browserPage } from '../../test-support/browserPage';
 import type { DemoDocumentTree, DemoSessionDetail } from '@nevo/specflow-contracts/demo';
@@ -33,18 +33,22 @@ import {
 const createResponseControl = { fail: () => undefined as void };
 export { createResponseControl };
 const historyControl = { back: () => undefined as void };
+/** Lets a story make a document disappear from the Runtime behind the open tabs back. */
+const tabsControl = { removeExternally: (_id: string) => undefined as void };
 function Connected({
   path = '/specs/api-integration/documents/spec?collection=archive',
   catalogueState = 'ready',
   optionsVariant = 'default',
   longDocument = false,
   longFilename = false,
+  threeDocuments = false,
   historyFromOverview = false,
   browserWindow,
   createOutcome = 'success',
 }: {
   path?: string;
   longDocument?: boolean;
+  threeDocuments?: boolean;
   longFilename?: boolean;
   historyFromOverview?: boolean;
   browserWindow?: Window;
@@ -82,7 +86,11 @@ function Connected({
       user: { id: 'story', name: 'Demo' },
       loginMethods: { password: { enabled: false }, oidc: [] },
     });
-    const records = {
+    const hidden = new Set<string>();
+    const records: Record<
+      string,
+      { id: string; title: string; filename: string; revision: string; content: string }
+    > = {
       spec: {
         id: 'spec',
         title: 'Specification',
@@ -106,6 +114,26 @@ function Connected({
         content:
           '# Rozmowa z klientem\n\nKlient: potrzebujemy logowania SSO.\nTo jest tekst, nie nagłówek Markdown.',
       },
+      ...(threeDocuments
+        ? {
+            adr: {
+              id: 'adr',
+              title: 'ADR',
+              filename: 'adr-001.md',
+              revision: '1',
+              content:
+                '# ADR-001 · Deterministyczna admisja zadań i granice wykonania agentów\n\nWstęp.\n\n## Kontekst systemu i ograniczenia\n\nTekst.\n\n## Decyzja\n\nTekst.',
+            },
+            plan: {
+              id: 'plan',
+              title: 'Plan',
+              filename: 'plan.md',
+              revision: '1',
+              content:
+                '# Plan wdrożenia\n\nKroki wdrożenia logowania SSO.\n\n## Etap 1\n\nPrzygotowanie.\n\n## Etap 2\n\nWdrożenie.\n\n## Etap 3\n\nOdbiór.',
+            },
+          }
+        : {}),
     };
     const yes = { available: true };
     const actions = { rename: yes, move: yes, delete: yes };
@@ -214,13 +242,26 @@ function Connected({
         },
       },
       documentApi: {
-        getDocument: (_spec, id) => Promise.resolve(records[id as keyof typeof records]),
+        getDocument: (_spec, id) =>
+          hidden.has(id) || !records[id]
+            ? Promise.reject(
+                new HttpClientError('Not found', {
+                  kind: 'http',
+                  status: 404,
+                  data: { error: 'demo_document_not_found' },
+                }),
+              )
+            : Promise.resolve(records[id]),
       },
       documentsApi: {
         ...defaults.documentsApi,
-        documentTree: () => Promise.resolve(tree),
+        documentTree: () =>
+          Promise.resolve({
+            ...tree,
+            documents: tree.documents.filter((document) => !hidden.has(document.id)),
+          }),
         save: (_spec, id, input) => {
-          const doc = records[id as keyof typeof records];
+          const doc = records[id]!;
           Object.assign(doc, { content: input.content, revision: '2' });
           return Promise.resolve({ revision: '2' });
         },
@@ -283,6 +324,10 @@ function Connected({
         initialEntries: historyFromOverview ? ['/?collection=archive', path] : [path],
       });
     const router = createSpecFlowRouter(history, services);
+    tabsControl.removeExternally = (id) => {
+      hidden.add(id);
+      void query.invalidateQueries({ queryKey: ['specifications', 'api-integration'] });
+    };
     return { query, router };
   }, [
     path,
@@ -290,6 +335,7 @@ function Connected({
     optionsVariant,
     longDocument,
     longFilename,
+    threeDocuments,
     historyFromOverview,
     browserWindow,
     createOutcome,
@@ -391,15 +437,20 @@ export const ResponsiveDirtyDocument: Story = {
       'Retained position',
     );
     await expect(canvas.getByLabelText('Bieżąca trasa')).toHaveTextContent('collection=archive');
+    // A tab switch is not leaving: the dirty document stays in its tab and nothing asks.
     await userEvent.click(canvas.getByRole('button', { name: /^CLIENT.TXT$/ }));
-    const dialog = within(document.body).getByRole('alertdialog');
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Zapisz i przejdź' }));
-    // A document opened for the first time defaults to Preview.
-    await expect(canvasElement.querySelector('pre')).toHaveTextContent('# Rozmowa z klientem');
-    await expect(canvas.getByLabelText('Bieżąca trasa')).toHaveTextContent('collection=archive');
-    await settleViewport();
-    await invokeDocumentAction(canvas, userEvent, 'Edytuj dokument');
+    await expect(document.querySelector('[role="alertdialog"]')).toBeNull();
+    // Plain text has one view: it opens as the editable source.
     await canvas.findByRole('textbox', { name: 'Treść notes/CLIENT.TXT' });
+    await expect(canvas.getByLabelText('Bieżąca trasa')).toHaveTextContent('collection=archive');
+    await expect(
+      canvas.getAllByRole('tab').map((tab) => tab.getAttribute('aria-selected')),
+    ).toEqual(['false', 'true']);
+    // The first tab keeps its unsaved edits.
+    await userEvent.click(canvas.getByRole('tab', { name: /specification.md/ }));
+    await expect(
+      await canvas.findByRole('textbox', { name: 'Treść specification.md' }),
+    ).toHaveTextContent('Retained position');
   },
 };
 export const OpeningADocumentFromTheTreeMovesFocusToItsHeading: Story = {
@@ -414,8 +465,9 @@ export const OpeningADocumentFromTheTreeMovesFocusToItsHeading: Story = {
       await userEvent.keyboard('{Enter}');
       await waitFor(() => {
         const active = document.activeElement;
-        if (!active?.matches('[data-workspace-header-title="true"]'))
-          throw new Error(`Focus is on ${active?.tagName} at ${width}px`);
+        // Wide and narrow: the document heading (focus on a tab would open its tooltip).
+        const target = active?.matches('[data-workspace-header-title="true"]');
+        if (!target) throw new Error(`Focus is on ${active?.tagName} at ${width}px`);
         void expect(active).toHaveTextContent('specification.md');
       });
     }
@@ -483,27 +535,31 @@ export const ClosingADirtyDocumentAsksFirst: Story = {
     const input = await canvas.findByRole('textbox', { name: 'Treść specification.md' });
     await userEvent.click(input);
     await userEvent.keyboard('{Control>}{End}{/Control}{Enter}Unsaved line');
-    const close = () => userEvent.click(canvas.getByRole('button', { name: 'Zamknij dokument' }));
+    // The region's close closes every tab, asking once about the unsaved documents.
+    const close = () =>
+      userEvent.click(canvas.getByRole('button', { name: 'Zamknij wszystkie dokumenty' }));
     const dialog = () => within(document.body).findByRole('alertdialog');
 
     // Keep editing: the pane and the draft stay.
     await close();
     let choice = await dialog();
-    for (const name of ['Kontynuuj edycję', 'Odrzuć zmiany', 'Zapisz i przejdź'])
+    for (const name of ['Kontynuuj edycję', 'Odrzuć wszystkie', 'Zapisz wszystkie'])
       await expect(within(choice).getByRole('button', { name })).toBeVisible();
+    await expect(within(choice).getAllByRole('listitem')).toHaveLength(1);
     await userEvent.click(within(choice).getByRole('button', { name: 'Kontynuuj edycję' }));
     await waitFor(() => expect(document.querySelector('[role="alertdialog"]')).toBeNull());
     await expect(canvas.getByRole('textbox', { name: 'Treść specification.md' })).toHaveTextContent(
       'Unsaved line',
     );
 
-    // Discard: the pane closes and the draft is gone.
+    // Discard all: every tab closes and the draft is gone.
     await close();
     choice = await dialog();
-    await userEvent.click(within(choice).getByRole('button', { name: 'Odrzuć zmiany' }));
+    await userEvent.click(within(choice).getByRole('button', { name: 'Odrzuć wszystkie' }));
     await waitFor(() =>
       expect(canvas.queryByRole('textbox', { name: 'Treść specification.md' })).toBeNull(),
     );
+    await expect(canvas.queryByRole('tab')).toBeNull();
     await userEvent.click(await canvas.findByRole('button', { name: /^specification.md/ }));
     await waitFor(() =>
       expect(canvasElement.querySelector('[data-workspace-surface="secondary"]')).not.toBeNull(),
@@ -512,6 +568,164 @@ export const ClosingADirtyDocumentAsksFirst: Story = {
     await expect(document.querySelector('[role="alertdialog"]')).toBeNull();
   },
 };
+/** Opens a document from the tree by its name (wide: the tree is always there). */
+const openFromTree = async (
+  canvas: StoryContext['canvas'],
+  userEvent: StoryContext['userEvent'],
+  name: RegExp,
+) => userEvent.click(await canvas.findByRole('button', { name }));
+
+/**
+ * Several documents open at once, wide: one tab per document, a dirty badge that survives tab
+ * switches, a per-tab close question, and a document that disappeared stays open as missing.
+ */
+export const MultiTabWide: Story = {
+  args: { path: '/specs/api-integration/documents?collection=archive', threeDocuments: true },
+  play: async ({ canvas, userEvent }) => {
+    await viewport(1440, 900);
+    await openFromTree(canvas, userEvent, /^specification.md/);
+    await openFromTree(canvas, userEvent, /^CLIENT.TXT$/);
+    await openFromTree(canvas, userEvent, /^plan.md/);
+    await waitFor(() => expect(canvas.getAllByRole('tab')).toHaveLength(3));
+    await expect(canvas.getByRole('tab', { name: /plan.md/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    // Edit the specification in its own tab; the other tabs stay clean.
+    await userEvent.click(canvas.getByRole('tab', { name: /specification.md/ }));
+    await invokeDocumentAction(canvas, userEvent, 'Edytuj dokument');
+    const input = await canvas.findByRole('textbox', { name: 'Treść specification.md' });
+    await userEvent.click(input);
+    await userEvent.keyboard('{Control>}{End}{/Control}{Enter}Tab draft');
+    await expect(
+      await canvas.findByRole('tab', { name: /specification.md.*niezapisane zmiany/i }),
+    ).toBeVisible();
+    // Switching away and back asks nothing and keeps the draft.
+    await userEvent.click(canvas.getByRole('tab', { name: /plan.md/ }));
+    await expect(document.querySelector('[role="alertdialog"]')).toBeNull();
+    await userEvent.click(canvas.getByRole('tab', { name: /specification.md/ }));
+    await expect(
+      await canvas.findByRole('textbox', { name: 'Treść specification.md' }),
+    ).toHaveTextContent('Tab draft');
+    // A document removed behind the back of the user stays open, marked as missing.
+    tabsControl.removeExternally('transcript');
+    await waitFor(() =>
+      expect(canvas.getByRole('tab', { name: /CLIENT.TXT.*nie znaleziono/i })).toBeVisible(),
+    );
+    // Closing the dirty tab asks for THAT tab; Keep editing leaves it open.
+    await userEvent.click(canvas.getByRole('button', { name: /^Zamknij specification.md/ }));
+    const dialog = await within(document.body).findByRole('alertdialog');
+    await expect(dialog).toHaveTextContent('specification.md');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Kontynuuj edycję' }));
+    await waitFor(() => expect(document.querySelector('[role="alertdialog"]')).toBeNull());
+    await expect(canvas.getAllByRole('tab')).toHaveLength(3);
+  },
+};
+
+/** Narrow: no strip. The document header carries the `name (N)` switcher; Back keeps the tabs. */
+export const MultiTabNarrow: Story = {
+  args: { path: '/specs/api-integration/documents?collection=archive', threeDocuments: true },
+  play: async ({ canvas, userEvent }) => {
+    await viewport(390, 844);
+    await openFromTree(canvas, userEvent, /^specification.md/);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Wróć do listy dokumentów' }));
+    await openFromTree(canvas, userEvent, /^plan.md/);
+    const switcher = await canvas.findByRole('button', { name: /plan.md, otwarte: 2/ });
+    await expect(canvas.queryByRole('tab')).toBeNull();
+    await userEvent.click(switcher);
+    const menu = await within(document.body).findByRole('menu');
+    const stacked = document.querySelector('[data-workspace-surface="secondary"]');
+    await userEvent.click(within(menu).getByRole('menuitem', { name: /^specification.md/ }));
+    await canvas.findByRole('button', { name: /specification.md, otwarte: 2/ });
+    // A tab switch follows the route inside the open stacked screen: it is not rebuilt.
+    await expect(document.querySelector('[data-workspace-surface="secondary"]')).toBe(stacked);
+    // Back returns to the tree without closing anything.
+    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do listy dokumentów' }));
+    await openFromTree(canvas, userEvent, /^plan.md/);
+    await canvas.findByRole('button', { name: /plan.md, otwarte: 2/ });
+  },
+};
+
+/** A deep link to a document that does not exist: a clear alert inside the panel, closing the tab. */
+export const MissingDocumentDeepLink: Story = {
+  args: { path: '/specs/api-integration/documents/nie-ma-takiego?collection=archive' },
+  play: async ({ canvas, userEvent }) => {
+    await viewport(1440, 900);
+    const alert = await canvas.findByText('Nie znaleziono dokumentu');
+    await expect(alert).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Spróbuj ponownie' })).toBeNull();
+    await userEvent.click(canvas.getByRole('button', { name: 'Zamknij kartę' }));
+    await waitFor(() => expect(canvas.queryByRole('tab')).toBeNull());
+    await expect(canvas.getByLabelText('Bieżąca trasa')).not.toHaveTextContent('nie-ma-takiego');
+  },
+};
+
+/**
+ * Stacked: the header is Back, the switcher, the contents icon, Edit and the menu. The region close
+ * (a second way back) is gone; the contents sheet and its Display item are there for 2+ headings.
+ */
+export const NarrowHeaderHasContentsAndNoDuplicateClose: Story = {
+  args: { path: '/specs/api-integration/documents?collection=archive', threeDocuments: true },
+  play: async ({ canvas, userEvent }) => {
+    await viewport(390, 844);
+    await openFromTree(canvas, userEvent, /^plan.md/);
+    await canvas.findByRole('button', { name: 'Wróć do listy dokumentów' });
+    await expect(canvas.queryByRole('button', { name: 'Zamknij wszystkie dokumenty' })).toBeNull();
+    const icon = await canvas.findByRole('button', { name: 'Otwórz spis treści' });
+    await userEvent.click(icon);
+    const sheet = await within(document.body).findByRole('dialog', { name: 'Spis treści (4)' });
+    await userEvent.click(within(sheet).getByRole('link', { name: 'Etap 3' }));
+    await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(document.activeElement).toHaveTextContent('Etap 3'));
+    // Plain text has no contents.
+    await userEvent.click(canvas.getByRole('button', { name: 'Wróć do listy dokumentów' }));
+    await openFromTree(canvas, userEvent, /^CLIENT.TXT$/);
+    await canvas.findByRole('textbox', { name: 'Treść notes/CLIENT.TXT' });
+    await expect(canvas.queryByRole('button', { name: 'Otwórz spis treści' })).toBeNull();
+  },
+};
+
+/** Medium (split, document panel below the column threshold): strip, contents icon and the close. */
+export const MediumHeaderHasContentsIconAfterTheStrip: Story = {
+  args: { path: '/specs/api-integration/documents?collection=archive', threeDocuments: true },
+  play: async ({ canvas, userEvent }) => {
+    await viewport(1280, 900);
+    await openFromTree(canvas, userEvent, /^plan.md/);
+    await waitFor(() => expect(canvas.getAllByRole('tab')).toHaveLength(1));
+    const icon = await canvas.findByRole('button', { name: 'Otwórz spis treści' });
+    const tab = canvas.getByRole('tab');
+    await expect(icon.getBoundingClientRect().left).toBeGreaterThan(
+      tab.getBoundingClientRect().right,
+    );
+    await expect(canvas.getByRole('button', { name: 'Zamknij wszystkie dokumenty' })).toBeVisible();
+  },
+};
+
+/** A long document title must not push the contents sheet beyond the screen (390 and 320 px). */
+export const ContentsSheetKeepsALongTitleInsideTheScreen: Story = {
+  args: { path: '/specs/api-integration/documents?collection=archive', threeDocuments: true },
+  play: async ({ canvas, userEvent }) => {
+    for (const width of [390, 320]) {
+      await viewport(width, 800);
+      const back = canvas.queryByRole('button', { name: 'Wróć do listy dokumentów' });
+      if (back) await userEvent.click(back);
+      await openFromTree(canvas, userEvent, /^adr-001.md/);
+      await userEvent.click(await canvas.findByRole('button', { name: 'Otwórz spis treści' }));
+      const sheet = await within(document.body).findByRole('dialog');
+      const list = within(sheet).getByRole('list');
+      await expect(list.scrollWidth).toBeLessThanOrEqual(list.clientWidth + 1);
+      const sheetRight = sheet.getBoundingClientRect().right;
+      for (const link of within(sheet).getAllByRole('link')) {
+        const box = link.getBoundingClientRect();
+        await expect(box.right).toBeLessThanOrEqual(sheetRight + 1);
+        await expect(box.right).toBeLessThanOrEqual(window.innerWidth + 1);
+      }
+      await userEvent.keyboard('{Escape}');
+      await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
+    }
+  },
+};
+
 export const WorkspaceChromeIsPolishOnCreate: Story = {
   args: { path: '/specs/new?collection=archive' },
   play: async ({ canvas }) => {
@@ -908,12 +1122,14 @@ export const DocumentsIdleSecondary: Story = {
     await expect(
       (await canvas.findAllByRole('button', { name: /^Akcje: / })).length,
     ).toBeGreaterThan(0);
-    await expect(canvas.getByText('Wybierz dokument')).toBeVisible();
-    await expect(canvas.getByText('Otwórz plik z drzewa, aby zobaczyć jego treść.')).toBeVisible();
+    await expect(canvas.getByText('Wybierz dokument z drzewa')).toBeVisible();
+    // A few documents to start from, as buttons that open a tab (nothing opens by itself).
+    await expect(canvas.getByRole('button', { name: 'Otwórz specification.md' })).toBeVisible();
+    await expect(canvas.queryByRole('tab')).toBeNull();
     await settleViewport();
     // Narrow: the tree remains the sole visible Primary; no idle Secondary placeholder.
     await viewport(390, 844);
-    await expect(canvas.queryByText('Wybierz dokument')).not.toBeInTheDocument();
+    await expect(canvas.queryByText('Wybierz dokument z drzewa')).not.toBeInTheDocument();
     await settleViewport(390, 844);
   },
 };

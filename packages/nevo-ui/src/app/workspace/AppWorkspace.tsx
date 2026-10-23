@@ -22,6 +22,7 @@ import { AppContentScrollProvider } from './AppContent';
 import { useOptionalWorkspace } from './WorkspaceContext';
 import type { WorkspaceTransition } from './WorkspaceContext';
 import {
+  capPrimaryWidth,
   resolveSlotMaxWidth,
   resolveWorkspaceFit,
   resolveWorkspaceSplit,
@@ -87,9 +88,24 @@ interface CommonAppWorkspaceProps {
    */
   fit?: AppWorkspaceFit;
   split?: AppWorkspaceSplitMode;
+  /**
+   * Opt-in maximum width of the Primary region, in px. It applies whenever a Secondary is shown
+   * beside it in a split layout, for every `split` value: Primary is its share of the split but never
+   * wider than this, and Secondary takes the rest of the width. It does not apply to a stacked
+   * layout or to a Primary without Secondary, and it has no practical effect with `fit="content"`
+   * (the workspace then sizes by its content). Use it with `fit="available"` so a list beside a
+   * document stops growing on very wide screens. Default: none, Primary is exactly its share.
+   */
+  primaryMaxPx?: number;
   labels?: Partial<AppWorkspaceLabels>;
   /** Close the active page (returning to its parent) or the entire contextual flow. */
   secondaryCloseBehavior?: 'page' | 'flow';
+  /**
+   * What the Secondary shows as its own close action when the layout is stacked. In a stack the
+   * Back action already leaves the Secondary, so `hide` removes the duplicate (the compact row loses
+   * its close item too). Split layouts always keep the close action. Default `show`.
+   */
+  stackedSecondaryClose?: 'show' | 'hide';
 }
 
 export type AppWorkspaceProps = CommonAppWorkspaceProps & {
@@ -203,20 +219,30 @@ function useWorkspaceLayoutState(
   split: AppWorkspaceSplitMode,
   hasSecondary: boolean,
   secondaryCanStack: boolean,
+  primaryMaxPx?: number,
 ): WorkspaceLayoutState {
   const { availableWidth, contentWidth = availableWidth } = useAppWorkspace();
   const isSplitView = supportsRuntimeWorkspaceSplit(availableWidth);
   const showSecondary = hasSecondary && (isSplitView || secondaryCanStack);
   const resolvedSplit = resolveWorkspaceSplit(split, isSplitView && showSecondary, availableWidth);
 
+  const widths = capPrimaryWidth(
+    contentWidth,
+    {
+      primary: resolveSlotMaxWidth(contentWidth, resolvedSplit.primary),
+      secondary:
+        resolvedSplit.secondary === 0
+          ? undefined
+          : resolveSlotMaxWidth(contentWidth, resolvedSplit.secondary),
+    },
+    primaryMaxPx,
+  );
+
   return {
     mode: isSplitView ? 'split' : 'stacked',
     showSecondary,
-    primaryMaxWidth: resolveSlotMaxWidth(contentWidth, resolvedSplit.primary),
-    secondaryMaxWidth:
-      resolvedSplit.secondary === 0
-        ? undefined
-        : resolveSlotMaxWidth(contentWidth, resolvedSplit.secondary),
+    primaryMaxWidth: widths.primary,
+    secondaryMaxWidth: widths.secondary,
   };
 }
 
@@ -563,8 +589,10 @@ function AppWorkspaceRoot({
   children,
   labels: labelsProp,
   split = 'balanced',
+  primaryMaxPx,
   fit = 'content',
   secondaryCloseBehavior = 'flow',
+  stackedSecondaryClose = 'show',
   scroll = 'workspace',
 }: AppWorkspaceProps) {
   const staticSurfaces = resolveComposedWorkspace(children);
@@ -605,6 +633,7 @@ function AppWorkspaceRoot({
     split,
     secondaryPresentation !== undefined,
     secondaryPresentation?.canStack ?? false,
+    primaryMaxPx,
   );
   const resolvedFit = resolveWorkspaceFit(fit, state.mode, state.showSecondary);
   const mobileRuntime = useMobileWorkspaceTransition({
@@ -624,11 +653,13 @@ function AppWorkspaceRoot({
       (state.mode === 'split' && secondaryPresentation.canStack)) ? (
       <BackAction label={labels.backToPrimary} onBack={secondaryPresentation.onBack} />
     ) : undefined;
-  const secondaryCloseAction = secondaryPresentation?.onClose ? (
-    <CloseAction label={labels.closeSecondary} onClose={secondaryPresentation.onClose} />
-  ) : undefined;
+  const hideClose = state.mode === 'stacked' && stackedSecondaryClose === 'hide';
+  const secondaryCloseAction =
+    secondaryPresentation?.onClose && !hideClose ? (
+      <CloseAction label={labels.closeSecondary} onClose={secondaryPresentation.onClose} />
+    ) : undefined;
   const compactSecondaryCloseAction: WorkspaceHeaderAction | undefined =
-    secondaryPresentation?.onClose
+    secondaryPresentation?.onClose && !hideClose
       ? {
           id: 'close-secondary-navigation',
           label: labels.closeSecondary,
@@ -639,9 +670,10 @@ function AppWorkspaceRoot({
   const outgoingBackAction = outgoingSecondaryPresentation ? (
     <BackAction label={labels.backToPrimary} onBack={() => undefined} />
   ) : undefined;
-  const outgoingCloseAction = outgoingSecondaryPresentation ? (
-    <CloseAction label={labels.closeSecondary} onClose={() => undefined} />
-  ) : undefined;
+  const outgoingCloseAction =
+    outgoingSecondaryPresentation && !hideClose ? (
+      <CloseAction label={labels.closeSecondary} onClose={() => undefined} />
+    ) : undefined;
 
   useLayoutEffect(() => {
     if (!secondaryPresentation?.canStack) return;

@@ -245,6 +245,22 @@ intrinsic bound and behaves like `content`. Do not combine `bounded` with ad-hoc
 centring wrappers. `AppWorkspaceFit.contract.stories.tsx` covers the three values (`Available*`, `Content*`,
 `BoundedPrimaryOnly*` contracts at 1024/1440/1920/2560 and 390).
 
+**Stacked close (opt-in).** `stackedSecondaryClose="hide"` removes the Secondary's own close action (the trailing
+`x`, and the matching item of the compact row) while the layout is stacked, where Back already leaves the
+Secondary and the second control only repeats it. Split layouts keep the close action. The default is
+`show`; `AppWorkspace` tests cover both values.
+
+**Capped Primary (opt-in).** `primaryMaxPx` is the maximum width of the Primary region in px. Primary is
+its share of the split but never wider than the cap, and Secondary takes the rest (`capPrimaryWidth`), so a
+list beside a document does not grow to 575 px at 2560 while the document keeps empty space. It applies to
+every `split` value whenever a Secondary is shown in a split layout; it does not apply to the stacked
+layout or to a Primary without Secondary, and it has no practical effect with `fit="content"`. Use it with
+`fit="available"`. The prop stays general (no type restriction to `split="secondary"`): the rule is one
+sentence and a cap that is not reached changes nothing. The default is no cap. In the 1/3 : 2/3 range
+(workspace below 1080 px) the share is below any sensible cap, so the share stays: 1108 px viewport
+(840 workspace) gives Primary 280 px. `CappedPrimary*Contract` stories cover 1108/1280/1440/1920/2560,
+the stacked layout and the uncapped share.
+
 The shell-owned workspace surface has an edge border (`border-l`, plus `border-r` when inset). `AppShell`
 publishes two widths through the workspace context: `availableWidth` (the surface border-box, which decides
 split/stacked mode and the dominance thresholds) and `contentWidth` (`availableWidth` minus
@@ -340,9 +356,11 @@ through `location.hash`) and a safe-area override.
   The direct budget, one primary last and never-direct danger are unchanged. The default
   (`menu="default"`) keeps the overflow-only menu
   (`group` is ignored there).
-- **Not wired into the Secondary runtime yet.** The complete menu is not supported by `HeaderOutlet` and
-  `CompactScreenActions` (runtime Secondary stack screens) until the narrow integration; pass `menu`
-  through the screen definition then.
+- **Secondary stack screens.** A screen definition takes `menu?: 'default' | 'complete'` next to `actions` and
+  `actionLabels`; the runtime passes it to `HeaderOutlet` (in-flow header) and `CompactScreenActions`
+  (floating row), so the stacked layout lists every action too. `useSecondaryNavigation()` also reports
+  `isOpen`, true while a contextual flow is open (false as soon as it closes, even while it slides out), so
+  a host can tell an open stack from one the user has just left.
 - `resolveWorkspaceHeaderActions(actions, 'wide' | 'narrow' | 'compact')` is the pure resolver
   (`true`/`false` still mean compact/wide). Document view: `[{ id: 'edit', icon: 'edit',
 presentation: 'icon', direct: 'always', ... }]`; edit: `[preview (icon, direct: 'wide'), save (primary,

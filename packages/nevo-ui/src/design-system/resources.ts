@@ -33,6 +33,7 @@ export const iconNames = [
   'users',
   'workflow',
   'list-checks',
+  'list',
   'settings',
   'log-out',
   'refresh',

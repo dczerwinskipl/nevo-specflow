@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { useBlocker, useNavigate } from '@tanstack/react-router';
+import { useBlocker } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import type { DemoDocumentOperationInput, DemoDocumentsInput } from '@nevo/specflow-contracts/demo';
-import { useApplicationCollection } from '../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../app/useAppServices';
 import { apiErrorCode } from '../../../shared/http/apiErrorCode';
 import { sendRetained, type RequestAttempt } from '../../../shared/operations/retainedRequest';
 import { useDocumentDraftStore } from '../editor/DocumentDraftProvider';
 import { draftFor } from '../editor/documentDraftStore';
+import { isWithinSpecDocuments } from '../../../app/navigation/routeScope';
+import { useDocumentTabs } from '../tabs/DocumentTabsProvider';
 import type { DocumentOperation } from '../explorer/DocumentsExplorer';
 import { documentKeys } from '../read-model/queries';
 
@@ -19,9 +20,9 @@ export interface DocumentTreeOperations {
   /** A tree operation is in flight (or unconfirmed): leaving the page is blocked meanwhile. */
   busy: boolean;
   setBusy: (busy: boolean) => void;
-  /** Adds files and folders; a single new empty file is opened afterwards. */
+  /** Adds files and folders; a new empty file, or the first imported file, opens as a new tab. */
   add: (documents: DemoDocumentsInput['documents'], folders?: string[]) => Promise<void>;
-  /** Renames, moves or deletes; deleting the open document leaves it. */
+  /** Renames, moves or deletes; deleting a document closes its tab (no second question). */
   operate: (operation: DocumentOperation) => Promise<void>;
 }
 
@@ -30,43 +31,32 @@ export interface DocumentTreeOperations {
  * cached tree, the drafts of changed documents and the document that is open. Requests are
  * retained by body, so an unconfirmed operation is retried with the same request id.
  */
-export function useDocumentTreeOperations(options: {
-  specId: string;
-  /** The open document, if any. */
-  documentId?: string;
-}): DocumentTreeOperations {
-  const { specId, documentId } = options;
+export function useDocumentTreeOperations(options: { specId: string }): DocumentTreeOperations {
+  const { specId } = options;
   const { documentsApi, documentApi } = useAppServices();
   const drafts = useDocumentDraftStore();
   const cache = useQueryClient();
-  const navigate = useNavigate();
-  const collection = useApplicationCollection();
+  const tabs = useDocumentTabs();
   const [busy, setBusy] = useState(false);
-  const [destination, setDestination] = useState<{ documentId?: string }>();
+  // What the operation decided for the tabs; applied once the tree is idle again.
+  const [followUp, setFollowUp] = useState<{ show?: string; removed?: readonly string[] }>();
   // Retained requests: written and read only by the operations below, never while rendering.
   const importAttempt = useRef<RequestAttempt<DemoDocumentsInput> | null>(null);
   const operationAttempt = useRef<RequestAttempt<DemoDocumentOperationInput> | null>(null);
-  useBlocker({ shouldBlockFn: () => busy, enableBeforeUnload: busy });
+  // Leaving is blocked while an operation is unconfirmed; moving between tabs of the screen is not.
+  useBlocker({
+    shouldBlockFn: ({ current, next }) => busy && !isWithinSpecDocuments(current, next, specId),
+    enableBeforeUnload: busy,
+  });
 
-  // The operation decided where to go (a new file, or away from a deleted one); go once idle.
   useEffect(() => {
-    if (destination && !busy) {
-      void navigate(
-        destination.documentId
-          ? {
-              to: '/specs/$specId/documents/$documentId',
-              params: { specId, documentId: destination.documentId },
-              search: { collection },
-            }
-          : {
-              to: '/specs/$specId/documents',
-              params: { specId },
-              search: { collection },
-            },
-      );
-      setDestination(undefined);
-    }
-  }, [destination, busy, navigate, specId, collection]);
+    if (!followUp || busy) return;
+    setFollowUp(undefined);
+    void (async () => {
+      if (followUp.removed) await tabs.removeTabs(followUp.removed);
+      if (followUp.show) await tabs.show(followUp.show);
+    })();
+  }, [followUp, busy, tabs]);
 
   const refresh = () => cache.invalidateQueries({ queryKey: ['specifications', specId] });
   const add: DocumentTreeOperations['add'] = async (documents, folders = []) => {
@@ -76,18 +66,18 @@ export function useDocumentTreeOperations(options: {
     // The mutation is confirmed from here on: nothing below may turn it into an uncertain outcome
     // (a retry would POST again with a new request id). The follow-up is best effort.
     await settleFollowUp(refresh());
-    if (documents.length === 1 && documents[0]!.content === '') {
-      const id = result.documentIds[0];
-      if (id) {
-        await settleFollowUp(
-          documentApi.getDocument(specId, id).then((record) => {
-            cache.setQueryData(documentKeys.detail(specId, id), record);
-            drafts.set(specId, id, draftFor(record));
-          }),
-        );
-        // Without the prefetched record the document route loads (and reports) it itself.
-        setDestination({ documentId: id });
-      }
+    // A new empty file opens in edit; an import opens its first file in preview.
+    const blank = documents.length === 1 && documents[0]!.content === '';
+    const id = documents.length > 0 ? result.documentIds[0] : undefined;
+    if (id) {
+      await settleFollowUp(
+        documentApi.getDocument(specId, id).then((record) => {
+          cache.setQueryData(documentKeys.detail(specId, id), record);
+          drafts.set(specId, id, { ...draftFor(record), editing: blank });
+        }),
+      );
+      // Without the prefetched record the document route loads (and reports) it itself.
+      setFollowUp({ show: id });
     }
   };
   const operate: DocumentTreeOperations['operate'] = async (operation) => {
@@ -105,7 +95,7 @@ export function useDocumentTreeOperations(options: {
         draft ? { ...draft, revision: record.revision } : undefined,
       );
     await settleFollowUp(refresh());
-    if (documentId && result.removedDocumentIds.includes(documentId)) setDestination({});
+    if (result.removedDocumentIds.length > 0) setFollowUp({ removed: result.removedDocumentIds });
   };
   return { busy, setBusy, add, operate };
 }

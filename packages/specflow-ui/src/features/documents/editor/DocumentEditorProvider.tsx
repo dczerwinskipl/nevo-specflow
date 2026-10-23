@@ -15,6 +15,14 @@ import { documentDraftKey, draftFor, isDraftDirty, type DocumentDraft } from './
 import { useDocumentDraft, useDocumentDraftStore } from './DocumentDraftProvider';
 import { UnsavedChangesDialog } from './UnsavedChangesDialog';
 import { DocumentPathDialog } from './DocumentPathDialog';
+import { kindIdOf } from '../content-kinds/kindId';
+import {
+  documentOutline,
+  type DocumentOutlineData,
+  type OutlineNavigator,
+} from '../outline/outlineData';
+import { DocumentOutlineSheet } from '../outline/DocumentOutlineSheet';
+import { regionHeading } from '../outline/regionHeading';
 import type { ScrollAnchor } from './documentScrollAnchor';
 import { useDocumentSave, type DocumentSaveOwner } from './useDocumentSave';
 import { useEditorFocus } from './useEditorFocus';
@@ -47,6 +55,19 @@ export interface DocumentEditorSession {
   rememberAnchor: (anchor: ScrollAnchor) => void;
   /** The mounted content view registers a synchronous reader of its current position. */
   anchorReader: MutableRefObject<(() => ScrollAnchor | undefined) | null>;
+  /** Headings and properties of the text, parsed once per change. */
+  outline: DocumentOutlineData;
+  /** The mounted preview registers how to scroll to a heading and which one the reader is at. */
+  outlineNavigator: MutableRefObject<OutlineNavigator | null>;
+  /** The preview reports whether its panel shows the contents in a column (undefined: no preview). */
+  reportColumnShown: (shown: boolean | undefined) => void;
+  /**
+   * The contents can be opened as a sheet: previewing markdown with at least two headings in a panel
+   * that has no contents column. The header icon and the menu item exist exactly then.
+   */
+  outlineAvailable: boolean;
+  outlineOpen: boolean;
+  openOutline: () => void;
 }
 
 const Context = createContext<DocumentEditorSession | null>(null);
@@ -59,8 +80,18 @@ export function useDocumentSaveOwner(): DocumentSaveOwner {
   return owner;
 }
 
+/** The edit session of the document on screen, if it is loaded. */
 export function useDocumentEditor() {
   return useContext(Context);
+}
+
+/**
+ * The session of one document: the shown document's, or null for any other (a tab that is not
+ * on screen has a draft in the store but no mounted session).
+ */
+export function useDocumentSession(documentId: string): DocumentEditorSession | null {
+  const session = useContext(Context);
+  return session?.document.id === documentId ? session : null;
 }
 
 export function DocumentEditorProvider({
@@ -79,6 +110,14 @@ export function DocumentEditorProvider({
   const focusAfterDiscard = useRef(false);
   const [guardFor, setGuardFor] = useState<string>();
   const [pathOpen, setPathOpen] = useState(false);
+  const outlineNavigator = useRef<OutlineNavigator | null>(null);
+  // Reported by the mounted preview, which alone can measure its panel: an exception to deriving
+  // state in the owner, kept as one boolean the header reads.
+  const [columnShown, setColumnShown] = useState<boolean>();
+  // The document the contents sheet was opened for; the sheet is open only while that still holds.
+  const [openedFor, setOpenedFor] = useState<string>();
+  // The heading the reader was at when the sheet opened: measured once, at that moment.
+  const [outlineActive, setOutlineActive] = useState<number>();
   const documentId = document?.id ?? '';
   const key = documentDraftKey(specId, documentId);
   const stored = useDocumentDraft(specId, documentId);
@@ -88,6 +127,23 @@ export function DocumentEditorProvider({
   useLayoutEffect(() => {
     shown.current = { specId, key, document, draft };
   });
+  const markdown = kindIdOf(document?.filename ?? document?.title) === 'markdown';
+  const content = draft?.content ?? '';
+  const outline = useMemo(() => documentOutline(content, markdown), [content, markdown]);
+  const outlineAvailable =
+    markdown && draft?.editing === false && columnShown === false && outline.headings.length > 0;
+  const outlineOpen = openedFor !== undefined && openedFor === documentId && outlineAvailable;
+  // Editing, a wide panel or another document ends the question, so coming back never reopens it.
+  if (openedFor !== undefined && !outlineOpen) setOpenedFor(undefined);
+  const outlineOpener = useRef<HTMLElement | null>(null);
+  const openOutline = useCallback(() => {
+    outlineOpener.current =
+      globalThis.document.activeElement instanceof HTMLElement
+        ? globalThis.document.activeElement
+        : null;
+    setOutlineActive(outlineNavigator.current?.activeLine());
+    setOpenedFor(documentId);
+  }, [documentId]);
   const owner = useDocumentSave({ specId, document, draft });
   const { save: saveOwned } = owner;
 
@@ -167,6 +223,12 @@ export function DocumentEditorProvider({
       anchor: document ? store.getAnchor(specId, document.id) : undefined,
       rememberAnchor,
       anchorReader,
+      outline,
+      outlineNavigator,
+      reportColumnShown: setColumnShown,
+      outlineAvailable,
+      outlineOpen,
+      openOutline,
     };
   }, [
     specId,
@@ -184,6 +246,10 @@ export function DocumentEditorProvider({
     focusEditor,
     focusContent,
     rememberAnchor,
+    outline,
+    outlineAvailable,
+    outlineOpen,
+    openOutline,
   ]);
 
   const name = document?.filename ?? document?.title ?? '';
@@ -192,6 +258,21 @@ export function DocumentEditorProvider({
       <Context.Provider value={session}>
         {children}
         {session && <DocumentPathDialog open={pathOpen} path={name} onOpenChange={setPathOpen} />}
+        {session && (
+          <DocumentOutlineSheet
+            open={outlineOpen}
+            headings={outline.headings}
+            activeLine={outlineActive}
+            onOpenChange={(next) => {
+              if (!next) setOpenedFor(undefined);
+            }}
+            onSelected={(line, pointer) => outlineNavigator.current?.goTo(line, pointer)}
+            restoreFocusTo={() =>
+              // A menu item that opened the sheet is gone by now: the document heading is the next best place.
+              outlineOpener.current?.isConnected ? outlineOpener.current : regionHeading()
+            }
+          />
+        )}
         {session && (
           <UnsavedChangesDialog
             open={guardFor === document?.id}

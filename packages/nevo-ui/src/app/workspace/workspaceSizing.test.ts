@@ -5,6 +5,7 @@ import {
   APP_NAVIGATION_WIDTH,
   APP_SHELL_GAP,
   APP_WORKSPACE_EDGE_BORDER,
+  capPrimaryWidth,
   resolveSlotMaxWidth,
   resolveWorkspaceContentWidth,
   resolveWorkspaceFit,
@@ -154,5 +155,45 @@ describe('resolveWorkspaceContentWidth', () => {
       const pixels = resolveWorkspacePixelSplit(content, split, true);
       expect(pixels.primary + pixels.secondary!).toBeCloseTo(content);
     }
+  });
+});
+
+describe('capPrimaryWidth', () => {
+  const widths = { primary: 640, secondary: 1920 };
+
+  it('stops Primary at the cap and gives the rest to Secondary', () => {
+    expect(capPrimaryWidth(2560, widths, 360)).toEqual({ primary: 360, secondary: 2200 });
+  });
+
+  it('changes nothing below the cap, without a cap, without Secondary or without a width', () => {
+    expect(capPrimaryWidth(2560, widths, 800)).toBe(widths);
+    expect(capPrimaryWidth(2560, widths, undefined)).toBe(widths);
+    const alone = { primary: 2560 };
+    expect(capPrimaryWidth(2560, alone, 360)).toBe(alone);
+    expect(capPrimaryWidth(undefined, widths, 360)).toBe(widths);
+  });
+
+  it('does not touch a Primary exactly at the cap', () => {
+    expect(capPrimaryWidth(2560, { primary: 360, secondary: 2200 }, 360)).toEqual({
+      primary: 360,
+      secondary: 2200,
+    });
+  });
+
+  it('ignores a cap wider than the whole content width', () => {
+    const narrow = { primary: 280, secondary: 560 };
+    expect(capPrimaryWidth(840, narrow, 5000)).toBe(narrow);
+  });
+
+  it('gives everything but the cap to Secondary, never a negative width', () => {
+    expect(capPrimaryWidth(800, { primary: 800, secondary: 0 }, 0)).toEqual({
+      primary: 0,
+      secondary: 800,
+    });
+  });
+
+  it('keeps primary + secondary equal to the content width', () => {
+    const capped = capPrimaryWidth(1171, { primary: 292.75, secondary: 878.25 }, 360);
+    expect(capped.primary! + capped.secondary!).toBeCloseTo(1171);
   });
 });

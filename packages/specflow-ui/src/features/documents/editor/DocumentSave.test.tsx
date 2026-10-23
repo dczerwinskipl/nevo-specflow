@@ -14,11 +14,8 @@ import { createDocumentDraftStore } from './documentDraftStore';
 import { DocumentDraftProvider } from './DocumentDraftProvider';
 import type { DocumentsApi } from '../api';
 import { documentKeys } from '../read-model/queries';
-import {
-  DocumentEditorProvider,
-  useDocumentEditor,
-  type DocumentEditorSession,
-} from './DocumentEditorProvider';
+import { useDocumentEditor, type DocumentEditorSession } from './DocumentEditorProvider';
+import { DocumentTabsProvider } from '../tabs/DocumentTabsProvider';
 import { documentHeaderModel } from './documentHeaderModel';
 import { DocumentRouteGuard } from './DocumentRouteGuard';
 
@@ -113,12 +110,11 @@ function setup({ strict = false }: { strict?: boolean } = {}) {
   function Harness() {
     const [id, setId] = useState<'a' | 'b'>('a');
     go = setId;
-    const document = docs[id];
     return (
-      <DocumentEditorProvider specId={SPEC} document={document}>
-        <DocumentRouteGuard specId={SPEC} documentId={id} requestRef={controls.leave} />
+      <DocumentTabsProvider specId={SPEC} documentId={id}>
+        <DocumentRouteGuard specId={SPEC} requestRef={controls.leave} />
         <Panel />
-      </DocumentEditorProvider>
+      </DocumentTabsProvider>
     );
   }
   const tree = (
@@ -265,7 +261,7 @@ describe('one save owner', () => {
     await t.settle(() => {
       departure = t.controls.leave.current!();
     });
-    const dialogSave = await screen.findByText('Save and continue');
+    const dialogSave = await screen.findByText('Save all');
     await t.settle(() => {
       fireEvent.click(screen.getByText('header-save'));
       fireEvent.click(dialogSave);
@@ -289,8 +285,8 @@ describe('one save owner', () => {
       void first.then((value) => settled.push(value));
       void second.then((value) => settled.push(value));
     });
-    expect(screen.getAllByText('Save and continue')).toHaveLength(1);
-    await t.settle(() => fireEvent.click(screen.getByText('Discard changes')));
+    expect(screen.getAllByText('Save all')).toHaveLength(1);
+    await t.settle(() => fireEvent.click(screen.getByText('Discard all')));
     await expect(Promise.all([first, second])).resolves.toEqual([true, true]);
     expect(settled).toEqual([true, true]);
   });

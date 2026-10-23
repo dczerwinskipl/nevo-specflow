@@ -1,20 +1,19 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
-import { useNavigate } from '@tanstack/react-router';
 import { useSecondaryNavigation, useWorkspaceCapabilities } from '@nevo/ui';
-import { useApplicationCollection } from '../../../app/navigation/ApplicationLocation';
+import { regionHeading } from '../outline/regionHeading';
+import { useDocumentTabs } from '../tabs/DocumentTabsProvider';
 import { documentStack } from './DocumentPane';
 
 export interface DocumentOpening {
-  /** The document pane is shown (wide layout; the user can close it without leaving the route). */
-  open: boolean;
-  /** Opens a document from the tree and, in the wide layout, focuses its heading once shown. */
+  /**
+   * Opens a document from the tree as a new tab, or activates its tab; in the wide layout the
+   * active tab receives focus once shown.
+   */
   select: (id: string) => void;
-  /** Shows the pane again, or asks to leave unsaved edits before closing it. */
-  setOpen: (next: boolean) => void;
+  /** Closes every tab after asking ONCE about the unsaved documents (the region's close). */
+  closeAll: () => void;
 }
 
-const headingSelector =
-  '[data-workspace-surface="secondary"][data-workspace-active="true"] [data-workspace-header-title="true"]';
 const focusAttempts = 20;
 
 /**
@@ -28,18 +27,19 @@ export function useDocumentOpening(options: {
   documentId?: string;
   /** Asks to leave unsaved edits; resolves false when the user keeps editing. */
   requestRef: RefObject<(() => Promise<boolean>) | null>;
+  /** Carries out the discard the answer allowed, once the tabs have really closed. */
+  commitRef?: RefObject<(() => void) | null>;
 }): DocumentOpening {
-  const { specId, documentId, requestRef } = options;
-  const navigate = useNavigate();
+  const { specId, documentId, requestRef, commitRef } = options;
+  const tabs = useDocumentTabs();
   const navigation = useSecondaryNavigation();
-  const collection = useApplicationCollection();
   const { supportsSplit } = useWorkspaceCapabilities();
-  // The document whose pane the user closed; any other document opens its pane again.
-  const [closedFor, setClosedFor] = useState<string>();
   // A document the user opened from the tree and that still has to receive focus once shown.
   const [focusFor, setFocusFor] = useState<string>();
   // Guards the stack effect: the navigation controller changes identity whenever it opens or closes.
   const stackFor = useRef('');
+  // The specification and layout the stacked screen was last requested for.
+  const stackLayout = useRef('');
   // Identifies the latest stack request. `close()` is asynchronous, so a continuation that is no
   // longer the latest (superseded target, left the route, unmounted) must not open its document.
   // It is a ref, not an effect-local flag: the effect re-runs on every controller identity change
@@ -51,6 +51,7 @@ export function useDocumentOpening(options: {
       // Unmount (or a StrictMode remount): drop the pending request and let the next setup restart.
       stackRequest.current += 1;
       stackFor.current = '';
+      stackLayout.current = '';
     },
     [],
   );
@@ -61,13 +62,20 @@ export function useDocumentOpening(options: {
       stackRequest.current += 1;
       if (stackFor.current) {
         stackFor.current = '';
+        stackLayout.current = '';
         void navigation.close();
       }
       return;
     }
     const key = `${specId}:${documentId}:${supportsSplit}`;
     if (stackFor.current === key) return;
+    const layout = `${specId}:${supportsSplit}`;
+    const sameLayout = stackLayout.current === layout;
     stackFor.current = key;
+    stackLayout.current = layout;
+    // The stacked screen follows the active tab by itself: a tab switch changes nothing there, and
+    // closing then reopening it would remount the editor. Only a new layout or specification does.
+    if (sameLayout && navigation.isOpen) return;
     stackRequest.current += 1;
     const request = stackRequest.current;
     void (async () => {
@@ -82,9 +90,11 @@ export function useDocumentOpening(options: {
     let attempts = 0;
     let frame = 0;
     const tryFocus = () => {
-      const heading = document.querySelector<HTMLElement>(headingSelector);
-      if (heading) {
-        heading.focus({ preventScroll: true });
+      // The region heading, not the tab: focus moved onto a tab opens its tooltip over the header, and
+      // the heading announces the document that just opened.
+      const target = regionHeading();
+      if (target) {
+        target.focus({ preventScroll: true });
         setFocusFor(undefined);
         return;
       }
@@ -96,27 +106,18 @@ export function useDocumentOpening(options: {
   }, [documentId, supportsSplit, focusFor]);
 
   const select = (id: string) => {
-    setClosedFor(undefined);
     if (id === documentId) {
       if (!supportsSplit) void navigation.open(documentStack, { specId, documentId: id });
       return;
     }
     if (supportsSplit) setFocusFor(id);
-    void navigate({
-      to: '/specs/$specId/documents/$documentId',
-      params: { specId, documentId: id },
-      search: { collection },
-    });
+    void tabs.show(id);
   };
-  const setOpen = (next: boolean) => {
-    if (next) {
-      setClosedFor(undefined);
-      return;
-    }
+  const closeAll = () => {
     void (async () => {
       if (requestRef.current && !(await requestRef.current())) return;
-      setClosedFor(documentId);
+      if (await tabs.closeAll()) commitRef?.current?.();
     })();
   };
-  return { open: closedFor === undefined || closedFor !== documentId, select, setOpen };
+  return { select, closeAll };
 }

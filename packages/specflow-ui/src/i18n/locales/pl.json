@@ -84,8 +84,6 @@
     "noChangesNotice": "Brak zarejestrowanych zmienionych plików w tym widoku.",
     "viewOverview": "Przegląd",
     "viewDocuments": "Dokumenty",
-    "documentIdleTitle": "Wybierz dokument",
-    "documentIdleDescription": "Otwórz plik z drzewa, aby zobaczyć jego treść.",
     "viewSessions": "Sesje",
     "viewChanges": "Wszystkie zmiany",
     "viewRepository": "Repozytorium",
@@ -1053,7 +1051,8 @@
     "noAccess": "Nie masz dostępu do dokumentu",
     "unavailable": "Dokument jest niedostępny",
     "backToList": "Wróć do listy dokumentów",
-    "closeDocument": "Zamknij dokument",
+    "closeDocument": "Zamknij wszystkie dokumenty",
+    "menuActions": "Akcje",
     "demo": {
       "title": "Tryb demonstracyjny",
       "body": "Dokumenty i puste foldery są zachowane do restartu środowiska demonstracyjnego."
@@ -1071,7 +1070,8 @@
       "edit": "Edytuj dokument",
       "preview": "Pokaż podgląd",
       "save": "Zapisz",
-      "discard": "Cofnij zmiany"
+      "discard": "Cofnij zmiany",
+      "closeTab": "Zamknij kartę"
     },
     "dialogs": {
       "path": {
@@ -1085,12 +1085,16 @@
         "continue": "Kontynuuj edycję",
         "discard": "Odrzuć zmiany",
         "save": "Zapisz zmiany",
-        "discardDescription": "Cofnąć zmiany w dokumencie {{name}}? Możesz je zapisać albo odrzucić i pozostać w edytorze."
+        "discardDescription": "Cofnąć zmiany w dokumencie {{name}}? Możesz je zapisać albo odrzucić i pozostać w edytorze.",
+        "closeDescription": "{{name}} ma niezapisane zmiany. Zapisać je przed zamknięciem karty?"
       }
     },
     "guard": {
-      "description": "Dokument ma niezapisane zmiany. Zapisz je albo odrzuć przed zmianą dokumentu lub widoku.",
-      "save": "Zapisz i przejdź"
+      "listDescription": "Te dokumenty mają niezapisane zmiany. Zapisz je albo odrzuć przed wyjściem.",
+      "saveAll": "Zapisz wszystkie",
+      "discardAll": "Odrzuć wszystkie",
+      "notSaved": "niezapisany",
+      "saveAllFailed": "Nie wszystkie dokumenty udało się zapisać. Szkice zostają."
     },
     "tree": {
       "newFile": "Nowy plik",
@@ -1172,7 +1176,45 @@
         "reserved": "nazwa jest zarezerwowana przez system",
         "invalid": "nazwa zawiera niedozwolone znaki lub kończy się kropką/spacją"
       }
-    }
+    },
+    "tabs": {
+      "tablist": "Otwarte dokumenty",
+      "openedMenu": "Otwarte dokumenty ({{n}})",
+      "openedHeading": "Otwarte dokumenty",
+      "close": "Zamknij {{name}}",
+      "closeHint": "Zamknij: Delete lub środkowy przycisk myszy",
+      "menuHint": "Delete zamyka wyróżniony dokument.",
+      "menuClose": "Zamknij",
+      "statusLoading": "ładowanie",
+      "statusMissing": "nie znaleziono",
+      "statusDirty": "niezapisane zmiany",
+      "statusCurrent": "bieżący",
+      "switcher": "{{name}}, otwarte: {{n}}",
+      "switcherDirty": "{{name}}, niezapisane zmiany, otwarte: {{n}}",
+      "noItem": "Brak dokumentu",
+      "closeFailed": "Nie udało się zamknąć dokumentu. Spróbuj ponownie.",
+      "missingHint": "Tego dokumentu nie ma już w drzewie. Szkic zostaje do zamknięcia karty.",
+      "closeBusy": "Najpierw dokończ pytanie o niezapisane zmiany, potem zamknij ten dokument."
+    },
+    "empty": {
+      "title": "Wybierz dokument z drzewa",
+      "suggested": "Zacznij od",
+      "open": "Otwórz {{name}}"
+    },
+    "notFound": {
+      "title": "Nie znaleziono dokumentu",
+      "close": "Zamknij kartę",
+      "titleNamed": "Nie znaleziono dokumentu: {{name}}"
+    },
+    "outline": {
+      "label": "Spis treści",
+      "open": "Otwórz spis treści",
+      "title": "Spis treści ({{n}})",
+      "description": "Przejdź do sekcji dokumentu",
+      "close": "Zamknij spis treści",
+      "columnLabel": "Spis treści i właściwości dokumentu"
+    },
+    "menuDisplay": "Widok"
   },
   "sessions": {
     "demo": {

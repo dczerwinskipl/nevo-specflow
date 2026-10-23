@@ -21,6 +21,7 @@ function DocumentHeader() {
     <WorkspaceHeader
       title="specification.md"
       actions={actions}
+      menu="complete"
       labels={{ moreActions: 'Więcej akcji' }}
       status={
         dirty ? (
@@ -151,7 +152,8 @@ export const RetainedDraftAndGuard: Story = {
     await invokeDocumentAction(canvas, userEvent, 'Cofnij zmiany');
     await userEvent.click(within(document.body).getByRole('button', { name: 'Odrzuć zmiany' }));
     await expect(canvas.getByRole('textbox', { name: 'Treść specification.md' })).toBeVisible();
-    await expect(canvas.getByRole('button', { name: /^Zapisz$/ })).toBeDisabled();
+    // Save exists only while the draft differs.
+    await expect(canvas.queryByRole('button', { name: /^Zapisz$/ })).not.toBeInTheDocument();
     await expect(canvas.queryByRole('status')).not.toBeInTheDocument();
   },
 };
@@ -172,7 +174,8 @@ export const KeyboardSave: Story = {
     await expect(editor.textContent).toBe(beforeTab);
     await userEvent.keyboard('{Control>}s{/Control}');
     await expect(canvas.getByRole('textbox', { name: 'Treść specification.md' })).toBeVisible();
-    await expect(canvas.getByRole('button', { name: /^Zapisz$/ })).toBeDisabled();
+    // Save exists only while the draft differs.
+    await expect(canvas.queryByRole('button', { name: /^Zapisz$/ })).not.toBeInTheDocument();
   },
 };
 
@@ -209,20 +212,20 @@ export const EditsDuringSave: Story = {
     await invokeDocumentAction(canvas, userEvent, 'Zapisz');
     await userEvent.click(canvas.getByRole('button', { name: 'Potwierdź zapis' }));
     await expect(canvas.getByRole('textbox', { name: 'Treść specification.md' })).toBeVisible();
-    await expect(canvas.getByRole('button', { name: /^Zapisz$/ })).toBeDisabled();
+    // Save exists only while the draft differs.
+    await expect(canvas.queryByRole('button', { name: /^Zapisz$/ })).not.toBeInTheDocument();
   },
 };
 
 export const PlainTextImport: Story = {
   render: () => <EditorFixture plainText />,
-  play: async ({ canvas, canvasElement, userEvent }) => {
-    // An opened editable document defaults to Preview.
-    await expect(canvasElement.querySelector('pre')).toHaveTextContent('# Feature: Logowanie SSO');
-    await expect(
-      canvas.queryByRole('heading', { name: 'Feature: Logowanie SSO' }),
-    ).not.toBeInTheDocument();
-    await invokeDocumentAction(canvas, userEvent, 'Edytuj dokument');
+  play: async ({ canvas, canvasElement }) => {
+    // Plain text has one view: it opens as the editable source, with no preview and no mode switch.
     await expect(canvas.getByRole('textbox', { name: 'Treść CLIENT.TXT' })).toBeVisible();
+    await expect(canvasElement.querySelector('pre')).toBeNull();
+    await expect(canvas.queryByRole('button', { name: 'Edytuj dokument' })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('button', { name: 'Pokaż podgląd' })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('button', { name: 'Więcej akcji' })).toBeInTheDocument();
     await expect(canvas.queryByRole('button', { name: 'Pogrubienie' })).not.toBeInTheDocument();
     await expect(canvas.queryByText('Tekst · Ctrl/⌘ S')).not.toBeInTheDocument();
   },
@@ -263,6 +266,16 @@ export const RenameChangesLanguageWithoutLosingDraft: Story = {
   },
 };
 
+/** The border colour a DS token class paints, read from a probe so no value is hard-coded. */
+function tokenColor(className: string) {
+  const probe = document.createElement('div');
+  probe.className = `border border-solid ${className}`;
+  document.body.append(probe);
+  const color = getComputedStyle(probe).borderTopColor;
+  probe.remove();
+  return color;
+}
+
 /** The color a DS field (`bg-surface-control`) paints, read from a probe so no value is hard-coded. */
 function fieldFill() {
   const probe = document.createElement('div');
@@ -293,9 +306,15 @@ export const EditSurfaceDiffersFromPage: Story = {
     await expect(style.backgroundColor).not.toBe(previewStyle.backgroundColor);
     await expect(style.borderTopWidth).toBe('1px');
     await expect(style.borderTopLeftRadius).not.toBe('0px');
-    // Focus draws the DS focus ring on the same surface.
+    // Focus recolours the border with the DS focus ring colour: no second frame around the editor.
     await userEvent.click(canvas.getByRole('textbox', { name: 'Treść specification.md' }));
-    await waitFor(() => expect(getComputedStyle(surface).outlineWidth).toBe('2px'));
+    await waitFor(() =>
+      expect(getComputedStyle(surface).borderTopColor).toBe(tokenColor('border-focus-ring')),
+    );
+    await expect(getComputedStyle(surface).outlineStyle).toBe('none');
+    // The editor has a line-number gutter and marks the current line.
+    await expect(surface.querySelector('.cm-lineNumbers')).not.toBeNull();
+    await expect(surface.querySelector('.cm-activeLine')).not.toBeNull();
     // Back to preview: the page surface returns.
     await invokeDocumentAction(canvas, userEvent, 'Pokaż podgląd');
     await waitFor(() => expect(canvasElement.querySelector('[data-document-source]')).toBeNull());
@@ -376,14 +395,14 @@ export const HeaderActionsAndFocus: Story = {
     await expect(canvas.queryByRole('button', { name: /^Ścieżka dokumentu/ })).toBeNull();
     await expect(canvas.queryByRole('button', { name: 'Zapisz' })).not.toBeInTheDocument();
     await invokeDocumentAction(canvas, userEvent, 'Edytuj dokument');
-    // Save is present only while editing and enabled only for a dirty draft.
-    await expect(canvas.getByRole('button', { name: 'Zapisz' })).toBeDisabled();
+    // Save is present only while the draft differs.
+    await expect(canvas.queryByRole('button', { name: 'Zapisz' })).not.toBeInTheDocument();
     const input = canvas.getByRole('textbox', { name: 'Treść specification.md' });
     await userEvent.type(input, 'dirty');
     await expect(canvas.getByRole('button', { name: 'Zapisz' })).toBeEnabled();
     await invokeDocumentAction(canvas, userEvent, 'Zapisz');
     await waitFor(() => expect(input).toHaveFocus());
-    await expect(canvas.getByRole('button', { name: 'Zapisz' })).toBeDisabled();
+    await expect(canvas.queryByRole('button', { name: 'Zapisz' })).not.toBeInTheDocument();
     await userEvent.type(input, 'discard');
     await invokeDocumentAction(canvas, userEvent, 'Cofnij zmiany');
     await userEvent.click(within(document.body).getByRole('button', { name: 'Odrzuć zmiany' }));

@@ -1,16 +1,21 @@
 // @vitest-environment jsdom
 import { act, cleanup, renderHook } from '@testing-library/react';
-import { createRef, StrictMode } from 'react';
+import { createRef, StrictMode, type RefObject } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useDocumentOpening } from './useDocumentOpening';
 
 interface Controller {
   open: ReturnType<typeof vi.fn>;
   close: ReturnType<typeof vi.fn>;
+  isOpen?: boolean;
 }
 const mocks = vi.hoisted(() => ({
   controller: undefined as unknown as Controller,
   supportsSplit: false,
+  tabs: {
+    show: vi.fn(() => Promise.resolve()),
+    closeAll: vi.fn(() => Promise.resolve(true)),
+  },
 }));
 
 vi.mock('@nevo/ui', async (importOriginal) => ({
@@ -19,10 +24,7 @@ vi.mock('@nevo/ui', async (importOriginal) => ({
   useSecondaryNavigation: () => ({ ...mocks.controller }),
   useWorkspaceCapabilities: () => ({ supportsSplit: mocks.supportsSplit }),
 }));
-vi.mock('@tanstack/react-router', () => ({ useNavigate: () => vi.fn() }));
-vi.mock('../../../app/navigation/ApplicationLocation', () => ({
-  useApplicationCollection: () => 'current',
-}));
+vi.mock('../tabs/DocumentTabsProvider', () => ({ useDocumentTabs: () => mocks.tabs }));
 vi.mock('./DocumentPane', () => ({ documentStack: { id: 'document-stack' } }));
 
 const deferred = () => {
@@ -32,10 +34,14 @@ const deferred = () => {
 };
 const flush = () => act(() => Promise.resolve());
 
-function render(initial: string | undefined, strict = false) {
+function render(
+  initial: string | undefined,
+  strict = false,
+  requestRef: RefObject<(() => Promise<boolean>) | null> = createRef(),
+) {
   return renderHook(
     ({ documentId }: { documentId?: string }) =>
-      useDocumentOpening({ specId: 's', documentId, requestRef: createRef() }),
+      useDocumentOpening({ specId: 's', documentId, requestRef }),
     { initialProps: { documentId: initial }, ...(strict ? { wrapper: StrictMode } : {}) },
   );
 }
@@ -129,5 +135,107 @@ describe('useDocumentOpening stacked navigation (narrow layout)', () => {
     closes.forEach((pending) => pending.resolve());
     await flush();
     expect(mocks.controller.open).not.toHaveBeenCalled();
+  });
+});
+
+describe('useDocumentOpening narrow tabs', () => {
+  beforeEach(() => {
+    mocks.supportsSplit = false;
+    mocks.controller = {
+      open: vi.fn(() => Promise.resolve()),
+      close: vi.fn(() => Promise.resolve()),
+    };
+  });
+  afterEach(cleanup);
+
+  it('does not close and reopen the stacked screen when only the active tab changes', async () => {
+    const view = render('A');
+    await flush();
+    expect(opened()).toEqual(['A']);
+    mocks.controller.isOpen = true;
+    view.rerender({ documentId: 'B' });
+    await flush();
+    expect(opened()).toEqual(['A']);
+    expect(mocks.controller.close).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the stack again for another document after Back closed it', async () => {
+    const view = render('A');
+    await flush();
+    // Back closed the stacked screen (it unregistered); the route still shows A.
+    mocks.controller.isOpen = false;
+    view.rerender({ documentId: 'B' });
+    await flush();
+    expect(opened()).toEqual(['A', 'B']);
+  });
+
+  it('keeps tabs and the route when the list is shown by Back', async () => {
+    const view = render('A');
+    await flush();
+    act(() => view.result.current.select('A'));
+    await flush();
+    // Selecting the document that is already active reopens the stack without touching the tabs.
+    expect(opened()).toEqual(['A', 'A']);
+    expect(mocks.tabs.show).not.toHaveBeenCalled();
+    expect(mocks.tabs.closeAll).not.toHaveBeenCalled();
+  });
+});
+
+describe('useDocumentOpening discards', () => {
+  afterEach(cleanup);
+
+  it('commits the allowed discard only when the tabs really closed', async () => {
+    mocks.supportsSplit = true;
+    mocks.controller = {
+      open: vi.fn(() => Promise.resolve()),
+      close: vi.fn(() => Promise.resolve()),
+    };
+    const commit = { current: vi.fn() };
+    const ask = { current: vi.fn(() => Promise.resolve(true)) };
+    const view = renderHook(() =>
+      useDocumentOpening({ specId: 's', documentId: 'A', requestRef: ask, commitRef: commit }),
+    );
+    mocks.tabs.closeAll.mockResolvedValueOnce(false);
+    act(() => view.result.current.closeAll());
+    await flush();
+    expect(commit.current).not.toHaveBeenCalled();
+    mocks.tabs.closeAll.mockResolvedValueOnce(true);
+    act(() => view.result.current.closeAll());
+    await flush();
+    expect(commit.current).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('useDocumentOpening tabs', () => {
+  beforeEach(() => {
+    mocks.supportsSplit = true;
+    mocks.tabs.show.mockClear();
+    mocks.tabs.closeAll.mockClear();
+    mocks.controller = {
+      open: vi.fn(() => Promise.resolve()),
+      close: vi.fn(() => Promise.resolve()),
+    };
+  });
+  afterEach(cleanup);
+
+  it('shows another document through the tabs and not the one already on screen', () => {
+    const view = render('A');
+    act(() => view.result.current.select('B'));
+    expect(mocks.tabs.show).toHaveBeenCalledWith('B');
+    act(() => view.result.current.select('A'));
+    expect(mocks.tabs.show).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes every tab only after the one question is answered yes', async () => {
+    const answers = [false, true];
+    const ask = { current: vi.fn(() => Promise.resolve(answers.shift()!)) };
+    const view = render('A', false, ask);
+    act(() => view.result.current.closeAll());
+    await flush();
+    expect(mocks.tabs.closeAll).not.toHaveBeenCalled();
+    act(() => view.result.current.closeAll());
+    await flush();
+    expect(ask.current).toHaveBeenCalledTimes(2);
+    expect(mocks.tabs.closeAll).toHaveBeenCalledTimes(1);
   });
 });

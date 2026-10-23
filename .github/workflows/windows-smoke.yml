@@ -1,0 +1,67 @@
+name: Windows smoke
+
+# Small always-on Windows slice for pull requests. The full Windows suite (engine-filesystem.yml)
+# is too slow for every PR (shards take ~15 min each) and runs on main, nightly and with the
+# ci:full-platform label. This slice runs ONLY the tests listed in tools/ci-windows-smoke-tests.json,
+# i.e. the tests that broke on Windows after merge although ordinary PRs never ran Windows.
+# It is deliberately not a required check and does not run on push or nightly (the full suite does).
+on:
+  pull_request:
+    # Keep this list narrow: only code that affects Create, its journal/persistence or Git/worktree
+    # handling on disk. UI, docs and unrelated feature code must not start a Windows runner.
+    # tools/ci-windows-smoke-paths.mjs verifies these globs against sample changes.
+    paths:
+      - "packages/specflow-engine/src/specs/**"
+      - "packages/specflow-engine/src/git/**"
+      - "packages/specflow-engine/src/version-control/**"
+      - "packages/specflow-engine/src/project/**"
+      - "packages/specflow-engine/src/concurrency.ts"
+      - "packages/specflow-engine/test/support/**"
+      - "packages/specflow-engine/test/create-commit.test.ts"
+      - "packages/specflow-engine/test/create-options.test.ts"
+      - "packages/specflow-runtime/src/features/specs/**"
+      - "packages/specflow-runtime/src/features/operations/**"
+      - "packages/specflow-runtime/src/server/**"
+      - "packages/specflow-runtime/test/auth/support/**"
+      - "packages/specflow-runtime/test/specs/create-async.http.test.ts"
+      - "packages/specflow-contracts/src/specs/**"
+      - "packages/specflow-contracts/src/operations/**"
+      - "tools/ci-windows-smoke*"
+      - ".github/workflows/windows-smoke.yml"
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Optional exact repository commit SHA to verify"
+        required: false
+        type: string
+
+concurrency:
+  group: windows-smoke-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  windows-smoke:
+    name: windows smoke
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.commit_sha || github.sha }}
+      - uses: ./.github/actions/setup
+      - name: Record native Windows Git and Node provenance
+        run: |
+          git rev-parse HEAD
+          git --version
+          node --version
+          pnpm --version
+      - name: Audit the smoke test list
+        run: node tools/ci-windows-smoke.mjs --list
+      - name: Build Runtime workspace dependencies
+        run: pnpm exec turbo run build --filter=@nevo/specflow-runtime^...
+      - name: Run Windows smoke tests
+        run: node tools/ci-windows-smoke.mjs

@@ -188,7 +188,9 @@ export function resolveWorkspaceHeaderActions(
 }
 
 /** Shared toggle state of an icon button and its menu row: explicit `checked`, then `pressed`. */
-function menuCheckedState(action: WorkspaceHeaderAction): boolean | undefined {
+function menuCheckedState(
+  action: WorkspaceHeaderActionBase & { presentation?: 'button' | 'icon'; pressed?: boolean },
+): boolean | undefined {
   return action.checked ?? (action.presentation === 'icon' ? action.pressed : undefined);
 }
 

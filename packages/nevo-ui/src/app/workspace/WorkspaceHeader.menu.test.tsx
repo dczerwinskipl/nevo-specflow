@@ -135,9 +135,7 @@ describe('WorkspaceHeader open menu', () => {
   it('keeps the complete menu scrollable within the available viewport height', () => {
     render(<WorkspaceHeader title="Doc" menu="complete" actions={[wrap, save]} />);
     const menu = openMenu();
-    expect(menu.className).toContain(
-      'max-h-[var(--radix-dropdown-menu-content-available-height)]',
-    );
+    expect(menu.className).toContain('max-h-[var(--radix-dropdown-menu-content-available-height)]');
     expect(menu.className).toContain('overflow-y-auto');
   });
 

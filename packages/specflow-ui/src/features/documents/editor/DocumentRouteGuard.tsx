@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useBlocker } from '@tanstack/react-router';
 import { UnsavedChangesDialog } from './UnsavedChangesDialog';
 import { useDirtyDocuments, useDocumentDraftStore } from './DocumentDraftProvider';
-import { useDocumentSaveOps } from './DocumentEditorProvider';
+import { useDocumentSaveOwner } from './DocumentEditorProvider';
 import { isWithinSpecDocuments } from '../../../app/navigation/routeScope';
 import { useDocumentTabs } from '../tabs/DocumentTabsProvider';
 
@@ -28,7 +28,7 @@ export function DocumentRouteGuard({
   commitRef?: RefObject<(() => void) | null>;
 }) {
   const store = useDocumentDraftStore();
-  const ops = useDocumentSaveOps();
+  const ops = useDocumentSaveOwner();
   const { tabs } = useDocumentTabs();
   const dirtyIds = useDirtyDocuments(specId);
   const { t } = useTranslation();

@@ -13,8 +13,8 @@ import {
   useDocumentEditor,
   useDocumentSaveOwner,
   useDocumentSession,
-  type DocumentSaveOwner,
 } from '../editor/DocumentEditorProvider';
+import type { DocumentSaveOwner } from '../editor/useDocumentSave';
 import { createDocumentDraftStore, draftFor } from '../editor/documentDraftStore';
 import type { DocumentApi, DocumentsApi } from '../api';
 import { DocumentTabsProvider, useDocumentRecord } from './DocumentTabsProvider';

@@ -19,7 +19,7 @@ import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/spe
 import { useApplicationCollection } from '../../../app/navigation/ApplicationLocation';
 import { useAppServices } from '../../../app/useAppServices';
 import { useDirtyDocuments, useDocumentDraftStore } from '../editor/DocumentDraftProvider';
-import { DocumentEditorProvider, useDocumentSaveOps } from '../editor/DocumentEditorProvider';
+import { DocumentEditorProvider, useDocumentSaveOwner } from '../editor/DocumentEditorProvider';
 import { isDraftDirty } from '../editor/documentDraftStore';
 import { UnsavedChangesDialog } from '../editor/UnsavedChangesDialog';
 import { documentKeys, documentTreeKeys } from '../read-model/queries';
@@ -140,7 +140,7 @@ function TabsHost({
   const router = useRouter();
   const collection = useApplicationCollection();
   const store = useDocumentDraftStore();
-  const ops = useDocumentSaveOps();
+  const ops = useDocumentSaveOwner();
   const dirty = useDirtyDocuments(specId);
   const record = useDocumentRecord();
   const [closeFailed, setCloseFailed] = useState(false);

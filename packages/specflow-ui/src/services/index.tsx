@@ -19,7 +19,7 @@ import { createProtectedRuntimeHttpClient } from './createProtectedRuntimeHttpCl
 import {
   createRuntimeSpecsOverviewApi,
   type SpecsOverviewApi,
-} from '../features/specs/overview/api';
+} from '../features/specs/overview/data/api';
 import {
   createRuntimeSpecificationApi,
   type SpecificationApi,

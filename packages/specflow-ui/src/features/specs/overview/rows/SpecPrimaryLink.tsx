@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { CurrentSpecTarget } from './model';
+import type { CurrentSpecTarget } from '../model';
 
 /** Stretches the title link over the whole row so the row is one target (see `InformationList`). */
 export const specPrimaryLinkClassName =

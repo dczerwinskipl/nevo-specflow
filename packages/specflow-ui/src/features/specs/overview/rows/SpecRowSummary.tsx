@@ -1,6 +1,6 @@
 import { Icon } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { SpecRowModel } from './presentation';
+import type { SpecRowModel } from '../presentation';
 import { formatSpecDate } from './specDate';
 
 export function SpecRowSummary({ item }: { readonly item: SpecRowModel }) {

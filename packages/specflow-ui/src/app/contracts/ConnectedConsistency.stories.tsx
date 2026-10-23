@@ -1,6 +1,6 @@
 import { HttpClientError } from '@nevo/http-client';
 import { createSpecsFixture } from '../../../test-support/specs/overview/fixtures';
-import { specsOverviewKeys } from '../../features/specs/overview/queries';
+import { specsOverviewKeys } from '../../features/specs/overview/data/queries';
 import { EditorView } from '@codemirror/view';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { RouterProvider, createMemoryHistory, createBrowserHistory } from '@tanstack/react-router';

@@ -2,13 +2,13 @@
 import { InformationList } from '@nevo/ui';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { StoryLocalization } from '../../../i18n/StoryLocalization';
+import { StoryLocalization } from '../../../../i18n/StoryLocalization';
 import {
   createArchiveItem,
   createSpecItem,
-} from '../../../../test-support/specs/overview/fixtures';
-import { stubLayoutApis } from '../../../../test-support/app/stubLayoutApis';
-import { archiveRow, currentRow } from './presentation';
+} from '../../../../../test-support/specs/overview/fixtures';
+import { stubLayoutApis } from '../../../../../test-support/app/stubLayoutApis';
+import { archiveRow, currentRow } from '../presentation';
 import { SpecListRow, type SpecListRowProps } from './SpecListRow';
 
 beforeEach(stubLayoutApis);

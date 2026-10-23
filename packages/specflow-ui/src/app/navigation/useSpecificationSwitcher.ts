@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter, useRouterState } from '@tanstack/react-router';
 import { useAppServices } from '../useAppServices';
-import { specsOverviewQueryOptions } from '../../features/specs/overview/queries';
+import { specsOverviewQueryOptions } from '../../features/specs/overview/data/queries';
 import { getHttpErrorStatus } from '../../shared/http/httpErrorStatus';
 import type { SpecsCollection } from '../../features/specs/overview/model';
 import { useNavigationTransition } from './NavigationTransition';

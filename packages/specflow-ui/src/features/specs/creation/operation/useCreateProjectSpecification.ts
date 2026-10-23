@@ -7,7 +7,7 @@ import { useAppServices } from '../../../../app/useAppServices';
 import { useNotify } from '../../../../shared/notifications/notifications';
 import { useUnmountSignal } from '../../../../shared/operations/useUnmountSignal';
 import { retainRequest } from '../../../../shared/operations/retainedRequest';
-import { specsOverviewKeys } from '../../overview/queries';
+import { specsOverviewKeys } from '../../overview/data/queries';
 import { projectCreationKeys } from '../api/api.project';
 import type { CreateFailure } from '../errors/createFailure';
 import { createOperationLedger } from './createOperationLedger';

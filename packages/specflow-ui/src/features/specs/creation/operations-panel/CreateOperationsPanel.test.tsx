@@ -12,7 +12,7 @@ import {
   runningItem,
 } from '../../../../../test-support/operations/fixtures';
 import { resetOperationsSession } from '../../../../shared/operations/operationsSession';
-import { specsOverviewKeys } from '../../overview/queries';
+import { specsOverviewKeys } from '../../overview/data/queries';
 import { createSpecFlowUiRegistry } from '../../../../app/ui-modules/builtInUiModules';
 import {
   specsOverviewPanels,

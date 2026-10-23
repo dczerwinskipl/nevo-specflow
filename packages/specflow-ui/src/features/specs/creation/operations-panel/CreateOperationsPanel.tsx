@@ -5,7 +5,7 @@ import { useRouter } from '@tanstack/react-router';
 import type { RuntimeMode } from '../../../../app/useRuntimeMode';
 import { OperationsPanelHost, type RenderOperationLink } from '../../../../shared/operations';
 import type { OperationsApi } from '../../../../shared/operations/operationsApi';
-import { specsOverviewKeys } from '../../overview/queries';
+import { specsOverviewKeys } from '../../overview/data/queries';
 import { projectCreationKeys } from '../api/api.project';
 import { createOperationKind, createOperationsListUrl } from './operationKind';
 

@@ -1,9 +1,9 @@
 import { QueryObserver } from '@tanstack/react-query';
 import { describe, it, expect, vi } from 'vitest';
-import { createSpecFlowQueryClient } from '../../../app/queryClient';
-import { createSpecsFixture } from '../../../../test-support/specs/overview/fixtures';
+import { createSpecFlowQueryClient } from '../../../../app/queryClient';
+import { createSpecsFixture } from '../../../../../test-support/specs/overview/fixtures';
 import { specsOverviewKeys, specsOverviewQueryOptions } from './queries';
-import type { SpecsOverview } from './model';
+import type { SpecsOverview } from '../model';
 
 describe('shared Specs catalogue boundary', () => {
   it.each([

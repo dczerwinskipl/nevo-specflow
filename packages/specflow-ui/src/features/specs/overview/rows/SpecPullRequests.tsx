@@ -1,6 +1,6 @@
 import { Link, cn } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
-import type { SpecRowModel } from './presentation';
+import type { SpecRowModel } from '../presentation';
 
 /** The pull request(s) of a row: a link for one, a count for several, nothing for none. */
 export function SpecPullRequests({ item }: { readonly item: SpecRowModel }) {

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { asApiError } from '../../../api';
+import { asApiError } from '../../../../api';
 
-import type { SpecsCollection, SpecsOverviewState } from './model';
+import type { SpecsCollection, SpecsOverviewState } from '../model';
 import { specsOverviewOperation, type SpecsOverviewApi } from './api';
 import { specsOverviewQueryOptions } from './queries';
 

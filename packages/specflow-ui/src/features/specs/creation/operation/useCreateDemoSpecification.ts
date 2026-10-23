@@ -6,7 +6,7 @@ import { useAppServices } from '../../../../app/useAppServices';
 import { useNotify } from '../../../../shared/notifications/notifications';
 import { retainRequest, type RequestAttempt } from '../../../../shared/operations/retainedRequest';
 import { useRequestSessionRecovery } from '../../../sessions';
-import { specsOverviewKeys } from '../../overview/queries';
+import { specsOverviewKeys } from '../../overview/data/queries';
 import { specificationKeys } from '../../read-model/queries';
 import {
   continueDemoCreation,

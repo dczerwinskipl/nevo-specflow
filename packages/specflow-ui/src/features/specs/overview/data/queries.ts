@@ -1,4 +1,4 @@
-import type { SpecsCollection } from './model';
+import type { SpecsCollection } from '../model';
 import { queryOptions } from '@tanstack/react-query';
 import type { SpecsOverviewApi } from './api';
 

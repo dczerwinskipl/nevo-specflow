@@ -1,4 +1,4 @@
-import type { SpecOverviewItem, SpecsCollection, SpecsOverview } from './model';
+import type { SpecOverviewItem, SpecsCollection, SpecsOverview } from '../model';
 
 /** From this many rows the list is long enough to offer a search (always in the archive). */
 const searchThreshold = 12;

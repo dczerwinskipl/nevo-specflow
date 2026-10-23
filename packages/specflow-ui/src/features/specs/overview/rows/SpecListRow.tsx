@@ -7,8 +7,8 @@ import {
   type SpecRowModel,
   type CurrentSpecRowModel,
   type ArchiveSpecRowModel,
-} from './presentation';
-import type { CurrentSpecTarget } from './model';
+} from '../presentation';
+import type { CurrentSpecTarget } from '../model';
 import { SpecRowSummary } from './SpecRowSummary';
 import { SpecPrimaryLink, type RenderSpecificationLink } from './SpecPrimaryLink';
 import { SpecPullRequests } from './SpecPullRequests';

@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createHttpClient, HttpClientError } from '@nevo/http-client';
-import { createApiTransport } from '../../../api';
+import { createApiTransport } from '../../../../api';
 
-import { createSpecsFixture } from '../../../../test-support/specs/overview/fixtures';
+import { createSpecsFixture } from '../../../../../test-support/specs/overview/fixtures';
 import { createRuntimeSpecsOverviewApi } from './api';
 
 const transport = (client: ReturnType<typeof createHttpClient>) =>

@@ -2,9 +2,9 @@ import { InformationList } from '@nevo/ui';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 
-import { StoryLocalization } from '../../../i18n/StoryLocalization';
-import { createSpecItem } from '../../../../test-support/specs/overview/fixtures';
-import { currentRow } from './presentation';
+import { StoryLocalization } from '../../../../i18n/StoryLocalization';
+import { createSpecItem } from '../../../../../test-support/specs/overview/fixtures';
+import { currentRow } from '../presentation';
 import { SpecListRow } from './SpecListRow';
 
 function HrefOnlySpecRow() {

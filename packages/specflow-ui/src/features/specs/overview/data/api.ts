@@ -1,7 +1,7 @@
 import type { SpecsOverview } from '@nevo/specflow-contracts/specs/overview';
 
-import type { ApiTransport } from '../../../api';
-import type { SpecsCollection } from './model';
+import type { ApiTransport } from '../../../../api';
+import type { SpecsCollection } from '../model';
 
 /**
  * The Engine verifies Git/worktree state per read and can take longer than the shared 10 s client

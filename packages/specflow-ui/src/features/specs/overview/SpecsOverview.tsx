@@ -19,8 +19,8 @@ import { SpecsOverviewEmpty } from './SpecsOverviewEmpty';
 import { SpecsOverviewHeader } from './SpecsOverviewHeader';
 import { SpecsOverviewNotice } from './SpecsOverviewNotice';
 import { overviewCapabilities } from './presentation';
-import { filterSpecsOverview, isSearchable } from './search';
-import { useCollectionSearch } from './useCollectionSearch';
+import { filterSpecsOverview, isSearchable } from './search/search';
+import { useCollectionSearch } from './search/useCollectionSearch';
 
 export interface SpecsOverviewProps {
   readonly state: SpecsOverviewState;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { SpecsCollection } from './model';
+import type { SpecsCollection } from '../model';
 
 /**
  * The search term of the visible collection. A term belongs to the collection it was typed in:

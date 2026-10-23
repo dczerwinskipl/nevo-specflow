@@ -1865,6 +1865,27 @@
       ]
     },
     {
+      "id": "design-system.implementation.react.item-tabs",
+      "type": "engineering",
+      "title": "Item tabs and content tabs host",
+      "status": "draft",
+      "file": "docs/design-system/implementation/react/item-tabs.md",
+      "read_when": [
+        "opening several documents, previews or files as tabs in a workspace region",
+        "using or changing ItemTabs or useOpenedItems",
+        "defining what a tab's content shows and which header actions it offers"
+      ],
+      "summary": "Product-neutral contract of the ItemTabs strip and the useOpenedItems state, and the Content tabs host pattern in which a blind host renders content that declares its own views and actions.",
+      "related": [
+        "design-system.implementation.react.secondary-navigation",
+        "design-system.principles.ui-ux-guidelines",
+        "design-system.principles.layout-and-containment",
+        "design-system.implementation.react.component-authoring-contract",
+        "product.specflow.ui.documents-editor-mode"
+      ],
+      "scope": "nevo-ui"
+    },
+    {
       "id": "design-system.implementation.react.secondary-navigation",
       "type": "engineering",
       "title": "Secondary navigation",
@@ -4949,6 +4970,25 @@
         "product.shared.vocabulary",
         "design-system.principles.ui-ux-guidelines",
         "architecture.ai.canonical-session-turn-work"
+      ]
+    },
+    {
+      "id": "product.specflow.ui.documents-editor-mode",
+      "type": "product",
+      "title": "Documents editor mode",
+      "status": "draft",
+      "file": "docs/product/specflow/ui/documents-editor-mode.md",
+      "read_when": [
+        "changing the Documents screen, its tree, tabs or editor",
+        "opening a document or file preview from a Session",
+        "deciding how several documents are open at once"
+      ],
+      "summary": "Behavior of the Documents screen with several open documents (tree plus tabbed document area), the same tabs as read-only previews in a Session, and the open decisions around the layout.",
+      "related": [
+        "product.specflow.ui.interaction-model",
+        "design-system.implementation.react.item-tabs",
+        "design-system.implementation.react.secondary-navigation",
+        "product.specflow.ui.ai-session-ux"
       ]
     },
     {

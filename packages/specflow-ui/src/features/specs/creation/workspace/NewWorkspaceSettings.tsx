@@ -1,4 +1,10 @@
-import { useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
+import {
+  useEffect,
+  useRef,
+  type Dispatch,
+  type MutableRefObject,
+  type SetStateAction,
+} from 'react';
 import { Collapsible } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
@@ -74,6 +80,14 @@ export function NewWorkspaceSettings({
     errors.branch ??
     generatedBranchProblem(choice, options, title),
   );
+
+  // The flag is what keeps the panel open, and typing the fix clears it. Without remembering the
+  // panel as open, it would collapse (and hide the field) mid-keystroke, dropping the rest of the
+  // typed name. Once flagged, the panel stays open until the owner closes it.
+  useEffect(() => {
+    if (flagged && !choice.settingsOpen) set({ settingsOpen: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `set` only wraps the stable `update`.
+  }, [flagged, choice.settingsOpen]);
 
   return (
     <Collapsible

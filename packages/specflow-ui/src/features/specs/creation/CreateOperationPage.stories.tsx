@@ -306,9 +306,9 @@ export const InProgressWithSteps: Story = {
     await waitFor(() => expect(document.activeElement).toBe(heading));
     // No tooltip: the full name is the first row of the configuration list.
     await expect(heading).not.toHaveAttribute('title');
-    await expect(
-      canvas.getByText('Przygotowujemy nowe środowisko pracy i specyfikację.', visibleText),
-    ).toBeVisible();
+    // The generic subtitle ("Przygotowujemy…") is only shown until the running step arrives; the
+    // step then names itself, so asserting the generic line would depend on timing. The stable
+    // state is asserted below (running step, its description, finished step).
     await expect(settingsList(canvas).getByText('Limity płatności')).toBeInTheDocument();
     const running = await steps(canvasElement).findByText('Przygotowanie środowiska pracy');
     await waitFor(() => expect(running.closest('li')).toHaveAttribute('aria-current', 'step'));

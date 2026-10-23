@@ -9,8 +9,8 @@ import {
   operationList,
   operationsStub,
   runningItem,
-} from '../../../test-support/operations/fixtures';
-import type { OperationListItem } from './operationList';
+} from '../../../../test-support/operations/fixtures';
+import type { OperationListItem } from '../operationList';
 import { useOperationsList } from './useOperationsList';
 
 const url = '/api/specs/operations';

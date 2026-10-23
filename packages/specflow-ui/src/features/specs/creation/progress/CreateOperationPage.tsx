@@ -8,7 +8,7 @@ import { useAnnouncer } from '../../../../shared/a11y/useAnnouncer';
 import {
   OperationStatusTile,
   type OperationStatusTone,
-} from '../../../../shared/operations/OperationStatusTile';
+} from '../../../../shared/operations/panel/OperationStatusTile';
 import { CreateFailurePanel } from '../errors/CreateFailurePanel';
 import { CreateOperationProgress } from './CreateOperationProgress';
 import { createRunningStepTitle } from './createProgress';

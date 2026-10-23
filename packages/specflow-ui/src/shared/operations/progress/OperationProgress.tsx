@@ -3,7 +3,7 @@ import type { OperationStepStatus } from '@nevo/specflow-contracts/operations';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useMessage, type Message } from '../../i18n/message';
+import { useMessage, type Message } from '../../../i18n/message';
 
 /** One checklist row. The operation's feature owns the copy: label and description are typed Messages. */
 export interface OperationProgressStep {

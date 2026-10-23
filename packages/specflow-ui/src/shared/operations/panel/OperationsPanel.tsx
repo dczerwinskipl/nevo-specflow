@@ -2,14 +2,14 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } f
 import { useTranslation } from 'react-i18next';
 import { Alert, Button, Typography } from '@nevo/ui';
 
-import { message, translateMessage, type Message } from '../../i18n/message';
+import { message, translateMessage, type Message } from '../../../i18n/message';
 import { OperationRow, type RenderOperationLink } from './OperationRow';
 import {
   isDismissible,
   isRunningOperation,
   type OperationList,
   type OperationListItem,
-} from './operationList';
+} from '../operationList';
 import { findOperationKind, type OperationKindRegistry } from './operationKinds';
 import { dismissOperation, useDismissedOperations } from './operationsSession';
 import { useNow } from './relativeTime';

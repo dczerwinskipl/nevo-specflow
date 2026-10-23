@@ -1,6 +1,6 @@
 import { useEffect, useReducer } from 'react';
 
-import type { OperationsApi } from './operationsApi';
+import type { OperationsApi } from '../operationsApi';
 import {
   initialOperationProgress,
   operationProgressReducer,

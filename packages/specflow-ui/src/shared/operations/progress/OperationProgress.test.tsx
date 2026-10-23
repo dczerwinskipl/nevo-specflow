@@ -2,8 +2,8 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { LocalizationProvider, createSpecFlowI18n } from '../../i18n';
-import { message } from '../../i18n/message';
+import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
+import { message } from '../../../i18n/message';
 import { OperationProgress, type OperationProgressStep } from './OperationProgress';
 
 const steps: readonly OperationProgressStep[] = [

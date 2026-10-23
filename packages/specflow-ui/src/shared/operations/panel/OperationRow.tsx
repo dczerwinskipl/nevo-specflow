@@ -2,9 +2,9 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IconButton, Typography, cn } from '@nevo/ui';
 
-import { message, translateMessage } from '../../i18n/message';
+import { message, translateMessage } from '../../../i18n/message';
 import { OperationStatusTile } from './OperationStatusTile';
-import { isDismissible, type OperationListItem } from './operationList';
+import { isDismissible, type OperationListItem } from '../operationList';
 import type { OperationKindPresentation } from './operationKinds';
 import { presentOperation } from './operationRowModel';
 import { formatRelativeTime } from './relativeTime';

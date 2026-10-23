@@ -5,7 +5,7 @@ import type { CreatedSpec, CreateSpecRequest } from '@nevo/specflow-contracts/sp
 import { isApiError } from '../../../../api';
 import { useAppServices } from '../../../../app/useAppServices';
 import { useNotify } from '../../../../shared/notifications/notifications';
-import { useUnmountSignal } from '../../../../shared/operations/useUnmountSignal';
+import { useUnmountSignal } from '../../../../shared/operations/progress/useUnmountSignal';
 import { retainRequest } from '../../../../shared/operations/retainedRequest';
 import { specsOverviewKeys } from '../../overview/data/queries';
 import { projectCreationKeys } from '../api/api.project';

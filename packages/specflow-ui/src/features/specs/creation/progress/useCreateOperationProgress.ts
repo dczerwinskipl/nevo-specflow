@@ -4,7 +4,7 @@ import { useAppServices } from '../../../../app/useAppServices';
 import {
   useOperationProgress,
   type OperationProgressView,
-} from '../../../../shared/operations/useOperationProgress';
+} from '../../../../shared/operations/progress/useOperationProgress';
 import { toOperationFailure } from '../errors/createSpecErrors';
 import type { StreamHint } from '../operation/watchCreateOperation';
 

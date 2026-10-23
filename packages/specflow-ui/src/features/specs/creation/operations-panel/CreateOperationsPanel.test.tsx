@@ -11,7 +11,7 @@ import {
   operationsStub,
   runningItem,
 } from '../../../../../test-support/operations/fixtures';
-import { resetOperationsSession } from '../../../../shared/operations/operationsSession';
+import { resetOperationsSession } from '../../../../shared/operations/panel/operationsSession';
 import { specsOverviewKeys } from '../../overview/data/queries';
 import { createSpecFlowUiRegistry } from '../../../../app/ui-modules/builtInUiModules';
 import {

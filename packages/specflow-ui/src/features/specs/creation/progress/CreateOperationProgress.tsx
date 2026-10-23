@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { Alert } from '@nevo/ui';
 import type { CreateSpecRequest } from '@nevo/specflow-contracts/specs';
-import { OperationProgress } from '../../../../shared/operations/OperationProgress';
-import type { OperationProgressView } from '../../../../shared/operations/useOperationProgress';
+import { OperationProgress } from '../../../../shared/operations/progress/OperationProgress';
+import type { OperationProgressView } from '../../../../shared/operations/progress/useOperationProgress';
 import { createFailureTitleKey } from '../errors/CreateFailureAlert';
 import {
   createCompletedSteps,

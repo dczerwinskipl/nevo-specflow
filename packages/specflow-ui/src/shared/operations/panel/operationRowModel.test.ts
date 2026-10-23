@@ -6,7 +6,7 @@ import {
   operationItem,
   runningItem,
   stubCreateKind,
-} from '../../../test-support/operations/fixtures';
+} from '../../../../test-support/operations/fixtures';
 import { presentOperation } from './operationRowModel';
 
 describe('presentOperation', () => {

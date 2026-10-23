@@ -3,8 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
-import { StoryLocalization } from '../../i18n/StoryLocalization';
-import type { AppLocale } from '../../i18n';
+import { StoryLocalization } from '../../../i18n/StoryLocalization';
+import type { AppLocale } from '../../../i18n';
 import {
   isoAgo,
   operationItem,
@@ -12,8 +12,8 @@ import {
   operationsStub,
   runningItem,
   stubCreateKind,
-} from '../../../test-support/operations/fixtures';
-import type { OperationListItem, OperationList, OperationListResult } from './operationList';
+} from '../../../../test-support/operations/fixtures';
+import type { OperationListItem, OperationList, OperationListResult } from '../operationList';
 import { OperationsPanelHost } from './OperationsPanelHost';
 import { resetOperationsSession } from './operationsSession';
 

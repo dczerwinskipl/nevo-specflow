@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 
-import type { OperationListItem, OperationList } from './operationList';
-import type { OperationsApi } from './operationsApi';
-import { operationsListQueryOptions } from './queries';
+import type { OperationListItem, OperationList } from '../operationList';
+import type { OperationsApi } from '../operationsApi';
+import { operationsListQueryOptions } from '../queries';
 
 export interface UseOperationsListOptions {
   /** The operations port (from the app services). */

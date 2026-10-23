@@ -2,14 +2,14 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { LocalizationProvider, createSpecFlowI18n } from '../../i18n';
+import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
 import {
   isoAgo,
   operationItem,
   operationList,
   runningItem,
   stubCreateKind,
-} from '../../../test-support/operations/fixtures';
+} from '../../../../test-support/operations/fixtures';
 import { OperationsPanel, type OperationsPanelProps } from './OperationsPanel';
 import { resetOperationsSession } from './operationsSession';
 

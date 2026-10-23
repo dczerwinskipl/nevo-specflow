@@ -1,7 +1,7 @@
 import { OPERATION_INTERRUPTED_CODE } from '@nevo/specflow-contracts/operations';
 
-import { message, type Message } from '../../i18n/message';
-import type { OperationListItem } from './operationList';
+import { message, type Message } from '../../../i18n/message';
+import type { OperationListItem } from '../operationList';
 import type { OperationKindPresentation } from './operationKinds';
 import type { OperationStatusTone } from './OperationStatusTile';
 import { minutesSince } from './relativeTime';

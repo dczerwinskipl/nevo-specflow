@@ -3,7 +3,7 @@ import type { OperationProgressEvent } from '@nevo/specflow-contracts/operations
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { OperationsApi } from './operationsApi';
+import type { OperationsApi } from '../operationsApi';
 import { useOperationProgress } from './useOperationProgress';
 
 const operationId = '3f0a6d4e-8f2a-4b6e-9d0a-1c2b3d4e5f60';

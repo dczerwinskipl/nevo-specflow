@@ -6,7 +6,7 @@ import type {
   OperationListResult,
 } from '../../src/shared/operations/operationList';
 import { message, type MessageKey } from '../../src/i18n/message';
-import type { OperationKindPresentation } from '../../src/shared/operations/operationKinds';
+import type { OperationKindPresentation } from '../../src/shared/operations/panel/operationKinds';
 import type { OperationsApi } from '../../src/shared/operations/operationsApi';
 
 /** Fixtures are relative to the moment the module loads, so times read "2 minutes ago" on screen. */

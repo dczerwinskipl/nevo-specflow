@@ -1,5 +1,5 @@
-import type { Message } from '../../i18n/message';
-import type { OperationListItem } from './operationList';
+import type { Message } from '../../../i18n/message';
+import type { OperationListItem } from '../operationList';
 
 /**
  * How one kind of operation is shown in a list. The kind's own feature owns this (copy of its step

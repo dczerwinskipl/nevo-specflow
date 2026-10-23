@@ -10,7 +10,11 @@ import {
 import { useAppServices } from '../../../../app/useAppServices';
 import { useMessage } from '../../../../i18n/message';
 import { useAnnouncer } from '../../../../shared/a11y/useAnnouncer';
-import { initialAgentChoice, providerDefaultEffort, type AgentChoice } from '../options/agentChoice';
+import {
+  initialAgentChoice,
+  providerDefaultEffort,
+  type AgentChoice,
+} from '../options/agentChoice';
 import { CreateAgentSection } from '../options/CreateAgentSection';
 import { CreateBasicsSection } from '../options/CreateBasicsSection';
 import { CreateConfigurationNotice } from './CreateConfigurationNotice';
@@ -25,7 +29,10 @@ import { demoCreationKeys } from '../api/api.demo';
 import { SessionWorkspaceSummary } from './SessionWorkspaceSummary';
 import { useCreateLeaveGuard } from './useCreateLeaveGuard';
 import { useCreateOptions } from '../options/useCreateOptions';
-import { useCreateDemoSpecification, type CreateSubmission } from '../operation/useCreateDemoSpecification';
+import {
+  useCreateDemoSpecification,
+  type CreateSubmission,
+} from '../operation/useCreateDemoSpecification';
 import { useRevealFailure } from '../errors/useRevealFailure';
 import { CreateWorkspaceSection } from './CreateWorkspaceSection';
 import { buildCreateSlug, buildCreateTarget } from '../workspace/model/createRequest';

@@ -28,6 +28,9 @@ export const generatedAndBuildIgnores = [
   '**/.tsbuild/**',
   '**/node_modules/**',
   '**/*.generated.*',
+  // Transient directory that tools/build-package.mjs creates in the package root while a build runs;
+  // lint does not wait for the package's own build, so it must not traverse it.
+  '**/.nevo-package-surface-*/**',
 ];
 
 const typedTypeScriptFiles = ['**/*.{ts,mts,cts,tsx}'];

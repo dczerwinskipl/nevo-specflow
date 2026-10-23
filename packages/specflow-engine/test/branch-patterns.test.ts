@@ -100,9 +100,9 @@ describe('pathological patterns stay linear', () => {
     // A backtracking matcher needs astronomically many steps for these inputs (hours or never), the
     // linear one a few thousand. The bound is therefore a sanity ceiling that is far from the real
     // cost, so a loaded CI machine cannot flake it while exponential behaviour still fails it.
-    const started = performance.now();
+    const started = Date.now();
     expect(matchesBranchPattern(pattern, branch)).toBe(false);
-    expect(performance.now() - started).toBeLessThan(5000);
+    expect(Date.now() - started).toBeLessThan(5000);
   });
 
   it('still matches after many wildcards', () => {

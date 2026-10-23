@@ -37,8 +37,32 @@ Turbo test graph into independent package jobs; `verify tests` is their stable a
 On pull requests, Turbo compares the PR base/head and selects changed packages plus downstream
 dependents. On pushes to `main` and `release/v*`, package tasks run across the full graph.
 
-Repository-wide formatting, lint, docs/agent validation and version transition checks are not
+Repository-wide formatting, docs/agent validation and version transition checks are not
 affected-filtered.
+
+Lint is a per-package Turbo task (`lint`, see [Lint](#lint)). The `quality` job runs it for every
+package through `pnpm check:quality`, but each package result is cached by its inputs, so unchanged
+packages replay from the restored Turbo cache instead of re-running ESLint.
+
+## Lint
+
+`pnpm lint` is `turbo run lint //#lint:root`:
+
+- every workspace package (`packages/*`, `tools/*`, `examples/*`) has its own `eslint.config.mjs`
+  and a `lint` script (`eslint .`). The config composes the shared base `eslint.base.mjs` and the
+  reusable fragments in `tools/eslint/` (package direction rules, SpecFlow UI module ownership,
+  i18n copy rule, React Hooks, Runtime ownership, test/story relaxations) and scopes typed linting
+  to the package (`tsconfigRootDir`), so one run never builds a TypeScript program over other
+  packages' sources and stays well inside the default Node heap;
+- the `lint` task depends on `^build` (typed linting resolves workspace dependencies through their
+  declarations or, for UI packages, source path mappings) and hashes the package files plus
+  `eslint.base.mjs` and `tools/eslint/*.mjs`, so a shared rule change re-lints every package and a
+  package change re-lints only that package and its dependents;
+- `//#lint:root` (`pnpm lint:root`, not cached) lints the files that belong to no package (root
+  config, `eslint.base.mjs`, repository scripts and `tools/eslint`) and runs
+  `tools/eslint/check-coverage.mjs`, which fails when a tracked source file is not linted by
+  exactly one config or a package lacks its config or `lint` script. Adding a package therefore
+  requires an `eslint.config.mjs` and a `lint` script.
 
 ## Dependency Review
 
@@ -126,15 +150,19 @@ Turbo already hashes `pnpm-lock.yaml` and the root `package.json`. In addition,
 - `tsconfig.package-node.json`;
 - `tools/build-package.mjs`.
 
-Changing any of those intentionally invalidates package build/test/typecheck caches. Prettier,
-EditorConfig and ESLint configuration affect repository-wide checks outside Turbo and therefore are
-not global package-task inputs.
+Changing any of those intentionally invalidates package build/test/typecheck caches. Prettier and
+EditorConfig affect repository-wide checks outside Turbo and are not global package-task inputs.
+ESLint configuration is an explicit input of the `lint` task only (`eslint.base.mjs`,
+`tools/eslint/*.mjs` and each package's own `eslint.config.mjs`).
 
 ## Local reproduction
 
 ```bash
 pnpm check
 pnpm check:quality
+pnpm lint
+pnpm turbo run lint --filter=...[origin/main]
+pnpm --filter @nevo/specflow-ui lint
 pnpm exec turbo run build test typecheck --affected --dry
 pnpm --filter @nevo/specflow test:packaged
 ```

@@ -61,8 +61,9 @@ auth/registry, so the repository has no `.npmrc`.
 
 Turborepo owns the package task graph (`turbo.json`). Root scripts — `build`, `test`,
 `lint`, `typecheck`, `format`, `format:check`, `check:quality`, `check` — are the stable
-contributor interface. Lint and format run repository-wide (one config each), not as
-Turbo tasks.
+contributor interface. Format runs repository-wide (one config), not as a Turbo task. Lint was originally one repository-wide
+ESLint run; it is now a per-package Turbo task with a shared base config (see
+[Continuous integration](../../engineering/repository/ci.md)).
 
 ## Consequences
 

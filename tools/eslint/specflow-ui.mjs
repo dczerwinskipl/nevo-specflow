@@ -1,7 +1,7 @@
 // SpecFlow UI rules: package direction, module ownership, localized copy.
 import reactHooks from 'eslint-plugin-react-hooks';
 import i18nCopy from './no-hardcoded-copy.mjs';
-import { productImportRestrictions, restrict } from './imports.mjs';
+import { restrict } from './imports.mjs';
 
 const specflowUiSharedPatterns = [
   {

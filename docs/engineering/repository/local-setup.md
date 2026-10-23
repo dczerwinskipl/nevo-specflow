@@ -35,16 +35,29 @@ pnpm install --frozen-lockfile
 
 ## Standard commands
 
-| Command                             | Purpose                                                                              |
-| ----------------------------------- | ------------------------------------------------------------------------------------ |
-| `pnpm check`                        | Canonical pre-push gate: quality, typecheck, build and tests.                        |
-| `pnpm check:quality`                | Read-only formatting check, lint, docs/agent validation and version transition gate. |
-| `pnpm build` / `test` / `typecheck` | Run package tasks through Turbo.                                                     |
-| `pnpm format`                       | Write formatting fixes.                                                              |
-| `pnpm docs:check`                   | Validate docs and generated index.                                                   |
-| `pnpm product:pack`                 | Create the installable product tarball.                                              |
-| `pnpm dogfood:install`              | Install and smoke the real tarball globally.                                         |
-| `pnpm storybook:browsers:install`   | Install local Chromium used by Storybook browser tests.                              |
+| Command                             | Purpose                                                                               |
+| ----------------------------------- | ------------------------------------------------------------------------------------- |
+| `pnpm check`                        | Canonical pre-push gate: quality, typecheck, build and tests.                         |
+| `pnpm check:quality`                | Read-only formatting check, lint, docs/agent validation and version transition gate.  |
+| `pnpm build` / `test` / `typecheck` | Run package tasks through Turbo.                                                      |
+| `pnpm lint`                         | Per-package ESLint through Turbo (cached) plus the root lint and lint-coverage check. |
+| `pnpm lint:root`                    | Only the files outside packages and the lint-coverage check.                          |
+| `pnpm format`                       | Write formatting fixes.                                                               |
+| `pnpm docs:check`                   | Validate docs and generated index.                                                    |
+| `pnpm product:pack`                 | Create the installable product tarball.                                               |
+| `pnpm dogfood:install`              | Install and smoke the real tarball globally.                                          |
+| `pnpm storybook:browsers:install`   | Install local Chromium used by Storybook browser tests.                               |
+
+Lint runs per package, so you rarely need the whole repository:
+
+```bash
+pnpm --filter @nevo/specflow-ui lint                # one package (needs its dependencies built)
+pnpm turbo run lint --filter=...[origin/main]       # only packages changed since main + dependents
+```
+
+`pnpm lint` builds the declarations typed linting needs (`^build`) and caches each package, so a
+repeated run replays unchanged packages. No run needs a raised Node heap; do not add
+`--max-old-space-size`.
 
 `format:check` is intentionally read-only. A check command must never repair the working tree.
 

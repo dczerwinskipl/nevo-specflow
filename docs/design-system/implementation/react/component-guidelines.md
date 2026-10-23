@@ -267,6 +267,26 @@ stacks full-width actions with the primary/destructive action on top; from `sm` 
 row that wraps (`sm:flex-wrap`) instead of clipping, which keeps 200% zoom readable. Use
 `AlertDialog` with a `destructive` action for irreversible or discarding confirmations.
 
+## Drawer sides and sheets
+
+`DrawerContent` takes `side: 'left' | 'right' | 'top' | 'bottom'` (default `'right'`; AppShell navigation uses `'left'`). All sides keep the Radix Dialog contract: focus trap, Esc, overlay click, `aria-modal`, focus return to the trigger, a required `DrawerTitle` as the accessible name and a named close action (`closeLabel`, 44 px hit area on coarse pointers through `IconButton`).
+
+- **`left` / `right`** are side panels: full height, full width on phones, `28rem` from `sm`, `30rem` from `md`.
+- **`bottom` / `top`** are sheets: they are content-sized up to `calc(100dvh - 3rem)` (a strip of the page stays visible), the `DrawerBody` scrolls inside, and the outer corners use `rounded-surface`. The edge padding honours `env(safe-area-inset-bottom)` (bottom) or `env(safe-area-inset-top)` (top; the close action is offset the same way). Full width on phones; from `md` the sheet is a centred `30rem` column (the side-panel width; the DS has no token for it) instead of stretching across a wide viewport. The slide animation comes from the corresponding edge and is disabled under `prefers-reduced-motion`, like the side panels. There is no drag grabber: the DS has no drag convention, so closing is Esc, overlay click or the close action.
+
+Use a **bottom sheet** on phones for a short list, a picker or a document's contents / properties (touch rows of at least 44 px inside `DrawerBody`). Do not use it for primary navigation (that is the `left` drawer) or for long forms, which need a route or a Dialog. Use **top** for modal search or command surfaces that intentionally block background interaction; use a Toast or non-modal surface for notifications. Keep one sheet open at a time and do not stack sheets.
+
+Two props shape a sheet without class overrides (`cn` is `clsx` without tailwind-merge, so conflicting utilities are resolved by CSS order, not className order; never reach for `!important`):
+
+- `size?: 'default' | 'compact'` (top/bottom only, no effect on side panels): `default` caps the height at `calc(100dvh - 3rem)`, `compact` at `65dvh`. Use `compact` for a short list or picker where the page behind should stay recognisable; use `default` for long contents.
+- `showClose={false}` removes the built-in close action and `DrawerHeader` stops reserving `3.5rem` on its right (`pr-14`), leaving a plain `px-5`. Use it when the header hosts its own action (a `Done` button, a search field) and give that surface its own `DrawerClose`. With the default `showClose` the header is unchanged.
+
+Safe-area padding only has an effect when the application page declares `viewport-fit=cover`; without it `env(safe-area-inset-*)` is `0` and the sheet simply has no extra padding. The component does not set the viewport meta and makes no promise about notched devices; enabling `viewport-fit=cover` is an application decision.
+
+Focus: Radix focuses the first tabbable element on open, which for a list sheet is the scrollable `DrawerBody`, showing a focus ring around the whole list. For list sheets the consumer can use `onOpenAutoFocus` to focus the active row, or a `DrawerTitle` with `tabIndex={-1}` and a ref. Call `event.preventDefault()` only when moving focus to a valid element inside the sheet; do not leave focus outside the modal. Use `onCloseAutoFocus` when focus should move to a page element after a selection instead of returning to the trigger.
+
+Known limitation: the system back gesture / browser Back button does not close a sheet (or any Drawer); it navigates away. Closing on Back needs history integration owned by the application and is not part of this component yet.
+
 ## Popover width
 
 `PopoverContent` clamps itself to the collision-aware available width

@@ -11,6 +11,7 @@ import {
   DrawerTrigger,
   type DrawerContentProps,
   type DrawerSide,
+  type DrawerSize,
 } from './Drawer';
 
 beforeEach(() => {
@@ -165,5 +166,37 @@ describe('DrawerContent sheet behaviour', () => {
     const root = viewport!.parentElement!;
     expect(root.className).toContain('flex-col');
     expect(root.className).toContain('min-h-0');
+  });
+});
+
+describe('DrawerContent size and header', () => {
+  it('caps a default sheet below the top edge and a compact sheet at 65dvh', () => {
+    expect(renderDrawer('bottom').className).toContain('max-h-[calc(100dvh-3rem)]');
+    cleanup();
+    const compact = renderDrawer('bottom', { size: 'compact' });
+    expect(compact.className).toContain('max-h-[65dvh]');
+    expect(compact.className).not.toContain('max-h-[calc(100dvh-3rem)]');
+    cleanup();
+    expect(renderDrawer('top', { size: 'compact' }).className).toContain('max-h-[65dvh]');
+  });
+
+  it('ignores size on side panels', () => {
+    for (const side of ['left', 'right'] as const) {
+      const className = renderDrawer(side, { size: 'compact' satisfies DrawerSize }).className;
+      expect(className).not.toContain('max-h-');
+      cleanup();
+    }
+  });
+
+  it('reserves room for the close action in the header only when it is rendered', () => {
+    renderDrawer('bottom');
+    const withClose = document.querySelector('[data-design-slot="header"]')!;
+    expect(withClose.className).toContain('px-5');
+    expect(withClose.className).toContain('pr-14');
+    cleanup();
+    renderDrawer('bottom', { showClose: false });
+    const without = document.querySelector('[data-design-slot="header"]')!;
+    expect(without.className).toContain('px-5');
+    expect(without.className).not.toContain('pr-14');
   });
 });

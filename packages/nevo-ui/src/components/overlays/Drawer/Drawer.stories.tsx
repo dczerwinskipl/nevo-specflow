@@ -13,6 +13,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
   type DrawerSide,
+  type DrawerSize,
 } from './Drawer';
 import { Typography } from '../../foundations/Typography';
 
@@ -34,6 +35,8 @@ function DrawerExample({
   longContent = false,
   side = 'right',
   sheetRowCount,
+  size = 'default',
+  ownHeader = false,
 }: {
   canonical?: boolean;
   /** Renders the surface open on first paint (showcase and visual inspection). */
@@ -42,6 +45,9 @@ function DrawerExample({
   side?: DrawerSide;
   /** When set, the body is a table-of-contents list of touch rows instead of activity cards. */
   sheetRowCount?: number;
+  size?: DrawerSize;
+  /** Sheet without the built-in close action; the header carries its own close button. */
+  ownHeader?: boolean;
 }) {
   const [open, setOpen] = useState(canonical || defaultOpen);
   const sheetRows = sheetRowCount === undefined ? null : createSheetRows(sheetRowCount);
@@ -62,20 +68,32 @@ function DrawerExample({
           </Button>
         </DrawerTrigger>
         <DrawerContent
-          closeLabel="Close customer drawer"
+          {...(ownHeader ? { showClose: false as const } : { closeLabel: 'Close customer drawer' })}
           side={side}
+          size={size}
           data-design-canonical={canonical ? 'true' : undefined}
           data-design-source-id={canonical ? 'canonical-open' : undefined}
           onOpenAutoFocus={canonical ? (event) => event.preventDefault() : undefined}
           style={canonical ? { animationDelay: '-220ms' } : undefined}
         >
-          <DrawerHeader>
-            <DrawerTitle>{sheetRows ? 'Contents' : 'Repository activity'}</DrawerTitle>
-            <DrawerDescription>
-              {sheetRows
-                ? 'Jump to a section of this document.'
-                : 'Recent changes and automation events for the active branch.'}
-            </DrawerDescription>
+          <DrawerHeader
+            className={ownHeader ? 'flex items-center justify-between gap-3' : undefined}
+          >
+            <div>
+              <DrawerTitle>{sheetRows ? 'Contents' : 'Repository activity'}</DrawerTitle>
+              <DrawerDescription>
+                {sheetRows
+                  ? 'Jump to a section of this document.'
+                  : 'Recent changes and automation events for the active branch.'}
+              </DrawerDescription>
+            </div>
+            {ownHeader ? (
+              <DrawerClose asChild>
+                <Button size="sm" variant="secondary">
+                  Done
+                </Button>
+              </DrawerClose>
+            ) : null}
           </DrawerHeader>
 
           {sheetRows ? (
@@ -214,6 +232,26 @@ export const TopSheetDesktop: Story = {
   globals: { viewport: { value: 'desktop1440', isRotated: false } },
 };
 
+/** Compact sheet (65dvh) with a long list: more of the page stays visible. */
+export const BottomSheetCompactPhone: Story = {
+  args: { defaultOpen: true, side: 'bottom', size: 'compact', sheetRowCount: 24 },
+  parameters: sheetParameters,
+  globals: { viewport: { value: 'phone390', isRotated: false } },
+};
+
+export const BottomSheetCompactTablet: Story = {
+  args: { defaultOpen: true, side: 'bottom', size: 'compact', sheetRowCount: 24 },
+  parameters: sheetParameters,
+  globals: { viewport: { value: 'tablet768', isRotated: false } },
+};
+
+/** `showClose={false}`: the header does not reserve room for the close action and hosts its own. */
+export const BottomSheetOwnHeader: Story = {
+  args: { defaultOpen: true, side: 'bottom', ownHeader: true, sheetRowCount: 6 },
+  parameters: sheetParameters,
+  globals: { viewport: { value: 'phone390', isRotated: false } },
+};
+
 function isSettled(element: HTMLElement) {
   const { transform } = getComputedStyle(element);
   return transform === 'none' || transform === 'matrix(1, 0, 0, 1, 0, 0)';
@@ -285,6 +323,51 @@ export const SheetWideContract: Story = {
       'The sheet is centred horizontally.',
     );
     assert(rect.height < window.innerHeight / 2, 'A short sheet is content-sized, not stretched.');
+  },
+};
+
+export const SheetSizeContract: Story = {
+  tags: ['contract', '!autodocs'],
+  args: { side: 'bottom', size: 'compact', sheetRowCount: 40 },
+  parameters: sheetParameters,
+  globals: { viewport: { value: 'phone390', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'View activity' }));
+    const dialog = await waitFor(
+      () => document.querySelector<HTMLElement>('[role="dialog"]'),
+      'The sheet should open as a dialog.',
+    );
+    const rect = dialog.getBoundingClientRect();
+    assert(
+      Math.abs(rect.height - window.innerHeight * 0.65) < 1,
+      'A long compact sheet is capped at 65dvh.',
+    );
+    const viewport = dialog.querySelector<HTMLElement>('.scroll-area-viewport');
+    assert(
+      viewport !== null && viewport.scrollHeight > viewport.clientHeight,
+      'Long content scrolls inside the compact sheet.',
+    );
+  },
+};
+
+export const OwnHeaderContract: Story = {
+  tags: ['contract', '!autodocs'],
+  args: { side: 'bottom', ownHeader: true, sheetRowCount: 6 },
+  parameters: sheetParameters,
+  globals: { viewport: { value: 'phone390', isRotated: false } },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'View activity' }));
+    const dialog = await waitFor(
+      () => document.querySelector<HTMLElement>('[role="dialog"]'),
+      'The sheet should open as a dialog.',
+    );
+    const header = dialog.querySelector<HTMLElement>('[data-design-slot="header"]');
+    assert(header !== null, 'The sheet renders its header.');
+    assert(getComputedStyle(header).paddingRight === '20px', 'The header reserves no close space.');
+    assert(
+      dialog.querySelector('button[aria-label="Close customer drawer"]') === null,
+      'No built-in close action is rendered.',
+    );
   },
 };
 

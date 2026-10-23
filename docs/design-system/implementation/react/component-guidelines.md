@@ -276,6 +276,11 @@ row that wraps (`sm:flex-wrap`) instead of clipping, which keeps 200% zoom reada
 
 Use a **bottom sheet** on phones for a short list, a picker or a document's contents / properties (touch rows of at least 44 px inside `DrawerBody`). Do not use it for primary navigation (that is the `left` drawer) or for long forms, which need a route or a Dialog. Use **top** for transient surfaces such as notifications or search. Keep one sheet open at a time and do not stack sheets.
 
+Two props shape a sheet without class overrides (`cn` is `clsx` without tailwind-merge, so conflicting utilities are resolved by CSS order, not className order; never reach for `!important`):
+
+- `size?: 'default' | 'compact'` (top/bottom only, no effect on side panels): `default` caps the height at `calc(100dvh - 3rem)`, `compact` at `65dvh`. Use `compact` for a short list or picker where the page behind should stay recognisable; use `default` for long contents.
+- `showClose={false}` removes the built-in close action and `DrawerHeader` stops reserving `3.5rem` on its right (`pr-14`), leaving a plain `px-5`. Use it when the header hosts its own action (a `Done` button, a search field) and give that surface its own `DrawerClose`. With the default `showClose` the header is unchanged.
+
 Safe-area padding only has an effect when the application page declares `viewport-fit=cover`; without it `env(safe-area-inset-*)` is `0` and the sheet simply has no extra padding. The component does not set the viewport meta and makes no promise about notched devices; enabling `viewport-fit=cover` is an application decision.
 
 Focus: Radix focuses the first tabbable element on open, which for a list sheet is the scrollable `DrawerBody`, showing a focus ring around the whole list. For list sheets the consumer should take over with `onOpenAutoFocus` (`preventDefault()` and focus the active row or the title), and may use `onCloseAutoFocus` to move focus to a page element after a selection instead of the trigger.

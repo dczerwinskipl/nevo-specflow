@@ -1,6 +1,8 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import {
+  createContext,
   forwardRef,
+  useContext,
   type ComponentPropsWithoutRef,
   type ComponentRef,
   type HTMLAttributes,
@@ -44,9 +46,20 @@ const drawerSideClassNames: Record<DrawerSide, string> = {
   // Sheets: full width on phones, a centred 30rem column (the side-panel width) from the medium breakpoint.
   // Centring uses auto margins (not a transform) so the slide animation owns `transform`.
   bottom:
-    'inset-x-0 bottom-0 max-h-[calc(100dvh-3rem)] w-full rounded-t-surface border border-b-0 border-border-default pb-[env(safe-area-inset-bottom)] md:mx-auto md:w-[30rem] md:max-w-full',
-  top: 'inset-x-0 top-0 max-h-[calc(100dvh-3rem)] w-full rounded-b-surface border border-t-0 border-border-default pt-[env(safe-area-inset-top)] md:mx-auto md:w-[30rem] md:max-w-full',
+    'inset-x-0 bottom-0 w-full rounded-t-surface border border-b-0 border-border-default pb-[env(safe-area-inset-bottom)] md:mx-auto md:w-[30rem] md:max-w-full',
+  top: 'inset-x-0 top-0 w-full rounded-b-surface border border-t-0 border-border-default pt-[env(safe-area-inset-top)] md:mx-auto md:w-[30rem] md:max-w-full',
 };
+
+/** Height cap of a top/bottom sheet. `compact` keeps more of the page visible; side panels ignore it. */
+export type DrawerSize = 'default' | 'compact';
+
+const drawerSheetMaxHeightClassNames: Record<DrawerSize, string> = {
+  default: 'max-h-[calc(100dvh-3rem)]',
+  compact: 'max-h-[65dvh]',
+};
+
+/** Lets `DrawerHeader` reserve room for the built-in close action only when it is rendered. */
+const DrawerCloseContext = createContext(true);
 
 const drawerCloseClassName = 'absolute! right-4 top-4';
 const drawerTopCloseClassName = 'absolute! right-4 top-[calc(1rem+env(safe-area-inset-top))]';
@@ -55,6 +68,8 @@ export type DrawerContentProps = ComponentPropsWithoutRef<typeof Dialog.Content>
   container?: HTMLElement | null;
   overlayClassName?: string;
   side?: DrawerSide;
+  /** Top/bottom sheets only: `compact` caps the height at 65dvh instead of `calc(100dvh - 3rem)`. */
+  size?: DrawerSize;
 } & DrawerCloseActionProps;
 
 export const DrawerContent = forwardRef<ComponentRef<typeof Dialog.Content>, DrawerContentProps>(
@@ -67,6 +82,7 @@ export const DrawerContent = forwardRef<ComponentRef<typeof Dialog.Content>, Dra
       overlayClassName,
       showClose = true,
       side = 'right',
+      size = 'default',
       ...props
     },
     ref,
@@ -78,12 +94,17 @@ export const DrawerContent = forwardRef<ComponentRef<typeof Dialog.Content>, Dra
         <DrawerOverlay className={overlayClassName} />
         <Dialog.Content
           ref={ref}
-          className={cn(drawerPanelBaseClassName, drawerSideClassNames[side], className)}
+          className={cn(
+            drawerPanelBaseClassName,
+            drawerSideClassNames[side],
+            (side === 'top' || side === 'bottom') && drawerSheetMaxHeightClassNames[size],
+            className,
+          )}
           data-side={side}
           {...props}
           {...capture}
         >
-          {children}
+          <DrawerCloseContext.Provider value={showClose}>{children}</DrawerCloseContext.Provider>
           {showClose ? (
             <Dialog.Close asChild>
               <IconButton
@@ -104,10 +125,11 @@ export const DrawerContent = forwardRef<ComponentRef<typeof Dialog.Content>, Dra
 
 export const DrawerHeader = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
   function DrawerHeader({ className, ...props }, ref) {
+    const hasCloseAction = useContext(DrawerCloseContext);
     return (
       <div
         ref={ref}
-        className={cn('border-b border-divider px-5 py-4 pr-14', className)}
+        className={cn('border-b border-divider px-5 py-4', hasCloseAction && 'pr-14', className)}
         {...props}
         {...designSlot('Drawer', 'header')}
       />

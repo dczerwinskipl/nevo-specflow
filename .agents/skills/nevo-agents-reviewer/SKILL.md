@@ -207,7 +207,7 @@ Module ownership applies to any change that adds, moves or modifies feature code
 **Applies when:** adding, moving, modifying, or reviewing React UI components, hooks, effects, mutations, or stores in packages/specflow-ui or packages/nevo-ui.
 **Requirement:** Required when applicable.
 
-This review applies only to React UI code (`packages/specflow-ui`, `packages/nevo-ui`), and to any change that adds, moves or modifies components, hooks, effects, mutations or stores there. Load `engineering.shared.code-organization` (section "React UI state, effects and async operations") and apply it. `react-hooks/*` lint rules are not configured on main, so this is agent guidance, not automatic enforcement. Record the result in the handoff or review.
+This review applies only to React UI code (`packages/specflow-ui`, `packages/nevo-ui`), and to any change that adds, moves or modifies components, hooks, effects, mutations or stores there. Load `engineering.shared.code-organization` (section "React UI state, effects and async operations") and apply it. `react-hooks/rules-of-hooks` (error) and `react-hooks/exhaustive-deps` are enforced by ESLint in `packages/specflow-ui`; the rest of this review (derived state, effect ownership, stale async results) is agent guidance, not automatic enforcement. Record the result in the handoff or review.
 
 - Derived values MUST be computed during render, not held in state or synchronized by effects.
 - Effects MUST only synchronize with external systems; operation logic MUST live in handlers or a dedicated hook.

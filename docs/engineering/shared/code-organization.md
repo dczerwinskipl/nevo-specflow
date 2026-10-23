@@ -223,6 +223,33 @@ For example, prefer `overview/current/get-overview.ts` over
 This convention applies to Runtime/backend modules in this architecture. UI component filename
 casing is a separate repository convention and is not defined by this rule.
 
+### Engine capability folders
+
+The Engine (`packages/specflow-engine/src`) follows the same vertical-slice rule: capability
+folders, no prefix families. A group of files sharing a name prefix (`create-*.ts`, `close-*.ts`,
+`git-*.ts`, `project-home-*.ts`) is a missing folder: the prefix becomes the folder and the files
+drop it (`create-journal.ts` becomes `create/journal/`).
+
+Each capability folder exposes a small `index.ts`. Code in another capability and the package
+surfaces (`index.ts`, `testing.ts`, `diagnostics.ts`) import the capability only through that
+index; its internals are free to move. Package-level tests under `test/` may use explicit internal
+seams. A leaf sub-capability with no upward dependencies may be imported directly when going through
+the capability index would create a runtime cycle (for example `specs/create/journal` from
+`specs/coordination` and `specs/lifecycle/model`).
+
+```text
+src/specs/
+  model.ts  repository.ts  discovery.ts  canonical-source.ts   Specification core
+  coordination/                    shared resource claims across Create and Lifecycle
+  create/                          index.ts, request, durable, scaffold, intent, input, error
+    journal/  reservation/  git/  binding/  inspect/
+  lifecycle/                       index.ts, preflight, reservation, model, archive and disposal effects
+    close/  git/  journal/
+  operations/                      public operation API and DTO projection
+src/project/
+  home/  workspace/registry/  fs/  bootstrap, control-lock, git-checkout ...
+```
+
 ## TypeScript imports in product packages
 
 Code under `packages/**` uses TypeScript's bundler resolution. Relative TypeScript

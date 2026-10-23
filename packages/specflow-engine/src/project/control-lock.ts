@@ -6,10 +6,10 @@ import { performance } from 'node:perf_hooks';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 import { verifyCheckoutOnDisk, verifyProjectHomeOnDisk } from './disk-verification';
-import { resolveProjectHome, type ResolvedProjectHome } from './project-home';
-import { unlinkWindowsSafe, readFileWindowsSafe } from './windows-safe-fs';
+import { resolveProjectHome, type ResolvedProjectHome } from './home/home';
+import { unlinkWindowsSafe, readFileWindowsSafe } from './fs/windows-safe-fs';
 import { isReadRequest } from './request-verification-memo';
-import { assertProjectHomeLockProof, captureProjectHomeLockProof } from './project-home-lock-proof';
+import { assertProjectHomeLockProof, captureProjectHomeLockProof } from './home/lock-proof';
 
 export const PROJECT_CONTROL_LOCK_RELATIVE_PATH = 'engine/control.lock';
 

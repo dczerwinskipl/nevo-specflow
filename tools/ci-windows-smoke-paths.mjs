@@ -38,8 +38,8 @@ if (process.argv.length > 2) {
 
 const cases = [
   // [changed file, expected to trigger]
-  ['packages/specflow-engine/src/specs/create/journal-store.ts', true],
-  ['packages/specflow-engine/src/specs/create-commit.ts', true],
+  ['packages/specflow-engine/src/specs/create/journal/store.ts', true],
+  ['packages/specflow-engine/src/specs/create/git/commit.ts', true],
   ['packages/specflow-engine/src/git/index.ts', true],
   ['packages/specflow-engine/test/create-commit.test.ts', true],
   ['packages/specflow-runtime/src/features/specs/http.ts', true],

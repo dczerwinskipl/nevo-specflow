@@ -6,7 +6,7 @@ import {
   projectCloseOperation,
   projectClosePreview,
   projectCreatedSpecification,
-} from '../src/specs/operation-projection';
+} from '../src/specs/operations/projection';
 import type { CloseJournal, ClosePlan, CloseStage } from '../src/specs/lifecycle/model';
 
 const operationId = randomUUID();

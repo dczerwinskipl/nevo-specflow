@@ -3,7 +3,7 @@ import {
   inspectRegisteredWorkspace,
   type RegisteredWorkspaceInspection,
   type WorkspaceRegistry,
-} from '../project/workspace-registry';
+} from '../project/workspace/registry/registry';
 import { runReadRequest } from '../project/request-verification-memo';
 import { READ_GIT_CONCURRENCY, mapBounded } from '../concurrency';
 import { isValidSpecificationId, SpecificationError } from './model';

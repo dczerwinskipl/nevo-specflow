@@ -9,8 +9,8 @@ import { bootstrapProjectHome, resolveProjectHome, withProjectControlLock } from
 import {
   assertProjectHomeLockProof,
   captureProjectHomeLockProof,
-} from '../src/project/project-home-lock-proof';
-import { PROJECT_HOME_MARKER_RELATIVE_PATH } from '../src/project/project-home';
+} from '../src/project/home/lock-proof';
+import { PROJECT_HOME_MARKER_RELATIVE_PATH } from '../src/project/home/home';
 import { GIT_INSTANCE_SENTINEL_FILE } from '../src/project/git-instance';
 import { createGitTestProject, git } from './support/git-project';
 

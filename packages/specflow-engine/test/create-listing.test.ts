@@ -11,15 +11,15 @@ import { bootstrapProjectHome, withProjectControlLock } from '../src/testing';
 import {
   fingerprintCreateClientIntent,
   normalizeCreateClientIntent,
-} from '../src/specs/create-intent';
+} from '../src/specs/create/intent';
 import {
   createJournalPath,
   publishCreateJournal,
   withCreateJournalLock,
   type CreateJournal,
   type CreateStage,
-} from '../src/specs/create-journal';
-import { listPublicCreateOperations } from '../src/specs/create-listing';
+} from '../src/specs/create/journal';
+import { listPublicCreateOperations } from '../src/specs/create/inspect/listing';
 
 const roots: string[] = [];
 afterEach(async () => {

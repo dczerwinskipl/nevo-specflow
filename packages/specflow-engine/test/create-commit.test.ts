@@ -12,7 +12,7 @@ import {
   type CreateSpecificationInput,
   type SpecFlowEngine,
 } from '../src/testing';
-import { CREATE_JOURNAL_RELATIVE_DIR } from '../src/specs/create-journal';
+import { CREATE_JOURNAL_RELATIVE_DIR } from '../src/specs/create/journal';
 import { createGitTestProject, git } from './support/git-project';
 
 const roots: string[] = [];

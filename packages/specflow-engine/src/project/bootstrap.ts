@@ -14,8 +14,8 @@ import {
   PROJECT_HOME_MARKER_RELATIVE_PATH,
   ProjectHomeError,
   resolveProjectHome,
-} from './project-home';
-import { initializeWorkspaceRegistry } from './registry-store';
+} from './home/home';
+import { initializeWorkspaceRegistry } from './workspace/registry/store';
 import { claimGitInstance } from './git-instance';
 
 /**

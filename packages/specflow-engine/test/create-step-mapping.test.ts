@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { CREATE_STAGES } from '../src/specs/create-journal';
-import { createStepForStage } from '../src/specs/create/step-mapping';
+import { CREATE_STAGES } from '../src/specs/create/journal';
+import { createStepForStage } from '../src/specs/create/inspect/step-mapping';
 
 describe('createStepForStage', () => {
   it.each([

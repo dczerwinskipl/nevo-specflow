@@ -5,7 +5,7 @@ import { rm } from 'node:fs/promises';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { readCanonicalSpecSources } from '../src/specs/canonical-source';
-import { inspectCreateOptions } from '../src/specs/create-options';
+import { inspectCreateOptions } from '../src/specs/create/inspect/options';
 import { bootstrapProjectHome, createSpecificationForTesting } from '../src/testing';
 import { createGitTestProject } from './support/git-project';
 

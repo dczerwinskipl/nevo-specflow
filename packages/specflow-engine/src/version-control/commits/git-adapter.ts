@@ -5,7 +5,7 @@ import type { SpecFlowEngine } from '../../application';
 import { GitCapabilityError } from '../../git/errors';
 import { executeGitMutation } from '../../git/mutation';
 import { executeGit } from '../../git/process';
-import { disabledIntegrationHooksDirectory } from '../../specs/lifecycle/git-scratch';
+import { disabledIntegrationHooksDirectory } from '../../specs/lifecycle';
 import { readProjectGitPolicy } from '../worktrees/config';
 import { engineCommitRefusal } from './branch-patterns';
 import type { CommitPort, EngineCommitRequest, FoundCommit, PathsState } from './port';

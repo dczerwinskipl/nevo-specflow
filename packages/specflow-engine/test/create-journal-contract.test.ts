@@ -15,14 +15,14 @@ import {
 import {
   fingerprintCreateClientIntent,
   normalizeCreateClientIntent,
-} from '../src/specs/create-intent';
+} from '../src/specs/create/intent';
 import {
   createJournalPath,
   publishCreateJournal,
   readCreateJournal,
   withCreateJournalLock,
   type CreateJournal,
-} from '../src/specs/create-journal';
+} from '../src/specs/create/journal';
 
 const roots: string[] = [];
 

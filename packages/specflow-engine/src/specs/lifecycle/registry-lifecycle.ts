@@ -1,15 +1,15 @@
 import { isDeepStrictEqual } from 'node:util';
 
-import { writeJsonAtomically } from '../../project/atomic-json';
+import { writeJsonAtomically } from '../../project/fs/atomic-json';
 import { withProjectControlLock } from '../../project/control-lock';
-import type { ResolvedProjectHome } from '../../project/project-home';
+import type { ResolvedProjectHome } from '../../project/home/home';
 import {
   WorkspaceRegistryError,
   readWorkspaceRegistry,
   validateWorkspaceRegistry,
   workspaceRegistryPath,
   type WorkspaceRegistry,
-} from '../../project/workspace-registry';
+} from '../../project/workspace/registry/registry';
 import { assertSharedResourcesAvailable } from '../coordination/resources';
 import type { CloseOccupant } from './model';
 

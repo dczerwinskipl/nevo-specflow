@@ -101,6 +101,11 @@ describe('WCAG 2.2 AA semantic color pairs', () => {
     ['muted on a selected row', 'content-muted', [...workspace, 'surface-selected']],
     ['placeholder on a field', 'content-placeholder', [...workspace, 'surface-control']],
     ['placeholder on workspace', 'content-placeholder', workspace],
+    [
+      'primary on a pressed icon or checked row',
+      'content-primary',
+      [...workspace, 'surface-selected'],
+    ],
     ['secondary on a selected row', 'content-secondary', [...workspace, 'surface-selected']],
     ['error text on workspace', 'status-danger', workspace],
   ])('%s keeps 4.5:1 text contrast', (_label, foreground, surfaces) => {

@@ -109,8 +109,11 @@ disabled?, shortcut?, onPress }`.
 
 ## Gaps to close in nevo-ui
 
-1. `WorkspaceHeaderFrame` needs an opt-in complete menu (`menu: 'complete'`) that includes direct
-   actions and renders groups, without changing existing screens.
-2. Icon header actions need `aria-pressed` for toggles.
-3. `ItemTabs` duplicates the workspace header height. A header content slot that stretches to the
+The complete menu (`menu="complete"`) and `aria-pressed` for icon toggles exist on `WorkspaceHeader`; see
+`design-system.implementation.react.secondary-navigation`, section Header actions.
+
+Still open: the complete menu is not supported by `HeaderOutlet` and `CompactScreenActions` (runtime
+Secondary stack screens) until the narrow integration; pass `menu` through the screen definition then.
+
+1. `ItemTabs` duplicates the workspace header height. A header content slot that stretches to the
    header height would remove that coupling.

@@ -1,8 +1,8 @@
 import type { CreateSpecRequest } from '@nevo/specflow-contracts/specs';
-import { message, type Message } from '../../../i18n/message';
-import type { CreateFailure } from './errors/createFailure';
-import type { CreateOperationState } from './operation/createOperationReducer';
-import type { CreateSettingsFacts, FactWorkspace } from './workspace/createFacts';
+import { message, type Message } from '../../../../i18n/message';
+import type { CreateFailure } from '../errors/createFailure';
+import type { CreateOperationState } from '../operation/createOperationReducer';
+import type { CreateSettingsFacts, FactWorkspace } from '../workspace/createFacts';
 
 /**
  * What the progress page shows, derived from the operation state (never stored):

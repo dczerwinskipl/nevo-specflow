@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createSpecFlowI18n } from '../../../i18n';
-import { translateMessage, type Message } from '../../../i18n/message';
+import { createSpecFlowI18n } from '../../../../i18n';
+import { translateMessage, type Message } from '../../../../i18n/message';
 import {
   createCompletedSteps,
   createNeutralProgress,

@@ -2,19 +2,19 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Button, InlineNote, Separator, Typography } from '@nevo/ui';
 import type { CreatedSpec } from '@nevo/specflow-contracts/specs';
-import { ApplicationContextLine } from '../../../app/navigation/ApplicationLocation';
-import { useMessage } from '../../../i18n/message';
-import { useAnnouncer } from '../../../shared/a11y/useAnnouncer';
+import { ApplicationContextLine } from '../../../../app/navigation/ApplicationLocation';
+import { useMessage } from '../../../../i18n/message';
+import { useAnnouncer } from '../../../../shared/a11y/useAnnouncer';
 import {
   OperationStatusTile,
   type OperationStatusTone,
-} from '../../../shared/operations/OperationStatusTile';
-import { CreateFailurePanel } from './errors/CreateFailurePanel';
+} from '../../../../shared/operations/OperationStatusTile';
+import { CreateFailurePanel } from '../errors/CreateFailurePanel';
 import { CreateOperationProgress } from './CreateOperationProgress';
 import { createRunningStepTitle } from './createProgress';
-import { CreateShell } from './CreateShell';
-import type { CreateFailure } from './errors/createFailure';
-import { useCreateOperationStorage } from './operation/createOperationStorage';
+import { CreateShell } from '../CreateShell';
+import type { CreateFailure } from '../errors/createFailure';
+import { useCreateOperationStorage } from '../operation/createOperationStorage';
 import {
   createPageHeading,
   createPageStatus,
@@ -25,9 +25,9 @@ import {
 import { CreateSettingsList } from './CreateSettingsList';
 import { CreateTechnicalDetails } from './CreateTechnicalDetails';
 import { useCreateOperationProgress } from './useCreateOperationProgress';
-import { useCreateProjectSpecification } from './operation/useCreateProjectSpecification';
+import { useCreateProjectSpecification } from '../operation/useCreateProjectSpecification';
 import { useStillWorking } from './useStillWorking';
-import { initialWorkspaceChoice, type WorkspaceChoice } from './workspace/workspaceChoice';
+import { initialWorkspaceChoice, type WorkspaceChoice } from '../workspace/workspaceChoice';
 
 /** How long the finished checklist stays in view before the new specification opens. */
 export const openAfterCreatedMs = 1500;

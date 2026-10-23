@@ -1,7 +1,7 @@
 import { message } from '../../../../i18n/message';
 import type { OperationKindPresentation } from '../../../../shared/operations';
 import { createOperationEventsUrl } from '../api/api.project';
-import { createStepTitle } from '../createProgress';
+import { createStepTitle } from '../progress/createProgress';
 
 /** Route of the Create list of a project Runtime (served by the Specifications feature). */
 export const projectCreateOperationsUrl = '/api/specs/operations';

@@ -1,9 +1,9 @@
 import { Trans, useTranslation } from 'react-i18next';
 import { DescriptionList } from '@nevo/ui';
-import { BranchRef } from './workspace/BranchRef';
+import { BranchRef } from '../workspace/BranchRef';
 import type { CreateSettingsModel } from './createPageView';
-import { WorkspaceRef } from './workspace/WorkspaceRef';
-import { SummaryRow } from './workspace/WorkspaceTileSummaries';
+import { WorkspaceRef } from '../workspace/WorkspaceRef';
+import { SummaryRow } from '../workspace/WorkspaceTileSummaries';
 
 /**
  * The compact configuration of this Create in plain language, as a description list that reuses the

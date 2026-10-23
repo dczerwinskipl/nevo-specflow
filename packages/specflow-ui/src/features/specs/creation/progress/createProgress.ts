@@ -1,11 +1,11 @@
 import type { SpecificationCreateStep } from '@nevo/specflow-contracts/operations';
 import type { CreateSpecRequest } from '@nevo/specflow-contracts/specs';
-import { message, type Message } from '../../../i18n/message';
+import { message, type Message } from '../../../../i18n/message';
 import type {
   OperationProgressNeutral,
   OperationProgressStep,
-} from '../../../shared/operations/OperationProgress';
-import type { OperationStepView } from '../../../shared/operations/progressState';
+} from '../../../../shared/operations/OperationProgress';
+import type { OperationStepView } from '../../../../shared/operations/progressState';
 
 /** Accessible name of the Create checklist. */
 export const createProgressLabel: Message = message('create.progress.label');

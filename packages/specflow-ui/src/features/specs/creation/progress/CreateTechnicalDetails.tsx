@@ -1,6 +1,6 @@
 import { Collapsible, DescriptionList, Typography } from '@nevo/ui';
 import { Trans, useTranslation } from 'react-i18next';
-import { BranchRef } from './workspace/BranchRef';
+import { BranchRef } from '../workspace/BranchRef';
 import type { CreateSettingsModel } from './createPageView';
 
 const code = (value: string) => (

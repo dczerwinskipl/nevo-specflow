@@ -1,16 +1,16 @@
 import { useTranslation } from 'react-i18next';
 import { Alert } from '@nevo/ui';
 import type { CreateSpecRequest } from '@nevo/specflow-contracts/specs';
-import { OperationProgress } from '../../../shared/operations/OperationProgress';
-import type { OperationProgressView } from '../../../shared/operations/useOperationProgress';
-import { createFailureTitleKey } from './errors/CreateFailureAlert';
+import { OperationProgress } from '../../../../shared/operations/OperationProgress';
+import type { OperationProgressView } from '../../../../shared/operations/useOperationProgress';
+import { createFailureTitleKey } from '../errors/CreateFailureAlert';
 import {
   createCompletedSteps,
   createNeutralProgress,
   createProgressLabel,
   createProgressSteps,
 } from './createProgress';
-import type { CreateFailure } from './errors/createFailure';
+import type { CreateFailure } from '../errors/createFailure';
 
 /**
  * The step checklist of the progress page: the named steps the Runtime reported (or ONE neutral

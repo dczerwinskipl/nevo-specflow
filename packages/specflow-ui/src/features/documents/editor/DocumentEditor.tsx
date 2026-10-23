@@ -8,7 +8,6 @@ import { useDocumentEditor } from './DocumentEditorProvider';
 import { restoreWhileIdle, trackUserScroll, type ScrollAnchor } from './documentScrollAnchor';
 import { DocumentOutline } from '../outline/DocumentOutline';
 import type { DocumentOutlineData, OutlineNavigator } from '../outline/outlineData';
-import { lastInputWasKeyboard } from '../outline/inputModality';
 import { outlineColumnMinWidth, outlineColumnWidth } from '../outline/markdownOutline';
 import { DocumentProperties } from '../frontmatter/DocumentProperties';
 import { useMarkdownLabels } from '../useMarkdownLabels';
@@ -143,11 +142,27 @@ function PreviewScroller({
       ) ?? null,
     [],
   );
+  const pinned = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (!panel) return;
+    const release = () => {
+      pinned.current = undefined;
+    };
+    // Reading on by hand ends the choice; scrolling done by the choice itself does not.
+    const events = ['wheel', 'touchmove', 'keydown'] as const;
+    for (const name of events) panel.addEventListener(name, release, { passive: true });
+    return () => {
+      for (const name of events) panel.removeEventListener(name, release);
+    };
+  }, [panel]);
   // The heading the reader is at: the last one that has reached the top of the panel.
   const measureActive = useCallback(() => {
     const scroller = viewport.current;
     if (!scroller) return undefined;
     // At the very end the last section is the one being read, even if its heading never reaches the top.
+    // A heading the reader chose stays current until the next manual scroll, even when a short last
+    // section cannot be scrolled up to the top and the end of the document wins otherwise.
+    if (pinned.current !== undefined) return pinned.current;
     const scrollable = scroller.scrollHeight - scroller.clientHeight > 2;
     if (scrollable && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2)
       return headings.at(-1)?.line;
@@ -178,7 +193,7 @@ function PreviewScroller({
     };
   }, [panel, wide, headings, measureActive]);
   const goToHeading = useCallback(
-    (line: number) => {
+    (line: number, pointer = false) => {
       const scroller = viewport.current;
       const element = headingElement(line);
       if (!scroller || !element) return;
@@ -188,17 +203,24 @@ function PreviewScroller({
         element.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 16;
       scroller.dispatchEvent(new Event('scroll'));
       element.tabIndex = -1;
-      // After a pointer the heading takes focus quietly (a brief tint shows where it is); after the
-      // keyboard the usual focus ring stays.
-      if (!lastInputWasKeyboard()) {
-        element.style.outline = 'none';
-        element.classList.add('bg-surface-selected');
-        window.setTimeout(() => element.classList.remove('bg-surface-selected'), 600);
-        element.addEventListener('blur', () => element.style.removeProperty('outline'), {
-          once: true,
-        });
-      }
+      // A marker for the heading just reached: after a pointer its ring is dropped (a class of the
+      // preview), after the keyboard the browser's own focus ring stays.
+      viewport.current?.querySelector('[data-quiet-focus]')?.removeAttribute('data-quiet-focus');
+      element.setAttribute('data-quiet-focus', pointer ? 'pointer' : 'keyboard');
+      // The tint fades by itself (Web Animations, no timer to clean up) unless motion is reduced.
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+        element.animate?.(
+          [
+            { backgroundColor: 'var(--color-surface-selected)' },
+            { backgroundColor: 'transparent' },
+          ],
+          { duration: 600, easing: 'ease-out' },
+        );
+      element.addEventListener('blur', () => element.removeAttribute('data-quiet-focus'), {
+        once: true,
+      });
       element.focus({ preventScroll: true });
+      pinned.current = line;
       setActiveLine(line);
     },
     [headingElement],
@@ -216,7 +238,8 @@ function PreviewScroller({
     <ScrollArea
       direction="both"
       className="min-h-0 flex-1"
-      contentClassName="p-6"
+      // The ring of a heading reached with a pointer is dropped (the browser would draw it).
+      contentClassName="p-6 [&_[data-quiet-focus=pointer]]:outline-none"
       // The focusable scroll viewport is the preview region the editor provider refocuses.
       viewportRef={viewportRef}
     >
@@ -239,7 +262,7 @@ function PreviewScroller({
       ) : (
         // A readable measure (about 80 characters) aligned with the tabs; the editor keeps the full width.
         <div className="max-w-content-narrow">
-          {properties && <DocumentProperties properties={properties} variant="row" />}
+          {properties && <DocumentProperties properties={properties} />}
           {text}
         </div>
       )}

@@ -144,7 +144,7 @@ describe('the contents of a previewed document', () => {
     ).toBe('true');
     fireEvent.click(links[2]!);
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    await waitFor(() => expect(goTo).toHaveBeenCalledWith(7));
+    await waitFor(() => expect(goTo).toHaveBeenCalledWith(7, expect.any(Boolean)));
   });
 
   it('closes without going anywhere on Escape', async () => {

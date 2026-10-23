@@ -1,26 +1,20 @@
-import { Collapsible, DescriptionList, Typography, cn } from '@nevo/ui';
+import { Collapsible, DescriptionList, Typography, hitAreaBlockClassName } from '@nevo/ui';
 import { useTranslation } from 'react-i18next';
 import type { FrontmatterProperty } from './frontmatter';
 
 /**
- * Read-only "Properties" block above a previewed document: the leading YAML block as a collapsed
+ * Read-only "Properties" row above a previewed document: the leading YAML block as a collapsed
  * key/value list. It assigns no meaning to the keys and offers no editing.
  */
 export function DocumentProperties({
   properties,
   label,
   anchored = true,
-  variant = 'box',
 }: {
   properties: readonly FrontmatterProperty[];
   label?: string;
   /** False in a column beside the text: it must not stand for line 1 of the scroll anchor. */
   anchored?: boolean;
-  /**
-   * `box` is the framed block of the column; `row` is a plain line in the flow of the text (chevron,
-   * name and count, a thin rule under it), with no frame holding empty space.
-   */
-  variant?: 'box' | 'row';
 }) {
   const { t } = useTranslation();
   return (
@@ -28,17 +22,11 @@ export function DocumentProperties({
       // The block stands for the file's first lines: the scroll anchor maps it to source line 1.
       data-source-line={anchored ? 1 : undefined}
       data-document-properties=""
-      className={cn(
-        'min-w-0',
-        variant === 'box'
-          ? 'mb-4 rounded-composite border border-border-default'
-          : 'mb-2 border-b border-border-subtle',
-      )}
+      // A plain row with a thin rule, never a frame around empty space.
+      className="mb-2 min-w-0 border-b border-border-subtle"
     >
       <Collapsible>
-        <Collapsible.Trigger
-          className={variant === 'row' ? 'min-h-11! rounded-none px-0' : undefined}
-        >
+        <Collapsible.Trigger className={hitAreaBlockClassName}>
           <Typography as="span" variant="label-md">
             {label ?? t('documents.properties.label')}
           </Typography>
@@ -46,7 +34,7 @@ export function DocumentProperties({
             {properties.length}
           </Typography>
         </Collapsible.Trigger>
-        <Collapsible.Content className={variant === 'row' ? 'px-0' : 'px-3'}>
+        <Collapsible.Content className="px-0">
           <DescriptionList className="pb-2">
             {properties.map(({ key, value }) => (
               <DescriptionList.Item key={key}>

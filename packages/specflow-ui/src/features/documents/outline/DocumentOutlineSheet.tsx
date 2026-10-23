@@ -34,22 +34,22 @@ export function DocumentOutlineSheet({
   /** The heading the reader was at when the sheet opened. */
   activeLine?: number;
   onOpenChange: (open: boolean) => void;
-  /** Runs after the sheet closed because a heading was chosen. */
-  onSelected: (line: number) => void;
+  /** Runs after the sheet closed because a heading was chosen (`pointer`: by mouse or touch). */
+  onSelected: (line: number, pointer: boolean) => void;
   /** Where focus goes when the sheet closes without a choice (the control that opened it). */
   restoreFocusTo?: () => HTMLElement | null | undefined;
 }) {
   const { t } = useTranslation();
-  const chosen = useRef<number | undefined>(undefined);
+  const chosen = useRef<{ line: number; pointer: boolean } | undefined>(undefined);
   const entry = useRef<HTMLAnchorElement | null>(null);
   const title = t('documents.outline.title', { n: headings.length });
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent
         side="bottom"
+        // Ten headings must not take most of a phone: the compact sheet caps its height.
+        size="compact"
         showClose={false}
-        // Ten headings must not take most of a phone: the list scrolls inside.
-        className="max-h-[65dvh]!"
         onOpenAutoFocus={(event) => {
           // Focus the heading the reader is at (it scrolls into view with it), else the first one.
           event.preventDefault();
@@ -58,9 +58,9 @@ export function DocumentOutlineSheet({
           requestAnimationFrame(() => entry.current?.focus());
         }}
         onCloseAutoFocus={(event) => {
-          const line = chosen.current;
+          const choice = chosen.current;
           chosen.current = undefined;
-          if (line === undefined) {
+          if (choice === undefined) {
             const opener = restoreFocusTo?.();
             if (opener?.isConnected) {
               event.preventDefault();
@@ -70,10 +70,10 @@ export function DocumentOutlineSheet({
           }
           // Not back to the opener: the document heading is where the reader goes.
           event.preventDefault();
-          onSelected(line);
+          onSelected(choice.line, choice.pointer);
         }}
       >
-        <DrawerHeader className="flex items-center justify-between gap-3 pr-3!">
+        <DrawerHeader className="flex items-center justify-between gap-3 pr-3">
           <DrawerTitle>{title}</DrawerTitle>
           <DrawerClose asChild>
             <IconButton
@@ -90,28 +90,29 @@ export function DocumentOutlineSheet({
         </DrawerHeader>
         <DrawerBody className="px-2 py-2">
           <nav aria-label={t('documents.outline.label')}>
-            <ol className="grid gap-0.5">
+            <ol className="grid grid-cols-1 gap-0.5">
               {headings.map((heading, index) => {
                 const active = heading.line === activeLine;
                 return (
-                  <li key={heading.line} className={indent[heading.level]}>
+                  <li key={heading.line} className={cn('min-w-0', indent[heading.level])}>
                     <a
                       ref={active || (activeLine === undefined && index === 0) ? entry : undefined}
                       href={`#line-${heading.line}`}
                       aria-current={active ? 'location' : undefined}
                       className={cn(
-                        'flex min-h-11 items-center break-words rounded-control px-3 py-2 text-body-md text-content-secondary no-underline hover:bg-surface-hover hover:text-content-primary',
+                        'flex min-h-11 min-w-0 items-center break-words rounded-control px-3 py-2 text-body-md text-content-secondary no-underline hover:bg-surface-hover hover:text-content-primary',
                         active && 'bg-surface-selected text-content-primary',
                       )}
                       onClick={(event) => {
                         event.preventDefault();
-                        chosen.current = heading.line;
+                        // A click with no pointer detail comes from the keyboard or an assistive technology.
+                        chosen.current = { line: heading.line, pointer: event.detail > 0 };
                         onOpenChange(false);
                       }}
                     >
                       <span
-                        className={heading.level === 1 ? 'truncate' : 'line-clamp-2'}
-                        title={heading.level === 1 ? heading.text : undefined}
+                        className={cn('min-w-0', heading.level === 1 ? 'truncate' : 'line-clamp-2')}
+                        title={heading.text}
                       >
                         {heading.text}
                       </span>

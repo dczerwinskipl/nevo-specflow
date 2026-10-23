@@ -31,14 +31,14 @@ document owns only what they mean in the product. Approved mock: Storybook
   visible whenever the workspace splits (>= 840 px); it MUST NOT be a drawer or toggle there.
 - **Contents and properties (preview only).** A markdown preview with at least two headings (h1-h4) offers
   its contents. When the document panel is at least 840 px wide (a 1400 px window and wider) (measured on the panel, so the text keeps
-  at least 520 px, about 60 characters or more) the text keeps its 760 px measure at most and a sticky column
+  at least 528 px, about 62 characters or more) the text keeps its 760 px measure at most and a sticky column
   beside it holds the properties and the contents, the current heading marked while reading; the column
-  is 28% of the panel between 240 and 320 px and its rows are one line with the full title on hover. In a
+  is 27% of the panel between 232 and 320 px and its rows are one line with the full title on hover. In a
   narrower panel there is no column and no box in the text: a contents icon (`list`) follows the tab strip or the narrow
   switcher in the header, always right after them and not beside the actions, and opens the contents as a bottom sheet, and the same entry is the first item of
   the Display group of the `...` menu. The icon is region navigation, not a header action, so it costs no
   direct slot. Choosing a heading closes the sheet, scrolls to the heading and focuses it; closing without a
-  choice returns focus to the icon. The properties stay one collapsed plain row in the text (no frame), at least 44 px tall. Editing, plain text
+  choice returns focus to the icon. The properties are one collapsed plain row (a thin rule, no frame) in the text and in the column, with a 44 px hit area on touch. Editing, plain text
   and documents with fewer than two headings have no contents. Split view (editor beside preview) is deferred
   to a later change, and a permanent contents bar was considered and rejected in review.
 - **Narrow.** The workspace stacks: tree, then the document with Back to the tree. Tabs are not

@@ -103,19 +103,24 @@ describe('markdown outline', () => {
 });
 
 describe('contents column geometry', () => {
-  it('is 28% of the panel between 240 and 320 px', () => {
-    expect(outlineColumnWidth(840)).toBe(240);
-    expect(outlineColumnWidth(860)).toBe(241);
-    expect(outlineColumnWidth(877)).toBe(246);
-    expect(outlineColumnWidth(700)).toBe(240);
+  it('is 27% of the panel between 232 and 320 px', () => {
+    expect(outlineColumnWidth(840)).toBe(232);
+    expect(outlineColumnWidth(877)).toBe(237);
+    expect(outlineColumnWidth(700)).toBe(232);
     expect(outlineColumnWidth(1290)).toBe(320);
     expect(outlineColumnWidth(4000)).toBe(320);
   });
 
-  it('leaves the text at least 520 px (about 65 characters) from the threshold up', () => {
+  it('shows the column from a 840 px panel and not below', () => {
+    const showsColumn = (width: number) => width >= outlineColumnMinWidth;
     expect(outlineColumnMinWidth).toBe(840);
-    for (const width of [840, 847, 860, 870, 877, 879, 900, 922, 997, 1035, 1100, 1290])
+    for (const width of [820, 831, 832, 839]) expect(showsColumn(width)).toBe(false);
+    for (const width of [840, 847, 877, 900, 1035, 1290]) expect(showsColumn(width)).toBe(true);
+  });
+
+  it('leaves the text at least 528 px (about 62 characters) from the threshold up', () => {
+    expect(outlineTextMinWidth).toBe(528);
+    for (const width of [840, 847, 877, 900, 922, 997, 1035, 1100, 1290])
       expect(outlineTextWidth(width)).toBeGreaterThanOrEqual(outlineTextMinWidth);
-    expect(outlineTextWidth(820)).toBeLessThan(outlineTextWidth(840));
   });
 });

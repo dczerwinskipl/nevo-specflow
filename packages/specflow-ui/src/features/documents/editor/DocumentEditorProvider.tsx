@@ -22,6 +22,7 @@ import {
   type OutlineNavigator,
 } from '../outline/outlineData';
 import { DocumentOutlineSheet } from '../outline/DocumentOutlineSheet';
+import { regionHeading } from '../outline/regionHeading';
 import type { ScrollAnchor } from './documentScrollAnchor';
 import { useDocumentSave, type DocumentSaveOwner } from './useDocumentSave';
 import { useEditorFocus } from './useEditorFocus';
@@ -265,14 +266,10 @@ export function DocumentEditorProvider({
             onOpenChange={(next) => {
               if (!next) setOpenedFor(undefined);
             }}
-            onSelected={(line) => outlineNavigator.current?.goTo(line)}
+            onSelected={(line, pointer) => outlineNavigator.current?.goTo(line, pointer)}
             restoreFocusTo={() =>
               // A menu item that opened the sheet is gone by now: the document heading is the next best place.
-              outlineOpener.current?.isConnected
-                ? outlineOpener.current
-                : globalThis.document.querySelector<HTMLElement>(
-                    '[data-workspace-surface][data-workspace-active="true"] [data-workspace-header-title="true"], [data-workspace-header-title="true"]',
-                  )
+              outlineOpener.current?.isConnected ? outlineOpener.current : regionHeading()
             }
           />
         )}

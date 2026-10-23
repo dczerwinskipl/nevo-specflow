@@ -26,8 +26,11 @@ export function documentOutline(content: string, markdown: boolean): DocumentOut
 
 /** What the mounted preview offers to whoever shows the contents (the sheet, the header). */
 export interface OutlineNavigator {
-  /** Scrolls the preview to a heading and moves focus onto it. */
-  goTo: (line: number) => void;
+  /**
+   * Scrolls the preview to a heading and moves focus onto it. `pointer` says the choice was made
+   * with a mouse or a finger: the heading then takes focus without a ring.
+   */
+  goTo: (line: number, pointer?: boolean) => void;
   /** The heading the reader is at now (measured on call), if any. */
   activeLine: () => number | undefined;
 }

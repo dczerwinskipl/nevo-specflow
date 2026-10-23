@@ -1,21 +1,22 @@
 /**
  * The document panel is wide enough (px, measured on the panel, not the viewport) to show the
  * contents and properties in a column beside the text; narrower panels open the contents as a
- * sheet. At 840 px the text keeps 520 px (about 61 characters) beside a 240 px column; at 877 px (a 1440 px window) 533 px.
+ * sheet. At 840 px the text keeps 528 px (about 62 characters) beside a 232 px column.
  */
 export const outlineColumnMinWidth = 840;
 
-/** The text keeps at least this many px (about 65 characters) beside the column. */
-export const outlineTextMinWidth = 520;
+/** The text keeps at least this many px (about 62 characters) beside the column. */
+export const outlineTextMinWidth = 528;
 const outlinePanelPadding = 48;
 const outlineGap = 32;
 
 /**
- * The width of the contents column in a panel of `panelWidth` px: 28% of the panel, between 240 and
- * 320 px. At the threshold (840) that leaves the text 840 - 48 - 32 - 240 = 520 px.
+ * The width of the contents column in a panel of `panelWidth` px: 27% of the panel, between 232 and
+ * 320 px. At the threshold (840) that leaves the text 840 - 48 - 32 - 232 = 528 px (about 62
+ * characters); in a 1440 px window (877) 877 - 80 - 237 = 560 px.
  */
 export function outlineColumnWidth(panelWidth: number): number {
-  return Math.round(Math.min(320, Math.max(240, panelWidth * 0.28)));
+  return Math.round(Math.min(320, Math.max(232, panelWidth * 0.27)));
 }
 
 /** Room left for the text in a panel with the column. */

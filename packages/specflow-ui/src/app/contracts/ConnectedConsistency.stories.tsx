@@ -116,6 +116,14 @@ function Connected({
       },
       ...(threeDocuments
         ? {
+            adr: {
+              id: 'adr',
+              title: 'ADR',
+              filename: 'adr-001.md',
+              revision: '1',
+              content:
+                '# ADR-001 · Deterministyczna admisja zadań i granice wykonania agentów\n\nWstęp.\n\n## Kontekst systemu i ograniczenia\n\nTekst.\n\n## Decyzja\n\nTekst.',
+            },
             plan: {
               id: 'plan',
               title: 'Plan',
@@ -690,6 +698,31 @@ export const MediumHeaderHasContentsIconAfterTheStrip: Story = {
       tab.getBoundingClientRect().right,
     );
     await expect(canvas.getByRole('button', { name: 'Zamknij wszystkie dokumenty' })).toBeVisible();
+  },
+};
+
+/** A long document title must not push the contents sheet beyond the screen (390 and 320 px). */
+export const ContentsSheetKeepsALongTitleInsideTheScreen: Story = {
+  args: { path: '/specs/api-integration/documents?collection=archive', threeDocuments: true },
+  play: async ({ canvas, userEvent }) => {
+    for (const width of [390, 320]) {
+      await viewport(width, 800);
+      const back = canvas.queryByRole('button', { name: 'Wróć do listy dokumentów' });
+      if (back) await userEvent.click(back);
+      await openFromTree(canvas, userEvent, /^adr-001.md/);
+      await userEvent.click(await canvas.findByRole('button', { name: 'Otwórz spis treści' }));
+      const sheet = await within(document.body).findByRole('dialog');
+      const list = within(sheet).getByRole('list');
+      await expect(list.scrollWidth).toBeLessThanOrEqual(list.clientWidth + 1);
+      const sheetRight = sheet.getBoundingClientRect().right;
+      for (const link of within(sheet).getAllByRole('link')) {
+        const box = link.getBoundingClientRect();
+        await expect(box.right).toBeLessThanOrEqual(sheetRight + 1);
+        await expect(box.right).toBeLessThanOrEqual(window.innerWidth + 1);
+      }
+      await userEvent.keyboard('{Escape}');
+      await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
+    }
   },
 };
 

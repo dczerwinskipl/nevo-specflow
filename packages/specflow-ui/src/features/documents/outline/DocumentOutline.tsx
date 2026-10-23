@@ -11,7 +11,7 @@ function Entries({
 }: {
   headings: readonly OutlineHeading[];
   activeLine?: number;
-  onSelect: (line: number) => void;
+  onSelect: (line: number, pointer: boolean) => void;
 }) {
   return (
     <ol className="grid grid-cols-1 gap-0.5">
@@ -27,7 +27,7 @@ function Entries({
             )}
             onClick={(event) => {
               event.preventDefault();
-              onSelect(heading.line);
+              onSelect(heading.line, event.detail > 0);
             }}
           >
             {heading.text}

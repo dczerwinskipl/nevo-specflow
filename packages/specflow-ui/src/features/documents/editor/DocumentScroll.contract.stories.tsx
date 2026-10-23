@@ -65,6 +65,22 @@ const documents: Record<string, Source> = {
     content: sections.map((s) => `## B ${s}\n\nTreść B ${s}.\n`).join('\n'),
   },
   txt: { id: 'txt', filename: 'notes.txt', content: textDocument },
+  tail: {
+    id: 'tail',
+    filename: 'tail.md',
+    content: [
+      '# Dokument z krótkim ogonem',
+      '',
+      ...Array.from({ length: 30 }, (_, index) => `Akapit wypełniający numer ${index + 1}.\n`),
+      '## Przedostatnia',
+      '',
+      'Krótko.',
+      '',
+      '## Ostatnia',
+      '',
+      'Krótko.',
+    ].join('\n'),
+  },
   short: {
     id: 'short',
     filename: 'short.md',
@@ -577,6 +593,8 @@ export const NarrowPanelMenuStartsWithContents: Story = {
     await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
     // The menu item that opened the sheet is gone: focus lands on the header, not on the page body.
     await waitFor(() => expect(document.activeElement).not.toBe(document.body));
+    // A clean start (no heading chosen before): focus is on the header, never inside the document.
+    await expect(document.activeElement?.closest('[data-document-preview]') ?? null).toBeNull();
   },
 };
 
@@ -650,7 +668,10 @@ export const SheetMarksTheLastSectionAtTheEnd: Story = {
   },
 };
 
-/** After a pointer the chosen heading takes focus without the thick outline around the whole heading. */
+/**
+ * After a pointer the chosen heading takes focus without a ring (the browser still calls it
+ * :focus-visible, so the marker carries the rule) and a short tint; after the keyboard the ring stays.
+ */
 export const ChosenHeadingHasNoFocusRingAfterAPointer: Story = {
   args: { width: 800, height: 600, initial: 'a' },
   play: async ({ canvas, canvasElement, userEvent }) => {
@@ -659,12 +680,62 @@ export const ChosenHeadingHasNoFocusRingAfterAPointer: Story = {
     const sheet = await within(document.body).findByRole('dialog');
     await userEvent.click(within(sheet).getByRole('link', { name: 'Sekcja 4' }));
     await waitFor(() => expect(document.activeElement?.tagName).toMatch(/^H[1-4]$/));
-    await expect(document.activeElement).toHaveTextContent('Sekcja 4');
-    await expect(getComputedStyle(document.activeElement!).outlineStyle).toBe('none');
+    const heading = document.activeElement as HTMLElement;
+    await expect(heading).toHaveTextContent('Sekcja 4');
+    await expect(heading).toHaveAttribute('data-quiet-focus');
+    await expect(getComputedStyle(heading).outlineStyle).toBe('none');
   },
 };
 
-/** The properties are a plain row in the flow (no frame around empty space), 44 px tall. */
+export const ChosenHeadingKeepsTheFocusRingAfterTheKeyboard: Story = {
+  args: { width: 800, height: 600, initial: 'a' },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await waitForPreview(canvasElement);
+    const icon = await canvas.findByRole('button', { name: 'Otwórz spis treści' });
+    icon.focus();
+    await userEvent.keyboard('{Enter}');
+    const sheet = await within(document.body).findByRole('dialog');
+    const current = within(sheet).getByRole('link', { current: 'location' });
+    await waitFor(() => expect(current).toHaveFocus());
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(document.activeElement?.tagName).toMatch(/^H[1-4]$/));
+    await expect((document.activeElement as HTMLElement).matches(':focus-visible')).toBe(true);
+  },
+};
+
+/** A heading the reader chose stays current until the next manual scroll, even when a short tail ends the page. */
+export const ChosenSectionStaysCurrentUntilTheNextManualScroll: Story = {
+  args: { width: 800, height: 400, initial: 'tail' },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await waitForPreview(canvasElement);
+    const panel = previewOf(canvasElement)!;
+    await userEvent.click(await canvas.findByRole('button', { name: 'Otwórz spis treści' }));
+    let sheet = await within(document.body).findByRole('dialog');
+    await userEvent.click(within(sheet).getByRole('link', { name: 'Przedostatnia' }));
+    await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
+    // The short tail cannot scroll the chosen heading to the top: the page is at its end.
+    await waitFor(() =>
+      expect(panel.scrollTop + panel.clientHeight).toBeGreaterThanOrEqual(panel.scrollHeight - 2),
+    );
+    await userEvent.click(canvas.getByRole('button', { name: 'Otwórz spis treści' }));
+    sheet = await within(document.body).findByRole('dialog');
+    await expect(within(sheet).getByRole('link', { current: 'location' })).toHaveTextContent(
+      'Przedostatnia',
+    );
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(within(document.body).queryByRole('dialog')).toBeNull());
+    // Reading on by hand hands the choice back to the position.
+    panel.dispatchEvent(new Event('wheel'));
+    await userEvent.click(canvas.getByRole('button', { name: 'Otwórz spis treści' }));
+    sheet = await within(document.body).findByRole('dialog');
+    await expect(within(sheet).getByRole('link', { current: 'location' })).toHaveTextContent(
+      'Ostatnia',
+    );
+    await userEvent.keyboard('{Escape}');
+  },
+};
+
+/** The properties are a plain row (no frame around empty space), 44 px of hit area, in the flow and in the column. */
 export const PropertiesAreAPlainRowInTheFlow: Story = {
   args: { width: 800, height: 600, initial: 'withProps' },
   play: async ({ canvas, canvasElement, userEvent }) => {
@@ -674,10 +745,23 @@ export const PropertiesAreAPlainRowInTheFlow: Story = {
     await expect(style.borderLeftWidth).toBe('0px');
     await expect(style.borderTopWidth).toBe('0px');
     const trigger = canvas.getByRole('button', { name: /Właściwości/ });
-    await expect(trigger.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    // The hit area is the design system one (a pseudo-element grown to the touch target size).
+    await expect(getComputedStyle(trigger, '::after').position).toBe('absolute');
     await userEvent.click(trigger);
     await expect(await canvas.findByText('zespół')).toBeVisible();
     await expect(getComputedStyle(block).borderLeftWidth).toBe('0px');
+  },
+};
+
+export const PropertiesRowInTheColumnAlignsWithTheFirstHeading: Story = {
+  args: { width: 1400, height: 600, initial: 'withProps' },
+  play: async ({ canvasElement }) => {
+    await waitForPreview(canvasElement);
+    const block = canvasElement.querySelector<HTMLElement>('aside [data-document-properties]')!;
+    await expect(getComputedStyle(block).borderLeftWidth).toBe('0px');
+    const heading = canvasElement.querySelector<HTMLElement>(':is(h1)[data-source-line="6"]')!;
+    const delta = Math.abs(block.getBoundingClientRect().top - heading.getBoundingClientRect().top);
+    await expect(delta).toBeLessThanOrEqual(4);
   },
 };
 

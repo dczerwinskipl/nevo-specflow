@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useSecondaryNavigation, useWorkspaceCapabilities } from '@nevo/ui';
+import { regionHeading } from '../outline/regionHeading';
 import { useDocumentTabs } from '../tabs/DocumentTabsProvider';
 import { documentStack } from './DocumentPane';
 
@@ -13,10 +14,6 @@ export interface DocumentOpening {
   closeAll: () => void;
 }
 
-const secondaryHeader = '[data-workspace-surface="secondary"][data-workspace-active="true"]';
-// The region heading, not the tab: focus moved onto a tab opens its tooltip over the header, and
-// the heading announces the document that just opened.
-const focusSelectors = [`${secondaryHeader} [data-workspace-header-title="true"]`];
 const focusAttempts = 20;
 
 /**
@@ -93,9 +90,9 @@ export function useDocumentOpening(options: {
     let attempts = 0;
     let frame = 0;
     const tryFocus = () => {
-      const target = focusSelectors
-        .map((selector) => document.querySelector<HTMLElement>(selector))
-        .find(Boolean);
+      // The region heading, not the tab: focus moved onto a tab opens its tooltip over the header, and
+      // the heading announces the document that just opened.
+      const target = regionHeading();
       if (target) {
         target.focus({ preventScroll: true });
         setFocusFor(undefined);

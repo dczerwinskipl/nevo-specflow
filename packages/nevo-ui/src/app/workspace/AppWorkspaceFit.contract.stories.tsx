@@ -50,12 +50,17 @@ const headerActions = [{ id: 'new', label: 'New item', primary: true, onPress: (
 interface FitFixtureProps {
   fit: AppWorkspaceFit;
   secondary?: boolean;
+  primaryMaxPx?: number;
 }
 
-function FitFixture({ fit, secondary = false }: FitFixtureProps) {
+function FitFixture({ fit, secondary = false, primaryMaxPx }: FitFixtureProps) {
   return (
     <AppShell navigation={<Navigation />}>
-      <AppWorkspace fit={fit} split="primary">
+      <AppWorkspace
+        fit={fit}
+        split={primaryMaxPx ? 'secondary' : 'primary'}
+        primaryMaxPx={primaryMaxPx}
+      >
         <AppWorkspace.Primary
           header={<WorkspaceHeader actions={headerActions} title="Collection" />}
         >
@@ -344,4 +349,56 @@ export const SecondaryFitsSurface1600Contract: Story = {
   args: { fit: 'available', secondary: true },
   globals: { viewport: { value: 'w1600', isRotated: false } },
   play: async ({ canvasElement }) => verifySecondaryFitsSurface(canvasElement, 1600),
+};
+
+/**
+ * Opt-in `primaryMaxPx` with `split="secondary"` and `fit="available"`: Primary keeps its 25% share
+ * up to the cap and Secondary takes the rest, so no width is left unused on very wide screens.
+ */
+async function verifyCappedPrimary(canvasElement: HTMLElement, width: number, cap: number) {
+  const { layoutRect } = await measure(canvasElement, width);
+  const primary = canvasElement.querySelector<HTMLElement>('[data-workspace-surface="primary"]');
+  const secondary = canvasElement.querySelector<HTMLElement>(
+    '[data-workspace-surface="secondary"]',
+  );
+  assert(primary && secondary, 'Both regions are split side by side.');
+  const primaryWidth = primary.getBoundingClientRect().width;
+  const secondaryWidth = secondary.getBoundingClientRect().width;
+  // Below the dominance width the split is 1/3 : 2/3 instead of 1/4 : 3/4.
+  const share = layoutRect.width * (layoutRect.width < 1080 ? 1 / 3 : 0.25);
+  assert(
+    Math.abs(primaryWidth - Math.min(share, cap)) <= 1.5,
+    `Primary is min(its share, ${cap}px): ${primaryWidth} (share ${share}).`,
+  );
+  assert(
+    Math.abs(primaryWidth + secondaryWidth - layoutRect.width) <= 1.5,
+    `Secondary takes the rest: ${primaryWidth} + ${secondaryWidth} of ${layoutRect.width}.`,
+  );
+}
+
+const cappedArgs = { fit: 'available', secondary: true, primaryMaxPx: 360 } as const;
+
+export const CappedPrimary1280Contract: Story = {
+  tags: ['contract', '!autodocs'],
+  args: cappedArgs,
+  globals: { viewport: { value: 'w1280', isRotated: false } },
+  play: async ({ canvasElement }) => verifyCappedPrimary(canvasElement, 1280, 360),
+};
+export const CappedPrimary1440Contract: Story = {
+  tags: ['contract', '!autodocs'],
+  args: cappedArgs,
+  globals: { viewport: { value: 'w1440', isRotated: false } },
+  play: async ({ canvasElement }) => verifyCappedPrimary(canvasElement, 1440, 360),
+};
+export const CappedPrimary1920Contract: Story = {
+  tags: ['contract', '!autodocs'],
+  args: cappedArgs,
+  globals: { viewport: { value: 'w1920', isRotated: false } },
+  play: async ({ canvasElement }) => verifyCappedPrimary(canvasElement, 1920, 360),
+};
+export const CappedPrimary2560Contract: Story = {
+  tags: ['contract', '!autodocs'],
+  args: cappedArgs,
+  globals: { viewport: { value: 'w2560', isRotated: false } },
+  play: async ({ canvasElement }) => verifyCappedPrimary(canvasElement, 2560, 360),
 };

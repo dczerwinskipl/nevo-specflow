@@ -110,12 +110,15 @@ function PreviewScroller({
         node?.setAttribute('data-document-preview', '');
       }}
     >
-      {frontmatter && <DocumentProperties properties={frontmatter.properties} />}
-      <MarkdownDocument
-        labels={markdownLabels}
-        source={frontmatter ? frontmatter.body : content}
-        sourceLines
-      />
+      {/* A readable measure (about 80 characters) aligned with the tabs; the editor keeps the full width. */}
+      <div className="max-w-content-narrow">
+        {frontmatter && <DocumentProperties properties={frontmatter.properties} />}
+        <MarkdownDocument
+          labels={markdownLabels}
+          source={frontmatter ? frontmatter.body : content}
+          sourceLines
+        />
+      </div>
     </ScrollArea>
   );
 }

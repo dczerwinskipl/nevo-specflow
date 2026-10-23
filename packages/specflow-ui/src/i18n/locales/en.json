@@ -84,8 +84,6 @@
     "noChangesNotice": "No changed files recorded for this view.",
     "viewOverview": "Overview",
     "viewDocuments": "Documents",
-    "documentIdleTitle": "Select a document",
-    "documentIdleDescription": "Open a file from the tree to see its content.",
     "viewSessions": "Sessions",
     "viewChanges": "View changes",
     "viewRepository": "Repository",
@@ -1197,6 +1195,16 @@
       "closeFailed": "Could not close the document. Try again.",
       "missingHint": "This document is no longer in the tree. Your draft is kept until you close the tab.",
       "closeBusy": "Finish the open question about unsaved changes first, then close this document."
+    },
+    "empty": {
+      "title": "Choose a document from the tree",
+      "suggested": "Start with",
+      "open": "Open {{name}}"
+    },
+    "notFound": {
+      "title": "Document not found",
+      "body": "{{name}} is no longer in the document tree.",
+      "close": "Close tab"
     }
   },
   "sessions": {

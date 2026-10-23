@@ -456,11 +456,8 @@ export const OpeningADocumentFromTheTreeMovesFocusToItsHeading: Story = {
       await userEvent.keyboard('{Enter}');
       await waitFor(() => {
         const active = document.activeElement;
-        // Wide: the new tab. Narrow (no strip): the document heading.
-        const target =
-          width >= 840
-            ? active?.matches('[role="tab"][aria-selected="true"]')
-            : active?.matches('[data-workspace-header-title="true"]');
+        // Wide and narrow: the document heading (focus on a tab would open its tooltip).
+        const target = active?.matches('[data-workspace-header-title="true"]');
         if (!target) throw new Error(`Focus is on ${active?.tagName} at ${width}px`);
         void expect(active).toHaveTextContent('specification.md');
       });
@@ -1036,12 +1033,14 @@ export const DocumentsIdleSecondary: Story = {
     await expect(
       (await canvas.findAllByRole('button', { name: /^Akcje: / })).length,
     ).toBeGreaterThan(0);
-    await expect(canvas.getByText('Wybierz dokument')).toBeVisible();
-    await expect(canvas.getByText('Otwórz plik z drzewa, aby zobaczyć jego treść.')).toBeVisible();
+    await expect(canvas.getByText('Wybierz dokument z drzewa')).toBeVisible();
+    // A few documents to start from, as buttons that open a tab (nothing opens by itself).
+    await expect(canvas.getByRole('button', { name: 'Otwórz specification.md' })).toBeVisible();
+    await expect(canvas.queryByRole('tab')).toBeNull();
     await settleViewport();
     // Narrow: the tree remains the sole visible Primary; no idle Secondary placeholder.
     await viewport(390, 844);
-    await expect(canvas.queryByText('Wybierz dokument')).not.toBeInTheDocument();
+    await expect(canvas.queryByText('Wybierz dokument z drzewa')).not.toBeInTheDocument();
     await settleViewport(390, 844);
   },
 };

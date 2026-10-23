@@ -245,6 +245,12 @@ intrinsic bound and behaves like `content`. Do not combine `bounded` with ad-hoc
 centring wrappers. `AppWorkspaceFit.contract.stories.tsx` covers the three values (`Available*`, `Content*`,
 `BoundedPrimaryOnly*` contracts at 1024/1440/1920/2560 and 390).
 
+**Capped Primary (opt-in).** `primaryMaxPx` (with `split="secondary"` and `fit="available"`) keeps Primary at
+its share of the split up to that many pixels and gives Secondary the rest (`capPrimaryWidth`), so a list
+beside a document does not grow to 575 px at 2560 while the document keeps empty space. The default is no
+cap: Primary is exactly its share. The cap never narrows Primary below its share and has no effect without
+a Secondary or in the stacked layout. `CappedPrimary*Contract` stories cover 1280/1440/1920/2560.
+
 The shell-owned workspace surface has an edge border (`border-l`, plus `border-r` when inset). `AppShell`
 publishes two widths through the workspace context: `availableWidth` (the surface border-box, which decides
 split/stacked mode and the dominance thresholds) and `contentWidth` (`availableWidth` minus

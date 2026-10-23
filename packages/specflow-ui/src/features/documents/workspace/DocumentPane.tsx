@@ -90,19 +90,37 @@ export function DocumentPane({ data }: { data: DocumentParams }) {
         {t('documents.loadingDocument')}
       </p>
     );
-  if (!query.data || status === 401 || status === 403 || status === 404)
+  if (!query.data || status === 401 || status === 403 || status === 404) {
+    const tab = tabs.tabs.find((candidate) => candidate.id === data.documentId);
+    const missing = status === 404;
+    // The tab keeps the last known name; before the tree knew it the id is not worth showing.
+    const name = tab && tab.label !== tab.id ? tab.label : undefined;
     return (
-      <Alert
-        tone="attention"
-        title={status === 403 ? t('documents.noAccess') : t('documents.unavailable')}
-      >
-        {closeFailed}
-        {tabs.tabs.find((tab) => tab.id === data.documentId)?.dirty && (
-          <p>{t('documents.tabs.missingHint')}</p>
-        )}
-        <Button onClick={() => void query.refetch()}>{t('common.retry')}</Button>
-      </Alert>
+      <div className="p-4">
+        <Alert
+          tone="attention"
+          title={
+            missing
+              ? t('documents.notFound.title')
+              : status === 403
+                ? t('documents.noAccess')
+                : t('documents.unavailable')
+          }
+        >
+          {closeFailed}
+          {missing && name && <p>{t('documents.notFound.body', { name })}</p>}
+          {tab?.dirty && <p>{t('documents.tabs.missingHint')}</p>}
+          {missing ? (
+            <Button onClick={() => void tabs.requestClose(data.documentId)}>
+              {t('documents.notFound.close')}
+            </Button>
+          ) : (
+            <Button onClick={() => void query.refetch()}>{t('common.retry')}</Button>
+          )}
+        </Alert>
+      </div>
     );
+  }
   // A document promoted from the Specification Overview preview returns there on narrow, where
   // the stacked Back would otherwise only reveal the document tree.
   const overviewReturn = !session && !supportsSplit && returnTo === 'overview';

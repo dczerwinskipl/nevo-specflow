@@ -14,11 +14,9 @@ export interface DocumentOpening {
 }
 
 const secondaryHeader = '[data-workspace-surface="secondary"][data-workspace-active="true"]';
-// The active tab, else the region heading (a list without an active tab).
-const focusSelectors = [
-  `${secondaryHeader} [role="tab"][aria-selected="true"]`,
-  `${secondaryHeader} [data-workspace-header-title="true"]`,
-];
+// The region heading, not the tab: focus moved onto a tab opens its tooltip over the header, and
+// the heading announces the document that just opened.
+const focusSelectors = [`${secondaryHeader} [data-workspace-header-title="true"]`];
 const focusAttempts = 20;
 
 /**

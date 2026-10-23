@@ -9,7 +9,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  EmptyState,
   WorkspaceHeader,
   getItemTabId,
   getItemTabPanelId,
@@ -26,6 +25,7 @@ import { documentTreeKeys } from '../read-model/queries';
 import { DocumentTabStrip, documentTabsScope } from '../tabs/DocumentTabStrip';
 import { DocumentTabsProvider, useDocumentTabs } from '../tabs/DocumentTabsProvider';
 import { DocumentPane } from './DocumentPane';
+import { DocumentsEmptyState } from './DocumentsEmptyState';
 import { DocumentsTreePanel } from './DocumentsTreePanel';
 import { useDocumentOpening } from './useDocumentOpening';
 import { useDocumentTreeOperations } from './useDocumentTreeOperations';
@@ -86,11 +86,7 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
       <DocumentPane data={{ specId, documentId }} />
     </div>
   ) : (
-    <EmptyState
-      className="border-none"
-      title={t('specification.documentIdleTitle')}
-      description={t('specification.documentIdleDescription')}
-    />
+    <DocumentsEmptyState documents={tree.data?.documents ?? []} onOpen={opening.select} />
   );
   return (
     <>
@@ -98,6 +94,8 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
       <AppWorkspace
         scroll="content"
         fit="available"
+        // The tree stops growing at 360 px; the document gets the rest on wide screens.
+        primaryMaxPx={360}
         split="secondary"
         labels={{
           ...workspaceLabels,

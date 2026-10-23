@@ -22,6 +22,7 @@ import { AppContentScrollProvider } from './AppContent';
 import { useOptionalWorkspace } from './WorkspaceContext';
 import type { WorkspaceTransition } from './WorkspaceContext';
 import {
+  capPrimaryWidth,
   resolveSlotMaxWidth,
   resolveWorkspaceFit,
   resolveWorkspaceSplit,
@@ -87,6 +88,13 @@ interface CommonAppWorkspaceProps {
    */
   fit?: AppWorkspaceFit;
   split?: AppWorkspaceSplitMode;
+  /**
+   * Opt-in cap of Primary in px for split layouts with a Secondary: Primary keeps its share up to
+   * this width and Secondary takes the rest, so a list beside a document stops growing on very wide
+   * screens. Use with `fit="available"` (a `content` workspace sizes by its content). Default: none,
+   * Primary is exactly its share of the split.
+   */
+  primaryMaxPx?: number;
   labels?: Partial<AppWorkspaceLabels>;
   /** Close the active page (returning to its parent) or the entire contextual flow. */
   secondaryCloseBehavior?: 'page' | 'flow';
@@ -203,20 +211,30 @@ function useWorkspaceLayoutState(
   split: AppWorkspaceSplitMode,
   hasSecondary: boolean,
   secondaryCanStack: boolean,
+  primaryMaxPx?: number,
 ): WorkspaceLayoutState {
   const { availableWidth, contentWidth = availableWidth } = useAppWorkspace();
   const isSplitView = supportsRuntimeWorkspaceSplit(availableWidth);
   const showSecondary = hasSecondary && (isSplitView || secondaryCanStack);
   const resolvedSplit = resolveWorkspaceSplit(split, isSplitView && showSecondary, availableWidth);
 
+  const widths = capPrimaryWidth(
+    contentWidth,
+    {
+      primary: resolveSlotMaxWidth(contentWidth, resolvedSplit.primary),
+      secondary:
+        resolvedSplit.secondary === 0
+          ? undefined
+          : resolveSlotMaxWidth(contentWidth, resolvedSplit.secondary),
+    },
+    primaryMaxPx,
+  );
+
   return {
     mode: isSplitView ? 'split' : 'stacked',
     showSecondary,
-    primaryMaxWidth: resolveSlotMaxWidth(contentWidth, resolvedSplit.primary),
-    secondaryMaxWidth:
-      resolvedSplit.secondary === 0
-        ? undefined
-        : resolveSlotMaxWidth(contentWidth, resolvedSplit.secondary),
+    primaryMaxWidth: widths.primary,
+    secondaryMaxWidth: widths.secondary,
   };
 }
 
@@ -563,6 +581,7 @@ function AppWorkspaceRoot({
   children,
   labels: labelsProp,
   split = 'balanced',
+  primaryMaxPx,
   fit = 'content',
   secondaryCloseBehavior = 'flow',
   scroll = 'workspace',
@@ -605,6 +624,7 @@ function AppWorkspaceRoot({
     split,
     secondaryPresentation !== undefined,
     secondaryPresentation?.canStack ?? false,
+    primaryMaxPx,
   );
   const resolvedFit = resolveWorkspaceFit(fit, state.mode, state.showSecondary);
   const mobileRuntime = useMobileWorkspaceTransition({

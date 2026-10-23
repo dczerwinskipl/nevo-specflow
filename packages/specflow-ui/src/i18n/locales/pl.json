@@ -84,8 +84,6 @@
     "noChangesNotice": "Brak zarejestrowanych zmienionych plików w tym widoku.",
     "viewOverview": "Przegląd",
     "viewDocuments": "Dokumenty",
-    "documentIdleTitle": "Wybierz dokument",
-    "documentIdleDescription": "Otwórz plik z drzewa, aby zobaczyć jego treść.",
     "viewSessions": "Sesje",
     "viewChanges": "Wszystkie zmiany",
     "viewRepository": "Repozytorium",
@@ -1197,6 +1195,16 @@
       "closeFailed": "Nie udało się zamknąć dokumentu. Spróbuj ponownie.",
       "missingHint": "Tego dokumentu nie ma już w drzewie. Szkic zostaje do zamknięcia karty.",
       "closeBusy": "Najpierw dokończ pytanie o niezapisane zmiany, potem zamknij ten dokument."
+    },
+    "empty": {
+      "title": "Wybierz dokument z drzewa",
+      "suggested": "Zacznij od",
+      "open": "Otwórz {{name}}"
+    },
+    "notFound": {
+      "title": "Nie znaleziono dokumentu",
+      "body": "{{name}} nie ma już w drzewie dokumentów.",
+      "close": "Zamknij kartę"
     }
   },
   "sessions": {

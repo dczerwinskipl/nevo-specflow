@@ -17,7 +17,24 @@ export interface DocumentDraft {
   };
 }
 
-export const documentDraftKey = (spec: string, document: string) => `${spec}:${document}`;
+/**
+ * The spec id is URI-encoded, so it never contains ':' and the FIRST ':' always separates it from
+ * the document id (which may contain anything).
+ */
+export const documentDraftKey = (spec: string, document: string) =>
+  `${encodeURIComponent(spec)}:${document}`;
+
+export function parseDocumentDraftKey(key: string): { specId: string; documentId: string } {
+  const at = key.indexOf(':');
+  return {
+    specId: decodeURIComponent(key.slice(0, at)),
+    documentId: key.slice(at + 1),
+  };
+}
+
+/** The single definition of "has unsaved changes". */
+export const isDraftDirty = (draft: Pick<DocumentDraft, 'content' | 'baseline'>): boolean =>
+  draft.content !== draft.baseline;
 
 /** An opened editable document defaults to Preview, not Edit; see DocumentEditor. */
 export function draftFor(record: SpecificationDocumentResponse): DocumentDraft {
@@ -61,6 +78,10 @@ export interface DocumentDraftStore {
   ): void;
   remove(specId: string, documentId: string): void;
   subscribe(specId: string, documentId: string, listener: () => void): () => void;
+  /** Ids of the documents of one spec whose draft has unsaved changes, in insertion order. */
+  dirtyIds(specId: string): string[];
+  /** Notified when any draft of the spec changes, is added or removed. */
+  subscribeSpec(specId: string, listener: () => void): () => void;
   getAnchor(specId: string, documentId: string): ScrollAnchor | undefined;
   setAnchor(specId: string, documentId: string, anchor: ScrollAnchor): void;
 }
@@ -79,6 +100,20 @@ export function createDocumentDraftStore(): DocumentDraftStore {
       })),
     remove: (s, d) => drafts.remove(documentDraftKey(s, d)),
     subscribe: (s, d, listener) => drafts.subscribe(documentDraftKey(s, d), listener),
+    dirtyIds: (specId) => {
+      const ids: string[] = [];
+      for (const key of drafts.keys()) {
+        const parsed = parseDocumentDraftKey(key);
+        if (parsed.specId !== specId) continue;
+        const draft = drafts.get(key);
+        if (draft && isDraftDirty(draft)) ids.push(parsed.documentId);
+      }
+      return ids;
+    },
+    subscribeSpec: (specId, listener) =>
+      drafts.subscribeAll((key) => {
+        if (parseDocumentDraftKey(key).specId === specId) listener();
+      }),
     getAnchor: (s, d) => anchors.get(documentDraftKey(s, d)),
     setAnchor: (s, d, anchor) => void anchors.set(documentDraftKey(s, d), anchor),
   };

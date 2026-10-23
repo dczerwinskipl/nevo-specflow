@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useBlocker } from '@tanstack/react-router';
 import { UnsavedChangesDialog } from './UnsavedChangesDialog';
 import { useDocumentDraft, useDocumentDraftStore } from './DocumentDraftProvider';
+import { isDraftDirty } from './documentDraftStore';
 import { useDocumentEditor } from './DocumentEditorProvider';
 /** Route departure is guarded above panes so closing/back/focus never destroys protection. */
 export function DocumentRouteGuard({
@@ -16,7 +17,7 @@ export function DocumentRouteGuard({
 }) {
   const store = useDocumentDraftStore();
   const draft = useDocumentDraft(specId, documentId ?? '');
-  const dirty = Boolean(draft && draft.content !== draft.baseline);
+  const dirty = Boolean(draft && isDraftDirty(draft));
   // The single owner of leave-document requests (tree operations, route departures): they share the
   // one open dialog and every waiting request settles with its decision.
   const waiting = useRef<((allow: boolean) => void)[]>([]);

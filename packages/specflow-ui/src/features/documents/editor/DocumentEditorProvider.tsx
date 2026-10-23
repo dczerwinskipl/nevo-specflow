@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/specs/workspace';
-import { documentDraftKey, draftFor, type DocumentDraft } from './documentDraftStore';
+import { documentDraftKey, draftFor, isDraftDirty, type DocumentDraft } from './documentDraftStore';
 import { useDocumentDraft, useDocumentDraftStore } from './DocumentDraftProvider';
 import { UnsavedChangesDialog } from './UnsavedChangesDialog';
 import { DocumentPathDialog } from './DocumentPathDialog';
@@ -128,7 +128,7 @@ export function DocumentEditorProvider({
   }, [store, setDraft, focusContentSoon, editorRoot]);
   const requestDiscard = useCallback(() => {
     const { document: open, draft: openDraft } = shown.current;
-    if (open && openDraft && openDraft.content !== openDraft.baseline) setGuardFor(open.id);
+    if (open && openDraft && isDraftDirty(openDraft)) setGuardFor(open.id);
   }, []);
   const showPath = useCallback(() => setPathOpen(true), []);
   const rememberAnchor = useCallback(
@@ -145,7 +145,7 @@ export function DocumentEditorProvider({
       specId,
       document,
       draft,
-      dirty: draft.content !== draft.baseline,
+      dirty: isDraftDirty(draft),
       saving: owner.saving,
       saveError: owner.saveError,
       setDraft,

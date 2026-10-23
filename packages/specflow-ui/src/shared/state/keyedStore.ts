@@ -12,12 +12,20 @@ export interface KeyedStore<V> {
   update(key: string, next: (current: V | undefined) => V | undefined): void;
   remove(key: string): void;
   subscribe(key: string, listener: () => void): () => void;
+  /** Snapshot of the keys that currently hold a value, in insertion order. */
+  keys(): string[];
+  /** Notified with the key of every write, addition and removal. */
+  subscribeAll(listener: (key: string) => void): () => void;
 }
 
 export function createKeyedStore<V>(): KeyedStore<V> {
   const values = new Map<string, V>();
   const listeners = new Map<string, Set<() => void>>();
-  const notify = (key: string) => listeners.get(key)?.forEach((listener) => listener());
+  const allListeners = new Set<(key: string) => void>();
+  const notify = (key: string) => {
+    listeners.get(key)?.forEach((listener) => listener());
+    allListeners.forEach((listener) => listener(key));
+  };
   const write = (key: string, value: V | undefined) => {
     const current = values.get(key);
     if (Object.is(current, value)) return;
@@ -30,6 +38,11 @@ export function createKeyedStore<V>(): KeyedStore<V> {
     set: (key, value) => write(key, value),
     update: (key, next) => write(key, next(values.get(key))),
     remove: (key) => write(key, undefined),
+    keys: () => [...values.keys()],
+    subscribeAll: (listener) => {
+      allListeners.add(listener);
+      return () => void allListeners.delete(listener);
+    },
     subscribe: (key, listener) => {
       let set = listeners.get(key);
       if (!set) listeners.set(key, (set = new Set()));

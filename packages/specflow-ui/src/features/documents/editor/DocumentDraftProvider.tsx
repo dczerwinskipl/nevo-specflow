@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useMemo,
   useState,
   useSyncExternalStore,
   type ReactNode,
@@ -41,5 +42,30 @@ export function useDocumentDraft(specId: string, documentId: string): DocumentDr
     [store, specId, documentId],
   );
   const read = useCallback(() => store.get(specId, documentId), [store, specId, documentId]);
+  return useSyncExternalStore(subscribe, read, read);
+}
+
+const sameIds = (a: readonly string[], b: readonly string[]) =>
+  a.length === b.length && a.every((id, index) => id === b[index]);
+
+/**
+ * Ids of the spec's documents with unsaved changes. The snapshot keeps its array identity while
+ * the set is unchanged, so unrelated draft updates do not re-render the caller.
+ */
+export function useDirtyDocuments(specId: string): readonly string[] {
+  const store = useDocumentDraftStore();
+  const subscribe = useCallback(
+    (listener: () => void) => store.subscribeSpec(specId, listener),
+    [store, specId],
+  );
+  const read = useMemo(() => {
+    let last: readonly string[] = [];
+    return () => {
+      const next = store.dirtyIds(specId);
+      if (sameIds(last, next)) return last;
+      last = next;
+      return next;
+    };
+  }, [store, specId]);
   return useSyncExternalStore(subscribe, read, read);
 }

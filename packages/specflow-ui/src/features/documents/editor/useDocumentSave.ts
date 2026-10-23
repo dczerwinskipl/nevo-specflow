@@ -4,7 +4,12 @@ import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/spe
 import { useAppServices } from '../../../app/useAppServices';
 import { documentKeys } from '../read-model/queries';
 import { specificationKeys } from '../../specs/read-model';
-import { documentDraftKey, reconcileSavedDraft, type DocumentDraft } from './documentDraftStore';
+import {
+  documentDraftKey,
+  isDraftDirty,
+  reconcileSavedDraft,
+  type DocumentDraft,
+} from './documentDraftStore';
 import { useDocumentDraftStore } from './DocumentDraftProvider';
 
 /** Everything that identifies one save: the resource, the submitted snapshot and its revision. */
@@ -22,11 +27,25 @@ export interface SaveResult {
   readonly documentId: string;
   /** The snapshot this result is about; later edits of the same document may differ. */
   readonly content: string;
+  /** The failure, when `ok` is false. */
+  readonly error?: unknown;
+}
+
+export interface SaveAllResult {
+  readonly saved: string[];
+  readonly failed: { id: string; error: unknown }[];
 }
 
 export interface DocumentSaveOwner {
-  /** Saves the document the session currently shows. Concurrent calls join the one in flight. */
-  save: () => Promise<SaveResult | undefined>;
+  /**
+   * Saves one document of the spec (default: the one the session currently shows) from its draft.
+   * Concurrent calls for the same document join the one in flight.
+   */
+  save: (documentId?: string) => Promise<SaveResult | undefined>;
+  /** Saves the documents one after another and stops at the first failure. */
+  saveAll: (ids: readonly string[]) => Promise<SaveAllResult>;
+  savingOf: (id: string) => boolean;
+  errorOf: (id: string) => unknown;
   /** Whether the CURRENT document has a save in flight. */
   saving: boolean;
   /** The last failure of the CURRENT document's save, until its next attempt. */
@@ -93,49 +112,84 @@ export function useDocumentSave({
   });
   const { mutateAsync } = mutation;
 
-  const save = useCallback(async (): Promise<SaveResult | undefined> => {
-    const { specId: openSpec, document: open, draft: openDraft } = current.current;
-    if (!open || !openDraft) return undefined;
-    const key = documentDraftKey(openSpec, open.id);
-    const joined = inFlight.current.get(key);
-    if (joined) return joined;
-    const variables: SaveVariables = {
-      specId: openSpec,
-      documentId: open.id,
-      content: openDraft.content,
-      expectedRevision: openDraft.revision,
-    };
-    const base = {
-      specId: variables.specId,
-      documentId: variables.documentId,
-      content: variables.content,
-    };
-    if (openDraft.content === openDraft.baseline) return { ok: true, ...base };
-    const run = (async (): Promise<SaveResult> => {
-      setErrors((all) => {
-        const rest = { ...all };
-        delete rest[key];
-        return rest;
-      });
-      setPending((keys) => [...keys, key]);
-      try {
-        await mutateAsync(variables);
-        return { ok: true, ...base };
-      } catch (error) {
-        setErrors((all) => ({ ...all, [key]: error }));
-        return { ok: false, ...base };
-      } finally {
-        inFlight.current.delete(key);
-        setPending((keys) => keys.filter((pendingKey) => pendingKey !== key));
+  const save = useCallback(
+    async (documentId?: string): Promise<SaveResult | undefined> => {
+      const { specId: openSpec, document: open, draft: openDraft } = current.current;
+      const id = documentId ?? open?.id;
+      if (id === undefined) return undefined;
+      // The shown document may only exist as a draft derived from its record; others live in the store.
+      const source = id === open?.id ? openDraft : store.get(openSpec, id);
+      if (!source) return undefined;
+      const key = documentDraftKey(openSpec, id);
+      const joined = inFlight.current.get(key);
+      if (joined) return joined;
+      const variables: SaveVariables = {
+        specId: openSpec,
+        documentId: id,
+        content: source.content,
+        expectedRevision: source.revision,
+      };
+      const base = {
+        specId: variables.specId,
+        documentId: variables.documentId,
+        content: variables.content,
+      };
+      if (!isDraftDirty(source)) return { ok: true, ...base };
+      const run = (async (): Promise<SaveResult> => {
+        setErrors((all) => {
+          const rest = { ...all };
+          delete rest[key];
+          return rest;
+        });
+        setPending((keys) => [...keys, key]);
+        try {
+          await mutateAsync(variables);
+          return { ok: true, ...base };
+        } catch (error) {
+          setErrors((all) => ({ ...all, [key]: error }));
+          return { ok: false, ...base, error };
+        } finally {
+          inFlight.current.delete(key);
+          setPending((keys) => keys.filter((pendingKey) => pendingKey !== key));
+        }
+      })();
+      inFlight.current.set(key, run);
+      return run;
+    },
+    [mutateAsync, store],
+  );
+
+  const saveAll = useCallback(
+    async (ids: readonly string[]): Promise<SaveAllResult> => {
+      const outcome: SaveAllResult = { saved: [], failed: [] };
+      for (const id of ids) {
+        const result = await save(id);
+        if (result?.ok === false) {
+          outcome.failed.push({ id, error: result.error });
+          break;
+        }
+        outcome.saved.push(id);
       }
-    })();
-    inFlight.current.set(key, run);
-    return run;
-  }, [mutateAsync]);
+      return outcome;
+    },
+    [save],
+  );
+
+  const savingOf = useCallback(
+    (id: string) => pending.includes(documentDraftKey(specId, id)),
+    [pending, specId],
+  );
+  const errorOf = useCallback(
+    (id: string): unknown => errors[documentDraftKey(specId, id)],
+    [errors, specId],
+  );
 
   const key = document ? documentDraftKey(specId, document.id) : undefined;
   return {
     save,
+    saveAll,
+    savingOf,
+    errorOf,
     saving: key !== undefined && pending.includes(key),
     saveError: key === undefined ? undefined : errors[key],
   };

@@ -9,7 +9,6 @@ import {
   ListBoxItem as AriaListBoxItem,
   ListBoxSection as AriaListBoxSection,
   Popover as AriaPopover,
-  Text as AriaText,
   type Key,
 } from 'react-aria-components';
 import { designSlot } from '@nevo/figma-capture/metadata';
@@ -273,25 +272,26 @@ export function ComboboxItem({
         <>
           <span className="flex min-w-0 flex-1 flex-col">
             <span className={cn('flex min-w-0', keepsReasonReadable && 'opacity-50')}>
-              <AriaText
+              {/* Deliberately not an aria slot: a slotted label would become the whole accessible
+                  name and leave the visible description/meta out of it (WCAG 2.5.3). */}
+              <span
                 className={cn(
                   optionLabelWrappingClassName,
                   'text-body-sm',
                   !structured && 'flex-1',
                 )}
-                slot="label"
+                data-combobox-item-part="label"
               >
                 {children}
-              </AriaText>
+              </span>
             </span>
             {hasDescription ? (
-              <AriaText
+              <span
                 className={cn(optionDescriptionClassName, 'text-body-sm')}
                 data-combobox-item-part="description"
-                slot="description"
               >
                 {description}
-              </AriaText>
+              </span>
             ) : null}
           </span>
           {hasMeta ? (

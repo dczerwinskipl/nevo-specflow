@@ -158,6 +158,22 @@ they affect behavior.
 Generated artifacts should be compared against deterministic regenerated output and
 must not embed incidental timestamps.
 
+### Storybook play functions
+
+Storybook play functions run in a shared browser and the whole corpus is executed on `main` and
+nightly, while pull requests run only the changed stories. A play function must therefore be
+order independent and load independent:
+
+- no fixed sleeps or timeouts as synchronization: wait on the condition (`findBy*`, `waitFor`,
+  a polling helper with a clear failure message);
+- after typing or clicking, assert through a retrying query; React state commits and live-region
+  announcements are asynchronous;
+- query the element you mean (role, `selector`, scoped container) when the same text can also
+  appear in an `sr-only` announcer or a duplicate region;
+- close the overlays you open (menus, listboxes, dialogs, popovers) and restore global state
+  (viewport, theme, storage) before the story ends;
+- keep accessibility checks on: fix the component rather than disabling the rule for a story.
+
 ## Characterization before behavior change
 
 When migrating, refactoring, or modifying behavior whose current semantics are not already protected,

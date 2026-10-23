@@ -31,7 +31,7 @@ type Story = StoryObj<typeof meta>;
  * overflow menu, so the link is the only navigation affordance and nothing else may offer it.
  */
 export const HrefOnlyNavigation: Story = {
-  play: async ({ canvas }) => {
+  play: ({ canvas }) => {
     const link = canvas.getByRole('link', {
       name: 'Open specification: Deterministic admission and execution boundaries',
     });

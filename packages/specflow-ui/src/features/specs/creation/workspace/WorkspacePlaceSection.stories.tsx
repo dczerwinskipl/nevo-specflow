@@ -1342,7 +1342,9 @@ export const GeneratedBranchIsProtectedSoOwnNameIsRequired: Story = {
     await userEvent.clear(input);
     await userEvent.type(input, 'feature/hotfix');
     await waitFor(() => expect(canvas.queryByText(/jest chroniona/)).toBeNull());
-    await waitFor(() => expect(canvas.getByLabelText('Żądanie')).toHaveAttribute('data-problems', ''));
+    await waitFor(() =>
+      expect(canvas.getByLabelText('Żądanie')).toHaveAttribute('data-problems', ''),
+    );
     await waitFor(() =>
       expect(request(canvas)).toBe('{"kind":"new-worktree","branch":"feature/hotfix"}'),
     );

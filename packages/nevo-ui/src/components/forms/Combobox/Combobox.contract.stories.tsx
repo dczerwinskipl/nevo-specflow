@@ -216,7 +216,9 @@ export const SimilarLongValuesStayDistinguishable: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(canvas.getByRole('button', { name: /Show options/ }));
     await until(listbox);
-    const labels = [...document.querySelectorAll<HTMLElement>('[role=option] [data-combobox-item-part=label]')];
+    const labels = [
+      ...document.querySelectorAll<HTMLElement>('[role=option] [data-combobox-item-part=label]'),
+    ];
     assert(labels.length === 2, 'Both options are listed.');
     for (const label of labels) {
       assert(label.scrollWidth <= label.clientWidth + 1, 'No option label is ellipsised.');

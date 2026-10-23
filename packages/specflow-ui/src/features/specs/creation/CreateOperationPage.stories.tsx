@@ -298,7 +298,7 @@ const settingsList = (canvas: { getByLabelText: (label: string) => HTMLElement }
  */
 export const InProgressWithSteps: Story = {
   args: { request: newWorkspace, facts: newWorkspaceFacts },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
     const heading = await canvas.findByRole('heading', {
       level: 1,
       name: 'Tworzenie: Limity płatności',
@@ -310,7 +310,7 @@ export const InProgressWithSteps: Story = {
       canvas.getByText('Przygotowujemy nowe środowisko pracy i specyfikację.', visibleText),
     ).toBeVisible();
     await expect(settingsList(canvas).getByText('Limity płatności')).toBeInTheDocument();
-    const running = await canvas.findByText('Przygotowanie środowiska pracy');
+    const running = await steps(canvasElement).findByText('Przygotowanie środowiska pracy');
     await waitFor(() => expect(running.closest('li')).toHaveAttribute('aria-current', 'step'));
     await expect(canvas.getByText('Tworzymy środowisko pracy')).toBeVisible();
     await expect(canvas.getByText('Rezerwowanie nazwy').closest('li')).toHaveTextContent(/gotowe/);
@@ -412,7 +412,9 @@ export const LongTitleAt320: Story = {
   },
   play: async ({ canvas, canvasElement }) => {
     await settleViewport(320, 740);
-    await canvas.findByText('Przygotowanie środowiska pracy');
+    // The same text is also announced in the sr-only live region once an effect has run, so the
+    // query names the visible subtitle explicitly instead of relying on how early it is made.
+    await canvas.findByText('Przygotowanie środowiska pracy', visibleText);
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320);
     const heading = canvas.getByRole('heading', { level: 1, name: /^Tworzenie: Ogr/ });
     await expect(heading.getBoundingClientRect().right).toBeLessThanOrEqual(320);
@@ -511,7 +513,7 @@ export const DirectLinkInProgress: Story = {
     await expect(
       await canvas.findByRole('heading', { level: 1, name: 'Tworzenie specyfikacji' }),
     ).toBeInTheDocument();
-    await canvas.findByText('Przygotowanie środowiska pracy');
+    await canvas.findAllByText('Przygotowanie środowiska pracy');
     // Nothing is known about this Create: no name in the heading and no settings are guessed.
     await expect(canvas.queryByText(/Limity płatności/)).not.toBeInTheDocument();
     await expect(canvas.queryByLabelText('Ustawienia tworzenia')).not.toBeInTheDocument();

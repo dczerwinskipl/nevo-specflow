@@ -26,27 +26,24 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** A standalone href must also enable the overflow Open specification action. */
+/**
+ * A standalone href renders the specification identity as a real link. Rows have no per-row
+ * overflow menu, so the link is the only navigation affordance and nothing else may offer it.
+ */
 export const HrefOnlyNavigation: Story = {
-  play: async ({ canvas, userEvent }) => {
+  play: ({ canvas }) => {
     const link = canvas.getByRole('link', {
       name: 'Open specification: Deterministic admission and execution boundaries',
     });
     if (link.getAttribute('href') !== '/specs/admission') {
       throw new Error('Specification identity must remain a real link.');
     }
-    await userEvent.click(
-      canvas.getByRole('button', {
-        name: 'Specification actions: Deterministic admission and execution boundaries',
-      }),
-    );
-    const open = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
-      (item) => item.textContent?.trim() === 'Open specification',
-    );
-    if (!open || open.getAttribute('aria-disabled') === 'true') {
-      throw new Error('Standalone href should enable Open specification in overflow.');
+    if (canvas.queryByRole('button', { name: /^Specification actions/ })) {
+      throw new Error('Rows must not expose a per-row overflow menu.');
     }
-    await userEvent.keyboard('{Escape}');
+    if (canvas.getAllByRole('link').length !== 1) {
+      throw new Error('The specification link is the only link in the row.');
+    }
   },
 };
 

@@ -74,7 +74,7 @@ export function ItemTabsHost({ items, activeId, guard, frame, ...props }: ItemTa
       items={opened.items}
       activeId={opened.activeId}
       onActivate={opened.activate}
-      onClose={(id) => void opened.requestClose(id)}
+      onClose={(id) => void opened.requestClose(id).catch(() => undefined)}
       scope={SCOPE}
     />
   );

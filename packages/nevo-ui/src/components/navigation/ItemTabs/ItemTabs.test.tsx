@@ -228,14 +228,20 @@ describe('ItemTabs', () => {
   });
 
   describe('focus after close', () => {
-    function Host({ initial }: { initial: ItemTab[] }) {
-      const opened = useOpenedItems<ItemTab>({ initialItems: initial });
+    function Host({
+      initial,
+      canClose,
+    }: {
+      initial: ItemTab[];
+      canClose?: (id: string) => boolean | Promise<boolean>;
+    }) {
+      const opened = useOpenedItems<ItemTab>({ initialItems: initial, canClose });
       return (
         <ItemTabs
           items={opened.items}
           activeId={opened.activeId}
           onActivate={opened.activate}
-          onClose={opened.close}
+          onClose={(id) => void opened.requestClose(id).catch(() => undefined)}
           scope="t"
         />
       );
@@ -263,18 +269,67 @@ describe('ItemTabs', () => {
       expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'item-1.md' }));
     });
 
-    it('keeps focus on the neighbouring tab when closing from the Opened menu removes its trigger', async () => {
-      containerWidth = 1000;
-      render(<Host initial={makeItems(8)} />);
-      const trigger = screen.getByRole('button', { name: 'Opened items (8)' });
-      fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: 'mouse' });
-      const menu = await screen.findByRole('menu');
-      fireEvent.click(within(menu).getByRole('menuitem', { name: 'Close item-7.md' }));
-      await act(async () => {
+    const settleTimers = () =>
+      act(async () => {
         await new Promise((resolve) => setTimeout(resolve, 50));
       });
-      expect(screen.queryByRole('button', { name: /^Opened items/ })).toBeNull();
+    async function openMenu(count: number) {
+      fireEvent.pointerDown(screen.getByRole('button', { name: `Opened items (${count})` }), {
+        button: 0,
+        ctrlKey: false,
+        pointerType: 'mouse',
+      });
+      return screen.findByRole('menu');
+    }
+    const rowOf = (menu: HTMLElement, label: string) =>
+      within(menu).getByRole('menuitem', { name: new RegExp(`^${label.replace('.', '\\.')}`) });
+    const closers = {
+      'Close menuitem': (menu: HTMLElement) =>
+        fireEvent.click(within(menu).getByRole('menuitem', { name: 'Close item-7.md' })),
+      'row x': (menu: HTMLElement) =>
+        fireEvent.click(rowOf(menu, 'item-7.md').querySelector('[title="Close"]')!),
+      'Delete on the row': (menu: HTMLElement) =>
+        fireEvent.keyDown(rowOf(menu, 'item-7.md'), { key: 'Delete' }),
+    };
+
+    for (const [way, close] of Object.entries(closers)) {
+      it(`keeps focus on a tab when ${way} in the Opened menu removes the trigger`, async () => {
+        containerWidth = 1000;
+        render(<Host initial={makeItems(8)} />);
+        close(await openMenu(8));
+        await settleTimers();
+        expect(screen.queryByRole('button', { name: /^Opened items/ })).toBeNull();
+        expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'item-6.md' }));
+      });
+    }
+
+    it('waits for a delayed guard before moving focus, then lands on the neighbour', async () => {
+      containerWidth = 1000;
+      let allow: (value: boolean) => void = () => undefined;
+      render(
+        <Host
+          initial={makeItems(8)}
+          canClose={() => new Promise<boolean>((resolve) => (allow = resolve))}
+        />,
+      );
+      closers['Close menuitem'](await openMenu(8));
+      await settleTimers();
+      expect(screen.getAllByRole('tab').length).toBe(6);
+      await act(async () => allow(true));
+      await settleTimers();
+      expect(screen.getAllByRole('tab')).toHaveLength(7);
+      expect(document.activeElement).not.toBe(document.body);
       expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'item-6.md' }));
+    });
+
+    it('leaves the item and focus alone when the guard refuses', async () => {
+      containerWidth = 1000;
+      render(<Host initial={makeItems(8)} canClose={() => Promise.resolve(false)} />);
+      closers['Close menuitem'](await openMenu(8));
+      await settleTimers();
+      expect(screen.getByRole('button', { name: 'Opened items (8)' })).toBeTruthy();
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Opened items (8)' }));
+      expect(screen.getAllByRole('tab')).toHaveLength(6);
     });
 
     it('does not steal focus from outside the strip', () => {

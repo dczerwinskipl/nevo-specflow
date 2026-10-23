@@ -293,7 +293,7 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
   const hovered = items.some((item) => item.id === hoveredId) ? hoveredId : null;
   const focused = items.some((item) => item.id === focusedId) ? focusedId : null;
 
-  const { onClose, onCloseAutoFocus } = useCloseFocus(items, root, onCloseItem);
+  const { onClose, onCloseFromMenu, onCloseAutoFocus } = useCloseFocus(items, root, onCloseItem);
 
   const switcher =
     variant === 'switcher' || (variant === 'auto' && width !== undefined && width < switcherBelow);
@@ -329,7 +329,14 @@ export const ItemTabs = forwardRef<HTMLDivElement, ItemTabsProps>(function ItemT
     if (id && activation === 'automatic') onActivate(id);
   };
 
-  const menu: OpenedMenuProps = { items, activeId, labels, hintId, onActivate, onClose };
+  const menu: OpenedMenuProps = {
+    items,
+    activeId,
+    labels,
+    hintId,
+    onActivate,
+    onClose: onCloseFromMenu,
+  };
 
   if (switcher) {
     const current = items.find((item) => item.id === activeId);

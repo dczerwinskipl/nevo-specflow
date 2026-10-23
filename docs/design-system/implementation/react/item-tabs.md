@@ -49,8 +49,11 @@ owns state, guards and the tab panel; the strip renders no panel.
   assistive technology; the `x` in a row is a pointer shortcut only. The same menu serves the
   switcher, so closing never depends on a keyboard.
 - **Focus after close.** After a close from a tab, the menu or the keyboard, focus MUST move to the
-  neighbouring tab (right, else left) and MUST NOT return to a trigger that may have unmounted.
-  Closing the last item leaves focus to the host.
+  neighbouring tab (right, else left) and MUST NOT return to a trigger that may have unmounted. This
+  holds for every close path in the `Opened` menu (the `Close` item, the row's `x` and `Delete`).
+  When the guard is asynchronous, focus moves only after the item was actually removed; when the
+  guard refuses, the item stays open and focus is not moved. Closing the last item leaves focus to
+  the host.
 - **No preview tab.** Every open creates a tab; opening an open item activates it.
 - **Keyboard.** `activation="manual"` (default): arrows, Home and End move focus, Enter/Space
   activates. `Delete` on a tab or menu row closes it; middle-click closes a tab. The strip MUST NOT
@@ -70,8 +73,11 @@ Headless state: `{ items, activeId, open, activate, close, requestClose, closeAl
 - `requestClose` MUST consult the async `canClose(id)` guard and resolve `true` only when the item
   was actually closed. It resolves `false` when the guard refuses, the item is not open, the state
   was reset meanwhile or the hook unmounted. Concurrent requests for the same item share one guard
-  call and one result. The host MUST route every close trigger (`x`, Delete, middle-click, menu)
-  through it. `close` and `closeAll` do not ask.
+  call and one result. The hook does not swallow errors: if `canClose` rejects, `requestClose`
+  rejects, the item stays open and the hook clears its pending state, so the next request works. The
+  host MUST handle the rejection, treat it as a refusal and tell the user. The host MUST route every
+  close trigger (`x`, Delete, middle-click, menu) through `requestClose`. `close` and `closeAll` do
+  not ask.
 - A change of `scope` resets to the initial values and starts a new state generation. A guard that
   was pending in an earlier generation MUST NOT close anything, even if the scope later returns to
   the same value.

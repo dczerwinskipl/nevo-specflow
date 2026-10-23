@@ -41,6 +41,9 @@ export interface OpenedItemsState<T extends OpenedItem> {
    * Closes after `canClose` agrees. Resolves `true` only when this call actually closed the item:
    * `false` when the guard refused, the item is not open (any more), the scope changed or the host
    * unmounted while waiting. Concurrent requests for the same id share one guard call and result.
+   * A guard that throws or rejects is NOT swallowed: the returned promise rejects with the same
+   * error, the item stays open and the in-flight state is cleaned up, so the next request works.
+   * Hosts must handle the rejection (treat it as a refusal and tell the user).
    */
   requestClose: (id: string) => Promise<boolean>;
   /** Closes everything without asking. */

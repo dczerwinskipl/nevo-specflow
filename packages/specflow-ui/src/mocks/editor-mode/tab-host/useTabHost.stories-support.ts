@@ -51,7 +51,11 @@ export function useTabHost(
     setActive: opened.activate,
     openItem: (id: string) => opened.open({ id }),
     closeAll: opened.closeAll,
-    requestClose: (id: string) => void opened.requestClose(id),
+    // A throwing guard is a refusal here: the item stays open and the error is reported.
+    requestClose: (id: string) =>
+      void opened.requestClose(id).catch((error: unknown) => {
+        console.error(`Could not close "${id}":`, error);
+      }),
     cancelClose: () => settle(false),
     confirmClose: (action: 'save' | 'discard') => {
       if (!pendingClose) return;

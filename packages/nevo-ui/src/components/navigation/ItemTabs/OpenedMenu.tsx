@@ -19,8 +19,7 @@ export interface OpenedMenuProps {
   labels: ItemTabsLabels;
   hintId: string;
   onActivate: (id: string) => void;
-  /** `fromMenu` is true so the host can restore focus after the menu closes. */
-  onClose: (id: string, fromMenu?: boolean) => void;
+  onClose: (id: string) => void;
 }
 
 export function OpenedMenuBody({
@@ -88,7 +87,7 @@ export function OpenedMenuBody({
           <MenuItem
             leadingIcon="close"
             className="sr-only data-[highlighted]:not-sr-only"
-            onSelect={() => onClose(item.id, true)}
+            onSelect={() => onClose(item.id)}
           >
             {labels.close(item.label)}
           </MenuItem>

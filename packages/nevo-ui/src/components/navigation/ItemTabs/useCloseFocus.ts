@@ -20,26 +20,36 @@ export function useCloseFocus(
   const fromMenu = useRef(false);
   const settled = useRef<HTMLElement | null>(null);
 
-  const onClose = (id: string, viaMenu = false) => {
+  const request = (id: string, viaMenu: boolean) => {
     const index = items.findIndex((item) => item.id === id);
     pending.current = { id, neighbourId: (items[index + 1] ?? items[index - 1])?.id ?? null };
     fromMenu.current = viaMenu;
     closeItem(id);
   };
+  /** Close from a tab, its x or the keyboard on the strip. */
+  const onClose = (id: string) => request(id, false);
+  /**
+   * The ONE close entry for everything inside the Opened menu (Close menuitem, row x, Delete on a
+   * row), so none of them can skip the menu-aware focus handling.
+   */
+  const onCloseFromMenu = (id: string) => request(id, true);
 
   useLayoutEffect(() => {
     const closing = pending.current;
     if (!closing || !root || items.some((item) => item.id === closing.id)) return;
     pending.current = null;
+    const viaMenu = fromMenu.current;
     const owner = document.activeElement;
-    const inMenu = fromMenu.current;
-    if (owner && owner !== document.body && !root.contains(owner) && !inMenu) return;
+    const inOpenMenu = viaMenu && Boolean(owner?.closest('[role="menu"]')?.isConnected);
+    if (owner && owner !== document.body && !root.contains(owner) && !viaMenu) return;
     const tabs = [...root.querySelectorAll<HTMLElement>('[role="tab"]')];
     const target =
       tabs.find((tab) => tab.dataset.itemId === closing.neighbourId) ??
       tabs.find((tab) => tab.getAttribute('aria-selected') === 'true');
-    target?.focus();
-    settled.current = fromMenu.current ? (target ?? null) : null;
+    // A menu that is still showing keeps focus until it closes; its close handler then lands on
+    // `settled` instead of the trigger (which may no longer exist).
+    if (!inOpenMenu) target?.focus();
+    settled.current = viaMenu ? (target ?? null) : null;
   }, [items, root]);
 
   /** `onCloseAutoFocus` of the Opened menu content. */
@@ -53,5 +63,5 @@ export function useCloseFocus(
     }
   };
 
-  return { onClose, onCloseAutoFocus };
+  return { onClose, onCloseFromMenu, onCloseAutoFocus };
 }

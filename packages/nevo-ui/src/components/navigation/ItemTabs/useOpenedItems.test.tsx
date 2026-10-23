@@ -212,5 +212,25 @@ describe('useOpenedItems', () => {
       settle(true);
       await expect(pending).resolves.toBe(false);
     });
+
+    it('propagates a rejected guard, keeps the item open and stays usable', async () => {
+      let fail = true;
+      const canClose = vi.fn(() =>
+        fail ? Promise.reject(new Error('boom')) : Promise.resolve(true),
+      );
+      const { result } = setup({ initialItems: [entry('a'), entry('b')], canClose });
+      await act(async () => {
+        await expect(result.current.requestClose('a')).rejects.toThrow('boom');
+      });
+      expect(ids(result.current.items)).toEqual(['a', 'b']);
+      fail = false;
+      let closed = false;
+      await act(async () => {
+        closed = await result.current.requestClose('a');
+      });
+      expect(closed).toBe(true);
+      expect(canClose).toHaveBeenCalledTimes(2);
+      expect(ids(result.current.items)).toEqual(['b']);
+    });
   });
 });

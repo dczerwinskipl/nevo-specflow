@@ -1,7 +1,7 @@
 import { isHttpClientError } from '@nevo/http-client';
 import type { CreateFailure } from './createFailure';
 import { protectedBranchFailure, type SentCreate } from './createSpecErrors';
-import { RequestNotSentError } from '../creationPipeline';
+import { RequestNotSentError } from '../operation/creationPipeline';
 
 /**
  * Codes that mean "an option you chose is no longer valid". The Engine answers an unusable

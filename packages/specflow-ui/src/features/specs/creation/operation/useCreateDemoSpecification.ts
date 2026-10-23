@@ -2,12 +2,12 @@ import { useCallback, useMemo, useReducer, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { DemoCreateRequest, DemoSessionInput } from '@nevo/specflow-contracts/demo';
-import { useAppServices } from '../../../app/useAppServices';
-import { useNotify } from '../../../shared/notifications/notifications';
-import { retainRequest, type RequestAttempt } from '../../../shared/operations/retainedRequest';
-import { useRequestSessionRecovery } from '../../sessions';
-import { specsOverviewKeys } from '../overview/queries';
-import { specificationKeys } from '../read-model/queries';
+import { useAppServices } from '../../../../app/useAppServices';
+import { useNotify } from '../../../../shared/notifications/notifications';
+import { retainRequest, type RequestAttempt } from '../../../../shared/operations/retainedRequest';
+import { useRequestSessionRecovery } from '../../../sessions';
+import { specsOverviewKeys } from '../../overview/queries';
+import { specificationKeys } from '../../read-model/queries';
 import {
   continueDemoCreation,
   RequestNotSentError,
@@ -23,8 +23,8 @@ import {
   type CreateOperationState,
   type UnknownPhase,
 } from './createOperationReducer';
-import { classifyDemoCreateFailure } from './errors/classifyDemoCreateFailure';
-import type { CreateFailure } from './errors/createFailure';
+import { classifyDemoCreateFailure } from '../errors/classifyDemoCreateFailure';
+import type { CreateFailure } from '../errors/createFailure';
 
 /** Everything the form contributes to one submit, captured when the user submits. */
 export interface CreateSubmission {

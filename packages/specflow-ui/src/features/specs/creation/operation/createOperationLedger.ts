@@ -1,4 +1,4 @@
-import type { RequestAttempt } from '../../../shared/operations/retainedRequest';
+import type { RequestAttempt } from '../../../../shared/operations/retainedRequest';
 
 /**
  * Synchronous bookkeeping of one Create operation that must be readable inside async continuations

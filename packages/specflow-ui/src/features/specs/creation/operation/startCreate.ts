@@ -1,5 +1,5 @@
 import type { CreateSpecRequest } from '@nevo/specflow-contracts/specs';
-import { retainRequest, type RequestAttempt } from '../../../shared/operations/retainedRequest';
+import { retainRequest, type RequestAttempt } from '../../../../shared/operations/retainedRequest';
 import type {
   CreateDraft,
   CreateOperationStorage,

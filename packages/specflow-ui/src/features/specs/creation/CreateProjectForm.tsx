@@ -12,13 +12,13 @@ import { CreateFooter } from './CreateFooter';
 import { CreateFormHeader } from './CreateFormHeader';
 import { CreateLeaveDialog } from './CreateLeaveDialog';
 import { CreateShell } from './CreateShell';
-import { useCreateOperationStorage, type SentCreateRequest } from './createOperationStorage';
+import { useCreateOperationStorage, type SentCreateRequest } from './operation/createOperationStorage';
 import {
   createGoalMaxLength,
   createTitleMaxLength,
   projectCreateReadiness,
 } from './createProjectReadiness';
-import { startCreate } from './startCreate';
+import { startCreate } from './operation/startCreate';
 import { useCreateLeaveGuard } from './useCreateLeaveGuard';
 import { useCreateOptions } from './useCreateOptions';
 import { CreateWorkspaceSection } from './CreateWorkspaceSection';

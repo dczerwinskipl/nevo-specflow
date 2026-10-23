@@ -2,14 +2,14 @@ import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { CreatedSpec, CreateSpecRequest } from '@nevo/specflow-contracts/specs';
-import { isApiError } from '../../../api';
-import { useAppServices } from '../../../app/useAppServices';
-import { useNotify } from '../../../shared/notifications/notifications';
-import { useUnmountSignal } from '../../../shared/operations/useUnmountSignal';
-import { retainRequest } from '../../../shared/operations/retainedRequest';
-import { specsOverviewKeys } from '../overview/queries';
-import { projectCreationKeys } from './api/api.project';
-import type { CreateFailure } from './errors/createFailure';
+import { isApiError } from '../../../../api';
+import { useAppServices } from '../../../../app/useAppServices';
+import { useNotify } from '../../../../shared/notifications/notifications';
+import { useUnmountSignal } from '../../../../shared/operations/useUnmountSignal';
+import { retainRequest } from '../../../../shared/operations/retainedRequest';
+import { specsOverviewKeys } from '../../overview/queries';
+import { projectCreationKeys } from '../api/api.project';
+import type { CreateFailure } from '../errors/createFailure';
 import { createOperationLedger } from './createOperationLedger';
 import {
   createOperationReducer,
@@ -24,7 +24,7 @@ import {
   type SentCreateRequest,
   type StoredCreateOperation,
 } from './createOperationStorage';
-import { toOperationFailure } from './errors/createSpecErrors';
+import { toOperationFailure } from '../errors/createSpecErrors';
 import { interpretWatchResult } from './interpretWatchResult';
 import {
   createStreamHints,

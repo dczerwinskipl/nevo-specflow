@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { MessageKey } from '../../../../i18n/message';
 import { BranchRef } from '../workspace/BranchRef';
 import type { CreateFailure } from './createFailure';
-import type { CreateOperationStatus } from '../createOperationReducer';
+import type { CreateOperationStatus } from '../operation/createOperationReducer';
 
 const staleReasonCodes = ['DEMO_WORKSPACE_UNAVAILABLE', 'BASE_REF_NOT_FOUND'] as const;
 

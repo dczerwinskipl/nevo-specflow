@@ -6,7 +6,7 @@ import {
   type OperationProgressView,
 } from '../../../shared/operations/useOperationProgress';
 import { toOperationFailure } from './errors/createSpecErrors';
-import type { StreamHint } from './watchCreateOperation';
+import type { StreamHint } from './operation/watchCreateOperation';
 
 /**
  * What the Runtime says while a Create runs (the live stream): the reported steps and, best effort,

@@ -3,23 +3,23 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
-import { polishText } from '../../../i18n/testing';
+import { LocalizationProvider, createSpecFlowI18n } from '../../../../i18n';
+import { polishText } from '../../../../i18n/testing';
 import {
   operationItem,
   operationList,
   operationsStub,
   runningItem,
-} from '../../../../test-support/operations/fixtures';
-import { resetOperationsSession } from '../../../shared/operations/operationsSession';
-import { specsOverviewKeys } from '../overview/queries';
-import { createSpecFlowUiRegistry } from '../../../app/ui-modules/builtInUiModules';
+} from '../../../../../test-support/operations/fixtures';
+import { resetOperationsSession } from '../../../../shared/operations/operationsSession';
+import { specsOverviewKeys } from '../../overview/queries';
+import { createSpecFlowUiRegistry } from '../../../../app/ui-modules/builtInUiModules';
 import {
   specsOverviewPanels,
   type SpecsOverviewPanelContribution,
-} from '../extensions/specsOverviewPanels';
+} from '../../extensions/specsOverviewPanels';
 import { CreateOperationsPanel } from './CreateOperationsPanel';
-import { creationUiModule } from './uiModule';
+import { creationUiModule } from '../uiModule';
 import {
   createOperationKind,
   createOperationPageHref,

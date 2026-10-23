@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createPageView, createSettingsModel, shortenGoal } from './createPageView';
-import type { CreatePhase } from './createOperationReducer';
+import type { CreatePhase } from './operation/createOperationReducer';
 
 describe('createPageView', () => {
   it.each<[CreatePhase, string]>([

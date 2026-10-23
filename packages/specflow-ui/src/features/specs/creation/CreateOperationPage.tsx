@@ -14,7 +14,7 @@ import { CreateOperationProgress } from './CreateOperationProgress';
 import { createRunningStepTitle } from './createProgress';
 import { CreateShell } from './CreateShell';
 import type { CreateFailure } from './errors/createFailure';
-import { useCreateOperationStorage } from './createOperationStorage';
+import { useCreateOperationStorage } from './operation/createOperationStorage';
 import {
   createPageHeading,
   createPageStatus,
@@ -25,7 +25,7 @@ import {
 import { CreateSettingsList } from './CreateSettingsList';
 import { CreateTechnicalDetails } from './CreateTechnicalDetails';
 import { useCreateOperationProgress } from './useCreateOperationProgress';
-import { useCreateProjectSpecification } from './useCreateProjectSpecification';
+import { useCreateProjectSpecification } from './operation/useCreateProjectSpecification';
 import { useStillWorking } from './useStillWorking';
 import { initialWorkspaceChoice, type WorkspaceChoice } from './workspace/workspaceChoice';
 

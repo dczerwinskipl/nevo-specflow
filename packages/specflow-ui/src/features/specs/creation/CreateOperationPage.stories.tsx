@@ -20,7 +20,7 @@ import { createSpecFlowAppServices } from '../../../services';
 import type { OperationsApi } from '../../../shared/operations/operationsApi';
 import { createOperationEventsUrl } from './api/api.project';
 import { CreateOperationScreen } from './CreateOperationScreen';
-import { createSessionOperationStorage } from './createOperationStorage';
+import { createSessionOperationStorage } from './operation/createOperationStorage';
 import type { CreateSettingsFacts } from './workspace/createFacts';
 import { initialWorkspaceChoice } from './workspace/workspaceChoice';
 

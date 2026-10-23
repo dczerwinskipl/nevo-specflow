@@ -2,7 +2,7 @@ import type { TFunction } from 'i18next';
 import type { CreateOptions } from '@nevo/specflow-contracts/specs';
 import { message, type Message } from '../../../../i18n/message';
 import type { OperationDetail } from './CreateFailureAlert';
-import type { CreateOperationStatus, SentRequest } from '../createOperationReducer';
+import type { CreateOperationStatus, SentRequest } from '../operation/createOperationReducer';
 import { primaryWorkspace } from '../workspace/workspaceTiles';
 
 /**

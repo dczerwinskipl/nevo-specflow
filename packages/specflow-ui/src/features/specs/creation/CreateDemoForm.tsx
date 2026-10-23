@@ -25,7 +25,7 @@ import { demoCreationKeys } from './api/api.demo';
 import { SessionWorkspaceSummary } from './SessionWorkspaceSummary';
 import { useCreateLeaveGuard } from './useCreateLeaveGuard';
 import { useCreateOptions } from './useCreateOptions';
-import { useCreateDemoSpecification, type CreateSubmission } from './useCreateDemoSpecification';
+import { useCreateDemoSpecification, type CreateSubmission } from './operation/useCreateDemoSpecification';
 import { useRevealFailure } from './errors/useRevealFailure';
 import { CreateWorkspaceSection } from './CreateWorkspaceSection';
 import { buildCreateSlug, buildCreateTarget } from './workspace/createRequest';

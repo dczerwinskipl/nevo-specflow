@@ -18,7 +18,7 @@ import { TestServicesRouterContext } from '../../../../test-support/app/TestServ
 import type { OperationsApi } from '../../../shared/operations/operationsApi';
 import { createProjectCreationApi } from './api/api.project';
 import { CreateOperationScreen } from './CreateOperationScreen';
-import { createSessionOperationStorage } from './createOperationStorage';
+import { createSessionOperationStorage } from './operation/createOperationStorage';
 import { createSpecErrorCodes } from './errors/createSpecErrors';
 import { initialWorkspaceChoice } from './workspace/workspaceChoice';
 import { openAfterCreatedMs } from './CreateOperationPage';

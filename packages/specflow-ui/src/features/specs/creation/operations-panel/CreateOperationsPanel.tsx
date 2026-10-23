@@ -2,11 +2,11 @@ import { useCallback, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 
-import type { RuntimeMode } from '../../../app/useRuntimeMode';
-import { OperationsPanelHost, type RenderOperationLink } from '../../../shared/operations';
-import type { OperationsApi } from '../../../shared/operations/operationsApi';
-import { specsOverviewKeys } from '../overview/queries';
-import { projectCreationKeys } from './api/api.project';
+import type { RuntimeMode } from '../../../../app/useRuntimeMode';
+import { OperationsPanelHost, type RenderOperationLink } from '../../../../shared/operations';
+import type { OperationsApi } from '../../../../shared/operations/operationsApi';
+import { specsOverviewKeys } from '../../overview/queries';
+import { projectCreationKeys } from '../api/api.project';
 import { createOperationKind, createOperationsListUrl } from './operationKind';
 
 const kinds = [createOperationKind];

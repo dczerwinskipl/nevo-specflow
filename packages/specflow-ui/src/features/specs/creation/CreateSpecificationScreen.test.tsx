@@ -10,7 +10,7 @@ import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
 import { createSpecFlowAppServices } from '../../../services';
 import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
 import type { OperationsApi } from '../../../shared/operations/operationsApi';
-import { createSessionOperationStorage } from './createOperationStorage';
+import { createSessionOperationStorage } from './operation/createOperationStorage';
 import type { CreateFailure } from './errors/createFailure';
 import { initialWorkspaceChoice } from './workspace/workspaceChoice';
 import { createOperationEventsUrl, type ProjectCreationApi } from './api/api.project';

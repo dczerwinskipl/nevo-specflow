@@ -1,6 +1,6 @@
 import type { CreatedSpec } from '@nevo/specflow-contracts/specs';
 import { describe, expect, it } from 'vitest';
-import { ApiError } from '../../../api';
+import { ApiError } from '../../../../api';
 import { interpretWatchResult } from './interpretWatchResult';
 
 const created = { specId: 's' } as CreatedSpec;

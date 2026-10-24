@@ -125,6 +125,29 @@ describe('projectDocumentTree', () => {
     ]);
   });
 
+  it('reports an unreadable registered file only as skipped, never as dangling', () => {
+    const tree = projectDocumentTree(
+      input({
+        files: [file('overview.md')],
+        skippedEntries: 1,
+        skippedPaths: ['behaviour.md'],
+        unreadableRegisteredPaths: ['behaviour.md'],
+      }),
+    );
+    expect(tree.dangling).toEqual([]);
+    expect(tree.issues).toContainEqual({ code: 'skipped-entry', path: 'behaviour.md' });
+    expect(tree.issues.some((issue) => issue.code === 'dangling')).toBe(false);
+    // It offers no node, so no delete or remove-registration action exists for it.
+    expect(tree.documents.map((document) => document.path)).toEqual(['overview.md']);
+    // An unreadable file does not count toward its requirement.
+    expect(tree.completeness.requirements).toContainEqual({
+      documentType: 'behaviour',
+      minCount: 1,
+      count: 0,
+      satisfied: false,
+    });
+  });
+
   it('keeps a dangling overview protected', () => {
     const tree = projectDocumentTree(input({ files: [file('behaviour.md')] }));
     expect(tree.dangling[0]!.actions.delete).toEqual({ available: false, reason: 'protected' });

@@ -2,7 +2,7 @@ import { request as httpRequest } from 'node:http';
 import { Readable } from 'node:stream';
 
 import { DocumentError, type OpenedDocument } from '@nevo/specflow-engine';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { DocumentReadSource } from '../../src/features/documents/content/document-read-source';
 import { createRuntimeApp } from '../../src/server/app';
@@ -262,11 +262,7 @@ describe('GET /api/specs/:specId/documents/:documentId/raw', () => {
         req.end();
         setTimeout(() => reject(new Error('No data received.')), 5000);
       });
-      const deadline = Date.now() + 5000;
-      while (!served.streams[0]!.destroyed && Date.now() < deadline) {
-        await new Promise((resolve) => setTimeout(resolve, 20));
-      }
-      expect(served.streams[0]!.destroyed).toBe(true);
+      await vi.waitFor(() => expect(served.streams[0]!.destroyed).toBe(true), { timeout: 5000 });
       expect(produced).toBeGreaterThan(0);
     } finally {
       await server.close();
@@ -280,11 +276,7 @@ describe('GET /api/specs/:specId/documents/:documentId/raw', () => {
       const response = await server.inject({ method: 'HEAD', url: URL('notes.md') });
       expect(response.statusCode).toBe(200);
       expect(response.headers['x-content-type-options']).toBe('nosniff');
-      const deadline = Date.now() + 2000;
-      while (!served.streams[0]!.destroyed && Date.now() < deadline) {
-        await new Promise((resolve) => setTimeout(resolve, 20));
-      }
-      expect(served.streams[0]!.destroyed).toBe(true);
+      await vi.waitFor(() => expect(served.streams[0]!.destroyed).toBe(true), { timeout: 2000 });
     } finally {
       await server.close();
     }

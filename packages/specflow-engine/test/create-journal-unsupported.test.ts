@@ -57,11 +57,16 @@ async function fixture() {
   return { root, engine, directory, registry: await engine.readRegistry() };
 }
 
-async function plant(directory: string, text: string, ageDays = 0): Promise<string> {
+async function plant(
+  directory: string,
+  text: string,
+  ageDays = 0,
+  now = Date.now(),
+): Promise<string> {
   const operationId = randomUUID();
   const path = join(directory, operationId + '.json');
   await writeFile(path, text);
-  const when = new Date(Date.now() - ageDays * DAY);
+  const when = new Date(now - ageDays * DAY);
   await utimes(path, when, when);
   return operationId;
 }
@@ -155,11 +160,16 @@ describe('older-format Create journals', () => {
   it('are deleted by the sweep after the retention and kept before it', async () => {
     const { engine, directory } = await fixture();
     const now = Date.now();
-    const oldNotJson = await plant(directory, '{not json', 8);
-    const oldVersion = await plant(directory, OLD_FORMAT, 30);
-    const young = await plant(directory, OLD_FORMAT, 6);
+    const oldNotJson = await plant(directory, '{not json', 8, now);
+    const oldVersion = await plant(directory, OLD_FORMAT, 30, now);
+    const young = await plant(directory, OLD_FORMAT, 6, now);
     // An old, corrupt CURRENT-format journal is evidence and is never deleted by age.
-    const corrupt = await plant(directory, JSON.stringify({ version: 2, stage: 'nonsense' }), 30);
+    const corrupt = await plant(
+      directory,
+      JSON.stringify({ version: 2, stage: 'nonsense' }),
+      30,
+      now,
+    );
     const removed = await withCreateJournalLock(engine.context, () =>
       removeExpiredCompletedCreateJournals(engine.context, { now }),
     );
@@ -254,10 +264,11 @@ describe('payload store lifecycle', () => {
       target: { kind: 'existing', workspaceId: registry.primaryWorkspaceId },
     });
     const path = createJournalPath(engine.context, operationId);
-    const old = new Date(Date.now() - 8 * DAY);
+    const now = Date.now();
+    const old = new Date(now - 8 * DAY);
     await utimes(path, old, old);
     await withCreateJournalLock(engine.context, () =>
-      removeExpiredCompletedCreateJournals(engine.context, {}),
+      removeExpiredCompletedCreateJournals(engine.context, { now }),
     );
     const names = await readdir(directory);
     expect(names).not.toContain(operationId + '.json');

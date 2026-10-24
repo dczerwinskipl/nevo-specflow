@@ -14,6 +14,7 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { once } from 'node:events';
 import type { Readable } from 'node:stream';
 
 import { afterEach, describe, expect, it } from 'vitest';
@@ -39,6 +40,16 @@ async function drain(stream: Readable): Promise<Buffer> {
   const chunks: Buffer[] = [];
   for await (const chunk of stream) chunks.push(chunk as Buffer);
   return Buffer.concat(chunks);
+}
+
+/** Resolves when the stream has closed, which is after the file handle it owned is released. */
+async function closed(stream: Readable): Promise<void> {
+  if (!stream.closed) await once(stream, 'close');
+}
+
+async function destroyed(stream: Readable): Promise<void> {
+  stream.destroy();
+  await closed(stream);
 }
 
 async function outsideDirectory(): Promise<string> {
@@ -169,7 +180,7 @@ describe('openSpecificationDocument', () => {
       deriveUnclassifiedDocumentId('exact.bin'),
     );
     expect(opened.metadata.size).toBe(25 * 1024 * 1024);
-    opened.stream.destroy();
+    await destroyed(opened.stream);
     expect(
       errorCode(
         await failure(
@@ -181,7 +192,6 @@ describe('openSpecificationDocument', () => {
         ),
       ),
     ).toBe('DOCUMENT_TOO_LARGE');
-    await new Promise((resolve) => setTimeout(resolve, 50));
     if (onLinux) expect(await openDescriptors()).toBeLessThanOrEqual(before);
   }, 240000);
 
@@ -200,13 +210,12 @@ describe('openSpecificationDocument', () => {
         expect((chunk as Buffer).length).toBeGreaterThan(0);
         break; // abandon the stream after the first chunk
       }
-      aborted.stream.destroy();
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await destroyed(aborted.stream);
       expect(await openDescriptors()).toBe(before);
 
       const finished = await openSpecificationDocument(fixture.engine, hand.specId, id);
       await drain(finished.stream);
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await closed(finished.stream);
       expect(await openDescriptors()).toBe(before);
     },
     240000,
@@ -226,7 +235,7 @@ describe('openSpecificationDocument', () => {
       );
       await truncate(join(hand.dir, 'big.bin'), 10);
       await expect(drain(opened.stream)).rejects.toThrow(/shorter/u);
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await closed(opened.stream);
     },
     240000,
   );

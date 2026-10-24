@@ -41,6 +41,12 @@ ESLint enforces the restriction (`tools/eslint/boundaries.mjs`).
 @nevo/specflow-engine --> @nevo/specflow-contracts/documents   (neutral vocabulary and schemas only)
 ```
 
+Inside the Engine, the Specification slices keep their imports acyclic: `specs/documents` exposes its pure
+primitives through `index.ts` (the filesystem readers through `reading.ts`), and the `lint` script of
+the Engine runs `tools/eslint/check-import-cycles.mjs`, which fails on any import cycle through
+`specs/documents`, `specs/archetypes`, `specs/create`, `model.ts` or `scaffold.ts` other than the one
+known `specs/create` cycle it lists. The lifecycle cycle that predates the gate is reported, not gated.
+
 Runtime remains responsible for long-lived provider processes, streams and managed Sessions.
 Engine-local Create/Close operation records are **not** provider Session/Turn execution records.
 E1/E2 do not implement the proposed E3 Workflow Kernel, E4 Sessions Foundation or E5 managed

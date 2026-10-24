@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ObservationMemoValue, SummaryMemoValue } from '../src/specs/documents/read-options';
 import { readRegisteredDocumentSummaries } from '../src/specs/documents/summaries';
+import { readSpecificationDocument } from '../src/specs/documents/document-reader';
 import { readSpecificationDocumentTree } from '../src/specs/documents/tree-reader';
 import { RevisionMemo } from '../src/specs/documents/revision-memo';
 import { nodeVerifiedFs, type VerifiedFs } from '../src/specs/documents/verified-file';
@@ -115,5 +116,33 @@ describe('revision memo', () => {
     opens.length = 0;
     await readSpecificationDocumentTree(fixture.engine, hand.specId, { fs, memo, now });
     expect(opens.some((path) => path.endsWith('fresh.md'))).toBe(true);
+  }, 240000);
+
+  it('does not serve a stale entry for a same-size rewrite whose mtime was restored', async () => {
+    const fixture = await project();
+    const hand = await handBuilt(fixture, { files: { 'overview.md': '# Aaa\n' } });
+    const clock = Date.now();
+    const now = () => clock;
+    const old = new Date(clock - 60_000);
+    const file = join(hand.dir, 'overview.md');
+    await utimes(file, old, old);
+    const memo = new RevisionMemo<ObservationMemoValue>(100);
+    const summaryMemo = new RevisionMemo<SummaryMemoValue>(100);
+    const read = { memo, summaryMemo, now };
+    const before = await readSpecificationDocumentTree(fixture.engine, hand.specId, read);
+    const titleBefore = await readRegisteredDocumentSummaries(fixture.engine, hand.specId, read);
+    expect(titleBefore[0]?.title).toBe('Aaa');
+
+    // Same size, same inode (truncate in place), same restored mtime: only the ctime moved.
+    await writeFile(file, '# Bbb\n');
+    await utimes(file, old, old);
+
+    const after = await readSpecificationDocumentTree(fixture.engine, hand.specId, read);
+    expect(after.revision).not.toBe(before.revision);
+    const titleAfter = await readRegisteredDocumentSummaries(fixture.engine, hand.specId, read);
+    expect(titleAfter[0]?.title).toBe('Bbb');
+    expect(titleAfter[0]?.revision).not.toBe(titleBefore[0]?.revision);
+    const document = await readSpecificationDocument(fixture.engine, hand.specId, 'overview', read);
+    expect(document.content).toBe('# Bbb\n');
   }, 240000);
 });

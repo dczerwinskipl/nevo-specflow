@@ -28,11 +28,8 @@ import {
 } from '../journal';
 import { removeExpiredCompletedCreateJournals } from '../journal/retention';
 import { discoverSpecificationsForCreateAdmission } from '../../discovery';
-import {
-  createSpecificationScaffold,
-  isValidSpecificationId,
-  validateSpecificationScaffoldInput,
-} from '../../model';
+import { isValidSpecificationId, validateSpecificationScaffoldInput } from '../../model';
+import { createSpecificationScaffold } from '../../scaffold';
 
 /**
  * First lock winner owns the creation date and pinned Git effect plan.

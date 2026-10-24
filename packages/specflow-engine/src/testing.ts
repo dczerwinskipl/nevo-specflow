@@ -42,15 +42,22 @@ export {
 } from './project/workspace/identity';
 export { GIT_INSTANCE_SENTINEL_FILE } from './project/git-instance';
 export {
-  createSpecificationScaffold,
   isValidSpecificationId,
   parseSpecificationManifest,
+  parseSpecificationManifestText,
   specificationSlugFromTitle,
   validateSpecificationSlug,
+} from './specs/model';
+export {
+  serializeSpecificationManifest,
+  updateManifestRegistry,
+} from './specs/manifest-serializer';
+export {
+  createSpecificationScaffold,
   type SpecificationScaffold,
   type SpecificationScaffoldFile,
   type SpecificationScaffoldInput,
-} from './specs/model';
+} from './specs/scaffold';
 export {
   listWorkspaceSpecifications,
   readWorkspaceSpecification,

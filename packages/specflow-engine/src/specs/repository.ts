@@ -5,7 +5,7 @@ import { parse } from 'yaml';
 
 import {
   SpecificationError,
-  parseSpecificationManifest,
+  parseSpecificationManifestText,
   validateSpecificationSlug,
   type SpecificationManifest,
 } from './model';
@@ -85,9 +85,10 @@ export async function listWorkspaceSpecifications(
       const manifestPath = join(base, manifestName);
       await requirePhysicalFile(manifestPath);
 
-      let parsed: unknown;
+      let content: string;
       try {
-        parsed = parse(await readFile(manifestPath, 'utf8')) as unknown;
+        content = await readFile(manifestPath, 'utf8');
+        parse(content);
       } catch {
         throw new SpecificationError(
           'SPEC_SOURCE_INVALID',
@@ -95,7 +96,7 @@ export async function listWorkspaceSpecifications(
         );
       }
 
-      const manifest = parseSpecificationManifest(parsed, slug, location);
+      const manifest = parseSpecificationManifestText(content, slug, location);
       if (seenIds.has(manifest.specId) || seenSlugs.has(slug)) {
         throw new SpecificationError(
           'SPEC_CONFLICT',

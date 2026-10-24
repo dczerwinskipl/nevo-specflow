@@ -29,11 +29,7 @@ import {
 import { removeExpiredCompletedCreateJournals } from '../journal/retention';
 import { admitCreateArchetype, documentErrorOf } from '../admission';
 import { getBuiltInCatalogue } from '../../archetypes/catalogue';
-import { DocumentError } from '../../documents/errors';
-import {
-  CREATE_JOURNAL_GROWTH_HEADROOM_BYTES,
-  CREATE_JOURNAL_MAX_BYTES,
-} from '../../documents/limits';
+import { assertJournalFitsItsCap } from './journal-cap';
 import { CREATE_JOURNAL_VERSION } from '../journal/model';
 import { writeCreatePayload } from '../journal/payload';
 import { discoverSpecificationsForCreateAdmission } from '../../discovery';
@@ -297,21 +293,6 @@ export async function reserveCreateOperation(
     await publishCreateJournal(engine.context, record);
     return { record, existing: false };
   });
-}
-
-/**
- * The journal stays under the one exported cap, with headroom for the evidence later stages add.
- * Only paths, folders and ids can make it large (contents are not in it); a request that would not
- * fit is refused as an oversize request before anything is written.
- */
-function assertJournalFitsItsCap(record: CreateJournal): void {
-  const bytes = Buffer.byteLength(JSON.stringify(record, null, 2), 'utf8') + 1;
-  if (bytes > CREATE_JOURNAL_MAX_BYTES - CREATE_JOURNAL_GROWTH_HEADROOM_BYTES) {
-    throw new DocumentError(
-      'DOCUMENT_OPERATION_INVALID',
-      'The Create request has too many or too long paths to be recorded durably.',
-    );
-  }
 }
 
 /** Same scaffold the admission validated; a cause that only the real ids reveal maps the same way. */

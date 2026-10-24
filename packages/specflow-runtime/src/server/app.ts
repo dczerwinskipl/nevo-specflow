@@ -141,6 +141,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
   const sessionReferences: SessionReferenceOwner | undefined =
     demo?.sessionReferences ?? dependencies.sessions?.references;
   const documentSource = demo?.documentSource ?? dependencies.documents?.source;
+  const engine = dependencies.specs?.engine;
   const productFeatures: readonly RuntimeFeature[] = [
     createSpecsFeature({
       ...(config.specs ? { config: config.specs } : {}),
@@ -172,6 +173,7 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     }),
     createDocumentsFeature({
       source: documentSource,
+      ...(engine ? { engine } : {}),
     }),
     createSessionsFeature(),
     createSettingsFeature(),

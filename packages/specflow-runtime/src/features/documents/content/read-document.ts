@@ -1,54 +1,18 @@
-import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
-import type { RequestAuthorization } from '../../auth';
+import type { DocumentContent, DocumentTree } from '@nevo/specflow-contracts/documents';
+import type { OpenedDocument } from '@nevo/specflow-engine';
 
+/**
+ * Read port of the documents feature. The Engine owns every document rule (paths, kinds, revisions,
+ * limits, classification); an implementation returns its results or throws the Engine's typed errors,
+ * and the routes only authorize, map errors to statuses and set headers.
+ *
+ * Only `read` is required: the demo source serves read-only demonstration content and has no tree or
+ * raw bytes, so a route whose method is absent answers `SPEC_SOURCE_UNAVAILABLE`.
+ */
 export interface DocumentContentSource {
-  read(
-    specId: string,
-    documentId: string,
-    revision?: string,
-  ): Promise<
-    | {
-        kind: 'ok';
-        document: {
-          specId: string;
-          id: string;
-          title: string;
-          filename?: string;
-          content: string;
-          revision: string;
-        };
-      }
-    | { kind: 'not_found' | 'revision_unavailable' | 'unavailable' }
-  >;
-}
-export async function readDocumentContent(
-  source: DocumentContentSource | undefined,
-  specId: string,
-  documentId: string,
-  revision: string | undefined,
-  authz: RequestAuthorization,
-) {
-  authz.require({
-    resource: SpecCapabilities,
-    capability: SpecCapabilities.capabilities.View,
-    scope: { specId },
-  });
-  if (!source) return { kind: 'unavailable' } as const;
-  const result = await source.read(specId, documentId, revision);
-  if (result.kind !== 'ok') return result;
-  const document = result.document;
-  if (document.specId !== specId || document.id !== documentId)
-    return { kind: 'unavailable' } as const;
-  if (revision !== undefined && document.revision !== revision)
-    return { kind: 'revision_unavailable' } as const;
-  return {
-    kind: 'ok',
-    value: {
-      id: document.id,
-      title: document.title,
-      ...(document.filename !== undefined ? { filename: document.filename } : {}),
-      content: document.content,
-      revision: document.revision,
-    },
-  } as const;
+  /** One document as JSON. `revision` is the optional `?revision=` precondition. */
+  read(specId: string, documentId: string, revision?: string): Promise<DocumentContent>;
+  readTree?(specId: string): Promise<DocumentTree>;
+  /** Raw bytes: metadata and a stream of exactly `metadata.size` bytes. The caller must consume or destroy the stream. */
+  open?(specId: string, documentId: string): Promise<OpenedDocument>;
 }

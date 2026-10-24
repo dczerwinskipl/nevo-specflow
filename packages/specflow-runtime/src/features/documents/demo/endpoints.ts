@@ -13,6 +13,7 @@ import {
   DemoSaveResultSchema,
 } from '@nevo/specflow-contracts/demo';
 import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
+import { DocumentError } from '@nevo/specflow-engine';
 import type { DemoCatalogue } from '../../demo-catalogue';
 import {
   DEMO_DOCUMENT_BATCH_BODY_LIMIT,
@@ -178,15 +179,26 @@ export function registerDemoDocumentRoutes<RawServer extends RawServerBase>(
         capability: SpecCapabilities.capabilities.Manage,
         scope: { specId },
       });
-      const document = await source.read(specId, documentId);
-      if (
-        document.kind !== 'ok' ||
-        document.document.specId !== specId ||
-        document.document.id !== documentId
-      )
-        return reply.code(404).send({ error: 'specification_document_not_found' });
+      let current;
       try {
-        return documents.save(specId, document.document, request.body);
+        current = await source.read(specId, documentId);
+      } catch (error) {
+        if (error instanceof DocumentError) {
+          return reply.code(404).send({ error: 'specification_document_not_found' });
+        }
+        throw error;
+      }
+      if (current.id !== documentId || current.content === undefined)
+        return reply.code(404).send({ error: 'specification_document_not_found' });
+      const document = {
+        id: current.id,
+        title: current.title,
+        filename: current.path,
+        content: current.content,
+        revision: current.revision,
+      };
+      try {
+        return documents.save(specId, document, request.body);
       } catch (error) {
         if (isDemoOperationError(error))
           return reply.code(error.status).send({ error: error.code });

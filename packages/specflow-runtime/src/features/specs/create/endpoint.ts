@@ -33,20 +33,12 @@ import {
   type OperationEventsStreamOptions,
   type OperationProgressRegistry,
 } from '../../operations';
+import { matchesEtag } from '../../../server/etag';
 import { createErrorCode, statusForCreateError } from './error-status';
 import { prefersRespondAsync } from './respond-async';
 import { createOperationPath, runCreate } from './run-create';
 
 const DEFAULT_CLOSE_GRACE_MS = 30_000;
-
-/** Weak comparison of `If-None-Match` (a list of entity tags, or `*`) with the current tag. */
-function matchesEtag(header: string | undefined, etag: string): boolean {
-  if (!header) return false;
-  return header
-    .split(',')
-    .map((item) => item.trim().replace(/^W\//u, ''))
-    .some((item) => item === '*' || item === etag);
-}
 
 export interface SpecsCreateEndpointOptions {
   readonly engine?: SpecFlowEngine;

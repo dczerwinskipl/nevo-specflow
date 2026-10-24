@@ -174,7 +174,6 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
       const catalogue = await Promise.resolve(projectCatalogue());
       const etag = `"${catalogue.revision}"`;
       reply.header('ETag', etag).header('Cache-Control', 'private, no-cache');
-      // A 304 has no body and no entity headers (see sendNotModified).
       if (matchesEtag(request.headers['if-none-match'], etag)) {
         return sendNotModified(reply);
       }

@@ -32,7 +32,7 @@ export type DocumentPathResult =
   | { readonly ok: false; readonly violation: DocumentPathViolation };
 
 /** Names reserved at the Specification root, ignoring case: never documents. */
-export const RESERVED_ROOT_NAMES = ['specification.yaml', 'change.yaml'] as const;
+const RESERVED_ROOT_NAMES = ['specification.yaml', 'change.yaml'] as const;
 
 const FORBIDDEN_CHARACTERS = /[\\:*?"<>|]/u;
 const CONTROL_CHARACTERS = /\p{Cc}/u;
@@ -58,6 +58,11 @@ export function isUnaddressable(name: string): boolean {
 }
 // Reserved device names are reserved with or without an extension on Windows; reject on every host.
 const DEVICE_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/iu;
+
+/** An empty, current-directory or parent-directory segment: it never names an entry of a directory. */
+export function isNavigationSegment(segment: string): boolean {
+  return segment === '' || segment === '.' || segment === '..';
+}
 
 /** Case-insensitive uniqueness key of a path. */
 export function foldPathKey(path: string): string {
@@ -106,14 +111,6 @@ function validate(path: string, kind: 'file' | 'folder'): DocumentPathResult {
   if (depth > FOLDER_DEPTH_MAX) return fail('too-deep');
   if (segments.length === 1 && isReservedRootName(path)) return fail('reserved-name');
   return { ok: true, path };
-}
-
-export function isValidDocumentPath(path: string): boolean {
-  return validateDocumentPath(path).ok;
-}
-
-export function isValidFolderPath(path: string): boolean {
-  return validateFolderPath(path).ok;
 }
 
 /** Parent folder of a path (`''` for a root entry). */

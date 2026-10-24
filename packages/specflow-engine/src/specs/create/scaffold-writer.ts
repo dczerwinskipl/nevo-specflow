@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { lstat, mkdir, open, readFile, readdir, realpath } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative } from 'node:path';
 
@@ -10,6 +10,7 @@ import { parseSpecificationManifestText } from '../model';
 import type { SpecificationScaffoldFile } from '../scaffold';
 import { CreateOperationError, type CreateJournal } from './journal';
 import { readCreatePayload } from './journal/payload';
+import { sha256Hex } from '../../hash';
 
 /**
  * The scaffold of a journal, read from the verified payload store and NEVER regenerated from the
@@ -192,13 +193,9 @@ async function verifyFile(path: string, expectedHash: string): Promise<void> {
   } catch {
     throw recovery('Scaffold evidence is missing or unreadable.');
   }
-  if (sha256(content) !== expectedHash) {
+  if (sha256Hex(content) !== expectedHash) {
     throw recovery('Scaffold was modified since the recorded creation intent.');
   }
-}
-
-export function sha256(input: string): string {
-  return createHash('sha256').update(input, 'utf8').digest('hex');
 }
 
 function recovery(message: string): CreateOperationError {

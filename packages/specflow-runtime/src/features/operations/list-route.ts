@@ -18,6 +18,7 @@ import { Type } from 'typebox';
 import type { FastifyInstance, FastifyRequest, RawServerBase } from 'fastify';
 
 import type { RequestAuthorization } from '../auth';
+import { matchesEtag, sendNotModified } from '../../server/etag';
 import { buildOperationList, type OperationListConfig } from './list-service';
 import type { OperationListSource } from './operation-source';
 import type { OperationProgressRegistry } from './progress-registry';
@@ -130,8 +131,7 @@ export function registerOperationListRoute<RawServer extends RawServerBase>(
       const etag = operationListEtag(list);
       reply.header('ETag', etag);
       if (matchesEtag(request.headers['if-none-match'], etag)) {
-        // A 304 has no body and no response schema; the typed reply only knows the declared codes.
-        return reply.code(304 as unknown as 200).send(undefined as never);
+        return sendNotModified(reply);
       }
       return reply.code(200).send(list);
     },
@@ -170,12 +170,4 @@ export function operationListEtag(list: OperationListResponse): string {
       .digest('base64url') +
     '"'
   );
-}
-
-export function matchesEtag(header: string | string[] | undefined, etag: string): boolean {
-  const value = Array.isArray(header) ? header.join(',') : header;
-  if (!value) return false;
-  if (value.trim() === '*') return true;
-  const weak = (tag: string) => tag.trim().replace(/^W\//, '');
-  return value.split(',').some((candidate) => weak(candidate) === weak(etag));
 }

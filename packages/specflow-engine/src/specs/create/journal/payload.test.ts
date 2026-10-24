@@ -6,7 +6,6 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ResolvedProjectHome } from '../../../project/home/home';
-import { sha256Utf8 } from '../intent';
 import { CREATE_JOURNAL_RELATIVE_DIR } from './store';
 import {
   createPayloadDirectory,
@@ -15,6 +14,7 @@ import {
   removeCreatePayload,
   writeCreatePayload,
 } from './payload';
+import { sha256Hex } from '../../../hash';
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -31,7 +31,7 @@ async function fixture(): Promise<ResolvedProjectHome> {
 }
 
 const file = (content: string) => ({
-  sha256: sha256Utf8(content),
+  sha256: sha256Hex(content),
   bytes: Buffer.byteLength(content, 'utf8'),
   content,
 });

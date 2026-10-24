@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 import {
   ArchetypeDefinitionFileSchema,
   findDefinitionTextLimitViolations,
@@ -19,6 +17,7 @@ import {
   validateDocumentPath,
 } from '../documents';
 import { BUILT_IN_DEFINITIONS } from './builtins';
+import { sha256Hex } from '../../hash';
 
 /**
  * The resolved catalogue: built-in definitions plus (later) user definitions,
@@ -181,7 +180,7 @@ export function catalogueRevisionOf(content: {
   readonly documentTypes: readonly DocumentTypeDefinition[];
   readonly archetypes: readonly ArchetypeDefinition[];
 }): string {
-  return createHash('sha256').update(canonicalJson(content), 'utf8').digest('hex');
+  return sha256Hex(canonicalJson(content));
 }
 
 let builtInCatalogue: ResolvedCatalogue | undefined;

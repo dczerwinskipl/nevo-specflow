@@ -9,7 +9,8 @@ import type { ResolvedProjectHome } from '../../project/home/home';
 import { BUILT_IN_DEFINITIONS } from '../archetypes/builtins';
 import { resolveCatalogue } from '../archetypes/catalogue';
 import { createSpecificationScaffold } from '../scaffold';
-import { fingerprintCreateClientIntent, normalizeCreateClientIntent, sha256Utf8 } from './intent';
+import { fingerprintCreateClientIntent, normalizeCreateClientIntent } from './intent';
+import { sha256Hex } from '../../hash';
 import type { CreateJournal } from './journal';
 import { writeCreatePayload } from './journal/payload';
 import { CREATE_JOURNAL_RELATIVE_DIR } from './journal/store';
@@ -144,7 +145,7 @@ describe('Create scaffold recovery source', () => {
     const escape = {
       relativePath: 'specs/active/' + scaffold.slug + '/../../escape.md',
       content: 'escaped',
-      sha256: sha256Utf8('escaped'),
+      sha256: sha256Hex('escaped'),
       bytes: 7,
     };
     const journal = {

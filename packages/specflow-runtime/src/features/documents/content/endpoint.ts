@@ -77,7 +77,6 @@ export const documentContentEndpoint: FastifyPluginCallback<{ source?: DocumentR
         const tree = await source.readTree(request.params.specId);
         const etag = `"${tree.revision}"`;
         reply.header('ETag', etag);
-        // A 304 has no body and no entity headers (see sendNotModified).
         if (matchesEtag(request.headers['if-none-match'], etag)) return sendNotModified(reply);
         return reply.code(200).send(tree);
       } catch (error) {

@@ -4,9 +4,9 @@ import {
   fingerprintCreateClientIntent,
   normalizeCreateClientIntent,
   normalizePersistedCreateIntent,
-  sha256Utf8,
   type CreateClientIntentInput,
 } from './intent';
+import { sha256Hex } from '../../hash';
 
 const base: CreateClientIntentInput = {
   title: 'Checkout',
@@ -37,7 +37,7 @@ describe('Create intent with an archetype', () => {
       addedDocuments: [{ path: 'n.md', type: 'note', content }],
     });
     expect(intent.addedDocuments).toEqual([
-      { path: 'n.md', type: 'note', sha256: sha256Utf8(content), bytes: 10 },
+      { path: 'n.md', type: 'note', sha256: sha256Hex(content), bytes: 10 },
     ]);
     expect(JSON.stringify(intent)).not.toContain(content);
   });

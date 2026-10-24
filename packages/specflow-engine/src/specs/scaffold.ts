@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto';
-
 import { CATALOGUE_ID_PATTERN, type DocumentErrorCode } from '@nevo/specflow-contracts/documents';
 
 import { getBuiltInCatalogue, type ResolvedCatalogue } from './archetypes/catalogue';
@@ -32,6 +30,7 @@ import {
   type ManifestDocument,
   type SpecificationManifest,
 } from './model';
+import { sha256Hex } from '../hash';
 
 const CATALOGUE_ID = new RegExp(CATALOGUE_ID_PATTERN, 'u');
 
@@ -458,7 +457,7 @@ function fingerprint(relativePath: string, content: string): SpecificationScaffo
   return {
     relativePath,
     content,
-    sha256: createHash('sha256').update(content, 'utf8').digest('hex'),
+    sha256: sha256Hex(content),
     bytes: Buffer.byteLength(content, 'utf8'),
   };
 }

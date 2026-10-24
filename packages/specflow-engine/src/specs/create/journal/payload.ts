@@ -6,9 +6,9 @@ import { syncDirectoryWhenSupported } from '../../../project/fs/atomic-json';
 import type { ResolvedProjectHome } from '../../../project/home/home';
 import { readFileWindowsSafe, renameWindowsSafe } from '../../../project/fs/windows-safe-fs';
 import { CreateOperationError } from '../error';
-import { sha256Utf8 } from '../intent';
 import type { CreateJournalFile } from './model';
 import { CREATE_JOURNAL_RELATIVE_DIR, validateOperationId } from './store';
+import { sha256Hex } from '../../../hash';
 
 /**
  * Hash-addressed payload store of a Create: every scaffold file is written ONCE, before the journal
@@ -59,7 +59,7 @@ export async function writeCreatePayload(
   for (const file of files) {
     if (written.has(file.sha256)) continue;
     written.add(file.sha256);
-    if (!SHA256.test(file.sha256) || sha256Utf8(file.content) !== file.sha256) {
+    if (!SHA256.test(file.sha256) || sha256Hex(file.content) !== file.sha256) {
       throw new Error('Create payload content does not match its hash.');
     }
     const path = join(directory, file.sha256);
@@ -96,7 +96,7 @@ export async function readCreatePayload(
   } catch {
     throw payloadError('Create payload is missing or unreadable.');
   }
-  if (Buffer.byteLength(content, 'utf8') !== file.bytes || sha256Utf8(content) !== file.sha256) {
+  if (Buffer.byteLength(content, 'utf8') !== file.bytes || sha256Hex(content) !== file.sha256) {
     throw payloadError('Create payload does not match the recorded evidence.');
   }
   return content;

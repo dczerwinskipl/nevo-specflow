@@ -1,10 +1,9 @@
-import { createHash } from 'node:crypto';
-
 import type { AddedDocumentInput } from '../scaffold';
 
 import { CreateOperationError } from './error';
 import { validateBranchName } from '../../version-control/git/refs';
 import { isExplicitSpecificationSlug } from '../model';
+import { sha256Hex } from '../../hash';
 
 export type ClientOverride =
   { readonly kind: 'omitted' } | { readonly kind: 'explicit'; readonly value: string };
@@ -94,7 +93,7 @@ export function normalizeCreateClientIntent(input: CreateClientIntentInput): Cre
     (input.addedDocuments ?? []).map((document) => ({
       path: document.path,
       ...(document.type !== undefined ? { type: document.type } : {}),
-      sha256: sha256Utf8(document.content),
+      sha256: sha256Hex(document.content),
       bytes: Buffer.byteLength(document.content, 'utf8'),
     })),
   );
@@ -198,11 +197,7 @@ function normalizeIntentFields(
  */
 export function fingerprintCreateClientIntent(intent: CreateClientIntent): string {
   const { catalogueRevision: _precondition, ...identity } = intent;
-  return createHash('sha256').update(JSON.stringify(identity), 'utf8').digest('hex');
-}
-
-export function sha256Utf8(content: string): string {
-  return createHash('sha256').update(content, 'utf8').digest('hex');
+  return sha256Hex(JSON.stringify(identity));
 }
 
 function sortedUnique(values: readonly string[]): string[] {

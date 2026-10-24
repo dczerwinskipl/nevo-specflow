@@ -9,7 +9,6 @@ export {
   parseOperationListQuery,
   OperationListQueryStringSchema,
   operationListEtag,
-  matchesEtag,
   OPERATION_LIST_QUERY_INVALID_CODE,
 } from './list-route';
 export {

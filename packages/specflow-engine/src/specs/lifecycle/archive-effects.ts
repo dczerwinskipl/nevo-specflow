@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { lstat, mkdir, readFile, readdir, realpath, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
@@ -24,15 +23,13 @@ import {
   type CloseArchiveEvidence,
   type CloseArchiveInventory,
 } from './model';
+import { sha256Hex } from '../../hash';
 
 function failure(message: string): CloseOperationError {
   return new CloseOperationError('CLOSE_RECOVERY_REQUIRED', message);
 }
 function invalid(message: string): CloseOperationError {
   return new CloseOperationError('CLOSE_PREFLIGHT', message);
-}
-function digest(content: Buffer | string): string {
-  return createHash('sha256').update(content).digest('hex');
 }
 
 async function expectedFile(path: string): Promise<Buffer> {
@@ -59,7 +56,7 @@ async function physicalInventory(root: string, relative: string): Promise<CloseA
       else {
         if (files.length >= ARCHIVE_FILES_MAX)
           throw invalid('Archive inventory file limit exceeded.');
-        files.push({ relativePath: path, sha256: digest(await expectedFile(join(root, path))) });
+        files.push({ relativePath: path, sha256: sha256Hex(await expectedFile(join(root, path))) });
       }
     }
   }
@@ -231,7 +228,7 @@ export async function archiveSpecificationWithCommit(
     sourcePath: oldPath,
     destinationPath: newPath,
     files,
-    archivedManifestSha256: digest(archivedManifest),
+    archivedManifestSha256: sha256Hex(archivedManifest),
   };
   const initiated = await publish(engine, record, {
     ...record,

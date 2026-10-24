@@ -2,6 +2,8 @@ import { constants, type BigIntStats } from 'node:fs';
 import { lstat, open, realpath, type FileHandle } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { isNavigationSegment } from './document-paths';
+import { errnoCode, isAbsent } from './errno';
 import { DocumentError } from './errors';
 
 /**
@@ -51,12 +53,6 @@ function unavailable(message: string): DocumentError {
   return new DocumentError('SPEC_SOURCE_UNAVAILABLE', message);
 }
 
-function errnoCode(error: unknown): string | undefined {
-  return typeof error === 'object' && error !== null && 'code' in error
-    ? String(error.code)
-    : undefined;
-}
-
 /**
  * A filesystem failure the layer cannot act on (EACCES, EMFILE, EIO, ...) is an unavailable source,
  * not an internal error; anything that is not an errno failure is a defect and passes through.
@@ -66,11 +62,6 @@ function unreadable(error: unknown): never {
     throw unavailable('The Specification files cannot be read.');
   }
   throw error;
-}
-
-function isAbsent(error: unknown): boolean {
-  const code = errnoCode(error);
-  return code === 'ENOENT' || code === 'ENOTDIR';
 }
 
 /** The relative path must stay inside the Specification directory by construction. */
@@ -84,7 +75,7 @@ export function assertContainedRelativePath(relativePath: string): readonly stri
     throw unavailable('A document path leaves the Specification directory.');
   }
   const segments = relativePath.split('/');
-  if (segments.some((segment) => segment === '' || segment === '.' || segment === '..')) {
+  if (segments.some(isNavigationSegment)) {
     throw unavailable('A document path leaves the Specification directory.');
   }
   return segments;

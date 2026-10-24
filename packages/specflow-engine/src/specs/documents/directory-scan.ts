@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 import { isUnaddressable } from './document-paths';
 import { DocumentError } from './errors';
+import { isAbsent } from './errno';
 import {
   ARCHIVE_COUNT_TRAVERSAL_ENTRIES_MAX,
   ARCHIVE_COUNT_TRAVERSAL_FILES_STOP,
@@ -29,15 +30,6 @@ export interface ListedFiles {
   readonly truncated: boolean;
   /** Entries that cannot be addressed or read safely (odd names, an unreadable folder). */
   readonly unaddressable: readonly string[];
-}
-
-function errnoCode(error: unknown): string {
-  return typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
-}
-
-function isGone(error: unknown): boolean {
-  const code = errnoCode(error);
-  return code === 'ENOENT' || code === 'ENOTDIR';
 }
 
 /** The Specification directory itself cannot be read (EACCES, EMFILE, vanished): an unavailable source. */
@@ -73,7 +65,7 @@ export async function listSpecificationFiles(specDir: string): Promise<ListedFil
     } catch (error) {
       if (relativeDir === '') throw rootUnreadable();
       // A folder that vanished is simply gone; one that cannot be read is reported, never dropped.
-      if (!isGone(error)) unaddressable.push(relativeDir);
+      if (!isAbsent(error)) unaddressable.push(relativeDir);
       return;
     }
     entries.sort((left, right) => compareNames(left.name, right.name));
@@ -158,7 +150,7 @@ export async function countArchiveInventory(specDir: string): Promise<ArchiveCou
     } catch (error) {
       if (relativeDir === '') throw rootUnreadable();
       // A directory Close archive could not read either: it will refuse, like a special entry.
-      if (!isGone(error)) skip(relativeDir);
+      if (!isAbsent(error)) skip(relativeDir);
       return;
     }
     names.sort((left, right) => compareNames(left.name, right.name));

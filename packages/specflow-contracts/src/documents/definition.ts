@@ -140,7 +140,7 @@ export const ArchetypeDefinitionFileSchema = Type.Object(
 export type ArchetypeDefinitionFile = Static<typeof ArchetypeDefinitionFileSchema>;
 
 /** UTF-8 byte length of a string (this neutral package has no `TextEncoder` or `Buffer` typings). */
-export function utf8ByteLength(text: string): number {
+function utf8ByteLength(text: string): number {
   let bytes = 0;
   for (const char of text) {
     const code = char.codePointAt(0) ?? 0;

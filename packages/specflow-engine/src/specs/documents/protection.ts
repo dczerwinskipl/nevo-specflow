@@ -10,9 +10,6 @@ export const OVERVIEW_DOCUMENT_ID = 'overview';
 export const OVERVIEW_DOCUMENT_PATH = 'overview.md';
 export const OVERVIEW_DOCUMENT_TYPE = 'overview';
 
-/** Actions refused for the protected document. Save (edit) stays allowed. */
-export const PROTECTED_DOCUMENT_REFUSED_ACTIONS = ['delete', 'rename', 'move'] as const;
-
 export interface ProtectableDocument {
   readonly id: string;
   readonly path?: string;

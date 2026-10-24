@@ -1,4 +1,4 @@
-import { sha256 } from '../scaffold-writer';
+import { sha256Hex } from '../../../hash';
 import type { SpecFlowEngine } from '../../../application';
 import { GitCapabilityError } from '../../../git/errors';
 import { openVersionControl } from '../../../version-control';
@@ -140,7 +140,7 @@ async function verifyCommittedScaffold(
   }
   for (const file of record.files) {
     const content = await commits.fileAt(root, found.sha, file.relativePath);
-    if (content === undefined || sha256(content) !== file.sha256) {
+    if (content === undefined || sha256Hex(content) !== file.sha256) {
       throw recovery('The scaffold commit content differs from the recorded creation intent.');
     }
   }

@@ -2,7 +2,8 @@ import { getBuiltInCatalogue, type ResolvedCatalogue } from '../archetypes/catal
 import { DocumentError } from '../documents';
 import { ScaffoldValidationError, createSpecificationScaffold, documentErrorOf } from '../scaffold';
 import { CreateOperationError } from './error';
-import { sha256Utf8, type CreateClientIntent } from './intent';
+import { type CreateClientIntent } from './intent';
+import { sha256Hex } from '../../hash';
 
 /** A syntactically valid UUID: validation of the scaffold never depends on the real specId. */
 const ADMISSION_SPEC_ID = '00000000-0000-4000-8000-000000000000';
@@ -91,7 +92,7 @@ function assertContentsMatchEvidence(
       return (
         content !== undefined &&
         document.bytes === Buffer.byteLength(content, 'utf8') &&
-        document.sha256 === sha256Utf8(content)
+        document.sha256 === sha256Hex(content)
       );
     });
   if (!matches) {

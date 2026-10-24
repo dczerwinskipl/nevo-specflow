@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 
+import { isAbsent } from './errno';
 import { DocumentError } from './errors';
 import { analyzeOpenFile, type FileAnalysis } from './file-analysis';
 import type { LoadedSpecification } from './loaded-specification';
@@ -53,14 +54,9 @@ export async function probeFile<T>(
     return { kind: outcome.state === 'absent' ? 'vanished' : 'skipped' };
   } catch (error) {
     if (error instanceof DocumentError) return { kind: 'skipped' };
-    if (isGone(error)) return { kind: 'vanished' };
+    if (isAbsent(error)) return { kind: 'vanished' };
     throw error;
   }
-}
-
-function isGone(error: unknown): boolean {
-  const code = typeof error === 'object' && error !== null && 'code' in error ? error.code : '';
-  return code === 'ENOENT';
 }
 
 /** One tree entry: the observation of `path`, or why there is none. */

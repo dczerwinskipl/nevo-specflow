@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import type { BigIntStats } from 'node:fs';
 import type { FileHandle } from 'node:fs/promises';
 
@@ -8,6 +7,7 @@ import { readBoundedBytes } from '../bounded-read';
 import { BINARY_MEDIA_TYPE, classifyContent, extensionOf, kindForExtension } from './content-kinds';
 import { CONTENT_HASH_MAX_BYTES, CONTENT_SNIFF_BYTES } from './limits';
 import { readAt } from './verified-file';
+import { sha256Hex } from '../../hash';
 
 /** What the Engine knows about one opened regular file: size, revision, kind and media type. */
 export interface FileAnalysis {
@@ -47,7 +47,7 @@ export async function analyzeOpenFile(
       const text = classified.kind === 'text' && isWholeUtf8(bytes);
       return {
         size: bytes.length,
-        revision: createHash('sha256').update(bytes).digest('hex'),
+        revision: sha256Hex(bytes),
         kind: text || classified.kind !== 'text' ? classified.kind : 'binary',
         mediaType: text || classified.kind !== 'text' ? classified.mediaType : BINARY_MEDIA_TYPE,
         bytes,

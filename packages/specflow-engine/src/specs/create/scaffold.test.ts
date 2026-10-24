@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, realpath, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -9,11 +9,11 @@ import type { ResolvedProjectHome } from '../../project/home/home';
 import { BUILT_IN_DEFINITIONS } from '../archetypes/builtins';
 import { resolveCatalogue } from '../archetypes/catalogue';
 import { createSpecificationScaffold } from '../scaffold';
-import { fingerprintCreateClientIntent, normalizeCreateClientIntent } from './intent';
+import { fingerprintCreateClientIntent, normalizeCreateClientIntent, sha256Utf8 } from './intent';
 import type { CreateJournal } from './journal';
 import { writeCreatePayload } from './journal/payload';
 import { CREATE_JOURNAL_RELATIVE_DIR } from './journal/store';
-import { expectedScaffold } from './scaffold';
+import { expectedScaffold, writeScaffoldWithEvidence } from './scaffold';
 
 const roots: string[] = [];
 afterEach(async () => {
@@ -127,6 +127,79 @@ describe('Create scaffold recovery source', () => {
       scaffold.files.map(({ sha256, content }) => ({ sha256, content })),
     );
     await expect(expectedScaffold(engine, journal)).rejects.toMatchObject({
+      code: 'CREATE_RECOVERY_REQUIRED',
+    });
+  });
+
+  it('writes nothing outside the Specification directory for a forged path', async () => {
+    const engine = await engineFixture();
+    const workspaceRoot = join(engine.context.project.stateRoot, 'workspace');
+    await mkdir(workspaceRoot, { recursive: true });
+    const scaffold = createSpecificationScaffold({
+      specId: randomUUID(),
+      title: 'Forged',
+      created: '2026-10-14',
+      archetypeId: 'minimal',
+    });
+    const escape = {
+      relativePath: 'specs/active/' + scaffold.slug + '/../../escape.md',
+      content: 'escaped',
+      sha256: sha256Utf8('escaped'),
+      bytes: 7,
+    };
+    const journal = {
+      ...journalFor(scaffold),
+      target: { kind: 'existing' as const, workspaceId: randomUUID(), workspaceRoot },
+      files: [
+        ...journalFor(scaffold).files,
+        { relativePath: escape.relativePath, sha256: escape.sha256, bytes: 7 },
+      ],
+    };
+    await writeCreatePayload(engine.context, journal.operationId, [...scaffold.files, escape]);
+    await expect(writeScaffoldWithEvidence(engine, journal)).rejects.toMatchObject({
+      code: 'CREATE_RECOVERY_REQUIRED',
+    });
+    await expect(stat(join(workspaceRoot, 'specs/escape.md'))).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+  });
+
+  it('completes a file left empty or partly written and refuses any other content', async () => {
+    const engine = await engineFixture();
+    const workspaceRoot = join(engine.context.project.stateRoot, 'workspace');
+    const scaffold = createSpecificationScaffold({
+      specId: randomUUID(),
+      title: 'Partial',
+      created: '2026-10-14',
+      archetypeId: 'minimal',
+    });
+    const journal = {
+      ...journalFor(scaffold),
+      target: { kind: 'existing' as const, workspaceId: randomUUID(), workspaceRoot },
+    };
+    await writeCreatePayload(
+      engine.context,
+      journal.operationId,
+      scaffold.files.map(({ sha256, content }) => ({ sha256, content })),
+    );
+    const [manifest, overview] = scaffold.files;
+    const directory = join(workspaceRoot, 'specs/active', scaffold.slug);
+    await mkdir(directory, { recursive: true });
+    await writeFile(join(workspaceRoot, manifest!.relativePath), '');
+    await writeFile(join(workspaceRoot, overview!.relativePath), overview!.content.slice(0, 10));
+    // A staged file of an interrupted write is dropped, never mistaken for content.
+    await writeFile(join(directory, '.overview.md.' + randomUUID() + '.tmp'), 'half');
+    await writeScaffoldWithEvidence(engine, journal);
+    expect(await readFile(join(workspaceRoot, manifest!.relativePath), 'utf8')).toBe(
+      manifest!.content,
+    );
+    expect(await readFile(join(workspaceRoot, overview!.relativePath), 'utf8')).toBe(
+      overview!.content,
+    );
+    expect((await readdir(directory)).sort()).toEqual(['overview.md', 'specification.yaml']);
+
+    await writeFile(join(workspaceRoot, overview!.relativePath), 'something else entirely');
+    await expect(writeScaffoldWithEvidence(engine, journal)).rejects.toMatchObject({
       code: 'CREATE_RECOVERY_REQUIRED',
     });
   });

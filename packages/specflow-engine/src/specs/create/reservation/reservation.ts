@@ -27,7 +27,7 @@ import {
   type CreateJournal,
 } from '../journal';
 import { removeExpiredCompletedCreateJournals } from '../journal/retention';
-import { admitCreateArchetype } from '../admission';
+import { admitCreateArchetype, documentErrorOf } from '../admission';
 import { getBuiltInCatalogue } from '../../archetypes/catalogue';
 import { DocumentError } from '../../documents/errors';
 import {
@@ -38,7 +38,7 @@ import { CREATE_JOURNAL_VERSION } from '../journal/model';
 import { writeCreatePayload } from '../journal/payload';
 import { discoverSpecificationsForCreateAdmission } from '../../discovery';
 import { isValidSpecificationId, validateSpecificationScaffoldInput } from '../../model';
-import { createSpecificationScaffold } from '../../scaffold';
+import { ScaffoldValidationError, createSpecificationScaffold } from '../../scaffold';
 
 /**
  * First lock winner owns the creation date and pinned Git effect plan.
@@ -98,7 +98,7 @@ export async function reserveCreateOperation(
     }
     const specId = randomUUID();
     const catalogue = getBuiltInCatalogue();
-    const scaffold = createSpecificationScaffold({
+    const scaffold = scaffoldOf({
       specId,
       catalogue,
       title: intent.title,
@@ -311,6 +311,16 @@ function assertJournalFitsItsCap(record: CreateJournal): void {
       'DOCUMENT_OPERATION_INVALID',
       'The Create request has too many or too long paths to be recorded durably.',
     );
+  }
+}
+
+/** Same scaffold the admission validated; a cause that only the real ids reveal maps the same way. */
+function scaffoldOf(input: Parameters<typeof createSpecificationScaffold>[0]) {
+  try {
+    return createSpecificationScaffold(input);
+  } catch (error) {
+    if (error instanceof ScaffoldValidationError) throw documentErrorOf(error);
+    throw error;
   }
 }
 

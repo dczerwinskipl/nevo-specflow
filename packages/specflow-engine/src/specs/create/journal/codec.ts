@@ -7,6 +7,7 @@ import { CreateOperationError } from '../error';
 import type { ResolvedProjectHome } from '../../../project/home/home';
 import { DOCUMENT_ID_PATTERN } from '@nevo/specflow-contracts/documents';
 
+import { isExplicitSpecificationSlug } from '../../model';
 import { CREATE_SCAFFOLD_FILES_MAX, TEXT_CONTENT_MAX_BYTES } from '../../documents/limits';
 import {
   CREATE_JOURNAL_VERSION,
@@ -185,6 +186,7 @@ function isValidJournalFiles(value: unknown, slug: unknown): boolean {
   ) {
     return false;
   }
+  if (!isExplicitSpecificationSlug(slug)) return false;
   const base = 'specs/active/' + slug + '/';
   const paths = new Set<string>();
   for (const file of value as unknown[]) {
@@ -193,7 +195,7 @@ function isValidJournalFiles(value: unknown, slug: unknown): boolean {
       Object.keys(file).some((key) => !FILE_FIELDS.has(key)) ||
       typeof file.relativePath !== 'string' ||
       !file.relativePath.startsWith(base) ||
-      file.relativePath.length === base.length ||
+      !isSafeRelativeSegments(file.relativePath.slice(base.length)) ||
       paths.has(file.relativePath) ||
       typeof file.sha256 !== 'string' ||
       !SHA256.test(file.sha256) ||
@@ -210,6 +212,15 @@ function isValidJournalFiles(value: unknown, slug: unknown): boolean {
     manifest.relativePath === base + 'specification.yaml' &&
     overview.relativePath === base + 'overview.md'
   );
+}
+
+/** No empty, `.` or `..` segment, no backslash, no absolute form, no NUL or control character. */
+function isSafeRelativeSegments(path: string): boolean {
+  if (path.length === 0 || path.startsWith('/') || /^[a-zA-Z]:/u.test(path)) return false;
+  for (const character of path) {
+    if (character === String.fromCharCode(92) || character.charCodeAt(0) < 32) return false;
+  }
+  return path.split('/').every((segment) => segment !== '' && segment !== '.' && segment !== '..');
 }
 
 function isValidJournalDocumentIds(value: unknown): boolean {

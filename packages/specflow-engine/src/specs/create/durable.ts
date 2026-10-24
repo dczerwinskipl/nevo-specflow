@@ -99,7 +99,7 @@ function notifyStage(
 
 /** Internal fault-injection seam, deliberately absent from CreateSpecificationOptions. */
 export type CreateEffectHook = (
-  effect: 'reservation' | 'git' | 'manifest-opened' | 'manifest' | 'commit' | 'registry',
+  effect: 'reservation' | 'git' | 'manifest-opened' | 'file' | 'manifest' | 'commit' | 'registry',
 ) => Promise<void>;
 
 export async function inspectCreateSpecification(
@@ -295,6 +295,7 @@ async function createWithVerifiedIntent(
             engine,
             record,
             afterEffect ? () => afterEffect('manifest-opened') : undefined,
+            afterEffect ? () => afterEffect('file') : undefined,
           );
           await afterEffect?.('manifest');
           record = await transition(engine, record, 'manifest-written', options.onStage);

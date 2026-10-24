@@ -49,7 +49,10 @@ export interface CreateClientIntent {
   readonly slug?: string;
   readonly target: ClientCreateTarget;
   readonly archetype: CreateArchetypeRef;
-  /** Checked against the catalogue when present; the HTTP schema always sends it. */
+  /**
+   * Precondition checked against the catalogue when a new operation is admitted (the HTTP schema
+   * always sends it). Not part of the fingerprint.
+   */
   readonly catalogueRevision?: string;
   /** Suggested template ids to scaffold: sorted, unique. */
   readonly optionalDocumentIds: readonly string[];
@@ -187,11 +190,15 @@ function normalizeIntentFields(
 }
 
 /**
- * The fingerprint covers the whole intent: archetype, revision, suggestions, folders and, for added
- * documents, path, type and the sha256 of the content (never the content).
+ * The fingerprint covers the intent EXCEPT `catalogueRevision`: archetype id and version,
+ * suggestions, folders and, for added documents, path, type and the sha256 of the content (never the
+ * content). The revision is a precondition checked when a NEW operation is admitted, not part of the
+ * operation's identity, so a retry of the same operation after the catalogue changed replays the
+ * stored result instead of conflicting.
  */
 export function fingerprintCreateClientIntent(intent: CreateClientIntent): string {
-  return createHash('sha256').update(JSON.stringify(intent), 'utf8').digest('hex');
+  const { catalogueRevision: _precondition, ...identity } = intent;
+  return createHash('sha256').update(JSON.stringify(identity), 'utf8').digest('hex');
 }
 
 export function sha256Utf8(content: string): string {

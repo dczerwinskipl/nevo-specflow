@@ -230,4 +230,37 @@ describe('Create journal version 2 codec', () => {
       expect.objectContaining({ code: 'CREATE_JOURNAL_CORRUPT' }),
     );
   });
+
+  it('rejects a forged slug and unsafe path segments', () => {
+    const journal = build();
+    const base = journal.files[0]!.relativePath.replace('specification.yaml', '');
+    const extra = { sha256: 'c'.repeat(64), bytes: 1 };
+    const backslash = String.fromCharCode(92);
+    const forgedPaths = [
+      base + '../escape.md',
+      base + 'a/../b.md',
+      base + './a.md',
+      base + 'a//b.md',
+      base + 'a' + backslash + 'b.md',
+      base + '/abs.md',
+      base + 'C:/x.md',
+      base + 'tab' + String.fromCharCode(9) + '.md',
+      base,
+    ];
+    for (const relativePath of forgedPaths) {
+      const files = [...journal.files, { relativePath, ...extra }];
+      expect(() => parse({ ...journal, files }, journal.operationId), relativePath).toThrowError(
+        expect.objectContaining({ code: 'CREATE_JOURNAL_CORRUPT' }),
+      );
+    }
+    for (const slug of ['..', 'a/b', 'A', '', 'con']) {
+      const files = journal.files.map((file) => ({
+        ...file,
+        relativePath: file.relativePath.replace(journal.slug, slug),
+      }));
+      expect(() => parse({ ...journal, slug, files }, journal.operationId), slug).toThrowError(
+        expect.objectContaining({ code: 'CREATE_JOURNAL_CORRUPT' }),
+      );
+    }
+  });
 });

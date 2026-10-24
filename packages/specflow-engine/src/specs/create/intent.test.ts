@@ -96,12 +96,18 @@ describe('Create intent with an archetype', () => {
     it.each<[string, Partial<CreateClientIntentInput>]>([
       ['archetype id', { archetype: { id: 'minimal', version: 1 } }],
       ['archetype version', { archetype: { id: 'feature', version: 2 } }],
-      ['catalogue revision', { catalogueRevision: 'other' }],
       ['suggestions', { optionalDocumentIds: ['ux'] }],
       ['folders', { folders: ['assets'] }],
       ['added path', { addedDocuments: [{ path: 'a.md', content: 'x' }] }],
     ])('changes with the %s', (_name, patch) => {
       expect(fingerprint(patch)).not.toBe(fingerprint({}));
+    });
+
+    it('does not depend on the catalogue revision, which is only a precondition', () => {
+      expect(fingerprint({ catalogueRevision: 'one' })).toBe(
+        fingerprint({ catalogueRevision: 'two' }),
+      );
+      expect(fingerprint({ catalogueRevision: 'one' })).toBe(fingerprint({}));
     });
 
     it('covers the type and the content of an added document', () => {

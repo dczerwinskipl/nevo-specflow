@@ -1,6 +1,8 @@
-import { createHash } from 'node:crypto';
-import { lstat, mkdir, open, readFile, realpath } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { createHash, randomUUID } from 'node:crypto';
+import { lstat, mkdir, open, readFile, readdir, realpath } from 'node:fs/promises';
+import { basename, dirname, isAbsolute, join, relative } from 'node:path';
+
+import { removeFileWindowsSafe, renameWindowsSafe } from '../../project/fs/windows-safe-fs';
 
 import type { SpecFlowEngine } from '../../application';
 import { parseSpecificationManifestText } from '../model';
@@ -50,13 +52,21 @@ export async function expectedScaffold(
 export async function writeScaffoldWithEvidence(
   engine: Pick<SpecFlowEngine, 'context'>,
   record: CreateJournal,
-  /** Internal test seam: a real manifest handle is open but not yet written. */
+  /** Internal test seam: the staged file of the manifest is open but not yet written. */
   afterManifestOpened?: () => Promise<void>,
+  /** Internal test seam: called after each file has been published (index in the journal list). */
+  afterFile?: (index: number) => Promise<void>,
 ): Promise<void> {
   const files = await expectedScaffold(engine, record);
   const root = record.target.workspaceRoot;
-  for (const file of files) {
+  const specDirectory = join(root, 'specs/active', record.slug);
+  for (const [index, file] of files.entries()) {
     const absolute = join(root, file.relativePath);
+    // Defence in depth: the codec validated the path, the writer proves the resolved location.
+    const inside = relative(specDirectory, absolute);
+    if (inside === '' || inside.startsWith('..') || isAbsolute(inside)) {
+      throw recovery('Scaffold path escapes the Specification directory.');
+    }
     // No symlink or path redirection may alter the target after validation. Every directory from
     // `specs` down to the file's parent is created (or verified) one segment at a time.
     for (const directory of directoriesOf(root, file.relativePath)) {
@@ -74,21 +84,68 @@ export async function writeScaffoldWithEvidence(
         throw recovery('Specification directory has been redirected.');
       }
     }
-    try {
-      const handle = await open(absolute, 'wx', 0o600);
-      try {
-        if (file.relativePath.endsWith('/specification.yaml')) {
-          await afterManifestOpened?.();
-        }
-        await handle.writeFile(file.content, 'utf8');
-        await handle.sync();
-      } finally {
-        await handle.close();
-      }
-    } catch (error) {
-      if (!isExists(error)) throw error;
-    }
+    await publishFile(
+      absolute,
+      file.content,
+      file.relativePath.endsWith('/specification.yaml') ? afterManifestOpened : undefined,
+    );
     await verifyFile(absolute, file.sha256);
+    await afterFile?.(index);
+  }
+}
+
+/**
+ * A file becomes visible only complete: it is written to a staged file, fsynced and renamed, so a
+ * SIGKILL never leaves a partial scaffold file. A file that already exists is accepted when it is
+ * identical, and replaced atomically when it is a byte-prefix (including empty) of the pinned
+ * content (what an earlier interrupted write could leave); anything else is a recovery.
+ */
+async function publishFile(
+  absolute: string,
+  content: string,
+  afterStaged: (() => Promise<void>) | undefined,
+): Promise<void> {
+  const directory = dirname(absolute);
+  const name = basename(absolute);
+  await removeStaleStagedFiles(directory, name);
+  const expected = Buffer.from(content, 'utf8');
+  let existing: Buffer | undefined;
+  try {
+    const stat = await lstat(absolute);
+    if (!stat.isFile() || stat.isSymbolicLink()) throw recovery('Scaffold file was redirected.');
+    existing = await readFile(absolute);
+  } catch (error) {
+    if (error instanceof CreateOperationError) throw error;
+    if (!isMissing(error)) throw recovery('Scaffold evidence is missing or unreadable.');
+  }
+  if (existing !== undefined) {
+    if (existing.equals(expected)) return;
+    if (
+      existing.length > expected.length ||
+      !expected.subarray(0, existing.length).equals(existing)
+    ) {
+      throw recovery('Scaffold was modified since the recorded creation intent.');
+    }
+  }
+  const staged = join(directory, `.${name}.${randomUUID()}.tmp`);
+  const handle = await open(staged, 'wx', 0o600);
+  try {
+    await afterStaged?.();
+    await handle.writeFile(expected);
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+  await renameWindowsSafe(staged, absolute);
+}
+
+/** Staged files of an interrupted write of this very file; never content, always safe to drop. */
+async function removeStaleStagedFiles(directory: string, name: string): Promise<void> {
+  const prefix = `.${name}.`;
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    if (entry.isFile() && entry.name.startsWith(prefix) && entry.name.endsWith('.tmp')) {
+      await removeFileWindowsSafe(join(directory, entry.name)).catch(() => undefined);
+    }
   }
 }
 
@@ -138,6 +195,10 @@ function recovery(message: string): CreateOperationError {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isMissing(error: unknown): boolean {
+  return isRecord(error) && error.code === 'ENOENT';
 }
 
 function isExists(error: unknown): boolean {

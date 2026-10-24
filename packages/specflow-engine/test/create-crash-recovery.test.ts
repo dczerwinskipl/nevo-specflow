@@ -207,7 +207,7 @@ describe('E2.T04 — actual process termination and fresh-process recovery', () 
     expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(registryBefore);
   }, 120000);
 
-  it.each(['manifest', 'commit', 'registry'])(
+  it.each(['manifest-opened', 'file', 'manifest', 'commit', 'registry'])(
     'R06: SIGKILL at %s of an archetype Create recovers the full file list in one commit',
     async (stage) => {
       const { root, engine } = await project(true);

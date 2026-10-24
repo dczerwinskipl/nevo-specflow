@@ -354,6 +354,67 @@ describe('Create with an archetype: recovery uses the full recorded list', () =>
     expect(git(root, 'rev-list', '--count', parent + '..HEAD')).toBe('1');
   }, 240000);
 
+  it('completes after an interrupt with a file opened but not yet written', async () => {
+    const { root, engine } = await project();
+    const parent = git(root, 'rev-parse', 'HEAD');
+    const input = full(engine, 'Opened not written');
+    await expect(
+      createSpecification(engine, input, { afterEffect: crashAfter('manifest-opened') }),
+    ).rejects.toBeInstanceOf(Crash);
+    const journal = (await inspectCreateSpecification(engine, input.operationId))!;
+    // The visible manifest is never partial: only a staged file exists.
+    await expect(stat(join(root, journal.files[0]!.relativePath))).rejects.toMatchObject({
+      code: 'ENOENT',
+    });
+    const resumed = await createSpecification(engine, input, { resumeInterruptedOperation: true });
+    expect(git(root, 'rev-list', '--count', parent + '..HEAD')).toBe('1');
+    expect(resumed.documentIds).toHaveLength(5);
+    const names = await readdir(join(root, 'specs/active', resumed.slug));
+    expect(names.filter((name) => name.endsWith('.tmp'))).toEqual([]);
+  }, 240000);
+
+  it.each([1, 2, 3])(
+    'completes after an interrupt between file %i and the next',
+    async (count) => {
+      const { root, engine } = await project();
+      const parent = git(root, 'rev-parse', 'HEAD');
+      const input = full(engine, 'Between files ' + String(count));
+      let seen = 0;
+      await expect(
+        createSpecification(engine, input, {
+          afterEffect: (effect) => {
+            if (effect === 'file' && ++seen === count) return Promise.reject(new Crash('file'));
+            return Promise.resolve();
+          },
+        }),
+      ).rejects.toBeInstanceOf(Crash);
+      await createSpecification(engine, input, { resumeInterruptedOperation: true });
+      expect(git(root, 'rev-list', '--count', parent + '..HEAD')).toBe('1');
+      expect(git(root, 'status', '--porcelain', '--untracked-files=all')).toBe('');
+    },
+    240000,
+  );
+
+  it('completes a file that an earlier interrupted write left empty or partial', async () => {
+    const { root, engine } = await project();
+    const parent = git(root, 'rev-parse', 'HEAD');
+    const input = full(engine, 'Legacy partial');
+    await expect(
+      createSpecification(engine, input, { afterEffect: crashAfter('manifest-opened') }),
+    ).rejects.toBeInstanceOf(Crash);
+    const journal = (await inspectCreateSpecification(engine, input.operationId))!;
+    const directory = join(root, 'specs/active', journal.slug);
+    await mkdir(directory, { recursive: true });
+    await writeFile(join(root, journal.files[0]!.relativePath), '');
+    await writeFile(
+      join(root, journal.files[1]!.relativePath),
+      '---' + String.fromCharCode(10) + 'id: spec.',
+    );
+    await createSpecification(engine, input, { resumeInterruptedOperation: true });
+    expect(git(root, 'rev-list', '--count', parent + '..HEAD')).toBe('1');
+    expect(git(root, 'status', '--porcelain', '--untracked-files=all')).toBe('');
+  }, 240000);
+
   it('refuses to adopt a partly changed scaffold', async () => {
     const { root, engine } = await project();
     const input = full(engine, 'Tampered');

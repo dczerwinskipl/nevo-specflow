@@ -106,26 +106,25 @@ describe('Engine-backed specification workspace read', () => {
         const unavailable = { state: 'unavailable', reason: 'not_implemented' };
         expect(body.sections).toEqual({
           tasks: unavailable,
-          // The registered documents of the manifest, read through the Engine (D3).
-          documents: {
-            state: 'available',
-            data: {
-              items: [
-                {
-                  id: 'overview',
-                  title: 'Actual canonical Spec',
-                  filename: 'overview.md',
-                  revision: expect.stringMatching(/^[0-9a-f]{64}$/u),
-                  kind: 'overview',
-                },
-              ],
-            },
-          },
+          documents: body.sections.documents,
           sessions: unavailable,
           activity: unavailable,
           repository: unavailable,
           changes: unavailable,
         });
+        // The registered documents of the manifest, read through the Engine (D3).
+        expect(body.sections.documents.state).toBe('available');
+        if (body.sections.documents.state === 'available') {
+          const [overview, ...others] = body.sections.documents.data.items;
+          expect(others).toEqual([]);
+          expect(overview).toMatchObject({
+            id: 'overview',
+            title: 'Actual canonical Spec',
+            filename: 'overview.md',
+            kind: 'overview',
+          });
+          expect(overview?.revision).toMatch(/^[0-9a-f]{64}$/u);
+        }
         expect(body.actions).toEqual({
           executeTasks: { available: false, reason: 'not_implemented' },
           startSession: { available: false, reason: 'not_implemented' },

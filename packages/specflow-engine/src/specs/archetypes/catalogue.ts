@@ -20,7 +20,7 @@ import {
 import { BUILT_IN_DEFINITIONS } from './builtins';
 
 /**
- * The resolved catalogue: built-in definitions plus (later, slice D-config) user definitions,
+ * The resolved catalogue: built-in definitions plus (later) user definitions,
  * validated as a whole. There is no loader; `userDefinitions` is only a typed parameter.
  */
 export interface ResolvedCatalogue {

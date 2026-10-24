@@ -1,4 +1,4 @@
-// Linux-only integration (real Git project, real Runtime, real files, symlinks): the D3 read surface
+// Linux-only integration (real Git project, real Runtime, real files, symlinks): the read surface
 // through HTTP -- document tree, document content, raw bytes and the workspace documents section.
 import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';

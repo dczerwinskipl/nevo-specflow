@@ -23,8 +23,8 @@ import { TEXT_CONTENT_MAX_BYTES } from './limits';
 import { folderContainsProtectedDocument, isProtectedDocument } from './protection';
 
 /**
- * Pure tree projection (architecture "Validation results", "Content kinds", invariants 2, 4, 7, 8;
- * reference "D3 - Tree"). A function of the manifest, the facts the filesystem reader observed and the
+ * Pure tree projection (`docs/architecture/runtime/specification-documents.md`: validation results, content kinds,
+ * overview protection; `docs/reference/api/specification-documents.md`: tree). A function of the manifest, the facts the filesystem reader observed and the
  * advisory policy fact; it performs no I/O. The reader (`read.ts`) gathers the facts.
  */
 
@@ -147,7 +147,8 @@ export function projectDocumentTree(input: TreeProjectionInput): DocumentTree {
   });
 
   const archived = input.location === 'archive';
-  /** Write actions have no route before D4: `not-implemented` unless a stronger reason applies. */
+  // Write actions have no route yet: `not-implemented` unless a stronger reason applies.
+  // TODO(document write operations): drop the `not-implemented` reason when the write routes exist.
   const write = (own?: ActionReason): Action => {
     const reason: ActionReason = archived
       ? 'archived'

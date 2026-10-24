@@ -5,8 +5,8 @@ import { join } from 'node:path';
 import { DocumentError } from './errors';
 
 /**
- * Race-aware access to one file of a Specification directory (architecture "Symlinks and special
- * files", invariant 6). Nothing here follows a symlink on purpose, and every check is repeated after
+ * Race-aware access to one file of a Specification directory (`docs/architecture/runtime/specification-documents.md`:
+ * symlinks and special files). Nothing here follows a symlink on purpose, and every check is repeated after
  * the file is open:
  *
  * 1. `lstat` every ancestor (a real directory) and the file itself (a regular file, not a symlink);

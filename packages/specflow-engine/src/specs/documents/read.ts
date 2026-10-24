@@ -33,9 +33,9 @@ import {
 } from './verified-file';
 
 /**
- * Filesystem reader of the documents layer (delivery D3). Starts from the discovered Specification,
+ * Filesystem reader of the documents layer (`docs/architecture/runtime/specification-documents.md`). Starts from the discovered Specification,
  * reads the manifest ONCE and builds the projection from that read, a directory listing and a
- * stat/hash of the files. It is not an atomic snapshot (architecture invariant 7): every reported
+ * stat/hash of the files. It is not an atomic snapshot (documented read guarantee): every reported
  * field was true at some instant during the read, writes put the manifest last, and the tree
  * revision is computed from exactly the bytes and signatures that were read, so re-reading and
  * comparing revisions detects any change. No control lock, no Git process.

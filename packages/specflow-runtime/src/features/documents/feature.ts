@@ -18,7 +18,7 @@ export interface DocumentsFeatureDependencies {
   /**
    * Serve the demonstration read route (legacy shape, only the document URL) instead of the tree,
    * content and raw routes. Set by the composition root in demo mode and for an injected legacy
-   * source; the demo contract converges in D5.
+   * source; the demo contract converges with the real one when the write operations land.
    */
   legacyDemoRead?: boolean;
 }

@@ -112,7 +112,7 @@ describe('Engine-backed specification workspace read', () => {
           repository: unavailable,
           changes: unavailable,
         });
-        // The registered documents of the manifest, read through the Engine (D3).
+        // The registered documents of the manifest, read through the Engine.
         expect(body.sections.documents.state).toBe('available');
         if (body.sections.documents.state === 'available') {
           const [overview, ...others] = body.sections.documents.data.items;

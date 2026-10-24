@@ -6,7 +6,7 @@ import {
   unsupportedJournalError,
 } from './unsupported';
 
-describe('unsupported Create journals (PC-2)', () => {
+describe('unsupported Create journals', () => {
   it('classifies the current version as current and reads nothing else', () => {
     expect(classifyCreateJournalText('{"version":2,"anything":"else"}')).toEqual({
       kind: 'current',

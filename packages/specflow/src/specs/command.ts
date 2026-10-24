@@ -57,7 +57,7 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
     .description('Create a Specification in the current checkout or a managed Git worktree')
     .requiredOption('--title <title>', 'Human-readable Specification title')
     // Required, no default in any layer: a CLI default would be a hidden second place that decides
-    // the shape of the work (PC-3).
+    // the shape of the work.
     .requiredOption('--archetype <id>', 'Archetype of the Specification (for example minimal)')
     .option(
       '--with <templateId>',

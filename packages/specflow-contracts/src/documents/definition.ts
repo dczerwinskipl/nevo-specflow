@@ -4,12 +4,12 @@ import { CATALOGUE_ID_PATTERN, DOCUMENT_ID_PATTERN } from './vocabulary';
 
 /**
  * Declarative definition schema (`schemaVersion: 1`) shared by the built-in definitions and the
- * future user-defined files (D-config). Rules: architecture document "Definitions". Published as
+ * future user-defined files. Rules: architecture document "Definitions". Published as
  * JSON Schema through {@link createArchetypeDefinitionsJsonSchema}.
  *
  * Cross-checks that need the whole catalogue (template `documentType` exists, ids unique across
  * entries, `(id, version)` unique) are not expressible per file and belong to the Engine catalogue
- * validation (D1.T02).
+ * validation.
  */
 
 export const ARCHETYPE_DEFINITION_SCHEMA_VERSION = 1;

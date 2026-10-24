@@ -102,7 +102,7 @@ describe('parseSpecificationManifest', () => {
     );
   });
 
-  describe('rule 1: the old type field is not read', () => {
+  describe('the old type field is not read', () => {
     it('rejects the old type-only manifest', () => {
       const old = {
         id: SLUG,
@@ -140,7 +140,7 @@ describe('parseSpecificationManifest', () => {
     });
   });
 
-  describe('rule 2: unknown keys inside strict objects', () => {
+  describe('unknown keys inside strict objects', () => {
     it('rejects unknown keys in archetype, documents[] and requirements[]', () => {
       const a = validSource();
       archetypeOf(a).extra = 1;
@@ -154,7 +154,7 @@ describe('parseSpecificationManifest', () => {
     });
   });
 
-  describe('rule 3: document ids and types', () => {
+  describe('document ids and types', () => {
     it.each([
       ['Upper', 'documents[1].id'],
       ['u-0123456789abcdef', 'documents[1].id'],
@@ -180,7 +180,7 @@ describe('parseSpecificationManifest', () => {
     });
   });
 
-  describe('rule 4: paths', () => {
+  describe('paths', () => {
     it.each([
       '../escape.md',
       '/abs.md',
@@ -209,7 +209,7 @@ describe('parseSpecificationManifest', () => {
     });
   });
 
-  describe('rule 5: exactly one fixed overview entry (PC-1)', () => {
+  describe('exactly one fixed overview entry', () => {
     it('rejects a missing overview entry', () => {
       const source = validSource();
       source.documents = documentsOf(source).slice(1);
@@ -238,7 +238,7 @@ describe('parseSpecificationManifest', () => {
     });
   });
 
-  describe('rule 6: requirements', () => {
+  describe('requirements', () => {
     it('rejects missing, non-array and invalid requirements', () => {
       const missing = validSource();
       delete archetypeOf(missing).requirements;
@@ -282,7 +282,7 @@ describe('parseSpecificationManifest', () => {
     });
   });
 
-  describe('rule 7: folders', () => {
+  describe('folders', () => {
     it('rejects invalid, duplicate and file-equal folders', () => {
       const invalid = validSource();
       invalid.folders = ['../x'];

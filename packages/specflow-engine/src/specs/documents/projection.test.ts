@@ -78,13 +78,13 @@ describe('projectDocumentTree', () => {
     expect(behaviour.protected).toBe(false);
   });
 
-  it('reports every write action and capability as not-implemented before D4', () => {
+  it('reports every write action and capability as not-implemented until the write operations exist', () => {
     const tree = projectDocumentTree(input());
     expect(tree.capabilities.createFile).toEqual(NOT_IMPLEMENTED);
     expect(tree.capabilities.createFolder).toEqual(NOT_IMPLEMENTED);
     expect(tree.capabilities.import).toEqual(NOT_IMPLEMENTED);
     expect(tree.capabilities.classify).toEqual(NOT_IMPLEMENTED);
-    // busy and commit-blocked are emitted from D4 only.
+    // busy and commit-blocked are emitted by write operations only.
     expect(JSON.stringify(tree)).not.toMatch(/"(busy|commit-blocked)"/u);
   });
 

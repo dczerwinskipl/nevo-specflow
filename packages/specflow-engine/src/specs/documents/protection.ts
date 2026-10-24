@@ -2,8 +2,8 @@ import { foldPathKey } from './document-paths';
 
 /**
  * The framework invariant: `overview` is the only protected document. Its id, path and type are
- * fixed; delete, rename and move are refused with the `protected` reason (PC-1, architecture
- * invariant 2). This module is the single place that decides it; the parser and, later, the
+ * fixed; delete, rename and move are refused with the `protected` reason (see
+ * `docs/architecture/runtime/specification-documents.md`). This module is the single place that decides it; the parser and, later, the
  * actions import {@link isProtectedDocument}.
  */
 export const OVERVIEW_DOCUMENT_ID = 'overview';

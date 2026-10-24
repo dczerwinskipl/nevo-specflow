@@ -1,4 +1,4 @@
-// Linux-only integration (real Git, real files): older-format Create journals (PC-2) and the
+// Linux-only integration (real Git, real files): older-format Create journals and the
 // payload store lifecycle (orphan sweep, crash between payload write and journal publication).
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readdir, rm, stat, utimes, writeFile } from 'node:fs/promises';
@@ -68,7 +68,7 @@ async function plant(directory: string, text: string, ageDays = 0): Promise<stri
 
 const OLD_FORMAT = JSON.stringify({ version: 1, stage: 'manifest-writing', files: [1, 2] });
 
-describe('older-format Create journals (PC-2)', () => {
+describe('older-format Create journals', () => {
   it('never block Create or Close', async () => {
     const { root, engine, directory, registry } = await fixture();
     await plant(directory, OLD_FORMAT);

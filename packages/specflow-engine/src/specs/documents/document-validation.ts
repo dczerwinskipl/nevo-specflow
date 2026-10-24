@@ -8,12 +8,12 @@ import type { ManifestArchetype, ManifestDocument } from '../model';
  * filesystem, and nothing records or implies readiness, acceptance or approval; completeness is
  * structural only.
  *
- * `skipped-entry`, `path-case-collision` and `archive-limit` issues are filesystem facts that the D3
+ * `skipped-entry`, `path-case-collision` and `archive-limit` issues are filesystem facts that the tree
  * projection adds; the issue type (from the contracts) already defines them.
  */
 
 export interface DocumentValidationInput {
-  /** The archetype snapshot persisted in the manifest (invariant 5). */
+  /** The archetype snapshot persisted in the manifest. */
   readonly archetype: Pick<ManifestArchetype, 'requirements'>;
   readonly documents: readonly ManifestDocument[];
   /**

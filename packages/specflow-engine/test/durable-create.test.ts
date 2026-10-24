@@ -185,7 +185,7 @@ describe('E2.T04 — durable Spec creation on actual Git', () => {
     );
   }, 300000);
 
-  it('SC00: records only Engine-created dirty scaffold files with durable fingerprints', async () => {
+  it('records only Engine-created dirty scaffold files with durable fingerprints', async () => {
     const { root, engine } = await project(false);
     const result = await createSpecification(engine, existing(engine, 'Baseline evidence'));
     const journal = await inspectCreateSpecification(engine, result.operationId);

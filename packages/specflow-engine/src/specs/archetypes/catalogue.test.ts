@@ -31,7 +31,7 @@ function clone(): ArchetypeDefinitionFile {
 }
 
 describe('built-in catalogue invariants', () => {
-  it('conforms to the D0 definition schema and byte limits', () => {
+  it('conforms to the definition schema and byte limits', () => {
     expect([...Value.Errors(ArchetypeDefinitionFileSchema, BUILT_IN_DEFINITIONS)]).toEqual([]);
     expect(findCatalogueIssues(BUILT_IN_DEFINITIONS)).toEqual([]);
   });

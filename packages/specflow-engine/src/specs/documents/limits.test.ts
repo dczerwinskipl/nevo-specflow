@@ -32,7 +32,7 @@ describe('limits (architecture "Limits")', () => {
   });
 });
 
-describe('overview protection predicate (PC-1)', () => {
+describe('overview protection predicate', () => {
   it('protects the overview by id and by its fixed path', () => {
     expect(isProtectedDocument({ id: 'overview', path: 'overview.md' })).toBe(true);
     expect(isProtectedDocument({ id: 'overview' })).toBe(true);

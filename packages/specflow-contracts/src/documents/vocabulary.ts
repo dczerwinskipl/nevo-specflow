@@ -54,7 +54,8 @@ export const ACTION_REASONS = [
   'busy',
   'not-editable',
   'dangling',
-  /** Write actions before the D4 routes exist; removed when D4 lands. */
+  /** Write actions have no route yet; removed once the write operations exist. */
+  // TODO(document write operations): temporary reason, removed once the write routes exist.
   'not-implemented',
 ] as const;
 export const ActionReasonSchema = closedUnion(ACTION_REASONS);

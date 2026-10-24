@@ -2,8 +2,8 @@ import { CreateOperationError } from '../error';
 import { CREATE_JOURNAL_VERSION } from './model';
 
 /**
- * The single home of the rule for Create journals this Engine cannot interpret (confirmed decision
- * PC-2; delivery specification D2, item 3). It is NOT a compatibility reader: no old format is ever
+ * The single home of the rule for Create journals this Engine cannot interpret (see
+ * `docs/architecture/runtime/specification-documents.md`). It is NOT a compatibility reader: no old format is ever
  * interpreted. A journal file is _unsupported_ when
  *
  * - its text is not valid JSON, or

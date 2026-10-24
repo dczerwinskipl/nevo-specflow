@@ -63,7 +63,7 @@ export interface SpecificationScaffoldInput {
 export interface SpecificationScaffoldFile {
   readonly relativePath: string;
   readonly content: string;
-  /** Baseline for later admission of known Engine-created dirty files (SC00). */
+  /** Baseline for later admission of known Engine-created dirty files (durable create evidence). */
   readonly sha256: string;
   /** UTF-8 bytes of `content`. */
   readonly bytes: number;
@@ -78,7 +78,7 @@ export interface SpecificationScaffold {
   readonly documentIds: readonly string[];
 }
 
-/** Why scaffold input was refused. Admission maps each kind to one document error code (D2). */
+/** Why scaffold input was refused. Admission maps each kind to one document error code. */
 export type ScaffoldValidationCause =
   | { readonly kind: 'archetype-unknown'; readonly id: string }
   | { readonly kind: 'template-unknown'; readonly id: string }

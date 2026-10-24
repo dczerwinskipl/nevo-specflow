@@ -84,7 +84,7 @@ describe('Documents versioned content HTTP', () => {
   });
 });
 
-describe('Demonstration read route (legacy shape, D5 converges it)', () => {
+describe('Demonstration read route (legacy shape, until it converges with the real read)', () => {
   it('serves the legacy bodies byte for byte, and routes neither document-tree nor raw', async () => {
     const config = passwordConfig();
     const app = await createRuntimeApp(

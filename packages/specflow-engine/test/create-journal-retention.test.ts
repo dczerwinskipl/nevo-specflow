@@ -126,7 +126,7 @@ describe('Create journal retention', () => {
     const now = Date.now();
     const keep = await seed(context, 'completed', 30, now);
     const old = new Date(now - 30 * DAY);
-    // Not JSON and an other version are unsupported (PC-2): deleted by age, never parsed further.
+    // Not JSON and an other version are unsupported: deleted by age, never parsed further.
     const notJson = createJournalPath(context, randomUUID());
     await withCreateJournalLock(context, () => writeFile(notJson, '{not json'));
     await utimes(notJson, old, old);

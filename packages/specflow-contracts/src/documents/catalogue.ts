@@ -80,7 +80,7 @@ export const ArchetypeCatalogueSchema = Type.Object(
     /** Absent in the real backend (the UI chooses); optional in the demo. */
     defaultArchetypeId: Type.Optional(CatalogueIdSchema),
     documentTypes: Type.Array(DocumentTypeInfoSchema),
-    /** Reserved for D-config; absent or empty for built-ins. */
+    /** Reserved for user-defined archetype files (not implemented); absent or empty for built-ins. */
     problems: Type.Optional(Type.Array(CatalogueProblemSchema)),
     archetypes: Type.Array(ArchetypeInfoSchema),
   },
@@ -100,10 +100,10 @@ export const AddedDocumentSchema = Type.Object(
 export type AddedDocument = Static<typeof AddedDocumentSchema>;
 
 /**
- * Property schemas that the Create request gains in D2 (all archetype fields required: no default
- * archetype in the contract). Exported as a plain record so D2 can spread it into
- * `CreateSpecRequestSchema`; not merged there in D0. Counts and byte limits are enforced by the
- * Engine at admission (`DOCUMENT_OPERATION_INVALID`), not here.
+ * Property schemas of the archetype part of the Create request (all archetype fields required: no
+ * default archetype in the contract). Exported as a plain record that `CreateSpecRequestSchema`
+ * spreads. Counts and byte limits are enforced by the Engine at admission
+ * (`DOCUMENT_OPERATION_INVALID`), not here.
  */
 export const CreateArchetypeSelectionProperties = {
   archetypeId: CatalogueIdSchema,

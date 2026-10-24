@@ -89,7 +89,11 @@ export async function loadSpecification(
   try {
     discovered = await resolveSpecificationForRead(engine, specId);
   } catch (error) {
-    if (error instanceof SpecificationError && error.code === 'SPEC_NOT_FOUND') {
+    // An id that cannot name a Specification is as unknown as one that names none.
+    if (
+      error instanceof SpecificationError &&
+      (error.code === 'SPEC_NOT_FOUND' || error.code === 'SPEC_VALIDATION_ERROR')
+    ) {
       throw new DocumentError('DOCUMENT_NOT_FOUND', 'The Specification does not exist.');
     }
     throw error;

@@ -163,6 +163,10 @@ describe('readSpecificationDocumentTree', () => {
     expect(code(await failure(readSpecificationDocumentTree(fixture.engine, randomUUID())))).toBe(
       'DOCUMENT_NOT_FOUND',
     );
+    // An id that is not even shaped like a Specification id is just as unknown.
+    expect(code(await failure(readSpecificationDocumentTree(fixture.engine, 'not-a-uuid')))).toBe(
+      'DOCUMENT_NOT_FOUND',
+    );
     expect(
       code(await failure(readSpecificationDocument(fixture.engine, created.specId, 'nope'))),
     ).toBe('DOCUMENT_NOT_FOUND');

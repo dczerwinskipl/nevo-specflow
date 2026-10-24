@@ -261,14 +261,25 @@ describe.skipIf(!onLinux)('symlinks and races (POSIX O_NOFOLLOW)', () => {
     ).toBe('DOCUMENT_NOT_FOUND');
   }, 240000);
 
-  /** An fs whose `open` first runs `swap`, i.e. the race window between the check and the open. */
-  function racing(swap: () => Promise<void>, afterOpen = false): VerifiedFs {
+  /**
+   * An fs whose `open` of `target` first (or, with `afterOpen`, right afterwards) runs `swap` once:
+   * the race window between the check and the open. Other files (the manifest) open normally.
+   */
+  function racing(target: string, swap: () => Promise<void>, afterOpen = false): VerifiedFs {
+    let swapped = false;
     return {
       ...nodeVerifiedFs,
       open: async (path, flags) => {
-        if (!afterOpen) await swap();
+        const hit = !swapped && path.endsWith(target);
+        if (hit && !afterOpen) {
+          swapped = true;
+          await swap();
+        }
         const handle = await nodeVerifiedFs.open(path, flags);
-        if (afterOpen) await swap();
+        if (hit && afterOpen) {
+          swapped = true;
+          await swap();
+        }
         return handle;
       },
     };
@@ -285,7 +296,7 @@ describe.skipIf(!onLinux)('symlinks and races (POSIX O_NOFOLLOW)', () => {
       files: { 'overview.md': '# o\n', 'note.md': '# note\n' },
     });
     const before = await openDescriptors();
-    const fs = racing(async () => {
+    const fs = racing('note.md', async () => {
       await unlink(join(hand.dir, 'note.md'));
       await symlink(join(outside, 'secret.md'), join(hand.dir, 'note.md'));
     });
@@ -306,7 +317,7 @@ describe.skipIf(!onLinux)('symlinks and races (POSIX O_NOFOLLOW)', () => {
       ],
       files: { 'overview.md': '# o\n', 'note.md': '# note\n' },
     });
-    const fs = racing(async () => {
+    const fs = racing('note.md', async () => {
       await writeFile(join(hand.dir, 'other.md'), '# swapped\n');
       await rename(join(hand.dir, 'other.md'), join(hand.dir, 'note.md'));
     });
@@ -328,10 +339,14 @@ describe.skipIf(!onLinux)('symlinks and races (POSIX O_NOFOLLOW)', () => {
       files: { 'overview.md': '# o\n', 'note.md': '# note\n' },
     });
     const before = await openDescriptors();
-    const fs = racing(async () => {
-      await unlink(join(hand.dir, 'note.md'));
-      await symlink(join(outside, 'secret.md'), join(hand.dir, 'note.md'));
-    }, true);
+    const fs = racing(
+      'note.md',
+      async () => {
+        await unlink(join(hand.dir, 'note.md'));
+        await symlink(join(outside, 'secret.md'), join(hand.dir, 'note.md'));
+      },
+      true,
+    );
     expect(
       errorCode(
         await failure(openSpecificationDocument(fixture.engine, hand.specId, 'note', { fs })),
@@ -351,10 +366,14 @@ describe.skipIf(!onLinux)('symlinks and races (POSIX O_NOFOLLOW)', () => {
       ],
       files: { 'overview.md': '# o\n', 'sub/doc.md': '# inside\n' },
     });
-    const fs = racing(async () => {
-      await rename(join(hand.dir, 'sub'), join(hand.dir, 'sub-moved'));
-      await symlink(outside, join(hand.dir, 'sub'));
-    }, true);
+    const fs = racing(
+      'doc.md',
+      async () => {
+        await rename(join(hand.dir, 'sub'), join(hand.dir, 'sub-moved'));
+        await symlink(outside, join(hand.dir, 'sub'));
+      },
+      true,
+    );
     const error = await failure(
       openSpecificationDocument(fixture.engine, hand.specId, 'doc', { fs }),
     );
@@ -370,7 +389,7 @@ describe.skipIf(!onLinux)('symlinks and races (POSIX O_NOFOLLOW)', () => {
       ],
       files: { 'overview.md': '# o\n', 'note.md': '# note\n' },
     });
-    const fs = racing(async () => {
+    const fs = racing('note.md', async () => {
       await unlink(join(hand.dir, 'note.md'));
       execFileSync('mkfifo', [join(hand.dir, 'note.md')]);
     });

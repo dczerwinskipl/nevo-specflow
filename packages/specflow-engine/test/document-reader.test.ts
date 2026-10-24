@@ -173,7 +173,7 @@ describe('readSpecificationDocumentTree', () => {
     expect(
       code(
         await failure(
-          readSpecificationDocument(fixture.engine, created.specId, 'u-0123456789abcdef'),
+          readSpecificationDocument(fixture.engine, created.specId, 'u-0123456789abcdef0123456789abcdef'),
         ),
       ),
     ).toBe('DOCUMENT_NOT_FOUND');
@@ -438,6 +438,36 @@ describe('paths, links and hidden entries', () => {
     );
   }, 240000);
 
+  it('reads a file hard-linked INTO the directory from outside (the boundary is the entry, not the inode)', async () => {
+    const fixture = await project();
+    const outside = await mkdtemp(join(tmpdir(), 'specflow-outside-'));
+    trackRoot(outside);
+    await writeFile(join(outside, 'shared.md'), '# Shared
+');
+    const hand = await handBuilt(fixture);
+    await link(join(outside, 'shared.md'), join(hand.dir, 'linked-in.md'));
+    const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
+    const entry = tree.documents.find((document) => document.path === 'linked-in.md')!;
+    expect(entry.classification).toBe('unclassified');
+    expect(
+      (await readSpecificationDocument(fixture.engine, hand.specId, entry.id)).content,
+    ).toBe('# Shared
+');
+  }, 240000);
+
+  it('reports names with bidi overrides, zero-width and separator characters as skipped entries', async () => {
+    const fixture = await project();
+    const hand = await handBuilt(fixture);
+    const bidi = 'doc' + String.fromCodePoint(0x202e) + 'fdp.md';
+    const zeroWidth = 'a' + String.fromCodePoint(0x200b) + 'b.md';
+    const separator = 'c' + String.fromCodePoint(0x2028) + 'd.md';
+    for (const name of [bidi, zeroWidth, separator]) await writeFile(join(hand.dir, name), 'x');
+    const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
+    expect(tree.documents.map((document) => document.path)).toEqual(['overview.md']);
+    expect(tree.issues.filter((issue) => issue.code === 'skipped-entry')).toHaveLength(3);
+    expect(tree.skippedEntries).toBe(3);
+  }, 240000);
+
   it('leaves hidden entries and the manifest out of the tree', async () => {
     const fixture = await project();
     const hand = await handBuilt(fixture, {
@@ -582,8 +612,43 @@ describe('limits', () => {
         names.slice(start, start + 500).map((name) => mkdir(join(hand.dir, 'dirs', name))),
       );
     }
+    const started = performance.now();
     const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
     expect(tree.issues).toContainEqual({ code: 'archive-limit' });
+    // The listing shares the entries budget: it stops (truncated) instead of walking every folder.
+    expect(tree.truncated).toBe(true);
+    expect(performance.now() - started).toBeLessThan(5000);
+    // So does the derived-id lookup: the unknown id is answered without walking everything.
+    expect(
+      code(await failure(readSpecificationDocument(fixture.engine, hand.specId, deriveUnclassifiedDocumentId('nope.md')))),
+    ).toBe('DOCUMENT_NOT_FOUND');
+  }, 240000);
+
+  it('derives titles from huge heading lines in linear time (read path and summaries)', async () => {
+    const fixture = await project();
+    const hand = await handBuilt(fixture, {
+      documents: [
+        { id: 'overview', path: 'overview.md', type: 'overview' },
+        { id: 'note', path: 'note.md', type: 'note' },
+      ],
+      files: {
+        'overview.md': '#' + ' '.repeat(200_000) + 'x
+',
+        'note.md': '# ' + 'a'.repeat(1024 * 1024 - 8) + '
+',
+      },
+    });
+    for (const work of [
+      () => readSpecificationDocument(fixture.engine, hand.specId, 'overview'),
+      () => readSpecificationDocument(fixture.engine, hand.specId, 'note'),
+      () => readRegisteredDocumentSummaries(fixture.engine, hand.specId),
+    ]) {
+      const started = performance.now();
+      await work();
+      expect(performance.now() - started).toBeLessThan(500);
+    }
+    const note = await readSpecificationDocument(fixture.engine, hand.specId, 'note');
+    expect(note.title).toHaveLength(200);
   }, 240000);
 });
 
@@ -600,7 +665,7 @@ describe('archived Specifications', () => {
       rename: archived,
       move: archived,
       delete: archived,
-      classify: { available: false },
+      classify: archived,
     });
     expect(tree.capabilities.createFile).toEqual(archived);
     expect(tree.capabilities.classify).toEqual(archived);

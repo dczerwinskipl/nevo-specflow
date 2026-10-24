@@ -29,9 +29,9 @@ export function isDerivedDocumentId(id: string): boolean {
   return id.startsWith(DERIVED_ID_PREFIX);
 }
 
-/** `u-` plus the first 16 hex characters of sha256 of the exact path (case preserved). */
+/** `u-` plus the first 32 hex characters (128 bits) of sha256 of the exact path (case preserved). */
 export function deriveUnclassifiedDocumentId(path: string): string {
-  return DERIVED_ID_PREFIX + createHash('sha256').update(path, 'utf8').digest('hex').slice(0, 16);
+  return DERIVED_ID_PREFIX + createHash('sha256').update(path, 'utf8').digest('hex').slice(0, 32);
 }
 
 /** Lowercase RFC 4648 base32 (no padding) of the bytes. */

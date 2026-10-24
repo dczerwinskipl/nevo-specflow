@@ -1,6 +1,7 @@
 import { lstat, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { DocumentError } from './errors';
 import {
   ARCHIVE_COUNT_TRAVERSAL_ENTRIES_MAX,
   ARCHIVE_COUNT_TRAVERSAL_FILES_STOP,
@@ -12,51 +13,73 @@ import {
 
 /**
  * The two directory walks of the documents reader. Neither follows a symlink, neither takes a lock,
- * neither starts a process. Directory entries are visited in code-unit order so the results (and the
+ * neither starts a process, and both stop after the same entries budget
+ * ({@link ARCHIVE_COUNT_TRAVERSAL_ENTRIES_MAX}), so a directory with a huge number of empty folders
+ * cannot make a read slow. Directory entries are visited in code-unit order so the results (and the
  * truncation point) are deterministic.
  */
 
-/** At most this many paths are reported for skipped entries; the count is always complete. */
+/** At most this many paths are reported for skipped entries; the count is not capped by it. */
 export const SKIPPED_PATHS_MAX = 50;
 
 export interface ListedFiles {
   /** Regular, non-hidden files, in walk order. */
   readonly paths: readonly string[];
-  /** The walk stopped at the file cap or did not descend below the depth cap. */
+  /** The walk stopped at the file cap, the entries budget or did not descend below the depth cap. */
   readonly truncated: boolean;
   /** Entries that cannot be addressed or read safely (odd names, an unreadable folder). */
   readonly unaddressable: readonly string[];
 }
 
+function errnoCode(error: unknown): string {
+  return typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
+}
+
 function isGone(error: unknown): boolean {
-  const code = typeof error === 'object' && error !== null && 'code' in error ? error.code : '';
+  const code = errnoCode(error);
   return code === 'ENOENT' || code === 'ENOTDIR';
+}
+
+/** The Specification directory itself cannot be read (EACCES, EMFILE, vanished): an unavailable source. */
+function rootUnreadable(): DocumentError {
+  return new DocumentError(
+    'SPEC_SOURCE_UNAVAILABLE',
+    'The Specification directory is unavailable.',
+  );
 }
 
 function compareNames(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
-/** A name the documents layer can address: no control character, no backslash, valid UTF-8. */
-function isUnaddressable(name: string): boolean {
-  for (const char of name) {
-    const code = char.codePointAt(0)!;
-    // Control characters, DEL, backslash and U+FFFD (what a non-UTF-8 byte decodes to).
-    if (code < 0x20 || code === 0x7f || code === 0x5c || code === 0xfffd) return true;
-  }
-  return false;
+/** Control, format, line and paragraph separator characters (bidi overrides, C1, U+2028, zero width). */
+const INVISIBLE_OR_CONTROL = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u;
+const BACKSLASH = String.fromCharCode(0x5c);
+const REPLACEMENT_CHARACTER = String.fromCharCode(0xfffd);
+
+/**
+ * A name the documents layer cannot address or display safely: it contains a control, format or
+ * separator character (Cc, Cf, Zl, Zp), a backslash, or U+FFFD (what a non-UTF-8 byte decodes to).
+ */
+export function isUnaddressable(name: string): boolean {
+  return (
+    INVISIBLE_OR_CONTROL.test(name) ||
+    name.includes(BACKSLASH) ||
+    name.includes(REPLACEMENT_CHARACTER)
+  );
 }
 
 /**
  * List the regular files of a Specification directory for the tree: no symlinks, no special files, no
  * hidden entries (a name starting with `.`), the root manifest excluded by the caller. At most
- * {@link LISTED_FILES_MAX} files and {@link FOLDER_DEPTH_MAX} folder levels; beyond that the walk is
- * `truncated`.
+ * {@link LISTED_FILES_MAX} files, {@link FOLDER_DEPTH_MAX} folder levels and
+ * {@link ARCHIVE_COUNT_TRAVERSAL_ENTRIES_MAX} entries; beyond that the walk is `truncated`.
  */
 export async function listSpecificationFiles(specDir: string): Promise<ListedFiles> {
   const paths: string[] = [];
   const unaddressable: string[] = [];
   let truncated = false;
+  let entriesSeen = 0;
 
   async function walk(relativeDir: string, depth: number): Promise<void> {
     let entries;
@@ -65,7 +88,7 @@ export async function listSpecificationFiles(specDir: string): Promise<ListedFil
         withFileTypes: true,
       });
     } catch (error) {
-      if (relativeDir === '') throw error;
+      if (relativeDir === '') throw rootUnreadable();
       // A folder that vanished is simply gone; one that cannot be read is reported, never dropped.
       if (!isGone(error)) unaddressable.push(relativeDir);
       return;
@@ -73,6 +96,11 @@ export async function listSpecificationFiles(specDir: string): Promise<ListedFil
     entries.sort((left, right) => compareNames(left.name, right.name));
     for (const entry of entries) {
       if (truncated) return;
+      entriesSeen += 1;
+      if (entriesSeen > ARCHIVE_COUNT_TRAVERSAL_ENTRIES_MAX) {
+        truncated = true;
+        return;
+      }
       if (entry.name.startsWith('.')) continue;
       const relative = relativeDir === '' ? entry.name : relativeDir + '/' + entry.name;
       if (entry.isSymbolicLink()) continue; // counted and reported by the archive traversal
@@ -108,7 +136,10 @@ export interface ArchiveCount {
   readonly bounded: boolean;
   /** First regular file above the archive per-file limit. */
   readonly oversizedPath?: string;
-  /** Symlinks and special entries found (Close archive refuses them). */
+  /**
+   * Symlinks and special entries found (Close archive refuses them). A lower bound once
+   * {@link bounded} is true: entries beyond the bound were not visited.
+   */
   readonly skippedCount: number;
   readonly skippedPaths: readonly string[];
   /** Close archive would refuse: too many files, a file too large, or the bound was reached. */
@@ -141,9 +172,10 @@ export async function countArchiveInventory(specDir: string): Promise<ArchiveCou
       names = await readdir(relativeDir === '' ? specDir : join(specDir, relativeDir), {
         withFileTypes: true,
       });
-    } catch {
+    } catch (error) {
+      if (relativeDir === '') throw rootUnreadable();
       // A directory Close archive could not read either: it will refuse, like a special entry.
-      skip(relativeDir);
+      if (!isGone(error)) skip(relativeDir);
       return;
     }
     names.sort((left, right) => compareNames(left.name, right.name));

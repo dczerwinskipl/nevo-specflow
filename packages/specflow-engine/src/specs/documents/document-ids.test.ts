@@ -105,7 +105,9 @@ describe('allocateDocumentId', () => {
     expect(allocate('aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee', 1, ['behaviour'])).toBe(
       'behaviour-eby67h',
     );
-    expect(deriveUnclassifiedDocumentId('research/Notes.md')).toBe('u-05ace8fecc34d7bb');
+    expect(deriveUnclassifiedDocumentId('research/Notes.md')).toBe(
+      'u-05ace8fecc34d7bbd2b6069b57742a69',
+    );
   });
 
   it('produces ids accepted by the registered id rule', () => {
@@ -121,12 +123,12 @@ describe('allocateDocumentId', () => {
 });
 
 describe('deriveUnclassifiedDocumentId', () => {
-  it('uses u- and the first 16 hex of sha256 of the exact path', () => {
+  it('uses u- and the first 32 hex of sha256 of the exact path', () => {
     const id = deriveUnclassifiedDocumentId('research/Notes.md');
     expect(id).toBe(
-      `u-${createHash('sha256').update('research/Notes.md').digest('hex').slice(0, 16)}`,
+      `u-${createHash('sha256').update('research/Notes.md').digest('hex').slice(0, 32)}`,
     );
-    expect(id).toMatch(/^u-[0-9a-f]{16}$/u);
+    expect(id).toMatch(/^u-[0-9a-f]{32}$/u);
   });
 
   it('preserves case so A.md and a.md have different ids', () => {

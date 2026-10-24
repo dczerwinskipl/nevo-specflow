@@ -159,6 +159,7 @@ describe('projectDocumentTree', () => {
       expect(document.editable).toBe(false);
       expect(document.actions.rename).toEqual(archived);
       expect(document.actions.move).toEqual(archived);
+      expect(document.actions.classify).toEqual(archived);
       expect(document.actions.delete).toEqual(archived);
     }
     for (const folder of tree.folders) expect(folder.actions.delete).toEqual(archived);

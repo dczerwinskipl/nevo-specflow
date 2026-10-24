@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -52,5 +53,27 @@ describe('readCheckedOutBranch', () => {
     expect(await readCheckedOutBranch(missing)).toBeUndefined();
 
     expect(await readCheckedOutBranch(await temp())).toBeUndefined();
+  });
+
+  it.skipIf(process.platform === 'win32')(
+    'does not hang on a FIFO .git/HEAD or a FIFO .git file',
+    async () => {
+      const fifoHead = await temp();
+      await mkdir(join(fifoHead, '.git'));
+      execFileSync('mkfifo', [join(fifoHead, '.git', 'HEAD')]);
+      expect(await readCheckedOutBranch(fifoHead)).toBeUndefined();
+
+      const fifoDotGit = await temp();
+      execFileSync('mkfifo', [join(fifoDotGit, '.git')]);
+      expect(await readCheckedOutBranch(fifoDotGit)).toBeUndefined();
+    },
+    5000,
+  );
+
+  it('ignores an oversized HEAD', async () => {
+    const root = await temp();
+    await mkdir(join(root, '.git'));
+    await writeFile(join(root, '.git', 'HEAD'), 'ref: refs/heads/' + 'a'.repeat(10_000));
+    expect(await readCheckedOutBranch(root)).toBeUndefined();
   });
 });

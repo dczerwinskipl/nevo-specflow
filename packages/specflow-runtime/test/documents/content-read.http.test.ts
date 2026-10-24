@@ -97,7 +97,7 @@ describe('GET /api/specs/:specId/documents/:documentId', () => {
         Promise.resolve(
           (() => {
             const { content: _omitted, ...image } = content({
-              id: 'u-0123456789abcdef',
+              id: 'u-0123456789abcdef0123456789abcdef',
               path: 'pic.png',
               kind: 'image',
               mediaType: 'image/png',
@@ -110,7 +110,9 @@ describe('GET /api/specs/:specId/documents/:documentId', () => {
         ),
     });
     try {
-      const response = await server.inject('/api/specs/admission/documents/u-0123456789abcdef');
+      const response = await server.inject(
+        '/api/specs/admission/documents/u-0123456789abcdef0123456789abcdef',
+      );
       expect(response.statusCode).toBe(200);
       expect(response.json()).not.toHaveProperty('content');
       expect(response.json()).toMatchObject({ kind: 'image', classification: 'unclassified' });

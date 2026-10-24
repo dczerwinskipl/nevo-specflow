@@ -55,3 +55,39 @@ describe('deriveDocumentTitle', () => {
     expect(deriveDocumentTitle('A.MD', '# Up')).toBe('Up');
   });
 });
+
+describe('deriveDocumentTitle: bounded work and length', () => {
+  const budgetMs = 50;
+  const NL = String.fromCharCode(10);
+  const timed = (work: () => unknown): number => {
+    const started = performance.now();
+    work();
+    return performance.now() - started;
+  };
+
+  it.each([
+    ['a 200k-space line after #', '#' + ' '.repeat(200_000) + 'x' + NL],
+    ['a 200k-space tail after a title', '# T' + ' '.repeat(200_000) + 'x' + NL],
+    ['a 1 MiB line of spaces and tabs', '# ' + ' \t'.repeat(512 * 1024) + NL],
+    ['a 1 MiB line of hashes', '# a ' + '#'.repeat(1024 * 1024) + 'b' + NL],
+    ['a 1 MiB title', '# ' + 'a'.repeat(1024 * 1024) + NL],
+  ])('takes linear time on %s', (_name, text) => {
+    expect(timed(() => deriveDocumentTitle('a.md', text))).toBeLessThan(budgetMs);
+  });
+
+  it('caps the derived title at 200 characters without splitting a code point', () => {
+    expect(deriveDocumentTitle('a.md', '# ' + 'a'.repeat(5000))).toHaveLength(200);
+    const emoji = String.fromCodePoint(0x1f600);
+    const title = deriveDocumentTitle('a.md', '# ' + emoji.repeat(500));
+    expect([...title]).toHaveLength(200);
+    expect(title).toBe(emoji.repeat(200));
+  });
+
+  it('still strips a closing run of hashes only after a space', () => {
+    expect(deriveDocumentTitle('a.md', '# Title ##' + NL)).toBe('Title');
+    expect(deriveDocumentTitle('a.md', '# C#' + NL)).toBe('C#');
+    expect(deriveDocumentTitle('a.md', '# ##' + NL)).toBe('a');
+    expect(deriveDocumentTitle('a.md', '#NoSpace' + NL)).toBe('a');
+    expect(deriveDocumentTitle('a.md', '    # four spaces' + NL)).toBe('a');
+  });
+});

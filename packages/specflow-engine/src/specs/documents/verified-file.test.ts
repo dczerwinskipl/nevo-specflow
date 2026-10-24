@@ -256,3 +256,29 @@ describe('openVerifiedFile', () => {
     expect((await openVerifiedFile(h.fs, SPEC, 'a/doc.md')).state).toBe('opened');
   });
 });
+
+describe('filesystem failures the layer cannot act on', () => {
+  it('maps an errno failure (EACCES, EMFILE) to an unavailable source and leaves defects alone', async () => {
+    for (const code of ['EACCES', 'EMFILE', 'EIO']) {
+      const h = harness();
+      h.fs.lstat = () => Promise.reject(errno(code));
+      await expect(inspectEntry(h.fs, SPEC, 'a/doc.md')).rejects.toMatchObject({
+        code: 'SPEC_SOURCE_UNAVAILABLE',
+      });
+      await expect(openVerifiedFile(h.fs, SPEC, 'a/doc.md')).rejects.toMatchObject({
+        code: 'SPEC_SOURCE_UNAVAILABLE',
+      });
+    }
+    const h = harness();
+    h.fs.lstat = () => Promise.reject(new TypeError('defect'));
+    await expect(inspectEntry(h.fs, SPEC, 'a/doc.md')).rejects.toBeInstanceOf(TypeError);
+  });
+
+  it('maps an EACCES on the open itself to an unavailable source', async () => {
+    const h = harness();
+    h.hooks.open = () => Promise.reject(errno('EACCES'));
+    await expect(openVerifiedFile(h.fs, SPEC, 'a/doc.md')).rejects.toMatchObject({
+      code: 'SPEC_SOURCE_UNAVAILABLE',
+    });
+  });
+});

@@ -275,12 +275,21 @@ export async function locateDocument(
   if (isDerivedDocumentId(documentId)) {
     const registeredPaths = new Set(loaded.manifest.documents.map((document) => document.path));
     const listed = await listSpecificationFiles(loaded.specDir);
-    const path = listed.paths.find(
+    const matches = listed.paths.filter(
       (candidate) =>
         !registeredPaths.has(candidate) &&
         !(!candidate.includes('/') && isReservedRootName(candidate)) &&
         deriveUnclassifiedDocumentId(candidate) === documentId,
     );
+    // Two files with one derived id cannot happen in practice (128 bits); if it ever does, neither
+    // is served rather than the wrong one.
+    if (matches.length > 1) {
+      throw new DocumentError(
+        'SPEC_SOURCE_UNAVAILABLE',
+        'Two files of the Specification derive the same document id.',
+      );
+    }
+    const path = matches[0];
     if (path !== undefined) return { id: documentId, path, classification: 'unclassified' };
   }
   throw new DocumentError('DOCUMENT_NOT_FOUND', 'The document does not exist.');

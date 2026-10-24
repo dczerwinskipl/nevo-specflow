@@ -57,6 +57,17 @@ function errnoCode(error: unknown): string | undefined {
     : undefined;
 }
 
+/**
+ * A filesystem failure the layer cannot act on (EACCES, EMFILE, EIO, ...) is an unavailable source,
+ * not an internal error; anything that is not an errno failure is a defect and passes through.
+ */
+function unreadable(error: unknown): never {
+  if (errnoCode(error)?.startsWith('E')) {
+    throw unavailable('The Specification files cannot be read.');
+  }
+  throw error;
+}
+
 function isAbsent(error: unknown): boolean {
   const code = errnoCode(error);
   return code === 'ENOENT' || code === 'ENOTDIR';
@@ -99,7 +110,7 @@ export async function inspectEntry(
       stat = await fs.lstat(current);
     } catch (error) {
       if (isAbsent(error)) return { state: 'absent' };
-      throw error;
+      return unreadable(error);
     }
     if (index < segments.length - 1) {
       if (stat.isSymbolicLink()) return { state: 'redirected' };
@@ -158,7 +169,7 @@ export async function openVerifiedFile(
     ) {
       throw unavailable('A document changed while it was being opened.');
     }
-    throw error;
+    return unreadable(error);
   }
   try {
     const opened = await handle.stat({ bigint: true });
@@ -188,7 +199,7 @@ async function assertPhysicalPath(
     real = await fs.realpath(full);
   } catch (error) {
     if (isAbsent(error)) throw unavailable('A document changed while it was being opened.');
-    throw error;
+    return unreadable(error);
   }
   if (!samePhysicalPath(real, join(specDir, ...segments))) {
     throw unavailable('A document path leaves the Specification directory.');
@@ -207,7 +218,7 @@ export async function assertCanonicalDirectory(fs: VerifiedFs, directory: string
     real = await fs.realpath(directory);
   } catch (error) {
     if (isAbsent(error)) throw unavailable('The Specification directory is unavailable.');
-    throw error;
+    return unreadable(error);
   }
   if (!stat.isDirectory() || stat.isSymbolicLink() || !samePhysicalPath(real, directory)) {
     throw unavailable('The Specification directory is unavailable.');

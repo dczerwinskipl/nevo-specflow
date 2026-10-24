@@ -1,4 +1,4 @@
-import { lstat, open, readFile } from 'node:fs/promises';
+import { lstat, open } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 
 import type { SpecFlowEngine } from '../../application';
@@ -6,6 +6,7 @@ import { GitCapabilityError } from '../../git/errors';
 import { engineCommitRefusal } from '../../version-control/commits/branch-patterns';
 import { readProjectGitPolicy } from '../../version-control/worktrees/config';
 import type { PolicyReason } from './projection';
+import { READ_OPEN_FLAGS } from './verified-file';
 
 /**
  * Advisory branch reasons for the tree (`branch-protected`, `branch-not-allowed`,
@@ -31,7 +32,25 @@ export async function advisoryPolicyReason(
   return branch === undefined ? undefined : engineCommitRefusal(policy.commits, branch);
 }
 
-const HEAD_MAX_BYTES = 4096;
+const SMALL_FILE_MAX_BYTES = 4096;
+
+/**
+ * Text of a small regular file, or `undefined`. Opened like every other file the layer reads
+ * (no symlink, no blocking on a FIFO), checked to be a regular file on the descriptor, and read
+ * with a hard bound.
+ */
+async function readSmallRegularFile(path: string): Promise<string | undefined> {
+  const handle = await open(path, READ_OPEN_FLAGS);
+  try {
+    const stat = await handle.stat();
+    if (!stat.isFile() || stat.size > SMALL_FILE_MAX_BYTES) return undefined;
+    const buffer = Buffer.alloc(SMALL_FILE_MAX_BYTES);
+    const { bytesRead } = await handle.read(buffer, 0, SMALL_FILE_MAX_BYTES, 0);
+    return buffer.toString('utf8', 0, bytesRead);
+  } finally {
+    await handle.close();
+  }
+}
 
 /**
  * Short branch name from `<git dir>/HEAD` (`ref: refs/heads/<name>`); `undefined` for a detached
@@ -45,22 +64,17 @@ export async function readCheckedOutBranch(workspaceRoot: string): Promise<strin
     let gitDir: string;
     if (stat.isDirectory()) {
       gitDir = dotGit;
-    } else if (stat.isFile() && stat.size <= HEAD_MAX_BYTES) {
-      const match = /^gitdir:\s*(.+?)\s*$/mu.exec(await readFile(dotGit, 'utf8'));
+    } else if (stat.isFile()) {
+      const text = await readSmallRegularFile(dotGit);
+      const match = text === undefined ? null : /^gitdir:\s*(.+?)\s*$/mu.exec(text);
       if (!match) return undefined;
       gitDir = isAbsolute(match[1]!) ? match[1]! : resolve(workspaceRoot, match[1]!);
     } else {
       return undefined;
     }
-    const handle = await open(join(gitDir, 'HEAD'), 'r');
-    try {
-      const buffer = Buffer.alloc(HEAD_MAX_BYTES);
-      const { bytesRead } = await handle.read(buffer, 0, HEAD_MAX_BYTES, 0);
-      const head = /^ref:\s*refs\/heads\/(.+?)\s*$/mu.exec(buffer.toString('utf8', 0, bytesRead));
-      return head ? head[1] : undefined;
-    } finally {
-      await handle.close();
-    }
+    const head = await readSmallRegularFile(join(gitDir, 'HEAD'));
+    const ref = head === undefined ? null : /^ref:\s*refs\/heads\/(.+?)\s*$/mu.exec(head);
+    return ref ? ref[1] : undefined;
   } catch {
     return undefined;
   }

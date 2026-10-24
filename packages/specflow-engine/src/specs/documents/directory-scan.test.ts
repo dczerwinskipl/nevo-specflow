@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { countArchiveInventory, listSpecificationFiles } from './directory-scan';
+import { countArchiveInventory, isUnaddressable, listSpecificationFiles } from './directory-scan';
 
 const dirs: string[] = [];
 afterEach(async () => {
@@ -62,5 +62,44 @@ describe('countArchiveInventory', () => {
     });
     const count = await countArchiveInventory(dir);
     expect(count).toMatchObject({ files: 4, bounded: false, skippedCount: 0, exceeded: false });
+  });
+});
+
+describe('isUnaddressable', () => {
+  const char = (code: number): string => String.fromCodePoint(code);
+  it.each([
+    ['a control character', 'a' + char(1) + 'b'],
+    ['DEL', 'a' + char(0x7f) + 'b'],
+    ['a C1 control', 'a' + char(0x85) + 'b'],
+    ['a bidi override', 'doc' + char(0x202e) + 'fdp.md'],
+    ['a bidi isolate', 'a' + char(0x2066) + 'b'],
+    ['a zero-width space', 'a' + char(0x200b) + 'b'],
+    ['a zero-width joiner', 'a' + char(0x200d) + 'b'],
+    ['a byte order mark', char(0xfeff) + 'a.md'],
+    ['U+2028', 'a' + char(0x2028) + 'b'],
+    ['U+2029', 'a' + char(0x2029) + 'b'],
+    ['a backslash', 'a' + String.fromCharCode(0x5c) + 'b'],
+    ['U+FFFD', 'a' + char(0xfffd) + 'b'],
+  ])('flags %s', (_name, name) => {
+    expect(isUnaddressable(name)).toBe(true);
+  });
+
+  it.each(['plain.md', 'zażółć gęślą.md', 'a b.md', '日本語.txt', 'x-y_z.v2.md'])(
+    'accepts %s',
+    (name) => {
+      expect(isUnaddressable(name)).toBe(false);
+    },
+  );
+});
+
+describe('an unreadable Specification directory', () => {
+  it('is an unavailable source for both walks, not an internal error', async () => {
+    const missing = join(tmpdir(), 'directory-scan-does-not-exist-' + String(Date.now()));
+    await expect(listSpecificationFiles(missing)).rejects.toMatchObject({
+      code: 'SPEC_SOURCE_UNAVAILABLE',
+    });
+    await expect(countArchiveInventory(missing)).rejects.toMatchObject({
+      code: 'SPEC_SOURCE_UNAVAILABLE',
+    });
   });
 });

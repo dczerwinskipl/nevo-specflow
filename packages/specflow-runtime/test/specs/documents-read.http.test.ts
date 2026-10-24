@@ -154,7 +154,7 @@ const doc = (specId: string, id: string, query = '') =>
   `/api/specs/${specId}/documents/${id}${query}`;
 const raw = (specId: string, id: string, query = '') => `${doc(specId, id)}/raw${query}`;
 const derivedId = (path: string): string =>
-  'u-' + createHash('sha256').update(path, 'utf8').digest('hex').slice(0, 16);
+  'u-' + createHash('sha256').update(path, 'utf8').digest('hex').slice(0, 32);
 
 describe('document tree and content of a created Specification', () => {
   it('shows four registered documents, complete, and reads them (the URL no longer answers 503)', async () => {

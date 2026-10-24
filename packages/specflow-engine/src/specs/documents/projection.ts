@@ -10,6 +10,7 @@ import type {
 
 import type { ManifestArchetype, ManifestDocument, SpecificationLocation } from '../model';
 import { deriveUnclassifiedDocumentId } from './document-ids';
+import { DocumentError } from './errors';
 import {
   deriveFolders,
   findCaseCollisions,
@@ -120,6 +121,22 @@ export function projectDocumentTree(input: TreeProjectionInput): DocumentTree {
     return { available: false, reason };
   };
 
+  // Derived ids are 128 bits of a hash of the exact path. A residual collision between two listed
+  // files would make one of them unreachable (or the wrong one served): fail closed instead.
+  const derivedPaths = new Map<string, string>();
+  for (const file of files) {
+    if (registeredByPath.has(file.path)) continue;
+    const id = deriveUnclassifiedDocumentId(file.path);
+    const other = derivedPaths.get(id);
+    if (other !== undefined && other !== file.path) {
+      throw new DocumentError(
+        'SPEC_SOURCE_UNAVAILABLE',
+        'Two files of the Specification derive the same document id.',
+      );
+    }
+    derivedPaths.set(id, file.path);
+  }
+
   const documents = [...files]
     .sort((left, right) => compareByFoldedKey(left.path, right.path))
     .map((file): DocumentTree['documents'][number] => {
@@ -144,8 +161,9 @@ export function projectDocumentTree(input: TreeProjectionInput): DocumentTree {
           rename: write(protectedReason),
           move: write(protectedReason),
           delete: write(protectedReason),
-          // A registered document is already classified: nothing to do, not a missing feature.
-          classify: entry ? { available: false } : write(),
+          // A registered document is already classified: nothing to do, not a missing feature, so
+          // no reason; an archived Specification is read-only like everything else.
+          classify: entry ? (archived ? write() : { available: false }) : write(),
         },
       };
     });

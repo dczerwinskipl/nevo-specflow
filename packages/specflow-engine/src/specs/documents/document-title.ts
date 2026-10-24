@@ -42,11 +42,39 @@ function firstLevelOneHeading(text: string): string | undefined {
       continue;
     }
     if (fence !== undefined) continue;
-    const heading = /^ {0,3}#[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/u.exec(line);
-    if (heading) {
-      const title = heading[1]!.trim();
-      if (title.length > 0) return title;
-    }
+    const title = atxLevelOneTitle(line);
+    if (title !== undefined && title.length > 0) return capTitle(title);
   }
   return undefined;
+}
+
+/** Longest derived title, in characters. */
+export const DOCUMENT_TITLE_MAX_CHARACTERS = 200;
+
+function capTitle(title: string): string {
+  // Slice generously first so a megabyte line is never spread into code points.
+  return [...title.slice(0, DOCUMENT_TITLE_MAX_CHARACTERS * 2)]
+    .slice(0, DOCUMENT_TITLE_MAX_CHARACTERS)
+    .join('');
+}
+
+/**
+ * The text of an ATX level-1 heading (`# Title`, up to three leading spaces, optional closing `#`
+ * run), or `undefined` when the line is not one. Parsed by hand: linear time on any input (a
+ * backtracking regular expression with nested quantifiers is quadratic on long whitespace runs).
+ */
+function atxLevelOneTitle(line: string): string | undefined {
+  let index = 0;
+  while (index < 3 && line[index] === ' ') index += 1;
+  if (line[index] !== '#') return undefined;
+  index += 1;
+  if (line[index] !== ' ' && line[index] !== '	') return undefined;
+  let text = line.slice(index).trim();
+  let end = text.length;
+  while (end > 0 && text[end - 1] === '#') end -= 1;
+  // A closing run of `#` counts only after a space or tab (or when it is the whole text).
+  if (end < text.length && (end === 0 || text[end - 1] === ' ' || text[end - 1] === '	')) {
+    text = text.slice(0, end).trim();
+  }
+  return text;
 }

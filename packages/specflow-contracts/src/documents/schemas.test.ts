@@ -276,7 +276,12 @@ describe('documents contract schemas', () => {
       { ...base, action: 'rename', documentId: 'behaviour', name: 'spec.md' },
       { ...base, action: 'move', documentId: 'behaviour', targetFolder: 'research' },
       { ...base, action: 'delete', documentId: 'behaviour' },
-      { ...base, action: 'classify', documentId: 'u-0123456789abcdef0123456789abcdef', type: 'note' },
+      {
+        ...base,
+        action: 'classify',
+        documentId: 'u-0123456789abcdef0123456789abcdef',
+        type: 'note',
+      },
       { ...base, action: 'rename', kind: 'folder', path: 'research', name: 'notes' },
     ]) {
       expect(Value.Check(DocumentOperationInputSchema, input)).toBe(true);

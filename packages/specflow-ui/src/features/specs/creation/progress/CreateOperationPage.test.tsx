@@ -32,6 +32,7 @@ const created: CreatedSpec = {
   slug: 'payment-limits',
   workspaceId: '00000000-0000-4000-8000-000000000002',
   relativeManifestPath: 'specs/active/payment-limits/specification.yaml',
+  documentIds: ['overview'],
 };
 const accepted = { operationId, kind: 'specification-create', status: 'in-progress' } as const;
 const event = { operationId, kind: 'specification-create', at: '2026-01-01T00:00:00.000Z' };

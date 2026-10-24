@@ -1,4 +1,5 @@
-import type { CreateSpecRequest, CreatedSpec } from '@nevo/specflow-contracts/specs';
+import type { CreatedSpec } from '@nevo/specflow-contracts/specs';
+import type { ProjectCreateRequest } from '../api/api.project';
 import { isApiError } from '../../../../api';
 import { createOperationHardLimitMs, type ProjectCreationApi } from '../api/api.project';
 
@@ -158,7 +159,7 @@ function interpretRejection(error: unknown): CreateWatchResult {
  */
 export async function submitCreateOperation(
   api: Pick<ProjectCreationApi, 'create' | 'inspectOperation'>,
-  input: CreateSpecRequest & { operationId: string },
+  input: ProjectCreateRequest & { operationId: string },
   hooks: WatchHooks = {},
   timing: WatchTiming = defaultWatchTiming,
 ): Promise<CreateWatchResult> {

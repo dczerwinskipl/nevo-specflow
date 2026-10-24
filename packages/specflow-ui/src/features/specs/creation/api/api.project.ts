@@ -21,6 +21,23 @@ export const respondAsyncHeaders = { Prefer: 'respond-async' } as const;
 /** Create options inspect Git state per request; allow more than the shared 10 s client default. */
 const createOptionsTimeoutMs = 30_000;
 
+/**
+ * What the project Create form sends today. The contract request (`CreateSpecRequest`) also carries
+ * the archetype selection (`archetypeId`, `archetypeVersion`, `catalogueRevision` and the optional
+ * suggestions, added documents and folders); the project form does not choose an archetype yet, so
+ * this type leaves those fields out and must be replaced by `CreateSpecRequest` when the form does
+ * (delivery D2.T08). Until then a real Runtime refuses this request.
+ */
+export type ProjectCreateRequest = Omit<
+  CreateSpecRequest,
+  | 'archetypeId'
+  | 'archetypeVersion'
+  | 'catalogueRevision'
+  | 'optionalDocumentIds'
+  | 'addedDocuments'
+  | 'folders'
+>;
+
 /** Port of the project Runtime Specification creation (the contracts `specs` context). */
 export interface ProjectCreationApi {
   createOptions(signal?: AbortSignal): Promise<CreateOptions>;
@@ -30,7 +47,7 @@ export interface ProjectCreationApi {
    * synchronous 201 `CreatedSpec`.
    */
   create(
-    input: CreateSpecRequest,
+    input: ProjectCreateRequest,
     signal?: AbortSignal,
   ): Promise<CreatedSpec | CreateOperationAccepted>;
   inspectOperation(operationId: string, signal?: AbortSignal): Promise<CreateOperationInspection>;
@@ -62,7 +79,7 @@ export function createProjectCreationApi(api: ApiTransport): ProjectCreationApi 
         isValid: (data) => isObject(data) && Array.isArray(data.workspaces),
       }),
     create: (input, signal) =>
-      api.post<CreatedSpec | CreateOperationAccepted, CreateSpecRequest>('/api/specs', input, {
+      api.post<CreatedSpec | CreateOperationAccepted, ProjectCreateRequest>('/api/specs', input, {
         operation: 'specs.create',
         signal,
         timeoutMs: createOperationHardLimitMs,

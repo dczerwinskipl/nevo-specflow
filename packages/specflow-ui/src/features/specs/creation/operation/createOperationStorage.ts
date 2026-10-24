@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { isCreateSpecRequest, type CreateSpecRequest } from '@nevo/specflow-contracts/specs';
+import { isCreateSpecRequest } from '@nevo/specflow-contracts/specs';
+import type { ProjectCreateRequest } from '../api/api.project';
 import { useAppServices } from '../../../../app/useAppServices';
 import { authSessionIdentity, type AuthStore } from '../../../../auth/store';
 import type { CreateFailure } from '../errors/createFailure';
@@ -7,7 +8,7 @@ import { toCreateFacts, type CreateSettingsFacts } from '../workspace/model/crea
 import { initialWorkspaceChoice, type WorkspaceChoice } from '../workspace/model/workspaceChoice';
 
 /** The request of an operation that was sent and whose outcome is not yet confirmed. */
-export type SentCreateRequest = CreateSpecRequest & { operationId: string };
+export type SentCreateRequest = ProjectCreateRequest & { operationId: string };
 
 export interface StoredCreateOperation {
   readonly request: SentCreateRequest;
@@ -84,10 +85,18 @@ type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 function isStored(value: unknown): value is StoredCreateOperation {
   if (typeof value !== 'object' || value === null) return false;
   const { request, startedAt } = value as Partial<StoredCreateOperation>;
+  // The contract request schema also requires the archetype selection, which the project form does
+  // not send yet (see `ProjectCreateRequest`): probe the stored request with a placeholder selection.
+  const probe = {
+    ...(request as object | undefined),
+    archetypeId: 'placeholder',
+    archetypeVersion: 1,
+    catalogueRevision: 'placeholder',
+  };
   return (
     typeof startedAt === 'number' &&
-    isCreateSpecRequest(request) &&
-    typeof request.operationId === 'string'
+    isCreateSpecRequest(probe) &&
+    typeof probe.operationId === 'string'
   );
 }
 

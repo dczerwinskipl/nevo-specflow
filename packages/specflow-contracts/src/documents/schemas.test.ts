@@ -426,6 +426,7 @@ describe('documents contract schemas', () => {
       false,
     );
     expect(new Set(ACTION_REASONS).size).toBe(ACTION_REASONS.length);
+    expect(Value.Check(ActionSchema, { available: false, reason: 'not-implemented' })).toBe(true);
   });
 
   it('rejects a bad template include or template id in the catalogue', () => {

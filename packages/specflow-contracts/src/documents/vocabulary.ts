@@ -46,6 +46,8 @@ export const ACTION_REASONS = [
   'busy',
   'not-editable',
   'dangling',
+  /** Write actions before the D4 routes exist; removed when D4 lands. */
+  'not-implemented',
 ] as const;
 export const ActionReasonSchema = Type.Union(ACTION_REASONS.map((reason) => Type.Literal(reason)));
 export type ActionReason = Static<typeof ActionReasonSchema>;

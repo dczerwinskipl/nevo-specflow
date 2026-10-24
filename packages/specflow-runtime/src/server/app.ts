@@ -76,6 +76,9 @@ export interface RuntimeAppDependencies {
 }
 
 export const RUNTIME_FASTIFY_OPTIONS = {
+  // Above the longest schema-legal path parameter (a 200 character id), so the schema answers 404 or
+  // 400 instead of the router answering 414 FST_ERR_MAX_PARAM_LENGTH (Fastify's default is 100).
+  maxParamLength: 256,
   logger: {
     level: 'warn',
     stream: process.stderr,

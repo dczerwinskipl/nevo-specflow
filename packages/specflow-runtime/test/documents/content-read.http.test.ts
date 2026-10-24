@@ -91,6 +91,21 @@ describe('GET /api/specs/:specId/documents/:documentId', () => {
     }
   });
 
+  it('answers 404 for a schema-legal 200 character id and 400 above it (never 414)', async () => {
+    const server = await app({
+      read: () => Promise.reject(new DocumentError('DOCUMENT_NOT_FOUND', 'unknown')),
+    });
+    try {
+      const longest = await server.inject('/api/specs/admission/documents/' + 'a'.repeat(200));
+      expect(longest.statusCode).toBe(404);
+      expect(longest.json()).toEqual({ error: 'DOCUMENT_NOT_FOUND', code: 'DOCUMENT_NOT_FOUND' });
+      const tooLong = await server.inject('/api/specs/admission/documents/' + 'a'.repeat(201));
+      expect(tooLong.statusCode).toBe(400);
+    } finally {
+      await server.close();
+    }
+  });
+
   it('omits content when the source has none (image, binary)', async () => {
     const server = await app({
       read: () =>

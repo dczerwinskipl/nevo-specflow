@@ -18,3 +18,38 @@ const onPress = () => undefined;
     { id: 'edit', label: 'Edit', presentation: 'icon', onPress },
   ]}
 />;
+
+<WorkspaceHeader
+  title="Document"
+  menu="complete"
+  labels={{ moreActions: 'More', menuDisplay: 'View', menuActions: 'Do' }}
+  actions={[
+    {
+      id: 'preview',
+      label: 'Preview',
+      icon: 'eye',
+      presentation: 'icon',
+      pressed: true,
+      group: 'display',
+      checked: true,
+      shortcut: 'Ctrl+P',
+      onPress,
+    },
+  ]}
+/>;
+
+<WorkspaceHeader
+  title="Document"
+  actions={[
+    {
+      id: 'save',
+      label: 'Save',
+      icon: 'file',
+      presentation: 'icon',
+      primary: true,
+      // @ts-expect-error A primary action has no pressed state.
+      pressed: true,
+      onPress,
+    },
+  ]}
+/>;

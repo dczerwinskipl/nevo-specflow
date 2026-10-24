@@ -84,8 +84,6 @@
     "noChangesNotice": "No changed files recorded for this view.",
     "viewOverview": "Overview",
     "viewDocuments": "Documents",
-    "documentIdleTitle": "Select a document",
-    "documentIdleDescription": "Open a file from the tree to see its content.",
     "viewSessions": "Sessions",
     "viewChanges": "View changes",
     "viewRepository": "Repository",
@@ -1053,7 +1051,8 @@
     "noAccess": "You do not have access to this document",
     "unavailable": "The document is unavailable",
     "backToList": "Back to the document list",
-    "closeDocument": "Close document",
+    "closeDocument": "Close all documents",
+    "menuActions": "Actions",
     "demo": {
       "title": "Demo mode",
       "body": "Documents and empty folders are kept until the demo environment restarts."
@@ -1071,7 +1070,8 @@
       "edit": "Edit document",
       "preview": "Show preview",
       "save": "Save",
-      "discard": "Discard changes"
+      "discard": "Discard changes",
+      "closeTab": "Close tab"
     },
     "dialogs": {
       "path": {
@@ -1085,12 +1085,16 @@
         "continue": "Keep editing",
         "discard": "Discard changes",
         "save": "Save changes",
-        "discardDescription": "Revert the changes in {{name}}? You can save them or discard them and stay in the editor."
+        "discardDescription": "Revert the changes in {{name}}? You can save them or discard them and stay in the editor.",
+        "closeDescription": "{{name}} has unsaved changes. Save them before closing the tab?"
       }
     },
     "guard": {
-      "description": "The document has unsaved changes. Save or discard them before switching the document or view.",
-      "save": "Save and continue"
+      "listDescription": "These documents have unsaved changes. Save or discard them before leaving.",
+      "saveAll": "Save all",
+      "discardAll": "Discard all",
+      "notSaved": "not saved",
+      "saveAllFailed": "Not all documents could be saved. The drafts are kept."
     },
     "tree": {
       "newFile": "New file",
@@ -1172,7 +1176,45 @@
         "reserved": "the name is reserved by the system",
         "invalid": "the name contains characters that are not allowed or ends with a dot/space"
       }
-    }
+    },
+    "tabs": {
+      "tablist": "Opened documents",
+      "openedMenu": "Opened documents ({{n}})",
+      "openedHeading": "Opened documents",
+      "close": "Close {{name}}",
+      "closeHint": "Close: Delete or middle-click",
+      "menuHint": "Delete closes the highlighted document.",
+      "menuClose": "Close",
+      "statusLoading": "loading",
+      "statusMissing": "not found",
+      "statusDirty": "unsaved changes",
+      "statusCurrent": "current",
+      "switcher": "{{name}}, {{n}} opened",
+      "switcherDirty": "{{name}}, unsaved changes, {{n}} opened",
+      "noItem": "No document",
+      "closeFailed": "Could not close the document. Try again.",
+      "missingHint": "This document is no longer in the tree. Your draft is kept until you close the tab.",
+      "closeBusy": "Finish the open question about unsaved changes first, then close this document."
+    },
+    "empty": {
+      "title": "Choose a document from the tree",
+      "suggested": "Start with",
+      "open": "Open {{name}}"
+    },
+    "notFound": {
+      "title": "Document not found",
+      "close": "Close tab",
+      "titleNamed": "Document not found: {{name}}"
+    },
+    "outline": {
+      "label": "Contents",
+      "open": "Open contents",
+      "title": "Contents ({{n}})",
+      "description": "Go to a section of the document",
+      "close": "Close contents",
+      "columnLabel": "Document contents and properties"
+    },
+    "menuDisplay": "Display"
   },
   "sessions": {
     "demo": {

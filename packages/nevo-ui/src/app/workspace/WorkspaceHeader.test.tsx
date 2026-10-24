@@ -5,6 +5,7 @@ import {
   WorkspaceHeader,
   WorkspaceHeaderFrame,
   WorkspaceHeaderIdentity,
+  groupWorkspaceHeaderMenuActions,
   resolveWorkspaceHeaderActions,
   getWorkspaceHeaderActions,
   type WorkspaceHeaderAction,
@@ -197,5 +198,115 @@ describe('WorkspaceHeader direct action budget', () => {
     expect(markup).toContain('aria-label="Preview"');
     expect(markup).toContain('data-workspace-header-density="wide"');
     expect((markup.match(/aria-label="Preview"/g) ?? []).length).toBe(1);
+  });
+});
+
+describe('WorkspaceHeader pressed icon toggles', () => {
+  const toggle: WorkspaceHeaderAction = {
+    id: 'preview',
+    label: 'Show preview',
+    icon: 'eye',
+    presentation: 'icon',
+    direct: 'always',
+    onPress: vi.fn(),
+  };
+  const render = (action: WorkspaceHeaderAction) =>
+    renderToStaticMarkup(<WorkspaceHeader title="Doc" actions={[action]} />);
+
+  it('renders aria-pressed only when pressed is defined', () => {
+    expect(render(toggle)).not.toContain(' aria-pressed=');
+    expect(render({ ...toggle, pressed: true })).toContain(' aria-pressed="true"');
+    expect(render({ ...toggle, pressed: false })).toContain(' aria-pressed="false"');
+  });
+
+  it('styles the pressed state through the aria-pressed variant and keeps the action name as label', () => {
+    expect(render({ ...toggle, pressed: true })).toContain('aria-pressed:bg-surface-selected');
+    expect(render({ ...toggle, pressed: true })).toContain('aria-label="Show preview"');
+    expect(
+      render({
+        id: 'save',
+        label: 'Save',
+        icon: 'eye',
+        presentation: 'icon',
+        primary: true,
+        direct: 'always',
+        onPress: vi.fn(),
+      }),
+    ).not.toContain('aria-pressed:bg-surface-selected');
+  });
+
+  it('does not change the direct budget', () => {
+    const resolved = resolveWorkspaceHeaderActions([{ ...toggle, pressed: true }], 'narrow');
+    expect(resolved.direct.map((action) => action.id)).toEqual(['preview']);
+  });
+});
+
+describe('WorkspaceHeader complete menu grouping', () => {
+  const press = vi.fn();
+  const wrap: WorkspaceHeaderAction = {
+    id: 'wrap',
+    label: 'Word wrap',
+    icon: 'file',
+    group: 'display',
+    checked: true,
+    onPress: press,
+  };
+  const save: WorkspaceHeaderAction = {
+    id: 'save',
+    label: 'Save',
+    primary: true,
+    direct: 'always',
+    shortcut: 'Ctrl+S',
+    onPress: press,
+  };
+  const close: WorkspaceHeaderAction = {
+    id: 'close',
+    label: 'Close',
+    group: 'actions',
+    onPress: press,
+  };
+  const ids = (list: readonly WorkspaceHeaderAction[]) => list.map((action) => action.id);
+
+  it('lists display above actions and keeps input order inside a group', () => {
+    const groups = groupWorkspaceHeaderMenuActions([save, wrap, close]);
+    expect(groups.map((entry) => entry.group)).toEqual(['display', 'actions']);
+    expect(ids(groups[0]?.actions ?? [])).toEqual(['wrap']);
+    expect(ids(groups[1]?.actions ?? [])).toEqual(['save', 'close']);
+  });
+
+  it('omits an empty group', () => {
+    expect(groupWorkspaceHeaderMenuActions([save, close]).map((entry) => entry.group)).toEqual([
+      'actions',
+    ]);
+    expect(groupWorkspaceHeaderMenuActions([wrap]).map((entry) => entry.group)).toEqual([
+      'display',
+    ]);
+    expect(groupWorkspaceHeaderMenuActions([])).toEqual([]);
+  });
+
+  it('keeps the direct budget while the menu still lists the promoted action', () => {
+    const all = [wrap, save, close];
+    const resolved = resolveWorkspaceHeaderActions(all, 'wide');
+    expect(ids(resolved.direct)).toEqual(['save']);
+    expect(ids(resolved.overflow)).toEqual(['wrap', 'close']);
+    expect(ids(groupWorkspaceHeaderMenuActions(all).flatMap((entry) => entry.actions))).toContain(
+      'save',
+    );
+  });
+
+  it('keeps default and complete headers identical while the menu is closed', () => {
+    const render = (menu?: 'default' | 'complete') =>
+      renderToStaticMarkup(
+        <WorkspaceHeader title="Doc" actions={[wrap, save, close]} menu={menu} />,
+      );
+    expect(render('default')).toBe(render());
+    expect(render('complete')).toContain('aria-label="More actions"');
+    expect((render('complete').match(/>Save</g) ?? []).length).toBe(1);
+  });
+
+  it('keeps the menu out of headers without actions', () => {
+    expect(renderToStaticMarkup(<WorkspaceHeader title="Doc" menu="complete" />)).not.toContain(
+      'More actions',
+    );
   });
 });

@@ -19,7 +19,10 @@ import {
 export function UnsavedChangesDialog({
   open,
   description,
+  details,
   saveLabel,
+  discardLabel,
+  failureTitle,
   pending = false,
   saveFailed = false,
   onContinue,
@@ -29,7 +32,13 @@ export function UnsavedChangesDialog({
 }: {
   open: boolean;
   description: ReactNode;
+  /** Content under the description that is not a paragraph, for example a list of documents. */
+  details?: ReactNode;
   saveLabel: string;
+  /** Defaults to "Discard changes". */
+  discardLabel?: string;
+  /** Replaces the default save-failed message. */
+  failureTitle?: string;
   pending?: boolean;
   saveFailed?: boolean;
   onContinue: () => void;
@@ -50,7 +59,13 @@ export function UnsavedChangesDialog({
           <AlertDialogTitle>{t('documents.unsaved')}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
-        {saveFailed && <Alert tone="attention" title={t('documents.dialogs.unsaved.saveFailed')} />}
+        {details}
+        {saveFailed && (
+          <Alert
+            tone="attention"
+            title={failureTitle ?? t('documents.dialogs.unsaved.saveFailed')}
+          />
+        )}
         <AlertDialogFooter>
           <AlertDialogCancel asChild>
             <Button variant="secondary" disabled={pending}>
@@ -58,7 +73,7 @@ export function UnsavedChangesDialog({
             </Button>
           </AlertDialogCancel>
           <Button variant="destructive" disabled={pending} onClick={onDiscard}>
-            {t('documents.dialogs.unsaved.discard')}
+            {discardLabel ?? t('documents.dialogs.unsaved.discard')}
           </Button>
           <Button disabled={pending} onClick={onSave}>
             {saveLabel}

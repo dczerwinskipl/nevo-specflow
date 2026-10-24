@@ -1,5 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, type MutableRefObject } from 'react';
-import { EditorView, keymap, drawSelection } from '@codemirror/view';
+import {
+  EditorView,
+  drawSelection,
+  highlightActiveLine,
+  highlightActiveLineGutter,
+  keymap,
+  lineNumbers,
+} from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
@@ -94,6 +101,10 @@ export function MarkdownSourceEditor({
               { anchor: lineStart(value, initial.line) }
             : undefined,
         extensions: [
+          // Editable source looks like an editor: a line-number gutter and the current line marked.
+          lineNumbers(),
+          highlightActiveLineGutter(),
+          highlightActiveLine(),
           drawSelection(),
           history(),
           ...(plainText ? [] : [markdown(), syntaxHighlighting(markdownHighlight)]),
@@ -127,7 +138,7 @@ export function MarkdownSourceEditor({
           }),
           EditorView.theme(
             {
-              // The surface (field fill, border, radius, focus ring) belongs to the mount element, so the
+              // The surface (field fill, border, radius, focus border) belongs to the mount element, so the
               // editable area reads like the DS text fields and differs from the page.
               '&': {
                 height: '100%',
@@ -153,8 +164,20 @@ export function MarkdownSourceEditor({
                 backgroundColor: 'transparent',
                 color: 'var(--color-content-muted)',
                 border: 'none',
+                // A gutter hairline would be a second frame inside the field: none.
+                paddingLeft: 'var(--spacing-control-padding-default)',
               },
-              // The visible focus indicator is drawn by the editor mount (focus-visible ring).
+              // At least two digits wide, so the gutter does not jump from line 9 to 10.
+              '.cm-lineNumbers .cm-gutterElement': {
+                minWidth: '2ch',
+                padding: '0 var(--spacing-control-padding-compact) 0 0',
+              },
+              '.cm-activeLine, .cm-activeLineGutter': {
+                backgroundColor:
+                  'color-mix(in srgb, var(--color-surface-selected) 55%, transparent)',
+              },
+              '.cm-activeLineGutter': { color: 'var(--color-content-primary)' },
+              // The visible focus indicator is the focus-ring border of the editor mount, no extra frame.
               '&.cm-focused': { outline: 'none' },
             },
             { dark: true },
@@ -267,7 +290,7 @@ export function MarkdownSourceEditor({
       ref={mount}
       data-document-source=""
       tabIndex={-1}
-      className="m-2 min-h-0 flex-1 overflow-hidden rounded-control border border-solid border-border-default bg-surface-control has-[:focus-visible]:border-focus-ring has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus-ring"
+      className="m-2 min-h-0 flex-1 overflow-hidden rounded-control border border-solid border-border-default bg-surface-control has-[:focus-visible]:border-focus-ring"
     />
   );
 }

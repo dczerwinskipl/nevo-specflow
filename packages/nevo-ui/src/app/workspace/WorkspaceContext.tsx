@@ -21,7 +21,11 @@ import {
   type SecondaryFlowModel,
 } from './secondaryNavigationModel';
 import { CompactWorkspaceActions, WorkspaceHeader, WorkspaceHeaderFrame } from './WorkspaceHeader';
-import type { WorkspaceHeaderAction, WorkspaceHeaderLabels } from './WorkspaceHeader';
+import type {
+  WorkspaceHeaderAction,
+  WorkspaceHeaderLabels,
+  WorkspaceHeaderMenu,
+} from './WorkspaceHeader';
 import type {
   SecondaryData,
   SecondaryPageArgs,
@@ -33,6 +37,7 @@ interface RuntimePage {
   title: string;
   actions?: (props: { data: unknown; params: object }) => readonly WorkspaceHeaderAction[];
   actionLabels?: Partial<WorkspaceHeaderLabels>;
+  menu?: WorkspaceHeaderMenu;
   preserveOnDataLoss?: boolean;
   header?: ComponentType<{ data: unknown; params: object }>;
   component: ComponentType<{ data: unknown; params: object }>;
@@ -117,6 +122,7 @@ interface ScreenResolvedData {
   result: SecondaryData<unknown>;
   actions: readonly WorkspaceHeaderAction[];
   actionLabels?: Partial<WorkspaceHeaderLabels>;
+  menu?: WorkspaceHeaderMenu;
 }
 
 const ScreenDataContext = createContext<ScreenResolvedData | null>(null);
@@ -130,7 +136,9 @@ function ScreenDataHost({ entry, children }: PropsWithChildren<{ entry: Secondar
       ? (page.actions?.({ data: result.data, params: entry.params }) ?? [])
       : [];
   return (
-    <ScreenDataContext.Provider value={{ result, actions, actionLabels: page.actionLabels }}>
+    <ScreenDataContext.Provider
+      value={{ result, actions, actionLabels: page.actionLabels, menu: page.menu }}
+    >
       {children}
     </ScreenDataContext.Provider>
   );
@@ -260,7 +268,7 @@ function ScreenOutlet({
 }
 
 function HeaderOutlet({ entry }: { entry: SecondaryEntry }) {
-  const { result, actions, actionLabels } = useScreenData();
+  const { result, actions, actionLabels, menu } = useScreenData();
   const page = entry.definition.screens[entry.page];
   if (!page) throw new Error(`Unknown Secondary screen: ${entry.page}`);
   if (result.status !== 'ready' || !page.header) {
@@ -270,6 +278,7 @@ function HeaderOutlet({ entry }: { entry: SecondaryEntry }) {
         title={page.title}
         actions={actions}
         labels={actionLabels}
+        menu={menu}
       />
     );
   }
@@ -278,6 +287,7 @@ function HeaderOutlet({ entry }: { entry: SecondaryEntry }) {
     <WorkspaceHeaderFrame
       actions={actions}
       labels={actionLabels}
+      menu={menu}
       content={<Header data={result.data} params={entry.params} />}
     />
   );
@@ -290,11 +300,12 @@ function CompactScreenActions({
   className?: string;
   navigationAction?: WorkspaceHeaderAction;
 }) {
-  const { actions, actionLabels } = useScreenData();
+  const { actions, actionLabels, menu } = useScreenData();
   return (
     <CompactWorkspaceActions
       actions={actions}
       labels={actionLabels}
+      menu={menu}
       className={className}
       navigationAction={navigationAction}
     />
@@ -598,13 +609,16 @@ export function AppWorkspaceProvider({
 /** Open an entirely new contextual flow from Primary, a toolbar or another feature component. */
 export function useSecondaryNavigation() {
   const workspace = useWorkspace();
+  const isOpen = workspace.secondaryDepth > 0;
   return useMemo(
     () => ({
       open: workspace.open,
       close: workspace.close,
       canLeaveScope: workspace.canLeaveScope,
+      /** A contextual flow is open now (false as soon as it closes, even while it slides out). */
+      isOpen,
     }),
-    [workspace.open, workspace.close, workspace.canLeaveScope],
+    [workspace.open, workspace.close, workspace.canLeaveScope, isOpen],
   );
 }
 

@@ -1,0 +1,110 @@
+// @vitest-environment jsdom
+import { QueryClientProvider } from '@tanstack/react-query';
+import type { SpecificationDocumentResponse } from '@nevo/specflow-contracts/specs/workspace';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { StrictMode } from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createSpecFlowQueryClient } from '../../../app/queryClient';
+import { LocalizationProvider, createSpecFlowI18n } from '../../../i18n';
+import { createSpecFlowAppServices } from '../../../services';
+import { TestServicesRouterContext } from '../../../../test-support/app/TestServicesRouterContext';
+import { DocumentDraftProvider } from '../editor/DocumentDraftProvider';
+import {
+  useDocumentEditor,
+  useDocumentSaveOwner,
+  useDocumentSession,
+} from '../editor/DocumentEditorProvider';
+import type { DocumentSaveOwner } from '../editor/useDocumentSave';
+import { createDocumentDraftStore, draftFor } from '../editor/documentDraftStore';
+import type { DocumentApi, DocumentsApi } from '../api';
+import { DocumentTabsProvider, useDocumentRecord } from './DocumentTabsProvider';
+
+const SPEC = 'spec';
+const record = (id: string, content: string, revision: string): SpecificationDocumentResponse => ({
+  id,
+  title: id,
+  filename: `${id}.md`,
+  content,
+  revision,
+});
+
+function setup(documentId: string | undefined, strict = false) {
+  const docs: Record<string, SpecificationDocumentResponse> = {
+    a: record('a', 'A0', 'a1'),
+    b: record('b', 'B0', 'b1'),
+  };
+  const getDocument = vi.fn((_spec: string, id: string) => Promise.resolve(docs[id]!));
+  const save = vi.fn(() => Promise.resolve({ revision: 'b2' }));
+  const services = createSpecFlowAppServices({
+    documentApi: { getDocument } as unknown as DocumentApi,
+    documentsApi: {
+      documentTree: () =>
+        Promise.resolve({
+          revision: 't',
+          folders: [],
+          documents: [
+            { id: 'a', path: 'docs/a.md' },
+            { id: 'b', path: 'docs/b.md' },
+          ],
+        }),
+      save,
+    } as unknown as DocumentsApi,
+  });
+  const store = createDocumentDraftStore();
+  const queryClient = createSpecFlowQueryClient();
+  const seen: { ops?: DocumentSaveOwner; sessionOfB?: unknown; sessionOfA?: unknown } = {};
+  function Probe() {
+    const session = useDocumentEditor();
+    const state = useDocumentRecord();
+    seen.ops = useDocumentSaveOwner();
+    seen.sessionOfA = useDocumentSession('a');
+    seen.sessionOfB = useDocumentSession('b');
+    return (
+      <output data-testid="probe">{`${session?.document.id ?? '-'}|${state?.documentId ?? '-'}|${state?.query.status ?? '-'}`}</output>
+    );
+  }
+  const tree = (
+    <QueryClientProvider client={queryClient}>
+      <TestServicesRouterContext services={services}>
+        <LocalizationProvider instance={createSpecFlowI18n('en')}>
+          <DocumentDraftProvider store={store}>
+            <DocumentTabsProvider specId={SPEC} documentId={documentId}>
+              <Probe />
+            </DocumentTabsProvider>
+          </DocumentDraftProvider>
+        </LocalizationProvider>
+      </TestServicesRouterContext>
+    </QueryClientProvider>
+  );
+  render(strict ? <StrictMode>{tree}</StrictMode> : tree);
+  return { getDocument, save, store, seen, docs };
+}
+
+afterEach(cleanup);
+
+describe('DocumentTabsProvider', () => {
+  it('loads the shown document once and shares it between the record state and the session', async () => {
+    const t = setup('a');
+    await waitFor(() => expect(screen.getByTestId('probe').textContent).toBe('a|a|success'));
+    expect(t.getDocument).toHaveBeenCalledTimes(1);
+    expect(t.seen.sessionOfA).not.toBeNull();
+    // A document that is not on screen has no session of its own.
+    expect(t.seen.sessionOfB).toBeNull();
+  });
+
+  it('loads nothing without a route document', () => {
+    const t = setup(undefined);
+    expect(screen.getByTestId('probe').textContent).toBe('-|-|-');
+    expect(t.getDocument).not.toHaveBeenCalled();
+  });
+
+  it('saves the draft of a document that is not on screen', async () => {
+    const t = setup('a');
+    await waitFor(() => expect(screen.getByTestId('probe').textContent).toBe('a|a|success'));
+    t.store.set(SPEC, 'b', { ...draftFor(t.docs.b!), content: 'B1' });
+    const result = await act(() => t.seen.ops!.save('b'));
+    expect(result).toMatchObject({ ok: true, documentId: 'b', content: 'B1' });
+    expect(t.save).toHaveBeenCalledWith(SPEC, 'b', { content: 'B1', expectedRevision: 'b1' });
+    expect(t.store.get(SPEC, 'b')).toMatchObject({ baseline: 'B1', revision: 'b2' });
+  });
+});

@@ -19,6 +19,8 @@ export {
   type AppWorkspaceSlotsProps,
   type WorkspaceHeaderAction,
   type WorkspaceHeaderActionDirect,
+  type WorkspaceHeaderActionGroup,
+  type WorkspaceHeaderMenu,
   type WorkspaceHeaderActionTone,
   type WorkspaceHeaderDensity,
   type WorkspaceHeaderProps,

@@ -245,6 +245,22 @@ intrinsic bound and behaves like `content`. Do not combine `bounded` with ad-hoc
 centring wrappers. `AppWorkspaceFit.contract.stories.tsx` covers the three values (`Available*`, `Content*`,
 `BoundedPrimaryOnly*` contracts at 1024/1440/1920/2560 and 390).
 
+**Stacked close (opt-in).** `stackedSecondaryClose="hide"` removes the Secondary's own close action (the trailing
+`x`, and the matching item of the compact row) while the layout is stacked, where Back already leaves the
+Secondary and the second control only repeats it. Split layouts keep the close action. The default is
+`show`; `AppWorkspace` tests cover both values.
+
+**Capped Primary (opt-in).** `primaryMaxPx` is the maximum width of the Primary region in px. Primary is
+its share of the split but never wider than the cap, and Secondary takes the rest (`capPrimaryWidth`), so a
+list beside a document does not grow to 575 px at 2560 while the document keeps empty space. It applies to
+every `split` value whenever a Secondary is shown in a split layout; it does not apply to the stacked
+layout or to a Primary without Secondary, and it has no practical effect with `fit="content"`. Use it with
+`fit="available"`. The prop stays general (no type restriction to `split="secondary"`): the rule is one
+sentence and a cap that is not reached changes nothing. The default is no cap. In the 1/3 : 2/3 range
+(workspace below 1080 px) the share is below any sensible cap, so the share stays: 1108 px viewport
+(840 workspace) gives Primary 280 px. `CappedPrimary*Contract` stories cover 1108/1280/1440/1920/2560,
+the stacked layout and the uncapped share.
+
 The shell-owned workspace surface has an edge border (`border-l`, plus `border-r` when inset). `AppShell`
 publishes two widths through the workspace context: `availableWidth` (the surface border-box, which decides
 split/stacked mode and the dominance thresholds) and `contentWidth` (`availableWidth` minus
@@ -302,7 +318,11 @@ through `location.hash`) and a safe-area override.
 { id, label, primary?, disabled?, tone?: 'neutral' | 'danger', onPress,
   icon?: IconGlyph,
   presentation?: 'button' | 'icon',      // 'icon' requires `icon` (type-enforced): IconButton sm + Tooltip(label)
-  direct?: 'wide' | 'always' | 'never' } // default: primary -> shown directly, everything else -> 'never'
+  direct?: 'wide' | 'always' | 'never',  // default: primary -> shown directly, everything else -> 'never'
+  pressed?: boolean,                     // icon actions only: toggle state, see below
+  group?: 'display' | 'actions',         // complete menu only: section, default 'actions'
+  checked?: boolean,                     // toggle state, both menu modes; wins over `pressed` for icons too
+  shortcut?: string }                    // trailing hint in the menu row, e.g. 'Ctrl+S' (both menu modes)
 ```
 
 - Budget: **2 direct actions on wide headers, 1 on narrow**; the rest go to the `•••` menu in input
@@ -319,6 +339,28 @@ through `location.hash`) and a safe-area override.
 - An icon action's `label` is its accessible name and its tooltip (also on keyboard focus).
 - The stacked floating row (`compact` density) lists **all** actions in `•••`, a superset of the in-flow
   header (which is `inert` while covered), so nothing is exposed twice.
+- **Icon toggles.** On non-primary icon actions, `checked ?? pressed` is the **same effective state**
+  for direct `IconButton` `aria-pressed` and menu `menuitemcheckbox` `aria-checked`. With neither set,
+  no toggle state is exposed. `checked` takes precedence when both are provided, so direct and menu
+  representations cannot disagree. The selected icon uses subtle `bg-surface-selected`; the icon
+  and label keep naming the action, never the state. In the menu the check sits in the trailing
+  slot. `checked` and `shortcut` work in both menu modes; a row with both shows shortcut then check
+  (in `content-primary`). `pressed` on a `primary` icon action is forbidden by the type.
+- **Complete menu.** `menu="complete"` on `WorkspaceHeader` / `WorkspaceHeaderFrame` (and the header read by
+  `CompactWorkspaceActions`) makes the `•••` menu list **every** action, promoted ones included (same id
+  and label; the duplication is intended and carries no marker). Rows are split into DS `MenuGroup`s with
+  `MenuLabel`s, `display` (options and toggles) above `actions`, joined by one `MenuSeparator`; an empty
+  group renders nothing. Each group is labelled for assistive technology by its visible heading.
+  Section labels come from `labels.menuDisplay` / `labels.menuActions` (default `Display` / `Actions`);
+  the complete menu scrolls within the available viewport height. `shortcut` shows only where provided.
+  The direct budget, one primary last and never-direct danger are unchanged. The default
+  (`menu="default"`) keeps the overflow-only menu
+  (`group` is ignored there).
+- **Secondary stack screens.** A screen definition takes `menu?: 'default' | 'complete'` next to `actions` and
+  `actionLabels`; the runtime passes it to `HeaderOutlet` (in-flow header) and `CompactScreenActions`
+  (floating row), so the stacked layout lists every action too. `useSecondaryNavigation()` also reports
+  `isOpen`, true while a contextual flow is open (false as soon as it closes, even while it slides out), so
+  a host can tell an open stack from one the user has just left.
 - `resolveWorkspaceHeaderActions(actions, 'wide' | 'narrow' | 'compact')` is the pure resolver
   (`true`/`false` still mean compact/wide). Document view: `[{ id: 'edit', icon: 'edit',
 presentation: 'icon', direct: 'always', ... }]`; edit: `[preview (icon, direct: 'wide'), save (primary,

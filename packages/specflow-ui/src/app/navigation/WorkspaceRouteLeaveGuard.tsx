@@ -1,6 +1,7 @@
 import { useBlocker, useRouter } from '@tanstack/react-router';
 import { useSecondaryNavigation } from '@nevo/ui';
 import { useRef } from 'react';
+import { isWithinSpecDocuments } from './routeScope';
 import { useNavigationTransition } from './NavigationTransition';
 /** Product bridge only. The existing Secondary stack still owns its guards. */
 export function WorkspaceRouteLeaveGuard() {
@@ -14,6 +15,8 @@ function RoutedGuard() {
   useBlocker({
     shouldBlockFn: async ({ current, next }) => {
       if (current.pathname === next.pathname) return false;
+      // Switching, opening or closing document tabs stays on one screen: nothing to leave.
+      if (isWithinSpecDocuments(current, next)) return false;
       if (checking.current) return true;
       checking.current = true;
       setGuardPending(true);

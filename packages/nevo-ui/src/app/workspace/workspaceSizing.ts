@@ -96,6 +96,27 @@ export function resolveSlotMaxWidth(
   return availableWidth === undefined ? undefined : availableWidth * (share / 100);
 }
 
+/**
+ * Opt-in pixel cap of Primary (`AppWorkspace primaryMaxPx`): Primary is its share of the split but
+ * never wider than the cap, and Secondary takes the rest of the content width. Below the cap, without
+ * a cap or without Secondary (stacked, Primary only) the widths are returned unchanged.
+ */
+export function capPrimaryWidth(
+  contentWidth: number | undefined,
+  widths: { primary?: number; secondary?: number },
+  cap: number | undefined,
+): { primary?: number; secondary?: number } {
+  if (
+    cap === undefined ||
+    contentWidth === undefined ||
+    widths.primary === undefined ||
+    widths.secondary === undefined ||
+    widths.primary <= cap
+  )
+    return widths;
+  return { primary: cap, secondary: Math.max(0, contentWidth - cap) };
+}
+
 export function resolveWorkspacePixelSplit(
   availableWidth: number,
   split: AppWorkspaceSplitMode,

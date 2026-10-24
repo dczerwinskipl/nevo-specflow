@@ -9,8 +9,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  EmptyState,
   WorkspaceHeader,
+  getItemTabId,
+  getItemTabPanelId,
   useWorkspaceCapabilities,
 } from '@nevo/ui';
 import { applicationLocationHeader } from '../../../app/navigation/ApplicationLocation';
@@ -21,8 +22,10 @@ import { useDocumentEditor } from '../editor/DocumentEditorProvider';
 import { documentHeaderModel } from '../editor/documentHeaderModel';
 import { documentRootActions, type DocumentTreeController } from '../explorer/DocumentsExplorer';
 import { documentTreeKeys } from '../read-model/queries';
-import { DocumentPane, UnsavedMarker } from './DocumentPane';
-import { DocumentSession } from './DocumentSession';
+import { DocumentTabStrip, documentTabsScope } from '../tabs/DocumentTabStrip';
+import { DocumentTabsProvider, useDocumentTabs } from '../tabs/DocumentTabsProvider';
+import { DocumentPane } from './DocumentPane';
+import { DocumentsEmptyState } from './DocumentsEmptyState';
 import { DocumentsTreePanel } from './DocumentsTreePanel';
 import { useDocumentOpening } from './useDocumentOpening';
 import { useDocumentTreeOperations } from './useDocumentTreeOperations';
@@ -41,9 +44,9 @@ export function DocumentsWorkspace({
 }) {
   return (
     <AppWorkspaceProvider scopeKey={specId}>
-      <DocumentSession specId={specId} documentId={documentId}>
+      <DocumentTabsProvider specId={specId} documentId={documentId}>
         <Workspace specId={specId} documentId={documentId} />
-      </DocumentSession>
+      </DocumentTabsProvider>
     </AppWorkspaceProvider>
   );
 }
@@ -58,12 +61,16 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
     queryFn: ({ signal }) => documentsApi.documentTree(specId, signal),
   });
   const editor = useDocumentEditor();
-  const documentHeader = documentHeaderModel(editor, t);
+  const tabs = useDocumentTabs();
+  const documentHeader = documentHeaderModel(editor, t, {
+    onCloseTab: documentId ? () => void tabs.requestClose(documentId) : undefined,
+  });
   const [demoNotice, setDemoNotice] = useState(false);
   const treeController = useRef<DocumentTreeController>(null);
   const requestRef = useRef<(() => Promise<boolean>) | null>(null);
-  const operations = useDocumentTreeOperations({ specId, documentId });
-  const opening = useDocumentOpening({ specId, documentId, requestRef });
+  const commitRef = useRef<(() => void) | null>(null);
+  const operations = useDocumentTreeOperations({ specId });
+  const opening = useDocumentOpening({ specId, documentId, requestRef, commitRef });
   const rootActions = documentRootActions(
     treeController,
     tree.data?.capabilities,
@@ -71,20 +78,27 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
     t,
   );
   const pane = documentId ? (
-    <DocumentPane data={{ specId, documentId }} />
+    <div
+      role="tabpanel"
+      id={getItemTabPanelId(documentTabsScope, documentId)}
+      aria-labelledby={getItemTabId(documentTabsScope, documentId)}
+      className="h-full min-h-0 w-full"
+    >
+      <DocumentPane data={{ specId, documentId }} />
+    </div>
   ) : (
-    <EmptyState
-      className="border-none"
-      title={t('specification.documentIdleTitle')}
-      description={t('specification.documentIdleDescription')}
-    />
+    <DocumentsEmptyState documents={tree.data?.documents ?? []} onOpen={opening.select} />
   );
   return (
     <>
-      <DocumentRouteGuard specId={specId} documentId={documentId} requestRef={requestRef} />
+      <DocumentRouteGuard specId={specId} requestRef={requestRef} commitRef={commitRef} />
       <AppWorkspace
         scroll="content"
         fit="available"
+        // Back already leaves the stacked document; its own close would repeat it.
+        stackedSecondaryClose="hide"
+        // The tree stops growing at 360 px; the document gets the rest on wide screens.
+        primaryMaxPx={360}
         split="secondary"
         labels={{
           ...workspaceLabels,
@@ -114,25 +128,34 @@ function Workspace({ specId, documentId }: { specId: string; documentId?: string
             controllerRef={treeController}
             operations={operations}
             requestRef={requestRef}
+            commitRef={commitRef}
             onSelect={opening.select}
           />
         </AppWorkspace.Primary>
-        {documentId ? (
+        {documentId || tabs.tabs.length > 0 ? (
           <AppWorkspace.Secondary
-            open={opening.open}
-            onOpenChange={opening.setOpen}
+            open
+            // The region's close closes every tab, asking once about the unsaved documents.
+            onOpenChange={(next) => {
+              if (!next) opening.closeAll();
+            }}
             header={
               <WorkspaceHeader
                 actions={documentHeader.actions}
-                labels={{ moreActions: t('common.moreActions') }}
+                menu="complete"
+                labels={{
+                  moreActions: t('common.moreActions'),
+                  menuActions: t('documents.menuActions'),
+                  menuDisplay: t('documents.menuDisplay'),
+                }}
                 headingLevel={2}
-                status={documentHeader.dirty ? <UnsavedMarker /> : undefined}
                 title={
                   tree.data?.documents
                     .find((item) => item.id === documentId)
                     ?.path.split('/')
                     .at(-1) ?? t('specification.documentPreviewTitle')
                 }
+                identityContent={<DocumentTabStrip />}
               />
             }
           >

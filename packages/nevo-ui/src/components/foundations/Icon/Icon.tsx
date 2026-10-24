@@ -20,6 +20,7 @@ import {
   Inbox,
   Info,
   LoaderCircle,
+  List,
   ListChecks,
   LogOut,
   Menu,
@@ -84,6 +85,7 @@ export const iconRegistry = {
   users: Users,
   workflow: Workflow,
   'list-checks': ListChecks,
+  list: List,
   settings: Settings,
   'log-out': LogOut,
 } satisfies Record<IconName, LucideIcon>;

@@ -25,6 +25,12 @@ describe('Icon', () => {
     expect(iconAssetRef('save', 'md')).toBe('Icon/save/md');
   });
 
+  it('registers the list glyph (a table of contents) with its design resource identity', () => {
+    const markup = renderToStaticMarkup(<Icon name="list" />);
+    expect(markup).toContain('<svg');
+    expect(iconAssetRef('list', 'md')).toBe('Icon/list/md');
+  });
+
   it('separates decorative and semantic icon accessibility', () => {
     const decorative = renderToStaticMarkup(<Icon name="branch" />);
     const semantic = renderToStaticMarkup(

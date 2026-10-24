@@ -12,7 +12,7 @@ import {
   previewPublicCloseOperation,
   reconcileArchivedConflictScratchOperation,
   discoverSpecifications,
-  getBuiltInCatalogue,
+  resolveCreateArchetype,
   openSpecFlowEngine,
   resolveSpecification,
   type CreateSpecificationRequest,
@@ -93,20 +93,15 @@ export function createSpecsCommand(context: SpecsCommandContext): Command {
         json?: boolean;
       }) => {
         validateCreateOptions(options);
-        const catalogue = getBuiltInCatalogue();
         const engine = await engineAt(context.cwd, options.projectRoot);
         const result = await createSpecificationFromRequest(engine, {
           operationId: options.operationId,
           title: options.title,
           goal: options.goal,
           target: resolveCliCreateTarget(engine, options),
-          // The CLI runs against the catalogue of this very Engine, so it is current by construction.
-          // An unknown id is refused by the Engine as ARCHETYPE_UNKNOWN whatever version is sent.
-          archetype: {
-            id: options.archetype,
-            version: catalogue.findArchetype(options.archetype)?.version ?? 1,
-          },
-          catalogueRevision: catalogue.revision,
+          // The Engine resolves the current version and revision of the catalogue it runs with; an
+          // unknown archetype id is refused there as ARCHETYPE_UNKNOWN.
+          ...resolveCreateArchetype(options.archetype),
           optionalDocumentIds: options.with,
         });
         if (options.json) {

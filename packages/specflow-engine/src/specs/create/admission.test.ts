@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { getBuiltInCatalogue } from '../archetypes/catalogue';
 import { ADDED_DOCUMENTS_MAX_FILES, TEXT_CONTENT_MAX_BYTES } from '../documents/limits';
-import { admitCreateArchetype } from './admission';
+import { admitCreateArchetype, resolveCreateArchetype } from './admission';
 import { normalizeCreateClientIntent, type CreateClientIntentInput } from './intent';
 
 const catalogue = getBuiltInCatalogue();
@@ -151,6 +151,21 @@ describe('Create admission of the archetype part', () => {
     );
     expect(() => admitCreateArchetype(intent, [])).toThrowError(
       expect.objectContaining({ code: 'CREATE_OPERATION_INVALID' }),
+    );
+  });
+});
+
+describe('resolveCreateArchetype', () => {
+  it('resolves the current version and the catalogue revision', () => {
+    expect(resolveCreateArchetype('feature')).toEqual({
+      archetype: { id: 'feature', version: 1 },
+      catalogueRevision: catalogue.revision,
+    });
+  });
+
+  it('refuses an unknown archetype as ARCHETYPE_UNKNOWN instead of inventing a version', () => {
+    expect(() => resolveCreateArchetype('nope')).toThrowError(
+      expect.objectContaining({ code: 'ARCHETYPE_UNKNOWN' }),
     );
   });
 });

@@ -91,6 +91,8 @@ export type { AddedDocumentInput } from './specs/scaffold';
 export type { CreateArchetypeRef } from './specs/create/intent';
 
 export {
+  resolveCreateArchetype,
+  type ResolvedCreateArchetype,
   createSpecificationFromRequest,
   resumeInterruptedCreateOperation,
   type ResumeCreateOptions,

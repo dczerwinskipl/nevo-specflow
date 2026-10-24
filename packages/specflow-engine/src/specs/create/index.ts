@@ -7,6 +7,7 @@ export {
   type CreateStage,
 } from './journal';
 export { normalizeCreateClientIntent } from './intent';
+export { resolveCreateArchetype, type ResolvedCreateArchetype } from './admission';
 export {
   createSpecification,
   inspectCreateSpecification,

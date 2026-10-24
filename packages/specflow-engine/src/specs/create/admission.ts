@@ -12,6 +12,31 @@ import { sha256Utf8, type CreateClientIntent } from './intent';
 const ADMISSION_SPEC_ID = '00000000-0000-4000-8000-000000000000';
 const ADMISSION_CREATED = '2000-01-01';
 
+/** The archetype reference and catalogue revision a client builds a Create request from. */
+export interface ResolvedCreateArchetype {
+  readonly archetype: { readonly id: string; readonly version: number };
+  readonly catalogueRevision: string;
+}
+
+/**
+ * The Engine's current version of an archetype and the catalogue revision, for a caller that runs
+ * against this very Engine (the CLI). The Engine owns this resolution: an unknown id is refused here
+ * as `ARCHETYPE_UNKNOWN`, never answered with an invented version.
+ */
+export function resolveCreateArchetype(
+  archetypeId: string,
+  catalogue: ResolvedCatalogue = getBuiltInCatalogue(),
+): ResolvedCreateArchetype {
+  const archetype = catalogue.findArchetype(archetypeId);
+  if (!archetype) {
+    throw new DocumentError('ARCHETYPE_UNKNOWN', `Unknown archetype "${archetypeId}".`);
+  }
+  return {
+    archetype: { id: archetype.id, version: archetype.version },
+    catalogueRevision: catalogue.revision,
+  };
+}
+
 /**
  * Admission of the archetype part of a Create. Pure and effect free: it reads only the intent, the
  * added contents and the catalogue, and writes nothing. Throws {@link DocumentError} (never a Create
@@ -28,10 +53,7 @@ export function admitCreateArchetype(
   if (intent.catalogueRevision !== undefined && intent.catalogueRevision !== catalogue.revision) {
     throw new DocumentError('CATALOGUE_STALE', 'The archetype catalogue changed; reload it.');
   }
-  const archetype = catalogue.findArchetype(intent.archetype.id);
-  if (!archetype) {
-    throw new DocumentError('ARCHETYPE_UNKNOWN', `Unknown archetype "${intent.archetype.id}".`);
-  }
+  const { archetype } = resolveCreateArchetype(intent.archetype.id, catalogue);
   if (archetype.version !== intent.archetype.version) {
     throw new DocumentError(
       'CATALOGUE_STALE',

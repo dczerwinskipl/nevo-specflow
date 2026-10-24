@@ -21,6 +21,8 @@ export type DocumentPathViolation =
   | 'trailing-dot-or-space'
   | 'forbidden-character'
   | 'control-character'
+  | 'unaddressable-character'
+  | 'malformed-text'
   | 'device-name'
   | 'reserved-name'
   | 'too-deep';
@@ -33,8 +35,27 @@ export type DocumentPathResult =
 export const RESERVED_ROOT_NAMES = ['specification.yaml', 'change.yaml'] as const;
 
 const FORBIDDEN_CHARACTERS = /[\\:*?"<>|]/u;
-// eslint-disable-next-line no-control-regex -- control characters are exactly what is rejected.
-const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/u;
+const CONTROL_CHARACTERS = /\p{Cc}/u;
+/** Control, format, line and paragraph separator characters (bidi overrides, C1, U+2028, zero width). */
+const INVISIBLE_OR_CONTROL = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u;
+const BACKSLASH = String.fromCharCode(0x5c);
+const REPLACEMENT_CHARACTER = String.fromCharCode(0xfffd);
+
+/**
+ * The single predicate for names the documents layer can neither address nor display safely: a
+ * control, format or separator character (Cc, Cf, Zl, Zp), a backslash, U+FFFD (what a non-UTF-8 byte
+ * decodes to) or a string that is not well formed UTF-16 (a lone surrogate, which a file system
+ * would store as U+FFFD). Admission, the manifest parser and the directory reader all use it so that
+ * nothing can be created that the product cannot show.
+ */
+export function isUnaddressable(name: string): boolean {
+  return (
+    !name.isWellFormed() ||
+    INVISIBLE_OR_CONTROL.test(name) ||
+    name.includes(BACKSLASH) ||
+    name.includes(REPLACEMENT_CHARACTER)
+  );
+}
 // Reserved device names are reserved with or without an extension on Windows; reject on every host.
 const DEVICE_NAME = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/iu;
 
@@ -62,7 +83,11 @@ function validate(path: string, kind: 'file' | 'folder'): DocumentPathResult {
   const fail = (violation: DocumentPathViolation): DocumentPathResult => ({ ok: false, violation });
   if (path.length === 0) return fail('empty');
   if (path.length > DOCUMENT_PATH_MAX_CHARACTERS) return fail('too-long');
+  if (!path.isWellFormed()) return fail('malformed-text');
   if (CONTROL_CHARACTERS.test(path)) return fail('control-character');
+  if (INVISIBLE_OR_CONTROL.test(path) || path.includes(REPLACEMENT_CHARACTER)) {
+    return fail('unaddressable-character');
+  }
   if (path.startsWith('/')) return fail('absolute');
   if (path.includes('\\')) return fail('forbidden-character');
   const segments = path.split('/');

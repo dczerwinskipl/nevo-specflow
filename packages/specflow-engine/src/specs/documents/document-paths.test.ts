@@ -52,6 +52,14 @@ const INVALID: readonly (readonly [string, DocumentPathViolation])[] = [
   ['a\nb.md', 'control-character'],
   ['a\tb.md', 'control-character'],
   ['a\u007fb.md', 'control-character'],
+  ['zw\u200bsp.md', 'unaddressable-character'],
+  ['bidi\u202eevil.md', 'unaddressable-character'],
+  ['c1\u0085.md', 'control-character'],
+  ['sep\u2028.md', 'unaddressable-character'],
+  ['para\u2029.md', 'unaddressable-character'],
+  ['rep\ufffd.md', 'unaddressable-character'],
+  ['x\ud800.md', 'malformed-text'],
+  ['lone\udc00low.md', 'malformed-text'],
   ['CON', 'device-name'],
   ['con.txt', 'device-name'],
   ['dir/NUL.md', 'device-name'],
@@ -102,6 +110,14 @@ describe('validateDocumentPath', () => {
 });
 
 describe('validateFolderPath', () => {
+  it('rejects the same unaddressable and malformed names as files', () => {
+    expect(validateFolderPath('a\u200bb')).toEqual({
+      ok: false,
+      violation: 'unaddressable-character',
+    });
+    expect(validateFolderPath('x\ud800')).toEqual({ ok: false, violation: 'malformed-text' });
+  });
+
   it('uses the same segment rules and a segment-count depth', () => {
     expect(validateFolderPath('1/2/3/4/5/6/7/8').ok).toBe(true);
     expect(validateFolderPath('1/2/3/4/5/6/7/8/9')).toEqual({ ok: false, violation: 'too-deep' });

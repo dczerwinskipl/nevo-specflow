@@ -1,6 +1,7 @@
 import { lstat, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { isUnaddressable } from './document-paths';
 import { DocumentError } from './errors';
 import {
   ARCHIVE_COUNT_TRAVERSAL_ENTRIES_MAX,
@@ -50,23 +51,6 @@ function rootUnreadable(): DocumentError {
 
 function compareNames(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
-}
-
-/** Control, format, line and paragraph separator characters (bidi overrides, C1, U+2028, zero width). */
-const INVISIBLE_OR_CONTROL = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u;
-const BACKSLASH = String.fromCharCode(0x5c);
-const REPLACEMENT_CHARACTER = String.fromCharCode(0xfffd);
-
-/**
- * A name the documents layer cannot address or display safely: it contains a control, format or
- * separator character (Cc, Cf, Zl, Zp), a backslash, or U+FFFD (what a non-UTF-8 byte decodes to).
- */
-export function isUnaddressable(name: string): boolean {
-  return (
-    INVISIBLE_OR_CONTROL.test(name) ||
-    name.includes(BACKSLASH) ||
-    name.includes(REPLACEMENT_CHARACTER)
-  );
 }
 
 /**

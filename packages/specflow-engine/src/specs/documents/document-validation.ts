@@ -1,4 +1,4 @@
-import type { DocumentIssueCode, RequirementResult } from '@nevo/specflow-contracts/documents';
+import type { DocumentIssue, RequirementResult } from '@nevo/specflow-contracts/documents';
 
 import type { ManifestArchetype, ManifestDocument } from '../model';
 
@@ -21,16 +21,6 @@ export interface DocumentValidationInput {
    * the manifest, hidden entries and symlinks before calling.
    */
   readonly observedPaths: Iterable<string>;
-}
-
-/**
- * Wire shape of a tree issue. Declared here from the exported `DocumentIssueCode` because the contracts'
- * `DocumentIssue` alias still resolves its `code` to `never` (union built by `map`).
- */
-export interface DocumentIssue {
-  readonly code: DocumentIssueCode;
-  readonly path?: string;
-  readonly documentType?: string;
 }
 
 export interface UnclassifiedFile {

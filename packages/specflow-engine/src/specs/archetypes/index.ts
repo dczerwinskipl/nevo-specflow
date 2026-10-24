@@ -8,6 +8,7 @@ export {
   resolveCatalogue,
   type ResolvedCatalogue,
 } from './catalogue';
+export { projectCatalogue } from './projection';
 export { BUILT_IN_DEFINITIONS, templateSkeleton } from './builtins';
 export {
   GOAL_PROMPT_FALLBACK,

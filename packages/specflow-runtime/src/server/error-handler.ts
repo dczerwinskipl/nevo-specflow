@@ -19,6 +19,18 @@ export function registerRuntimeErrorHandler<RawServer extends RawServerBase>(
       return reply.code(403).send({ error: 'forbidden' });
     }
 
+    // A Create body above its route limit: the same `{error, code}` body as every other Create refusal.
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'FST_ERR_CTP_BODY_TOO_LARGE' &&
+      request.routeOptions.url === '/api/specs'
+    ) {
+      reply.header('Cache-Control', 'no-store');
+      return reply.code(413).send({ error: 'DOCUMENT_TOO_LARGE', code: 'DOCUMENT_TOO_LARGE' });
+    }
+
     const statusCode = httpStatusCode(error);
     if (statusCode !== undefined && statusCode >= 400 && statusCode < 500) {
       return reply.code(statusCode).send(error);

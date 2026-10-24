@@ -125,6 +125,13 @@ describe('recovery is independent of the live catalogue', () => {
     const created = await createSpecification(engine, request);
     state.changed = true;
     expect(await createSpecification(engine, request)).toEqual(created);
+    // The revision is a precondition of admission, not part of the operation identity.
+    expect(
+      await createSpecification(engine, {
+        ...request,
+        catalogueRevision: 'revision-of-the-old-catalogue',
+      }),
+    ).toEqual(created);
     // A NEW operation naming the old version is refused against the changed catalogue.
     await expect(createSpecification(engine, input(engine, 'New one'))).rejects.toMatchObject({
       code: 'CATALOGUE_STALE',

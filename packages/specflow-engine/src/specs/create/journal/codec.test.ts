@@ -245,6 +245,14 @@ describe('Create journal version 2 codec', () => {
       base + '/abs.md',
       base + 'C:/x.md',
       base + 'tab' + String.fromCharCode(9) + '.md',
+      base + 'a:b.md',
+      base + 'trailing-dot.',
+      base + 'trailing-space ',
+      base + '.hidden.md',
+      base + 'dir/.hidden/a.md',
+      base + 'x'.repeat(201) + '.md',
+      base + 'specification.yaml',
+      base + 'CON.md',
       base,
     ];
     for (const relativePath of forgedPaths) {

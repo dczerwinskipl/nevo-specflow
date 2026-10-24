@@ -1,7 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { lstat, mkdir, open, readFile, readdir, realpath } from 'node:fs/promises';
-import { basename, dirname, isAbsolute, join, relative } from 'node:path';
+import { dirname, isAbsolute, join, relative } from 'node:path';
 
+import { syncDirectoryWhenSupported } from '../../project/fs/atomic-json';
 import { removeFileWindowsSafe, renameWindowsSafe } from '../../project/fs/windows-safe-fs';
 
 import type { SpecFlowEngine } from '../../application';
@@ -99,6 +100,11 @@ export async function writeScaffoldWithEvidence(
  * SIGKILL never leaves a partial scaffold file. A file that already exists is accepted when it is
  * identical, and replaced atomically when it is a byte-prefix (including empty) of the pinned
  * content (what an earlier interrupted write could leave); anything else is a recovery.
+ *
+ * The staged name is short and independent of the document name (`.<uuid>.tmp`), so a segment that
+ * passed the segment cap can never make the staged file exceed the file name limit. After the
+ * rename the parent directory is fsynced (best effort, not on Windows) so the new name survives a
+ * power loss; the file content itself was fsynced before.
  */
 async function publishFile(
   absolute: string,
@@ -106,13 +112,16 @@ async function publishFile(
   afterStaged: (() => Promise<void>) | undefined,
 ): Promise<void> {
   const directory = dirname(absolute);
-  const name = basename(absolute);
-  await removeStaleStagedFiles(directory, name);
+  await removeStaleStagedFiles(directory);
   const expected = Buffer.from(content, 'utf8');
   let existing: Buffer | undefined;
   try {
     const stat = await lstat(absolute);
     if (!stat.isFile() || stat.isSymbolicLink()) throw recovery('Scaffold file was redirected.');
+    // Larger than the pinned content can neither be equal nor a prefix: decide without reading it.
+    if (stat.size > expected.length) {
+      throw recovery('Scaffold was modified since the recorded creation intent.');
+    }
     existing = await readFile(absolute);
   } catch (error) {
     if (error instanceof CreateOperationError) throw error;
@@ -127,7 +136,7 @@ async function publishFile(
       throw recovery('Scaffold was modified since the recorded creation intent.');
     }
   }
-  const staged = join(directory, `.${name}.${randomUUID()}.tmp`);
+  const staged = join(directory, `.${randomUUID()}.tmp`);
   const handle = await open(staged, 'wx', 0o600);
   try {
     await afterStaged?.();
@@ -137,13 +146,16 @@ async function publishFile(
     await handle.close();
   }
   await renameWindowsSafe(staged, absolute);
+  if (process.platform !== 'win32')
+    await syncDirectoryWhenSupported(directory).catch(() => undefined);
 }
 
-/** Staged files of an interrupted write of this very file; never content, always safe to drop. */
-async function removeStaleStagedFiles(directory: string, name: string): Promise<void> {
-  const prefix = `.${name}.`;
+const STAGED_FILE = /^\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.tmp$/u;
+
+/** Staged files of an interrupted write in this directory; never content, always safe to drop. */
+async function removeStaleStagedFiles(directory: string): Promise<void> {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
-    if (entry.isFile() && entry.name.startsWith(prefix) && entry.name.endsWith('.tmp')) {
+    if (entry.isFile() && STAGED_FILE.test(entry.name)) {
       await removeFileWindowsSafe(join(directory, entry.name)).catch(() => undefined);
     }
   }

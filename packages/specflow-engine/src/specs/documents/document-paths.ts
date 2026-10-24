@@ -1,4 +1,8 @@
-import { DOCUMENT_PATH_MAX_CHARACTERS, FOLDER_DEPTH_MAX } from './limits';
+import {
+  DOCUMENT_PATH_MAX_CHARACTERS,
+  DOCUMENT_SEGMENT_MAX_BYTES,
+  FOLDER_DEPTH_MAX,
+} from './limits';
 
 /**
  * Portable document paths (architecture "Identity, paths and the registry"): POSIX `/`, relative to
@@ -9,6 +13,7 @@ import { DOCUMENT_PATH_MAX_CHARACTERS, FOLDER_DEPTH_MAX } from './limits';
 export type DocumentPathViolation =
   | 'empty'
   | 'too-long'
+  | 'segment-too-long'
   | 'absolute'
   | 'empty-segment'
   | 'traversal'
@@ -63,6 +68,9 @@ function validate(path: string, kind: 'file' | 'folder'): DocumentPathResult {
   const segments = path.split('/');
   for (const segment of segments) {
     if (segment.length === 0) return fail('empty-segment');
+    if (Buffer.byteLength(segment, 'utf8') > DOCUMENT_SEGMENT_MAX_BYTES) {
+      return fail('segment-too-long');
+    }
     if (segment === '..') return fail('traversal');
     if (segment.startsWith('.')) return fail('hidden-segment');
     if (segment.endsWith('.') || segment.endsWith(' ')) return fail('trailing-dot-or-space');

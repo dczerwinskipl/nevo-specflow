@@ -244,6 +244,22 @@ describe('Create with an archetype: one commit for the whole scaffold', () => {
     expect(git(root, 'status', '--porcelain', '--untracked-files=all')).toBe('');
   }, 240000);
 
+  it('creates and commits a document whose path segments are at the segment limit', async () => {
+    const { root, engine } = await project();
+    const longName = 'n'.repeat(197) + '.md';
+    const longFolder = 'f'.repeat(200);
+    const created = await createSpecification(
+      engine,
+      request(engine, 'Long names', {
+        addedDocuments: [{ path: longFolder + '/' + longName, type: 'note', content: 'x' }],
+      }),
+    );
+    expect(committedPaths(root, 'HEAD')).toContain(
+      'specs/active/' + created.slug + '/' + longFolder + '/' + longName,
+    );
+    expect(git(root, 'status', '--porcelain', '--untracked-files=all')).toBe('');
+  }, 240000);
+
   it('creates the whole scaffold without a commit when Git is disabled', async () => {
     const { root, engine } = await project('runtime: {}\ngit:\n  enabled: false\n');
     const head = git(root, 'rev-parse', 'HEAD');

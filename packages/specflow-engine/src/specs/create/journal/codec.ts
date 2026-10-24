@@ -7,6 +7,7 @@ import { CreateOperationError } from '../error';
 import type { ResolvedProjectHome } from '../../../project/home/home';
 import { DOCUMENT_ID_PATTERN } from '@nevo/specflow-contracts/documents';
 
+import { validateDocumentPath } from '../../documents/document-paths';
 import { isExplicitSpecificationSlug } from '../../model';
 import { CREATE_SCAFFOLD_FILES_MAX, TEXT_CONTENT_MAX_BYTES } from '../../documents/limits';
 import {
@@ -195,7 +196,7 @@ function isValidJournalFiles(value: unknown, slug: unknown): boolean {
       Object.keys(file).some((key) => !FILE_FIELDS.has(key)) ||
       typeof file.relativePath !== 'string' ||
       !file.relativePath.startsWith(base) ||
-      !isSafeRelativeSegments(file.relativePath.slice(base.length)) ||
+      !isSafeScaffoldPath(file.relativePath.slice(base.length)) ||
       paths.has(file.relativePath) ||
       typeof file.sha256 !== 'string' ||
       !SHA256.test(file.sha256) ||
@@ -214,13 +215,13 @@ function isValidJournalFiles(value: unknown, slug: unknown): boolean {
   );
 }
 
-/** No empty, `.` or `..` segment, no backslash, no absolute form, no NUL or control character. */
-function isSafeRelativeSegments(path: string): boolean {
-  if (path.length === 0 || path.startsWith('/') || /^[a-zA-Z]:/u.test(path)) return false;
-  for (const character of path) {
-    if (character === String.fromCharCode(92) || character.charCodeAt(0) < 32) return false;
-  }
-  return path.split('/').every((segment) => segment !== '' && segment !== '.' && segment !== '..');
+/**
+ * A scaffold file path below the Specification directory follows the document path rules (traversal,
+ * hidden, trailing dot or space, forbidden characters, device names, segment and depth caps). The
+ * manifest is the one fixed exception to the reserved root name.
+ */
+function isSafeScaffoldPath(path: string): boolean {
+  return path === 'specification.yaml' || validateDocumentPath(path).ok;
 }
 
 function isValidJournalDocumentIds(value: unknown): boolean {

@@ -63,7 +63,14 @@ describe('Create admission of the archetype part', () => {
   });
 
   it('refuses a reserved or invalid path as DOCUMENT_PATH_INVALID', () => {
-    for (const path of ['specification.yaml', 'SPECIFICATION.YAML', '../x.md', 'a/CON.md', '']) {
+    for (const path of [
+      'specification.yaml',
+      'SPECIFICATION.YAML',
+      '../x.md',
+      'a/CON.md',
+      '',
+      'x'.repeat(201) + '.md',
+    ]) {
       expect(() => admit({ addedDocuments: [{ path, content: '' }] })).toThrowError(
         expect.objectContaining({ code: 'DOCUMENT_PATH_INVALID' }),
       );

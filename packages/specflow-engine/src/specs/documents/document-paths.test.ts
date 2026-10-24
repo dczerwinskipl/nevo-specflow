@@ -65,6 +65,8 @@ const INVALID: readonly (readonly [string, DocumentPathViolation])[] = [
   ['CHANGE.Yaml', 'reserved-name'],
   ['a/b/c/d/e/f/g/h/i/file.md', 'too-deep'],
   ['x'.repeat(501), 'too-long'],
+  ['x'.repeat(201), 'segment-too-long'],
+  ['a/' + '\u20ac'.repeat(67), 'segment-too-long'],
 ];
 
 describe('validateDocumentPath', () => {
@@ -85,8 +87,11 @@ describe('validateDocumentPath', () => {
   });
 
   it('accepts exactly 500 characters and rejects 501', () => {
-    expect(validateDocumentPath('x'.repeat(500)).ok).toBe(true);
-    expect(validateDocumentPath('x'.repeat(501)).ok).toBe(false);
+    const segments = ['x'.repeat(199), 'x'.repeat(199), 'x'.repeat(100)];
+    expect(validateDocumentPath(segments.join('/')).ok).toBe(true);
+    expect(validateDocumentPath(segments.join('/') + 'x').ok).toBe(false);
+    expect(validateDocumentPath('x'.repeat(200)).ok).toBe(true);
+    expect(validateDocumentPath('x'.repeat(201)).ok).toBe(false);
   });
 
   it('reserves specification.yaml and change.yaml only at the root', () => {

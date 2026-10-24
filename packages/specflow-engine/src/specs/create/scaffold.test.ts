@@ -188,7 +188,7 @@ describe('Create scaffold recovery source', () => {
     await writeFile(join(workspaceRoot, manifest!.relativePath), '');
     await writeFile(join(workspaceRoot, overview!.relativePath), overview!.content.slice(0, 10));
     // A staged file of an interrupted write is dropped, never mistaken for content.
-    await writeFile(join(directory, '.overview.md.' + randomUUID() + '.tmp'), 'half');
+    await writeFile(join(directory, '.' + randomUUID() + '.tmp'), 'half');
     await writeScaffoldWithEvidence(engine, journal);
     expect(await readFile(join(workspaceRoot, manifest!.relativePath), 'utf8')).toBe(
       manifest!.content,
@@ -199,6 +199,11 @@ describe('Create scaffold recovery source', () => {
     expect((await readdir(directory)).sort()).toEqual(['overview.md', 'specification.yaml']);
 
     await writeFile(join(workspaceRoot, overview!.relativePath), 'something else entirely');
+    await expect(writeScaffoldWithEvidence(engine, journal)).rejects.toMatchObject({
+      code: 'CREATE_RECOVERY_REQUIRED',
+    });
+    // Longer than the pinned content: refused without reading it (the content is a prefix, plus more).
+    await writeFile(join(workspaceRoot, overview!.relativePath), overview!.content + 'more');
     await expect(writeScaffoldWithEvidence(engine, journal)).rejects.toMatchObject({
       code: 'CREATE_RECOVERY_REQUIRED',
     });

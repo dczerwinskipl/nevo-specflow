@@ -42,6 +42,12 @@ export const ADDED_DOCUMENTS_MAX_TOTAL_BYTES = 1 * MIB;
 /** Rendered template text (64 KiB each). */
 export const TEMPLATE_TEXT_MAX_BYTES = 64 * KIB;
 
+/**
+ * One path segment in UTF-8 BYTES. Far below the 255 bytes of a file name on common filesystems, so a
+ * staged file name (`.<uuid>.tmp`) or any other sibling of a document always fits.
+ */
+export const DOCUMENT_SEGMENT_MAX_BYTES = 200;
+
 /** Path length in CHARACTERS (a sanity bound; path rules still apply). */
 export const DOCUMENT_PATH_MAX_CHARACTERS = 500;
 

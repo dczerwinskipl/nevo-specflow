@@ -207,6 +207,39 @@ describe('E2.T04 — actual process termination and fresh-process recovery', () 
     expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(registryBefore);
   }, 120000);
 
+  it.each(['manifest', 'commit', 'registry'])(
+    'R06: SIGKILL at %s of an archetype Create recovers the full file list in one commit',
+    async (stage) => {
+      const { root, engine } = await project(true);
+      git(root, 'checkout', '-q', '-b', 'develop');
+      const parent = git(root, 'rev-parse', 'HEAD');
+      const input: CreateSpecificationInput = {
+        ...request(engine, 'Archetype killed at ' + stage),
+        archetype: { id: 'feature', version: 1 },
+        optionalDocumentIds: ['behaviour', 'ux', 'backend'],
+        addedDocuments: [{ path: 'notes/a.md', type: 'note', content: 'a' }],
+        folders: ['assets'],
+      };
+      expect(await killAtCheckpoint(root, input, stage)).toBe(stage);
+      const saved = (await inspectCreateSpecification(engine, input.operationId))!;
+      expect(saved.files).toHaveLength(6);
+      const output = JSON.parse(await replay(root, input)) as {
+        specId: string;
+        documentIds: string[];
+      };
+      expect(output.specId).toBe(saved.specId);
+      expect(output.documentIds).toEqual(saved.documentIds);
+      expect(git(root, 'rev-list', '--count', parent + '..HEAD')).toBe('1');
+      expect(
+        git(root, 'diff-tree', '--no-commit-id', '--name-only', '-r', 'HEAD')
+          .split(String.fromCharCode(10))
+          .sort(),
+      ).toEqual(saved.files.map((file) => file.relativePath).sort());
+      expect(git(root, 'status', '--porcelain', '--untracked-files=all')).toBe('');
+    },
+    180000,
+  );
+
   it('R05: external changes after SIGKILL produce conflict without overwrite or cleanup', async () => {
     const { root, engine } = await project();
     const input = request(engine, 'Externally modified');

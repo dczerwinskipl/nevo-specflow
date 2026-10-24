@@ -6,6 +6,14 @@ import { Type, type Static } from 'typebox';
  * defined once and reused by the other schema files of this folder.
  */
 
+/**
+ * A union of string literals that keeps its literal type. `Static` of `Type.Union(values.map(Literal))`
+ * collapses to `never`, so every closed vocabulary below is built through this helper.
+ */
+export function closedUnion<const T extends readonly string[]>(values: T) {
+  return Type.Unsafe<T[number]>(Type.Union(values.map((value) => Type.Literal(value))));
+}
+
 /** Specification and document ids on the wire (existing id pattern). */
 export const IdSchema = Type.String({
   minLength: 1,
@@ -27,11 +35,11 @@ export const DOCUMENT_ID_PATTERN = '^[a-z0-9][a-z0-9-]{0,63}$';
 export const RegisteredDocumentIdSchema = Type.String({ pattern: DOCUMENT_ID_PATTERN });
 
 export const CONTENT_KINDS = ['text', 'image', 'binary'] as const;
-export const ContentKindSchema = Type.Union(CONTENT_KINDS.map((kind) => Type.Literal(kind)));
+export const ContentKindSchema = closedUnion(CONTENT_KINDS);
 export type ContentKind = (typeof CONTENT_KINDS)[number];
 
 export const CLASSIFICATIONS = ['registered', 'unclassified'] as const;
-export const ClassificationSchema = Type.Union(CLASSIFICATIONS.map((value) => Type.Literal(value)));
+export const ClassificationSchema = closedUnion(CLASSIFICATIONS);
 export type Classification = (typeof CLASSIFICATIONS)[number];
 
 /** Reasons an action is unavailable (kebab-case). Advisory in reads, authoritative in write errors. */
@@ -49,7 +57,7 @@ export const ACTION_REASONS = [
   /** Write actions before the D4 routes exist; removed when D4 lands. */
   'not-implemented',
 ] as const;
-export const ActionReasonSchema = Type.Union(ACTION_REASONS.map((reason) => Type.Literal(reason)));
+export const ActionReasonSchema = closedUnion(ACTION_REASONS);
 export type ActionReason = (typeof ACTION_REASONS)[number];
 
 export const ActionSchema = Type.Object(

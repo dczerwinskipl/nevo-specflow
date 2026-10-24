@@ -6,6 +6,7 @@ import {
   ClassificationSchema,
   ContentKindSchema,
   IdSchema,
+  closedUnion,
 } from './vocabulary';
 
 /** Codes of `DocumentTree.issues`; the last two mean Close archive will refuse. */
@@ -17,9 +18,7 @@ export const DOCUMENT_ISSUE_CODES = [
   'path-case-collision',
   'archive-limit',
 ] as const;
-export const DocumentIssueCodeSchema = Type.Union(
-  DOCUMENT_ISSUE_CODES.map((code) => Type.Literal(code)),
-);
+export const DocumentIssueCodeSchema = closedUnion(DOCUMENT_ISSUE_CODES);
 export type DocumentIssueCode = (typeof DOCUMENT_ISSUE_CODES)[number];
 
 export const DocumentTreeFolderSchema = Type.Object(

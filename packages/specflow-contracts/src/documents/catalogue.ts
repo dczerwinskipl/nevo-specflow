@@ -1,12 +1,10 @@
 import { Type, type Static } from 'typebox';
 
-import { CatalogueIdSchema, RegisteredDocumentIdSchema } from './vocabulary';
+import { CatalogueIdSchema, RegisteredDocumentIdSchema, closedUnion } from './vocabulary';
 
 /** `include` of a template: `always` is scaffolded at Create, `optional` is a suggestion. */
 export const TEMPLATE_INCLUDES = ['always', 'optional'] as const;
-export const TemplateIncludeSchema = Type.Union(
-  TEMPLATE_INCLUDES.map((value) => Type.Literal(value)),
-);
+export const TemplateIncludeSchema = closedUnion(TEMPLATE_INCLUDES);
 export type TemplateInclude = (typeof TEMPLATE_INCLUDES)[number];
 
 /** All text mandatory except `defaultFilename`. */

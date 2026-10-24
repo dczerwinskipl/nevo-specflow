@@ -1,6 +1,6 @@
 import { Type, type Static } from 'typebox';
 
-import { CatalogueIdSchema, IdSchema, UuidSchema } from './vocabulary';
+import { CatalogueIdSchema, IdSchema, UuidSchema, closedUnion } from './vocabulary';
 
 export const CommitRefSchema = Type.Object(
   { sha: Type.String({ minLength: 1 }) },
@@ -35,13 +35,9 @@ export const SaveResultSchema = Type.Object(
 export type SaveResult = Static<typeof SaveResultSchema>;
 
 export const DOCUMENT_OPERATION_ACTIONS = ['rename', 'move', 'delete', 'classify'] as const;
-export const DocumentOperationActionSchema = Type.Union(
-  DOCUMENT_OPERATION_ACTIONS.map((action) => Type.Literal(action)),
-);
+export const DocumentOperationActionSchema = closedUnion(DOCUMENT_OPERATION_ACTIONS);
 export const DOCUMENT_OPERATION_TARGET_KINDS = ['document', 'folder'] as const;
-export const DocumentOperationTargetKindSchema = Type.Union(
-  DOCUMENT_OPERATION_TARGET_KINDS.map((kind) => Type.Literal(kind)),
-);
+export const DocumentOperationTargetKindSchema = closedUnion(DOCUMENT_OPERATION_TARGET_KINDS);
 
 /** Which fields apply to which action is validated by the Engine (`DOCUMENT_OPERATION_INVALID`). */
 export const DocumentOperationInputSchema = Type.Object(

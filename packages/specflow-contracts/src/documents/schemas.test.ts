@@ -1,4 +1,5 @@
 import { Value } from 'typebox/value';
+import type { Static } from 'typebox';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 
 import {
@@ -456,6 +457,8 @@ describe('closed vocabularies are usable as types', () => {
     expectTypeOf<'protected'>().toExtend<ActionReason>();
     expectTypeOf<'dangling'>().toExtend<DocumentIssueCode>();
     expectTypeOf<ActionReason>().not.toBeNever();
+    expectTypeOf<Static<typeof DocumentTreeSchema>['issues'][number]['code']>().not.toBeNever();
+    expectTypeOf<Static<typeof ActionSchema>['reason']>().toEqualTypeOf<ActionReason | undefined>();
     expectTypeOf<DocumentIssueCode>().not.toBeNever();
   });
 });

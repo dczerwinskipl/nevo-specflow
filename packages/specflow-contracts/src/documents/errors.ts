@@ -1,6 +1,6 @@
 import { Type, type Static } from 'typebox';
 
-import { ActionReasonSchema } from './vocabulary';
+import { ActionReasonSchema, closedUnion } from './vocabulary';
 
 /**
  * Every code of the "Errors" table of `docs/reference/api/specification-documents.md`.
@@ -36,9 +36,7 @@ export const DOCUMENT_ERROR_CODES = [
 
 export type DocumentErrorCode = (typeof DOCUMENT_ERROR_CODES)[number];
 
-export const DocumentErrorCodeSchema = Type.Union(
-  DOCUMENT_ERROR_CODES.map((code) => Type.Literal(code)),
-);
+export const DocumentErrorCodeSchema = closedUnion(DOCUMENT_ERROR_CODES);
 
 export const DocumentErrorDetailsSchema = Type.Object(
   {

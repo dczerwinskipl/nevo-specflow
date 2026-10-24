@@ -124,7 +124,9 @@ jobs:
       - name: Smoke installed release candidate
         env:
           NEVO_SPECFLOW_ARTIFACT_DIR: ${{ github.workspace }}/.artifacts/release-candidate
-        run: pnpm --filter @nevo/specflow test:packaged
+        run: |
+          pnpm turbo run build --filter=@nevo/specflow-engine^...
+          pnpm --filter @nevo/specflow test:packaged
 
   publish:
     name: publish release

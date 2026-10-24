@@ -1,10 +1,6 @@
 import { getBuiltInCatalogue, type ResolvedCatalogue } from '../archetypes/catalogue';
 import { DocumentError } from '../documents/errors';
-import {
-  ScaffoldValidationError,
-  createSpecificationScaffold,
-  type ScaffoldValidationCause,
-} from '../scaffold';
+import { ScaffoldValidationError, createSpecificationScaffold, documentErrorOf } from '../scaffold';
 import { CreateOperationError } from './error';
 import { sha256Utf8, type CreateClientIntent } from './intent';
 
@@ -81,31 +77,6 @@ export function admitCreateArchetype(
   } catch (error) {
     if (error instanceof ScaffoldValidationError) throw documentErrorOf(error);
     throw error;
-  }
-}
-
-/** One to one mapping of the six scaffold causes onto document codes (delivery D2, item 5). */
-export function documentErrorOf(error: ScaffoldValidationError): DocumentError {
-  return new DocumentError(documentCodeOf(error.cause), error.message);
-}
-
-function documentCodeOf(cause: ScaffoldValidationCause) {
-  switch (cause.kind) {
-    case 'archetype-unknown':
-    case 'template-unknown':
-      return 'ARCHETYPE_UNKNOWN' as const;
-    case 'path-invalid':
-      return 'DOCUMENT_PATH_INVALID' as const;
-    case 'path-conflict':
-      return 'DOCUMENT_PATH_CONFLICT' as const;
-    case 'type-invalid':
-    case 'content-invalid':
-    case 'limit-exceeded':
-      return 'DOCUMENT_OPERATION_INVALID' as const;
-    default: {
-      const exhaustive: never = cause;
-      return exhaustive;
-    }
   }
 }
 

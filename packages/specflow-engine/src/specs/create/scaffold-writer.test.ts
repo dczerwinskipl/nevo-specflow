@@ -13,7 +13,7 @@ import { fingerprintCreateClientIntent, normalizeCreateClientIntent, sha256Utf8 
 import type { CreateJournal } from './journal';
 import { writeCreatePayload } from './journal/payload';
 import { CREATE_JOURNAL_RELATIVE_DIR } from './journal/store';
-import { expectedScaffold, writeScaffoldWithEvidence } from './scaffold';
+import { expectedScaffold, writeScaffoldWithEvidence } from './scaffold-writer';
 
 const roots: string[] = [];
 afterEach(async () => {

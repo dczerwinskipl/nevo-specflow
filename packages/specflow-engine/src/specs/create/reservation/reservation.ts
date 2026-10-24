@@ -27,14 +27,18 @@ import {
   type CreateJournal,
 } from '../journal';
 import { removeExpiredCompletedCreateJournals } from '../journal/retention';
-import { admitCreateArchetype, documentErrorOf } from '../admission';
+import { admitCreateArchetype } from '../admission';
 import { getBuiltInCatalogue } from '../../archetypes/catalogue';
 import { assertJournalFitsItsCap } from './journal-cap';
 import { CREATE_JOURNAL_VERSION } from '../journal/model';
 import { writeCreatePayload } from '../journal/payload';
 import { discoverSpecificationsForCreateAdmission } from '../../discovery';
 import { isValidSpecificationId, validateSpecificationScaffoldInput } from '../../model';
-import { ScaffoldValidationError, createSpecificationScaffold } from '../../scaffold';
+import {
+  ScaffoldValidationError,
+  createSpecificationScaffold,
+  documentErrorOf,
+} from '../../scaffold';
 
 /**
  * First lock winner owns the creation date and pinned Git effect plan.

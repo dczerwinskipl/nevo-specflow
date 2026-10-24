@@ -5,6 +5,7 @@ import { CATALOGUE_ID_PATTERN } from '@nevo/specflow-contracts/documents';
 import { getBuiltInCatalogue, type ResolvedCatalogue } from './archetypes/catalogue';
 import { renderTemplate, templateValues } from './archetypes/template-renderer';
 import { DocumentIdError, allocateDocumentId } from './documents/document-ids';
+import { DocumentError } from './documents/errors';
 import {
   ancestorFolders,
   foldPathKey,
@@ -107,6 +108,34 @@ export class ScaffoldValidationError extends SpecificationError {
     super('SPEC_VALIDATION_ERROR', message);
     this.name = 'ScaffoldValidationError';
     this.cause = cause;
+  }
+}
+
+/**
+ * The one mapping of a scaffold refusal onto a document error code, used by Create admission and by
+ * the reservation: every cause maps to exactly one code.
+ */
+export function documentErrorOf(error: ScaffoldValidationError): DocumentError {
+  return new DocumentError(documentCodeOf(error.cause), error.message);
+}
+
+function documentCodeOf(cause: ScaffoldValidationCause) {
+  switch (cause.kind) {
+    case 'archetype-unknown':
+    case 'template-unknown':
+      return 'ARCHETYPE_UNKNOWN' as const;
+    case 'path-invalid':
+      return 'DOCUMENT_PATH_INVALID' as const;
+    case 'path-conflict':
+      return 'DOCUMENT_PATH_CONFLICT' as const;
+    case 'type-invalid':
+    case 'content-invalid':
+    case 'limit-exceeded':
+      return 'DOCUMENT_OPERATION_INVALID' as const;
+    default: {
+      const exhaustive: never = cause;
+      return exhaustive;
+    }
   }
 }
 

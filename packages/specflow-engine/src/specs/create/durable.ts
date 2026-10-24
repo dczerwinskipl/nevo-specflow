@@ -2,7 +2,7 @@ import { isDeepStrictEqual } from 'node:util';
 
 import type { SpecFlowEngine } from '../../application';
 import { normalizeCreateClientIntent, type CreateClientIntent } from './intent';
-import { verifyScaffold, writeScaffoldWithEvidence } from './scaffold';
+import { verifyScaffold, writeScaffoldWithEvidence } from './scaffold-writer';
 import { reserveCreateOperation, writingSlugsByWorkspace } from './reservation/reservation';
 import { followExistingCreateOperation } from './reservation/observation';
 import type { CreateSpecificationInput } from './input';

@@ -1,4 +1,4 @@
-import { sha256 } from '../scaffold';
+import { sha256 } from '../scaffold-writer';
 import type { SpecFlowEngine } from '../../../application';
 import { GitCapabilityError } from '../../../git/errors';
 import { openVersionControl } from '../../../version-control';

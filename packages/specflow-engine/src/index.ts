@@ -77,6 +77,11 @@ export {
   type RegisteredDocumentSummary,
 } from './specs/documents/read';
 export {
+  openSpecificationDocument,
+  type OpenedDocument,
+  type OpenedDocumentMetadata,
+} from './specs/documents/open';
+export {
   catalogueRevision,
   getBuiltInCatalogue,
   projectCatalogue,

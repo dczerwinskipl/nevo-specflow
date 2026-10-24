@@ -21,6 +21,12 @@ export interface DocumentValidationInput {
    * the manifest, hidden entries and symlinks before calling.
    */
   readonly observedPaths: Iterable<string>;
+  /**
+   * Registered paths whose file exists but cannot be read safely (a symlink, a redirected ancestor,
+   * an unreadable entry). They are reported as skipped entries by the projection, are not dangling (the
+   * file is not missing) and, being unreadable, do not count toward a requirement.
+   */
+  readonly unreadablePaths?: Iterable<string>;
 }
 
 export interface UnclassifiedFile {
@@ -32,7 +38,7 @@ export interface DocumentValidation {
   readonly requirements: readonly RequirementResult[];
   /** Every requirement satisfied. Structural only: not acceptance, not readiness. */
   readonly complete: boolean;
-  /** Registry entries whose file is absent, in registry order. */
+  /** Registry entries whose file is absent (not merely unreadable), in registry order. */
   readonly dangling: readonly ManifestDocument[];
   /** Observed files that no registry entry names (exact path), sorted by path. */
   readonly unclassified: readonly UnclassifiedFile[];
@@ -44,7 +50,10 @@ export function validateDocuments(input: DocumentValidationInput): DocumentValid
   const observed = new Set(input.observedPaths);
   const registered = new Set(input.documents.map((document) => document.path));
 
-  const dangling = input.documents.filter((document) => !observed.has(document.path));
+  const unreadable = new Set(input.unreadablePaths ?? []);
+  const dangling = input.documents.filter(
+    (document) => !observed.has(document.path) && !unreadable.has(document.path),
+  );
   const unclassified = [...observed]
     .filter((path) => !registered.has(path))
     .sort(compareCodeUnits)

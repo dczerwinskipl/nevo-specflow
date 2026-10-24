@@ -218,7 +218,10 @@ skipped entries (count and reported paths), the archive-limit fact, the advisory
 and the archetype title, so a `304` never hides a changed issue, count or action reason.
 `truncated` is `true` when the listing stopped at the file cap, the depth cap or the entries budget (the same budget as the
 archive count traversal, so a Specification with a huge number of folders is read in bounded time); registered documents beyond the cap are
-still stat'ed and listed (a registered file is never reported dangling because of the cap). `issues` lists, in this
+still stat'ed and listed (a registered file is never reported dangling because of the cap). A registered document whose
+file is present but not safely readable (replaced by a symlink, below a symlinked folder, an unreadable entry) is reported
+only as `skipped-entry`: it is not `dangling` (the file is not missing, so no remove-registration action applies), has no
+`documents` node and does not count toward its requirement. `issues` lists, in this
 order, `dangling`, `unclassified`, `requirement-unmet`, then `skipped-entry` (one per reported path, at most 50;
 `skippedEntries` is the count the archive traversal found: a lower bound once that traversal reached its own bound,
 which `archive-limit` then reports), `path-case-collision` (one per colliding path) and `archive-limit` (with

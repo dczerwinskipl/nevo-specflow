@@ -94,7 +94,9 @@ operation trailer makes replay idempotent. See
   or a merge started meanwhile, a Git failure) is `COMMIT_FAILED` (503): the journal stays at
   `commit-writing`, files stay in place, and the operation is recovery-required. The operator resumes
   the same operation with the Engine's `resumeInterruptedOperation` once the cause is fixed, or commits
-  the scaffold files by hand (resume accepts byte-identical, clean files of the full list). Re-submitting the same
+  the scaffold files by hand (resume accepts byte-identical, clean files of the full list; a hand commit of CRLF
+  content under `core.autocrlf=true` without a normalising `.gitattributes` rule is refused, so commit it with
+  `git -c core.autocrlf=false add`, see ADR 0013). Re-submitting the same
   `operationId` meanwhile answers `CREATE_RECOVERY_REQUIRED`.
 - **Replay.** The commit is applied at most once per operation: resume looks for a commit carrying
   the operation trailer on top of the recorded parent HEAD before committing.

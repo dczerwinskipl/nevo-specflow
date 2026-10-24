@@ -67,6 +67,8 @@ async function buildDocumentTree(
     (path) => !traversalPaths.has(path),
   );
   const skippedPaths = [...archive.skippedPaths, ...extraSkipped].slice(0, SKIPPED_PATHS_MAX);
+  const registeredPaths = new Set(manifest.documents.map((document) => document.path));
+  const unreadableRegisteredPaths = perFileSkipped.filter((path) => registeredPaths.has(path));
 
   const archetypeTitle = getBuiltInCatalogue().findArchetype(manifest.archetype.id)?.title;
 
@@ -79,6 +81,7 @@ async function buildDocumentTree(
     truncated: listed.truncated,
     skippedEntries: archive.skippedCount + extraSkipped.length,
     skippedPaths,
+    unreadableRegisteredPaths,
     archiveLimit: {
       exceeded: archive.exceeded,
       ...(archive.oversizedPath !== undefined ? { path: archive.oversizedPath } : {}),

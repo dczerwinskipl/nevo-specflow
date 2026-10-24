@@ -264,9 +264,10 @@ Revision memo limit (accepted): a content change that preserves size, mtime, cti
 
 The Engine computes, as a pure function of the registry, the persisted requirements and the observed files:
 
-- **Requirement result** per requirement: `count` of registered documents of that type whose file exists, and
+- **Requirement result** per requirement: `count` of registered documents of that type whose file exists and is safely readable, and
   `satisfied = count >= minCount`. **Structural completeness** = every requirement satisfied.
-- **Issues** (the tree's `issues[]`): `dangling` (registry entry, file absent), `unclassified` (file not
+- **Issues** (the tree's `issues[]`): `dangling` (registry entry, file absent; a registered file that is present but unreadable, for example
+  replaced by a symlink, is only a `skipped-entry` and is never dangling), `unclassified` (file not
   registered), `requirement-unmet`, `skipped-entry` (symlink or special entry; Close archive will refuse),
   `path-case-collision`, `archive-limit` (Close will refuse; computed by the archive count rule below). None blocks reading or any document operation. Parse-level violations (duplicate id/path, missing overview entry,
   unknown keys) are not issues: they make the manifest invalid.

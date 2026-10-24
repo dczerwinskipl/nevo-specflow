@@ -68,6 +68,11 @@ export interface TreeProjectionInput {
   readonly skippedEntries: number;
   /** Paths of (at most a bounded number of) skipped entries, for the `skipped-entry` issues. */
   readonly skippedPaths: readonly string[];
+  /**
+   * Registered paths whose file is present but not safely readable (a subset of the skipped entries,
+   * complete even when `skippedPaths` is capped). Reported as skipped only: never dangling.
+   */
+  readonly unreadableRegisteredPaths?: readonly string[];
   readonly archiveLimit: ArchiveLimitFact;
   /** Absent when Git is disabled, the branch is allowed, or the branch is not cheaply known. */
   readonly policyReason?: PolicyReason;
@@ -147,7 +152,7 @@ export function projectDocumentTree(input: TreeProjectionInput): DocumentTree {
   );
   const filePaths = files.map((file) => file.path);
   const write = writeActionFor(input);
-  const requirements = evaluateRequirements(manifest, filePaths);
+  const requirements = evaluateRequirements(manifest, filePaths, input.unreadableRegisteredPaths);
 
   const documents = projectDocumentNodes(input, files, write, requirements.minCountByType);
   const folders = projectFolders(deriveFolders(filePaths, manifest.folders), write);
@@ -196,11 +201,15 @@ export function projectDocumentTree(input: TreeProjectionInput): DocumentTree {
 function evaluateRequirements(
   manifest: TreeProjectionInput['manifest'],
   filePaths: readonly string[],
+  unreadableRegisteredPaths?: readonly string[],
 ) {
   const validation = validateDocuments({
     archetype: manifest.archetype,
     documents: manifest.documents,
     observedPaths: filePaths,
+    ...(unreadableRegisteredPaths !== undefined
+      ? { unreadablePaths: unreadableRegisteredPaths }
+      : {}),
   });
   const minCountByType = new Map(
     manifest.archetype.requirements.map((requirement) => [

@@ -10,7 +10,12 @@ export interface ObservationMemoValue {
   readonly mediaType: string;
 }
 
-/** What the workspace documents section needs of a file: its revision and derived title. */
+/**
+ * What the workspace documents section needs of a file: its revision and derived title. Memoised by
+ * path+size+mtimeNs+ctimeNs+ino: user space cannot set the ctime, so a rewrite that restores the
+ * mtime still misses. What remains is a change that preserves all five (a file modified in the last
+ * 2 seconds is never memoised; see "Revision memo limit" in the architecture).
+ */
 export interface SummaryMemoValue {
   readonly revision: string;
   readonly title: string;

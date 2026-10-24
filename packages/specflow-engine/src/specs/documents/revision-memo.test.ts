@@ -37,13 +37,14 @@ describe('RevisionMemo', () => {
     expect(() => new RevisionMemo(0)).toThrow(RangeError);
   });
 
-  it('keys by path, size, mtime and inode', () => {
-    const base = { size: 1n, mtimeNs: 2n, ino: 3n };
+  it('keys by path, size, mtime, ctime and inode', () => {
+    const base = { size: 1n, mtimeNs: 2n, ctimeNs: 5n, ino: 3n };
     const key = memoKey('/p', base);
     expect(memoKey('/p', { ...base })).toBe(key);
     expect(memoKey('/q', base)).not.toBe(key);
     expect(memoKey('/p', { ...base, size: 2n })).not.toBe(key);
     expect(memoKey('/p', { ...base, mtimeNs: 3n })).not.toBe(key);
+    expect(memoKey('/p', { ...base, ctimeNs: 6n })).not.toBe(key);
     expect(memoKey('/p', { ...base, ino: 4n })).not.toBe(key);
   });
 });

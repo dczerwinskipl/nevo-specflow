@@ -2,7 +2,7 @@ import { REVISION_MEMO_MAX_ENTRIES } from './limits';
 
 /**
  * Bounded LRU memo of file analyses (architecture "Limits", content-hash revision): keyed by
- * path+size+mtimeNs+ino, at most {@link REVISION_MEMO_MAX_ENTRIES} entries. Lets a repeated tree
+ * path+size+mtimeNs+ctimeNs+ino, at most {@link REVISION_MEMO_MAX_ENTRIES} entries. Lets a repeated tree
  * read skip re-hashing files that did not change.
  */
 export class RevisionMemo<T> {
@@ -46,7 +46,12 @@ export class RevisionMemo<T> {
 
 export function memoKey(
   path: string,
-  stat: { readonly size: bigint; readonly mtimeNs: bigint; readonly ino: bigint },
+  stat: {
+    readonly size: bigint;
+    readonly mtimeNs: bigint;
+    readonly ctimeNs: bigint;
+    readonly ino: bigint;
+  },
 ): string {
-  return `${path}\0${stat.size}\0${stat.mtimeNs}\0${stat.ino}`;
+  return `${path}\0${stat.size}\0${stat.mtimeNs}\0${stat.ctimeNs}\0${stat.ino}`;
 }

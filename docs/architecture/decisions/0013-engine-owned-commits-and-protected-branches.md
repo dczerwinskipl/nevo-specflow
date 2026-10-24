@@ -85,10 +85,11 @@ the Engine must never commit on some branches (for example `main` or `release/**
    under `autocrlf=false` is not byte-identical and stays a recovery. Concretely: CRLF content committed by
    hand under `core.autocrlf=true` WITHOUT a normalising `.gitattributes` rule stores LF, the Engine treats
    the working bytes as authoritative, and resume is refused with `CREATE_RECOVERY_REQUIRED`; with a
-   normalising rule (for example `* text=auto eol=lf`) the same hand commit is accepted. Operator remedy:
-   undo the hand commit (`git reset --soft <parent>` then `git reset`), commit the scaffold again with
-   `git -c core.autocrlf=false add specs` and finish with `specs recover <operation-id>
---confirmed-stopped`; or abandon the operation. `dropIntentToAdd` only runs after a
+   normalising rule (for example `* text=auto eol=lf`) the same hand commit is accepted. Operator remedy: commit the scaffold files again on top with
+   `git -c core.autocrlf=false add specs` (a follow-up commit, so the working bytes become the committed
+   bytes) and finish with `specs recover <operation-id> --confirmed-stopped`; or abandon the operation.
+   Do not rewrite the hand commit away once a resume was attempted: the journal then pins that HEAD as
+   the commit parent and a reset ends in a permanent `CREATE_RECOVERY_REQUIRED` (history changed). `dropIntentToAdd` only runs after a
    commit that provably did not happen and only resets paths that HEAD does not track; it relies on
    the scaffold paths being new files written by this operation, which nobody can have staged before
    (the files do not exist before the operation writes them).

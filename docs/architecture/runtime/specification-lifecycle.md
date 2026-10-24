@@ -96,7 +96,7 @@ operation trailer makes replay idempotent. See
   the same operation with the Engine's `resumeInterruptedOperation` once the cause is fixed, or commits
   the scaffold files by hand (resume accepts byte-identical, clean files of the full list; a hand commit of CRLF
   content under `core.autocrlf=true` without a normalising `.gitattributes` rule is refused, so commit it with
-  `git -c core.autocrlf=false add`, see ADR 0013). Re-submitting the same
+  `git -c core.autocrlf=false add` (as a follow-up commit if a resume was already attempted), see ADR 0013). Re-submitting the same
   `operationId` meanwhile answers `CREATE_RECOVERY_REQUIRED`.
 - **Replay.** The commit is applied at most once per operation: resume looks for a commit carrying
   the operation trailer on top of the recorded parent HEAD before committing.

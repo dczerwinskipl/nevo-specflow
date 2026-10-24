@@ -94,6 +94,14 @@ function destinationPath(inventory: CloseArchiveEvidence, old: string): string {
 function plannedArchivePaths(inventory: CloseArchiveEvidence): readonly string[] {
   return inventory.files.map((x) => x.relativePath);
 }
+/**
+ * The archived manifest: the parsed source with only `status` replaced, so `archetype`, `documents`,
+ * `folders` and any unknown top-level key survive archival unchanged.
+ */
+export function archivedManifestText(parsed: object): string {
+  return stringify({ ...parsed, status: 'archived' });
+}
+
 async function assertArchivedFiles(root: string, archive: CloseArchiveEvidence): Promise<void> {
   if (!(await absent(join(root, archive.sourcePath))))
     throw failure('Active source still exists after archival.');
@@ -215,7 +223,7 @@ export async function archiveSpecificationWithCommit(
     typeof parsed.status !== 'string'
   )
     throw invalid('Canonical source manifest identity cannot be proved.');
-  const archivedManifest = stringify({ ...parsed, status: 'archived' });
+  const archivedManifest = archivedManifestText(parsed);
   const archive: CloseArchiveEvidence = {
     sourceCommit: source.head,
     sourcePath: oldPath,

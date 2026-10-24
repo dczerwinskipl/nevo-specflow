@@ -258,6 +258,7 @@ describe('E2.T04 — actual process termination and fresh-process recovery', () 
     );
     const existingId = randomUUID();
     const scaffold = createSpecificationScaffold({
+      archetypeId: 'minimal',
       specId: existingId,
       title: 'Missing source',
       created: '2026-10-14',

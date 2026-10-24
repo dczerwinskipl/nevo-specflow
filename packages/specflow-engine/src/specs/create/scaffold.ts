@@ -14,6 +14,8 @@ function expectedScaffold(record: CreateJournal): SpecificationScaffold {
     created: record.created,
     goal: record.goal,
     slug: record.requestIntent.slug,
+    // Interim (D1 to D2): journals carry no archetype yet; D2 replaces this with the journal payload.
+    archetypeId: 'minimal',
   });
   if (
     scaffold.slug !== record.slug ||

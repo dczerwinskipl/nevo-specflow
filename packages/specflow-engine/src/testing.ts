@@ -53,7 +53,10 @@ export {
   updateManifestRegistry,
 } from './specs/manifest-serializer';
 export {
+  ScaffoldValidationError,
   createSpecificationScaffold,
+  type AddedDocumentInput,
+  type ScaffoldValidationCause,
   type SpecificationScaffold,
   type SpecificationScaffoldFile,
   type SpecificationScaffoldInput,

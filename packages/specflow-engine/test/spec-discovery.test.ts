@@ -69,7 +69,12 @@ async function persist(root: string, scaffold: SpecificationScaffold): Promise<s
 }
 
 function scaffold(specId: string, title: string): SpecificationScaffold {
-  return createSpecificationScaffold({ specId, title, created: '2026-10-14' });
+  return createSpecificationScaffold({
+    archetypeId: 'minimal',
+    specId,
+    title,
+    created: '2026-10-14',
+  });
 }
 
 describe('E2.T03 — canonical Specification binding and discovery (real Git)', () => {

@@ -88,6 +88,8 @@ export async function reserveCreateOperation(
       created,
       goal: intent.goal,
       slug: intent.slug,
+      // Interim (D1 to D2): Create has no archetype input yet; D2 replaces this with the request value.
+      archetypeId: 'minimal',
     });
     if (
       canonical.some(

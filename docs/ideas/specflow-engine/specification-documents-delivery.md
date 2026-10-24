@@ -149,7 +149,7 @@ lint, typecheck, build, `pnpm docs:check`. No L tests.
 3. **Scaffold**: `createSpecificationScaffold` takes `archetypeId`, `optionalDocumentIds`, `addedDocuments`,
    `folders` and returns files (manifest first, then documents in catalogue order, then added) with sha256; the
    manifest carries the archetype, requirements snapshot and registry; scaffold ids per the id rule; added
-   documents without type are not registered. Throws `ScaffoldValidationError` (a `SpecificationError` with code `SPEC_VALIDATION_ERROR` and a structured `cause`: `archetype-unknown`, `template-unknown`, `path-invalid`, `path-conflict`, `limit-exceeded`, carrying the offending path or id) for unknown archetype/template ids,
+   documents without type are not registered. Throws `ScaffoldValidationError` (a `SpecificationError` with code `SPEC_VALIDATION_ERROR` and a structured `cause`: `archetype-unknown`, `template-unknown`, `path-invalid`, `path-conflict`, `type-invalid` (an added document type that is malformed or cannot be registered, for example `u` or `u-*`), `limit-exceeded`, carrying the offending path or id) for unknown archetype/template ids,
    path conflicts (case-insensitive, against scaffold paths and each other) and the Create limits of the Limits table.
 4. **Pure modules**: `documentPaths` (validate/normalise/case-fold keys, parents, folder derivation),
    `contentKinds` (extension table, media types, `classifyContent(ext, firstBytes)`), `documentIds` (allocate,
@@ -237,7 +237,7 @@ item 6 (they only change fixtures) and the listing test with a real directory; r
    the existing no-symlink checks; empty folders are registered only in the manifest). The commit covers all
    scaffold files in the one Create commit (ADR 0013 unchanged; `commit.paths` = `files[].relativePath`). Replay
    and the "byte-identical, clean human commit" acceptance operate on the full list. Git disabled: no commit.
-5. **Admission** (before reservation, nothing written; maps `ScaffoldValidationError.cause` one to one: `archetype-unknown`/`template-unknown` to `ARCHETYPE_UNKNOWN`, `path-invalid` to `DOCUMENT_PATH_INVALID`, `path-conflict` to `DOCUMENT_PATH_CONFLICT`, `limit-exceeded` to `DOCUMENT_OPERATION_INVALID`): `ARCHETYPE_UNKNOWN`, `CATALOGUE_STALE`,
+5. **Admission** (before reservation, nothing written; maps `ScaffoldValidationError.cause` one to one: `archetype-unknown`/`template-unknown` to `ARCHETYPE_UNKNOWN`, `path-invalid` to `DOCUMENT_PATH_INVALID`, `path-conflict` to `DOCUMENT_PATH_CONFLICT`, `type-invalid`/`limit-exceeded` to `DOCUMENT_OPERATION_INVALID`): `ARCHETYPE_UNKNOWN`, `CATALOGUE_STALE`,
    `DOCUMENT_PATH_INVALID`, `DOCUMENT_PATH_CONFLICT`, `DOCUMENT_OPERATION_INVALID` (limits). Existing codes
    unchanged.
 6. **Runtime.** `GET /api/specs/archetypes` (same capability as create-options; ETag = revision).

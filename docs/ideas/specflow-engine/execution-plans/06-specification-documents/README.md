@@ -265,7 +265,8 @@ Package `@nevo/specflow-engine`, `src/specs/`. Profile for all: `implementer` / 
 - **Goal:** the repository is green on the new shape and the fail-closed consequence is explicit and documented.
 - **Scope:** Engine `test/specifications.test.ts`, `test/create-multiprocess.test.ts`, `test/engine-commit-port.test.ts`; Runtime
   `test/specs/engine-overview.http.test.ts`; shared helper `writeSpecificationManifestFixture` in Engine test support; the message in
-  `specs/repository.ts`; lifecycle document.
+  `specs/repository.ts`; lifecycle document; Runtime `test/specs/slug-parity.test.ts` (calls the scaffold; needs
+  `archetypeId: 'minimal'`).
 - **Implements:** DS 5 items 6 and 7; DS 3.2 (a) to (c).
 - **Details:** other suites asserting scaffold hashes or manifest text are found by running on Linux and fixed; the offending slug and field
   appear in the `SPEC_SOURCE_INVALID` message; lifecycle documents the repair (add `archetype` and `documents`, remove `type`); audit
@@ -313,7 +314,7 @@ Review checkpoints: after D2.T03 (journal contract), after D2.T05 (Engine end to
   `operationId` with a different archetype or content conflicts as today; admission writes nothing (fakes assert no filesystem or journal
   effect); D1 structured causes map to the document codes; stale revision or version -> `CATALOGUE_STALE`; unknown archetype or template ->
   `ARCHETYPE_UNKNOWN`; reserved name -> `DOCUMENT_PATH_INVALID`; case-insensitive duplicate -> `DOCUMENT_PATH_CONFLICT`; oversize counts or
-  bytes -> `DOCUMENT_OPERATION_INVALID`.
+  bytes and an added document type that cannot be registered (cause `type-invalid`) -> `DOCUMENT_OPERATION_INVALID`.
 - **Verification:** U only.
 
 ### D2.T03 — Journal v2 and payload store
@@ -560,9 +561,15 @@ Each gap is resolved in the specification documents (DS = delivery specification
 | G-5  | **Closed.** DS 7 item 1 and REF: `busy` and `commit-blocked` are emitted from D4 only; D3 never reports them.                                                                                                                                                                                                   | D3.T01         |
 | G-6  | **Closed.** DS 7 item 1 and REF: before D4 every write action and capability is `available: false` with the new reason `not-implemented` (unless `protected`, `root` or `archived` applies); the workspace `documents` section lists registered documents only.                                                 | D3.T01, D3.T06 |
 | G-7  | **Closed.** REF "Errors": `DocumentErrorCode` holds every code of the table; the Create `code` stays a string in this release.                                                                                                                                                                                  | D0.T01, D2.T01 |
-| G-8  | **Closed.** DS 5 item 3 and DS 6 item 5: `ScaffoldValidationError` with a structured `cause`; D2 admission maps cause to code one to one.                                                                                                                                                                       | D1.T03, D2.T02 |
+| G-8  | **Closed.** DS 5 item 3 and DS 6 item 5: `ScaffoldValidationError` with a structured `cause`; D2 admission maps cause to code one to one (six kinds: `archetype-unknown`, `template-unknown`, `path-invalid`, `path-conflict`, `type-invalid`, `limit-exceeded`).                                               | D1.T03, D2.T02 |
 | G-9  | **Closed.** DS 4 (a): documents stay `draft`; no status flips until the owner records acceptance.                                                                                                                                                                                                               | D0.T03         |
 | G-10 | **Closed.** DS 6 "Compile order": the PR head is green on every package; checkpoint commits may be red.                                                                                                                                                                                                         | D2.T01         |
+
+## 11a. Deliberate follow-ups (not implemented)
+
+- **P2.6 path hardening.** Unicode NFC normalisation of document paths (two canonically equivalent spellings are
+  distinct today) and rejection of bidirectional control characters in paths are deliberately not implemented in D1.
+  Revisit before D4 (document write operations), where a path can be created through the API.
 
 ## 12. Readiness per slice
 

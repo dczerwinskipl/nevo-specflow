@@ -82,21 +82,26 @@ Parser rules (strict, `SPEC_SOURCE_INVALID` otherwise; no alias, no default, no 
 3. `documents[].id` matches `^[a-z0-9][a-z0-9-]{0,63}$`, is unique, and MUST NOT start with `u-` (reserved for
    derived ids of unclassified files). `type` matches `^[a-z][a-z0-9-]{0,31}$`; it need not exist in the current
    catalogue (a retired type stays valid and is shown by id).
-4. `documents[].path` is a normalised portable relative path (see "Paths"); paths are unique ignoring case.
+4. `documents[].path` is a normalised portable relative path (see "Paths"); paths are unique ignoring case, and a
+   registered file path is never an ancestor folder of another registered path.
 5. The registry contains exactly one entry with `id: overview`, `path: overview.md`, `type: overview`. Its id
    and path are fixed, so rename and move of `overview` are refused with the `protected` reason like delete
    (confirmed by the owner).
 6. `requirements[].documentType` matches the type pattern; `minCount` is an integer >= 0 (unique per type). The
    requirements MUST contain `overview` with `minCount` >= 1 (the framework invariant below); every other
    requirement is configuration.
-7. `folders[]` entries are valid portable folder paths, unique ignoring case, not equal to a registered file.
+7. `folders[]` entries are valid portable folder paths, unique ignoring case, not equal to a registered file and not
+   below one.
 
 `archetype.version` is an integer. The persisted `requirements` are authoritative for that Specification:
 the catalogue is consulted at Create and for display and authoring text (title, description, useWhen,
 instructions) only. Instructions are guidance, not rules, and are deliberately **not** snapshotted.
 
 Rewriting the manifest (registry operations) MUST go through one Engine function that validates the result with
-the same parser before writing, preserves unknown top-level keys and SHOULD preserve comments and key order.
+the same parser before writing, preserves unknown top-level keys and SHOULD preserve comments and key order. Delivered behaviour: untouched content,
+key order, comments outside the registry, the line ending style and long-line folding are preserved, and a no-op
+update returns the source unchanged; comments inside the replaced `documents:` and `folders:` blocks are not
+preserved (accepted limitation).
 
 ## Definitions: framework invariant and configuration
 

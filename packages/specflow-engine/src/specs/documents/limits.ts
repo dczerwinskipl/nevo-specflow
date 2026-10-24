@@ -7,7 +7,10 @@
  * `@nevo/specflow-contracts/documents`; the rendered template limit below is that very constant.
  */
 
-import { DEFINITION_TEMPLATE_MAX_BYTES } from '@nevo/specflow-contracts/documents';
+import {
+  DEFINITION_TEMPLATE_MAX_BYTES,
+  DOCUMENT_PATH_MAX_LENGTH,
+} from '@nevo/specflow-contracts/documents';
 
 const KIB = 1024;
 const MIB = 1024 * KIB;
@@ -39,8 +42,8 @@ export const TEMPLATE_TEXT_MAX_BYTES = DEFINITION_TEMPLATE_MAX_BYTES;
  */
 export const DOCUMENT_SEGMENT_MAX_BYTES = 200;
 
-/** Path length in CHARACTERS (a sanity bound; path rules still apply). */
-export const DOCUMENT_PATH_MAX_CHARACTERS = 500;
+/** Path length in CHARACTERS (a sanity bound; path rules still apply). One value with the contracts. */
+export const DOCUMENT_PATH_MAX_CHARACTERS = DOCUMENT_PATH_MAX_LENGTH;
 
 /** Upper bound of the small git files (HEAD) the advisory Git policy reads. */
 export const ADVISORY_FILE_MAX_BYTES = 4 * KIB;

@@ -43,6 +43,9 @@ const instructionsText = () =>
 const catalogueId = () => Type.String({ pattern: CATALOGUE_ID_PATTERN });
 const templateId = () => Type.String({ pattern: DOCUMENT_ID_PATTERN });
 
+/** Longest document path (and template filename) in characters; the Engine enforces the same bound. */
+export const DOCUMENT_PATH_MAX_LENGTH = 500;
+
 export const DocumentTypeDefinitionSchema = Type.Object(
   {
     id: catalogueId(),
@@ -51,7 +54,9 @@ export const DocumentTypeDefinitionSchema = Type.Object(
     useWhen: shortText(),
     /** How to prepare the document and what it must contain. Not stored in a Specification. */
     instructions: instructionsText(),
-    defaultFilename: Type.Optional(Type.String({ minLength: 1, maxLength: 500 })),
+    defaultFilename: Type.Optional(
+      Type.String({ minLength: 1, maxLength: DOCUMENT_PATH_MAX_LENGTH }),
+    ),
   },
   { additionalProperties: false },
 );
@@ -66,7 +71,7 @@ export type RequirementDefinition = Static<typeof RequirementDefinitionSchema>;
 const templateCommon = () => ({
   id: templateId(),
   documentType: catalogueId(),
-  filename: Type.String({ minLength: 1, maxLength: 500 }),
+  filename: Type.String({ minLength: 1, maxLength: DOCUMENT_PATH_MAX_LENGTH }),
   title: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
   instructions: Type.Optional(instructionsText()),
   content: Type.String({

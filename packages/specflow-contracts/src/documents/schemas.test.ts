@@ -3,6 +3,14 @@ import { describe, expect, it } from 'vitest';
 
 import {
   ACTION_REASONS,
+  ActionSchema,
+  CatalogueIdSchema,
+  ClassificationSchema,
+  ContentKindSchema,
+  DOCUMENT_ID_PATTERN,
+  DocumentIssueCodeSchema,
+  IdSchema,
+  RegisteredDocumentIdSchema,
   ArchetypeCatalogueSchema,
   CreateArchetypeSelectionSchema,
   CreateDocumentsInputSchema,
@@ -354,9 +362,82 @@ describe('documents contract schemas', () => {
     ).toBe(false);
   });
 
-  it('defines each enum once with unique members', () => {
-    expect(new Set(DOCUMENT_ERROR_CODES).size).toBe(DOCUMENT_ERROR_CODES.length);
+  it('lists exactly the codes of the reference Errors table, in order', () => {
+    expect([...DOCUMENT_ERROR_CODES]).toEqual([
+      'DOCUMENT_NOT_FOUND',
+      'DOCUMENT_FILE_MISSING',
+      'SPEC_SOURCE_UNAVAILABLE',
+      'DOCUMENT_REVISION_UNAVAILABLE',
+      'DOCUMENT_REVISION_CONFLICT',
+      'DOCUMENT_PATH_INVALID',
+      'DOCUMENT_PATH_CONFLICT',
+      'DOCUMENT_PROTECTED',
+      'DOCUMENT_TYPE_INVALID',
+      'DOCUMENT_ALREADY_CLASSIFIED',
+      'DOCUMENT_NOT_EDITABLE',
+      'DOCUMENT_TOO_LARGE',
+      'DOCUMENT_OPERATION_INVALID',
+      'DOCUMENT_OPERATION_CONFLICT',
+      'DOCUMENT_RECOVERY_REQUIRED',
+      'SPEC_MANIFEST_DIRTY',
+      'SPEC_ARCHIVED',
+      'SPEC_BUSY',
+      'BRANCH_PROTECTED',
+      'COMMIT_BLOCKED',
+      'COMMIT_FAILED',
+      'GIT_POLICY_INVALID',
+      'CREATE_JOURNAL_UNSUPPORTED',
+      'CATALOGUE_STALE',
+      'ARCHETYPE_UNKNOWN',
+    ]);
+  });
+
+  it('rejects malformed ids, operation ids and enum values', () => {
+    expect(Value.Check(IdSchema, 'a.b_c-1')).toBe(true);
+    for (const id of ['', '-a', '.a', 'a b', 'a/b', 'a'.repeat(201)]) {
+      expect(Value.Check(IdSchema, id)).toBe(false);
+    }
+    for (const id of ['Overview', '1abc', 'a_b', '', 'a'.repeat(33)]) {
+      expect(Value.Check(CatalogueIdSchema, id)).toBe(false);
+    }
+    expect(Value.Check(CatalogueIdSchema, 'a'.repeat(32))).toBe(true);
+    expect(DOCUMENT_ID_PATTERN).toBe('^[a-z0-9][a-z0-9-]{0,63}$');
+    for (const id of ['-a', 'A', 'a_b', '', 'a'.repeat(65)]) {
+      expect(Value.Check(RegisteredDocumentIdSchema, id)).toBe(false);
+    }
+    expect(Value.Check(RegisteredDocumentIdSchema, '0abc-1')).toBe(true);
+
+    const base = { action: 'delete', kind: 'document', documentId: 'a', expectedRevision: 'h1' };
+    expect(Value.Check(DocumentOperationInputSchema, { ...base, operationId: 'not-a-uuid' })).toBe(
+      false,
+    );
+    expect(Value.Check(DocumentOperationInputSchema, { ...base, kind: 'file', operationId })).toBe(
+      false,
+    );
+    expect(
+      Value.Check(SaveInputSchema, { operationId: 'x', content: '', expectedRevision: 'h' }),
+    ).toBe(false);
+
+    expect(Value.Check(ActionSchema, { available: false, reason: 'root_protected' })).toBe(false);
+    expect(Value.Check(ContentKindSchema, 'video')).toBe(false);
+    expect(Value.Check(ClassificationSchema, 'draft')).toBe(false);
+    expect(Value.Check(DocumentIssueCodeSchema, 'unknown')).toBe(false);
+    expect(Value.Check(DocumentTreeSchema, { ...tree, issues: [{ code: 'something-else' }] })).toBe(
+      false,
+    );
     expect(new Set(ACTION_REASONS).size).toBe(ACTION_REASONS.length);
-    expect(DOCUMENT_ERROR_CODES).toContain('CREATE_JOURNAL_UNSUPPORTED');
+  });
+
+  it('rejects a bad template include or template id in the catalogue', () => {
+    const [archetype] = catalogue.archetypes;
+    const [overview, ...rest] = archetype!.documents;
+    for (const patch of [{ include: 'required' }, { id: 'Overview' }, { id: 'u_1' }]) {
+      expect(
+        Value.Check(ArchetypeCatalogueSchema, {
+          ...catalogue,
+          archetypes: [{ ...archetype, documents: [{ ...overview, ...patch }, ...rest] }],
+        }),
+      ).toBe(false);
+    }
   });
 });

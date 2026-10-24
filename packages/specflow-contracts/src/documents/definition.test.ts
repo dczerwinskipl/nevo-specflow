@@ -3,6 +3,7 @@ import { Value } from 'typebox/value';
 import { describe, expect, it } from 'vitest';
 
 import committedSchema from '../../schema/archetype-definitions.schema.json';
+import committedSchemaText from '../../schema/archetype-definitions.schema.json?raw';
 import {
   ARCHETYPE_DEFINITIONS_SCHEMA_ID,
   ArchetypeDefinitionFileSchema,
@@ -134,6 +135,11 @@ const invalidCases: readonly Case[] = [
     () =>
       withArchetype({ templates: [{ ...overviewTemplate, include: 'optional' }, runbookTemplate] }),
   ],
+  ['an archetype id with a leading digit', () => withArchetype({ id: '1abc' })],
+  [
+    'a template id that breaks the id pattern',
+    () => withArchetype({ templates: [{ ...overviewTemplate, id: 'Overview' }, runbookTemplate] }),
+  ],
   [
     'a description longer than the limit in characters',
     () => withDocumentType({ description: 'x'.repeat(DEFINITION_SHORT_TEXT_MAX_BYTES + 1) }),
@@ -167,9 +173,8 @@ describe('archetype definition schema', () => {
       expect(JSON.stringify(committedSchema)).toBe(
         JSON.stringify(createArchetypeDefinitionsJsonSchema()),
       );
-      expect(`${JSON.stringify(committedSchema, null, 2)}\n`).toBe(
-        serializeArchetypeDefinitionsJsonSchema(),
-      );
+      // Byte equality: the committed file is exactly the generator output (prettier ignores it).
+      expect(committedSchemaText).toBe(serializeArchetypeDefinitionsJsonSchema());
     });
 
     it('validates the reference example on its own', () => {

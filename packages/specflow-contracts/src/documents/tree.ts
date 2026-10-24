@@ -39,13 +39,13 @@ export const DocumentTreeDocumentSchema = Type.Object(
     id: IdSchema,
     path: Type.String({ minLength: 1 }),
     classification: ClassificationSchema,
-    /** Present if and only if registered. */
+    /** Set for registered documents and absent for unclassified ones (guaranteed by the Engine, not by this schema). */
     type: Type.Optional(CatalogueIdSchema),
     kind: ContentKindSchema,
     mediaType: Type.String({ minLength: 1 }),
     size: Type.Integer({ minimum: 0 }),
     revision: Type.String({ minLength: 1 }),
-    /** True only for `overview`. */
+    /** True only for `overview` (guaranteed by the Engine, not by this schema). */
     protected: Type.Boolean(),
     editable: Type.Boolean(),
     satisfiesRequirement: Type.Boolean(),

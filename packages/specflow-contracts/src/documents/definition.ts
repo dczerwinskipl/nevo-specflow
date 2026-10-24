@@ -25,9 +25,20 @@ export const DEFINITION_TEMPLATE_MAX_BYTES = 64 * 1024;
 // The schema therefore enforces `maxLength = limit` as a necessary condition (a string longer than
 // the limit in characters is always longer in bytes) and `findDefinitionTextLimitViolations` is the
 // exact byte check.
-const shortText = () => Type.String({ minLength: 1, maxLength: DEFINITION_SHORT_TEXT_MAX_BYTES });
+const byteLimitNote = (bytes: number) =>
+  `Limit: ${bytes} UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine.`;
+const shortText = () =>
+  Type.String({
+    minLength: 1,
+    maxLength: DEFINITION_SHORT_TEXT_MAX_BYTES,
+    description: byteLimitNote(DEFINITION_SHORT_TEXT_MAX_BYTES),
+  });
 const instructionsText = () =>
-  Type.String({ minLength: 1, maxLength: DEFINITION_INSTRUCTIONS_MAX_BYTES });
+  Type.String({
+    minLength: 1,
+    maxLength: DEFINITION_INSTRUCTIONS_MAX_BYTES,
+    description: byteLimitNote(DEFINITION_INSTRUCTIONS_MAX_BYTES),
+  });
 
 const catalogueId = () => Type.String({ pattern: CATALOGUE_ID_PATTERN });
 const templateId = () => Type.String({ pattern: DOCUMENT_ID_PATTERN });
@@ -58,7 +69,10 @@ const templateCommon = () => ({
   filename: Type.String({ minLength: 1, maxLength: 500 }),
   title: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
   instructions: Type.Optional(instructionsText()),
-  content: Type.String({ maxLength: DEFINITION_TEMPLATE_MAX_BYTES }),
+  content: Type.String({
+    maxLength: DEFINITION_TEMPLATE_MAX_BYTES,
+    description: byteLimitNote(DEFINITION_TEMPLATE_MAX_BYTES),
+  }),
 });
 
 /** Scaffolded at Create. `preselected` is meaningless here and rejected. */

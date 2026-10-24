@@ -4,7 +4,9 @@
   "title": "Nevo SpecFlow archetype definitions",
   "description": "Declarative definitions of document types, archetypes, requirements and templates (schemaVersion 1).",
   "type": "object",
-  "required": ["schemaVersion"],
+  "required": [
+    "schemaVersion"
+  ],
   "properties": {
     "$schema": {
       "type": "string"
@@ -17,7 +19,13 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "title", "description", "useWhen", "instructions"],
+        "required": [
+          "id",
+          "title",
+          "description",
+          "useWhen",
+          "instructions"
+        ],
         "properties": {
           "id": {
             "type": "string",
@@ -31,17 +39,20 @@
           "description": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 1000
+            "maxLength": 1000,
+            "description": "Limit: 1000 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
           },
           "useWhen": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 1000
+            "maxLength": 1000,
+            "description": "Limit: 1000 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
           },
           "instructions": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 16384
+            "maxLength": 16384,
+            "description": "Limit: 16384 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
           },
           "defaultFilename": {
             "type": "string",
@@ -82,23 +93,29 @@
           "description": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 1000
+            "maxLength": 1000,
+            "description": "Limit: 1000 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
           },
           "useWhen": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 1000
+            "maxLength": 1000,
+            "description": "Limit: 1000 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
           },
           "instructions": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 16384
+            "maxLength": 16384,
+            "description": "Limit: 16384 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
           },
           "requirements": {
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["documentType", "minCount"],
+              "required": [
+                "documentType",
+                "minCount"
+              ],
               "properties": {
                 "documentType": {
                   "type": "string",
@@ -113,7 +130,10 @@
             },
             "contains": {
               "type": "object",
-              "required": ["documentType", "minCount"],
+              "required": [
+                "documentType",
+                "minCount"
+              ],
               "properties": {
                 "documentType": {
                   "type": "string",
@@ -132,7 +152,13 @@
               "anyOf": [
                 {
                   "type": "object",
-                  "required": ["id", "documentType", "filename", "content", "include"],
+                  "required": [
+                    "id",
+                    "documentType",
+                    "filename",
+                    "content",
+                    "include"
+                  ],
                   "properties": {
                     "id": {
                       "type": "string",
@@ -155,11 +181,13 @@
                     "instructions": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 16384
+                      "maxLength": 16384,
+                      "description": "Limit: 16384 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
                     },
                     "content": {
                       "type": "string",
-                      "maxLength": 65536
+                      "maxLength": 65536,
+                      "description": "Limit: 65536 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
                     },
                     "include": {
                       "type": "string",
@@ -170,7 +198,13 @@
                 },
                 {
                   "type": "object",
-                  "required": ["id", "documentType", "filename", "content", "include"],
+                  "required": [
+                    "id",
+                    "documentType",
+                    "filename",
+                    "content",
+                    "include"
+                  ],
                   "properties": {
                     "id": {
                       "type": "string",
@@ -193,11 +227,13 @@
                     "instructions": {
                       "type": "string",
                       "minLength": 1,
-                      "maxLength": 16384
+                      "maxLength": 16384,
+                      "description": "Limit: 16384 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
                     },
                     "content": {
                       "type": "string",
-                      "maxLength": 65536
+                      "maxLength": 65536,
+                      "description": "Limit: 65536 UTF-8 bytes. This schema bounds characters only; the exact byte check is applied by the Engine."
                     },
                     "include": {
                       "type": "string",
@@ -213,7 +249,10 @@
             },
             "contains": {
               "type": "object",
-              "required": ["documentType", "include"],
+              "required": [
+                "documentType",
+                "include"
+              ],
               "properties": {
                 "documentType": {
                   "type": "string",

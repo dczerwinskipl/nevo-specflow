@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type {
   SpecificationWorkspaceResponse,
+  SpecificationDocumentResponse,
   SpecificationTaskResponse,
 } from '@nevo/specflow-contracts/specs/workspace';
-import type { DocumentContent } from '@nevo/specflow-contracts/documents';
 import type { CurrentSpecsOverview } from '@nevo/specflow-contracts/specs/overview';
 import { InMemoryAuthenticationStore } from '../../src/features/auth/authentication/store/in-memory-store';
 import { authCookieNames } from '../../src/features/auth/authentication/http/cookies';
@@ -24,16 +24,14 @@ describe('Specification Workspace Runtime HTTP integration', () => {
           source: {
             read: () =>
               Promise.resolve({
-                id: 'different',
-                path: 'different.md',
-                title: 'Wrong',
-                classification: 'registered' as const,
-                kind: 'text' as const,
-                mediaType: 'text/markdown; charset=utf-8',
-                size: 6,
-                revision: '1',
-                editable: false,
-                content: 'Secret',
+                kind: 'ok',
+                document: {
+                  specId: 'admission',
+                  id: 'different',
+                  title: 'Wrong',
+                  content: 'Secret',
+                  revision: '1',
+                },
               }),
           },
         },
@@ -118,7 +116,7 @@ describe('Specification Workspace Runtime HTTP integration', () => {
       const docResponse = await app.inject('/api/specs/admission/documents/spec');
       expect(docResponse.statusCode).toBe(200);
       // The seeded admission specification carries the rich synthetic showcase document.
-      expect(docResponse.json<DocumentContent>().content).toContain(
+      expect(docResponse.json<SpecificationDocumentResponse>().content).toContain(
         '# Deterministyczna admisja zadań i granice wykonania',
       );
     } finally {
@@ -159,10 +157,7 @@ describe('Specification Workspace Runtime HTTP integration', () => {
       expect(missing.json()).toEqual({ error: 'specification_not_found' });
       const missingDoc = await app.inject('/api/specs/admission/documents/not-a-document');
       expect(missingDoc.statusCode).toBe(404);
-      expect(missingDoc.json()).toEqual({
-        error: 'DOCUMENT_NOT_FOUND',
-        code: 'DOCUMENT_NOT_FOUND',
-      });
+      expect(missingDoc.json()).toEqual({ error: 'specification_document_not_found' });
       const missingTask = await app.inject('/api/specs/admission/tasks/TASK-99');
       expect(missingTask.statusCode).toBe(404);
       expect(missingTask.json()).toEqual({ error: 'specification_task_not_found' });

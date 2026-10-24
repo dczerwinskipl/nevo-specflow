@@ -5,10 +5,10 @@ import {
   type SpecFlowEngine,
 } from '@nevo/specflow-engine';
 
-import type { DocumentContentSource } from './read-document';
+import type { DocumentReadSource } from './document-read-source';
 
 /** The production document source: a thin pass-through to the Engine, which owns every rule. */
-export function createEngineDocumentContentSource(engine: SpecFlowEngine): DocumentContentSource {
+export function createEngineDocumentReadSource(engine: SpecFlowEngine): DocumentReadSource {
   return {
     read: (specId, documentId, revision) =>
       readSpecificationDocument(engine, specId, documentId, {

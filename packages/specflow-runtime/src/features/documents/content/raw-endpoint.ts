@@ -7,7 +7,7 @@ import { DocumentError } from '@nevo/specflow-engine';
 import { matchesEtag } from '../../../server/etag';
 import { documentReadErrorResponses, replyWithDocumentFailure, viewGuard } from './endpoint';
 import { rawEtag, rawNotModifiedHeaders, rawResponseHeaders } from './raw-headers';
-import type { DocumentContentSource } from './read-document';
+import type { DocumentReadSource } from './document-read-source';
 
 const RawQuerySchema = Type.Object(
   { download: Type.Optional(Type.Union([Type.Literal('0'), Type.Literal('1')])) },
@@ -19,7 +19,7 @@ const RawQuerySchema = Type.Object(
  * headers of the reference. Every check that can refuse happens before the first byte is sent; the
  * stream is destroyed (releasing the file) on a 304, on a client abort and on any error.
  */
-export const rawDocumentEndpoint: FastifyPluginCallback<{ source?: DocumentContentSource }> = (
+export const rawDocumentEndpoint: FastifyPluginCallback<{ source?: DocumentReadSource }> = (
   app,
   options,
   done,

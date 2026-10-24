@@ -2,7 +2,7 @@ import { DocumentError } from '@nevo/specflow-engine';
 import type { DocumentContent, DocumentTree } from '@nevo/specflow-contracts/documents';
 import { describe, expect, it } from 'vitest';
 
-import type { DocumentContentSource } from '../../src/features/documents';
+import type { DocumentReadSource } from '../../src/features/documents/content/document-read-source';
 import { authCookieNames } from '../../src/features/auth/authentication/http/cookies';
 import { InMemoryAuthenticationStore } from '../../src/features/auth/authentication/store/in-memory-store';
 import { createRuntimeApp } from '../../src/server/app';
@@ -41,11 +41,11 @@ function tree(revision = 'tree-1'): DocumentTree {
   };
 }
 
-async function app(source: DocumentContentSource) {
+async function app(source: DocumentReadSource) {
   const config = passwordConfig();
   return createRuntimeApp(
     { ...config, authentication: { ...config.authentication, mode: 'none' } },
-    { documents: { source } },
+    { documents: { readSource: source } },
   );
 }
 
@@ -238,7 +238,7 @@ describe('authorization of the read routes', () => {
     const headers = {
       cookie: authCookieNames(config.server.port).session + '=' + session,
     };
-    const source: DocumentContentSource = {
+    const source: DocumentReadSource = {
       read: () => Promise.resolve(content()),
       readTree: () => Promise.resolve(tree()),
       open: () => Promise.reject(new Error('must not be reached')),
@@ -250,7 +250,7 @@ describe('authorization of the read routes', () => {
           assignments: [{ userId: 'demo-user', role: 'viewer', scope: { specId: 'visible' } }],
         },
       },
-      { auth: { store }, documents: { source } },
+      { auth: { store }, documents: { readSource: source } },
     );
     try {
       for (const path of ['/document-tree', '/documents/report', '/documents/report/raw']) {

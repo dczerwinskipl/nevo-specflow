@@ -4,12 +4,12 @@ import { Readable } from 'node:stream';
 import { DocumentError, type OpenedDocument } from '@nevo/specflow-engine';
 import { describe, expect, it } from 'vitest';
 
-import type { DocumentContentSource } from '../../src/features/documents';
+import type { DocumentReadSource } from '../../src/features/documents/content/document-read-source';
 import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
 
 interface Served {
-  readonly source: DocumentContentSource;
+  readonly source: DocumentReadSource;
   readonly streams: Readable[];
 }
 
@@ -51,11 +51,11 @@ function serving(
   };
 }
 
-async function app(source: DocumentContentSource) {
+async function app(source: DocumentReadSource) {
   const config = passwordConfig();
   return createRuntimeApp(
     { ...config, authentication: { ...config.authentication, mode: 'none' } },
-    { documents: { source } },
+    { documents: { readSource: source } },
   );
 }
 

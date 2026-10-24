@@ -20,7 +20,7 @@ import { DocumentError } from '@nevo/specflow-engine';
 import { requireCapability } from '../../auth';
 import { matchesEtag } from '../../../server/etag';
 import { documentFailure } from './error-status';
-import type { DocumentContentSource } from './read-document';
+import type { DocumentReadSource } from './document-read-source';
 
 export const DocumentTreeParamsSchema = Type.Object(
   { specId: IdSchema },
@@ -53,7 +53,7 @@ export function viewGuard() {
   });
 }
 
-export const documentContentEndpoint: FastifyPluginCallback<{ source?: DocumentContentSource }> = (
+export const documentContentEndpoint: FastifyPluginCallback<{ source?: DocumentReadSource }> = (
   app,
   options,
   done,

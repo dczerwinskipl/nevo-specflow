@@ -9,9 +9,7 @@ import type {
 } from '@nevo/specflow-contracts/demo';
 import type { DemoSpecification } from '../../demo-catalogue';
 import { DemoOperationError, type DemoDocument, type DemoState } from '../../../demo/state';
-import { DocumentError } from '@nevo/specflow-engine';
 import type { DocumentContentSource } from '../content/read-document';
-import { demoDocumentContent } from './content';
 import { DocumentPathConflict, InvalidDocumentPath, planDocumentAddition } from './addition';
 import { buildDemoDocumentManifest } from './contribution';
 import { demoShowcaseCollection, demoShowcaseSeedDocuments, demoShowcaseSpecId } from './showcase';
@@ -303,17 +301,11 @@ export function createDemoDocuments(
         async read(specId, documentId, revision) {
           const document = readDocument(specId, documentId);
           if (document) {
-            if (revision !== undefined && revision !== document.revision) {
-              throw new DocumentError(
-                'DOCUMENT_REVISION_UNAVAILABLE',
-                'The requested revision is not the current one.',
-              );
-            }
-            return demoDocumentContent(document);
+            if (revision !== undefined && revision !== document.revision)
+              return { kind: 'revision_unavailable' as const };
+            return { kind: 'ok' as const, document: { ...document, specId } };
           }
-          if (state.specifications.has(specId)) {
-            throw new DocumentError('DOCUMENT_NOT_FOUND', 'The document does not exist.');
-          }
+          if (state.specifications.has(specId)) return { kind: 'not_found' as const };
           return seeded.read(specId, documentId, revision);
         },
       };

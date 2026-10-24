@@ -184,6 +184,10 @@ export async function configureRuntimeApp<RawServer extends RawServerBase>(
     }),
     createDocumentsFeature({
       source: documentSource,
+      legacyDemoRead: documentSource !== undefined,
+      ...(dependencies.documents?.readSource
+        ? { readSource: dependencies.documents.readSource }
+        : {}),
       ...(engine ? { engine } : {}),
     }),
     createSessionsFeature(),

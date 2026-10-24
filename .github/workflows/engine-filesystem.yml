@@ -59,6 +59,8 @@ jobs:
           git --version
           node --version
           pnpm --version
+      - name: Build Engine workspace dependencies
+        run: pnpm exec turbo run build --filter=@nevo/specflow-engine^...
       - name: Full real filesystem and lifecycle regression
         run: pnpm --filter @nevo/specflow-engine test:filesystem:full
       - name: Build CLI and Runtime dependencies
@@ -95,6 +97,8 @@ jobs:
           git --version
           node --version
           pnpm --version
+      - name: Build Engine workspace dependencies
+        run: pnpm exec turbo run build --filter=@nevo/specflow-engine^...
       - name: Audit exact native Git test shard
         run: node tools/ci-engine-${{ matrix.kind }}-shard.mjs ${{ matrix.part }} ${{ matrix.total }} --list
       - name: Real Git/OS process/shard regression

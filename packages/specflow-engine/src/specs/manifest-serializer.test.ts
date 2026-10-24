@@ -45,7 +45,7 @@ describe('serializeSpecificationManifest', () => {
     expect(text).not.toContain('folders');
     expect(text).not.toContain('priority');
     expect(text).not.toContain('created');
-    expect(text).not.toContain('type: standard');
+    expect(text).not.toMatch(/^type:/mu);
   });
 
   it('preserves unknown top-level keys and ignores known keys in them', () => {

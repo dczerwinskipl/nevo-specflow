@@ -103,6 +103,25 @@ elapsed time proves nothing about a possibly live writer. What the operator can 
 A UI/HTTP resume or abandon action, and garbage collection of journals that never produced a Git effect, remain
 follow-ups.
 
+### A manifest in the old shape fails the whole listing
+
+The manifest is strict and fail-closed ([documents layer](specification-documents.md), "Manifest schema"). A
+`specification.yaml` that still has the old `type` field and lacks `archetype` or `documents` is invalid, and a
+single invalid manifest makes the Specification listing of that checkout fail with `SPEC_SOURCE_INVALID`, so every
+Specification surface of the checkout reports the source error until the manifest is repaired. The Engine message
+names the offending slug and field (for example `Specification "my-spec" manifest: field "archetype" is required.`);
+the HTTP response exposes only the error code and the Runtime log carries the message. A local, untracked
+Specification created before the documents layer is repaired by hand:
+
+1. Remove the `type:` line (it is no longer read; leaving it is harmless because unknown top-level keys are kept).
+2. Add the archetype snapshot, for example
+   `archetype: { id: minimal, version: 1, requirements: [{ documentType: overview, minCount: 1 }] }` written as
+   block YAML.
+3. Add the registry with the fixed overview entry:
+   `documents: [{ id: overview, path: overview.md, type: overview }]`, plus one entry per other file you want
+   registered (files without an entry stay readable as unclassified).
+4. Commit the change yourself if Git is enabled. There is no automatic migration and no compatibility reader.
+
 ## Explicit Close intents
 
 | Operation                                                | Effect                                                                                                                                                                      |

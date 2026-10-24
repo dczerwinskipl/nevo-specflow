@@ -85,7 +85,7 @@ describe('parseSpecificationManifest', () => {
   });
 
   it('defaults absent folders to an empty list and tolerates unknown top-level keys', () => {
-    const source: Source = { ...validSource(), custom: { a: 1 }, type: 'standard' };
+    const source: Source = { ...validSource(), custom: { a: 1 }, type: 'legacy' };
     delete source.folders;
     const manifest = parseSpecificationManifest(source, SLUG, 'archive');
     expect(manifest.folders).toEqual([]);
@@ -107,7 +107,7 @@ describe('parseSpecificationManifest', () => {
       const old = {
         id: SLUG,
         title: 'My spec',
-        type: 'standard',
+        type: 'legacy',
         status: 'draft',
         tasks: [],
         spec_id: SPEC_ID,

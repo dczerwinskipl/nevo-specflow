@@ -15,6 +15,10 @@ import {
   validateSpecificationSlug,
   type SpecificationScaffold,
 } from '../src/testing';
+import {
+  writeOldShapeManifestFixture,
+  writeSpecificationManifestFixture,
+} from './support/manifest-fixture';
 
 const roots: string[] = [];
 
@@ -335,5 +339,52 @@ describe('E2.T01 Specification manifest and canonical checkout repository', () =
         'active',
       ),
     ).toThrowError(SpecificationError);
+  });
+
+  it('fails closed on one old-shape manifest and names the slug and the missing field', async () => {
+    const root = await workspace();
+    await writeSpecificationManifestFixture(root, { slug: 'good-one' });
+    await writeOldShapeManifestFixture(root, 'old-one');
+    const error = await listWorkspaceSpecifications(root).then(
+      () => undefined,
+      (caught: unknown) => caught,
+    );
+    expect(error).toBeInstanceOf(SpecificationError);
+    expect((error as SpecificationError).code).toBe('SPEC_SOURCE_INVALID');
+    expect((error as SpecificationError).message).toContain('"old-one"');
+    expect((error as SpecificationError).message).toContain('"archetype"');
+    expect((error as SpecificationError).message).not.toContain(root);
+  });
+
+  it('lists hand-built manifests written in the current shape', async () => {
+    const root = await workspace();
+    const written = await writeSpecificationManifestFixture(root, {
+      slug: 'hand-built',
+      archetypeId: 'feature',
+      documents: [
+        { id: 'overview', path: 'overview.md', type: 'overview' },
+        { id: 'behaviour', path: 'docs/behaviour.md', type: 'behaviour' },
+      ],
+      folders: ['research'],
+      extra: { 'x-owner': 'core' },
+    });
+    const [item] = await listWorkspaceSpecifications(root);
+    expect(item).toMatchObject({
+      specId: written.specId,
+      slug: 'hand-built',
+      archetype: { id: 'feature' },
+      folders: ['research'],
+    });
+    expect(item?.documents.map((document) => document.id)).toEqual(['overview', 'behaviour']);
+  });
+
+  it('names the slug for a malformed manifest and rejects an oversized one', async () => {
+    const root = await workspace();
+    const written = await writeSpecificationManifestFixture(root, { slug: 'broken' });
+    const path = join(root, written.relativeManifestPath);
+    await writeFile(path, ['id: [invalid', ''].join('\n'));
+    await expect(listWorkspaceSpecifications(root)).rejects.toThrow(/"broken".*YAML/u);
+    await writeFile(path, ['id: broken', '# padding'.repeat(40_000)].join('\n'));
+    await expect(listWorkspaceSpecifications(root)).rejects.toThrow(/"broken".*larger than/u);
   });
 });

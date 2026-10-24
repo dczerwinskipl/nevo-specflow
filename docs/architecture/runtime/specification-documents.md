@@ -27,7 +27,8 @@ related:
 
 Requirements use the language of
 [normative language and document authority](../principles/normative-language.md). This document is a draft:
-no part is implemented yet. Observed present state is stated as such.
+the manifest, catalogue, Create and the read side (tree, document content, raw) are implemented; document write
+operations (D4) are not. Observed present state is stated as such.
 
 ## Ownership
 
@@ -44,9 +45,10 @@ Runtime and CLI MUST NOT contain document rules (paths, kinds, requirements, pro
 There is no new Core package. Reviews and Tasks are separate resources with their own read/write models; they
 are never documents and are never registered in `documents[]`.
 
-Observed present state: the Engine knows two files of a Specification; `type: 'standard'` is hardcoded in
-`createSpecificationScaffold` and read by no consumer; the real documents endpoint is read-only with an unwired
-`DocumentContentSource`; save/tree/add exist only in the Runtime demo (`features/documents/demo`).
+Observed present state: the Engine reads a Specification's documents (`specs/documents/read.ts`: tree,
+document, registered summaries; `open.ts`: raw access) and the Runtime serves them through a `DocumentContentSource`
+over the Engine in project mode; save/add/tree operations exist only in the Runtime demo
+(`features/documents/demo`) until D4.
 
 ## Manifest schema (`specification.yaml`)
 
@@ -198,8 +200,10 @@ characters, extra whitespace, no goal, a goal with leading/trailing whitespace a
   `skippedEntries` and reported as the issue `skipped-entry`. Close archive refuses a directory that contains a
   symlink or special file, so this issue means "Close will refuse until it is removed" (see Limits). Opening a file
   re-verifies the physical path (lstat, `realpath` equality, regular file) before and after open and compares
-  `fstat` identity; `O_NOFOLLOW` is used where the platform has it (not on Windows, where the re-verification is
-  the only guard). A regular file with more than one hard link is readable; writes use temp file plus rename, which
+  `fstat` identity; `O_NOFOLLOW` (and `O_NONBLOCK`, so a swapped-in FIFO cannot block the open) is used where the
+  platform has it (not on Windows, where the re-verification is the only guard and a swap between the last check and
+  the first read cannot be excluded by the platform; this is a best-effort statement). The descriptor's device and
+  inode must equal those of the checked entry, and the checks are repeated after the open. A regular file with more than one hard link is readable; writes use temp file plus rename, which
   replaces the directory entry and never writes through the link.
 - **Folders** are derived from file paths plus `folders[]`. Git cannot track an empty directory, so an empty
   folder exists only if it is in `folders[]` (committed with the registry change in D4).
@@ -220,6 +224,11 @@ type served by the raw endpoint.
 
 Limits are in the Limits table below. Binary import/replace is a later slice.
 
+Implemented refinement: when the whole file is within the content-hash limit (1 MiB) the reader has every byte,
+and a text-extension file is `text` only if the whole file is valid UTF-8 (the NUL rule stays on the first 8 KiB), so
+text delivered as JSON never contains a replacement character the file did not contain. Larger files are classified
+from their first 8 KiB only.
+
 ## Limits (the single authoritative table)
 
 Other documents refer to this table and MUST NOT restate the numbers. All sizes are **UTF-8 / raw bytes**, never
@@ -230,7 +239,7 @@ in configuration.
 | -------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Text JSON read and Save content  | 1 MiB (bytes)                                                          | Above: JSON read and Save are `DOCUMENT_TOO_LARGE` (413); use `raw` to read                                                                                                |
 | Raw content                      | 25 MiB                                                                 | Below Close's 32 MiB per-file archive limit on purpose                                                                                                                     |
-| Content-hash revision            | files <= 1 MiB: sha256; above: `stat:<size>-<mtimeNs>`                 | Memo keyed by path+size+mtimeNs+ino, at most 5000 entries (LRU)                                                                                                            |
+| Content-hash revision            | files <= 1 MiB: sha256; above: `stat:<size>-<mtimeNs>`                 | Memo keyed by path+size+mtimeNs+ino, at most 5000 entries (LRU); a file modified within the last 2 seconds is never memoised                                               |
 | Manifest size                    | 256 KiB                                                                | Larger: `SPEC_SOURCE_INVALID`                                                                                                                                              |
 | Listed files per Specification   | 2000, depth 8                                                          | Beyond: `truncated: true`. Close archive allows 4096 files and fails above that                                                                                            |
 | Archive count traversal          | stops at 4097 files or 20000 entries (files and directories)           | Mirrors Close archive (4096 files, 32 MiB per file, hidden entries counted, no depth limit); exceeding either bound is `archive-limit`                                     |

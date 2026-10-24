@@ -43,17 +43,22 @@ groups and document manifest ordering are authoritative.
 ## Data source
 
 Normal `nevo-specflow start` uses project mode. The workspace identity (id, title, revision of the
-canonical manifest, `preparationState`) is read from the Engine-verified manifest; the Task,
-document, Session, activity, repository and change sections are `unavailable` with reason
-`not_implemented` and every action is unavailable, because the Engine owns no verified projection of
-them yet. A bound specification whose canonical source cannot be read (unavailable workspace,
+canonical manifest, `preparationState`) is read from the Engine-verified manifest. The `documents`
+section is `available` and lists the registered documents of the manifest whose file exists
+(`kind` is the document type id, `filename` the relative path, `revision` the content revision, `title`
+the derived title); unclassified and dangling entries are not part of it, the document tree
+(`reference.api.specification-documents`) shows them. When the documents of a readable
+Specification cannot be read, only that section degrades to `unavailable` with reason
+`source_unavailable`. The Task, Session, activity, repository and change sections are `unavailable`
+with reason `not_implemented` and every action is unavailable, because the Engine owns no verified
+projection of them yet. A bound specification whose canonical source cannot be read (unavailable workspace,
 missing or invalid manifest, registry or Git failure) and a Runtime without any source return
 `503 { "error": "specification_source_unavailable" }`; both cases share this body, so the UI cannot tell
 an outage from a missing adapter. Demonstration data is never substituted. The explicit `nevo-specflow start --demo`
 selects Runtime-owned demonstration repositories over the same endpoints.
 Demo Overview and Workspace derive from one consistent sample catalogue.
 
-This increment does **not** implement project Task, document or Session sections, mutations,
+This increment does **not** implement project Task or Session sections, mutations,
 multi-project routing, or multi-worktree execution.
 Availability and action states describe only what actually exists.
 

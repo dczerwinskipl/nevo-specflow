@@ -54,7 +54,12 @@ Authorization uses the existing `SpecCapabilities`: `View` for reads, `Manage` f
 | D4    | POST   | `/api/specs/:specId/folders`                   | same suffix                               | Manage              | Create folder                                                  |
 | D4    | POST   | `/api/specs/:specId/document-operations`       | same suffix                               | Manage              | rename / move / delete / classify                              |
 
-All document responses send `Cache-Control: no-store` except `raw` (below). `specId` and `documentId` follow the
+**Implementation status.** The D3 rows (document tree, document content, raw) are implemented in the Runtime and
+read through the Engine; D2 and D3 are served in project mode by the Engine as the source of record. The D4 rows
+are not implemented: no write route exists yet.
+
+All document responses, including their error responses, send `Cache-Control: no-store` except a successful `raw`
+(below). `specId` and `documentId` follow the
 existing id pattern `^[a-zA-Z0-9][a-zA-Z0-9._-]*$` (<= 200).
 
 ## Shared vocabulary
@@ -204,6 +209,27 @@ DocumentTree = {
 }
 ```
 
+**Implemented behaviour of the tree (D3).** The tree is the Engine's projection of one manifest read, a directory
+listing and a stat/hash of the files; it is not an atomic snapshot (architecture invariant 7). `documents` is sorted
+by the case-folded path, `dangling` keeps registry order, `folders` starts with the root `''` and is sorted by the
+case-folded path. The response carries `ETag: "<revision>"`; a matching `If-None-Match` answers `304`.
+`truncated` is `true` when the listing stopped at the file or depth cap; registered documents beyond the cap are
+still stat'ed and listed (a registered file is never reported dangling because of the cap). `issues` lists, in this
+order, `dangling`, `unclassified`, `requirement-unmet`, then `skipped-entry` (one per reported path, at most 50;
+`skippedEntries` is the full count), `path-case-collision` (one per colliding path) and `archive-limit` (with
+`path` when a single file above the archive per-file limit is the cause). Besides symlinks and special files,
+`skipped-entry` also reports names the layer cannot address safely (control characters, `\`, or bytes that are not
+UTF-8) and folders that cannot be read.
+
+Before D4 every write action and capability is `{ available: false, reason }`. The reason is, in order of
+precedence: `archived` (Specification in `archive/`), then `protected` (`overview`: delete, rename, move) or `root`
+(the root folder), then the advisory Git policy reason that applies to the checked-out branch
+(`branch-protected`, `branch-not-allowed`, `git-policy-invalid`; omitted when Git is disabled or the branch is not
+known; the branch is read from the checkout's `HEAD` without starting a Git process), and otherwise
+`not-implemented`. `classify` of a registered document is `{ available: false }` without a reason (nothing to
+classify). `busy` and `commit-blocked` are never reported by reads. `editable` is true only for `text` kind with
+an `md` or `txt` extension, within the save limit, in an active Specification.
+
 Replaces the demo's `DemoDocumentTree`: removed `documents[].required`, `reason: 'required_document_path'`,
 folder reason `required_document_path`; added `protected`, `type`, `classification`, `kind`, `mediaType`, `size`,
 `editable`, `satisfiesRequirement`, `dangling`, `completeness`, `archetype`, `truncated`, `skippedEntries`.
@@ -218,6 +244,15 @@ DocumentContent = {                    // GET /documents/:documentId
   content?: string                     // present for kind 'text' within the JSON read limit; absent otherwise
 }
 ```
+
+Implemented behaviour: a registered id answers from the manifest; a `u-` id is recomputed over the listed files
+and never answers for a registered path; any other id is `DOCUMENT_NOT_FOUND`, as is a Specification id that cannot
+name a Specification. A text-extension file is `text` when its first 8 KiB hold no NUL byte and are valid UTF-8,
+and, when the whole file is within the 1 MiB hash limit, the whole file is valid UTF-8 (otherwise `binary`); so
+`content` never contains a replacement character the file did not have. `title` is the first level-1 heading of a
+markdown file outside a YAML frontmatter block and outside fenced code, else the file stem. The `revision` and
+`content` returned come from the same bytes. The current revision is the hash of the content up to 1 MiB, else
+`stat:<size>-<mtimeNs>`.
 
 Replaces `SpecificationDocumentResponse` (`filename` is replaced by `path`; `title` stays; new fields above). The
 `?revision=` query is kept: a revision other than the current one -> `DOCUMENT_REVISION_UNAVAILABLE` (409); there
@@ -237,6 +272,14 @@ is no history read. Text above the JSON read limit -> `DOCUMENT_TOO_LARGE` (413)
 | `Cross-Origin-Resource-Policy` | `same-origin`                                                                                                                                                                                                                                                                     |
 | `Cache-Control` / `ETag`       | `private, no-cache` and `ETag: "<revision>"`; `If-None-Match` -> 304                                                                                                                                                                                                              |
 | `Content-Length`               | file size                                                                                                                                                                                                                                                                         |
+
+Implemented behaviour of `raw`: `download` accepts `0` or `1` only (anything else is a validation error, `400`).
+Every refusal (`404`, `413`, `503`) is answered before the first byte with the `{ error, code }` body. The media
+type sent is always one of the closed set of the table (a text kind is only ever `text/plain` or `text/markdown`,
+never an HTML or XML type, whatever the Engine reports). The `304` answer carries `ETag`, `Cache-Control`,
+`X-Content-Type-Options` and `Cross-Origin-Resource-Policy` and no body. The stream is released when the client
+aborts and when the file becomes shorter than announced (the response is aborted, never padded). The filename in
+`Content-Disposition` is the percent-encoded UTF-8 basename (`filename*`); no other form is sent.
 
 SVG is served with the image media type only so `<img src>` works; the sandbox CSP prevents script execution if the URL is opened
 directly. The UI MUST NOT inline SVG markup.
@@ -301,6 +344,13 @@ of the Create errors; `details` is new and optional: the shared error schema is 
 | `CREATE_JOURNAL_UNSUPPORTED`    | 503  | A Create journal written by an older format is read by operation id (inspection or replay). It never blocks Create or Close admission (see delivery D2)                                                                                                                                                                            |
 | `CATALOGUE_STALE`               | 409  | Create with an outdated catalogue revision/archetype version                                                                                                                                                                                                                                                                       |
 | `ARCHETYPE_UNKNOWN`             | 422  | Unknown archetype or optional template id                                                                                                                                                                                                                                                                                          |
+
+Read endpoints emit `DOCUMENT_NOT_FOUND`, `DOCUMENT_FILE_MISSING`, `DOCUMENT_REVISION_UNAVAILABLE`,
+`DOCUMENT_TOO_LARGE` and `SPEC_SOURCE_UNAVAILABLE`. An invalid manifest, an unavailable workspace, a registry or
+Project Home failure, a Specification directory that is not a canonical physical directory, a path that leaves the
+Specification directory and a file that changes while it is being opened are all `SPEC_SOURCE_UNAVAILABLE` (the body
+never carries a message or a path). A registered file that is a symlink, a directory or a special entry is
+`DOCUMENT_FILE_MISSING` (dangling); a registered path below a symlinked folder is `SPEC_SOURCE_UNAVAILABLE`.
 
 Demo-only codes (`DEMO_WORKSPACE_UNAVAILABLE`, `DEMO_INVALID_SCENARIO`) stay; the demo's `demo_*` lowercase document
 errors are replaced by the codes above (demo emits the same codes).

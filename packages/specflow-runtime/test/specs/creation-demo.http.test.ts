@@ -120,8 +120,8 @@ describe('Temporary Specification creation HTTP boundary', () => {
     expect(before.sections.documents.data.items[0]?.filename).toBe('specification.md');
     expect(
       (await app.inject(`/api/specs/${specId}/documents/${documentIds[0]}`)).json<{
-        filename: string;
-      }>().filename,
+        path: string;
+      }>().path,
     ).toBe('specification.md');
     expect((await app.inject(`/api/specs/${specId}/documents/spec`)).statusCode).toBe(404);
     const allocated = await allocate(app, specId, session(cat));
@@ -445,7 +445,7 @@ describe('Nested document collection HTTP boundary', () => {
     const read = await app.inject(`/api/specs/${specId}/documents/${documentId}`);
     expect(read.json()).toMatchObject({
       title: 'OIDC decision',
-      filename: 'architecture/decisions/001.md',
+      path: 'architecture/decisions/001.md',
       content: '# Use OIDC',
       revision: '1',
     });
@@ -495,7 +495,7 @@ describe('Nested document collection HTTP boundary', () => {
     expect(added.statusCode).toBe(200);
     const documentId = added.json<{ documentIds: string[] }>().documentIds[0];
     expect((await app.inject(`/api/specs/admission/documents/${documentId}`)).json()).toMatchObject(
-      { filename: 'research/note.md', content: 'Note' },
+      { path: 'research/note.md', content: 'Note' },
     );
     const workspace = (
       await app.inject('/api/specs/admission/workspace')

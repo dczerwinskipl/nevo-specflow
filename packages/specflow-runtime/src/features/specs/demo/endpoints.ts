@@ -28,11 +28,11 @@ import {
   isDemoOperationError,
 } from '../../../demo/http';
 import type { DemoState } from '../../../demo/state';
-import { matchesEtag, sendNotModified } from '../../../server/etag';
 import { DemoTargetError } from './create-target';
 import { parseScenarios, type DemoScenario } from './scenarios';
 import type { DemoSpecs } from './operations';
 import {
+  matchesEtag,
   OPERATION_LIST_QUERY_INVALID_CODE,
   OperationListQueryStringSchema,
   operationListEtag,
@@ -176,7 +176,7 @@ export function registerDemoSpecRoutes<RawServer extends RawServerBase>(
       const etag = operationListEtag(list);
       reply.header('ETag', etag);
       if (matchesEtag(request.headers['if-none-match'], etag)) {
-        return sendNotModified(reply);
+        return reply.code(304 as unknown as 200).send(undefined as never);
       }
       return list;
     },

@@ -167,7 +167,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
       schema: {
         response: {
           200: ArchetypeCatalogueSchema,
-          304: Type.Null(),
+          304: Type.Void(),
           401: AuthenticationRequiredErrorResponseSchema,
           403: AuthorizationForbiddenErrorResponseSchema,
         },
@@ -178,7 +178,7 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
       const catalogue = await Promise.resolve(projectCatalogue());
       const etag = `"${catalogue.revision}"`;
       reply.header('ETag', etag).header('Cache-Control', 'private, no-cache');
-      if (matchesEtag(request.headers['if-none-match'], etag)) return reply.code(304).send(null);
+      if (matchesEtag(request.headers['if-none-match'], etag)) return reply.code(304).send();
       return reply.code(200).send(catalogue);
     },
   );

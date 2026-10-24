@@ -331,7 +331,9 @@ describe('E2.T04 — cross-process durable create reservation and registry CAS',
       const journal = await readCreateJournal(engine.context, original.operationId);
       expect(journal?.stage).toBe('manifest-writing');
       const manifest = join(root, journal!.files[0]!.relativePath);
-      expect(await readFile(manifest, 'utf8')).toBe('');
+      // The manifest becomes visible only complete (staged file, fsync, rename): while the write is
+      // in progress there is no partial file at its path.
+      await expect(readFile(manifest, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
 
       const unowned = join(root, 'specs/active/unowned-corrupt');
       await mkdir(unowned);
@@ -356,7 +358,9 @@ describe('E2.T04 — cross-process durable create reservation and registry CAS',
       // Reservation is emitted AFTER the independent process has passed
       // journal-aware discovery, but BEFORE it needs to finish its Create.
       await waitForFile(independent.observed, independent);
-      expect(await readFile(manifest, 'utf8')).toBe('');
+      // The manifest becomes visible only complete (staged file, fsync, rename): while the write is
+      // in progress there is no partial file at its path.
+      await expect(readFile(manifest, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
       expect((await engine.readRegistry()).specBindings).toHaveLength(0);
     } finally {
       await writeFile(writer.release, 'continue');

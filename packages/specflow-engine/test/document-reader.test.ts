@@ -27,6 +27,7 @@ import {
   readSpecificationDocumentTree,
   type ObservationMemoValue,
 } from '../src/specs/documents/read';
+import type { SummaryMemoValue } from '../src/specs/documents/read';
 import { RevisionMemo } from '../src/specs/documents/revision-memo';
 import { nodeVerifiedFs, type VerifiedFs } from '../src/specs/documents/verified-file';
 import { git } from './support/git-project';
@@ -776,6 +777,36 @@ describe('revision memo', () => {
       },
     };
   }
+
+  it('answers the workspace documents section from a memo for unchanged old files', async () => {
+    const fixture = await project();
+    const hand = await handBuilt(fixture, { files: { 'overview.md': '# o\n', 'old.md': 'old' } });
+    const old = new Date(Date.now() - 60_000);
+    await utimes(join(hand.dir, 'old.md'), old, old);
+    await utimes(join(hand.dir, 'overview.md'), old, old);
+    const summaryMemo = new RevisionMemo<SummaryMemoValue>(100);
+    const { fs, opens } = counting();
+    const first = await readRegisteredDocumentSummaries(fixture.engine, hand.specId, {
+      fs,
+      summaryMemo,
+    });
+    opens.length = 0;
+    const second = await readRegisteredDocumentSummaries(fixture.engine, hand.specId, {
+      fs,
+      summaryMemo,
+    });
+    expect(opens.map((path) => path.split('/').pop())).toEqual(['specification.yaml']);
+    expect(second).toEqual(first);
+
+    // A changed file is a new key and is read again.
+    await writeFile(join(hand.dir, 'overview.md'), '# changed title\n');
+    await utimes(join(hand.dir, 'overview.md'), old, old);
+    const third = await readRegisteredDocumentSummaries(fixture.engine, hand.specId, {
+      fs,
+      summaryMemo,
+    });
+    expect(third.find((item) => item.id === 'overview')?.title).toBe('changed title');
+  }, 240000);
 
   it('does not reopen an unchanged old file, and does not memoise a file written just now', async () => {
     const fixture = await project();

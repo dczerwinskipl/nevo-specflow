@@ -325,7 +325,7 @@ async function dropIntentToAdd(root: string, paths: readonly string[]): Promise<
     ...literals,
   ]);
   if (tracked.exitCode !== 0) return;
-  const known = new Set(tracked.stdout.split(' ').filter(Boolean));
+  const known = new Set(tracked.stdout.split('\0').filter(Boolean));
   const untracked = paths.filter((path) => !known.has(path)).map((path) => ':(literal)' + path);
   if (untracked.length === 0) return;
   await executeGitMutation(root, ['reset', '-q', '--', ...untracked]).catch(() => undefined);

@@ -48,15 +48,24 @@ export interface ObservationMemoValue {
   readonly mediaType: string;
 }
 
+/** What the workspace documents section needs of a file: its revision and derived title. */
+export interface SummaryMemoValue {
+  readonly revision: string;
+  readonly title: string;
+}
+
 export interface DocumentReadOptions {
   /** Filesystem seam (fault injection in tests). */
   readonly fs?: VerifiedFs;
   /** Revision memo; defaults to a process-wide bounded LRU. */
   readonly memo?: RevisionMemo<ObservationMemoValue>;
+  /** Memo of revisions and titles for the workspace documents section; defaults to a process-wide LRU. */
+  readonly summaryMemo?: RevisionMemo<SummaryMemoValue>;
   readonly now?: () => number;
 }
 
 const processMemo = new RevisionMemo<ObservationMemoValue>();
+const processSummaryMemo = new RevisionMemo<SummaryMemoValue>();
 /** A file modified this recently is not memoised: its mtime may not move on a further write. */
 const RECENT_WRITE_MS = 2000;
 const ANALYSIS_CONCURRENCY = 8;
@@ -390,10 +399,25 @@ export async function summariesOfLoaded(
   options: DocumentReadOptions = {},
 ): Promise<readonly RegisteredDocumentSummary[]> {
   const fs = options.fs ?? nodeVerifiedFs;
+  const memo = options.summaryMemo ?? processSummaryMemo;
   const rows = await mapBounded(
     loaded.manifest.documents,
     ANALYSIS_CONCURRENCY,
     async (document): Promise<RegisteredDocumentSummary | undefined> => {
+      const summary = (value: SummaryMemoValue): RegisteredDocumentSummary => ({
+        id: document.id,
+        path: document.path,
+        type: document.type,
+        ...value,
+      });
+      // An unchanged old file (same path, size, mtime and inode) is answered from the memo with one
+      // stat: the section does not open and hash every registered file on every request.
+      const entry = await inspectEntry(fs, loaded.specDir, document.path);
+      if (entry.state !== 'file') return undefined;
+      const key = memoKey(join(loaded.specDir, document.path), entry.stat);
+      const cached = memo.get(key);
+      if (cached) return summary(cached);
+
       let opened;
       try {
         opened = await openVerifiedFile(fs, loaded.specDir, document.path);
@@ -406,13 +430,15 @@ export async function summariesOfLoaded(
         const analysis = await analyzeOpenFile(opened.handle, opened.stat, document.path);
         const content =
           analysis.kind === 'text' && analysis.bytes ? decodeText(analysis.bytes) : undefined;
-        return {
-          id: document.id,
-          path: document.path,
-          type: document.type,
+        const value: SummaryMemoValue = {
           title: deriveDocumentTitle(document.path, content),
           revision: analysis.revision,
         };
+        const modifiedMs = Number(opened.stat.mtimeNs / 1_000_000n);
+        if ((options.now?.() ?? Date.now()) - modifiedMs >= RECENT_WRITE_MS) {
+          memo.set(memoKey(join(loaded.specDir, document.path), opened.stat), value);
+        }
+        return summary(value);
       } finally {
         await opened.handle.close().catch(() => undefined);
       }

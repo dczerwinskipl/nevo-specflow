@@ -78,7 +78,11 @@ describe('Q00 Create journal current-format acceptance baseline', () => {
         workspaceId: engine.workspace.workspaceId,
         workspaceRoot: root,
       },
-      files: scaffold.files.map(({ relativePath, sha256, bytes }) => ({ relativePath, sha256, bytes })),
+      files: scaffold.files.map(({ relativePath, sha256, bytes }) => ({
+        relativePath,
+        sha256,
+        bytes,
+      })),
     };
 
     // The commit stages exist only for a journal that pins commit evidence at reservation.

@@ -81,7 +81,11 @@ function currentJournal(
       workspaceId: targetWorkspaceId,
       workspaceRoot: context.project.homeRoot,
     },
-    files: scaffold.files.map(({ relativePath, sha256, bytes }) => ({ relativePath, sha256, bytes })),
+    files: scaffold.files.map(({ relativePath, sha256, bytes }) => ({
+      relativePath,
+      sha256,
+      bytes,
+    })),
   };
 }
 

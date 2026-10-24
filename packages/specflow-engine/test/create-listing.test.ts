@@ -77,7 +77,11 @@ function journal(
       workspaceRoot: fx.root,
     },
     files: [
-      { relativePath: 'specs/active/listing-proof/specification.yaml', sha256: 'b'.repeat(64), bytes: 1 },
+      {
+        relativePath: 'specs/active/listing-proof/specification.yaml',
+        sha256: 'b'.repeat(64),
+        bytes: 1,
+      },
       { relativePath: 'specs/active/listing-proof/overview.md', sha256: 'c'.repeat(64), bytes: 1 },
     ],
     ...overrides,

@@ -78,7 +78,11 @@ function intent(projectId: string, workspaceId: string, root: string): CreateJou
     stage: 'reserved',
     target: { kind: 'existing', workspaceId, workspaceRoot: root },
     files: [
-      { relativePath: 'specs/active/journal-proof/specification.yaml', sha256: 'b'.repeat(64), bytes: 1 },
+      {
+        relativePath: 'specs/active/journal-proof/specification.yaml',
+        sha256: 'b'.repeat(64),
+        bytes: 1,
+      },
       { relativePath: 'specs/active/journal-proof/overview.md', sha256: 'c'.repeat(64), bytes: 1 },
     ],
   };

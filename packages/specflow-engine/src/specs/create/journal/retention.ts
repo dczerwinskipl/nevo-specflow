@@ -7,6 +7,7 @@ import { CREATE_JOURNAL_RELATIVE_DIR, isStrayJournalTempName } from './store';
 import { CREATE_JOURNAL_MAX_BYTES } from '../../documents/limits';
 import { UUID, parseCreateJournal } from './codec';
 import { payloadOperationIdOf, removeCreatePayload } from './payload';
+import { classifyCreateJournalText, isExpiredUnsupportedJournal } from './unsupported';
 
 /**
  * How long a settled (`completed`) Create journal is kept before a later reservation may delete it.
@@ -25,7 +26,7 @@ export const STRAY_JOURNAL_TEMP_MAX_AGE_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Removes terminal journals older than the retention. The only terminal, fully settled state in the
+ * Removes terminal journals and unsupported (older-format) journals older than the retention. The only terminal, fully settled state in the
  * journal model is `completed`; `recovery-required` and every in-progress stage are evidence and are
  * never removed. Age is the journal file's mtime: each stage transition rewrites the file, so for a
  * completed journal it is the completion time (no schema field is required).
@@ -86,11 +87,17 @@ export async function removeExpiredCompletedCreateJournals(
       const stat = await lstat(path);
       if (!stat.isFile() || stat.isSymbolicLink() || stat.size > CREATE_JOURNAL_MAX_BYTES) continue;
       if (now - stat.mtimeMs < retentionMs) continue;
-      const parsed = parseCreateJournal(
-        context,
-        JSON.parse(await readFileWindowsSafe(path)) as unknown,
-        operationId,
-      );
+      const classified = classifyCreateJournalText(await readFileWindowsSafe(path));
+      if (classified.kind === 'unsupported') {
+        // An older-format (or unparseable) journal is evidence nobody can interpret: it is deleted
+        // after the retention, by age only (see unsupported.ts).
+        if (!isExpiredUnsupportedJournal(stat.mtimeMs, now, retentionMs)) continue;
+        await removeFileWindowsSafe(path);
+        await removeCreatePayload(context, operationId).catch(() => undefined);
+        removed += 1;
+        continue;
+      }
+      const parsed = parseCreateJournal(context, classified.value, operationId);
       if (parsed.stage !== 'completed') continue;
       await removeFileWindowsSafe(path);
       // The payload goes with its journal. A failure leaves an orphan that the next sweep removes.

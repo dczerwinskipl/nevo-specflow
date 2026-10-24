@@ -16,9 +16,17 @@ export {
   createJournalPath,
   readCreateJournal,
   listCreateJournals,
+  listCreateJournalsDetailed,
+  type CreateJournalListing,
   withCreateJournalLock,
   publishCreateJournal,
 } from './store';
+export {
+  classifyCreateJournalText,
+  isExpiredUnsupportedJournal,
+  unsupportedJournalError,
+  type UnsupportedCreateJournal,
+} from './unsupported';
 export {
   COMPLETED_OPERATION_JOURNAL_RETENTION_DAYS,
   MAX_JOURNAL_REMOVALS_PER_SWEEP,

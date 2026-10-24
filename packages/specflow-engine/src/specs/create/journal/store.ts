@@ -9,6 +9,11 @@ import { CREATE_JOURNAL_MAX_BYTES } from '../../documents/limits';
 import { CreateOperationError } from '../error';
 import type { CreateJournal } from './model';
 import { UUID, invalidJournal, parseCreateJournal } from './codec';
+import {
+  classifyCreateJournalText,
+  unsupportedJournalError,
+  type UnsupportedCreateJournal,
+} from './unsupported';
 
 export const CREATE_JOURNAL_RELATIVE_DIR = 'engine/operations/create';
 
@@ -33,28 +38,58 @@ export function createJournalPath(context: ResolvedProjectHome, operationId: str
   return join(context.project.stateRoot, CREATE_JOURNAL_RELATIVE_DIR, operationId + '.json');
 }
 
-export async function readCreateJournal(
+type JournalFileRead =
+  | { readonly kind: 'missing' }
+  | { readonly kind: 'unsupported'; readonly mtimeMs: number }
+  | { readonly kind: 'journal'; readonly journal: CreateJournal };
+
+async function readJournalFile(
   context: ResolvedProjectHome,
   operationId: string,
-): Promise<CreateJournal | undefined> {
+): Promise<JournalFileRead> {
   const path = createJournalPath(context, operationId);
   try {
     const stat = await lstat(path);
+    // A redirected, special or oversize file is never a journal this Engine wrote: fail closed.
     if (!stat.isFile() || stat.isSymbolicLink() || stat.size > CREATE_JOURNAL_MAX_BYTES) {
       throw invalidJournal();
     }
-    const parsed = JSON.parse(await readFileWindowsSafe(path)) as unknown;
-    return parseCreateJournal(context, parsed, operationId);
+    const classified = classifyCreateJournalText(await readFileWindowsSafe(path));
+    if (classified.kind === 'unsupported') return { kind: 'unsupported', mtimeMs: stat.mtimeMs };
+    return { kind: 'journal', journal: parseCreateJournal(context, classified.value, operationId) };
   } catch (error) {
-    if (isMissing(error)) return undefined;
-    if (error instanceof SyntaxError) throw invalidJournal();
+    if (isMissing(error)) return { kind: 'missing' };
     throw error;
   }
 }
 
-export async function listCreateJournals(
+/**
+ * The journal of one operation. An unsupported (older-format) file answers
+ * `CREATE_JOURNAL_UNSUPPORTED`; a corrupt current-format file stays `CREATE_JOURNAL_CORRUPT`.
+ */
+export async function readCreateJournal(
   context: ResolvedProjectHome,
-): Promise<readonly CreateJournal[]> {
+  operationId: string,
+): Promise<CreateJournal | undefined> {
+  const read = await readJournalFile(context, operationId);
+  if (read.kind === 'unsupported') throw unsupportedJournalError();
+  return read.kind === 'journal' ? read.journal : undefined;
+}
+
+export interface CreateJournalListing {
+  /** Valid current-format journals: the only resource claims. */
+  readonly journals: readonly CreateJournal[];
+  /** Older-format or unparseable files: never claims, never an error. */
+  readonly unsupported: readonly UnsupportedCreateJournal[];
+}
+
+/**
+ * Strict listing used by Create and Close admission. Unsupported files are returned separately
+ * and never throw or claim; a corrupt current-format journal still fails closed.
+ */
+export async function listCreateJournalsDetailed(
+  context: ResolvedProjectHome,
+): Promise<CreateJournalListing> {
   const path = join(context.project.stateRoot, CREATE_JOURNAL_RELATIVE_DIR);
   try {
     const stat = await lstat(path);
@@ -62,11 +97,12 @@ export async function listCreateJournals(
       throw invalidJournal();
     }
   } catch (error) {
-    if (isMissing(error)) return [];
+    if (isMissing(error)) return { journals: [], unsupported: [] };
     throw error;
   }
   const files = await readdir(path, { withFileTypes: true });
   const records: CreateJournal[] = [];
+  const unsupported: UnsupportedCreateJournal[] = [];
   for (const file of files) {
     // Leftover stage files and editor/OS droppings are not journals; only a `*.json` entry is judged.
     if (isStrayJournalTempName(file.name) || !file.name.endsWith('.json')) continue;
@@ -75,11 +111,19 @@ export async function listCreateJournals(
     }
     const operationId = file.name.slice(0, -5);
     validateOperationId(operationId);
-    const record = await readCreateJournal(context, operationId);
-    if (!record) throw invalidJournal();
-    records.push(record);
+    const read = await readJournalFile(context, operationId);
+    if (read.kind === 'missing') throw invalidJournal();
+    if (read.kind === 'unsupported') unsupported.push({ operationId, mtimeMs: read.mtimeMs });
+    else records.push(read.journal);
   }
-  return records;
+  return { journals: records, unsupported };
+}
+
+/** The current-format journals only (see {@link listCreateJournalsDetailed}). */
+export async function listCreateJournals(
+  context: ResolvedProjectHome,
+): Promise<readonly CreateJournal[]> {
+  return (await listCreateJournalsDetailed(context)).journals;
 }
 
 export async function withCreateJournalLock<T>(

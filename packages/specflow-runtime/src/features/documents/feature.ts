@@ -3,6 +3,7 @@ import type { SpecFlowEngine } from '@nevo/specflow-engine';
 import type { RuntimeFeature } from '../runtime-feature';
 import { documentContentEndpoint } from './content/endpoint';
 import { createEngineDocumentContentSource } from './content/engine-source';
+import { rawDocumentEndpoint } from './content/raw-endpoint';
 import type { DocumentContentSource } from './content/read-document';
 
 export interface DocumentsFeatureDependencies {
@@ -23,6 +24,7 @@ export function createDocumentsFeature(
     authorizationResources: [],
     register(app) {
       app.register(documentContentEndpoint, { source });
+      app.register(rawDocumentEndpoint, { source });
     },
   };
 }

@@ -7,12 +7,12 @@ scope: specflow
 areas: [ui]
 tags: [documents, archetypes, requirements, create, editor]
 read_when:
-  - integrating the archetype catalogue, document tree, document read or document operations in the UI
+  - changing how the UI presents the archetype catalogue, document tree, document read or document operations
   - changing the Documents tree, its overview state, the New document or Assign type flows
   - changing the Archetype part of Create Specification or its progress page
   - changing read-only, save, conflict, image or binary states of a document tab
 summary: >
-  UI contract for Specification archetypes and documents on the existing screens: the Documents tree
+  Product behaviour of the UI for Specification archetypes and documents on the existing screens: the Documents tree
   (registered, unclassified, dangling, protected overview, unmet requirements, Close-refusing issues),
   New document from a type and Assign type, the Archetype section of Create and its progress rows, and
   the document tab states (read-only reason on open, synchronous save, revision conflict, image, binary,
@@ -125,7 +125,7 @@ tree's scroll area, above the tree, so it scrolls away with it and costs nothing
    behaviour.md
    overview.md
    ux.md
- 1 entry in the folder could not be read.  muted line (skipped-entry; not a Close refusal, G10)
+ 1 entry in the folder could not be read.  muted line (skipped-entry; not shown as a Close refusal)
 ```
 
 - **Wide (≥ 1080) and Compact (840-1079):** as above; Compact keeps the tree at 1/3. The trailing label
@@ -151,7 +151,7 @@ their registered path.
 
 "The file name says the type" means the file stem equals the type id or the stem of the type's
 `defaultFilename`. Other disabled items keep today's pattern: the menu note carries at most two distinct
-reasons from the ActionReason copy (section 8).
+reasons of the ActionReason set.
 
 ### 3.4 Unmet requirements (Expected documents)
 
@@ -177,7 +177,7 @@ reasons from the ActionReason copy (section 8).
   disk.
 - `skipped-entry` is **not** in that Alert: it is a neutral muted line after the last tree row, "N entries
   in the folder could not be read." (count from `skippedEntries`). The contract is inconsistent on
-  whether it refuses Close (G10); if the contract owner decides it does, the bullet moves into the Alert.
+  whether it refuses Close; until the contract settles it, it is not presented as a refusal. If it does refuse, the line moves into the Alert.
 - `truncated: true` adds a muted line after the last tree row: "Only the first entries are listed."
 
 ### 3.6 New document, Assign type, Remove registration
@@ -205,7 +205,7 @@ reasons from the ActionReason copy (section 8).
   (today's rule for a new empty file) and announces it.
 - One `Dialog` at every width; the body must scroll while header and footer stay. Measured in the mock
   at 390 × 844: the dialog is 810 px high with 934 px of content, `overflow: hidden` and no scrolling
-  region, so **Create is cut off** until the DS gap in section 11 is fixed.
+  region, so **Create is cut off** until the shared `Dialog` lets its body scroll between a fixed header and footer.
 
 **Assign type…** (unclassified row menu; also the tab `...` menu of an unclassified document): same
 chooser without No type and without File name. Description: "<path> stays where it is. Its type decides what it
@@ -218,25 +218,25 @@ under its new state.
 delete-dialog pattern: "Remove the registration of backend.md? The specification will no longer list it.
 No file is deleted." Confirm closes the missing tab.
 
-**Failures of these three operations** use the existing `documents.tree.error.*` pattern: the dialog stays
+**Failures of these three operations** use the existing tree-error pattern: the dialog stays
 open, the chosen type and the typed file name are kept, the message is an attention Alert inside the
 dialog above the footer, and the primary button is available again.
 
-| Error                                                                       | Message key                                                                                  | Extra                                                     |
-| --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `DOCUMENT_PATH_CONFLICT`                                                    | `documents.tree.error.pathConflict` (existing)                                               | focus returns to File name                                |
-| `DOCUMENT_PATH_INVALID`                                                     | `documents.tree.error.pathInvalid` (new)                                                     | focus returns to File name                                |
-| `DOCUMENT_ALREADY_CLASSIFIED`                                               | `documents.tree.error.alreadyClassified` (new)                                               | the tree is refetched; the row already shows its type     |
-| `DOCUMENT_REVISION_CONFLICT`                                                | `documents.tree.error.revisionConflict` (existing)                                           | the tree is refetched                                     |
-| `DOCUMENT_OPERATION_CONFLICT`                                               | `documents.tree.error.requestConflict` (existing)                                            | -                                                         |
-| `SPEC_MANIFEST_DIRTY`                                                       | `documents.tree.error.manifestDirty` (new)                                                   | no ActionReason exists for it, so no advance warning (G9) |
-| `SPEC_BUSY`                                                                 | `documents.tree.error.busy` (new)                                                            | -                                                         |
-| `BRANCH_PROTECTED`, `COMMIT_BLOCKED`, `GIT_POLICY_INVALID`, `SPEC_ARCHIVED` | `documents.tree.error.refused` (new) + `documents.reason.*` of `details.reason` + its remedy | the tree is refetched, so the read-only line appears      |
-| `DOCUMENT_RECOVERY_REQUIRED`                                                | `documents.tree.error.recovery` (new)                                                        | **Resume** retries with the same `operationId`            |
-| `DOCUMENT_OPERATION_INVALID`, anything else                                 | `documents.tree.error.default` (existing)                                                    | -                                                         |
+| Error                                                                       | Extra                                                 |
+| --------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `DOCUMENT_PATH_CONFLICT`                                                    | focus returns to File name                            |
+| `DOCUMENT_PATH_INVALID`                                                     | focus returns to File name                            |
+| `DOCUMENT_ALREADY_CLASSIFIED`                                               | the tree is refetched; the row already shows its type |
+| `DOCUMENT_REVISION_CONFLICT`                                                | the tree is refetched                                 |
+| `DOCUMENT_OPERATION_CONFLICT`                                               | -                                                     |
+| `SPEC_MANIFEST_DIRTY`                                                       | no ActionReason exists for it, so no advance warning  |
+| `SPEC_BUSY`                                                                 | -                                                     |
+| `BRANCH_PROTECTED`, `COMMIT_BLOCKED`, `GIT_POLICY_INVALID`, `SPEC_ARCHIVED` | the tree is refetched, so the read-only line appears  |
+| `DOCUMENT_RECOVERY_REQUIRED`                                                | **Resume** retries with the same `operationId`        |
+| `DOCUMENT_OPERATION_INVALID`, anything else                                 | -                                                     |
 
-`documents.tree.error.required` is removed: `DOCUMENT_PROTECTED` cannot be reached from these dialogs (the
-overview offers no such actions); if any operation returns it, it maps to `documents.reason.protected`.
+`DOCUMENT_PROTECTED` cannot be reached from these dialogs (the overview offers no such actions); if any
+operation returns it, it is shown as the protected-document reason.
 
 ### 3.7 Idle document area (nothing open)
 
@@ -320,11 +320,11 @@ You can add, remove or classify documents later.             body-md secondary
 ### 5.1 Read-only on open
 
 - A document is read-only when `editable` is false or a Specification-wide write capability is
-  unavailable (see contract gap G1). The reason is chosen in this order: `archived`,
+  unavailable (the contract has no per-document write action yet). The reason is chosen in this order: `archived`,
   `git-policy-invalid`, `branch-protected`, `branch-not-allowed`, `commit-blocked`, `not-editable`,
   `not-implemented`.
 - The first line of the document content is an `InlineNote` (info): `Read-only: <reason>` plus the remedy
-  for that reason (section 8). It is in the document flow, not sticky, not a box. The Edit action is not
+  for that reason. It is in the document flow, not sticky, not a box. The Edit action is not
   offered; Show path and Close tab stay.
 - The same Specification-wide reason appears once above the tree (3.1, item 2); the per-document
   `not-editable` reason appears only in the tab.
@@ -425,135 +425,7 @@ You can add, remove or classify documents later.             body-md secondary
 Geometry that stays stable across states: tree row height and tracks, header action slots, tab widths,
 the Create form order.
 
-## 8. Copy
-
-Keys extend the existing namespaces in `en.json` / `pl.json`. Catalogue texts (archetype and type
-titles, descriptions, useWhen, instructions) come from the catalogue, not from these files (see Q2).
-
-| Key                                      | English                                                                                | Polish                                                                                           |
-| ---------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `documents.tree.noType`                  | No type                                                                                | Bez typu                                                                                         |
-| `documents.tree.fileMissing`             | File missing                                                                           | Brak pliku                                                                                       |
-| `documents.tree.newDocument`             | New document…                                                                          | Nowy dokument…                                                                                   |
-| `documents.tree.assignType`              | Assign type…                                                                           | Przypisz typ…                                                                                    |
-| `documents.tree.removeRegistration`      | Remove registration                                                                    | Usuń rejestrację                                                                                 |
-| `documents.tree.truncated`               | Only the first entries are listed.                                                     | Pokazano tylko pierwsze pozycje.                                                                 |
-| `documents.requirements.title`           | Expected documents                                                                     | Oczekiwane dokumenty                                                                             |
-| `documents.requirements.help`            | {{archetype}} expects these types. Only file presence is checked.                      | {{archetype}} oczekuje tych typów. Sprawdzana jest tylko obecność plików.                        |
-| `documents.requirements.count`           | {{count}} of {{min}}                                                                   | {{count}} z {{min}}                                                                              |
-| `documents.requirements.add`             | Add                                                                                    | Dodaj                                                                                            |
-| `documents.requirements.addLabel`        | Add a {{type}} document                                                                | Dodaj dokument: {{type}}                                                                         |
-| `documents.issues.title`                 | Closing this specification will be refused                                             | Zamknięcie tej specyfikacji zostanie odrzucone                                                   |
-| `documents.issues.caseCollision`         | Two files differ only in letter case: {{path}}                                         | Dwa pliki różnią się tylko wielkością liter: {{path}}                                            |
-| `documents.issues.archiveLimit`          | The folder is larger than the archive allows.                                          | Folder jest większy, niż pozwala archiwum.                                                       |
-| `documents.tree.skipped`                 | {{count}} entry in the folder could not be read. (plural forms)                        | Nie udało się odczytać {{count}} pozycji w folderze. (formy liczby mnogiej)                      |
-| `documents.tree.error.pathInvalid`       | This name or path cannot be used. Choose another name.                                 | Tej nazwy lub ścieżki nie można użyć. Wybierz inną nazwę.                                        |
-| `documents.tree.error.alreadyClassified` | This file already has a type. The documents were refreshed.                            | Ten plik ma już typ. Dokumenty zostały odświeżone.                                               |
-| `documents.tree.error.manifestDirty`     | specification.yaml has uncommitted changes. Commit or discard them, then try again.    | Plik specification.yaml ma niezacommitowane zmiany. Zacommituj je lub odrzuć i spróbuj ponownie. |
-| `documents.tree.error.busy`              | Another change to this specification is in progress. Try again in a moment.            | Trwa inna zmiana tej specyfikacji. Spróbuj ponownie za chwilę.                                   |
-| `documents.tree.error.refused`           | Not changed: {{reason}}                                                                | Nie zmieniono: {{reason}}                                                                        |
-| `documents.tree.error.recovery`          | The files were changed but not committed. Finish the operation before the next change. | Pliki zostały zmienione, ale bez commita. Dokończ operację przed kolejną zmianą.                 |
-| `documents.tree.error.resume`            | Resume                                                                                 | Wznów                                                                                            |
-
-                   | Fix this in the folder (for example with Git), then refresh.                                              | Popraw to w folderze (na przykład w Git), a potem odśwież.                                                     |
-
-| `documents.newDocument.title` | New document | Nowy dokument |
-| `documents.newDocument.inFolder` | In {{folder}} | W folderze {{folder}} |
-| `documents.newDocument.inRoot` | In the main folder of {{specification}}. | W głównym folderze specyfikacji {{specification}}. |
-| `documents.newDocument.typeLabel` | Document type | Typ dokumentu |
-| `documents.newDocument.suggestedBy` | Suggested by {{archetype}} | Sugerowane przez {{archetype}} |
-| `documents.newDocument.otherTypes` | Other types | Inne typy |
-| `documents.newDocument.expected` | Expected · {{count}} of {{min}} | Oczekiwany · {{count}} z {{min}} |
-| `documents.newDocument.present` | {{count}} in this specification | W tej specyfikacji: {{count}} |
-| `documents.newDocument.noType` | No type | Bez typu |
-| `documents.newDocument.noTypeHelp` | Counts as no type. You can assign one later. | Bez typu. Typ możesz przypisać później. |
-| `documents.newDocument.fileName` | File name | Nazwa pliku |
-| `documents.newDocument.fileNameHelp` | The type decides what the document counts as; the name is free. | O tym, czym jest dokument, decyduje typ; nazwa jest dowolna. |
-| `documents.newDocument.guidance` | How to write a {{type}} document | Jak napisać dokument: {{type}} |
-| `documents.newDocument.create` | Create | Utwórz |
-| `documents.newDocument.created` | {{type}} added | Dodano: {{type}} |
-| `documents.classify.title` | Assign a type | Przypisz typ |
-| `documents.classify.description` | {{path}} stays where it is. Its type decides what it counts as in this specification. | {{path}} zostaje na miejscu. Typ decyduje, czym ten plik jest w tej specyfikacji. |
-| `documents.classify.confirm` | Assign type | Przypisz typ |
-| `documents.classify.done` | {{name}} is now {{type}} | {{name}} ma teraz typ {{type}} |
-| `documents.dangling.title` | {{name}} is missing | Brak pliku {{name}} |
-| `documents.dangling.body` | The specification lists {{name}} as a {{type}} document, but the file is not in the folder. It may have been moved or deleted outside SpecFlow. | Specyfikacja wymienia {{name}} jako dokument typu {{type}}, ale pliku nie ma w folderze. Mógł zostać przeniesiony lub usunięty poza SpecFlow. |
-| `documents.dangling.restore` | To keep it, restore the file (for example with Git) and refresh. | Aby go zachować, przywróć plik (na przykład w Git) i odśwież. |
-| `documents.dangling.confirmTitle` | Remove the registration of {{name}}? | Usunąć rejestrację {{name}}? |
-| `documents.dangling.confirmBody` | The specification will no longer list it. No file is deleted. | Specyfikacja przestanie go wymieniać. Żaden plik nie zostanie usunięty. |
-| `documents.readOnly.line` | Read-only: {{reason}} | Tylko do odczytu: {{reason}} |
-| `documents.tree.editingUnavailable` | Editing is unavailable: {{reason}} | Edycja jest niedostępna: {{reason}} |
-| `documents.reason.note` | Unavailable: {{reason}} | Niedostępne: {{reason}} |
-| `documents.reason.protected` | The overview is the main document: it can be edited, but not renamed, moved or deleted. | Przegląd to główny dokument: można go edytować, ale nie można zmienić jego nazwy, przenieść ani usunąć. |
-| `documents.reason.root` | The main folder cannot be renamed, moved or deleted. | Folderu głównego nie można zmienić, przenieść ani usunąć. |
-| `documents.reason.archived` | this specification is archived. | ta specyfikacja jest zarchiwizowana. |
-| `documents.reason.branchProtected` | this branch is protected from SpecFlow commits. | ta gałąź jest chroniona przed commitami SpecFlow. |
-| `documents.reason.branchNotAllowed` | SpecFlow may not commit on this branch. | SpecFlow nie może commitować na tej gałęzi. |
-| `documents.reason.commitBlocked` | Git cannot take a commit right now. | Git nie może teraz przyjąć commita. |
-| `documents.reason.gitPolicyInvalid` | the project's Git settings are invalid. | ustawienia Git projektu są nieprawidłowe. |
-| `documents.reason.busy` | another change to this specification is in progress. | trwa inna zmiana tej specyfikacji. |
-| `documents.reason.notEditable` | this file type can be viewed but not edited here. | ten typ pliku można tu oglądać, ale nie edytować. |
-| `documents.reason.dangling` | The file is missing; only its registration can be removed. | Brak pliku; można tylko usunąć jego rejestrację. |
-| `documents.reason.notImplemented` | not available in this version yet. | jeszcze niedostępne w tej wersji. |
-| `documents.remedy.branch` | To edit, open the specification in a workspace on an allowed branch. | Aby edytować, otwórz specyfikację w środowisku pracy na dozwolonej gałęzi. |
-| `documents.remedy.commitBlocked` | Finish or abort the merge or rebase in this workspace, then try again. | Dokończ lub przerwij merge albo rebase w tym środowisku pracy i spróbuj ponownie. |
-| `documents.remedy.gitPolicy` | Fix the Git settings in the project configuration. | Popraw ustawienia Git w konfiguracji projektu. |
-| `documents.remedy.notEditable` | Download the file to edit it elsewhere. | Pobierz plik, aby edytować go gdzie indziej. |
-| `documents.save.saving` | Saving… | Zapisywanie… |
-| `documents.save.committing` | Saving and committing… | Zapisywanie i commit… |
-| `documents.save.saved` | Saved | Zapisano |
-| `documents.save.committed` | Saved and committed | Zapisano i zacommitowano |
-| `documents.conflict.title` | Not saved: {{name}} changed on disk | Nie zapisano: plik {{name}} zmienił się na dysku |
-| `documents.conflict.body` | The file was changed outside this editor after you opened it. Nothing was overwritten and your changes are still here. | Plik zmienił się poza tym edytorem po jego otwarciu. Nic nie zostało nadpisane, a Twoje zmiany są nadal tutaj. |
-| `documents.conflict.copyMine` | Copy my version | Kopiuj moją wersję |
-| `documents.conflict.loadDisk` | Load the version on disk… | Wczytaj wersję z dysku… |
-| `documents.save.refused` | Not saved: {{reason}} | Nie zapisano: {{reason}} |
-| `documents.save.busy` | Not saved: another change is in progress | Nie zapisano: trwa inna zmiana |
-| `documents.save.recoveryTitle` | Saved to disk, but not committed | Zapisano na dysku, ale bez commita |
-| `documents.save.recoveryBody` | Finish the save before editing further. | Dokończ zapis, zanim będziesz dalej edytować. |
-| `documents.save.resume` | Resume | Wznów |
-| `documents.binary.cannotShow` | This file cannot be shown here. Download it to open it in another program. | Tego pliku nie można tu wyświetlić. Pobierz go, aby otworzyć w innym programie. |
-| `documents.binary.tooLarge` | This file is too large to show here. | Ten plik jest zbyt duży, aby go tu wyświetlić. |
-| `documents.binary.path` / `.type` / `.size` / `.format` | Path / Type / Size / Format | Ścieżka / Typ / Rozmiar / Format |
-| `documents.actions.download` | Download | Pobierz |
-| `documents.image.actualSize` | Actual size | Rzeczywisty rozmiar |
-| `create.archetype.title` | Archetype | Archetyp |
-| `create.archetype.intro` | The shape of the work: which documents the specification starts with and which are expected. You can add, remove or classify documents later. | Kształt pracy: od jakich dokumentów zaczyna się specyfikacja i jakich się oczekuje. Dokumenty możesz później dodawać, usuwać i klasyfikować. |
-| `create.archetype.guidance` | How to work with a {{archetype}} specification | Jak pracować z archetypem {{archetype}} |
-| `create.archetype.documents` | Documents to create | Dokumenty do utworzenia |
-| `create.archetype.always` | {{type}} ({{file}}) is always created. | {{type}} ({{file}}) jest tworzony zawsze. |
-| `create.archetype.expectedUnticked` | {{archetype}} expects a {{type}} document. Without it the specification lists it as missing until you add one. | {{archetype}} oczekuje dokumentu typu {{type}}. Bez niego specyfikacja pokaże go jako brakujący, dopóki go nie dodasz. |
-| `create.archetype.loading` | Archetypes are loading | Wczytywanie archetypów |
-| `create.archetype.loadFailed` | The archetypes could not be loaded | Nie udało się wczytać archetypów |
-| `create.errors.catalogueStale` | The archetypes changed while you were filling the form | Archetypy zmieniły się w trakcie wypełniania formularza |
-| `create.errors.refreshArchetypes` | Refresh archetypes | Odśwież archetypy |
-| `create.subheading.withArchetype (new; replaces create.subheading.specification and create.project.subheading)` | Name the work, choose the archetype that matches it and where it lives. | Nazwij pracę, wybierz pasujący do niej archetyp i miejsce, w którym powstanie. |
-| Create the documents of an archetype and edit them yourself. | Utwórz dokumenty archetypu i edytuj je samodzielnie. |
-| `create.page.settings.archetype` | Archetype | Archetyp |
-| `create.page.settings.documents` | Documents | Dokumenty |
-
-`documents.reason.protected`, `.root` and `.dangling` are whole sentences shown alone (row-menu note).
-The other reasons are lower-case fragments that are always wrapped: `documents.readOnly.line` in a tab,
-`documents.tree.editingUnavailable` above the tree, `documents.reason.note` in a row-menu note,
-`documents.save.refused` in a save refusal; the matching `documents.remedy.*` sentence follows when one
-exists (`branch-protected` and `branch-not-allowed` share `remedy.branch`).
-
-Removed keys: `create.workflowLabel`, `create.subheading.specification`, `create.project.subheading`,
-`create.prerequisite.workflow`, `create.archetype.{info,phases,noPhases,noDescription,requiredDocuments,
-suggestedLater,details,requiredNone,requiredCount_*,suggestedCount_*}`, `documents.tree.required`,
-`documents.tree.requiredReason`, `documents.tree.reason.{required,rootProtected}`,
-`documents.tree.error.required`. Reworded keys (the `workflow` word goes away):
-
-| Key                                                                                                     | English                                                                                                            | Polish                                                                                       |
-| ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
-| `create.method.intro`                                                                                   | Choose whether to start with a conversation with the Spec Writer or with the document skeleton from the archetype. | Wybierz, czy zaczniesz od rozmowy ze Spec Writerem, czy od szkieletu dokumentów z archetypu. |
-| `create.method.manualText`                                                                              | Create the documents the archetype always includes and edit them yourself.                                         | Utwórz dokumenty, które archetyp zawsze zawiera, i edytuj je samodzielnie.                   |
-| `create.archetype.unavailable`                                                                          | The selected archetype is unavailable. Choose another one.                                                         | Wybrany archetyp jest niedostępny. Wybierz inny.                                             |
-| `create.prerequisite.archetype` (replaces `create.prerequisite.workflow`, used in `createReadiness.ts`) | Choose an available archetype.                                                                                     | Wybierz dostępny archetyp.                                                                   |
-
-After this change no user-facing key says "workflow" for this concept.
-
-## 9. Interaction and accessibility
+## 8. Interaction and accessibility
 
 - **Tree rows:** the trailing label is part of the row button's text, so the accessible name reads
   "meeting-2026-10-20.md No type" / "backend.md File missing". The warning glyph is decorative.
@@ -579,112 +451,10 @@ After this change no user-facing key says "workflow" for this concept.
 - Touch: all row actions keep the 44 px hit area of the tree recipe; Add and Download are standard
   buttons.
 
-## 10. Data mapping
-
-| UI element                     | Contract field(s)                                                                                                             |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| Row type label                 | `documents[].type` → `ArchetypeCatalogue.documentTypes[].title` (fallback: the id)                                            |
-| No type                        | `documents[].classification === 'unclassified'`                                                                               |
-| File missing row / missing tab | `dangling[]` (`id`, `path`, `type`, `actions.delete`)                                                                         |
-| Overview menu reason           | `documents[].protected`, `actions.{rename,move,delete}.reason === 'protected'`                                                |
-| Assign type availability       | `documents[].actions.classify`, `capabilities.classify`                                                                       |
-| Expected documents             | `completeness.requirements[]` where `!satisfied` (`documentType`, `count`, `minCount`); `archetype.title`                     |
-| Close issues                   | `issues[]` with `path-case-collision` / `archive-limit`                                                                       |
-| Skipped line                   | `issues[]` `skipped-entry`, `skippedEntries`                                                                                  |
-| Add availability               | `capabilities.createFile`                                                                                                     |
-| Truncated line                 | `truncated`                                                                                                                   |
-| Read-only line (tree)          | `capabilities.{createFile,createFolder,import}.reason` when all unavailable                                                   |
-| Read-only line (tab)           | `DocumentContent.editable`, Specification-wide reason (G1)                                                                    |
-| New document chooser           | catalogue `documentTypes[]`, archetype `documents[]` (templates, G4), requirement results, per-type counts from `documents[]` |
-| Create request                 | `CreateArchetypeSelection`: `archetypeId`, `archetypeVersion`, `catalogueRevision`, `optionalDocumentIds`                     |
-| Create section                 | `archetypes[].{title, useWhen, instructions, requirements, documents[].{include, preselected, filename, type, title}}`        |
-| Tab label / tooltip            | file name of `path` / `path` + `DocumentContent.title`; heading = `title`                                                     |
-| Viewer choice                  | `DocumentContent.kind`, `mediaType`, `size`; image/download from `GET …/raw[?download=1]`                                     |
-| Save                           | `SaveInput.expectedRevision` = last read `revision`; `SaveResult.{revision, committed}`                                       |
-| Id follow                      | `DocumentOperationResult.documents[].id` (classify, rename, move)                                                             |
-
-Freshness: the tree is refetched after every document operation and after a save (completeness can change); a refetch never moves focus. Loading and failure of the tree, the catalogue
-and a document keep today's states.
-
-## 11. Component and ownership map
-
-| Region                     | Component                                                              | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| -------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tree rows                  | tree recipes (`treeLeafItemClassName`, …)                              | Reuse. **DS change:** `treeRequiredLabelClassName` / `treeRequiredMarkerClassName` become a generic trailing label (`treeTrailingLabelClassName`, keep the old names as aliases until the product stops using them). Not blocking.                                                                                                                                                                                                                                                                                                                                                                                          |
-| Close issues               | `Alert tone="attention"`                                               | Reuse.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| Expected documents         | product composition (Typography, Button ghost sm)                      | Product-owned; no surface.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| Type chooser               | `RadioGroup` + `RadioGroupOption`, `Field`, `TextInput`, `Collapsible` | Reuse; product component `DocumentTypeChooser` shared by both flows.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| New document / Assign type | `Dialog` at every width                                                | Reuse. **DS gap (blocking for Narrow):** `DialogContent` clips overflow and `DialogBody` does not scroll, so a tall body hides the footer at 390 × 844. Measured: the grid rows resolve to `40px 734px 80px` and the body never scrolls. **Fix (verified on all dialogs with header + body + footer, pixel-identical at 1440):** in `Dialog.tsx` change the `DialogContent` class `grid` to `flex flex-col` and keep `gap-5`; `DialogBody` keeps `min-h-0 overflow-y-auto`. Do not use `grid-rows-[auto_minmax(0,1fr)_auto]` (adds 20 px to two-section dialogs). Check the Figma capture story `dialog-capture` in the PR. |
-| Read-only line             | `InlineNote`                                                           | Reuse.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| Save busy                  | `WorkspaceHeader` action                                               | **DS gap:** a header action has no busy state; the mock only changes the label. Add `busy?: boolean` (Spinner in the icon slot, `aria-disabled`) to `WorkspaceHeaderAction`. The `status` slot does not render while `identityContent` holds the tabs (seen in the mock), so it is not an alternative. Not blocking: label-only works.                                                                                                                                                                                                                                                                                      |
-| Save refusal               | `Alert role="alert"`                                                   | Reuse.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| Binary info                | `DescriptionList`, `Button`                                            | Reuse.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| Tabs                       | `ItemTabs` (`state: 'missing'`)                                        | Reuse. **DS bug to fix in the implementation PR:** `MiddleTruncate` (`ItemTabs.tsx` ~70-83) drops the space at the split point (the head span is a truncating flex item, so its trailing space collapses): "Single sign-on - UX" renders as "Single sign-on- UX".                                                                                                                                                                                                                                                                                                                                                           |
-| Create archetype           | `RadioGroup`, `CheckboxField`, `InlineNote`, `Collapsible`             | Reuse; replaces `ArchetypeSummary` (AccentBlock) and the `LocalizedOptionPicker`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| Progress rows              | `SummaryRow` in `CreateSettingsList`                                   | Reuse.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-
-Icons: only names already in `iconRegistry` (`file`, `folder`, `triangle-alert`, `plus`, `check`,
-`info`, `ellipsis`, `eye`, `save`, `close`, `chevron-down`). No Lucide import and no new registry
-entry: image rows and tabs use `file`; Download and Actual size are text actions without a glyph. Edit
-(`Pencil`) and Upload (`Upload`) stay exactly as the production code renders them today; this design
-adds no use of them.
-
-## 12. Contract gaps (for the contract owner)
-
-| #   | Gap                                                                                                                                                                                                                                                                                                                                                                            | Needed for                     | Proposal                                                                                                                                                                           |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| G1  | No per-document **edit/save** Action. The tab must infer "read-only because of the branch" from `capabilities.createFile.reason`, and `DocumentContent` has only `editable` (kind).                                                                                                                                                                                            | Read-only reason on open (5.1) | `documents[].actions.save: Action` in the tree (and in `DocumentContent`).                                                                                                         |
-| G4  | Creating a document of a type that has **no template in the Specification's archetype** (for example Architecture in a Feature spec) needs `templateId` xor `content`; the client would have to render the template rule itself. The tree also does not expose the Specification's archetype templates (only id, version, title), and the catalogue may be at a newer version. | New document (3.6)             | Allow `{ type }` alone (Engine renders the generic type template); expose the snapshot's templates (id, type, title, filename) in the tree, or the catalogue by archetype version. |
-| G5  | No branch name with `branch-protected` / `branch-not-allowed`; copy cannot say which branch.                                                                                                                                                                                                                                                                                   | Read-only copy                 | Optional `details.branch` / a `git.branch` field in the tree. Copy works without it.                                                                                               |
-| G6  | `archive-limit` carries no detail (which limit, actual value).                                                                                                                                                                                                                                                                                                                 | Close issues copy              | Optional `limit` / `value`, or accept the generic sentence.                                                                                                                        |
-| G7  | Rename/move of an unclassified file changes its derived `u-` id; UI impact 9 mentions only classification.                                                                                                                                                                                                                                                                     | Id follow (5.4)                | State it in the contract; `DocumentOperationResult.documents[].id` already carries it.                                                                                             |
-| G9  | `SPEC_MANIFEST_DIRTY` refuses every registry change (create with a type, classify, remove registration, rename/move of registered files), but `ActionReason` has no value for it, so the UI cannot warn before the user tries.                                                                                                                                                 | 3.6 failures                   | Add an ActionReason (for example `manifest-dirty`) reported in reads.                                                                                                              |
-| G10 | `skipped-entry`: `tree.ts` and the API reference say only `path-case-collision` and `archive-limit` make Close refuse, while UI impact 14 also lists `skipped-entry`.                                                                                                                                                                                                          | 3.5                            | Decide; the design shows it as a neutral line until the contract says it refuses Close.                                                                                            |
-| G8  | The catalogue requires the `create-options` capability; a reader with View only cannot show type titles.                                                                                                                                                                                                                                                                       | Type labels                    | Fall back to the id (designed), or include `type` titles in the tree.                                                                                                              |
-
-## 13. Owner decisions and open points
+## 9. Owner decisions and open points
 
 | #   | Topic                  | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | --- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Q1  | Initial archetype      | **Decided:** the first archetype of the catalogue (the catalogue's `defaultArchetypeId` when it is present, as in the demo). The UI has no opinion of its own, so catalogue order is meaningful and the backend owns it.                                                                                                                                                                                                                                                                                                                                                                               |
 | Q2  | Polish catalogue texts | **Decided:** the UI shows catalogue text as delivered (English for the built-ins), with no key-based translation in the UI. Translations of catalogue content will be added later through configuration, the client and the backend (probably with an expected-language header); the UI is expected to need no change beyond sending that language. Keep catalogue text out of `en.json`/`pl.json`.                                                                                                                                                                                                    |
 | Q4  | User-facing term       | **Open.** Constraint decided: do not use "Workflow" for this concept (it is not a state machine definition). The concept will be shared by definitions of Specifications, Tasks and similar objects, so the final name has to be generic. Working term until named: "Archetype" / "Archetyp". All its UI text goes through the `create.archetype.*` and related keys listed in section 8, so a rename touches translations only. Collision to resolve with the name: "archetype/role" already labels the agent in Session and Task metadata (`docs/ideas/specflow-ui/screens/task-detail-ui-spec.md`). |
-
-## 14. Implementation notes
-
-Production files that change (by owning area):
-
-- `features/documents/explorer/`: `DocumentNode.tsx` (trailing label rule, dangling glyph),
-  `DocumentTreeLevel.tsx` and `documentTreePolicy.ts` (dangling entries placed at their path; reasons
-  re-keyed to ActionReason; `required` removed), `DocumentNodeMenu.tsx` (Assign type…, Remove
-  registration, `protected` note), `DocumentsExplorer.tsx` (`documentRootActions`: New document… opens
-  the chooser; inline entry kept for folders and rename), `useDocumentOperations.ts` (classify, remove
-  registration, `operationId`, the failure mapping of 3.6), new `DocumentTypeChooser.tsx`, `NewDocumentDialog.tsx`,
-  `AssignTypeDialog.tsx`.
-- `features/documents/workspace/`: `DocumentsTreePanel.tsx` (issues, read-only line, Expected
-  documents), new `ExpectedDocuments.tsx`, `CloseIssues.tsx`; `DocumentsEmptyState.tsx` (ordering by
-  `protected`/type instead of `required`); `DocumentsWorkspace.tsx` (Secondary title from the tab label);
-  `DocumentPane.tsx` (missing tab content for dangling).
-- `features/documents/tabs/DocumentTabsProvider.tsx` and `documentTabs.ts`: labels stay file names (derived title
-  only in the tooltip); id follow with route replace.
-- `features/documents/content-kinds/documentContentKinds.ts`: image and binary kinds; no Edit when
-  read-only. `editor/DocumentEditor.tsx`: read-only line, refusal Alerts. `editor/useDocumentSave.ts`:
-  error mapping of 5.2, `committed`.
-- `features/specs/creation/`: new `options/ArchetypeSection.tsx` replacing `options/ArchetypeSummary.tsx`
-  (and its story/test); `options/CreateBasicsSection.tsx` (demo); `form/CreateProjectForm.tsx` and
-  `form/createProjectReadiness.ts` (archetype required, catalogue state); `operation/startCreate.ts`,
-  `operation/createOperationStorage.ts` (draft keeps archetype and ticks), `workspace/model/createRequest.ts`;
-  `api/api.project.ts` (catalogue from `GET /api/specs/archetypes`); `errors/createSpecErrors.ts`
-  (`CATALOGUE_STALE`, `ARCHETYPE_UNKNOWN`); `progress/createPageView.ts` and
-  `progress/CreateSettingsList.tsx` (two rows); `options/CreateMethodChoice.tsx` copy key only.
-- `i18n/locales/en.json`, `pl.json`: section 8.
-- `packages/nevo-ui`: `design-system/treeRecipes.ts` (generic trailing label), `WorkspaceHeaderAction`
-  busy state, and the `ItemTabs` `MiddleTruncate` whitespace bug (section 11).
-- Docs: this document is listed in `docs/product/specflow/ui/README.md`.
-- Docs: link this document from `documents-editor-mode.md` and `specification-creation.md`; regenerate
-  the docs index. `related` names documents that exist only once PR #92 lands.
-
-Validation scenarios for implementation fixtures: every row of the state table (section 7); a tree with
-all three entry states in one folder; a long unclassified name at 280 px; an owner archetype with a
-requirement on an optional suggestion; save conflict with a dirty draft on a non-active tab; classify of
-the active tab with a draft; New document at 390 px with the keyboard open.

@@ -5156,12 +5156,12 @@
       "status": "draft",
       "file": "docs/product/specflow/ui/documents-archetypes-ui.md",
       "read_when": [
-        "integrating the archetype catalogue, document tree, document read or document operations in the UI",
+        "changing how the UI presents the archetype catalogue, document tree, document read or document operations",
         "changing the Documents tree, its overview state, the New document or Assign type flows",
         "changing the Archetype part of Create Specification or its progress page",
         "changing read-only, save, conflict, image or binary states of a document tab"
       ],
-      "summary": "UI contract for Specification archetypes and documents on the existing screens: the Documents tree (registered, unclassified, dangling, protected overview, unmet requirements, Close-refusing issues), New document from a type and Assign type, the Archetype section of Create and its progress rows, and the document tab states (read-only reason on open, synchronous save, revision conflict, image, binary, missing file; tab labels stay file names).",
+      "summary": "Product behaviour of the UI for Specification archetypes and documents on the existing screens: the Documents tree (registered, unclassified, dangling, protected overview, unmet requirements, Close-refusing issues), New document from a type and Assign type, the Archetype section of Create and its progress rows, and the document tab states (read-only reason on open, synchronous save, revision conflict, image, binary, missing file; tab labels stay file names).",
       "related": [
         "product.specflow.specification-documents",
         "reference.api.specification-documents",

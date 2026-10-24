@@ -1,4 +1,3 @@
-import { sha256Hex } from '../../../hash';
 import type { SpecFlowEngine } from '../../../application';
 import { GitCapabilityError } from '../../../git/errors';
 import { openVersionControl } from '../../../version-control';
@@ -125,6 +124,7 @@ export async function ensureScaffoldCommitted(
   }
 }
 
+/** Precondition: the caller has just run `verifyScaffold`, so the working files are the pinned bytes. */
 async function verifyCommittedScaffold(
   commits: CommitPort,
   root: string,
@@ -139,8 +139,9 @@ async function verifyCommittedScaffold(
     throw recovery('The scaffold commit does not contain exactly the scaffold files.');
   }
   for (const file of record.files) {
-    const content = await commits.fileAt(root, found.sha, file.relativePath);
-    if (content === undefined || sha256Hex(content) !== file.sha256) {
+    // The working file was just verified against the pinned hash; the blob must be what Git stores
+    // for those bytes under the repository's attributes.
+    if (!(await commits.blobMatchesWorkingFile(root, found.sha, file.relativePath))) {
       throw recovery('The scaffold commit content differs from the recorded creation intent.');
     }
   }

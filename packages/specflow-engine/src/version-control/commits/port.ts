@@ -66,8 +66,12 @@ export interface CommitPort {
    * `mixed` (anything else).
    */
   inspectPaths(root: string, paths: readonly string[]): Promise<PathsState>;
-  /** Exact content of `path` in `commitSha`, or undefined when absent there. */
-  fileAt(root: string, commitSha: string, path: string): Promise<string | undefined>;
+  /**
+   * True when the blob of `path` in `commitSha` is exactly what Git stores for the file's current
+   * working-tree bytes: the same `.gitattributes` (text, eol, filters) apply as in a hand `git add`,
+   * but `core.autocrlf` does not. This is the attribute-aware "the commit holds the pinned bytes".
+   */
+  blobMatchesWorkingFile(root: string, commitSha: string, path: string): Promise<boolean>;
   /** True when `ancestor` is `descendant` or one of its ancestors. */
   isAncestor(root: string, ancestor: string, descendant: string): Promise<boolean>;
 }

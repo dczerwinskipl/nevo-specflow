@@ -28,9 +28,11 @@ const BUSY_STATE = [
   'sequencer',
 ] as const;
 /**
- * The Engine commits exactly the bytes it pinned, whatever the user's line-ending settings are:
- * conversion (`core.autocrlf`) and its round-trip check (`core.safecrlf`) are disabled for every
- * command that reads the scaffold working-tree bytes into the index or compares them with the commit.
+ * The Engine commits the pinned working-tree bytes whatever the user's `core.autocrlf` is:
+ * conversion and its round-trip check (`core.safecrlf`) are disabled for every command that reads the
+ * scaffold working-tree bytes into the index or compares them with the commit. `.gitattributes`
+ * still apply, as they do for a hand commit: the blob is what Git's attributes store for the pinned
+ * bytes (see ADR 0013).
  */
 const EXACT_BYTES = ['-c', 'core.autocrlf=false', '-c', 'core.safecrlf=false'] as const;
 const LOCK_RETRIES = 3;
@@ -189,14 +191,23 @@ export function createGitCommitPort(
     return { state: 'committed', sha };
   };
 
-  const fileAt = async (
+  const blobMatchesWorkingFile = async (
     root: string,
     commitSha: string,
     path: string,
-  ): Promise<string | undefined> => {
+  ): Promise<boolean> => {
     if (!OBJECT_ID.test(commitSha)) throw inspectionFailed('object-id');
-    const shown = await executeGit(root, ['show', commitSha + ':' + path]);
-    return shown.exitCode === 0 ? shown.stdout : undefined;
+    // `hash-object <file>` runs the file through the clean filters of its path (attributes), exactly
+    // like `git add`; `--no-filters` would hide an eol rule.
+    const stored = await executeGit(root, [...EXACT_BYTES, 'hash-object', '--', path]);
+    const committed = await executeGit(root, [
+      'rev-parse',
+      '--verify',
+      '--quiet',
+      commitSha + ':' + path,
+    ]);
+    if (stored.exitCode !== 0 || committed.exitCode !== 0) return false;
+    return stored.stdout.trim() === committed.stdout.trim();
   };
 
   const isAncestor = async (
@@ -218,7 +229,7 @@ export function createGitCommitPort(
     head,
     currentBranch,
     inspectPaths,
-    fileAt,
+    blobMatchesWorkingFile,
     isAncestor,
     // Commits in one checkout run one at a time inside this process (they all move the same HEAD);
     // another process is covered by the lost-race retries below.
@@ -312,6 +323,8 @@ export function createGitCommitPort(
  * A commit that provably did not happen must not leave the scaffold files as intent-to-add entries in
  * the user's index. Only paths that HEAD does not track are touched (the user's staged work on a
  * tracked path is never reset). Best effort: a retry works whether or not the cleanup succeeded.
+ * Precondition (ADR 0013): the paths are new files this operation wrote, so no user staging of them
+ * can exist for the reset to drop.
  */
 async function dropIntentToAdd(root: string, paths: readonly string[]): Promise<void> {
   const literals = paths.map((path) => ':(literal)' + path);

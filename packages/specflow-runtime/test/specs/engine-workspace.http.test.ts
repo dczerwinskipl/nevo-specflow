@@ -80,7 +80,7 @@ describe('Engine-backed specification workspace read', () => {
   });
 
   it(
-    'returns the identity of an existing specification with not-implemented sections, 404 for an unknown one',
+    'returns the identity and registered documents of an existing specification with the other sections not implemented, 404 for an unknown one',
     async () => {
       const { root, engine } = await fixture();
       const created = await createSpecificationFromRequest(engine, {
@@ -106,7 +106,21 @@ describe('Engine-backed specification workspace read', () => {
         const unavailable = { state: 'unavailable', reason: 'not_implemented' };
         expect(body.sections).toEqual({
           tasks: unavailable,
-          documents: unavailable,
+          // The registered documents of the manifest, read through the Engine (D3).
+          documents: {
+            state: 'available',
+            data: {
+              items: [
+                {
+                  id: 'overview',
+                  title: 'Actual canonical Spec',
+                  filename: 'overview.md',
+                  revision: expect.stringMatching(/^[0-9a-f]{64}$/u),
+                  kind: 'overview',
+                },
+              ],
+            },
+          },
           sessions: unavailable,
           activity: unavailable,
           repository: unavailable,

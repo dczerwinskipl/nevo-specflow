@@ -205,7 +205,7 @@ describe('listPublicCreateOperations', () => {
     const rows = await listPublicCreateOperations(fx.engine);
     const byId = new Map(rows.map((row) => [row.operationId, row]));
     expect(byId.get(good.operationId)).toMatchObject({ state: 'in-progress' });
-    for (const id of [corrupt, huge, foreign.operationId, ...(symlinked ? [linked] : [])]) {
+    for (const id of [huge, foreign.operationId, ...(symlinked ? [linked] : [])]) {
       expect(byId.get(id), id).toEqual({
         operationId: id,
         kind: 'specification-create',
@@ -214,6 +214,15 @@ describe('listPublicCreateOperations', () => {
         updatedAt: expect.any(String) as string,
       });
     }
+    // Text that is not JSON is an unsupported journal: the same row, plus the stable code.
+    expect(byId.get(corrupt)).toEqual({
+      operationId: corrupt,
+      kind: 'specification-create',
+      state: 'recovery-required',
+      unreadable: true,
+      code: 'CREATE_JOURNAL_UNSUPPORTED',
+      updatedAt: expect.any(String) as string,
+    });
     expect(rows).toHaveLength(symlinked ? 5 : 4);
   });
 

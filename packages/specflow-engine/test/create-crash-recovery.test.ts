@@ -235,7 +235,12 @@ describe('E2.T04 — actual process termination and fresh-process recovery', () 
           .split(String.fromCharCode(10))
           .sort(),
       ).toEqual(saved.files.map((file) => file.relativePath).sort());
-      expect(git(root, 'status', '--porcelain', '--untracked-files=all')).toBe('');
+      // Only the test's own checkpoint markers are untracked.
+      expect(
+        git(root, 'status', '--porcelain', '--untracked-files=all')
+          .split(String.fromCharCode(10))
+          .filter((line) => line !== '' && !/worker-[0-9a-f-]+\.checkpoint$/u.test(line)),
+      ).toEqual([]);
     },
     180000,
   );

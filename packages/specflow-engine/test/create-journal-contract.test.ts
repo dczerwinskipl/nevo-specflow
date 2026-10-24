@@ -16,6 +16,7 @@ import {
   fingerprintCreateClientIntent,
   normalizeCreateClientIntent,
 } from '../src/specs/create/intent';
+import { writeCreatePayload } from '../src/specs/create/journal/payload';
 import {
   createJournalPath,
   publishCreateJournal,
@@ -104,12 +105,12 @@ describe('Durable Create — one canonical journal and Specification format', ()
     expect(await readCreateJournal(context, record.operationId)).toEqual(record);
   });
 
-  it('rejects unsupported journal version 2 and change.yaml rather than migrating them', async () => {
+  it('answers CREATE_JOURNAL_UNSUPPORTED for the previous version and rejects change.yaml rather than migrating them', async () => {
     const context = await fixture();
     const record = currentJournal(context);
-    await seed(context, { ...record, version: 2 }, record.operationId);
+    await seed(context, { ...record, version: 1 }, record.operationId);
     await expect(readCreateJournal(context, record.operationId)).rejects.toMatchObject({
-      code: 'CREATE_JOURNAL_CORRUPT',
+      code: 'CREATE_JOURNAL_UNSUPPORTED',
     });
 
     await seed(
@@ -154,6 +155,15 @@ describe('Durable Create — one canonical journal and Specification format', ()
     const engine = await openSpecFlowEngine({ cwd: context.project.homeRoot });
     const record = currentJournal(context, engine.workspace.workspaceId);
     await seed(context, record, record.operationId);
+    const scaffold = createSpecificationScaffold({
+      archetypeId: 'minimal',
+      specId: record.specId,
+      title: record.title,
+      created: record.created,
+    });
+    await withCreateJournalLock(context, () =>
+      writeCreatePayload(context, record.operationId, scaffold.files),
+    );
 
     const result = await createSpecification(
       engine,

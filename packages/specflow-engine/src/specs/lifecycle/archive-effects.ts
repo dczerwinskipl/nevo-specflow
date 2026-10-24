@@ -9,6 +9,7 @@ import type { SpecFlowEngine } from '../../application';
 import { executeGitMutation } from '../../git/mutation';
 import { executeGit } from '../../git/process';
 import { publishCloseCheckpoint } from './close/checkpoint';
+import { ARCHIVE_FILES_MAX, ARCHIVE_FILE_MAX_BYTES } from './limits';
 import {
   inspectRegisteredWorkspace,
   readWorkspaceRegistry,
@@ -38,7 +39,7 @@ async function expectedFile(path: string): Promise<Buffer> {
   const stat = await lstat(path);
   if (!stat.isFile() || stat.isSymbolicLink())
     throw invalid('Archive source contains redirected/non-file data.');
-  if (stat.size > 32 * 1024 * 1024)
+  if (stat.size > ARCHIVE_FILE_MAX_BYTES)
     throw invalid('Archive source file exceeds bounded inventory size.');
   return readFile(path);
 }
@@ -56,7 +57,8 @@ async function physicalInventory(root: string, relative: string): Promise<CloseA
       const path = rel + '/' + e.name;
       if (e.isDirectory()) await visit(path);
       else {
-        if (files.length >= 4096) throw invalid('Archive inventory file limit exceeded.');
+        if (files.length >= ARCHIVE_FILES_MAX)
+          throw invalid('Archive inventory file limit exceeded.');
         files.push({ relativePath: path, sha256: digest(await expectedFile(join(root, path))) });
       }
     }

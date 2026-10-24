@@ -8,9 +8,8 @@ import {
   ARCHIVE_COUNT_TRAVERSAL_FILES_STOP,
   ARCHIVE_FILES_MAX,
   ARCHIVE_FILE_MAX_BYTES,
-  FOLDER_DEPTH_MAX,
-  LISTED_FILES_MAX,
-} from './limits';
+} from '../lifecycle/limits';
+import { FOLDER_DEPTH_MAX, LISTED_FILES_MAX } from './limits';
 
 /**
  * The two directory walks of the documents reader. Neither follows a symlink, neither takes a lock,

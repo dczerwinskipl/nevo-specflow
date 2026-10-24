@@ -2,9 +2,12 @@
  * Limits of the Specification documents layer. The single authoritative table is "Limits" in
  * `docs/architecture/runtime/specification-documents.md`; these constants are its only code copy and are
  * exported once. All sizes are UTF-8 / raw BYTES, never characters, unless a name says otherwise.
- * Definition text limits (description, useWhen, instructions, template content) live next to the
- * definition schema in `@nevo/specflow-contracts/documents` and are not restated here.
+ * The Close archive limits live in `../lifecycle/limits`. Definition text limits (description,
+ * useWhen, instructions, template content) live next to the definition schema in
+ * `@nevo/specflow-contracts/documents`; the rendered template limit below is that very constant.
  */
+
+import { DEFINITION_TEMPLATE_MAX_BYTES } from '@nevo/specflow-contracts/documents';
 
 const KIB = 1024;
 const MIB = 1024 * KIB;
@@ -27,20 +30,13 @@ export const LISTED_FILES_MAX = 2000;
 /** Folder depth: at most this many folder segments above a file (a folder path has at most this many segments). */
 export const FOLDER_DEPTH_MAX = 8;
 
-/** Close archive: file count it allows (it fails above) and its per-file byte limit. */
-export const ARCHIVE_FILES_MAX = 4096;
-export const ARCHIVE_FILE_MAX_BYTES = 32 * MIB;
-/** Archive count traversal stops at this many files (ARCHIVE_FILES_MAX + 1) or this many entries. */
-export const ARCHIVE_COUNT_TRAVERSAL_FILES_STOP = ARCHIVE_FILES_MAX + 1;
-export const ARCHIVE_COUNT_TRAVERSAL_ENTRIES_MAX = 20000;
-
 /** Added documents at Create. Each file is also bounded by {@link TEXT_CONTENT_MAX_BYTES}. */
 export const ADDED_DOCUMENTS_MAX_FILES = 10;
 export const ADDED_DOCUMENTS_MAX_FOLDERS = 100;
 export const ADDED_DOCUMENTS_MAX_TOTAL_BYTES = 1 * MIB;
 
 /** Rendered template text (64 KiB each). */
-export const TEMPLATE_TEXT_MAX_BYTES = 64 * KIB;
+export const TEMPLATE_TEXT_MAX_BYTES = DEFINITION_TEMPLATE_MAX_BYTES;
 
 /**
  * One path segment in UTF-8 BYTES. Far below the 255 bytes of a file name on common filesystems, so a

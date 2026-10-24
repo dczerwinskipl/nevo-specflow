@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import type { ResolvedProjectHome } from '../../../project/home/home';
 import { MAX_MANAGED_WORKSPACE_SPECIFICATIONS } from '../../../project/workspace/registry/registry';
 import { validateSpecificationSlug } from '../../model';
+import { ARCHIVE_FILES_MAX } from '../limits';
 import { fingerprintCloseIntent, resourcesForClosePlan, type CloseJournal } from '../model';
 
 export const CLOSE_UUID =
@@ -255,7 +256,7 @@ function isArchiveEvidence(value: unknown, plan: Record<string, unknown>, stage:
     typeof value.destinationPath !== 'string' ||
     !Array.isArray(value.files) ||
     value.files.length === 0 ||
-    value.files.length > 4096
+    value.files.length > ARCHIVE_FILES_MAX
   )
     return false;
   const files: readonly unknown[] = value.files;

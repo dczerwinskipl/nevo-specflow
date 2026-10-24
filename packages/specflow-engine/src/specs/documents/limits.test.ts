@@ -1,22 +1,27 @@
+import {
+  AlwaysTemplateDefinitionSchema,
+  DEFINITION_TEMPLATE_MAX_BYTES,
+} from '@nevo/specflow-contracts/documents';
 import { describe, expect, it } from 'vitest';
 
 import { isProtectedDocument, folderContainsProtectedDocument } from './protection';
+import * as archive from '../lifecycle/limits';
 import * as limits from './limits';
 
 describe('limits (architecture "Limits")', () => {
   it('holds the documented values in bytes', () => {
     expect(limits.TEXT_CONTENT_MAX_BYTES).toBe(1_048_576);
     expect(limits.RAW_CONTENT_MAX_BYTES).toBe(25 * 1_048_576);
-    expect(limits.RAW_CONTENT_MAX_BYTES).toBeLessThan(limits.ARCHIVE_FILE_MAX_BYTES);
+    expect(limits.RAW_CONTENT_MAX_BYTES).toBeLessThan(archive.ARCHIVE_FILE_MAX_BYTES);
     expect(limits.CONTENT_HASH_MAX_BYTES).toBe(1_048_576);
     expect(limits.REVISION_MEMO_MAX_ENTRIES).toBe(5000);
     expect(limits.MANIFEST_MAX_BYTES).toBe(256 * 1024);
     expect(limits.LISTED_FILES_MAX).toBe(2000);
     expect(limits.FOLDER_DEPTH_MAX).toBe(8);
-    expect(limits.ARCHIVE_FILES_MAX).toBe(4096);
-    expect(limits.ARCHIVE_COUNT_TRAVERSAL_FILES_STOP).toBe(4097);
-    expect(limits.ARCHIVE_COUNT_TRAVERSAL_ENTRIES_MAX).toBe(20000);
-    expect(limits.ARCHIVE_FILE_MAX_BYTES).toBe(32 * 1_048_576);
+    expect(archive.ARCHIVE_FILES_MAX).toBe(4096);
+    expect(archive.ARCHIVE_COUNT_TRAVERSAL_FILES_STOP).toBe(4097);
+    expect(archive.ARCHIVE_COUNT_TRAVERSAL_ENTRIES_MAX).toBe(20000);
+    expect(archive.ARCHIVE_FILE_MAX_BYTES).toBe(32 * 1_048_576);
     expect(limits.ADDED_DOCUMENTS_MAX_FILES).toBe(10);
     expect(limits.ADDED_DOCUMENTS_MAX_FOLDERS).toBe(100);
     expect(limits.ADDED_DOCUMENTS_MAX_TOTAL_BYTES).toBe(1_048_576);
@@ -43,5 +48,14 @@ describe('overview protection predicate (PC-1)', () => {
     expect(folderContainsProtectedDocument('')).toBe(true);
     expect(folderContainsProtectedDocument('research')).toBe(false);
     expect(folderContainsProtectedDocument('overview.md')).toBe(false);
+  });
+});
+
+describe('limits duplicated by the contracts', () => {
+  it('uses the contract template limit and agrees with the contract path length', () => {
+    expect(limits.TEMPLATE_TEXT_MAX_BYTES).toBe(DEFINITION_TEMPLATE_MAX_BYTES);
+    expect(
+      (AlwaysTemplateDefinitionSchema.properties.filename as { maxLength?: number }).maxLength,
+    ).toBe(limits.DOCUMENT_PATH_MAX_CHARACTERS);
   });
 });

@@ -273,6 +273,23 @@ describe('GET /api/specs/:specId/documents/:documentId/raw', () => {
     }
   });
 
+  it('releases the stream for a HEAD request too', async () => {
+    const served = serving({ 'notes.md': files['notes.md'] });
+    const server = await app(served.source);
+    try {
+      const response = await server.inject({ method: 'HEAD', url: URL('notes.md') });
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['x-content-type-options']).toBe('nosniff');
+      const deadline = Date.now() + 2000;
+      while (!served.streams[0]!.destroyed && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      expect(served.streams[0]!.destroyed).toBe(true);
+    } finally {
+      await server.close();
+    }
+  });
+
   it('sends no body on the wire for a 304', async () => {
     const served = serving({ 'notes.md': files['notes.md'] });
     const server = await app(served.source);

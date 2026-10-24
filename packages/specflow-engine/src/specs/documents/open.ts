@@ -115,11 +115,13 @@ class FileStream extends Readable {
   private position = 0;
   private handleClosed = false;
 
-  constructor(
-    private readonly handle: FileHandle,
-    private readonly size: number,
-  ) {
+  private readonly handle: FileHandle;
+  private readonly size: number;
+
+  constructor(handle: FileHandle, size: number) {
     super();
+    this.handle = handle;
+    this.size = size;
   }
 
   override _read(): void {

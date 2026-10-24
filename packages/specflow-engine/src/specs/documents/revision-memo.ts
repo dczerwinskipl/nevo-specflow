@@ -7,8 +7,10 @@ import { REVISION_MEMO_MAX_ENTRIES } from './limits';
  */
 export class RevisionMemo<T> {
   private readonly entries = new Map<string, T>();
+  private readonly maxEntries: number;
 
-  constructor(private readonly maxEntries: number = REVISION_MEMO_MAX_ENTRIES) {
+  constructor(maxEntries: number = REVISION_MEMO_MAX_ENTRIES) {
+    this.maxEntries = maxEntries;
     if (!Number.isInteger(maxEntries) || maxEntries < 1) {
       throw new RangeError('The revision memo needs a positive size.');
     }

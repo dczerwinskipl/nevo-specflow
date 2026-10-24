@@ -34,6 +34,8 @@ it.skipIf(!process.env.NEVO_LIVE_REFRESH_ROOT)(
         'nevo-specflow',
         'specs',
         'create',
+        '--archetype',
+        'minimal',
         '--title',
         process.env.NEVO_LIVE_REFRESH_TITLE!,
         '--json',

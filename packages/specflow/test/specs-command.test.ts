@@ -66,6 +66,8 @@ describe('E2.T05 — offline CLI Specs capability', () => {
     const operationId = randomUUID();
     await cli.run([
       'create',
+      '--archetype',
+      'minimal',
       '--title',
       'CLI-created canonical Spec',
       '--operation-id',
@@ -105,6 +107,8 @@ describe('E2.T05 — offline CLI Specs capability', () => {
     const retry = command(root);
     await retry.run([
       'create',
+      '--archetype',
+      'minimal',
       '--title',
       'CLI-created canonical Spec',
       '--operation-id',
@@ -122,6 +126,8 @@ describe('E2.T05 — offline CLI Specs capability', () => {
     const create = command(root);
     await create.run([
       'create',
+      '--archetype',
+      'minimal',
       '--title',
       'Stuck create',
       '--operation-id',
@@ -169,7 +175,7 @@ describe('E2.T05 — offline CLI Specs capability', () => {
       addWorkspace(registry, registration),
     );
     const cli = command(linked);
-    await cli.run(['create', '--title', 'Linked target', '--json']);
+    await cli.run(['create', '--archetype', 'minimal', '--title', 'Linked target', '--json']);
     const result = JSON.parse(cli.output[0]!) as {
       workspaceId: string;
       relativeManifestPath: string;
@@ -187,11 +193,11 @@ describe('E2.T05 — offline CLI Specs capability', () => {
     const { root, engine } = await fixture(false);
     const before = await readFile(workspaceRegistryPath(engine.context), 'utf8');
     const cli = command(root);
-    await expect(cli.run(['create', '--title', 'Not allowed', '--worktree'])).rejects.toMatchObject(
-      {
-        code: 'GIT_DISABLED',
-      },
-    );
+    await expect(
+      cli.run(['create', '--archetype', 'minimal', '--title', 'Not allowed', '--worktree']),
+    ).rejects.toMatchObject({
+      code: 'GIT_DISABLED',
+    });
     expect(await readFile(workspaceRegistryPath(engine.context), 'utf8')).toBe(before);
     expect(await discoverSpecifications(engine)).toEqual([]);
   });
@@ -200,10 +206,62 @@ describe('E2.T05 — offline CLI Specs capability', () => {
     const { root, engine } = await fixture(true);
     const cli = command(root);
     await expect(
-      cli.run(['create', '--title', 'No branch', '--branch', 'spec/bad']),
+      cli.run(['create', '--archetype', 'minimal', '--title', 'No branch', '--branch', 'spec/bad']),
     ).rejects.toThrow(
       '--base-ref, --branch and --integration-target-workspace-id require --worktree.',
     );
     expect(await discoverSpecifications(engine)).toEqual([]);
   });
+
+  it('requires --archetype (no default) and names the option in the usage error', async () => {
+    const { root, engine } = await fixture();
+    const cli = command(root);
+    const failure: unknown = await cli
+      .run(['create', '--title', 'No archetype'])
+      .catch((e: unknown) => e);
+    expect(failure).toMatchObject({ code: 'commander.missingMandatoryOptionValue' });
+    expect((failure as Error).message).toContain('--archetype');
+    expect(await discoverSpecifications(engine)).toEqual([]);
+  });
+
+  it('refuses a repeated --with and an unknown archetype before anything is reserved', async () => {
+    const { root, engine } = await fixture();
+    const cli = command(root);
+    await expect(
+      cli.run([
+        'create',
+        '--archetype',
+        'feature',
+        '--title',
+        'Twice',
+        '--with',
+        'ux',
+        '--with',
+        'ux',
+      ]),
+    ).rejects.toThrow('--with ux was given more than once.');
+    await expect(
+      cli.run(['create', '--archetype', 'nope', '--title', 'Unknown']),
+    ).rejects.toMatchObject({ code: 'ARCHETYPE_UNKNOWN' });
+    expect(await discoverSpecifications(engine)).toEqual([]);
+  });
+
+  it('creates the suggested documents and prints the created document ids', async () => {
+    const { root } = await fixture();
+    const cli = command(root);
+    await cli.run([
+      'create',
+      '--archetype',
+      'feature',
+      '--title',
+      'With suggestions',
+      '--with',
+      'behaviour',
+      '--with',
+      'ux',
+      '--json',
+    ]);
+    const result = JSON.parse(cli.output[0]!) as { documentIds: string[] };
+    expect(result.documentIds).toHaveLength(3);
+  }, 120000);
 });

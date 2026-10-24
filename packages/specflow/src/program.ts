@@ -65,8 +65,13 @@ export function createProgram(io: ProgramIO): Command {
     }),
   );
 
-  program.exitOverride();
-  for (const cmd of program.commands) cmd.exitOverride();
+  // Usage errors of nested commands (for example a missing required option of `specs create`) are
+  // thrown like the top-level ones instead of ending the process.
+  const overrideExit = (command: Command): void => {
+    command.exitOverride();
+    for (const child of command.commands) overrideExit(child);
+  };
+  overrideExit(program);
 
   return program;
 }

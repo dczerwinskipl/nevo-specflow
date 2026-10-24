@@ -1,3 +1,4 @@
+import type { DocumentErrorCode } from '@nevo/specflow-contracts/documents';
 import {
   CreateOperationError,
   DocumentError,
@@ -20,8 +21,16 @@ export const CREATE_DOCUMENT_ERROR_CODES = [
   'DOCUMENT_PATH_INVALID',
   'DOCUMENT_PATH_CONFLICT',
   'DOCUMENT_OPERATION_INVALID',
-] as const;
+] as const satisfies readonly DocumentErrorCode[];
 type CreateDocumentErrorCode = (typeof CREATE_DOCUMENT_ERROR_CODES)[number];
+
+const CREATE_DOCUMENT_ERROR_CODE_SET: ReadonlySet<DocumentErrorCode> = new Set(
+  CREATE_DOCUMENT_ERROR_CODES,
+);
+
+function isCreateDocumentErrorCode(code: DocumentErrorCode): code is CreateDocumentErrorCode {
+  return CREATE_DOCUMENT_ERROR_CODE_SET.has(code);
+}
 
 export type CreateErrorCode =
   | CreateOperationError['code']
@@ -113,11 +122,6 @@ export function createErrorCode(error: unknown): CreateErrorCode | undefined {
   ) {
     return error.code;
   }
-  if (
-    error instanceof DocumentError &&
-    (CREATE_DOCUMENT_ERROR_CODES as readonly string[]).includes(error.code)
-  ) {
-    return error.code as CreateDocumentErrorCode;
-  }
+  if (error instanceof DocumentError && isCreateDocumentErrorCode(error.code)) return error.code;
   return undefined;
 }

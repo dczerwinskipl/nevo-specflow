@@ -83,6 +83,8 @@ function failure(code: DocumentErrorCode, details?: DocumentErrorDetails): Docum
  */
 export function documentFailure(error: unknown): DocumentFailure | undefined {
   if (error instanceof DocumentError) return failure(error.code, error.details);
+  // The Engine turns an unknown or malformed id into DOCUMENT_NOT_FOUND itself, but a manifest that
+  // fails to parse reaches here as SPEC_SOURCE_INVALID, so this branch is live (and tested).
   if (error instanceof SpecificationError) {
     return error.code === 'SPEC_NOT_FOUND'
       ? failure('DOCUMENT_NOT_FOUND')

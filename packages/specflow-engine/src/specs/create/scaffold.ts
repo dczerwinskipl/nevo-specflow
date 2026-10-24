@@ -1,49 +1,65 @@
 import { createHash } from 'node:crypto';
-import { isDeepStrictEqual } from 'node:util';
 import { lstat, mkdir, open, readFile, realpath } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-import { createSpecificationScaffold, type SpecificationScaffold } from '../scaffold';
+import type { SpecFlowEngine } from '../../application';
+import { parseSpecificationManifestText } from '../model';
+import type { SpecificationScaffoldFile } from '../scaffold';
 import { CreateOperationError, type CreateJournal } from './journal';
+import { readCreatePayload } from './journal/payload';
 
-/** Durable scaffold contents are immutable until the operation completes. */
-function expectedScaffold(record: CreateJournal): SpecificationScaffold {
-  const scaffold = createSpecificationScaffold({
-    specId: record.specId,
-    title: record.title,
-    created: record.created,
-    goal: record.goal,
-    slug: record.requestIntent.slug,
-    // Interim (D1 to D2): journals carry no archetype yet; D2 replaces this with the journal payload.
-    archetypeId: 'minimal',
-  });
-  if (
-    scaffold.slug !== record.slug ||
-    !isDeepStrictEqual(
-      scaffold.files.map((file) => ({ relativePath: file.relativePath, sha256: file.sha256 })),
-      record.files,
-    )
-  ) {
-    throw recovery('Scaffold evidence differs from immutable creation intent.');
+/**
+ * The scaffold of a journal, read from the verified payload store and NEVER regenerated from the
+ * current code, templates or catalogue. Durable scaffold contents are immutable until the operation
+ * completes. A missing or mismatching payload file is `CREATE_RECOVERY_REQUIRED`.
+ */
+export async function expectedScaffold(
+  engine: Pick<SpecFlowEngine, 'context'>,
+  record: CreateJournal,
+): Promise<readonly SpecificationScaffoldFile[]> {
+  const files: SpecificationScaffoldFile[] = [];
+  for (const file of record.files) {
+    files.push({
+      relativePath: file.relativePath,
+      content: await readCreatePayload(engine.context, record.operationId, file),
+      sha256: file.sha256,
+      bytes: file.bytes,
+    });
   }
-  return scaffold;
+  // The registry the manifest carries must be the one the journal answers with.
+  const manifest = files[0]!;
+  let documentIds: string[];
+  try {
+    documentIds = parseSpecificationManifestText(
+      manifest.content,
+      record.slug,
+      'active',
+    ).documents.map((document) => document.id);
+  } catch {
+    throw recovery('Scaffold manifest in the payload is not a valid manifest.');
+  }
+  if (
+    documentIds.length !== record.documentIds.length ||
+    !documentIds.every((id, index) => id === record.documentIds[index])
+  ) {
+    throw recovery('Scaffold registry differs from the recorded creation intent.');
+  }
+  return files;
 }
 
 export async function writeScaffoldWithEvidence(
+  engine: Pick<SpecFlowEngine, 'context'>,
   record: CreateJournal,
   /** Internal test seam: a real manifest handle is open but not yet written. */
   afterManifestOpened?: () => Promise<void>,
 ): Promise<void> {
-  const scaffold = expectedScaffold(record);
-  for (const file of scaffold.files) {
-    const absolute = join(record.target.workspaceRoot, file.relativePath);
-    const parent = dirname(absolute);
-    // No symlink or path redirection may alter the target after validation.
-    for (const directory of [
-      join(record.target.workspaceRoot, 'specs'),
-      join(record.target.workspaceRoot, 'specs/active'),
-      parent,
-    ]) {
+  const files = await expectedScaffold(engine, record);
+  const root = record.target.workspaceRoot;
+  for (const file of files) {
+    const absolute = join(root, file.relativePath);
+    // No symlink or path redirection may alter the target after validation. Every directory from
+    // `specs` down to the file's parent is created (or verified) one segment at a time.
+    for (const directory of directoriesOf(root, file.relativePath)) {
       try {
         await mkdir(directory);
       } catch (error) {
@@ -76,11 +92,26 @@ export async function writeScaffoldWithEvidence(
   }
 }
 
-export async function verifyScaffold(record: CreateJournal): Promise<void> {
-  expectedScaffold(record);
+export async function verifyScaffold(
+  engine: Pick<SpecFlowEngine, 'context'>,
+  record: CreateJournal,
+): Promise<void> {
+  await expectedScaffold(engine, record);
   for (const file of record.files) {
     await verifyFile(join(record.target.workspaceRoot, file.relativePath), file.sha256);
   }
+}
+
+/** Directories to create or verify, outermost first: `<root>/specs`, then each segment of the parent. */
+function directoriesOf(root: string, relativePath: string): string[] {
+  const segments = dirname(relativePath).split('/');
+  const directories: string[] = [];
+  let current = root;
+  for (const segment of segments) {
+    current = join(current, segment);
+    directories.push(current);
+  }
+  return directories;
 }
 
 async function verifyFile(path: string, expectedHash: string): Promise<void> {

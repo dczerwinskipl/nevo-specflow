@@ -61,7 +61,7 @@ describe('Q00 Create journal current-format acceptance baseline', () => {
       target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
     });
     const original: CreateJournal = {
-      version: 1,
+      version: 2,
       projectId: engine.context.project.projectId,
       operationId: randomUUID(),
       requestIntent,
@@ -70,13 +70,15 @@ describe('Q00 Create journal current-format acceptance baseline', () => {
       slug: scaffold.slug,
       title,
       created: '2026-10-19',
+      catalogueRevision: 'r'.repeat(64),
+      documentIds: scaffold.documentIds,
       stage: 'reserved',
       target: {
         kind: 'existing',
         workspaceId: engine.workspace.workspaceId,
         workspaceRoot: root,
       },
-      files: scaffold.files.map(({ relativePath, sha256 }) => ({ relativePath, sha256 })),
+      files: scaffold.files.map(({ relativePath, sha256, bytes }) => ({ relativePath, sha256, bytes })),
     };
 
     // The commit stages exist only for a journal that pins commit evidence at reservation.

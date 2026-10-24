@@ -40,6 +40,8 @@ export interface CreatedSpecification {
   readonly workspaceId: string;
   readonly workspaceRoot: string;
   readonly relativeManifestPath: string;
+  /** Ids of the registered documents of the new Specification, in registry order. */
+  readonly documentIds: readonly string[];
 }
 
 export interface CreateSpecificationOptions {
@@ -290,6 +292,7 @@ async function createWithVerifiedIntent(
         case 'manifest-writing': {
           await requireTargetIdentity(engine, record);
           await writeScaffoldWithEvidence(
+            engine,
             record,
             afterEffect ? () => afterEffect('manifest-opened') : undefined,
           );
@@ -299,7 +302,7 @@ async function createWithVerifiedIntent(
         }
 
         case 'manifest-written': {
-          await verifyScaffold(record);
+          await verifyScaffold(engine, record);
           if (record.commit) {
             // The commit intent (parent HEAD) is durable BEFORE the Git effect.
             const parentHead = await openVersionControl(engine).commits.head(
@@ -317,7 +320,7 @@ async function createWithVerifiedIntent(
 
         case 'commit-writing': {
           await requireTargetIdentity(engine, record);
-          await verifyScaffold(record);
+          await verifyScaffold(engine, record);
           const commitSha = await ensureScaffoldCommitted(engine, record);
           await afterEffect?.('commit');
           record = await transition(engine, record, 'commit-written', options.onStage, {
@@ -328,14 +331,14 @@ async function createWithVerifiedIntent(
 
         case 'commit-written': {
           await requireTargetIdentity(engine, record);
-          await verifyScaffold(record);
+          await verifyScaffold(engine, record);
           record = await transition(engine, record, 'registry-writing', options.onStage);
           continue;
         }
 
         case 'registry-writing': {
           await requireTargetIdentity(engine, record);
-          await verifyScaffold(record);
+          await verifyScaffold(engine, record);
           await commitBinding(engine, record);
           await afterEffect?.('registry');
           record = await transition(engine, record, 'registry-linked', options.onStage);
@@ -432,7 +435,7 @@ async function verifyResult(engine: SpecFlowEngine, record: CreateJournal): Prom
     });
     if (current.slug !== record.slug) throw recovery('Completed Spec identity changed.');
   } else {
-    await verifyScaffold(record);
+    await verifyScaffold(engine, record);
   }
   const registry = await engine.readRegistry();
   if (
@@ -452,6 +455,7 @@ function resultOf(record: CreateJournal): CreatedSpecification {
     workspaceId: record.target.workspaceId,
     workspaceRoot: record.target.workspaceRoot,
     relativeManifestPath: record.files[0]!.relativePath,
+    documentIds: record.documentIds,
   };
 }
 

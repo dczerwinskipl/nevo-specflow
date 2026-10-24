@@ -59,7 +59,7 @@ function journal(
     target: { kind: 'existing', workspaceId: fx.engine.workspace.workspaceId },
   });
   return {
-    version: 1,
+    version: 2,
     projectId: fx.context.project.projectId,
     operationId: randomUUID(),
     requestIntent,
@@ -68,6 +68,8 @@ function journal(
     slug: 'listing-proof',
     title: 'Listing proof',
     created: '2026-10-14',
+    catalogueRevision: 'r'.repeat(64),
+    documentIds: ['overview'],
     stage: 'reserved',
     target: {
       kind: 'existing',
@@ -75,8 +77,8 @@ function journal(
       workspaceRoot: fx.root,
     },
     files: [
-      { relativePath: 'specs/active/listing-proof/specification.yaml', sha256: 'b'.repeat(64) },
-      { relativePath: 'specs/active/listing-proof/overview.md', sha256: 'c'.repeat(64) },
+      { relativePath: 'specs/active/listing-proof/specification.yaml', sha256: 'b'.repeat(64), bytes: 1 },
+      { relativePath: 'specs/active/listing-proof/overview.md', sha256: 'c'.repeat(64), bytes: 1 },
     ],
     ...overrides,
   };

@@ -5,6 +5,7 @@ import { writeJsonAtomically } from '../../../project/fs/atomic-json';
 import { readFileWindowsSafe } from '../../../project/fs/windows-safe-fs';
 import { withProjectControlLock } from '../../../project/control-lock';
 import type { ResolvedProjectHome } from '../../../project/home/home';
+import { CREATE_JOURNAL_MAX_BYTES } from '../../documents/limits';
 import { CreateOperationError } from '../error';
 import type { CreateJournal } from './model';
 import { UUID, invalidJournal, parseCreateJournal } from './codec';
@@ -39,7 +40,7 @@ export async function readCreateJournal(
   const path = createJournalPath(context, operationId);
   try {
     const stat = await lstat(path);
-    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 65536) {
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size > CREATE_JOURNAL_MAX_BYTES) {
       throw invalidJournal();
     }
     const parsed = JSON.parse(await readFileWindowsSafe(path)) as unknown;

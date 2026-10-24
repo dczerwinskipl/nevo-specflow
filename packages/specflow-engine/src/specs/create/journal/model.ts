@@ -37,9 +37,15 @@ export interface NewWorktreeJournalTarget {
 
 export type CreateJournalTarget = ExistingJournalTarget | NewWorktreeJournalTarget;
 
+/**
+ * Evidence of one scaffold file. The content is NOT in the journal: it lives in the hash-addressed
+ * payload store (`payload.ts`), keyed by `sha256` and verified against `bytes` and `sha256`.
+ */
 export interface CreateJournalFile {
   readonly relativePath: string;
   readonly sha256: string;
+  /** UTF-8 bytes of the content. */
+  readonly bytes: number;
 }
 
 /**
@@ -56,9 +62,14 @@ export interface CreateCommitEvidence {
   readonly commitSha?: string;
 }
 
-/** Single current durable Create format. No unpublished prototype migrations. */
+/**
+ * The single current durable Create format. Older versions are never interpreted: they are
+ * classified as unsupported (`unsupported.ts`) and never block Create or Close.
+ */
+export const CREATE_JOURNAL_VERSION = 2;
+
 export interface CreateJournal {
-  readonly version: 1;
+  readonly version: typeof CREATE_JOURNAL_VERSION;
   readonly projectId: string;
   readonly operationId: string;
   readonly requestIntent: CreateClientIntent;
@@ -70,8 +81,16 @@ export interface CreateJournal {
   /** ISO instant of the reservation. Optional: journals reserved before it existed have none. */
   readonly startedAt?: string;
   readonly goal?: string;
+  /**
+   * Revision of the catalogue the scaffold was generated from. Diagnostic only: recovery reads the
+   * payload and never the live catalogue, so a catalogue that changed since has no effect.
+   */
+  readonly catalogueRevision: string;
+  /** Ids of the registered documents of the scaffold, in registry order. */
+  readonly documentIds: readonly string[];
   readonly stage: CreateStage;
   readonly target: CreateJournalTarget;
+  /** Manifest first, overview second (both fixed), then the remaining scaffold files; unique paths. */
   readonly files: readonly CreateJournalFile[];
   readonly gitPlan?: { readonly projectRoot: string; readonly gitInstanceId: string };
   readonly commit?: CreateCommitEvidence;

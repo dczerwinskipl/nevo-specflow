@@ -64,7 +64,7 @@ function currentJournal(
     target: { kind: 'existing', workspaceId: targetWorkspaceId },
   });
   return {
-    version: 1,
+    version: 2,
     projectId: context.project.projectId,
     operationId: randomUUID(),
     requestIntent,
@@ -73,13 +73,15 @@ function currentJournal(
     slug: scaffold.slug,
     title,
     created,
+    catalogueRevision: 'r'.repeat(64),
+    documentIds: scaffold.documentIds,
     stage: 'reserved',
     target: {
       kind: 'existing',
       workspaceId: targetWorkspaceId,
       workspaceRoot: context.project.homeRoot,
     },
-    files: scaffold.files.map(({ relativePath, sha256 }) => ({ relativePath, sha256 })),
+    files: scaffold.files.map(({ relativePath, sha256, bytes }) => ({ relativePath, sha256, bytes })),
   };
 }
 

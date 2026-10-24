@@ -28,6 +28,14 @@ import {
 } from '../journal';
 import { removeExpiredCompletedCreateJournals } from '../journal/retention';
 import { admitCreateArchetype } from '../admission';
+import { getBuiltInCatalogue } from '../../archetypes/catalogue';
+import { DocumentError } from '../../documents/errors';
+import {
+  CREATE_JOURNAL_GROWTH_HEADROOM_BYTES,
+  CREATE_JOURNAL_MAX_BYTES,
+} from '../../documents/limits';
+import { CREATE_JOURNAL_VERSION } from '../journal/model';
+import { writeCreatePayload } from '../journal/payload';
 import { discoverSpecificationsForCreateAdmission } from '../../discovery';
 import { isValidSpecificationId, validateSpecificationScaffoldInput } from '../../model';
 import { createSpecificationScaffold } from '../../scaffold';
@@ -89,8 +97,10 @@ export async function reserveCreateOperation(
       throw recovery('Cannot reserve new Spec while an existing canonical source is unavailable.');
     }
     const specId = randomUUID();
+    const catalogue = getBuiltInCatalogue();
     const scaffold = createSpecificationScaffold({
       specId,
+      catalogue,
       title: intent.title,
       created,
       goal: intent.goal,
@@ -242,7 +252,7 @@ export async function reserveCreateOperation(
     }
 
     const record: CreateJournal = {
-      version: 1,
+      version: CREATE_JOURNAL_VERSION,
       projectId: engine.context.project.projectId,
       operationId,
       inputFingerprint: fingerprintCreateClientIntent(intent),
@@ -253,11 +263,17 @@ export async function reserveCreateOperation(
       created,
       startedAt: new Date().toISOString(),
       ...(intent.goal ? { goal: intent.goal } : {}),
+      catalogueRevision: catalogue.revision,
+      documentIds: scaffold.documentIds,
       stage: 'reserved',
       target,
       ...(gitPlan ? { gitPlan } : {}),
       ...(commit ? { commit } : {}),
-      files: scaffold.files.map(({ relativePath, sha256 }) => ({ relativePath, sha256 })),
+      files: scaffold.files.map(({ relativePath, sha256, bytes }) => ({
+        relativePath,
+        sha256,
+        bytes,
+      })),
     };
     try {
       await assertSharedResourcesAvailable(engine.context, resourcesForCreate(record));
@@ -270,9 +286,32 @@ export async function reserveCreateOperation(
       }
       throw error;
     }
+    assertJournalFitsItsCap(record);
+    // The scaffold contents are durable in the hash-addressed payload store BEFORE the journal that
+    // refers to them is published; a crash in between leaves only an orphan payload (swept later).
+    await writeCreatePayload(
+      engine.context,
+      operationId,
+      scaffold.files.map(({ sha256, content }) => ({ sha256, content })),
+    );
     await publishCreateJournal(engine.context, record);
     return { record, existing: false };
   });
+}
+
+/**
+ * The journal stays under the one exported cap, with headroom for the evidence later stages add.
+ * Only paths, folders and ids can make it large (contents are not in it); a request that would not
+ * fit is refused as an oversize request before anything is written.
+ */
+function assertJournalFitsItsCap(record: CreateJournal): void {
+  const bytes = Buffer.byteLength(JSON.stringify(record, null, 2), 'utf8') + 1;
+  if (bytes > CREATE_JOURNAL_MAX_BYTES - CREATE_JOURNAL_GROWTH_HEADROOM_BYTES) {
+    throw new DocumentError(
+      'DOCUMENT_OPERATION_INVALID',
+      'The Create request has too many or too long paths to be recorded durably.',
+    );
+  }
 }
 
 function branchesOverlap(left: string, right: string): boolean {

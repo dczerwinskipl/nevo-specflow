@@ -9,6 +9,7 @@ export interface PublicCreateOperation {
   readonly slug: string;
   readonly workspaceId: string;
   readonly relativeManifestPath: string;
+  readonly documentIds: readonly string[];
 }
 
 export type PublicCloseStatus =
@@ -42,6 +43,7 @@ export function projectCreatedSpecification(created: CreatedSpecification): Publ
     slug: created.slug,
     workspaceId: created.workspaceId,
     relativeManifestPath: created.relativeManifestPath,
+    documentIds: created.documentIds,
   };
 }
 

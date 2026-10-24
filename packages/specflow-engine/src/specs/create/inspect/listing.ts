@@ -3,11 +3,10 @@ import { join } from 'node:path';
 
 import type { SpecFlowEngine } from '../../../application';
 import { UUID, parseCreateJournal } from '../journal/codec';
+import { CREATE_JOURNAL_MAX_BYTES } from '../../documents/limits';
 import { CREATE_JOURNAL_RELATIVE_DIR } from '../journal/store';
 import { createStepForStage, type PublicCreateStepId } from './step-mapping';
 
-/** Same size ceiling as the strict journal reader. */
-const MAX_JOURNAL_BYTES = 65536;
 /** A directory this large is not a journal directory worth listing in full. */
 const MAX_JOURNAL_FILES = 5000;
 
@@ -148,7 +147,7 @@ async function readRow(
   stat: { isFile(): boolean; isSymbolicLink(): boolean; size: number },
   updatedAt: Date,
 ): Promise<PublicCreateListingRow> {
-  if (!stat.isFile() || stat.isSymbolicLink() || stat.size > MAX_JOURNAL_BYTES) {
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.size > CREATE_JOURNAL_MAX_BYTES) {
     return unreadable(operationId, updatedAt);
   }
   try {

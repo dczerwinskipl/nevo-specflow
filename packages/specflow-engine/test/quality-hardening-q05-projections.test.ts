@@ -68,6 +68,7 @@ describe('Q05 transport-neutral operation projections', () => {
       workspaceId: randomUUID(),
       workspaceRoot: '/private/worktree',
       relativeManifestPath: 'specs/active/example/specification.yaml',
+      documentIds: ['overview'],
     });
     expect(result).toEqual({
       operationId,

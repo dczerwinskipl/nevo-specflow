@@ -68,7 +68,7 @@ function journal(context: Context, stage: CreateStage): CreateJournal {
     target: { kind: 'existing', workspaceId },
   });
   return {
-    version: 1,
+    version: 2,
     projectId: context.project.projectId,
     operationId: randomUUID(),
     requestIntent,
@@ -77,9 +77,11 @@ function journal(context: Context, stage: CreateStage): CreateJournal {
     slug: scaffold.slug,
     title,
     created: '2026-10-14',
+    catalogueRevision: 'r'.repeat(64),
+    documentIds: scaffold.documentIds,
     stage,
     target: { kind: 'existing', workspaceId, workspaceRoot: context.project.homeRoot },
-    files: scaffold.files.map(({ relativePath, sha256 }) => ({ relativePath, sha256 })),
+    files: scaffold.files.map(({ relativePath, sha256, bytes }) => ({ relativePath, sha256, bytes })),
   };
 }
 

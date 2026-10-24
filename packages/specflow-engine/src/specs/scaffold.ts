@@ -15,6 +15,7 @@ import {
   ADDED_DOCUMENTS_MAX_FILES,
   ADDED_DOCUMENTS_MAX_FOLDERS,
   ADDED_DOCUMENTS_MAX_TOTAL_BYTES,
+  CREATE_SCAFFOLD_FILES_MAX,
   TEMPLATE_TEXT_MAX_BYTES,
   TEXT_CONTENT_MAX_BYTES,
 } from './documents/limits';
@@ -62,6 +63,8 @@ export interface SpecificationScaffoldFile {
   readonly content: string;
   /** Baseline for later admission of known Engine-created dirty files (SC00). */
   readonly sha256: string;
+  /** UTF-8 bytes of `content`. */
+  readonly bytes: number;
 }
 
 export interface SpecificationScaffold {
@@ -83,7 +86,12 @@ export type ScaffoldValidationCause =
   | {
       readonly kind: 'limit-exceeded';
       readonly limit:
-        'added-files' | 'added-folders' | 'added-total-bytes' | 'file-bytes' | 'template-bytes';
+        | 'added-files'
+        | 'added-folders'
+        | 'added-total-bytes'
+        | 'file-bytes'
+        | 'template-bytes'
+        | 'scaffold-files';
       readonly max: number;
       readonly actual: number;
       readonly path?: string;
@@ -217,6 +225,11 @@ export function createSpecificationScaffold(
     throw limit('added-total-bytes', ADDED_DOCUMENTS_MAX_TOTAL_BYTES, totalBytes);
   }
 
+  // The manifest is one more file: the journal lists them all and must stay under its cap.
+  if (files.length + 1 > CREATE_SCAFFOLD_FILES_MAX) {
+    throw limit('scaffold-files', CREATE_SCAFFOLD_FILES_MAX, files.length + 1);
+  }
+
   const requestedFolders = input.folders ?? [];
   if (requestedFolders.length > ADDED_DOCUMENTS_MAX_FOLDERS) {
     throw limit('added-folders', ADDED_DOCUMENTS_MAX_FOLDERS, requestedFolders.length);
@@ -336,5 +349,6 @@ function fingerprint(relativePath: string, content: string): SpecificationScaffo
     relativePath,
     content,
     sha256: createHash('sha256').update(content, 'utf8').digest('hex'),
+    bytes: Buffer.byteLength(content, 'utf8'),
   };
 }

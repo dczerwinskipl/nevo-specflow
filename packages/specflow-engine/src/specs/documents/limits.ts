@@ -49,8 +49,15 @@ export const DOCUMENT_PATH_MAX_CHARACTERS = 500;
 export const HTTP_BODY_SAVE_AND_CREATE_MAX_BYTES = 2 * MIB;
 export const HTTP_BODY_DOCUMENT_OPERATION_MAX_BYTES = 256 * KIB;
 
-/** Create journal file cap (the existing 64 KiB). */
+/**
+ * Create journal file cap (the existing 64 KiB). The one constant read by the strict store, the
+ * tolerant listing and the retention sweep; scaffold contents are not stored in the journal.
+ */
 export const CREATE_JOURNAL_MAX_BYTES = 64 * KIB;
+/** Room kept free at reservation for the evidence later stages add (commit ids, a reason). */
+export const CREATE_JOURNAL_GROWTH_HEADROOM_BYTES = 4 * KIB;
+/** Files of one Create scaffold: the manifest, the overview, further templates and added documents. */
+export const CREATE_SCAFFOLD_FILES_MAX = 64;
 
 /** Bytes of a file inspected to decide whether text content is really text. */
 export const CONTENT_SNIFF_BYTES = 8 * KIB;

@@ -72,7 +72,7 @@ describe('paths, links and hidden entries', () => {
     }
   }, 240000);
 
-  it('reports a registered file replaced by a symlink as dangling and never reads it', async () => {
+  it('reports a registered file replaced by a symlink only as skipped and never reads it', async () => {
     const fixture = await project();
     const outside = await mkdtemp(join(tmpdir(), 'specflow-outside-'));
     trackRoot(outside);
@@ -87,7 +87,10 @@ describe('paths, links and hidden entries', () => {
     await unlink(join(hand.dir, 'note.md'));
     await symlink(join(outside, 'secret.md'), join(hand.dir, 'note.md'));
     const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
-    expect(tree.dangling.map((entry) => entry.id)).toEqual(['note']);
+    // Present but not safely readable is not "file missing": skipped only, never dangling.
+    expect(tree.dangling).toEqual([]);
+    expect(tree.issues.some((issue) => issue.code === 'dangling')).toBe(false);
+    expect(tree.issues).toContainEqual({ code: 'skipped-entry', path: 'note.md' });
     expect(tree.skippedEntries).toBe(1);
     expect(JSON.stringify(tree)).not.toContain('SECRET');
     expect(
@@ -109,7 +112,9 @@ describe('paths, links and hidden entries', () => {
     });
     await symlink(outside, join(hand.dir, 'linked'));
     const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
-    expect(tree.dangling.map((entry) => entry.id)).toEqual(['inner']);
+    expect(tree.dangling).toEqual([]);
+    expect(tree.issues.some((issue) => issue.code === 'dangling')).toBe(false);
+    expect(tree.issues).toContainEqual({ code: 'skipped-entry', path: 'linked/inner.md' });
     expect(JSON.stringify(tree)).not.toContain('SECRET');
     expect(
       code(await failure(readSpecificationDocument(fixture.engine, hand.specId, 'inner'))),
@@ -222,46 +227,6 @@ describe('paths, links and hidden entries', () => {
     await expect(readSpecificationDocumentTree(fixture.engine, hand.specId)).rejects.toMatchObject({
       code: 'SPEC_SOURCE_INVALID',
     });
-  }, 240000);
-});
-
-describe('registered files replaced by redirections', () => {
-  it('reports a registered file swapped for a symlink only as skipped, not dangling', async () => {
-    const fixture = await project();
-    const outside = await mkdtemp(join(tmpdir(), 'specflow-outside-'));
-    trackRoot(outside);
-    await writeFile(join(outside, 'secret.md'), '# SECRET\n');
-    const hand = await handBuilt(fixture, {
-      documents: [
-        { id: 'overview', path: 'overview.md', type: 'overview' },
-        { id: 'note', path: 'note.md', type: 'note' },
-      ],
-      files: { 'overview.md': '# o\n' },
-    });
-    await symlink(join(outside, 'secret.md'), join(hand.dir, 'note.md'));
-    const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
-    expect(tree.dangling).toEqual([]);
-    expect(tree.issues).toContainEqual({ code: 'skipped-entry', path: 'note.md' });
-    expect(tree.issues.some((issue) => issue.code === 'dangling')).toBe(false);
-  }, 240000);
-
-  it('reports a registered file below an ancestor replaced by a symlink only as skipped', async () => {
-    const fixture = await project();
-    const outside = await mkdtemp(join(tmpdir(), 'specflow-outside-'));
-    trackRoot(outside);
-    await writeFile(join(outside, 'a.md'), '# A\n');
-    const hand = await handBuilt(fixture, {
-      documents: [
-        { id: 'overview', path: 'overview.md', type: 'overview' },
-        { id: 'inner', path: 'sub/a.md', type: 'note' },
-      ],
-      files: { 'overview.md': '# o\n' },
-    });
-    await symlink(outside, join(hand.dir, 'sub'));
-    const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
-    expect(tree.dangling).toEqual([]);
-    expect(tree.issues).toContainEqual({ code: 'skipped-entry', path: 'sub/a.md' });
-    expect(tree.issues.some((issue) => issue.code === 'dangling')).toBe(false);
   }, 240000);
 });
 

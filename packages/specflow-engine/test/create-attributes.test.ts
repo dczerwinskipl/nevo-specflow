@@ -149,7 +149,7 @@ describe('Create with .gitattributes line-ending rules', () => {
   });
 
   describe('a hand commit made under the user autocrlf=true', () => {
-    it('is refused without a normalising rule, and re-committing with autocrlf=false resumes', async () => {
+    it('is refused without a normalising rule, and a follow-up commit with autocrlf=false resumes', async () => {
       const { root, engine } = await project(undefined, 'true');
       const parent = git(root, 'rev-parse', 'HEAD');
       const request = input(engine, 'one\r\ntwo\r\n');
@@ -162,13 +162,12 @@ describe('Create with .gitattributes line-ending rules', () => {
         createSpecification(engine, request, { resumeInterruptedOperation: true }),
       ).rejects.toMatchObject({ code: 'CREATE_RECOVERY_REQUIRED' });
 
-      // The documented remedy: redo the hand commit with autocrlf=false, then finish the operation.
-      git(root, 'reset', '-q', '--soft', parent);
-      git(root, 'reset', '-q');
+      // The documented remedy: a follow-up commit of the same files with autocrlf=false. History is
+      // not rewritten: the refused resume already pinned the parent HEAD in the journal.
       git(root, '-c', 'core.autocrlf=false', 'add', 'specs');
       git(root, '-c', 'user.name=H', '-c', 'user.email=h@e.invalid', 'commit', '-qm', 'by hand');
       await createSpecification(engine, request, { resumeInterruptedOperation: true });
-      expect(git(root, 'rev-list', '--count', parent + '..HEAD')).toBe('1');
+      expect(git(root, 'rev-list', '--count', parent + '..HEAD')).toBe('2');
       expect((await inspectCreateSpecification(engine, request.operationId))?.stage).toBe(
         'completed',
       );

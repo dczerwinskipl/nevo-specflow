@@ -171,6 +171,7 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
           slug: created.slug,
           workspaceId: engine.workspace.workspaceId,
           relativeManifestPath: created.relativeManifestPath,
+          documentIds: ['overview'],
         });
         expect(await readFile(join(root, created.relativeManifestPath), 'utf8')).toContain(
           created.specId,

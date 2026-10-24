@@ -60,8 +60,7 @@ export const documentTypes: MockDocumentType[] = [
     title: 'Architecture',
     description:
       'Structural analysis: boundaries, options considered, constraints and the chosen structure.',
-    useWhen:
-      'The work reshapes modules, ownership or dependencies, or answers a design question.',
+    useWhen: 'The work reshapes modules, ownership or dependencies, or answers a design question.',
     instructions:
       'Describe the structure: the problem, the boundaries and owners involved, the options considered with their trade-offs, the chosen structure and the constraints it imposes.',
     defaultFilename: 'architecture.md',

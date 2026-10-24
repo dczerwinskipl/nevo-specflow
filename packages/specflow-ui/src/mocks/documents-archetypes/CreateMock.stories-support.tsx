@@ -44,13 +44,7 @@ export interface CreateMockProps {
   scenario: CreateScenario;
 }
 
-function ArchetypeSection({
-  catalogue,
-  initial,
-}: {
-  catalogue: MockArchetype[];
-  initial: string;
-}) {
+function ArchetypeSection({ catalogue, initial }: { catalogue: MockArchetype[]; initial: string }) {
   const headingId = useId();
   // Product default: minimal (Q1). Stories that need the suggestions pass another choice.
   const [archetypeId, setArchetypeId] = useState(initial);
@@ -118,7 +112,9 @@ function ArchetypeSection({
               <CheckboxField
                 key={key}
                 checked={ticked[key]}
-                onCheckedChange={(value) => setTicked((prev) => ({ ...prev, [key]: value === true }))}
+                onCheckedChange={(value) =>
+                  setTicked((prev) => ({ ...prev, [key]: value === true }))
+                }
                 label={type.title}
                 description={
                   <>
@@ -253,11 +249,15 @@ function Page({ scenario }: { scenario: CreateScenario }) {
         }
       >
         <AppContent
-          className={narrow ? 'mx-auto w-content-narrow max-w-full' : 'w-content-standard max-w-full'}
+          className={
+            narrow ? 'mx-auto w-content-narrow max-w-full' : 'w-content-standard max-w-full'
+          }
         >
           <AppWorkspaceBody scroll="area" padding="none">
             <div className="p-4 sm:p-6">
-              <AppContentContainer size={narrow ? 'narrow' : 'standard'}>{content}</AppContentContainer>
+              <AppContentContainer size={narrow ? 'narrow' : 'standard'}>
+                {content}
+              </AppContentContainer>
             </div>
           </AppWorkspaceBody>
         </AppContent>

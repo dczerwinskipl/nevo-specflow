@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import {
   Alert,
   AppContent,
@@ -113,6 +113,7 @@ function trailingLabel(
 
 function RowMenu({ doc, open }: { doc: MockDocument; open?: boolean }) {
   const name = fileName(doc.path);
+  const noteId = useId();
   const reason = doc.protected
     ? 'The overview is the main document: it can be edited, but not renamed, moved or deleted.'
     : undefined;
@@ -126,7 +127,7 @@ function RowMenu({ doc, open }: { doc: MockDocument; open?: boolean }) {
           aria-label={`Actions for ${name}`}
         />
       </MenuTrigger>
-      <MenuContent align="end">
+      <MenuContent align="end" aria-describedby={reason ? noteId : undefined}>
         {doc.protected ? null : doc.state === 'dangling' ? (
           <MenuItem tone="danger" onSelect={noop}>
             Remove registration
@@ -146,7 +147,7 @@ function RowMenu({ doc, open }: { doc: MockDocument; open?: boolean }) {
             </MenuItem>
           </>
         )}
-        {reason && <MenuNote>{reason}</MenuNote>}
+        {reason && <MenuNote id={noteId}>{reason}</MenuNote>}
       </MenuContent>
     </Menu>
   );
@@ -275,16 +276,16 @@ function ExpectedDocuments({
           <span className="min-w-0 truncate text-body-md text-content-secondary">Decisions</span>
           <span className="shrink-0 text-body-sm text-content-muted">0 of 1</span>
           {canAdd && (
-          <Button
-            variant="ghost"
-            size="sm"
-            leadingIcon="plus"
-            className="ml-auto"
-            aria-label="Add a Decisions document"
-            onClick={() => onAdd('decisions')}
-          >
-            Add
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              leadingIcon="plus"
+              className="ml-auto"
+              aria-label="Add a Decisions document"
+              onClick={() => onAdd('decisions')}
+            >
+              Add
+            </Button>
           )}
         </li>
       </ul>
@@ -330,10 +331,16 @@ function TreePanel({
         {!clean && !readOnly && scenario === 'overview' && <CloseIssues />}
         {!clean && <ExpectedDocuments onAdd={onAdd} canAdd={!readOnly} />}
         {!clean && <Separator />}
-        <Tree active={active} menuFor={scenario === 'row-menu' ? 'overview' : undefined} onOpen={onOpen} />
+        <Tree
+          active={active}
+          menuFor={scenario === 'row-menu' ? 'overview' : undefined}
+          onOpen={onOpen}
+        />
         {scenario === 'overview' && (
           // skipped-entry: neutral information, not a Close refusal (contract gap G10).
-          <p className="px-2 text-body-sm text-content-muted">1 entry in the folder could not be read.</p>
+          <p className="px-2 text-body-sm text-content-muted">
+            1 entry in the folder could not be read.
+          </p>
         )}
       </ScrollArea>
     </AppContent>
@@ -367,7 +374,9 @@ function TypeOption({ id }: { id: string }) {
               Expected · {count} of {expected.minCount}
             </span>
           ) : count > 0 ? (
-            <span className="text-body-sm font-normal text-content-muted">{count} in this specification</span>
+            <span className="text-body-sm font-normal text-content-muted">
+              {count} in this specification
+            </span>
           ) : null}
         </span>
       }
@@ -386,7 +395,12 @@ function TypeChoice({
   allowNone: boolean;
 }) {
   return (
-    <RadioGroup value={value} onValueChange={onChange} aria-label="Document type" className="grid gap-4">
+    <RadioGroup
+      value={value}
+      onValueChange={onChange}
+      aria-label="Document type"
+      className="grid gap-4"
+    >
       <Typography as="p" variant="label-sm">
         Suggested by {ownerFeature.title}
       </Typography>
@@ -415,7 +429,9 @@ function Guidance({ type }: { type: string }) {
   if (!info) return null;
   return (
     <Collapsible className="-ml-control-padding-compact">
-      <Collapsible.Trigger className="px-0">How to write a {info.title} document</Collapsible.Trigger>
+      <Collapsible.Trigger className="px-0">
+        How to write a {info.title} document
+      </Collapsible.Trigger>
       <Collapsible.Content>
         <p className="text-body-sm text-content-secondary">{info.instructions}</p>
       </Collapsible.Content>
@@ -462,8 +478,8 @@ function AssignTypeDialog() {
         <DialogHeader>
           <DialogTitle>Assign a type</DialogTitle>
           <DialogDescription>
-            notes/meeting-2026-10-20.md stays where it is. Its type decides what it counts as in this
-            specification.
+            notes/meeting-2026-10-20.md stays where it is. Its type decides what it counts as in
+            this specification.
           </DialogDescription>
         </DialogHeader>
         <DialogBody className="grid gap-6">
@@ -550,13 +566,33 @@ function tabsFor(scenario: DocumentsScenario): TabSpec {
 }
 
 function headerActions(scenario: DocumentsScenario): WorkspaceHeaderAction[] {
-  const path = { id: 'path', label: 'Show path', icon: 'info', group: 'actions', onPress: noop } as const;
-  const close = { id: 'close', label: 'Close tab', icon: 'close', group: 'actions', onPress: noop } as const;
+  const path = {
+    id: 'path',
+    label: 'Show path',
+    icon: 'info',
+    group: 'actions',
+    onPress: noop,
+  } as const;
+  const close = {
+    id: 'close',
+    label: 'Close tab',
+    icon: 'close',
+    group: 'actions',
+    onPress: noop,
+  } as const;
   switch (scenario) {
     case 'saving':
     case 'conflict':
       return [
-        { id: 'preview', label: 'Preview', icon: 'eye', presentation: 'icon', group: 'actions', direct: 'wide', onPress: noop },
+        {
+          id: 'preview',
+          label: 'Preview',
+          icon: 'eye',
+          presentation: 'icon',
+          group: 'actions',
+          direct: 'wide',
+          onPress: noop,
+        },
         {
           id: 'save',
           label: scenario === 'saving' ? 'Saving…' : 'Save',
@@ -569,7 +605,14 @@ function headerActions(scenario: DocumentsScenario): WorkspaceHeaderAction[] {
           shortcut: 'Ctrl+S',
           onPress: noop,
         },
-        { id: 'discard', label: 'Discard changes', icon: 'close', group: 'actions', disabled: scenario === 'saving', onPress: noop },
+        {
+          id: 'discard',
+          label: 'Discard changes',
+          icon: 'close',
+          group: 'actions',
+          disabled: scenario === 'saving',
+          onPress: noop,
+        },
         path,
         close,
       ];
@@ -590,10 +633,7 @@ function headerActions(scenario: DocumentsScenario): WorkspaceHeaderAction[] {
     case 'dangling':
       return [path, close];
     default:
-      return [
-        path,
-        close,
-      ];
+      return [path, close];
   }
 }
 
@@ -617,8 +657,8 @@ function DocumentBody({ scenario }: { scenario: DocumentsScenario }) {
       return (
         <div className="grid gap-4 p-6">
           <InlineNote>
-            Read-only: this branch is protected from SpecFlow commits. To edit, open the specification
-            in a workspace on an allowed branch.
+            Read-only: this branch is protected from SpecFlow commits. To edit, open the
+            specification in a workspace on an allowed branch.
           </InlineNote>
           <div className="max-w-content-narrow">
             <MarkdownDocument source={markdown} />
@@ -688,9 +728,7 @@ function DocumentBody({ scenario }: { scenario: DocumentsScenario }) {
             ))}
           </DescriptionList>
           <div>
-            <Button variant="secondary">
-              Download
-            </Button>
+            <Button variant="secondary">Download</Button>
           </div>
         </div>
       );
@@ -700,7 +738,11 @@ function DocumentBody({ scenario }: { scenario: DocumentsScenario }) {
           <Alert
             tone="attention"
             title="backend.md is missing"
-            actions={<Button size="sm" variant="secondary">Remove registration</Button>}
+            actions={
+              <Button size="sm" variant="secondary">
+                Remove registration
+              </Button>
+            }
           >
             <p>
               The specification lists backend.md as a Backend document, but the file is not in the
@@ -727,7 +769,12 @@ function EmptyDocumentArea({ onOpen }: { onOpen: (id: string) => void }) {
       <ul aria-label="Start with" className="flex flex-col items-start gap-1">
         {start.map((doc) => (
           <li key={doc.id}>
-            <Button variant="ghost" leadingIcon="file" title={doc.path} onClick={() => onOpen(doc.id)}>
+            <Button
+              variant="ghost"
+              leadingIcon="file"
+              title={doc.path}
+              onClick={() => onOpen(doc.id)}
+            >
               {fileName(doc.path)}
             </Button>
           </li>
@@ -785,7 +832,11 @@ function Workspace({ scenario, narrowPage }: DocumentsMockProps) {
                 actions={headerActions(scenario)}
                 menu="complete"
                 title={spec.tabs.find((tab) => tab.id === spec.active)?.label ?? ''}
-                labels={{ moreActions: 'More actions', menuActions: 'Actions', menuDisplay: 'Display' }}
+                labels={{
+                  moreActions: 'More actions',
+                  menuActions: 'Actions',
+                  menuDisplay: 'Display',
+                }}
                 identityContent={
                   <ItemTabs
                     items={spec.tabs}
@@ -850,7 +901,11 @@ function Workspace({ scenario, narrowPage }: DocumentsMockProps) {
                 headingLevel={2}
                 status={savingStatus}
                 title={spec.tabs.find((tab) => tab.id === spec.active)?.label ?? ''}
-                labels={{ moreActions: 'More actions', menuActions: 'Actions', menuDisplay: 'Display' }}
+                labels={{
+                  moreActions: 'More actions',
+                  menuActions: 'Actions',
+                  menuDisplay: 'Display',
+                }}
                 identityContent={
                   <ItemTabs
                     items={spec.tabs}

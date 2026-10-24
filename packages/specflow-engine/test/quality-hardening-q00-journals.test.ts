@@ -101,7 +101,7 @@ describe('Q00 Create journal current-format acceptance baseline', () => {
     }
 
     const rejected: readonly [string, unknown][] = [
-      ['version 2', { ...original, version: 2 }],
+      ['version 1 (unsupported)', { ...original, version: 1 }],
       ['foreign Project Home', { ...original, projectId: randomUUID() }],
       ['forged fingerprint', { ...original, inputFingerprint: 'a'.repeat(64) }],
       [
@@ -119,6 +119,11 @@ describe('Q00 Create journal current-format acceptance baseline', () => {
         { ...original, target: { ...original.target, branch: 'untrusted' } },
       ],
       ['future stage', { ...original, stage: 'future-stage' }],
+      ['missing catalogue revision', { ...original, catalogueRevision: undefined }],
+      [
+        'file with a stored content',
+        { ...original, files: [{ ...original.files[0], content: 'x' }, original.files[1]] },
+      ],
     ];
 
     for (const [name, value] of rejected) {

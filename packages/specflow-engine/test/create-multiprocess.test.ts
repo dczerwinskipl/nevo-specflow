@@ -151,7 +151,7 @@ describe('E2.T04 — cross-process durable create reservation and registry CAS',
     ).toEqual([0, 0]);
     const { readCreateJournal } = await import('../src/specs/create/journal');
     const journal = await readCreateJournal(engine.context, operationId);
-    expect(journal?.version).toBe(1);
+    expect(journal?.version).toBe(2);
     expect(['2026-10-14', '2026-10-15']).toContain(journal?.created);
     expect((await engine.readRegistry()).specBindings).toHaveLength(1);
     expect(await discoverSpecifications(engine)).toHaveLength(1);
@@ -185,7 +185,7 @@ describe('E2.T04 — cross-process durable create reservation and registry CAS',
         await waitForFile(writer.paused, writer);
         const { readCreateJournal } = await import('../src/specs/create/journal');
         const journal = await readCreateJournal(engine.context, operationId);
-        expect(journal?.version).toBe(1);
+        expect(journal?.version).toBe(2);
         expect(journal?.stage).toBe(pausedAt === 'git' ? 'git-initiated' : 'manifest-writing');
 
         const follower = spawnCreateWorker(

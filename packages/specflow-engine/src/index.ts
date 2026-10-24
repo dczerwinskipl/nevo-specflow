@@ -69,6 +69,10 @@ export {
 } from './specs/canonical-source';
 
 export { CreateOperationError } from './specs/create';
+export { DocumentError } from './specs/documents/errors';
+export { catalogueRevision, getBuiltInCatalogue, type ResolvedCatalogue } from './specs/archetypes';
+export type { AddedDocumentInput } from './specs/scaffold';
+export type { CreateArchetypeRef } from './specs/create/intent';
 
 export {
   createSpecificationFromRequest,

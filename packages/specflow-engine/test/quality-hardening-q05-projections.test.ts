@@ -78,6 +78,7 @@ describe('Q05 transport-neutral operation projections', () => {
       slug: 'example',
       workspaceId: result.workspaceId,
       relativeManifestPath: 'specs/active/example/specification.yaml',
+      documentIds: ['overview'],
     });
     expect(JSON.stringify(result)).not.toContain('/private/');
   });

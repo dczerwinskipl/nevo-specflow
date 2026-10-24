@@ -25,9 +25,11 @@ import {
   type CreateSpecificationInput,
   type SpecFlowEngine,
 } from '../src/testing';
+import { WINDOWS_ABSOLUTE_PATH_MAX } from '../src/specs/create/path-bound';
 import { getBuiltInCatalogue } from '../src/specs/archetypes/catalogue';
 import { validateDocuments } from '../src/specs/documents/document-validation';
 import { CREATE_JOURNAL_RELATIVE_DIR } from '../src/specs/create/journal';
+import { SYMLINKS_AVAILABLE } from './support/documents-fixture';
 import { createGitTestProject, git } from './support/git-project';
 
 const roots: string[] = [];
@@ -246,8 +248,15 @@ describe('Create with an archetype: one commit for the whole scaffold', () => {
 
   it('creates and commits a document whose path segments are at the segment limit', async () => {
     const { root, engine } = await project();
-    const longName = 'n'.repeat(197) + '.md';
-    const longFolder = 'f'.repeat(200);
+    // Segments at the 200-byte limit; on Windows they are shrunk to fit the 240-character bound
+    // (see the refusal test below), so this keeps proving a long, committed path there too.
+    let longName = 'n'.repeat(197) + '.md';
+    let longFolder = 'f'.repeat(200);
+    if (process.platform === 'win32') {
+      const room = WINDOWS_ABSOLUTE_PATH_MAX - root.length - 1 - 'specs/active/'.length - 40 - 2;
+      longFolder = 'f'.repeat(Math.floor(room / 2));
+      longName = 'n'.repeat(room - longFolder.length - 3) + '.md';
+    }
     const created = await createSpecification(
       engine,
       request(engine, 'Long names', {
@@ -258,6 +267,29 @@ describe('Create with an archetype: one commit for the whole scaffold', () => {
       'specs/active/' + created.slug + '/' + longFolder + '/' + longName,
     );
     expect(git(root, 'status', '--porcelain', '--untracked-files=all')).toBe('');
+  }, 240000);
+
+  it('refuses a path beyond the Windows bound before reserving or writing anything', async () => {
+    const { root, engine } = await project();
+    const head = git(root, 'rev-parse', 'HEAD');
+    const options = { windowsPathBound: { platform: 'win32' as const } };
+    const over = 'f'.repeat(WINDOWS_ABSOLUTE_PATH_MAX - root.length);
+    await expect(
+      createSpecification(
+        engine,
+        request(engine, 'Too long', {
+          addedDocuments: [{ path: over + '/a.md', type: 'note', content: 'x' }],
+        }),
+        options,
+      ),
+    ).rejects.toMatchObject({
+      code: 'DOCUMENT_PATH_INVALID',
+      details: { cause: 'path-too-long' },
+    });
+    expect(git(root, 'rev-parse', 'HEAD')).toBe(head);
+    expect(git(root, 'status', '--porcelain', '--untracked-files=all')).toBe('');
+    const directory = join(engine.context.project.stateRoot, CREATE_JOURNAL_RELATIVE_DIR);
+    expect(await readdir(directory).catch(() => [])).toEqual([]);
   }, 240000);
 
   it('creates the whole scaffold without a commit when Git is disabled', async () => {
@@ -279,32 +311,36 @@ describe('Create with an archetype: one commit for the whole scaffold', () => {
     expect((await inspectCreateSpecification(engine, created.operationId))?.commit).toBeUndefined();
   }, 240000);
 
-  it('refuses a redirected nested directory instead of writing through it', async () => {
-    const { root, engine } = await project('runtime: {}\ngit:\n  enabled: false\n');
-    const outside = await realpath(await mkdtemp(join(tmpdir(), 'specflow-outside-')));
-    roots.push(outside);
-    const input = request(engine, 'Redirected', {
-      addedDocuments: [{ path: 'notes/a.md', content: 'x' }],
-    });
-    class Stop extends Error {}
-    let slug = '';
-    await expect(
-      createSpecification(engine, input, {
-        afterEffect: async (effect) => {
-          if (effect !== 'reservation') return;
-          slug = (await inspectCreateSpecification(engine, input.operationId))!.slug;
-          throw new Stop();
-        },
-      }),
-    ).rejects.toBeInstanceOf(Stop);
-    const specDirectory = join(root, 'specs/active', slug);
-    await mkdir(specDirectory, { recursive: true });
-    await symlink(outside, join(specDirectory, 'notes'), 'dir');
-    await expect(
-      createSpecification(engine, input, { resumeInterruptedOperation: true }),
-    ).rejects.toMatchObject({ code: 'CREATE_RECOVERY_REQUIRED' });
-    expect(await readdir(outside)).toEqual([]);
-  }, 240000);
+  it.skipIf(!SYMLINKS_AVAILABLE)(
+    'refuses a redirected nested directory instead of writing through it',
+    async () => {
+      const { root, engine } = await project('runtime: {}\ngit:\n  enabled: false\n');
+      const outside = await realpath(await mkdtemp(join(tmpdir(), 'specflow-outside-')));
+      roots.push(outside);
+      const input = request(engine, 'Redirected', {
+        addedDocuments: [{ path: 'notes/a.md', content: 'x' }],
+      });
+      class Stop extends Error {}
+      let slug = '';
+      await expect(
+        createSpecification(engine, input, {
+          afterEffect: async (effect) => {
+            if (effect !== 'reservation') return;
+            slug = (await inspectCreateSpecification(engine, input.operationId))!.slug;
+            throw new Stop();
+          },
+        }),
+      ).rejects.toBeInstanceOf(Stop);
+      const specDirectory = join(root, 'specs/active', slug);
+      await mkdir(specDirectory, { recursive: true });
+      await symlink(outside, join(specDirectory, 'notes'), 'dir');
+      await expect(
+        createSpecification(engine, input, { resumeInterruptedOperation: true }),
+      ).rejects.toMatchObject({ code: 'CREATE_RECOVERY_REQUIRED' });
+      expect(await readdir(outside)).toEqual([]);
+    },
+    240000,
+  );
 });
 
 describe('Create with an archetype: recovery uses the full recorded list', () => {

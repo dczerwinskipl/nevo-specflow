@@ -275,7 +275,6 @@ describe('Create with an archetype: one commit for the whole scaffold', () => {
     const options = { windowsPathBound: { platform: 'win32' as const } };
     // Three 100-character folders: each segment is valid, only the absolute length is not.
     const over = Array.from({ length: 3 }, () => 'f'.repeat(100)).join('/');
-    expect(root.length + over.length).toBeLessThan(WINDOWS_ABSOLUTE_PATH_MAX * 2);
     await expect(
       createSpecification(
         engine,

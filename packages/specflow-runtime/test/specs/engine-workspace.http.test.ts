@@ -21,6 +21,7 @@ import { InMemoryAuthenticationStore } from '../../src/features/auth/authenticat
 import { authCookieNames } from '../../src/features/auth/authentication/http/cookies';
 import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
+import { ARCHETYPE_REQUEST } from '../support/archetype';
 
 function trustedLocalConfig() {
   const config = passwordConfig();
@@ -83,6 +84,7 @@ describe('Engine-backed specification workspace read', () => {
     async () => {
       const { root, engine } = await fixture();
       const created = await createSpecificationFromRequest(engine, {
+        archetype: { id: 'minimal', version: 1 },
         operationId: randomUUID(),
         title: 'Actual canonical Spec',
         target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
@@ -158,6 +160,7 @@ describe('Engine-backed specification workspace read', () => {
           method: 'POST',
           url: '/api/specs',
           payload: {
+            ...ARCHETYPE_REQUEST,
             title: 'From the new workspace',
             operationId,
             target: { kind: 'new-worktree' },
@@ -195,11 +198,13 @@ describe('Engine-backed specification workspace read', () => {
     async () => {
       const { engine } = await fixture();
       const visible = await createSpecificationFromRequest(engine, {
+        archetype: { id: 'minimal', version: 1 },
         operationId: randomUUID(),
         title: 'Granted canonical Spec',
         target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
       });
       const hidden = await createSpecificationFromRequest(engine, {
+        archetype: { id: 'minimal', version: 1 },
         operationId: randomUUID(),
         title: 'Hidden canonical Spec',
         target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },

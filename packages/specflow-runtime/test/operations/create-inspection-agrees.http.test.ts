@@ -43,6 +43,7 @@ async function fixture(clock: { now: Date }) {
   );
   const engine = await bootstrapProjectHome(root);
   const created = await createSpecificationFromRequest(engine, {
+    archetype: { id: 'minimal', version: 1 },
     operationId: randomUUID(),
     title: 'Real create',
     target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },

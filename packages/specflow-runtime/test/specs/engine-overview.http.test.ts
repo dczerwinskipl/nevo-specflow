@@ -90,6 +90,7 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
         expect(empty.json<CurrentSpecsOverview>().items).toEqual([]);
 
         const created = await createSpecificationFromRequest(engine, {
+          archetype: { id: 'minimal', version: 1 },
           operationId: randomUUID(),
           title: 'Actual canonical Spec',
           target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
@@ -168,6 +169,7 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
   it('does not hide unknown canonical Specs when project settings list legacy sections', async () => {
     const { engine } = await fixture();
     const created = await createSpecificationFromRequest(engine, {
+      archetype: { id: 'minimal', version: 1 },
       operationId: randomUUID(),
       title: 'Legacy section config must not hide me',
       target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
@@ -195,6 +197,7 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
   it('filters ungranted unavailable sources before building a user-scoped Overview', async () => {
     const { engine } = await fixture();
     const visible = await createSpecificationFromRequest(engine, {
+      archetype: { id: 'minimal', version: 1 },
       operationId: randomUUID(),
       title: 'Granted canonical Spec',
       target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
@@ -238,6 +241,7 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
   it('isolates a denied linked manifest error from an authorized scoped Overview', async () => {
     const { root, engine } = await fixture();
     const visible = await createSpecificationFromRequest(engine, {
+      archetype: { id: 'minimal', version: 1 },
       operationId: randomUUID(),
       title: 'Authorized primary specification',
       target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },
@@ -302,6 +306,7 @@ describe('E2.T06 — production Engine-backed specification reads', () => {
   it('keeps primary manifest corruption a project integrity failure for scoped reads', async () => {
     const { root, engine } = await fixture();
     const visible = await createSpecificationFromRequest(engine, {
+      archetype: { id: 'minimal', version: 1 },
       operationId: randomUUID(),
       title: 'Visible primary document',
       target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },

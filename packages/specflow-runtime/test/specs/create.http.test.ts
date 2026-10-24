@@ -18,6 +18,7 @@ import { InMemoryAuthenticationStore } from '../../src/features/auth/authenticat
 import { authCookieNames } from '../../src/features/auth/authentication/http/cookies';
 import { createRuntimeApp } from '../../src/server/app';
 import { passwordConfig } from '../auth/support/config';
+import { ARCHETYPE_REQUEST } from '../support/archetype';
 
 const roots: string[] = [];
 const createTestTimeoutMs = process.platform === 'win32' ? 420000 : 30000;
@@ -84,14 +85,14 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
       const anonymous = await app.inject({
         method: 'POST',
         url: '/api/specs',
-        payload: { title: 'Unauthorized' },
+        payload: { ...ARCHETYPE_REQUEST, title: 'Unauthorized' },
       });
       expect(anonymous.statusCode).toBe(401);
       const denied = await app.inject({
         method: 'POST',
         url: '/api/specs',
         headers: auth.headers,
-        payload: { title: 'Unauthorized' },
+        payload: { ...ARCHETYPE_REQUEST, title: 'Unauthorized' },
       });
       expect(denied.statusCode).toBe(403);
       expect(await readFile(path, 'utf8')).toBe(registryBefore);
@@ -122,7 +123,7 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
             method: 'POST',
             url: '/api/specs',
             headers: auth.headers,
-            payload: { title: 'Scoped developer cannot create project Spec' },
+            payload: { ...ARCHETYPE_REQUEST, title: 'Scoped developer cannot create project Spec' },
           })
         ).statusCode,
       ).toBe(403);
@@ -146,7 +147,7 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
       );
       try {
         const operationId = randomUUID();
-        const payload = { title: 'HTTP canonical Spec', operationId };
+        const payload = { ...ARCHETYPE_REQUEST, title: 'HTTP canonical Spec', operationId };
         const first = await app.inject({
           method: 'POST',
           url: '/api/specs',
@@ -197,6 +198,7 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
   it('E2.I02: persists an explicit linked-workspace integration target through HTTP Create', async () => {
     const { root, engine } = await fixture(true);
     const feature = await createSpecificationForTesting(engine, {
+      archetype: { id: 'minimal', version: 1 },
       operationId: randomUUID(),
       title: 'HTTP integration source',
       created: '2026-10-20',
@@ -217,6 +219,7 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
         url: '/api/specs',
         headers: auth.headers,
         payload: {
+          ...ARCHETYPE_REQUEST,
           title: 'HTTP nested worktree',
           operationId: randomUUID(),
           target: {
@@ -256,7 +259,12 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
       );
       try {
         const operationId = randomUUID();
-        const payload = { title: 'Some long title', slug: 'my-slug', operationId };
+        const payload = {
+          ...ARCHETYPE_REQUEST,
+          title: 'Some long title',
+          slug: 'my-slug',
+          operationId,
+        };
         const first = await app.inject({ method: 'POST', url: '/api/specs', payload });
         expect(first.statusCode, first.body).toBe(201);
         expect(first.json<{ slug: string }>().slug).toBe('my-slug');
@@ -279,7 +287,12 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
         const taken = await app.inject({
           method: 'POST',
           url: '/api/specs',
-          payload: { title: 'Another', slug: 'my-slug', operationId: randomUUID() },
+          payload: {
+            ...ARCHETYPE_REQUEST,
+            title: 'Another',
+            slug: 'my-slug',
+            operationId: randomUUID(),
+          },
         });
         expect(taken.statusCode, taken.body).toBe(409);
         expect(taken.json()).toEqual({ error: 'CREATE_CONFLICT', code: 'CREATE_CONFLICT' });
@@ -287,7 +300,7 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
           const bad = await app.inject({
             method: 'POST',
             url: '/api/specs',
-            payload: { title: 'Bad', slug, operationId: randomUUID() },
+            payload: { ...ARCHETYPE_REQUEST, title: 'Bad', slug, operationId: randomUUID() },
           });
           expect(bad.statusCode, slug).toBe(400);
         }
@@ -337,7 +350,7 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
       const result = await app.inject({
         method: 'POST',
         url: '/api/specs',
-        payload: { title: 'Must not persist while Engine is unavailable' },
+        payload: { ...ARCHETYPE_REQUEST, title: 'Must not persist while Engine is unavailable' },
       });
       expect(result.statusCode, result.body).toBe(503);
       expect(result.json()).toMatchObject({ code: 'CONTROL_LOCK_BUSY' });
@@ -357,7 +370,7 @@ describe('E2.T05 — authorized HTTP Spec create adapter', () => {
       const response = await app.inject({
         method: 'POST',
         url: '/api/specs',
-        payload: { title: 'Should never be created' },
+        payload: { ...ARCHETYPE_REQUEST, title: 'Should never be created' },
       });
       expect(response.statusCode).toBe(503);
       expect(response.json()).toMatchObject({ code: 'ENGINE_UNAVAILABLE' });
@@ -534,7 +547,7 @@ describe('E2.I01 — authorized read-only Create options', () => {
           method: 'POST',
           url: '/api/specs',
           headers: auth.headers,
-          payload: { title: 'Protected refusal', operationId: randomUUID() },
+          payload: { ...ARCHETYPE_REQUEST, title: 'Protected refusal', operationId: randomUUID() },
         });
         expect(refused.statusCode, refused.body).toBe(422);
         expect(refused.json()).toEqual({ error: 'BRANCH_PROTECTED', code: 'BRANCH_PROTECTED' });
@@ -546,7 +559,7 @@ describe('E2.I01 — authorized read-only Create options', () => {
           method: 'POST',
           url: '/api/specs',
           headers: auth.headers,
-          payload: { title: 'Detached refusal', operationId: randomUUID() },
+          payload: { ...ARCHETYPE_REQUEST, title: 'Detached refusal', operationId: randomUUID() },
         });
         expect(blocked.statusCode, blocked.body).toBe(409);
         expect(blocked.json()).toEqual({ error: 'COMMIT_BLOCKED', code: 'COMMIT_BLOCKED' });
@@ -634,7 +647,7 @@ describe('E2.I04 — authorized read-only Create operation inspection', () => {
           method: 'POST',
           url: '/api/specs',
           headers: auth.headers,
-          payload: { title: 'Inspect completed Create', operationId },
+          payload: { ...ARCHETYPE_REQUEST, title: 'Inspect completed Create', operationId },
         });
         expect(created.statusCode, created.body).toBe(201);
         const registryBefore = await readFile(workspaceRegistryPath(engine.context), 'utf8');
@@ -697,7 +710,7 @@ describe('E2.I04 — authorized read-only Create operation inspection', () => {
         const created = await app.inject({
           method: 'POST',
           url: '/api/specs',
-          payload: { title: 'Read only checkpoint', operationId },
+          payload: { ...ARCHETYPE_REQUEST, title: 'Read only checkpoint', operationId },
         });
         expect(created.statusCode, created.body).toBe(201);
         const path = join(
@@ -746,13 +759,13 @@ describe('E2.I04 — authorized read-only Create operation inspection', () => {
         const rejected = await app.inject({
           method: 'POST',
           url: '/api/specs',
-          payload: { title: 'x'.repeat(201), operationId: randomUUID() },
+          payload: { ...ARCHETYPE_REQUEST, title: 'x'.repeat(201), operationId: randomUUID() },
         });
         expect(rejected.statusCode, rejected.body).toBe(400);
         const accepted = await app.inject({
           method: 'POST',
           url: '/api/specs',
-          payload: { title: 'x'.repeat(200), operationId: randomUUID() },
+          payload: { ...ARCHETYPE_REQUEST, title: 'x'.repeat(200), operationId: randomUUID() },
         });
         expect(accepted.statusCode, accepted.body).toBe(201);
       } finally {
@@ -767,7 +780,11 @@ describe('E2.I04 — authorized read-only Create operation inspection', () => {
         for (const { method, url, payload } of [
           { method: 'GET' as const, url: '/api/specs/create-options' },
           { method: 'GET' as const, url: '/api/specs/create/operations/' + randomUUID() },
-          { method: 'POST' as const, url: '/api/specs', payload: { title: 'Unavailable' } },
+          {
+            method: 'POST' as const,
+            url: '/api/specs',
+            payload: { ...ARCHETYPE_REQUEST, title: 'Unavailable' },
+          },
         ]) {
           const response = await unavailable.inject({
             method,

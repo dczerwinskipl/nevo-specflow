@@ -49,7 +49,11 @@ describe('branch override: UI rule equals the Engine rule', () => {
   ])('%j', (branch) => {
     let engineAccepts = true;
     try {
-      normalizeCreateClientIntent({ title: 'T', target: { kind: 'new-worktree', branch } });
+      normalizeCreateClientIntent({
+        archetype: { id: 'minimal', version: 1 },
+        title: 'T',
+        target: { kind: 'new-worktree', branch },
+      });
     } catch {
       engineAccepts = false;
     }

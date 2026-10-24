@@ -64,6 +64,7 @@ async function fixture(linked: boolean) {
   const engine = await bootstrapProjectHome(root);
   const registry = await engine.readRegistry();
   const spec = await createSpecificationForTesting(engine, {
+    archetype: { id: 'minimal', version: 1 },
     operationId: randomUUID(),
     title: 'Protected lifecycle HTTP',
     created: '2026-10-19',
@@ -301,6 +302,7 @@ describe('E2.T16 authorized HTTP lifecycle adapters', () => {
     const registry = await engine.readRegistry();
     const workspaceId = registry.specBindings.find((x) => x.specId === a.specId)!.workspaceId;
     const b = await createSpecificationForTesting(engine, {
+      archetype: { id: 'minimal', version: 1 },
       operationId: randomUUID(),
       title: 'HTTP shared sibling',
       created: '2026-10-20',

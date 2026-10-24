@@ -59,6 +59,7 @@ async function project() {
   const engine = await bootstrapProjectHome(root);
   // One real Create: its journal is the template of every handcrafted variant below.
   const created = await createSpecificationFromRequest(engine, {
+    archetype: { id: 'minimal', version: 1 },
     operationId: randomUUID(),
     title: 'Real create',
     target: { kind: 'existing', workspaceId: engine.workspace.workspaceId },

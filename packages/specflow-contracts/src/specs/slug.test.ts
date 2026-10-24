@@ -27,10 +27,16 @@ describe('specification slug rule', () => {
   });
 
   it('accepts an optional slug in the create request and rejects a malformed one', () => {
-    expect(Value.Check(CreateSpecRequestSchema, { title: 'T', slug: 'my-slug' })).toBe(true);
-    expect(Value.Check(CreateSpecRequestSchema, { title: 'T' })).toBe(true);
+    const base = {
+      title: 'T',
+      archetypeId: 'minimal',
+      archetypeVersion: 1,
+      catalogueRevision: 'r',
+    };
+    expect(Value.Check(CreateSpecRequestSchema, { ...base, slug: 'my-slug' })).toBe(true);
+    expect(Value.Check(CreateSpecRequestSchema, base)).toBe(true);
     for (const slug of ['', 'My Slug', 'a--b', '../x', 'a'.repeat(81)]) {
-      expect(Value.Check(CreateSpecRequestSchema, { title: 'T', slug })).toBe(false);
+      expect(Value.Check(CreateSpecRequestSchema, { ...base, slug })).toBe(false);
     }
   });
 });

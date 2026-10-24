@@ -1,6 +1,7 @@
 import { Value } from 'typebox/value';
 import { Type, type Static } from 'typebox';
 
+import { CreateArchetypeSelectionProperties, RegisteredDocumentIdSchema } from '../documents';
 import { SPEC_SLUG_MAX_LENGTH, SPEC_SLUG_PATTERN } from './slug';
 
 const UuidSchema = Type.String({
@@ -35,6 +36,12 @@ export const CreateSpecRequestSchema = Type.Object(
     ),
     operationId: Type.Optional(UuidSchema),
     target: Type.Optional(Type.Union([ExistingSpecTargetSchema, NewSpecWorktreeTargetSchema])),
+    /**
+     * Archetype selection (`archetypeId`, `archetypeVersion`, `catalogueRevision` required;
+     * `optionalDocumentIds`, `addedDocuments`, `folders` optional). There is no default archetype
+     * in the contract; the same property record is the exported `CreateArchetypeSelectionSchema`.
+     */
+    ...CreateArchetypeSelectionProperties,
   },
   { additionalProperties: false },
 );
@@ -49,6 +56,8 @@ export const CreatedSpecSchema = Type.Object(
     slug: Type.String(),
     workspaceId: UuidSchema,
     relativeManifestPath: Type.String(),
+    /** Ids of the registered documents of the new Specification, in manifest order. */
+    documentIds: Type.Array(RegisteredDocumentIdSchema),
   },
   { additionalProperties: false },
 );

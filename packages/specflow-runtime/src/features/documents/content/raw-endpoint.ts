@@ -4,7 +4,7 @@ import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { SpecificationDocumentParamsSchema } from '@nevo/specflow-contracts/documents';
 import { DocumentError } from '@nevo/specflow-engine';
 
-import { matchesEtag } from '../../../server/etag';
+import { matchesEtag, sendNotModified } from '../../../server/etag';
 import { documentReadErrorResponses, replyWithDocumentFailure, viewGuard } from './endpoint';
 import { rawEtag, rawNotModifiedHeaders, rawResponseHeaders } from './raw-headers';
 import type { DocumentReadSource } from './document-read-source';
@@ -49,7 +49,7 @@ export const rawDocumentEndpoint: FastifyPluginCallback<{ source?: DocumentReadS
 
       if (matchesEtag(request.headers['if-none-match'], rawEtag(opened.metadata.revision))) {
         opened.stream.destroy();
-        return reply.headers(rawNotModifiedHeaders(opened.metadata.revision)).code(304).send(null);
+        return sendNotModified(reply.headers(rawNotModifiedHeaders(opened.metadata.revision)));
       }
       // A client that goes away mid-transfer releases the file even if the framework does not.
       reply.raw.once('close', () => {

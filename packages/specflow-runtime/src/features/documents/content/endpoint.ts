@@ -18,7 +18,7 @@ import { SpecCapabilities } from '@nevo/specflow-contracts/specs';
 import { DocumentError } from '@nevo/specflow-engine';
 
 import { requireCapability } from '../../auth';
-import { matchesEtag } from '../../../server/etag';
+import { matchesEtag, sendNotModified } from '../../../server/etag';
 import { documentFailure } from './error-status';
 import type { DocumentReadSource } from './document-read-source';
 
@@ -77,8 +77,8 @@ export const documentContentEndpoint: FastifyPluginCallback<{ source?: DocumentR
         const tree = await source.readTree(request.params.specId);
         const etag = `"${tree.revision}"`;
         reply.header('ETag', etag);
-        // A 304 carries no body on the wire (Node drops it); null only satisfies the typed reply.
-        if (matchesEtag(request.headers['if-none-match'], etag)) return reply.code(304).send(null);
+        // A 304 has no body and no entity headers (see sendNotModified).
+        if (matchesEtag(request.headers['if-none-match'], etag)) return sendNotModified(reply);
         return reply.code(200).send(tree);
       } catch (error) {
         return replyWithDocumentFailure(error, reply);

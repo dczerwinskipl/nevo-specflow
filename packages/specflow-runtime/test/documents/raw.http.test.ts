@@ -297,6 +297,7 @@ describe('GET /api/specs/:specId/documents/:documentId/raw', () => {
     const address = server.server.address();
     if (typeof address !== 'object' || address === null) throw new Error('No address');
     try {
+      const headers: Record<string, string | string[] | undefined> = {};
       const body = await new Promise<string>((resolve, reject) => {
         const req = httpRequest(
           {
@@ -306,6 +307,7 @@ describe('GET /api/specs/:specId/documents/:documentId/raw', () => {
             headers: { 'if-none-match': '"rev-notes.md"' },
           },
           (res) => {
+            Object.assign(headers, res.headers);
             let text = '';
             res.on('data', (chunk: Buffer) => (text += chunk.toString()));
             res.on('end', () => resolve(`${res.statusCode}:${text}`));
@@ -315,6 +317,10 @@ describe('GET /api/specs/:specId/documents/:documentId/raw', () => {
         req.end();
       });
       expect(body).toBe('304:');
+      // No entity headers: the placeholder body must not leak a JSON type or a length of 4.
+      expect(headers['content-type']).toBeUndefined();
+      expect(headers['content-length']).toBeUndefined();
+      expect(headers.etag).toBe('"rev-notes.md"');
     } finally {
       await server.close();
     }

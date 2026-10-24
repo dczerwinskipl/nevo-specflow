@@ -213,6 +213,8 @@ describe('GET /api/specs/:specId/document-tree', () => {
 
       const same = await server.inject({ url, headers: { 'if-none-match': '"tree-1"' } });
       expect(same.statusCode).toBe(304);
+      expect(same.headers['content-type']).toBeUndefined();
+      expect(same.headers['content-length']).toBeUndefined();
       expect(same.headers.etag).toBe('"tree-1"');
       const weak = await server.inject({ url, headers: { 'if-none-match': 'W/"tree-1"' } });
       expect(weak.statusCode).toBe(304);

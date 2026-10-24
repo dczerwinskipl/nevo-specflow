@@ -33,7 +33,7 @@ import {
   type OperationEventsStreamOptions,
   type OperationProgressRegistry,
 } from '../../operations';
-import { matchesEtag } from '../../../server/etag';
+import { matchesEtag, sendNotModified } from '../../../server/etag';
 import { createErrorCode, statusForCreateError } from './error-status';
 import { prefersRespondAsync } from './respond-async';
 import { createOperationPath, runCreate } from './run-create';
@@ -170,9 +170,9 @@ export const specsCreateEndpoint: FastifyPluginCallback<SpecsCreateEndpointOptio
       const catalogue = await Promise.resolve(projectCatalogue());
       const etag = `"${catalogue.revision}"`;
       reply.header('ETag', etag).header('Cache-Control', 'private, no-cache');
-      // A 304 carries no body on the wire (Node drops it); null only satisfies the typed reply.
+      // A 304 has no body and no entity headers (see sendNotModified).
       if (matchesEtag(request.headers['if-none-match'], etag)) {
-        return reply.code(304).send(null);
+        return sendNotModified(reply);
       }
       return reply.code(200).send(catalogue);
     },

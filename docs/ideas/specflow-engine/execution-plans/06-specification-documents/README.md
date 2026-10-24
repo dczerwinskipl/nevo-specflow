@@ -1,0 +1,572 @@
+---
+id: ideas.specflow-engine.plan-06
+type: engineering
+title: Temporary execution plan 06 — Specification documents layer (D0 to D3)
+status: draft
+scope: specflow
+areas: [runtime, workflow, server, testing, ui]
+tags: [execution-plan, temporary, specifications, documents, archetypes]
+read_when:
+  - executing or reviewing any task of slices D0, D1, D2 or D3 of the Specification documents layer
+  - deciding the PR order, branch names or which tests may run on Windows
+  - looking for the pending owner confirmations or the gaps routed back to the specification
+summary: >
+  Disposable task decomposition of slices D0 to D3 of the Specification documents layer into four PR-sized
+  deliveries (D0, D1, D2, D3) with stable task ids, scope, dependencies, spec references, acceptance,
+  unit versus Linux-only verification, implementer profile, review focus, pending owner confirmations and
+  gaps routed back to specification. D-config, D4 and D5 are not planned here.
+related:
+  - ideas.specflow-engine.specification-documents-delivery
+  - architecture.runtime.specification-documents
+  - product.specflow.specification-documents
+  - reference.api.specification-documents
+  - adr.0015-specification-manifest-as-document-registry
+  - adr.0016-engine-owned-document-commits
+  - ideas.specflow-engine.execution-plans
+  - engineering.repository.git-workflow
+  - engineering.shared.testing
+---
+
+# Plan 06 — Specification documents layer, slices D0 to D3
+
+**Lifecycle: temporary planning document.** It owns task boundaries only. Behaviour, rules, limits and contracts stay in
+the linked specification documents, which win on any conflict. Delete this plan when D3 is merged and promoted.
+Language follows [normative language](../../../../architecture/principles/normative-language.md).
+
+## 1. Inputs and reference keys
+
+| Key | Document                                                                                                                                                                         |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DS  | [Delivery specification](../../specification-documents-delivery.md) (section numbers as in that file)                                                                            |
+| AR  | [Architecture](../../../../architecture/runtime/specification-documents.md) (Manifest schema, Definitions, Identity, Content kinds, Limits, Validation results, Invariants)      |
+| PR  | [Product](../../../../product/specflow/specification-documents.md) (Document type catalogue, Authoring instructions, Template skeletons, Archetype catalogue)                    |
+| REF | [Reference](../../../../reference/api/specification-documents.md) (Shared vocabulary, D2, Definition schema, D3, Raw content, Errors, UI impact)                                 |
+| ADR | [0015](../../../../architecture/decisions/0015-specification-manifest-as-document-registry.md), [0016](../../../../architecture/decisions/0016-engine-owned-document-commits.md) |
+
+Out of this plan: D-config (design level), D4 (every state change committed; needs the commit-port gap proof), D5 (UI
+consolidation, demo convergence). Nothing here may pre-empt them beyond the stability list of DS 7a.
+
+## 2. Cross-cutting rules for every task
+
+- **Confirmed owner decisions** (implement, do not re-open): the framework hard-requires only `overview.md`; built-in
+  `minimal`, `feature`, `architecture` require only `overview`; `description`, `useWhen`, `instructions` semantics as
+  in AR "Definitions"; no backward compatibility, alias or default archetype in any contract; every state change is
+  committed (D4); integration tests are Linux-only.
+- **Pending owner confirmation.** Implement exactly as written, keep each in ONE named place so it is cheap to change,
+  and list it in the PR description under "Pending owner confirmation".
+
+| Id   | Default to implement                                                                                                                                                                | Single place                                                                        | Tasks                  |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------- |
+| PC-1 | `overview.md`: id and path fixed; rename and move refused with `protected` like delete (AR parser rule 5, invariant 2)                                                              | One protection predicate in the Engine documents module, used by parser and actions | D1.T01, D1.T03, D3.T01 |
+| PC-2 | Unsupported old Create journals: tolerant classification, never a claim, never blocks Create or Close, sweep deletes after 7 days, `CREATE_JOURNAL_UNSUPPORTED` by id (DS 6 item 3) | One module `create/journal/unsupported.ts` plus one `error-status` line             | D2.T04                 |
+| PC-3 | CLI `nevo-specflow specs create --archetype <id>` is required, no default (DS 6 item 7)                                                                                             | One option definition in the CLI command                                            | D2.T07                 |
+
+- **Testing rule (owner, DS 3.8).** **U** = unit test, may run on the Windows host. **L** = real Git, real worktree,
+  many files, symlink, SIGKILL or Engine commit-port test: **Linux only**. Implementers and reviewers MUST NOT run **L**
+  tests on Windows. Run them after committing, in CI or with
+  `tools/dev/linux-test.sh -- 'pnpm turbo run build --filter=@nevo/specflow-engine^... && cd packages/specflow-engine && npx vitest run test/<file>.test.ts --testTimeout=240000'`
+  (see [local setup](../../../../engineering/repository/local-setup.md)). A task report lists each L test as "written,
+  not run on Windows" until a Linux run is reported. Placement per [testing](../../../../engineering/shared/testing.md):
+  pure tests co-located with source, cross-boundary and real-Git tests in the package `test/` directory. Structure per
+  [code organization](../../../../engineering/shared/code-organization.md): Runtime and CLI stay thin adapters; every
+  document rule lives in the Engine (AR "Ownership").
+- Tasks do not push or open PRs; the delivering agent does that per section 3.
+- **Profiles.** `implementer` = `nevo-agents-implementer`; `implementer-ui` = `nevo-agents-implementer-ui`. Work kinds are
+  planning metadata: `backend`, `ui`, `integration`, `general`.
+
+## 3. PR deliveries, branches and merge strategy
+
+Branches follow [git workflow](../../../../engineering/repository/git-workflow.md): `feature/<slug>`, squash-merged, PR
+title in Conventional Commits form. Because merges are squash-only and the gate requires the branch to be current with
+`main` ([pull requests](../../../../engineering/repository/pull-requests.md)), **the recommended mode is sequential
+merge**: open PR n+1 from the updated `main` after PR n merged. Stacking (branching from the previous feature branch and
+opening the PR early for review) is allowed for speed; after the base PR squash-merges, run
+`git rebase --onto main <old-base-tip> <branch>` and re-run CI. Each PR head is green on its own.
+
+| PR  | Branch (suggested)                   | Slice | Based on                        | Tasks            | Scope                               |
+| --- | ------------------------------------ | ----- | ------------------------------- | ---------------- | ----------------------------------- |
+| PR1 | `feature/documents-contracts`        | D0    | `main`                          | D0.T01 to D0.T03 | Contracts and documentation only    |
+| PR2 | `feature/documents-engine-model`     | D1    | `main` after PR1 (D0 validator) | D1.T01 to D1.T05 | Engine model, catalogue, validation |
+| PR3 | `feature/documents-create-archetype` | D2    | `main` after PR2                | D2.T01 to D2.T09 | Create end to end incl. CLI and UI  |
+| PR4 | `feature/documents-read`             | D3    | `main` after PR3                | D3.T01 to D3.T07 | Reading: tree, content, raw         |
+
+D3 technically needs D0 and D1 only, but its L tests create Specifications through Create, so start it after D2
+(order D0 -> D1 -> D2 -> D3). The specification commits on `feature/documents-archetypes-spec` (ADR 0015/0016, AR, PR,
+REF, DS and this plan) are documentation only and should reach `main` before or together with PR1.
+
+## 4. Review focus per PR
+
+- **PR1 (D0):** `additionalProperties: false` everywhere; every enum and the error-code array defined once; JSON Schema
+  drift test; `Demo*` schemas untouched.
+- **PR2 (D1), strict parser fails closed:** every AR parser rule rejects with `SPEC_SOURCE_INVALID`; unknown keys inside
+  `archetype`/`documents`/`requirements` rejected while unknown top-level keys are preserved on rewrite; serializer output
+  always re-validated by the parser; the old `type`-only manifest rejected; messages name slug and field, never an
+  absolute path; catalogue text verbatim from the PR tables; repository audit for old-shape manifests.
+- **PR3 (D2), journal and recovery:** payload fsynced and renamed before the journal is published; hash verification on
+  resume; `CREATE_RECOVERY_REQUIRED` reason payload; orphan payloads; one exported journal cap used by all three readers;
+  tolerant listing that never throws and never claims; Close admission not blocked; fingerprint covers archetype and
+  added-document hashes; nothing written when admission fails; one commit for the whole list; replay equality.
+- **PR4 (D3), security of paths and raw endpoint:** no symlink following; lstat/realpath/fstat re-verification before and
+  after open; `O_NOFOLLOW` where available; containment inside the Specification directory (`SPEC_SOURCE_UNAVAILABLE`);
+  raw headers (never HTML, nosniff, sandbox CSP, `Content-Disposition`, CORP, header-injection-safe filename); limits in
+  bytes; no control lock and no mutating Git process on reads; `View` authorization.
+
+## 5. Task graph
+
+```text
+PR1: D0.T01 -> D0.T02 -> D0.T03
+PR2: D1.T01 --+-> D1.T03 -> D1.T05
+     D1.T02 --+      \-> D1.T04
+PR3: D2.T01 -> D2.T02 -> D2.T03 -> D2.T04
+                              \-> D2.T05 -> D2.T06 -> D2.T08 (UI)
+                                         \-> D2.T07 (CLI)
+                         D2.T09 (docs) last, after T04..T08
+PR4: D3.T01 -> D3.T02 -> D3.T03 -> D3.T05
+                     \-> D3.T04 -> D3.T05
+                     D3.T04 + D3.T02 -> D3.T06;  D3.T07 last
+```
+
+Parallel-safe pairs (disjoint owners): D1.T01 and D1.T02; D2.T07 and D2.T08 (after D2.T06); D3.T03 and D3.T04.
+D2.T04 and D2.T05 both touch the journal store: sequence them (T04 first). Everything else edits shared barrels,
+`model.ts`, `error-status.ts` or `app.ts` and is sequential.
+
+---
+
+## 6. PR1 — D0 contracts and documentation
+
+### D0.T01 — Shared vocabulary, tree, content, operation and error schemas
+
+- **Goal:** `@nevo/specflow-contracts/documents` exports the TypeBox schemas and types of the shared vocabulary.
+- **Profile / kind:** `implementer` / `backend` (contracts).
+- **Scope:** `packages/specflow-contracts/src/documents/` (new files beside the existing `index.ts`, re-exported from it and
+  from the package index as `specs` does); co-located `*.test.ts`.
+- **Implements:** DS 4 scope (b) without the definition schema; REF "Shared vocabulary", "D2 - Archetype catalogue and
+  Create request", "D3 - Tree, read, raw", "D4 - Operations" (shapes), "Errors"; AR "Content kinds".
+- **Delivers:** `ContentKind`, `Classification`, `ActionReason`, `Action`, `DocumentTypeInfo`, `ArchetypeCatalogue`,
+  `DocumentTree`, `DocumentContent`, `SaveInput/Result`, `DocumentOperationInput/Result`, `CreateDocumentsInput`,
+  `DocumentErrorCode` (one exported `as const` array, union derived), `DocumentError` (superset of `CreateSpecErrorSchema`
+  with optional `details`), and the exported fragment `CreateArchetypeSelectionSchema`.
+- **Out of scope:** the definition schema (D0.T02); merging the fragment into `CreateSpecRequestSchema` (D2.T01); any change
+  to `Demo*` schemas, `SpecificationDocumentResponseSchema`, `DocumentReadErrorSchema`; Engine, Runtime, CLI, UI.
+- **Depends on:** none.
+- **Acceptance:** DS 4 acceptance (1) to (3): exported from the package index; no literal defined twice; each REF
+  representative payload validates (tree with unclassified, dangling and completeness; raw-error bodies; operation inputs for
+  rename, move, delete, classify, create-documents; error bodies); extra key, `required` flag, string `archetypeVersion`,
+  missing `useWhen` rejected.
+- **Verification:** U only (Vitest in the contracts package; lint, typecheck, build). No L.
+
+### D0.T02 — Declarative definition schema and published JSON Schema
+
+- **Goal:** `ArchetypeDefinitionFile` (`schemaVersion: 1`) and the generated `archetype-definitions.schema.json`.
+- **Profile / kind:** `implementer` / `backend`.
+- **Scope:** `packages/specflow-contracts/src/documents/` (schema, generator helper), `packages/specflow-contracts/schema/archetype-definitions.schema.json`,
+  package `files`/scripts if a generate script is added.
+- **Implements:** DS 4 scope (b) and acceptance (0); AR "Definitions - One declarative schema"; REF "Definition schema"
+  (example file, `$id` `urn:nevo:specflow:archetype-definitions:1`, draft 2020-12).
+- **Out of scope:** any loader or YAML reading of user files (D-config); the built-in data (D1.T02); cross-checks needing the
+  catalogue (template `documentType` existence is D1.T02).
+- **Depends on:** D0.T01.
+- **Acceptance:** validates the REF example; rejects a document type without `instructions`, an archetype without `useWhen`,
+  `preselected` on an `always` template, `minCount` < 0, an unknown key; a template without `documentType`; the committed JSON
+  Schema equals the generated one (unit test fails on drift). Byte limits of AR Limits for definition text are enforced either
+  in the schema or by an exported helper (document which).
+- **Verification:** U only.
+
+### D0.T03 — Documentation acceptance and index
+
+- **Goal:** the documentation set is consistent and the index is regenerated.
+- **Profile / kind:** `implementer` / `general`.
+- **Scope:** `docs/architecture/runtime/specification-lifecycle.md` (forward link under "Create"); `status` of ADR 0015/0016, AR,
+  PR, REF only if the owner accepted them (else leave `draft` and say so in the PR; see G-9); generated docs index.
+- **Implements:** DS 4 scope (a), (c) and acceptance (4).
+- **Out of scope:** ADR 0014 sentence and Create reference pages (D2.T09); marking endpoints implemented (D3.T07).
+- **Depends on:** D0.T01, D0.T02.
+- **Acceptance:** `pnpm docs:check` passes; index committed; forward link resolves.
+- **Verification:** `pnpm docs:check --write`, then `pnpm docs:check`. No tests.
+
+---
+
+## 7. PR2 — D1 Engine model, catalogue and pure validation
+
+Package `@nevo/specflow-engine`, `src/specs/`. Profile for all: `implementer` / `backend`.
+
+### D1.T01 — Pure modules: limits, paths, content kinds, ids
+
+- **Goal:** `documentPaths`, `contentKinds`, `documentIds`, the exported Limits constants and the overview-protection predicate (PC-1).
+- **Scope:** new modules under `src/specs/documents/` with co-located tests.
+- **Implements:** DS 5 item 4 (first three modules), DS 3.5 and 3.7; AR "Identity, paths and the registry" (id allocation, `u-` ids,
+  path rules, case folding, reserved names, depth), "Content kinds" (closed table, media types, `classifyContent(ext, firstBytes)`),
+  "Limits" (constants exported once, bytes), invariant 2.
+- **Out of scope:** manifest parsing, catalogue, any filesystem access, Runtime imports of the constants.
+- **Depends on:** none.
+- **Acceptance:** DS 5 acceptance (5): table-driven cases including Windows device names with and without extension, case collisions,
+  traversal, trailing dot/space, NUL, control characters, `\ : * ? " < > |`, depth 8, 500 characters, reserved `specification.yaml` /
+  `change.yaml` ignoring case at the root; deterministic ids from `sha256(specId:position)` base32 with collision extension; allocated
+  ids never start with `u-`; `u-` ids from the exact path, case preserved; `classifyContent` is `binary` for NUL in the first 8 KiB or
+  invalid UTF-8; the kind table equals AR.
+- **Verification:** U only.
+
+### D1.T02 — Catalogue module, `resolveCatalogue`, `catalogueRevision`
+
+- **Goal:** built-in document types and archetypes as typed plain data conforming to the D0 definition schema, resolved by one function.
+- **Scope:** `src/specs/archetypes/` (data, `resolveCatalogue(builtIns, userDefinitions?)`, `catalogueRevision()`, lookups, template
+  renderer with the four placeholders) and tests.
+- **Implements:** DS 5 item 1; DS 7a stability list (a) to (g); PR "Document type catalogue", "Authoring instructions", "Template
+  skeletons", "Archetype catalogue" (strings verbatim); AR "Definitions", "Versioning rule".
+- **Out of scope:** any YAML loader or `.nevo/archetypes` reading (the optional `userDefinitions` parameter exists but no loader);
+  the HTTP catalogue (D2.T06).
+- **Depends on:** D0.T02.
+- **Acceptance:** DS 5 acceptance (3): tests prove the catalogue invariants (every requirement type exists; every archetype requires
+  `overview` with `minCount` >= 1 and has an `always` overview template; built-ins require nothing else; every template `documentType`
+  exists; every type has non-empty `instructions`; ids and `(id, version)` unique; placeholders render deterministically, unknown
+  `{{...}}` left as is); a test fails when any catalogue string or generated skeleton diverges from the PR tables; the D0 validator
+  passes over the built-ins; the revision is stable and changes on any edit. See G-1 and G-4 for the open template points.
+- **Verification:** U only.
+
+### D1.T03 — Manifest model, strict parser, serializer, archetype-aware scaffold
+
+- **Goal:** replace `type` with `archetype`, `documents`, `folders` end to end and make the scaffold archetype-driven. Compile-coupled
+  (model type, scaffold, the two interim call sites, archive effects): one task; two commits recommended, each typechecking.
+- **Scope:** `src/specs/model.ts`, new serializer module, `src/specs/lifecycle/archive-effects.ts` (assertion test), the two interim
+  call sites (`create/reservation/reservation.ts`, `create/scaffold.ts`), tests.
+- **Implements:** DS 5 items 2, 3, 5 and DS 3.3; AR "Manifest schema" parser rules 1 to 7 and "Rewriting the manifest"; ADR 0015.
+- **Details:** parser implements every rule (old `type` unread; missing `archetype` or `documents` invalid; unknown keys inside
+  `archetype`/`documents[]`/`requirements[]` rejected, unknown top-level keys tolerated and preserved; id/type/path/requirement/folder
+  rules; exactly one `overview` entry; manifest size limit). `serializeSpecificationManifest` / `updateManifestRegistry` are pure,
+  re-validated through the parser, preserve unknown top-level keys (comments SHOULD). `createSpecificationScaffold` takes
+  `archetypeId`, `optionalDocumentIds`, `addedDocuments`, `folders` and returns manifest first, then catalogue order, then added, with
+  sha256; throws `SPEC_VALIDATION_ERROR` (with a structured cause, see G-8) for unknown ids, path conflicts and Create limits. The interim
+  call sites pass `minimal` internally, not as an API default.
+- **Out of scope:** journal, Create request or intent, filesystem projection, Runtime or CLI, error-code mapping to D2 codes.
+- **Depends on:** D1.T01, D1.T02.
+- **Acceptance:** DS 5 acceptance (1), (2): each archetype's scaffold parses back to an equal model; one rejection test per parser rule
+  with `SPEC_SOURCE_INVALID`, including the old `type`-only manifest; scaffold deterministic; `overview` always present and fixed;
+  archive preserves `archetype` and `documents`; messages name slug and field, never absolute paths.
+- **Verification:** U: parser, serializer, scaffold, archive round-trip of a manifest string. L: none new; the real-Git suites are fixed
+  in D1.T05.
+
+### D1.T04 — Pure document validation
+
+- **Goal:** requirement results, completeness and issues from a registry plus an observed file set.
+- **Scope:** `src/specs/documents/` validation module and tests.
+- **Implements:** DS 5 item 4 (`documentValidation`); AR "Validation results" (the result type also defines `skipped-entry`,
+  `path-case-collision`, `archive-limit`; the projection in D3 produces them from filesystem facts).
+- **Out of scope:** filesystem access; tree shape (D3.T01).
+- **Depends on:** D1.T01, D1.T03.
+- **Acceptance:** DS 5 acceptance (4): exact results for met, unmet, dangling, unclassified; `count` counts registered documents with an
+  existing file only; persisted requirements are used, not the live catalogue (invariant 5); no readiness or acceptance wording or state.
+- **Verification:** U only.
+
+### D1.T05 — Fixture rewrite, fail-closed message, audit, lifecycle repair note
+
+- **Goal:** the repository is green on the new shape and the fail-closed consequence is explicit and documented.
+- **Scope:** Engine `test/specifications.test.ts`, `test/create-multiprocess.test.ts`, `test/engine-commit-port.test.ts`; Runtime
+  `test/specs/engine-overview.http.test.ts`; shared helper `writeSpecificationManifestFixture` in Engine test support; the message in
+  `specs/repository.ts`; lifecycle document.
+- **Implements:** DS 5 items 6 and 7; DS 3.2 (a) to (c).
+- **Details:** other suites asserting scaffold hashes or manifest text are found by running on Linux and fixed; the offending slug and field
+  appear in the `SPEC_SOURCE_INVALID` message; lifecycle documents the repair (add `archetype` and `documents`, remove `type`); audit
+  `git ls-files | grep -E "(specification|change)\.yaml$"` is empty and `git grep -n "type: 'standard'\|type: standard"` has zero hits
+  (fail the task otherwise).
+- **Out of scope:** product code beyond the message; journal; other docs.
+- **Depends on:** D1.T03.
+- **Acceptance:** DS 5 acceptance (6), (7): a directory with one old-shape manifest makes the listing throw naming the slug; audit clean;
+  Engine and Runtime suites green on Linux.
+- **Verification:** U: helper, message construction; Engine and Runtime lint, typecheck, build. **L (Linux only):** the rewritten real-Git
+  suites and the listing test over a real directory.
+
+---
+
+## 8. PR3 — D2 Create with an archetype
+
+Review checkpoints: after D2.T03 (journal contract), after D2.T05 (Engine end to end), before D2.T09.
+
+### D2.T01 — Contracts: Create request and result
+
+- **Goal:** merge the D0 fragment into `CreateSpecRequestSchema` (required `archetypeId`, `archetypeVersion`, `catalogueRevision`;
+  `optionalDocumentIds`, `addedDocuments`, `folders`), add `documentIds` to `CreatedSpec`, extend the Create error codes from the single D0 array.
+- **Profile / kind:** `implementer` / `backend`.
+- **Scope:** `packages/specflow-contracts/src/specs/create.ts`, `specs/index.ts`, tests.
+- **Implements:** DS 6 item 6 (contract part); REF "D2 - Archetype catalogue and Create request", "Errors".
+- **Out of scope:** Engine, Runtime, CLI, UI consumers beyond keeping them compiling (G-10: the PR head must be green; intermediate
+  checkpoint commits may be red).
+- **Depends on:** D0.T01.
+- **Acceptance:** valid and invalid request examples (missing archetype fields, string version, duplicate `optionalDocumentIds`, unknown
+  key); `CreatedSpec.documentIds`; the error schema accepts every new code.
+- **Verification:** U only.
+
+### D2.T02 — Engine Create input, intent, fingerprint, admission
+
+- **Goal:** `CreateSpecificationInput`/`CreateClientIntent` carry `archetype {id, version}`, `catalogueRevision?`, normalised
+  `optionalDocumentIds`, `addedDocuments`, `folders`; the fingerprint covers them; admission rejects before reservation.
+- **Profile / kind:** `implementer` / `backend`.
+- **Scope:** `src/specs/create/{input,intent,request,error}.ts` and neighbours; the Engine `DocumentError` type (codes from the D0 array)
+  introduced here; tests.
+- **Implements:** DS 6 items 1 and 5; AR Limits (Added documents, Template text); REF Errors (`ARCHETYPE_UNKNOWN`, `CATALOGUE_STALE`,
+  `DOCUMENT_PATH_INVALID`, `DOCUMENT_PATH_CONFLICT`, `DOCUMENT_OPERATION_INVALID`).
+- **Out of scope:** journal format, payload store, writing, HTTP, CLI.
+- **Depends on:** D1 merged, D2.T01.
+- **Acceptance:** DS 6 acceptance (3), (4) at unit level; the `addedDocuments` fingerprint is path, type and sha256 of content; same
+  `operationId` with a different archetype or content conflicts as today; admission writes nothing (fakes assert no filesystem or journal
+  effect); D1 structured causes map to the document codes; stale revision or version -> `CATALOGUE_STALE`; unknown archetype or template ->
+  `ARCHETYPE_UNKNOWN`; reserved name -> `DOCUMENT_PATH_INVALID`; case-insensitive duplicate -> `DOCUMENT_PATH_CONFLICT`; oversize counts or
+  bytes -> `DOCUMENT_OPERATION_INVALID`.
+- **Verification:** U only.
+
+### D2.T03 — Journal v2 and payload store
+
+- **Goal:** `CreateJournal.version = 2`; scaffold contents live in hash-addressed payload files; the journal stores evidence only.
+- **Profile / kind:** `implementer` / `backend`.
+- **Scope:** `src/specs/create/journal/{model,codec,store,retention}.ts`, `inspect/listing.ts`, `create/scaffold.ts` (`expectedScaffold` reads the
+  payload), `reservation/reservation.ts`, a payload helper, tests.
+- **Implements:** DS 6 item 2 in full; AR Limits (Create journal file; one exported constant replaces the three `65536` copies).
+- **Details:** payload files at `<operations>/create/<operationId>.payload/<sha256>` (temp, fsync, rename) are written before the journal is
+  published; the directory name does not end in `.json`; `files[]` = path, sha256, bytes (first two fixed manifest and overview, at most the
+  documented count, unique paths); the intent lists `archetype`, `optionalDocumentIds`, `addedDocuments {path, type?, sha256, bytes}`,
+  `folders`; the journal pins `catalogueRevision` (diagnostic only; recovery uses the payload); missing or mismatching payload on resume is
+  `CREATE_RECOVERY_REQUIRED` (reason payload); payload directories are removed with the journal by the retention sweep.
+- **Out of scope:** unsupported-journal handling (D2.T04); writing to the checkout (D2.T05).
+- **Depends on:** D2.T02.
+- **Acceptance:** DS 6 acceptance (7) at unit level: v2 codec round-trip, a payload hash helper, resume independent of the live catalogue, the
+  journal under the cap at the maximum file count, payload directory ignored by journal listing. Orphan payload directories: apply G-2 default
+  and report it.
+- **Verification:** U: codec, helpers, size test with in-memory contents. **L (Linux only):** `create-journal` additions with real files,
+  retention sweep with payload directories.
+
+### D2.T04 — Unsupported older journals (PC-2)
+
+- **Goal:** an older-version journal never blocks Create or Close, is swept after retention and answers `CREATE_JOURNAL_UNSUPPORTED` by id.
+- **Profile / kind:** `implementer` / `backend`.
+- **Scope:** `create/journal/unsupported.ts` (single home of the rule), `store.ts` (`listCreateJournals`), `inspect/listing.ts`, `retention.ts`,
+  `coordination/resources.ts` (confirm it never claims), tests.
+- **Implements:** DS 6 item 3 (a) to (d); DS 10 item 2.
+- **Details:** a file whose `version` is not current, is not valid JSON or has no numeric `version` is _unsupported_ and nothing else is read;
+  it is returned separately, never throws, never a resource claim; sweep deletes it when older than 7 days without parsing; by-id read
+  answers `CREATE_JOURNAL_UNSUPPORTED` (503, distinct from `CREATE_JOURNAL_CORRUPT`); the tolerant operations list shows `recovery-required`
+  with that code.
+- **Out of scope:** interpreting any old format.
+- **Depends on:** D2.T03.
+- **Acceptance:** DS 6 acceptance (8); a corrupt current-version journal still blocks as today; unsupported detection lives in one place.
+- **Verification:** U: classifier on in-memory contents, sweep predicate with injected clock. **L (Linux only):** real files; Create and Close
+  admission not blocked by an old file; sweep after retention.
+
+### D2.T05 — N-file scaffold writing, single commit, recovery, replay
+
+- **Goal:** Create writes N scaffold files plus `folders[]` directories and commits them in one Engine-owned commit; replay and recovery use the
+  full list from the verified payload.
+- **Profile / kind:** `implementer` / `backend`.
+- **Scope:** `src/specs/create/durable.ts` and effect/commit stages, `create/git/*`, `create/scaffold.ts`, `create/reservation/*`, Engine exports,
+  Engine `test/` suites.
+- **Implements:** DS 6 item 4 and the D2 Invariants (one commit, nothing written on failed admission, completeness equals the archetype's
+  requirements, scaffold read from the verified payload); ADR 0013 unchanged.
+- **Out of scope:** commit-port changes for deleted/new/rename paths (D4); HTTP, CLI, UI; document operations.
+- **Depends on:** D2.T03 (sequence after D2.T04, both touch the store).
+- **Acceptance:** DS 6 acceptance (1) to (7): one commit per archetype with exactly the scaffold files incl. manifest, clean tree, snapshot and
+  registry in the manifest, `documentIds` returned; suggestions and added documents appear (typed registered, untyped unclassified); replay
+  same result, different archetype conflicts; stale revision writes nothing; protected branch refuses before writing; Git disabled creates without
+  commit; SIGKILL at each commit-related stage recovers with the full list, also when the live catalogue differs at resume; empty folders only
+  in the manifest, directories created under the existing no-symlink checks.
+- **Verification:** U: file-list derivation, intent-to-effect mapping with fakes. **L (Linux only):** `create-commit`, `durable-create`,
+  `create-journal`, `create-multiprocess`, SIGKILL stage tests, byte-identical clean human commit on the full list.
+
+### D2.T06 — Runtime: catalogue route, Create mapping, body limits, error status
+
+- **Goal:** `GET /api/specs/archetypes`; the Create route maps the extended request; `bodyLimit` on `POST /api/specs`; the exhaustive
+  `error-status` switch is extended.
+- **Profile / kind:** `implementer` / `backend`.
+- **Scope:** `packages/specflow-runtime/src/features/specs/create/*` (endpoint, `error-status.ts`, tests), the catalogue route in the same
+  feature, server wiring, `test/specs/create.http.test.ts`.
+- **Implements:** DS 6 item 6; REF "D2", "Errors"; AR Limits (HTTP body; value imported from the Engine constant); DS 11 (confirm and record that
+  the catalogue uses the `create-options` capability).
+- **Out of scope:** any document rule in Runtime; the Save route; demo routes.
+- **Depends on:** D2.T01, D2.T05.
+- **Acceptance:** DS 6 acceptance (9), (11) at HTTP level: `error-status.test.ts` covers `CATALOGUE_STALE` 409, `ARCHETYPE_UNKNOWN` 422,
+  `DOCUMENT_PATH_INVALID` 400, `DOCUMENT_PATH_CONFLICT` 409, `DOCUMENT_OPERATION_INVALID` 400, `CREATE_JOURNAL_UNSUPPORTED` 503; ETag equals the
+  catalogue revision; oversized body 413; same authorization as `create-options`; response carries `documentIds`.
+- **Verification:** U: `app.inject` with a fake Engine (validation, mapping, status table, headers, 413). **L (Linux only):**
+  `create.http.test.ts` against a real project Runtime.
+
+### D2.T07 — CLI: `--archetype` required, `--with`
+
+- **Goal:** `nevo-specflow specs create --archetype <id>` (required, no default; PC-3) and repeatable `--with <templateId>`; prints created ids.
+- **Profile / kind:** `implementer` / `integration`.
+- **Scope:** `packages/specflow/src` create command and tests, `packages/specflow/test/create-cross-transport.test.ts`.
+- **Implements:** DS 6 item 7 and acceptance (9).
+- **Out of scope:** `archetypes list|show|validate` (D-config); CLI reference docs (D2.T09).
+- **Depends on:** D2.T05.
+- **Acceptance:** a missing `--archetype` is a usage error naming the option; `--with` repeatable and unique; CLI and HTTP produce the same
+  Specification for the same input.
+- **Verification:** U: argument parsing, usage errors. **L (Linux only):** cross-transport test with real Git.
+
+### D2.T08 — UI Create adaptation (project mode)
+
+- **Goal:** the project-mode Create client, form, submit hook and error map send and handle the new fields against the real Runtime.
+- **Profile / kind:** **`implementer-ui`** / `ui`.
+- **Scope:** `packages/specflow-ui/src/features/specs/creation/` `api/api.project.ts` (+ test), `form/CreateProjectForm.tsx`,
+  `form/createProjectReadiness.ts`, `useCreateProjectSpecification.ts` (+ test), `errors/createSpecErrors.ts` (+ test), strings and stories where
+  they exist for the form.
+- **Implements:** DS 6 item 8; REF "UI impact" item 13 (and the catalogue shape items 4 and 5 as consumed by the project form); the archetype
+  choice already built for the demo form is reused.
+- **Out of scope:** documents tree or editor UI, demo contract convergence, the rest of the UI impact list (D5).
+- **Depends on:** D2.T01, D2.T06.
+- **Acceptance:** DS 6 acceptance (10): a project-mode Create with the chosen archetype works end to end against the Runtime; each of
+  `CATALOGUE_STALE`, `ARCHETYPE_UNKNOWN`, `DOCUMENT_PATH_*`, `CREATE_JOURNAL_UNSUPPORTED` has a mapped message; no default archetype is hard-wired
+  in a contract (the UI chooses the initial selection).
+- **Verification:** U (Vitest and Storybook per repository UI practice): `api.project`, form, hook, error map. End to end against a real Runtime is
+  L-class (real Git): CI or `tools/dev/linux-test.sh`, not on Windows.
+
+### D2.T09 — Documentation: ADR 0014, reference, lifecycle, CLI
+
+- **Goal:** durable documents state journal version 2, the unsupported handling and the new Create contract.
+- **Profile / kind:** `implementer` / `general`.
+- **Scope:** ADR 0014 (replace the sentence "The Create journal format is `version: 1`; there was never a released version 2 and no migration or
+  compatibility reader exists." and the same statement in the lifecycle document), `reference.api.specflow-specification-operations`, lifecycle
+  document, CLI reference, the operator procedure (resume before upgrading), generated index.
+- **Implements:** DS 6 item 9. **Out of scope:** D3 docs.
+- **Depends on:** D2.T04 to D2.T08.
+- **Acceptance:** `pnpm docs:check` passes; the version 2 statement and PC-2 handling are present; Create reference lists the new fields and codes.
+- **Verification:** `pnpm docs:check --write`, `pnpm docs:check`.
+
+---
+
+## 9. PR4 — D3 Reading
+
+Profile for all: `implementer` / `backend`. Review checkpoints: after D3.T03 (security), before D3.T05.
+
+### D3.T01 — Pure tree projection
+
+- **Goal:** a pure function from (manifest, observed file model, policy facts, location) to the `DocumentTree`.
+- **Scope:** `src/specs/documents/projection.ts` and tests (in-memory file model).
+- **Implements:** DS 7 item 1 (projection); REF "D3 - Tree"; AR "Validation results", "Content kinds", Limits (revision rule, listing limits,
+  `truncated`), invariants 2 (PC-1: `overview` delete/rename/move actions carry `protected`), 4, 7, 8.
+- **Details:** registered / unclassified / dangling; `kind`, `mediaType`; `protected`; `editable` (md, txt within the save limit, active location);
+  `satisfiesRequirement`; `completeness`; folders from files plus `folders[]` (root path `''`); actions with advisory reasons (`protected`, `root`,
+  `archived`, `branch-protected`, `branch-not-allowed`, `git-policy-invalid`, `not-editable`, `dangling`); tree `revision` = sha256 over manifest bytes
+  plus the sorted `path:revision` list; issues including `path-case-collision`, `skipped-entry`, `archive-limit`.
+- **Out of scope:** I/O; Runtime; `busy` and `commit-blocked` reasons (G-5).
+- **Depends on:** D1.T01, D1.T03, D1.T04.
+- **Acceptance:** DS 7 acceptance (1) to (4 kind part), (8 issue part), (9), (13) at unit level, table-driven.
+- **Verification:** U only.
+
+### D3.T02 — Engine filesystem reader: tree and document read
+
+- **Goal:** `readSpecificationDocumentTree` and `readSpecificationDocument` over a real Specification directory.
+- **Scope:** `src/specs/documents/read.ts` (listing/stat helpers, revision memo), Engine exports, `test/` suites.
+- **Implements:** DS 7 item 1 (reader); AR "Symlinks and special files", Limits (2000 files, depth 8; hash to 1 MiB else `stat:<size>-<mtimeNs>`;
+  memo keyed by path+size+mtimeNs+ino, at most 5000 entries LRU), invariant 7; advisory branch reasons from the create-options policy evaluation
+  (read-only; omitted when the branch is not cheaply known).
+- **Details:** starts from `DiscoveredSpecification`; one manifest read then listing; no symlink following (skip and count); hidden entries and
+  `specification.yaml` excluded; no control lock, no mutating Git process; `DOCUMENT_TOO_LARGE`, `DOCUMENT_FILE_MISSING`, `DOCUMENT_NOT_FOUND`,
+  `DOCUMENT_REVISION_UNAVAILABLE` for the JSON read. `archive-limit` counting: G-3.
+- **Out of scope:** raw streaming (D3.T03); Runtime; writes.
+- **Depends on:** D3.T01.
+- **Acceptance:** DS 7 acceptance (1) to (4), (6 JSON part), (7), (8), (9), (13) with real directories: a hand-added file is `unclassified`, has a derived
+  id and is readable; a hand-deleted registered file is `dangling` and read is `DOCUMENT_FILE_MISSING`; archived location: all actions `archived`.
+- **Verification:** U: memo/LRU, revision computation, policy-reason adapter with fakes. **L (Linux only):** real directories (symlink skip, case collision on
+  a case-sensitive filesystem, >1 MiB text, hand-edited files, archived location, more than 4096 files for `archive-limit`).
+
+### D3.T03 — Engine raw access with TOCTOU re-verification (security)
+
+- **Goal:** `openSpecificationDocument(engine, specId, documentId)` returns `{ metadata, stream }`.
+- **Scope:** `src/specs/documents/open.ts` and tests.
+- **Implements:** DS 7 item 2 and Invariants; AR "Symlinks and special files" (lstat, realpath equality, regular file, before and after open, `fstat`
+  identity, `O_NOFOLLOW` where available, hard links readable), Limits (raw 25 MiB), invariant 6; escape from the Specification directory is
+  `SPEC_SOURCE_UNAVAILABLE`.
+- **Out of scope:** HTTP headers (D3.T05); Range; archive inspection.
+- **Depends on:** D3.T02.
+- **Acceptance:** DS 7 acceptance (4), (6 raw part), (8 never read): a symlinked entry is never opened; replacing a file by a symlink between check and
+  open is detected (fault-injection seam for the window); size above the raw limit -> `DOCUMENT_TOO_LARGE`; registered and unclassified files openable;
+  stream closes on error and on consumer abort.
+- **Verification:** U: re-verification logic with an injected fs seam (check order, identity comparison). **L (Linux only):** real symlink, rename-race and
+  large-file tests.
+
+### D3.T04 — Runtime: real content source, tree and content routes, error bodies
+
+- **Goal:** implement `DocumentContentSource` over the Engine, wire it in project mode, add `GET .../document-tree` and the new `DocumentContent`
+  read, replace the three lowercase read error bodies with `{error, code}`.
+- **Scope:** `packages/specflow-runtime/src/features/documents/content/*`, `feature.ts`, `server/app.ts` (replaces the unwired
+  `dependencies.documents?.source`; tests may still inject), `error-status.ts`, route tests.
+- **Implements:** DS 7 item 3 (source, routes, errors, ETag/304 on tree); REF "D3", "Errors"; `Cache-Control: no-store`; `View` authorization; DS 7
+  acceptance (10), (11).
+- **Out of scope:** the raw route (D3.T05); demo routes, demo schemas, UI.
+- **Depends on:** D0.T01, D3.T02.
+- **Acceptance:** the existing document URL no longer answers 503 for a valid document in project mode; 403 without `View`; tree ETag/304; exhaustive
+  status mapping; no document rules in Runtime.
+- **Verification:** U: `app.inject` with a fake source (mapping, ETag, authorization). L: D3.T07.
+
+### D3.T05 — Runtime: raw route and safe headers (security)
+
+- **Goal:** `GET /api/specs/:specId/documents/:documentId/raw[?download=1]` streams with the REF header table.
+- **Scope:** `features/documents/content/raw*.ts` (header builder, route) and tests.
+- **Implements:** DS 7 item 3 (raw); REF "Raw content" (Content-Type table with all text kinds incl. html/xml as `text/plain; charset=utf-8`, markdown
+  `text/markdown`, images incl. `image/svg+xml`, binary `application/octet-stream`; `nosniff`; CSP `default-src 'none'; style-src 'unsafe-inline'; sandbox`;
+  `Content-Disposition` inline or attachment with `filename*=UTF-8''`; `Cross-Origin-Resource-Policy: same-origin`; `Cache-Control: private, no-cache`,
+  ETag, 304; `Content-Length`); DS 7 acceptance (4), (5), (6).
+- **Out of scope:** Range; inline SVG rendering.
+- **Depends on:** D3.T03, D3.T04.
+- **Acceptance:** header table asserted per kind (png, svg, zip, md, html, md with NUL as binary); `download=1` -> attachment; non-ASCII, quote and CRLF
+  basenames cannot split headers; 304 on matching `If-None-Match`; 413 above the raw limit; stream aborted cleanly.
+- **Verification:** U: header builder, route tests with a fake source. L: D3.T07.
+
+### D3.T06 — Workspace read model `documents` section
+
+- **Goal:** the Specification workspace `documents` section lists the registered documents in project mode instead of `not_implemented`.
+- **Scope:** Runtime workspace read composition and tests; `WorkspaceDocumentSchema` consumed unchanged (`kind` = document type id).
+- **Implements:** DS 7 item 3 (workspace bullet) and acceptance (12).
+- **Out of scope:** workspace contract changes; unclassified or dangling entries in this section (G-6).
+- **Depends on:** D3.T02, D3.T04.
+- **Acceptance:** the section is `ready` for a valid Specification and degrades to the existing unavailable state when the manifest is unreadable.
+- **Verification:** U: composition with a fake reader. L: D3.T07.
+
+### D3.T07 — End-to-end HTTP integration and documentation
+
+- **Goal:** prove D3 through a real project Runtime and mark the endpoints implemented.
+- **Scope:** a Runtime `test/` HTTP suite over real Specifications created through D2; the reference page; `reference.api.specification-workspace`
+  data-source paragraph.
+- **Implements:** DS 7 acceptance (1) to (13) end to end; DS 7 item 4.
+- **Out of scope:** new behaviour; writes.
+- **Depends on:** D3.T04, D3.T05, D3.T06.
+- **Acceptance:** every DS 7 acceptance item is covered by at least one test (unit earlier, L here); `pnpm docs:check` passes; REF marks D3 endpoints
+  implemented.
+- **Verification:** **L (Linux only):** the HTTP suite (a `feature` Specification with preselected suggestions shows four registered documents, hand-added and
+  hand-deleted files, png/svg/zip/html/NUL cases, 413s, revision 409, symlink skip, archived location, 403). Docs: `pnpm docs:check`.
+
+---
+
+## 10. Coverage check
+
+| Requirement                                         | Task(s)                                    |
+| --------------------------------------------------- | ------------------------------------------ |
+| DS 4 (a) docs; (b) schemas, definition, JSON Schema | D0.T03; D0.T01, D0.T02                     |
+| DS 5 items 1 to 7; DS 3.2 fail-closed               | D1.T02, D1.T03, D1.T01/T04, D1.T05         |
+| DS 6 items 1, 5; 2; 3; 4                            | D2.T02; D2.T03; D2.T04; D2.T05             |
+| DS 6 items 6; 7; 8; 9                               | D2.T01/T06; D2.T07; D2.T08; D2.T09         |
+| DS 7 items 1; 2; 3; 4                               | D3.T01/T02; D3.T03; D3.T04/T05/T06; D3.T07 |
+
+Not planned: D-config, D4, D5, the commit queue, binary import, archetype switching, `ux` and `exploration` archetypes.
+
+## 11. Routing back to specification
+
+Found while planning. None is papered over; each task states the default it implements meanwhile (changeable in one place).
+
+| Id   | Gap                                                                                                                                                                                                                                                                                                                                                                                                                                       | Affects        | Proposed resolution (non-binding)                                                                                               |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| G-1  | **Overview template vs placeholders.** PR says the `overview` template is the present scaffold unchanged, but that scaffold JSON-quotes the title in frontmatter, falls back to "Describe the intended outcome of this specification." when no goal is given and interpolates the slug. AR defines `{{specificationTitle}}`, `{{slug}}`, `{{goal}}`, `{{created}}` as plain substitution with no quoting rule and no empty-goal fallback. | D1.T02, D1.T03 | Define the quoting rule (for example a quoted variant or YAML-safe escaping in the renderer) and where the goal fallback lives. |
+| G-2  | **Orphan payload directories.** The payload is written before the journal is published; a crash in between leaves `<operationId>.payload/` with no journal. DS 6 deletes payload folders only "with the journal".                                                                                                                                                                                                                         | D2.T03         | Sweep removes journal-less payload directories after the same 7-day retention; same sign-off class as PC-2.                     |
+| G-3  | **`archive-limit` from a capped listing.** The listing stops at 2000 files, Close refuses above 4096, and hidden entries are excluded from the tree but counted by Close archive. The spec does not say how to count beyond the cap or whether hidden entries count.                                                                                                                                                                      | D3.T01, D3.T02 | Count-only traversal to 4097 entries including hidden ones, separate from the listing cap.                                      |
+| G-4  | **Catalogue shape mapping.** Definition templates have `id` (unique per archetype), optional `title`, `filename`; the resolved catalogue `documents[]` says "template id = document type id" and requires `title`. Behaviour for an absent `title` and for two templates of one type is undefined.                                                                                                                                        | D1.T02, D2.T06 | `title` defaults to the document type title; drop the "= document type id" sentence or restrict to one template per type.       |
+| G-5  | **Reasons in D3.** REF defines `busy` and `commit-blocked`, but DS 7 lists only the branch and policy reasons and reads take no lock and no mutating Git process. Plan: D3 never emits `busy` or `commit-blocked`.                                                                                                                                                                                                                        | D3.T01         | Confirm they arrive with D4.                                                                                                    |
+| G-6  | **Write actions before D4.** The D3 tree reports write actions and `capabilities` (createFile, import, classify) although no write route exists until D4, and the vocabulary has no "not implemented" reason, so a client could offer actions that cannot succeed. The workspace `documents` section content for unclassified and dangling files is also unstated.                                                                        | D3.T01, D3.T06 | Keep policy-based `available` and integrate in the UI only at D5, or add an explicit reason. Workspace: registered only.        |
+| G-7  | **Error-code ownership.** `DocumentErrorCode` must hold Create-era codes that exist today as free strings in `CreateSpecErrorSchema` plus Engine-only classes; which codes the array holds and whether the Create `code` narrows to it is unstated.                                                                                                                                                                                       | D0.T01, D2.T01 | Array = every code in the REF Errors table; the Create `code` stays a string in this release.                                   |
+| G-8  | **Scaffold error causes.** D1 throws `SPEC_VALIDATION_ERROR` for unknown ids, path conflicts and limits, while D2 needs `ARCHETYPE_UNKNOWN`, `DOCUMENT_PATH_*`, `DOCUMENT_OPERATION_INVALID`. The mapping point is unstated.                                                                                                                                                                                                              | D1.T03, D2.T02 | Pure validators return typed causes; D2.T02 admission maps them (planned that way).                                             |
+| G-9  | **Status flips.** DS 4 (a) makes documents `current` "where the owner accepts"; acceptance is not recorded.                                                                                                                                                                                                                                                                                                                               | D0.T03         | Owner names the accepted documents; otherwise they stay `draft`.                                                                |
+| G-10 | **Compile order in D2.** Required Create fields break Runtime and UI typecheck until D2.T06 and D2.T08; DS 6 does not say how the branch stays green. Plan: PR head green, checkpoint commits may be red.                                                                                                                                                                                                                                 | D2.T01         | None needed.                                                                                                                    |
+
+## 12. Readiness per slice
+
+| Slice | Verdict                                                           | Condition                                                                               |
+| ----- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| D0    | Ready for execution.                                              | G-7 and G-9 have defaults and do not block.                                             |
+| D1    | Ready after D0 merged; settle G-1 before D1.T02 and D1.T03 start. | G-4 and G-8 have workable defaults.                                                     |
+| D2    | Ready after D1 merged; D2.T03 and D2.T04 carry owner sign-offs.   | PC-2 (with G-2) and PC-3 implemented as written, pending confirmation; no task blocked. |
+| D3    | Ready after D2 merged; settle G-3 before D3.T01 and D3.T02 start. | G-5 and G-6 have defaults and do not block.                                             |

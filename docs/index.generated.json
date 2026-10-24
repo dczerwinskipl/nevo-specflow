@@ -341,6 +341,7 @@
         "ideas.specflow-engine.plan-03",
         "ideas.specflow-engine.plan-04",
         "ideas.specflow-engine.plan-05",
+        "ideas.specflow-engine.plan-06",
         "architecture.runtime.specflow-engine"
       ],
       "scope": "specflow",
@@ -3551,6 +3552,45 @@
         "execution-task",
         "temporary",
         "implementation"
+      ]
+    },
+    {
+      "id": "ideas.specflow-engine.plan-06",
+      "type": "engineering",
+      "title": "Temporary execution plan 06 — Specification documents layer (D0 to D3)",
+      "status": "draft",
+      "file": "docs/ideas/specflow-engine/execution-plans/06-specification-documents/README.md",
+      "read_when": [
+        "executing or reviewing any task of slices D0, D1, D2 or D3 of the Specification documents layer",
+        "deciding the PR order, branch names or which tests may run on Windows",
+        "looking for the pending owner confirmations or the gaps routed back to the specification"
+      ],
+      "summary": "Disposable task decomposition of slices D0 to D3 of the Specification documents layer into four PR-sized deliveries (D0, D1, D2, D3) with stable task ids, scope, dependencies, spec references, acceptance, unit versus Linux-only verification, implementer profile, review focus, pending owner confirmations and gaps routed back to specification. D-config, D4 and D5 are not planned here.",
+      "related": [
+        "ideas.specflow-engine.specification-documents-delivery",
+        "architecture.runtime.specification-documents",
+        "product.specflow.specification-documents",
+        "reference.api.specification-documents",
+        "adr.0015-specification-manifest-as-document-registry",
+        "adr.0016-engine-owned-document-commits",
+        "ideas.specflow-engine.execution-plans",
+        "engineering.repository.git-workflow",
+        "engineering.shared.testing"
+      ],
+      "scope": "specflow",
+      "areas": [
+        "runtime",
+        "workflow",
+        "server",
+        "testing",
+        "ui"
+      ],
+      "tags": [
+        "execution-plan",
+        "temporary",
+        "specifications",
+        "documents",
+        "archetypes"
       ]
     },
     {

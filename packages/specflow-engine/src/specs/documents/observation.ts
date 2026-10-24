@@ -23,10 +23,13 @@ export type Probe<T> =
   | { readonly kind: 'skipped' };
 
 /**
- * Analyse one file of the Specification, answering an unchanged old file (same path, size, mtime and
- * inode) from `memo` with one stat. A file that cannot be opened safely is `skipped`, one that
- * disappears is `vanished`; every other failure propagates. The result of an analysis is memoised only
- * when the file is not a recent write (its mtime may not move on a further write).
+ * Analyse one file of the Specification, answering an unchanged old file (same path, size, mtime,
+ * ctime and inode) from `memo` with one stat. A file that cannot be read safely is `skipped`, one that
+ * disappears is `vanished`; every other failure propagates. "Cannot be read safely" is a
+ * `DocumentError` from anywhere in the probe: the lstat of the entry (EACCES, EMFILE, ...), the
+ * verified open (a symlink swapped in, a changed identity) or the analysis. One such file never fails
+ * the tree or the workspace documents section. The result of an analysis is memoised only when the
+ * file is not a recent write (its mtime may not move on a further write).
  */
 export async function probeFile<T>(
   loaded: LoadedSpecification,
@@ -35,13 +38,13 @@ export async function probeFile<T>(
   memo: RevisionMemo<T>,
   project: (analysis: FileAnalysis) => T,
 ): Promise<Probe<T>> {
-  const entry = await inspectEntry(options.fs, loaded.specDir, path);
-  if (entry.state === 'absent') return { kind: 'vanished' };
-  if (entry.state !== 'file') return { kind: 'skipped' };
-  const cached = memo.get(memoKey(join(loaded.specDir, path), entry.stat));
-  if (cached !== undefined) return { kind: 'file', value: cached };
-
   try {
+    const entry = await inspectEntry(options.fs, loaded.specDir, path);
+    if (entry.state === 'absent') return { kind: 'vanished' };
+    if (entry.state !== 'file') return { kind: 'skipped' };
+    const cached = memo.get(memoKey(join(loaded.specDir, path), entry.stat));
+    if (cached !== undefined) return { kind: 'file', value: cached };
+
     const outcome = await withOpenFile(options.fs, loaded.specDir, path, async (file) => {
       const value = project(await analyzeOpenFile(file.handle, file.stat, path));
       const modifiedMs = Number(file.stat.mtimeNs / 1_000_000n);

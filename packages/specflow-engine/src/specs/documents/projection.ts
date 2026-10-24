@@ -76,10 +76,29 @@ export interface TreeProjectionInput {
 
 export const TEXT_FORMATS: readonly string[] = [...EDITABLE_EXTENSIONS];
 
-/** Tree revision: sha256 over the manifest bytes and the sorted list of (path, revision) pairs. */
+/** Response-affecting inputs besides the manifest and the file revisions (see {@link computeTreeRevision}). */
+export type TreeRevisionContext = Pick<
+  TreeProjectionInput,
+  | 'location'
+  | 'truncated'
+  | 'skippedEntries'
+  | 'skippedPaths'
+  | 'archiveLimit'
+  | 'policyReason'
+  | 'archetypeTitle'
+>;
+
+/**
+ * Tree revision (the tree `ETag`): sha256 over the manifest bytes, the sorted list of (path, revision)
+ * pairs and every other input that changes the response: the location, truncation, the skipped entries
+ * (count and reported paths), the archive limit fact, the advisory policy reason and the archetype
+ * title. A conditional GET therefore never answers `304` for a response whose issues, advisory action
+ * reasons or counts differ from the one the client holds.
+ */
 export function computeTreeRevision(
   manifestBytes: Uint8Array,
   files: readonly Pick<ObservedFile, 'path' | 'revision'>[],
+  context?: TreeRevisionContext,
 ): string {
   // One JSON pair per line: an unclassified path may contain `:` and must not blur the boundary.
   const lines = files
@@ -89,7 +108,22 @@ export function computeTreeRevision(
     .update(manifestBytes)
     .update('\0')
     .update(lines.join('\n'), 'utf8')
+    .update('\0')
+    .update(context === undefined ? '' : JSON.stringify(contextFields(context)), 'utf8')
     .digest('hex');
+}
+
+function contextFields(context: TreeRevisionContext): unknown[] {
+  return [
+    context.location,
+    context.truncated,
+    context.skippedEntries,
+    context.skippedPaths,
+    context.archiveLimit.exceeded,
+    context.archiveLimit.path ?? null,
+    context.policyReason ?? null,
+    context.archetypeTitle ?? null,
+  ];
 }
 
 export function projectDocumentTree(input: TreeProjectionInput): DocumentTree {
@@ -212,7 +246,7 @@ export function projectDocumentTree(input: TreeProjectionInput): DocumentTree {
   ];
 
   return {
-    revision: computeTreeRevision(input.manifestBytes, files),
+    revision: computeTreeRevision(input.manifestBytes, files, input),
     archetype: {
       id: manifest.archetype.id,
       version: manifest.archetype.version,

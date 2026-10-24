@@ -311,6 +311,26 @@ describe('projectDocumentTree', () => {
   });
 });
 
+describe('tree revision covers every input that changes the response', () => {
+  const base = projectDocumentTree(input()).revision;
+  it.each([
+    ['a skipped entry', { skippedEntries: 1, skippedPaths: ['link'] }],
+    ['a different skipped path', { skippedEntries: 1, skippedPaths: ['other'] }],
+    ['truncation', { truncated: true }],
+    ['the archive limit', { archiveLimit: { exceeded: true, path: 'big.bin' } }],
+    ['the archive limit without a path', { archiveLimit: { exceeded: true } }],
+    ['the advisory policy reason', { policyReason: 'branch-protected' as const }],
+    ['the archive location', { location: 'archive' as const }],
+    ['the archetype title', { archetypeTitle: 'Feature' }],
+  ])('changes with %s', (_name, overrides) => {
+    expect(projectDocumentTree(input(overrides)).revision).not.toBe(base);
+  });
+
+  it('is stable for equal inputs', () => {
+    expect(projectDocumentTree(input()).revision).toBe(base);
+  });
+});
+
 describe('computeTreeRevision', () => {
   const manifest = Buffer.from('id: x\n');
   const files = [

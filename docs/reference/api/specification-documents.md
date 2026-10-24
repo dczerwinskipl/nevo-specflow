@@ -181,7 +181,7 @@ The `schema/` folder is **not** in the package `exports`: it is published as a p
 
 ```ts
 DocumentTree = {
-  revision: string                     // changes when the manifest or any listed file/stat signature changes
+  revision: string                     // changes when the manifest, any listed file/stat signature or any other response field changes
   archetype: { id; version; title?: string }
   folders: Array<{ path: string; actions: { rename: Action; move: Action; delete: Action } }>  // root path ''
   documents: Array<{
@@ -212,7 +212,10 @@ DocumentTree = {
 **Implemented behaviour of the tree (D3).** The tree is the Engine's projection of one manifest read, a directory
 listing and a stat/hash of the files; it is not an atomic snapshot (architecture invariant 7). `documents` is sorted
 by the case-folded path, `dangling` keeps registry order, `folders` starts with the root `''` and is sorted by the
-case-folded path. The response carries `ETag: "<revision>"`; a matching `If-None-Match` answers `304`.
+case-folded path. The response carries `ETag: "<revision>"`; a matching `If-None-Match` answers `304`. The revision covers every
+input of the response: the manifest bytes, every listed file's path and revision, the location, `truncated`, the
+skipped entries (count and reported paths), the archive-limit fact, the advisory policy reason of the write actions
+and the archetype title, so a `304` never hides a changed issue, count or action reason.
 `truncated` is `true` when the listing stopped at the file cap, the depth cap or the entries budget (the same budget as the
 archive count traversal, so a Specification with a huge number of folders is read in bounded time); registered documents beyond the cap are
 still stat'ed and listed (a registered file is never reported dangling because of the cap). `issues` lists, in this

@@ -9,6 +9,7 @@ import {
   type DiscoveredSpecification,
 } from './discovery';
 import { runReadRequest } from '../project/request-verification-memo';
+import { readManifestTextBounded } from './bounded-read';
 import { parseSpecificationManifestText, SpecificationError } from './model';
 
 type AvailableSpec = Extract<DiscoveredSpecification, { readonly status: 'available' }>;
@@ -200,7 +201,8 @@ async function readPhysicalDocument(
       if (!openedStat.isFile()) {
         throw new SpecificationError('SPEC_SOURCE_INVALID', 'Canonical document is not a file.');
       }
-      const content = await handle.readFile('utf8');
+      const content =
+        kind === 'manifest' ? await readManifestTextBounded(handle) : await handle.readFile('utf8');
       return {
         relativePath,
         content,

@@ -1,8 +1,7 @@
-import { lstat, readFile, readdir, realpath } from 'node:fs/promises';
+import { lstat, open, readdir, realpath } from 'node:fs/promises';
 import { isAbsolute, join } from 'node:path';
 
-import { parse } from 'yaml';
-
+import { readManifestTextBounded } from './bounded-read';
 import {
   SpecificationError,
   parseSpecificationManifestText,
@@ -87,12 +86,16 @@ export async function listWorkspaceSpecifications(
 
       let content: string;
       try {
-        content = await readFile(manifestPath, 'utf8');
-        parse(content);
+        const handle = await open(manifestPath, 'r');
+        try {
+          content = await readManifestTextBounded(handle);
+        } finally {
+          await handle.close();
+        }
       } catch {
         throw new SpecificationError(
           'SPEC_SOURCE_INVALID',
-          'Invalid YAML in specification manifest: ' + relativeManifestPath,
+          `Specification "${slug}" manifest could not be read.`,
         );
       }
 

@@ -196,6 +196,12 @@ describe('parseSpecificationManifest', () => {
       expectInvalid(source, 'documents[1].path');
     });
 
+    it('rejects a registered file that is also a folder of another registered file', () => {
+      const source = validSource();
+      documentsOf(source).push({ id: 'dir', path: 'docs', type: 'note' });
+      expectInvalid(source, 'is a registered file and also a folder');
+    });
+
     it('rejects paths that are equal ignoring case', () => {
       const source = validSource();
       documentsOf(source)[1]!.path = 'OVERVIEW.md';
@@ -281,6 +287,9 @@ describe('parseSpecificationManifest', () => {
       const equalsFile = validSource();
       equalsFile.folders = ['OVERVIEW.md'];
       expectInvalid(equalsFile, 'folders[0]');
+      const belowFile = validSource();
+      belowFile.folders = ['overview.md/sub'];
+      expectInvalid(belowFile, 'is below the registered file');
       const notArray = validSource();
       notArray.folders = 'research';
       expectInvalid(notArray, 'folders');

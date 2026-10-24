@@ -2,7 +2,12 @@ import { CATALOGUE_ID_PATTERN } from '@nevo/specflow-contracts/documents';
 import { parse } from 'yaml';
 
 import { isRegisteredDocumentId } from './documents/document-ids';
-import { foldPathKey, validateDocumentPath, validateFolderPath } from './documents/document-paths';
+import {
+  ancestorFolders,
+  foldPathKey,
+  validateDocumentPath,
+  validateFolderPath,
+} from './documents/document-paths';
 import { MANIFEST_MAX_BYTES } from './documents/limits';
 import {
   OVERVIEW_DOCUMENT_ID,
@@ -281,6 +286,19 @@ function parseDocuments(value: unknown, slug: string): ManifestDocument[] {
     pathKeys.add(key);
   }
 
+  // A registered file cannot also be the ancestor folder of another registered file.
+  for (const item of documents) {
+    for (const ancestor of ancestorFolders(item.path)) {
+      if (pathKeys.has(foldPathKey(ancestor))) {
+        throw sourceInvalid(
+          slug,
+          'documents[].path',
+          `"${ancestor}" is a registered file and also a folder of "${item.path}"`,
+        );
+      }
+    }
+  }
+
   // Rule 5 (PC-1): exactly one overview entry, with fixed id, path and type.
   const protectedEntries = documents.filter((item) => isProtectedDocument(item));
   const only = protectedEntries[0];
@@ -319,6 +337,11 @@ function parseFolders(
     if (seen.has(key)) throw sourceInvalid(slug, field, 'is not unique ignoring case');
     seen.add(key);
     if (filePaths.has(key)) throw sourceInvalid(slug, field, 'equals a registered document path');
+    for (const ancestor of ancestorFolders(entry + '/x')) {
+      if (filePaths.has(foldPathKey(ancestor))) {
+        throw sourceInvalid(slug, field, `is below the registered file "${ancestor}"`);
+      }
+    }
     return entry;
   });
 }

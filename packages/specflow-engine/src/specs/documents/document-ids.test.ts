@@ -89,9 +89,23 @@ describe('allocateDocumentId', () => {
     expect(() =>
       allocateDocumentId({ specId: SPEC_ID, type: 'u', position: 1, existingIds: ['u'] }),
     ).toThrow(DocumentIdError);
-    expect(allocateDocumentId({ specId: SPEC_ID, type: 'u', position: 0, existingIds: [] })).toBe(
-      'u',
+    expect(() =>
+      allocateDocumentId({ specId: SPEC_ID, type: 'u', position: 0, existingIds: [] }),
+    ).toThrow(DocumentIdError);
+  });
+
+  it('matches frozen known-answer vectors', () => {
+    const allocate = (specId: string, position: number, existingIds: string[]) =>
+      allocateDocumentId({ specId, type: 'behaviour', position, existingIds });
+    expect(allocate(SPEC_ID, 3, ['behaviour'])).toBe('behaviour-3qeltn');
+    expect(allocate(SPEC_ID, 3, ['behaviour', 'behaviour-3qeltn'])).toBe('behaviour-3qeltne');
+    expect(allocate(SPEC_ID, 3, ['behaviour', 'behaviour-3qeltn', 'behaviour-3qeltne'])).toBe(
+      'behaviour-3qeltnew',
     );
+    expect(allocate('aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee', 1, ['behaviour'])).toBe(
+      'behaviour-eby67h',
+    );
+    expect(deriveUnclassifiedDocumentId('research/Notes.md')).toBe('u-05ace8fecc34d7bb');
   });
 
   it('produces ids accepted by the registered id rule', () => {

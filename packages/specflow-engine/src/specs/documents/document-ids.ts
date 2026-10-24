@@ -69,6 +69,13 @@ export interface AllocateDocumentIdInput {
  */
 export function allocateDocumentId(input: AllocateDocumentIdInput): string {
   const taken = new Set(input.existingIds);
+  if (input.type === 'u' || input.type.startsWith(DERIVED_ID_PREFIX)) {
+    // `u` and `u-*` types are refused up front (the catalogue rejects them too), so the first and
+    // every later document of such a type behave the same.
+    throw new DocumentIdError(
+      `Document type "${input.type}" cannot produce a registered document id.`,
+    );
+  }
   if (isRegisteredDocumentId(input.type) && !taken.has(input.type)) return input.type;
   const digest = createHash('sha256').update(`${input.specId}:${input.position}`, 'utf8').digest();
   const encoded = base32Lower(digest);

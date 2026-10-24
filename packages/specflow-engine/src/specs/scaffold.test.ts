@@ -272,6 +272,21 @@ describe('createSpecificationScaffold', () => {
       });
     });
 
+    it('added documents of type u are refused for the first and every later one', () => {
+      for (const count of [1, 2]) {
+        expect(
+          causeOf({
+            archetypeId: 'minimal',
+            addedDocuments: Array.from({ length: count }, (_, i) => ({
+              path: `u${i}.md`,
+              type: 'u',
+              content: '',
+            })),
+          }),
+        ).toMatchObject({ kind: 'type-invalid', type: 'u' });
+      }
+    });
+
     it('invalid added type', () => {
       expect(
         causeOf({

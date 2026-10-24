@@ -84,8 +84,11 @@ export interface ManifestRegistryUpdate {
 }
 
 /**
- * Rewrite only the registry of an existing manifest text: unknown top-level keys, comments and key order
- * are preserved. The result is re-validated through the strict parser and must reproduce the update.
+ * Rewrite only the registry of an existing manifest text. Unknown top-level keys, comments outside the
+ * replaced nodes, key order, the EOL style and the line folding of untouched content are preserved; a
+ * no-op update returns the source unchanged. Comments inside the replaced `documents:` and `folders:`
+ * nodes are NOT preserved (documented limitation, architecture "Rewriting the manifest"). The result is
+ * re-validated through the strict parser and must reproduce the update.
  */
 export function updateManifestRegistry(
   sourceText: string,
@@ -100,14 +103,27 @@ export function updateManifestRegistry(
       `Specification "${slug}" manifest: is not valid YAML.`,
     );
   }
+  const current = document.toJS() as Record<string, unknown>;
+  const unchanged =
+    isDeepStrictEqual(current.documents, plainDocuments(update.documents)) &&
+    isDeepStrictEqual(current.folders ?? [], update.folders) &&
+    (update.archetype === undefined ||
+      isDeepStrictEqual(current.archetype, plainArchetype(update.archetype)));
+  if (unchanged) {
+    // A no-op never rewrites a byte; the source must still be a valid manifest.
+    parseSpecificationManifestText(sourceText, slug, location);
+    return sourceText;
+  }
+
   if (update.archetype !== undefined) {
     document.set('archetype', document.createNode(plainArchetype(update.archetype)));
   }
-  document.set('documents', document.createNode(update.documents.map((item) => ({ ...item }))));
+  document.set('documents', document.createNode(plainDocuments(update.documents)));
   if (update.folders.length > 0) document.set('folders', document.createNode([...update.folders]));
   else document.delete('folders');
 
-  const text = document.toString();
+  const eol = sourceText.includes('\r\n') ? '\r\n' : '\n';
+  const text = document.toString({ lineWidth: 0 }).replace(/\r?\n/gu, eol);
   const reparsed = parseSpecificationManifestText(text, slug, location);
   if (
     !isDeepStrictEqual(reparsed.documents, update.documents) ||
@@ -122,10 +138,17 @@ export function updateManifestRegistry(
   return text;
 }
 
+function plainDocuments(documents: readonly ManifestDocument[]): unknown[] {
+  return documents.map((item) => ({ id: item.id, path: item.path, type: item.type }));
+}
+
 function plainArchetype(archetype: ManifestArchetype): unknown {
   return {
     id: archetype.id,
     version: archetype.version,
-    requirements: archetype.requirements.map((item) => ({ ...item })),
+    requirements: archetype.requirements.map((item) => ({
+      documentType: item.documentType,
+      minCount: item.minCount,
+    })),
   };
 }

@@ -131,4 +131,38 @@ documents:
       updateManifestRegistry('a: [', 'my-spec', 'active', { documents: [], folders: [] }),
     ).toThrow(/YAML/u);
   });
+
+  it('returns the source unchanged for a no-op update, whatever its formatting', () => {
+    const odd = source.replace('x-owner: core', 'x-owner:   core').replace(/\n/gu, '\r\n');
+    const overview = { id: 'overview', path: 'overview.md', type: 'overview' };
+    expect(
+      updateManifestRegistry(odd, 'my-spec', 'active', { documents: [overview], folders: [] }),
+    ).toBe(odd);
+  });
+
+  it('preserves the CRLF style and does not re-fold long untouched scalars', () => {
+    const long = 'word '.repeat(60).trim();
+    const crlf = source.replace('title: My spec', `title: ${long}`).replace(/\n/gu, '\r\n');
+    const next = updateManifestRegistry(crlf, 'my-spec', 'active', {
+      documents: [
+        { id: 'overview', path: 'overview.md', type: 'overview' },
+        { id: 'note', path: 'note.md', type: 'note' },
+      ],
+      folders: [],
+    });
+    expect(next).toContain(`title: ${long}\r\n`);
+    expect(next.replace(/\r\n/gu, '')).not.toContain('\n');
+    expect(next).toContain('# keep this comment');
+  });
+
+  it('keeps LF sources LF', () => {
+    const next = updateManifestRegistry(source, 'my-spec', 'active', {
+      documents: [
+        { id: 'overview', path: 'overview.md', type: 'overview' },
+        { id: 'note', path: 'note.md', type: 'note' },
+      ],
+      folders: [],
+    });
+    expect(next).not.toContain('\r');
+  });
 });

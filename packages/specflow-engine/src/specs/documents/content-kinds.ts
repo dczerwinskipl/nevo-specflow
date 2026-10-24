@@ -1,4 +1,4 @@
-import { CONTENT_KINDS } from '@nevo/specflow-contracts/documents';
+import type { ContentKind } from '@nevo/specflow-contracts/documents';
 
 import { CONTENT_SNIFF_BYTES } from './limits';
 
@@ -7,12 +7,6 @@ import { CONTENT_SNIFF_BYTES } from './limits';
  * extension whose first {@link CONTENT_SNIFF_BYTES} bytes contain NUL or are not valid UTF-8 is
  * `binary`.
  */
-
-/**
- * Derived from the single `CONTENT_KINDS` array: the contracts' `ContentKind` alias (`Static` of a
- * union built by `map`) resolves to `never` for consumers, so it is not used here.
- */
-export type ContentKind = (typeof CONTENT_KINDS)[number];
 
 export const TEXT_EXTENSIONS = [
   'md',

@@ -31,6 +31,16 @@ provider. There is one Engine-owned state machine for mutations, not parallel HT
 into `@nevo/specflow-contracts` DTOs. HTTP performs authorization before protected reads or
 mutations. Neither adapter may own independent Git/journal/registry mutation logic.
 
+The Engine depends on `@nevo/specflow-contracts` for exactly one neutral entry point,
+`@nevo/specflow-contracts/documents`: the archetype and template definition schemas, document
+vocabulary, ids, error codes and limits that both the Engine and its transports must agree on. The
+Engine MUST NOT import Runtime, UI or the authorization policy, nor any other contracts entry point;
+ESLint enforces the restriction (`tools/eslint/boundaries.mjs`).
+
+```text
+@nevo/specflow-engine --> @nevo/specflow-contracts/documents   (neutral vocabulary and schemas only)
+```
+
 Runtime remains responsible for long-lived provider processes, streams and managed Sessions.
 Engine-local Create/Close operation records are **not** provider Session/Turn execution records.
 E1/E2 do not implement the proposed E3 Workflow Kernel, E4 Sessions Foundation or E5 managed

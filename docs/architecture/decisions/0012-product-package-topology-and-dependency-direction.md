@@ -61,6 +61,7 @@ Arrows point from a consumer to a dependency:
 
 ```text
 @nevo/specflow
+  |-> @nevo/specflow-engine --> @nevo/specflow-contracts/documents (neutral vocabulary and schemas only)
   |-> @nevo/specflow-runtime -> @nevo/specflow-contracts -> @nevo/authorization
   |                            \-> neutral foundations as needed
   |
@@ -76,6 +77,10 @@ package reachable below it.
   dependency is introduced later.
 - `@nevo/specflow-contracts` MAY depend on neutral primitives but MUST NOT depend on Runtime, UI,
   or the product composition root.
+- `@nevo/specflow-engine` MAY import the neutral documents vocabulary and schemas from
+  `@nevo/specflow-contracts/documents` (archetype and template definitions, document ids, limits and
+  error codes) and nothing else from that package. It MUST NOT import Runtime, UI, the product
+  composition root or the authorization policy, and no other contracts entry point.
 - Runtime MAY consume shared contracts and neutral foundations but MUST NOT depend on UI or
   `@nevo/specflow`.
 - UI MAY consume shared SpecFlow contracts and neutral client infrastructure. It MUST NOT import

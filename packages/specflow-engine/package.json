@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Offline-capable SpecFlow application boundary; no CLI, HTTP, provider or UI dependencies.",
+  "description": "Offline-capable SpecFlow application boundary; no CLI, HTTP, provider or UI dependencies. Shares only the neutral documents vocabulary of @nevo/specflow-contracts.",
   "license": "MIT",
   "exports": {
     ".": {

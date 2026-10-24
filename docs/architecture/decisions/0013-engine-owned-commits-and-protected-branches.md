@@ -82,7 +82,13 @@ the Engine must never commit on some branches (for example `main` or `release/**
    apply, `--no-filters` is not used), never by hashing the blob content. A scaffold committed by hand
    is accepted when the full file list is committed and `git status` for those paths is clean under
    the same flags, so a hand commit made under the user's `core.autocrlf` that differs from the disk
-   under `autocrlf=false` is not byte-identical and stays a recovery. `dropIntentToAdd` only runs after a
+   under `autocrlf=false` is not byte-identical and stays a recovery. Concretely: CRLF content committed by
+   hand under `core.autocrlf=true` WITHOUT a normalising `.gitattributes` rule stores LF, the Engine treats
+   the working bytes as authoritative, and resume is refused with `CREATE_RECOVERY_REQUIRED`; with a
+   normalising rule (for example `* text=auto eol=lf`) the same hand commit is accepted. Operator remedy:
+   undo the hand commit (`git reset --soft <parent>` then `git reset`), commit the scaffold again with
+   `git -c core.autocrlf=false add specs` and finish with `specs recover <operation-id>
+--confirmed-stopped`; or abandon the operation. `dropIntentToAdd` only runs after a
    commit that provably did not happen and only resets paths that HEAD does not track; it relies on
    the scaffold paths being new files written by this operation, which nobody can have staged before
    (the files do not exist before the operation writes them).

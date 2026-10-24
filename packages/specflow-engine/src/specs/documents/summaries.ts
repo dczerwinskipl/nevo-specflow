@@ -35,7 +35,7 @@ export async function readRegisteredDocumentSummaries(
 }
 
 /** Registered document summaries of an already loaded Specification. */
-export async function summariesOfLoaded(
+async function summariesOfLoaded(
   loaded: LoadedSpecification,
   options: DocumentReadOptions = {},
 ): Promise<readonly RegisteredDocumentSummary[]> {

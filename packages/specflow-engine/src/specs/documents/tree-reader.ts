@@ -34,7 +34,7 @@ export async function readSpecificationDocumentTree(
 }
 
 /** The tree of an already loaded Specification (the part of the read that needs no Engine). */
-export async function buildDocumentTree(
+async function buildDocumentTree(
   loaded: LoadedSpecification,
   policyReason: PolicyReason | undefined,
   options: DocumentReadOptions = {},

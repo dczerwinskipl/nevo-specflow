@@ -60,7 +60,7 @@ export async function openSpecificationDocument(
 }
 
 /** {@link openSpecificationDocument} for an already loaded Specification. */
-export async function openDocumentOfLoaded(
+async function openDocumentOfLoaded(
   loaded: LoadedSpecification,
   documentId: string,
   options: DocumentReadOptions = {},

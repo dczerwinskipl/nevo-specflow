@@ -31,7 +31,7 @@ export async function readSpecificationDocument(
 }
 
 /** One document of an already loaded Specification. */
-export async function readDocumentOfLoaded(
+async function readDocumentOfLoaded(
   loaded: LoadedSpecification,
   documentId: string,
   options: ReadDocumentOptions = {},

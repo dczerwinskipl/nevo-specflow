@@ -9,12 +9,12 @@ tags: [execution-plan, temporary, specifications, documents, archetypes]
 read_when:
   - executing or reviewing any task of slices D0, D1, D2 or D3 of the Specification documents layer
   - deciding the PR order, branch names or which tests may run on Windows
-  - looking for the pending owner confirmations or the gaps routed back to the specification
+  - looking for the confirmed owner decisions or the (closed) gaps routed back to the specification
 summary: >
   Disposable task decomposition of slices D0 to D3 of the Specification documents layer into four PR-sized
   deliveries (D0, D1, D2, D3) with stable task ids, scope, dependencies, spec references, acceptance,
-  unit versus Linux-only verification, implementer profile, review focus, pending owner confirmations and
-  gaps routed back to specification. D-config, D4 and D5 are not planned here.
+  unit versus Linux-only verification, implementer profile, review focus, confirmed owner decisions and
+  gaps routed back to (and now closed in) the specification. D-config, D4 and D5 are not planned here.
 related:
   - ideas.specflow-engine.specification-documents-delivery
   - architecture.runtime.specification-documents
@@ -52,10 +52,9 @@ consolidation, demo convergence). Nothing here may pre-empt them beyond the stab
   `minimal`, `feature`, `architecture` require only `overview`; `description`, `useWhen`, `instructions` semantics as
   in AR "Definitions"; no backward compatibility, alias or default archetype in any contract; every state change is
   committed (D4); integration tests are Linux-only.
-- **Pending owner confirmation.** Implement exactly as written, keep each in ONE named place so it is cheap to change,
-  and list it in the PR description under "Pending owner confirmation".
+- **Confirmed owner decisions PC-1 to PC-3.** Confirmed by the owner; implement as written, each in ONE named place.
 
-| Id   | Default to implement                                                                                                                                                                | Single place                                                                        | Tasks                  |
+| Id   | Confirmed decision to implement                                                                                                                                                     | Single place                                                                        | Tasks                  |
 | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------- |
 | PC-1 | `overview.md`: id and path fixed; rename and move refused with `protected` like delete (AR parser rule 5, invariant 2)                                                              | One protection predicate in the Engine documents module, used by parser and actions | D1.T01, D1.T03, D3.T01 |
 | PC-2 | Unsupported old Create journals: tolerant classification, never a claim, never blocks Create or Close, sweep deletes after 7 days, `CREATE_JOURNAL_UNSUPPORTED` by id (DS 6 item 3) | One module `create/journal/unsupported.ts` plus one `error-status` line             | D2.T04                 |
@@ -177,7 +176,7 @@ D2.T04 and D2.T05 both touch the journal store: sequence them (T04 first). Every
 - **Goal:** the documentation set is consistent and the index is regenerated.
 - **Profile / kind:** `implementer` / `general`.
 - **Scope:** `docs/architecture/runtime/specification-lifecycle.md` (forward link under "Create"); `status` of ADR 0015/0016, AR,
-  PR, REF only if the owner accepted them (else leave `draft` and say so in the PR; see G-9); generated docs index.
+  PR, REF stays `draft` (G-9 closed: no acceptance recorded, nothing flips); generated docs index.
 - **Implements:** DS 4 scope (a), (c) and acceptance (4).
 - **Out of scope:** ADR 0014 sentence and Create reference pages (D2.T09); marking endpoints implemented (D3.T07).
 - **Depends on:** D0.T01, D0.T02.
@@ -328,8 +327,7 @@ Review checkpoints: after D2.T03 (journal contract), after D2.T05 (Engine end to
 - **Out of scope:** unsupported-journal handling (D2.T04); writing to the checkout (D2.T05).
 - **Depends on:** D2.T02.
 - **Acceptance:** DS 6 acceptance (7) at unit level: v2 codec round-trip, a payload hash helper, resume independent of the live catalogue, the
-  journal under the cap at the maximum file count, payload directory ignored by journal listing. Orphan payload directories: apply G-2 default
-  and report it.
+  journal under the cap at the maximum file count, payload directory ignored by journal listing. Orphan payload directories: removed by the sweep after retention (G-2 closed, DS 6 item 3 (e)).
 - **Verification:** U: codec, helpers, size test with in-memory contents. **L (Linux only):** `create-journal` additions with real files,
   retention sweep with payload directories.
 
@@ -545,28 +543,28 @@ Profile for all: `implementer` / `backend`. Review checkpoints: after D3.T03 (se
 
 Not planned: D-config, D4, D5, the commit queue, binary import, archetype switching, `ux` and `exploration` archetypes.
 
-## 11. Routing back to specification
+## 11. Gaps routed back to specification (all closed)
 
-Found while planning. None is papered over; each task states the default it implements meanwhile (changeable in one place).
+Each gap is resolved in the specification documents (DS = delivery specification, AR = architecture, PR = product, REF = reference). Tasks implement the resolution; nothing is left to the implementer.
 
-| Id   | Gap                                                                                                                                                                                                                                                                                                                                                                                                                                       | Affects        | Proposed resolution (non-binding)                                                                                               |
-| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| G-1  | **Overview template vs placeholders.** PR says the `overview` template is the present scaffold unchanged, but that scaffold JSON-quotes the title in frontmatter, falls back to "Describe the intended outcome of this specification." when no goal is given and interpolates the slug. AR defines `{{specificationTitle}}`, `{{slug}}`, `{{goal}}`, `{{created}}` as plain substitution with no quoting rule and no empty-goal fallback. | D1.T02, D1.T03 | Define the quoting rule (for example a quoted variant or YAML-safe escaping in the renderer) and where the goal fallback lives. |
-| G-2  | **Orphan payload directories.** The payload is written before the journal is published; a crash in between leaves `<operationId>.payload/` with no journal. DS 6 deletes payload folders only "with the journal".                                                                                                                                                                                                                         | D2.T03         | Sweep removes journal-less payload directories after the same 7-day retention; same sign-off class as PC-2.                     |
-| G-3  | **`archive-limit` from a capped listing.** The listing stops at 2000 files, Close refuses above 4096, and hidden entries are excluded from the tree but counted by Close archive. The spec does not say how to count beyond the cap or whether hidden entries count.                                                                                                                                                                      | D3.T01, D3.T02 | Count-only traversal to 4097 entries including hidden ones, separate from the listing cap.                                      |
-| G-4  | **Catalogue shape mapping.** Definition templates have `id` (unique per archetype), optional `title`, `filename`; the resolved catalogue `documents[]` says "template id = document type id" and requires `title`. Behaviour for an absent `title` and for two templates of one type is undefined.                                                                                                                                        | D1.T02, D2.T06 | `title` defaults to the document type title; drop the "= document type id" sentence or restrict to one template per type.       |
-| G-5  | **Reasons in D3.** REF defines `busy` and `commit-blocked`, but DS 7 lists only the branch and policy reasons and reads take no lock and no mutating Git process. Plan: D3 never emits `busy` or `commit-blocked`.                                                                                                                                                                                                                        | D3.T01         | Confirm they arrive with D4.                                                                                                    |
-| G-6  | **Write actions before D4.** The D3 tree reports write actions and `capabilities` (createFile, import, classify) although no write route exists until D4, and the vocabulary has no "not implemented" reason, so a client could offer actions that cannot succeed. The workspace `documents` section content for unclassified and dangling files is also unstated.                                                                        | D3.T01, D3.T06 | Keep policy-based `available` and integrate in the UI only at D5, or add an explicit reason. Workspace: registered only.        |
-| G-7  | **Error-code ownership.** `DocumentErrorCode` must hold Create-era codes that exist today as free strings in `CreateSpecErrorSchema` plus Engine-only classes; which codes the array holds and whether the Create `code` narrows to it is unstated.                                                                                                                                                                                       | D0.T01, D2.T01 | Array = every code in the REF Errors table; the Create `code` stays a string in this release.                                   |
-| G-8  | **Scaffold error causes.** D1 throws `SPEC_VALIDATION_ERROR` for unknown ids, path conflicts and limits, while D2 needs `ARCHETYPE_UNKNOWN`, `DOCUMENT_PATH_*`, `DOCUMENT_OPERATION_INVALID`. The mapping point is unstated.                                                                                                                                                                                                              | D1.T03, D2.T02 | Pure validators return typed causes; D2.T02 admission maps them (planned that way).                                             |
-| G-9  | **Status flips.** DS 4 (a) makes documents `current` "where the owner accepts"; acceptance is not recorded.                                                                                                                                                                                                                                                                                                                               | D0.T03         | Owner names the accepted documents; otherwise they stay `draft`.                                                                |
-| G-10 | **Compile order in D2.** Required Create fields break Runtime and UI typecheck until D2.T06 and D2.T08; DS 6 does not say how the branch stays green. Plan: PR head green, checkpoint commits may be red.                                                                                                                                                                                                                                 | D2.T01         | None needed.                                                                                                                    |
+| Id   | Resolution (where)                                                                                                                                                                                                                                                                                              | Tasks          |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| G-1  | **Closed.** AR "Template rendering (exact)": placeholders `{{specificationTitleJson}}` (JSON-quoted title for frontmatter) and `{{goalOrPrompt}}` (empty-goal fallback text); the overview template equals today's scaffold; D1 golden test against fixtures from the pre-change function.                      | D1.T02, D1.T03 |
+| G-2  | **Closed.** DS 6 item 3 (e): the retention sweep removes a journal-less `<operationId>.payload/` older than 7 days (same class as PC-2, confirmed).                                                                                                                                                             | D2.T03         |
+| G-3  | **Closed.** AR "Archive count rule" and Limits: a count-only traversal (hidden entries included, stops at 4097 files or 20000 entries) independent of the 2000-file listing cap; `archive-limit` above 4096 files, a file above 32 MiB or an exhausted bound; symlinks and special entries are `skipped-entry`. | D3.T01, D3.T02 |
+| G-4  | **Closed.** AR Definitions and REF: template `title` defaults to the document type title; several templates per type are allowed; catalogue `documents[].id` is the template id (unique per archetype), not the document type id.                                                                               | D1.T02, D2.T06 |
+| G-5  | **Closed.** DS 7 item 1 and REF: `busy` and `commit-blocked` are emitted from D4 only; D3 never reports them.                                                                                                                                                                                                   | D3.T01         |
+| G-6  | **Closed.** DS 7 item 1 and REF: before D4 every write action and capability is `available: false` with the new reason `not-implemented` (unless `protected`, `root` or `archived` applies); the workspace `documents` section lists registered documents only.                                                 | D3.T01, D3.T06 |
+| G-7  | **Closed.** REF "Errors": `DocumentErrorCode` holds every code of the table; the Create `code` stays a string in this release.                                                                                                                                                                                  | D0.T01, D2.T01 |
+| G-8  | **Closed.** DS 5 item 3 and DS 6 item 5: `ScaffoldValidationError` with a structured `cause`; D2 admission maps cause to code one to one.                                                                                                                                                                       | D1.T03, D2.T02 |
+| G-9  | **Closed.** DS 4 (a): documents stay `draft`; no status flips until the owner records acceptance.                                                                                                                                                                                                               | D0.T03         |
+| G-10 | **Closed.** DS 6 "Compile order": the PR head is green on every package; checkpoint commits may be red.                                                                                                                                                                                                         | D2.T01         |
 
 ## 12. Readiness per slice
 
-| Slice | Verdict                                                           | Condition                                                                               |
-| ----- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| D0    | Ready for execution.                                              | G-7 and G-9 have defaults and do not block.                                             |
-| D1    | Ready after D0 merged; settle G-1 before D1.T02 and D1.T03 start. | G-4 and G-8 have workable defaults.                                                     |
-| D2    | Ready after D1 merged; D2.T03 and D2.T04 carry owner sign-offs.   | PC-2 (with G-2) and PC-3 implemented as written, pending confirmation; no task blocked. |
-| D3    | Ready after D2 merged; settle G-3 before D3.T01 and D3.T02 start. | G-5 and G-6 have defaults and do not block.                                             |
+| Slice | Verdict                                                                 | Condition                                                |
+| ----- | ----------------------------------------------------------------------- | -------------------------------------------------------- |
+| D0    | Ready for execution.                                                    | G-7 and G-9 closed.                                      |
+| D1    | Ready after D0 merged.                                                  | G-1, G-4 and G-8 closed.                                 |
+| D2    | Ready after D1 merged; D2.T03 and D2.T04 implement confirmed PC-2/PC-3. | PC-2 (with G-2) and PC-3 are confirmed; no task blocked. |
+| D3    | Ready after D2 merged.                                                  | G-3, G-5 and G-6 closed.                                 |

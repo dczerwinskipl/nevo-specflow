@@ -163,7 +163,7 @@ persisted `archetype.version`, stable document ids and the single declarative sc
   succeeds as one atomic change: files and registry together, then one commit, so the history shows who changed
   what and the working tree stays clean. With Git disabled the same change is a plain file write.
 - **Overview** can be edited and cannot be deleted. Rename and move are not offered either: its id and path are
-  fixed (**DEFAULT, pending owner confirmation**; the owner decision only says it cannot be deleted). Other
+  fixed (confirmed by the owner). Other
   documents, including ones that satisfy a requirement, can be deleted; the requirement then reads as unmet.
 - **Deleting a folder** deletes every document in it; it is refused when the folder contains `overview.md`.
 - **Unclassified file**: can be opened, edited as its kind permits, renamed, moved, deleted or classified (given

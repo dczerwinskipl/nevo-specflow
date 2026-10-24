@@ -101,8 +101,7 @@ the D2/D3 outputs are prerequisites. D5: outline; depends on the parallel UI wor
 
 ## 4. D0 - Contract, documentation and ADRs
 
-**Scope.** (a) This documentation set becomes `current` where the owner accepts it (ADRs 0015/0016, architecture,
-product, reference). (b) `packages/specflow-contracts/src/documents/` gains TypeBox schemas and types for the
+**Scope.** (a) This documentation set stays `draft`: the owner has not recorded acceptance, so no status changes in this slice (ADRs 0015/0016, architecture, product, reference). (b) `packages/specflow-contracts/src/documents/` gains TypeBox schemas and types for the
 shared vocabulary of the reference page: `ContentKind`, `Classification`, `ActionReason`, `Action`,
 `DocumentTypeInfo`, `ArchetypeCatalogue`, `DocumentTree`, `DocumentContent`, `SaveInput/Result`,
 `DocumentOperationInput/Result`, `CreateDocumentsInput`, the declarative **definition schema** (`ArchetypeDefinitionFile`: document types, archetypes, requirements, templates, with `instructions` and `preselected`; reference: "Definition schema") and its published JSON Schema file `packages/specflow-contracts/schema/archetype-definitions.schema.json` (generated from the TypeBox types; a unit test fails on drift), `DocumentErrorCode`, `DocumentError`, plus the Create
@@ -150,7 +149,7 @@ lint, typecheck, build, `pnpm docs:check`. No L tests.
 3. **Scaffold**: `createSpecificationScaffold` takes `archetypeId`, `optionalDocumentIds`, `addedDocuments`,
    `folders` and returns files (manifest first, then documents in catalogue order, then added) with sha256; the
    manifest carries the archetype, requirements snapshot and registry; scaffold ids per the id rule; added
-   documents without type are not registered. Throws `SPEC_VALIDATION_ERROR` for unknown archetype/template ids,
+   documents without type are not registered. Throws `ScaffoldValidationError` (a `SpecificationError` with code `SPEC_VALIDATION_ERROR` and a structured `cause`: `archetype-unknown`, `template-unknown`, `path-invalid`, `path-conflict`, `limit-exceeded`, carrying the offending path or id) for unknown archetype/template ids,
    path conflicts (case-insensitive, against scaffold paths and each other) and the Create limits of the Limits table.
 4. **Pure modules**: `documentPaths` (validate/normalise/case-fold keys, parents, folder derivation),
    `contentKinds` (extension table, media types, `classifyContent(ext, firstBytes)`), `documentIds` (allocate,
@@ -218,26 +217,27 @@ item 6 (they only change fixtures) and the listing test with a real directory; r
    `CreateJournal.version` becomes `2`; the codec accepts `files` of the new shape and the new intent keys, and
    the journal pins `catalogueRevision` (diagnostic only: recovery uses the payload, never the live catalogue, so
    a catalogue that changed between crash and resume has **no effect** on the outcome).
-3. **Older journals - narrow handling (PROPOSAL, owner sign-off required; not a compatibility reader).** Observed:
+3. **Older journals - narrow handling (confirmed by the owner; not a compatibility reader).** Observed:
    `listCreateJournals` is strict and throws on any invalid file, and it is used by Create admission
    (`reservation.ts:62`, `durable.ts:406`) and, through `assertSharedResourcesAvailable`
    (`coordination/resources.ts:89`), by **Close** admission. One old-format file would therefore block Create and
-   Close permanently. The proposal: (a) `listCreateJournals` classifies a file whose `version` field is not the
+   Close permanently. The handling: (a) `listCreateJournals` classifies a file whose `version` field is not the
    current one as _unsupported_ (read nothing else from it), returns it separately and does **not** throw and
    does **not** count it as a resource claim; Create and Close are never blocked by it; (b) the existing
    retention sweep deletes unsupported-version files whose mtime is older than the 7-day retention (no parsing of
    their content; a file that is not valid JSON or has no numeric `version` is "unsupported" the same way);
    (c) reading such a journal **by operation id** (inspection, replay) answers the new code
    `CREATE_JOURNAL_UNSUPPORTED` (503, distinct from `CREATE_JOURNAL_CORRUPT`); (d) the tolerant operations list
-   shows the row as `recovery-required` with that code. No old format is ever interpreted. Cost accepted: the
+   shows the row as `recovery-required` with that code; (e) the same sweep removes a payload directory
+   (`<operationId>.payload/`) that has **no journal** and is older than the retention (a crash between payload write and
+   journal publication leaves one; age by directory mtime, never while a journal with that id exists). No old format is ever interpreted. Cost accepted: the
    evidence of a v1 journal that still had effects is lost after 7 days; the operator procedure (resume before
-   upgrading) is documented. Alternative if the owner declines: none that avoids permanent blocking, because
-   deleting at once would destroy live evidence.
+   upgrading) is documented.
 4. **Scaffold writing and commit** generalise from two files to N files plus `folders[]` directories (created under
    the existing no-symlink checks; empty folders are registered only in the manifest). The commit covers all
    scaffold files in the one Create commit (ADR 0013 unchanged; `commit.paths` = `files[].relativePath`). Replay
    and the "byte-identical, clean human commit" acceptance operate on the full list. Git disabled: no commit.
-5. **Admission** (before reservation, nothing written): `ARCHETYPE_UNKNOWN`, `CATALOGUE_STALE`,
+5. **Admission** (before reservation, nothing written; maps `ScaffoldValidationError.cause` one to one: `archetype-unknown`/`template-unknown` to `ARCHETYPE_UNKNOWN`, `path-invalid` to `DOCUMENT_PATH_INVALID`, `path-conflict` to `DOCUMENT_PATH_CONFLICT`, `limit-exceeded` to `DOCUMENT_OPERATION_INVALID`): `ARCHETYPE_UNKNOWN`, `CATALOGUE_STALE`,
    `DOCUMENT_PATH_INVALID`, `DOCUMENT_PATH_CONFLICT`, `DOCUMENT_OPERATION_INVALID` (limits). Existing codes
    unchanged.
 6. **Runtime.** `GET /api/specs/archetypes` (same capability as create-options; ETag = revision).
@@ -261,6 +261,8 @@ item 6 (they only change fixtures) and the listing test with a real directory; r
    CLI reference, and **ADR 0014**: replace the sentence "The Create journal format is `version: 1`; there was never a
    released version 2 and no migration or compatibility reader exists." (line 68; also in the lifecycle document)
    with the version 2 statement and the item 3 handling.
+
+**Compile order.** Required Create fields break Runtime and UI typechecking until the Runtime and UI tasks of this slice land. The PR head MUST be green on every package; intermediate checkpoint commits on the branch may be red (they disappear on squash, per the commit conventions).
 
 **Non-goals.** Document operations; tree/read changes; demo convergence (D5); archetype switching; project archetypes.
 
@@ -302,7 +304,14 @@ validation and `error-status` mapping with a fake Engine (`app.inject`), CLI arg
    `branch-protected` / `branch-not-allowed` / `git-policy-invalid` come from the same policy evaluation as
    create-options (read-only; no Git process other than what `currentBranch` already costs; if the branch cannot be
    determined cheaply the reason is omitted and enforcement still happens on write). Archived location: all
-   actions `archived`.
+   actions `archived`. D3 never reports `busy` or `commit-blocked` (reads take no lock and run no mutating Git process;
+   both arrive with D4). **No write route exists until D4**, so D3 reports every write action (`rename`, `move`, `delete`,
+   `classify`, `folder`) and the capabilities `createFile`, `createFolder`, `import`, `classify` as `available: false`
+   with reason `not-implemented`, except where a stronger reason applies (`protected`, `root`, `archived`); `editable`
+   stays computed from kind and size. D4 replaces `not-implemented` by the policy-based answer and removes the reason
+   from the vocabulary. The `archive-limit` and `skipped-entry` issues come from the count-only traversal of the
+   architecture document ("Archive count rule"), independent of the listing cap; hidden entries are excluded from the tree
+   and counted by that traversal.
 2. **Raw access**: `openSpecificationDocument(engine, specId, documentId)` returns `{ metadata, stream }`; it
    re-verifies the physical path (lstat, realpath equality, regular file) before and after open (fstat identity),
    enforces the raw limit.
@@ -337,7 +346,7 @@ limits are chosen below those on purpose); (13) on a case-sensitive filesystem `
 different `u-` ids and a `path-case-collision` issue, both readable;
 (9) archived Specification: all actions `archived`; (10) project-mode GET of the existing document URL no longer
 returns 503 for a valid document; (11) 403 without `View`; (12) the workspace `documents` section lists the
-registered documents.
+registered documents only (unclassified and dangling entries are not part of that section); (14) a Specification with 4097 files (some hidden) reports `archive-limit` while the tree is `truncated` at the listing cap, and one with 4096 does not.
 
 **Verification.** U: projection function over an in-memory file model (kinds, states, revisions, actions,
 completeness, limits), content-kind table, header builder, route tests with a fake source (`app.inject`):
@@ -457,19 +466,11 @@ of D5: it ships inside D2. Verification: UI unit/Storybook tests and demo-vs-rea
 asserting both emit schema-valid payloads for the same scenarios. Sequencing: D5 is a flag day for the UI and
 the demo; real endpoints (D2/D3) ship first and are consumed by the UI at D5. The UI project-mode Create adaptation ships with D2.
 
-## 10. Open questions for the owner
+## 10. Owner decisions and open questions
 
-Resolved by the owner: the UI Create adaptation is inside D2 (item 8); no compatibility readers or aliases.
-Still open (defaults stated, **unconfirmed**):
+Confirmed by the owner (no longer open): the UI Create adaptation is inside D2; no compatibility readers or aliases; built-ins require only `overview.md`; `overview.md` id and path are fixed (rename and move refused with `protected`); the narrow handling of older Create journals (D2 item 3, including the journal-less payload sweep); the CLI `--archetype` is required with no default.
 
-1. **DEFAULT - `overview.md` rename/move.** Its id and path are fixed; rename and move are refused with `protected`
-   like delete.
-2. **PROPOSAL - old Create journals (D2 item 3).** Tolerant classification, never a claim, never blocking Create or
-   Close; the sweep deletes unsupported-version files after 7 days; `CREATE_JOURNAL_UNSUPPORTED` by id. Needs sign-off
-   because it deletes old evidence after retention.
-3. **DEFAULT - CLI `--archetype`** is required (no default `minimal`).
-
-Decided by the owner and therefore not open: built-in archetypes require only `overview.md`; owner-defined archetypes, types, templates and instructions are the slice D-config.
+Still open: none that blocks D0 to D3. Choices made conservatively while resolving the plan's gaps and open to owner veto: reason `not-implemented` for write actions before D4 (section 7, item 1); `DocumentErrorCode` holds every code of the reference table while the Create `code` stays a string.
 
 ## 11. Not verified at specification time
 

@@ -93,7 +93,7 @@ evolve this later (project-defined archetypes, template overrides) without redef
   and key order (use a document-preserving YAML API); Close archive already round-trips the parsed manifest.
 - The Create journal intent grows (archetype, optional documents, added documents) and its format version
   moves to 2; file contents live in hash-addressed payload files, not in the journal. Journals of the older
-  format are handled by a narrow retention rule, not read (a PROPOSAL pending owner sign-off; see the delivery
+  format are handled by a narrow retention rule, not read (confirmed by the owner; see the delivery
   specification, D2).
 - Reviews and Tasks remain separate resources; they are not documents and are not registered here.
 

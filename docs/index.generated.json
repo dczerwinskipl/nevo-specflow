@@ -3563,9 +3563,9 @@
       "read_when": [
         "executing or reviewing any task of slices D0, D1, D2 or D3 of the Specification documents layer",
         "deciding the PR order, branch names or which tests may run on Windows",
-        "looking for the pending owner confirmations or the gaps routed back to the specification"
+        "looking for the confirmed owner decisions or the (closed) gaps routed back to the specification"
       ],
-      "summary": "Disposable task decomposition of slices D0 to D3 of the Specification documents layer into four PR-sized deliveries (D0, D1, D2, D3) with stable task ids, scope, dependencies, spec references, acceptance, unit versus Linux-only verification, implementer profile, review focus, pending owner confirmations and gaps routed back to specification. D-config, D4 and D5 are not planned here.",
+      "summary": "Disposable task decomposition of slices D0 to D3 of the Specification documents layer into four PR-sized deliveries (D0, D1, D2, D3) with stable task ids, scope, dependencies, spec references, acceptance, unit versus Linux-only verification, implementer profile, review focus, confirmed owner decisions and gaps routed back to (and now closed in) the specification. D-config, D4 and D5 are not planned here.",
       "related": [
         "ideas.specflow-engine.specification-documents-delivery",
         "architecture.runtime.specification-documents",

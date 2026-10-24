@@ -68,11 +68,12 @@ ActionReason  = 'protected'          // overview: cannot be deleted/renamed/move
               | 'archived'           // Specification is in archive/
               | 'branch-protected'   // git.commits.protectedBranches matches the current branch
               | 'branch-not-allowed' // git.commits.allowedBranches does not match
-              | 'commit-blocked'     // detached HEAD, merge/rebase in progress, unmerged paths, held index lock
+              | 'commit-blocked'     // (emitted from D4; reads never report it) detached HEAD, merge/rebase in progress, unmerged paths, held index lock
               | 'git-policy-invalid' // project Git configuration invalid (fail closed)
-              | 'busy'               // Close/Create/another write in progress for this Specification
+              | 'busy'               // (emitted from D4) Close/Create/another write in progress for this Specification
               | 'not-editable'       // kind/extension is not editable in this release
               | 'dangling'           // registry entry without file (only delete=remove registration)
+              | 'not-implemented'    // write actions and capabilities reported by D3 before the D4 routes exist; removed when D4 lands
 Action        = { available: boolean; reason?: ActionReason }
 ```
 
@@ -93,8 +94,8 @@ ArchetypeCatalogue = {
     instructions?: string                                    // how to work with the archetype (built-ins carry it)
     requirements: Array<{ documentType: string; minCount: integer >= 0 }>
     documents: Array<{                 // templates: scaffolded and suggested
-      id: string                       // template id = document type id
-      type: string; title: string; filename: string
+      id: string                       // template id, unique within the archetype (several templates per document type are allowed)
+      type: string; title: string; filename: string   // title defaults to the document type's title
       include: 'always' | 'optional'   // replaces the template flag `required`; always = scaffolded, optional = suggested
       preselected?: boolean            // optional templates: default tick in clients, a recommendation only
       instructions?: string            // how to fill this template
@@ -264,6 +265,8 @@ commit after files were written is `DOCUMENT_RECOVERY_REQUIRED` and the operatio
 
 ## Errors
 
+`DocumentErrorCode` (the exported `as const` array in the contracts package) holds **every code in the table below**, including codes that Create already emits as free strings. The Create `code` field stays a plain string in this release (it does not narrow to the array).
+
 Every document endpoint answers `{ error: <CODE>, code: <CODE>, details?: { reason?: ActionReason; blockedBy?: string; cause?: string } }` (the shape
 of the Create errors; `details` is new and optional: the shared error schema is a superset of `CreateSpecErrorSchema`, and Create keeps answering without it). 401/403 keep the existing authentication/authorization bodies.
 
@@ -291,7 +294,7 @@ of the Create errors; `details` is new and optional: the shared error schema is 
 | `COMMIT_BLOCKED`                | 409  | Checkout cannot take a commit now; `details.reason: 'commit-blocked'` and `details.blockedBy` is the Engine commit port's own reason (`detached`, `branch-changed`, `git-busy`, `index-locked`, `unmerged-paths`, `path-ignored`, `no-commits`, `intent-to-add`, `git-path-unreadable`, `ignore-check-failed`, `index-unreadable`) |
 | `COMMIT_FAILED`                 | 503  | Only as `details.cause` of `DOCUMENT_RECOVERY_REQUIRED` (and of Create recovery): the Git commit failed after files existed. Document endpoints do not return it directly                                                                                                                                                          |
 | `GIT_POLICY_INVALID`            | 503  | Project Git configuration invalid (existing code)                                                                                                                                                                                                                                                                                  |
-| `CREATE_JOURNAL_UNSUPPORTED`    | 503  | A Create journal written by an older format is read by operation id (inspection or replay). It never blocks Create or Close admission (see delivery D2; PROPOSAL pending owner sign-off)                                                                                                                                           |
+| `CREATE_JOURNAL_UNSUPPORTED`    | 503  | A Create journal written by an older format is read by operation id (inspection or replay). It never blocks Create or Close admission (see delivery D2)                                                                                                                                                                            |
 | `CATALOGUE_STALE`               | 409  | Create with an outdated catalogue revision/archetype version                                                                                                                                                                                                                                                                       |
 | `ARCHETYPE_UNKNOWN`             | 422  | Unknown archetype or optional template id                                                                                                                                                                                                                                                                                          |
 

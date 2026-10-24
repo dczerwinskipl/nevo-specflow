@@ -65,9 +65,9 @@ export async function readCheckedOutBranch(workspaceRoot: string): Promise<strin
       gitDir = dotGit;
     } else if (stat.isFile()) {
       const text = await readSmallRegularFile(dotGit);
-      const match = text === undefined ? null : /^gitdir:\s*(.+?)\s*$/mu.exec(text);
-      if (!match) return undefined;
-      gitDir = isAbsolute(match[1]!) ? match[1]! : resolve(workspaceRoot, match[1]!);
+      const target = text === undefined ? undefined : /^gitdir:\s*(.+?)\s*$/mu.exec(text)?.[1];
+      if (target === undefined) return undefined;
+      gitDir = isAbsolute(target) ? target : resolve(workspaceRoot, target);
     } else {
       return undefined;
     }

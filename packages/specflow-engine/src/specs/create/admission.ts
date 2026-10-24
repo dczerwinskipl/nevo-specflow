@@ -87,8 +87,9 @@ function assertContentsMatchEvidence(
   const matches =
     addedContents.length === intent.addedDocuments.length &&
     intent.addedDocuments.every((document, index) => {
-      const content = addedContents[index]!;
+      const content = addedContents[index];
       return (
+        content !== undefined &&
         document.bytes === Buffer.byteLength(content, 'utf8') &&
         document.sha256 === sha256Utf8(content)
       );

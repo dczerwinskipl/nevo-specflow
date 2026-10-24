@@ -8,7 +8,7 @@ import {
   open,
   readdir,
   readFile,
-  rm,
+  rename,
   symlink,
   unlink,
   utimes,
@@ -19,100 +19,33 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import {
-  bootstrapProjectHome,
-  createSpecificationForTesting,
-  withProjectControlLock,
-  type SpecFlowEngine,
-} from '../src/testing';
+import { withProjectControlLock } from '../src/testing';
 import { deriveUnclassifiedDocumentId } from '../src/specs/documents/document-ids';
-import { DocumentError } from '../src/specs/documents/errors';
 import {
   readRegisteredDocumentSummaries,
-  type ObservationMemoValue,
   readSpecificationDocument,
   readSpecificationDocumentTree,
+  type ObservationMemoValue,
 } from '../src/specs/documents/read';
 import { RevisionMemo } from '../src/specs/documents/revision-memo';
 import { nodeVerifiedFs, type VerifiedFs } from '../src/specs/documents/verified-file';
-import { createGitTestProject, git } from './support/git-project';
-import { writeSpecificationManifestFixture } from './support/manifest-fixture';
+import { git } from './support/git-project';
+import {
+  createdFeature,
+  documentsProject,
+  errorCode,
+  failure,
+  handBuiltSpecification,
+  removeTrackedRoots,
+  trackRoot,
+} from './support/documents-fixture';
 
-const roots: string[] = [];
-afterEach(async () => {
-  await Promise.all(
-    roots
-      .splice(0)
-      .map((path) => rm(path, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })),
-  );
-});
+afterEach(removeTrackedRoots);
 
-const GIT_OFF = 'runtime: {}\ngit:\n  enabled: false\n';
 const NOT_IMPLEMENTED = { available: false, reason: 'not-implemented' };
-
-interface Fixture {
-  readonly root: string;
-  readonly engine: SpecFlowEngine;
-}
-
-async function project(config = GIT_OFF): Promise<Fixture> {
-  const root = await createGitTestProject('specflow-doc-reader-', config);
-  roots.push(root, root + '-worktrees');
-  return { root, engine: await bootstrapProjectHome(root) };
-}
-
-/** A Specification created through Create (feature, suggestions preselected). */
-async function createdFeature(fixture: Fixture) {
-  const created = await createSpecificationForTesting(fixture.engine, {
-    operationId: randomUUID(),
-    title: 'Readable feature',
-    created: '2026-10-24',
-    archetype: { id: 'feature', version: 1 },
-    optionalDocumentIds: ['behaviour', 'ux', 'backend'],
-    target: { kind: 'existing', workspaceId: fixture.engine.workspace.workspaceId },
-  });
-  return { ...created, dir: join(fixture.root, 'specs', 'active', created.slug) };
-}
-
-/** A hand-built Specification (own registry, own files). */
-async function handBuilt(
-  fixture: Fixture,
-  options: {
-    slug?: string;
-    location?: 'active' | 'archive';
-    documents?: { id: string; path: string; type: string }[];
-    folders?: string[];
-    files?: Record<string, string | Buffer>;
-  } = {},
-) {
-  const slug = options.slug ?? 'hand';
-  const location = options.location ?? 'active';
-  const written = await writeSpecificationManifestFixture(fixture.root, {
-    slug,
-    location,
-    documents: options.documents ?? [{ id: 'overview', path: 'overview.md', type: 'overview' }],
-    ...(options.folders ? { folders: options.folders } : {}),
-  });
-  const dir = join(fixture.root, 'specs', location, slug);
-  for (const [path, content] of Object.entries(options.files ?? { 'overview.md': '# Hand\n' })) {
-    await mkdir(join(dir, ...path.split('/').slice(0, -1)), { recursive: true });
-    await writeFile(join(dir, ...path.split('/')), content);
-  }
-  return { specId: written.specId, dir };
-}
-
-async function failure(promise: Promise<unknown>): Promise<unknown> {
-  try {
-    await promise;
-  } catch (error) {
-    return error;
-  }
-  throw new Error('Expected the read to fail.');
-}
-
-function code(error: unknown): string | undefined {
-  return error instanceof DocumentError ? error.code : undefined;
-}
+const project = documentsProject;
+const handBuilt = handBuiltSpecification;
+const code = errorCode;
 
 describe('readSpecificationDocumentTree', () => {
   it('shows the four registered documents of a created feature Specification, complete and stable', async () => {
@@ -411,7 +344,7 @@ describe('paths, links and hidden entries', () => {
   it('skips symlinks (files and folders), reports them and never reads through them', async () => {
     const fixture = await project();
     const outside = await mkdtemp(join(tmpdir(), 'specflow-outside-'));
-    roots.push(outside);
+    trackRoot(outside);
     await writeFile(join(outside, 'secret.md'), '# SECRET\n');
     await mkdir(join(outside, 'folder'));
     await writeFile(join(outside, 'folder', 'inner.md'), '# INNER SECRET\n');
@@ -448,7 +381,7 @@ describe('paths, links and hidden entries', () => {
   it('reports a registered file replaced by a symlink as dangling and never reads it', async () => {
     const fixture = await project();
     const outside = await mkdtemp(join(tmpdir(), 'specflow-outside-'));
-    roots.push(outside);
+    trackRoot(outside);
     await writeFile(join(outside, 'secret.md'), '# SECRET\n');
     const hand = await handBuilt(fixture, {
       documents: [
@@ -471,7 +404,7 @@ describe('paths, links and hidden entries', () => {
   it('refuses a registered path below a symlinked folder as leaving the Specification directory', async () => {
     const fixture = await project();
     const outside = await mkdtemp(join(tmpdir(), 'specflow-outside-'));
-    roots.push(outside);
+    trackRoot(outside);
     await writeFile(join(outside, 'inner.md'), '# SECRET\n');
     const hand = await handBuilt(fixture, {
       documents: [
@@ -562,7 +495,6 @@ describe('paths, links and hidden entries', () => {
     const fixture = await project();
     const hand = await handBuilt(fixture);
     const real = hand.dir + '-real';
-    const { rename } = await import('node:fs/promises');
     await rename(hand.dir, real);
     await symlink(real, hand.dir);
     await expect(readSpecificationDocumentTree(fixture.engine, hand.specId)).rejects.toMatchObject({
@@ -588,7 +520,7 @@ describe('limits', () => {
     }
   }
 
-  it('truncates the listing at 2000 files but still reports a registered file beyond the cap', async () => {
+  it('truncates the listing at 2000 files but still reports the registered files beyond the cap', async () => {
     const fixture = await project();
     const hand = await handBuilt(fixture, {
       documents: [
@@ -601,8 +533,8 @@ describe('limits', () => {
     const tree = await readSpecificationDocumentTree(fixture.engine, hand.specId);
     expect(tree.truncated).toBe(true);
     const listed = tree.documents.length;
-    // 2000 listed files plus the registered one that sorts beyond the cap.
-    expect(listed).toBe(2001);
+    // 2000 listed files plus the two registered ones that sort beyond the cap.
+    expect(listed).toBe(2002);
     expect(tree.documents.map((document) => document.id)).toContain('last');
     expect(tree.dangling).toEqual([]);
   }, 240000);
